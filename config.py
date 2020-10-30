@@ -175,6 +175,12 @@ class BaseConfig(object):
     TIMEZONE = pytz.timezone('UTC')
 
 
+class ACMConfig(object):
+    ACM_URIS = {
+        0: 'http://http://demo.wildbook.org/',
+    }
+
+
 class EDMConfig(object):
     EDM_URIS = {
         0: 'https://nextgen.dev-wildbook.org/',
@@ -189,7 +195,7 @@ class SubmissionGitLabRemoteConfig(object):
 
 
 class ProductionConfig(
-    BaseConfig, EDMConfig, SubmissionGitLabRemoteConfig, SecretProductionConfig
+    BaseConfig, ACMConfig, EDMConfig, SubmissionGitLabRemoteConfig, SecretProductionConfig
 ):
     TESTING = False
 
@@ -205,7 +211,11 @@ class ProductionConfig(
 
 
 class DevelopmentConfig(
-    BaseConfig, EDMConfig, SubmissionGitLabRemoteConfig, SecretDevelopmentConfig
+    BaseConfig,
+    ACMConfig,
+    EDMConfig,
+    SubmissionGitLabRemoteConfig,
+    SecretDevelopmentConfig,
 ):
     DEBUG = True
 

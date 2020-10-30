@@ -55,6 +55,8 @@ from .email import mail  # NOQA
 
 # from flask_minify import minify  # NOQA
 
+from . import acm  # NOQA
+
 from . import edm  # NOQA
 
 from . import submission  # NOQA
@@ -267,6 +269,7 @@ def init_app(app):
         cross_origin_resource_sharing,
         marshmallow,
         edm,
+        acm,
         submission,
         tus,
         mail,

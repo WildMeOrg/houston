@@ -25,22 +25,6 @@ acm_pass = Namespace(
 )  # pylint: disable=invalid-name
 
 
-@edm_pass.route('/')
-@edm_pass.login_required(oauth_scopes=['passthroughs:read'])
-class EDMPassthroughTargets(Resource):
-    """
-    Manipulations with Passthroughs.
-    """
-
-    def get(self):
-        """
-        List the possible EDM passthrough targets.
-        """
-        current_app.edm.ensure_initialed()
-        targets = list(current_app.edm.targets)
-        return targets
-
-
 def _request_passthrough(target, path, request_func, passthrough_kwargs):
     try:
         # Try to convert string integers to integers
@@ -95,10 +79,72 @@ def _request_passthrough(target, path, request_func, passthrough_kwargs):
     return response
 
 
+class PassthroughTargets(Resource):
+    def get(self):
+        """
+        List the possible EDM passthrough targets.
+        """
+        self.manager.ensure_initialed()
+        targets = list(self.manager.targets)
+        return targets
+
+
+class Passthroughs(Resource):
+    def get(self, target, path):
+        """
+        List the possible EDM passthrough targets.
+        """
+        params = {}
+        params.update(request.args)
+        params.update(request.form)
+
+        request_func = self.manager.get_passthrough
+        passthrough_kwargs = {'params': params}
+
+        response = _request_passthrough(target, path, request_func, passthrough_kwargs)
+
+        return response
+
+    def post(self, target, path):
+        """
+        List the possible EDM passthrough targets.
+        """
+        data = {}
+        data.update(request.args)
+        data.update(request.form)
+        try:
+            data_ = json.loads(request.data)
+            data.update(data_)
+        except Exception:
+            pass
+
+        request_func = self.manager.post_passthrough
+
+        passthrough_kwargs = {'data': data}
+
+        files = request.files
+        if len(files) > 0:
+            passthrough_kwargs['files'] = files
+
+        response = _request_passthrough(target, path, request_func, passthrough_kwargs)
+
+        return response
+
+
+@edm_pass.route('/')
+@edm_pass.login_required(oauth_scopes=['passthroughs:read'])
+class EDMPassthroughTargets(PassthroughTargets):
+    """
+    Manipulations with Passthroughs.
+    """
+
+    manager = current_app.edm
+
+
 @edm_pass.route('/<string:target>/', defaults={'path': None}, doc=False)
 @edm_pass.route('/<string:target>/<path:path>')
 @edm_pass.login_required(oauth_scopes=['passthroughs:read'])
-class EDMPassthroughs(Resource):
+class EDMPassthroughs(Passthroughs):
     r"""
     A pass-through allows a GET or POST request to be referred to a registered back-end EDM
 
@@ -127,42 +173,49 @@ class EDMPassthroughs(Resource):
             https://houston.dyn.wildme.io/api/v1/passthroughs/edm/default/api/v0/configuration/site.name | jq ".response.value"
     """
 
-    def get(self, target, path):
-        """
-        List the possible EDM passthrough targets.
-        """
-        params = {}
-        params.update(request.args)
-        params.update(request.form)
+    manager = current_app.edm
 
-        request_func = current_app.edm.get_passthrough
-        passthrough_kwargs = {'params': params}
 
-        response = _request_passthrough(target, path, request_func, passthrough_kwargs)
+@acm_pass.route('/')
+@acm_pass.login_required(oauth_scopes=['passthroughs:read'])
+class ACMPassthroughTargets(PassthroughTargets):
+    """
+    Manipulations with Passthroughs.
+    """
 
-        return response
+    manager = current_app.acm
 
-    def post(self, target, path):
-        """
-        List the possible EDM passthrough targets.
-        """
-        data = {}
-        data.update(request.args)
-        data.update(request.form)
-        try:
-            data_ = json.loads(request.data)
-            data.update(data_)
-        except Exception:
-            pass
 
-        request_func = current_app.edm.post_passthrough
+@acm_pass.route('/<string:target>/', defaults={'path': None}, doc=False)
+@acm_pass.route('/<string:target>/<path:path>')
+@acm_pass.login_required(oauth_scopes=['passthroughs:read'])
+class ACMPassthroughs(Passthroughs):
+    r"""
+    A pass-through allows a GET or POST request to be referred to a registered back-end ACM
 
-        passthrough_kwargs = {'data': data}
+    CommandLine:
+        EMAIL='test@localhost'
+        PASSWORD='test'
+        TIMESTAMP=$(date '+%Y%m%d-%H%M%S%Z')
+        curl \
+            -X POST \
+            -c cookie.jar \
+            -F email=${EMAIL} \
+            -F password=${PASSWORD} \
+            https://houston.dyn.wildme.io/api/v1/auth/sessions | jq
+        curl \
+            -X GET \
+            -b cookie.jar \
+            https://houston.dyn.wildme.io/api/v1/users/me | jq
+        curl \
+            -X POST \
+            -b cookie.jar \
+            -d "{\"site.name\": \"value-updated-${TIMESTAMP}\"}" \
+            https://houston.dyn.wildme.io/api/v1/passthroughs/acm/default/api/v0/configuration | jq
+        curl \
+            -X GET \
+            -b cookie.jar \
+            https://houston.dyn.wildme.io/api/v1/passthroughs/acm/default/api/v0/configuration/site.name | jq ".response.value"
+    """
 
-        files = request.files
-        if len(files) > 0:
-            passthrough_kwargs['files'] = files
-
-        response = _request_passthrough(target, path, request_func, passthrough_kwargs)
-
-        return response
+    manager = current_app.acm

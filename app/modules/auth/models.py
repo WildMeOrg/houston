@@ -85,7 +85,6 @@ CODE_SETTINGS = {
 }
 
 
-
 class OAuth2Client(db.Model):
     """
     Model that binds OAuth2 Client ID and Secret to a specific User.

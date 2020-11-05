@@ -56,6 +56,5 @@ utool
 webargs==5.5.2
 werkzeug>=0.15,<0.16
 wheel
-xkcdpass
 
 xxhash

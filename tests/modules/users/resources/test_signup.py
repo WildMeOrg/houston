@@ -130,3 +130,15 @@ def test_new_user_creation_duplicate_must_fail(flask_app_client, db):
     user1_instance = User.query.get(user_guid)
     with db.session.begin():
         db.session.delete(user1_instance)
+
+def test_new_user_creation_no_password_must_fail(flask_app_client):
+    # pylint: disable=invalid-name
+    response = create_new_user(
+        flask_app_client,
+        data={'email': 'user1@localhost'},
+        must_succeed=False,
+    )
+
+    assert response.status_code == 400
+    assert response.content_type == 'application/json'
+    assert set(response.json.keys()) >= {'status', 'message'}

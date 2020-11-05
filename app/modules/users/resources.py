@@ -95,7 +95,6 @@ class Users(Resource):
         """
         Create a new user.
         """
-        from app.modules.auth.models import _generate_salt
 
         email = args.get('email', None)
         user = User.query.filter_by(email=email).first()
@@ -106,7 +105,7 @@ class Users(Resource):
             )
 
         if 'password' not in args:
-            args['password'] = _generate_salt(128)
+            abort(code=HTTPStatus.BAD_REQUEST, message='Must provide a password')
 
         args['is_active'] = True
 

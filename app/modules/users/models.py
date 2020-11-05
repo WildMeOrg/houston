@@ -12,6 +12,7 @@ from sqlalchemy_utils import types as column_types
 
 from flask_login import current_user  # NOQA
 from app.extensions import db, FeatherModel
+from app.extensions.auth import security
 from app.extensions.edm import EDMObjectMixin
 from app.extensions.api.parameters import _get_is_static_role_property
 
@@ -63,7 +64,6 @@ class UserEDMMixin(EDMObjectMixin):
 
     @classmethod
     def edm_sync_users(cls, verbose=True, refresh=False):
-        from app.modules.auth.models import _generate_salt
 
         edm_users = current_app.edm.get_users()
 
@@ -82,7 +82,7 @@ class UserEDMMixin(EDMObjectMixin):
 
                 if user is None:
                     email = '%s@localhost' % (guid,)
-                    password = _generate_salt(128)
+                    password = security.generate_random(128)
                     user = User(
                         guid=guid,
                         email=email,
@@ -234,19 +234,6 @@ class User(db.Model, FeatherModel, UserEDMMixin):
         )
 
     @classmethod
-    def suggest_password(cls):
-        from xkcdpass import xkcd_password as xp
-
-        xp_wordfile = xp.locate_wordfile()
-        xp_wordlist = xp.generate_wordlist(
-            wordfile=xp_wordfile, min_length=4, max_length=6, valid_chars='[a-z]'
-        )
-        suggested_password = xp.generate_xkcdpassword(
-            xp_wordlist, numwords=4, acrostic='wild', delimiter=' '
-        )
-        return suggested_password
-
-    @classmethod
     def find(cls, email=None, password=None, edm_login_fallback=True):
         # Look-up via email
 
@@ -384,10 +371,8 @@ class User(db.Model, FeatherModel, UserEDMMixin):
 
     def set_password(self, password=None):
         if password is None:
-            # Generate a random password for the user
-            from app.modules.auth.models import _generate_salt
-
-            password = _generate_salt(128)
+            # This function "sets" the password, it's the responsibility of the caller to ensure it's valid
+            raise ValueError("Empty password not allowed")
 
         self.password = password
         with db.session.begin():

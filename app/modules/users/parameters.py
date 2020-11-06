@@ -38,7 +38,7 @@ class CreateUserParameters(Parameters, schemas.BaseUserSchema):
     """
 
     email = base_fields.Email(description='Example: root@gmail.com', required=True)
-    password = base_fields.String(description='No rules yet', required=False)
+    password = base_fields.String(description='No rules yet', required=True)
 
     recaptcha_key = base_fields.String(
         description=(

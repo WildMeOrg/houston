@@ -139,6 +139,6 @@ def test_new_user_creation_no_password_must_fail(flask_app_client):
         must_succeed=False,
     )
 
-    assert response.status_code == 400
+    assert response.status_code == 422
     assert response.content_type == 'application/json'
     assert set(response.json.keys()) >= {'status', 'message'}

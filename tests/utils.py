@@ -130,21 +130,6 @@ class CreateSubmission(object):
         # Restore original state
         if self.temp_submission is not None:
             self.temp_submission.delete()
-        submissions_database_path = config.TestingConfig.SUBMISSIONS_DATABASE_PATH
-        submission_path = os.path.join(
-             submissions_database_path, str(submission_uuid)
-        )
-
-        if os.path.exists(submission_path):
-            shutil.rmtree(submission_path)
-
-        submissions_database_path = config.TestingConfig.SUBMISSIONS_DATABASE_PATH
-        submission_path = os.path.join(
-             submissions_database_path, str(submission_uuid)
-        )
-
-        if os.path.exists(submission_path):
-            shutil.rmtree(submission_path)
 
 
 class CloneSubmission(CreateSubmission):
@@ -161,18 +146,11 @@ class CloneSubmission(CreateSubmission):
 
         super().__init__(flask_app_client, regular_user, submission_uuid)
 
-    def remove_files(self):
-        if os.path.exists(self.submission_path):
-            shutil.rmtree(self.submission_path)
-
     def __del__(self):
+        super().__del__()
         # Restore original state
-        if self.temp_submission is not None:
-            self.temp_submission.delete()
         if os.path.exists(self.submission_path):
             shutil.rmtree(self.submission_path)
-
-
 
 def generate_user_instance(
     user_guid=None,

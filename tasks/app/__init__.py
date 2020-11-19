@@ -5,6 +5,7 @@ Application related tasks for Invoke.
 
 from invoke import Collection
 
+<<<<<<< HEAD
 from . import (
     consistency,
     dependencies,
@@ -17,6 +18,9 @@ from . import (
     swagger,
     boilerplates,
 )
+=======
+from . import consistency, dependencies, dev, env, db, run, users, swagger, boilerplates, assets, submissions
+>>>>>>> starting the addition of submission and asset investigation
 
 from config import BaseConfig
 
@@ -33,6 +37,8 @@ namespace = Collection(
     submissions,
     swagger,
     boilerplates,
+    assets,
+    submissions
 )
 
 namespace.configure({'app': {'static_root': BaseConfig.STATIC_ROOT}})

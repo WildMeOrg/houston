@@ -65,3 +65,16 @@ def create_oauth2_client(context, email, guid, secret, default_scopes=None):
 
     with db.session.begin():
         db.session.add(oauth2_client)
+
+
+@app_context_task
+def list_users(context):
+    """
+    Show existing users.
+    """
+    from app.modules.users.models import User
+
+    users = User.query.all()
+    for user in users:
+        print("User : {} ".format(user))
+        print("submissions {}".format(user.submissions))

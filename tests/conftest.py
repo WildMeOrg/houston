@@ -109,3 +109,8 @@ def test_empty_submission_uuid(flask_app):
 @pytest.yield_fixture(scope='session')
 def test_clone_submission_uuid(flask_app):
     return uuid.UUID('290950fb-49a8-496a-adf4-e925010f79ce')
+
+
+@pytest.yield_fixture(scope='session')
+def test_asset_uuid(flask_app):
+    return uuid.UUID('3abc03a8-39c8-42c4-bedb-e08ccc485396')

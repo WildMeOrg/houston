@@ -5,20 +5,7 @@ Application related tasks for Invoke.
 
 from invoke import Collection
 
-from . import (
-    consistency,
-    dependencies,
-    dev,
-    env,
-    db,
-    run,
-    users,
-    submissions,
-    assets,
-    encounters,
-    swagger,
-    boilerplates,
-)
+from . import consistency, dependencies, dev, env, db, run, users, swagger, boilerplates, assets, submissions
 
 from config import BaseConfig
 
@@ -32,12 +19,10 @@ namespace = Collection(
     db,
     run,
     users,
-    submissions,
-    assets,
-    encounters,
     swagger,
     boilerplates,
-
+    assets,
+    submissions
 )
 
 namespace.configure({'app': {'static_root': BaseConfig.STATIC_ROOT}})

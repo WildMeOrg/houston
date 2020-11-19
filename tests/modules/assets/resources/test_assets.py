@@ -4,11 +4,18 @@ import config
 import shutil
 import uuid
 import os
+
+# These two imports should not be needed but without them the tests fails in different ways
 from app.modules.submissions.models import Submission, SubmissionMajorType
+from app.modules.users.models import User
 from app.modules.assets.models import Asset
 
-def test_list_all_assets():
-    assets = Asset.query.all()
+
+# No this is not a test, this is me learning and will be deleted
+def test_list_all_assets(db):
+    # So why is this "with" needed here when it's not needed in test_ensure_clone_submission_by_uuid
+    with db.session.begin():
+        assets = Asset.query.all()
 
     for asset in assets:
         print("Asset : {} ".format(asset))

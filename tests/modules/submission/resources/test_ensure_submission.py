@@ -53,3 +53,12 @@ def test_find_asset(
 
     db_asset = Asset.query.get(test_asset_uuid)
     print("Found Asset {}".format(db_asset))
+    submissions = Submission.query.all()
+
+    for sub in submissions:
+        print("Asset : {} ".format(sub))
+
+    assets = Asset.query.all()
+
+    for asset in assets:
+        print("Asset : {} ".format(asset))

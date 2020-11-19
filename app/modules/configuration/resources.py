@@ -20,6 +20,9 @@ log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 edm_configuration = Namespace(
     'configuration', description='(EDM) Configuration'
 )  # pylint: disable=invalid-name
+edm_configurationDefinition = Namespace(
+    'configurationDefinition', description='(EDM) Configuration Definition'
+)  # pylint: disable=invalid-name
 
 
 @edm_configuration.route('/')
@@ -37,6 +40,32 @@ class EDMConfigurationTargets(Resource):
         targets = list(current_app.edm.targets)
         return targets
 
+@edm_configurationDefinition.route('/<string:target>/<path:path>')
+@edm_configurationDefinition.login_required(oauth_scopes=['configuration:read'])
+class EDMConfigurationDefinition(Resource):
+    """
+    Configuration Definitions
+    """
+
+    def get(self, target, path):
+        current_app.edm.ensure_initialed()
+        targets = list(current_app.edm.targets)
+        # Check target
+        current_app.edm.ensure_initialed()
+        targets = list(current_app.edm.targets)
+        if target not in targets:
+            raise BadRequest('The specified target %r is invalid.' % (target,))
+        endpoint_url_ = current_app.edm.get_target_endpoint_url(target)
+        endpoint = '%s/api/v0/configurationDefinition/%s' % (endpoint_url_, path,)
+        request_func = current_app.edm.get_passthrough
+        response = request_func(
+            None,
+            endpoint=endpoint,
+            target=target,
+            decode_as_object=False,
+            decode_as_dict=False,
+        )
+        return response
 
 def _request_passthrough(target, path, request_func, passthrough_kwargs):
     try:

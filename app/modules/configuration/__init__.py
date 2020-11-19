@@ -23,3 +23,4 @@ def init_app(app, **kwargs):
     from . import resources  # NOQA
 
     api_v1.add_namespace(resources.edm_configuration)
+    api_v1.add_namespace(resources.edm_configurationDefinition)

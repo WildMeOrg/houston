@@ -3,7 +3,7 @@
 Application Submission management related tasks for Invoke.
 """
 from flask import current_app
-from app.extensions.submission import SubmissionManager
+
 from ._utils import app_context_task
 
 @app_context_task

@@ -12,9 +12,12 @@ from flask import Response
 from flask.testing import FlaskClient
 from werkzeug.utils import cached_property
 from app.extensions.auth import security
+from weakref import WeakValueDictionary
 
+import config
 import uuid
-
+import shutil
+import os
 
 class AutoAuthFlaskClient(FlaskClient):
     """
@@ -97,6 +100,57 @@ class JSONResponse(Response):
     def json(self):
         return json.loads(self.get_data(as_text=True))
 
+
+# multiple tests clone a submission, do something with it and clean it up. Make sure this always happens using a
+# class with a destructor
+class CreateSubmission(object):
+    # Ensure destructor called straight away, not as part of GC
+    # https://python-3-patterns-idioms-test.readthedocs.io/en/latest/InitializationAndCleanup.html
+    _instances = WeakValueDictionary()
+
+    def __init__(self, flask_app_client, regular_user, submission_uuid):
+        self.temp_submission = None
+
+        from app.modules.submissions.models import Submission
+        self._instances[id(self)] = self
+        with flask_app_client.login(regular_user, auth_scopes=('submissions:read',)):
+            response = flask_app_client.get(
+                '/api/v1/submissions/%s' % submission_uuid
+            )
+
+        self.temp_submission = Submission.query.get(response.json['guid'])
+
+        assert response.status_code == 200
+        assert response.content_type == 'application/json'
+        assert isinstance(response.json, dict)
+        assert set(response.json.keys()) >= {'guid', 'owner_guid', 'major_type', 'commit'}
+        assert response.json.get('guid') == str(submission_uuid)
+
+    def __del__(self):
+        # Restore original state
+        if self.temp_submission is not None:
+            self.temp_submission.delete()
+
+
+class CloneSubmission(CreateSubmission):
+    def __init__(self, flask_app_client, regular_user, submission_uuid):
+
+        submissions_database_path = config.TestingConfig.SUBMISSIONS_DATABASE_PATH
+        self.submission_path = os.path.join(
+             submissions_database_path, str(submission_uuid)
+        )
+
+        if os.path.exists(self.submission_path):
+            shutil.rmtree(self.submission_path)
+        assert not os.path.exists(self.submission_path)
+
+        super().__init__(flask_app_client, regular_user, submission_uuid)
+
+    def __del__(self):
+        super().__del__()
+        # Restore original state
+        if os.path.exists(self.submission_path):
+            shutil.rmtree(self.submission_path)
 
 def generate_user_instance(
     user_guid=None,

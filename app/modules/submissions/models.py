@@ -136,6 +136,26 @@ class Submission(db.Model, HoustonModel):
         upload_file.save(file_repo_path)
         log.info('Wrote file upload and added to local repo: %r' % (file_repo_path,))
 
+    def git_copy_path(self, path):
+        import shutil
+
+        absolute_path = os.path.abspath(os.path.expanduser(path))
+        if not os.path.exists(path):
+            raise IOError('The path %r does not exist.' % (absolute_path,))
+
+        repo = self.get_repository()
+        repo_path = os.path.join(repo.working_tree_dir, '_submission')
+
+        absolute_path = absolute_path.rstrip('/')
+        repo_path = repo_path.rstrip('/')
+        absolute_path = '%s/' % (absolute_path,)
+        repo_path = '%s/' % (repo_path,)
+
+        if os.path.exists(repo_path):
+            shutil.rmtree(repo_path)
+
+        shutil.copytree(absolute_path, repo_path)
+
     def git_commit(self, message, realize=True, update=True):
         repo = self.get_repository()
 

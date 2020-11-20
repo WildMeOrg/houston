@@ -98,7 +98,7 @@ def _request_passthrough(target, path, request_func, passthrough_kwargs):
 
         if header_key == 'Content-Type':
             if header_value is not None:
-                if header_value.lower() == 'application/javascript':
+                if header_value.lower().startswith('application/javascript') or header_value.lower().startswith('application/json'):
                     is_json = True
     passthrough_kwargs['headers'] = headers
 

@@ -64,7 +64,6 @@ class UserEDMMixin(EDMObjectMixin):
 
     @classmethod
     def edm_sync_users(cls, verbose=True, refresh=False):
-
         edm_users = current_app.edm.get_users()
 
         if verbose:
@@ -89,6 +88,7 @@ class UserEDMMixin(EDMObjectMixin):
                         password=password,
                         version=None,
                         is_active=True,
+                        in_alpha=True,
                     )
                     db.session.add(user)
                     new_users.append(user)
@@ -142,7 +142,7 @@ class User(db.Model, FeatherModel, UserEDMMixin):
 
     def __init__(self, *args, **kwargs):
         if 'password' not in kwargs:
-            raise ValueError("User must have a password")
+            raise ValueError('User must have a password')
         super().__init__(*args, **kwargs)
 
     guid = db.Column(
@@ -377,7 +377,7 @@ class User(db.Model, FeatherModel, UserEDMMixin):
     def set_password(self, password):
         if password is None:
             # This function "sets" the password, it's the responsibility of the caller to ensure it's valid
-            raise ValueError("Empty password not allowed")
+            raise ValueError('Empty password not allowed')
 
         self.password = password
         with db.session.begin():

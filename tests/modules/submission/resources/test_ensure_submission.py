@@ -33,6 +33,12 @@ def test_ensure_submission_by_uuid(
         # Restore original state
         if temp_submission is not None:
             temp_submission.delete()
+        submissions_database_path = config.TestingConfig.SUBMISSIONS_DATABASE_PATH
+        submission_path = os.path.join(
+            submissions_database_path, str(test_submission_uuid)
+        )
+        if os.path.exists(submission_path):
+            shutil.rmtree(submission_path)
 
 
 def test_ensure_empty_submission_by_uuid(

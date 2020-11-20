@@ -37,6 +37,49 @@ def create_user(
         db.session.add(new_user)
 
 
+@app_context_task(help={'email': 'temp@localhost'})
+def promote_to_admin(
+    context,
+    email,
+):
+    """
+    Promote a given user (email) to administrator permissions
+    """
+    from app.modules.users.models import User
+
+    user = User.find(email=email)
+
+    if user is None:
+        print('Could not find user by the specified email, no updates applied')
+        return
+
+    if user.is_admin:
+        print(
+            'The given user is already an administrator, no updates applied: %r' % (user,)
+        )
+        return
+
+    user.is_admin = True
+
+    print(user)
+    answer = input(
+        'Are you sure you want to promote the above user to a site administrator? [Y / N]: '
+    )
+    answer = answer.lower()
+
+    if answer not in ['y', 'yes']:
+        print('Confirmation failed, no updates applied')
+
+    from app.extensions import db
+
+    with db.session.begin():
+        db.session.merge(user)
+    db.session.refresh(user)
+
+    assert user.is_admin
+    print('\nThe user was successfully promoted to an administrator.')
+
+
 @app_context_task
 def create_oauth2_client(context, email, guid, secret, default_scopes=None):
     """

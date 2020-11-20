@@ -118,7 +118,7 @@ def _request_passthrough(target, path, request_func, passthrough_kwargs):
     return response
 
 
-@edm_configuration.route('/<string:target>/', defaults={'path': None})
+@edm_configuration.route('/<string:target>', defaults={'path': ''})
 @edm_configuration.route('/<string:target>/<path:path>')
 @edm_configuration.login_required(oauth_scopes=['configuration:read'])
 class EDMConfiguration(Resource):

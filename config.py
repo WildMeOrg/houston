@@ -191,4 +191,5 @@ class TestingConfig(DevelopmentConfig):
 
     # Use in-memory SQLite database for testing
     SQLALCHEMY_DATABASE_URI = 'sqlite://'
+
     MAIL_SUPPRESS_SEND = True

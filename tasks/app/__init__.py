@@ -5,7 +5,18 @@ Application related tasks for Invoke.
 
 from invoke import Collection
 
-from . import consistency, dependencies, dev, env, db, run, users, swagger, boilerplates
+from . import (
+    consistency,
+    dependencies,
+    dev,
+    env,
+    db,
+    run,
+    users,
+    submissions,
+    swagger,
+    boilerplates,
+)
 
 from config import BaseConfig
 
@@ -19,6 +30,7 @@ namespace = Collection(
     db,
     run,
     users,
+    submissions,
     swagger,
     boilerplates,
 )

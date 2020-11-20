@@ -50,25 +50,26 @@ def promote_to_admin(
     user = User.find(email=email)
 
     if user is None:
-        print('Could not find user by the specified email, no updates applied')
+        print("User with email '%s' does not exist." % email)
+        print('\nNo updates applied.')
         return
 
     if user.is_admin:
-        print(
-            'The given user is already an administrator, no updates applied: %r' % (user,)
-        )
+        print('The given user is already an administrator:\n\t%r' % (user,))
+        print('\nNo updates applied.')
         return
 
     user.is_admin = True
 
-    print(user)
+    print('Found user:\n\t%r' % (user,))
     answer = input(
-        'Are you sure you want to promote the above user to a site administrator? [Y / N]: '
+        'Are you sure you want to promote the above found user to a site administrator? [Y / N]: '
     )
-    answer = answer.lower()
+    answer = answer.strip().lower()
 
     if answer not in ['y', 'yes']:
-        print('Confirmation failed, no updates applied')
+        print('Confirmation failed.')
+        print('\nNo updates applied.')
 
     from app.extensions import db
 
@@ -88,8 +89,9 @@ def create_oauth2_client(context, email, guid, secret, default_scopes=None):
     from app.modules.users.models import User
     from app.modules.auth.models import OAuth2Client
 
-    user = User.query.filter(User.email == email).first()
-    if not user:
+    user = User.find(email=email)
+
+    if user is None:
         raise Exception("User with email '%s' does not exist." % email)
 
     if default_scopes is None:

@@ -22,7 +22,7 @@ class Encounter(db.Model, FeatherModel):
     def __repr__(self):
         return (
             '<{class_name}('
-            'guid={self.id}, '
+            'guid={self.guid}, '
             "title='{self.title}'"
             ')>'.format(class_name=self.__class__.__name__, self=self)
         )

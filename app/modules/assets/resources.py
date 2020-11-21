@@ -7,6 +7,7 @@ RESTful API Assets resources
 
 import logging
 
+from flask import send_file
 from flask_restplus_patched import Resource
 from flask_restplus._http import HTTPStatus
 from app.extensions.api import Namespace
@@ -80,3 +81,15 @@ class AssetByID(Resource):
     #     with context:
     #         db.session.delete(asset)
     #     return None
+
+@api.route('/src/<uuid:asset_guid>')
+@api.login_required(oauth_scopes=['assets:read'])
+@api.response(
+    code=HTTPStatus.NOT_FOUND,
+    description='Asset not found.',
+)
+@api.resolve_object_by_model(Asset, 'asset')
+class AssetSrcUByID(Resource):
+
+    def get(self, asset):
+        return send_file(asset.get_symlink(), asset.mime_type)

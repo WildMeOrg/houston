@@ -71,6 +71,10 @@ class Asset(db.Model, HoustonModel):
     def __hash__(self):
         return hash(self.guid)
 
+    @property
+    def path(self):
+        return self.get_relative_path()
+
     def filename(self):
         return '%s.%s' % (
             self.guid,
@@ -78,8 +82,10 @@ class Asset(db.Model, HoustonModel):
         )
 
     def get_relative_path(self):
-        relpath = os.path.join('submissions', str(self.submission.guid), '_assets', self.filename());
-        return relpath;
+        relpath = os.path.join(
+            'submissions', str(self.submission.guid), '_assets', self.filename()
+        )
+        return relpath
 
     def get_symlink(self):
         submission_abspath = self.submission.get_absolute_path()

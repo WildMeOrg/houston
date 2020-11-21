@@ -274,6 +274,8 @@ class Submission(db.Model, HoustonModel):
         submission_path = os.path.join(submission_abspath, '_submission')
         assets_path = os.path.join(submission_abspath, '_assets')
 
+        current_app.sub.ensure_initialed()
+
         # Walk the submission path, looking for white-listed MIME type files
         files = []
         skipped = []
@@ -331,6 +333,7 @@ class Submission(db.Model, HoustonModel):
                     }
                     files.append(file_data)
                 except Exception:
+                    logging.exception('Got exception in update_asset_symlinks')
                     errors.append(filepath)
 
         if verbose:

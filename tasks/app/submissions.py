@@ -63,3 +63,48 @@ def create_submission_from_path(
     submission.git_push()
 
     print('Created and pushed new submission: %r' % (submission,))
+
+
+@app_context_task(
+    help={
+        'guid': 'A UUID4 for the submission',
+        'email': 'temp@localhost.  This is the email for the user who will be assigned as the owner of the new submission',
+    }
+)
+def clone_submission_from_gitlab(
+    context,
+    guid,
+    email,
+):
+    """
+    Clone an existing submission from the external GitLab submission archive
+
+    Command Line:
+    > invoke app.submissions.clone-submission-from-gitlab --guid 290950fb-49a8-496a-adf4-e925010f79ce --email jason@wildme.org
+    """
+    from app.modules.users.models import User
+    from app.modules.submissions.models import Submission
+
+    user = User.find(email=email)
+
+    if user is None:
+        raise Exception("User with email '%s' does not exist." % email)
+
+    from app import create_app
+
+    app = create_app()
+    submission = Submission.query.get(guid)
+
+    if submission is not None:
+        print('Submission is already cloned locally:\n\t%s' % (submission,))
+        app.sub.ensure_repository(submission)
+        return
+
+    submission = app.sub.ensure_submission(guid, owner=user)
+
+    if submission is None:
+        raise ValueError('Could not find submission in GitLab using GUID %r' % (guid,))
+
+    print('Cloned submission from GitLab:')
+    print('\tSubmission: %r' % (submission,))
+    print('\tLocal Path: %r' % (submission.get_absolute_path(),))

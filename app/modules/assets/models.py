@@ -72,8 +72,16 @@ class Asset(db.Model, HoustonModel):
     def __hash__(self):
         return hash(self.guid)
 
+    @property
+    def filename(self):
+        return self.get_original_filename()
+
     def get_original_filename(self):
         return os.path.basename(self.path)
+
+    @property
+    def relative_url(self):
+        return self.get_relative_path()
 
     def get_filename(self):
         return '%s.%s' % (
@@ -82,13 +90,15 @@ class Asset(db.Model, HoustonModel):
         )
 
     def get_relative_path(self):
-        relpath = os.path.join('submissions', str(self.submission.guid), '_assets', self.filename())
+        relpath = os.path.join(
+            'submissions', str(self.submission.guid), '_assets', self.get_filename()
+        )
         return relpath
 
     def get_symlink(self):
         submission_abspath = self.submission.get_absolute_path()
         assets_path = os.path.join(submission_abspath, '_assets')
-        asset_symlink_filepath = os.path.join(assets_path, self.filename())
+        asset_symlink_filepath = os.path.join(assets_path, self.get_filename())
         return asset_symlink_filepath
 
     def update_symlink(self, asset_submission_filepath):

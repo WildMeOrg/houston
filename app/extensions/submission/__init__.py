@@ -238,7 +238,7 @@ class SubmissionManager(object):
 
         return repo
 
-    def ensure_submission(self, submission_uuid):
+    def ensure_submission(self, submission_uuid, owner=None):
         from app.modules.submissions.models import Submission
 
         submission = Submission.query.get(submission_uuid)
@@ -261,11 +261,14 @@ class SubmissionManager(object):
             )
             created = created.replace(tzinfo=pytz.utc).astimezone(PST)
 
+            if owner is None:
+                owner = current_user
+
             with db.session.begin():
                 submission = Submission(
                     created=created,
                     guid=submission_uuid,
-                    owner_guid=current_user.guid,
+                    owner_guid=owner.guid,
                 )
                 db.session.add(submission)
             db.session.refresh(submission)

@@ -73,14 +73,11 @@ class Asset(db.Model, HoustonModel):
         return hash(self.guid)
 
     @property
-    def path(self):
-        return self.get_relative_path()
-
     def filename(self):
-        return '%s.%s' % (
-            self.guid,
-            self.extension,
-        )
+        return self.get_original_filename()
+
+    def get_original_filename(self):
+        return os.path.basename(self.path)
 
     @property
     def src(self):

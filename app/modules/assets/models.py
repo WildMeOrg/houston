@@ -23,6 +23,7 @@ class Asset(db.Model, HoustonModel):
     )  # pylint: disable=invalid-name
 
     extension = db.Column(db.String, index=True, nullable=False)
+    path = db.Column(db.String, index=True, nullable=False)
 
     mime_type = db.Column(db.String, index=True, nullable=False)
     magic_signature = db.Column(db.String, nullable=False)
@@ -71,15 +72,18 @@ class Asset(db.Model, HoustonModel):
     def __hash__(self):
         return hash(self.guid)
 
-    def filename(self):
+    def get_original_filename(self):
+        return os.path.basename(self.path)
+
+    def get_filename(self):
         return '%s.%s' % (
             self.guid,
             self.extension,
         )
 
     def get_relative_path(self):
-        relpath = os.path.join('submissions', str(self.submission.guid), '_assets', self.filename());
-        return relpath;
+        relpath = os.path.join('submissions', str(self.submission.guid), '_assets', self.filename())
+        return relpath
 
     def get_symlink(self):
         submission_abspath = self.submission.get_absolute_path()

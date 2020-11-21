@@ -76,25 +76,26 @@ class Asset(db.Model, HoustonModel):
         return os.path.basename(self.path)
 
     @property
-    def path(self):
-        return self.get_relative_path()
-
-    def get_filename(self):
+    def filename(self):
         return '%s.%s' % (
             self.guid,
             self.extension,
         )
 
+    @property
+    def src(self):
+        return '/api/v1/assets/src/%s' % (str(self.guid),)
+
     def get_relative_path(self):
         relpath = os.path.join(
-            'submissions', str(self.submission.guid), '_assets', self.get_filename()
+            'submissions', str(self.submission.guid), '_assets', self.filename
         )
         return relpath
 
     def get_symlink(self):
         submission_abspath = self.submission.get_absolute_path()
         assets_path = os.path.join(submission_abspath, '_assets')
-        asset_symlink_filepath = os.path.join(assets_path, self.get_filename())
+        asset_symlink_filepath = os.path.join(assets_path, self.filename)
         return asset_symlink_filepath
 
     def update_symlink(self, asset_submission_filepath):

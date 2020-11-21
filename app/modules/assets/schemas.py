@@ -37,7 +37,8 @@ class DetailedAssetSchema(BaseAssetSchema):
             Asset.created.key,
             Asset.updated.key,
             Asset.submission.key,
-            'path',
+            'filename',
+            'src',
         )
         dump_only = BaseAssetSchema.Meta.dump_only + (
             Asset.created.key,

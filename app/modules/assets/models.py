@@ -80,8 +80,8 @@ class Asset(db.Model, HoustonModel):
         return os.path.basename(self.path)
 
     @property
-    def relative_url(self):
-        return self.get_relative_path()
+    def src(self):
+        return '/api/v1/assets/src/%s' % (str(self.guid),)
 
     def get_filename(self):
         return '%s.%s' % (

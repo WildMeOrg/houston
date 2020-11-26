@@ -154,12 +154,18 @@ class CloneSubmission(CreateSubmission):
 
         super().__init__(flask_app_client, regular_user, submission_uuid)
 
+    def remove_files(self):
+        if os.path.exists(self.submission_path):
+            shutil.rmtree(self.submission_path)
+
     def __del__(self):
         # Restore original state
         if self.temp_submission is not None:
             self.temp_submission.delete()
         if os.path.exists(self.submission_path):
             shutil.rmtree(self.submission_path)
+
+
 
 def generate_user_instance(
     user_guid=None,

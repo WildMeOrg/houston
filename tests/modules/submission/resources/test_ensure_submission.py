@@ -3,7 +3,6 @@
 import uuid
 from tests.utils import CreateSubmission, CloneSubmission
 from app.modules.assets.models import Asset
-from app.modules.submissions.models import Submission
 
 
 def test_ensure_submission_by_uuid(
@@ -45,20 +44,7 @@ def test_ensure_clone_submission_by_uuid(
         assert asset == db_asset
         assert asset.guid == expected_guid
 
-def test_find_asset(
-    flask_app_client, regular_user, db, test_clone_submission_uuid, test_asset_uuid
-):
-    # Clone a submission so that we have something to look for
-    response = CloneSubmission(flask_app_client, regular_user, test_clone_submission_uuid)
 
-    db_asset = Asset.query.get(test_asset_uuid)
-    print("Found Asset {}".format(db_asset))
-    submissions = Submission.query.all()
 
-    for sub in submissions:
-        print("Asset : {} ".format(sub))
 
-    assets = Asset.query.all()
 
-    for asset in assets:
-        print("Asset : {} ".format(asset))

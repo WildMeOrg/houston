@@ -130,6 +130,13 @@ class CreateSubmission(object):
         # Restore original state
         if self.temp_submission is not None:
             self.temp_submission.delete()
+        submissions_database_path = config.TestingConfig.SUBMISSIONS_DATABASE_PATH
+        submission_path = os.path.join(
+             submissions_database_path, str(submission_uuid)
+        )
+
+        if os.path.exists(submission_path):
+            shutil.rmtree(submission_path)
 
         submissions_database_path = config.TestingConfig.SUBMISSIONS_DATABASE_PATH
         submission_path = os.path.join(

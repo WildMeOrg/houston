@@ -5,15 +5,6 @@ from app.modules.assets.models import Asset
 from app.modules.submissions.models import Submission
 from tests.utils import CloneSubmission
 
-# No this is not a test, this is me learning and will be deleted
-def test_list_all_assets(db):
-    # So why is this "with" needed here when it's not needed in test_ensure_clone_submission_by_uuid
-    with db.session.begin():
-        assets = Asset.query.all()
-
-    for asset in assets:
-        print("Asset : {} ".format(asset))
-
 
 def test_find_asset(
     flask_app_client, regular_user, db, test_clone_submission_uuid, test_asset_uuid

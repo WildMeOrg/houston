@@ -16,14 +16,7 @@ def list_submissions(context):
     submissions = Submission.query.all()
 
     for submission in submissions:
-        print("Submission : {} ".format(submission))
-
-@app_context_task(help={'guid': '1234-4567-7890-1234'})
-def clone_submission(context, submission_guid):
-    """
-    Clone submission by UUID.
-    """
-    current_app.sub.ensure_submission(submission_guid)
+        print("Submission : {} {}".format(submission, submission.assets))
 
 @app_context_task(
     help={

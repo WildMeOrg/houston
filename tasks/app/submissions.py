@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 """
-<<<<<<< HEAD
 Application Users management related tasks for Invoke.
 """
 
@@ -109,12 +108,6 @@ def clone_submission_from_gitlab(
     print('Cloned submission from GitLab:')
     print('\tSubmission: %r' % (submission,))
     print('\tLocal Path: %r' % (submission.get_absolute_path(),))
-=======
-Application Submission management related tasks for Invoke.
-"""
-from flask import current_app
-
-from ._utils import app_context_task
 
 @app_context_task
 def list_submissions(context):
@@ -127,5 +120,3 @@ def list_submissions(context):
 
     for submission in submissions:
         print("Submission : {} {}".format(submission, submission.assets))
-
->>>>>>> starting the addition of submission and asset investigation

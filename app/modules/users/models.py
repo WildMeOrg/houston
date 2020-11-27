@@ -64,6 +64,7 @@ class UserEDMMixin(EDMObjectMixin):
 
     @classmethod
     def edm_sync_users(cls, verbose=True, refresh=False):
+
         edm_users = current_app.edm.get_users()
 
         if verbose:

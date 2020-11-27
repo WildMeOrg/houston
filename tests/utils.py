@@ -103,76 +103,63 @@ class JSONResponse(Response):
 
 # multiple tests clone a submission, do something with it and clean it up. Make sure this always happens using a
 # class with a destructor
-class CreateSubmission(object):
+class CloneSubmission(object):
     # Ensure destructor called straight away, not as part of GC
     # https://python-3-patterns-idioms-test.readthedocs.io/en/latest/InitializationAndCleanup.html
     _instances = WeakValueDictionary()
 
-    def __init__(self, flask_app_client, regular_user, submission_uuid):
-        self.temp_submission = None
-
+    def __init__(self, flask_app_client, regular_user, submission_uuid, force_clone):
         from app.modules.submissions.models import Submission
-        self._instances[id(self)] = self
-        with flask_app_client.login(regular_user, auth_scopes=('submissions:read',)):
-            response = flask_app_client.get(
-                '/api/v1/submissions/%s' % submission_uuid
-            )
 
-        self.temp_submission = Submission.query.get(response.json['guid'])
-
-        assert response.status_code == 200
-        assert response.content_type == 'application/json'
-        assert isinstance(response.json, dict)
-        assert set(response.json.keys()) >= {'guid', 'owner_guid', 'major_type', 'commit'}
-        assert response.json.get('guid') == str(submission_uuid)
-
-    def __del__(self):
-        # Restore original state
-        if self.temp_submission is not None:
-            self.temp_submission.delete()
-        submissions_database_path = config.TestingConfig.SUBMISSIONS_DATABASE_PATH
-        submission_path = os.path.join(
-             submissions_database_path, str(submission_uuid)
-        )
-
-        if os.path.exists(submission_path):
-            shutil.rmtree(submission_path)
-
-        submissions_database_path = config.TestingConfig.SUBMISSIONS_DATABASE_PATH
-        submission_path = os.path.join(
-             submissions_database_path, str(submission_uuid)
-        )
-
-        if os.path.exists(submission_path):
-            shutil.rmtree(submission_path)
-
-
-class CloneSubmission(CreateSubmission):
-    def __init__(self, flask_app_client, regular_user, submission_uuid):
-
+        self.temp_submission = None
         submissions_database_path = config.TestingConfig.SUBMISSIONS_DATABASE_PATH
         self.submission_path = os.path.join(
              submissions_database_path, str(submission_uuid)
         )
 
-        if os.path.exists(self.submission_path):
-            shutil.rmtree(self.submission_path)
-        assert not os.path.exists(self.submission_path)
+        # Allow the option of forced cloning, this could raise an exception if the assertion fails
+        # but this does not need to be in the try/except/finally construct as no resources are allocated yet
+        if force_clone:
+            if os.path.exists(self.submission_path):
+                shutil.rmtree(self.submission_path)
+            assert not os.path.exists(self.submission_path)
 
-        super().__init__(flask_app_client, regular_user, submission_uuid)
+        self._instances[id(self)] = self
+        with flask_app_client.login(regular_user, auth_scopes=('submissions:read',)):
+            self.response = flask_app_client.get(
+                '/api/v1/submissions/%s' % submission_uuid
+            )
+
+        self.temp_submission = Submission.query.get(self.response.json['guid'])
 
     def remove_files(self):
         if os.path.exists(self.submission_path):
             shutil.rmtree(self.submission_path)
 
-    def __del__(self):
+    def cleanup(self):
         # Restore original state
         if self.temp_submission is not None:
             self.temp_submission.delete()
-        if os.path.exists(self.submission_path):
-            shutil.rmtree(self.submission_path)
+            self.temp_submission = None
+        self.remove_files()
 
 
+# Clone the submission within a try/except/finally structure to ensure that cleanup is called to clean up
+# the files etc
+def clone_submission(flask_app_client, regular_user, submission_uuid, force_clone = False):
+    clone = CloneSubmission(flask_app_client, regular_user, submission_uuid, force_clone)
+    try:
+        assert clone.response.status_code == 200
+        assert clone.response.content_type == 'application/json'
+        assert isinstance(clone.response.json, dict)
+        assert set(clone.response.json.keys()) >= {'guid', 'owner_guid', 'major_type', 'commit'}
+        assert clone.response.json.get('guid') == str(submission_uuid)
+
+    except Exception as ex:
+        clone.cleanup()
+        raise ex
+
+    return clone
 
 def generate_user_instance(
     user_guid=None,

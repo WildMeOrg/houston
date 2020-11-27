@@ -7,7 +7,7 @@ RESTful API Assets resources
 
 import logging
 
-from flask import send_file
+from flask import send_file, current_app
 from flask_restplus_patched import Resource
 from flask_restplus._http import HTTPStatus
 from app.extensions.api import Namespace
@@ -92,4 +92,7 @@ class AssetByID(Resource):
 class AssetSrcUByID(Resource):
 
     def get(self, asset):
+        current_app.sub.ensure_submission(asset.submission_guid)
         return send_file(asset.get_symlink(), asset.mime_type)
+
+

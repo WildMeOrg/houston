@@ -37,7 +37,6 @@ namespace = Collection(
     encounters,
     swagger,
     boilerplates,
-
 )
 
 namespace.configure({'app': {'static_root': BaseConfig.STATIC_ROOT}})

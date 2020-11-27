@@ -1,22 +1,61 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=missing-docstring
-
-from app.modules.assets.models import Asset
-from app.modules.submissions.models import Submission
-from tests.utils import CloneSubmission
-
+import hashlib
+from tests.utils import clone_submission
 
 def test_find_asset(
-    flask_app_client, regular_user, db, test_clone_submission_uuid, test_asset_uuid
+    flask_app_client, regular_user, admin_user, db, test_clone_submission_uuid, test_asset_uuid
 ):
     # Clone the known submission so that the asset data is in the database
-    response = CloneSubmission(flask_app_client, regular_user, test_clone_submission_uuid)
+    clone = clone_submission(flask_app_client, regular_user, test_clone_submission_uuid)
 
-    # But now remove the files so that Houston knows about the asset but does not have the files
-    response.remove_files()
+    try:
+        # For reasons that are not clear, you can clone as a regular user but need admin role to read the asset but not the data
+        # Seems wrong to me
+        with flask_app_client.login(admin_user, auth_scopes=('assets:read',)):
+            response = flask_app_client.get('/api/v1/assets/%s' % test_asset_uuid)
+        with flask_app_client.login(regular_user, auth_scopes=('assets:read',)):
+            src_response = flask_app_client.get('/api/v1/assets/src/%s' % test_asset_uuid)
 
-    db_asset = Asset.query.get(test_asset_uuid)
-    db_submission = Submission.query.get(test_clone_submission_uuid)
-    assert(db_asset == db_submission.assets[1])
-    # print("Found Asset {} {}".format(db_asset, db_submission))
-    # breakpoint()
+        assert response.status_code == 200
+        assert response.content_type == 'application/json'
+        assert response.json['filename'] == 'fluke.jpg'
+        assert response.json['src'] == '/api/v1/assets/src/%s' % test_asset_uuid
+        assert src_response.status_code == 200
+        assert src_response.content_type == 'image/jpeg'
+        assert hashlib.md5(src_response.data).hexdigest() == '6b383b9feb55b14ec7f8d469402aff01'
+
+    except Exception as ex:
+        raise ex
+    finally:
+        clone.cleanup()
+
+def test_find_deleted_asset(
+    flask_app_client, regular_user, admin_user, db, test_clone_submission_uuid, test_asset_uuid
+):
+    # Clone the known submission so that the asset data is in the database
+    clone = clone_submission(flask_app_client, regular_user, test_clone_submission_uuid)
+
+    try:
+        # As for the test above but now remove the files so that Houston knows about the asset but does not have the files
+        clone.remove_files()
+
+        # For reasons that are not clear, you can clone as a regular user but need admin role to read the asset but not the data
+        # Seems wrong to me
+        with flask_app_client.login(admin_user, auth_scopes=('assets:read',)):
+            response = flask_app_client.get('/api/v1/assets/%s' % test_asset_uuid)
+        with flask_app_client.login(regular_user, auth_scopes=('assets:read',)):
+            src_response = flask_app_client.get('/api/v1/assets/src/%s' % test_asset_uuid)
+
+        assert response.status_code == 200
+        assert response.content_type == 'application/json'
+        assert response.json['filename'] == 'fluke.jpg'
+        assert response.json['src'] == '/api/v1/assets/src/%s' % test_asset_uuid
+        assert src_response.status_code == 200
+        assert src_response.content_type == 'image/jpeg'
+        assert hashlib.md5(src_response.data).hexdigest() == '6b383b9feb55b14ec7f8d469402aff01'
+
+    except Exception as ex:
+        raise ex
+    finally:
+        clone.cleanup()

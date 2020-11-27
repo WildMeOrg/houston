@@ -49,8 +49,3 @@ def test_ensure_clone_submission_by_uuid(
         raise ex
     finally:
         clone.cleanup()
-
-
-
-
-

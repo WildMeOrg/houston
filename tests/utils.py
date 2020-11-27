@@ -102,11 +102,8 @@ class JSONResponse(Response):
 
 
 # multiple tests clone a submission, do something with it and clean it up. Make sure this always happens using a
-# class with a destructor
+# class with a cleanup method to be called if any assertions fail
 class CloneSubmission(object):
-    # Ensure destructor called straight away, not as part of GC
-    # https://python-3-patterns-idioms-test.readthedocs.io/en/latest/InitializationAndCleanup.html
-    _instances = WeakValueDictionary()
 
     def __init__(self, flask_app_client, regular_user, submission_uuid, force_clone):
         from app.modules.submissions.models import Submission
@@ -124,7 +121,6 @@ class CloneSubmission(object):
                 shutil.rmtree(self.submission_path)
             assert not os.path.exists(self.submission_path)
 
-        self._instances[id(self)] = self
         with flask_app_client.login(regular_user, auth_scopes=('submissions:read',)):
             self.response = flask_app_client.get(
                 '/api/v1/submissions/%s' % submission_uuid

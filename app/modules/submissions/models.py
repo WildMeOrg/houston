@@ -267,8 +267,8 @@ class Submission(db.Model, HoustonModel):
             https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/MIME_types/Common_types
             http://www.iana.org/assignments/media-types/media-types.xhtml
         """
-        import utool as ut
         import magic
+        import utool as ut
 
         submission_abspath = self.get_absolute_path()
         submission_path = os.path.join(submission_abspath, '_submission')

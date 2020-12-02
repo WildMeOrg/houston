@@ -239,6 +239,16 @@ class User(db.Model, FeatherModel, UserEDMMixin):
         )
 
     @classmethod
+    def adminUserInitialized(cls):
+        # used for first run admin creation
+
+        admin_users = cls.query.filter(User.is_admin == True)
+        if admin_users:
+            return True
+        else:
+            return False
+
+    @classmethod
     def find(cls, email=None, password=None, edm_login_fallback=True):
         # Look-up via email
 

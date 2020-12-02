@@ -167,6 +167,16 @@ class UserMe(Resource):
         return User.query.get_or_404(current_user.guid)
 
 
+@api.route('/adminUserInitialized')
+class AdminUserInitialized(Resource):
+    """
+    Checks if a first time startup admin user exists
+    """
+    def get(self):
+        admin_initialized = User.adminUserInitialized()
+        return {'initialized': admin_initialized}
+
+
 @api.route('/edm/sync')
 # @api.login_required(oauth_scopes=['users:read'])
 class UserEDMSync(Resource):

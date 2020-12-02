@@ -9,7 +9,9 @@ import logging
 
 from flask import current_app, request
 from flask_restplus_patched import Resource
+from flask_restplus._http import HTTPStatus
 from app.extensions.api import Namespace
+from app.extensions.api import abort
 
 from werkzeug.exceptions import BadRequest
 
@@ -120,7 +122,7 @@ def _request_passthrough(target, path, request_func, passthrough_kwargs):
 
 @edm_configuration.route('/<string:target>', defaults={'path': ''})
 @edm_configuration.route('/<string:target>/<path:path>')
-@edm_configuration.login_required(oauth_scopes=['configuration:read'])
+#@edm_configuration.login_required(oauth_scopes=['configuration:read'])
 class EDMConfiguration(Resource):
     r"""
     A pass-through allows a GET or POST request to be referred to a registered back-end EDM
@@ -163,8 +165,15 @@ class EDMConfiguration(Resource):
 
         response = _request_passthrough(target, path, request_func, passthrough_kwargs)
 
+        #private means cannot be read other than admin
+        ####@edm_configuration.login_required(oauth_scopes=['configuration:write'])  TODO somehow need to *allow* private if has auth!!!
+        data = response.json()
+        if response.ok and 'response' in data and 'private' in data['response'] and data['response']['private']:
+            abort(code=HTTPStatus.FORBIDDEN, message='unavailable')
+
         return response
 
+    @edm_configuration.login_required(oauth_scopes=['configuration:write'])
     def post(self, target, path):
         data = {}
         data.update(request.args)

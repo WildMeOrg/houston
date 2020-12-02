@@ -43,7 +43,7 @@ class EDMConfigurationTargets(Resource):
         return targets
 
 @edm_configurationDefinition.route('/<string:target>/<path:path>')
-@edm_configurationDefinition.login_required(oauth_scopes=['configuration:read'])
+#@edm_configurationDefinition.login_required(oauth_scopes=['configuration:read'])
 class EDMConfigurationDefinition(Resource):
     """
     Configuration Definitions
@@ -67,6 +67,11 @@ class EDMConfigurationDefinition(Resource):
             decode_as_object=False,
             decode_as_dict=False,
         )
+        data = response.json()
+        if response.ok and 'response' in data and 'isPrivate' in data['response'] and data['response']['isPrivate'] and 'value' in data['response']:
+            data['response'].pop('value')
+            return data
+
         return response
 
 def _request_passthrough(target, path, request_func, passthrough_kwargs):

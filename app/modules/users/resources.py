@@ -169,10 +169,10 @@ class UserMe(Resource):
 
 @api.route('/adminUserInitialized')
 class AdminUserInitialized(Resource):
-    """
-    Checks if a first time startup admin user exists
-    """
     def get(self):
+        """
+        Checks if admin user exists and returns bool
+        """
         admin_initialized = User.adminUserInitialized()
         return {'initialized': admin_initialized}
 

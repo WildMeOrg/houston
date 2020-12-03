@@ -13,7 +13,7 @@ import flask
 from flask import Blueprint, request, flash, send_file
 from flask_login import login_user, logout_user, login_required, current_user
 import logging
-
+from .util import ensure_admin_exists
 from app.modules.users.models import User
 from app.modules.assets.models import Asset
 
@@ -41,11 +41,13 @@ backend_blueprint = Blueprint(
 
 
 @backend_blueprint.route('/', methods=['GET'])
+@ensure_admin_exists
 def home(*args, **kwargs):
     # pylint: disable=unused-argument
     """
     This endpoint offers the home page
     """
+
     from app.version import version as version_houston
     from app.modules.frontend.resources import parse_frontend_versions
 
@@ -72,6 +74,7 @@ def home(*args, **kwargs):
 
 
 @backend_blueprint.route('/login', methods=['POST'])
+@ensure_admin_exists
 def user_login(email=None, password=None, remember=None, refer=None, *args, **kwargs):
     # pylint: disable=unused-argument
     """
@@ -154,6 +157,7 @@ def user_logout(*args, **kwargs):
 
 @backend_blueprint.route('/asset/<code>', methods=['GET'])
 # @login_required
+@ensure_admin_exists
 def asset(code, *args, **kwargs):
     # pylint: disable=unused-argument
     """
@@ -161,3 +165,11 @@ def asset(code, *args, **kwargs):
     """
     asset = Asset.query.filter_by(code=code).first_or_404()
     return send_file(asset.absolute_filepath, mimetype='image/jpeg')
+
+
+@backend_blueprint.route('/admin_init', methods=['GET'])
+def admin_init(*args, **kwargs):
+    log.info('Initializing first run admin user.')
+    return _render_template(
+        'admin_init.jinja2'
+    )

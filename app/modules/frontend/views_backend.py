@@ -200,6 +200,7 @@ def create_admin_user(email=None, password=None, repeat_password=None, *args, **
                 flash(
                     'Success creating startup admin user.'
                 )
+                # update configuration value for admin user created
                 return flask.redirect(_url_for('backend.home'))
     else:
         flash(

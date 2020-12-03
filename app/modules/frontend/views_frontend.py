@@ -15,6 +15,7 @@ from flask_login import login_user, logout_user, login_required, current_user
 import werkzeug
 import logging
 
+from .util import ensure_admin_exists
 from app.modules.users.models import User
 
 from app.modules.auth.views import (
@@ -39,6 +40,7 @@ frontend_blueprint = Blueprint(
 
 @frontend_blueprint.route('/', defaults={'path': None}, methods=['GET'])
 @frontend_blueprint.route('/<path:path>', methods=['GET'])
+@ensure_admin_exists
 def home(path=None, *args, **kwargs):
     # pylint: disable=unused-argument
     """
@@ -56,6 +58,7 @@ def home(path=None, *args, **kwargs):
 
 
 @frontend_blueprint.route('/login', methods=['POST'])
+@ensure_admin_exists
 def referral_login(email=None, password=None, remember=None, refer=None, *args, **kwargs):
     # pylint: disable=unused-argument
     """
@@ -119,6 +122,7 @@ def referral_login(email=None, password=None, remember=None, refer=None, *args, 
 
 @frontend_blueprint.route('/logout', methods=['POST'])
 @login_required
+@ensure_admin_exists
 def referral_logout(refer=None, *args, **kwargs):
     # pylint: disable=unused-argument
     """
@@ -151,6 +155,7 @@ def referral_logout(refer=None, *args, **kwargs):
 
 
 @frontend_blueprint.errorhandler(404)
+@ensure_admin_exists
 def page_not_found(event):
     log.error('Handled 404')
     # note that we set the 404 status explicitly

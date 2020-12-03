@@ -9,7 +9,7 @@ log = logging.getLogger(__name__)
 def ensure_admin_exists(func):
     @wraps(func)
     def decorated_function(*args, **kwargs):
-        if not current_user and not User.adminUserInitialized():
+        if not current_user and not User.admin_user_initialized():
             return redirect(url_for('backend.admin_init'))
         return func(*args, **kwargs)
     return decorated_function

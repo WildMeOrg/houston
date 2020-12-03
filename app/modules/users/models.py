@@ -239,7 +239,7 @@ class User(db.Model, FeatherModel, UserEDMMixin):
         )
 
     @classmethod
-    def adminUserInitialized(cls):
+    def admin_user_initialized(cls):
         # used for first run admin creation
 
         admin_users = cls.query.filter(User.is_admin == True)

@@ -167,13 +167,13 @@ class UserMe(Resource):
         return User.query.get_or_404(current_user.guid)
 
 
-@api.route('/adminUserInitialized')
+@api.route('/admin_user_initialized')
 class AdminUserInitialized(Resource):
     def get(self):
         """
         Checks if admin user exists and returns bool
         """
-        admin_initialized = User.adminUserInitialized()
+        admin_initialized = User.admin_user_initialized()
         return {'initialized': admin_initialized}
 
 

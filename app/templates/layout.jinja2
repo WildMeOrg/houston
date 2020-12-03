@@ -76,10 +76,27 @@
       </div>
     </nav>
 
-    <div id="messages"></div>
+
+    </div>
 
     <div id="content">
       {% block content %}{% endblock %}
+
+      <div class="container" style="min-height:100% width:50%">
+      {% with messages = get_flashed_messages() %}
+      {% if messages %}
+          {% for message in messages %}
+          <div class="alert alert-warning alert-dismissible" role="alert">
+          <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">×</span></button>
+              {{message}}
+          </div>
+          {% endfor %}
+      {% endif %}
+      {% endwith %}
+      
+      {% block body %}
+      {% endblock %}
+
     </div>
 
     <div class="clearfix"></div>

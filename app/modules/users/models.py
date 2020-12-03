@@ -249,6 +249,32 @@ class User(db.Model, FeatherModel, UserEDMMixin):
             return False
 
     @classmethod
+    def create_user(cls, email, password, is_internal=False, is_admin=False, is_staff=False, is_active=True,):
+        """
+        Create a new user.
+        """
+        new_user = None
+
+        if not User.find(email): 
+            new_user = User(
+                password=password,
+                email=email,
+                is_internal=is_internal,
+                is_admin=is_admin,
+                is_staff=is_staff,
+                is_active=is_active,
+            )
+
+            from app.extensions import db
+            with db.session.begin():
+                db.session.add(new_user)
+
+        log.info('New user created: %r' % (new_user,))
+
+        return new_user
+
+
+    @classmethod
     def find(cls, email=None, password=None, edm_login_fallback=True):
         # Look-up via email
 

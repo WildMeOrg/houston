@@ -9,6 +9,7 @@ More details are available here:
 * http://flask-oauthlib.readthedocs.org/en/latest/oauth2.html
 * http://lepture.com/en/2013/create-oauth-server
 """
+from app.modules.users.permissions import PasswordRequiredPermissionMixin
 import flask
 from flask import Blueprint, request, flash, send_file
 from flask_login import login_user, logout_user, login_required, current_user
@@ -169,7 +170,39 @@ def asset(code, *args, **kwargs):
 
 @backend_blueprint.route('/admin_init', methods=['GET'])
 def admin_init(*args, **kwargs):
-    log.info('Initializing first run admin user.')
-    return _render_template(
-        'admin_init.jinja2'
-    )
+    """
+    This endpoint is for initial admin user creation
+    """
+    if User.admin_user_initialized:
+        flash(
+            'This function is disabled. Admin user exists.'
+        )
+    return _render_template('home.admin_init.jinja2')
+
+
+@backend_blueprint.route('/admin_init', methods=['POST'])
+def create_admin_user(email=None, password=None, repeat_password=None, *args, **kwargs):
+    """
+    This endpoint creates the initial admin user if none exists
+    """
+    log.info('Attempting to create first run admin user.')
+    if email is None:
+        email = request.form.get('email', None)
+    if password is None:
+        password = request.form.get('password', None)
+    if repeat_password is None:
+        repeat_password = request.form.get('repeat_password', None)
+
+    if password == repeat_password:
+        if email and password and repeat_password and not User.admin_user_initialized:
+            new_admin = User.create_user(email, password, False, True, False, True)
+            if new_admin:
+                flash(
+                    'Success creating startup admin user.'
+                )
+                return flask.redirect(_url_for('backend.home'))
+    else:
+        flash(
+            'The password fields do not match.'
+        )
+    return _render_template('home.admin_init.jinja2')

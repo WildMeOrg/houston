@@ -16,6 +16,7 @@ from . import (
     submissions,
     assets,
     encounters,
+    organizations,
     swagger,
     boilerplates,
 )
@@ -35,6 +36,7 @@ namespace = Collection(
     submissions,
     assets,
     encounters,
+    organizations,
     swagger,
     boilerplates,
 )

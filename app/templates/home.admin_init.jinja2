@@ -22,9 +22,16 @@
 
         <div class="card">
         <div class="card-header">
-            <b>Create Admin User</b>
+          {% if admin_exists %}
+              <b>Create Admin User - Function Disabled</b>
+          {% else %}
+              <b>Create Admin User</b>
+          {% endif %}
         </div>
         <div class="card-body">
+          {% if admin_exists %}
+            This functionality has been disabled because an administrator user has already been created.
+          {% else %}
             <form class="needs-validation" action="{{ url_for('backend.admin_init') }}" method="post" novalidate>
             <p>Do not lose this login information.</p>
             <div class="form-group">
@@ -43,6 +50,7 @@
             <br/>
             <button type="submit" class="btn btn-primary">Submit</button>
             </form>
+          {% endif %}
         </div>
         </div>
       </div>

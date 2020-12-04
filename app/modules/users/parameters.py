@@ -76,6 +76,15 @@ class CreateUserParameters(Parameters, schemas.BaseUserSchema):
             abort(code=HTTPStatus.FORBIDDEN, message='CAPTCHA key is incorrect.')
 
 
+class AdminUserInitializedParameters(Parameters):
+    """
+    New user creation (sign up) parameters.
+    """
+
+    email = base_fields.Email(description='Example: root@gmail.com', required=True)
+    password = base_fields.String(description='No rules yet', required=True)
+
+
 class CheckinUserParameters(Parameters):
     users_lite = base_fields.List(base_fields.Integer, required=True)
 

@@ -239,40 +239,80 @@ class User(db.Model, FeatherModel, UserEDMMixin):
         )
 
     @classmethod
-    def admin_user_initialized(cls):
+    def get_admins(cls):
         # used for first run admin creation
+        users = cls.query.all()  # NOQA
 
-        admin_users = cls.query.filter(User.is_admin == True)
-        if admin_users:
-            return True
-        else:
-            return False
+        admin_users = []
+        for user in users:
+            # TODO: Remove the check below at a later point after default admin create is removed
+            if user.email.endswith('@localhost'):
+                continue
+            if user.is_admin:
+                admin_users.append(user)
+
+        return admin_users
 
     @classmethod
-    def create_user(cls, email, password, is_internal=False, is_admin=False, is_staff=False, is_active=True,):
+    def admin_user_initialized(cls):
+        # used for first run admin creation
+        return len(cls.get_admins()) > 0
+
+    @classmethod
+    def ensure_user(
+        cls,
+        email,
+        password,
+        is_internal=False,
+        is_admin=False,
+        is_staff=False,
+        is_active=True,
+        in_beta=False,
+        in_alpha=False,
+        update=False,
+        **kwargs
+    ):
         """
         Create a new user.
         """
-        new_user = None
+        from app.extensions import db
 
-        if not User.find(email): 
-            new_user = User(
+        user = User.find(email=email)
+
+        if user is None:
+            user = User(
                 password=password,
                 email=email,
                 is_internal=is_internal,
                 is_admin=is_admin,
                 is_staff=is_staff,
                 is_active=is_active,
+                in_beta=in_beta,
+                in_alpha=in_alpha,
+                **kwargs
             )
 
-            from app.extensions import db
             with db.session.begin():
-                db.session.add(new_user)
+                db.session.add(user)
 
-        log.info('New user created: %r' % (new_user,))
+            log.info('New user created: %r' % (user,))
+        elif update:
+            user.password = password
+            user.is_internal = is_internal
+            user.is_admin = is_admin
+            user.is_staff = is_staff
+            user.is_active = is_active
+            user.in_beta = in_beta
+            user.in_alpha = in_alpha
 
-        return new_user
+            with db.session.begin():
+                db.session.merge(user)
 
+            log.info('Updated user: %r' % (user,))
+
+        db.session.refresh(user)
+
+        return user
 
     @classmethod
     def find(cls, email=None, password=None, edm_login_fallback=True):

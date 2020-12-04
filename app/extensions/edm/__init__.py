@@ -396,18 +396,17 @@ class EDMObjectMixin(object):
 
         new_items = []
         stale_items = []
-        with db.session.begin():
-            for guid in tqdm.tqdm(edm_items):
-                item_version = edm_items[guid]
-                version = item_version.get('version', None)
-                assert version is not None
+        for guid in tqdm.tqdm(edm_items):
+            item_version = edm_items[guid]
+            version = item_version.get('version', None)
+            assert version is not None
 
-                model_obj, is_new = cls.find_or_create(guid)
-                if is_new:
-                    new_items.append(model_obj)
+            model_obj, is_new = cls.find_or_create(guid)
+            if is_new:
+                new_items.append(model_obj)
 
-                if model_obj.version != version or refresh:
-                    stale_items.append((model_obj, version))
+            if model_obj.version != version or refresh:
+                stale_items.append((model_obj, version))
 
         if verbose:
             log.info('Added %d new %ss' % (len(new_items), name))
@@ -450,52 +449,53 @@ class EDMObjectMixin(object):
         return self._process_edm_attribute(data_, edm_attribute_)
 
     def _process_edm_data(self, data, claimed_version):
+
+        unmapped_attributes = list(
+            set(sorted(data._fields)) - set(self.EDM_ATTRIBUTE_MAPPING)
+        )
+        if len(unmapped_attributes) > 0:
+            log.warning('Unmapped attributes: %r' % (unmapped_attributes,))
+
+        found_version = None
+        for edm_attribute in self.EDM_ATTRIBUTE_MAPPING:
+            try:
+                edm_value = self._process_edm_attribute(data, edm_attribute)
+
+                attribute = self.EDM_ATTRIBUTE_MAPPING[edm_attribute]
+                if attribute is None:
+                    log.warning(
+                        'Ignoring mapping for EDM attribute %r' % (edm_attribute,)
+                    )
+                    continue
+
+                if edm_attribute in self.EDM_LOG_ATTRIBUTES:
+                    log.info(
+                        'Syncing edm data for %r = %r'
+                        % (
+                            edm_attribute,
+                            edm_value,
+                        )
+                    )
+
+                assert hasattr(self, attribute), 'attribute not found'
+                attribute_ = getattr(self, attribute)
+                if isinstance(attribute_, (types.MethodType,)):
+                    attribute_(edm_value)
+                else:
+                    setattr(self, attribute, edm_value)
+                    if edm_attribute == self.EDM_VERSION_ATTRIBUTE:
+                        found_version = edm_value
+            except AttributeError:
+                log.warning('Could not find EDM attribute %r' % (edm_attribute,))
+            except KeyError:
+                log.warning('Could not find EDM attribute %r' % (edm_attribute,))
+
+        if found_version is None:
+            self.version = claimed_version
+        else:
+            self.version = found_version
+
         with db.session.begin():
-            unmapped_attributes = list(
-                set(sorted(data._fields)) - set(self.EDM_ATTRIBUTE_MAPPING)
-            )
-            if len(unmapped_attributes) > 0:
-                log.warning('Unmapped attributes: %r' % (unmapped_attributes,))
-
-            found_version = None
-            for edm_attribute in self.EDM_ATTRIBUTE_MAPPING:
-                try:
-                    edm_value = self._process_edm_attribute(data, edm_attribute)
-
-                    attribute = self.EDM_ATTRIBUTE_MAPPING[edm_attribute]
-                    if attribute is None:
-                        log.warning(
-                            'Ignoring mapping for EDM attribute %r' % (edm_attribute,)
-                        )
-                        continue
-
-                    if edm_attribute in self.EDM_LOG_ATTRIBUTES:
-                        log.info(
-                            'Syncing edm data for %r = %r'
-                            % (
-                                edm_attribute,
-                                edm_value,
-                            )
-                        )
-
-                    assert hasattr(self, attribute), 'attribute not found'
-                    attribute_ = getattr(self, attribute)
-                    if isinstance(attribute_, (types.MethodType,)):
-                        attribute_(edm_value)
-                    else:
-                        setattr(self, attribute, edm_value)
-                        if edm_attribute == self.EDM_VERSION_ATTRIBUTE:
-                            found_version = edm_value
-                except AttributeError:
-                    log.warning('Could not find EDM attribute %r' % (edm_attribute,))
-                except KeyError:
-                    log.warning('Could not find EDM attribute %r' % (edm_attribute,))
-
-            if found_version is None:
-                self.version = claimed_version
-            else:
-                self.version = found_version
-
             db.session.merge(self)
 
         if found_version is None:

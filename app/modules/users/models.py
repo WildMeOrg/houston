@@ -61,28 +61,6 @@ class UserEDMMixin(EDMObjectMixin):
     # fmt: on
 
     @classmethod
-    def find_or_create(cls, guid):
-        with db.session.begin():
-            user = User.query.filter(User.guid == guid).first()
-            is_new = False
-
-            if user is None:
-                email = '%s@localhost' % (guid,)
-                password = security.generate_random(128)
-                user = User(
-                    guid=guid,
-                    email=email,
-                    password=password,
-                    version=None,
-                    is_active=True,
-                    in_alpha=True,
-                )
-                db.session.add(user)
-                is_new = True
-
-        return user, is_new
-
-    @classmethod
     def edm_sync_users(cls, verbose=True, refresh=False):
         return cls.edm_sync_all('user', verbose, refresh)
 
@@ -258,6 +236,28 @@ class User(db.Model, FeatherModel, UserEDMMixin):
         #    3) the user authenticated against the EDM but has no local user record
 
         return None
+
+    @classmethod
+    def find_or_create(cls, guid):
+        with db.session.begin():
+            user = User.query.filter(User.guid == guid).first()
+            is_new = False
+
+            if user is None:
+                email = '%s@localhost' % (guid,)
+                password = security.generate_random(128)
+                user = User(
+                    guid=guid,
+                    email=email,
+                    password=password,
+                    version=None,
+                    is_active=True,
+                    in_alpha=True,
+                )
+                db.session.add(user)
+                is_new = True
+
+        return user, is_new
 
     @property
     def is_authenticated(self):

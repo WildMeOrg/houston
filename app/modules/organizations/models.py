@@ -6,6 +6,8 @@ Organizations database models
 
 from app.extensions import db, HoustonModel
 from app.extensions.edm import EDMObjectMixin
+from app.modules.users.models import User
+
 import logging
 import uuid
 import datetime
@@ -70,12 +72,16 @@ class OrganizationEDMMixin(EDMObjectMixin):
     def _process_members(self, members):
         for member in members:
             log.warning("Member ID %s" % (member.id,))
-        log.warning('OrganizationEDMMixin._process_edm_profile_url() not implemented yet')
+            user, is_new = User.find_or_create(member.id)
+            # todo this ain't working
+            # with db.session.begin():
+            #     breakpoint()
+            #     self.user.append(user)
+            log.warning("member creation still doesn't work")
 
     def _process_logo(self, logo):
         self.logoGuid = logo.uuid
         self.logoUrl = logo.url
-        log.warning('OrganizationEDMMixin._process_logo() not implemented yet')
 
     def _process_created_date(self, created_date):
         self.createdDate = datetime.datetime.strptime(created_date, DATETIME_FMTSTR).astimezone(TIMEZONE)
@@ -87,6 +93,7 @@ class Organization(db.Model, HoustonModel, OrganizationEDMMixin):
     """
     Organizations database model.
     """
+    __tablename__ = 'organization'
 
     guid = db.Column(
         db.GUID, default=uuid.uuid4, primary_key=True
@@ -96,9 +103,13 @@ class Organization(db.Model, HoustonModel, OrganizationEDMMixin):
     # todo why can dateTimes in the auth class be non Nullable but in here the upgrade fails?
     createdDate = db.Column(db.DateTime, default=datetime.datetime.now(tz=TIMEZONE), nullable=True)
     modifiedDate = db.Column(db.DateTime, default=datetime.datetime.now(tz=TIMEZONE), nullable=True)
-    # todo, would have thought this should be an array but apparently only Postgres SQL supports arrays
-    # Hitting the limits of my knowledge on how to represent this sensibly
-    # members = db.Column(db.ARRAY(db.Integer))  # User GUIDs
+
+    # todo This is wrong and I don't know why. This should create user as a list but doesn't, hence append falls over
+    user_guid = db.Column(
+        db.ForeignKey('user.guid', ondelete='CASCADE'), index=True, nullable=True
+    )
+    user = db.relationship('User', backref=db.backref('organization', cascade='delete, delete-orphan'))
+
     logoGuid = db.Column(db.GUID, default=uuid.uuid4, nullable=True)
     logoUrl = db.Column(db.String(length=200), nullable=True)
     website = db.Column(db.String(length=120), nullable=True)
@@ -107,7 +118,7 @@ class Organization(db.Model, HoustonModel, OrganizationEDMMixin):
         return (
             '<{class_name}('
             'guid={self.guid}, '
-            'title={self.title}, '
+            'title="{self.title}", '
             'website={self.website}, '
             'logoUrl={self.logoUrl}'
             ')>'.format(class_name=self.__class__.__name__, self=self)
@@ -118,3 +129,5 @@ class Organization(db.Model, HoustonModel, OrganizationEDMMixin):
         if len(title) < 3:
             raise ValueError('Title has to be at least 3 characters long.')
         return title
+
+

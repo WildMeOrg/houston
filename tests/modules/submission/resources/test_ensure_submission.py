@@ -16,6 +16,7 @@ def test_ensure_empty_submission_by_uuid(
 ):
     clone_submission(flask_app_client, regular_user, test_empty_submission_uuid)
 
+
 def test_ensure_clone_submission_by_uuid(
     flask_app_client, regular_user, db, test_clone_submission_uuid
 ):

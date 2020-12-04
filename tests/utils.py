@@ -19,6 +19,7 @@ import uuid
 import shutil
 import os
 
+
 class AutoAuthFlaskClient(FlaskClient):
     """
     A helper FlaskClient class with a useful for testing ``login`` context
@@ -112,11 +113,10 @@ class CreateSubmission(object):
         self.temp_submission = None
 
         from app.modules.submissions.models import Submission
+
         self._instances[id(self)] = self
         with flask_app_client.login(regular_user, auth_scopes=('submissions:read',)):
-            response = flask_app_client.get(
-                '/api/v1/submissions/%s' % submission_uuid
-            )
+            response = flask_app_client.get('/api/v1/submissions/%s' % submission_uuid)
 
         self.temp_submission = Submission.query.get(response.json['guid'])
 
@@ -132,7 +132,7 @@ class CreateSubmission(object):
             self.temp_submission.delete()
         submissions_database_path = config.TestingConfig.SUBMISSIONS_DATABASE_PATH
         submission_path = os.path.join(
-             submissions_database_path, str(submission_uuid)
+            submissions_database_path, str(self.temp_submission.guid)
         )
 
         if os.path.exists(submission_path):
@@ -144,7 +144,7 @@ class CloneSubmission(CreateSubmission):
 
         submissions_database_path = config.TestingConfig.SUBMISSIONS_DATABASE_PATH
         self.submission_path = os.path.join(
-             submissions_database_path, str(submission_uuid)
+            submissions_database_path, str(submission_uuid)
         )
 
         if os.path.exists(self.submission_path):
@@ -163,7 +163,6 @@ class CloneSubmission(CreateSubmission):
             self.temp_submission.delete()
         if os.path.exists(self.submission_path):
             shutil.rmtree(self.submission_path)
-
 
 
 def generate_user_instance(

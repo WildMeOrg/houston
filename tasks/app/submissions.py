@@ -2,9 +2,9 @@
 """
 Application Submission management related tasks for Invoke.
 """
-from flask import current_app
-
 from ._utils import app_context_task
+import os
+
 
 @app_context_task
 def list_submissions(context):
@@ -16,7 +16,8 @@ def list_submissions(context):
     submissions = Submission.query.all()
 
     for submission in submissions:
-        print("Submission : {} {}".format(submission, submission.assets))
+        print('Submission : {} {}'.format(submission, submission.assets))
+
 
 @app_context_task(
     help={

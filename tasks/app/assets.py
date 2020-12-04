@@ -5,6 +5,7 @@ Application Asset management related tasks for Invoke.
 
 from ._utils import app_context_task
 
+
 @app_context_task
 def list_assets(context):
     """
@@ -15,4 +16,4 @@ def list_assets(context):
     assets = Asset.query.all()
 
     for asset in assets:
-        print("Asset : {} ".format(asset))
+        print('Asset : {} '.format(asset))

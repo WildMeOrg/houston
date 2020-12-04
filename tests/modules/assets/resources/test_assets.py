@@ -17,6 +17,6 @@ def test_find_asset(
 
     db_asset = Asset.query.get(test_asset_uuid)
     db_submission = Submission.query.get(test_clone_submission_uuid)
-    assert(db_asset == db_submission.assets[1])
+    assert db_asset == db_submission.assets[1]
     # print("Found Asset {} {}".format(db_asset, db_submission))
     # breakpoint()

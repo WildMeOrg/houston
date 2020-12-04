@@ -9,7 +9,6 @@ import logging
 import datetime  # NOQA
 import pytz
 
-from sqlalchemy import or_, and_
 
 from flask import current_app  # NOQA
 from flask_login import current_user
@@ -21,8 +20,6 @@ from app.extensions.api import Namespace
 
 from . import permissions, schemas, parameters
 from .models import db, User
-
-from app.modules.auth.models import Code, CodeTypes
 
 
 log = logging.getLogger(__name__)
@@ -53,36 +50,7 @@ class Users(Resource):
         if search is not None and len(search) == 0:
             search = None
 
-        if search is not None:
-            search = search.strip().split(' ')
-            search = [term.strip() for term in search]
-            search = [term for term in search if len(term) > 0]
-
-            or_terms = []
-            for term in search:
-                codes = (
-                    Code.query.filter_by(code_type=CodeTypes.checkin)
-                    .filter(
-                        Code.accept_code.contains(term),
-                    )
-                    .all()
-                )
-                code_users = set([])
-                for code in codes:
-                    if not code.is_expired:
-                        code_users.add(code.user.guid)
-
-                or_term = or_(
-                    User.guid.in_(code_users),
-                    User.email.contains(term),
-                    User.affiliation.contains(term),
-                    User.forum_id.contains(term),
-                    User.full_name.contains(term),
-                )
-                or_terms.append(or_term)
-            users = User.query.filter(and_(*or_terms))
-        else:
-            users = User.query
+        users = User.query_search(search)
 
         return users.order_by(User.guid)
 
@@ -96,7 +64,6 @@ class Users(Resource):
         """
         Create a new user.
         """
-
         email = args.get('email', None)
         user = User.query.filter_by(email=email).first()
 

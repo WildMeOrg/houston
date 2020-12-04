@@ -296,6 +296,44 @@ class User(db.Model, FeatherModel, UserEDMMixin):
 
         return None
 
+    @classmethod
+    def query_search(cls, search=None):
+        from sqlalchemy import or_, and_
+        from app.modules.auth.models import Code, CodeTypes
+
+        if search is not None:
+            search = search.strip().split(' ')
+            search = [term.strip() for term in search]
+            search = [term for term in search if len(term) > 0]
+
+            or_terms = []
+            for term in search:
+                codes = (
+                    Code.query.filter_by(code_type=CodeTypes.checkin)
+                    .filter(
+                        Code.accept_code.contains(term),
+                    )
+                    .all()
+                )
+                code_users = set([])
+                for code in codes:
+                    if not code.is_expired:
+                        code_users.add(code.user.guid)
+
+                or_term = or_(
+                    cls.guid.in_(code_users),
+                    cls.email.contains(term),
+                    cls.affiliation.contains(term),
+                    cls.forum_id.contains(term),
+                    cls.full_name.contains(term),
+                )
+                or_terms.append(or_term)
+            users = cls.query.filter(and_(*or_terms))
+        else:
+            users = cls.query
+
+        return users
+
     @property
     def is_authenticated(self):
         return True

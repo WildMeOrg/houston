@@ -117,6 +117,6 @@ def test_User_find_with_password(
 
 
 def test_User_must_have_password():
-    with pytest.raises(ValueError, match="User must have a password"):
+    with pytest.raises(ValueError, match='User must have a password'):
         user = models.User(email='user1@localhost', full_name='Lord Lucan')
-
+        print(user)

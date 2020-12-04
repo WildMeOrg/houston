@@ -39,7 +39,7 @@ class DetailedSubmissionSchema(BaseSubmissionSchema):
 
     assets = base_fields.Nested(
         'BaseAssetSchema',
-        exclude=(Asset.submission_guid.key,),
+        exclude=(Asset.submission_guid.key),
         many=True,
     )
 

@@ -126,9 +126,6 @@ class UserByID(Resource):
         """
         Get user details by ID.
         """
-        import utool as ut
-
-        ut.embed()
         return user
 
     @api.login_required(oauth_scopes=['users:write'])
@@ -183,7 +180,7 @@ class AdminUserInitialized(Resource):
     @api.response(code=HTTPStatus.CONFLICT)
     @api.response(code=HTTPStatus.METHOD_NOT_ALLOWED)
     def post(self, args):
-        r"""
+        """
         Creates initial startup admin if none exists.
 
         CommandLine:
@@ -208,7 +205,7 @@ class AdminUserInitialized(Resource):
                 http://127.0.0.1:5000/api/v1/users/admin_user_initialized | jq
         """
         if User.admin_user_initialized():
-            log.warning('hit the abort cause admin exist')
+            log.warning('First-run admin user creation was attempted but an admin already exists.')
             abort(
                 code=HTTPStatus.METHOD_NOT_ALLOWED,
                 message='Disabled because the initial startup admin already exists.',

@@ -126,6 +126,9 @@ class UserByID(Resource):
         """
         Get user details by ID.
         """
+        import utool as ut
+
+        ut.embed()
         return user
 
     @api.login_required(oauth_scopes=['users:write'])
@@ -175,6 +178,53 @@ class AdminUserInitialized(Resource):
         """
         admin_initialized = User.admin_user_initialized()
         return {'initialized': admin_initialized}
+
+    @api.parameters(parameters.AdminUserInitializedParameters())
+    @api.response(code=HTTPStatus.CONFLICT)
+    @api.response(code=HTTPStatus.METHOD_NOT_ALLOWED)
+    def post(self, args):
+        r"""
+        Creates initial startup admin if none exists.
+
+        CommandLine:
+            curl \
+                -X GET \
+                http://127.0.0.1:5000/api/v1/users/admin_user_initialized | jq
+
+            EMAIL='test@wildme.org'
+            PASSWORD='test'
+            curl \
+                -X POST \
+                -H 'Content-Type: multipart/form-data' \
+                -H 'Accept: application/json' \
+                -F email=${EMAIL} \
+                -F password=${PASSWORD} \
+                http://127.0.0.1:5000/api/v1/users/admin_user_initialized | jq
+
+            curl \
+                -X POST \
+                -H 'Content-Type: application/json' \
+                -d '{"password":"hello", "email":"bob@bob.com"}' \
+                http://127.0.0.1:5000/api/v1/users/admin_user_initialized | jq
+        """
+        if User.admin_user_initialized():
+            log.warning('hit the abort cause admin exist')
+            abort(
+                code=HTTPStatus.METHOD_NOT_ALLOWED,
+                message='Disabled because the initial startup admin already exists.',
+            )
+        else:
+            email = args.get('email', None)
+            password = args.get('password', None)
+            admin = User.ensure_user(
+                email,
+                password,
+                is_admin=True,
+                update=True,
+            )
+            log.info('Success creating startup admin user via API: %r.' % (admin,))
+
+        return {'initialized': True}
 
 
 @api.route('/edm/sync')

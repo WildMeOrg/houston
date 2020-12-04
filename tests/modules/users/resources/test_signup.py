@@ -131,6 +131,7 @@ def test_new_user_creation_duplicate_must_fail(flask_app_client, db):
     with db.session.begin():
         db.session.delete(user1_instance)
 
+
 def test_new_user_creation_no_password_must_fail(flask_app_client):
     # pylint: disable=invalid-name
     response = create_new_user(

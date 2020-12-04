@@ -93,7 +93,9 @@ class OAuth2Client(db.Model):
     __tablename__ = 'oauth2_client'
 
     guid = db.Column(db.GUID, default=uuid.uuid4, primary_key=True)
-    secret = db.Column(db.String(length=64), default=security.generate_random_64, nullable=False)
+    secret = db.Column(
+        db.String(length=64), default=security.generate_random_64, nullable=False
+    )
 
     user_guid = db.Column(
         db.ForeignKey('user.guid', ondelete='CASCADE'), index=True, nullable=False
@@ -222,10 +224,16 @@ class OAuth2Token(db.Model):
     token_type = db.Column(db.Enum(TokenTypes), nullable=False)
 
     access_token = db.Column(
-        db.String(length=128), default=security.generate_random_128, unique=True, nullable=False
+        db.String(length=128),
+        default=security.generate_random_128,
+        unique=True,
+        nullable=False,
     )
     refresh_token = db.Column(
-        db.String(length=128), default=security.generate_random_128, unique=True, nullable=True
+        db.String(length=128),
+        default=security.generate_random_128,
+        unique=True,
+        nullable=True,
     )
     expires = db.Column(db.DateTime, nullable=False)
     scopes = db.Column(ScalarListType(separator=' '), nullable=False)

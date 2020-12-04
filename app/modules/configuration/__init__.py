@@ -12,9 +12,7 @@ def init_app(app, **kwargs):
     """
     Init Configuration module.
     """
-    api_v1.add_oauth_scope(
-        'configuration:read', 'Provide access to (EDM) configuration'
-    )
+    api_v1.add_oauth_scope('configuration:read', 'Provide access to (EDM) configuration')
     api_v1.add_oauth_scope(
         'configuration:write', 'Provide write access to (EDM) configuration'
     )

@@ -82,6 +82,7 @@ class AssetByID(Resource):
     #         db.session.delete(asset)
     #     return None
 
+
 @api.route('/src/<uuid:asset_guid>')
 @api.login_required(oauth_scopes=['assets:read'])
 @api.response(
@@ -90,6 +91,5 @@ class AssetByID(Resource):
 )
 @api.resolve_object_by_model(Asset, 'asset')
 class AssetSrcUByID(Resource):
-
     def get(self, asset):
         return send_file(asset.get_symlink(), asset.mime_type)

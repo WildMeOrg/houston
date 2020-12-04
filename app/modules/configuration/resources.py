@@ -42,8 +42,9 @@ class EDMConfigurationTargets(Resource):
         targets = list(current_app.edm.targets)
         return targets
 
+
 @edm_configurationDefinition.route('/<string:target>/<path:path>')
-#@edm_configurationDefinition.login_required(oauth_scopes=['configuration:read'])
+# @edm_configurationDefinition.login_required(oauth_scopes=['configuration:read'])
 class EDMConfigurationDefinition(Resource):
     """
     Configuration Definitions
@@ -58,7 +59,10 @@ class EDMConfigurationDefinition(Resource):
         if target not in targets:
             raise BadRequest('The specified target %r is invalid.' % (target,))
         endpoint_url_ = current_app.edm.get_target_endpoint_url(target)
-        endpoint = '%s/api/v0/configurationDefinition/%s' % (endpoint_url_, path,)
+        endpoint = '%s/api/v0/configurationDefinition/%s' % (
+            endpoint_url_,
+            path,
+        )
         request_func = current_app.edm.get_passthrough
         response = request_func(
             None,
@@ -68,11 +72,18 @@ class EDMConfigurationDefinition(Resource):
             decode_as_dict=False,
         )
         data = response.json()
-        if response.ok and 'response' in data and 'isPrivate' in data['response'] and data['response']['isPrivate'] and 'value' in data['response']:
+        if (
+            response.ok
+            and 'response' in data
+            and 'isPrivate' in data['response']
+            and data['response']['isPrivate']
+            and 'value' in data['response']
+        ):
             data['response'].pop('value')
             return data
 
         return response
+
 
 def _request_passthrough(target, path, request_func, passthrough_kwargs):
     try:
@@ -88,7 +99,10 @@ def _request_passthrough(target, path, request_func, passthrough_kwargs):
         raise BadRequest('The specified target %r is invalid.' % (target,))
 
     endpoint_url_ = current_app.edm.get_target_endpoint_url(target)
-    endpoint = '%s/api/v0/configuration/%s' % (endpoint_url_, path,)
+    endpoint = '%s/api/v0/configuration/%s' % (
+        endpoint_url_,
+        path,
+    )
 
     headers = passthrough_kwargs.get('headers', {})
     allowed_header_key_list = [
@@ -105,7 +119,9 @@ def _request_passthrough(target, path, request_func, passthrough_kwargs):
 
         if header_key == 'Content-Type':
             if header_value is not None:
-                if header_value.lower().startswith('application/javascript') or header_value.lower().startswith('application/json'):
+                if header_value.lower().startswith(
+                    'application/javascript'
+                ) or header_value.lower().startswith('application/json'):
                     is_json = True
     passthrough_kwargs['headers'] = headers
 
@@ -127,7 +143,7 @@ def _request_passthrough(target, path, request_func, passthrough_kwargs):
 
 @edm_configuration.route('/<string:target>', defaults={'path': ''})
 @edm_configuration.route('/<string:target>/<path:path>')
-#@edm_configuration.login_required(oauth_scopes=['configuration:read'])
+# @edm_configuration.login_required(oauth_scopes=['configuration:read'])
 class EDMConfiguration(Resource):
     r"""
     A pass-through allows a GET or POST request to be referred to a registered back-end EDM
@@ -170,10 +186,15 @@ class EDMConfiguration(Resource):
 
         response = _request_passthrough(target, path, request_func, passthrough_kwargs)
 
-        #private means cannot be read other than admin
+        # private means cannot be read other than admin
         ####@edm_configuration.login_required(oauth_scopes=['configuration:write'])  TODO somehow need to *allow* private if has auth!!!
         data = response.json()
-        if response.ok and 'response' in data and 'private' in data['response'] and data['response']['private']:
+        if (
+            response.ok
+            and 'response' in data
+            and 'private' in data['response']
+            and data['response']['private']
+        ):
             abort(code=HTTPStatus.FORBIDDEN, message='unavailable')
 
         return response

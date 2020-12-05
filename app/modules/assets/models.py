@@ -8,8 +8,12 @@ from functools import total_ordering
 import os
 
 from app.extensions import db, HoustonModel
+from PIL import Image
 
 import uuid
+import logging
+
+log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
 
 @total_ordering
@@ -93,7 +97,10 @@ class Asset(db.Model, HoustonModel):
 
     def get_relative_path(self):
         relpath = os.path.join(
-            'submissions', str(self.submission.guid), '_assets', self.get_filename()
+            'submissions',
+            str(self.submission.guid),
+            '_assets',
+            self.get_filename(),
         )
         return relpath
 
@@ -119,6 +126,47 @@ class Asset(db.Model, HoustonModel):
         assert os.path.islink(asset_symlink_filepath)
 
         return asset_symlink_filepath
+
+    def get_or_make_format_path(self, format):
+        FORMAT = {
+            'master': [4096, 4096],
+            'mid': [1024, 1024],
+            'thumb': [256, 256],
+        }
+        assert format in FORMAT
+        target_path = '.'.join([os.path.splitext(self.get_symlink())[0], format, 'jpg'])
+        if os.path.exists(target_path):
+            return target_path
+        log.info(
+            'get_or_make_format_path() attempting to create format %r as %r'
+            % (
+                format,
+                target_path,
+            )
+        )
+
+        # we make all non-master images _from_ master format (where we assume more work will be done?
+        source_path = self.get_or_make_master_format_path()
+        if format == 'master':  # if so, we are done!
+            return source_path
+        source_image = Image.open(source_path)
+        source_image.thumbnail(FORMAT[format])
+        source_image.save(target_path)
+        return target_path
+
+    # note: Image seems to *strip exif* sufficiently here (tested with gps, comments, etc) so this may be enough!
+    # also note: this fails horribly in terms of exif orientation.  wom-womp
+    def get_or_make_master_format_path(self):
+        source_path = self.get_symlink()
+        assert os.path.exists(source_path)
+        target_path = '.'.join([os.path.splitext(source_path)[0], 'master', 'jpg'])
+        if os.path.exists(target_path):
+            return target_path
+        log.info('make_master_format() creating master format as %r' % (target_path,))
+        source_image = Image.open(source_path)
+        source_image.thumbnail((4096, 4096))  # TODO get from more global FORMAT re: above
+        source_image.save(target_path)
+        return target_path
 
     def delete(self):
         with db.session.begin():

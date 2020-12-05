@@ -6,6 +6,7 @@ RESTful API Assets resources
 """
 
 import logging
+import werkzeug
 
 from flask import send_file
 from flask_restplus_patched import Resource
@@ -83,7 +84,8 @@ class AssetByID(Resource):
     #     return None
 
 
-@api.route('/src/<uuid:asset_guid>')
+@api.route('/src/<uuid:asset_guid>', defaults={'format': 'master'})
+@api.route('/src/<string:format>/<uuid:asset_guid>')
 @api.login_required(oauth_scopes=['assets:read'])
 @api.response(
     code=HTTPStatus.NOT_FOUND,
@@ -91,5 +93,12 @@ class AssetByID(Resource):
 )
 @api.resolve_object_by_model(Asset, 'asset')
 class AssetSrcUByID(Resource):
-    def get(self, asset):
-        return send_file(asset.get_symlink(), asset.mime_type)
+    def get(self, asset, format):
+        try:
+            asset_format_path = asset.get_or_make_format_path(format)
+        except Exception:
+            logging.exception('Got exception from get_or_make_format_path()')
+            raise werkzeug.exceptions.NotImplemented
+        return send_file(
+            asset_format_path, 'image/jpeg'
+        )  # TODO we need to alter mime_type to reflect path, if ever it changes from jpg

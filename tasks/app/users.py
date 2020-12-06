@@ -118,7 +118,6 @@ def list(context):
     users = User.query.all()
     for user in users:
         print("User : {} ".format(user))
-        print("submissions {}".format(user.submissions))
 
 @app_context_task
 def sync_edm(context, refresh = False):
@@ -126,6 +125,5 @@ def sync_edm(context, refresh = False):
     Sync the users from the EDM onto the local Hudson
     """
     User.edm_sync_users(refresh=refresh)
-    users = User.query.all()
-    for user in users:
-        print("User : {} ".format(user))
+
+

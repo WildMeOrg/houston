@@ -401,7 +401,7 @@ class EDMObjectMixin(object):
             version = item_version.get('version', None)
             assert version is not None
 
-            model_obj, is_new = cls.find_or_create(guid)
+            model_obj, is_new = cls.ensure_edm_obj(guid)
             if is_new:
                 new_items.append(model_obj)
 

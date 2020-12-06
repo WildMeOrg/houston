@@ -61,6 +61,27 @@ class UserEDMMixin(EDMObjectMixin):
     # fmt: on
 
     @classmethod
+    def ensure_edm_obj(cls, guid):
+        with db.session.begin():
+            user = User.query.filter(User.guid == guid).first()
+            is_new = False
+
+            if user is None:
+                email = '%s@localhost' % (guid,)
+                password = security.generate_random(128)
+                user = User(
+                    guid=guid,
+                    email=email,
+                    password=password,
+                    version=None,
+                    is_active=True,
+                    in_alpha=True,
+                )
+                db.session.add(user)
+                is_new = True
+
+        return user, is_new
+    @classmethod
     def edm_sync_users(cls, verbose=True, refresh=False):
         return cls.edm_sync_all('user', verbose, refresh)
 
@@ -68,6 +89,7 @@ class UserEDMMixin(EDMObjectMixin):
         log.warning('User._process_edm_profile_url() not implemented yet')
 
     def _process_edm_user_organization(self, org):
+
         log.warning('User._process_edm_user_organization() not implemented yet')
 
 
@@ -132,6 +154,11 @@ class User(db.Model, FeatherModel, UserEDMMixin):
     footer_logo_asset_guid = db.Column(
         db.GUID, nullable=True
     )  # should be reconciled with Jon's MediaAsset class
+
+    organization_guid = db.Column(db.GUID,
+         db.ForeignKey('organization.guid'), index=True, nullable=True
+    )
+    organization = db.relationship('Organization', backref=db.backref('members'))
 
     class StaticRoles(enum.Enum):
         # pylint: disable=missing-docstring,unsubscriptable-object
@@ -237,27 +264,6 @@ class User(db.Model, FeatherModel, UserEDMMixin):
 
         return None
 
-    @classmethod
-    def find_or_create(cls, guid):
-        with db.session.begin():
-            user = User.query.filter(User.guid == guid).first()
-            is_new = False
-
-            if user is None:
-                email = '%s@localhost' % (guid,)
-                password = security.generate_random(128)
-                user = User(
-                    guid=guid,
-                    email=email,
-                    password=password,
-                    version=None,
-                    is_active=True,
-                    in_alpha=True,
-                )
-                db.session.add(user)
-                is_new = True
-
-        return user, is_new
 
     @property
     def is_authenticated(self):

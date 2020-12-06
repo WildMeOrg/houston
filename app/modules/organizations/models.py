@@ -51,7 +51,7 @@ class OrganizationEDMMixin(EDMObjectMixin):
     # fmt: on
 
     @classmethod
-    def find_or_create(cls, guid):
+    def ensure_edm_obj(cls, guid):
         organization = Organization.query.filter(Organization.guid == guid).first()
         is_new = False
 
@@ -71,13 +71,12 @@ class OrganizationEDMMixin(EDMObjectMixin):
 
     def _process_members(self, members):
         for member in members:
-            log.warning("Member ID %s" % (member.id,))
-            user, is_new = User.find_or_create(member.id)
-            # todo this ain't working
-            # with db.session.begin():
-            #     breakpoint()
-            #     self.user.append(user)
-            log.warning("member creation still doesn't work")
+            log.info("Adding Member ID %s" % (member.id,))
+            user, is_new = User.ensure_edm_obj(member.id)
+
+            with db.session.begin():
+                self.members.append(user)
+
 
     def _process_logo(self, logo):
         self.logoGuid = logo.uuid
@@ -103,12 +102,6 @@ class Organization(db.Model, HoustonModel, OrganizationEDMMixin):
     # todo why can dateTimes in the auth class be non Nullable but in here the upgrade fails?
     createdDate = db.Column(db.DateTime, default=datetime.datetime.now(tz=TIMEZONE), nullable=True)
     modifiedDate = db.Column(db.DateTime, default=datetime.datetime.now(tz=TIMEZONE), nullable=True)
-
-    # todo This is wrong and I don't know why. This should create user as a list but doesn't, hence append falls over
-    user_guid = db.Column(
-        db.ForeignKey('user.guid', ondelete='CASCADE'), index=True, nullable=True
-    )
-    user = db.relationship('User', backref=db.backref('organization', cascade='delete, delete-orphan'))
 
     logoGuid = db.Column(db.GUID, default=uuid.uuid4, nullable=True)
     logoUrl = db.Column(db.String(length=200), nullable=True)

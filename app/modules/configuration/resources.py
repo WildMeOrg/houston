@@ -12,6 +12,7 @@ from flask_restplus_patched import Resource
 from flask_restplus._http import HTTPStatus
 from app.extensions.api import Namespace
 from app.extensions.api import abort
+from app.modules.users.models import User
 
 from werkzeug.exceptions import BadRequest
 
@@ -196,6 +197,11 @@ class EDMConfiguration(Resource):
             and data['response']['private']
         ):
             abort(code=HTTPStatus.FORBIDDEN, message='unavailable')
+
+        if (path == '__bundle_setup'):
+            data = response.json()
+            data['response']['configuration']['site.adminUserInitialized'] = User.admin_user_initialized()
+            return data
 
         return response
 

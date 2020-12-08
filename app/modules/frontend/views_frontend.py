@@ -14,7 +14,6 @@ from flask import Blueprint, send_from_directory, current_app, request
 from flask_login import login_user, logout_user, login_required, current_user
 import werkzeug
 import logging
-import utool as ut
 
 from app.modules.users.models import User
 

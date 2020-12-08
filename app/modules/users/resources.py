@@ -205,7 +205,9 @@ class AdminUserInitialized(Resource):
                 http://127.0.0.1:5000/api/v1/users/admin_user_initialized | jq
         """
         if User.admin_user_initialized():
-            log.warning('First-run admin user creation was attempted but an admin already exists.')
+            log.warning(
+                'First-run admin user creation was attempted but an admin already exists.'
+            )
             abort(
                 code=HTTPStatus.METHOD_NOT_ALLOWED,
                 message='Disabled because the initial startup admin already exists.',

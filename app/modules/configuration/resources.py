@@ -198,9 +198,11 @@ class EDMConfiguration(Resource):
         ):
             abort(code=HTTPStatus.FORBIDDEN, message='unavailable')
 
-        if (path == '__bundle_setup'):
+        if path == '__bundle_setup':
             data = response.json()
-            data['response']['configuration']['site.adminUserInitialized'] = User.admin_user_initialized()
+            data['response']['configuration'][
+                'site.adminUserInitialized'
+            ] = User.admin_user_initialized()
             return data
 
         return response

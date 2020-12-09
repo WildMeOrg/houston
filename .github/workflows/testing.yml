@@ -71,7 +71,7 @@ jobs:
       - name: Install libmagic on Ubuntu
         if: runner.os == 'Linux'
         run: |
-          apt-get install libmagic1
+          sudo apt install libmagic1
 
       # Install and test
       - name: Run tests

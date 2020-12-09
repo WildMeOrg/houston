@@ -1,6 +1,6 @@
 #!/bin/bash
 
-./clean.sh
+./scripts/clean.sh
 python setup.py clean
 
 pip install -r requirements.txt

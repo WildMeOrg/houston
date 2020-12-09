@@ -1,0 +1,55 @@
+name: Nightly
+on:
+  schedule:
+    - cron: '0 0 * * *' # Every day at midnight
+  push:
+    paths:
+      - '.github/workflows/nightly.yml'
+  pull_request:
+    paths:
+      - '.github/workflows/nightly.yml'
+      - 'scripts/**'
+
+jobs:
+  devops:
+    name: DevOps nightly image build
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+        if: github.event_name == 'schedule'
+        with:
+          ref: develop
+      - uses: actions/checkout@v2
+        if: github.event_name != 'schedule'
+
+      # Build images
+      - name: Setup Virtual Env
+        run: bash scripts/venv.sh
+      - name: Build images
+        run: bash scripts/build.sh
+
+      # Log into image registries
+      - name: Log into Docker Hub
+        run: echo "${{ secrets.WBIA_WILDMEBOT_DOCKER_HUB_TOKEN }}" | docker login -u wildmebot --password-stdin
+      - name: Log into GitHub Packages
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login docker.pkg.github.com -u ${{ github.actor }} --password-stdin
+
+      # Push images out to image registries
+      - name: Push to GitHub Packages
+        run: bash scripts/publish.sh -t nightly -r docker.pkg.github.com houston
+      - name: Push to Docker Hub
+        if: github.event_name == 'schedule'
+        run: bash scripts/publish.sh -t nightly houston
+
+      # Notify status in Slack
+      - name: Slack Notification
+        if: ${{ failure() && github.event_name == 'schedule' }}
+        uses: rtCamp/action-slack-notify@master
+        env:
+          SLACK_CHANNEL: ia-development
+          SLACK_COLOR: '#FF0000'
+          SLACK_ICON: https://avatars.slack-edge.com/2020-03-02/965719891842_db87aa21ccb61076f236_44.png
+          SLACK_MESSAGE: 'nightly build failed :sob:'
+          SLACK_USERNAME: "Nightly"
+          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}

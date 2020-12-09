@@ -1,0 +1,71 @@
+# This workflow will install Python dependencies, run tests and lint with a single version of Python
+# For more information see: https://help.github.com/actions/language-and-framework-guides/using-python-with-github-actions
+
+name: Testing
+
+on: push
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        # For speed, we choose one version and that should be the lowest common denominator
+        python-version: [3.6, 3.7, 3.8]
+
+    steps:
+      # Checkout and env setup
+      - uses: actions/checkout@v2
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - uses: actions/cache@v2
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-lint
+          restore-keys: |
+            ${{ runner.os }}-pip-lint
+
+      # Lint things before going any further
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install flake8 pytest
+      - name: Lint with flake8
+        run: |
+          # stop the build if there are Python syntax errors or undefined names
+          flake8 . --count --show-source --statistics
+          # exit-zero treats all errors as warnings.
+          flake8 . --count --exit-zero --max-complexity=10 --statistics
+
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest] # Disable "macos-latest" for now
+        # For speed, we choose one version and that should be the lowest common denominator
+        python-version: [3.6, 3.7, 3.8]
+
+    steps:
+      # Checkout and env setup
+      - uses: actions/checkout@v2
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - uses: actions/cache@v2
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt', 'requirements/*.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      # Install and test
+      - name: Install the project
+        run: pip install -e .[tests]
+      - name: Test with pytest
+        run: |
+          pytest --slow

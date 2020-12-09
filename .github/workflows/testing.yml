@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [3.7]  # 3.6, 3.7, 3.8
+        python-version: [3.7]
 
     steps:
       # Checkout and env setup
@@ -42,9 +42,11 @@ jobs:
   test:
     runs-on: ${{ matrix.os }}
     strategy:
+      max-parallel: 1
+      fail-fast: false
       matrix:
-        os: [ubuntu-latest]  # ubuntu-latest, macos-latest, ubuntu-16.04, ubuntu-20.04, macos-11.0
-        python-version: [3.7]  # 3.6, 3.7, 3.8
+        os: [ubuntu-latest, macos-latest]
+        python-version: [3.7]
 
     steps:
       # Checkout and env setup
@@ -62,7 +64,7 @@ jobs:
             ${{ runner.os }}-pip-
 
       # Install and test
-      - name: Install package and test
+      - name: Run tests
         run: |
           tar -zxvf _db.initial.tar.gz
           mv _db.initial _db

@@ -84,7 +84,7 @@ class AssetByID(Resource):
     #     return None
 
 
-@api.route('/src/<uuid:asset_guid>', defaults={'format': 'master'})
+@api.route('/src/<uuid:asset_guid>', defaults={'format': 'master'}, doc=False)
 @api.route('/src/<string:format>/<uuid:asset_guid>')
 @api.login_required(oauth_scopes=['assets:read'])
 @api.response(

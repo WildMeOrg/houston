@@ -32,7 +32,25 @@ class BaseSubmissionSchema(ModelSchema):
         )
 
 
-class DetailedSubmissionSchema(BaseSubmissionSchema):
+class CreateSubmissionSchema(BaseSubmissionSchema):
+    """
+    Detailed Submission schema exposes all useful fields.
+    """
+
+    class Meta(BaseSubmissionSchema.Meta):
+        fields = BaseSubmissionSchema.Meta.fields + (
+            Submission.owner_guid.key,
+            Submission.created.key,
+            Submission.updated.key,
+        )
+        dump_only = BaseSubmissionSchema.Meta.dump_only + (
+            Submission.owner_guid.key,
+            Submission.created.key,
+            Submission.updated.key,
+        )
+
+
+class DetailedSubmissionSchema(CreateSubmissionSchema):
     """
     Detailed Submission schema exposes all useful fields.
     """
@@ -43,15 +61,6 @@ class DetailedSubmissionSchema(BaseSubmissionSchema):
         many=True,
     )
 
-    class Meta(BaseSubmissionSchema.Meta):
-        fields = BaseSubmissionSchema.Meta.fields + (
-            Submission.owner_guid.key,
-            Submission.created.key,
-            Submission.updated.key,
-            Submission.assets.key,
-        )
-        dump_only = BaseSubmissionSchema.Meta.dump_only + (
-            Submission.owner_guid.key,
-            Submission.created.key,
-            Submission.updated.key,
-        )
+    class Meta(CreateSubmissionSchema.Meta):
+        fields = CreateSubmissionSchema.Meta.fields + (Submission.assets.key,)
+        dump_only = CreateSubmissionSchema.Meta.dump_only

@@ -23,7 +23,7 @@ CONFIG_NAME_MAPPER = {
 }
 
 
-def create_app(flask_config_name=None, **kwargs):
+def create_app(flask_config_name=None, config_override={}, **kwargs):
     """
     Entry point to the Houston Server application.
     """
@@ -62,6 +62,18 @@ def create_app(flask_config_name=None, **kwargs):
             )
             sys.exit(1)
         raise
+
+    app.config.update(config_override)
+
+    for key in config_override:
+        value = config_override[key]
+        print(
+            'CONFIG OVERRIDE %r -> %r'
+            % (
+                key,
+                value,
+            )
+        )
 
     # if specified, setup sentry for exception reporting and runtime telemetry
     sentry_dsn = app.config.get('SENTRY_DSN', None)

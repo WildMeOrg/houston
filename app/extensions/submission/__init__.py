@@ -52,68 +52,86 @@ class SubmissionManager(object):
     def ensure_initialed(self):
         if not self.initialized:
             assert self.gl is None
-            log.info('Logging into Submission GitLab...')
+
             remote_uri = self.app.config.get('GITLAB_REMOTE_URI', None)
             remote_personal_access_token = self.app.config.get(
                 'GITLAB_REMOTE_LOGIN_PAT', None
             )
             remote_namespace = self.app.config.get('GITLAB_NAMESPACE', None)
 
-            self.gl = gitlab.Gitlab(
-                remote_uri, private_token=remote_personal_access_token
-            )
-            self.gl.auth()
-            log.info('Logged in: %r' % (self.gl,))
+            log.info('Logging into Submission GitLab...')
+            log.info('\t URI: %r' % (remote_uri,))
+            log.info('\t PAT: %r' % (remote_personal_access_token,))
+            log.info('\t NS : %r' % (remote_namespace,))
 
-            # Check for namespace
-            if remote_namespace is None:
-                namespace = self.gl.namespaces.get(id=self.gl.user.id)
-            else:
-                namespaces = self.gl.namespaces.list(search=remote_namespace)
-                if len(namespaces) == 0:
-                    path = remote_namespace.lower()
-                    group = self.gl.groups.create(
-                        {'name': remote_namespace, 'path': path}
-                    )
-                    namespace = self.gl.namespaces.get(id=group.id)
-                    namespaces = self.gl.namespaces.list(search=remote_namespace)
-                assert len(namespaces) == 1
-                namespace = namespaces[0]
-
-            self.namespace = namespace
-            log.info('Using namespace: %r' % (self.namespace,))
-
-            # Populate MIME type white-list for submission assets
-            submissions_mime_type_whitelist = self.app.config.get(
-                'SUBMISSIONS_MIME_TYPE_WHITELIST', []
-            )
-            submissions_mime_type_whitelist = sorted(
-                list(map(str, submissions_mime_type_whitelist))
-            )
-
-            self.mime_type_whitelist = set(submissions_mime_type_whitelist)
-            self.mime_type_whitelist_guid = ut.hashable_to_uuid(
-                submissions_mime_type_whitelist
-            )
-
-            mime_type_whitelist_mapping_filepath = os.path.join(
-                self.app.config.get('PROJECT_DATABASE_PATH'),
-                'mime.whitelist.%s.json' % (self.mime_type_whitelist_guid,),
-            )
-            if not os.path.exists(mime_type_whitelist_mapping_filepath):
-                log.info(
-                    'Creating new MIME whitelist manifest: %r'
-                    % (mime_type_whitelist_mapping_filepath,)
+            try:
+                self.gl = gitlab.Gitlab(
+                    remote_uri, private_token=remote_personal_access_token
                 )
-                with open(mime_type_whitelist_mapping_filepath, 'w') as mime_type_file:
-                    mime_type_whitelist_dict = {
-                        str(self.mime_type_whitelist_guid): sorted(
-                            list(self.mime_type_whitelist)
-                        ),
-                    }
-                    mime_type_file.write(json.dumps(mime_type_whitelist_dict))
+                self.gl.auth()
+                log.info('Logged in: %r' % (self.gl,))
 
-            self.initialized = True
+                # Check for namespace
+                if remote_namespace is None:
+                    namespace = self.gl.namespaces.get(id=self.gl.user.id)
+                else:
+                    namespaces = self.gl.namespaces.list(search=remote_namespace)
+                    if len(namespaces) == 0:
+                        path = remote_namespace.lower()
+                        group = self.gl.groups.create(
+                            {'name': remote_namespace, 'path': path}
+                        )
+                        namespace = self.gl.namespaces.get(id=group.id)
+                        namespaces = self.gl.namespaces.list(search=remote_namespace)
+                    assert len(namespaces) == 1
+                    namespace = namespaces[0]
+
+                self.namespace = namespace
+                log.info('Using namespace: %r' % (self.namespace,))
+
+                # Populate MIME type white-list for submission assets
+                submissions_mime_type_whitelist = self.app.config.get(
+                    'SUBMISSIONS_MIME_TYPE_WHITELIST', []
+                )
+                submissions_mime_type_whitelist = sorted(
+                    list(map(str, submissions_mime_type_whitelist))
+                )
+
+                self.mime_type_whitelist = set(submissions_mime_type_whitelist)
+                self.mime_type_whitelist_guid = ut.hashable_to_uuid(
+                    submissions_mime_type_whitelist
+                )
+
+                mime_type_whitelist_mapping_filepath = os.path.join(
+                    self.app.config.get('PROJECT_DATABASE_PATH'),
+                    'mime.whitelist.%s.json' % (self.mime_type_whitelist_guid,),
+                )
+                if not os.path.exists(mime_type_whitelist_mapping_filepath):
+                    log.info(
+                        'Creating new MIME whitelist manifest: %r'
+                        % (mime_type_whitelist_mapping_filepath,)
+                    )
+                    with open(
+                        mime_type_whitelist_mapping_filepath, 'w'
+                    ) as mime_type_file:
+                        mime_type_whitelist_dict = {
+                            str(self.mime_type_whitelist_guid): sorted(
+                                list(self.mime_type_whitelist)
+                            ),
+                        }
+                        mime_type_file.write(json.dumps(mime_type_whitelist_dict))
+
+                self.initialized = True
+            except Exception:
+                self.gl = None
+                self.namespace = None
+                self.mime_type_whitelist = None
+                self.mime_type_whitelist_guid = None
+                self.initialized = False
+
+                raise RuntimeError(
+                    'GitLab remote failed to authenticate and/or initialize'
+                )
 
     def ensure_repository(self, submission, remote=True):
         submission_path = submission.get_absolute_path()

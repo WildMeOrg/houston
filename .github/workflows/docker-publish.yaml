@@ -1,9 +1,6 @@
 name: Docker
 
-on:
-  push:
-    tags:
-      - v*
+on: push
 
 jobs:
   # Push container image to GitHub Packages and Docker Hub.
@@ -16,10 +13,9 @@ jobs:
       - uses: actions/checkout@v2
 
       # Build images
-      - name: Setup Virtual Env
-        run: bash scripts/venv.sh
-      - name: Build images
-        run: bash scripts/build.sh
+      - name: Install package and build image
+        run: |
+          ./scripts/build.sh
 
       # Log into container registries
       - name: Log into Docker Hub
@@ -33,15 +29,15 @@ jobs:
         if: ${{ github.event_name == 'push' && startsWith(github.event.ref, 'refs/tags/v') }}
         run: |
           VERSION=$(echo ${GITHUB_REF} | sed 's#.*/v##')
-          bash scripts/publish.sh -t ${VERSION} -r docker.pkg.github.com houston
-          bash scripts/publish.sh -t latest -r docker.pkg.github.com houston
+          ./scripts/publish.sh -t ${VERSION} -r docker.pkg.github.com houston
+          ./scripts/publish.sh -t latest -r docker.pkg.github.com houston
 
       - name: Push to Docker Hub
         if: ${{ github.event_name == 'push' && startsWith(github.event.ref, 'refs/tags/v') }}
         run: |
           VERSION=$(echo ${GITHUB_REF} | sed 's#.*/v##')
-          bash scripts/publish.sh -t ${VERSION} houston
-          bash scripts/publish.sh -t latest houston
+          ./scripts/publish.sh -t ${VERSION} houston
+          ./scripts/publish.sh -t latest houston
 
       # Notify status in Slack
       - name: Slack Notification

@@ -33,6 +33,7 @@ def run(
     uwsgi=False,
     uwsgi_mode='http',
     uwsgi_extra_options='',
+    gitlab_remote_login_pat=None,
 ):
     """
     Run Houston API Server.
@@ -49,7 +50,11 @@ def run(
 
     from app import create_app
 
-    app = create_app()
+    config_override = {}
+    if gitlab_remote_login_pat is not None:
+        config_override['GITLAB_REMOTE_LOGIN_PAT'] = gitlab_remote_login_pat
+
+    app = create_app(config_override=config_override)
 
     if upgrade_db:
         # After the installed dependencies the app.db.* tasks might need to be

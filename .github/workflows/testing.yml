@@ -10,8 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        # For speed, we choose one version and that should be the lowest common denominator
-        python-version: [3.6, 3.7, 3.8]
+        python-version: [3.7]  # 3.6, 3.7, 3.8
 
     steps:
       # Checkout and env setup
@@ -44,9 +43,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest] # Disable "macos-latest" for now
-        # For speed, we choose one version and that should be the lowest common denominator
-        python-version: [3.6, 3.7, 3.8]
+        os: [ubuntu-latest]  # ubuntu-latest, macos-latest, ubuntu-16.04, ubuntu-20.04, macos-11.0
+        python-version: [3.7]  # 3.6, 3.7, 3.8
 
     steps:
       # Checkout and env setup
@@ -64,8 +62,10 @@ jobs:
             ${{ runner.os }}-pip-
 
       # Install and test
-      - name: Install the project
-        run: pip install -e .[tests]
-      - name: Test with pytest
+      - name: Install package and test
         run: |
-          pytest --slow
+          tar -zxvf _db.initial.tar.gz
+          mv _db.initial _db
+          ./scripts/install.sh
+          source virtualenv/houston3.7/bin/activate
+          pytest -s -v --gitlab-remote-login-pat "${{ secrets.GITLAB_REMOTE_LOGIN_PAT }}"

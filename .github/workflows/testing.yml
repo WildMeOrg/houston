@@ -64,12 +64,12 @@ jobs:
             ${{ runner.os }}-pip-
 
       - name: Install libmagic on macOS
-        if: runner.os == 'macos-latest'
+        if: runner.os == 'macOS'
         run: |
           brew install libmagic
 
       - name: Install libmagic on Ubuntu
-        if: runner.os == 'ubuntu-latest'
+        if: runner.os == 'Linux'
         run: |
           apt-get install libmagic1
 

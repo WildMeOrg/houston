@@ -99,7 +99,7 @@ def test_modifying_user_info_by_admin(flask_app_client, admin_user, regular_user
         # Restore original state
         regular_user.full_name = saved_full_name
         regular_user.is_active = True
-        regular_user.is_staff = True
+        regular_user.is_staff = False
         regular_user.is_admin = False
         with db.session.begin():
             db.session.merge(regular_user)
@@ -143,7 +143,7 @@ def test_modifying_user_info_admin_fields_by_not_admin(
     finally:
         regular_user.full_name = saved_full_name
         regular_user.is_active = True
-        regular_user.is_staff = True
+        regular_user.is_staff = False
         regular_user.is_admin = False
         with db.session.begin():
             db.session.merge(regular_user)

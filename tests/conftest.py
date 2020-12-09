@@ -91,7 +91,8 @@ def readonly_user(temp_db_instance_helper):
 def admin_user(temp_db_instance_helper):
     for _ in temp_db_instance_helper(
         utils.generate_user_instance(
-            email='admin@localhost', is_active=True, is_admin=True
+            email='admin@localhost',
+            is_admin=True,
         )
     ):
         yield _
@@ -102,7 +103,6 @@ def regular_user(temp_db_instance_helper):
     for _ in temp_db_instance_helper(
         utils.generate_user_instance(
             email='test@localhost',
-            is_active=True,
         )
     ):
         yield _
@@ -113,9 +113,6 @@ def internal_user(temp_db_instance_helper):
     for _ in temp_db_instance_helper(
         utils.generate_user_instance(
             email='internal@localhost',
-            is_staff=False,
-            is_admin=False,
-            is_active=True,
             is_internal=True,
         )
     ):

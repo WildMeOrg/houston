@@ -26,7 +26,7 @@ def test_users_options_unauthorized(
 @pytest.mark.parametrize(
     'path,expected_allowed_methods',
     (
-        ('/api/v1/users/', {'GET', 'POST', 'OPTIONS'}),
+        ('/api/v1/users/', {'POST', 'OPTIONS'}),
         ('/api/v1/users/%s' % (REPLACE_KEY,), {'GET', 'OPTIONS', 'PATCH'}),
     ),
 )

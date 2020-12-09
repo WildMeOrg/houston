@@ -29,7 +29,7 @@ RUN apt update \
 COPY . .
 
 RUN cd ${INSTALL_PATH} \
- && ./venv.sh \
+ && ./scripts/venv.sh \
  && virtualenv/houston3.7/bin/pip install -U pip \
  && virtualenv/houston3.7/bin/pip install -r app/requirements.txt \
  && virtualenv/houston3.7/bin/pip install -r tasks/requirements.txt \

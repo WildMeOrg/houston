@@ -1,8 +1,10 @@
 #!/bin/bash
 
-./clean.sh
+./scripts/clean.sh
 
 source virtualenv/houston3.7/bin/activate
+
+pip install -r requirements.txt
 pip install -e .
 
 invoke app.dependencies.install-python-dependencies
@@ -10,7 +12,7 @@ invoke app.dependencies.install-swagger-ui
 invoke app.dependencies.install
 
 # Build and deploy frontend
-# ./build.frontend.sh
+./scripts/build.frontend.sh
 
 # Build docker image
-./build.docker.sh
+./scripts/build.docker.sh

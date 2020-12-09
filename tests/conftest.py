@@ -7,9 +7,35 @@ from tests import utils
 from app import create_app
 
 
+def pytest_addoption(parser):
+    parser.addoption(
+        '--gitlab-remote-login-pat',
+        action='append',
+        default=[],
+        help=('Specify additional config argument for GitLab'),
+    )
+
+
+def pytest_generate_tests(metafunc):
+    if 'gitlab_remote_login_pat' in metafunc.fixturenames:
+        values = list(set(metafunc.config.option.gitlab_remote_login_pat))
+        if len(values) == 0:
+            value = [None]
+        elif len(values) == 1:
+            value = values
+        else:
+            raise ValueError
+        metafunc.parametrize('gitlab_remote_login_pat', value, scope='session')
+
+
 @pytest.yield_fixture(scope='session')
-def flask_app():
-    app = create_app(flask_config_name='testing')
+def flask_app(gitlab_remote_login_pat):
+
+    config_override = {}
+    if gitlab_remote_login_pat is not None:
+        config_override['GITLAB_REMOTE_LOGIN_PAT'] = gitlab_remote_login_pat
+
+    app = create_app(flask_config_name='testing', config_override=config_override)
     from app.extensions import db
 
     with app.app_context():

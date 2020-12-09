@@ -2,6 +2,7 @@
 .dockerignore
 .DS_Store
 
+.github/
 .coveragerc
 .editorconfig
 .pre-commit-config.yaml
@@ -14,16 +15,6 @@ _db.initial.tar.gz
 
 *.egg-info/
 
-build*.sh
-clean*.sh
-deploy*.sh
-develop*.sh
-host*.sh
-permissions*.sh
-publish*.sh
-restart*.sh
-run*.sh
-
 Dockerfile
 Procfile
 
@@ -33,9 +24,9 @@ dist.*.tar.gz
 _db/
 _frontend/
 clients/
-deploy/
 docs/
 tests/
+devops/
 virtualenv/
 
 __pycache__

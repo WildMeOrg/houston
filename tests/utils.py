@@ -109,6 +109,7 @@ def generate_user_instance(
     is_staff=False,
     is_admin=False,
     is_internal=False,
+    in_alpha=True,
 ):
     """
     Returns:
@@ -137,6 +138,7 @@ def generate_user_instance(
         is_staff=is_staff,
         is_admin=is_admin,
         is_internal=is_internal,
+        in_alpha=in_alpha,
     )
     user_instance.password_secret = password
     return user_instance

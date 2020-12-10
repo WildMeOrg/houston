@@ -82,19 +82,6 @@ class AssetByID(Resource):
     #         db.session.delete(asset)
     #     return None
 
-@api.route('/source/<uuid:asset_guid>')
-@api.login_required(oauth_scopes=['assets:read'])
-@api.response(
-    code=HTTPStatus.NOT_FOUND,
-    description='Asset not found.',
-)
-@api.resolve_object_by_model(Asset, 'asset')
-class AssetSourceUByID(Resource):
-
-    def get(self, asset):
-        current_app.sub.ensure_submission(asset.submission_guid)
-        return send_file(asset.get_symlink(), asset.mime_type)
-
 
 @api.route('/src/<uuid:asset_guid>', defaults={'format': 'master'})
 @api.route('/src/<string:format>/<uuid:asset_guid>')
@@ -106,6 +93,7 @@ class AssetSourceUByID(Resource):
 @api.resolve_object_by_model(Asset, 'asset')
 class AssetSrcUByID(Resource):
     def get(self, asset, format):
+        current_app.sub.ensure_submission(asset.submission_guid)
         try:
             asset_format_path = asset.get_or_make_format_path(format)
         except Exception:

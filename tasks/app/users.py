@@ -111,7 +111,7 @@ def create_oauth2_client(context, email, guid, secret, default_scopes=None):
 
 
 @app_context_task
-def list(context):
+def list_all(context):
     """
     Show existing users.
     """

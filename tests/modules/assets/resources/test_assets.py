@@ -45,7 +45,7 @@ def test_find_deleted_asset(
         with flask_app_client.login(admin_user, auth_scopes=('assets:read',)):
             response = flask_app_client.get('/api/v1/assets/%s' % test_asset_uuid)
         with flask_app_client.login(regular_user, auth_scopes=('assets:read',)):
-            src_response = flask_app_client.get('/api/v1/assets/source/%s' % test_asset_uuid)
+            src_response = flask_app_client.get('/api/v1/assets/src/%s' % test_asset_uuid)
 
         assert response.status_code == 200
         assert response.content_type == 'application/json'
@@ -53,7 +53,7 @@ def test_find_deleted_asset(
         assert response.json['src'] == '/api/v1/assets/src/%s' % test_asset_uuid
         assert src_response.status_code == 200
         assert src_response.content_type == 'image/jpeg'
-        assert hashlib.md5(src_response.data).hexdigest() == '6b383b9feb55b14ec7f8d469402aff01'
+        assert hashlib.md5(src_response.data).hexdigest() == '0b546f813ec9631ce5c9b1dd579c623b'
 
     except Exception as ex:
         raise ex

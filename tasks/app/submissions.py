@@ -108,3 +108,15 @@ def clone_submission_from_gitlab(
     print('Cloned submission from GitLab:')
     print('\tSubmission: %r' % (submission,))
     print('\tLocal Path: %r' % (submission.get_absolute_path(),))
+
+@app_context_task
+def list_all(context):
+    """
+    Show existing submissions.
+    """
+    from app.modules.submissions.models import Submission
+
+    submissions = Submission.query.all()
+
+    for submission in submissions:
+        print("Submission : {} {}".format(submission, submission.assets))

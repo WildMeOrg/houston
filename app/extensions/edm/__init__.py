@@ -16,10 +16,10 @@ import types
 import json
 
 import pytz
-
+import tqdm
 import keyword
 import uuid
-
+import sqlalchemy
 
 KEYWORD_SET = set(keyword.kwlist)
 
@@ -112,29 +112,6 @@ class EDMManagerEndpointMixin(object):
 
 
 class EDMManagerUserMixin(object):
-    def get_users(self, target='default'):
-        response = self._get('user.list', target=target)
-
-        users = {}
-        for value in response:
-            try:
-                guid = value.id
-                version = value.version
-            except AttributeError as exception:
-                log.error('Invalid response from EDM [user.list]')
-                raise exception
-
-            guid = uuid.UUID(guid)
-            assert isinstance(version, int)
-
-            users[guid] = {'version': version}
-
-        return users
-
-    def get_user_data(self, guid, target='default'):
-        assert isinstance(guid, uuid.UUID)
-        response = self._get('user.data', guid, target=target)
-        return response
 
     def check_user_login(self, username, password):
         self.ensure_initialed()
@@ -151,8 +128,10 @@ class EDMManagerUserMixin(object):
                     target=target,
                     target_session=temporary_session,
                 )
-                assert response.success
-                assert response.message.key == 'success'
+
+                assert response.ok
+                decoded_response = response.json()
+                assert decoded_response['message']['key'] == 'success'
 
                 log.info('User authenticated via EDM (target = %r)' % (target,))
                 success = True
@@ -382,8 +361,71 @@ class EDMManager(EDMManagerEndpointMixin, EDMManagerUserMixin):
         response = self._post(*args, **kwargs)
         return response
 
+    def get_list(self, list_name, target='default'):
+        response = self._get(list_name, target=target)
+
+        items = {}
+        for value in response:
+            try:
+                guid = value.id
+                version = value.version
+            except AttributeError as exception:
+                log.error('Invalid response from EDM [%s]' % (list_name,))
+                raise exception
+
+            guid = uuid.UUID(guid)
+            assert isinstance(version, int)
+
+            items[guid] = {'version': version}
+
+        return items
+
+    def get_data_item(self, guid, item_name, target='default'):
+        assert isinstance(guid, uuid.UUID)
+        response = self._get(item_name, guid, target=target)
+        return response
+
 
 class EDMObjectMixin(object):
+    @classmethod
+    def edm_sync_all(cls, name, verbose=True, refresh=False):
+        edm_items = current_app.edm.get_list('%s.list' % (name,))
+
+        if verbose:
+            log.info('Checking %d EDM %ss against local cache...' % (len(edm_items), name))
+
+        new_items = []
+        stale_items = []
+        for guid in tqdm.tqdm(edm_items):
+            item_version = edm_items[guid]
+            version = item_version.get('version', None)
+            assert version is not None
+
+            model_obj, is_new = cls.ensure_edm_obj(guid)
+            if is_new:
+                new_items.append(model_obj)
+
+            if model_obj.version != version or refresh:
+                stale_items.append((model_obj, version))
+
+        if verbose:
+            log.info('Added %d new %ss' % (len(new_items), name))
+
+        if verbose:
+            log.info('Updating %d stale %ss using EDM...' % (len(stale_items), name,))
+
+        updated_items = []
+        failed_items = []
+        for model_obj, version in tqdm.tqdm(stale_items):
+            try:
+                model_obj.sync_edm_item(model_obj.guid, '%s.data' % (name,), version)
+                updated_items.append(model_obj)
+            except sqlalchemy.exc.IntegrityError:
+                log.error('Error updating %s %r' % (name, model_obj,))
+                failed_items.append(model_obj)
+
+        return edm_items, new_items, updated_items, failed_items
+
     def _process_edm_attribute(self, data, edm_attribute):
         edm_attribute = edm_attribute.strip()
         edm_attribute = edm_attribute.strip('.')
@@ -407,52 +449,53 @@ class EDMObjectMixin(object):
         return self._process_edm_attribute(data_, edm_attribute_)
 
     def _process_edm_data(self, data, claimed_version):
+
+        unmapped_attributes = list(
+            set(sorted(data._fields)) - set(self.EDM_ATTRIBUTE_MAPPING)
+        )
+        if len(unmapped_attributes) > 0:
+            log.warning('Unmapped attributes: %r' % (unmapped_attributes,))
+
+        found_version = None
+        for edm_attribute in self.EDM_ATTRIBUTE_MAPPING:
+            try:
+                edm_value = self._process_edm_attribute(data, edm_attribute)
+
+                attribute = self.EDM_ATTRIBUTE_MAPPING[edm_attribute]
+                if attribute is None:
+                    log.warning(
+                        'Ignoring mapping for EDM attribute %r' % (edm_attribute,)
+                    )
+                    continue
+
+                if edm_attribute in self.EDM_LOG_ATTRIBUTES:
+                    log.info(
+                        'Syncing edm data for %r = %r'
+                        % (
+                            edm_attribute,
+                            edm_value,
+                        )
+                    )
+
+                assert hasattr(self, attribute), 'attribute not found'
+                attribute_ = getattr(self, attribute)
+                if isinstance(attribute_, (types.MethodType,)):
+                    attribute_(edm_value)
+                else:
+                    setattr(self, attribute, edm_value)
+                    if edm_attribute == self.EDM_VERSION_ATTRIBUTE:
+                        found_version = edm_value
+            except AttributeError:
+                log.warning('Could not find EDM attribute %r' % (edm_attribute,))
+            except KeyError:
+                log.warning('Could not find EDM attribute %r' % (edm_attribute,))
+
+        if found_version is None:
+            self.version = claimed_version
+        else:
+            self.version = found_version
+
         with db.session.begin():
-            unmapped_attributes = list(
-                set(sorted(data._fields)) - set(self.EDM_ATTRIBUTE_MAPPING)
-            )
-            if len(unmapped_attributes) > 0:
-                log.warning('Unmapped attributes: %r' % (unmapped_attributes,))
-
-            found_version = None
-            for edm_attribute in self.EDM_ATTRIBUTE_MAPPING:
-                try:
-                    edm_value = self._process_edm_attribute(data, edm_attribute)
-
-                    attribute = self.EDM_ATTRIBUTE_MAPPING[edm_attribute]
-                    if attribute is None:
-                        log.warning(
-                            'Ignoring mapping for EDM attribute %r' % (edm_attribute,)
-                        )
-                        continue
-
-                    if edm_attribute in self.EDM_LOG_ATTRIBUTES:
-                        log.info(
-                            'Logging requested edm_attribute %r = %r'
-                            % (
-                                edm_attribute,
-                                edm_value,
-                            )
-                        )
-
-                    assert hasattr(self, attribute), 'User attribute not found'
-                    attribute_ = getattr(self, attribute)
-                    if isinstance(attribute_, (types.MethodType,)):
-                        attribute_(edm_value)
-                    else:
-                        setattr(self, attribute, edm_value)
-                        if edm_attribute == self.EDM_VERSION_ATTRIBUTE:
-                            found_version = edm_value
-                except AttributeError:
-                    log.warning('Could not find EDM attribute %r' % (edm_attribute,))
-                except KeyError:
-                    log.warning('Could not find EDM attribute %r' % (edm_attribute,))
-
-            if found_version is None:
-                self.version = claimed_version
-            else:
-                self.version = found_version
-
             db.session.merge(self)
 
         if found_version is None:
@@ -460,6 +503,15 @@ class EDMObjectMixin(object):
         else:
             log.info('Updating to found version %r' % (found_version,))
 
+    def sync_edm_item(self, guid, item_name, version):
+        response = current_app.edm.get_data_item(guid, item_name)
+
+        assert response.success
+        data = response.result
+
+        assert uuid.UUID(data.id) == guid
+
+        self._process_edm_data(data, version)
 
 def init_app(app, **kwargs):
     # pylint: disable=unused-argument

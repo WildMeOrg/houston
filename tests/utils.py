@@ -11,8 +11,7 @@ import json
 from flask import Response
 from flask.testing import FlaskClient
 from werkzeug.utils import cached_property
-
-from app.modules.auth.models import _generate_salt
+from app.extensions.auth import security
 
 import uuid
 
@@ -48,7 +47,9 @@ class AutoAuthFlaskClient(FlaskClient):
             from app.modules.auth.models import OAuth2Client, OAuth2Token
 
             oauth2_client = OAuth2Client(
-                secret='SECRET', user=self._user, default_scopes=[],
+                secret='SECRET',
+                user=self._user,
+                default_scopes=[],
             )
 
             oauth2_bearer_token = OAuth2Token(
@@ -123,7 +124,7 @@ def generate_user_instance(
         email = '%s@localhost' % (email,)
 
     if password is None:
-        password = _generate_salt(128)
+        password = security.generate_random(128)
 
     user_instance = User(
         guid=user_guid,

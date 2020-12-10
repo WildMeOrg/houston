@@ -81,10 +81,16 @@ class EDMManagerEndpointMixin(object):
 
         if endpoint_tag_fmtstr.startswith('//'):
             endpoint_tag_fmtstr = endpoint_tag_fmtstr[2:]
-            endpoint_tag_fmtstr = '%s/%s' % (self.ENDPOINT_PREFIX, endpoint_tag_fmtstr,)
+            endpoint_tag_fmtstr = '%s/%s' % (
+                self.ENDPOINT_PREFIX,
+                endpoint_tag_fmtstr,
+            )
 
         endpoint_url_ = self.get_target_endpoint_url(target)
-        endpoint_fmtstr = '%s/%s' % (endpoint_url_, endpoint_tag_fmtstr,)
+        endpoint_fmtstr = '%s/%s' % (
+            endpoint_url_,
+            endpoint_tag_fmtstr,
+        )
         return endpoint_fmtstr
 
     def _endpoint_tag_fmtstr(self, tag):
@@ -282,17 +288,19 @@ class EDMManager(EDMManagerEndpointMixin, EDMManagerUserMixin):
             assert password is not None, message
 
             self.sessions[target] = requests.Session()
-            self._get('session.login', email, password, target=target)
+            self._get(
+                'session.login', email, password, target=target, ensure_initialized=False
+            )
             log.info('Created authenticated session for EDM target %r' % (target,))
 
     def ensure_initialed(self):
         if not self.initialized:
             log.info('Initializing EDM')
-            self.initialized = True
             self._parse_config_edm_uris()
             self._init_sessions()
             log.info('\t%s' % (ut.repr3(self.uris)))
             log.info('EDM Manager is ready')
+            self.initialized = True
 
     def get_target_endpoint_url(self, target='default'):
         endpoint_url = self.uris[target]
@@ -311,9 +319,11 @@ class EDMManager(EDMManagerEndpointMixin, EDMManagerUserMixin):
         decode_as_object=True,
         decode_as_dict=False,
         passthrough_kwargs={},
+        ensure_initialized=True,
         verbose=True
     ):
-        self.ensure_initialed()
+        if ensure_initialized:
+            self.ensure_initialed()
 
         method = method.lower()
         assert method in ['get', 'post', 'delete', 'put']
@@ -419,7 +429,10 @@ class EDMObjectMixin(object):
                     if edm_attribute in self.EDM_LOG_ATTRIBUTES:
                         log.info(
                             'Logging requested edm_attribute %r = %r'
-                            % (edm_attribute, edm_value,)
+                            % (
+                                edm_attribute,
+                                edm_value,
+                            )
                         )
 
                     assert hasattr(self, attribute), 'User attribute not found'

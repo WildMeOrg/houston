@@ -39,6 +39,36 @@ class BaseConfig(object):
     PROJECT_ROOT = PROJECT_ROOT
     PROJECT_DATABASE_PATH = PROJECT_DATABASE_PATH
 
+    SUBMISSIONS_DATABASE_PATH = os.path.join(PROJECT_DATABASE_PATH, 'submissions')
+    SUBMISSIONS_MIME_TYPE_WHITELIST = [
+        'application/json',
+        'application/ld+json',
+        'application/msword',
+        'application/octet-stream',
+        'application/ogg',
+        'application/pdf',
+        'application/rtf',
+        'application/vnd.ms-excel',
+        'application/vnd.oasis.opendocument.spreadsheet',
+        'application/vnd.oasis.opendocument.text',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'application/xml',
+        'image/bmp',
+        'image/gif',
+        'image/jpeg',
+        'image/png',
+        'image/tiff',
+        'image/webp',
+        'text/csv',
+        'text/javascript',
+        'text/plain',
+        'text/xml',
+        'video/mpeg',
+        'video/ogg',
+        'video/webm',
+    ]
+
     ASSET_DATABASE_PATH = os.path.join(PROJECT_DATABASE_PATH, 'assets')
     ASSET_ALLOWED_EXTS = [
         '.jpg',
@@ -72,6 +102,7 @@ class BaseConfig(object):
 
     ENABLED_MODULES = (
         # THIS ORDERING IS VERY SPECIFIC AND INFLUENCES WHICH MODULES CAN DEPEND ON EACH OTHER
+        'submissions',
         'assets',
         'auth',
         'frontend',
@@ -81,6 +112,7 @@ class BaseConfig(object):
         'collaborations',
         'api',
         'passthroughs',
+        'configuration',
     )
 
     STATIC_ROOT = os.path.join(PROJECT_ROOT, 'app', 'static')
@@ -113,7 +145,16 @@ class EDMConfig(object):
     }
 
 
-class ProductionConfig(BaseConfig, EDMConfig, SecretProductionConfig):
+class SubmissionGitLabRemoteConfig(object):
+    GITLAB_REMOTE_URI = 'https://sub.dyn.wildme.io/'
+    GITLAB_PUBLIC_NAME = 'Houston'
+    GITLAB_EMAIL = 'dev@wildme.org'
+    GITLAB_NAMESPACE = 'TEST'
+
+
+class ProductionConfig(
+    BaseConfig, EDMConfig, SubmissionGitLabRemoteConfig, SecretProductionConfig
+):
     TESTING = False
 
     BASE_URL = 'https://hoston.dyn.wildme.io/'
@@ -127,7 +168,9 @@ class ProductionConfig(BaseConfig, EDMConfig, SecretProductionConfig):
     SENTRY_DSN = 'https://140fc4d010bb43b28417ab57b0e41b44@sentry.dyn.wildme.io/3'
 
 
-class DevelopmentConfig(BaseConfig, EDMConfig, SecretDevelopmentConfig):
+class DevelopmentConfig(
+    BaseConfig, EDMConfig, SubmissionGitLabRemoteConfig, SecretDevelopmentConfig
+):
     DEBUG = True
 
     BASE_URL = 'https://wildme.ngrok.io/'
@@ -149,4 +192,5 @@ class TestingConfig(DevelopmentConfig):
 
     # Use in-memory SQLite database for testing
     SQLALCHEMY_DATABASE_URI = 'sqlite://'
+
     MAIL_SUPPRESS_SEND = True

@@ -31,7 +31,9 @@ from .views import (
 log = logging.getLogger(__name__)
 
 frontend_blueprint = Blueprint(
-    'frontend', __name__, static_folder=FRONTEND_STATIC_ROOT,
+    'frontend',
+    __name__,
+    static_folder=FRONTEND_STATIC_ROOT,
 )  # pylint: disable=invalid-name
 
 
@@ -39,6 +41,7 @@ frontend_blueprint = Blueprint(
 @frontend_blueprint.route('/<path:path>', methods=['GET'])
 def home(path=None, *args, **kwargs):
     # pylint: disable=unused-argument
+
     """
     This endpoint offers the home page html
     """
@@ -56,6 +59,7 @@ def home(path=None, *args, **kwargs):
 @frontend_blueprint.route('/login', methods=['POST'])
 def referral_login(email=None, password=None, remember=None, refer=None, *args, **kwargs):
     # pylint: disable=unused-argument
+
     """
     This endpoint is the landing page for the logged-in user
     """
@@ -84,14 +88,22 @@ def referral_login(email=None, password=None, remember=None, refer=None, *args, 
     redirect = _url_for(failure_refer)
     if user is not None:
         if True not in [user.in_alpha, user.in_beta, user.is_staff, user.is_admin]:
-            log.warning('User %r had a valid login, but is not a staff or beta member.',)
+            log.warning(
+                'User %r had a valid login, but is not a staff or beta member.',
+            )
             redirect = _url_for(failure_refer)
         else:
             status = login_user(user, remember=remember)
 
             if status:
                 # User logged in organically.
-                log.info('Logged in User (remember = %s): %r' % (remember, user,))
+                log.info(
+                    'Logged in User (remember = %s): %r'
+                    % (
+                        remember,
+                        user,
+                    )
+                )
                 create_session_oauth2_token()
 
                 if refer is not None:

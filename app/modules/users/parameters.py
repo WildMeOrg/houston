@@ -38,7 +38,7 @@ class CreateUserParameters(Parameters, schemas.BaseUserSchema):
     """
 
     email = base_fields.Email(description='Example: root@gmail.com', required=True)
-    password = base_fields.String(description='No rules yet', required=False)
+    password = base_fields.String(description='No rules yet', required=True)
 
     recaptcha_key = base_fields.String(
         description=(
@@ -56,7 +56,7 @@ class CreateUserParameters(Parameters, schemas.BaseUserSchema):
 
     @validates_schema
     def validate_captcha(self, data):
-        """"
+        """ "
         Check reCAPTCHA if necessary.
 
         NOTE: we remove 'recaptcha_key' from data once checked because we don't need it
@@ -74,6 +74,15 @@ class CreateUserParameters(Parameters, schemas.BaseUserSchema):
 
         if not captcha_is_valid:
             abort(code=HTTPStatus.FORBIDDEN, message='CAPTCHA key is incorrect.')
+
+
+class AdminUserInitializedParameters(Parameters):
+    """
+    New user creation (sign up) parameters.
+    """
+
+    email = base_fields.Email(description='Example: root@gmail.com', required=True)
+    password = base_fields.String(description='No rules yet', required=True)
 
 
 class CheckinUserParameters(Parameters):

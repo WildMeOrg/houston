@@ -1,0 +1,73 @@
+{% extends "layout.jinja2" %}
+
+{% block title %}Home{% endblock %}
+
+{% block head %}
+  {{ super() }}
+{% endblock %}
+
+{% block style %}
+  {{ super() }}
+{% endblock %}
+
+{% block content %}
+
+
+  <div class="container">
+    <div class="row">
+      <div class="col-1 col-sm-1 col-md-1 col-lg-3 col-xl-4"></div>
+
+      <div class="col-10 col-sm-10 col-md-10 col-lg-6 col-xl-4">
+        <img class="mx-auto d-block" alt="Wild Me Houston" src="{{ url_for('backend.static', filename='images/icon.png', version=cachebuster) }}" style="width: 30%; margin-bottom: 25px;">
+
+        <div class="card">
+        <div class="card-header">
+          {% if admin_exists %}
+              <b>Create Admin User - Function Disabled</b>
+          {% else %}
+              <b>Create Admin User</b>
+          {% endif %}
+        </div>
+        <div class="card-body">
+          {% if admin_exists %}
+            This functionality has been disabled because an administrator user has already been created.
+          {% else %}
+            <form class="needs-validation" action="{{ url_for('backend.admin_init') }}" method="post" novalidate>
+            <p>Do not lose this login information.</p>
+            <div class="form-group">
+                <label for="homeInputEmail">Email address</label>
+                <input name="email" type="email" class="form-control" id="homeInputEmail" aria-describedby="emailHelp" placeholder="Enter email" autofocus="autofocus" autocomplete="username" onfocus="this.select()" required>
+                <small id="emailHelp" class="form-text text-muted">We'll never share your email with anyone else.</small>
+            </div>
+            <div class="form-group">
+                <label for="homeInputPassword">Password</label>
+                <input name="password" type="password" class="form-control" id="homeInputPassword" placeholder="Password" required>
+            </div>
+            <div class="form-group">
+                <label for="homeInputPassword">Repeat Password</label>
+                <input name="repeat_password" type="password" class="form-control" id="homeRepeatPassword" placeholder="Repeat Password" required>
+            </div>
+            <br/>
+            <button type="submit" class="btn btn-primary">Submit</button>
+            </form>
+          {% endif %}
+        </div>
+        </div>
+      </div>
+
+        <div class="col-1 col-sm-1 col-md-1 col-lg-3 col-xl-4"></div>
+
+        </div>
+    </div>
+  </div>
+
+
+{% endblock %}
+
+{% block foot %}
+  {{ super() }}
+{% endblock %}
+
+{% block script %}
+  {{ super() }}
+{% endblock %}

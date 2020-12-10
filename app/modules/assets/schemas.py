@@ -4,6 +4,7 @@ Serialization schemas for Assets resources RESTful API
 ----------------------------------------------------
 """
 
+from flask_marshmallow import base_fields
 from flask_restplus_patched import ModelSchema
 
 from .models import Asset
@@ -19,7 +20,7 @@ class BaseAssetSchema(ModelSchema):
         model = Asset
         fields = (
             Asset.guid.key,
-            Asset.code.key,
+            Asset.extension.key,
         )
         dump_only = (Asset.guid.key,)
 
@@ -29,11 +30,15 @@ class DetailedAssetSchema(BaseAssetSchema):
     Detailed Asset schema exposes all useful fields.
     """
 
+    submission = base_fields.Nested('BaseSubmissionSchema')
+
     class Meta(BaseAssetSchema.Meta):
         fields = BaseAssetSchema.Meta.fields + (
-            Asset.ext.key,
             Asset.created.key,
             Asset.updated.key,
+            Asset.submission.key,
+            'filename',
+            'src',
         )
         dump_only = BaseAssetSchema.Meta.dump_only + (
             Asset.created.key,

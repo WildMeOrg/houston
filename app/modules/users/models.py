@@ -11,7 +11,8 @@ import sqlalchemy
 from sqlalchemy_utils import types as column_types
 
 from flask_login import current_user  # NOQA
-from app.extensions import db, TimestampViewed
+from app.extensions import db, FeatherModel
+from app.extensions.auth import security
 from app.extensions.edm import EDMObjectMixin
 from app.extensions.api.parameters import _get_is_static_role_property
 
@@ -63,8 +64,6 @@ class UserEDMMixin(EDMObjectMixin):
 
     @classmethod
     def edm_sync_users(cls, verbose=True, refresh=False):
-        from app.modules.auth.models import _generate_salt
-
         edm_users = current_app.edm.get_users()
 
         if verbose:
@@ -82,13 +81,14 @@ class UserEDMMixin(EDMObjectMixin):
 
                 if user is None:
                     email = '%s@localhost' % (guid,)
-                    password = _generate_salt(128)
+                    password = security.generate_random(128)
                     user = User(
                         guid=guid,
                         email=email,
                         password=password,
                         version=None,
                         is_active=True,
+                        in_alpha=True,
                     )
                     db.session.add(user)
                     new_users.append(user)
@@ -131,10 +131,19 @@ class UserEDMMixin(EDMObjectMixin):
         log.warning('User._process_edm_user_organization() not implemented yet')
 
 
-class User(db.Model, TimestampViewed, UserEDMMixin):
+class User(db.Model, FeatherModel, UserEDMMixin):
     """
     User database model.
+
+    TODO:
+    * Upgrade to HoustonModel after full transition for Users out of EDM is
+      complete
     """
+
+    def __init__(self, *args, **kwargs):
+        if 'password' not in kwargs:
+            raise ValueError('User must have a password')
+        super().__init__(*args, **kwargs)
 
     guid = db.Column(
         db.GUID, default=uuid.uuid4, primary_key=True
@@ -230,17 +239,80 @@ class User(db.Model, TimestampViewed, UserEDMMixin):
         )
 
     @classmethod
-    def suggest_password(cls):
-        from xkcdpass import xkcd_password as xp
+    def get_admins(cls):
+        # used for first run admin creation
+        users = cls.query.all()  # NOQA
 
-        xp_wordfile = xp.locate_wordfile()
-        xp_wordlist = xp.generate_wordlist(
-            wordfile=xp_wordfile, min_length=4, max_length=6, valid_chars='[a-z]'
-        )
-        suggested_password = xp.generate_xkcdpassword(
-            xp_wordlist, numwords=4, acrostic='wild', delimiter=' '
-        )
-        return suggested_password
+        admin_users = []
+        for user in users:
+            # TODO: Remove the check below at a later point after default admin create is removed
+            if user.email.endswith('@localhost'):
+                continue
+            if user.is_admin:
+                admin_users.append(user)
+
+        return admin_users
+
+    @classmethod
+    def admin_user_initialized(cls):
+        # used for first run admin creation
+        return len(cls.get_admins()) > 0
+
+    @classmethod
+    def ensure_user(
+        cls,
+        email,
+        password,
+        is_internal=False,
+        is_admin=False,
+        is_staff=False,
+        is_active=True,
+        in_beta=False,
+        in_alpha=False,
+        update=False,
+        **kwargs
+    ):
+        """
+        Create a new user.
+        """
+        from app.extensions import db
+
+        user = User.find(email=email)
+
+        if user is None:
+            user = User(
+                password=password,
+                email=email,
+                is_internal=is_internal,
+                is_admin=is_admin,
+                is_staff=is_staff,
+                is_active=is_active,
+                in_beta=in_beta,
+                in_alpha=in_alpha,
+                **kwargs
+            )
+
+            with db.session.begin():
+                db.session.add(user)
+
+            log.info('New user created: %r' % (user,))
+        elif update:
+            user.password = password
+            user.is_internal = is_internal
+            user.is_admin = is_admin
+            user.is_staff = is_staff
+            user.is_active = is_active
+            user.in_beta = in_beta
+            user.in_alpha = in_alpha
+
+            with db.session.begin():
+                db.session.merge(user)
+
+            log.info('Updated user: %r' % (user,))
+
+        db.session.refresh(user)
+
+        return user
 
     @classmethod
     def find(cls, email=None, password=None, edm_login_fallback=True):
@@ -299,6 +371,44 @@ class User(db.Model, TimestampViewed, UserEDMMixin):
         #    3) the user authenticated against the EDM but has no local user record
 
         return None
+
+    @classmethod
+    def query_search(cls, search=None):
+        from sqlalchemy import or_, and_
+        from app.modules.auth.models import Code, CodeTypes
+
+        if search is not None:
+            search = search.strip().split(' ')
+            search = [term.strip() for term in search]
+            search = [term for term in search if len(term) > 0]
+
+            or_terms = []
+            for term in search:
+                codes = (
+                    Code.query.filter_by(code_type=CodeTypes.checkin)
+                    .filter(
+                        Code.accept_code.contains(term),
+                    )
+                    .all()
+                )
+                code_users = set([])
+                for code in codes:
+                    if not code.is_expired:
+                        code_users.add(code.user.guid)
+
+                or_term = or_(
+                    cls.guid.in_(code_users),
+                    cls.email.contains(term),
+                    cls.affiliation.contains(term),
+                    cls.forum_id.contains(term),
+                    cls.full_name.contains(term),
+                )
+                or_terms.append(or_term)
+            users = cls.query.filter(and_(*or_terms))
+        else:
+            users = cls.query
+
+        return users
 
     @property
     def is_authenticated(self):
@@ -378,12 +488,10 @@ class User(db.Model, TimestampViewed, UserEDMMixin):
 
         return self.get_codes(CodeTypes.recover, replace=True, replace_ttl=None)
 
-    def set_password(self, password=None):
+    def set_password(self, password):
         if password is None:
-            # Generate a random password for the user
-            from app.modules.auth.models import _generate_salt
-
-            password = _generate_salt(128)
+            # This function "sets" the password, it's the responsibility of the caller to ensure it's valid
+            raise ValueError('Empty password not allowed')
 
         self.password = password
         with db.session.begin():

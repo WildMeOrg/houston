@@ -55,7 +55,10 @@ def _request_passthrough(target, path, request_func, passthrough_kwargs):
         raise BadRequest('The specified target %r is invalid.' % (target,))
 
     endpoint_url_ = current_app.edm.get_target_endpoint_url(target)
-    endpoint = '%s/%s' % (endpoint_url_, path,)
+    endpoint = '%s/%s' % (
+        endpoint_url_,
+        path,
+    )
 
     headers = passthrough_kwargs.get('headers', {})
     allowed_header_key_list = [
@@ -92,7 +95,7 @@ def _request_passthrough(target, path, request_func, passthrough_kwargs):
     return response
 
 
-@edm_pass.route('/<string:target>/', defaults={'path': None})
+@edm_pass.route('/<string:target>/', defaults={'path': None}, doc=False)
 @edm_pass.route('/<string:target>/<path:path>')
 @edm_pass.login_required(oauth_scopes=['passthroughs:read'])
 class EDMPassthroughs(Resource):
@@ -106,25 +109,22 @@ class EDMPassthroughs(Resource):
         curl \
             -X POST \
             -c cookie.jar \
-            -H 'Content-Type: multipart/form-data' \
-            -H 'Accept: application/json' \
             -F email=${EMAIL} \
             -F password=${PASSWORD} \
-            https://wildme.ngrok.io/api/v1/auth/sessions | jq
+            https://houston.dyn.wildme.io/api/v1/auth/sessions | jq
         curl \
             -X GET \
             -b cookie.jar \
-            https://wildme.ngrok.io/api/v1/users/me | jq
+            https://houston.dyn.wildme.io/api/v1/users/me | jq
         curl \
             -X POST \
             -b cookie.jar \
-            -H 'Content-type: application/javascript' \
             -d "{\"site.name\": \"value-updated-${TIMESTAMP}\"}" \
-            https://wildme.ngrok.io/api/v1/passthroughs/edm/default/api/v0/configuration | jq
+            https://houston.dyn.wildme.io/api/v1/passthroughs/edm/default/api/v0/configuration | jq
         curl \
             -X GET \
             -b cookie.jar \
-            https://wildme.ngrok.io/api/v1/passthroughs/edm/default/api/v0/configuration/site.name | jq ".response.value"
+            https://houston.dyn.wildme.io/api/v1/passthroughs/edm/default/api/v0/configuration/site.name | jq ".response.value"
     """
 
     def get(self, target, path):

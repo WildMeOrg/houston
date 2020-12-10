@@ -9,11 +9,12 @@ More details are available here:
 * http://flask-oauthlib.readthedocs.org/en/latest/oauth2.html
 * http://lepture.com/en/2013/create-oauth-server
 """
+# from app.modules.users.permissions import PasswordRequiredPermissionMixin
 import flask
 from flask import Blueprint, request, flash, send_file
 from flask_login import login_user, logout_user, login_required, current_user
 import logging
-
+from .util import ensure_admin_exists
 from app.modules.users.models import User
 from app.modules.assets.models import Asset
 
@@ -33,11 +34,23 @@ from .views import (
 log = logging.getLogger(__name__)
 
 backend_blueprint = Blueprint(
-    'backend', __name__, url_prefix='/houston', static_folder=HOUSTON_STATIC_ROOT,
+    'backend',
+    __name__,
+    url_prefix='/houston',
+    static_folder=HOUSTON_STATIC_ROOT,
 )  # pylint: disable=invalid-name
 
 
+# @backend_blueprint.before_app_request
+# def before_app_request():
+#     import utool as ut
+#     ut.embed()
+#     if not current_user and not User.admin_user_initialized():
+#         return redirect(url_for('backend.admin_init'))
+
+
 @backend_blueprint.route('/', methods=['GET'])
+@ensure_admin_exists
 def home(*args, **kwargs):
     # pylint: disable=unused-argument
     """
@@ -69,6 +82,7 @@ def home(*args, **kwargs):
 
 
 @backend_blueprint.route('/login', methods=['POST'])
+@ensure_admin_exists
 def user_login(email=None, password=None, remember=None, refer=None, *args, **kwargs):
     # pylint: disable=unused-argument
     """
@@ -105,7 +119,13 @@ def user_login(email=None, password=None, remember=None, refer=None, *args, **kw
 
             if status:
                 # User logged in organically.
-                log.info('Logged in User (remember = %s): %r' % (remember, user,))
+                log.info(
+                    'Logged in User (remember = %s): %r'
+                    % (
+                        remember,
+                        user,
+                    )
+                )
                 flash('Logged in successfully.', 'success')
                 create_session_oauth2_token()
 
@@ -145,6 +165,7 @@ def user_logout(*args, **kwargs):
 
 @backend_blueprint.route('/asset/<code>', methods=['GET'])
 # @login_required
+@ensure_admin_exists
 def asset(code, *args, **kwargs):
     # pylint: disable=unused-argument
     """
@@ -152,3 +173,54 @@ def asset(code, *args, **kwargs):
     """
     asset = Asset.query.filter_by(code=code).first_or_404()
     return send_file(asset.absolute_filepath, mimetype='image/jpeg')
+
+
+@backend_blueprint.route('/admin_init', methods=['GET'])
+def admin_init(*args, **kwargs):
+    """
+    This endpoint is for initial admin user creation
+    """
+    return _render_template(
+        'home.admin_init.jinja2', admin_exists=User.admin_user_initialized()
+    )
+
+
+@backend_blueprint.route('/admin_init', methods=['POST'])
+def create_admin_user(email=None, password=None, repeat_password=None, *args, **kwargs):
+    """
+    This endpoint creates the initial admin user if none exists
+    """
+    message = None
+
+    if User.admin_user_initialized():
+        message = 'This function is disabled. Admin user exists.'
+    else:
+        log.info('Attempting to create first run admin user.')
+        if email is None:
+            email = request.form.get('email', None)
+        if password is None:
+            password = request.form.get('password', None)
+        if repeat_password is None:
+            repeat_password = request.form.get('repeat_password', None)
+
+        if password == repeat_password:
+            if None not in [email, password, repeat_password]:
+                admin = User.ensure_user(
+                    email,
+                    password,
+                    is_admin=True,
+                    update=True,
+                )
+                if admin.is_admin:
+                    message = 'Success creating startup admin user.'
+                    # update configuration value for admin user created
+                    return flask.redirect(_url_for('backend.home'))
+                else:
+                    message = 'We failed to create or update the user as an admin.'
+            else:
+                message = 'You must specify all fields.'
+        else:
+            message = 'The password fields do not match.'
+
+    if message is not None:
+        flash(message)

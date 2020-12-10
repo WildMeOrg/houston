@@ -13,11 +13,10 @@ import logging
 import enum
 
 from sqlalchemy import or_
-from sqlalchemy_utils import Timestamp
 from sqlalchemy_utils.types import ScalarListType
-from werkzeug import security
 
-from app.extensions import db
+from app.extensions import db, HoustonModel
+from app.extensions.auth import security
 from app.modules.users.models import User
 
 import datetime
@@ -86,18 +85,6 @@ CODE_SETTINGS = {
 }
 
 
-def _generate_salt(length):
-    return security.gen_salt(length)
-
-
-def _generate_salt_64(*args, **kwargs):
-    return _generate_salt(64)
-
-
-def _generate_salt_128(*args, **kwargs):
-    return _generate_salt(128)
-
-
 class OAuth2Client(db.Model):
     """
     Model that binds OAuth2 Client ID and Secret to a specific User.
@@ -106,7 +93,9 @@ class OAuth2Client(db.Model):
     __tablename__ = 'oauth2_client'
 
     guid = db.Column(db.GUID, default=uuid.uuid4, primary_key=True)
-    secret = db.Column(db.String(length=64), default=_generate_salt_64, nullable=False)
+    secret = db.Column(
+        db.String(length=64), default=security.generate_random_64, nullable=False
+    )
 
     user_guid = db.Column(
         db.ForeignKey('user.guid', ondelete='CASCADE'), index=True, nullable=False
@@ -171,7 +160,10 @@ class OAuth2Grant(db.Model):
     user = db.relationship('User')
 
     client_guid = db.Column(
-        db.GUID, db.ForeignKey('oauth2_client.guid'), index=True, nullable=False,
+        db.GUID,
+        db.ForeignKey('oauth2_client.guid'),
+        index=True,
+        nullable=False,
     )
     client = db.relationship('OAuth2Client')
 
@@ -213,7 +205,10 @@ class OAuth2Token(db.Model):
     )  # pylint: disable=invalid-name
 
     client_guid = db.Column(
-        db.GUID, db.ForeignKey('oauth2_client.guid'), index=True, nullable=False,
+        db.GUID,
+        db.ForeignKey('oauth2_client.guid'),
+        index=True,
+        nullable=False,
     )
     client = db.relationship('OAuth2Client')
 
@@ -229,10 +224,16 @@ class OAuth2Token(db.Model):
     token_type = db.Column(db.Enum(TokenTypes), nullable=False)
 
     access_token = db.Column(
-        db.String(length=128), default=_generate_salt_128, unique=True, nullable=False
+        db.String(length=128),
+        default=security.generate_random_128,
+        unique=True,
+        nullable=False,
     )
     refresh_token = db.Column(
-        db.String(length=128), default=_generate_salt_128, unique=True, nullable=True
+        db.String(length=128),
+        default=security.generate_random_128,
+        unique=True,
+        nullable=True,
     )
     expires = db.Column(db.DateTime, nullable=False)
     scopes = db.Column(ScalarListType(separator=' '), nullable=False)
@@ -264,12 +265,10 @@ class OAuth2Token(db.Model):
         return expired
 
 
-class Code(db.Model, Timestamp):
+class Code(db.Model, HoustonModel):
     """
     OAuth2 Access Tokens storage model.
     """
-
-    __tablename__ = 'code'
 
     guid = db.Column(
         db.GUID, default=uuid.uuid4, primary_key=True
@@ -429,7 +428,12 @@ class Code(db.Model, Timestamp):
     @classmethod
     def find(cls, code):
         matched_codes = (
-            Code.query.filter(or_(Code.accept_code == code, Code.reject_code == code,))
+            Code.query.filter(
+                or_(
+                    Code.accept_code == code,
+                    Code.reject_code == code,
+                )
+            )
             .order_by(cls.created.desc())
             .all()
         )

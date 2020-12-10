@@ -9,7 +9,6 @@ import logging
 import datetime  # NOQA
 import pytz
 
-from sqlalchemy import or_, and_
 
 from flask import current_app  # NOQA
 from flask_login import current_user
@@ -21,9 +20,6 @@ from app.extensions.api import Namespace
 
 from . import permissions, schemas, parameters
 from .models import db, User
-
-from app.modules.auth.models import Code, CodeTypes
-from app.modules.assets.resources import process_file_upload
 
 
 log = logging.getLogger(__name__)
@@ -54,34 +50,7 @@ class Users(Resource):
         if search is not None and len(search) == 0:
             search = None
 
-        if search is not None:
-            search = search.strip().split(' ')
-            search = [term.strip() for term in search]
-            search = [term for term in search if len(term) > 0]
-
-            or_terms = []
-            for term in search:
-                codes = (
-                    Code.query.filter_by(code_type=CodeTypes.checkin)
-                    .filter(Code.accept_code.contains(term),)
-                    .all()
-                )
-                code_users = set([])
-                for code in codes:
-                    if not code.is_expired:
-                        code_users.add(code.user.guid)
-
-                or_term = or_(
-                    User.guid.in_(code_users),
-                    User.email.contains(term),
-                    User.affiliation.contains(term),
-                    User.forum_id.contains(term),
-                    User.full_name.contains(term),
-                )
-                or_terms.append(or_term)
-            users = User.query.filter(and_(*or_terms))
-        else:
-            users = User.query
+        users = User.query_search(search)
 
         return users.order_by(User.guid)
 
@@ -89,13 +58,12 @@ class Users(Resource):
     @api.response(schemas.DetailedUserSchema())
     @api.response(code=HTTPStatus.FORBIDDEN)
     @api.response(code=HTTPStatus.CONFLICT)
+    @api.response(code=HTTPStatus.BAD_REQUEST)
     @api.doc(id='create_user')
     def post(self, args):
         """
         Create a new user.
         """
-        from app.modules.auth.models import _generate_salt
-
         email = args.get('email', None)
         user = User.query.filter_by(email=email).first()
 
@@ -105,7 +73,7 @@ class Users(Resource):
             )
 
         if 'password' not in args:
-            args['password'] = _generate_salt(128)
+            abort(code=HTTPStatus.BAD_REQUEST, message='Must provide a password')
 
         args['is_active'] = True
 
@@ -140,7 +108,8 @@ class Users(Resource):
 @api.route('/<uuid:user_guid>')
 @api.login_required(oauth_scopes=['users:read'])
 @api.response(
-    code=HTTPStatus.NOT_FOUND, description='User not found.',
+    code=HTTPStatus.NOT_FOUND,
+    description='User not found.',
 )
 @api.resolve_object_by_model(User, 'user')
 class UserByID(Resource):
@@ -183,40 +152,6 @@ class UserByID(Resource):
         return user
 
 
-@api.route('/picture/<uuid:user_guid>')
-@api.login_required(oauth_scopes=['assets:read', 'users:read'])
-@api.response(
-    code=HTTPStatus.NOT_FOUND, description='User not found.',
-)
-@api.resolve_object_by_model(User, 'user')
-class UserArtworkByID(Resource):
-    """
-    Manipulations with a specific User.
-    """
-
-    @api.login_required(oauth_scopes=['assets:write', 'users:write'])
-    @api.permission_required(
-        permissions.OwnerModifyRolePermission,
-        kwargs_on_request=lambda kwargs: {'obj': kwargs['user']},
-    )
-    @api.permission_required(permissions.WriteAccessPermission())
-    @api.response(schemas.DetailedUserSchema())
-    @api.response(code=HTTPStatus.CONFLICT)
-    def post(self, user):
-        """
-        Create a new instance of Asset.
-        """
-        asset = process_file_upload(square=True)
-        context = api.commit_or_abort(
-            db.session, default_error_message='Failed to update User details.'
-        )
-        with context:
-            user.profile_asset_guid = asset.guid
-            db.session.merge(user)
-
-        return user
-
-
 @api.route('/me')
 @api.login_required(oauth_scopes=['users:read'])
 class UserMe(Resource):
@@ -230,6 +165,65 @@ class UserMe(Resource):
         Get current user details.
         """
         return User.query.get_or_404(current_user.guid)
+
+
+@api.route('/admin_user_initialized')
+class AdminUserInitialized(Resource):
+    def get(self):
+        """
+        Checks if admin user exists and returns bool
+        """
+        admin_initialized = User.admin_user_initialized()
+        return {'initialized': admin_initialized}
+
+    @api.parameters(parameters.AdminUserInitializedParameters())
+    @api.response(code=HTTPStatus.CONFLICT)
+    @api.response(code=HTTPStatus.METHOD_NOT_ALLOWED)
+    def post(self, args):
+        """
+        Creates initial startup admin if none exists.
+
+        CommandLine:
+            curl \
+                -X GET \
+                http://127.0.0.1:5000/api/v1/users/admin_user_initialized | jq
+
+            EMAIL='test@wildme.org'
+            PASSWORD='test'
+            curl \
+                -X POST \
+                -H 'Content-Type: multipart/form-data' \
+                -H 'Accept: application/json' \
+                -F email=${EMAIL} \
+                -F password=${PASSWORD} \
+                http://127.0.0.1:5000/api/v1/users/admin_user_initialized | jq
+
+            curl \
+                -X POST \
+                -H 'Content-Type: application/json' \
+                -d '{"password":"hello", "email":"bob@bob.com"}' \
+                http://127.0.0.1:5000/api/v1/users/admin_user_initialized | jq
+        """
+        if User.admin_user_initialized():
+            log.warning(
+                'First-run admin user creation was attempted but an admin already exists.'
+            )
+            abort(
+                code=HTTPStatus.METHOD_NOT_ALLOWED,
+                message='Disabled because the initial startup admin already exists.',
+            )
+        else:
+            email = args.get('email', None)
+            password = args.get('password', None)
+            admin = User.ensure_user(
+                email,
+                password,
+                is_admin=True,
+                update=True,
+            )
+            log.info('Success creating startup admin user via API: %r.' % (admin,))
+
+        return {'initialized': True}
 
 
 @api.route('/edm/sync')

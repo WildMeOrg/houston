@@ -35,7 +35,8 @@ def create_new_user(flask_app_client, data, must_succeed=True):
 def test_new_user_creation(patch_User_password_scheme, flask_app_client, db):
     # pylint: disable=invalid-name,unused-argument
     user_guid = create_new_user(
-        flask_app_client, data={'email': 'user1@localhost', 'password': 'user1_password'},
+        flask_app_client,
+        data={'email': 'user1@localhost', 'password': 'user1_password'},
     )
     assert isinstance(user_guid, uuid.UUID)
 
@@ -111,7 +112,8 @@ def test_new_user_creation_without_captcha_but_admin_user(
 def test_new_user_creation_duplicate_must_fail(flask_app_client, db):
     # pylint: disable=invalid-name
     user_guid = create_new_user(
-        flask_app_client, data={'email': 'user1@localhost', 'password': 'user1_password'},
+        flask_app_client,
+        data={'email': 'user1@localhost', 'password': 'user1_password'},
     )
     response = create_new_user(
         flask_app_client,
@@ -128,3 +130,16 @@ def test_new_user_creation_duplicate_must_fail(flask_app_client, db):
     user1_instance = User.query.get(user_guid)
     with db.session.begin():
         db.session.delete(user1_instance)
+
+
+def test_new_user_creation_no_password_must_fail(flask_app_client):
+    # pylint: disable=invalid-name
+    response = create_new_user(
+        flask_app_client,
+        data={'email': 'user1@localhost'},
+        must_succeed=False,
+    )
+
+    assert response.status_code == 422
+    assert response.content_type == 'application/json'
+    assert set(response.json.keys()) >= {'status', 'message'}

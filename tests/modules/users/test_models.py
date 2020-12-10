@@ -4,6 +4,7 @@
 import pytest
 
 from app.modules.users import models
+from tests import utils
 
 
 def test_User_repr(user_instance):
@@ -82,14 +83,20 @@ def test_User_static_roles_setting(
 
 def test_User_check_owner(user_instance):
     assert user_instance.check_owner(user_instance)
-    assert not user_instance.check_owner(models.User())
+
+    second_user = utils.generate_user_instance()
+    assert not user_instance.check_owner(second_user)
 
 
 def test_User_find_with_password(
     patch_User_password_scheme, db
 ):  # pylint: disable=unused-argument
     def create_user(email, password):
-        user = models.User(email=email, password=password, full_name='any any any',)
+        user = models.User(
+            email=email,
+            password=password,
+            full_name='any any any',
+        )
         return user
 
     user1 = create_user('user1@localhost', 'user1password')
@@ -107,3 +114,9 @@ def test_User_find_with_password(
     with db.session.begin():
         db.session.delete(user1)
         db.session.delete(user2)
+
+
+def test_User_must_have_password():
+    with pytest.raises(ValueError, match='User must have a password'):
+        user = models.User(email='user1@localhost', full_name='Lord Lucan')
+        print(user)

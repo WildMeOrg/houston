@@ -23,6 +23,8 @@ Flask-Paranoid
 flask-restplus>=0.11.0,<0.12
 Flask-SQLAlchemy>=2.4,<3
 
+gitpython
+
 marshmallow>=2.13.5,<3
 marshmallow-sqlalchemy>=0.12,<0.13
 passlib>=1.7.1,<2
@@ -32,6 +34,9 @@ Pillow
 premailer
 
 pygeocoder
+python-gitlab
+python-magic
+
 scikit-build
 
 sentry-sdk>=0.10.2
@@ -51,4 +56,5 @@ utool
 webargs==5.5.2
 werkzeug>=0.15,<0.16
 wheel
-xkcdpass
+
+xxhash

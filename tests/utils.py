@@ -139,8 +139,9 @@ class CloneSubmission(object):
 
 
 # Clone the submission within a try/except/finally structure to ensure that cleanup is called to clean up
-# the files etc
-def clone_submission(flask_app_client, regular_user, submission_uuid, force_clone = False):
+# the files etc.
+# If later_usage is set, it's the callers responsibility to call the cleanup method.
+def clone_submission(flask_app_client, regular_user, submission_uuid, force_clone = False, later_usage = False):
     clone = CloneSubmission(flask_app_client, regular_user, submission_uuid, force_clone)
     try:
         assert clone.response.status_code == 200
@@ -152,7 +153,9 @@ def clone_submission(flask_app_client, regular_user, submission_uuid, force_clon
     except Exception as ex:
         clone.cleanup()
         raise ex
-
+    finally:
+        if not later_usage:
+            clone.cleanup()
     return clone
 
 def generate_user_instance(

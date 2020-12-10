@@ -7,7 +7,7 @@ def test_find_asset(
     flask_app_client, regular_user, admin_user, db, test_clone_submission_uuid, test_asset_uuid
 ):
     # Clone the known submission so that the asset data is in the database
-    clone = clone_submission(flask_app_client, regular_user, test_clone_submission_uuid)
+    clone = clone_submission(flask_app_client, regular_user, test_clone_submission_uuid, later_usage=True)
 
     try:
         # For reasons that are not clear, you can clone as a regular user but need admin role to read the asset but not the data
@@ -34,7 +34,7 @@ def test_find_deleted_asset(
     flask_app_client, regular_user, admin_user, db, test_clone_submission_uuid, test_asset_uuid
 ):
     # Clone the known submission so that the asset data is in the database
-    clone = clone_submission(flask_app_client, regular_user, test_clone_submission_uuid)
+    clone = clone_submission(flask_app_client, regular_user, test_clone_submission_uuid, later_usage=True)
 
     try:
         # As for the test above but now remove the files so that Houston knows about the asset but does not have the files

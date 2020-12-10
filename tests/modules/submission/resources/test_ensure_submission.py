@@ -8,22 +8,19 @@ from app.modules.assets.models import Asset
 def test_ensure_submission_by_uuid(
     flask_app_client, regular_user, db, test_submission_uuid
 ):
-    clone = clone_submission(flask_app_client, regular_user, test_submission_uuid)
-    clone.cleanup()
-
+    clone_submission(flask_app_client, regular_user, test_submission_uuid)
 
 def test_ensure_empty_submission_by_uuid(
     flask_app_client, regular_user, db, test_empty_submission_uuid
 ):
-    clone = clone_submission(flask_app_client, regular_user, test_empty_submission_uuid)
-    clone.cleanup()
+    clone_submission(flask_app_client, regular_user, test_empty_submission_uuid)
 
 def test_ensure_clone_submission_by_uuid(
     flask_app_client, regular_user, db, test_clone_submission_uuid
 ):
     from app.modules.submissions.models import SubmissionMajorType
 
-    clone = clone_submission(flask_app_client, regular_user, test_clone_submission_uuid)
+    clone = clone_submission(flask_app_client, regular_user, test_clone_submission_uuid, later_usage = True)
 
     try:
         assert clone.temp_submission.major_type == SubmissionMajorType.test

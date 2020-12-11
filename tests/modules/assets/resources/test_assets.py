@@ -36,6 +36,9 @@ def test_find_asset(
             == '0b546f813ec9631ce5c9b1dd579c623b'
         )
 
+        # Force the server to release the file handler
+        src_response.close()
+
     except Exception as ex:
         raise ex
     finally:
@@ -76,6 +79,9 @@ def test_find_deleted_asset(
             hashlib.md5(src_response.data).hexdigest()
             == '0b546f813ec9631ce5c9b1dd579c623b'
         )
+
+        # Force the server to release the file handler
+        src_response.close()
 
     except Exception as ex:
         raise ex

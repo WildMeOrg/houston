@@ -2,7 +2,6 @@
 # pylint: disable=missing-docstring
 import uuid
 from tests.utils import clone_submission
-from app.modules.assets.models import Asset
 
 
 def test_ensure_submission_by_uuid(
@@ -21,6 +20,7 @@ def test_ensure_clone_submission_by_uuid(
     flask_app_client, regular_user, db, test_clone_submission_uuid
 ):
     from app.modules.submissions.models import SubmissionMajorType
+    from app.modules.assets.models import Asset
 
     clone = clone_submission(
         flask_app_client, regular_user, test_clone_submission_uuid, later_usage=True

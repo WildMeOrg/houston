@@ -9,7 +9,6 @@ from flask import current_app
 
 from app.extensions import db, HoustonModel, parallel
 
-from app.modules.assets.models import Asset
 from app.version import version
 
 import logging
@@ -267,6 +266,7 @@ class Submission(db.Model, HoustonModel):
             https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/MIME_types/Common_types
             http://www.iana.org/assignments/media-types/media-types.xhtml
         """
+        from app.modules.assets.models import Asset
         import utool as ut
         import magic
 

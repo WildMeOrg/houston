@@ -15,7 +15,9 @@ from app.extensions.auth import security
 from app.extensions.edm import EDMObjectMixin
 from app.extensions.api.parameters import _get_is_static_role_property
 
-from app.modules.assets.models import Asset
+# In order to support OrganizationUserMemberships
+# we must import the model definitions for organizations here
+from app.modules.organizations import models as organizations_models  # NOQA
 
 import pytz
 import uuid
@@ -154,11 +156,7 @@ class User(db.Model, FeatherModel, UserEDMMixin):
         db.GUID, nullable=True
     )  # should be reconciled with Jon's MediaAsset class
 
-    # This addition causes all of the pytests to fail.
-    # organization_guid = db.Column(
-    #    db.GUID, db.ForeignKey('organization.guid'), index=True, nullable=True
-    # )
-    # organization = db.relationship('Organization', backref=db.backref('members'))
+    memberships = db.relationship('OrganizationUserMemberships', back_populates='member')
 
     class StaticRoles(enum.Enum):
         # pylint: disable=missing-docstring,unsubscriptable-object
@@ -402,6 +400,8 @@ class User(db.Model, FeatherModel, UserEDMMixin):
 
     @property
     def picture(self):
+        from app.modules.assets.models import Asset
+
         asset = Asset.query.filter_by(id=self.profile_asset_guid).first()
         if asset is None:
             placeholder_guid = (self.guid % 7) + 1

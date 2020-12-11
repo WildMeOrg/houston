@@ -6,7 +6,6 @@ Organizations database models
 
 from app.extensions import db, HoustonModel
 from app.extensions.edm import EDMObjectMixin
-from app.modules.users.models import User
 
 import logging
 import uuid
@@ -70,6 +69,8 @@ class OrganizationEDMMixin(EDMObjectMixin):
         return organization, is_new
 
     def _process_members(self, members):
+        from app.modules.users.models import User
+
         for member in members:
             log.info('Adding Member ID %s' % (member.id,))
             user, is_new = User.ensure_edm_obj(member.id)
@@ -79,18 +80,31 @@ class OrganizationEDMMixin(EDMObjectMixin):
             #    self.members.append(user)
 
     def _process_logo(self, logo):
-        self.logoGuid = logo.uuid
-        self.logoUrl = logo.url
+        self.logo_guid = logo.uuid
+        self.logo_url = logo.url
 
     def _process_created_date(self, created_date):
-        self.createdDate = datetime.datetime.strptime(
+        self.created = datetime.datetime.strptime(
             created_date, DATETIME_FMTSTR
         ).astimezone(TIMEZONE)
 
     def _process_modified_date(self, modified_date):
-        self.modifiedDate = datetime.datetime.strptime(
+        self.updated = datetime.datetime.strptime(
             modified_date, DATETIME_FMTSTR
         ).astimezone(TIMEZONE)
+
+
+class OrganizationUserMemberships(db.Model, HoustonModel):
+
+    organization_guid = db.Column(
+        db.GUID, db.ForeignKey('organization.guid'), primary_key=True
+    )
+
+    user_guid = db.Column(db.GUID, db.ForeignKey('user.guid'), primary_key=True)
+
+    membership = db.relationship('Organization', back_populates='members')
+
+    member = db.relationship('User', back_populates='memberships')
 
 
 class Organization(db.Model, HoustonModel, OrganizationEDMMixin):
@@ -103,17 +117,13 @@ class Organization(db.Model, HoustonModel, OrganizationEDMMixin):
     )  # pylint: disable=invalid-name
     version = db.Column(db.Integer, default=None, nullable=True)
     title = db.Column(db.String(length=50), nullable=False)
-    # todo why can dateTimes in the auth class be non Nullable but in here the upgrade fails?
-    createdDate = db.Column(
-        db.DateTime, default=datetime.datetime.now(tz=TIMEZONE), nullable=True
-    )
-    modifiedDate = db.Column(
-        db.DateTime, default=datetime.datetime.now(tz=TIMEZONE), nullable=True
-    )
 
-    logoGuid = db.Column(db.GUID, default=uuid.uuid4, nullable=True)
-    logoUrl = db.Column(db.String(length=200), nullable=True)
+    logo_guid = db.Column(db.GUID, default=uuid.uuid4, nullable=True)
+    logo_url = db.Column(db.String(length=200), nullable=True)
+
     website = db.Column(db.String(length=120), nullable=True)
+
+    members = db.relationship('OrganizationUserMemberships', back_populates='membership')
 
     def __repr__(self):
         return (
@@ -121,8 +131,7 @@ class Organization(db.Model, HoustonModel, OrganizationEDMMixin):
             'guid={self.guid}, '
             'title="{self.title}", '
             'website={self.website}, '
-            'logoUrl={self.logoUrl}, '
-            #'members={self.members}'
+            'logo={self.logo_url}, '
             ')>'.format(class_name=self.__class__.__name__, self=self)
         )
 

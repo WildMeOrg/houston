@@ -149,9 +149,11 @@ class Asset(db.Model, HoustonModel):
         source_path = self.get_or_make_master_format_path()
         if format == 'master':  # if so, we are done!
             return source_path
-        source_image = Image.open(source_path)
-        source_image.thumbnail(FORMAT[format])
-        source_image.save(target_path)
+
+        with Image.open(source_path) as source_image:
+            source_image.thumbnail(FORMAT[format])
+            source_image.save(target_path)
+
         return target_path
 
     # note: Image seems to *strip exif* sufficiently here (tested with gps, comments, etc) so this may be enough!
@@ -163,9 +165,11 @@ class Asset(db.Model, HoustonModel):
         if os.path.exists(target_path):
             return target_path
         log.info('make_master_format() creating master format as %r' % (target_path,))
-        source_image = Image.open(source_path)
-        source_image.thumbnail((4096, 4096))  # TODO get from more global FORMAT re: above
-        source_image.save(target_path)
+        with Image.open(source_path) as source_image:
+            source_image.thumbnail(
+                (4096, 4096)
+            )  # TODO get from more global FORMAT re: above
+            source_image.save(target_path)
         return target_path
 
     def delete(self):

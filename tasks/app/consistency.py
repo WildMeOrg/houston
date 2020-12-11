@@ -9,7 +9,6 @@ import logging
 import tqdm
 
 from app.extensions import db
-from app.modules.users.models import User
 
 from ._utils import app_context_task
 
@@ -18,6 +17,8 @@ log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
 @app_context_task
 def user_staff_permissions(context):
+    from app.modules.users.models import User
+
     users = User.query.all()
 
     updated = 0

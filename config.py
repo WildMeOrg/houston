@@ -100,20 +100,50 @@ class BaseConfig(object):
         },
     }
 
+    # fmt: off
+    # THIS ORDERING IS VERY SPECIFIC AND INFLUENCES WHICH MODULES CAN DEPEND ON EACH OTHER
     ENABLED_MODULES = (
-        # THIS ORDERING IS VERY SPECIFIC AND INFLUENCES WHICH MODULES CAN DEPEND ON EACH OTHER
-        'submissions',
-        'assets',
-        'auth',
-        'frontend',
+        # Users
+        #   Dependencies: [NONE]
         'users',
-        'encounters',
+
+        # Organizations
+        #   Dependencies: Users
+        #
+        #   Note: Organization defines a many-to-many relationship with User
+        #         and will import app.modules.organizations.models when the
+        #         User module and object are imported.  Disabling the
+        #         'organizations' modules will currently break the implementation
+        #         of the User model because it creates a broken backref
         'organizations',
+
+        # Authentication
+        #   Dependencies: Users
+        'auth',
+
+        # Submissions
+        #   Dependencies: Users
+        'submissions',
+
+        # Assets
+        #   Dependencies: Submissions
+        'assets',
+
+        # Miscellaneous
         'collaborations',
+        'encounters',
+
+        # Front-end
+        #   Dependencies: Users, Auth, Assets
+        'frontend',
+
+        # REST APIs = API, Passthroughs, Configuration
+        #   Dependencies: Users, Auth
         'api',
         'passthroughs',
         'configuration',
     )
+    # fmt: on
 
     STATIC_ROOT = os.path.join(PROJECT_ROOT, 'app', 'static')
 

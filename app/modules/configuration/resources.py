@@ -12,6 +12,7 @@ from flask_restplus_patched import Resource
 from flask_restplus._http import HTTPStatus
 from app.extensions.api import Namespace
 from app.extensions.api import abort
+
 from app.modules.users.models import User
 
 from werkzeug.exceptions import BadRequest

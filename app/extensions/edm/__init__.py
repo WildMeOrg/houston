@@ -388,11 +388,11 @@ class EDMManager(EDMManagerEndpointMixin, EDMManagerUserMixin):
 
 class EDMObjectMixin(object):
     @classmethod
-    def edm_sync_all(cls, name, verbose=True, refresh=False):
-        edm_items = current_app.edm.get_list('%s.list' % (name,))
+    def edm_sync_all(cls, verbose=True, refresh=False):
+        edm_items = current_app.edm.get_list('%s.list' % (cls.EDM_NAME,))
 
         if verbose:
-            log.info('Checking %d EDM %ss against local cache...' % (len(edm_items), name))
+            log.info('Checking %d EDM %ss against local cache...' % (len(edm_items), cls.EDM_NAME))
 
         new_items = []
         stale_items = []
@@ -409,19 +409,19 @@ class EDMObjectMixin(object):
                 stale_items.append((model_obj, version))
 
         if verbose:
-            log.info('Added %d new %ss' % (len(new_items), name))
+            log.info('Added %d new %ss' % (len(new_items), cls.EDM_NAME))
 
         if verbose:
-            log.info('Updating %d stale %ss using EDM...' % (len(stale_items), name,))
+            log.info('Updating %d stale %ss using EDM...' % (len(stale_items), cls.EDM_NAME,))
 
         updated_items = []
         failed_items = []
         for model_obj, version in tqdm.tqdm(stale_items):
             try:
-                model_obj.sync_edm_item(model_obj.guid, '%s.data' % (name,), version)
+                model_obj.sync_edm_item(model_obj.guid, version)
                 updated_items.append(model_obj)
             except sqlalchemy.exc.IntegrityError:
-                log.error('Error updating %s %r' % (name, model_obj,))
+                log.error('Error updating %s %r' % (cls.EDM_NAME, model_obj,))
                 failed_items.append(model_obj)
 
         return edm_items, new_items, updated_items, failed_items
@@ -503,8 +503,8 @@ class EDMObjectMixin(object):
         else:
             log.info('Updating to found version %r' % (found_version,))
 
-    def sync_edm_item(self, guid, item_name, version):
-        response = current_app.edm.get_data_item(guid, item_name)
+    def sync_edm_item(self, guid, version):
+        response = current_app.edm.get_data_item(guid, '%s.data' % (self.EDM_NAME,))
 
         assert response.success
         data = response.result

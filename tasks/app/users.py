@@ -125,6 +125,6 @@ def sync_edm(context, refresh = False):
     """
     Sync the users from the EDM onto the local Hudson
     """
-    User.edm_sync_users(refresh=refresh)
+    User.edm_sync_all(refresh=refresh)
 
 

@@ -31,6 +31,9 @@ PST = pytz.timezone('US/Pacific')
 class UserEDMMixin(EDMObjectMixin):
 
     # fmt: off
+    # Name of the module, used for knowing what to sync i.e user.list, user.data
+    EDM_NAME = 'user'
+
     # The EDM attribute for the version, if reported
     EDM_VERSION_ATTRIBUTE = 'version'
 
@@ -82,9 +85,6 @@ class UserEDMMixin(EDMObjectMixin):
                 is_new = True
 
         return user, is_new
-    @classmethod
-    def edm_sync_users(cls, verbose=True, refresh=False):
-        return cls.edm_sync_all('user', verbose, refresh)
 
     def _process_edm_user_profile_url(self, url):
         log.warning('User._process_edm_profile_url() not implemented yet')
@@ -329,7 +329,7 @@ class User(db.Model, FeatherModel, UserEDMMixin):
                                 'The user authenticated via EDM but has no local user record'
                             )
                             # Try syncing all users from EDM
-                            cls.edm_sync_users()
+                            cls.edm_sync_all()
                             # If the user was just synced, go grab it (recursively) and return
                             user = cls.find(email=email, edm_login_fallback=False)
                             return user

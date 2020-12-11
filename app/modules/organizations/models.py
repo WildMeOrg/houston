@@ -22,6 +22,9 @@ log = logging.getLogger(__name__)
 class OrganizationEDMMixin(EDMObjectMixin):
 
     # fmt: off
+    # Name of the module, used for knowing what to sync i.e organization.list, organization.data
+    EDM_NAME = 'organization'
+
     # The EDM attribute for the version, if reported
     EDM_VERSION_ATTRIBUTE = 'version'
 
@@ -65,14 +68,10 @@ class OrganizationEDMMixin(EDMObjectMixin):
 
         return organization, is_new
 
-    @classmethod
-    def edm_sync_organizations(cls, verbose=True, refresh=False):
-        return cls.edm_sync_all('organization', verbose, refresh)
-
     def _process_members(self, members):
         for member in members:
             log.info("Adding Member ID %s" % (member.id,))
-            user = User.ensure_user(member.id)
+            user, is_new = User.ensure_edm_obj(member.id)
 
             # todo restore once the tests work
             #with db.session.begin():
@@ -113,7 +112,8 @@ class Organization(db.Model, HoustonModel, OrganizationEDMMixin):
             'guid={self.guid}, '
             'title="{self.title}", '
             'website={self.website}, '
-            'logoUrl={self.logoUrl}'
+            'logoUrl={self.logoUrl}, '
+            #'members={self.members}'
             ')>'.format(class_name=self.__class__.__name__, self=self)
         )
 

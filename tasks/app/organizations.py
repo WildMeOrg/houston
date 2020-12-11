@@ -22,5 +22,4 @@ def sync_edm(context, refresh=False):
     """
     Sync the organizations from the EDM onto the local Hudson
     """
-    Organization.edm_sync_organizations(refresh=refresh)
-
+    Organization.edm_sync_all(refresh=refresh)

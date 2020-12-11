@@ -7,7 +7,6 @@ import enum
 import logging
 
 from flask import url_for, current_app
-import sqlalchemy
 from sqlalchemy_utils import types as column_types
 
 from flask_login import current_user  # NOQA
@@ -21,7 +20,6 @@ from app.modules.assets.models import Asset
 import pytz
 import uuid
 
-import tqdm
 
 log = logging.getLogger(__name__)
 
@@ -32,6 +30,9 @@ PST = pytz.timezone('US/Pacific')
 class UserEDMMixin(EDMObjectMixin):
 
     # fmt: off
+    # Name of the module, used for knowing what to sync i.e user.list, user.data
+    EDM_NAME = 'user'
+
     # The EDM attribute for the version, if reported
     EDM_VERSION_ATTRIBUTE = 'version'
 
@@ -41,7 +42,7 @@ class UserEDMMixin(EDMObjectMixin):
     ]
 
     EDM_ATTRIBUTE_MAPPING = {
-        # Ignorerd
+        # Ignored
         'id'                    : None,
         'lastLogin'             : None,
         'username'              : None,
@@ -63,66 +64,26 @@ class UserEDMMixin(EDMObjectMixin):
     # fmt: on
 
     @classmethod
-    def edm_sync_users(cls, verbose=True, refresh=False):
-        edm_users = current_app.edm.get_users()
-
-        if verbose:
-            log.info('Checking %d EDM users against local cache...' % (len(edm_users),))
-
-        new_users = []
-        stale_users = []
+    def ensure_edm_obj(cls, guid):
         with db.session.begin():
-            for guid in tqdm.tqdm(edm_users):
-                user = edm_users[guid]
-                version = user.get('version', None)
-                assert version is not None
+            user = User.query.filter(User.guid == guid).first()
+            is_new = False
 
-                user = User.query.filter(User.guid == guid).first()
+            if user is None:
+                email = '%s@localhost' % (guid,)
+                password = security.generate_random(128)
+                user = User(
+                    guid=guid,
+                    email=email,
+                    password=password,
+                    version=None,
+                    is_active=True,
+                    in_alpha=True,
+                )
+                db.session.add(user)
+                is_new = True
 
-                if user is None:
-                    email = '%s@localhost' % (guid,)
-                    password = security.generate_random(128)
-                    user = User(
-                        guid=guid,
-                        email=email,
-                        password=password,
-                        version=None,
-                        is_active=True,
-                        in_alpha=True,
-                    )
-                    db.session.add(user)
-                    new_users.append(user)
-
-                if user.version != version or refresh:
-                    stale_users.append((user, version))
-
-        if verbose:
-            log.info('Added %d new users' % (len(new_users),))
-
-        if verbose:
-            log.info('Updating %d stale users using EDM...' % (len(stale_users),))
-
-        updated_users = []
-        failed_users = []
-        for user, version in tqdm.tqdm(stale_users):
-            try:
-                user.edm_sync(version)
-                updated_users.append(user)
-            except sqlalchemy.exc.IntegrityError:
-                log.error('Error updating user %r' % (user,))
-                failed_users.append(user)
-
-        return edm_users, new_users, updated_users, failed_users
-
-    def edm_sync(self, version):
-        response = current_app.edm.get_user_data(self.guid)
-
-        assert response.success
-        data = response.result
-
-        assert uuid.UUID(data.id) == self.guid
-
-        self._process_edm_data(data, version)
+        return user, is_new
 
     def _process_edm_user_profile_url(self, url):
         log.warning('User._process_edm_profile_url() not implemented yet')
@@ -193,6 +154,12 @@ class User(db.Model, FeatherModel, UserEDMMixin):
         db.GUID, nullable=True
     )  # should be reconciled with Jon's MediaAsset class
 
+    # This addition causes all of the pytests to fail.
+    # organization_guid = db.Column(
+    #    db.GUID, db.ForeignKey('organization.guid'), index=True, nullable=True
+    # )
+    # organization = db.relationship('Organization', backref=db.backref('members'))
+
     class StaticRoles(enum.Enum):
         # pylint: disable=missing-docstring,unsubscriptable-object
         INTERNAL = (0x8000, 'Internal')
@@ -231,6 +198,7 @@ class User(db.Model, FeatherModel, UserEDMMixin):
             '<{class_name}('
             'guid={self.guid}, '
             'email="{self.email}", '
+            'name="{self.full_name}", '
             'is_internal={self.is_internal}, '
             'is_admin={self.is_admin}, '
             'is_staff={self.is_staff}, '
@@ -360,7 +328,7 @@ class User(db.Model, FeatherModel, UserEDMMixin):
                                 'The user authenticated via EDM but has no local user record'
                             )
                             # Try syncing all users from EDM
-                            cls.edm_sync_users()
+                            cls.edm_sync_all()
                             # If the user was just synced, go grab it (recursively) and return
                             user = cls.find(email=email, edm_login_fallback=False)
                             return user

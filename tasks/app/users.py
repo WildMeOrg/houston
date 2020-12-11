@@ -4,6 +4,7 @@ Application Users management related tasks for Invoke.
 """
 
 from ._utils import app_context_task
+from app.modules.users.models import User
 
 
 @app_context_task(help={'email': 'temp@localhost'})
@@ -18,7 +19,6 @@ def create_user(
     """
     Create a new user.
     """
-    from app.modules.users.models import User
 
     password = input('Enter password: ')
 
@@ -86,7 +86,6 @@ def create_oauth2_client(context, email, guid, secret, default_scopes=None):
     """
     Create a new OAuth2 Client associated with a given user (email).
     """
-    from app.modules.users.models import User
     from app.modules.auth.models import OAuth2Client
 
     user = User.find(email=email)
@@ -110,3 +109,22 @@ def create_oauth2_client(context, email, guid, secret, default_scopes=None):
 
     with db.session.begin():
         db.session.add(oauth2_client)
+
+
+@app_context_task
+def list_all(context):
+    """
+    Show existing users.
+    """
+
+    users = User.query.all()
+    for user in users:
+        print('User : {} '.format(user))
+
+
+@app_context_task
+def sync_edm(context, refresh=False):
+    """
+    Sync the users from the EDM onto the local Hudson
+    """
+    User.edm_sync_all(refresh=refresh)

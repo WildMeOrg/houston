@@ -6,14 +6,14 @@ RESTful API Assets resources
 """
 
 import logging
-import werkzeug
 
-from flask import send_file
+from flask import send_file, current_app
 from flask_restplus_patched import Resource
 from flask_restplus._http import HTTPStatus
 from app.extensions.api import Namespace
 from app.modules.users import permissions
 from app.extensions.api.parameters import PaginationParameters
+import werkzeug
 
 from .models import Asset
 
@@ -94,6 +94,7 @@ class AssetByID(Resource):
 @api.resolve_object_by_model(Asset, 'asset')
 class AssetSrcUByID(Resource):
     def get(self, asset, format):
+        current_app.sub.ensure_submission(asset.submission_guid)
         try:
             asset_format_path = asset.get_or_make_format_path(format)
         except Exception:

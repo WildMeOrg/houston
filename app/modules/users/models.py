@@ -156,7 +156,9 @@ class User(db.Model, FeatherModel, UserEDMMixin):
         db.GUID, nullable=True
     )  # should be reconciled with Jon's MediaAsset class
 
-    memberships = db.relationship('OrganizationUserMemberships', back_populates='member')
+    organization_membership_enrollments = db.relationship(
+        'OrganizationUserMembershipEnrollment', back_populates='user'
+    )
 
     class StaticRoles(enum.Enum):
         # pylint: disable=missing-docstring,unsubscriptable-object
@@ -408,6 +410,13 @@ class User(db.Model, FeatherModel, UserEDMMixin):
             filename = 'images/placeholder_profile_%d.png' % (placeholder_guid,)
             return url_for('static', filename=filename)
         return url_for('backend.asset', code=asset.code)
+
+    @property
+    def memberships(self):
+        return [
+            enrollment.organization
+            for enrollment in self.organization_membership_enrollments
+        ]
 
     def get_id(self):
         return self.guid

@@ -76,8 +76,8 @@ class OrganizationEDMMixin(EDMObjectMixin):
             user, is_new = User.ensure_edm_obj(member.id)
 
             # todo restore once the tests work
-            # with db.session.begin():
-            #    self.members.append(user)
+            with db.session.begin():
+                self.members.append(user)
 
     def _process_logo(self, logo):
         self.logo_guid = logo.uuid
@@ -94,7 +94,7 @@ class OrganizationEDMMixin(EDMObjectMixin):
         ).astimezone(TIMEZONE)
 
 
-class OrganizationUserMemberships(db.Model, HoustonModel):
+class OrganizationUserMembershipEnrollment(db.Model, HoustonModel):
 
     organization_guid = db.Column(
         db.GUID, db.ForeignKey('organization.guid'), primary_key=True
@@ -102,9 +102,11 @@ class OrganizationUserMemberships(db.Model, HoustonModel):
 
     user_guid = db.Column(db.GUID, db.ForeignKey('user.guid'), primary_key=True)
 
-    membership = db.relationship('Organization', back_populates='members')
+    organization = db.relationship(
+        'Organization', back_populates='user_membership_enrollments'
+    )
 
-    member = db.relationship('User', back_populates='memberships')
+    user = db.relationship('User', back_populates='organization_membership_enrollments')
 
 
 class Organization(db.Model, HoustonModel, OrganizationEDMMixin):
@@ -123,7 +125,9 @@ class Organization(db.Model, HoustonModel, OrganizationEDMMixin):
 
     website = db.Column(db.String(length=120), nullable=True)
 
-    members = db.relationship('OrganizationUserMemberships', back_populates='membership')
+    user_membership_enrollments = db.relationship(
+        'OrganizationUserMembershipEnrollment', back_populates='organization'
+    )
 
     def __repr__(self):
         return (
@@ -132,8 +136,13 @@ class Organization(db.Model, HoustonModel, OrganizationEDMMixin):
             'title="{self.title}", '
             'website={self.website}, '
             'logo={self.logo_url}, '
+            'members={self.members}, '
             ')>'.format(class_name=self.__class__.__name__, self=self)
         )
+
+    @property
+    def members(self):
+        return [enrollment.user for enrollment in self.user_membership_enrollments]
 
     @db.validates('title')
     def validate_title(self, key, title):  # pylint: disable=unused-argument,no-self-use

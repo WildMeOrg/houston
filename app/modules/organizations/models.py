@@ -75,7 +75,6 @@ class OrganizationEDMMixin(EDMObjectMixin):
             log.info('Adding Member ID %s' % (member.id,))
             user, is_new = User.ensure_edm_obj(member.id)
 
-            # todo restore once the tests work
             with db.session.begin():
                 self.members.append(user)
 

@@ -33,7 +33,7 @@ def test_ensure_clone_submission_by_uuid(
             '4d46c55d-accf-29f1-abe7-a24839ec1b95'
         )
 
-        # assert clone.temp_submission.commit_houston_api_version == '0.1.0.8b208226'
+        assert clone.temp_submission.commit_houston_api_version == '0.1.0.8b208226'
         assert clone.temp_submission.description == 'Test Submission (streamlined)'
 
         # Checks that there are two valid Assets in the database

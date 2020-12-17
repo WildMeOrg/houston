@@ -9,7 +9,6 @@ from flask import current_app
 
 from app.extensions import db, HoustonModel, parallel
 
-from app.modules.assets.models import Asset
 from app.version import version
 
 import logging
@@ -267,6 +266,7 @@ class Submission(db.Model, HoustonModel):
             https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/MIME_types/Common_types
             http://www.iana.org/assignments/media-types/media-types.xhtml
         """
+        from app.modules.assets.models import Asset
         import utool as ut
         import magic
 
@@ -482,8 +482,19 @@ class Submission(db.Model, HoustonModel):
     def update_metadata_from_commit(self, commit):
         with db.session.begin():
             self.commit = commit.hexsha
-            self.commit_mime_whitelist_guid = current_app.sub.mime_type_whitelist_guid
-            self.commit_houston_api_version = version
+
+            metadata_path = os.path.join(commit.repo.working_dir, 'metadata.json')
+            assert os.path.exists(metadata_path)
+            with open(metadata_path, 'r') as metadata_file:
+                metadata_dict = json.load(metadata_file)
+
+            self.commit_mime_whitelist_guid = metadata_dict.get(
+                'commit_mime_whitelist_guid', current_app.sub.mime_type_whitelist_guid
+            )
+            self.commit_houston_api_version = metadata_dict.get(
+                'commit_houston_api_version', version
+            )
+
             db.session.merge(self)
         db.session.refresh(self)
 

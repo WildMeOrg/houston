@@ -7,9 +7,6 @@ You can execute this code via ``invoke app.db.init_development_data``
 """
 from app.extensions import db, api
 
-from app.modules.users.models import User
-from app.modules.auth.models import OAuth2Client
-
 import uuid
 
 
@@ -20,6 +17,8 @@ DOCUMENTATION_CLIENT_SECRET = (
 
 
 def init_users():
+    from app.modules.users.models import User
+
     with db.session.begin():
         root_user = User(
             email='root@localhost',
@@ -63,6 +62,8 @@ def init_users():
 
 
 def init_auth(docs_user):
+    from app.modules.auth.models import OAuth2Client
+
     # TODO: OpenAPI documentation has to have OAuth2 Implicit Flow instead
     # of Resource Owner Password Credentials Flow
     with db.session.begin():
@@ -78,6 +79,9 @@ def init_auth(docs_user):
 
 
 def init():
+    from app.modules.users.models import User
+    from app.modules.auth.models import OAuth2Client
+
     # Automatically update `default_scopes` for `documentation` OAuth2 Client,
     # as it is nice to have an ability to evaluate all available API calls.
     with db.session.begin():

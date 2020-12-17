@@ -15,10 +15,11 @@ def create_user(
     is_staff=False,
     is_active=True,
 ):
+    from app.modules.users.models import User
+
     """
     Create a new user.
     """
-    from app.modules.users.models import User
 
     password = input('Enter password: ')
 
@@ -110,3 +111,25 @@ def create_oauth2_client(context, email, guid, secret, default_scopes=None):
 
     with db.session.begin():
         db.session.add(oauth2_client)
+
+
+@app_context_task
+def list_all(context):
+    """
+    Show existing users.
+    """
+    from app.modules.users.models import User
+
+    users = User.query.all()
+    for user in users:
+        print('User : {} '.format(user))
+
+
+@app_context_task
+def sync_edm(context, refresh=False):
+    """
+    Sync the users from the EDM onto the local Hudson
+    """
+    from app.modules.users.models import User
+
+    User.edm_sync_all(refresh=refresh)

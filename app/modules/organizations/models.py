@@ -74,9 +74,13 @@ class OrganizationEDMMixin(EDMObjectMixin):
         for member in members:
             log.info('Adding Member ID %s' % (member.id,))
             user, is_new = User.ensure_edm_obj(member.id)
+            enrollment = OrganizationUserMembershipEnrollment(
+                organization=self,
+                user=user,
+            )
 
             with db.session.begin():
-                self.members.append(user)
+                self.user_membership_enrollments.append(enrollment)
 
     def _process_logo(self, logo):
         self.logo_guid = logo.uuid

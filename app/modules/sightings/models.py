@@ -5,7 +5,6 @@ Sightings database models
 """
 
 from app.extensions import FeatherModel, db
-
 import uuid
 
 
@@ -18,8 +17,6 @@ class Sighting(db.Model, FeatherModel):
         db.GUID, default=uuid.uuid4, primary_key=True
     )  # pylint: disable=invalid-name
     title = db.Column(db.String(length=50), nullable=False)
-
-    encounters = db.relationship('Encounter', backref='sighting')
 
     def __repr__(self):
         return (
@@ -39,4 +36,5 @@ class Sighting(db.Model, FeatherModel):
         return None
 
     def get_encounters(self):
+        #relationship defined in Encounter
         return self.encounters

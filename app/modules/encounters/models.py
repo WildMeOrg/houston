@@ -5,7 +5,7 @@ Encounters database models
 """
 
 from app.extensions import db, FeatherModel
-
+from app.modules.sightings.models import Sighting
 import uuid
 
 
@@ -14,13 +14,19 @@ class Encounter(db.Model, FeatherModel):
     Encounters database model.
     """
 
-    owner = db.Column(db.GUID, default=uuid.uuid4, nullable=True)
-
     guid = db.Column(
         db.GUID, default=uuid.uuid4, primary_key=True
     )  # pylint: disable=invalid-name
 
-    sighting_id = db.Column(db.Integer, db.ForeignKey('sighting.guid'))
+    sighting_guid = db.Column(
+        db.GUID, db.ForeignKey('sighting.guid'), index=True, nullable=True
+    )
+    sighting = db.relationship('Sighting', backref=db.backref('encounters'))
+
+    owner_guid = db.Column(
+        db.GUID, db.ForeignKey('user.guid'), index=True, nullable=True
+    )
+    owner = db.relationship('User', backref=db.backref('owned_encounters'))
 
     title = db.Column(db.String(length=50), nullable=False)
 
@@ -44,3 +50,4 @@ class Encounter(db.Model, FeatherModel):
 
     def get_sighting(self):
         return self.sighting
+

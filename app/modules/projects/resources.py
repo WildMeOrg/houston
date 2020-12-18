@@ -7,7 +7,7 @@ RESTful API Projects resources
 
 import logging
 
-from flask_login import current_user
+# from flask_login import current_user
 from flask_restplus_patched import Resource
 from flask_restplus._http import HTTPStatus
 

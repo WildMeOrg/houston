@@ -53,3 +53,60 @@ def test_ensure_clone_submission_by_uuid(
         raise ex
     finally:
         clone.cleanup()
+
+
+def test_ensure_permissions(
+    flask_app_client, regular_user, readonly_user, db, test_clone_submission_uuid
+):
+    # Clone as the regular user and then try to reread as both regular and readonly user,
+    # read by regular user should succeed, read by readonly user should be blocked
+
+    clone = clone_submission(
+        flask_app_client, regular_user, test_clone_submission_uuid, later_usage=True
+    )
+
+    try:
+        with flask_app_client.login(
+            regular_user,
+            auth_scopes=(
+                'submissions:read',
+                'assets:read',
+            ),
+        ):
+            submission_response = flask_app_client.get(
+                '/api/v1/submissions/%s' % test_clone_submission_uuid
+            )
+            asset_response = flask_app_client.get(
+                '/api/v1/assets/3abc03a8-39c8-42c4-bedb-e08ccc485396'
+            )
+            assert submission_response.status_code == 200
+            assert asset_response.status_code == 200
+
+        with flask_app_client.login(
+            readonly_user,
+            auth_scopes=(
+                'submissions:read',
+                'assets_read',
+            ),
+        ):
+            submission_response = flask_app_client.get(
+                '/api/v1/submissions/%s' % test_clone_submission_uuid
+            )
+            asset_response = flask_app_client.get(
+                '/api/v1/assets/3abc03a8-39c8-42c4-bedb-e08ccc485396'
+            )
+            assert submission_response.status_code == 403
+            assert asset_response.status_code == 401
+
+        # and as no user, removed for now as the
+        # @api.login_required(oauth_scopes=['submissions:read']) has been added back to
+        # class SubmissionByID and the anonymous user is blocked by that
+        # submission_response = flask_app_client.get(
+        #        '/api/v1/submissions/%s' % test_clone_submission_uuid
+        #    )
+        # assert submission_response.status_code == 403
+
+    except Exception as ex:
+        raise ex
+    finally:
+        clone.cleanup()

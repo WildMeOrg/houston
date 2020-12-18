@@ -153,6 +153,10 @@ class SubmissionByID(Resource):
     Manipulations with a specific Submission.
     """
 
+    @api.permission_required(
+        permissions.ObjectReadAccessPermission,
+        kwargs_on_request=lambda kwargs: {'obj': kwargs['submission']},
+    )
     @api.response(schemas.DetailedSubmissionSchema())
     def get(self, submission):
         """

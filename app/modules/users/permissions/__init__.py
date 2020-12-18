@@ -84,6 +84,29 @@ class WriteAccessPermission(Permission):
         return rules.InternalRoleRule() | rules.AdminRoleRule() | rules.WriteAccessRule()
 
 
+class ObjectReadAccessPermission(Permission):
+    """
+    Ensure that the current user has read permission for the object
+    """
+
+    def __init__(self, obj=None, **kwargs):
+        """
+        Args:
+        obj (object) - any object can be passed here, this functionality will determine
+             whether the current user has enough permissions to read the object.
+        """
+        # Sometimes the obj passed is the object itself, sometimes a list with the object as the first item
+        self._obj = obj[0] if isinstance(obj, tuple) else obj
+        super().__init__(**kwargs)
+
+    def rule(self):
+        return (
+            rules.InternalRoleRule()
+            | rules.AdminRoleRule()
+            | rules.ObjectReadAccessRule(self._obj)
+        )
+
+
 class RolePermission(Permission):
     """
     This class aims to help distinguish all role-type permissions.

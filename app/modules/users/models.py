@@ -510,3 +510,33 @@ class User(db.Model, FeatherModel, UserEDMMixin):
             auth_.delete()
 
         return self
+
+    def has_permission_to_read(self, obj):
+        has_permission = self.owns_object(obj)
+
+        # Not owned by user, is it in any orgs we're in
+        if not has_permission:
+            for org in self.memberships:
+                # This bit is not finished yet but that's cos I haven't yet understood the relationship tables
+                has_permission = org.has_read_permission(obj)
+                if has_permission:
+                    break
+
+        return has_permission
+
+    def owns_object(self, obj):
+        from app.modules.assets.models import Asset
+        from app.modules.submissions.models import Submission
+
+        ret_val = False
+
+        # todo, if more objects end up with an "owner" relationship with user, this could be a simple as Submission
+        if isinstance(obj, Submission):
+            ret_val = obj.owner is self
+        elif isinstance(obj, Asset):
+            # assets are not owned directly by the user but the submission they're in is.
+            # todo, need to understand once assets become part of an encounter, do they still have a submission
+            if obj.submission is not None:
+                ret_val = obj.submission.owner is self
+
+        return ret_val

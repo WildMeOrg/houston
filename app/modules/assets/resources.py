@@ -57,7 +57,10 @@ class AssetByID(Resource):
     Manipulations with a specific Asset.
     """
 
-    @api.permission_required(permissions.AdminRolePermission())
+    @api.permission_required(
+        permissions.ObjectReadAccessPermission,
+        kwargs_on_request=lambda kwargs: {'obj': kwargs['asset']},
+    )
     @api.response(schemas.DetailedAssetSchema())
     def get(self, asset):
         """

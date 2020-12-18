@@ -103,7 +103,7 @@ class JSONResponse(Response):
 # multiple tests clone a submission, do something with it and clean it up. Make sure this always happens using a
 # class with a cleanup method to be called if any assertions fail
 class CloneSubmission(object):
-    def __init__(self, flask_app_client, regular_user, submission_uuid, force_clone):
+    def __init__(self, flask_app_client, user, submission_uuid, force_clone):
         from app.modules.submissions.models import Submission
 
         self.temp_submission = None
@@ -119,12 +119,14 @@ class CloneSubmission(object):
                 shutil.rmtree(self.submission_path)
             assert not os.path.exists(self.submission_path)
 
-        with flask_app_client.login(regular_user, auth_scopes=('submissions:read',)):
+        with flask_app_client.login(user, auth_scopes=('submissions:read',)):
             self.response = flask_app_client.get(
                 '/api/v1/submissions/%s' % submission_uuid
             )
 
-        self.temp_submission = Submission.query.get(self.response.json['guid'])
+        # only store the transient submission for cleanup if the clone worked
+        if self.response.status_code == 200:
+            self.temp_submission = Submission.query.get(self.response.json['guid'])
 
     def remove_files(self):
         if os.path.exists(self.submission_path):
@@ -142,9 +144,9 @@ class CloneSubmission(object):
 # the files etc.
 # If later_usage is set, it's the callers responsibility to call the cleanup method.
 def clone_submission(
-    flask_app_client, regular_user, submission_uuid, force_clone=False, later_usage=False
+    flask_app_client, user, submission_uuid, force_clone=False, later_usage=False
 ):
-    clone = CloneSubmission(flask_app_client, regular_user, submission_uuid, force_clone)
+    clone = CloneSubmission(flask_app_client, user, submission_uuid, force_clone)
     try:
         assert clone.response.status_code == 200
         assert clone.response.content_type == 'application/json'

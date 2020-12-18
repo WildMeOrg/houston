@@ -132,6 +132,7 @@ class BaseConfig(object):
         # Miscellaneous
         'collaborations',
         'encounters',
+        'projects',
 
         # Front-end
         #   Dependencies: Users, Auth, Assets

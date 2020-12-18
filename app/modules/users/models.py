@@ -18,6 +18,7 @@ from app.extensions.api.parameters import _get_is_static_role_property
 # In order to support OrganizationUserMemberships
 # we must import the model definitions for organizations here
 from app.modules.organizations import models as organizations_models  # NOQA
+from app.modules.projects import models as projects_models  # NOQA
 
 import pytz
 import uuid
@@ -158,6 +159,10 @@ class User(db.Model, FeatherModel, UserEDMMixin):
 
     organization_membership_enrollments = db.relationship(
         'OrganizationUserMembershipEnrollment', back_populates='user'
+    )
+
+    project_membership_enrollments = db.relationship(
+        'ProjectUserMembershipEnrollment', back_populates='user'
     )
 
     class StaticRoles(enum.Enum):
@@ -417,6 +422,10 @@ class User(db.Model, FeatherModel, UserEDMMixin):
             enrollment.organization
             for enrollment in self.organization_membership_enrollments
         ]
+
+    @property
+    def projects(self):
+        return [enrollment.project for enrollment in self.project_membership_enrollments]
 
     def get_id(self):
         return self.guid

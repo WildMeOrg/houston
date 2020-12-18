@@ -66,6 +66,38 @@ class WriteAccessRule(DenyAbortMixin, Rule):
         return current_user.is_active
 
 
+class ObjectReadAccessRule(DenyAbortMixin, Rule):
+    """
+    Ensure that the current_user has has read access to the object passed.
+    """
+
+    def __init__(self, obj=None, **kwargs):
+        """
+        Args:
+        obj (object) - any object can be passed here, which this functionality will
+            determine whether the current user has enough permissions to read given object
+            object.
+        """
+        self._obj = obj
+        super().__init__(**kwargs)
+
+    def check(self):
+        # Permission check must only apply if object exists, otherwise "clone if doesn't exist"
+        # functionality fails
+        # todo the "clone if doesn't exist" functionality is under discussion so this could be replaced
+        has_permission = self._obj is None
+
+        # todo, if user has no owner, it is public. Implement this once owner fields are created.
+        # This will probably involve different handling depending on the type of obj
+        if not has_permission:
+            if not current_user.is_anonymous:
+                has_permission = current_user.has_permission_to_read(self._obj)
+            else:
+                # todo this would be where the check of is_public on the object would be
+                pass
+        return has_permission
+
+
 class ActiveUserRoleRule(DenyAbortMixin, Rule):
     """
     Ensure that the current_user is activated.

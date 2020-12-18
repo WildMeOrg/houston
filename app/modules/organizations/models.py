@@ -152,3 +152,13 @@ class Organization(db.Model, HoustonModel, OrganizationEDMMixin):
         if len(title) < 3:
             raise ValueError('Title has to be at least 3 characters long.')
         return title
+
+    def has_permission_to_read(self, obj):
+        # Assumption that anyone in an organisation can read other members data
+        has_permission = False
+        for member in self.members:
+            has_permission = member.user.owns_object(obj)
+            if has_permission:
+                break
+
+        return has_permission

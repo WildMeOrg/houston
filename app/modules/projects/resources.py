@@ -7,7 +7,6 @@ RESTful API Projects resources
 
 import logging
 
-# from flask_login import current_user
 from flask_restplus_patched import Resource
 from flask_restplus._http import HTTPStatus
 
@@ -107,6 +106,7 @@ class ProjectByID(Resource):
         context = api.commit_or_abort(
             db.session, default_error_message='Failed to delete the Project.'
         )
+
         with context:
             db.session.delete(project)
         return None

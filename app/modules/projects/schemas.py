@@ -30,11 +30,5 @@ class DetailedProjectSchema(BaseProjectSchema):
     """
 
     class Meta(BaseProjectSchema.Meta):
-        fields = BaseProjectSchema.Meta.fields + (
-            Project.created.key,
-            Project.updated.key,
-        )
-        dump_only = BaseProjectSchema.Meta.dump_only + (
-            Project.created.key,
-            Project.updated.key,
-        )
+        fields = BaseProjectSchema.Meta.fields
+        dump_only = BaseProjectSchema.Meta.dump_only

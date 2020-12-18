@@ -4,14 +4,12 @@ Sightings database models
 --------------------
 """
 
-from sqlalchemy_utils import Timestamp
-
-from app.extensions import db
+from app.extensions import FeatherModel, db
 
 import uuid
 
 
-class Sighting(db.Model, Timestamp):
+class Sighting(db.Model, FeatherModel):
     """
     Sightings database model.
     """
@@ -21,15 +19,14 @@ class Sighting(db.Model, Timestamp):
     )  # pylint: disable=invalid-name
     title = db.Column(db.String(length=50), nullable=False)
 
+    encounters = db.relationship('Encounter', backref='sighting')
+
     def __repr__(self):
         return (
             '<{class_name}('
             'guid={self.id}, '
-            'title=\'{self.title}\''
-            ')>'.format(
-                class_name=self.__class__.__name__,
-                self=self
-            )
+            "title='{self.title}'"
+            ')>'.format(class_name=self.__class__.__name__, self=self)
         )
 
     @db.validates('title')
@@ -37,3 +34,9 @@ class Sighting(db.Model, Timestamp):
         if len(title) < 3:
             raise ValueError('Title has to be at least 3 characters long.')
         return title
+
+    def get_owners(self):
+        return None
+
+    def get_encounters(self):
+        return self.encounters

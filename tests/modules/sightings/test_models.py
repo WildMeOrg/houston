@@ -1,10 +1,11 @@
 # -*- coding: utf-8 -*-
+# pylint: disable=invalid-name,missing-docstring
 import json
 
 
-def sighting_create_and_destroy(flask_app_client, regular_user):
+def test_sighting_create_and_destroy(flask_app_client, regular_user):
 
-    from app.modules.projects.models import Sighting
+    from app.modules.sightings.models import Sighting
 
     with flask_app_client.login(regular_user, auth_scopes=('sightings:write',)):
         response = flask_app_client.post(

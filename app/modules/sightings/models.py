@@ -33,8 +33,15 @@ class Sighting(db.Model, FeatherModel):
         return title
 
     def get_owners(self):
-        return None
+        owners = []
+        for encounter in self.get_encounters():
+            if encounter.get_owner() is not None and encounter.get_owner() not in owners:
+                owners.append(encounter.get_owner())
+        return owners
+
+    def get_owner(self):
+        #this is what we talked about but it makes me squeamish
+        return self.get_owners()[0]
 
     def get_encounters(self):
-        #relationship defined in Encounter
         return self.encounters

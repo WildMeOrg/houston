@@ -22,12 +22,12 @@ class Encounter(db.Model, FeatherModel):
     )
     sighting = db.relationship('Sighting', backref=db.backref('encounters'))
 
-    owner_guid = db.Column(
-        db.GUID, db.ForeignKey('user.guid'), index=True, nullable=True
-    )
+    owner_guid = db.Column(db.GUID, db.ForeignKey('user.guid'), index=True, nullable=True)
     owner = db.relationship('User', backref=db.backref('owned_encounters'))
 
     title = db.Column(db.String(length=50), nullable=False)
+
+    public = db.Column(db.Boolean, default=False, nullable=False)
 
     def __repr__(self):
         return (
@@ -50,3 +50,7 @@ class Encounter(db.Model, FeatherModel):
     def get_sighting(self):
         return self.sighting
 
+    def is_public(self):
+        if self.public is True or self.owner is None:
+            return True
+        return False

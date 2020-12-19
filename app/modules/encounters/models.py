@@ -5,7 +5,6 @@ Encounters database models
 """
 
 from app.extensions import db, FeatherModel
-from app.modules.sightings.models import Sighting
 import uuid
 
 

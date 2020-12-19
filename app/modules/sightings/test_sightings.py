@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import json
 
 
@@ -37,12 +38,10 @@ def sighting_create_and_destroy(flask_app_client, regular_user):
         'guid',
         'title',
     }
- 
+
     with flask_app_client.login(regular_user, auth_scopes=('sightings:write',)):
         response = flask_app_client.delete('/api/v1/sightings/%s' % sighting_guid)
 
     assert response.status_code == 204
     read_sighting = Sighting.query.get(sighting_guid)
     assert read_sighting is None
-
-#need to add test for add/remove encounter

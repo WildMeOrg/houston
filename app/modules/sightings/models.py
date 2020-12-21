@@ -21,7 +21,7 @@ class Sighting(db.Model, FeatherModel):
     def __repr__(self):
         return (
             '<{class_name}('
-            'guid={self.id}, '
+            'guid={self.guid}, '
             "title='{self.title}'"
             ')>'.format(class_name=self.__class__.__name__, self=self)
         )
@@ -41,7 +41,13 @@ class Sighting(db.Model, FeatherModel):
 
     def get_owner(self):
         #this is what we talked about but it makes me squeamish
-        return self.get_owners()[0]
+        if self.get_owners() is not None:
+            return self.get_owners()[0]
+        return None
 
     def get_encounters(self):
         return self.encounters
+
+    def add_encounter(self, encounter):
+        if encounter not in self.encounters:
+            self.encounters.append(encounter)

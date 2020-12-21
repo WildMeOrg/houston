@@ -5,7 +5,6 @@ Encounters database models
 """
 
 from app.extensions import db, FeatherModel
-from app.modules.sightings.models import Sighting
 import uuid
 
 
@@ -18,6 +17,7 @@ class Encounter(db.Model, FeatherModel):
         db.GUID, default=uuid.uuid4, primary_key=True
     )  # pylint: disable=invalid-name
 
+    from app.modules.sightings.models import Sighting
     sighting_guid = db.Column(
         db.GUID, db.ForeignKey('sighting.guid'), index=True, nullable=True
     )

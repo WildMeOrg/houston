@@ -1,48 +1,101 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=invalid-name,missing-docstring
-import json
+import json, logging
 
 
-def test_sighting_create_and_destroy(flask_app_client, regular_user):
+def test_sighting_create_and_add_encounters(db):
 
     from app.modules.sightings.models import Sighting
+    from app.modules.encounters.models import Encounter
 
-    with flask_app_client.login(regular_user, auth_scopes=('sightings:write',)):
-        response = flask_app_client.post(
-            '/api/v1/sightings/',
-            data=json.dumps(
-                {
-                    'title': 'Testing generated.',
-                }
-            ),
-        )
+    test_sighting = Sighting(
+        title='New Test Sighting',
+    )
 
-    assert response.status_code == 200
-    assert response.content_type == 'application/json'
-    assert isinstance(response.json, dict)
-    assert set(response.json.keys()) >= {
-        'guid',
-        'title',
-    }
+    test_encounter_a = Encounter(
+        title='New Test Encounter A',
+    )
 
-    sighting_guid = response.json['guid']
-    read_sighting = Sighting.query.get(response.json['guid'])
-    assert read_sighting.title == 'Testing generated.'
+    test_encounter_b = Encounter(
+        title='New Test Encounter B',
+    )
 
-    with flask_app_client.login(regular_user, auth_scopes=('sightings:read',)):
-        response = flask_app_client.get('/api/v1/sightings/%s' % sighting_guid)
+    with db.session.begin():
+        db.session.add(test_encounter_a)
+        db.session.add(test_sighting)
 
-    assert response.status_code == 200
-    assert response.content_type == 'application/json'
-    assert isinstance(response.json, dict)
-    assert set(response.json.keys()) >= {
-        'guid',
-        'title',
-    }
+    db.session.refresh(test_encounter_a)
+    db.session.refresh(test_sighting)
 
-    with flask_app_client.login(regular_user, auth_scopes=('sightings:write',)):
-        response = flask_app_client.delete('/api/v1/sightings/%s' % sighting_guid)
+    assert len(test_sighting.get_encounters()) == 0
+    assert test_encounter_a.get_sighting() is None
 
-    assert response.status_code == 204
-    read_sighting = Sighting.query.get(sighting_guid)
-    assert read_sighting is None
+    test_sighting.add_encounter(test_encounter_a)
+
+    with db.session.begin():
+        db.session.add(test_encounter_a)
+        db.session.add(test_sighting)
+
+    assert len(test_sighting.get_encounters()) == 1
+    assert test_encounter_a.get_sighting() is not None
+
+    test_sighting.add_encounter(test_encounter_b)
+
+    with db.session.begin():
+        db.session.add(test_encounter_b)
+        db.session.add(test_sighting)
+
+    # making sure i didn't accidentally set up a 1 to 1
+    assert len(test_sighting.get_encounters()) == 2
+
+    logging.info(test_sighting.get_encounters())
+    logging.info(test_encounter_a.get_sighting())
+
+
+
+def test_sighting_ensure_no_duplicate_encounters(db):
+    from app.modules.sightings.models import Sighting
+    from app.modules.encounters.models import Encounter
+
+    test_sighting = Sighting(
+        title='New Test Sighting',
+    )
+
+    test_encounter = Encounter(
+        title='New Test Encounter',
+    )
+
+    with db.session.begin():
+        db.session.add(test_encounter)
+        db.session.add(test_sighting)
+
+    db.session.refresh(test_encounter)
+    db.session.refresh(test_sighting)
+
+    test_sighting.add_encounter(test_encounter)
+
+    with db.session.begin():
+        db.session.add(test_encounter)
+        db.session.add(test_sighting)
+
+    db.session.refresh(test_encounter)
+    db.session.refresh(test_sighting)
+
+    assert len(test_sighting.get_encounters()) == 1
+    assert test_encounter.get_sighting() is not None
+
+    #try adding again, shouldn't let ya
+    test_sighting.add_encounter(test_encounter)
+
+    with db.session.begin():
+        db.session.add(test_encounter)
+        db.session.add(test_sighting)
+
+    db.session.refresh(test_encounter)
+    db.session.refresh(test_sighting)
+
+    assert len(test_sighting.get_encounters()) == 1
+    assert test_encounter.get_sighting() is not None
+
+    logging.info(test_sighting.get_encounters())
+    logging.info(test_encounter.get_sighting())

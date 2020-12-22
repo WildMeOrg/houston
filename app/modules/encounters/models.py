@@ -6,6 +6,7 @@ Encounters database models
 
 from app.extensions import db, FeatherModel
 
+
 import uuid
 
 
@@ -29,7 +30,6 @@ class Encounter(db.Model, FeatherModel):
     owner = db.relationship('User', backref=db.backref('owned_encounters'))
 
     title = db.Column(db.String(length=50), nullable=False)
-
 
     public = db.Column(db.Boolean, default=False, nullable=False)
 

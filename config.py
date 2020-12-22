@@ -130,15 +130,8 @@ class BaseConfig(object):
         #   Dependencies: Submissions
         'assets',
 
-        # Projects
-        #   Dependencies: Users
-        'projects',
-
-        # Collaborations
+        # Miscellaneous
         'collaborations',
-
-        # Encounters
-        #    Dependencies: Projects
         'encounters',
         'projects',
         'sightings',

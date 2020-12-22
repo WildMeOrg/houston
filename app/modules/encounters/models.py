@@ -5,6 +5,7 @@ Encounters database models
 """
 
 from app.extensions import db, FeatherModel
+
 import uuid
 
 
@@ -29,7 +30,10 @@ class Encounter(db.Model, FeatherModel):
 
     title = db.Column(db.String(length=50), nullable=False)
 
+
     public = db.Column(db.Boolean, default=False, nullable=False)
+
+    projects = db.relationship('ProjectEncounter', back_populates='encounter')
 
     def __repr__(self):
         return (
@@ -55,4 +59,10 @@ class Encounter(db.Model, FeatherModel):
     def is_public(self):
         if self.public is True or self.owner is None:
             return True
+
+    def has_read_permission(self, obj):
+        # todo, check if the encounter owns the sighting once Colin's sightings code is merged in
+        # if isinstance(obj, Sighting):
+        # check sightings array
+        # else look to see if the object is owned by any sighting
         return False

@@ -513,8 +513,14 @@ class User(db.Model, FeatherModel, UserEDMMixin):
         # Not owned by user, is it in any orgs we're in
         if not has_permission:
             for org in self.memberships:
-                # This bit is not finished yet but that's cos I haven't yet understood the relationship tables
                 has_permission = org.has_read_permission(obj)
+                if has_permission:
+                    break
+
+        # If not in any orgs, check if it can be accessed via projects
+        if not has_permission:
+            for project in self.projects:
+                has_permission = project.has_read_permission(self, obj)
                 if has_permission:
                     break
 

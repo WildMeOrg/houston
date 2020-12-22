@@ -9,7 +9,7 @@ from tests import utils
 from app.modules.users import models
 
 
-@pytest.yield_fixture()
+@pytest.fixture()
 def patch_User_password_scheme():
     # pylint: disable=invalid-name,protected-access
     """
@@ -38,7 +38,7 @@ def user_instance(patch_User_password_scheme):
     return _user_instance
 
 
-@pytest.yield_fixture()
+@pytest.fixture()
 def authenticated_user_instance(flask_app, user_instance):
     with flask_app.test_request_context('/'):
         login_user(user_instance)
@@ -46,7 +46,7 @@ def authenticated_user_instance(flask_app, user_instance):
         logout_user()
 
 
-@pytest.yield_fixture()
+@pytest.fixture()
 def anonymous_user_instance(flask_app):
     with flask_app.test_request_context('/'):
         yield current_user

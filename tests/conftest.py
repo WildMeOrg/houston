@@ -28,7 +28,7 @@ def pytest_generate_tests(metafunc):
         metafunc.parametrize('gitlab_remote_login_pat', value, scope='session')
 
 
-@pytest.yield_fixture(scope='session')
+@pytest.fixture(scope='session')
 def flask_app(gitlab_remote_login_pat):
 
     config_override = {}
@@ -44,7 +44,7 @@ def flask_app(gitlab_remote_login_pat):
         db.drop_all()
 
 
-@pytest.yield_fixture(scope='session')
+@pytest.fixture(scope='session')
 def db(flask_app):
     from app.extensions import db as db_instance
 
@@ -79,7 +79,7 @@ def flask_app_client(flask_app):
     return flask_app.test_client()
 
 
-@pytest.yield_fixture(scope='session')
+@pytest.fixture(scope='session')
 def readonly_user(temp_db_instance_helper):
     for _ in temp_db_instance_helper(
         utils.generate_user_instance(email='readonly@localhost')
@@ -87,7 +87,7 @@ def readonly_user(temp_db_instance_helper):
         yield _
 
 
-@pytest.yield_fixture(scope='session')
+@pytest.fixture(scope='session')
 def admin_user(temp_db_instance_helper):
     for _ in temp_db_instance_helper(
         utils.generate_user_instance(
@@ -98,7 +98,7 @@ def admin_user(temp_db_instance_helper):
         yield _
 
 
-@pytest.yield_fixture(scope='session')
+@pytest.fixture(scope='session')
 def regular_user(temp_db_instance_helper):
     for _ in temp_db_instance_helper(
         utils.generate_user_instance(
@@ -108,7 +108,7 @@ def regular_user(temp_db_instance_helper):
         yield _
 
 
-@pytest.yield_fixture(scope='session')
+@pytest.fixture(scope='session')
 def internal_user(temp_db_instance_helper):
     for _ in temp_db_instance_helper(
         utils.generate_user_instance(
@@ -119,21 +119,21 @@ def internal_user(temp_db_instance_helper):
         yield _
 
 
-@pytest.yield_fixture(scope='session')
+@pytest.fixture(scope='session')
 def test_submission_uuid(flask_app):
     return uuid.UUID('ce91ad6e-3cc9-48e8-a4f0-ac74f55dfbf0')
 
 
-@pytest.yield_fixture(scope='session')
+@pytest.fixture(scope='session')
 def test_empty_submission_uuid(flask_app):
     return uuid.UUID('ce91ad6e-3cc9-48e8-a4f0-ac74f55dfbf1')
 
 
-@pytest.yield_fixture(scope='session')
+@pytest.fixture(scope='session')
 def test_clone_submission_uuid(flask_app):
     return uuid.UUID('290950fb-49a8-496a-adf4-e925010f79ce')
 
 
-@pytest.yield_fixture(scope='session')
+@pytest.fixture(scope='session')
 def test_asset_uuid(flask_app):
     return uuid.UUID('3abc03a8-39c8-42c4-bedb-e08ccc485396')

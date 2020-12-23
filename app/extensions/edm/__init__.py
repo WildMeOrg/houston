@@ -14,8 +14,6 @@ from collections import namedtuple
 import utool as ut
 import types
 import json
-
-import pytz
 import tqdm
 import keyword
 import uuid
@@ -23,10 +21,7 @@ import sqlalchemy
 
 KEYWORD_SET = set(keyword.kwlist)
 
-
 log = logging.getLogger(__name__)
-
-PST = pytz.timezone('US/Pacific')
 
 
 def _json_object_hook(data):

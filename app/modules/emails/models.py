@@ -18,7 +18,6 @@ from app.extensions.email import Email  # , _format_datetime
 from app.extensions import db, HoustonModel
 
 import datetime
-import pytz
 import pprint
 
 import uuid
@@ -26,9 +25,6 @@ import uuid
 
 log = logging.getLogger(__name__)
 pp = pprint.PrettyPrinter(indent=2)
-
-
-PST = pytz.timezone('US/Pacific')
 
 
 class EmailTypes(str, enum.Enum):
@@ -90,7 +86,7 @@ class ErrorEmail(RecordedEmail):
 
         super(ErrorEmail, self).__init__(subject, **kwargs)
 
-        timestamp = datetime.datetime.now(tz=PST)
+        timestamp = datetime.datetime.now(tz=current_app.config.get('TIMEZONE'))
         global_data = {
             'timestamp': timestamp,
             'request': request,

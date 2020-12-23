@@ -29,8 +29,6 @@ GITLAB_TIMESTAMP_FORMAT_STR = '%Y-%m-%dT%H:%M:%S.%fZ'  # Ex: '2020-10-23T16:57:5
 
 log = logging.getLogger(__name__)
 
-PST = pytz.timezone('US/Pacific')
-
 
 class SubmissionManager(object):
     def __init__(self, app, pre_initialize=False, *args, **kwargs):
@@ -277,7 +275,9 @@ class SubmissionManager(object):
             created = datetime.datetime.strptime(
                 project.created_at, GITLAB_TIMESTAMP_FORMAT_STR
             )
-            created = created.replace(tzinfo=pytz.utc).astimezone(PST)
+            created = created.replace(tzinfo=pytz.utc).astimezone(
+                current_app.config.get('TIMEZONE')
+            )
 
             if owner is None:
                 owner = current_user

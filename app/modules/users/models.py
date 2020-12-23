@@ -20,14 +20,10 @@ from app.extensions.api.parameters import _get_is_static_role_property
 from app.modules.organizations import models as organizations_models  # NOQA
 from app.modules.projects import models as projects_models  # NOQA
 
-import pytz
 import uuid
 
 
 log = logging.getLogger(__name__)
-
-
-PST = pytz.timezone('US/Pacific')
 
 
 class UserEDMMixin(EDMObjectMixin):

@@ -18,18 +18,13 @@ from sqlalchemy_utils.types import ScalarListType
 from app.extensions import db, HoustonModel
 from app.extensions.auth import security
 from app.modules.users.models import User
-
+from flask import current_app
 import datetime
 import pytz
-
 import random
 import uuid
 
-
 log = logging.getLogger(__name__)
-
-
-PST = pytz.timezone('US/Pacific')
 
 
 CODE_VALID_CHARACTERS = [
@@ -373,7 +368,7 @@ class Code(db.Model, HoustonModel):
 
         if code is None and create or create_force:
             # Create a new code
-            now = datetime.datetime.now(tz=PST)
+            now = datetime.datetime.now(tz=current_app.config.get('TIMEZONE'))
 
             while True:
                 accept_code = cls.generate(code_settings.get('len'))
@@ -400,13 +395,19 @@ class Code(db.Model, HoustonModel):
                     expires_.hour,
                     expires_.minute,
                     expires_.second,
-                    tzinfo=PST,
+                    tzinfo=current_app.config.get('TIMEZONE'),
                 )
             else:
                 # Round up to (midnight - 1 second) of the TTL day
                 expires_ = now + datetime.timedelta(days=ttl_days)
                 expires = datetime.datetime(
-                    expires_.year, expires_.month, expires_.day, 23, 59, 59, tzinfo=PST
+                    expires_.year,
+                    expires_.month,
+                    expires_.day,
+                    23,
+                    59,
+                    59,
+                    tzinfo=current_app.config.get('TIMEZONE'),
                 )
 
             expires_utc = expires.astimezone(pytz.utc)

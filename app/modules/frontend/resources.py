@@ -57,7 +57,10 @@ def parse_frontend_versions():
             frontend_datetime = frontend_datetime.replace(
                 tzinfo=current_app.config.get('TIMEZONE')
             )
-            frontend_time = frontend_datetime.strftime('%B %d, %Y, %H:%M:%S %p Pacific')
+            output_format = (
+                '%B %d, %Y, %H:%M:%S %p ' + current_app.config.get('TIMEZONE').zone
+            )
+            frontend_time = frontend_datetime.strftime(output_format)
         except Exception:
             frontend_time = 'Parse Error: %r' % (frontend_timestamp,)
 

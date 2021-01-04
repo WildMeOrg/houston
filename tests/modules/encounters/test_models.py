@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=invalid-name,missing-docstring
-import json, logging
 
 
 def test_encounter_add_owner(db):
@@ -9,9 +8,9 @@ def test_encounter_add_owner(db):
     from app.modules.encounters.models import Encounter
 
     test_user = User(
-            email='testuser@localhost',
-            password='testpassword',
-            full_name='Gregor Samsa ',
+        email='testuser@localhost',
+        password='testpassword',
+        full_name='Gregor Samsa ',
     )
 
     test_encounter = Encounter(
@@ -39,5 +38,3 @@ def test_encounter_add_owner(db):
 
     assert test_encounter.get_owner() is not None
     assert test_encounter.get_owner().guid == test_user.guid
-
-

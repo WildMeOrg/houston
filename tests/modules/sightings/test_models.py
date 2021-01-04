@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=invalid-name,missing-docstring
-import json, logging
+import logging
 
 
 def test_sighting_create_and_add_encounters(db):
@@ -52,7 +52,6 @@ def test_sighting_create_and_add_encounters(db):
     logging.info(test_encounter_a.get_sighting())
 
 
-
 def test_sighting_ensure_no_duplicate_encounters(db):
     from app.modules.sightings.models import Sighting
     from app.modules.encounters.models import Encounter
@@ -84,7 +83,7 @@ def test_sighting_ensure_no_duplicate_encounters(db):
     assert len(test_sighting.get_encounters()) == 1
     assert test_encounter.get_sighting() is not None
 
-    #try adding again, shouldn't let ya
+    # try adding again, shouldn't let ya
     test_sighting.add_encounter(test_encounter)
 
     with db.session.begin():

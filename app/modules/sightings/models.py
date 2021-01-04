@@ -40,7 +40,7 @@ class Sighting(db.Model, FeatherModel):
         return owners
 
     def get_owner(self):
-        #this is what we talked about but it makes me squeamish
+        # this is what we talked about but it makes me squeamish
         if self.get_owners() is not None:
             return self.get_owners()[0]
         return None

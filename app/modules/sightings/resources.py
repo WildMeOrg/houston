@@ -7,7 +7,6 @@ RESTful API Sightings resources
 
 import logging
 
-from flask_login import current_user
 from flask_restplus_patched import Resource
 from flask_restplus._http import HTTPStatus
 
@@ -22,7 +21,7 @@ from .models import Sighting
 
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
-api = Namespace('sightings', description="Sightings")  # pylint: disable=invalid-name
+api = Namespace('sightings', description='Sightings')  # pylint: disable=invalid-name
 
 
 @api.route('/')
@@ -52,8 +51,7 @@ class Sightings(Resource):
         Create a new instance of Sighting.
         """
         context = api.commit_or_abort(
-            db.session,
-            default_error_message="Failed to create a new Sighting"
+            db.session, default_error_message='Failed to create a new Sighting'
         )
         with context:
             sighting = Sighting(**args)
@@ -65,7 +63,7 @@ class Sightings(Resource):
 @api.login_required(oauth_scopes=['sightings:read'])
 @api.response(
     code=HTTPStatus.NOT_FOUND,
-    description="Sighting not found.",
+    description='Sighting not found.',
 )
 @api.resolve_object_by_model(Sighting, 'sighting')
 class SightingByID(Resource):
@@ -90,8 +88,7 @@ class SightingByID(Resource):
         Patch Sighting details by ID.
         """
         context = api.commit_or_abort(
-            db.session,
-            default_error_message="Failed to update Sighting details."
+            db.session, default_error_message='Failed to update Sighting details.'
         )
         with context:
             parameters.PatchSightingDetailsParameters.perform_patch(args, obj=sighting)
@@ -107,8 +104,7 @@ class SightingByID(Resource):
         Delete a Sighting by ID.
         """
         context = api.commit_or_abort(
-            db.session,
-            default_error_message="Failed to delete the Sighting."
+            db.session, default_error_message='Failed to delete the Sighting.'
         )
         with context:
             db.session.delete(sighting)

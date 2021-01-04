@@ -18,6 +18,7 @@ class Encounter(db.Model, FeatherModel):
     )  # pylint: disable=invalid-name
 
     from app.modules.sightings.models import Sighting
+
     sighting_guid = db.Column(
         db.GUID, db.ForeignKey('sighting.guid'), index=True, nullable=True
     )

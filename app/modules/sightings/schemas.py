@@ -21,9 +21,7 @@ class BaseSightingSchema(ModelSchema):
             Sighting.guid.key,
             Sighting.title.key,
         )
-        dump_only = (
-            Sighting.guid.key,
-        )
+        dump_only = (Sighting.guid.key,)
 
 
 class DetailedSightingSchema(BaseSightingSchema):

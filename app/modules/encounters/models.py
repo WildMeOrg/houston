@@ -5,7 +5,6 @@ Encounters database models
 """
 
 from app.extensions import db, FeatherModel
-
 import uuid
 
 
@@ -17,13 +16,27 @@ class Encounter(db.Model, FeatherModel):
     guid = db.Column(
         db.GUID, default=uuid.uuid4, primary_key=True
     )  # pylint: disable=invalid-name
+
+    from app.modules.sightings.models import Sighting
+
+    sighting_guid = db.Column(
+        db.GUID, db.ForeignKey('sighting.guid'), index=True, nullable=True
+    )
+    sighting = db.relationship('Sighting', backref=db.backref('encounters'))
+
+    owner_guid = db.Column(db.GUID, db.ForeignKey('user.guid'), index=True, nullable=True)
+    owner = db.relationship('User', backref=db.backref('owned_encounters'))
+
     title = db.Column(db.String(length=50), nullable=False)
+
+    public = db.Column(db.Boolean, default=False, nullable=False)
 
     def __repr__(self):
         return (
             '<{class_name}('
             'guid={self.guid}, '
-            "title='{self.title}'"
+            "title='{self.title},'"
+            'owner={self.owner},'
             ')>'.format(class_name=self.__class__.__name__, self=self)
         )
 
@@ -32,3 +45,14 @@ class Encounter(db.Model, FeatherModel):
         if len(title) < 3:
             raise ValueError('Title has to be at least 3 characters long.')
         return title
+
+    def get_owner(self):
+        return self.owner
+
+    def get_sighting(self):
+        return self.sighting
+
+    def is_public(self):
+        if self.public is True or self.owner is None:
+            return True
+        return False

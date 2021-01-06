@@ -527,16 +527,26 @@ class User(db.Model, FeatherModel, UserEDMMixin):
     def owns_object(self, obj):
         from app.modules.assets.models import Asset
         from app.modules.submissions.models import Submission
+        from app.modules.encounters.models import Encounter
+        from app.modules.sightings.models import Sighting
 
         ret_val = False
 
         # todo, if more objects end up with an "owner" relationship with user, this could be a simple as Submission
         if isinstance(obj, Submission):
             ret_val = obj.owner is self
+        elif isinstance(obj, Encounter):
+            ret_val = obj.owner is self
         elif isinstance(obj, Asset):
             # assets are not owned directly by the user but the submission they're in is.
             # todo, need to understand once assets become part of an encounter, do they still have a submission
             if obj.submission is not None:
                 ret_val = obj.submission.owner is self
+        elif isinstance(obj, Sighting):
+            # up for consideration. old world allows control of a sighting if you own at least one encounter on it.
+            for encounter in obj.get_encounters():
+                if encounter.get_owner() is self:
+                    ret_val = True
+                    break
 
         return ret_val

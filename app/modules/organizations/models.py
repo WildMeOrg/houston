@@ -4,6 +4,7 @@ Organizations database models
 --------------------
 """
 
+from flask import current_app
 from app.extensions import db, HoustonModel
 from app.extensions.edm import EDMObjectMixin
 
@@ -12,14 +13,13 @@ import uuid
 import datetime
 import pytz
 
-# todo, this should be in config.py, not across various files in the system, and yes should be called TIMEZONE, not PST
-TIMEZONE = pytz.timezone('US/Pacific')
-DATETIME_FMTSTR = '%Y-%m-%dT%H:%M:%S.%fZ'
-
 log = logging.getLogger(__name__)
 
 
 class OrganizationEDMMixin(EDMObjectMixin):
+    # All comms with EDM to exchange timestamps will use this format so it should be in one place
+    # todo, does this make sense? Does anything in EDM other than Organizations have this time format
+    EDM_DATETIME_FMTSTR = '%Y-%m-%dT%H:%M:%S.%fZ'
 
     # fmt: off
     # Name of the module, used for knowing what to sync i.e organization.list, organization.data
@@ -68,33 +68,39 @@ class OrganizationEDMMixin(EDMObjectMixin):
 
         return organization, is_new
 
+    # Helper function for converting time in the EDM database to local time
+    @classmethod
+    def edm_to_local_time(cls, edm_date_time):
+        naive_time = datetime.datetime.strptime(edm_date_time, cls.EDM_DATETIME_FMTSTR)
+        # tell it that it's actually UTC, without this, the hour decrements
+        utc_tz = pytz.timezone('UTC')
+        utc_time = utc_tz.localize(naive_time)
+        return utc_time.astimezone(current_app.config.get('TIMEZONE'))
+
     def _process_members(self, members):
         from app.modules.users.models import User
 
         for member in members:
             log.info('Adding Member ID %s' % (member.id,))
             user, is_new = User.ensure_edm_obj(member.id)
-            enrollment = OrganizationUserMembershipEnrollment(
-                organization=self,
-                user=user,
-            )
+            if user not in self.members:
+                enrollment = OrganizationUserMembershipEnrollment(
+                    organization=self,
+                    user=user,
+                )
 
-            with db.session.begin():
-                self.user_membership_enrollments.append(enrollment)
+                with db.session.begin():
+                    self.user_membership_enrollments.append(enrollment)
 
     def _process_logo(self, logo):
         self.logo_guid = logo.uuid
         self.logo_url = logo.url
 
     def _process_created_date(self, created_date):
-        self.created = datetime.datetime.strptime(
-            created_date, DATETIME_FMTSTR
-        ).astimezone(TIMEZONE)
+        self.created = self.edm_to_local_time(created_date)
 
     def _process_modified_date(self, modified_date):
-        self.updated = datetime.datetime.strptime(
-            modified_date, DATETIME_FMTSTR
-        ).astimezone(TIMEZONE)
+        self.updated = self.edm_to_local_time(modified_date)
 
 
 class OrganizationUserMembershipEnrollment(db.Model, HoustonModel):

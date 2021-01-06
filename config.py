@@ -4,6 +4,7 @@ import importlib
 import os
 import logging
 import datetime
+import pytz
 
 
 log = logging.getLogger(__name__)
@@ -169,6 +170,8 @@ class BaseConfig(object):
     REMEMBER_COOKIE_SECURE = True
     REMEMBER_COOKIE_HTTPONLY = True
     REMEMBER_COOKIE_REFRESH_EACH_REQUEST = True
+
+    TIMEZONE = pytz.timezone('UTC')
 
 
 class EDMConfig(object):

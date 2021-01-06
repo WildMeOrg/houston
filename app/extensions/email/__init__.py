@@ -24,10 +24,7 @@ from io import StringIO
 import re
 
 import datetime
-import pytz
 
-
-PST = pytz.timezone('US/Pacific')
 
 NEWLINE_TEMP_CODE = '_^_NEWLINE_CHARACTER_^_'
 WEBFONTS_PLACEHOLDER_CODE = '_^_WEBFONTS_PLACEHOLDER_^_'
@@ -79,7 +76,7 @@ class Email(Message):
     """
 
     def __init__(self, *args, **kwargs):
-        now = datetime.datetime.now(tz=PST)
+        now = datetime.datetime.now(tz=current_app.config.get('TIMEZONE'))
 
         self.template_name = None
         self.template_kwargs = {

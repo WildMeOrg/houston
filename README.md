@@ -69,6 +69,7 @@ To submit a pull request (PR) to Houston, we require the following standards to 
   * We also require any sensitive code, configurations, or pre-specified values be omitted, truncated, or redacted.  For example, the file `_db/secrets/py` is not committed into the repository and is ignored by `.gitignore`.
 * **Ensure that the PR is properly reviewed**
   * After the preceding checks are satisfied, the code is ready for review.  All PRs are required to be reviewed and approved by at least one registered contributor or administrator on the Houston project.
+  * When the PR is created in GitHub, make sure that the repository is specified as `WildbookOrg/houston` and not its original fork.  Further, make sure that the base branch is specified as `develop` and not `master`.
 
 ### Pre-commit
 

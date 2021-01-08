@@ -9,8 +9,6 @@ from flask_restplus_patched import ModelSchema
 
 from .models import Submission
 
-from app.modules.assets.models import Asset
-
 
 class BaseSubmissionSchema(ModelSchema):
     """
@@ -55,6 +53,8 @@ class DetailedSubmissionSchema(CreateSubmissionSchema):
     Detailed Submission schema exposes all useful fields.
     """
 
+    from app.modules.assets.models import Asset
+
     assets = base_fields.Nested(
         'BaseAssetSchema',
         exclude=(Asset.submission_guid.key),
@@ -62,5 +62,5 @@ class DetailedSubmissionSchema(CreateSubmissionSchema):
     )
 
     class Meta(CreateSubmissionSchema.Meta):
-        fields = CreateSubmissionSchema.Meta.fields + (Submission.assets.key,)
+        fields = CreateSubmissionSchema.Meta.fields + ('assets',)
         dump_only = CreateSubmissionSchema.Meta.dump_only

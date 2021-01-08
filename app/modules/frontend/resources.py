@@ -16,7 +16,6 @@ from flask_restplus_patched import Resource
 from app.extensions.api import Namespace
 
 import datetime
-import pytz
 
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
@@ -24,7 +23,6 @@ api = Namespace('frontends', description='Frontends')  # pylint: disable=invalid
 
 
 DATETIME_FMTSTR = '%Y%m%d-%H%M%S'
-PST = pytz.timezone('US/Pacific')
 
 
 def parse_frontend_versions():
@@ -56,8 +54,13 @@ def parse_frontend_versions():
             frontend_datetime = datetime.datetime.strptime(
                 frontend_timestamp, DATETIME_FMTSTR
             )
-            frontend_datetime = frontend_datetime.replace(tzinfo=PST)
-            frontend_time = frontend_datetime.strftime('%B %d, %Y, %H:%M:%S %p Pacific')
+            frontend_datetime = frontend_datetime.replace(
+                tzinfo=current_app.config.get('TIMEZONE')
+            )
+            output_format = (
+                '%B %d, %Y, %H:%M:%S %p ' + current_app.config.get('TIMEZONE').zone
+            )
+            frontend_time = frontend_datetime.strftime(output_format)
         except Exception:
             frontend_time = 'Parse Error: %r' % (frontend_timestamp,)
 

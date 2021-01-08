@@ -21,8 +21,16 @@ import app.extensions
 ${imports if imports else ""}
 
 def upgrade():
+    """
+    Upgrade Semantic Description:
+        ENTER DESCRIPTION HERE
+    """
     ${upgrades if upgrades else "pass"}
 
 
 def downgrade():
+    """
+    Downgrade Semantic Description:
+        ENTER DESCRIPTION HERE
+    """
     ${downgrades if downgrades else "pass"}

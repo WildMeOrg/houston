@@ -6,11 +6,7 @@ RESTful API User resources
 """
 
 import logging
-import datetime  # NOQA
-import pytz
 
-
-from flask import current_app  # NOQA
 from flask_login import current_user
 from flask_restplus_patched import Resource
 from flask_restplus._http import HTTPStatus
@@ -24,9 +20,6 @@ from .models import db, User
 
 log = logging.getLogger(__name__)
 api = Namespace('users', description='Users')
-
-
-PST = pytz.timezone('US/Pacific')
 
 
 @api.route('/')

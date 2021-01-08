@@ -1,12 +1,3 @@
-<!--
-[![Build Status](https://travis-ci.org/frol/flask-restplus-server-example.svg)](https://travis-ci.org/frol/flask-restplus-server-example)
-[![Coverage Status](https://coveralls.io/repos/frol/flask-restplus-server-example/badge.svg?branch=master&service=github)](https://coveralls.io/github/frol/flask-restplus-server-example?branch=master)
-[![Codacy Coverage Status](https://api.codacy.com/project/badge/coverage/b0fc91ce77d3437ea5f107c4b7ccfa26)](https://www.codacy.com/app/frolvlad/flask-restplus-server-example)
-[![Codacy Quality Status](https://api.codacy.com/project/badge/grade/b0fc91ce77d3437ea5f107c4b7ccfa26)](https://www.codacy.com/app/frolvlad/flask-restplus-server-example)
-[![Heroku](http://heroku-badge.herokuapp.com/?app=flask-restplus-example-server&root=api/v1/&style=flat&svg=1)](http://flask-restplus-example-server.herokuapp.com/api/v1/)
- -->
-
-![Houston](https://raw.githubusercontent.com/frol/flask-restplus-server-example/master/docs/static/Flask_RESTplus_Example_API.png)
 
 Wild Me - Houston Backend Server
 ======================================================
@@ -14,24 +5,113 @@ Wild Me - Houston Backend Server
 This project showcases my vision on how the RESTful API server should be
 implemented.
 
-The goals that were achived in this example:
+The goals that were achieved in this example:
 
-* RESTful API server should be self-documented using OpenAPI (fka Swagger)
-  specifications, so interactive documentation UI is in place;
-* Authentication is handled with OAuth2 and using Resource Owner Password
-  Credentials Grant (Password Flow) for first-party clients makes it usable
-  not only for third-party "external" apps;
-* Permissions are handled (and automaticaly documented);
-* PATCH method can be handled accordingly to
-  [RFC 6902](http://tools.ietf.org/html/rfc6902);
+* RESTful API server should be self-documented using OpenAPI (fka Swagger) specifications, so interactive documentation UI is in place
+* Authentication is handled with OAuth2 and using Resource Owner Password Credentials Grant (Password Flow) for first-party clients makes it usable not only for third-party "external" apps
+* Permissions are handled (and automaticaly documented)
+* PATCH method can be handled accordingly to [RFC 6902](http://tools.ietf.org/html/rfc6902)
 * Extensive testing with good code coverage.
 
-I had to patch Flask-RESTplus (see `flask_restplus_patched` folder), so it can
-handle Marshmallow schemas and Webargs arguments.
+The package Flask-RESTplus has been patched (see `flask_restplus_patched` folder), so it can handle Marshmallow schemas and Webargs arguments.
 
-<!--
-![Flask RESTplus Example API](https://raw.githubusercontent.com/frol/flask-restplus-server-example/master/docs/static/Flask_RESTplus_Example_API.png)
- -->
+## Code Style and Development Guidelines
+
+### Pull Request Checklist
+
+To submit a pull request (PR) to Houston, we require the following standards to be enforced.  Details on how to configure and pass each of these required checks is detailed in the sections in this guideline section.
+
+* **Ensure that the PR is properly formatted**
+  * We require code formatting with Brunette (a *better* version of Black) and linted with Flake8 using the pre-commit (includes automatic checks with brunette and flake8 plus includes other general line-ending, single-quote strings, permissions, and security checks)
+  ```
+  # Command Line Example
+  pre-commit run --all-files
+  ```
+* **Ensure that the PR is properly rebased**
+  * We require new feature code to be rebased onto the latest version of the `develop` branch.
+  ```
+  git checkout develop
+  git pull --rebase  # Use the following to make this the default: git config pull.rebase true
+  git checkout <feature-branch>
+  git pull
+  git rebase develop
+  # Resolve all conflicts
+  git merge develop  # Sanity check
+  git push --force origin <feature-branch>
+  ```
+* **Ensure that the PR uses a consolidated database migration**
+  * We require new any database migrations (optional) with Alembic are consolidated and condensed into a single file and version.  Exceptions to this rule (allowing possibly up to 3) will be allowed after extensive discussion and justification.
+  * All database migrations should be created using a downgrade revision that matches the existing revision used on the `develop` branch.  Further,a PR should never be merged into develop that contains multiple revision heads.
+  ```
+  invoke app.db.downgrade <develop branch revision ID>
+  rm -rf migrations/versions/<new migrations>.py
+  invoke app.db.migrate
+  invoke app.db.upgrade
+  invoke app.db.history  # Check that the history matches
+  invoke app.db.heads  # Ensure that there is only one head
+  ```
+* **Ensure that the PR is properly tested**
+  * We require new feature code to be tested via Python tests and simulated REST API tests.  We use PyTest (and eventually Coverage) to ensure that your code is working cohesively and that any new functionality is exercised.
+  * We require new feature code to also be fully compatible with a containerized runtime environment like Docker.
+  ```
+  pytest
+  ```
+* **Ensure that the PR is properly sanitized**
+  * We require the PR to not include large files (images, database files, etc) without using [GitHub Large File Store (LFS)](https://git-lfs.github.com).
+  ```
+  git lfs install
+  git lfs track "*.png"
+  git add .gitattributes
+  git add image.png
+  git commit -m "Add new image file"
+  git push
+  ```
+  * We also require any sensitive code, configurations, or pre-specified values be omitted, truncated, or redacted.  For example, the file `_db/secrets/py` is not committed into the repository and is ignored by `.gitignore`.
+* **Ensure that the PR is properly reviewed**
+  * After the preceding checks are satisfied, the code is ready for review.  All PRs are required to be reviewed and approved by at least one registered contributor or administrator on the Houston project.
+  * When the PR is created in GitHub, make sure that the repository is specified as `WildbookOrg/houston` and not its original fork.  Further, make sure that the base branch is specified as `develop` and not `master`.
+
+### Pre-commit
+
+It's recommended that you use `pre-commit` to ensure linting procedures are run
+on any commit you make. (See also [pre-commit.com](https://pre-commit.com/)
+
+Reference [pre-commit's installation instructions](https://pre-commit.com/#install) for software installation on your OS/platform. After you have the software installed, run ``pre-commit install`` on the command line. Now every time you commit to this project's code base the linter procedures will automatically run over the changed files.  To run pre-commit on files preemtively from the command line use:
+
+```bash
+  git add .
+  pre-commit run
+
+  # or
+
+  pre-commit run --all-files
+```
+
+### Brunette
+
+Our code base has been formatted by Brunette, which is a fork and more configurable version of Black (https://black.readthedocs.io/en/stable/).
+
+### Flake8
+
+Try to conform to PEP8.  You should set up your preferred editor to use flake8 as its Python linter, but pre-commit will ensure compliance before a git commit is completed.
+
+To run flake8 from the command line use:
+
+```bash
+  flake8
+```
+
+This will use the flake8 configuration within ``setup.cfg``,
+which ignores several errors and stylistic considerations.
+See the ``setup.cfg`` file for a full and accurate listing of stylistic codes to ignore.
+
+### PyTest
+
+Our code uses Google-style documentation tests (doctests) that uses pytest and xdoctest to enable full support.  To run the tests from the command line use:
+
+```bash
+  pytest
+```
 
 Single File Example
 -------------------

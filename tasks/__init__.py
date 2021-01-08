@@ -57,11 +57,11 @@ else:
 from invoke import Collection  # NOQA
 from invoke.executor import Executor  # NOQA
 
-from . import app  # NOQA
+from tasks import app as tasks_app  # NOQA
 
 # NOTE: `namespace` or `ns` name is required!
 namespace = Collection(
-    app,
+    tasks_app,
 )
 
 

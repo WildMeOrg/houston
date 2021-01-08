@@ -19,8 +19,6 @@ import os
 
 log = logging.getLogger(__name__)
 
-PST = pytz.timezone('US/Pacific')
-
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
 
 HOUSTON_STATIC_ROOT = os.path.join(PROJECT_ROOT, 'app', 'static')
@@ -33,7 +31,7 @@ DOCUMENTATION_STATIC_ROOT = os.path.join(
 
 
 def _render_template(template, **kwargs):
-    now = datetime.datetime.now(tz=PST)
+    now = datetime.datetime.now(tz=current_app.config.get('TIMEZONE'))
     config = {
         'base_url': current_app.config.get('BASE_URL'),
         'google_analytics_tag': current_app.config.get('GOOGLE_ANALYTICS_TAG'),

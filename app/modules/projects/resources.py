@@ -15,8 +15,6 @@ from app.extensions.api import Namespace
 from app.extensions.api.parameters import PaginationParameters
 from app.modules.users import permissions
 
-# from app.modules.users.permissions import operation
-
 from . import parameters, schemas
 from .models import Project
 
@@ -73,11 +71,6 @@ class ProjectByID(Resource):
     Manipulations with a specific Project.
     """
 
-    # @api.permission_required(
-    #    permissions.ObjectAccessPermission,
-    #    kwargs_on_request=lambda kwargs: {'obj': kwargs['project'],
-    #                                      'action': operation.ObjectAccessOperation.READ},
-    # )
     @api.response(schemas.DetailedProjectSchema())
     def get(self, project):
         """
@@ -90,11 +83,6 @@ class ProjectByID(Resource):
     @api.parameters(parameters.PatchProjectDetailsParameters())
     @api.response(schemas.DetailedProjectSchema())
     @api.response(code=HTTPStatus.CONFLICT)
-    # @api.permission_required(
-    #    permissions.ObjectAccessPermission,
-    #    kwargs_on_request=lambda kwargs: {'obj': kwargs['project'],
-    #                                      'action': operation.ObjectAccessOperation.WRITE},
-    # )
     def patch(self, args, project):
         """
         Patch Project details by ID.
@@ -111,11 +99,6 @@ class ProjectByID(Resource):
     @api.permission_required(permissions.WriteAccessPermission())
     @api.response(code=HTTPStatus.CONFLICT)
     @api.response(code=HTTPStatus.NO_CONTENT)
-    # @api.permission_required(
-    #    permissions.ObjectAccessPermission,
-    #    kwargs_on_request=lambda kwargs: {'obj': kwargs['project'],
-    #                                       'action': operation.ObjectAccessOperation.DELETE},
-    # )
     def delete(self, project):
         """
         Delete a Project by ID.

@@ -73,6 +73,7 @@ def test_project_permission(db, regular_user):
         ProjectEncounter,
     )
     from app.modules.encounters.models import Encounter
+    from app.modules.users.permissions.operation import ObjectAccessOperation
 
     temp_user = utils.generate_user_instance(
         email='temp@localhost', full_name='Temp User'
@@ -110,8 +111,13 @@ def test_project_permission(db, regular_user):
     logging.info(temp_user.project_membership_enrollments)
     logging.info(temp_proj.user_membership_enrollments)
 
-    assert temp_user.has_permission_to_read(temp_encounter) is True
-    assert regular_user.has_permission_to_read(temp_encounter) is False
+    assert (
+        temp_user.can_perform_action(temp_encounter, ObjectAccessOperation.READ) is True
+    )
+    assert (
+        regular_user.can_perform_action(temp_encounter, ObjectAccessOperation.READ)
+        is False
+    )
 
     with db.session.begin():
         db.session.delete(temp_user)

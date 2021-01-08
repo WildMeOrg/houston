@@ -130,10 +130,12 @@ def test_empty_submission_uuid(flask_app):
 
 
 @pytest.fixture(scope='session')
-def test_clone_submission_uuid(flask_app):
-    return uuid.UUID('290950fb-49a8-496a-adf4-e925010f79ce')
+def test_clone_submission_data(flask_app):
+    return {
+        'submission_uuid': '290950fb-49a8-496a-adf4-e925010f79ce',
+        'asset_uuids': [
+            '3abc03a8-39c8-42c4-bedb-e08ccc485396',
+            'aee00c38-137e-4392-a4d9-92b545a9efb0',
+        ],
+    }
 
-
-@pytest.fixture(scope='session')
-def test_asset_uuid(flask_app):
-    return uuid.UUID('3abc03a8-39c8-42c4-bedb-e08ccc485396')

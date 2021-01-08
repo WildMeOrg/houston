@@ -18,7 +18,7 @@ from app.extensions import db
 from app.extensions.api import Namespace
 from app.extensions.api.parameters import PaginationParameters
 from app.modules.users import permissions
-
+from app.modules.users.permissions import operation
 
 from . import parameters, schemas
 from .models import Submission
@@ -154,8 +154,11 @@ class SubmissionByID(Resource):
     """
 
     @api.permission_required(
-        permissions.ObjectReadAccessPermission,
-        kwargs_on_request=lambda kwargs: {'obj': kwargs['submission']},
+        permissions.ObjectAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'obj': kwargs['submission'],
+            'action': operation.ObjectAccessOperation.READ,
+        },
     )
     @api.response(schemas.DetailedSubmissionSchema())
     def get(self, submission):
@@ -191,6 +194,13 @@ class SubmissionByID(Resource):
     @api.parameters(parameters.PatchSubmissionDetailsParameters())
     @api.response(schemas.DetailedSubmissionSchema())
     @api.response(code=HTTPStatus.CONFLICT)
+    @api.permission_required(
+        permissions.ObjectAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'obj': kwargs['submission'],
+            'action': operation.ObjectAccessOperation.WRITE,
+        },
+    )
     def patch(self, args, submission):
         """
         Patch Submission details by ID.
@@ -209,6 +219,13 @@ class SubmissionByID(Resource):
     @api.permission_required(permissions.WriteAccessPermission())
     @api.response(code=HTTPStatus.CONFLICT)
     @api.response(code=HTTPStatus.NO_CONTENT)
+    @api.permission_required(
+        permissions.ObjectAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'obj': kwargs['submission'],
+            'action': operation.ObjectAccessOperation.DELETE,
+        },
+    )
     def delete(self, submission):
         """
         Delete a Submission by ID.

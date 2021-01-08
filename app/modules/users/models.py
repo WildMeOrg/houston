@@ -14,6 +14,7 @@ from app.extensions import db, FeatherModel
 from app.extensions.auth import security
 from app.extensions.edm import EDMObjectMixin
 from app.extensions.api.parameters import _get_is_static_role_property
+from app.modules.users.permissions import operation
 
 # In order to support OrganizationUserMemberships
 # we must import the model definitions for organizations here
@@ -507,7 +508,7 @@ class User(db.Model, FeatherModel, UserEDMMixin):
 
         return self
 
-    def has_permission_to_read(self, obj):
+    def _has_permission_to_read(self, obj):
         has_permission = self.owns_object(obj)
 
         # Not owned by user, is it in any orgs we're in
@@ -524,6 +525,43 @@ class User(db.Model, FeatherModel, UserEDMMixin):
                 if has_permission:
                     break
 
+        return has_permission
+
+    # Permissions control entry point for real users, for all objects and all operations
+    def can_perform_action(self, obj, action):
+        has_permission = False
+        if action == operation.ObjectAccessOperation.READ:
+            if obj is None:
+                # @todo, this is for the "clone if not known" functionality that is under debate
+                has_permission = True
+            else:
+                has_permission = self._has_permission_to_read(obj)
+        elif action == operation.ObjectAccessOperation.WRITE:
+            if obj is None:
+                # Allowed to write (create) an object that doesn't exist
+                has_permission = True
+            else:
+                has_permission = self.owns_object(obj)
+                # @todo this is where project and collaborations would link in
+        elif action == operation.ObjectAccessOperation.DELETE:
+            if obj is None:
+                has_permission = False
+            else:
+                has_permission = self.owns_object(obj)
+                # @todo this is where project and collaborations would link in
+
+        return has_permission
+
+    # Permissions control entry point for anonymous users, for all objects and all operations
+    @classmethod
+    def anonymous_can_perform_action(cls, obj, action):
+        # Anonymous users can only read public objects
+        has_permission = (
+            action == operation.ObjectAccessOperation.READ
+            and callable(hasattr(obj, 'is_public'))
+            and obj.is_public()
+        )
+        # @todo, can anonymous users create/update/delete things?
         return has_permission
 
     def owns_object(self, obj):

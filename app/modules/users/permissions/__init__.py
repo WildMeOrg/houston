@@ -4,11 +4,13 @@
 RESTful API permissions
 -----------------------
 """
+
 import logging
 from flask_sqlalchemy import BaseQuery
 from permission import Permission as BasePermission
 
 from . import rules
+from app.modules.users.permissions.operation import ObjectAccessOperation
 
 log = logging.getLogger(__name__)
 
@@ -84,26 +86,28 @@ class WriteAccessPermission(Permission):
         return rules.InternalRoleRule() | rules.AdminRoleRule() | rules.WriteAccessRule()
 
 
-class ObjectReadAccessPermission(Permission):
+class ObjectAccessPermission(Permission):
     """
-    Ensure that the current user has read permission for the object
+    Ensure that the current user has sufficient permission to perform the action on the object
     """
 
-    def __init__(self, obj=None, **kwargs):
+    def __init__(self, obj=None, action=ObjectAccessOperation.READ, **kwargs):
         """
         Args:
         obj (object) - any object can be passed here, this functionality will determine
-             whether the current user has enough permissions to read the object.
+             whether the current user has enough permissions to write the object.
+        action (ObjectAccessOperation) - READ, WRITE, DELETE supported
         """
         # Sometimes the obj passed is the object itself, sometimes a list with the object as the first item
         self._obj = obj[0] if isinstance(obj, tuple) else obj
+        self._action = action
         super().__init__(**kwargs)
 
     def rule(self):
         return (
             rules.InternalRoleRule()
             | rules.AdminRoleRule()
-            | rules.ObjectReadAccessRule(self._obj)
+            | rules.ObjectActionRule(self._obj, self._action)
         )
 
 

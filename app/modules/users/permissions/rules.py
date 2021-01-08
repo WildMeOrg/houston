@@ -9,6 +9,7 @@ from flask_restplus._http import HTTPStatus
 from permission import Rule as BaseRule
 
 from app.extensions.api import abort
+from app.modules.users.permissions.operation import ObjectAccessOperation
 
 
 class DenyAbortMixin(object):
@@ -66,35 +67,34 @@ class WriteAccessRule(DenyAbortMixin, Rule):
         return current_user.is_active
 
 
-class ObjectReadAccessRule(DenyAbortMixin, Rule):
+class ObjectActionRule(DenyAbortMixin, Rule):
     """
-    Ensure that the current_user has has read access to the object passed.
+    Ensure that the current_user has has permission to perform the action on the object passed.
     """
 
-    def __init__(self, obj=None, **kwargs):
+    def __init__(self, obj=None, action=ObjectAccessOperation.READ, **kwargs):
         """
         Args:
         obj (object) - any object can be passed here, which this functionality will
-            determine whether the current user has enough permissions to read given object
+            determine whether the current user has enough permissions to write given object
             object.
+        action (ObjectAccessRule) - can be READ, WRITE, DELETE
         """
         self._obj = obj
+        self._action = action
         super().__init__(**kwargs)
 
     def check(self):
-        # Permission check must only apply if object exists, otherwise "clone if doesn't exist"
-        # functionality fails
-        # todo the "clone if doesn't exist" functionality is under discussion so this could be replaced
-        has_permission = self._obj is None
+        from app.modules.users import models
 
-        # todo, if user has no owner, it is public. Implement this once owner fields are created.
-        # This will probably involve different handling depending on the type of obj
-        if not has_permission:
-            if not current_user.is_anonymous:
-                has_permission = current_user.has_permission_to_read(self._obj)
-            else:
-                # todo this would be where the check of is_public on the object would be
-                pass
+        # The permission control logic is all handled by the user module but via different interfaces for
+        # real and anonymous users
+        has_permission = False
+        if current_user.is_anonymous:
+            models.anonymous_can_perform_action(self._obj, self._action)
+        else:
+            has_permission = current_user.can_perform_action(self._obj, self._action)
+
         return has_permission
 
 

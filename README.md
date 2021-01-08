@@ -419,14 +419,14 @@ You will need `invoke` package to work with everything related to this project.
 
 ```bash
 $ tar -zxvf _db.initial.tar.gz
-$ ./venv.sh
+$ ./scripts/venv.sh
 $ source virtualenv/houston3.7/bin/activate
 $ pip install -r requirements.txt
 $ invoke app.dependencies.install-python-dependencies
 $ invoke app.dependencies.install-swagger-ui
 $ invoke app.dependencies.install
 $ pip install -e .
-$ ./build.frontend.sh
+$ ./scripts/build.frontend.sh
 ```
 
 #### Run Server

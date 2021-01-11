@@ -132,6 +132,7 @@ class BaseConfig(object):
 
         # Miscellaneous
         'collaborations',
+        'notifications',
         'encounters',
         'projects',
         'sightings',

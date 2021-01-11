@@ -138,4 +138,3 @@ def test_clone_submission_data(flask_app):
             'aee00c38-137e-4392-a4d9-92b545a9efb0',
         ],
     }
-

@@ -42,12 +42,11 @@ class Notification(db.Model, HoustonModel):
         db.GUID, db.ForeignKey('user.guid'), index=True, nullable=True
     )
     recipient = db.relationship('User')
-    # recipient = db.relationship('User', backref=db.backref('notifications'))
 
     def __repr__(self):
         return (
             '<{class_name}('
-            'guid={self.id}, '
+            'guid={self.guid}, '
             'template={self.message_template}, '
             "recipient='{self.recipient}'"
             ')>'.format(class_name=self.__class__.__name__, self=self)

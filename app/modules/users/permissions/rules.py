@@ -69,16 +69,15 @@ class WriteAccessRule(DenyAbortMixin, Rule):
 
 class ModuleActionRule(DenyAbortMixin, Rule):
     """
-    Ensure that the current_user has has permission to perform the action on the object passed.
+    Ensure that the current_user has has permission to perform the action on the module passed.
     """
 
     def __init__(self, module=None, action=AccessOperation.READ, **kwargs):
         """
         Args:
-        obj (object) - any object can be passed here, which this functionality will
-            determine whether the current user has enough permissions to write given object
-            object.
-        action (ObjectAccessRule) - can be READ, WRITE, DELETE
+        module (Class) - any class can be passed here, which this functionality will
+            determine whether the current user has enough permissions to perform te action on the class.
+        action (AccessRule) - can be READ, WRITE, DELETE
         """
         self._module = module
         self._action = action
@@ -134,14 +133,14 @@ class ObjectActionRule(DenyAbortMixin, Rule):
         obj (object) - any object can be passed here, which this functionality will
             determine whether the current user has enough permissions to write given object
             object.
-        action (ObjectAccessRule) - can be READ, WRITE, DELETE
+        action (AccessRule) - can be READ, WRITE, DELETE
         """
         self._obj = obj
         self._action = action
         super().__init__(**kwargs)
 
     def check(self):
-        # This Rule is for checking permissions on objects, so there must be one, Use the ClassActionRule for
+        # This Rule is for checking permissions on objects, so there must be one, Use the ModuleActionRule for
         # permissions checking without objects
         assert self._obj is not None
 
@@ -188,19 +187,13 @@ class ObjectActionRule(DenyAbortMixin, Rule):
         has_permission = False
 
         if self._action == AccessOperation.READ:
-            if self._obj is not None:
-                has_permission = self._has_permission_to_read(user)
+            has_permission = self._has_permission_to_read(user)
         elif self._action == AccessOperation.WRITE:
-            if self._obj is None:
-                # Allowed to write (create) an object that doesn't exist
-                has_permission = True
-            else:
-                has_permission = user.owns_object(self._obj)
-                # @todo this is where project and collaborations would link in
+            has_permission = user.owns_object(self._obj)
+            # @todo this is where project and collaborations would link in
         elif self._action == AccessOperation.DELETE:
-            if self._obj is not None:
-                has_permission = user.owns_object(self._obj)
-                # @todo this is where project and collaborations would link in, for now, it's not permitted
+            has_permission = user.owns_object(self._obj)
+            # @todo this is where project and collaborations would link in, for now, it's not permitted
 
         return has_permission
 

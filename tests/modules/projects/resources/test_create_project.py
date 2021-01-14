@@ -46,7 +46,6 @@ def test_create_and_delete_project(flask_app_client, regular_user):
     with flask_app_client.login(regular_user, auth_scopes=('projects:write',)):
         response = flask_app_client.delete('/api/v1/projects/%s' % project_guid)
 
-    # For now projects cannot be deleted
-    assert response.status_code == 403
+    assert response.status_code == 204
     read_project = Project.query.get(project_guid)
-    assert read_project is not None
+    assert read_project is None

@@ -104,7 +104,7 @@ class JSONResponse(Response):
 # class with a cleanup method to be called if any assertions fail
 class CloneSubmission(object):
     def __init__(self, flask_app_client, user, submission_uuid, force_clone):
-        from app.modules.submissions.models import Submission
+        from flask import current_app
 
         self.temp_submission = None
         submissions_database_path = config.TestingConfig.SUBMISSIONS_DATABASE_PATH
@@ -119,14 +119,8 @@ class CloneSubmission(object):
                 shutil.rmtree(self.submission_path)
             assert not os.path.exists(self.submission_path)
 
-        with flask_app_client.login(user, auth_scopes=('submissions:read',)):
-            self.response = flask_app_client.get(
-                '/api/v1/submissions/%s' % submission_uuid
-            )
-
-        # only store the transient submission for cleanup if the clone worked
-        if self.response.status_code == 200:
-            self.temp_submission = Submission.query.get(self.response.json['guid'])
+        # Use a backdoor way to clone this submission from EDM for testing
+        self.temp_submission = current_app.sub.ensure_submission(submission_uuid, user)
 
     def remove_files(self):
         if os.path.exists(self.submission_path):
@@ -140,31 +134,14 @@ class CloneSubmission(object):
         self.remove_files()
 
 
-# Clone the submission within a try/except/finally structure to ensure that cleanup is called to clean up
-# the files etc.
+# Clone the submission
 # If later_usage is set, it's the callers responsibility to call the cleanup method.
 def clone_submission(
     flask_app_client, user, submission_uuid, force_clone=False, later_usage=False
 ):
     clone = CloneSubmission(flask_app_client, user, submission_uuid, force_clone)
-    try:
-        assert clone.response.status_code == 200
-        assert clone.response.content_type == 'application/json'
-        assert isinstance(clone.response.json, dict)
-        assert set(clone.response.json.keys()) >= {
-            'guid',
-            'owner_guid',
-            'major_type',
-            'commit',
-        }
-        assert clone.response.json.get('guid') == str(submission_uuid)
-
-    except Exception as ex:
+    if not later_usage:
         clone.cleanup()
-        raise ex
-    finally:
-        if not later_usage:
-            clone.cleanup()
     return clone
 
 

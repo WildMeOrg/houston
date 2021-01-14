@@ -10,7 +10,7 @@ from app.modules.encounters import models as encounters_models  # NOQA
 import uuid
 
 
-# todo should this be a class or an association table
+# All many:many associations handled as Houston model classes to give control and history
 class ProjectEncounter(db.Model, HoustonModel):
 
     project_guid = db.Column(db.GUID, db.ForeignKey('project.guid'), primary_key=True)
@@ -33,7 +33,7 @@ class ProjectUserMembershipEnrollment(db.Model, HoustonModel):
     user = db.relationship('User', back_populates='project_membership_enrollments')
 
 
-class Project(db.Model, Timestamp):
+class Project(db.Model, HoustonModel, Timestamp):
     """
     Projects database model.
     """
@@ -74,17 +74,28 @@ class Project(db.Model, Timestamp):
     def has_read_permission(self, user, obj):
         from app.modules.encounters.models import Encounter
 
-        has_permission = False
+        # Allow user to read the project details
+        has_permission = obj == self
 
-        if isinstance(obj, Encounter):
-            # Optionally add time check so that User can only access encounters after user was added to project
-            has_permission = obj in self.encounters
-        else:
-            for encounter in self.encounters:
-                # If time check was implemented, that would need to be passed here too and percolate down through
-                # encounters and sightings etc
-                has_permission = encounter.has_read_permission(obj)
-                if has_permission:
-                    break
+        if not has_permission:
+            if isinstance(obj, Encounter):
+                # Optionally add time check so that User can only access encounters after user was added to project
+                has_permission = obj in self.encounters
+            else:
+                for encounter in self.encounters:
+                    # If time check was implemented, that would need to be passed here too and percolate down through
+                    # encounters and sightings etc
+                    has_permission = encounter.has_read_permission(obj)
+                    if has_permission:
+                        break
 
         return has_permission
+
+    def add_user(self, user):
+        enrollment = ProjectUserMembershipEnrollment(
+            project=self,
+            user=user,
+        )
+
+        with db.session.begin():
+            self.user_membership_enrollments.append(enrollment)

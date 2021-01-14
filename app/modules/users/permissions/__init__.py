@@ -10,7 +10,7 @@ from flask_sqlalchemy import BaseQuery
 from permission import Permission as BasePermission
 
 from . import rules
-from app.modules.users.permissions.operation import ObjectAccessOperation
+from app.modules.users.permissions.types import AccessOperation
 
 log = logging.getLogger(__name__)
 
@@ -86,16 +86,37 @@ class WriteAccessPermission(Permission):
         return rules.InternalRoleRule() | rules.AdminRoleRule() | rules.WriteAccessRule()
 
 
+class ModuleAccessPermission(Permission):
+    """
+    Ensure that the current user has sufficient permission to perform the action on the object
+    """
+
+    def __init__(self, module=None, action=AccessOperation.READ, **kwargs):
+        """
+        Args:
+        module (class) - any class can be passed here, this functionality will determine
+             whether the current user has enough permissions to perform the action on the class.
+        action (ObjectAccessOperation) - READ, WRITE, DELETE supported
+        """
+        # Sometimes the obj passed is the object itself, sometimes a list with the object as the first item
+        self._module = module
+        self._action = action
+        super().__init__(**kwargs)
+
+    def rule(self):
+        return rules.ModuleActionRule(self._module, self._action)
+
+
 class ObjectAccessPermission(Permission):
     """
     Ensure that the current user has sufficient permission to perform the action on the object
     """
 
-    def __init__(self, obj=None, action=ObjectAccessOperation.READ, **kwargs):
+    def __init__(self, obj=None, action=AccessOperation.READ, **kwargs):
         """
         Args:
         obj (object) - any object can be passed here, this functionality will determine
-             whether the current user has enough permissions to write the object.
+             whether the current user has enough permissions to perform the action on the object.
         action (ObjectAccessOperation) - READ, WRITE, DELETE supported
         """
         # Sometimes the obj passed is the object itself, sometimes a list with the object as the first item
@@ -104,11 +125,7 @@ class ObjectAccessPermission(Permission):
         super().__init__(**kwargs)
 
     def rule(self):
-        return (
-            rules.InternalRoleRule()
-            | rules.AdminRoleRule()
-            | rules.ObjectActionRule(self._obj, self._action)
-        )
+        return rules.ObjectActionRule(self._obj, self._action)
 
 
 class RolePermission(Permission):

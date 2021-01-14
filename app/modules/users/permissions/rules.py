@@ -7,9 +7,9 @@ RESTful API Rules
 from flask_login import current_user
 from flask_restplus._http import HTTPStatus
 from permission import Rule as BaseRule
-
+from typing import Type, Any
 from app.extensions.api import abort
-from app.modules.users.permissions.operation import ObjectAccessOperation
+from app.modules.users.permissions.types import AccessOperation
 
 
 class DenyAbortMixin(object):
@@ -67,12 +67,68 @@ class WriteAccessRule(DenyAbortMixin, Rule):
         return current_user.is_active
 
 
+class ModuleActionRule(DenyAbortMixin, Rule):
+    """
+    Ensure that the current_user has has permission to perform the action on the object passed.
+    """
+
+    def __init__(self, module=None, action=AccessOperation.READ, **kwargs):
+        """
+        Args:
+        obj (object) - any object can be passed here, which this functionality will
+            determine whether the current user has enough permissions to write given object
+            object.
+        action (ObjectAccessRule) - can be READ, WRITE, DELETE
+        """
+        self._module = module
+        self._action = action
+        super().__init__(**kwargs)
+
+    def check(self):
+        from app.modules.submissions.models import Submission
+
+        # This Rule is for checking permissions on modules, so there must be one,
+        assert self._module is not None
+
+        if not current_user or current_user.is_anonymous:
+            # Anonymous users can only create a submission
+            has_permission = self._action == AccessOperation.WRITE and self._is_module(
+                Submission
+            )
+        else:
+            has_permission = (
+                # inactive users can do nothing
+                current_user.is_active
+                & (
+                    # staff and (currently) admin can do anything
+                    current_user.is_staff
+                    | current_user.is_admin
+                    | self._can_user_perform_action(current_user)
+                )
+            )
+
+        return has_permission
+
+    # Helper to identify what the module is
+    def _is_module(self, cls: Type[Any]):
+        try:
+            return issubclass(self._module, cls)
+        except TypeError:
+            return False
+
+    # Permissions control entry point for real users, for all objects and all operations
+    def _can_user_perform_action(self, user):
+        # Currently any user can do what they like. This is where the role specific access controls will be added
+        has_permission = True
+        return has_permission
+
+
 class ObjectActionRule(DenyAbortMixin, Rule):
     """
     Ensure that the current_user has has permission to perform the action on the object passed.
     """
 
-    def __init__(self, obj=None, action=ObjectAccessOperation.READ, **kwargs):
+    def __init__(self, obj=None, action=AccessOperation.READ, **kwargs):
         """
         Args:
         obj (object) - any object can be passed here, which this functionality will
@@ -85,15 +141,66 @@ class ObjectActionRule(DenyAbortMixin, Rule):
         super().__init__(**kwargs)
 
     def check(self):
-        from app.modules.users import models
+        # This Rule is for checking permissions on objects, so there must be one, Use the ClassActionRule for
+        # permissions checking without objects
+        assert self._obj is not None
 
-        # The permission control logic is all handled by the user module but via different interfaces for
-        # real and anonymous users
-        has_permission = False
-        if current_user.is_anonymous:
-            models.anonymous_can_perform_action(self._obj, self._action)
+        if not current_user or current_user.is_anonymous:
+            # Anonymous users can only read public objects
+            has_permission = (
+                self._action == AccessOperation.READ and self._obj.is_public()
+            )
         else:
-            has_permission = current_user.can_perform_action(self._obj, self._action)
+            has_permission = (
+                # inactive users can do nothing
+                current_user.is_active
+                & (
+                    # staff and (currently) admin can do anything
+                    current_user.is_staff
+                    | current_user.is_admin
+                    | self._can_user_perform_action(current_user)
+                )
+            )
+        return has_permission
+
+    def _has_permission_to_read(self, user):
+        has_permission = user.owns_object(self._obj)
+
+        # Not owned by user, is it in any orgs we're in
+        if not has_permission:
+            for org in current_user.memberships:
+                has_permission = org.has_read_permission(self._obj)
+                if has_permission:
+                    break
+
+        # If not in any orgs, check if it can be accessed via projects
+        if not has_permission:
+            for project in current_user.projects:
+                has_permission = project.has_read_permission(current_user, self._obj)
+                if has_permission:
+                    break
+
+        return has_permission
+
+    # Permissions control entry point for real users, for all objects and all operations
+    # This is where the role specific checking will be added
+    def _can_user_perform_action(self, user):
+        has_permission = False
+
+        if self._action == AccessOperation.READ:
+            if self._obj is not None:
+                has_permission = self._has_permission_to_read(user)
+        elif self._action == AccessOperation.WRITE:
+            if self._obj is None:
+                # Allowed to write (create) an object that doesn't exist
+                has_permission = True
+            else:
+                has_permission = user.owns_object(self._obj)
+                # @todo this is where project and collaborations would link in
+        elif self._action == AccessOperation.DELETE:
+            if self._obj is not None:
+                has_permission = user.owns_object(self._obj)
+                # @todo this is where project and collaborations would link in, for now, it's not permitted
 
         return has_permission
 

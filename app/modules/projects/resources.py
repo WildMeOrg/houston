@@ -9,12 +9,13 @@ import logging
 
 from flask_restplus_patched import Resource
 from flask_restplus._http import HTTPStatus
+from flask_login import current_user  # NOQA
 
 from app.extensions import db
 from app.extensions.api import Namespace
 from app.extensions.api.parameters import PaginationParameters
 from app.modules.users import permissions
-
+from app.modules.users.permissions.types import AccessOperation
 from . import parameters, schemas
 from .models import Project
 
@@ -30,8 +31,14 @@ class Projects(Resource):
     Manipulations with Projects.
     """
 
+    @api.permission_required(
+        permissions.ModuleAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'module': Project,
+            'action': AccessOperation.READ,
+        },
+    )
     @api.parameters(PaginationParameters())
-    @api.permission_required(permissions.AdminRolePermission())
     @api.response(schemas.BaseProjectSchema(many=True))
     def get(self, args):
         """
@@ -42,6 +49,13 @@ class Projects(Resource):
         """
         return Project.query.offset(args['offset']).limit(args['limit'])
 
+    @api.permission_required(
+        permissions.ModuleAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'module': Project,
+            'action': AccessOperation.WRITE,
+        },
+    )
     @api.login_required(oauth_scopes=['projects:write'])
     @api.parameters(parameters.CreateProjectParameters())
     @api.response(schemas.DetailedProjectSchema())
@@ -56,6 +70,8 @@ class Projects(Resource):
         with context:
             project = Project(**args)
             db.session.add(project)
+        project.add_user(current_user)
+
         return project
 
 
@@ -71,6 +87,13 @@ class ProjectByID(Resource):
     Manipulations with a specific Project.
     """
 
+    @api.permission_required(
+        permissions.ObjectAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'obj': kwargs['project'],
+            'action': AccessOperation.READ,
+        },
+    )
     @api.response(schemas.DetailedProjectSchema())
     def get(self, project):
         """
@@ -78,8 +101,14 @@ class ProjectByID(Resource):
         """
         return project
 
+    @api.permission_required(
+        permissions.ObjectAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'obj': kwargs['project'],
+            'action': AccessOperation.WRITE,
+        },
+    )
     @api.login_required(oauth_scopes=['projects:write'])
-    @api.permission_required(permissions.WriteAccessPermission())
     @api.parameters(parameters.PatchProjectDetailsParameters())
     @api.response(schemas.DetailedProjectSchema())
     @api.response(code=HTTPStatus.CONFLICT)
@@ -95,8 +124,14 @@ class ProjectByID(Resource):
             db.session.merge(project)
         return project
 
+    @api.permission_required(
+        permissions.ObjectAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'obj': kwargs['project'],
+            'action': AccessOperation.DELETE,
+        },
+    )
     @api.login_required(oauth_scopes=['projects:write'])
-    @api.permission_required(permissions.WriteAccessPermission())
     @api.response(code=HTTPStatus.CONFLICT)
     @api.response(code=HTTPStatus.NO_CONTENT)
     def delete(self, project):

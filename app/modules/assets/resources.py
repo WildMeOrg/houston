@@ -12,7 +12,7 @@ from flask_restplus_patched import Resource
 from flask_restplus._http import HTTPStatus
 from app.extensions.api import Namespace
 from app.modules.users import permissions
-from app.modules.users.permissions import operation
+from app.modules.users.permissions.types import AccessOperation
 from app.extensions.api.parameters import PaginationParameters
 import werkzeug
 
@@ -62,7 +62,7 @@ class AssetByID(Resource):
         permissions.ObjectAccessPermission,
         kwargs_on_request=lambda kwargs: {
             'obj': kwargs['asset'],
-            'action': operation.ObjectAccessOperation.READ,
+            'action': AccessOperation.READ,
         },
     )
     @api.response(schemas.DetailedAssetSchema())

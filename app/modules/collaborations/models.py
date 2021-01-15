@@ -3,12 +3,16 @@
 Collaborations database models
 --------------------
 """
+import uuid
 
 from app.extensions import db, HoustonModel
 
-import uuid
 
 class CollaborationUserAssociations(db.Model, HoustonModel):
+    """
+    Collaboration many to many association with Users.
+    Should be a maximum of two per Collaboration.
+    """
 
     collaboration_guid = db.Column(
         db.GUID, db.ForeignKey('collaboration.guid'), primary_key=True
@@ -19,6 +23,17 @@ class CollaborationUserAssociations(db.Model, HoustonModel):
         'Collaboration', back_populates='collaboration_user_associations'
     )
     user = db.relationship('User', back_populates='user_collaboration_associations')
+
+
+class CollaborationStates():
+    DECLINED = 'declined'
+    APPROVED = 'approved'
+    PENDING = 'pending'
+
+
+class CollaborationLevels():
+    READ = 'read'
+    EDIT = 'edit'
 
 
 class Collaboration(db.Model, HoustonModel):
@@ -34,6 +49,8 @@ class Collaboration(db.Model, HoustonModel):
     collaboration_user_associations = db.relationship(
         'CollaborationUserAssociations', back_populates='collaboration'
     )
+
+    state = db.Column(db.String(length=32), default=CollaborationStates.PENDING, nullable=False)
 
     def __init__(self, *args, **kwargs):
         if 'users' not in kwargs or len(kwargs.get('users') != 2):
@@ -62,8 +79,3 @@ class Collaboration(db.Model, HoustonModel):
         if len(title) < 3:
             raise ValueError('Title has to be at least 3 characters long.')
         return title
-
-class CollaborationStates():
-    DECLINED = 'declined'
-    APPROVED = 'approved'
-    PENDING = 'pending'

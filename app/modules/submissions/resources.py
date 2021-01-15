@@ -7,9 +7,8 @@ RESTful API Submissions resources
 
 import logging
 import werkzeug
-import uuid
 
-from flask import request, current_app
+from flask import request
 from flask_login import current_user
 from flask_restplus_patched import Resource
 from flask_restplus._http import HTTPStatus
@@ -18,7 +17,7 @@ from app.extensions import db
 from app.extensions.api import Namespace
 from app.extensions.api.parameters import PaginationParameters
 from app.modules.users import permissions
-
+from app.modules.users.permissions.types import AccessOperation
 
 from . import parameters, schemas
 from .models import Submission
@@ -35,6 +34,13 @@ class Submissions(Resource):
     Manipulations with Submissions.
     """
 
+    @api.permission_required(
+        permissions.ModuleAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'module': Submission,
+            'action': AccessOperation.READ,
+        },
+    )
     @api.parameters(PaginationParameters())
     @api.response(schemas.BaseSubmissionSchema(many=True))
     def get(self, args):
@@ -46,6 +52,13 @@ class Submissions(Resource):
         """
         return Submission.query.offset(args['offset']).limit(args['limit'])
 
+    @api.permission_required(
+        permissions.ModuleAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'module': Submission,
+            'action': AccessOperation.WRITE,
+        },
+    )
     @api.login_required(oauth_scopes=['submissions:write'])
     @api.parameters(parameters.CreateSubmissionParameters())
     @api.response(schemas.DetailedSubmissionSchema())
@@ -92,6 +105,13 @@ class SubmissionsStreamlined(Resource):
     Manipulations with Submissions + File add/commit.
     """
 
+    @api.permission_required(
+        permissions.ModuleAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'module': Submission,
+            'action': AccessOperation.WRITE,
+        },
+    )
     @api.parameters(parameters.CreateSubmissionParameters())
     @api.response(schemas.DetailedSubmissionSchema())
     @api.response(code=HTTPStatus.CONFLICT)
@@ -154,8 +174,11 @@ class SubmissionByID(Resource):
     """
 
     @api.permission_required(
-        permissions.ObjectReadAccessPermission,
-        kwargs_on_request=lambda kwargs: {'obj': kwargs['submission']},
+        permissions.ObjectAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'obj': kwargs['submission'],
+            'action': AccessOperation.READ,
+        },
     )
     @api.response(schemas.DetailedSubmissionSchema())
     def get(self, submission):
@@ -170,24 +193,20 @@ class SubmissionByID(Resource):
         """
         submission, submission_guids = submission
 
-        if submission is not None:
-            return submission
-
-        # We did not find the submission by its UUID in the Houston databse
-        # We now need to check the SubmissionManager for the existence of that repo
-        submission_guid = submission_guids[0]
-        assert isinstance(submission_guid, uuid.UUID)
-
-        submission = current_app.sub.ensure_submission(submission_guid)
-
         if submission is None:
             # We have checked the submission manager and cannot find this submission, raise 404 manually
             raise werkzeug.exceptions.NotFound
 
         return submission
 
+    @api.permission_required(
+        permissions.ObjectAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'obj': kwargs['submission'],
+            'action': AccessOperation.WRITE,
+        },
+    )
     @api.login_required(oauth_scopes=['submissions:write'])
-    @api.permission_required(permissions.WriteAccessPermission())
     @api.parameters(parameters.PatchSubmissionDetailsParameters())
     @api.response(schemas.DetailedSubmissionSchema())
     @api.response(code=HTTPStatus.CONFLICT)
@@ -205,8 +224,14 @@ class SubmissionByID(Resource):
             db.session.merge(submission)
         return submission
 
+    @api.permission_required(
+        permissions.ObjectAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'obj': kwargs['submission'],
+            'action': AccessOperation.DELETE,
+        },
+    )
     @api.login_required(oauth_scopes=['submissions:write'])
-    @api.permission_required(permissions.WriteAccessPermission())
     @api.response(code=HTTPStatus.CONFLICT)
     @api.response(code=HTTPStatus.NO_CONTENT)
     def delete(self, submission):

@@ -7,8 +7,9 @@ RESTful API Rules
 from flask_login import current_user
 from flask_restplus._http import HTTPStatus
 from permission import Rule as BaseRule
-
+from typing import Type, Any
 from app.extensions.api import abort
+from app.modules.users.permissions.types import AccessOperation
 
 
 class DenyAbortMixin(object):
@@ -66,35 +67,134 @@ class WriteAccessRule(DenyAbortMixin, Rule):
         return current_user.is_active
 
 
-class ObjectReadAccessRule(DenyAbortMixin, Rule):
+class ModuleActionRule(DenyAbortMixin, Rule):
     """
-    Ensure that the current_user has has read access to the object passed.
+    Ensure that the current_user has has permission to perform the action on the module passed.
     """
 
-    def __init__(self, obj=None, **kwargs):
+    def __init__(self, module=None, action=AccessOperation.READ, **kwargs):
         """
         Args:
-        obj (object) - any object can be passed here, which this functionality will
-            determine whether the current user has enough permissions to read given object
-            object.
+        module (Class) - any class can be passed here, which this functionality will
+            determine whether the current user has enough permissions to perform te action on the class.
+        action (AccessRule) - can be READ, WRITE, DELETE
         """
-        self._obj = obj
+        self._module = module
+        self._action = action
         super().__init__(**kwargs)
 
     def check(self):
-        # Permission check must only apply if object exists, otherwise "clone if doesn't exist"
-        # functionality fails
-        # todo the "clone if doesn't exist" functionality is under discussion so this could be replaced
-        has_permission = self._obj is None
+        from app.modules.submissions.models import Submission
 
-        # todo, if user has no owner, it is public. Implement this once owner fields are created.
-        # This will probably involve different handling depending on the type of obj
+        # This Rule is for checking permissions on modules, so there must be one,
+        assert self._module is not None
+
+        if not current_user or current_user.is_anonymous:
+            # Anonymous users can only create a submission
+            has_permission = self._action == AccessOperation.WRITE and self._is_module(
+                Submission
+            )
+        else:
+            has_permission = (
+                # inactive users can do nothing
+                current_user.is_active
+                & (
+                    # staff and (currently) admin can do anything
+                    current_user.is_staff
+                    | current_user.is_admin
+                    | self._can_user_perform_action(current_user)
+                )
+            )
+
+        return has_permission
+
+    # Helper to identify what the module is
+    def _is_module(self, cls: Type[Any]):
+        try:
+            return issubclass(self._module, cls)
+        except TypeError:
+            return False
+
+    # Permissions control entry point for real users, for all objects and all operations
+    def _can_user_perform_action(self, user):
+        # Currently any user can do what they like. This is where the role specific access controls will be added
+        has_permission = True
+        return has_permission
+
+
+class ObjectActionRule(DenyAbortMixin, Rule):
+    """
+    Ensure that the current_user has has permission to perform the action on the object passed.
+    """
+
+    def __init__(self, obj=None, action=AccessOperation.READ, **kwargs):
+        """
+        Args:
+        obj (object) - any object can be passed here, which this functionality will
+            determine whether the current user has enough permissions to write given object
+            object.
+        action (AccessRule) - can be READ, WRITE, DELETE
+        """
+        self._obj = obj
+        self._action = action
+        super().__init__(**kwargs)
+
+    def check(self):
+        # This Rule is for checking permissions on objects, so there must be one, Use the ModuleActionRule for
+        # permissions checking without objects
+        assert self._obj is not None
+
+        if not current_user or current_user.is_anonymous:
+            # Anonymous users can only read public objects
+            has_permission = (
+                self._action == AccessOperation.READ and self._obj.is_public()
+            )
+        else:
+            has_permission = (
+                # inactive users can do nothing
+                current_user.is_active
+                & (
+                    # staff and (currently) admin can do anything
+                    current_user.is_staff
+                    | current_user.is_admin
+                    | self._can_user_perform_action(current_user)
+                )
+            )
+        return has_permission
+
+    def _has_permission_to_read(self, user):
+        has_permission = user.owns_object(self._obj)
+
+        # Not owned by user, is it in any orgs we're in
         if not has_permission:
-            if not current_user.is_anonymous:
-                has_permission = current_user.has_permission_to_read(self._obj)
-            else:
-                # todo this would be where the check of is_public on the object would be
-                pass
+            for org in current_user.memberships:
+                has_permission = org.has_read_permission(self._obj)
+                if has_permission:
+                    break
+
+        # If not in any orgs, check if it can be accessed via projects
+        if not has_permission:
+            for project in current_user.projects:
+                has_permission = project.has_read_permission(current_user, self._obj)
+                if has_permission:
+                    break
+
+        return has_permission
+
+    # Permissions control entry point for real users, for all objects and all operations
+    # This is where the role specific checking will be added
+    def _can_user_perform_action(self, user):
+        has_permission = False
+
+        if self._action == AccessOperation.READ:
+            has_permission = self._has_permission_to_read(user)
+        elif self._action == AccessOperation.WRITE:
+            has_permission = user.owns_object(self._obj)
+            # @todo this is where project and collaborations would link in
+        elif self._action == AccessOperation.DELETE:
+            has_permission = user.owns_object(self._obj)
+            # @todo this is where project and collaborations would link in, for now, it's not permitted
+
         return has_permission
 
 

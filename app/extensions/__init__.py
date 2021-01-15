@@ -170,6 +170,9 @@ class FeatherModel(GhostModel, TimestampViewed):
     Houston Read Access  : YES
     """
 
+    def is_public(self):
+        return False
+
 
 class HoustonModel(FeatherModel):
     """

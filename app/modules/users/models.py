@@ -507,25 +507,6 @@ class User(db.Model, FeatherModel, UserEDMMixin):
 
         return self
 
-    def has_permission_to_read(self, obj):
-        has_permission = self.owns_object(obj)
-
-        # Not owned by user, is it in any orgs we're in
-        if not has_permission:
-            for org in self.memberships:
-                has_permission = org.has_read_permission(obj)
-                if has_permission:
-                    break
-
-        # If not in any orgs, check if it can be accessed via projects
-        if not has_permission:
-            for project in self.projects:
-                has_permission = project.has_read_permission(self, obj)
-                if has_permission:
-                    break
-
-        return has_permission
-
     def owns_object(self, obj):
         from app.modules.assets.models import Asset
         from app.modules.submissions.models import Submission

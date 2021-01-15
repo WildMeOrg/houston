@@ -8,6 +8,18 @@ from app.extensions import db, HoustonModel
 
 import uuid
 
+class CollaborationUserAssociations(db.Model, HoustonModel):
+
+    collaboration_guid = db.Column(
+        db.GUID, db.ForeignKey('collaboration.guid'), primary_key=True
+    )
+    user_guid = db.Column(db.GUID, db.ForeignKey('user.guid'), primary_key=True)
+
+    collaboration = db.relationship(
+        'Collaboration', back_populates='collaboration_user_associations'
+    )
+    user = db.relationship('User', back_populates='user_collaboration_associations')
+
 
 class Collaboration(db.Model, HoustonModel):
     """
@@ -19,10 +31,28 @@ class Collaboration(db.Model, HoustonModel):
     )  # pylint: disable=invalid-name
     title = db.Column(db.String(length=50), nullable=False)
 
+    collaboration_user_associations = db.relationship(
+        'CollaborationUserAssociations', back_populates='collaboration'
+    )
+
+    def __init__(self, *args, **kwargs):
+        if 'users' not in kwargs or len(kwargs.get('users') != 2):
+            raise ValueError('Collaboration initialization must have two users.')
+        super().__init__(*args, **kwargs)
+
+
+    def get_users(self):
+        users = []
+        for association in self.collaboration_user_associations:
+            users.append(association.user)
+        return users
+
+
     def __repr__(self):
         return (
             '<{class_name}('
-            'guid={self.id}, '
+            'guid={self.guid}, '
+            'users={self.get_users}, '
             "title='{self.title}'"
             ')>'.format(class_name=self.__class__.__name__, self=self)
         )
@@ -32,3 +62,8 @@ class Collaboration(db.Model, HoustonModel):
         if len(title) < 3:
             raise ValueError('Title has to be at least 3 characters long.')
         return title
+
+class CollaborationStates():
+    DECLINED = 'declined'
+    APPROVED = 'approved'
+    PENDING = 'pending'

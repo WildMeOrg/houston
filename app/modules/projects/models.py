@@ -53,7 +53,8 @@ class Project(db.Model, HoustonModel, Timestamp):
         return (
             '<{class_name}('
             'guid={self.guid}, '
-            "title='{self.title}'"
+            "title='{self.title}', "
+            'members={self.members} '
             ')>'.format(class_name=self.__class__.__name__, self=self)
         )
 
@@ -71,26 +72,6 @@ class Project(db.Model, HoustonModel, Timestamp):
             raise ValueError('Title has to be at least 3 characters long.')
         return title
 
-    def has_read_permission(self, user, obj):
-        from app.modules.encounters.models import Encounter
-
-        # Allow user to read the project details
-        has_permission = obj == self
-
-        if not has_permission:
-            if isinstance(obj, Encounter):
-                # Optionally add time check so that User can only access encounters after user was added to project
-                has_permission = obj in self.encounters
-            else:
-                for encounter in self.encounters:
-                    # If time check was implemented, that would need to be passed here too and percolate down through
-                    # encounters and sightings etc
-                    has_permission = encounter.has_read_permission(obj)
-                    if has_permission:
-                        break
-
-        return has_permission
-
     def add_user(self, user):
         enrollment = ProjectUserMembershipEnrollment(
             project=self,
@@ -98,4 +79,23 @@ class Project(db.Model, HoustonModel, Timestamp):
         )
 
         with db.session.begin():
+            db.session.add(enrollment)
             self.user_membership_enrollments.append(enrollment)
+
+    def add_encounter(self, encounter):
+        enrollment = ProjectEncounter(
+            project=self,
+            encounter=encounter,
+        )
+
+        with db.session.begin():
+            db.session.add(enrollment)
+            self.encounter_members.append(enrollment)
+
+    def delete(self):
+        with db.session.begin():
+            while self.user_membership_enrollments:
+                db.session.delete(self.user_membership_enrollments.pop())
+            while self.encounter_members:
+                db.session.delete(self.encounter_members.pop())
+            db.session.delete(self)

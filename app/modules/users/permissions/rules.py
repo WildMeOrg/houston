@@ -117,8 +117,13 @@ class ModuleActionRule(DenyAbortMixin, Rule):
 
     # Permissions control entry point for real users, for all objects and all operations
     def _can_user_perform_action(self, user):
+        from app.modules.projects.models import Project
+
         # Currently any user can do what they like. This is where the role specific access controls will be added
         has_permission = True
+        if self._is_module(Project) and self._action is AccessOperation.READ:
+            has_permission = user.is_admin | user.is_staff | user.is_internal
+
         return has_permission
 
 
@@ -157,45 +162,67 @@ class ObjectActionRule(DenyAbortMixin, Rule):
                     # staff and (currently) admin can do anything
                     current_user.is_staff
                     | current_user.is_admin
-                    | self._can_user_perform_action(current_user)
+                    | self._permitted_via_user(current_user)
+                    | self._permitted_via_org(current_user)
+                    | self._permitted_via_project(current_user)
+                    | self._permitted_via_collaboration(current_user)
                 )
             )
         return has_permission
 
-    def _has_permission_to_read(self, user):
-        has_permission = user.owns_object(self._obj)
+    def _permitted_via_user(self, user):
+        # users can read write and delete anything they own
+        return user.owns_object(self._obj)
 
-        # Not owned by user, is it in any orgs we're in
-        if not has_permission:
-            for org in current_user.memberships:
-                has_permission = org.has_read_permission(self._obj)
-                if has_permission:
-                    break
-
-        # If not in any orgs, check if it can be accessed via projects
-        if not has_permission:
-            for project in current_user.projects:
-                has_permission = project.has_read_permission(current_user, self._obj)
-                if has_permission:
-                    break
-
-        return has_permission
-
-    # Permissions control entry point for real users, for all objects and all operations
-    # This is where the role specific checking will be added
-    def _can_user_perform_action(self, user):
+    def _permitted_via_org(self, user):
         has_permission = False
-
+        # Orgs not supported fully yet, but allow read if user is in it
         if self._action == AccessOperation.READ:
-            has_permission = self._has_permission_to_read(user)
-        elif self._action == AccessOperation.WRITE:
-            has_permission = user.owns_object(self._obj)
-            # @todo this is where project and collaborations would link in
-        elif self._action == AccessOperation.DELETE:
-            has_permission = user.owns_object(self._obj)
-            # @todo this is where project and collaborations would link in, for now, it's not permitted
+            org_index = 0
+            orgs = user.memberships
+            while not has_permission and org_index < len(orgs):
+                org = orgs[org_index]
+                member_index = 0
+                while not has_permission and member_index < len(org.members):
+                    has_permission = org.members[member_index].owns_object(self._obj)
+                    member_index = member_index + 1
+                org_index = org_index + 1
 
         return has_permission
+
+    def _permitted_via_project(self, user):
+        from app.modules.encounters.models import Encounter
+
+        has_permission = False
+        project_index = 0
+        projects = user.projects
+        # @todo role based access to the project and the objects in it
+        if self._action == AccessOperation.READ:
+            while not has_permission and project_index < len(projects):
+                project = projects[project_index]
+                has_permission = project == self._obj
+                if not has_permission:
+                    if isinstance(self._obj, Encounter):
+                        # Optionally add time check so that User can only access encounters after user was added to project
+                        has_permission = self._obj in project.encounters
+                    else:
+                        for encounter in project.encounters:
+                            # If time check was implemented, that would need to be passed here too and percolate down through
+                            # encounters and sightings etc
+                            # @todo should the functionality in encounters.has_read_permission move into rules.py
+                            has_permission = encounter.has_read_permission(self._obj)
+                project_index = project_index + 1
+        elif self._action == AccessOperation.WRITE:
+            # only power users can write
+            has_permission = user.is_admin | user.is_staff | user.is_internal
+        elif self._action == AccessOperation.DELETE:
+            # or delete
+            has_permission = user.is_admin | user.is_staff | user.is_internal
+        return has_permission
+
+    def _permitted_via_collaboration(self, user):
+        # @todo
+        return False
 
 
 class ActiveUserRoleRule(DenyAbortMixin, Rule):

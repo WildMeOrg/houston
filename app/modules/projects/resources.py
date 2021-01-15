@@ -67,13 +67,13 @@ class Projects(Resource):
         context = api.commit_or_abort(
             db.session, default_error_message='Failed to create a new Project'
         )
+        project = Project(**args)
+        # User who creates the project gets added to it
+        project.add_user(current_user)
         with context:
-            project = Project(**args)
             db.session.add(project)
-        # @todo need to find some way of adding a user to a project.
-        # This way does work, but caused database badness on teardown so temporarity commenting
-        # out to allow more progress
-        # project.add_user(current_user)
+
+        db.session.refresh(project)
 
         return project
 
@@ -90,14 +90,13 @@ class ProjectByID(Resource):
     Manipulations with a specific Project.
     """
 
-    # Temporary until we can add users to projects
-    # @api.permission_required(
-    #     permissions.ObjectAccessPermission,
-    #     kwargs_on_request=lambda kwargs: {
-    #         'obj': kwargs['project'],
-    #         'action': AccessOperation.READ,
-    #     },
-    # )
+    @api.permission_required(
+        permissions.ObjectAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'obj': kwargs['project'],
+            'action': AccessOperation.READ,
+        },
+    )
     @api.response(schemas.DetailedProjectSchema())
     def get(self, project):
         """
@@ -105,14 +104,13 @@ class ProjectByID(Resource):
         """
         return project
 
-    # Temporary until we can add users to projects
-    # @api.permission_required(
-    #     permissions.ObjectAccessPermission,
-    #     kwargs_on_request=lambda kwargs: {
-    #         'obj': kwargs['project'],
-    #         'action': AccessOperation.WRITE,
-    #     },
-    # )
+    @api.permission_required(
+        permissions.ObjectAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'obj': kwargs['project'],
+            'action': AccessOperation.WRITE,
+        },
+    )
     @api.login_required(oauth_scopes=['projects:write'])
     @api.parameters(parameters.PatchProjectDetailsParameters())
     @api.response(schemas.DetailedProjectSchema())
@@ -129,14 +127,13 @@ class ProjectByID(Resource):
             db.session.merge(project)
         return project
 
-    # Temporary until we can add users to projects
-    # @api.permission_required(
-    #     permissions.ObjectAccessPermission,
-    #     kwargs_on_request=lambda kwargs: {
-    #         'obj': kwargs['project'],
-    #         'action': AccessOperation.DELETE,
-    #     },
-    # )
+    @api.permission_required(
+        permissions.ObjectAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'obj': kwargs['project'],
+            'action': AccessOperation.DELETE,
+        },
+    )
     @api.login_required(oauth_scopes=['projects:write'])
     @api.response(code=HTTPStatus.CONFLICT)
     @api.response(code=HTTPStatus.NO_CONTENT)
@@ -144,10 +141,5 @@ class ProjectByID(Resource):
         """
         Delete a Project by ID.
         """
-        context = api.commit_or_abort(
-            db.session, default_error_message='Failed to delete the Project.'
-        )
-
-        with context:
-            db.session.delete(project)
+        project.delete()
         return None

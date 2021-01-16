@@ -284,7 +284,7 @@ class TusManager(object):
                 if self.upload_file_handler_cb is None:
                     os.rename(upload_file_path, os.path.join(self.upload_folder, filename))
                 else:
-                    filename = self.upload_file_handler_cb(upload_file_path, filename)
+                    filename = self.upload_file_handler_cb(upload_file_path, filename, request)
             finally:
                 self._remove_resources(resource_id)
 

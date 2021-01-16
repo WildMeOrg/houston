@@ -521,4 +521,4 @@ class Submission(db.Model, HoustonModel):
         d = os.path.join('_db', 'uploads')
         if guid is None:
             return d
-        return os.path.join(d, '-'.join(['sub', guid]))
+        return os.path.join(d, '-'.join(['sub', str(guid)]))

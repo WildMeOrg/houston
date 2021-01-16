@@ -21,6 +21,7 @@ from app.modules.users.permissions.types import AccessOperation
 
 from . import parameters, schemas
 from .models import Submission
+import os
 
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
@@ -272,5 +273,20 @@ class SubmissionTusCollect(Resource):
         if submission is None:
             # We have checked the submission manager and cannot find this submission, raise 404 manually
             raise werkzeug.exceptions.NotFound
+
+        updir = Submission.tus_upload_dir(submission.guid)
+        submission_abspath = submission.get_absolute_path()
+        submission_path = os.path.join(submission_abspath, '_submission')
+
+        ct = 0
+        for root, dirs, files in os.walk(updir):
+            ct = len(files)
+            for name in files:
+                log.debug('moving upload %r to sub dir %r' % (name, submission_path,))
+                os.rename(os.path.join(root, name), os.path.join(submission_path, name))
+
+        if ct > 0:
+            log.info('update_asset_symlinks for %r files moved' % (ct))
+            submission.update_asset_symlinks()
 
         return submission

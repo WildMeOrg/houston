@@ -373,7 +373,7 @@ class Submission(db.Model, HoustonModel):
         existing_asset_symlinks = ut.glob(os.path.join(assets_path, '*'))
         for existing_asset_symlink in existing_asset_symlinks:
             basename = os.path.basename(existing_asset_symlink)
-            if basename in ['.touch']:
+            if basename in ['.touch', 'derived']:
                 continue
             existing_asset_target = os.readlink(existing_asset_symlink)
             existing_asset_target_ = os.path.abspath(

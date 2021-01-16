@@ -179,6 +179,7 @@ class Submission(db.Model, HoustonModel):
         with open(submission_metadata_path, 'w') as submission_metadata_file:
             json.dump(submission_metadata, submission_metadata_file)
 
+        # repo.index.add('.gitignore')
         repo.index.add('_assets/')
         repo.index.add('_submission/')
         repo.index.add('metadata.json')

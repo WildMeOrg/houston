@@ -17,26 +17,24 @@ try:
 except ImportError:  # Invoke 0.13 renamed ctask to task
     from invoke import task
 
+from ._utils import app_context_task
+
 
 log = logging.getLogger(__name__)
 
 
-@task(default=True)
-def run(
+@app_context_task()
+def warmup(
     context,
     host='127.0.0.1',
-    port=5000,
     flask_config=None,
     install_dependencies=False,
     build_frontend=True,
     upgrade_db=True,
-    uwsgi=False,
-    uwsgi_mode='http',
-    uwsgi_extra_options='',
     gitlab_remote_login_pat=None,
 ):
     """
-    Run Houston API Server.
+    Pre-configure the Houston API Server before running
     """
     # Automatically use the production config when running a public web server
     if host in ['0.0.0.0'] and flask_config is None:
@@ -64,14 +62,45 @@ def run(
         reload(db_tasks)
 
         context.invoke_execute(context, 'app.db.upgrade', app=app, backup=False)
-        if app.debug:
-            context.invoke_execute(
-                context,
-                'app.db.init_development_data',
-                app=app,
-                upgrade_db=False,
-                skip_on_failure=True,
-            )
+
+        # if app.debug:
+        #     context.invoke_execute(
+        #         context,
+        #         'app.db.init_development_data',
+        #         app=app,
+        #         upgrade_db=False,
+        #         skip_on_failure=True,
+        #     )
+
+    return app
+
+
+@task(default=True)
+def run(
+    context,
+    host='127.0.0.1',
+    port=5000,
+    flask_config=None,
+    install_dependencies=False,
+    build_frontend=True,
+    upgrade_db=True,
+    uwsgi=False,
+    uwsgi_mode='http',
+    uwsgi_extra_options='',
+    gitlab_remote_login_pat=None,
+):
+    """
+    Run Houston API Server.
+    """
+    app = warmup(
+        context,
+        host,
+        flask_config=flask_config,
+        install_dependencies=install_dependencies,
+        build_frontend=build_frontend,
+        upgrade_db=upgrade_db,
+        gitlab_remote_login_pat=gitlab_remote_login_pat,
+    )
 
     # use_reloader = app.debug
     use_reloader = False

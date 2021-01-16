@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import sqlalchemy
 import pytest
 import uuid
 
@@ -59,14 +60,17 @@ def temp_db_instance_helper(db):
 
         yield instance
 
-        mapper = instance.__class__.__mapper__
-        assert len(mapper.primary_key) == 1
-        primary_key = mapper.primary_key[0]
-        kwargs = {primary_key.name: mapper.primary_key_from_instance(instance)[0]}
-        instance.__class__.query.filter_by(**kwargs).delete()
         try:
-            instance.__class__.commit()
-        except Exception:
+            mapper = instance.__class__.__mapper__
+            assert len(mapper.primary_key) == 1
+            primary_key = mapper.primary_key[0]
+            kwargs = {primary_key.name: mapper.primary_key_from_instance(instance)[0]}
+            instance.__class__.query.filter_by(**kwargs).delete()
+            try:
+                instance.__class__.commit()
+            except Exception:
+                pass
+        except sqlalchemy.orm.exc.DetachedInstanceError:
             pass
 
     return temp_db_instance_manager

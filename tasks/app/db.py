@@ -227,6 +227,7 @@ def upgrade(
     config = _get_config(directory, x_arg=x_arg)
     try:
         command.upgrade(config, revision, sql=sql, tag=tag)
+        command.current(config)
     except Exception:
         if os.path.exists(_db_filepath_backup):
             log.error('Rolling back Sqlite3 database to backup')
@@ -373,3 +374,20 @@ def init_development_data(context, upgrade_db=True, skip_on_failure=False):
             log.info('Initializing development data step is skipped.')
     else:
         log.info('Fixtures have been successfully applied.')
+
+
+@app_context_task
+def _reset(context):
+    """
+    Delete the database and initialize it with data from the EDM
+    """
+    _db_filepath = current_app.config.get('SQLALCHEMY_DATABASE_PATH', None)
+    assert _db_filepath is not None
+
+    if os.path.exists(_db_filepath):
+        os.remove(_db_filepath)
+        assert not os.path.exists(_db_filepath)
+
+    context.invoke_execute(context, 'app.run.warmup')
+
+    context.invoke_execute(context, 'app.initialize.all')

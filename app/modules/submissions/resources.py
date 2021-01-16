@@ -244,3 +244,33 @@ class SubmissionByID(Resource):
         with context:
             db.session.delete(submission)
         return None
+
+
+@api.route('/tus/collect/<uuid:submission_guid>')
+@api.login_required(oauth_scopes=['submissions:read'])
+@api.response(
+    code=HTTPStatus.NOT_FOUND,
+    description='Submission not found.',
+)
+@api.resolve_object_by_model(Submission, 'submission', return_not_found=True)
+class SubmissionTusCollect(Resource):
+    """
+    Collect files uploaded by Tus endpoint for this Submission
+    """
+
+    @api.permission_required(
+        permissions.ObjectAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'obj': kwargs['submission'],
+            'action': AccessOperation.WRITE,
+        },
+    )
+    @api.response(schemas.DetailedSubmissionSchema())
+    def get(self, submission):
+        submission, submission_guids = submission
+
+        if submission is None:
+            # We have checked the submission manager and cannot find this submission, raise 404 manually
+            raise werkzeug.exceptions.NotFound
+
+        return submission

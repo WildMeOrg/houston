@@ -274,19 +274,26 @@ class SubmissionTusCollect(Resource):
             # We have checked the submission manager and cannot find this submission, raise 404 manually
             raise werkzeug.exceptions.NotFound
 
+        repo, project = submission.ensure_repository()
         updir = Submission.tus_upload_dir(submission.guid)
         submission_abspath = submission.get_absolute_path()
         submission_path = os.path.join(submission_abspath, '_submission')
-
         ct = 0
         for root, dirs, files in os.walk(updir):
             ct = len(files)
             for name in files:
-                log.debug('moving upload %r to sub dir %r' % (name, submission_path,))
+                log.debug(
+                    'moving upload %r to sub dir %r'
+                    % (
+                        name,
+                        submission_path,
+                    )
+                )
                 os.rename(os.path.join(root, name), os.path.join(submission_path, name))
 
         if ct > 0:
-            log.info('update_asset_symlinks for %r files moved' % (ct))
-            submission.update_asset_symlinks()
+            log.info('Tus collect for %d files moved' % (ct))
+            submission.git_commit('Tus collect commit for %d files.' % (ct,))
+            submission.git_push()
 
         return submission

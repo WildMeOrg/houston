@@ -6,6 +6,7 @@ Logging adapter
 import flask
 import logging
 from functools import partial
+import sqlalchemy
 
 from app.extensions.api import api_v1
 
@@ -45,17 +46,22 @@ class HoustonFlaskConfig(flask.Config):
     def initialize(self, app):
         assert isinstance(app.config, HoustonFlaskConfig)
         assert not self.db_init
+        try:
+            self.sync(app)
+        except sqlalchemy.exc.OperationalError:
+            log.warning(
+                'Database is too old to support HoustonFlaskConfig, please update'
+            )
         self.db_init = True
-        self.sync(app)
 
     def sync(self, app):
         from .models import HoustonConfig
-        from app.extensions import db as app_db
 
-        assert self.db_init
+        # from app.extensions import db as app_db
+
+        assert not self.db_init
 
         with app.app_context():
-            app_db.create_all()
             houston_configs = HoustonConfig.query.all()
 
         for houston_config in houston_configs:

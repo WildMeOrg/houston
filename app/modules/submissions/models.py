@@ -515,3 +515,10 @@ class Submission(db.Model, HoustonModel):
         db.session.refresh(self)
         with db.session.begin():
             db.session.delete(self)
+
+    @classmethod
+    def tus_upload_dir(cls, guid=None):
+        d = os.path.join('_db', 'uploads')
+        if guid is None:
+            return d
+        return os.path.join(d, '-'.join(['sub', guid]))

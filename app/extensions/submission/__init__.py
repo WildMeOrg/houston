@@ -238,6 +238,11 @@ class SubmissionManager(object):
         with open(submission_metadata_path, 'w') as submission_metadata_file:
             json.dump(submission_metadata, submission_metadata_file)
 
+        # gitignore_path = os.path.join(submission_path, '.gitignore')
+        # ignf = open(gitignore_path, 'w')
+        # ignf.write("_assets/derived/\n")   #FIXME my ignore is being ignored!  _assets/derived is getting added anyway. :sob:
+        # ignf.close()
+
         log.info('LOCAL  REPO: %r' % (repo.working_tree_dir,))
         log.info('REMOTE REPO: %r' % (project.web_url,))
 
@@ -306,9 +311,10 @@ def init_app(app, **kwargs):
 
 
 def init_tus(app):
-    #from flask_tus_cont import TusManager
+    # from flask_tus_cont import TusManager
     from app.extensions.submission.flask_tus_cont import TusManager
     from app.modules.submissions.models import Submission
+
     updir = Submission.tus_upload_dir()
     if not os.path.exists(updir):
         os.makedirs(updir)
@@ -316,23 +322,26 @@ def init_tus(app):
     tm.init_app(app, upload_url='/api/v1/submissions/tus', upload_folder=str(updir))
     tm.upload_file_handler(_tus_file_handler)
 
+
 def _tus_file_handler(upload_file_path, filename, req):
     from app.modules.submissions.models import Submission
     import hashlib
+
     submission_id = None
     if 'x-houston-submission-id' in req.headers:
         submission_id = req.headers.get('x-houston-submission-id')
-    ### TODO verify submission? ownership? etc  possibly also "session-secret" to prevent anyone from adding to submission
+    # TODO verify submission? ownership? etc  possibly also "session-secret" to prevent anyone from adding to submission
 
     dir = os.path.join(Submission.tus_upload_dir(), 'unknown')
     if submission_id is not None:
         dir = Submission.tus_upload_dir(submission_id)
     elif 'session' in req.cookies:
         h = hashlib.sha256(str(req.cookies.get('session')).encode('utf-8'))
-        dir = os.path.join(Submission.tus_upload_dir(), '-'.join(['session', h.hexdigest()]))
+        dir = os.path.join(
+            Submission.tus_upload_dir(), '-'.join(['session', h.hexdigest()])
+        )
 
     if not os.path.exists(dir):
         os.makedirs(dir)
     log.info('Tus finished uploading: %r in dir %r.' % (filename, dir))
     os.rename(upload_file_path, os.path.join(dir, filename))
-

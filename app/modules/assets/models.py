@@ -169,7 +169,8 @@ class Asset(db.Model, HoustonModel):
             source_image.thumbnail(
                 (4096, 4096)
             )  # TODO get from more global FORMAT re: above
-            source_image.save(target_path)
+            rgb = source_image.convert('RGB')
+            rgb.save(target_path)
         return target_path
 
     def delete(self):

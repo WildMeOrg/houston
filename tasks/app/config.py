@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Application Users management related tasks for Invoke.
+Application HoustonConfig management related tasks for Invoke.
 """
 
 from ._utils import app_context_task
@@ -45,7 +45,7 @@ def forget(
 @app_context_task
 def list(context):
     """
-    Show existing submissions.
+    Show existing Houston database configurations.
     """
     from app.extensions.config.models import HoustonConfig
 

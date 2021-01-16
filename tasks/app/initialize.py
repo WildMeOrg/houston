@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=missing-docstring
 """
-This file contains initialization data for development usage only.
+This file contains initialization tasks to synchronize data from the EDM
 
-You can execute this code via ``invoke app.consistency``
+You can execute this code via ``invoke app.initialize``
 """
 import logging
 
@@ -30,7 +30,7 @@ def initialize_orgs_from_edm(context):
 
 @app_context_task
 def all(context, skip_on_failure=False):
-    log.info('Initializing consistency checks...')
+    log.info('Initializing tasks...')
 
     try:
         initialize_users_from_edm(context)
@@ -43,6 +43,6 @@ def all(context, skip_on_failure=False):
                 'The following error was ignored due to the `skip_on_failure` flag: %s',
                 exception,
             )
-            log.info('Running consistency checks is skipped.')
+            log.info('Running initialize tasks is skipped.')
     else:
-        log.info('Consistency checks successfully applied.')
+        log.info('Initialize tasks successfully applied.')

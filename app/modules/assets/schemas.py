@@ -20,7 +20,7 @@ class BaseAssetSchema(ModelSchema):
         model = Asset
         fields = (
             Asset.guid.key,
-            Asset.extension.key,
+            'filename',
         )
         dump_only = (Asset.guid.key,)
 

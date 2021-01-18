@@ -8,5 +8,6 @@ mock
 pre-commit
 pytest >= 3.3.1
 pytest-cov
+pytest-random-order
 swagger_spec_validator
 xdoctest >= 0.3.0

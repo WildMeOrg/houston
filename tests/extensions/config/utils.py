@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-def _get_and_check_houston_configs(key=None, value=None):
+def get_and_check_houston_configs(key=None, value=None):
     from app.extensions.config.models import HoustonConfig
 
     current_houston_configs = HoustonConfig.query.all()
@@ -13,7 +13,7 @@ def _get_and_check_houston_configs(key=None, value=None):
         assert current_houston_config.value == value
 
 
-def _delete_all_houston_configs(db):
+def delete_all_houston_configs(db):
     from app.extensions.config.models import HoustonConfig
 
     with db.session.begin():
@@ -25,7 +25,7 @@ def _delete_all_houston_configs(db):
     assert len(current_houston_configs) == 0
 
 
-def _check_inside_db_context(flask_app, db_app=None):
+def check_inside_db_context(flask_app, db_app=None):
     assert flask_app.config.db_init
     assert flask_app.config.db_update
     if db_app is None:
@@ -35,7 +35,7 @@ def _check_inside_db_context(flask_app, db_app=None):
         assert flask_app.config.db_app == db_app
 
 
-def _check_outside_db_context(flask_app):
+def check_outside_db_context(flask_app):
     assert flask_app.config.db_init
     assert not flask_app.config.db_update
     assert flask_app.config.db_app is None

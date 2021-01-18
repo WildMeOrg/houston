@@ -102,6 +102,10 @@ def create_app(flask_config_name=None, config_override={}, **kwargs):
     # Replace app.config (flask.Config) with our HoustonFlaskConfig version
     configure_using_houston_flask_config(app)
 
+    # Configure reverse proxy
+    if app.config['REVERSE_PROXY_SETUP']:
+        app.wsgi_app = ProxyFix(app.wsgi_app)
+
     # Initialize all extensions
     from . import extensions
 
@@ -111,9 +115,5 @@ def create_app(flask_config_name=None, config_override={}, **kwargs):
     from . import modules
 
     modules.init_app(app)
-
-    # Configure reverse proxy
-    if app.config['REVERSE_PROXY_SETUP']:
-        app.wsgi_app = ProxyFix(app.wsgi_app)
 
     return app

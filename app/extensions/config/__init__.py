@@ -4,6 +4,7 @@ Logging adapter
 ---------------
 """
 import flask
+from flask import request
 import logging
 from functools import partial
 import sqlalchemy
@@ -61,8 +62,15 @@ class HoustonFlaskConfig(flask.Config):
 
         assert not self.db_init
 
-        with app.app_context():
-            houston_configs = HoustonConfig.query.all()
+        context = None
+        if not request:
+            context = app.app_context()
+            context.push()
+
+        houston_configs = HoustonConfig.query.all()
+
+        if context is not None:
+            context.pop()
 
         for houston_config in houston_configs:
             log.warning('CONFIG DB OVERRIDE: %r' % (houston_config,))
@@ -90,35 +98,40 @@ class HoustonFlaskConfig(flask.Config):
 
             app = current_app
 
-        with app.app_context():
-            with app_db.session.begin():
-                houston_config = HoustonConfig.query.filter(
-                    HoustonConfig.key == key
-                ).first()
-                if houston_config is None:
-                    houston_config = HoustonConfig(key=key, value=value)
-                    app_db.session.add(houston_config)
-                    label = 'Added'
-                else:
-                    if self.USE_UPDATE_OR_INSERT:
-                        if value != houston_config.value:
-                            houston_config.value = value
-                            app_db.session.merge(houston_config)
-                            label = 'Updated'
-                        else:
-                            label = 'Checked'
+        context = None
+        if not request:
+            context = app.app_context()
+            context.push()
+
+        with app_db.session.begin():
+            houston_config = HoustonConfig.query.filter(HoustonConfig.key == key).first()
+            if houston_config is None:
+                houston_config = HoustonConfig(key=key, value=value)
+                app_db.session.add(houston_config)
+                label = 'Added'
+            else:
+                if self.USE_UPDATE_OR_INSERT:
+                    if value != houston_config.value:
+                        houston_config.value = value
+                        app_db.session.merge(houston_config)
+                        label = 'Updated'
                     else:
-                        raise ValueError(
-                            'You tried to update a database config that already exists (use update_or_insert=True)'
-                        )
-            app_db.session.refresh(houston_config)
-            log.warning(
-                '%s non-volatile database configuration %r'
-                % (
-                    label,
-                    houston_config,
-                )
+                        label = 'Checked'
+                else:
+                    raise ValueError(
+                        'You tried to update a database config that already exists (use update_or_insert=True)'
+                    )
+        app_db.session.refresh(houston_config)
+        log.warning(
+            '%s non-volatile database configuration %r'
+            % (
+                label,
+                houston_config,
             )
+        )
+
+        if context is not None:
+            context.pop()
 
     def forget(self, key):
         from .models import HoustonConfig

@@ -14,6 +14,7 @@ from flask import Blueprint, send_from_directory, current_app, request
 from flask_login import login_user, logout_user, login_required, current_user
 import werkzeug
 import logging
+import os
 
 from app.modules.users.models import User
 
@@ -155,5 +156,16 @@ def referral_logout(refer=None, *args, **kwargs):
 @frontend_blueprint.errorhandler(404)
 def page_not_found(event):
     log.error('Handled 404')
+
+    path = '404.html'
+
+    local_path = os.path.abspath(os.path.join(frontend_blueprint.static_folder, path))
+    if not os.path.exists(local_path):
+        log.exception(
+            'It does not look like the frontend is installed correctly, could not locate file: %r'
+            % (local_path,)
+        )
+        raise werkzeug.exceptions.InternalServerError
+
     # note that we set the 404 status explicitly
-    return home('404.html'), 404
+    return home(path), 404

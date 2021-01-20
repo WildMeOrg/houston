@@ -22,23 +22,28 @@ CONFIG_NAME_MAPPER = {
 }
 
 
-def _ensure_storage():
-    # Ensure database folder
-    _db_path = getattr(BaseConfig, 'PROJECT_DATABASE_PATH', None)
-    if _db_path is not None and not os.path.exists(_db_path):
-        print('Creating DB path: %r' % (_db_path,))
-        os.mkdir(_db_path)
-
+def _ensure_storage(app=None):
     # Ensure database submissions and asset store
-    _submissions_path = getattr(BaseConfig, 'SUBMISSIONS_DATABASE_PATH', None)
-    if _submissions_path is not None and not os.path.exists(_submissions_path):
-        print('Creating Submissions path: %r' % (_submissions_path,))
-        os.mkdir(_submissions_path)
+    config_list = [
+        ('DB', 'PROJECT_DATABASE_PATH'),
+        ('Submission', 'SUBMISSIONS_DATABASE_PATH'),
+        ('Asset', 'ASSET_DATABASE_PATH'),
+    ]
 
-    _asset_path = getattr(BaseConfig, 'ASSET_DATABASE_PATH', None)
-    if _asset_path is not None and not os.path.exists(_asset_path):
-        print('Creating Asset path: %r' % (_asset_path,))
-        os.mkdir(_asset_path)
+    for config_label, config_name in config_list:
+        if app is None:
+            path = getattr(BaseConfig, config_name, None)
+        else:
+            path = app.config.get(config_name, None)
+        if path is not None and not os.path.exists(path):
+            print(
+                'Creating %s path: %r'
+                % (
+                    config_label,
+                    path,
+                )
+            )
+            os.mkdir(path)
 
 
 def _apply_hotfixes():
@@ -80,9 +85,17 @@ def configure_from_config_file(app, flask_config_name=None):
 
 
 def configure_from_cli(app, config_override):
+    blacklist = [
+        'EDM_AUTHENTICATIONS',
+    ]
+
     for key in config_override:
         value = config_override[key]
         app.config[key] = value
+
+        if key in blacklist:
+            value = '<REDACTED>'
+
         log.warning(
             'CONFIG CLI OVERRIDE: key=%r value=%r'
             % (
@@ -125,13 +138,13 @@ def create_app(flask_config_name=None, config_override={}, testing=False, **kwar
     if testing:
         return app
 
-    # Ensure on disk storage
-    _ensure_storage()
-
     # Initialize all extensions
     from . import extensions
 
     extensions.init_app(app)
+
+    # Ensure on disk storage
+    _ensure_storage(app)
 
     # Initialize all modules
     from . import modules

@@ -49,6 +49,13 @@ def home(path=None, *args, **kwargs):
     if not current_app.debug:
         log.warning('Front-end files are recommended to be served by NGINX')
 
+    if not os.path.exists(frontend_blueprint.static_folder):
+        log.exception(
+            'Front-end static directory improperly configured - could not locate a valid installation at: %r'
+            % (os.path.abspath(frontend_blueprint.static_folder),)
+        )
+        raise werkzeug.exceptions.InternalServerError
+
     if path is None:
         path = 'index.html'
     try:
@@ -156,16 +163,5 @@ def referral_logout(refer=None, *args, **kwargs):
 @frontend_blueprint.errorhandler(404)
 def page_not_found(event):
     log.error('Handled 404')
-
-    path = '404.html'
-
-    local_path = os.path.abspath(os.path.join(frontend_blueprint.static_folder, path))
-    if not os.path.exists(local_path):
-        log.exception(
-            'It does not look like the frontend is installed correctly, could not locate file: %r'
-            % (local_path,)
-        )
-        raise werkzeug.exceptions.InternalServerError
-
     # note that we set the 404 status explicitly
-    return home(path), 404
+    return home('404.html'), 404

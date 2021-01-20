@@ -11,7 +11,7 @@ def test_find_asset(
     test_clone_submission_data,
 ):
     # Clone the known submission so that the asset data is in the database
-    clone_submission(
+    clone = clone_submission(
         flask_app_client,
         regular_user,
         test_clone_submission_data['submission_uuid'],
@@ -44,8 +44,7 @@ def test_find_asset(
     except Exception as ex:
         raise ex
     finally:
-        pass
-        # clone is slow so only cleanup on the last test
+        clone.cleanup()
 
 
 def test_find_deleted_asset(
@@ -91,8 +90,7 @@ def test_find_deleted_asset(
     except Exception as ex:
         raise ex
     finally:
-        pass
-        # clone is slow so only cleanup on the last test
+        clone.cleanup()
 
 
 def test_user_asset_permissions(
@@ -103,7 +101,7 @@ def test_user_asset_permissions(
     test_clone_submission_data,
 ):
     # Clone the known submission so that the asset data is in the database
-    clone_submission(
+    clone = clone_submission(
         flask_app_client,
         regular_user,
         test_clone_submission_data['submission_uuid'],
@@ -121,8 +119,7 @@ def test_user_asset_permissions(
     except Exception as ex:
         raise ex
     finally:
-        pass
-        # clone is slow so only cleanup on the last test
+        clone.cleanup()
 
 
 def test_read_all_assets(

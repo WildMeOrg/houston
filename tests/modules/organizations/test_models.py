@@ -1,20 +1,15 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=invalid-name,missing-docstring
 
-from tests import utils
 import sqlalchemy
 
 import logging
 
 
-def test_Organization_add_members(db):  # pylint: disable=unused-argument
+def test_Organization_add_members(db, temp_user):  # pylint: disable=unused-argument
     from app.modules.organizations.models import (
         Organization,
         OrganizationUserMembershipEnrollment,
-    )
-
-    temp_user = utils.generate_user_instance(
-        email='temp@localhost', full_name='Temp User'
     )
 
     temp_org = Organization(
@@ -32,7 +27,6 @@ def test_Organization_add_members(db):  # pylint: disable=unused-argument
     temp_org.user_membership_enrollments.append(temp_enrollment)
 
     with db.session.begin():
-        db.session.add(temp_user)
         db.session.add(temp_org)
         db.session.add(temp_enrollment)
 
@@ -62,6 +56,5 @@ def test_Organization_add_members(db):  # pylint: disable=unused-argument
         pass
 
     with db.session.begin():
-        db.session.delete(temp_user)
         db.session.delete(temp_org)
         db.session.delete(temp_enrollment)

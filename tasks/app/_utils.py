@@ -3,8 +3,11 @@
 Invoke tasks utilities for apps.
 """
 import functools
+import logging
 
 from invoke import Task as BaseTask
+
+log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
 
 class Task(BaseTask):
@@ -54,10 +57,35 @@ def app_context_task(*args, **kwargs):
             decorated function is run inside the application context.
             """
             app = kwargs.pop('app', None)
+            edm_authentication = kwargs.get('edm_authentication', None)
+
             if app is None:
                 from app import create_app
 
-                app = create_app()
+                config_override = {}
+                if edm_authentication is not None:
+
+                    edm_authentication = edm_authentication.split(':')
+                    if len(edm_authentication) == 3:
+                        edm_target, edm_username, edm_password = edm_authentication
+
+                        try:
+                            edm_target = int(edm_target)
+                        except ValueError:
+                            pass
+
+                        config_override['EDM_AUTHENTICATIONS'] = {
+                            edm_target: {
+                                'username': edm_username,
+                                'password': edm_password,
+                            }
+                        }
+                    else:
+                        log.warning(
+                            'Passed an invalid CLI argument for --edm-authentication.'
+                        )
+
+                app = create_app(config_override=config_override)
 
             with app.app_context():
                 return func(*args, **kwargs)

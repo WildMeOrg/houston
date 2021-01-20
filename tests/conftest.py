@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import sqlalchemy
 import pytest
 import uuid
 
@@ -63,10 +64,13 @@ def temp_db_instance_helper(db):
         assert len(mapper.primary_key) == 1
         primary_key = mapper.primary_key[0]
         kwargs = {primary_key.name: mapper.primary_key_from_instance(instance)[0]}
-        instance.__class__.query.filter_by(**kwargs).delete()
+        try:
+            instance.__class__.query.filter_by(**kwargs).delete()
+        except sqlalchemy.exc.IntegrityError:
+            pass
         try:
             instance.__class__.commit()
-        except Exception:
+        except AttributeError:
             pass
 
     return temp_db_instance_manager
@@ -115,6 +119,14 @@ def internal_user(temp_db_instance_helper):
             email='internal@localhost',
             is_internal=True,
         )
+    ):
+        yield _
+
+
+@pytest.fixture(scope='session')
+def temp_user(temp_db_instance_helper):
+    for _ in temp_db_instance_helper(
+        utils.generate_user_instance(email='temp@localhost', full_name='Temp User')
     ):
         yield _
 

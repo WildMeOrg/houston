@@ -1,16 +1,11 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=missing-docstring
 import json
-from tests import utils
 
 
-def test_create_and_delete_project(flask_app_client, admin_user):
+def test_create_and_delete_project(flask_app_client, admin_user, temp_user):
     # pylint: disable=invalid-name
     from app.modules.projects.models import Project
-
-    temp_user = utils.generate_user_instance(
-        email='temp@localhost', full_name='Temp User'
-    )
 
     with flask_app_client.login(temp_user, auth_scopes=('projects:write',)):
         response = flask_app_client.post(
@@ -55,11 +50,7 @@ def test_create_and_delete_project(flask_app_client, admin_user):
     assert read_project is None
 
 
-def test_project_permission(db, flask_app_client, regular_user, admin_user):
-
-    temp_user = utils.generate_user_instance(
-        email='temp2@localhost', full_name='Temp User'
-    )
+def test_project_permission(db, flask_app_client, regular_user, admin_user, temp_user):
 
     with flask_app_client.login(temp_user, auth_scopes=('projects:write',)):
         response = flask_app_client.post(

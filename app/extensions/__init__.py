@@ -8,6 +8,9 @@ Extensions provide access to common resources of the application.
 
 Please, put new extension instantiations and initializations here.
 """
+import uuid  # NOQA
+import json  # NOQA
+from datetime import datetime  # NOQA
 from .logging import Logging
 
 logging = Logging()
@@ -21,12 +24,6 @@ from sqlalchemy.ext import mutable  # NOQA
 from sqlalchemy.types import TypeDecorator, CHAR  # NOQA
 from sqlalchemy.dialects.postgresql import UUID  # NOQA
 from sqlalchemy_utils import types as column_types, Timestamp  # NOQA
-
-import uuid  # NOQA
-
-import json  # NOQA
-
-from datetime import datetime  # NOQA
 
 db = SQLAlchemy()
 
@@ -64,8 +61,11 @@ from . import submission  # NOQA
 
 from . import api  # NOQA
 
-import stripe  # NOQA
+from . import config  # NOQA
 
+from . import sentry  # NOQA
+
+from . import stripe  # NOQA
 
 ##########################################################################################
 
@@ -234,21 +234,35 @@ def parallel(worker_func, args_list, kwargs_list=None, thread=True, workers=None
 ##########################################################################################
 
 
+# This global is updated dynamically before the config extension is loaded.
+# When the config extension is loaded, it instantiates PatchHoustonConfigParameters,
+# which expects the global variable below to be configured correctly for all config keys
+_CONFIG_PATH_CHOICES = None
+
+
 def init_app(app):
     """
     Application extensions initialization.
     """
+    global _CONFIG_PATH_CHOICES
+    _CONFIG_PATH_CHOICES = sorted(app.config.keys())
+
     extensions = (
+        # The extensions in this block need to remain in this order for proper setup
         logging,
-        cross_origin_resource_sharing,
+        sentry,
         db,
+        api,
+        config,
+        # The remaining extensions
+        oauth2,
+        cross_origin_resource_sharing,
         login_manager,
         marshmallow,
-        api,
-        oauth2,
-        mail,
         edm,
         submission,
+        mail,
+        stripe,
     )
     for extension in extensions:
         extension.init_app(app)
@@ -257,6 +271,3 @@ def init_app(app):
 
     paranoid = Paranoid(app)
     paranoid.redirect_view = '/'
-
-    # Initialize Stripe payment
-    stripe.api_key = app.config.get('STRIPE_SECRET_KEY')

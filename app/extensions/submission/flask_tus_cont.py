@@ -135,7 +135,11 @@ class TusManager(object):
 
 
     def create_url(self, resource_id):
-        return '{}/{}/{}'.format(request.url_root, self.upload_url, resource_id)
+        url_root = request.url_root
+        # assuming(!) we only ever want to upgrade from http to https, not the other way around
+        if 'X-Forwarded-Proto' in request.headers and request.headers.get('X-Forwarded-Proto') == 'https' and url_root.lower().startswith('http:'):
+            url_root = 'https://' + url_root[7:]
+        return '{}/{}/{}'.format(url_root, self.upload_url, resource_id)
 
 
     def tus_creation_1_create(self):

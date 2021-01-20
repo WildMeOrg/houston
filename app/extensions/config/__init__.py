@@ -4,7 +4,6 @@ Logging adapter
 ---------------
 """
 import flask
-from flask import request
 import logging
 from functools import partial
 import sqlalchemy
@@ -62,15 +61,7 @@ class HoustonFlaskConfig(flask.Config):
 
         assert not self.db_init
 
-        context = None
-        if not request:
-            context = app.app_context()
-            context.push()
-
         houston_configs = HoustonConfig.query.all()
-
-        if context is not None:
-            context.pop()
 
         for houston_config in houston_configs:
             log.warning('CONFIG DB OVERRIDE: %r' % (houston_config,))
@@ -97,11 +88,6 @@ class HoustonFlaskConfig(flask.Config):
             from flask import current_app
 
             app = current_app
-
-        context = None
-        if not request:
-            context = app.app_context()
-            context.push()
 
         with app_db.session.begin():
             houston_config = HoustonConfig.query.filter(HoustonConfig.key == key).first()
@@ -130,9 +116,6 @@ class HoustonFlaskConfig(flask.Config):
             )
         )
 
-        if context is not None:
-            context.pop()
-
     def forget(self, key):
         from .models import HoustonConfig
         from app.extensions import db as app_db
@@ -145,23 +128,20 @@ class HoustonFlaskConfig(flask.Config):
 
             app = current_app
 
-        with app.app_context():
-            with app_db.session.begin():
-                houston_config = HoustonConfig.query.filter(
-                    HoustonConfig.key == key
-                ).first()
-                if houston_config is None:
-                    label = 'Skipped'
-                else:
-                    app_db.session.delete(houston_config)
-                    label = 'Deleted'
-            log.warning(
-                '%s non-volatile database configuration for key %r'
-                % (
-                    label,
-                    key,
-                )
+        with app_db.session.begin():
+            houston_config = HoustonConfig.query.filter(HoustonConfig.key == key).first()
+            if houston_config is None:
+                label = 'Skipped'
+            else:
+                app_db.session.delete(houston_config)
+                label = 'Deleted'
+        log.warning(
+            '%s non-volatile database configuration for key %r'
+            % (
+                label,
+                key,
             )
+        )
 
 
 def init_app(app, **kwargs):
@@ -181,4 +161,5 @@ def init_app(app, **kwargs):
 
     api_v1.add_namespace(resources.api)
 
-    app.config.initialize(app)
+    with app.app_context():
+        app.config.initialize(app)

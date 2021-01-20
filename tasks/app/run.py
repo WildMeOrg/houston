@@ -31,7 +31,6 @@ def warmup(
     install_dependencies=False,
     build_frontend=True,
     upgrade_db=True,
-    gitlab_remote_login_pat=None,
 ):
     """
     Pre-configure the Houston API Server before running
@@ -48,11 +47,7 @@ def warmup(
 
     from app import create_app
 
-    config_override = {}
-    if gitlab_remote_login_pat is not None:
-        config_override['GITLAB_REMOTE_LOGIN_PAT'] = gitlab_remote_login_pat
-
-    app = create_app(config_override=config_override)
+    app = create_app()
 
     if upgrade_db:
         # After the installed dependencies the app.db.* tasks might need to be
@@ -87,7 +82,6 @@ def run(
     uwsgi=False,
     uwsgi_mode='http',
     uwsgi_extra_options='',
-    gitlab_remote_login_pat=None,
 ):
     """
     Run Houston API Server.
@@ -99,7 +93,6 @@ def run(
         install_dependencies=install_dependencies,
         build_frontend=build_frontend,
         upgrade_db=upgrade_db,
-        gitlab_remote_login_pat=gitlab_remote_login_pat,
     )
 
     # use_reloader = app.debug

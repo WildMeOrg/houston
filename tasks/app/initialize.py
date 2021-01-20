@@ -13,7 +13,7 @@ log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
 
 @app_context_task
-def initialize_users_from_edm(context):
+def initialize_users_from_edm(context, edm_authentication=None):
     from app.modules.users.models import User
 
     User.edm_sync_all()
@@ -22,19 +22,19 @@ def initialize_users_from_edm(context):
 
 
 @app_context_task
-def initialize_orgs_from_edm(context):
+def initialize_orgs_from_edm(context, edm_authentication=None):
     from app.modules.organizations.models import Organization
 
     Organization.edm_sync_all()
 
 
 @app_context_task
-def all(context, skip_on_failure=False):
+def all(context, edm_authentication=None, skip_on_failure=False):
     log.info('Initializing tasks...')
 
     try:
-        initialize_users_from_edm(context)
-        initialize_orgs_from_edm(context)
+        initialize_users_from_edm(context, edm_authentication=edm_authentication)
+        initialize_orgs_from_edm(context, edm_authentication=edm_authentication)
     except AssertionError as exception:
         if not skip_on_failure:
             log.error('%s', exception)

@@ -8,6 +8,7 @@ import sys
 from flask import Flask
 from werkzeug.contrib.fixers import ProxyFix
 import logging
+from config import BaseConfig
 
 
 log = logging.getLogger(__name__)
@@ -19,6 +20,25 @@ CONFIG_NAME_MAPPER = {
     'production': 'config.ProductionConfig',
     'local': 'local_config.LocalConfig',
 }
+
+
+def _ensure_storage():
+    # Ensure database folder
+    _db_path = getattr(BaseConfig, 'PROJECT_DATABASE_PATH', None)
+    if _db_path is not None and not os.path.exists(_db_path):
+        print('Creating DB path: %r' % (_db_path,))
+        os.mkdir(_db_path)
+
+    # Ensure database submissions and asset store
+    _submissions_path = getattr(BaseConfig, 'SUBMISSIONS_DATABASE_PATH', None)
+    if _submissions_path is not None and not os.path.exists(_submissions_path):
+        print('Creating Submissions path: %r' % (_submissions_path,))
+        os.mkdir(_submissions_path)
+
+    _asset_path = getattr(BaseConfig, 'ASSET_DATABASE_PATH', None)
+    if _asset_path is not None and not os.path.exists(_asset_path):
+        print('Creating Asset path: %r' % (_asset_path,))
+        os.mkdir(_asset_path)
 
 
 def _apply_hotfixes():
@@ -80,7 +100,7 @@ def configure_using_houston_flask_config(app):
     app.config = houston_flask_config
 
 
-def create_app(flask_config_name=None, config_override={}, **kwargs):
+def create_app(flask_config_name=None, config_override={}, testing=False, **kwargs):
     """
     Entry point to the Houston Server application.
 
@@ -102,9 +122,11 @@ def create_app(flask_config_name=None, config_override={}, **kwargs):
     # Replace app.config (flask.Config) with our HoustonFlaskConfig version
     configure_using_houston_flask_config(app)
 
-    # Configure reverse proxy
-    if app.config['REVERSE_PROXY_SETUP']:
-        app.wsgi_app = ProxyFix(app.wsgi_app)
+    if testing:
+        return app
+
+    # Ensure on disk storage
+    _ensure_storage()
 
     # Initialize all extensions
     from . import extensions
@@ -116,4 +138,12 @@ def create_app(flask_config_name=None, config_override={}, **kwargs):
 
     modules.init_app(app)
 
+    # Configure reverse proxy
+    if app.config['REVERSE_PROXY_SETUP']:
+        app.wsgi_app = ProxyFix(app.wsgi_app)
+
     return app
+
+
+# Do this on import as well
+_ensure_storage()

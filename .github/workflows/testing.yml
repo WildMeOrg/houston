@@ -80,6 +80,7 @@ jobs:
           mv _db.initial _db
           ./scripts/install.sh
           source virtualenv/houston3.7/bin/activate
+          invoke app.db._reset --edm-authentication "${{ secrets.EDM_AUTHENTICATION }}"
           pytest -s -v --gitlab-remote-login-pat "${{ secrets.GITLAB_REMOTE_LOGIN_PAT }}"
           pytest -s -v --gitlab-remote-login-pat "${{ secrets.GITLAB_REMOTE_LOGIN_PAT }}"
           pytest -s -v --gitlab-remote-login-pat "${{ secrets.GITLAB_REMOTE_LOGIN_PAT }}"

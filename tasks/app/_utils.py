@@ -3,8 +3,11 @@
 Invoke tasks utilities for apps.
 """
 import functools
+import logging
 
 from invoke import Task as BaseTask
+
+log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
 
 class Task(BaseTask):
@@ -63,20 +66,24 @@ def app_context_task(*args, **kwargs):
                 if edm_authentication is not None:
 
                     edm_authentication = edm_authentication.split(':')
-                    assert len(edm_authentication) == 3
-                    edm_target, edm_username, edm_password = edm_authentication
+                    if len(edm_authentication) == 3:
+                        edm_target, edm_username, edm_password = edm_authentication
 
-                    try:
-                        edm_target = int(edm_target)
-                    except ValueError:
-                        pass
+                        try:
+                            edm_target = int(edm_target)
+                        except ValueError:
+                            pass
 
-                    config_override['EDM_AUTHENTICATIONS'] = {
-                        edm_target: {
-                            'username': edm_username,
-                            'password': edm_password,
+                        config_override['EDM_AUTHENTICATIONS'] = {
+                            edm_target: {
+                                'username': edm_username,
+                                'password': edm_password,
+                            }
                         }
-                    }
+                    else:
+                        log.warning(
+                            'Passed an invalid CLI argument for --edm-authentication.'
+                        )
 
                 app = create_app(config_override=config_override)
 

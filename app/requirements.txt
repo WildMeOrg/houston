@@ -23,9 +23,6 @@ Flask-Paranoid
 flask-restplus>=0.11.0,<0.12
 Flask-SQLAlchemy>=2.4,<3
 
-#Flask-Tus-Cont
-redis
-
 gitpython
 
 marshmallow>=2.13.5,<3
@@ -40,6 +37,9 @@ premailer
 pygeocoder
 python-gitlab
 python-magic
+
+#Flask-Tus-Cont
+redis
 
 scikit-build
 

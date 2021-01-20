@@ -1,20 +1,15 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=invalid-name,missing-docstring
 
-from tests import utils
 import sqlalchemy
 
 import logging
 
 
-def test_project_add_members(db):  # pylint: disable=unused-argument
+def test_project_add_members(db, temp_user):  # pylint: disable=unused-argument
     from app.modules.projects.models import (
         Project,
         ProjectUserMembershipEnrollment,
-    )
-
-    temp_user = utils.generate_user_instance(
-        email='temp@localhost', full_name='Temp User'
     )
 
     temp_proj = Project(
@@ -31,7 +26,6 @@ def test_project_add_members(db):  # pylint: disable=unused-argument
     temp_proj.user_membership_enrollments.append(temp_enrollment)
 
     with db.session.begin():
-        db.session.add(temp_user)
         db.session.add(temp_proj)
         db.session.add(temp_enrollment)
 
@@ -39,16 +33,15 @@ def test_project_add_members(db):  # pylint: disable=unused-argument
     db.session.refresh(temp_proj)
     db.session.refresh(temp_enrollment)
 
-    assert (
-        temp_user.project_membership_enrollments == temp_proj.user_membership_enrollments
-    )
+    for value in temp_proj.user_membership_enrollments:
+        assert value in temp_user.project_membership_enrollments
     logging.info(temp_user.project_membership_enrollments)
     logging.info(temp_proj.user_membership_enrollments)
 
     logging.info(temp_user.projects)
     logging.info(temp_proj)
 
-    assert len(temp_user.projects) == 1
+    assert len(temp_user.projects) >= 1
     assert temp_proj in temp_user.projects
 
     assert len(temp_proj.members) == 1
@@ -64,6 +57,5 @@ def test_project_add_members(db):  # pylint: disable=unused-argument
         pass
 
     with db.session.begin():
-        db.session.delete(temp_user)
         db.session.delete(temp_proj)
         db.session.delete(temp_enrollment)

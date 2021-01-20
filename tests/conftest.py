@@ -124,6 +124,14 @@ def internal_user(temp_db_instance_helper):
 
 
 @pytest.fixture(scope='session')
+def temp_user(temp_db_instance_helper):
+    for _ in temp_db_instance_helper(
+        utils.generate_user_instance(email='temp@localhost', full_name='Temp User')
+    ):
+        yield _
+
+
+@pytest.fixture(scope='session')
 def test_submission_uuid(flask_app):
     return uuid.UUID('ce91ad6e-3cc9-48e8-a4f0-ac74f55dfbf0')
 

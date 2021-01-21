@@ -18,11 +18,18 @@ class CreateProjectParameters(Parameters, schemas.DetailedProjectSchema):
 class PatchProjectDetailsParameters(PatchJSONParametersWithPassword):
     # pylint: disable=abstract-method,missing-docstring
 
-    # Valid options for patching are '/title', '/User', and '/Encounter'.
+    # Valid options for patching are '/title', '/UserAdd', '/UserRemove', '/EncounterAdd' and '/EncounterRemove'.
     # The '/current_password' is not patchable but must be a valid field in the patch so that it can be
     # present for validation
 
-    VALID_FIELDS = [Project.title.key, 'current_password', 'User', 'Encounter']
+    VALID_FIELDS = [
+        Project.title.key,
+        'current_password',
+        'UserAdd',
+        'UserRemove',
+        'EncounterAdd',
+        'EncounterRemove',
+    ]
     PATH_CHOICES = tuple('/%s' % field for field in VALID_FIELDS)
 
     @classmethod
@@ -31,7 +38,8 @@ class PatchProjectDetailsParameters(PatchJSONParametersWithPassword):
 
     @classmethod
     def forget_field(cls, obj, field, state):
-        return obj.forget_field(field)
+        # Cannot forget, need to use the set_field operation to remove users and encounters
+        return False
 
     @classmethod
     def replace(cls, obj, field, value, state):

@@ -105,21 +105,35 @@ class Project(db.Model, HoustonModel, Timestamp):
         from app.modules.users.models import User
         from app.modules.encounters.models import Encounter
 
-        if field == 'User':
+        if field == 'UserAdd':
             user = User.query.get(value)
             if user:
                 self.add_user(user)
             else:
                 ret_val = False
 
-        if field == 'Encounter':
+        elif field == 'UserRemove':
+            user = User.query.get(value)
+            if user:
+                for member in self.user_membership_enrollments:
+                    if member.user == user:
+                        with db.session.begin():
+                            db.session.delete(member)
+                            break
+
+        elif field == 'EncounterAdd':
             encounter = Encounter.query.get(value)
             if encounter:
                 self.add_encounter(encounter)
             else:
                 ret_val = False
-        return ret_val
+        elif field == 'EncounterRemove':
+            encounter = Encounter.query.get(value)
+            if encounter:
+                for member in self.encounter_members:
+                    if member.encounter == encounter:
+                        with db.session.begin():
+                            db.session.delete(member)
+                            break
 
-    def forget_field(self, field):
-        # This doesn't work. For the forget we need a value to forget in the many:many relationship
-        return False
+        return ret_val

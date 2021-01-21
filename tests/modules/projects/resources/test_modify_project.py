@@ -7,7 +7,8 @@ from tests.modules.projects.resources import utils as proj_utils
 
 def test_modify_project(db, flask_app_client, admin_user, temp_user, regular_user):
     # pylint: disable=invalid-name
-    # from app.modules.projects.models import Project
+    from app.modules.projects.models import Project
+
     # from app.modules.encounters.models import Encounter
 
     response = proj_utils.create_project(
@@ -17,15 +18,25 @@ def test_modify_project(db, flask_app_client, admin_user, temp_user, regular_use
     utils.validate_dict_response(response, 200, {'guid', 'title'})
 
     project_guid = response.json['guid']
+
+    proj = Project.query.get(project_guid)
+    assert len(proj.members) == 1
+
     data = [
         utils.patch_test_op(admin_user.password_secret),
-        utils.patch_add_op(
-            '%s' % regular_user.guid,
-            'User',
-        ),
+        utils.patch_add_op('%s' % regular_user.guid, 'UserAdd'),
     ]
     response = proj_utils.patch_project(flask_app_client, project_guid, admin_user, data)
     utils.validate_dict_response(response, 200, {'guid', 'title'})
+    assert len(proj.members) == 2
+
+    data = [
+        utils.patch_test_op(admin_user.password_secret),
+        utils.patch_add_op('%s' % regular_user.guid, 'UserRemove'),
+    ]
+    response = proj_utils.patch_project(flask_app_client, project_guid, admin_user, data)
+    utils.validate_dict_response(response, 200, {'guid', 'title'})
+    assert len(proj.members) == 1
 
     # This is not the way to add an encounter but I think we need Jons EDM work to have a decent way to know
     # what the correct way is

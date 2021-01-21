@@ -99,3 +99,27 @@ class Project(db.Model, HoustonModel, Timestamp):
             while self.encounter_members:
                 db.session.delete(self.encounter_members.pop())
             db.session.delete(self)
+
+    def set_field(self, field, value):
+        ret_val = True
+        from app.modules.users.models import User
+        from app.modules.encounters.models import Encounter
+
+        if field == 'User':
+            user = User.query.get(value)
+            if user:
+                self.add_user(user)
+            else:
+                ret_val = False
+
+        if field == 'Encounter':
+            encounter = Encounter.query.get(value)
+            if encounter:
+                self.add_encounter(encounter)
+            else:
+                ret_val = False
+        return ret_val
+
+    def forget_field(self, field):
+        # This doesn't work. For the forget we need a value to forget in the many:many relationship
+        return False

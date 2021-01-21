@@ -119,11 +119,11 @@ class ProjectByID(Resource):
         """
         Patch Project details by ID.
         """
+        parameters.PatchProjectDetailsParameters.perform_patch(args, obj=project)
         context = api.commit_or_abort(
             db.session, default_error_message='Failed to update Project details.'
         )
         with context:
-            parameters.PatchProjectDetailsParameters.perform_patch(args, obj=project)
             db.session.merge(project)
         return project
 

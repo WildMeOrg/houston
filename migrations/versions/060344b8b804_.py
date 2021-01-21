@@ -38,6 +38,7 @@ def upgrade():
     with op.batch_alter_table('project', schema=None) as batch_op:
         batch_op.add_column(sa.Column('viewed', sa.DateTime(), nullable=True))
         batch_op.alter_column('viewed', nullable=False)
+
     # ### end Alembic commands ###
 
 

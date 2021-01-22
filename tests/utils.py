@@ -214,8 +214,12 @@ def patch_add_op(value, path):
     }
 
 
-def patch_remove_op(path):
-    return {
+def patch_remove_op(path, value=None):
+    operation = {
         'op': 'remove',
         'path': '/%s' % (path,),
     }
+    if value:
+        operation['value'] = value
+
+    return operation

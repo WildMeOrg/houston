@@ -24,7 +24,7 @@ def test_modify_project(db, flask_app_client, admin_user, temp_user, regular_use
 
     data = [
         utils.patch_test_op(admin_user.password_secret),
-        utils.patch_add_op('%s' % regular_user.guid, 'UserAdd'),
+        utils.patch_add_op('%s' % regular_user.guid, 'user'),
     ]
     response = proj_utils.patch_project(flask_app_client, project_guid, admin_user, data)
     utils.validate_dict_response(response, 200, {'guid', 'title'})
@@ -32,7 +32,7 @@ def test_modify_project(db, flask_app_client, admin_user, temp_user, regular_use
 
     data = [
         utils.patch_test_op(admin_user.password_secret),
-        utils.patch_add_op('%s' % regular_user.guid, 'UserRemove'),
+        utils.patch_remove_op('user', '%s' % regular_user.guid),
     ]
     response = proj_utils.patch_project(flask_app_client, project_guid, admin_user, data)
     utils.validate_dict_response(response, 200, {'guid', 'title'})

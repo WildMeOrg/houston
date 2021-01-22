@@ -92,6 +92,20 @@ class Project(db.Model, HoustonModel, Timestamp):
             db.session.add(enrollment)
             self.encounter_members.append(enrollment)
 
+    def remove_user(self, user):
+        for member in self.user_membership_enrollments:
+            if member.user == user:
+                with db.session.begin():
+                    db.session.delete(member)
+                break
+
+    def remove_encounter(self, encounter):
+        for member in self.encounter_members:
+            if member.encounter == encounter:
+                with db.session.begin():
+                    db.session.delete(member)
+                break
+
     def delete(self):
         with db.session.begin():
             while self.user_membership_enrollments:
@@ -99,41 +113,3 @@ class Project(db.Model, HoustonModel, Timestamp):
             while self.encounter_members:
                 db.session.delete(self.encounter_members.pop())
             db.session.delete(self)
-
-    def set_field(self, field, value):
-        ret_val = True
-        from app.modules.users.models import User
-        from app.modules.encounters.models import Encounter
-
-        if field == 'UserAdd':
-            user = User.query.get(value)
-            if user:
-                self.add_user(user)
-            else:
-                ret_val = False
-
-        elif field == 'UserRemove':
-            user = User.query.get(value)
-            if user:
-                for member in self.user_membership_enrollments:
-                    if member.user == user:
-                        with db.session.begin():
-                            db.session.delete(member)
-                            break
-
-        elif field == 'EncounterAdd':
-            encounter = Encounter.query.get(value)
-            if encounter:
-                self.add_encounter(encounter)
-            else:
-                ret_val = False
-        elif field == 'EncounterRemove':
-            encounter = Encounter.query.get(value)
-            if encounter:
-                for member in self.encounter_members:
-                    if member.encounter == encounter:
-                        with db.session.begin():
-                            db.session.delete(member)
-                            break
-
-        return ret_val

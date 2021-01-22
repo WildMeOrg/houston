@@ -20,7 +20,7 @@ class PatchHoustonConfigParameters(PatchJSONParametersWithPassword):
         return True
 
     @classmethod
-    def forget_field(cls, obj, field, state):
+    def forget_field(cls, obj, field, value, state):
         HoustonConfig.forget(field)
         return True
 

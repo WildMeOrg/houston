@@ -167,7 +167,12 @@ class PatchJSONParameters(Parameters):
             return cls.copy(obj, operation['field_name'], operation['value'], state=state)
 
         elif field_operaion == cls.OP_REMOVE:
-            return cls.remove(obj, operation['field_name'], state=state)
+            return cls.remove(
+                obj,
+                operation['field_name'],
+                operation['value'] if 'value' in operation else None,
+                state=state,
+            )
 
         return False
 
@@ -232,7 +237,7 @@ class PatchJSONParameters(Parameters):
         raise NotImplementedError()
 
     @classmethod
-    def remove(cls, obj, field, state):
+    def remove(cls, obj, field, value, state):
         raise NotImplementedError()
 
     @classmethod

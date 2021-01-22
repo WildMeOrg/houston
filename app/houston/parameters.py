@@ -52,14 +52,14 @@ class PatchJSONParametersWithPassword(PatchJSONParameters):
         raise NotImplementedError()
 
     @classmethod
-    def remove(cls, obj, field, state):
+    def remove(cls, obj, field, value, state):
         if not cls.SENSITIVE_FIELDS or field in cls.SENSITIVE_FIELDS:
             if 'current_password' not in state:
                 abort(
                     code=HTTPStatus.FORBIDDEN,
                     message='Updating database requires `current_password` test operation.',
                 )
-        return cls.forget_field(obj, field, state)
+        return cls.forget_field(obj, field, value, state)
 
     @classmethod
     def forget_field(cls, obj, field, state):

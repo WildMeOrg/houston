@@ -146,12 +146,16 @@ def test_read_all_assets(
         assert admin_response.status_code == 200
         assert admin_response.content_type == 'application/json'
         assert len(admin_response.json) == 2
-        # @todo, is the order received deterministic
+        # update: it seems this order received _is not_ deterministic
         assert (
-            admin_response.json[0]['guid'] == test_clone_submission_data['asset_uuids'][1]
+            test_clone_submission_data['asset_uuids'][0] == admin_response.json[0]['guid']
+            or test_clone_submission_data['asset_uuids'][0]
+            == admin_response.json[1]['guid']
         )
         assert (
-            admin_response.json[1]['guid'] == test_clone_submission_data['asset_uuids'][0]
+            test_clone_submission_data['asset_uuids'][1] == admin_response.json[0]['guid']
+            or test_clone_submission_data['asset_uuids'][1]
+            == admin_response.json[1]['guid']
         )
         assert regular_response.status_code == 403
 

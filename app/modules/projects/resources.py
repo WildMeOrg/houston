@@ -67,6 +67,7 @@ class Projects(Resource):
         context = api.commit_or_abort(
             db.session, default_error_message='Failed to create a new Project'
         )
+        args['owner_guid'] = current_user.guid
         project = Project(**args)
         # User who creates the project gets added to it
         project.add_user(current_user)
@@ -134,7 +135,7 @@ class ProjectByID(Resource):
             'action': AccessOperation.DELETE,
         },
     )
-    @api.login_required(oauth_scopes=['projects:write'])
+    @api.login_required(oauth_scopes=['projects:delete'])
     @api.response(code=HTTPStatus.CONFLICT)
     @api.response(code=HTTPStatus.NO_CONTENT)
     def delete(self, project):

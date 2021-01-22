@@ -49,6 +49,11 @@ class Project(db.Model, HoustonModel, Timestamp):
 
     encounter_members = db.relationship('ProjectEncounter', back_populates='project')
 
+    owner_guid = db.Column(
+        db.GUID, db.ForeignKey('user.guid'), index=True, nullable=False
+    )
+    owner = db.relationship('User', backref=db.backref('owned_projects'))
+
     def __repr__(self):
         return (
             '<{class_name}('

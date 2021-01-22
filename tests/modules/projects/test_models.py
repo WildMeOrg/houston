@@ -14,6 +14,7 @@ def test_project_add_members(db, temp_user):  # pylint: disable=unused-argument
 
     temp_proj = Project(
         title='Temp Project',
+        owner_guid=temp_user.guid,
     )
 
     temp_enrollment = ProjectUserMembershipEnrollment()

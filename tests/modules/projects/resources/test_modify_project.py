@@ -16,6 +16,7 @@ def test_modify_project(db, flask_app_client, admin_user, temp_user, regular_use
     )
 
     utils.validate_dict_response(response, 200, {'guid', 'title'})
+    assert response.json['title'] == 'This is a test project, please ignore'
 
     project_guid = response.json['guid']
 
@@ -23,10 +24,10 @@ def test_modify_project(db, flask_app_client, admin_user, temp_user, regular_use
     assert len(proj.members) == 1
 
     data = [
-        utils.patch_test_op(admin_user.password_secret),
+        utils.patch_test_op(temp_user.password_secret),
         utils.patch_add_op('%s' % regular_user.guid, 'user'),
     ]
-    response = proj_utils.patch_project(flask_app_client, project_guid, admin_user, data)
+    response = proj_utils.patch_project(flask_app_client, project_guid, temp_user, data)
     utils.validate_dict_response(response, 200, {'guid', 'title'})
     assert len(proj.members) == 2
 
@@ -35,6 +36,7 @@ def test_modify_project(db, flask_app_client, admin_user, temp_user, regular_use
         utils.patch_remove_op('user', '%s' % regular_user.guid),
     ]
     response = proj_utils.patch_project(flask_app_client, project_guid, admin_user, data)
+
     utils.validate_dict_response(response, 200, {'guid', 'title'})
     assert len(proj.members) == 1
 
@@ -53,13 +55,13 @@ def test_modify_project(db, flask_app_client, admin_user, temp_user, regular_use
     # utils.validate_dict_response(response, 200, {'guid', 'title'})
 
     # delete the project
-    with flask_app_client.login(admin_user, auth_scopes=('projects:write',)):
+    with flask_app_client.login(admin_user, auth_scopes=('projects:delete',)):
         response = flask_app_client.delete('/api/v1/projects/%s' % project_guid)
 
     assert response.status_code == 204
 
 
-def test_project_permission(db, flask_app_client, regular_user, admin_user, temp_user):
+def test_project_permission(flask_app_client, regular_user, admin_user, temp_user):
 
     response = proj_utils.create_project(
         flask_app_client, temp_user, 'This is a test project, please ignore'
@@ -68,33 +70,103 @@ def test_project_permission(db, flask_app_client, regular_user, admin_user, temp
     utils.validate_dict_response(response, 200, {'guid', 'title'})
 
     project_guid = response.json['guid']
-    # user that is a member cannot update project
 
+    # another user cannot update the title
+    data = [
+        utils.patch_test_op(regular_user.password_secret),
+        utils.patch_add_op('Invalid update', 'title'),
+    ]
+    response = proj_utils.patch_project(
+        flask_app_client,
+        project_guid,
+        regular_user,
+        data,
+    )
+    utils.validate_dict_response(response, 403, {'status', 'message'})
+
+    # Owner can do that
+    data = [
+        utils.patch_test_op(temp_user.password_secret),
+        utils.patch_add_op(
+            'This is an owner modified test project, please ignore', 'title'
+        ),
+    ]
     response = proj_utils.patch_project(
         flask_app_client,
         project_guid,
         temp_user,
-        {'title': 'This is a modified test project, please ignore'},
+        data,
     )
-    utils.validate_dict_response(response, 403, {'status', 'message'})
+    utils.validate_dict_response(response, 200, {'guid', 'title'})
+    assert (
+        response.json['title'] == 'This is an owner modified test project, please ignore'
+    )
 
-    # only admin can do that
+    # as can admin
+    data = [
+        utils.patch_test_op(admin_user.password_secret),
+        utils.patch_add_op(
+            'This is an admin modified test project, please ignore', 'title'
+        ),
+    ]
     response = proj_utils.patch_project(
         flask_app_client,
         project_guid,
         admin_user,
-        {'title': 'This is a modified test project, please ignore'},
+        data,
     )
     utils.validate_dict_response(response, 200, {'guid', 'title'})
+    assert (
+        response.json['title'] == 'This is an admin modified test project, please ignore'
+    )
 
-    # User also cannot delete the project
-    with flask_app_client.login(temp_user, auth_scopes=('projects:write',)):
+    # add regular user to the project
+    data = [
+        utils.patch_test_op(temp_user.password_secret),
+        utils.patch_add_op('%s' % regular_user.guid, 'user'),
+    ]
+    response = proj_utils.patch_project(flask_app_client, project_guid, temp_user, data)
+    utils.validate_dict_response(response, 200, {'guid', 'title'})
+
+    # make them the owner
+    data = [
+        utils.patch_test_op(temp_user.password_secret),
+        utils.patch_add_op('%s' % regular_user.guid, 'owner'),
+    ]
+    response = proj_utils.patch_project(flask_app_client, project_guid, temp_user, data)
+    utils.validate_dict_response(response, 200, {'guid', 'title'})
+
+    # try to delete as temp_user, no longer owner, should fail
+    data = [
+        utils.patch_test_op(temp_user.password_secret),
+        utils.patch_remove_op('user', '%s' % regular_user.guid),
+    ]
+    response = proj_utils.patch_project(flask_app_client, project_guid, temp_user, data)
+
+    # This seems to be an incorrect error code
+    assert response.status_code == 500
+    # utils.validate_dict_response(response, 403, {'status', 'message'})
+
+    # # @todo, This returns a 200, due to the default of True in PatchJSONParameters:perform_patch
+
+    # response = proj_utils.patch_project(
+    #     flask_app_client,
+    #     project_guid,
+    #     temp_user,
+    #     {'title': 'This is an owner modified test project, please ignore'},
+    # )
+    # utils.validate_dict_response(response, 200, {'guid', 'title'})
+    # # It does at least fail to do anything
+    # assert response.json['title'] == 'This is an admin modified test project, please ignore'
+
+    # tempUser also cannot delete the project
+    with flask_app_client.login(temp_user, auth_scopes=('projects:delete',)):
         response = flask_app_client.delete('/api/v1/projects/%s' % project_guid)
 
     utils.validate_dict_response(response, 403, {'status', 'message'})
 
-    # delete it
-    with flask_app_client.login(admin_user, auth_scopes=('projects:write',)):
+    # regular_user (owner) can delete it
+    with flask_app_client.login(regular_user, auth_scopes=('projects:delete',)):
         response = flask_app_client.delete('/api/v1/projects/%s' % project_guid)
 
     assert response.status_code == 204

@@ -99,9 +99,8 @@ class ModuleActionRule(DenyAbortMixin, Rule):
                 # inactive users can do nothing
                 current_user.is_active
                 & (
-                    # staff and (currently) admin can do anything
-                    current_user.is_staff
-                    | current_user.is_admin
+                    # some users can do anything
+                    user_is_privileged(current_user, self._module)
                     | self._can_user_perform_action(current_user)
                 )
             )
@@ -159,9 +158,8 @@ class ObjectActionRule(DenyAbortMixin, Rule):
                 # inactive users can do nothing
                 current_user.is_active
                 & (
-                    # staff and (currently) admin can do anything
-                    current_user.is_staff
-                    | current_user.is_admin
+                    # some users can do anything
+                    user_is_privileged(current_user, self._obj)
                     | self._permitted_via_user(current_user)
                     | self._permitted_via_org(current_user)
                     | self._permitted_via_project(current_user)
@@ -171,8 +169,22 @@ class ObjectActionRule(DenyAbortMixin, Rule):
         return has_permission
 
     def _permitted_via_user(self, user):
+        from app.modules.organizations.models import Organization
+        from app.modules.projects.models import Project
+
         # users can read write and delete anything they own
-        return user.owns_object(self._obj)
+        has_permission = user.owns_object(self._obj)
+
+        if not has_permission:
+            # read and write access is permitted for any projects or organisations they're in
+            # Details of what they're allowed to write handled in the patch parameters functionality
+            # Region would be handled the same way here too
+            if isinstance(self._obj, Project) or isinstance(self._obj, Organization):
+                has_permission = (
+                    user in self._obj.members and self._action != AccessOperation.DELETE
+                )
+
+        return has_permission
 
     def _permitted_via_org(self, user):
         has_permission = False
@@ -214,10 +226,10 @@ class ObjectActionRule(DenyAbortMixin, Rule):
                 project_index = project_index + 1
         elif self._action == AccessOperation.WRITE:
             # only power users can write
-            has_permission = user.is_admin | user.is_staff | user.is_internal
+            has_permission = user_is_privileged(user, self._obj)
         elif self._action == AccessOperation.DELETE:
             # or delete
-            has_permission = user.is_admin | user.is_staff | user.is_internal
+            has_permission = user_is_privileged(user, self._obj)
         return has_permission
 
     def _permitted_via_collaboration(self, user):
@@ -315,3 +327,9 @@ class OwnerRoleRule(ActiveUserRoleRule):
         if not hasattr(self._obj, 'check_owner'):
             return False
         return self._obj.check_owner(current_user) is True
+
+
+# Helper to have one place that defines what users are privileged, to potentially make it
+# configurable depending upon customer and the object they're trying to access
+def user_is_privileged(user, obj):
+    return user.is_staff or user.is_admin

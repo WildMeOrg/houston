@@ -59,6 +59,8 @@ from . import edm  # NOQA
 
 from . import submission  # NOQA
 
+from . import tus  # NOQA
+
 from . import api  # NOQA
 
 from . import config  # NOQA
@@ -261,6 +263,7 @@ def init_app(app):
         marshmallow,
         edm,
         submission,
+        tus,
         mail,
         stripe,
     )

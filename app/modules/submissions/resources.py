@@ -275,7 +275,9 @@ class SubmissionTusCollect(Resource):
             raise werkzeug.exceptions.NotFound
 
         repo, project = submission.ensure_repository()
-        updir = Submission.tus_upload_dir(submission.guid)
+        updir = os.path.join(
+            '_db', 'uploads', '-'.join(['sub', str(submission.guid)])
+        )  # note: duplicates tus_upload_dir()
         submission_abspath = submission.get_absolute_path()
         submission_path = os.path.join(submission_abspath, '_submission')
         ct = 0

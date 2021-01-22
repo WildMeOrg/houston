@@ -52,9 +52,9 @@ class PatchProjectDetailsParameters(PatchJSONParametersWithPassword):
                 obj.owner = user
                 ret_val = True
         elif field == 'user':
-            # Only project owners can add and delete users
+            # Only project owners or privileged users can add and delete users
             user = User.query.get(value)
-            if current_user == obj.owner and user:
+            if cls.owner_or_privileged(current_user, obj) and user:
                 obj.add_user(user)
                 ret_val = True
         elif field == 'encounter':

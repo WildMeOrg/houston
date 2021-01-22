@@ -169,10 +169,7 @@ class PatchJSONParameters(Parameters):
 
         elif field_operaion == cls.OP_REMOVE:
             return cls.remove(
-                obj,
-                operation['field_name'],
-                operation['value'] if 'value' in operation else None,
-                state=state,
+                obj, operation['field_name'], operation.get('value', None), state=state
             )
 
         return False

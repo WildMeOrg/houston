@@ -97,18 +97,34 @@ class Project(db.Model, HoustonModel, Timestamp):
             db.session.add(enrollment)
             self.encounter_members.append(enrollment)
 
-    def remove_user(self, user):
+    def add_user_in_context(self, user):
+        enrollment = ProjectUserMembershipEnrollment(
+            project=self,
+            user=user,
+        )
+
+        db.session.add(enrollment)
+        self.user_membership_enrollments.append(enrollment)
+
+    def add_encounter_in_context(self, encounter):
+        enrollment = ProjectEncounter(
+            project=self,
+            encounter=encounter,
+        )
+
+        db.session.add(enrollment)
+        self.encounter_members.append(enrollment)
+
+    def remove_user_in_context(self, user):
         for member in self.user_membership_enrollments:
             if member.user == user:
-                with db.session.begin():
-                    db.session.delete(member)
+                db.session.delete(member)
                 break
 
-    def remove_encounter(self, encounter):
+    def remove_encounter_in_context(self, encounter):
         for member in self.encounter_members:
             if member.encounter == encounter:
-                with db.session.begin():
-                    db.session.delete(member)
+                db.session.delete(member)
                 break
 
     def delete(self):

@@ -5,8 +5,7 @@ Input arguments (Parameters) for Projects resources RESTful API
 """
 
 from flask_login import current_user  # NOQA
-from flask_restplus_patched import Parameters
-from app.houston import PatchJSONParametersWithPassword
+from flask_restplus_patched import Parameters, PatchJSONParametersWithPassword
 from . import schemas
 from .models import Project
 from app.modules.users.permissions.rules import user_is_privileged
@@ -31,10 +30,11 @@ class PatchProjectDetailsParameters(PatchJSONParametersWithPassword):
         return user == obj.owner or user_is_privileged(user, obj)
 
     @classmethod
-    def set_field(cls, obj, field, value, state):
+    def add(cls, obj, field, value, state):
         from app.modules.users.models import User
         from app.modules.encounters.models import Encounter
 
+        super(PatchProjectDetailsParameters, cls).add(obj, field, value, state)
         ret_val = False
 
         if field == Project.title.key:
@@ -55,22 +55,24 @@ class PatchProjectDetailsParameters(PatchJSONParametersWithPassword):
             # Only project owners or privileged users can add and delete users
             user = User.query.get(value)
             if cls.owner_or_privileged(current_user, obj) and user:
-                obj.add_user(user)
+                obj.add_user_in_context(user)
                 ret_val = True
         elif field == 'encounter':
             encounter = Encounter.query.get(value)
             if encounter and (
                 current_user in obj.members or user_is_privileged(current_user, obj)
             ):
-                obj.add_encounter(encounter)
+                obj.add_encounter_in_context(encounter)
                 ret_val = True
 
         return ret_val
 
     @classmethod
-    def forget_field(cls, obj, field, value, state):
+    def remove(cls, obj, field, value, state):
         from app.modules.users.models import User
         from app.modules.encounters.models import Encounter
+
+        super(PatchProjectDetailsParameters, cls).remove(obj, field, value, state)
 
         ret_val = True
 
@@ -89,13 +91,13 @@ class PatchProjectDetailsParameters(PatchJSONParametersWithPassword):
                 if user == current_user:
                     ret_val = False
                 else:
-                    obj.remove_user(user)
+                    obj.remove_user_in_context(user)
         elif field == 'encounter':
             encounter = Encounter.query.get(value)
             if current_user not in obj.members and not user_is_privileged(current_user):
                 ret_val = False
             elif encounter:
-                obj.remove_encounter(encounter)
+                obj.remove_encounter_assume_context(encounter)
         return ret_val
 
     @classmethod

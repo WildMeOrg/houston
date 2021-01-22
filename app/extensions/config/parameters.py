@@ -3,9 +3,8 @@
 Input arguments (Parameters) for Config resources RESTful API
 -----------------------------------------------------------
 """
-
+from flask_restplus_patched import PatchJSONParametersWithPassword
 from app.extensions import _CONFIG_PATH_CHOICES
-from app.houston import PatchJSONParametersWithPassword
 from .models import HoustonConfig
 
 
@@ -15,12 +14,15 @@ class PatchHoustonConfigParameters(PatchJSONParametersWithPassword):
     PATH_CHOICES = tuple('/%s' % field for field in VALID_FIELDS)
 
     @classmethod
-    def set_field(cls, obj, field, value, state):
+    def add(cls, obj, field, value, state):
+        super(PatchHoustonConfigParameters, cls).add(obj, field, value, state)
         HoustonConfig.set(field, value)
         return True
 
     @classmethod
-    def forget_field(cls, obj, field, value, state):
+    def remove(cls, obj, field, value, state):
+        super(PatchHoustonConfigParameters, cls).remove(obj, field, value, state)
+
         HoustonConfig.forget(field)
         return True
 

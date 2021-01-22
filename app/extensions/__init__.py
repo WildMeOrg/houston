@@ -164,6 +164,11 @@ class FeatherModel(GhostModel, TimestampViewed):
     stored in a different component.  In general, FeatherModels must be kept
     up-to-date with their responsible external component (e.g. with a version).
 
+    This external component shall be the "constructor" of new objects, such that
+    houston will wait for confirmation/creation of new objects from its external
+    component prior to the creation of the corresponding FeatherModel object (which
+    will then be built using the provided guid and other properties).
+
     IMPORTANT: If all of the information for a FeatherModel lives inside
     Houston's database, it should be converted into a HoustonModel.
 

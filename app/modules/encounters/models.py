@@ -18,6 +18,7 @@ class Encounter(db.Model, FeatherModel):
     guid = db.Column(
         db.GUID, default=uuid.uuid4, primary_key=True
     )  # pylint: disable=invalid-name
+    version = db.Column(db.BigInteger, default=None, nullable=True)
 
     from app.modules.sightings.models import Sighting
 
@@ -39,6 +40,7 @@ class Encounter(db.Model, FeatherModel):
         return (
             '<{class_name}('
             'guid={self.guid}, '
+            'version={self.version}, '
             "title='{self.title},'"
             'owner={self.owner},'
             ')>'.format(class_name=self.__class__.__name__, self=self)

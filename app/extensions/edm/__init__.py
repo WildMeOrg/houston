@@ -56,6 +56,7 @@ class EDMManagerEndpointMixin(object):
         },
         'encounter': {
             'list': '//v0/org.ecocean.Encounter/list',
+            'data': '//v0/org.ecocean.Encounter/%s?detail-org.ecocean.Encounter=max',
         },
         'organization': {
             'list': '//v0/org.ecocean.Organization/list',
@@ -92,9 +93,9 @@ class EDMManagerEndpointMixin(object):
         endpoint = self.ENDPOINTS
 
         component_list = tag.split('.')
-        for comoponent in component_list:
+        for component in component_list:
             try:
-                endpoint_ = endpoint.get(comoponent, None)
+                endpoint_ = endpoint.get(component, None)
             except Exception:
                 endpoint_ = None
 
@@ -145,6 +146,21 @@ class EDMManagerEncounterMixin(object):
         response = self._get('encounters.list', target=target)
         return response
 
+    def get_encounter_data(self, guid, target='default'):
+        assert isinstance(guid, uuid.UUID)
+        response = self._get('encounter.data', guid, target=target)
+        return response
+
+    def get_encounter_data_dict(self, guid, target='default'):
+        assert isinstance(guid, uuid.UUID)
+        response = self._get(
+            'encounter.data',
+            guid,
+            target=target,
+            decode_as_object=False,
+            decode_as_dict=True,
+        )
+        return response
 
 class EDMManager(EDMManagerEndpointMixin, EDMManagerUserMixin):
     # pylint: disable=abstract-method
@@ -338,6 +354,15 @@ class EDMManager(EDMManagerEndpointMixin, EDMManagerUserMixin):
 
             if decode_as_dict:
                 response = response.json()
+        else:
+            log.warning(
+                'Non-OK response on %r %r: %r'
+                % (
+                    method,
+                    endpoint,
+                    response.status_code,
+                )
+            )
 
         return response
 

@@ -46,6 +46,7 @@ def _tus_file_handler(upload_file_path, filename, req):
 
 
 def tus_upload_dir(guid=None):
+    # TODO implement this in config.py  see: https://github.com/WildMeOrg/houston/pull/30#pullrequestreview-574566762
     d = os.path.join('_db', 'uploads')
     if guid is None:
         return d

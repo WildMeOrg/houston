@@ -168,6 +168,8 @@ class PatchJSONParameters(Parameters):
             return cls.copy(obj, operation['field_name'], operation['value'], state=state)
 
         elif field_operaion == cls.OP_REMOVE:
+            # This deviates from RFC 6902 to permit field and value based removal.
+            # This is used for multiple relationship tables within houston
             return cls.remove(
                 obj, operation['field_name'], operation.get('value', None), state=state
             )
@@ -236,6 +238,19 @@ class PatchJSONParameters(Parameters):
 
     @classmethod
     def remove(cls, obj, field, value, state):
+        """
+        This is method for removal operation. It is separated to provide a
+        possibility to easily override it in your Parameters.
+
+        Args:
+            obj (object): an instance to change.
+            field (str): field name
+            value (str): [optional] item to remove for lists, Extension on RFC 6509
+            state (dict): inter-operations state storage
+
+        Returns:
+            processing_status (bool): True
+        """
         raise NotImplementedError()
 
     @classmethod

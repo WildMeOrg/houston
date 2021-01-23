@@ -78,24 +78,12 @@ class Project(db.Model, HoustonModel, Timestamp):
         return title
 
     def add_user(self, user):
-        enrollment = ProjectUserMembershipEnrollment(
-            project=self,
-            user=user,
-        )
-
         with db.session.begin():
-            db.session.add(enrollment)
-            self.user_membership_enrollments.append(enrollment)
+            self.add_user_in_context(user)
 
     def add_encounter(self, encounter):
-        enrollment = ProjectEncounter(
-            project=self,
-            encounter=encounter,
-        )
-
         with db.session.begin():
-            db.session.add(enrollment)
-            self.encounter_members.append(enrollment)
+            self.add_encounter_in_context(encounter)
 
     def add_user_in_context(self, user):
         enrollment = ProjectUserMembershipEnrollment(

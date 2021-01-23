@@ -238,11 +238,6 @@ class SubmissionManager(object):
         with open(submission_metadata_path, 'w') as submission_metadata_file:
             json.dump(submission_metadata, submission_metadata_file)
 
-        # gitignore_path = os.path.join(submission_path, '.gitignore')
-        # ignf = open(gitignore_path, 'w')
-        # ignf.write("_assets/derived/\n")   #FIXME my ignore is being ignored!  _assets/derived is getting added anyway. :sob:
-        # ignf.close()
-
         log.info('LOCAL  REPO: %r' % (repo.working_tree_dir,))
         log.info('REMOTE REPO: %r' % (project.web_url,))
 

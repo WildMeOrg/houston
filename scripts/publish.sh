@@ -22,7 +22,7 @@ REGISTRY=${REGISTRY:-}
 IMAGES=${@:-houston}
 # Set the image prefix
 if [ -n "$REGISTRY" ]; then
-    IMG_PREFIX="${REGISTRY}/wildbookorg/houston/"
+    IMG_PREFIX="${REGISTRY}/wildme/houston/"
 else
     IMG_PREFIX="wildme/"
 fi

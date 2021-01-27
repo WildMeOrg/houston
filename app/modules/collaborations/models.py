@@ -77,10 +77,10 @@ class Collaboration(db.Model, HoustonModel):
                 '__init__ Collaboration: Length of is_initiator states was not equal to provided user list.'
             )
 
-        for i in range(len(user_guids)):
+        for guid_index in range(len(user_guids)):
             from app.modules.users.models import User
 
-            user_tup = User.ensure_edm_obj(user_guids[i])
+            user_tup = User.ensure_edm_obj(user_guids[guid_index])
 
             if user_tup is None or user_tup[0] is None:
                 raise ValueError(
@@ -93,17 +93,17 @@ class Collaboration(db.Model, HoustonModel):
 
             if (
                 approval_states is not None
-                and approval_states[i] in CollaborationUserState.ALLOWED_STATES
+                and approval_states[guid_index] in CollaborationUserState.ALLOWED_STATES
             ):
-                collab_user_assoc.read_approval_state = approval_states[i]
-            if is_initiator is not None and isinstance(is_initiator[i], bool):
-                collab_user_assoc.initiator = is_initiator[i]
+                collab_user_assoc.read_approval_state = approval_states[guid_index]
+            if is_initiator is not None and isinstance(is_initiator[guid_index], bool):
+                collab_user_assoc.initiator = is_initiator[guid_index]
                 # If you initiate you approve
                 collab_user_assoc.read_approval_state = CollaborationUserState.APPROVED
 
-            with db.session.begin():
-                db.session.add(collab_user_assoc)
-                db.session.merge(user_tup[0])
+            # with db.session.begin():
+            #     db.session.add(collab_user_assoc)
+            #     db.session.merge(user_tup[0])
 
     def get_users(self):
         users = []
@@ -119,52 +119,82 @@ class Collaboration(db.Model, HoustonModel):
         return users
 
     def get_read_state(self):
-        read_state = CollaborationUserState.APPROVED
+        read_state = None  # if you return this the collaboration is corrupt
         for association in self.collaboration_user_associations:
             if association.read_approval_state is CollaborationUserState.DECLINED:
+                # only one user need decline
                 read_state = CollaborationUserState.DECLINED
+                break
             elif association.read_approval_state is CollaborationUserState.PENDING:
+                # only one user needs pending, but we should still keep looking for declined
                 read_state = CollaborationUserState.PENDING
+            elif (
+                association.read_approval_state is CollaborationUserState.APPROVED
+                and read_state is None
+            ):
+                # every association must approve to return approved, everything else overrides it
+                read_state = CollaborationUserState.APPROVED
         return read_state
 
     def get_edit_state(self):
-        edit_state = CollaborationUserState.APPROVED
+        edit_state = None
         for association in self.collaboration_user_associations:
+            # you should never have a 'pending' and 'not_initiated' on the same collab, so one of either is enough
             if association.edit_approval_state is CollaborationUserState.DECLINED:
                 edit_state = CollaborationUserState.DECLINED
-            elif association.edit_approval_state is CollaborationUserState.PENDING:
-                edit_state = CollaborationUserState.PENDING
+                break
             elif association.edit_approval_state is CollaborationUserState.NOT_INITIATED:
                 edit_state = CollaborationUserState.NOT_INITIATED
+                break
+            elif association.edit_approval_state is CollaborationUserState.PENDING:
+                edit_state = CollaborationUserState.PENDING
+            elif (
+                association.read_approval_state is CollaborationUserState.APPROVED
+                and edit_state is None
+            ):
+                edit_state = CollaborationUserState.APPROVED
         return edit_state
 
     def set_read_approval_state_for_user(self, user_guid, state):
         from app.modules.users.models import User
 
-        user = User.ensure_edm_obj(user_guid)
-        if user is not None and state in CollaborationUserState.ALLOWED_STATES:
+        if (
+            user_guid is not None
+            and User.ensure_edm_obj(user_guid) is not None
+            and state in CollaborationUserState.ALLOWED_STATES
+        ):
             for association in self.collaboration_user_associations:
-                if association.user is user:
+                if association.user_guid is user_guid:
                     association.read_approval_state = state
 
     def set_edit_approval_state_for_user(self, user_guid, state):
         from app.modules.users.models import User
 
-        user = User.ensure_edm_obj(user_guid)
-        if (
-            self.get_edit_state() is CollaborationUserState.NOT_INITIATED
-            and state is CollaborationUserState.APPROVED
-        ):
+        if user_guid is not None and User.ensure_edm_obj(user_guid) is not None:
+            # if one association is edit level NOT_INITIATED, they all are
+            if (
+                self.get_edit_state() is CollaborationUserState.NOT_INITIATED
+                and state is not CollaborationUserState.NOT_INITIATED
+            ):
+                self.initate_edit_with_user(user_guid)
             for association in self.collaboration_user_associations:
-                if association.user is user:
+                if (
+                    association.user_guid is user_guid
+                    and state in CollaborationUserState.ALLOWED_STATES
+                    or state is CollaborationUserState.NOT_INITIATED
+                ):
                     association.edit_approval_state = state
+
+    def initate_edit_with_user(self, user_guid):
+        from app.modules.users.models import User
+
+        if user_guid is not None and User.ensure_edm_obj(user_guid) is not None:
+            for association in self.collaboration_user_associations:
+                if association.user_guid is user_guid:
+                    association.edit_approval_state = CollaborationUserState.APPROVED
+                    association.initiator = True
                 else:
                     association.edit_approval_state = CollaborationUserState.PENDING
-
-        elif user is not None and state in CollaborationUserState.ALLOWED_STATES:
-            for association in self.collaboration_user_associations:
-                if association.user is user:
-                    association.edit_approval_state = state
 
     def __repr__(self):
         return (

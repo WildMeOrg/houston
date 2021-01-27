@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=invalid-name,missing-docstring
 
-import sqlalchemy
+# import sqlalchemy
 
 import logging
 

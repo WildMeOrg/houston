@@ -142,10 +142,7 @@ def test_project_permission(flask_app_client, regular_user, admin_user, temp_use
         utils.patch_remove_op('user', '%s' % regular_user.guid),
     ]
     response = proj_utils.patch_project(flask_app_client, project_guid, temp_user, data)
-
-    # This seems to be an incorrect error code
-    assert response.status_code == 500
-    # utils.validate_dict_response(response, 403, {'status', 'message'})
+    utils.validate_dict_response(response, 409, {'status', 'message'})
 
     # # @todo, This returns a 200, due to the default of True in PatchJSONParameters:perform_patch
 

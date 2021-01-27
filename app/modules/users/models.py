@@ -512,13 +512,16 @@ class User(db.Model, FeatherModel, UserEDMMixin):
         from app.modules.submissions.models import Submission
         from app.modules.encounters.models import Encounter
         from app.modules.sightings.models import Sighting
+        from app.modules.projects.models import Project
 
         ret_val = False
 
-        # todo, if more objects end up with an "owner" relationship with user, this could be a simple as Submission
-        if isinstance(obj, Submission):
-            ret_val = obj.owner is self
-        elif isinstance(obj, Encounter):
+        # Submission, Encounters and Projects all have an owner field, check that
+        if (
+            isinstance(obj, Submission)
+            or isinstance(obj, Encounter)
+            or isinstance(obj, Project)
+        ):
             ret_val = obj.owner is self
         elif isinstance(obj, Asset):
             # assets are not owned directly by the user but the submission they're in is.

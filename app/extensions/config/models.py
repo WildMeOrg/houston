@@ -34,7 +34,7 @@ class HoustonConfig(db.Model, HoustonModel):
         )
 
     @classmethod
-    def set(self, key, value):
+    def set(cls, key, value):
         assert key in app.config
 
         with app.config.db(app):
@@ -50,7 +50,7 @@ class HoustonConfig(db.Model, HoustonModel):
         assert current_houston_config.value == value
 
     @classmethod
-    def forget(self, key):
+    def forget(cls, key):
         assert key in app.config
 
         with app.config.db(app):

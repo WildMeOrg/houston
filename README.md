@@ -787,6 +787,10 @@ How to Update Schemas
 3. A new file should have been created in `/app/migrations/versions`. Add `import app.extensions` to the top of that file
 4. Run `invoke app.db.upgrade`
 
+RFC 6902 Compliance
+============
+This implementation is compatible with RFC6509 with the exception that for removal of list items via patch. This implementation supports an optional value in the patch removal operation to permit deletion of associations between modules.
+
 Useful Links
 ============
 

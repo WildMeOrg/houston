@@ -16,6 +16,7 @@ from flask_restplus._http import HTTPStatus
 from . import http_exceptions
 from .webargs_parser import CustomWebargsParser
 
+from marshmallow import ValidationError
 
 log = logging.getLogger(__name__)
 
@@ -153,7 +154,7 @@ class Namespace(BaseNamespace):
         try:
             with session.begin():
                 yield
-        except ValueError as exception:
+        except (ValueError, ValidationError) as exception:
             log.info('Database transaction was rolled back due to: %r', exception)
             http_exceptions.abort(code=HTTPStatus.CONFLICT, message=str(exception))
         except sqlalchemy.exc.IntegrityError as exception:

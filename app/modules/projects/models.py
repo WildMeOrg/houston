@@ -49,6 +49,11 @@ class Project(db.Model, HoustonModel, Timestamp):
 
     encounter_members = db.relationship('ProjectEncounter', back_populates='project')
 
+    owner_guid = db.Column(
+        db.GUID, db.ForeignKey('user.guid'), index=True, nullable=False
+    )
+    owner = db.relationship('User', backref=db.backref('owned_projects'))
+
     def __repr__(self):
         return (
             '<{class_name}('
@@ -73,24 +78,42 @@ class Project(db.Model, HoustonModel, Timestamp):
         return title
 
     def add_user(self, user):
+        with db.session.begin():
+            self.add_user_in_context(user)
+
+    def add_encounter(self, encounter):
+        with db.session.begin():
+            self.add_encounter_in_context(encounter)
+
+    def add_user_in_context(self, user):
         enrollment = ProjectUserMembershipEnrollment(
             project=self,
             user=user,
         )
 
-        with db.session.begin():
-            db.session.add(enrollment)
-            self.user_membership_enrollments.append(enrollment)
+        db.session.add(enrollment)
+        self.user_membership_enrollments.append(enrollment)
 
-    def add_encounter(self, encounter):
+    def add_encounter_in_context(self, encounter):
         enrollment = ProjectEncounter(
             project=self,
             encounter=encounter,
         )
 
-        with db.session.begin():
-            db.session.add(enrollment)
-            self.encounter_members.append(enrollment)
+        db.session.add(enrollment)
+        self.encounter_members.append(enrollment)
+
+    def remove_user_in_context(self, user):
+        for member in self.user_membership_enrollments:
+            if member.user == user:
+                db.session.delete(member)
+                break
+
+    def remove_encounter_in_context(self, encounter):
+        for member in self.encounter_members:
+            if member.encounter == encounter:
+                db.session.delete(member)
+                break
 
     def delete(self):
         with db.session.begin():

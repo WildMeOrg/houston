@@ -189,3 +189,37 @@ def generate_user_instance(
     )
     user_instance.password_secret = password
     return user_instance
+
+
+def validate_dict_response(response, expected_code, expected_fields):
+    assert response.status_code == expected_code
+    assert response.content_type == 'application/json'
+    assert isinstance(response.json, dict)
+    assert set(response.json.keys()) >= expected_fields
+
+
+def patch_test_op(value):
+    return {
+        'op': 'test',
+        'path': '/current_password',
+        'value': value,
+    }
+
+
+def patch_add_op(value, path):
+    return {
+        'op': 'add',
+        'path': '/%s' % (path,),
+        'value': value,
+    }
+
+
+def patch_remove_op(path, value=None):
+    operation = {
+        'op': 'remove',
+        'path': '/%s' % (path,),
+    }
+    if value:
+        operation['value'] = value
+
+    return operation

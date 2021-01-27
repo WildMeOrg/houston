@@ -5,6 +5,7 @@ on:
   push:
     paths:
       - '.github/workflows/nightly.yml'
+      - 'scripts/**'
   pull_request:
     paths:
       - '.github/workflows/nightly.yml'

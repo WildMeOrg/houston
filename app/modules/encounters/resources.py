@@ -16,6 +16,7 @@ from app.extensions import db
 from app.extensions.api import Namespace
 from app.extensions.api.parameters import PaginationParameters
 from app.modules.users import permissions
+from app.modules.users.permissions.types import AccessOperation
 
 from werkzeug.exceptions import BadRequest
 from app.extensions.api import abort
@@ -38,6 +39,13 @@ class Encounters(Resource):
     Manipulations with Encounters.
     """
 
+    @api.permission_required(
+        permissions.ModuleAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'module': Encounter,
+            'action': AccessOperation.READ,
+        },
+    )
     @api.parameters(PaginationParameters())
     @api.response(schemas.BaseEncounterSchema(many=True))
     def get(self, args):
@@ -49,10 +57,13 @@ class Encounters(Resource):
         """
         return Encounter.query.offset(args['offset']).limit(args['limit'])
 
-    # note: previously, edm response json differs from our boilerplate houston/flask format
-    # thus, json response here is currently based on this edm work.  this is open for further discussion.
-    #  see:  https://docs.wildme.org/docs/developers/edmapi/edm_api_overview#response-content
-
+    @api.permission_required(
+        permissions.ModuleAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'module': Encounter,
+            'action': AccessOperation.WRITE,
+        },
+    )
     @api.login_required(oauth_scopes=['encounters:write'])
     @api.parameters(parameters.CreateEncounterParameters())
     # @api.response(schemas.DetailedEncounterSchema())
@@ -133,6 +144,13 @@ class EncounterByID(Resource):
     Manipulations with a specific Encounter.
     """
 
+    @api.permission_required(
+        permissions.ObjectAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'obj': kwargs['encounter'],
+            'action': AccessOperation.READ,
+        },
+    )
     @api.response(schemas.DetailedEncounterSchema())
     def get(self, encounter):
         """
@@ -140,8 +158,14 @@ class EncounterByID(Resource):
         """
         return encounter
 
+    @api.permission_required(
+        permissions.ObjectAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'obj': kwargs['encounter'],
+            'action': AccessOperation.WRITE,
+        },
+    )
     @api.login_required(oauth_scopes=['encounters:write'])
-    @api.permission_required(permissions.WriteAccessPermission())
     @api.parameters(parameters.PatchEncounterDetailsParameters())
     @api.response(schemas.DetailedEncounterSchema())
     @api.response(code=HTTPStatus.CONFLICT)
@@ -157,8 +181,14 @@ class EncounterByID(Resource):
             db.session.merge(encounter)
         return encounter
 
+    @api.permission_required(
+        permissions.ObjectAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'obj': kwargs['encounter'],
+            'action': AccessOperation.DELETE,
+        },
+    )
     @api.login_required(oauth_scopes=['encounters:write'])
-    @api.permission_required(permissions.WriteAccessPermission())
     @api.response(code=HTTPStatus.CONFLICT)
     @api.response(code=HTTPStatus.NO_CONTENT)
     def delete(self, encounter):

@@ -14,9 +14,10 @@ REPLACE_KEY = '<REPLACE_UUID>'
     ),
 )
 def test_users_options_unauthorized(
-    path, status_code, expected_allowed_methods, flask_app_client
+    path, status_code, expected_allowed_methods, flask_app_client, admin_user
 ):
-    response = flask_app_client.options(path)
+    with flask_app_client.login(admin_user, auth_scopes=('users:write',)):
+        response = flask_app_client.options(path)
 
     assert response.status_code == status_code
     if expected_allowed_methods:

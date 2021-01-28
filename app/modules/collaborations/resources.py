@@ -14,6 +14,7 @@ from flask_restplus._http import HTTPStatus
 from app.extensions import db
 from app.extensions.api import Namespace
 from app.extensions.api.parameters import PaginationParameters
+from app.modules.users.permissions.types import AccessOperation
 from app.modules.users import permissions
 
 
@@ -34,6 +35,13 @@ class Collaborations(Resource):
     Manipulations with Collaborations.
     """
 
+    @api.permission_required(
+        permissions.ModuleAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'module': Collaboration,
+            'action': AccessOperation.READ,
+        },
+    )
     @api.parameters(PaginationParameters())
     @api.response(schemas.BaseCollaborationSchema(many=True))
     def get(self, args):
@@ -45,6 +53,13 @@ class Collaborations(Resource):
         """
         return Collaboration.query.offset(args['offset']).limit(args['limit'])
 
+    @api.permission_required(
+        permissions.ModuleAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'module': Collaboration,
+            'action': AccessOperation.WRITE,
+        },
+    )
     @api.login_required(oauth_scopes=['collaborations:write'])
     @api.parameters(parameters.CreateCollaborationParameters())
     @api.response(schemas.DetailedCollaborationSchema())
@@ -74,6 +89,13 @@ class CollaborationByID(Resource):
     Manipulations with a specific Collaboration.
     """
 
+    @api.permission_required(
+        permissions.ObjectAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'obj': kwargs['collaboration'],
+            'action': AccessOperation.READ,
+        },
+    )
     @api.response(schemas.DetailedCollaborationSchema())
     def get(self, collaboration):
         """
@@ -81,8 +103,14 @@ class CollaborationByID(Resource):
         """
         return collaboration
 
+    @api.permission_required(
+        permissions.ObjectAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'obj': kwargs['collaboration'],
+            'action': AccessOperation.WRITE,
+        },
+    )
     @api.login_required(oauth_scopes=['collaborations:write'])
-    @api.permission_required(permissions.WriteAccessPermission())
     @api.parameters(parameters.PatchCollaborationDetailsParameters())
     @api.response(schemas.DetailedCollaborationSchema())
     @api.response(code=HTTPStatus.CONFLICT)
@@ -100,8 +128,14 @@ class CollaborationByID(Resource):
             db.session.merge(collaboration)
         return collaboration
 
+    @api.permission_required(
+        permissions.ObjectAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'obj': kwargs['collaboration'],
+            'action': AccessOperation.DELETE,
+        },
+    )
     @api.login_required(oauth_scopes=['collaborations:write'])
-    @api.permission_required(permissions.WriteAccessPermission())
     @api.response(code=HTTPStatus.CONFLICT)
     @api.response(code=HTTPStatus.NO_CONTENT)
     def delete(self, collaboration):

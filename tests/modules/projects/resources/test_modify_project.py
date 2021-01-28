@@ -8,7 +8,9 @@ from tests.modules.projects.resources import utils as proj_utils
 def test_modify_project(db, flask_app_client, admin_user, temp_user, regular_user):
     # pylint: disable=invalid-name
     from app.modules.projects.models import Project
+    from app.modules.users.models import User
 
+    temp_user.set_static_role(User.StaticRoles.RESEARCHER)
     # from app.modules.encounters.models import Encounter
 
     response = proj_utils.create_project(
@@ -21,7 +23,7 @@ def test_modify_project(db, flask_app_client, admin_user, temp_user, regular_use
     project_guid = response.json['guid']
 
     proj = Project.query.get(project_guid)
-    assert len(proj.members) == 1
+    assert len(proj.get_members()) == 1
 
     data = [
         utils.patch_test_op(temp_user.password_secret),
@@ -29,7 +31,7 @@ def test_modify_project(db, flask_app_client, admin_user, temp_user, regular_use
     ]
     response = proj_utils.patch_project(flask_app_client, project_guid, temp_user, data)
     utils.validate_dict_response(response, 200, {'guid', 'title'})
-    assert len(proj.members) == 2
+    assert len(proj.get_members()) == 2
 
     data = [
         utils.patch_test_op(admin_user.password_secret),
@@ -38,7 +40,7 @@ def test_modify_project(db, flask_app_client, admin_user, temp_user, regular_use
     response = proj_utils.patch_project(flask_app_client, project_guid, admin_user, data)
 
     utils.validate_dict_response(response, 200, {'guid', 'title'})
-    assert len(proj.members) == 1
+    assert len(proj.get_members()) == 1
 
     # This is not the way to add an encounter but I think we need Jons EDM work to have a decent way to know
     # what the correct way is
@@ -59,10 +61,13 @@ def test_modify_project(db, flask_app_client, admin_user, temp_user, regular_use
         response = flask_app_client.delete('/api/v1/projects/%s' % project_guid)
 
     assert response.status_code == 204
+    temp_user.unset_static_role(User.StaticRoles.RESEARCHER)
 
 
 def test_project_permission(flask_app_client, regular_user, admin_user, temp_user):
+    from app.modules.users.models import User
 
+    temp_user.set_static_role(User.StaticRoles.RESEARCHER)
     response = proj_utils.create_project(
         flask_app_client, temp_user, 'This is a test project, please ignore'
     )
@@ -167,3 +172,4 @@ def test_project_permission(flask_app_client, regular_user, admin_user, temp_use
         response = flask_app_client.delete('/api/v1/projects/%s' % project_guid)
 
     assert response.status_code == 204
+    temp_user.unset_static_role(User.StaticRoles.RESEARCHER)

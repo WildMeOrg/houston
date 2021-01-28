@@ -59,16 +59,14 @@ class Project(db.Model, HoustonModel, Timestamp):
             '<{class_name}('
             'guid={self.guid}, '
             "title='{self.title}', "
-            'members={self.members} '
+            'members={self.get_members()} '
             ')>'.format(class_name=self.__class__.__name__, self=self)
         )
 
-    @property
-    def members(self):
+    def get_members(self):
         return [enrollment.user for enrollment in self.user_membership_enrollments]
 
-    @property
-    def encounters(self):
+    def get_encounters(self):
         return [member.encounter for member in self.encounter_members]
 
     @db.validates('title')

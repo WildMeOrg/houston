@@ -45,8 +45,8 @@ def test_project_add_members(db, temp_user):  # pylint: disable=unused-argument
     assert len(temp_user.projects) >= 1
     assert temp_proj in temp_user.projects
 
-    assert len(temp_proj.members) == 1
-    assert temp_user in temp_proj.members
+    assert len(temp_proj.get_members()) == 1
+    assert temp_user in temp_proj.get_members()
 
     try:
         duplicate_enrollment = ProjectUserMembershipEnrollment()

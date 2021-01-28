@@ -163,6 +163,9 @@ class User(db.Model, FeatherModel, UserEDMMixin):
 
     class StaticRoles(enum.Enum):
         # pylint: disable=missing-docstring,unsubscriptable-object
+        CONTRIBUTOR = (0x40000, 'Contributor')
+        RESEARCHER = (0x20000, 'Researcher')
+        EXPORTER = (0x10000, 'Exporter')
         INTERNAL = (0x8000, 'Internal')
         ADMIN = (0x4000, 'Site Administrator')
         STAFF = (0x2000, 'Staff Member')
@@ -183,6 +186,11 @@ class User(db.Model, FeatherModel, UserEDMMixin):
 
     static_roles = db.Column(db.Integer, default=0, nullable=False)
 
+    is_contributor = _get_is_static_role_property(
+        'is_contributor', StaticRoles.CONTRIBUTOR
+    )
+    is_researcher = _get_is_static_role_property('is_researcher', StaticRoles.RESEARCHER)
+    is_exporter = _get_is_static_role_property('is_exporter', StaticRoles.EXPORTER)
     is_internal = _get_is_static_role_property('is_internal', StaticRoles.INTERNAL)
     is_admin = _get_is_static_role_property('is_admin', StaticRoles.ADMIN)
     is_staff = _get_is_static_role_property('is_staff', StaticRoles.STAFF)
@@ -195,16 +203,42 @@ class User(db.Model, FeatherModel, UserEDMMixin):
     in_setup = _get_is_static_role_property('in_setup', StaticRoles.SETUP)
 
     def __repr__(self):
+        state = ''
+        if self.is_active:
+            state = state + 'Active, '
+        if self.in_setup:
+            state = state + 'Setup, '
+        if self.in_reset:
+            state = state + 'Reset, '
+        if self.in_alpha:
+            state = state + 'Alpha, '
+        if self.in_beta:
+            state = state + 'Beta, '
+
+        roles = ''
+        if self.is_internal:
+            roles = roles + 'Internal, '
+        if self.is_admin:
+            roles = roles + 'Admin, '
+        if self.is_staff:
+            roles = roles + 'Staff, '
+        if self.is_contributor:
+            roles = roles + 'Contributor, '
+        if self.is_researcher:
+            roles = roles + 'Researcher, '
+        if self.is_exporter:
+            roles = roles + 'Exporter, '
+
         return (
             '<{class_name}('
             'guid={self.guid}, '
             'email="{self.email}", '
             'name="{self.full_name}", '
-            'is_internal={self.is_internal}, '
-            'is_admin={self.is_admin}, '
-            'is_staff={self.is_staff}, '
-            'is_active={self.is_active}, '
-            ')>'.format(class_name=self.__class__.__name__, self=self)
+            'state={state}'
+            'roles={roles}'
+            ')>'.format(
+                class_name=self.__class__.__name__, self=self, state=state, roles=roles
+            )
         )
 
     @classmethod
@@ -235,6 +269,9 @@ class User(db.Model, FeatherModel, UserEDMMixin):
         is_internal=False,
         is_admin=False,
         is_staff=False,
+        is_researcher=False,
+        is_contributor=True,
+        is_exporter=False,
         is_active=True,
         in_beta=False,
         in_alpha=False,
@@ -256,6 +293,9 @@ class User(db.Model, FeatherModel, UserEDMMixin):
                 is_admin=is_admin,
                 is_staff=is_staff,
                 is_active=is_active,
+                is_researcher=is_researcher,
+                is_contributor=is_contributor,
+                is_exporter=is_exporter,
                 in_beta=in_beta,
                 in_alpha=in_alpha,
                 **kwargs
@@ -270,6 +310,9 @@ class User(db.Model, FeatherModel, UserEDMMixin):
             user.is_internal = is_internal
             user.is_admin = is_admin
             user.is_staff = is_staff
+            user.is_researcher = is_researcher
+            user.is_contributor = is_contributor
+            user.is_exporter = is_exporter
             user.is_active = is_active
             user.in_beta = in_beta
             user.in_alpha = in_alpha
@@ -516,8 +559,10 @@ class User(db.Model, FeatherModel, UserEDMMixin):
 
         ret_val = False
 
+        if isinstance(obj, User):
+            ret_val = obj == self
         # Submission, Encounters and Projects all have an owner field, check that
-        if (
+        elif (
             isinstance(obj, Submission)
             or isinstance(obj, Encounter)
             or isinstance(obj, Project)

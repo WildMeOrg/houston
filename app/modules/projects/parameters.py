@@ -47,7 +47,7 @@ class PatchProjectDetailsParameters(PatchJSONParametersWithPassword):
             if (
                 cls.owner_or_privileged(current_user, obj)
                 and user
-                and user in obj.members
+                and user in obj.get_members()
             ):
                 obj.owner = user
                 ret_val = True
@@ -60,7 +60,7 @@ class PatchProjectDetailsParameters(PatchJSONParametersWithPassword):
         elif field == 'encounter':
             encounter = Encounter.query.get(value)
             if encounter and (
-                current_user in obj.members or user_is_privileged(current_user, obj)
+                current_user in obj.get_members() or user_is_privileged(current_user, obj)
             ):
                 obj.add_encounter_in_context(encounter)
                 ret_val = True

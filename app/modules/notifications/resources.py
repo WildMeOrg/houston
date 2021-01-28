@@ -15,6 +15,7 @@ from app.extensions import db
 from app.extensions.api import Namespace
 from app.extensions.api.parameters import PaginationParameters
 from app.modules.users import permissions
+from app.modules.users.permissions.types import AccessOperation
 
 
 from . import parameters, schemas
@@ -34,6 +35,13 @@ class Notifications(Resource):
     Manipulations with Notifications.
     """
 
+    @api.permission_required(
+        permissions.ModuleAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'module': Notification,
+            'action': AccessOperation.READ,
+        },
+    )
     @api.parameters(PaginationParameters())
     @api.response(schemas.BaseNotificationSchema(many=True))
     def get(self, args):
@@ -45,6 +53,13 @@ class Notifications(Resource):
         """
         return Notification.query.offset(args['offset']).limit(args['limit'])
 
+    @api.permission_required(
+        permissions.ModuleAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'module': Notification,
+            'action': AccessOperation.WRITE,
+        },
+    )
     @api.login_required(oauth_scopes=['notifications:write'])
     @api.parameters(parameters.CreateNotificationParameters())
     @api.response(schemas.DetailedNotificationSchema())
@@ -74,6 +89,13 @@ class NotificationByID(Resource):
     Manipulations with a specific Notification.
     """
 
+    @api.permission_required(
+        permissions.ObjectAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'obj': kwargs['notification'],
+            'action': AccessOperation.READ,
+        },
+    )
     @api.response(schemas.DetailedNotificationSchema())
     def get(self, notification):
         """
@@ -81,8 +103,14 @@ class NotificationByID(Resource):
         """
         return notification
 
+    @api.permission_required(
+        permissions.ObjectAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'obj': kwargs['notification'],
+            'action': AccessOperation.DELETE,
+        },
+    )
     @api.login_required(oauth_scopes=['notifications:write'])
-    @api.permission_required(permissions.WriteAccessPermission())
     @api.response(code=HTTPStatus.CONFLICT)
     @api.response(code=HTTPStatus.NO_CONTENT)
     def delete(self, notification):

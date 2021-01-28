@@ -85,15 +85,16 @@ class ModuleActionRule(DenyAbortMixin, Rule):
 
     def check(self):
         from app.modules.submissions.models import Submission
+        from app.modules.users.models import User
 
         # This Rule is for checking permissions on modules, so there must be one,
         assert self._module is not None
 
+        # Anonymous users can only create a submission or themselves
         if not current_user or current_user.is_anonymous:
-            # Anonymous users can only create a submission
-            has_permission = self._action == AccessOperation.WRITE and self._is_module(
-                Submission
-            )
+            has_permission = False
+            if self._action == AccessOperation.WRITE:
+                has_permission = self._is_module(Submission) or self._is_module(User)
         else:
             has_permission = (
                 # inactive users can do nothing
@@ -116,14 +117,28 @@ class ModuleActionRule(DenyAbortMixin, Rule):
 
     # Permissions control entry point for real users, for all objects and all operations
     def _can_user_perform_action(self, user):
+        from app.modules.submissions.models import Submission
         from app.modules.projects.models import Project
+        from app.modules.users.models import User
 
-        # Currently any user can do what they like. This is where the role specific access controls will be added
-        has_permission = True
-        if self._is_module(Project) and self._action is AccessOperation.READ:
-            has_permission = user.is_admin | user.is_staff | user.is_internal
+        has_permission = False
+
+        if self._action is AccessOperation.READ:
+            has_permission = self._user_is_privileged(user)
+        elif self._action is AccessOperation.WRITE:
+            if self._is_module(Submission):
+                # Any users can submit
+                has_permission = True
+            if self._is_module(User):
+                # And modify users apparently?
+                has_permission = True
+            elif self._is_module(Project):
+                has_permission = user.is_researcher
 
         return has_permission
+
+    def _user_is_privileged(self, user):
+        return user.is_admin | user.is_staff | user.is_internal
 
 
 class ObjectActionRule(DenyAbortMixin, Rule):
@@ -181,7 +196,8 @@ class ObjectActionRule(DenyAbortMixin, Rule):
             # Region would be handled the same way here too
             if isinstance(self._obj, Project) or isinstance(self._obj, Organization):
                 has_permission = (
-                    user in self._obj.members and self._action != AccessOperation.DELETE
+                    user in self._obj.get_members()
+                    and self._action != AccessOperation.DELETE
                 )
 
         return has_permission
@@ -218,7 +234,7 @@ class ObjectActionRule(DenyAbortMixin, Rule):
                         # Optionally add time check so that User can only access encounters after user was added to project
                         has_permission = self._obj in project.encounters
                     else:
-                        for encounter in project.encounters:
+                        for encounter in project.get_encounters():
                             # If time check was implemented, that would need to be passed here too and percolate down through
                             # encounters and sightings etc
                             # @todo should the functionality in encounters.has_read_permission move into rules.py

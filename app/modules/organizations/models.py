@@ -149,8 +149,7 @@ class Organization(db.Model, HoustonModel, OrganizationEDMMixin):
             ')>'.format(class_name=self.__class__.__name__, self=self)
         )
 
-    @property
-    def members(self):
+    def get_members(self):
         return [enrollment.user for enrollment in self.user_membership_enrollments]
 
     @db.validates('title')

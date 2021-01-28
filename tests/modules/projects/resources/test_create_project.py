@@ -8,7 +8,9 @@ from tests.modules.projects.resources import utils as proj_utils
 def test_create_and_delete_project(flask_app_client, admin_user, temp_user):
     # pylint: disable=invalid-name
     from app.modules.projects.models import Project
+    from app.modules.users.models import User
 
+    temp_user.set_static_role(User.StaticRoles.RESEARCHER)
     response = proj_utils.create_project(
         flask_app_client, temp_user, 'This is a test project, please ignore'
     )
@@ -33,8 +35,11 @@ def test_create_and_delete_project(flask_app_client, admin_user, temp_user):
     read_project = Project.query.get(project_guid)
     assert read_project is None
 
+    temp_user.unset_static_role(User.StaticRoles.RESEARCHER)
+
 
 def test_project_permission(flask_app_client, regular_user, admin_user, temp_user):
+    from app.modules.users.models import User
 
     # Before we create any Projects, find out how many are there already
     with flask_app_client.login(admin_user, auth_scopes=('projects:read',)):
@@ -42,6 +47,7 @@ def test_project_permission(flask_app_client, regular_user, admin_user, temp_use
     assert list_response.status_code == 200
     existing_projects = list_response.json
 
+    temp_user.set_static_role(User.StaticRoles.RESEARCHER)
     response = proj_utils.create_project(
         flask_app_client, temp_user, 'This is a test project, please ignore'
     )
@@ -88,3 +94,4 @@ def test_project_permission(flask_app_client, regular_user, admin_user, temp_use
         response = flask_app_client.delete('/api/v1/projects/%s' % project_guid)
 
     assert response.status_code == 204
+    temp_user.unset_static_role(User.StaticRoles.RESEARCHER)

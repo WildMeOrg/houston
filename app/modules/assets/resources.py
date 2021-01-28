@@ -32,8 +32,14 @@ class Assets(Resource):
     Manipulations with Assets.
     """
 
+    @api.permission_required(
+        permissions.ModuleAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'module': Asset,
+            'action': AccessOperation.READ,
+        },
+    )
     @api.login_required(oauth_scopes=['assets:read'])
-    @api.permission_required(permissions.AdminRolePermission())
     @api.response(schemas.BaseAssetSchema(many=True))
     @api.parameters(PaginationParameters())
     def get(self, args):
@@ -102,6 +108,13 @@ class AssetByID(Resource):
 )
 @api.resolve_object_by_model(Asset, 'asset')
 class AssetSrcUByID(Resource):
+    @api.permission_required(
+        permissions.ObjectAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'obj': kwargs['asset'],
+            'action': AccessOperation.READ,
+        },
+    )
     def get(self, asset, format):
         current_app.sub.ensure_submission(asset.submission_guid)
         try:

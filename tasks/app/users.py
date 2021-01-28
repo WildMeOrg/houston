@@ -10,10 +10,6 @@ from ._utils import app_context_task
 def create_user(
     context,
     email,
-    is_internal=False,
-    is_admin=False,
-    is_staff=False,
-    is_active=True,
 ):
     from app.modules.users.models import User
 
@@ -23,14 +19,7 @@ def create_user(
 
     password = input('Enter password: ')
 
-    new_user = User(
-        password=password,
-        email=email,
-        is_internal=is_internal,
-        is_admin=is_admin,
-        is_staff=is_staff,
-        is_active=is_active,
-    )
+    new_user = User(password=password, email=email, is_active=True, is_contributor=True)
 
     from app.extensions import db
 
@@ -38,15 +27,18 @@ def create_user(
         db.session.add(new_user)
 
 
-@app_context_task(help={'email': 'temp@localhost'})
-def promote_to_admin(
-    context,
-    email,
-):
+@app_context_task(
+    help={
+        'email': 'temp@localhost',
+        'role': 'role name, Admin, Staff, Internal, Researcher, Contributor, Exporter',
+    }
+)
+def add_role(context, email, role):
     """
-    Promote a given user (email) to administrator permissions
+    Update a given user (email) to have a role (Admin, Staff, Internal, Researcher, Contributor, Exporter)
     """
     from app.modules.users.models import User
+    from app.extensions import db
 
     user = User.find(email=email)
 
@@ -55,31 +47,68 @@ def promote_to_admin(
         print('\nNo updates applied.')
         return
 
-    if user.is_admin:
-        print('The given user is already an administrator:\n\t%r' % (user,))
-        print('\nNo updates applied.')
+    if role == 'Admin':
+        user.set_static_role(User.StaticRoles.ADMIN)
+    elif role == 'Staff':
+        user.set_static_role(User.StaticRoles.STAFF)
+    elif role == 'Internal':
+        user.set_static_role(User.StaticRoles.INTERNAL)
+    elif role == 'Researcher':
+        user.set_static_role(User.StaticRoles.RESEARCHER)
+    elif role == 'Contributor':
+        user.set_static_role(User.StaticRoles.CONTRIBUTOR)
+    elif role == 'Exporter':
+        user.set_static_role(User.StaticRoles.EXPORTER)
+    else:
+        print('Role {} not supported' % role)
         return
 
-    user.is_admin = True
-
-    print('Found user:\n\t%r' % (user,))
-    answer = input(
-        'Are you sure you want to promote the above found user to a site administrator? [Y / N]: '
-    )
-    answer = answer.strip().lower()
-
-    if answer not in ['y', 'yes']:
-        print('Confirmation failed.')
-        print('\nNo updates applied.')
-
-    from app.extensions import db
-
+    # User role changed, update DB
     with db.session.begin():
         db.session.merge(user)
     db.session.refresh(user)
 
-    assert user.is_admin
-    print('\nThe user was successfully promoted to an administrator.')
+
+@app_context_task(
+    help={
+        'email': 'temp@localhost',
+        'role': 'role name, Admin, Staff, Internal, Researcher, Contributor, Exporter',
+    }
+)
+def remove_role(context, email, role):
+    """
+    Update a given user (email) to not have a role (Admin, Staff, Internal, Researcher, Contributor, Exporter)
+    """
+    from app.modules.users.models import User
+    from app.extensions import db
+
+    user = User.find(email=email)
+
+    if user is None:
+        print("User with email '%s' does not exist." % email)
+        print('\nNo updates applied.')
+        return
+
+    if role == 'Admin':
+        user.unset_static_role(User.StaticRoles.ADMIN)
+    elif role == 'Staff':
+        user.unset_static_role(User.StaticRoles.STAFF)
+    elif role == 'Internal':
+        user.unset_static_role(User.StaticRoles.INTERNAL)
+    elif role == 'Researcher':
+        user.unset_static_role(User.StaticRoles.RESEARCHER)
+    elif role == 'Contributor':
+        user.unset_static_role(User.StaticRoles.CONTRIBUTOR)
+    elif role == 'Exporter':
+        user.unset_static_role(User.StaticRoles.EXPORTER)
+    else:
+        print('Role {} not supported' % role)
+        return
+
+    # User role changed, update DB
+    with db.session.begin():
+        db.session.merge(user)
+    db.session.refresh(user)
 
 
 @app_context_task

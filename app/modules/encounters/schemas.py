@@ -20,7 +20,6 @@ class BaseEncounterSchema(ModelSchema):
         model = Encounter
         fields = (
             Encounter.guid.key,
-            Encounter.title.key,
         )
         dump_only = (Encounter.guid.key,)
 

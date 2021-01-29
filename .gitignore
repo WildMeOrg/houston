@@ -25,6 +25,7 @@ htmlcov/
 .cache
 nosetests.xml
 coverage.xml
+_coverage/
 
 # Translations
 *.mo

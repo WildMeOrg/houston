@@ -55,12 +55,12 @@ class OrganizationEDMMixin(EDMObjectMixin):
 
     @classmethod
     def ensure_edm_obj(cls, guid, owner=None):
+
         if owner is None:
             from app.modules.users.models import User
             from flask_login import current_user
 
             candidates = [
-                User.find('jason@wildme.org'),
                 current_user,
             ]
             for user in candidates:
@@ -75,8 +75,8 @@ class OrganizationEDMMixin(EDMObjectMixin):
             organization = Organization(
                 guid=guid,
                 title='none',
-                owner_guid=owner.guid,
             )
+            organization.owner = owner
             db.session.add(organization)
             is_new = True
 
@@ -169,9 +169,7 @@ class Organization(db.Model, HoustonModel, OrganizationEDMMixin):
         'OrganizationUserModeratorEnrollment', back_populates='organization'
     )
 
-    owner_guid = db.Column(
-        db.GUID, db.ForeignKey('user.guid'), index=True, nullable=False
-    )
+    owner_guid = db.Column(db.GUID, db.ForeignKey('user.guid'), index=True, nullable=True)
     owner = db.relationship('User', backref=db.backref('owned_organizations'))
 
     def __repr__(self):

@@ -49,6 +49,10 @@ class Encounters(Resource):
         """
         return Encounter.query.offset(args['offset']).limit(args['limit'])
 
+    # note: previously, edm response json differs from our boilerplate houston/flask format
+    # thus, json response here is currently based on this edm work.  this is open for further discussion.
+    #  see:  https://docs.wildme.org/docs/developers/edmapi/edm_api_overview#response-content
+
     @api.login_required(oauth_scopes=['encounters:write'])
     @api.parameters(parameters.CreateEncounterParameters())
     # @api.response(schemas.DetailedEncounterSchema())
@@ -90,14 +94,20 @@ class Encounters(Resource):
                 passed_message = response_data['message']
             abort(success=False, passed_message=passed_message, message='Error', code=400)
 
+        # if we get here, edm has made the encounter, now we create & persist the feather model in houston
+
         context = api.commit_or_abort(
             db.session, default_error_message='Failed to create a new Encounter'
         )
         with context:
+            #TODO other houston-based relationships: orgs, projects, etc
+            owner_guid = None
+            if current_user is not None:
+                owner_guid = current_user.guid
             encounter = Encounter(
-                guid=result_data['id'], version=result_data.get('version', 2)
+                guid=result_data['id'], version=result_data.get('version', 2),
+                owner_guid=owner_guid
             )
-            # encounter = Encounter(**args)
             db.session.add(encounter)
         log.debug('Encounter.post created edm/houston guid=%r' % (encounter.guid,))
         rtn = {

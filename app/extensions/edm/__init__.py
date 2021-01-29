@@ -162,7 +162,7 @@ class EDMManagerEncounterMixin(object):
         )
         return response
 
-class EDMManager(EDMManagerEndpointMixin, EDMManagerUserMixin):
+class EDMManager(EDMManagerEndpointMixin, EDMManagerUserMixin, EDMManagerEncounterMixin):
     # pylint: disable=abstract-method
     """
         note the content of User in the 2nd item has stuff you can ignore. it also has the id as "uuid" (which is what it is internally, sigh).  also note it references Organizations !  we didnt touch on this on the call, but i think this should (must?) live with Users.  what we have in java is very lightweight anyway, so no loss to go away.   as you can see, user.organizations is an array of orgs, and (since it is many-to-many) you will see org.members is a list of Users.  easy peasy.  btw, by the time we got to Organizations, we did call the primary key id and make it a uuid.  "live and learn".  :confused:

@@ -239,7 +239,7 @@ class User(db.Model, FeatherModel, UserEDMMixin):
             'guid={self.guid}, '
             'email="{self.email}", '
             'name="{self.full_name}", '
-            'state={state}'
+            'state={state}, '
             'roles={roles}'
             ')>'.format(
                 class_name=self.__class__.__name__, self=self, state=state, roles=roles

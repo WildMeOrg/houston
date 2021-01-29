@@ -4,12 +4,16 @@
 RESTful API Rules
 -----------------------
 """
+import logging
+
 from flask_login import current_user
 from flask_restplus._http import HTTPStatus
 from permission import Rule as BaseRule
 from typing import Type, Any
 from app.extensions.api import abort
 from app.modules.users.permissions.types import AccessOperation
+
+log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
 
 class DenyAbortMixin(object):
@@ -80,7 +84,10 @@ class ModuleActionRule(DenyAbortMixin, Rule):
 
         # This Rule is for checking permissions on modules, so there must be one,
         assert self._module is not None
-
+        log.info(
+            'Checking module %s, action %s, user %s'
+            % (self._module, self._action, current_user)
+        )
         # Anonymous users can only create a submission or themselves
         if not current_user or current_user.is_anonymous:
             has_permission = False
@@ -162,11 +169,16 @@ class ObjectActionRule(DenyAbortMixin, Rule):
         # This Rule is for checking permissions on objects, so there must be one, Use the ModuleActionRule for
         # permissions checking without objects
         assert self._obj is not None
+        log.info(
+            'Checking obj %s, action %s, user %s'
+            % (self._obj, self._action, current_user)
+        )
 
         # Anyone can read public data, even anonymous users
         has_permission = self._action == AccessOperation.READ and self._obj.is_public()
 
         if not has_permission and current_user and not current_user.is_anonymous:
+
             has_permission = (
                 # inactive users can do nothing
                 current_user.is_active
@@ -209,8 +221,9 @@ class ObjectActionRule(DenyAbortMixin, Rule):
             while not has_permission and org_index < len(orgs):
                 org = orgs[org_index]
                 member_index = 0
-                while not has_permission and member_index < len(org.members):
-                    has_permission = org.members[member_index].owns_object(self._obj)
+                org_members = org.get_members()
+                while not has_permission and member_index < len(org_members):
+                    has_permission = org_members[member_index].owns_object(self._obj)
                     member_index = member_index + 1
                 org_index = org_index + 1
 

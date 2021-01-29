@@ -59,8 +59,10 @@ class Project(db.Model, HoustonModel, Timestamp):
             '<{class_name}('
             'guid={self.guid}, '
             "title='{self.title}', "
-            'members={self.get_members()} '
-            ')>'.format(class_name=self.__class__.__name__, self=self)
+            'members={members} '
+            ')>'.format(
+                class_name=self.__class__.__name__, self=self, members=self.get_members()
+            )
         )
 
     def get_members(self):

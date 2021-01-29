@@ -155,6 +155,11 @@ class Organization(db.Model, HoustonModel, OrganizationEDMMixin):
         'OrganizationUserModeratorEnrollment', back_populates='organization'
     )
 
+    owner_guid = db.Column(
+        db.GUID, db.ForeignKey('user.guid'), index=True, nullable=False
+    )
+    owner = db.relationship('User', backref=db.backref('owned_organizations'))
+
     def __repr__(self):
         return (
             '<{class_name}('
@@ -162,8 +167,10 @@ class Organization(db.Model, HoustonModel, OrganizationEDMMixin):
             'title="{self.title}", '
             'website={self.website}, '
             'logo={self.logo_url}, '
-            'members={self.get_members()}, '
-            ')>'.format(class_name=self.__class__.__name__, self=self)
+            'members={members}, '
+            ')>'.format(
+                class_name=self.__class__.__name__, self=self, members=self.get_members()
+            )
         )
 
     def get_members(self):
@@ -177,3 +184,37 @@ class Organization(db.Model, HoustonModel, OrganizationEDMMixin):
         if len(title) < 3:
             raise ValueError('Title has to be at least 3 characters long.')
         return title
+
+    def add_user(self, user):
+        with db.session.begin():
+            self.add_user_in_context(user)
+
+    def add_moderator(self, user):
+        with db.session.begin():
+            self.add_moderator_in_context(user)
+
+    def add_user_in_context(self, user):
+        enrollment = OrganizationUserMembershipEnrollment(
+            organization=self,
+            user=user,
+        )
+
+        db.session.add(enrollment)
+        self.user_membership_enrollments.append(enrollment)
+
+    def add_moderator_in_context(self, user):
+        enrollment = OrganizationUserModeratorEnrollment(
+            organization=self,
+            user=user,
+        )
+
+        db.session.add(enrollment)
+        self.moderator_enrollments.append(enrollment)
+
+    def delete(self):
+        with db.session.begin():
+            while self.user_membership_enrollments:
+                db.session.delete(self.user_membership_enrollments.pop())
+            while self.moderator_enrollments:
+                db.session.delete(self.moderator_enrollments.pop())
+            db.session.delete(self)

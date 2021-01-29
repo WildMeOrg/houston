@@ -13,8 +13,7 @@ def test_Organization_add_members(db, temp_user):  # pylint: disable=unused-argu
     )
 
     temp_org = Organization(
-        title='Temp Organization',
-        website='temp@temp.org',
+        title='Temp Organization', website='temp@temp.org', owner_guid=temp_user.guid
     )
 
     temp_enrollment = OrganizationUserMembershipEnrollment()

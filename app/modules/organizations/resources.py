@@ -72,7 +72,11 @@ class Organizations(Resource):
             db.session, default_error_message='Failed to create a new Organization'
         )
         with context:
+            args['owner_guid'] = current_user.guid
             organization = Organization(**args)
+            # User who creates the org gets added to it as a member and a moderator
+            organization.add_user_in_context(current_user)
+            organization.add_moderator_in_context(current_user)
             db.session.add(organization)
         return organization
 
@@ -142,9 +146,5 @@ class OrganizationByID(Resource):
         """
         Delete a Organization by ID.
         """
-        context = api.commit_or_abort(
-            db.session, default_error_message='Failed to delete the Organization.'
-        )
-        with context:
-            db.session.delete(organization)
+        organization.delete()
         return None

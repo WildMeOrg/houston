@@ -12,13 +12,9 @@ def test_sighting_create_and_add_encounters(db):
         title='New Test Sighting',
     )
 
-    test_encounter_a = Encounter(
-        title='New Test Encounter A',
-    )
+    test_encounter_a = Encounter()
 
-    test_encounter_b = Encounter(
-        title='New Test Encounter B',
-    )
+    test_encounter_b = Encounter()
 
     with db.session.begin():
         db.session.add(test_encounter_a)
@@ -60,9 +56,7 @@ def test_sighting_ensure_no_duplicate_encounters(db):
         title='New Test Sighting',
     )
 
-    test_encounter = Encounter(
-        title='New Test Encounter',
-    )
+    test_encounter = Encounter()
 
     with db.session.begin():
         db.session.add(test_encounter)

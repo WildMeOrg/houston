@@ -146,8 +146,7 @@ def test_read_all_assets(
         assert admin_response.status_code == 200
         assert admin_response.content_type == 'application/json'
         assert len(admin_response.json) == 2
-        # admin_response.json should now be in lexographical order of guid
-        # still unsure if test_clone_submission_data is deterministic!  but these 2 appear to be also lexographical.
+        # both of these lists should be lexical order
         assert (
             admin_response.json[0]['guid'] == test_clone_submission_data['asset_uuids'][0]
         )

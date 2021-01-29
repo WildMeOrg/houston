@@ -35,9 +35,6 @@ def upgrade():
     sa.ForeignKeyConstraint(['user_guid'], ['user.guid'], name=op.f('fk_organization_user_moderator_enrollment_user_guid_user')),
     sa.PrimaryKeyConstraint('organization_guid', 'user_guid', name=op.f('pk_organization_user_moderator_enrollment'))
     )
-    with op.batch_alter_table('encounter', schema=None) as batch_op:
-        batch_op.add_column(sa.Column('version', sa.BigInteger(), nullable=True))
-
     with op.batch_alter_table('organization', schema=None) as batch_op:
         batch_op.add_column(sa.Column('owner_guid', app.extensions.GUID(), nullable=True))
         batch_op.create_index(batch_op.f('ix_organization_owner_guid'), ['owner_guid'], unique=False)
@@ -56,9 +53,6 @@ def downgrade():
         batch_op.drop_constraint(batch_op.f('fk_organization_owner_guid_user'), type_='foreignkey')
         batch_op.drop_index(batch_op.f('ix_organization_owner_guid'))
         batch_op.drop_column('owner_guid')
-
-    with op.batch_alter_table('encounter', schema=None) as batch_op:
-        batch_op.drop_column('version')
 
     op.drop_table('organization_user_moderator_enrollment')
     # ### end Alembic commands ###

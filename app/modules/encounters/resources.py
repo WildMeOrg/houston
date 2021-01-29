@@ -100,13 +100,14 @@ class Encounters(Resource):
             db.session, default_error_message='Failed to create a new Encounter'
         )
         with context:
-            #TODO other houston-based relationships: orgs, projects, etc
+            # TODO other houston-based relationships: orgs, projects, etc
             owner_guid = None
             if current_user is not None:
                 owner_guid = current_user.guid
             encounter = Encounter(
-                guid=result_data['id'], version=result_data.get('version', 2),
-                owner_guid=owner_guid
+                guid=result_data['id'],
+                version=result_data.get('version', 2),
+                owner_guid=owner_guid,
             )
             db.session.add(encounter)
         log.debug('Encounter.post created edm/houston guid=%r' % (encounter.guid,))
@@ -165,7 +166,7 @@ class EncounterByID(Resource):
         Delete a Encounter by ID.
         """
 
-        #first try delete on edm
+        # first try delete on edm
         target = 'default'
         path = str(encounter.guid)
         request_func = current_app.edm.delete_passthrough
@@ -193,7 +194,7 @@ class EncounterByID(Resource):
         context = api.commit_or_abort(
             db.session, default_error_message='Failed to delete the Encounter.'
         )
-        #TODO handle failure of feather deletion (when edm successful!)  out-of-sync == bad
+        # TODO handle failure of feather deletion (when edm successful!)  out-of-sync == bad
         with context:
             db.session.delete(encounter)
         return None
@@ -228,6 +229,7 @@ class EncounterByIDComplete(Resource):
         # import utool as ut
         # ut.embed()
         return response['result']
+
 
 def _request_passthrough(target, path, request_func, passthrough_kwargs):
     try:

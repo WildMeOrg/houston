@@ -162,6 +162,7 @@ class EDMManagerEncounterMixin(object):
         )
         return response
 
+
 class EDMManager(EDMManagerEndpointMixin, EDMManagerUserMixin, EDMManagerEncounterMixin):
     # pylint: disable=abstract-method
     """

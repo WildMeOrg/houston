@@ -84,10 +84,9 @@ class ModuleActionRule(DenyAbortMixin, Rule):
 
         # This Rule is for checking permissions on modules, so there must be one,
         assert self._module is not None
-        log.info(
-            'Checking module %s, action %s, user %s'
-            % (self._module, self._action, current_user)
-        )
+        log.info('Checking module %s, action %s' % (self._module, self._action))
+        log.info('current user %s' % current_user)
+
         # Anonymous users can only create a submission or themselves
         if not current_user or current_user.is_anonymous:
             has_permission = False

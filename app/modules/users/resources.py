@@ -94,6 +94,7 @@ class Users(Resource):
 
         return new_user
 
+    @api.login_required(oauth_scopes=['users:write'])
     @api.permission_required(
         permissions.ModuleAccessPermission,
         kwargs_on_request=lambda kwargs: {
@@ -101,7 +102,6 @@ class Users(Resource):
             'action': AccessOperation.DELETE,
         },
     )
-    @api.login_required(oauth_scopes=['users:write'])
     @api.parameters(parameters.DeleteUserParameters())
     def delete(self, args):
         """

@@ -43,7 +43,9 @@ class Assets(Resource):
         Returns a list of Asset starting from ``offset`` limited by ``limit``
         parameter.
         """
-        return Asset.query.offset(args['offset']).limit(args['limit'])
+        return (
+            Asset.query.order_by(Asset.guid).offset(args['offset']).limit(args['limit'])
+        )
 
 
 @api.route('/<uuid:asset_guid>')

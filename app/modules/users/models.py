@@ -15,7 +15,7 @@ from app.extensions.auth import security
 from app.extensions.edm import EDMObjectMixin
 from app.extensions.api.parameters import _get_is_static_role_property
 
-# In order to support OrganizationUserMemberships
+# In order to support OrganizationUserMemberships and OrganizationUserModerators
 # we must import the model definitions for organizations here
 from app.modules.organizations import models as organizations_models  # NOQA
 from app.modules.projects import models as projects_models  # NOQA
@@ -157,21 +157,29 @@ class User(db.Model, FeatherModel, UserEDMMixin):
         'OrganizationUserMembershipEnrollment', back_populates='user'
     )
 
+    organization_moderator_enrollments = db.relationship(
+        'OrganizationUserModeratorEnrollment', back_populates='user'
+    )
+
     project_membership_enrollments = db.relationship(
         'ProjectUserMembershipEnrollment', back_populates='user'
     )
 
     class StaticRoles(enum.Enum):
         # pylint: disable=missing-docstring,unsubscriptable-object
-        INTERNAL = (0x8000, 'Internal')
-        ADMIN = (0x4000, 'Site Administrator')
-        STAFF = (0x2000, 'Staff Member')
-        ACTIVE = (0x1000, 'Active Account')
+        CONTRIBUTOR = (0x40000, 'Contributor', 'Contributor')
+        RESEARCHER = (0x20000, 'Researcher', 'Researcher')
+        EXPORTER = (0x10000, 'Exporter', 'Exporter')
 
-        SETUP = (0x0800, 'Account in Setup')
-        RESET = (0x0400, 'Account in Password Reset')
-        ALPHA = (0x0200, 'Enrolled in Alpha')
-        BETA = (0x0100, 'Enrolled in Beta')
+        INTERNAL = (0x08000, 'Internal', 'Internal')
+        ADMIN = (0x04000, 'Site Administrator', 'Admin')
+        STAFF = (0x02000, 'Staff Member', 'Staff')
+        ACTIVE = (0x01000, 'Active Account', 'Active')
+
+        SETUP = (0x00800, 'Account in Setup', 'Setup')
+        RESET = (0x00400, 'Account in Password Reset', 'Reset')
+        ALPHA = (0x00200, 'Enrolled in Alpha', 'Alpha')
+        BETA = (0x00100, 'Enrolled in Beta', 'Beta')
 
         @property
         def mask(self):
@@ -181,8 +189,17 @@ class User(db.Model, FeatherModel, UserEDMMixin):
         def title(self):
             return self.value[1]
 
+        @property
+        def shorthand(self):
+            return self.value[2]
+
     static_roles = db.Column(db.Integer, default=0, nullable=False)
 
+    is_contributor = _get_is_static_role_property(
+        'is_contributor', StaticRoles.CONTRIBUTOR
+    )
+    is_researcher = _get_is_static_role_property('is_researcher', StaticRoles.RESEARCHER)
+    is_exporter = _get_is_static_role_property('is_exporter', StaticRoles.EXPORTER)
     is_internal = _get_is_static_role_property('is_internal', StaticRoles.INTERNAL)
     is_admin = _get_is_static_role_property('is_admin', StaticRoles.ADMIN)
     is_staff = _get_is_static_role_property('is_staff', StaticRoles.STAFF)
@@ -194,17 +211,39 @@ class User(db.Model, FeatherModel, UserEDMMixin):
     in_reset = _get_is_static_role_property('in_reset', StaticRoles.RESET)
     in_setup = _get_is_static_role_property('in_setup', StaticRoles.SETUP)
 
+    def get_state(self):
+        state = []
+        state += [self.StaticRoles.ACTIVE.shorthand] if self.is_active else []
+        state += [self.StaticRoles.SETUP.shorthand] if self.in_setup else []
+        state += [self.StaticRoles.RESET.shorthand] if self.in_reset else []
+        state += [self.StaticRoles.ALPHA.shorthand] if self.in_alpha else []
+        state += [self.StaticRoles.BETA.shorthand] if self.in_beta else []
+        return state
+
+    def get_roles(self):
+        roles = []
+        roles += [self.StaticRoles.INTERNAL.shorthand] if self.is_internal else []
+        roles += [self.StaticRoles.ADMIN.shorthand] if self.is_admin else []
+        roles += [self.StaticRoles.STAFF.shorthand] if self.is_staff else []
+        roles += [self.StaticRoles.CONTRIBUTOR.shorthand] if self.is_contributor else []
+        roles += [self.StaticRoles.RESEARCHER.shorthand] if self.is_researcher else []
+        roles += [self.StaticRoles.EXPORTER.shorthand] if self.is_exporter else []
+        return roles
+
     def __repr__(self):
+        state = ', '.join(self.get_state())
+        roles = ', '.join(self.get_roles())
+
         return (
             '<{class_name}('
             'guid={self.guid}, '
             'email="{self.email}", '
             'name="{self.full_name}", '
-            'is_internal={self.is_internal}, '
-            'is_admin={self.is_admin}, '
-            'is_staff={self.is_staff}, '
-            'is_active={self.is_active}, '
-            ')>'.format(class_name=self.__class__.__name__, self=self)
+            'state={state}, '
+            'roles={roles}'
+            ')>'.format(
+                class_name=self.__class__.__name__, self=self, state=state, roles=roles
+            )
         )
 
     @classmethod
@@ -235,6 +274,9 @@ class User(db.Model, FeatherModel, UserEDMMixin):
         is_internal=False,
         is_admin=False,
         is_staff=False,
+        is_researcher=False,
+        is_contributor=True,
+        is_exporter=False,
         is_active=True,
         in_beta=False,
         in_alpha=False,
@@ -256,6 +298,9 @@ class User(db.Model, FeatherModel, UserEDMMixin):
                 is_admin=is_admin,
                 is_staff=is_staff,
                 is_active=is_active,
+                is_researcher=is_researcher,
+                is_contributor=is_contributor,
+                is_exporter=is_exporter,
                 in_beta=in_beta,
                 in_alpha=in_alpha,
                 **kwargs
@@ -270,6 +315,9 @@ class User(db.Model, FeatherModel, UserEDMMixin):
             user.is_internal = is_internal
             user.is_admin = is_admin
             user.is_staff = is_staff
+            user.is_researcher = is_researcher
+            user.is_contributor = is_contributor
+            user.is_exporter = is_exporter
             user.is_active = is_active
             user.in_beta = in_beta
             user.in_alpha = in_alpha
@@ -412,15 +460,19 @@ class User(db.Model, FeatherModel, UserEDMMixin):
             return url_for('static', filename=filename)
         return url_for('backend.asset', code=asset.code)
 
-    @property
-    def memberships(self):
+    def get_org_memberships(self):
         return [
             enrollment.organization
             for enrollment in self.organization_membership_enrollments
         ]
 
-    @property
-    def projects(self):
+    def get_org_moderatorships(self):
+        return [
+            enrollment.organization
+            for enrollment in self.organization_moderator_enrollments
+        ]
+
+    def get_projects(self):
         return [enrollment.project for enrollment in self.project_membership_enrollments]
 
     def get_id(self):
@@ -516,8 +568,10 @@ class User(db.Model, FeatherModel, UserEDMMixin):
 
         ret_val = False
 
+        if isinstance(obj, User):
+            ret_val = obj == self
         # Submission, Encounters and Projects all have an owner field, check that
-        if (
+        elif (
             isinstance(obj, Submission)
             or isinstance(obj, Encounter)
             or isinstance(obj, Project)
@@ -536,3 +590,8 @@ class User(db.Model, FeatherModel, UserEDMMixin):
                     break
 
         return ret_val
+
+    def delete(self):
+        with db.session.begin():
+            # TODO: Ensure proper cleanup
+            db.session.delete(self)

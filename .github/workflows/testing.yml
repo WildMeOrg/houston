@@ -74,13 +74,26 @@ jobs:
           sudo apt install libmagic1
 
       # Install and test - Test order is randomized, run three times to ensure correctness
-      - name: Run tests
+      - name: Reset local database
         run: |
           tar -zxvf _db.initial.tar.gz
           mv _db.initial _db
           ./scripts/install.sh
+
+      - name: Run tests (random x3)
+        run: |
           source virtualenv/houston3.7/bin/activate
-          invoke app.db._reset --edm-authentication "${{ secrets.EDM_AUTHENTICATION }}"
           pytest -s -v --gitlab-remote-login-pat "${{ secrets.GITLAB_REMOTE_LOGIN_PAT }}"
           pytest -s -v --gitlab-remote-login-pat "${{ secrets.GITLAB_REMOTE_LOGIN_PAT }}"
+          pytest -s -v --gitlab-remote-login-pat "${{ secrets.GITLAB_REMOTE_LOGIN_PAT }}"
+
+      - name: Check DB migrations
+        run: |
+          source virtualenv/houston3.7/bin/activate
+          invoke app.db.downgrade
+          invoke app.db.upgrade
+
+      - name: Run tests after DB checks
+        run: |
+          source virtualenv/houston3.7/bin/activate
           pytest -s -v --gitlab-remote-login-pat "${{ secrets.GITLAB_REMOTE_LOGIN_PAT }}"

@@ -4,12 +4,16 @@
 RESTful API Rules
 -----------------------
 """
+import logging
+
 from flask_login import current_user
 from flask_restplus._http import HTTPStatus
 from permission import Rule as BaseRule
 from typing import Type, Any
 from app.extensions.api import abort
 from app.modules.users.permissions.types import AccessOperation
+
+log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
 
 class DenyAbortMixin(object):
@@ -58,15 +62,6 @@ class AllowAllRule(Rule):
         return True
 
 
-class WriteAccessRule(DenyAbortMixin, Rule):
-    """
-    Ensure that the current_user has has write access.
-    """
-
-    def check(self):
-        return current_user.is_active
-
-
 class ModuleActionRule(DenyAbortMixin, Rule):
     """
     Ensure that the current_user has has permission to perform the action on the module passed.
@@ -85,15 +80,18 @@ class ModuleActionRule(DenyAbortMixin, Rule):
 
     def check(self):
         from app.modules.submissions.models import Submission
+        from app.modules.users.models import User
 
         # This Rule is for checking permissions on modules, so there must be one,
         assert self._module is not None
+        log.info('Checking module %s, action %s' % (self._module, self._action))
+        log.info('current user %s' % current_user)
 
+        # Anonymous users can only create a submission or themselves
         if not current_user or current_user.is_anonymous:
-            # Anonymous users can only create a submission
-            has_permission = self._action == AccessOperation.WRITE and self._is_module(
-                Submission
-            )
+            has_permission = False
+            if self._action == AccessOperation.WRITE:
+                has_permission = self._is_module(Submission) or self._is_module(User)
         else:
             has_permission = (
                 # inactive users can do nothing
@@ -116,14 +114,37 @@ class ModuleActionRule(DenyAbortMixin, Rule):
 
     # Permissions control entry point for real users, for all objects and all operations
     def _can_user_perform_action(self, user):
+        from app.modules.submissions.models import Submission
         from app.modules.projects.models import Project
+        from app.modules.users.models import User
 
-        # Currently any user can do what they like. This is where the role specific access controls will be added
-        has_permission = True
-        if self._is_module(Project) and self._action is AccessOperation.READ:
-            has_permission = user.is_admin | user.is_staff | user.is_internal
+        has_permission = False
+
+        if self._action is AccessOperation.READ:
+            has_permission = self._user_is_privileged(user)
+        elif self._action is AccessOperation.WRITE:
+            if self._is_module(Submission):
+                # Any users can submit
+                has_permission = True
+            if self._is_module(User):
+                # And modify users apparently?
+                has_permission = True
+            elif self._is_module(Project):
+                has_permission = user.is_researcher
 
         return has_permission
+
+    def _user_is_privileged(self, user):
+        # This is where we can control what operations admin users can and cannot perform.
+        # This could be project configurable as required
+        from app.extensions.config.models import HoustonConfig
+
+        # An example for now is that admin users are not allowed to change the config, only staff
+        if self._is_module(HoustonConfig):
+            ret_val = user.is_staff | user.is_internal
+        else:
+            ret_val = user.is_admin | user.is_staff | user.is_internal
+        return ret_val
 
 
 class ObjectActionRule(DenyAbortMixin, Rule):
@@ -147,13 +168,16 @@ class ObjectActionRule(DenyAbortMixin, Rule):
         # This Rule is for checking permissions on objects, so there must be one, Use the ModuleActionRule for
         # permissions checking without objects
         assert self._obj is not None
+        log.info(
+            'Checking obj %s, action %s, user %s'
+            % (self._obj, self._action, current_user)
+        )
 
-        if not current_user or current_user.is_anonymous:
-            # Anonymous users can only read public objects
-            has_permission = (
-                self._action == AccessOperation.READ and self._obj.is_public()
-            )
-        else:
+        # Anyone can read public data, even anonymous users
+        has_permission = self._action == AccessOperation.READ and self._obj.is_public()
+
+        if not has_permission and current_user and not current_user.is_anonymous:
+
             has_permission = (
                 # inactive users can do nothing
                 current_user.is_active
@@ -181,7 +205,8 @@ class ObjectActionRule(DenyAbortMixin, Rule):
             # Region would be handled the same way here too
             if isinstance(self._obj, Project) or isinstance(self._obj, Organization):
                 has_permission = (
-                    user in self._obj.members and self._action != AccessOperation.DELETE
+                    user in self._obj.get_members()
+                    and self._action != AccessOperation.DELETE
                 )
 
         return has_permission
@@ -191,12 +216,13 @@ class ObjectActionRule(DenyAbortMixin, Rule):
         # Orgs not supported fully yet, but allow read if user is in it
         if self._action == AccessOperation.READ:
             org_index = 0
-            orgs = user.memberships
+            orgs = user.get_org_memberships()
             while not has_permission and org_index < len(orgs):
                 org = orgs[org_index]
                 member_index = 0
-                while not has_permission and member_index < len(org.members):
-                    has_permission = org.members[member_index].owns_object(self._obj)
+                org_members = org.get_members()
+                while not has_permission and member_index < len(org_members):
+                    has_permission = org_members[member_index].owns_object(self._obj)
                     member_index = member_index + 1
                 org_index = org_index + 1
 
@@ -207,7 +233,7 @@ class ObjectActionRule(DenyAbortMixin, Rule):
 
         has_permission = False
         project_index = 0
-        projects = user.projects
+        projects = user.get_projects()
         # @todo role based access to the project and the objects in it
         if self._action == AccessOperation.READ:
             while not has_permission and project_index < len(projects):
@@ -218,7 +244,7 @@ class ObjectActionRule(DenyAbortMixin, Rule):
                         # Optionally add time check so that User can only access encounters after user was added to project
                         has_permission = self._obj in project.encounters
                     else:
-                        for encounter in project.encounters:
+                        for encounter in project.get_encounters():
                             # If time check was implemented, that would need to be passed here too and percolate down through
                             # encounters and sightings etc
                             # @todo should the functionality in encounters.has_read_permission move into rules.py
@@ -272,15 +298,6 @@ class AdminRoleRule(ActiveUserRoleRule):
         return current_user.is_admin
 
 
-class StaffRoleRule(ActiveUserRoleRule):
-    """
-    Ensure that the current_user has an Admin role.
-    """
-
-    def check(self):
-        return current_user.is_staff
-
-
 class InternalRoleRule(ActiveUserRoleRule):
     """
     Ensure that the current_user has an Internal role.
@@ -297,36 +314,6 @@ class PartialPermissionDeniedRule(Rule):
 
     def check(self):
         raise RuntimeError('Partial permissions are not intended to be checked')
-
-
-class SupervisorRoleRule(ActiveUserRoleRule):
-    """
-    Ensure that the current_user has a Supervisor access to the given object.
-    """
-
-    def __init__(self, obj, **kwargs):
-        super(SupervisorRoleRule, self).__init__(**kwargs)
-        self._obj = obj
-
-    def check(self):
-        if not hasattr(self._obj, 'check_supervisor'):
-            return False
-        return self._obj.check_supervisor(current_user) is True
-
-
-class OwnerRoleRule(ActiveUserRoleRule):
-    """
-    Ensure that the current_user has an Owner access to the given object.
-    """
-
-    def __init__(self, obj, **kwargs):
-        super(OwnerRoleRule, self).__init__(**kwargs)
-        self._obj = obj
-
-    def check(self):
-        if not hasattr(self._obj, 'check_owner'):
-            return False
-        return self._obj.check_owner(current_user) is True
 
 
 # Helper to have one place that defines what users are privileged, to potentially make it

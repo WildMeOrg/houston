@@ -15,7 +15,7 @@ from app.extensions import db
 from app.extensions.api import Namespace
 from app.extensions.api.parameters import PaginationParameters
 from app.modules.users import permissions
-
+from app.modules.users.permissions.types import AccessOperation
 
 from . import parameters, schemas
 from .models import {{ model_name }}
@@ -31,7 +31,13 @@ class {{ module_title.replace(' ', '') }}(Resource):
     """
     Manipulations with {{ module_title }}.
     """
-
+    @api.permission_required(
+        permissions.ModuleAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'module': {{ model_name }},
+            'action': AccessOperation.READ,
+        },
+    )
     @api.parameters(PaginationParameters())
     @api.response(schemas.Base{{ model_name }}Schema(many=True))
     def get(self, args):
@@ -43,6 +49,13 @@ class {{ module_title.replace(' ', '') }}(Resource):
         """
         return {{ model_name }}.query.offset(args['offset']).limit(args['limit'])
 
+    @api.permission_required(
+        permissions.ModuleAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'module': {{ model_name }},
+            'action': AccessOperation.WRITE,
+        },
+    )
     @api.login_required(oauth_scopes=['{{ module_namespace }}:write'])
     @api.parameters(parameters.Create{{ model_name }}Parameters())
     @api.response(schemas.Detailed{{ model_name }}Schema())
@@ -73,6 +86,13 @@ class {{ model_name }}ByID(Resource):
     Manipulations with a specific {{ model_name }}.
     """
 
+    @api.permission_required(
+        permissions.ObjectAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'obj': kwargs['{{ module_name_singular }}'],
+            'action': AccessOperation.READ,
+        },
+    )
     @api.response(schemas.Detailed{{ model_name }}Schema())
     def get(self, {{ module_name_singular }}):
         """
@@ -80,8 +100,14 @@ class {{ model_name }}ByID(Resource):
         """
         return {{ module_name_singular }}
 
+    @api.permission_required(
+        permissions.ObjectAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'obj': kwargs['{{ module_name_singular }}'],
+            'action': AccessOperation.WRITE,
+        },
+    )
     @api.login_required(oauth_scopes=['{{ module_namespace }}:write'])
-    @api.permission_required(permissions.WriteAccessPermission())
     @api.parameters(parameters.Patch{{ model_name }}DetailsParameters())
     @api.response(schemas.Detailed{{ model_name }}Schema())
     @api.response(code=HTTPStatus.CONFLICT)
@@ -98,8 +124,14 @@ class {{ model_name }}ByID(Resource):
             db.session.merge({{ module_name_singular }})
         return {{ module_name_singular }}
 
+    @api.permission_required(
+        permissions.ObjectAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'obj': kwargs['{{ module_name_singular }}'],
+            'action': AccessOperation.DELETE,
+        },
+    )
     @api.login_required(oauth_scopes=['{{ module_namespace }}:write'])
-    @api.permission_required(permissions.WriteAccessPermission())
     @api.response(code=HTTPStatus.CONFLICT)
     @api.response(code=HTTPStatus.NO_CONTENT)
     def delete(self, {{ module_name_singular }}):

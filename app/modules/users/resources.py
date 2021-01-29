@@ -15,6 +15,7 @@ from app.extensions.api import abort
 from app.extensions.api import Namespace
 
 from . import permissions, schemas, parameters
+from app.modules.users.permissions.types import AccessOperation
 from .models import db, User
 
 
@@ -29,7 +30,13 @@ class Users(Resource):
     """
 
     @api.login_required(oauth_scopes=['users:read'])
-    @api.permission_required(permissions.StaffRolePermission())
+    @api.permission_required(
+        permissions.ModuleAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'module': User,
+            'action': AccessOperation.READ,
+        },
+    )
     @api.response(schemas.BaseUserSchema(many=True))
     @api.paginate(parameters.ListUserParameters())
     def get(self, args):
@@ -47,6 +54,13 @@ class Users(Resource):
 
         return users.order_by(User.guid)
 
+    @api.permission_required(
+        permissions.ModuleAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'module': User,
+            'action': AccessOperation.WRITE,
+        },
+    )
     @api.parameters(parameters.CreateUserParameters())
     @api.response(schemas.DetailedUserSchema())
     @api.response(code=HTTPStatus.FORBIDDEN)
@@ -80,23 +94,6 @@ class Users(Resource):
 
         return new_user
 
-    @api.login_required(oauth_scopes=['users:write'])
-    @api.permission_required(permissions.AdminRolePermission())
-    @api.parameters(parameters.DeleteUserParameters())
-    def delete(self, args):
-        """
-        Remove a member.
-        """
-        context = api.commit_or_abort(
-            db.session, default_error_message='Failed to delete user.'
-        )
-        with context:
-            user_guid = args['user_guid']
-            user = User.query.filter_by(id=user_guid).first_or_404()
-            db.session.delete(user)
-
-        return None
-
 
 @api.route('/<uuid:user_guid>')
 @api.login_required(oauth_scopes=['users:read'])
@@ -111,8 +108,11 @@ class UserByID(Resource):
     """
 
     @api.permission_required(
-        permissions.OwnerRolePermission,
-        kwargs_on_request=lambda kwargs: {'obj': kwargs['user']},
+        permissions.ObjectAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'obj': kwargs['user'],
+            'action': AccessOperation.READ,
+        },
     )
     @api.response(schemas.DetailedUserSchema())
     def get(self, user):
@@ -123,10 +123,12 @@ class UserByID(Resource):
 
     @api.login_required(oauth_scopes=['users:write'])
     @api.permission_required(
-        permissions.OwnerModifyRolePermission,
-        kwargs_on_request=lambda kwargs: {'obj': kwargs['user']},
+        permissions.ObjectAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'obj': kwargs['user'],
+            'action': AccessOperation.WRITE,
+        },
     )
-    @api.permission_required(permissions.WriteAccessPermission())
     @api.parameters(parameters.PatchUserDetailsParameters())
     @api.response(schemas.DetailedUserSchema())
     @api.response(code=HTTPStatus.CONFLICT)
@@ -143,6 +145,23 @@ class UserByID(Resource):
         db.session.refresh(user)
 
         return user
+
+    @api.login_required(oauth_scopes=['users:write'])
+    @api.permission_required(
+        permissions.ObjectAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'obj': kwargs['user'],
+            'action': AccessOperation.DELETE,
+        },
+    )
+    @api.response(code=HTTPStatus.CONFLICT)
+    @api.response(code=HTTPStatus.NO_CONTENT)
+    def delete(self, user):
+        """
+        Delete a Project by ID.
+        """
+        user.delete()
+        return None
 
 
 @api.route('/me')

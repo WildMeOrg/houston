@@ -13,9 +13,10 @@ from flask_restplus._http import HTTPStatus
 from app.extensions.api import Namespace
 
 from app.modules.users import permissions
+from app.modules.users.permissions.types import AccessOperation
 
 from . import parameters
-
+from .models import HoustonConfig
 
 log = logging.getLogger(__name__)
 api = Namespace('config/houston', description='HoustonConfig')
@@ -28,9 +29,14 @@ class HoustonConfigs(Resource):
     Manipulations with configs.
     """
 
+    @api.permission_required(
+        permissions.ModuleAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'module': HoustonConfig,
+            'action': AccessOperation.READ,
+        },
+    )
     @api.login_required(oauth_scopes=['config.houston:write'])
-    @api.permission_required(permissions.StaffRolePermission())
-    @api.permission_required(permissions.WriteAccessPermission())
     @api.parameters(parameters.PatchHoustonConfigParameters())
     @api.response(code=HTTPStatus.CONFLICT)
     def patch(self, args):

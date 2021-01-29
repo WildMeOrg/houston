@@ -14,6 +14,7 @@ from app.extensions import db
 from app.extensions.api import Namespace
 from app.extensions.api.parameters import PaginationParameters
 from app.modules.users import permissions
+from app.modules.users.permissions.types import AccessOperation
 
 
 from . import parameters, schemas
@@ -31,6 +32,13 @@ class Sightings(Resource):
     Manipulations with Sightings.
     """
 
+    @api.permission_required(
+        permissions.ModuleAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'module': Sighting,
+            'action': AccessOperation.READ,
+        },
+    )
     @api.parameters(PaginationParameters())
     @api.response(schemas.BaseSightingSchema(many=True))
     def get(self, args):
@@ -42,6 +50,13 @@ class Sightings(Resource):
         """
         return Sighting.query.offset(args['offset']).limit(args['limit'])
 
+    @api.permission_required(
+        permissions.ModuleAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'module': Sighting,
+            'action': AccessOperation.WRITE,
+        },
+    )
     @api.login_required(oauth_scopes=['sightings:write'])
     @api.parameters(parameters.CreateSightingParameters())
     @api.response(schemas.DetailedSightingSchema())
@@ -71,6 +86,13 @@ class SightingByID(Resource):
     Manipulations with a specific Sighting.
     """
 
+    @api.permission_required(
+        permissions.ObjectAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'obj': kwargs['sighting'],
+            'action': AccessOperation.READ,
+        },
+    )
     @api.response(schemas.DetailedSightingSchema())
     def get(self, sighting):
         """
@@ -78,8 +100,14 @@ class SightingByID(Resource):
         """
         return sighting
 
+    @api.permission_required(
+        permissions.ObjectAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'obj': kwargs['sighting'],
+            'action': AccessOperation.WRITE,
+        },
+    )
     @api.login_required(oauth_scopes=['sightings:write'])
-    @api.permission_required(permissions.WriteAccessPermission())
     @api.parameters(parameters.PatchSightingDetailsParameters())
     @api.response(schemas.DetailedSightingSchema())
     @api.response(code=HTTPStatus.CONFLICT)
@@ -95,8 +123,14 @@ class SightingByID(Resource):
             db.session.merge(sighting)
         return sighting
 
+    @api.permission_required(
+        permissions.ObjectAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'obj': kwargs['sighting'],
+            'action': AccessOperation.DELETE,
+        },
+    )
     @api.login_required(oauth_scopes=['sightings:write'])
-    @api.permission_required(permissions.WriteAccessPermission())
     @api.response(code=HTTPStatus.CONFLICT)
     @api.response(code=HTTPStatus.NO_CONTENT)
     def delete(self, sighting):

@@ -15,6 +15,7 @@ from app.extensions import db
 from app.extensions.api import Namespace
 from app.extensions.api.parameters import PaginationParameters
 from app.modules.users import permissions
+from app.modules.users.permissions.types import AccessOperation
 
 
 from . import parameters, schemas
@@ -34,6 +35,13 @@ class Organizations(Resource):
     Manipulations with Organizations.
     """
 
+    @api.permission_required(
+        permissions.ModuleAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'module': Organization,
+            'action': AccessOperation.READ,
+        },
+    )
     @api.parameters(PaginationParameters())
     @api.response(schemas.BaseOrganizationSchema(many=True))
     def get(self, args):
@@ -45,6 +53,13 @@ class Organizations(Resource):
         """
         return Organization.query.offset(args['offset']).limit(args['limit'])
 
+    @api.permission_required(
+        permissions.ModuleAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'module': Organization,
+            'action': AccessOperation.WRITE,
+        },
+    )
     @api.login_required(oauth_scopes=['organizations:write'])
     @api.parameters(parameters.CreateOrganizationParameters())
     @api.response(schemas.DetailedOrganizationSchema())
@@ -57,7 +72,11 @@ class Organizations(Resource):
             db.session, default_error_message='Failed to create a new Organization'
         )
         with context:
+            args['owner_guid'] = current_user.guid
             organization = Organization(**args)
+            # User who creates the org gets added to it as a member and a moderator
+            organization.add_user_in_context(current_user)
+            organization.add_moderator_in_context(current_user)
             db.session.add(organization)
         return organization
 
@@ -74,6 +93,13 @@ class OrganizationByID(Resource):
     Manipulations with a specific Organization.
     """
 
+    @api.permission_required(
+        permissions.ObjectAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'obj': kwargs['organization'],
+            'action': AccessOperation.READ,
+        },
+    )
     @api.response(schemas.DetailedOrganizationSchema())
     def get(self, organization):
         """
@@ -81,8 +107,14 @@ class OrganizationByID(Resource):
         """
         return organization
 
+    @api.permission_required(
+        permissions.ObjectAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'obj': kwargs['organization'],
+            'action': AccessOperation.WRITE,
+        },
+    )
     @api.login_required(oauth_scopes=['organizations:write'])
-    @api.permission_required(permissions.WriteAccessPermission())
     @api.parameters(parameters.PatchOrganizationDetailsParameters())
     @api.response(schemas.DetailedOrganizationSchema())
     @api.response(code=HTTPStatus.CONFLICT)
@@ -100,17 +132,19 @@ class OrganizationByID(Resource):
             db.session.merge(organization)
         return organization
 
+    @api.permission_required(
+        permissions.ObjectAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'obj': kwargs['organization'],
+            'action': AccessOperation.DELETE,
+        },
+    )
     @api.login_required(oauth_scopes=['organizations:write'])
-    @api.permission_required(permissions.WriteAccessPermission())
     @api.response(code=HTTPStatus.CONFLICT)
     @api.response(code=HTTPStatus.NO_CONTENT)
     def delete(self, organization):
         """
         Delete a Organization by ID.
         """
-        context = api.commit_or_abort(
-            db.session, default_error_message='Failed to delete the Organization.'
-        )
-        with context:
-            db.session.delete(organization)
+        organization.delete()
         return None

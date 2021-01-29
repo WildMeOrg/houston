@@ -2,7 +2,7 @@
 import sqlalchemy
 import pytest
 import uuid
-
+from flask_login import current_user, login_user, logout_user
 from tests import utils
 
 from app import create_app
@@ -124,6 +124,17 @@ def internal_user(temp_db_instance_helper):
 
 
 @pytest.fixture(scope='session')
+def researcher_user(temp_db_instance_helper):
+    for _ in temp_db_instance_helper(
+        utils.generate_user_instance(
+            email='researcher@localhost',
+            is_researcher=True,
+        )
+    ):
+        yield _
+
+
+@pytest.fixture(scope='session')
 def temp_user(temp_db_instance_helper):
     for _ in temp_db_instance_helper(
         utils.generate_user_instance(email='temp@localhost', full_name='Temp User')
@@ -150,3 +161,62 @@ def test_clone_submission_data(flask_app):
             'aee00c38-137e-4392-a4d9-92b545a9efb0',
         ],
     }
+
+
+# These are really helpful utils for setting "current_user" in non "resources" tests
+@pytest.fixture()
+def patch_User_password_scheme():
+    from app.modules.users import models
+
+    # pylint: disable=invalid-name,protected-access
+    """
+    By default, the application uses ``bcrypt`` to store passwords securely.
+    However, ``bcrypt`` is a slow hashing algorithm (by design), so it is
+    better to downgrade it to ``plaintext`` while testing, since it will save
+    us quite some time.
+    """
+    # NOTE: It seems a hacky way, but monkeypatching is a hack anyway.
+    password_field_context = models.User.password.property.columns[0].type.context
+    # NOTE: This is used here to forcefully resolve the LazyCryptContext
+    password_field_context.context_kwds
+    password_field_context._config._init_scheme_list(('plaintext',))
+    password_field_context._config._init_records()
+    password_field_context._config._init_default_schemes()
+    yield
+    password_field_context._config._init_scheme_list(('bcrypt',))
+    password_field_context._config._init_records()
+    password_field_context._config._init_default_schemes()
+
+
+@pytest.fixture()
+def user_instance(patch_User_password_scheme):
+    # pylint: invalid-name
+    return utils.generate_user_instance()
+
+
+@pytest.fixture()
+def admin_user_instance(patch_User_password_scheme):
+    # pylint: invalid-name
+    return utils.generate_user_instance(is_admin=True)
+
+
+@pytest.fixture()
+def authenticated_user_login(flask_app, user_instance):
+    with flask_app.test_request_context('/'):
+        login_user(user_instance)
+        yield current_user
+        logout_user()
+
+
+@pytest.fixture()
+def anonymous_user_login(flask_app):
+    with flask_app.test_request_context('/'):
+        yield current_user
+
+
+@pytest.fixture()
+def admin_user_login(flask_app, admin_user_instance):
+    with flask_app.test_request_context('/'):
+        login_user(admin_user_instance)
+        yield current_user
+        logout_user()

@@ -263,7 +263,7 @@ class SubmissionTusCollect(Resource):
         permissions.ObjectAccessPermission,
         kwargs_on_request=lambda kwargs: {
             'obj': kwargs['submission'],
-            'action': AccessOperation.WRITE,
+            'action': AccessOperation.READ,
         },
     )
     @api.response(schemas.DetailedSubmissionSchema())

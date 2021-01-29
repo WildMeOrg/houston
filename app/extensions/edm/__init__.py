@@ -315,7 +315,7 @@ class EDMManager(EDMManagerEndpointMixin, EDMManagerUserMixin, EDMManagerEncount
             self.ensure_initialed()
 
         method = method.lower()
-        assert method in ['get', 'post', 'delete', 'put']
+        assert method in ['get', 'post', 'delete', 'put', 'patch']
 
         if endpoint is None:
             assert tag is not None
@@ -372,12 +372,19 @@ class EDMManager(EDMManagerEndpointMixin, EDMManagerUserMixin, EDMManagerEncount
     def _post(self, *args, **kwargs):
         return self._request('post', *args, **kwargs)
 
+    def _delete(self, *args, **kwargs):
+        return self._request('delete', *args, **kwargs)
+
     def get_passthrough(self, *args, **kwargs):
         response = self._get(*args, **kwargs)
         return response
 
     def post_passthrough(self, *args, **kwargs):
         response = self._post(*args, **kwargs)
+        return response
+
+    def delete_passthrough(self, *args, **kwargs):
+        response = self._delete(*args, **kwargs)
         return response
 
     def get_list(self, list_name, target='default'):

@@ -39,11 +39,11 @@ def test_project_add_members(db, temp_user):  # pylint: disable=unused-argument
     logging.info(temp_user.project_membership_enrollments)
     logging.info(temp_proj.user_membership_enrollments)
 
-    logging.info(temp_user.projects)
+    logging.info(temp_user.get_projects())
     logging.info(temp_proj)
 
-    assert len(temp_user.projects) >= 1
-    assert temp_proj in temp_user.projects
+    assert len(temp_user.get_projects()) >= 1
+    assert temp_proj in temp_user.get_projects()
 
     assert len(temp_proj.get_members()) == 1
     assert temp_user in temp_proj.get_members()

@@ -80,8 +80,14 @@ class AssetByID(Resource):
         """
         return asset
 
+    # @api.permission_required(
+    #     permissions.ObjectAccessPermission,
+    #     kwargs_on_request=lambda kwargs: {
+    #         'obj': kwargs['asset'],
+    #         'action': AccessOperation.WRITE,
+    #     },
+    # )
     # @api.login_required(oauth_scopes=['assets:write'])
-    # @api.permission_required(permissions.WriteAccessPermission())
     # @api.response(code=HTTPStatus.CONFLICT)
     # @api.response(code=HTTPStatus.NO_CONTENT)
     # def delete(self, asset):

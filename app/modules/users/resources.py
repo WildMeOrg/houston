@@ -37,7 +37,6 @@ class Users(Resource):
             'action': AccessOperation.READ,
         },
     )
-    @api.permission_required(permissions.StaffRolePermission())
     @api.response(schemas.BaseUserSchema(many=True))
     @api.paginate(parameters.ListUserParameters())
     def get(self, args):

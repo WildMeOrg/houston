@@ -58,15 +58,6 @@ class AllowAllRule(Rule):
         return True
 
 
-class WriteAccessRule(DenyAbortMixin, Rule):
-    """
-    Ensure that the current_user has has write access.
-    """
-
-    def check(self):
-        return current_user.is_active
-
-
 class ModuleActionRule(DenyAbortMixin, Rule):
     """
     Ensure that the current_user has has permission to perform the action on the module passed.
@@ -138,7 +129,16 @@ class ModuleActionRule(DenyAbortMixin, Rule):
         return has_permission
 
     def _user_is_privileged(self, user):
-        return user.is_admin | user.is_staff | user.is_internal
+        # This is where we can control what operations admin users can and cannot perform.
+        # This could be project configurable as required
+        from app.extensions.config.models import HoustonConfig
+
+        # An example for now is that admin users are not allowed to change the config, only staff
+        if self._is_module(HoustonConfig):
+            ret_val = user.is_staff | user.is_internal
+        else:
+            ret_val = user.is_admin | user.is_staff | user.is_internal
+        return ret_val
 
 
 class ObjectActionRule(DenyAbortMixin, Rule):
@@ -163,12 +163,10 @@ class ObjectActionRule(DenyAbortMixin, Rule):
         # permissions checking without objects
         assert self._obj is not None
 
-        if not current_user or current_user.is_anonymous:
-            # Anonymous users can only read public objects
-            has_permission = (
-                self._action == AccessOperation.READ and self._obj.is_public()
-            )
-        else:
+        # Anyone can read public data, even anonymous users
+        has_permission = self._action == AccessOperation.READ and self._obj.is_public()
+
+        if not has_permission and current_user and not current_user.is_anonymous:
             has_permission = (
                 # inactive users can do nothing
                 current_user.is_active
@@ -207,7 +205,7 @@ class ObjectActionRule(DenyAbortMixin, Rule):
         # Orgs not supported fully yet, but allow read if user is in it
         if self._action == AccessOperation.READ:
             org_index = 0
-            orgs = user.memberships
+            orgs = user.get_org_memberships()
             while not has_permission and org_index < len(orgs):
                 org = orgs[org_index]
                 member_index = 0
@@ -223,7 +221,7 @@ class ObjectActionRule(DenyAbortMixin, Rule):
 
         has_permission = False
         project_index = 0
-        projects = user.projects
+        projects = user.get_projects()
         # @todo role based access to the project and the objects in it
         if self._action == AccessOperation.READ:
             while not has_permission and project_index < len(projects):
@@ -288,15 +286,6 @@ class AdminRoleRule(ActiveUserRoleRule):
         return current_user.is_admin
 
 
-class StaffRoleRule(ActiveUserRoleRule):
-    """
-    Ensure that the current_user has an Admin role.
-    """
-
-    def check(self):
-        return current_user.is_staff
-
-
 class InternalRoleRule(ActiveUserRoleRule):
     """
     Ensure that the current_user has an Internal role.
@@ -313,36 +302,6 @@ class PartialPermissionDeniedRule(Rule):
 
     def check(self):
         raise RuntimeError('Partial permissions are not intended to be checked')
-
-
-class SupervisorRoleRule(ActiveUserRoleRule):
-    """
-    Ensure that the current_user has a Supervisor access to the given object.
-    """
-
-    def __init__(self, obj, **kwargs):
-        super(SupervisorRoleRule, self).__init__(**kwargs)
-        self._obj = obj
-
-    def check(self):
-        if not hasattr(self._obj, 'check_supervisor'):
-            return False
-        return self._obj.check_supervisor(current_user) is True
-
-
-class OwnerRoleRule(ActiveUserRoleRule):
-    """
-    Ensure that the current_user has an Owner access to the given object.
-    """
-
-    def __init__(self, obj, **kwargs):
-        super(OwnerRoleRule, self).__init__(**kwargs)
-        self._obj = obj
-
-    def check(self):
-        if not hasattr(self._obj, 'check_owner'):
-            return False
-        return self._obj.check_owner(current_user) is True
 
 
 # Helper to have one place that defines what users are privileged, to potentially make it

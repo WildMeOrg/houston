@@ -15,7 +15,7 @@ from app.extensions.auth import security
 from app.extensions.edm import EDMObjectMixin
 from app.extensions.api.parameters import _get_is_static_role_property
 
-# In order to support OrganizationUserMemberships
+# In order to support OrganizationUserMemberships and OrganizationUserModerators
 # we must import the model definitions for organizations here
 from app.modules.organizations import models as organizations_models  # NOQA
 from app.modules.projects import models as projects_models  # NOQA
@@ -155,6 +155,10 @@ class User(db.Model, FeatherModel, UserEDMMixin):
 
     organization_membership_enrollments = db.relationship(
         'OrganizationUserMembershipEnrollment', back_populates='user'
+    )
+
+    organization_moderator_enrollments = db.relationship(
+        'OrganizationUserModeratorEnrollment', back_populates='user'
     )
 
     project_membership_enrollments = db.relationship(
@@ -455,15 +459,19 @@ class User(db.Model, FeatherModel, UserEDMMixin):
             return url_for('static', filename=filename)
         return url_for('backend.asset', code=asset.code)
 
-    @property
-    def memberships(self):
+    def get_org_memberships(self):
         return [
             enrollment.organization
             for enrollment in self.organization_membership_enrollments
         ]
 
-    @property
-    def projects(self):
+    def get_org_moderatorships(self):
+        return [
+            enrollment.organization
+            for enrollment in self.organization_moderator_enrollments
+        ]
+
+    def get_projects(self):
         return [enrollment.project for enrollment in self.project_membership_enrollments]
 
     def get_id(self):

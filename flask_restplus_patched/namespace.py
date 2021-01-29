@@ -279,6 +279,11 @@ class Namespace(OriginalNamespace):
                 return func_or_class
             func = func_or_class
 
+            # TODO comment added merely to start debate as part of PR.
+            # Interested to hear arguments against but this feels like permission checking in the wrong place.
+            # Probably worth having the debate now but I was expecting app.modules.users.permissions to know what
+            # permissions logic needed to be applied rather than providing utils and leaving the permission logic
+            # in various places across the codebase (all of the resources.py files and here)
             # Avoid circular dependency
             from app.extensions import oauth2
             from app.modules.users import permissions

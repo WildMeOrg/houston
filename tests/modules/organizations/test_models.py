@@ -37,11 +37,11 @@ def test_Organization_add_members(db, temp_user):  # pylint: disable=unused-argu
     logging.info(temp_user.organization_membership_enrollments)
     logging.info(temp_org.user_membership_enrollments)
 
-    logging.info(temp_user.memberships)
+    logging.info(temp_user.get_org_memberships())
     logging.info(temp_org.get_members())
 
-    assert len(temp_user.memberships) == 1
-    assert temp_org in temp_user.memberships
+    assert len(temp_user.get_org_memberships()) == 1
+    assert temp_org in temp_user.get_org_memberships()
 
     assert len(temp_org.get_members()) == 1
     assert temp_user in temp_org.get_members()

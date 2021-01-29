@@ -118,6 +118,19 @@ class OrganizationUserMembershipEnrollment(db.Model, HoustonModel):
     user = db.relationship('User', back_populates='organization_membership_enrollments')
 
 
+class OrganizationUserModeratorEnrollment(db.Model, HoustonModel):
+
+    organization_guid = db.Column(
+        db.GUID, db.ForeignKey('organization.guid'), primary_key=True
+    )
+
+    user_guid = db.Column(db.GUID, db.ForeignKey('user.guid'), primary_key=True)
+
+    organization = db.relationship('Organization', back_populates='moderator_enrollments')
+
+    user = db.relationship('User', back_populates='organization_moderator_enrollments')
+
+
 class Organization(db.Model, HoustonModel, OrganizationEDMMixin):
     """
     Organizations database model.
@@ -138,6 +151,10 @@ class Organization(db.Model, HoustonModel, OrganizationEDMMixin):
         'OrganizationUserMembershipEnrollment', back_populates='organization'
     )
 
+    moderator_enrollments = db.relationship(
+        'OrganizationUserModeratorEnrollment', back_populates='organization'
+    )
+
     def __repr__(self):
         return (
             '<{class_name}('
@@ -145,12 +162,15 @@ class Organization(db.Model, HoustonModel, OrganizationEDMMixin):
             'title="{self.title}", '
             'website={self.website}, '
             'logo={self.logo_url}, '
-            'members={self.members}, '
+            'members={self.get_members()}, '
             ')>'.format(class_name=self.__class__.__name__, self=self)
         )
 
     def get_members(self):
         return [enrollment.user for enrollment in self.user_membership_enrollments]
+
+    def get_moderators(self):
+        return [enrollment.user for enrollment in self.moderator_enrollments]
 
     @db.validates('title')
     def validate_title(self, key, title):  # pylint: disable=unused-argument,no-self-use

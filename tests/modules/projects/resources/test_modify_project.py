@@ -5,16 +5,14 @@ from tests import utils
 from tests.modules.projects.resources import utils as proj_utils
 
 
-def test_modify_project(db, flask_app_client, admin_user, temp_user, regular_user):
+def test_modify_project(db, flask_app_client, admin_user, researcher_user, regular_user):
     # pylint: disable=invalid-name
     from app.modules.projects.models import Project
-    from app.modules.users.models import User
 
-    temp_user.set_static_role(User.StaticRoles.RESEARCHER)
     # from app.modules.encounters.models import Encounter
 
     response = proj_utils.create_project(
-        flask_app_client, temp_user, 'This is a test project, please ignore'
+        flask_app_client, researcher_user, 'This is a test project, please ignore'
     )
 
     utils.validate_dict_response(response, 200, {'guid', 'title'})
@@ -26,10 +24,12 @@ def test_modify_project(db, flask_app_client, admin_user, temp_user, regular_use
     assert len(proj.get_members()) == 1
 
     data = [
-        utils.patch_test_op(temp_user.password_secret),
+        utils.patch_test_op(researcher_user.password_secret),
         utils.patch_add_op('%s' % regular_user.guid, 'user'),
     ]
-    response = proj_utils.patch_project(flask_app_client, project_guid, temp_user, data)
+    response = proj_utils.patch_project(
+        flask_app_client, project_guid, researcher_user, data
+    )
     utils.validate_dict_response(response, 200, {'guid', 'title'})
     assert len(proj.get_members()) == 2
 
@@ -61,15 +61,11 @@ def test_modify_project(db, flask_app_client, admin_user, temp_user, regular_use
         response = flask_app_client.delete('/api/v1/projects/%s' % project_guid)
 
     assert response.status_code == 204
-    temp_user.unset_static_role(User.StaticRoles.RESEARCHER)
 
 
-def test_project_permission(flask_app_client, regular_user, admin_user, temp_user):
-    from app.modules.users.models import User
-
-    temp_user.set_static_role(User.StaticRoles.RESEARCHER)
+def test_project_permission(flask_app_client, regular_user, admin_user, researcher_user):
     response = proj_utils.create_project(
-        flask_app_client, temp_user, 'This is a test project, please ignore'
+        flask_app_client, researcher_user, 'This is a test project, please ignore'
     )
 
     utils.validate_dict_response(response, 200, {'guid', 'title'})
@@ -91,7 +87,7 @@ def test_project_permission(flask_app_client, regular_user, admin_user, temp_use
 
     # Owner can do that
     data = [
-        utils.patch_test_op(temp_user.password_secret),
+        utils.patch_test_op(researcher_user.password_secret),
         utils.patch_add_op(
             'This is an owner modified test project, please ignore', 'title'
         ),
@@ -99,7 +95,7 @@ def test_project_permission(flask_app_client, regular_user, admin_user, temp_use
     response = proj_utils.patch_project(
         flask_app_client,
         project_guid,
-        temp_user,
+        researcher_user,
         data,
     )
     utils.validate_dict_response(response, 200, {'guid', 'title'})
@@ -127,26 +123,32 @@ def test_project_permission(flask_app_client, regular_user, admin_user, temp_use
 
     # add regular user to the project
     data = [
-        utils.patch_test_op(temp_user.password_secret),
+        utils.patch_test_op(researcher_user.password_secret),
         utils.patch_add_op('%s' % regular_user.guid, 'user'),
     ]
-    response = proj_utils.patch_project(flask_app_client, project_guid, temp_user, data)
+    response = proj_utils.patch_project(
+        flask_app_client, project_guid, researcher_user, data
+    )
     utils.validate_dict_response(response, 200, {'guid', 'title'})
 
     # make them the owner
     data = [
-        utils.patch_test_op(temp_user.password_secret),
+        utils.patch_test_op(researcher_user.password_secret),
         utils.patch_add_op('%s' % regular_user.guid, 'owner'),
     ]
-    response = proj_utils.patch_project(flask_app_client, project_guid, temp_user, data)
+    response = proj_utils.patch_project(
+        flask_app_client, project_guid, researcher_user, data
+    )
     utils.validate_dict_response(response, 200, {'guid', 'title'})
 
     # try to delete as temp_user, no longer owner, should fail
     data = [
-        utils.patch_test_op(temp_user.password_secret),
+        utils.patch_test_op(researcher_user.password_secret),
         utils.patch_remove_op('user', '%s' % regular_user.guid),
     ]
-    response = proj_utils.patch_project(flask_app_client, project_guid, temp_user, data)
+    response = proj_utils.patch_project(
+        flask_app_client, project_guid, researcher_user, data
+    )
     utils.validate_dict_response(response, 409, {'status', 'message'})
 
     # # @todo, This returns a 200, due to the default of True in PatchJSONParameters:perform_patch
@@ -162,7 +164,7 @@ def test_project_permission(flask_app_client, regular_user, admin_user, temp_use
     # assert response.json['title'] == 'This is an admin modified test project, please ignore'
 
     # tempUser also cannot delete the project
-    with flask_app_client.login(temp_user, auth_scopes=('projects:delete',)):
+    with flask_app_client.login(researcher_user, auth_scopes=('projects:delete',)):
         response = flask_app_client.delete('/api/v1/projects/%s' % project_guid)
 
     utils.validate_dict_response(response, 403, {'status', 'message'})
@@ -172,4 +174,3 @@ def test_project_permission(flask_app_client, regular_user, admin_user, temp_use
         response = flask_app_client.delete('/api/v1/projects/%s' % project_guid)
 
     assert response.status_code == 204
-    temp_user.unset_static_role(User.StaticRoles.RESEARCHER)

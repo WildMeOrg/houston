@@ -94,29 +94,6 @@ class Users(Resource):
 
         return new_user
 
-    @api.login_required(oauth_scopes=['users:write'])
-    @api.permission_required(
-        permissions.ModuleAccessPermission,
-        kwargs_on_request=lambda kwargs: {
-            'module': User,
-            'action': AccessOperation.DELETE,
-        },
-    )
-    @api.parameters(parameters.DeleteUserParameters())
-    def delete(self, args):
-        """
-        Remove a member.
-        """
-        context = api.commit_or_abort(
-            db.session, default_error_message='Failed to delete user.'
-        )
-        with context:
-            user_guid = args['user_guid']
-            user = User.query.filter_by(id=user_guid).first_or_404()
-            db.session.delete(user)
-
-        return None
-
 
 @api.route('/<uuid:user_guid>')
 @api.login_required(oauth_scopes=['users:read'])
@@ -168,6 +145,23 @@ class UserByID(Resource):
         db.session.refresh(user)
 
         return user
+
+    @api.login_required(oauth_scopes=['users:write'])
+    @api.permission_required(
+        permissions.ObjectAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'obj': kwargs['user'],
+            'action': AccessOperation.DELETE,
+        },
+    )
+    @api.response(code=HTTPStatus.CONFLICT)
+    @api.response(code=HTTPStatus.NO_CONTENT)
+    def delete(self, user):
+        """
+        Delete a Project by ID.
+        """
+        user.delete()
+        return None
 
 
 @api.route('/me')

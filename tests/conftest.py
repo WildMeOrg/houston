@@ -124,6 +124,17 @@ def internal_user(temp_db_instance_helper):
 
 
 @pytest.fixture(scope='session')
+def researcher_user(temp_db_instance_helper):
+    for _ in temp_db_instance_helper(
+        utils.generate_user_instance(
+            email='researcher@localhost',
+            is_researcher=True,
+        )
+    ):
+        yield _
+
+
+@pytest.fixture(scope='session')
 def temp_user(temp_db_instance_helper):
     for _ in temp_db_instance_helper(
         utils.generate_user_instance(email='temp@localhost', full_name='Temp User')

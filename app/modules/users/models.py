@@ -167,18 +167,19 @@ class User(db.Model, FeatherModel, UserEDMMixin):
 
     class StaticRoles(enum.Enum):
         # pylint: disable=missing-docstring,unsubscriptable-object
-        CONTRIBUTOR = (0x40000, 'Contributor')
-        RESEARCHER = (0x20000, 'Researcher')
-        EXPORTER = (0x10000, 'Exporter')
-        INTERNAL = (0x8000, 'Internal')
-        ADMIN = (0x4000, 'Site Administrator')
-        STAFF = (0x2000, 'Staff Member')
-        ACTIVE = (0x1000, 'Active Account')
+        CONTRIBUTOR = (0x40000, 'Contributor', 'Contributor')
+        RESEARCHER = (0x20000, 'Researcher', 'Researcher')
+        EXPORTER = (0x10000, 'Exporter', 'Exporter')
 
-        SETUP = (0x0800, 'Account in Setup')
-        RESET = (0x0400, 'Account in Password Reset')
-        ALPHA = (0x0200, 'Enrolled in Alpha')
-        BETA = (0x0100, 'Enrolled in Beta')
+        INTERNAL = (0x08000, 'Internal', 'Internal')
+        ADMIN = (0x04000, 'Site Administrator', 'Admin')
+        STAFF = (0x02000, 'Staff Member', 'Staff')
+        ACTIVE = (0x01000, 'Active Account', 'Active')
+
+        SETUP = (0x00800, 'Account in Setup', 'Setup')
+        RESET = (0x00400, 'Account in Password Reset', 'Reset')
+        ALPHA = (0x00200, 'Enrolled in Alpha', 'Alpha')
+        BETA = (0x00100, 'Enrolled in Beta', 'Beta')
 
         @property
         def mask(self):
@@ -187,6 +188,10 @@ class User(db.Model, FeatherModel, UserEDMMixin):
         @property
         def title(self):
             return self.value[1]
+
+        @property
+        def shorthand(self):
+            return self.value[2]
 
     static_roles = db.Column(db.Integer, default=0, nullable=False)
 
@@ -206,32 +211,28 @@ class User(db.Model, FeatherModel, UserEDMMixin):
     in_reset = _get_is_static_role_property('in_reset', StaticRoles.RESET)
     in_setup = _get_is_static_role_property('in_setup', StaticRoles.SETUP)
 
-    def __repr__(self):
-        state = ''
-        if self.is_active:
-            state = state + 'Active, '
-        if self.in_setup:
-            state = state + 'Setup, '
-        if self.in_reset:
-            state = state + 'Reset, '
-        if self.in_alpha:
-            state = state + 'Alpha, '
-        if self.in_beta:
-            state = state + 'Beta, '
+    def get_state(self):
+        state = []
+        state += [self.StaticRoles.ACTIVE.shorthand] if self.is_active else []
+        state += [self.StaticRoles.SETUP.shorthand] if self.in_setup else []
+        state += [self.StaticRoles.RESET.shorthand] if self.in_reset else []
+        state += [self.StaticRoles.ALPHA.shorthand] if self.in_alpha else []
+        state += [self.StaticRoles.BETA.shorthand] if self.in_beta else []
+        return state
 
-        roles = ''
-        if self.is_internal:
-            roles = roles + 'Internal, '
-        if self.is_admin:
-            roles = roles + 'Admin, '
-        if self.is_staff:
-            roles = roles + 'Staff, '
-        if self.is_contributor:
-            roles = roles + 'Contributor, '
-        if self.is_researcher:
-            roles = roles + 'Researcher, '
-        if self.is_exporter:
-            roles = roles + 'Exporter, '
+    def get_roles(self):
+        roles = []
+        roles += [self.StaticRoles.INTERNAL.shorthand] if self.is_internal else []
+        roles += [self.StaticRoles.ADMIN.shorthand] if self.is_admin else []
+        roles += [self.StaticRoles.STAFF.shorthand] if self.is_staff else []
+        roles += [self.StaticRoles.CONTRIBUTOR.shorthand] if self.is_contributor else []
+        roles += [self.StaticRoles.RESEARCHER.shorthand] if self.is_researcher else []
+        roles += [self.StaticRoles.EXPORTER.shorthand] if self.is_exporter else []
+        return roles
+
+    def __repr__(self):
+        state = ', '.join(self.get_state())
+        roles = ', '.join(self.get_roles())
 
         return (
             '<{class_name}('
@@ -589,3 +590,8 @@ class User(db.Model, FeatherModel, UserEDMMixin):
                     break
 
         return ret_val
+
+    def delete(self):
+        with db.session.begin():
+            # TODO: Ensure proper cleanup
+            db.session.delete(self)

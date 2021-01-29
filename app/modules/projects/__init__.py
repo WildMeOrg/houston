@@ -14,6 +14,7 @@ def init_app(app, **kwargs):
     """
     api_v1.add_oauth_scope('projects:read', 'Provide access to Projects details')
     api_v1.add_oauth_scope('projects:write', 'Provide write access to Projects details')
+    api_v1.add_oauth_scope('projects:delete', 'Provide authority to delete Projects')
 
     # Touch underlying modules
     from . import models, resources  # NOQA

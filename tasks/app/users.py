@@ -47,18 +47,26 @@ def add_role(context, email, role):
         print('\nNo updates applied.')
         return
 
-    if role == 'Admin':
-        user.set_static_role(User.StaticRoles.ADMIN)
-    elif role == 'Staff':
-        user.set_static_role(User.StaticRoles.STAFF)
-    elif role == 'Internal':
-        user.set_static_role(User.StaticRoles.INTERNAL)
-    elif role == 'Researcher':
-        user.set_static_role(User.StaticRoles.RESEARCHER)
-    elif role == 'Contributor':
-        user.set_static_role(User.StaticRoles.CONTRIBUTOR)
-    elif role == 'Exporter':
-        user.set_static_role(User.StaticRoles.EXPORTER)
+    role = role.lower()
+
+    if role in ['admin', 'administrator']:
+        print('Found user:\n\t%r' % (user,))
+        answer = input(
+            'Are you sure you want to promote the above found user to a site administrator? [Y / N]: '
+        )
+        answer = answer.strip().lower()
+
+        user.is_admin = True
+    elif role in ['staff', 'developer']:
+        user.is_staff = True
+    elif role in ['internal']:
+        user.is_internal = True
+    elif role in ['researcher']:
+        user.is_researcher = True
+    elif role in ['contributor']:
+        user.is_contributor = True
+    elif role in ['exporter']:
+        user.is_exporter = True
     else:
         print('Role {} not supported' % role)
         return
@@ -89,18 +97,20 @@ def remove_role(context, email, role):
         print('\nNo updates applied.')
         return
 
-    if role == 'Admin':
-        user.unset_static_role(User.StaticRoles.ADMIN)
-    elif role == 'Staff':
-        user.unset_static_role(User.StaticRoles.STAFF)
-    elif role == 'Internal':
-        user.unset_static_role(User.StaticRoles.INTERNAL)
-    elif role == 'Researcher':
-        user.unset_static_role(User.StaticRoles.RESEARCHER)
-    elif role == 'Contributor':
-        user.unset_static_role(User.StaticRoles.CONTRIBUTOR)
-    elif role == 'Exporter':
-        user.unset_static_role(User.StaticRoles.EXPORTER)
+    role = role.lower()
+
+    if role in ['admin', 'administrator']:
+        user.is_admin = False
+    elif role in ['staff', 'developer']:
+        user.is_staff = False
+    elif role in ['internal']:
+        user.is_internal = False
+    elif role in ['researcher']:
+        user.is_researcher = False
+    elif role in ['contributor']:
+        user.is_contributor = False
+    elif role in ['exporter']:
+        user.is_exporter = False
     else:
         print('Role {} not supported' % role)
         return

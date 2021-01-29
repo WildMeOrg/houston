@@ -15,9 +15,8 @@ def create_organization(flask_app_client, user, title):
 def test_create_and_delete_organization(flask_app_client, admin_user, temp_user):
     # pylint: disable=invalid-name
     from app.modules.organizations.models import Organization
-    from app.modules.users.models import User
 
-    temp_user.set_static_role(User.StaticRoles.STAFF)
+    temp_user.is_staff = True
     response = create_organization(
         flask_app_client, temp_user, 'This is a test org, please ignore'
     )
@@ -42,4 +41,4 @@ def test_create_and_delete_organization(flask_app_client, admin_user, temp_user)
     read_organization = Organization.query.get(organization_guid)
     assert read_organization is None
 
-    temp_user.unset_static_role(User.StaticRoles.STAFF)
+    temp_user.is_staff = False

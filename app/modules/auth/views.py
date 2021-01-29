@@ -15,7 +15,7 @@ from urllib.parse import urlparse, urljoin
 import flask
 from flask import request, url_for, flash
 
-from app.extensions import login_manager, oauth2
+from app.extensions import oauth2, login_manager
 
 from app.modules.users.models import User
 
@@ -40,12 +40,17 @@ def load_user_from_request(request):
     Load user from OAuth2 Authentication header.
     """
     user = None
+
     if hasattr(request, 'oauth'):
-        user = request.oauth.user
-    else:
+        if request.oauth is not None:
+            user = request.oauth.user
+
+    if user is None:
         is_valid, oauth = oauth2.verify_request(scopes=[])
         if is_valid:
-            user = oauth.user
+            request.oauth = oauth
+            user = request.oauth.user
+
     return user
 
 

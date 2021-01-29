@@ -261,10 +261,10 @@ def init_app(app):
         db,
         api,
         config,
-        # The remaining extensions
         oauth2,
-        cross_origin_resource_sharing,
         login_manager,
+        # The remaining extensions
+        cross_origin_resource_sharing,
         marshmallow,
         edm,
         submission,

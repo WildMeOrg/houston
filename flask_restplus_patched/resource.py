@@ -42,11 +42,16 @@ class Resource(OriginalResource):
         # This method checks every permissions provided as decorators for other
         # methods to provide information about what methods `current_user` can
         # use.
-        method_funcs = [getattr(self, m.lower()) for m in self.methods]
+        from flask import request  # NOQA
+        from flask_login import current_user  # NOQA
+
+        request_oauth_backup = getattr(request, 'oauth', None)
+
         allowed_methods = []
-        request_oauth_backup = getattr(flask.request, 'oauth', None)
+        method_funcs = [getattr(self, m.lower()) for m in self.methods]
         for method_func in method_funcs:
             if getattr(method_func, '_access_restriction_decorators', None):
+
                 if not hasattr(method_func, '_cached_fake_method_func'):
                     fake_method_func = lambda *args, **kwargs: True  # NOQA
                     # `__name__` is used in `login_required` decorator, so it
@@ -61,10 +66,11 @@ class Resource(OriginalResource):
                     # Cache the `fake_method_func` to avoid redoing this over
                     # and over again
                     method_func.__dict__['_cached_fake_method_func'] = fake_method_func
-                else:
-                    fake_method_func = method_func._cached_fake_method_func
 
-                flask.request.oauth = None
+                fake_method_func = method_func._cached_fake_method_func
+
+                request.oauth = None
+
                 try:
                     fake_method_func(self, *args, **kwargs)
                 except HTTPException:
@@ -72,7 +78,8 @@ class Resource(OriginalResource):
                     continue
 
             allowed_methods.append(method_func.__name__.upper())
-        flask.request.oauth = request_oauth_backup
+
+        request.oauth = request_oauth_backup
 
         return flask.Response(
             status=HTTPStatus.NO_CONTENT, headers={'Allow': ', '.join(allowed_methods)}

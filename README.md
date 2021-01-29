@@ -367,6 +367,7 @@ Dependencies
 * [**permission**](https://github.com/hustlzp/permission) - for authorization.
 * [**Swagger-UI**](https://github.com/swagger-api/swagger-ui) - for interactive
   RESTful API documentation.
+* [**Redis**](https://redis.io/) - used by Tus file-transfer library
 
 ### Build Dependencies
 

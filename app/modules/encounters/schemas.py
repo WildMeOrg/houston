@@ -18,10 +18,7 @@ class BaseEncounterSchema(ModelSchema):
     class Meta:
         # pylint: disable=missing-docstring
         model = Encounter
-        fields = (
-            Encounter.guid.key,
-            Encounter.title.key,
-        )
+        fields = (Encounter.guid.key,)
         dump_only = (Encounter.guid.key,)
 
 

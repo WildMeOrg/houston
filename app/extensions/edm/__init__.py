@@ -56,6 +56,7 @@ class EDMManagerEndpointMixin(object):
         },
         'encounter': {
             'list': '//v0/org.ecocean.Encounter/list',
+            'data': '//v0/org.ecocean.Encounter/%s?detail-org.ecocean.Encounter=max',
         },
         'organization': {
             'list': '//v0/org.ecocean.Organization/list',
@@ -92,9 +93,9 @@ class EDMManagerEndpointMixin(object):
         endpoint = self.ENDPOINTS
 
         component_list = tag.split('.')
-        for comoponent in component_list:
+        for component in component_list:
             try:
-                endpoint_ = endpoint.get(comoponent, None)
+                endpoint_ = endpoint.get(component, None)
             except Exception:
                 endpoint_ = None
 
@@ -145,8 +146,24 @@ class EDMManagerEncounterMixin(object):
         response = self._get('encounters.list', target=target)
         return response
 
+    def get_encounter_data(self, guid, target='default'):
+        assert isinstance(guid, uuid.UUID)
+        response = self._get('encounter.data', guid, target=target)
+        return response
 
-class EDMManager(EDMManagerEndpointMixin, EDMManagerUserMixin):
+    def get_encounter_data_dict(self, guid, target='default'):
+        assert isinstance(guid, uuid.UUID)
+        response = self._get(
+            'encounter.data',
+            guid,
+            target=target,
+            decode_as_object=False,
+            decode_as_dict=True,
+        )
+        return response
+
+
+class EDMManager(EDMManagerEndpointMixin, EDMManagerUserMixin, EDMManagerEncounterMixin):
     # pylint: disable=abstract-method
     """
         note the content of User in the 2nd item has stuff you can ignore. it also has the id as "uuid" (which is what it is internally, sigh).  also note it references Organizations !  we didnt touch on this on the call, but i think this should (must?) live with Users.  what we have in java is very lightweight anyway, so no loss to go away.   as you can see, user.organizations is an array of orgs, and (since it is many-to-many) you will see org.members is a list of Users.  easy peasy.  btw, by the time we got to Organizations, we did call the primary key id and make it a uuid.  "live and learn".  :confused:
@@ -299,7 +316,7 @@ class EDMManager(EDMManagerEndpointMixin, EDMManagerUserMixin):
             self.ensure_initialed()
 
         method = method.lower()
-        assert method in ['get', 'post', 'delete', 'put']
+        assert method in ['get', 'post', 'delete', 'put', 'patch']
 
         if endpoint is None:
             assert tag is not None
@@ -338,6 +355,15 @@ class EDMManager(EDMManagerEndpointMixin, EDMManagerUserMixin):
 
             if decode_as_dict:
                 response = response.json()
+        else:
+            log.warning(
+                'Non-OK response on %r %r: %r'
+                % (
+                    method,
+                    endpoint,
+                    response.status_code,
+                )
+            )
 
         return response
 
@@ -347,12 +373,19 @@ class EDMManager(EDMManagerEndpointMixin, EDMManagerUserMixin):
     def _post(self, *args, **kwargs):
         return self._request('post', *args, **kwargs)
 
+    def _delete(self, *args, **kwargs):
+        return self._request('delete', *args, **kwargs)
+
     def get_passthrough(self, *args, **kwargs):
         response = self._get(*args, **kwargs)
         return response
 
     def post_passthrough(self, *args, **kwargs):
         response = self._post(*args, **kwargs)
+        return response
+
+    def delete_passthrough(self, *args, **kwargs):
+        response = self._delete(*args, **kwargs)
         return response
 
     def get_list(self, list_name, target='default'):

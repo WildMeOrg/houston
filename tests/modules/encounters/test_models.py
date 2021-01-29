@@ -13,9 +13,7 @@ def test_encounter_add_owner(db):
         full_name='Gregor Samsa ',
     )
 
-    test_encounter = Encounter(
-        title='New Test Encounter A',
-    )
+    test_encounter = Encounter()
 
     with db.session.begin():
         db.session.add(test_encounter)

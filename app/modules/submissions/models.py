@@ -281,9 +281,10 @@ class Submission(db.Model, HoustonModel):
         files = []
         skipped = []
         errors = []
-        walk_list = list(os.walk(submission_path))
+        walk_list = sorted(list(os.walk(submission_path)))
         print('Walking submission...')
         for root, directories, filenames in tqdm.tqdm(walk_list):
+            filenames = sorted(filenames)
             for filename in filenames:
                 filepath = os.path.join(root, filename)
 

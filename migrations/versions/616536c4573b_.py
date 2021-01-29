@@ -36,7 +36,8 @@ def upgrade():
     sa.PrimaryKeyConstraint('organization_guid', 'user_guid', name=op.f('pk_organization_user_moderator_enrollment'))
     )
     with op.batch_alter_table('organization', schema=None) as batch_op:
-        batch_op.add_column(sa.Column('owner_guid', app.extensions.GUID(), nullable=False))
+        # Default owner is UUID('b03defd4-cb63-4b57-8a30-cd625fd67a1d') for jason@wildme.org
+        batch_op.add_column(sa.Column('owner_guid', app.extensions.GUID(), nullable=False, server_default='b03defd4-cb63-4b57-8a30-cd625fd67a1d'))
         batch_op.create_index(batch_op.f('ix_organization_owner_guid'), ['owner_guid'], unique=False)
         batch_op.create_foreign_key(batch_op.f('fk_organization_owner_guid_user'), 'user', ['owner_guid'], ['guid'])
 

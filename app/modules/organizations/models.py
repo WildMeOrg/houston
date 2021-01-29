@@ -54,7 +54,20 @@ class OrganizationEDMMixin(EDMObjectMixin):
     # fmt: on
 
     @classmethod
-    def ensure_edm_obj(cls, guid):
+    def ensure_edm_obj(cls, guid, owner=None):
+        if owner is None:
+            from app.modules.users.models import User
+            from flask_login import current_user
+
+            candidates = [
+                User.find('jason@wildme.org'),
+                current_user,
+            ]
+            for user in candidates:
+                if isinstance(user, User) and user.is_admin:
+                    owner = user
+                    break
+
         organization = Organization.query.filter(Organization.guid == guid).first()
         is_new = False
 
@@ -62,6 +75,7 @@ class OrganizationEDMMixin(EDMObjectMixin):
             organization = Organization(
                 guid=guid,
                 title='none',
+                owner_guid=owner.guid,
             )
             db.session.add(organization)
             is_new = True

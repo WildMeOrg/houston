@@ -132,6 +132,7 @@ class BaseConfig(object):
 
         # Miscellaneous
         'collaborations',
+        'notifications',
         'encounters',
         'projects',
         'sightings',
@@ -192,7 +193,7 @@ class ProductionConfig(
 ):
     TESTING = False
 
-    BASE_URL = 'https://hoston.dyn.wildme.io/'
+    BASE_URL = 'https://houston.dyn.wildme.io/'
 
     MAIL_BASE_URL = BASE_URL
     MAIL_OVERRIDE_RECIPIENTS = None

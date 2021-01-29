@@ -10,7 +10,7 @@ from app.modules.encounters import models as encounters_models  # NOQA
 import uuid
 
 
-# todo should this be a class or an association table
+# All many:many associations handled as Houston model classes to give control and history
 class ProjectEncounter(db.Model, HoustonModel):
 
     project_guid = db.Column(db.GUID, db.ForeignKey('project.guid'), primary_key=True)
@@ -33,7 +33,7 @@ class ProjectUserMembershipEnrollment(db.Model, HoustonModel):
     user = db.relationship('User', back_populates='project_membership_enrollments')
 
 
-class Project(db.Model, Timestamp):
+class Project(db.Model, HoustonModel, Timestamp):
     """
     Projects database model.
     """
@@ -49,11 +49,17 @@ class Project(db.Model, Timestamp):
 
     encounter_members = db.relationship('ProjectEncounter', back_populates='project')
 
+    owner_guid = db.Column(
+        db.GUID, db.ForeignKey('user.guid'), index=True, nullable=False
+    )
+    owner = db.relationship('User', backref=db.backref('owned_projects'))
+
     def __repr__(self):
         return (
             '<{class_name}('
             'guid={self.guid}, '
-            "title='{self.title}'"
+            "title='{self.title}', "
+            'members={self.members} '
             ')>'.format(class_name=self.__class__.__name__, self=self)
         )
 
@@ -71,20 +77,48 @@ class Project(db.Model, Timestamp):
             raise ValueError('Title has to be at least 3 characters long.')
         return title
 
-    def has_read_permission(self, user, obj):
-        from app.modules.encounters.models import Encounter
+    def add_user(self, user):
+        with db.session.begin():
+            self.add_user_in_context(user)
 
-        has_permission = False
+    def add_encounter(self, encounter):
+        with db.session.begin():
+            self.add_encounter_in_context(encounter)
 
-        if isinstance(obj, Encounter):
-            # Optionally add time check so that User can only access encounters after user was added to project
-            has_permission = obj in self.encounters
-        else:
-            for encounter in self.encounters:
-                # If time check was implemented, that would need to be passed here too and percolate down through
-                # encounters and sightings etc
-                has_permission = encounter.has_read_permission(obj)
-                if has_permission:
-                    break
+    def add_user_in_context(self, user):
+        enrollment = ProjectUserMembershipEnrollment(
+            project=self,
+            user=user,
+        )
 
-        return has_permission
+        db.session.add(enrollment)
+        self.user_membership_enrollments.append(enrollment)
+
+    def add_encounter_in_context(self, encounter):
+        enrollment = ProjectEncounter(
+            project=self,
+            encounter=encounter,
+        )
+
+        db.session.add(enrollment)
+        self.encounter_members.append(enrollment)
+
+    def remove_user_in_context(self, user):
+        for member in self.user_membership_enrollments:
+            if member.user == user:
+                db.session.delete(member)
+                break
+
+    def remove_encounter_in_context(self, encounter):
+        for member in self.encounter_members:
+            if member.encounter == encounter:
+                db.session.delete(member)
+                break
+
+    def delete(self):
+        with db.session.begin():
+            while self.user_membership_enrollments:
+                db.session.delete(self.user_membership_enrollments.pop())
+            while self.encounter_members:
+                db.session.delete(self.encounter_members.pop())
+            db.session.delete(self)

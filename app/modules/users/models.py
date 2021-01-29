@@ -507,37 +507,21 @@ class User(db.Model, FeatherModel, UserEDMMixin):
 
         return self
 
-    def has_permission_to_read(self, obj):
-        has_permission = self.owns_object(obj)
-
-        # Not owned by user, is it in any orgs we're in
-        if not has_permission:
-            for org in self.memberships:
-                has_permission = org.has_read_permission(obj)
-                if has_permission:
-                    break
-
-        # If not in any orgs, check if it can be accessed via projects
-        if not has_permission:
-            for project in self.projects:
-                has_permission = project.has_read_permission(self, obj)
-                if has_permission:
-                    break
-
-        return has_permission
-
     def owns_object(self, obj):
         from app.modules.assets.models import Asset
         from app.modules.submissions.models import Submission
         from app.modules.encounters.models import Encounter
         from app.modules.sightings.models import Sighting
+        from app.modules.projects.models import Project
 
         ret_val = False
 
-        # todo, if more objects end up with an "owner" relationship with user, this could be a simple as Submission
-        if isinstance(obj, Submission):
-            ret_val = obj.owner is self
-        elif isinstance(obj, Encounter):
+        # Submission, Encounters and Projects all have an owner field, check that
+        if (
+            isinstance(obj, Submission)
+            or isinstance(obj, Encounter)
+            or isinstance(obj, Project)
+        ):
             ret_val = obj.owner is self
         elif isinstance(obj, Asset):
             # assets are not owned directly by the user but the submission they're in is.

@@ -14,6 +14,7 @@ from flask import Blueprint, send_from_directory, current_app, request
 from flask_login import login_user, logout_user, login_required, current_user
 import werkzeug
 import logging
+import os
 
 from app.modules.users.models import User
 
@@ -47,6 +48,13 @@ def home(path=None, *args, **kwargs):
     """
     if not current_app.debug:
         log.warning('Front-end files are recommended to be served by NGINX')
+
+    if not os.path.exists(frontend_blueprint.static_folder):
+        log.exception(
+            'Front-end static directory improperly configured - could not locate a valid installation at: %r'
+            % (os.path.abspath(frontend_blueprint.static_folder),)
+        )
+        raise werkzeug.exceptions.InternalServerError
 
     if path is None:
         path = 'index.html'

@@ -12,6 +12,7 @@ from flask_restplus_patched import Resource
 from flask_restplus._http import HTTPStatus
 from app.extensions.api import Namespace
 from app.modules.users import permissions
+from app.modules.users.permissions.types import AccessOperation
 from app.extensions.api.parameters import PaginationParameters
 import werkzeug
 
@@ -42,7 +43,9 @@ class Assets(Resource):
         Returns a list of Asset starting from ``offset`` limited by ``limit``
         parameter.
         """
-        return Asset.query.offset(args['offset']).limit(args['limit'])
+        return (
+            Asset.query.order_by(Asset.guid).offset(args['offset']).limit(args['limit'])
+        )
 
 
 @api.route('/<uuid:asset_guid>')
@@ -58,8 +61,11 @@ class AssetByID(Resource):
     """
 
     @api.permission_required(
-        permissions.ObjectReadAccessPermission,
-        kwargs_on_request=lambda kwargs: {'obj': kwargs['asset']},
+        permissions.ObjectAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'obj': kwargs['asset'],
+            'action': AccessOperation.READ,
+        },
     )
     @api.response(schemas.DetailedAssetSchema())
     def get(self, asset):

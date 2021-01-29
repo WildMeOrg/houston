@@ -69,7 +69,7 @@ To submit a pull request (PR) to Houston, we require the following standards to 
   * We also require any sensitive code, configurations, or pre-specified values be omitted, truncated, or redacted.  For example, the file `_db/secrets/py` is not committed into the repository and is ignored by `.gitignore`.
 * **Ensure that the PR is properly reviewed**
   * After the preceding checks are satisfied, the code is ready for review.  All PRs are required to be reviewed and approved by at least one registered contributor or administrator on the Houston project.
-  * When the PR is created in GitHub, make sure that the repository is specified as `WildbookOrg/houston` and not its original fork.  Further, make sure that the base branch is specified as `develop` and not `master`.
+  * When the PR is created in GitHub, make sure that the repository is specified as `WildMeOrg/houston` and not its original fork.  Further, make sure that the base branch is specified as `develop` and not `master`.
 
 ### Pre-commit
 
@@ -406,7 +406,7 @@ $ docker run -it --rm --publish 5000:5000 frolvlad/flask-restplus-server-example
 #### Clone the Project
 
 ```bash
-$ git clone --recurse-submodules https://github.com/WildbookOrg/houston.git
+$ git clone --recurse-submodules https://github.com/WildMeOrg/houston.git
 $ cd houston/
 ```
 
@@ -419,14 +419,14 @@ You will need `invoke` package to work with everything related to this project.
 
 ```bash
 $ tar -zxvf _db.initial.tar.gz
-$ ./venv.sh
+$ ./scripts/venv.sh
 $ source virtualenv/houston3.7/bin/activate
 $ pip install -r requirements.txt
 $ invoke app.dependencies.install-python-dependencies
 $ invoke app.dependencies.install-swagger-ui
 $ invoke app.dependencies.install
 $ pip install -e .
-$ ./build.frontend.sh
+$ ./scripts/build.frontend.sh
 ```
 
 #### Run Server
@@ -786,6 +786,10 @@ How to Update Schemas
 2. Run `invoke app.db.migrate`
 3. A new file should have been created in `/app/migrations/versions`. Add `import app.extensions` to the top of that file
 4. Run `invoke app.db.upgrade`
+
+RFC 6902 Compliance
+============
+This implementation is compatible with RFC6509 with the exception that for removal of list items via patch. This implementation supports an optional value in the patch removal operation to permit deletion of associations between modules.
 
 Useful Links
 ============

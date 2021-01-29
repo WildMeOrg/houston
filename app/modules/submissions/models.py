@@ -179,6 +179,7 @@ class Submission(db.Model, HoustonModel):
         with open(submission_metadata_path, 'w') as submission_metadata_file:
             json.dump(submission_metadata, submission_metadata_file)
 
+        # repo.index.add('.gitignore')
         repo.index.add('_assets/')
         repo.index.add('_submission/')
         repo.index.add('metadata.json')
@@ -280,9 +281,10 @@ class Submission(db.Model, HoustonModel):
         files = []
         skipped = []
         errors = []
-        walk_list = list(os.walk(submission_path))
+        walk_list = sorted(list(os.walk(submission_path)))
         print('Walking submission...')
         for root, directories, filenames in tqdm.tqdm(walk_list):
+            filenames = sorted(filenames)
             for filename in filenames:
                 filepath = os.path.join(root, filename)
 
@@ -373,7 +375,7 @@ class Submission(db.Model, HoustonModel):
         existing_asset_symlinks = ut.glob(os.path.join(assets_path, '*'))
         for existing_asset_symlink in existing_asset_symlinks:
             basename = os.path.basename(existing_asset_symlink)
-            if basename in ['.touch']:
+            if basename in ['.touch', 'derived']:
                 continue
             existing_asset_target = os.readlink(existing_asset_symlink)
             existing_asset_target_ = os.path.abspath(

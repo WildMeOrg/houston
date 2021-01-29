@@ -17,8 +17,57 @@ try:
 except ImportError:  # Invoke 0.13 renamed ctask to task
     from invoke import task
 
+from ._utils import app_context_task
+
 
 log = logging.getLogger(__name__)
+
+
+@app_context_task()
+def warmup(
+    context,
+    host='127.0.0.1',
+    flask_config=None,
+    install_dependencies=False,
+    build_frontend=True,
+    upgrade_db=True,
+):
+    """
+    Pre-configure the Houston API Server before running
+    """
+    # Automatically use the production config when running a public web server
+    if host in ['0.0.0.0'] and flask_config is None:
+        flask_config = 'production'
+
+    if flask_config is not None:
+        os.environ['FLASK_CONFIG'] = flask_config
+
+    if install_dependencies:
+        context.invoke_execute(context, 'app.dependencies.install')
+
+    from app import create_app
+
+    app = create_app()
+
+    if upgrade_db:
+        # After the installed dependencies the app.db.* tasks might need to be
+        # reloaded to import all necessary dependencies.
+        from tasks.app import db as db_tasks
+
+        reload(db_tasks)
+
+        context.invoke_execute(context, 'app.db.upgrade', app=app, backup=False)
+
+        # if app.debug:
+        #     context.invoke_execute(
+        #         context,
+        #         'app.db.init_development_data',
+        #         app=app,
+        #         upgrade_db=False,
+        #         skip_on_failure=True,
+        #     )
+
+    return app
 
 
 @task(default=True)
@@ -33,45 +82,18 @@ def run(
     uwsgi=False,
     uwsgi_mode='http',
     uwsgi_extra_options='',
-    gitlab_remote_login_pat=None,
 ):
     """
     Run Houston API Server.
     """
-    # Automatically use the production config when running a public web server
-    if host in ['0.0.0.0'] and flask_config is None:
-        flask_config = 'production'
-
-    if flask_config is not None:
-        os.environ['FLASK_CONFIG'] = flask_config
-
-    if install_dependencies:
-        context.invoke_execute(context, 'app.dependencies.install')
-
-    from app import create_app
-
-    config_override = {}
-    if gitlab_remote_login_pat is not None:
-        config_override['GITLAB_REMOTE_LOGIN_PAT'] = gitlab_remote_login_pat
-
-    app = create_app(config_override=config_override)
-
-    if upgrade_db:
-        # After the installed dependencies the app.db.* tasks might need to be
-        # reloaded to import all necessary dependencies.
-        from tasks.app import db as db_tasks
-
-        reload(db_tasks)
-
-        context.invoke_execute(context, 'app.db.upgrade', app=app, backup=False)
-        if app.debug:
-            context.invoke_execute(
-                context,
-                'app.db.init_development_data',
-                app=app,
-                upgrade_db=False,
-                skip_on_failure=True,
-            )
+    app = warmup(
+        context,
+        host,
+        flask_config=flask_config,
+        install_dependencies=install_dependencies,
+        build_frontend=build_frontend,
+        upgrade_db=upgrade_db,
+    )
 
     # use_reloader = app.debug
     use_reloader = False

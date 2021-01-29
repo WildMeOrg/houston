@@ -17,7 +17,7 @@ Flask-Mail
 flask-marshmallow>=0.7,<0.8
 
 Flask-Minify
-Flask-OAuthlib>=0.9.4,<0.10
+Flask-OAuthlib
 Flask-Paranoid
 
 flask-restplus>=0.11.0,<0.12
@@ -27,6 +27,7 @@ gitpython
 
 marshmallow>=2.13.5,<3
 marshmallow-sqlalchemy>=0.12,<0.13
+
 passlib>=1.7.1,<2
 permission>=0.4.1,<0.5
 phonenumbers
@@ -36,6 +37,9 @@ premailer
 pygeocoder
 python-gitlab
 python-magic
+
+#Flask-Tus-Cont
+redis
 
 scikit-build
 

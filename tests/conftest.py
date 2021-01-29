@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import sqlalchemy
 import pytest
 import uuid
 
@@ -63,10 +64,13 @@ def temp_db_instance_helper(db):
         assert len(mapper.primary_key) == 1
         primary_key = mapper.primary_key[0]
         kwargs = {primary_key.name: mapper.primary_key_from_instance(instance)[0]}
-        instance.__class__.query.filter_by(**kwargs).delete()
+        try:
+            instance.__class__.query.filter_by(**kwargs).delete()
+        except sqlalchemy.exc.IntegrityError:
+            pass
         try:
             instance.__class__.commit()
-        except Exception:
+        except AttributeError:
             pass
 
     return temp_db_instance_manager
@@ -120,6 +124,14 @@ def internal_user(temp_db_instance_helper):
 
 
 @pytest.fixture(scope='session')
+def temp_user(temp_db_instance_helper):
+    for _ in temp_db_instance_helper(
+        utils.generate_user_instance(email='temp@localhost', full_name='Temp User')
+    ):
+        yield _
+
+
+@pytest.fixture(scope='session')
 def test_submission_uuid(flask_app):
     return uuid.UUID('ce91ad6e-3cc9-48e8-a4f0-ac74f55dfbf0')
 
@@ -130,10 +142,11 @@ def test_empty_submission_uuid(flask_app):
 
 
 @pytest.fixture(scope='session')
-def test_clone_submission_uuid(flask_app):
-    return uuid.UUID('290950fb-49a8-496a-adf4-e925010f79ce')
-
-
-@pytest.fixture(scope='session')
-def test_asset_uuid(flask_app):
-    return uuid.UUID('3abc03a8-39c8-42c4-bedb-e08ccc485396')
+def test_clone_submission_data(flask_app):
+    return {
+        'submission_uuid': '290950fb-49a8-496a-adf4-e925010f79ce',
+        'asset_uuids': [
+            '3abc03a8-39c8-42c4-bedb-e08ccc485396',
+            'aee00c38-137e-4392-a4d9-92b545a9efb0',
+        ],
+    }

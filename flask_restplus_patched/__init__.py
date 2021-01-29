@@ -8,6 +8,7 @@ try:
 except ImportError:
     pass
 from .namespace import Namespace  # NOQA
-from .parameters import Parameters, PostFormParameters, PatchJSONParameters  # NOQA
+from .parameters import Parameters, PostFormParameters  # NOQA
+from .parameters import PatchJSONParameters, PatchJSONParametersWithPassword  # NOQA
 from .swagger import Swagger  # NOQA
 from .resource import Resource  # NOQA

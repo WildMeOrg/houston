@@ -110,6 +110,12 @@ class Asset(db.Model, HoustonModel):
         asset_symlink_filepath = os.path.join(assets_path, self.get_filename())
         return asset_symlink_filepath
 
+    def get_derived_path(self):
+        submission_abspath = self.submission.get_absolute_path()
+        assets_path = os.path.join(submission_abspath, '_assets')
+        asset_symlink_filepath = os.path.join(assets_path, 'derived', self.get_filename())
+        return asset_symlink_filepath
+
     def update_symlink(self, asset_submission_filepath):
         assert os.path.exists(asset_submission_filepath)
 
@@ -134,7 +140,9 @@ class Asset(db.Model, HoustonModel):
             'thumb': [256, 256],
         }
         assert format in FORMAT
-        target_path = '.'.join([os.path.splitext(self.get_symlink())[0], format, 'jpg'])
+        target_path = '.'.join(
+            [os.path.splitext(self.get_derived_path())[0], format, 'jpg']
+        )
         if os.path.exists(target_path):
             return target_path
         log.info(
@@ -161,7 +169,10 @@ class Asset(db.Model, HoustonModel):
     def get_or_make_master_format_path(self):
         source_path = self.get_symlink()
         assert os.path.exists(source_path)
-        target_path = '.'.join([os.path.splitext(source_path)[0], 'master', 'jpg'])
+        target_path = self.get_derived_path()
+        if not os.path.exists(os.path.dirname(target_path)):
+            os.mkdir(os.path.dirname(target_path))
+        target_path = '.'.join([os.path.splitext(target_path)[0], 'master', 'jpg'])
         if os.path.exists(target_path):
             return target_path
         log.info('make_master_format() creating master format as %r' % (target_path,))
@@ -169,7 +180,8 @@ class Asset(db.Model, HoustonModel):
             source_image.thumbnail(
                 (4096, 4096)
             )  # TODO get from more global FORMAT re: above
-            source_image.save(target_path)
+            rgb = source_image.convert('RGB')
+            rgb.save(target_path)
         return target_path
 
     def delete(self):

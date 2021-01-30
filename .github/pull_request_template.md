@@ -47,6 +47,8 @@ $ invoke app.module.task
   - Example: One database migration is proposed (revision `<insert develop revision>` -> `<insert new revision>`)
 - [ ] Ensure that the PR is properly tested
   - Example: All automated tests are passing
+- [ ] Ensure that the PR is properly covered
+  - Example: The percentage of the code covered by tests has not decreased
 - [ ] Ensure that the PR is properly sanitized
   - Example: No sensitive data or large content was added to this PR
 - [ ] Ensure that the PR is properly reviewed

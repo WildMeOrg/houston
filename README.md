@@ -1,3 +1,6 @@
+![Tests](https://github.com/WildMeOrg/houston/workflows/Testing/badge.svg?branch=develop)
+[![Codecov](https://codecov.io/gh/WildMeOrg/houston/branch/develop/graph/badge.svg?token=M8MR14ED6V)](https://codecov.io/gh/WildMeOrg/houston)
+[![Docker Nightly](https://img.shields.io/docker/image-size/wildme/houston/nightly)](https://hub.docker.com/r/wildme/houston)
 
 Wild Me - Houston Backend Server
 ======================================================

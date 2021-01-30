@@ -1,3 +1,6 @@
+![Tests](https://github.com/WildMeOrg/houston/workflows/Testing/badge.svg?branch=develop)
+[![Codecov](https://codecov.io/gh/WildMeOrg/houston/branch/develop/graph/badge.svg?token=M8MR14ED6V)](https://codecov.io/gh/WildMeOrg/houston)
+[![Docker Nightly](https://img.shields.io/docker/image-size/wildme/houston/nightly)](https://hub.docker.com/r/wildme/houston)
 
 Wild Me - Houston Backend Server
 ======================================================
@@ -51,10 +54,17 @@ To submit a pull request (PR) to Houston, we require the following standards to 
   invoke app.db.heads  # Ensure that there is only one head
   ```
 * **Ensure that the PR is properly tested**
-  * We require new feature code to be tested via Python tests and simulated REST API tests.  We use PyTest (and eventually Coverage) to ensure that your code is working cohesively and that any new functionality is exercised.
+  * We require new feature code to be tested via Python tests and simulated REST API tests.  We use PyTest  to ensure that your code is working cohesively and that any new functionality is exercised.
   * We require new feature code to also be fully compatible with a containerized runtime environment like Docker.
   ```
   pytest
+  ```
+* **Ensure that the PR is properly covered**
+  * We require new feature code to be tested (previous item) and that the percentage of the code covered by tests does not decrease.  We use PyTest Coverage and CodeCov.io to ensure that your code is being properly covered by new tests.
+  * To export a HTML report of the current coverage statistics, run the following:
+  ```
+  pytest -s -v --cov=./ --cov-report=html
+  open _coverage/html/index.html
   ```
 * **Ensure that the PR is properly sanitized**
   * We require the PR to not include large files (images, database files, etc) without using [GitHub Large File Store (LFS)](https://git-lfs.github.com).

@@ -47,7 +47,9 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest]
         python-version: [3.7]
-
+    env:
+      OS: ${{ matrix.os }}
+      PYTHON: ${{ matrix.python-version }}
     steps:
       # Checkout and env setup
       - uses: actions/checkout@v2

@@ -58,7 +58,7 @@ class Collaboration(db.Model, HoustonModel):
     )
 
     def __init__(
-        self, user_guids=None, approval_states=None, is_initiator=None, **kwargs
+        self, user_guids=None, approval_states=None, initiator_states=None, **kwargs
     ):
         # I think this can be adapted to allow >2 User collabs, opening the door for Org-level.
         if user_guids is None or len(user_guids) != 2:
@@ -72,9 +72,9 @@ class Collaboration(db.Model, HoustonModel):
                 '__init__ Collaboration: Length of approval_states was not equal to provided user list.'
             )
 
-        if is_initiator is not None and len(is_initiator) != len(user_guids):
+        if initiator_states is not None and len(initiator_states) != len(user_guids):
             raise ValueError(
-                '__init__ Collaboration: Length of is_initiator states was not equal to provided user list.'
+                '__init__ Collaboration: Length of initiator_states states was not equal to provided user list.'
             )
 
         for guid_index in range(len(user_guids)):
@@ -84,7 +84,7 @@ class Collaboration(db.Model, HoustonModel):
 
             if user_tup is None or user_tup[0] is None:
                 raise ValueError(
-                    '__init__ Collaboration: One of the user_guids provided was had no associated user.'
+                    '__init__ Collaboration: One of the user_guids provided had no associated user.'
                 )
 
             collab_user_assoc = CollaborationUserAssociations(
@@ -97,18 +97,13 @@ class Collaboration(db.Model, HoustonModel):
             ):
                 collab_user_assoc.read_approval_state = approval_states[guid_index]
             if (
-                is_initiator is not None
-                and isinstance(is_initiator[guid_index], bool)
-                and is_initiator[guid_index] is True
+                initiator_states is not None
+                and isinstance(initiator_states[guid_index], bool)
+                and initiator_states[guid_index] is True
             ):
-                collab_user_assoc.initiator = is_initiator[guid_index]
+                collab_user_assoc.initiator = initiator_states[guid_index]
                 # If you initiate you approve
-                log.warning(' setting APPROVED!')
                 collab_user_assoc.read_approval_state = CollaborationUserState.APPROVED
-
-            # with db.session.begin():
-            #     db.session.add(collab_user_assoc)
-            #     db.session.merge(user_tup[0])
 
     def get_users(self):
         users = []
@@ -144,7 +139,7 @@ class Collaboration(db.Model, HoustonModel):
     def get_edit_state(self):
         edit_state = None
         for association in self.collaboration_user_associations:
-            # you should never have a 'pending' and 'not_initiated' on the same collab, so one of either is enough
+            # 'not_initiated' should never coexist with other states on a collaboration
             if association.edit_approval_state == CollaborationUserState.DECLINED:
                 edit_state = CollaborationUserState.DECLINED
                 break
@@ -161,21 +156,13 @@ class Collaboration(db.Model, HoustonModel):
         return edit_state
 
     def set_read_approval_state_for_user(self, user_guid, state):
-        from app.modules.users.models import User
-
-        if (
-            user_guid is not None
-            and User.ensure_edm_obj(user_guid) is not None
-            and state in CollaborationUserState.ALLOWED_STATES
-        ):
+        if user_guid is not None and state in CollaborationUserState.ALLOWED_STATES:
             for association in self.collaboration_user_associations:
                 if association.user_guid == user_guid:
                     association.read_approval_state = state
 
     def set_edit_approval_state_for_user(self, user_guid, state):
-        from app.modules.users.models import User
-
-        if user_guid is not None and User.ensure_edm_obj(user_guid) is not None:
+        if user_guid is not None and state in CollaborationUserState.ALLOWED_STATES:
             # if one association is edit level NOT_INITIATED, they all are
             if (
                 self.get_edit_state() == CollaborationUserState.NOT_INITIATED
@@ -185,15 +172,12 @@ class Collaboration(db.Model, HoustonModel):
             for association in self.collaboration_user_associations:
                 if (
                     association.user_guid == user_guid
-                    and state in CollaborationUserState.ALLOWED_STATES
                     or state == CollaborationUserState.NOT_INITIATED
                 ):
                     association.edit_approval_state = state
 
     def initate_edit_with_user(self, user_guid):
-        from app.modules.users.models import User
-
-        if user_guid is not None and User.ensure_edm_obj(user_guid) is not None:
+        if user_guid is not None:
             for association in self.collaboration_user_associations:
                 if association.user_guid == user_guid:
                     association.edit_approval_state = CollaborationUserState.APPROVED

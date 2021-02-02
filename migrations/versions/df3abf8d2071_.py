@@ -1,14 +1,14 @@
 """empty message
 
 Revision ID: df3abf8d2071
-Revises: 06364a7a31be
+Revises: 787b9a5d1ef5
 Create Date: 2021-01-27 17:12:58.385684
 
 """
 
 # revision identifiers, used by Alembic.
 revision = 'df3abf8d2071'
-down_revision = '06364a7a31be'
+down_revision = '787b9a5d1ef5'
 
 from alembic import op
 import sqlalchemy as sa

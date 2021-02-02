@@ -128,7 +128,7 @@ class BaseConfig(object):
 
         # Assets
         #   Dependencies: Submissions
-        'assets',
+        #'assets',
 
         # Miscellaneous
         'collaborations',
@@ -136,6 +136,8 @@ class BaseConfig(object):
         'encounters',
         'projects',
         'sightings',
+
+        'assets',
 
         # Front-end
         #   Dependencies: Users, Auth, Assets

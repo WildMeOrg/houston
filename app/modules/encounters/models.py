@@ -4,10 +4,18 @@ Encounters database models
 --------------------
 """
 
-from app.extensions import db, FeatherModel
+from app.extensions import db, FeatherModel, HoustonModel
 
 
 import uuid
+
+
+class EncounterAssets(db.Model, HoustonModel):
+    encounter_guid = db.Column(db.GUID, db.ForeignKey('encounter.guid'), primary_key=True)
+    asset_guid = db.Column(db.GUID, db.ForeignKey('asset.guid'), primary_key=True)
+    encounters = db.relationship('Encounter', back_populates='assets')
+    # assets = db.relationship('Asset', back_populates='encounters')
+    assets = db.relationship('Asset')
 
 
 class Encounter(db.Model, FeatherModel):
@@ -33,6 +41,8 @@ class Encounter(db.Model, FeatherModel):
     public = db.Column(db.Boolean, default=False, nullable=False)
 
     projects = db.relationship('ProjectEncounter', back_populates='encounter')
+
+    assets = db.relationship('EncounterAssets')
 
     def __repr__(self):
         return (

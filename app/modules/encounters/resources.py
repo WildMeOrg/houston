@@ -113,12 +113,15 @@ class Encounters(Resource):
         with context:
             # TODO other houston-based relationships: orgs, projects, etc
             owner_guid = None
+            pub = True  # legit? public if no owner?
             if current_user is not None:
                 owner_guid = current_user.guid
+                pub = False
             encounter = Encounter(
                 guid=result_data['id'],
                 version=result_data.get('version', 2),
                 owner_guid=owner_guid,
+                public=pub,
             )
             db.session.add(encounter)
         log.debug('Encounter.post created edm/houston guid=%r' % (encounter.guid,))

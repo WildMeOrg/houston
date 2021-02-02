@@ -6,7 +6,8 @@ Encounters database models
 
 from app.extensions import db, FeatherModel, HoustonModel
 
-# from app.modules.assets import models as assets_models  # NOQA
+from app.modules.submissions import models as submissions_models  # NOQA
+from app.modules.assets import models as assets_models  # NOQA
 
 
 import uuid

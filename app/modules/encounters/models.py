@@ -37,6 +37,13 @@ class Encounter(db.Model, FeatherModel):
     )
     sighting = db.relationship('Sighting', backref=db.backref('encounters'))
 
+    from app.modules.individuals.models import Individual
+
+    individual_guid = db.Column(
+        db.GUID, db.ForeignKey('individual.guid'), index=True, nullable=True
+    )
+    individual = db.relationship('Individual', backref=db.backref('encounters'))
+
     owner_guid = db.Column(db.GUID, db.ForeignKey('user.guid'), index=True, nullable=True)
     owner = db.relationship('User', backref=db.backref('owned_encounters'))
 

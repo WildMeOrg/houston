@@ -6,12 +6,12 @@ Individuals database models
 
 from sqlalchemy_utils import Timestamp
 
-from app.extensions import db
+from app.extensions import FeatherModel, db
 
 import uuid
 
 
-class Individual(db.Model, Timestamp):
+class Individual(db.Model, FeatherModel):
     """
     Individuals database model.
     """
@@ -24,9 +24,6 @@ class Individual(db.Model, Timestamp):
         return (
             '<{class_name}('
             'guid={self.guid}, '
-            'title=\'{self.title}\''
-            ')>'.format(
-                class_name=self.__class__.__name__,
-                self=self
-            )
+            "title='{self.title}'"
+            ')>'.format(class_name=self.__class__.__name__, self=self)
         )

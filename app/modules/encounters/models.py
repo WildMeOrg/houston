@@ -16,9 +16,8 @@ import uuid
 class EncounterAssets(db.Model, HoustonModel):
     encounter_guid = db.Column(db.GUID, db.ForeignKey('encounter.guid'), primary_key=True)
     asset_guid = db.Column(db.GUID, db.ForeignKey('asset.guid'), primary_key=True)
-    encounters = db.relationship('Encounter', back_populates='assets')
-    # assets = db.relationship('Asset', back_populates='encounters')
-    assets = db.relationship('Asset')
+    encounter = db.relationship('Encounter', back_populates='assets')
+    asset = db.relationship('Asset')
 
 
 class Encounter(db.Model, FeatherModel):
@@ -72,3 +71,8 @@ class Encounter(db.Model, FeatherModel):
         # check sightings array
         # else look to see if the object is owned by any sighting
         return False
+
+    def add_asset_in_context(self, asset):
+        rel = EncounterAssets(encounter=self, asset=asset)
+        db.session.add(rel)
+        self.assets.append(rel)

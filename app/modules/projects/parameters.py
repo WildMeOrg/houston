@@ -75,7 +75,6 @@ class PatchProjectDetailsParameters(PatchJSONParametersWithPassword):
         super(PatchProjectDetailsParameters, cls).remove(obj, field, value, state)
 
         ret_val = True
-
         # If the field wasn't present anyway, report that as a success
         # A failure is if the user did not have permission to perform the action
         if field == Project.title.key or field == 'owner':
@@ -93,12 +92,11 @@ class PatchProjectDetailsParameters(PatchJSONParametersWithPassword):
                 else:
                     obj.remove_user_in_context(user)
         elif field == 'encounter':
+
             encounter = Encounter.query.get(value)
-            if current_user not in obj.get_members() and not user_is_privileged(
-                current_user
+            if encounter and (
+                current_user in obj.get_members() or user_is_privileged(current_user, obj)
             ):
-                ret_val = False
-            elif encounter:
                 obj.remove_encounter_in_context(encounter)
         return ret_val
 

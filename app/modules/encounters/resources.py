@@ -107,21 +107,18 @@ class Encounters(Resource):
 
         # if we get here, edm has made the encounter, now we create & persist the feather model in houston
 
-        assets = []
-        from app.modules.assets.models import Asset
-
+        # will contain EncounterAssets objects to join to assets (dont load assets themselves)
+        asset_refs = []
         if 'assets' in data and isinstance(data['assets'], list):
+            from app.modules.encounters.models import EncounterAssets
+
             for asset_data in data['assets']:
                 if isinstance(asset_data, dict) and 'guid' in asset_data:
-                    asset = Asset.find(asset_data['guid'])
-                    if asset is None:
-                        # abort(success=False, passed_message='omg no such asset ' + asset_data['guid'], message='Error', code=400)
-                        log.debug(
-                            'Encounter.post had invalid asset guid=%r'
-                            % (asset_data['guid'],)
-                        )
-                    else:
-                        assets.append(asset)
+                    # note: if an invalid asset guid is provided, foreign key contstraint error will be thrown when persisting
+                    asset_ref = EncounterAssets(
+                        encounter_guid=result_data['id'], asset_guid=asset_data['guid']
+                    )
+                    asset_refs.append(asset_ref)
 
         context = api.commit_or_abort(
             db.session, default_error_message='Failed to create a new Encounter'
@@ -139,8 +136,7 @@ class Encounters(Resource):
                 owner_guid=owner_guid,
                 public=pub,
             )
-            for asset in assets:
-                encounter.add_asset_in_context(asset)
+            encounter.assets = asset_refs
             db.session.add(encounter)
         log.debug('Encounter.post created edm/houston guid=%r' % (encounter.guid,))
         rtn = {

@@ -7,22 +7,27 @@ from app.modules.individuals.models import Individual
 from app.modules.users.models import User
 
 
-def _basic_user():
+def _user():
     _user = User(email='test@user', password='testuser', full_name='Test User')
     return _user
 
 
 @pytest.fixture()
+def basic_user():
+    return _user()
+
+
+@pytest.fixture()
 def encounter_a():
     # pylint: disable=unused-argument,invalid-name
-    _encounter = Encounter(owner=_basic_user())
+    _encounter = Encounter(owner=_user())
     return _encounter
 
 
 @pytest.fixture()
 def encounter_b():
     # pylint: disable=unused-argument,invalid-name
-    _encounter = Encounter(owner=_basic_user())
+    _encounter = Encounter(owner=_user())
     return _encounter
 
 

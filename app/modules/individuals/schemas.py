@@ -4,7 +4,6 @@ Serialization schemas for Individuals resources RESTful API
 ----------------------------------------------------
 """
 
-from flask_marshmallow import base_fields
 from flask_restplus_patched import ModelSchema
 
 from .models import Individual
@@ -18,12 +17,8 @@ class BaseIndividualSchema(ModelSchema):
     class Meta:
         # pylint: disable=missing-docstring
         model = Individual
-        fields = (
-            Individual.guid.key,
-        )
-        dump_only = (
-            Individual.guid.key,
-        )
+        fields = (Individual.guid.key,)
+        dump_only = (Individual.guid.key,)
 
 
 class DetailedIndividualSchema(BaseIndividualSchema):

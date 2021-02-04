@@ -7,7 +7,6 @@ RESTful API Individuals resources
 
 import logging
 
-from flask_login import current_user
 from flask_restplus_patched import Resource
 from flask_restplus._http import HTTPStatus
 
@@ -22,7 +21,7 @@ from .models import Individual
 
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
-api = Namespace('individuals', description="Individuals")  # pylint: disable=invalid-name
+api = Namespace('individuals', description='Individuals')  # pylint: disable=invalid-name
 
 
 @api.route('/')
@@ -52,8 +51,7 @@ class Individuals(Resource):
         Create a new instance of Individual.
         """
         context = api.commit_or_abort(
-            db.session,
-            default_error_message="Failed to create a new Individual"
+            db.session, default_error_message='Failed to create a new Individual'
         )
         with context:
             individual = Individual(**args)
@@ -65,7 +63,7 @@ class Individuals(Resource):
 @api.login_required(oauth_scopes=['individuals:read'])
 @api.response(
     code=HTTPStatus.NOT_FOUND,
-    description="Individual not found.",
+    description='Individual not found.',
 )
 @api.resolve_object_by_model(Individual, 'individual')
 class IndividualByID(Resource):
@@ -90,11 +88,12 @@ class IndividualByID(Resource):
         Patch Individual details by ID.
         """
         context = api.commit_or_abort(
-            db.session,
-            default_error_message="Failed to update Individual details."
+            db.session, default_error_message='Failed to update Individual details.'
         )
         with context:
-            parameters.PatchIndividualDetailsParameters.perform_patch(args, obj=individual)
+            parameters.PatchIndividualDetailsParameters.perform_patch(
+                args, obj=individual
+            )
             db.session.merge(individual)
         return individual
 
@@ -107,8 +106,7 @@ class IndividualByID(Resource):
         Delete a Individual by ID.
         """
         context = api.commit_or_abort(
-            db.session,
-            default_error_message="Failed to delete the Individual."
+            db.session, default_error_message='Failed to delete the Individual.'
         )
         with context:
             db.session.delete(individual)

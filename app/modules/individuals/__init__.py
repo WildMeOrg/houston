@@ -13,7 +13,9 @@ def init_app(app, **kwargs):
     Init Individuals module.
     """
     api_v1.add_oauth_scope('individuals:read', 'Provide access to Individuals details')
-    api_v1.add_oauth_scope('individuals:write', 'Provide write access to Individuals details')
+    api_v1.add_oauth_scope(
+        'individuals:write', 'Provide write access to Individuals details'
+    )
 
     # Touch underlying modules
     from . import models, resources  # NOQA

@@ -4,8 +4,6 @@ Individuals database models
 --------------------
 """
 
-from sqlalchemy_utils import Timestamp
-
 from app.extensions import FeatherModel, db
 
 import uuid
@@ -27,3 +25,6 @@ class Individual(db.Model, FeatherModel):
             "title='{self.title}'"
             ')>'.format(class_name=self.__class__.__name__, self=self)
         )
+
+    def get_encounters(self):
+        return self.encounters

@@ -271,8 +271,15 @@ class EncounterByIDComplete(Resource):
         response = current_app.edm.get_encounter_data_dict(encounter.guid)
         # TODO handle non-200 ?
         # assert response.success
-        # import utool as ut
-        # ut.embed()
+        if len(encounter.assets) > 0:
+            from app.modules.assets.schemas import DetailedAssetSchema
+
+            sch = DetailedAssetSchema(many=False, only=('guid', 'filename', 'src'))
+            response['result']['assets'] = []
+            for asset in encounter.get_assets():
+                json, err = sch.dump(asset)
+                response['result']['assets'].append(json)
+
         return response['result']
 
 

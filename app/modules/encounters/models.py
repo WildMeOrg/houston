@@ -72,6 +72,9 @@ class Encounter(db.Model, FeatherModel):
         # else look to see if the object is owned by any sighting
         return False
 
+    def get_assets(self):
+        return [ref.asset for ref in self.assets]
+
     def add_asset_in_context(self, asset):
         rel = EncounterAssets(encounter=self, asset=asset)
         db.session.add(rel)

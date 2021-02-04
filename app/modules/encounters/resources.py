@@ -166,12 +166,31 @@ class EncounterByID(Resource):
             'action': AccessOperation.READ,
         },
     )
-    @api.response(schemas.DetailedEncounterSchema())
     def get(self, encounter):
         """
-        Get Encounter details by ID.
+        Get Encounter full details by ID.
         """
-        return encounter
+
+        if encounter is not None:
+            print('####### found encounter within houston : %s' % (encounter,))
+            # note: should probably _still_ check edm for: stale cache, deletion!
+            #      user.edm_sync(version)
+            # return encounter
+            # return True
+
+        response = current_app.edm.get_encounter_data_dict(encounter.guid)
+        # TODO handle non-200 ?
+        # assert response.success
+        if len(encounter.assets) > 0:
+            from app.modules.assets.schemas import DetailedAssetSchema
+
+            sch = DetailedAssetSchema(many=False, only=('guid', 'filename', 'src'))
+            response['result']['assets'] = []
+            for asset in encounter.get_assets():
+                json, err = sch.dump(asset)
+                response['result']['assets'].append(json)
+
+        return response['result']
 
     @api.permission_required(
         permissions.ObjectAccessPermission,
@@ -243,44 +262,6 @@ class EncounterByID(Resource):
         with context:
             db.session.delete(encounter)
         return None
-
-
-@api.route('/<uuid:encounter_guid>/complete')
-@api.login_required(oauth_scopes=['encounters:read'])
-@api.response(
-    code=HTTPStatus.NOT_FOUND,
-    description='Encounter not found.',
-)
-@api.resolve_object_by_model(Encounter, 'encounter', return_not_found=True)
-class EncounterByIDComplete(Resource):
-
-    # @api.response(schemas.DetailedEncounterSchema())
-    def get(self, encounter):
-        """
-        Get Encounter full details by ID.
-        """
-        encounter, encounter_guids = encounter
-
-        if encounter is not None:
-            print('####### found encounter within houston : %s' % (encounter,))
-            # note: should probably _still_ check edm for: stale cache, deletion!
-            #      user.edm_sync(version)
-            # return encounter
-            # return True
-
-        response = current_app.edm.get_encounter_data_dict(encounter.guid)
-        # TODO handle non-200 ?
-        # assert response.success
-        if len(encounter.assets) > 0:
-            from app.modules.assets.schemas import DetailedAssetSchema
-
-            sch = DetailedAssetSchema(many=False, only=('guid', 'filename', 'src'))
-            response['result']['assets'] = []
-            for asset in encounter.get_assets():
-                json, err = sch.dump(asset)
-                response['result']['assets'].append(json)
-
-        return response['result']
 
 
 def _request_passthrough(target, path, request_func, passthrough_kwargs):

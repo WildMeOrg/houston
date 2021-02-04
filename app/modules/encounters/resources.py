@@ -194,8 +194,9 @@ class EncounterByID(Resource):
             # return True
 
         response = current_app.edm.get_encounter_data_dict(encounter.guid)
-        # TODO handle non-200 ?
-        # assert response.success
+        if not isinstance(response, dict):  # some non-200 thing, incl 404
+            return response
+
         if len(encounter.assets) > 0:
             from app.modules.assets.schemas import DetailedAssetSchema
 

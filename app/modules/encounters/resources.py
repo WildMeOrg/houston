@@ -121,23 +121,36 @@ class Encounters(Resource):
                     asset_refs.append(asset_ref)
 
         context = api.commit_or_abort(
-            db.session, default_error_message='Failed to create a new Encounter'
+            db.session, default_error_message='Failed to create a new houston Encounter'
         )
-        with context:
-            # TODO other houston-based relationships: orgs, projects, etc
-            owner_guid = None
-            pub = True  # legit? public if no owner?
-            if current_user is not None:
-                owner_guid = current_user.guid
-                pub = False
-            encounter = Encounter(
-                guid=result_data['id'],
-                version=result_data.get('version', 2),
-                owner_guid=owner_guid,
-                public=pub,
+        try:
+            with context:
+                # TODO other houston-based relationships: orgs, projects, etc
+                owner_guid = None
+                pub = True  # legit? public if no owner?
+                if current_user is not None:
+                    owner_guid = current_user.guid
+                    pub = False
+                encounter = Encounter(
+                    guid=result_data['id'],
+                    version=result_data.get('version', 2),
+                    owner_guid=owner_guid,
+                    public=pub,
+                )
+                encounter.assets = asset_refs
+                db.session.add(encounter)
+        except Exception as ex:
+            log.error(
+                'Encounter.post FAILED houston feather object creation guid=%r - will attempt to DELETE edm Encounter; (payload %r) ex=%r'
+                % (
+                    encounter.guid,
+                    data,
+                    ex,
+                )
             )
-            encounter.assets = asset_refs
-            db.session.add(encounter)
+            # TODO edm encounter.delete
+            raise ex
+
         log.debug('Encounter.post created edm/houston guid=%r' % (encounter.guid,))
         rtn = {
             'success': True,

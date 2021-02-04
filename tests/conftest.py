@@ -124,10 +124,21 @@ def internal_user(temp_db_instance_helper):
 
 
 @pytest.fixture(scope='session')
-def researcher_user(temp_db_instance_helper):
+def researcher_1(temp_db_instance_helper):
     for _ in temp_db_instance_helper(
         utils.generate_user_instance(
-            email='researcher@localhost',
+            email='researcher1@localhost',
+            is_researcher=True,
+        )
+    ):
+        yield _
+
+
+@pytest.fixture(scope='session')
+def researcher_2(temp_db_instance_helper):
+    for _ in temp_db_instance_helper(
+        utils.generate_user_instance(
+            email='researcher2@localhost',
             is_researcher=True,
         )
     ):
@@ -195,12 +206,6 @@ def user_instance(patch_User_password_scheme):
 
 
 @pytest.fixture()
-def admin_user_instance(patch_User_password_scheme):
-    # pylint: invalid-name
-    return utils.generate_user_instance(is_admin=True)
-
-
-@pytest.fixture()
 def authenticated_user_login(flask_app, user_instance):
     with flask_app.test_request_context('/'):
         login_user(user_instance)
@@ -215,8 +220,8 @@ def anonymous_user_login(flask_app):
 
 
 @pytest.fixture()
-def admin_user_login(flask_app, admin_user_instance):
+def admin_user_login(flask_app, admin_user):
     with flask_app.test_request_context('/'):
-        login_user(admin_user_instance)
+        login_user(admin_user)
         yield current_user
         logout_user()

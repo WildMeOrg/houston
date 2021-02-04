@@ -234,7 +234,10 @@ class ObjectActionRule(DenyAbortMixin, Rule):
         has_permission = False
         project_index = 0
         projects = user.get_projects()
-        # @todo role based access to the project and the objects in it
+        # For MVP, Project ownership/membership is the driving factor for access to data within the project,
+        # not the Role. If Role specific access is later required, it would be added here.
+        # A user may read an object via permission granted via the project. The user may not update or
+        # delete an object through permissions granted via their access to the object through the project.
         if self._action == AccessOperation.READ:
             while not has_permission and project_index < len(projects):
                 project = projects[project_index]
@@ -250,12 +253,7 @@ class ObjectActionRule(DenyAbortMixin, Rule):
                             # @todo should the functionality in encounters.has_read_permission move into rules.py
                             has_permission = encounter.has_read_permission(self._obj)
                 project_index = project_index + 1
-        elif self._action == AccessOperation.WRITE:
-            # only power users can write
-            has_permission = user_is_privileged(user, self._obj)
-        elif self._action == AccessOperation.DELETE:
-            # or delete
-            has_permission = user_is_privileged(user, self._obj)
+
         return has_permission
 
     def _permitted_via_collaboration(self, user):

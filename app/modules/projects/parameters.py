@@ -94,10 +94,12 @@ class PatchProjectDetailsParameters(PatchJSONParametersWithPassword):
                     obj.remove_user_in_context(user)
         elif field == 'encounter':
             encounter = Encounter.query.get(value)
-            if current_user not in obj.members and not user_is_privileged(current_user):
+            if current_user not in obj.get_members() and not user_is_privileged(
+                current_user
+            ):
                 ret_val = False
             elif encounter:
-                obj.remove_encounter_assume_context(encounter)
+                obj.remove_encounter_in_context(encounter)
         return ret_val
 
     @classmethod

@@ -22,7 +22,7 @@ def test_modifying_db_config_by_regular_user(flask_app_client, regular_user, db)
         with flask_app_client.login(regular_user, auth_scopes=('config.houston:write',)):
             data = [
                 test_utils.patch_test_op(regular_user.password_secret),
-                test_utils.patch_add_op('testing-with-db', path='ENV'),
+                test_utils.patch_add_op('ENV', 'testing-with-db'),
             ]
             response = _patch_request(flask_app_client, data)
 
@@ -48,7 +48,7 @@ def test_modifying_db_config_by_admin(flask_app_client, admin_user, db):
         with flask_app_client.login(admin_user, auth_scopes=('config.houston:write',)):
             data = [
                 test_utils.patch_test_op(admin_user.password_secret),
-                test_utils.patch_add_op(new_env, path='ENV'),
+                test_utils.patch_add_op('ENV', new_env),
             ]
             response = _patch_request(flask_app_client, data)
 
@@ -81,7 +81,7 @@ def test_modifying_db_config_by_admin_with_invalid_password_must_fail(
         with flask_app_client.login(admin_user, auth_scopes=('config.houston:write',)):
             data = [
                 test_utils.patch_test_op('invalid_password'),
-                test_utils.patch_add_op(new_env, path='ENV'),
+                test_utils.patch_add_op('ENV', new_env),
             ]
             response = _patch_request(flask_app_client, data)
 
@@ -107,7 +107,7 @@ def test_modifying_db_config_by_admin_with_idempotence(flask_app_client, admin_u
         with flask_app_client.login(admin_user, auth_scopes=('config.houston:write',)):
             data = [
                 test_utils.patch_test_op(admin_user.password_secret),
-                test_utils.patch_add_op(new_env, path='ENV'),
+                test_utils.patch_add_op('ENV', new_env),
             ]
             response = _patch_request(flask_app_client, data)
 
@@ -165,9 +165,9 @@ def test_modifying_db_config_by_admin_with_batch(flask_app_client, admin_user, d
         with flask_app_client.login(admin_user, auth_scopes=('config.houston:write',)):
             data = [
                 test_utils.patch_test_op(admin_user.password_secret),
-                test_utils.patch_add_op(new_env, path='ENV'),
+                test_utils.patch_add_op('ENV', new_env),
                 test_utils.patch_remove_op(path='ENV'),
-                test_utils.patch_add_op(new_env, path='ENV'),
+                test_utils.patch_add_op('ENV', new_env),
             ]
             response = _patch_request(flask_app_client, data)
 
@@ -187,7 +187,7 @@ def test_modifying_nonexistent_db_config_by_admin(flask_app_client, admin_user, 
         with flask_app_client.login(admin_user, auth_scopes=('config.houston:write',)):
             data = [
                 test_utils.patch_test_op(admin_user.password_secret),
-                test_utils.patch_add_op('invalid_config', path='CONFIG_DOES_NOT_EXIST'),
+                test_utils.patch_add_op('CONFIG_DOES_NOT_EXIST', 'invalid_config'),
             ]
             response = _patch_request(flask_app_client, data)
 
@@ -211,7 +211,7 @@ def test_modifying_db_config_by_admin_with_bad_value(flask_app_client, admin_use
         with flask_app_client.login(admin_user, auth_scopes=('config.houston:write',)):
             data = [
                 test_utils.patch_test_op(admin_user.password_secret),
-                test_utils.patch_add_op(None, path='ENV'),
+                test_utils.patch_add_op('ENV', None),
             ]
             response = _patch_request(flask_app_client, data)
 

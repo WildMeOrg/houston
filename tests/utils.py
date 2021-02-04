@@ -200,6 +200,12 @@ def validate_dict_response(response, expected_code, expected_fields):
     assert set(response.json.keys()) >= expected_fields
 
 
+def validate_list_response(response, expected_code):
+    assert response.status_code == expected_code
+    assert response.content_type == 'application/json'
+    assert isinstance(response.json, list)
+
+
 def patch_test_op(value):
     return {
         'op': 'test',
@@ -208,7 +214,7 @@ def patch_test_op(value):
     }
 
 
-def patch_add_op(value, path):
+def patch_add_op(path, value):
     return {
         'op': 'add',
         'path': '/%s' % (path,),

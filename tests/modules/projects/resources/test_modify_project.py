@@ -5,153 +5,117 @@ from tests import utils
 from tests.modules.projects.resources import utils as proj_utils
 
 
-def test_modify_project(db, flask_app_client, admin_user, researcher_user, regular_user):
+def test_modify_project(db, flask_app_client, admin_user, researcher_1, researcher_2):
     # pylint: disable=invalid-name
     from app.modules.projects.models import Project
-
-    # from app.modules.encounters.models import Encounter
+    from app.modules.encounters.models import Encounter
 
     response = proj_utils.create_project(
-        flask_app_client, researcher_user, 'This is a test project, please ignore'
+        flask_app_client, researcher_1, 'This is a test project, please ignore'
     )
-
-    utils.validate_dict_response(response, 200, {'guid', 'title'})
-    assert response.json['title'] == 'This is a test project, please ignore'
-
     project_guid = response.json['guid']
 
     proj = Project.query.get(project_guid)
     assert len(proj.get_members()) == 1
 
     data = [
-        utils.patch_test_op(researcher_user.password_secret),
-        utils.patch_add_op('%s' % regular_user.guid, 'user'),
+        utils.patch_test_op(researcher_1.password_secret),
+        utils.patch_add_op('user', '%s' % researcher_2.guid),
     ]
-    response = proj_utils.patch_project(
-        flask_app_client, project_guid, researcher_user, data
-    )
-    utils.validate_dict_response(response, 200, {'guid', 'title'})
+    proj_utils.patch_project(flask_app_client, project_guid, researcher_1, data)
     assert len(proj.get_members()) == 2
 
     data = [
         utils.patch_test_op(admin_user.password_secret),
-        utils.patch_remove_op('user', '%s' % regular_user.guid),
+        utils.patch_remove_op('user', '%s' % researcher_2.guid),
     ]
-    response = proj_utils.patch_project(flask_app_client, project_guid, admin_user, data)
-
-    utils.validate_dict_response(response, 200, {'guid', 'title'})
+    proj_utils.patch_project(flask_app_client, project_guid, admin_user, data)
     assert len(proj.get_members()) == 1
 
-    # This is not the way to add an encounter but I think we need Jons EDM work to have a decent way to know
-    # what the correct way is
-    # @todo when jon finished EDM sync work
-    # new_encounter = Encounter()
-    # with db.session.begin:
-    #     db.session.add(new_encounter)
-    #
-    # data = [
-    #     utils.patch_test_op(admin_user.password_secret),
-    #     utils.patch_add_op('%s' % new_encounter.guid, 'Encounter',),
-    # ]
-    # response = proj_utils.patch_project(flask_app_client, project_guid, admin_user, data)
-    # utils.validate_dict_response(response, 200, {'guid', 'title'})
+    # Create encounters for testing with
+    new_encounter_1 = Encounter()
+    new_encounter_2 = Encounter()
+    new_encounter_3 = Encounter()
+    with db.session.begin():
+        db.session.add(new_encounter_1)
+        db.session.add(new_encounter_2)
+        db.session.add(new_encounter_3)
 
-    # delete the project
-    with flask_app_client.login(admin_user, auth_scopes=('projects:delete',)):
-        response = flask_app_client.delete('/api/v1/projects/%s' % project_guid)
+    # add them to the project
+    add_encounters = [
+        utils.patch_test_op(researcher_1.password_secret),
+        utils.patch_add_op('encounter', '%s' % new_encounter_1.guid),
+        utils.patch_add_op('encounter', '%s' % new_encounter_2.guid),
+        utils.patch_add_op('encounter', '%s' % new_encounter_3.guid),
+    ]
+    proj_utils.patch_project(flask_app_client, project_guid, researcher_1, add_encounters)
+    assert len(proj.get_encounters()) == 3
 
-    assert response.status_code == 204
-
-
-def test_project_permission(flask_app_client, regular_user, admin_user, researcher_user):
-    response = proj_utils.create_project(
-        flask_app_client, researcher_user, 'This is a test project, please ignore'
+    # remove some of them
+    remove_encounters = [
+        utils.patch_test_op(researcher_1.password_secret),
+        utils.patch_remove_op('encounter', '%s' % new_encounter_1.guid),
+        utils.patch_remove_op('encounter', '%s' % new_encounter_2.guid),
+    ]
+    proj_utils.patch_project(
+        flask_app_client, project_guid, researcher_1, remove_encounters
     )
+    assert len(proj.get_encounters()) == 1
 
-    utils.validate_dict_response(response, 200, {'guid', 'title'})
+    proj_utils.delete_project(flask_app_client, researcher_1, project_guid)
 
+
+def test_owner_permission(flask_app_client, researcher_1, researcher_2):
+    response = proj_utils.create_project(
+        flask_app_client, researcher_1, 'This is a test project, please ignore'
+    )
     project_guid = response.json['guid']
 
     # another user cannot update the title
     data = [
-        utils.patch_test_op(regular_user.password_secret),
-        utils.patch_add_op('Invalid update', 'title'),
+        utils.patch_test_op(researcher_2.password_secret),
+        utils.patch_add_op('title', 'Invalid update'),
     ]
-    response = proj_utils.patch_project(
-        flask_app_client,
-        project_guid,
-        regular_user,
-        data,
-    )
-    utils.validate_dict_response(response, 403, {'status', 'message'})
+    proj_utils.patch_project(flask_app_client, project_guid, researcher_2, data, 403)
 
     # Owner can do that
     data = [
-        utils.patch_test_op(researcher_user.password_secret),
+        utils.patch_test_op(researcher_1.password_secret),
         utils.patch_add_op(
-            'This is an owner modified test project, please ignore', 'title'
+            'title', 'This is an owner modified test project, please ignore'
         ),
     ]
     response = proj_utils.patch_project(
-        flask_app_client,
-        project_guid,
-        researcher_user,
-        data,
+        flask_app_client, project_guid, researcher_1, data
     )
-    utils.validate_dict_response(response, 200, {'guid', 'title'})
     assert (
         response.json['title'] == 'This is an owner modified test project, please ignore'
     )
 
-    # as can admin
-    data = [
-        utils.patch_test_op(admin_user.password_secret),
-        utils.patch_add_op(
-            'This is an admin modified test project, please ignore', 'title'
-        ),
-    ]
-    response = proj_utils.patch_project(
-        flask_app_client,
-        project_guid,
-        admin_user,
-        data,
-    )
-    utils.validate_dict_response(response, 200, {'guid', 'title'})
-    assert (
-        response.json['title'] == 'This is an admin modified test project, please ignore'
-    )
+    # Encounter addition and removal not tested for owner as it's already tested in test_modify_project
 
-    # add regular user to the project
+    # add researcher 2 user to the project
     data = [
-        utils.patch_test_op(researcher_user.password_secret),
-        utils.patch_add_op('%s' % regular_user.guid, 'user'),
+        utils.patch_test_op(researcher_1.password_secret),
+        utils.patch_add_op('user', '%s' % researcher_2.guid),
     ]
-    response = proj_utils.patch_project(
-        flask_app_client, project_guid, researcher_user, data
-    )
-    utils.validate_dict_response(response, 200, {'guid', 'title'})
+    proj_utils.patch_project(flask_app_client, project_guid, researcher_1, data)
 
     # make them the owner
     data = [
-        utils.patch_test_op(researcher_user.password_secret),
-        utils.patch_add_op('%s' % regular_user.guid, 'owner'),
+        utils.patch_test_op(researcher_1.password_secret),
+        utils.patch_add_op('owner', '%s' % researcher_2.guid),
     ]
-    response = proj_utils.patch_project(
-        flask_app_client, project_guid, researcher_user, data
-    )
-    utils.validate_dict_response(response, 200, {'guid', 'title'})
+    proj_utils.patch_project(flask_app_client, project_guid, researcher_1, data)
 
-    # try to delete as temp_user, no longer owner, should fail
+    # try to remove a user as researcher1, no longer owner, should fail
     data = [
-        utils.patch_test_op(researcher_user.password_secret),
-        utils.patch_remove_op('user', '%s' % regular_user.guid),
+        utils.patch_test_op(researcher_1.password_secret),
+        utils.patch_remove_op('user', '%s' % researcher_2.guid),
     ]
-    response = proj_utils.patch_project(
-        flask_app_client, project_guid, researcher_user, data
-    )
-    utils.validate_dict_response(response, 409, {'status', 'message'})
+    proj_utils.patch_project(flask_app_client, project_guid, researcher_1, data, 409)
 
-    # # @todo, This returns a 200, due to the default of True in PatchJSONParameters:perform_patch
+    # @todo, This returns a 200, due to the default of True in PatchJSONParameters:perform_patch
 
     # response = proj_utils.patch_project(
     #     flask_app_client,
@@ -163,14 +127,118 @@ def test_project_permission(flask_app_client, regular_user, admin_user, research
     # # It does at least fail to do anything
     # assert response.json['title'] == 'This is an admin modified test project, please ignore'
 
-    # tempUser also cannot delete the project
-    with flask_app_client.login(researcher_user, auth_scopes=('projects:delete',)):
-        response = flask_app_client.delete('/api/v1/projects/%s' % project_guid)
 
-    utils.validate_dict_response(response, 403, {'status', 'message'})
+def test_member_permission(db, flask_app_client, researcher_1, researcher_2):
+    from app.modules.projects.models import Project
+    from app.modules.encounters.models import Encounter
 
-    # regular_user (owner) can delete it
-    with flask_app_client.login(regular_user, auth_scopes=('projects:delete',)):
-        response = flask_app_client.delete('/api/v1/projects/%s' % project_guid)
+    response = proj_utils.create_project(
+        flask_app_client, researcher_1, 'This is a test project, please ignore'
+    )
+    project_guid = response.json['guid']
 
-    assert response.status_code == 204
+    # add researcher 2 user to the project
+    data = [
+        utils.patch_test_op(researcher_1.password_secret),
+        utils.patch_add_op('user', '%s' % researcher_2.guid),
+    ]
+    proj_utils.patch_project(flask_app_client, project_guid, researcher_1, data)
+
+    proj = Project.query.get(project_guid)
+    assert len(proj.get_encounters()) == 0
+
+    # Create encounters for testing with
+    new_encounter_1 = Encounter()
+    new_encounter_2 = Encounter()
+    new_encounter_3 = Encounter()
+    with db.session.begin():
+        db.session.add(new_encounter_1)
+        db.session.add(new_encounter_2)
+        db.session.add(new_encounter_3)
+
+    # add them to the project
+    add_encounters = [
+        utils.patch_test_op(researcher_2.password_secret),
+        utils.patch_add_op('encounter', '%s' % new_encounter_1.guid),
+        utils.patch_add_op('encounter', '%s' % new_encounter_2.guid),
+        utils.patch_add_op('encounter', '%s' % new_encounter_3.guid),
+    ]
+    proj_utils.patch_project(flask_app_client, project_guid, researcher_2, add_encounters)
+    assert len(proj.get_encounters()) == 3
+
+    # remove some of them
+    remove_encounters = [
+        utils.patch_test_op(researcher_2.password_secret),
+        utils.patch_remove_op('encounter', '%s' % new_encounter_1.guid),
+        utils.patch_remove_op('encounter', '%s' % new_encounter_2.guid),
+    ]
+    proj_utils.patch_project(
+        flask_app_client, project_guid, researcher_2, remove_encounters
+    )
+    assert len(proj.get_encounters()) == 1
+
+    # Member should not be able to remove project
+    proj_utils.delete_project(flask_app_client, researcher_2, project_guid, 403)
+    # but owner should
+    proj_utils.delete_project(flask_app_client, researcher_1, project_guid)
+
+
+def test_non_member_permission(db, flask_app_client, researcher_1, researcher_2):
+    from app.modules.projects.models import Project
+    from app.modules.encounters.models import Encounter
+
+    response = proj_utils.create_project(
+        flask_app_client, researcher_1, 'This is a test project, please ignore'
+    )
+    project_guid = response.json['guid']
+
+    # Create encounters for testing with
+    new_encounter_1 = Encounter()
+    new_encounter_2 = Encounter()
+    new_encounter_3 = Encounter()
+    with db.session.begin():
+        db.session.add(new_encounter_1)
+        db.session.add(new_encounter_2)
+        db.session.add(new_encounter_3)
+
+    # try to add them to the project
+    add_as_researcher_2 = [
+        utils.patch_test_op(researcher_2.password_secret),
+        utils.patch_add_op('encounter', '%s' % new_encounter_1.guid),
+        utils.patch_add_op('encounter', '%s' % new_encounter_2.guid),
+        utils.patch_add_op('encounter', '%s' % new_encounter_3.guid),
+    ]
+    proj_utils.patch_project(
+        flask_app_client, project_guid, researcher_2, add_as_researcher_2, 403
+    )
+    proj = Project.query.get(project_guid)
+    assert len(proj.get_encounters()) == 0
+
+    # add them as owner
+    add_as_researcher_1 = [
+        utils.patch_test_op(researcher_1.password_secret),
+        utils.patch_add_op('encounter', '%s' % new_encounter_1.guid),
+        utils.patch_add_op('encounter', '%s' % new_encounter_2.guid),
+        utils.patch_add_op('encounter', '%s' % new_encounter_3.guid),
+    ]
+    proj_utils.patch_project(
+        flask_app_client, project_guid, researcher_1, add_as_researcher_1
+    )
+    proj = Project.query.get(project_guid)
+    assert len(proj.get_encounters()) == 3
+
+    # try to remove some of them
+    remove_encounters = [
+        utils.patch_test_op(researcher_1.password_secret),
+        utils.patch_remove_op('encounter', '%s' % new_encounter_1.guid),
+        utils.patch_remove_op('encounter', '%s' % new_encounter_2.guid),
+    ]
+    proj_utils.patch_project(
+        flask_app_client, project_guid, researcher_1, remove_encounters, 403
+    )
+    assert len(proj.get_encounters()) == 1
+
+    # non Member should not be able to remove project
+    proj_utils.delete_project(flask_app_client, researcher_2, project_guid, 403)
+    # but owner should
+    proj_utils.delete_project(flask_app_client, researcher_1, project_guid)

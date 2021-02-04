@@ -114,7 +114,13 @@ class Encounters(Resource):
             for asset_data in data['assets']:
                 if isinstance(asset_data, dict) and 'guid' in asset_data:
                     asset = Asset.find(asset_data['guid'])
-                    if asset is not None:
+                    if asset is None:
+                        # abort(success=False, passed_message='omg no such asset ' + asset_data['guid'], message='Error', code=400)
+                        log.debug(
+                            'Encounter.post had invalid asset guid=%r'
+                            % (asset_data['guid'],)
+                        )
+                    else:
                         assets.append(asset)
 
         context = api.commit_or_abort(

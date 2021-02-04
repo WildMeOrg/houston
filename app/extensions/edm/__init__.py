@@ -357,11 +357,12 @@ class EDMManager(EDMManagerEndpointMixin, EDMManagerUserMixin, EDMManagerEncount
                 response = response.json()
         else:
             log.warning(
-                'Non-OK response on %r %r: %r'
+                'Non-OK (%r) response on %r %r: %r'
                 % (
+                    response.status_code,
                     method,
                     endpoint,
-                    response.status_code,
+                    response.content,
                 )
             )
 

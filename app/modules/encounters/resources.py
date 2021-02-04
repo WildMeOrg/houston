@@ -253,29 +253,20 @@ class EncounterByID(Resource):
         response = _request_passthrough(target, path, request_func, passthrough_kwargs)
 
         response_data = None
-        result_data = None
         if response.ok:
             response_data = response.json()
-            result_data = response_data.get('result', None)
 
-        if (
-            not response.ok
-            or not response_data.get('success', False)
-            or result_data is None
-        ):
-            log.warning('Encounter.delete %r failed' % (encounter.guid))
-            passed_message = {'message': {'key': 'error'}}
-            if response_data is not None and 'message' in response_data:
-                passed_message = response_data['message']
-            abort(success=False, passed_message=passed_message, message='Error', code=400)
+        if not response.ok or not response_data.get('success', False):
+            log.warning(
+                'Encounter.delete %r failed: %r' % (encounter.guid, response_data)
+            )
+            abort(
+                success=False, passed_message='Delete failed', message='Error', code=400
+            )
 
         # if we get here, edm has deleted the encounter, now houston feather
-        context = api.commit_or_abort(
-            db.session, default_error_message='Failed to delete the Encounter.'
-        )
         # TODO handle failure of feather deletion (when edm successful!)  out-of-sync == bad
-        with context:
-            db.session.delete(encounter)
+        encounter.delete()
         return None
 
 

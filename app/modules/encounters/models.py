@@ -79,3 +79,9 @@ class Encounter(db.Model, FeatherModel):
         rel = EncounterAssets(encounter=self, asset=asset)
         db.session.add(rel)
         self.assets.append(rel)
+
+    def delete(self):
+        with db.session.begin():
+            while self.assets:
+                db.session.delete(self.assets.pop())
+            db.session.delete(self)

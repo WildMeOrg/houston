@@ -61,9 +61,11 @@ class Encounter(db.Model, FeatherModel):
     def get_sighting(self):
         return self.sighting
 
+    # not going to check for ownership by User.get_public_user() because:
+    #  a) this allows for other-user-owned data to be toggled to public
+    #  b) allows for us to _disallow_ public access to public-user-owned data
     def is_public(self):
-        if self.public is True or self.owner is None:
-            return True
+        return self.public
 
     def has_read_permission(self, obj):
         # todo, check if the encounter owns the sighting once Colin's sightings code is merged in

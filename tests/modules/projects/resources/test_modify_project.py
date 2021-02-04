@@ -229,14 +229,14 @@ def test_non_member_permission(db, flask_app_client, researcher_1, researcher_2)
 
     # try to remove some of them
     remove_encounters = [
-        utils.patch_test_op(researcher_1.password_secret),
+        utils.patch_test_op(researcher_2.password_secret),
         utils.patch_remove_op('encounter', '%s' % new_encounter_1.guid),
         utils.patch_remove_op('encounter', '%s' % new_encounter_2.guid),
     ]
     proj_utils.patch_project(
-        flask_app_client, project_guid, researcher_1, remove_encounters, 403
+        flask_app_client, project_guid, researcher_2, remove_encounters, 403
     )
-    assert len(proj.get_encounters()) == 1
+    assert len(proj.get_encounters()) == 3
 
     # non Member should not be able to remove project
     proj_utils.delete_project(flask_app_client, researcher_2, project_guid, 403)

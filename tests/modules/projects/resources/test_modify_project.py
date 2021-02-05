@@ -65,6 +65,74 @@ def test_modify_project(db, flask_app_client, admin_user, researcher_1, research
     proj_utils.delete_project(flask_app_client, researcher_1, project_guid)
 
 
+def test_invalid_encounters(
+    db,
+    flask_app_client,
+    admin_user,
+    researcher_1,
+    researcher_2,
+    test_empty_submission_uuid,
+):
+    # pylint: disable=invalid-name
+    from app.modules.projects.models import Project
+    from app.modules.encounters.models import Encounter
+
+    response = proj_utils.create_project(
+        flask_app_client, researcher_1, 'This is a test project, please ignore'
+    )
+    project_guid = response.json['guid']
+
+    proj = Project.query.get(project_guid)
+
+    # Create encounters for testing with
+    new_encounter_1 = Encounter()
+    new_encounter_2 = Encounter()
+    new_encounter_3 = Encounter()
+    with db.session.begin():
+        db.session.add(new_encounter_1)
+        db.session.add(new_encounter_2)
+        db.session.add(new_encounter_3)
+
+    # add some of them to the project
+    add_encounters = [
+        utils.patch_test_op(researcher_1.password_secret),
+        utils.patch_add_op('encounter', '%s' % new_encounter_1.guid),
+        utils.patch_add_op('encounter', '%s' % new_encounter_2.guid),
+    ]
+    proj_utils.patch_project(flask_app_client, project_guid, researcher_1, add_encounters)
+    assert len(proj.get_encounters()) == 2
+
+    # Try adding a garbage guid
+    add_invalid = [
+        utils.patch_test_op(researcher_1.password_secret),
+        utils.patch_add_op('encounter', '%s' % test_empty_submission_uuid),
+    ]
+    proj_utils.patch_project(
+        flask_app_client, project_guid, researcher_1, add_invalid, 409
+    )
+    assert len(proj.get_encounters()) == 2
+
+    # remove one not in the project
+    remove_not_present = [
+        utils.patch_test_op(researcher_1.password_secret),
+        utils.patch_remove_op('encounter', '%s' % new_encounter_3.guid),
+    ]
+    # Expect this to "succeed" as the UUID is not part of the project as was requested
+    proj_utils.patch_project(
+        flask_app_client, project_guid, researcher_1, remove_not_present
+    )
+    assert len(proj.get_encounters()) == 2
+
+    # remove garbage guid
+    remove_invalid = [
+        utils.patch_test_op(researcher_1.password_secret),
+        utils.patch_remove_op('encounter', '%s' % test_empty_submission_uuid),
+    ]
+    proj_utils.patch_project(flask_app_client, project_guid, researcher_1, remove_invalid)
+    assert len(proj.get_encounters()) == 2
+    proj_utils.delete_project(flask_app_client, researcher_1, project_guid)
+
+
 def test_owner_permission(flask_app_client, researcher_1, researcher_2):
     response = proj_utils.create_project(
         flask_app_client, researcher_1, 'This is a test project, please ignore'

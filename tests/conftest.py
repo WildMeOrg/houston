@@ -225,3 +225,11 @@ def admin_user_login(flask_app, admin_user):
         login_user(admin_user)
         yield current_user
         logout_user()
+
+
+@pytest.fixture()
+def researcher_1_login(flask_app, researcher_1):
+    with flask_app.test_request_context('/'):
+        login_user(researcher_1)
+        yield current_user
+        logout_user()

@@ -5,7 +5,9 @@ from tests import utils
 from tests.modules.projects.resources import utils as proj_utils
 
 
+
 def test_modify_project(db, flask_app_client, admin_user, researcher_1, researcher_2):
+
     # pylint: disable=invalid-name
     from app.modules.projects.models import Project
     from app.modules.encounters.models import Encounter

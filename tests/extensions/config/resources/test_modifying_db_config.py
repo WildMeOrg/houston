@@ -38,16 +38,16 @@ def test_modifying_db_config_by_regular_user(flask_app_client, regular_user, db)
         utils.delete_all_houston_configs(db)
 
 
-def test_modifying_db_config_by_admin(flask_app_client, admin_user, db):
+def test_modifying_db_config_by_admin(flask_app_client, staff_user, db):
     # pylint: disable=invalid-name
     try:
         utils.get_and_check_houston_configs()  # Ensure an empty database of existing configs
 
         new_env = 'testing-with-db'
 
-        with flask_app_client.login(admin_user, auth_scopes=('config.houston:write',)):
+        with flask_app_client.login(staff_user, auth_scopes=('config.houston:write',)):
             data = [
-                test_utils.patch_test_op(admin_user.password_secret),
+                test_utils.patch_test_op(staff_user.password_secret),
                 test_utils.patch_add_op('ENV', new_env),
             ]
             response = _patch_request(flask_app_client, data)
@@ -56,7 +56,7 @@ def test_modifying_db_config_by_admin(flask_app_client, admin_user, db):
             utils.get_and_check_houston_configs(key='ENV', value=new_env)
 
             data = [
-                test_utils.patch_test_op(admin_user.password_secret),
+                test_utils.patch_test_op(staff_user.password_secret),
                 test_utils.patch_remove_op(path='ENV'),
             ]
             response = _patch_request(flask_app_client, data)
@@ -70,7 +70,7 @@ def test_modifying_db_config_by_admin(flask_app_client, admin_user, db):
 
 
 def test_modifying_db_config_by_admin_with_invalid_password_must_fail(
-    flask_app_client, admin_user, db
+    flask_app_client, staff_user, db
 ):
     # pylint: disable=invalid-name
     try:
@@ -78,7 +78,7 @@ def test_modifying_db_config_by_admin_with_invalid_password_must_fail(
 
         new_env = 'testing-with-db'
 
-        with flask_app_client.login(admin_user, auth_scopes=('config.houston:write',)):
+        with flask_app_client.login(staff_user, auth_scopes=('config.houston:write',)):
             data = [
                 test_utils.patch_test_op('invalid_password'),
                 test_utils.patch_add_op('ENV', new_env),
@@ -97,16 +97,16 @@ def test_modifying_db_config_by_admin_with_invalid_password_must_fail(
         utils.delete_all_houston_configs(db)
 
 
-def test_modifying_db_config_by_admin_with_idempotence(flask_app_client, admin_user, db):
+def test_modifying_db_config_by_admin_with_idempotence(flask_app_client, staff_user, db):
     # pylint: disable=invalid-name
     try:
         utils.get_and_check_houston_configs()  # Ensure an empty database of existing configs
 
         new_env = 'testing-with-db'
 
-        with flask_app_client.login(admin_user, auth_scopes=('config.houston:write',)):
+        with flask_app_client.login(staff_user, auth_scopes=('config.houston:write',)):
             data = [
-                test_utils.patch_test_op(admin_user.password_secret),
+                test_utils.patch_test_op(staff_user.password_secret),
                 test_utils.patch_add_op('ENV', new_env),
             ]
             response = _patch_request(flask_app_client, data)
@@ -128,7 +128,7 @@ def test_modifying_db_config_by_admin_with_idempotence(flask_app_client, admin_u
             utils.get_and_check_houston_configs(key='ENV', value=new_env)
 
             data = [
-                test_utils.patch_test_op(admin_user.password_secret),
+                test_utils.patch_test_op(staff_user.password_secret),
                 test_utils.patch_remove_op(path='ENV'),
             ]
             response = _patch_request(flask_app_client, data)
@@ -155,16 +155,16 @@ def test_modifying_db_config_by_admin_with_idempotence(flask_app_client, admin_u
         utils.delete_all_houston_configs(db)
 
 
-def test_modifying_db_config_by_admin_with_batch(flask_app_client, admin_user, db):
+def test_modifying_db_config_by_admin_with_batch(flask_app_client, staff_user, db):
     # pylint: disable=invalid-name
     try:
         utils.get_and_check_houston_configs()  # Ensure an empty database of existing configs
 
         new_env = 'testing-with-db'
 
-        with flask_app_client.login(admin_user, auth_scopes=('config.houston:write',)):
+        with flask_app_client.login(staff_user, auth_scopes=('config.houston:write',)):
             data = [
-                test_utils.patch_test_op(admin_user.password_secret),
+                test_utils.patch_test_op(staff_user.password_secret),
                 test_utils.patch_add_op('ENV', new_env),
                 test_utils.patch_remove_op(path='ENV'),
                 test_utils.patch_add_op('ENV', new_env),
@@ -179,14 +179,14 @@ def test_modifying_db_config_by_admin_with_batch(flask_app_client, admin_user, d
         utils.delete_all_houston_configs(db)
 
 
-def test_modifying_nonexistent_db_config_by_admin(flask_app_client, admin_user, db):
+def test_modifying_nonexistent_db_config_by_admin(flask_app_client, staff_user, db):
     # pylint: disable=invalid-name
     try:
         utils.get_and_check_houston_configs()  # Ensure an empty database of existing configs
 
-        with flask_app_client.login(admin_user, auth_scopes=('config.houston:write',)):
+        with flask_app_client.login(staff_user, auth_scopes=('config.houston:write',)):
             data = [
-                test_utils.patch_test_op(admin_user.password_secret),
+                test_utils.patch_test_op(staff_user.password_secret),
                 test_utils.patch_add_op('CONFIG_DOES_NOT_EXIST', 'invalid_config'),
             ]
             response = _patch_request(flask_app_client, data)
@@ -203,14 +203,14 @@ def test_modifying_nonexistent_db_config_by_admin(flask_app_client, admin_user, 
         utils.delete_all_houston_configs(db)
 
 
-def test_modifying_db_config_by_admin_with_bad_value(flask_app_client, admin_user, db):
+def test_modifying_db_config_by_admin_with_bad_value(flask_app_client, staff_user, db):
     # pylint: disable=invalid-name
     try:
         utils.get_and_check_houston_configs()  # Ensure an empty database of existing configs
 
-        with flask_app_client.login(admin_user, auth_scopes=('config.houston:write',)):
+        with flask_app_client.login(staff_user, auth_scopes=('config.houston:write',)):
             data = [
-                test_utils.patch_test_op(admin_user.password_secret),
+                test_utils.patch_test_op(staff_user.password_secret),
                 test_utils.patch_add_op('ENV', None),
             ]
             response = _patch_request(flask_app_client, data)

@@ -4,7 +4,7 @@
 from tests.modules.projects.resources import utils as proj_utils
 
 
-def test_create_and_delete_project(flask_app_client, researcher_1):
+def test_create_and_delete_project(flask_app_client, staff_user, researcher_1):
     # pylint: disable=invalid-name
     from app.modules.projects.models import Project
 

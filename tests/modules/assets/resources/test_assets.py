@@ -1,17 +1,16 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=missing-docstring
 import hashlib
-from tests.utils import clone_submission
+from tests import utils
 
 
 def test_find_asset(
     flask_app_client,
     regular_user,
-    db,
     test_clone_submission_data,
 ):
     # Clone the known submission so that the asset data is in the database
-    clone = clone_submission(
+    clone = utils.clone_submission(
         flask_app_client,
         regular_user,
         test_clone_submission_data['submission_uuid'],
@@ -54,7 +53,7 @@ def test_find_deleted_asset(
     test_clone_submission_data,
 ):
     # Clone the known submission so that the asset data is in the database
-    clone = clone_submission(
+    clone = utils.clone_submission(
         flask_app_client,
         regular_user,
         test_clone_submission_data['submission_uuid'],
@@ -101,7 +100,7 @@ def test_user_asset_permissions(
     test_clone_submission_data,
 ):
     # Clone the known submission so that the asset data is in the database
-    clone = clone_submission(
+    clone = utils.clone_submission(
         flask_app_client,
         regular_user,
         test_clone_submission_data['submission_uuid'],
@@ -124,15 +123,14 @@ def test_user_asset_permissions(
 
 def test_read_all_assets(
     flask_app_client,
-    regular_user,
     admin_user,
-    db,
+    researcher_user,
     test_clone_submission_data,
 ):
     # Clone the known submission so that the asset data is in the database
-    clone = clone_submission(
+    clone = utils.clone_submission(
         flask_app_client,
-        regular_user,
+        researcher_user,
         test_clone_submission_data['submission_uuid'],
         later_usage=True,
     )
@@ -140,20 +138,22 @@ def test_read_all_assets(
     try:
         with flask_app_client.login(admin_user, auth_scopes=('assets:read',)):
             admin_response = flask_app_client.get('/api/v1/assets/')
-        with flask_app_client.login(regular_user, auth_scopes=('assets:read',)):
-            regular_response = flask_app_client.get('/api/v1/assets/')
+        with flask_app_client.login(researcher_user, auth_scopes=('assets:read',)):
+            researcher_response = flask_app_client.get('/api/v1/assets/')
 
-        assert admin_response.status_code == 200
-        assert admin_response.content_type == 'application/json'
-        assert len(admin_response.json) == 2
+        assert researcher_response.status_code == 200
+        assert researcher_response.content_type == 'application/json'
+        assert len(researcher_response.json) == 2
         # both of these lists should be lexical order
         assert (
-            admin_response.json[0]['guid'] == test_clone_submission_data['asset_uuids'][0]
+            researcher_response.json[0]['guid']
+            == test_clone_submission_data['asset_uuids'][0]
         )
         assert (
-            admin_response.json[1]['guid'] == test_clone_submission_data['asset_uuids'][1]
+            researcher_response.json[1]['guid']
+            == test_clone_submission_data['asset_uuids'][1]
         )
-        assert regular_response.status_code == 403
+        utils.validate_dict_response(admin_response, 403, {'status', 'message'})
 
     except Exception as ex:
         raise ex

@@ -27,7 +27,7 @@ class PatchProjectDetailsParameters(PatchJSONParametersWithPassword):
 
     @classmethod
     def owner_or_privileged(cls, user, obj):
-        return user == obj.owner or user_is_privileged(user, obj)
+        return user == obj.owner or user_is_privileged(user)
 
     @classmethod
     def add(cls, obj, field, value, state):
@@ -60,7 +60,7 @@ class PatchProjectDetailsParameters(PatchJSONParametersWithPassword):
         elif field == 'encounter':
             encounter = Encounter.query.get(value)
             if encounter and (
-                current_user in obj.get_members() or user_is_privileged(current_user, obj)
+                current_user in obj.get_members() or user_is_privileged(current_user)
             ):
                 obj.add_encounter_in_context(encounter)
                 ret_val = True

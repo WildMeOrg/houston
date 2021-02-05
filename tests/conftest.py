@@ -103,6 +103,17 @@ def admin_user(temp_db_instance_helper):
 
 
 @pytest.fixture(scope='session')
+def staff_user(temp_db_instance_helper):
+    for _ in temp_db_instance_helper(
+        utils.generate_user_instance(
+            email='staff@localhost',
+            is_staff=True,
+        )
+    ):
+        yield _
+
+
+@pytest.fixture(scope='session')
 def regular_user(temp_db_instance_helper):
     for _ in temp_db_instance_helper(
         utils.generate_user_instance(
@@ -233,3 +244,17 @@ def researcher_1_login(flask_app, researcher_1):
         login_user(researcher_1)
         yield current_user
         logout_user()
+
+
+@pytest.fixture()
+def public_encounter():
+    from app.modules.encounters.models import Encounter
+
+    return Encounter(public=True)
+
+
+@pytest.fixture()
+def owned_encounter(temp_user):
+    from app.modules.encounters.models import Encounter
+
+    return Encounter(owner_guid=temp_user.guid, owner=temp_user)

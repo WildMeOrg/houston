@@ -264,20 +264,35 @@ def test_ObjectAccessPermission_authenticated_user(authenticated_user_login):
     validate_cannot_delete_object(obj)
 
 
-def test_ObjectAccessPermission_admin_user(admin_user_login):
+def test_ObjectAccessPermission_admin_user(
+    admin_user_login, temp_user, public_encounter, owned_encounter
+):
     # pylint: disable=unused-argument
-    obj = Mock()
-    obj.is_public = lambda: False
 
-    # Admin user should be able to do what they like
-    validate_can_read_object(obj)
-    validate_can_write_object(obj)
-    validate_can_delete_object(obj)
+    # obj = Mock()
+    # obj.is_public = lambda: False
+    #
+    # # Admin user should not be able to do what they like
+    # validate_cannot_read_object(obj)
+    # validate_cannot_write_object(obj)
+    # validate_cannot_delete_object(obj)
+    #
+    # obj.is_public = lambda: True
+    # validate_can_read_object(obj)
+    # validate_cannot_write_object(obj)
+    # validate_cannot_delete_object(obj)
+    #
+    # validate_can_read_object(temp_user)
+    # validate_can_write_object(temp_user)
+    # validate_can_delete_object(temp_user)
+    #
+    # validate_can_read_object(public_encounter)
+    # validate_cannot_write_object(public_encounter)
+    # validate_cannot_delete_object(public_encounter)
 
-    obj.is_public = lambda: True
-    validate_can_read_object(obj)
-    validate_can_write_object(obj)
-    validate_can_delete_object(obj)
+    validate_cannot_read_object(owned_encounter)
+    validate_cannot_write_object(owned_encounter)
+    validate_cannot_delete_object(owned_encounter)
 
 
 def test_ModuleAccessPermission_anonymous_user(anonymous_user_login):
@@ -310,8 +325,7 @@ def test_ModuleAccessPermission_authenticated_user(authenticated_user_login):
     validate_cannot_write_module(NotARealClass)
     validate_cannot_delete_module(NotARealClass)
 
-    # but can they write users & submissions,
-    # @todo, is this correct
+    # but can they write (create) users & (upload) submissions,
     validate_cannot_read_module(User)
     validate_can_write_module(User)
     validate_cannot_delete_module(User)
@@ -323,7 +337,20 @@ def test_ModuleAccessPermission_authenticated_user(authenticated_user_login):
 
 def test_ModuleAccessPermission_admin_user(admin_user_login):
     # pylint: disable=unused-argument
-    # Admin users can do what they like
-    validate_can_read_module(NotARealClass)
-    validate_can_write_module(NotARealClass)
-    validate_can_delete_module(NotARealClass)
+    from app.modules.users.models import User
+    from app.modules.submissions.models import Submission
+
+    # Admin users cannot do what they like
+    validate_cannot_read_module(NotARealClass)
+    validate_cannot_write_module(NotARealClass)
+    validate_cannot_delete_module(NotARealClass)
+
+    # Has full access to users but can't delete the module
+    validate_can_read_module(User)
+    validate_can_write_module(User)
+    validate_cannot_delete_module(User)
+
+    # But not Data, other than create submission like everyone else
+    validate_cannot_read_module(Submission)
+    validate_can_write_module(Submission)
+    validate_cannot_delete_module(Submission)

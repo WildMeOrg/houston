@@ -269,26 +269,26 @@ def test_ObjectAccessPermission_admin_user(
 ):
     # pylint: disable=unused-argument
 
-    # obj = Mock()
-    # obj.is_public = lambda: False
-    #
-    # # Admin user should not be able to do what they like
-    # validate_cannot_read_object(obj)
-    # validate_cannot_write_object(obj)
-    # validate_cannot_delete_object(obj)
-    #
-    # obj.is_public = lambda: True
-    # validate_can_read_object(obj)
-    # validate_cannot_write_object(obj)
-    # validate_cannot_delete_object(obj)
-    #
-    # validate_can_read_object(temp_user)
-    # validate_can_write_object(temp_user)
-    # validate_can_delete_object(temp_user)
-    #
-    # validate_can_read_object(public_encounter)
-    # validate_cannot_write_object(public_encounter)
-    # validate_cannot_delete_object(public_encounter)
+    obj = Mock()
+    obj.is_public = lambda: False
+
+    # Admin user should not be able to do what they like
+    validate_cannot_read_object(obj)
+    validate_cannot_write_object(obj)
+    validate_cannot_delete_object(obj)
+
+    obj.is_public = lambda: True
+    validate_can_read_object(obj)
+    validate_cannot_write_object(obj)
+    validate_cannot_delete_object(obj)
+
+    validate_can_read_object(temp_user)
+    validate_can_write_object(temp_user)
+    validate_can_delete_object(temp_user)
+
+    validate_can_read_object(public_encounter)
+    validate_cannot_write_object(public_encounter)
+    validate_cannot_delete_object(public_encounter)
 
     validate_cannot_read_object(owned_encounter)
     validate_cannot_write_object(owned_encounter)

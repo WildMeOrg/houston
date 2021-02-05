@@ -86,7 +86,7 @@ class IndividualByID(Resource):
     """
 
     @api.permission_required(
-        permissions.ModuleAccessPermission,
+        permissions.ObjectAccessPermission,
         kwargs_on_request=lambda kwargs: {
             'module': Individual,
             'action': AccessOperation.READ,

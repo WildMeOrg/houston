@@ -145,6 +145,19 @@ def clone_submission(
     return clone
 
 
+def generate_encounter_instance(user_email=None, user_password=None, user_full_name=None):
+    """
+    Returns:
+        encounter_instance (Encounter) - a not committed to DB instance of a Encounter model.
+    """
+    user = generate_user_instance(
+        email=user_email, password=user_password, full_name=user_full_name
+    )
+    from app.modules.encounters.models import Encounter
+
+    return Encounter(owner=user)
+
+
 def generate_user_instance(
     user_guid=None,
     email=None,

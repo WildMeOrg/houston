@@ -176,6 +176,28 @@ def temp_user(temp_db_instance_helper):
 
 
 @pytest.fixture(scope='session')
+def encounter_1():
+    yield utils.generate_encounter_instance(
+        user_email='test1@user', user_password='testuser1', user_full_name='Test User 1'
+    )
+
+
+@pytest.fixture(scope='session')
+def encounter_2():
+    yield utils.generate_encounter_instance(
+        user_email='test2@user', user_password='testuser2', user_full_name='Test User 2'
+    )
+
+
+@pytest.fixture()
+def empty_individual():
+    from app.modules.individuals.models import Individual
+
+    _individual = Individual()
+    return _individual
+
+
+@pytest.fixture(scope='session')
 def test_submission_uuid(flask_app):
     return uuid.UUID('ce91ad6e-3cc9-48e8-a4f0-ac74f55dfbf0')
 

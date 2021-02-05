@@ -3,40 +3,42 @@
 
 
 def test_individual_add_remove_retrieve_encounters(
-    encounter_a, encounter_b, empty_individual
+    encounter_1, encounter_2, empty_individual
 ):
 
     assert len(empty_individual.encounters) == 0
 
-    empty_individual.encounters.append(encounter_a)
+    empty_individual.encounters.append(encounter_1)
 
     assert len(empty_individual.encounters) == 1
 
-    empty_individual.encounters.append(encounter_b)
+    empty_individual.encounters.append(encounter_2)
 
     assert len(empty_individual.encounters) == 2
     assert len(empty_individual.get_encounters()) == 2
 
-    assert encounter_a.individual is empty_individual
+    assert encounter_1.individual is empty_individual
 
-    assert encounter_b.individual is empty_individual
+    assert encounter_2.individual is empty_individual
 
-    empty_individual.encounters.remove(encounter_b)
+    empty_individual.encounters.remove(encounter_2)
 
     assert len(empty_individual.encounters) == 1
     assert len(empty_individual.get_encounters()) == 1
 
 
-def test_individual_ownership(encounter_a, encounter_b, empty_individual):
-    empty_individual.encounters.append(encounter_a)
+def test_individual_ownership(encounter_1, encounter_2, empty_individual):
+    empty_individual.encounters.append(encounter_1)
 
     from app.modules.users.models import User
 
-    new_owner = User(email='test2@user', password='testuser', full_name='Test User 2')
+    new_owner = User(
+        email='new_owner@user', password='owneruser', full_name='Test User 2'
+    )
 
     assert not new_owner.owns_object(empty_individual)
 
-    encounter_b.owner = new_owner
-    empty_individual.encounters.append(encounter_b)
+    encounter_2.owner = new_owner
+    empty_individual.encounters.append(encounter_2)
 
     assert new_owner.owns_object(empty_individual)

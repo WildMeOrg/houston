@@ -38,5 +38,6 @@ RUN cd ${INSTALL_PATH} \
  && chown -R nobody .
 
 USER nobody
+EXPOSE 5000
 
 CMD ["virtualenv/houston3.7/bin/invoke", "app.run", "--host", "0.0.0.0" ]

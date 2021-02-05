@@ -14,7 +14,7 @@ from app.extensions import db
 from app.extensions.api import Namespace
 from app.extensions.api.parameters import PaginationParameters
 from app.modules.users import permissions
-
+from app.modules.users.permissions.types import AccessOperation
 
 from . import parameters, schemas
 from .models import Individual
@@ -31,6 +31,13 @@ class Individuals(Resource):
     Manipulations with Individuals.
     """
 
+    @api.permission_required(
+        permissions.ModuleAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'module': Individual,
+            'action': AccessOperation.READ,
+        },
+    )
     @api.parameters(PaginationParameters())
     @api.response(schemas.BaseIndividualSchema(many=True))
     def get(self, args):
@@ -42,6 +49,13 @@ class Individuals(Resource):
         """
         return Individual.query.offset(args['offset']).limit(args['limit'])
 
+    @api.permission_required(
+        permissions.ObjectAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'obj': kwargs['individual'],
+            'action': AccessOperation.WRITE,
+        },
+    )
     @api.login_required(oauth_scopes=['individuals:write'])
     @api.parameters(parameters.CreateIndividualParameters())
     @api.response(schemas.DetailedIndividualSchema())
@@ -71,6 +85,13 @@ class IndividualByID(Resource):
     Manipulations with a specific Individual.
     """
 
+    @api.permission_required(
+        permissions.ModuleAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'module': Individual,
+            'action': AccessOperation.READ,
+        },
+    )
     @api.response(schemas.DetailedIndividualSchema())
     def get(self, individual):
         """
@@ -78,8 +99,14 @@ class IndividualByID(Resource):
         """
         return individual
 
+    @api.permission_required(
+        permissions.ObjectAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'obj': kwargs['individual'],
+            'action': AccessOperation.WRITE,
+        },
+    )
     @api.login_required(oauth_scopes=['individuals:write'])
-    @api.permission_required(permissions.WriteAccessPermission())
     @api.parameters(parameters.PatchIndividualDetailsParameters())
     @api.response(schemas.DetailedIndividualSchema())
     @api.response(code=HTTPStatus.CONFLICT)
@@ -97,8 +124,14 @@ class IndividualByID(Resource):
             db.session.merge(individual)
         return individual
 
+    @api.permission_required(
+        permissions.ObjectAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'obj': kwargs['individual'],
+            'action': AccessOperation.DELETE,
+        },
+    )
     @api.login_required(oauth_scopes=['individuals:write'])
-    @api.permission_required(permissions.WriteAccessPermission())
     @api.response(code=HTTPStatus.CONFLICT)
     @api.response(code=HTTPStatus.NO_CONTENT)
     def delete(self, individual):

@@ -19,6 +19,7 @@ from app.extensions.api.parameters import _get_is_static_role_property
 # we must import the model definitions for organizations here
 from app.modules.organizations import models as organizations_models  # NOQA
 from app.modules.projects import models as projects_models  # NOQA
+from app.modules.collaborations import models as collaborations_models  # NOQA
 
 import uuid
 
@@ -163,6 +164,10 @@ class User(db.Model, FeatherModel, UserEDMMixin):
 
     project_membership_enrollments = db.relationship(
         'ProjectUserMembershipEnrollment', back_populates='user'
+    )
+
+    user_collaboration_associations = db.relationship(
+        'CollaborationUserAssociations', back_populates='user'
     )
 
     class StaticRoles(enum.Enum):

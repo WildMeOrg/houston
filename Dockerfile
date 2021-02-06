@@ -39,5 +39,6 @@ RUN cd ${INSTALL_PATH} \
 
 USER nobody
 EXPOSE 5000
+ENV FLASK_CONFIG production
 
 CMD ["virtualenv/houston3.7/bin/invoke", "app.run", "--host", "0.0.0.0" ]

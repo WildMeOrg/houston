@@ -413,6 +413,45 @@ class EDMManager(EDMManagerEndpointMixin, EDMManagerUserMixin, EDMManagerEncount
         response = self._get(item_name, guid, target=target)
         return response
 
+    def request_passthrough(self, endpoint, target, request_func, passthrough_kwargs):
+        self.ensure_initialed()
+
+        headers = passthrough_kwargs.get('headers', {})
+        allowed_header_key_list = [
+            'Accept',
+            'Content-Type',
+            'User-Agent',
+        ]
+        is_json = False
+        for header_key in allowed_header_key_list:
+            header_value = request.headers.get(header_key, None)
+            header_existing = headers.get(header_key, None)
+            if header_value is not None and header_existing is None:
+                headers[header_key] = header_value
+
+            if header_key == 'Content-Type':
+                if header_value is not None:
+                    if header_value.lower().startswith(
+                        'application/javascript'
+                    ) or header_value.lower().startswith('application/json'):
+                        is_json = True
+        passthrough_kwargs['headers'] = headers
+
+        if is_json:
+            data_ = passthrough_kwargs.pop('data', None)
+            if data_ is not None:
+                passthrough_kwargs['json'] = data_
+
+        response = request_func(
+            None,
+            endpoint=endpoint,
+            target=target,
+            decode_as_object=False,
+            decode_as_dict=False,
+            passthrough_kwargs=passthrough_kwargs,
+        )
+        return response
+
 
 class EDMObjectMixin(object):
     @classmethod

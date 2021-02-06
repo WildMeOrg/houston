@@ -247,12 +247,7 @@ class EncounterByID(Resource):
         """
 
         # first try delete on edm
-        target = 'default'
-        path = str(encounter.guid)
-        request_func = current_app.edm.delete_passthrough
-        passthrough_kwargs = {}
-        response = _request_passthrough(target, path, request_func, passthrough_kwargs)
-
+        response = encounter.delete_from_edm(current_app)
         response_data = None
         if response.ok:
             response_data = response.json()

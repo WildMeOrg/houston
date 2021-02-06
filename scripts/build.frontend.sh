@@ -3,6 +3,11 @@
 
 set -e
 
+if [ ! -d "_frontend" ]; then
+    echo "Checking out  submodules..."
+    git submodule update --init --recursive
+fi
+
 # Build within a Node container
 if [[ "$1" != "--exec" ]]; then
     echo "Running the frontend build within Docker..."
@@ -24,10 +29,6 @@ function parse_datetime() {
 
 # Update code
 cd _frontend/
-
-# git checkout master
-git checkout develop
-git pull
 
 # Get current commit hash
 GIT_BRANCH=$(parse_git_hash)

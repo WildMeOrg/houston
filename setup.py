@@ -4,10 +4,7 @@ from __future__ import absolute_import, print_function, division
 import subprocess
 import os
 
-try:
-    from setuptools import setup
-except ImportError:
-    from distutils.core import setup
+from setuptools import setup
 
 
 PROJECT_ROOT = os.path.abspath(os.path.dirname(__file__))

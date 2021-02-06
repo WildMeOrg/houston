@@ -26,8 +26,7 @@ _frontend/
 clients/
 docs/
 tests/
-# FIXME (5-Feb-12021) punched through so that the `pip install .` may work in the container.
-#       Intending to fix soon.
+# Maintains the requirements file for setup.py logic
 !tests/requirements.txt
 devops/
 virtualenv/

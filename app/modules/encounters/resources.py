@@ -148,7 +148,8 @@ class Encounters(Resource):
                     ex,
                 )
             )
-            # TODO edm encounter.delete
+            # clean up after ourselves by removing encounter from edm
+            encounter.delete_from_edm(current_app)
             raise ex
 
         log.debug('Encounter.post created edm/houston guid=%r' % (encounter.guid,))

@@ -1,11 +1,17 @@
 #!/bin/bash
+# Assumes it is run from the project root.
 
-# Ubuntu / Debian
-#   curl -sL https://deb.nodesource.com/setup_14.x | sudo -E bash -
-#   sudo apt-get install -y nodejs
-#
-# MacOS
-#   sudo port install nodejs14 npm6
+set -e
+
+# Build within a Node container
+if [[ "$1" != "--exec" ]]; then
+    echo "Running the frontend build within Docker..."
+    docker run -v $(pwd)/:/code -w /code node:latest /bin/bash -c "./scripts/build.frontend.sh --exec"
+    echo "Finished running the build within Docker"
+    exit $?
+fi
+
+set -ex
 
 # Get last commit hash prepended with @ (i.e. @8a323d0)
 function parse_git_hash() {

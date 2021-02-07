@@ -4,7 +4,6 @@
 
 source virtualenv/houston3.7/bin/activate
 
-pip install -r requirements.txt
-pip install -e .
+pip install -e ".[testing]"
 
 invoke app.dependencies.install

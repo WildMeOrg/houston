@@ -5,6 +5,15 @@ import pytest
 from app import CONFIG_NAME_MAPPER, create_app
 
 
+@pytest.fixture(autouse=True)
+def unset_FLASK_CONFIG(monkeypatch):
+    """Don't allow a globally set ``FLASK_CONFIG`` environ var
+    to influence the testing context
+
+    """
+    monkeypatch.delenv('FLASK_CONFIG', raising=False)
+
+
 def test_create_app():
     try:
         create_app(testing=True)

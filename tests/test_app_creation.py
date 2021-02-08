@@ -29,7 +29,7 @@ def test_create_app_passing_flask_config_name(monkeypatch, flask_config_name):
         from config import ProductionConfig
 
         monkeypatch.setattr(ProductionConfig, 'SQLALCHEMY_DATABASE_URI', 'sqlite://')
-        monkeypatch.setattr(ProductionConfig, 'SECRET_KEY', 'secret')
+        monkeypatch.setattr(ProductionConfig, 'SECRET_KEY', 'secret', raising=False)
     create_app(flask_config_name=flask_config_name, testing=True)
 
 
@@ -40,7 +40,7 @@ def test_create_app_passing_FLASK_CONFIG_env(monkeypatch, flask_config_name):
         from config import ProductionConfig
 
         monkeypatch.setattr(ProductionConfig, 'SQLALCHEMY_DATABASE_URI', 'sqlite://')
-        monkeypatch.setattr(ProductionConfig, 'SECRET_KEY', 'secret')
+        monkeypatch.setattr(ProductionConfig, 'SECRET_KEY', 'secret', raising=False)
     create_app(testing=True)
 
 

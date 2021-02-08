@@ -38,4 +38,4 @@ USER nobody
 EXPOSE 5000
 ENV FLASK_CONFIG production
 
-CMD ["invoke", "app.run", "--host", "0.0.0.0" ]
+CMD [ "invoke", "app.run" ]

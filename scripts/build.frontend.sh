@@ -55,7 +55,7 @@ fi
 
 # Build dist of the frontend UI
 #  you can alter houston url here if desired
-npm run build -- --houston ""
+npm run build -- --env=houston=relative
 
 # Package
 tar -zcvf dist.${GIT_BRANCH}.${TIMESTAMP}.tar.gz dist/

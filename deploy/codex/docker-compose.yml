@@ -1,0 +1,38 @@
+version: "3.8"
+
+services:
+
+  db:
+    image: postgres:10
+    volumes:
+      - pgdata-var:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_PASSWORD="${POSTGRES_PASSWORD}"
+    networks:
+      - intranet
+
+  redis:
+    image: redis:latest
+    networks:
+      - intranet
+
+  pgadmin:
+    image: dpage/pgadmin4
+    environment:
+      PGADMIN_DEFAULT_EMAIL: "${PGADMIN_DEFAULT_EMAIL}"
+      PGADMIN_DEFAULT_PASSWORD: "${PGADMIN_DEFAULT_PASSWORD}"
+    volumes:
+      - pgadmin-var:/var/lib/pgadmin
+    ports:
+      - "8000:80"
+    networks:
+      - intranet
+      - frontend
+
+networks:
+  intranet:
+  frontend:
+
+volumes:
+  pgadmin-var:
+  pgdata-var:

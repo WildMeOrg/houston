@@ -67,7 +67,9 @@ MINOR = 1
 MICRO = 0
 REVISION = git_version()
 SUFFIX = REVISION[:8]
-VERSION = '%d.%d.%d.%s' % (MAJOR, MINOR, MICRO, SUFFIX)
+VERSION = '%d.%d.%d' % (MAJOR, MINOR, MICRO)
+if SUFFIX:
+    VERSION = '%s.%s' % (VERSION, SUFFIX)
 PACKAGES = ['.']
 
 

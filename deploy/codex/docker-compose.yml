@@ -71,6 +71,23 @@ services:
       DB_PASSWORD: "${WILDBOOK_DB_PASSWORD}"
       DB_CONNECTION_URL: "${WILDBOOK_DB_CONNECTION_URL}"
 
+  houston:
+    # https://github.com/WildMeOrg/houston
+    image: wildme/houston:latest
+    command: [ 'invoke', 'app.run', '--host', '0.0.0.0' ]
+    networks:
+      - intranet
+      - frontend
+    ports:
+      # FIXME: exposed for developer verification
+      - "83:5000"
+    environment:
+      FLASK_CONFIG: local
+    volumes:
+      # FIXME: pull in development code while working on bringing up the container
+      - ../../:/code
+      - ./houston/local_config.py:/code/local_config.py
+
 networks:
   intranet:
   frontend:

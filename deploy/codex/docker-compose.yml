@@ -13,6 +13,9 @@ services:
       WBIA_DB_NAME: "${WBIA_DB_NAME}"
       WBIA_DB_USER: "${WBIA_DB_USER}"
       WBIA_DB_PASSWORD: "${WBIA_DB_PASSWORD}"
+      WILDBOOK_DB_NAME: "${WILDBOOK_DB_NAME}"
+      WILDBOOK_DB_USER: "${WILDBOOK_DB_USER}"
+      WILDBOOK_DB_PASSWORD: "${WILDBOOK_DB_PASSWORD}"
     networks:
       - intranet
 
@@ -49,11 +52,31 @@ services:
       # FIXME: exposed for developer verification
       - "82:5000"
 
+  edm:
+    # See: https://github.com/WildMeOrg/Wildbook/tree/next-gen
+    #  - git clone -b next-gen git@github.com:WildMeOrg/Wildbook.git && cd Wildbook
+    #  - ./scripts/build.docker.sh
+    image: wildme/edm:latest
+    volumes:
+      - edm-var:/data/wildbook_data_dir
+    # depends_on:
+    #   - db
+    networks:
+      - intranet
+    ports:
+      # FIXME: exposed for developer verification
+      - "81:8080"
+    environment:
+      DB_USER: "${WILDBOOK_DB_USER}"
+      DB_PASSWORD: "${WILDBOOK_DB_PASSWORD}"
+      DB_CONNECTION_URL: "${WILDBOOK_DB_CONNECTION_URL}"
+
 networks:
   intranet:
   frontend:
 
 volumes:
+  edm-var:
   pgadmin-var:
   pgdata-var:
   wbia-var:

@@ -6,8 +6,13 @@ services:
     image: postgres:10
     volumes:
       - pgdata-var:/var/lib/postgresql/data
+      # DB initialization scripts
+      - ./db/initdb.d/:/docker-entrypoint-initdb.d/
     environment:
-      - POSTGRES_PASSWORD="${POSTGRES_PASSWORD}"
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD}"
+      WBIA_DB_NAME: "${WBIA_DB_NAME}"
+      WBIA_DB_USER: "${WBIA_DB_USER}"
+      WBIA_DB_PASSWORD: "${WBIA_DB_PASSWORD}"
     networks:
       - intranet
 
@@ -29,6 +34,21 @@ services:
       - intranet
       - frontend
 
+  wbia:
+    # https://github.com/WildMeOrg/wildbook-ia
+    image: wildme/wildbook-ia:latest
+    # FIXME: Adjust entrypoint to allow for additive command arguments
+    command: [ "wait-for", "db:5432", "--", "python3", "-m", "wbia.dev", "--dbdir", "${WBIA_DB_DIR}", "--logdir", "/data/logs/", "--web", "--port", "5000", "--web-deterministic-ports", "--containerized", "--cpudark", "--production", "--db-uri", "${WBIA_DB_URI}" ]
+    volumes:
+      # FIXME: `PermissionError: [Errno 13] Permission denied: '/data/db/_ibsdb'`
+      #        https://github.com/WildMeOrg/wildbook-ia/pull/184
+      - wbia-var:/data/db
+    networks:
+      - intranet
+    ports:
+      # FIXME: exposed for developer verification
+      - "82:5000"
+
 networks:
   intranet:
   frontend:
@@ -36,3 +56,4 @@ networks:
 volumes:
   pgadmin-var:
   pgdata-var:
+  wbia-var:

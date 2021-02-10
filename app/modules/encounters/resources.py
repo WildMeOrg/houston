@@ -107,20 +107,51 @@ class Encounters(Resource):
 
         # if we get here, edm has made the encounter, now we create & persist the feather model in houston
 
+        # will contain EncounterAssets objects to join to assets (dont load assets themselves)
+        asset_refs = []
+        if 'assets' in data and isinstance(data['assets'], list):
+            from app.modules.encounters.models import EncounterAssets
+
+            for asset_data in data['assets']:
+                if isinstance(asset_data, dict) and 'guid' in asset_data:
+                    # note: if an invalid asset guid is provided, foreign key contstraint error will be thrown when persisting
+                    asset_ref = EncounterAssets(
+                        encounter_guid=result_data['id'], asset_guid=asset_data['guid']
+                    )
+                    asset_refs.append(asset_ref)
+
         context = api.commit_or_abort(
-            db.session, default_error_message='Failed to create a new Encounter'
+            db.session, default_error_message='Failed to create a new houston Encounter'
         )
-        with context:
-            # TODO other houston-based relationships: orgs, projects, etc
-            owner_guid = None
-            if current_user is not None:
-                owner_guid = current_user.guid
-            encounter = Encounter(
-                guid=result_data['id'],
-                version=result_data.get('version', 2),
-                owner_guid=owner_guid,
+        try:
+            with context:
+                # TODO other houston-based relationships: orgs, projects, etc
+                owner_guid = None
+                pub = True  # legit? public if no owner?
+                if current_user is not None:
+                    owner_guid = current_user.guid
+                    pub = False
+                encounter = Encounter(
+                    guid=result_data['id'],
+                    version=result_data.get('version', 2),
+                    owner_guid=owner_guid,
+                    public=pub,
+                )
+                encounter.assets = asset_refs
+                db.session.add(encounter)
+        except Exception as ex:
+            log.error(
+                'Encounter.post FAILED houston feather object creation guid=%r - will attempt to DELETE edm Encounter; (payload %r) ex=%r'
+                % (
+                    encounter.guid,
+                    data,
+                    ex,
+                )
             )
-            db.session.add(encounter)
+            # clean up after ourselves by removing encounter from edm
+            encounter.delete_from_edm(current_app)
+            raise ex
+
         log.debug('Encounter.post created edm/houston guid=%r' % (encounter.guid,))
         rtn = {
             'success': True,
@@ -151,12 +182,32 @@ class EncounterByID(Resource):
             'action': AccessOperation.READ,
         },
     )
-    @api.response(schemas.DetailedEncounterSchema())
     def get(self, encounter):
         """
-        Get Encounter details by ID.
+        Get Encounter full details by ID.
         """
-        return encounter
+
+        if encounter is not None:
+            print('####### found encounter within houston : %s' % (encounter,))
+            # note: should probably _still_ check edm for: stale cache, deletion!
+            #      user.edm_sync(version)
+            # return encounter
+            # return True
+
+        response = current_app.edm.get_encounter_data_dict(encounter.guid)
+        if not isinstance(response, dict):  # some non-200 thing, incl 404
+            return response
+
+        if len(encounter.assets) > 0:
+            from app.modules.assets.schemas import DetailedAssetSchema
+
+            sch = DetailedAssetSchema(many=False, only=('guid', 'filename', 'src'))
+            response['result']['assets'] = []
+            for asset in encounter.get_assets():
+                json, err = sch.dump(asset)
+                response['result']['assets'].append(json)
+
+        return response['result']
 
     @api.permission_required(
         permissions.ObjectAccessPermission,
@@ -197,68 +248,23 @@ class EncounterByID(Resource):
         """
 
         # first try delete on edm
-        target = 'default'
-        path = str(encounter.guid)
-        request_func = current_app.edm.delete_passthrough
-        passthrough_kwargs = {}
-        response = _request_passthrough(target, path, request_func, passthrough_kwargs)
-
+        response = encounter.delete_from_edm(current_app)
         response_data = None
-        result_data = None
         if response.ok:
             response_data = response.json()
-            result_data = response_data.get('result', None)
 
-        if (
-            not response.ok
-            or not response_data.get('success', False)
-            or result_data is None
-        ):
-            log.warning('Encounter.delete %r failed' % (encounter.guid))
-            passed_message = {'message': {'key': 'error'}}
-            if response_data is not None and 'message' in response_data:
-                passed_message = response_data['message']
-            abort(success=False, passed_message=passed_message, message='Error', code=400)
+        if not response.ok or not response_data.get('success', False):
+            log.warning(
+                'Encounter.delete %r failed: %r' % (encounter.guid, response_data)
+            )
+            abort(
+                success=False, passed_message='Delete failed', message='Error', code=400
+            )
 
         # if we get here, edm has deleted the encounter, now houston feather
-        context = api.commit_or_abort(
-            db.session, default_error_message='Failed to delete the Encounter.'
-        )
         # TODO handle failure of feather deletion (when edm successful!)  out-of-sync == bad
-        with context:
-            db.session.delete(encounter)
+        encounter.delete()
         return None
-
-
-@api.route('/<uuid:encounter_guid>/complete')
-@api.login_required(oauth_scopes=['encounters:read'])
-@api.response(
-    code=HTTPStatus.NOT_FOUND,
-    description='Encounter not found.',
-)
-@api.resolve_object_by_model(Encounter, 'encounter', return_not_found=True)
-class EncounterByIDComplete(Resource):
-
-    # @api.response(schemas.DetailedEncounterSchema())
-    def get(self, encounter):
-        """
-        Get Encounter full details by ID.
-        """
-        encounter, encounter_guids = encounter
-
-        if encounter is not None:
-            print('####### found encounter within houston : %s' % (encounter,))
-            # note: should probably _still_ check edm for: stale cache, deletion!
-            #      user.edm_sync(version)
-            # return encounter
-            # return True
-
-        response = current_app.edm.get_encounter_data_dict(encounter.guid)
-        # TODO handle non-200 ?
-        # assert response.success
-        # import utool as ut
-        # ut.embed()
-        return response['result']
 
 
 def _request_passthrough(target, path, request_func, passthrough_kwargs):

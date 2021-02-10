@@ -187,3 +187,9 @@ class Asset(db.Model, HoustonModel):
     def delete(self):
         with db.session.begin():
             db.session.delete(self)
+
+    @classmethod
+    def find(cls, guid):
+        if not guid:
+            return None
+        return cls.query.get(guid)

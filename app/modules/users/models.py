@@ -170,6 +170,8 @@ class User(db.Model, FeatherModel, UserEDMMixin):
         'CollaborationUserAssociations', back_populates='user'
     )
 
+    PUBLIC_USER_EMAIL = 'public@localhost'
+
     class StaticRoles(enum.Enum):
         # pylint: disable=missing-docstring,unsubscriptable-object
         CONTRIBUTOR = (0x40000, 'Contributor', 'Contributor')
@@ -600,3 +602,12 @@ class User(db.Model, FeatherModel, UserEDMMixin):
         with db.session.begin():
             # TODO: Ensure proper cleanup
             db.session.delete(self)
+
+    @classmethod
+    def get_public_user(cls):
+        return User.ensure_user(
+            email=User.PUBLIC_USER_EMAIL,
+            password=security.generate_random(128),
+            full_name='Public User',
+            is_internal=True,
+        )

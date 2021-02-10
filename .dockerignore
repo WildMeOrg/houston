@@ -26,6 +26,8 @@ _frontend/
 clients/
 docs/
 tests/
+# Maintains the requirements file for setup.py logic
+!tests/requirements.txt
 devops/
 virtualenv/
 

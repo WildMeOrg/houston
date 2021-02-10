@@ -1,9 +1,5 @@
 FROM python:3.7
 
-ENV INSTALL_PATH=/opt/houston
-
-WORKDIR "${INSTALL_PATH}"
-
 RUN apt update \
  # && curl -sL https://deb.nodesource.com/setup_14.x | bash - \
  && apt update \
@@ -26,17 +22,20 @@ RUN apt update \
         # nodejs \
  && rm -rf /var/lib/apt/lists/*
 
-COPY . .
+COPY . /code
 
-RUN cd ${INSTALL_PATH} \
- && ./scripts/venv.sh \
- && virtualenv/houston3.7/bin/pip install -U pip \
- && virtualenv/houston3.7/bin/pip install -r app/requirements.txt \
- && virtualenv/houston3.7/bin/pip install -r tasks/requirements.txt \
- && virtualenv/houston3.7/bin/pip install utool ipython \
- && rm -rf ~/.cache/pip \
- && chown -R nobody .
+WORKDIR /code
+
+RUN set -ex \
+ && pip install -e . \
+ && invoke app.dependencies.install \
+ #: Install developer tools
+ && pip install utool ipython \
+ #: Remove pip download cache
+ && rm -rf ~/.cache/pip
 
 USER nobody
+EXPOSE 5000
+ENV FLASK_CONFIG production
 
-CMD ["virtualenv/houston3.7/bin/invoke", "app.run", "--host", "0.0.0.0" ]
+CMD [ "invoke", "app.run" ]

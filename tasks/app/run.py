@@ -23,10 +23,13 @@ from ._utils import app_context_task
 log = logging.getLogger(__name__)
 
 
+DEFAULT_HOST = '0.0.0.0'
+
+
 @app_context_task()
 def warmup(
     context,
-    host='127.0.0.1',
+    host=DEFAULT_HOST,
     flask_config=None,
     install_dependencies=False,
     build_frontend=True,
@@ -35,10 +38,6 @@ def warmup(
     """
     Pre-configure the Houston API Server before running
     """
-    # Automatically use the production config when running a public web server
-    if host in ['0.0.0.0'] and flask_config is None:
-        flask_config = 'production'
-
     if flask_config is not None:
         os.environ['FLASK_CONFIG'] = flask_config
 
@@ -73,7 +72,7 @@ def warmup(
 @task(default=True)
 def run(
     context,
-    host='127.0.0.1',
+    host=DEFAULT_HOST,
     port=5000,
     flask_config=None,
     install_dependencies=False,

@@ -15,3 +15,4 @@ rm -rf wheelhouse
 
 CLEAN_PYTHON='find . -iname __pycache__ -exec rm -rv {} \; && find . -iname *.pyc -delete && find . -iname *.pyo -delete'
 bash -c "$CLEAN_PYTHON"
+python setup.py clean

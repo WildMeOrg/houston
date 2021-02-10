@@ -425,13 +425,17 @@ $ cd houston/
 
 It is recommended to use virtualenv or Anaconda/Miniconda to manage Python
 dependencies. Please, learn details yourself.
+For quickstart purposes the following will set up a virtualenv for you:
 
-You will need `invoke` package to work with everything related to this project.
+```bash
+$ ./scripts/venv.sh
+$ source virtualenv/houston3.7/bin/activate
+```
+
+Set up and install the package:
 
 ```bash
 $ tar -zxvf _db.initial.tar.gz
-$ ./scripts/venv.sh
-$ source virtualenv/houston3.7/bin/activate
 $ pip install -r requirements.txt
 $ invoke app.dependencies.install-python-dependencies
 $ invoke app.dependencies.install-swagger-ui

@@ -124,13 +124,13 @@ def test_user_asset_permissions(
 def test_read_all_assets(
     flask_app_client,
     admin_user,
-    researcher_user,
+    researcher_1,
     test_clone_submission_data,
 ):
     # Clone the known submission so that the asset data is in the database
     clone = utils.clone_submission(
         flask_app_client,
-        researcher_user,
+        researcher_1,
         test_clone_submission_data['submission_uuid'],
         later_usage=True,
     )
@@ -138,7 +138,7 @@ def test_read_all_assets(
     try:
         with flask_app_client.login(admin_user, auth_scopes=('assets:read',)):
             admin_response = flask_app_client.get('/api/v1/assets/')
-        with flask_app_client.login(researcher_user, auth_scopes=('assets:read',)):
+        with flask_app_client.login(researcher_1, auth_scopes=('assets:read',)):
             researcher_response = flask_app_client.get('/api/v1/assets/')
 
         assert researcher_response.status_code == 200

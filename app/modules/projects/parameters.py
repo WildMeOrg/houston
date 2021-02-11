@@ -95,7 +95,7 @@ class PatchProjectDetailsParameters(PatchJSONParametersWithPassword):
 
             encounter = Encounter.query.get(value)
             if current_user not in obj.get_members() and not user_is_privileged(
-                current_user, obj
+                current_user
             ):
                 ret_val = False
             elif encounter:

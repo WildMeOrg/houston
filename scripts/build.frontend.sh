@@ -3,7 +3,8 @@
 
 set -e
 
-if [ ! -d "_frontend" ]; then
+# Look for a previous submodule checkout prior to initializing
+if [ ! -d _frontend/package.json ]; then
     echo "Checking out  submodules..."
     git submodule update --init --recursive
 fi

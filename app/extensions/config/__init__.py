@@ -61,7 +61,13 @@ class HoustonFlaskConfig(flask.Config):
 
         assert not self.db_init
 
-        houston_configs = HoustonConfig.query.all()
+        try:
+            houston_configs = HoustonConfig.query.all()
+        except sqlalchemy.exc.ProgrammingError as e:
+            if 'relation "houston_config" does not exist' in str(e):
+                houston_configs = []
+            else:
+                raise
 
         for houston_config in houston_configs:
             log.warning('CONFIG DB OVERRIDE: %r' % (houston_config,))

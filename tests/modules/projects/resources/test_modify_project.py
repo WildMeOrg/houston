@@ -6,6 +6,7 @@ from tests.modules.projects.resources import utils as proj_utils
 
 
 def test_modify_project(db, flask_app_client, admin_user, researcher_1, researcher_2):
+
     # pylint: disable=invalid-name
     from app.modules.projects.models import Project
     from app.modules.encounters.models import Encounter
@@ -29,7 +30,14 @@ def test_modify_project(db, flask_app_client, admin_user, researcher_1, research
         utils.patch_test_op(admin_user.password_secret),
         utils.patch_remove_op('user', '%s' % researcher_2.guid),
     ]
-    proj_utils.patch_project(flask_app_client, project_guid, admin_user, data)
+    proj_utils.patch_project(flask_app_client, project_guid, admin_user, data, 403)
+    assert len(proj.get_members()) == 2
+
+    data = [
+        utils.patch_test_op(researcher_1.password_secret),
+        utils.patch_remove_op('user', '%s' % researcher_2.guid),
+    ]
+    proj_utils.patch_project(flask_app_client, project_guid, researcher_1, data)
     assert len(proj.get_members()) == 1
 
     # Create encounters for testing with

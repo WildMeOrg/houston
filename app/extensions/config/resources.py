@@ -33,7 +33,7 @@ class HoustonConfigs(Resource):
         permissions.ModuleAccessPermission,
         kwargs_on_request=lambda kwargs: {
             'module': HoustonConfig,
-            'action': AccessOperation.READ,
+            'action': AccessOperation.WRITE,
         },
     )
     @api.login_required(oauth_scopes=['config.houston:write'])

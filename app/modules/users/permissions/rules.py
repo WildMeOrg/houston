@@ -84,8 +84,6 @@ class ModuleActionRule(DenyAbortMixin, Rule):
 
         # This Rule is for checking permissions on modules, so there must be one,
         assert self._module is not None
-        log.info('Checking module %s, action %s' % (self._module, self._action))
-        log.info('current user %s' % current_user)
 
         # Anonymous users can only create a submission or themselves
         if not current_user or current_user.is_anonymous:
@@ -96,11 +94,7 @@ class ModuleActionRule(DenyAbortMixin, Rule):
             has_permission = (
                 # inactive users can do nothing
                 current_user.is_active
-                & (
-                    # some users can do anything
-                    user_is_privileged(current_user, self._module)
-                    | self._can_user_perform_action(current_user)
-                )
+                & self._can_user_perform_action(current_user)
             )
 
         return has_permission
@@ -114,37 +108,42 @@ class ModuleActionRule(DenyAbortMixin, Rule):
 
     # Permissions control entry point for real users, for all objects and all operations
     def _can_user_perform_action(self, user):
+        from app.modules.organizations.models import Organization
+        from app.extensions.config.models import HoustonConfig
         from app.modules.submissions.models import Submission
+        from app.modules.encounters.models import Encounter
+        from app.modules.sightings.models import Sighting
         from app.modules.projects.models import Project
+        from app.modules.assets.models import Asset
         from app.modules.users.models import User
 
         has_permission = False
+        if user_is_privileged(user):
+            has_permission = True
+        elif self._action is AccessOperation.READ:
+            if user.is_admin:
+                # This is where we can control what modules admin users can and cannot read
+                # This could be Client configurable if required by taking the list passed to
+                # _is_module from a config parameter e.g. app.config.get(ADMIN_READ_MODULE_PERMISSION)
+                has_permission = self._is_module(User)
+            if not has_permission and user.is_researcher:
+                has_permission = self._is_module(
+                    (Submission, Project, Encounter, Sighting, Asset)
+                )
 
-        if self._action is AccessOperation.READ:
-            has_permission = self._user_is_privileged(user)
         elif self._action is AccessOperation.WRITE:
+            if user.is_admin:
+                has_permission = self._is_module((HoustonConfig, User, Organization))
             if self._is_module(Submission):
                 # Any users can submit
                 has_permission = True
             if self._is_module(User):
-                # And modify users apparently?
+                # And write a User (creation)
                 has_permission = True
             elif self._is_module(Project):
                 has_permission = user.is_researcher
 
         return has_permission
-
-    def _user_is_privileged(self, user):
-        # This is where we can control what operations admin users can and cannot perform.
-        # This could be project configurable as required
-        from app.extensions.config.models import HoustonConfig
-
-        # An example for now is that admin users are not allowed to change the config, only staff
-        if self._is_module(HoustonConfig):
-            ret_val = user.is_staff | user.is_internal
-        else:
-            ret_val = user.is_admin | user.is_staff | user.is_internal
-        return ret_val
 
 
 class ObjectActionRule(DenyAbortMixin, Rule):
@@ -168,10 +167,6 @@ class ObjectActionRule(DenyAbortMixin, Rule):
         # This Rule is for checking permissions on objects, so there must be one, Use the ModuleActionRule for
         # permissions checking without objects
         assert self._obj is not None
-        log.info(
-            'Checking obj %s, action %s, user %s'
-            % (self._obj, self._action, current_user)
-        )
 
         # Anyone can read public data, even anonymous users
         has_permission = self._action == AccessOperation.READ and self._obj.is_public()
@@ -182,9 +177,7 @@ class ObjectActionRule(DenyAbortMixin, Rule):
                 # inactive users can do nothing
                 current_user.is_active
                 & (
-                    # some users can do anything
-                    user_is_privileged(current_user, self._obj)
-                    | self._permitted_via_user(current_user)
+                    self._permitted_via_user(current_user)
                     | self._permitted_via_org(current_user)
                     | self._permitted_via_project(current_user)
                     | self._permitted_via_collaboration(current_user)
@@ -195,15 +188,21 @@ class ObjectActionRule(DenyAbortMixin, Rule):
     def _permitted_via_user(self, user):
         from app.modules.organizations.models import Organization
         from app.modules.projects.models import Project
+        from app.modules.users.models import User
 
-        # users can read write and delete anything they own
-        has_permission = user.owns_object(self._obj)
+        # users can read write and delete anything they own while some users can do anything
+        has_permission = user.owns_object(self._obj) or user_is_privileged(user)
+
+        if not has_permission and user.is_admin:
+            # Admins can access all users
+            if isinstance(self._obj, User):
+                has_permission = True
 
         if not has_permission:
             # read and write access is permitted for any projects or organisations they're in
             # Details of what they're allowed to write handled in the patch parameters functionality
             # Region would be handled the same way here too
-            if isinstance(self._obj, Project) or isinstance(self._obj, Organization):
+            if isinstance(self._obj, (Project, Organization)):
                 has_permission = (
                     user in self._obj.get_members()
                     and self._action != AccessOperation.DELETE
@@ -253,6 +252,13 @@ class ObjectActionRule(DenyAbortMixin, Rule):
                             # @todo should the functionality in encounters.has_read_permission move into rules.py
                             has_permission = encounter.has_read_permission(self._obj)
                 project_index = project_index + 1
+
+        elif self._action == AccessOperation.WRITE:
+            # only power users can write
+            has_permission = user_is_privileged(user)
+        elif self._action == AccessOperation.DELETE:
+            # or delete
+            has_permission = user_is_privileged(user)
 
         return has_permission
 
@@ -314,7 +320,6 @@ class PartialPermissionDeniedRule(Rule):
         raise RuntimeError('Partial permissions are not intended to be checked')
 
 
-# Helper to have one place that defines what users are privileged, to potentially make it
-# configurable depending upon customer and the object they're trying to access
-def user_is_privileged(user, obj):
-    return user.is_staff or user.is_admin
+# Helper to have one place that defines what users are privileged in all cases
+def user_is_privileged(user):
+    return user.is_staff or user.is_internal

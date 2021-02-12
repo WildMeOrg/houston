@@ -8,7 +8,7 @@ from flask_login import current_user  # NOQA
 from flask_restplus_patched import Parameters, PatchJSONParametersWithPassword
 from . import schemas
 from .models import Project
-from app.modules.users.permissions.rules import user_is_privileged
+from app.modules.users.permissions import rules
 
 
 class CreateProjectParameters(Parameters, schemas.DetailedProjectSchema):
@@ -26,10 +26,6 @@ class PatchProjectDetailsParameters(PatchJSONParametersWithPassword):
     PATH_CHOICES = tuple('/%s' % field for field in VALID_FIELDS)
 
     @classmethod
-    def owner_or_privileged(cls, user, obj):
-        return user == obj.owner or user_is_privileged(user)
-
-    @classmethod
     def add(cls, obj, field, value, state):
         from app.modules.users.models import User
         from app.modules.encounters.models import Encounter
@@ -38,29 +34,30 @@ class PatchProjectDetailsParameters(PatchJSONParametersWithPassword):
         ret_val = False
 
         if field == Project.title.key:
-            if cls.owner_or_privileged(current_user, obj):
+            if rules.owner_or_privileged(current_user, obj):
                 obj.title = value
                 ret_val = True
         elif field == 'owner':
             # owner is permitted to assign project ownership to another member
             user = User.query.get(value)
             if (
-                cls.owner_or_privileged(current_user, obj)
+                rules.owner_or_privileged(current_user, obj)
                 and user
                 and user in obj.get_members()
             ):
                 obj.owner = user
                 ret_val = True
         elif field == 'user':
-            # Only project owners or privileged users can add and delete users
+            # Only project owners or privileged users can add users
             user = User.query.get(value)
-            if cls.owner_or_privileged(current_user, obj) and user:
+            if rules.owner_or_privileged(current_user, obj) and user:
                 obj.add_user_in_context(user)
                 ret_val = True
         elif field == 'encounter':
             encounter = Encounter.query.get(value)
             if encounter and (
-                current_user in obj.get_members() or user_is_privileged(current_user)
+                current_user in obj.get_members()
+                or rules.user_is_privileged(current_user)
             ):
                 obj.add_encounter_in_context(encounter)
                 ret_val = True
@@ -83,18 +80,26 @@ class PatchProjectDetailsParameters(PatchJSONParametersWithPassword):
         elif field == 'user':
             user = User.query.get(value)
 
-            if not cls.owner_or_privileged(current_user, obj):
+            # make sure it's a valid request
+            if not user or user not in obj.get_members():
                 ret_val = False
-            elif user:
-                # Don't allow owner to accidentally remove themselves, would only cause a maintenance nightmare
-                if user == current_user:
-                    ret_val = False
-                else:
-                    obj.remove_user_in_context(user)
+            elif user == obj.owner:
+                # Deleting the Project owner would cause a maintenance nightmare so disallow it
+                ret_val = False
+            elif rules.owner_or_privileged(current_user, obj):
+                # removal of other users requires privileges
+                obj.remove_user_in_context(user)
+            elif user == current_user:
+                # any user can delete themselves
+                obj.remove_user_in_context(user)
+            else:
+                # but not other members
+                ret_val = False
+
         elif field == 'encounter':
 
             encounter = Encounter.query.get(value)
-            if current_user not in obj.get_members() and not user_is_privileged(
+            if current_user not in obj.get_members() and not rules.user_is_privileged(
                 current_user
             ):
                 ret_val = False

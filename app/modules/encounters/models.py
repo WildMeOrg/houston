@@ -67,13 +67,6 @@ class Encounter(db.Model, FeatherModel):
     def is_public(self):
         return self.public
 
-    def has_read_permission(self, obj):
-        # todo, check if the encounter owns the sighting once Colin's sightings code is merged in
-        # if isinstance(obj, Sighting):
-        # check sightings array
-        # else look to see if the object is owned by any sighting
-        return False
-
     def get_assets(self):
         return [ref.asset for ref in self.assets]
 

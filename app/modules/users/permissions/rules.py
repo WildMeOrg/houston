@@ -132,13 +132,10 @@ class ModuleActionRule(DenyAbortMixin, Rule):
                 )
 
         elif self._action is AccessOperation.WRITE:
-            if user.is_admin:
-                has_permission = self._is_module((HoustonConfig, User, Organization))
-            if self._is_module(Submission):
-                # Any users can submit
-                has_permission = True
-            if self._is_module(User):
-                # And write a User (creation)
+            if self._is_module((User, Organization, HoustonConfig)):
+                has_permission = user.is_admin
+            elif self._is_module((Submission, User)):
+                # Any users can submit and write (create) a user
                 has_permission = True
             elif self._is_module(Project):
                 has_permission = user.is_researcher
@@ -187,11 +184,12 @@ class ObjectActionRule(DenyAbortMixin, Rule):
 
     def _permitted_via_user(self, user):
         from app.modules.organizations.models import Organization
+        from app.modules.encounters.models import Encounter
         from app.modules.projects.models import Project
         from app.modules.users.models import User
 
         # users can read write and delete anything they own while some users can do anything
-        has_permission = user.owns_object(self._obj) or user_is_privileged(user)
+        has_permission = owner_or_privileged(user, self._obj)
 
         if not has_permission and user.is_admin:
             # Admins can access all users
@@ -207,6 +205,12 @@ class ObjectActionRule(DenyAbortMixin, Rule):
                     user in self._obj.get_members()
                     and self._action != AccessOperation.DELETE
                 )
+
+            elif isinstance(self._obj, Encounter):
+                # Researchers can read other encounters, only org moderators can update and delete
+                # them and those roles are not supported yet
+                if self._action != AccessOperation.READ:
+                    has_permission = user.is_researcher
 
         return has_permission
 
@@ -229,6 +233,7 @@ class ObjectActionRule(DenyAbortMixin, Rule):
 
     def _permitted_via_project(self, user):
         from app.modules.encounters.models import Encounter
+        from app.modules.assets.models import Asset
 
         has_permission = False
         project_index = 0
@@ -245,12 +250,9 @@ class ObjectActionRule(DenyAbortMixin, Rule):
                     if isinstance(self._obj, Encounter):
                         # Optionally add time check so that User can only access encounters after user was added to project
                         has_permission = self._obj in project.encounters
-                    else:
+                    elif isinstance(self._obj, Asset):
                         for encounter in project.get_encounters():
-                            # If time check was implemented, that would need to be passed here too and percolate down through
-                            # encounters and sightings etc
-                            # @todo should the functionality in encounters.has_read_permission move into rules.py
-                            has_permission = encounter.has_read_permission(self._obj)
+                            has_permission = self._obj in encounter.get_assets()
                 project_index = project_index + 1
 
         elif self._action == AccessOperation.WRITE:
@@ -320,6 +322,10 @@ class PartialPermissionDeniedRule(Rule):
         raise RuntimeError('Partial permissions are not intended to be checked')
 
 
-# Helper to have one place that defines what users are privileged in all cases
+# Helpers to have one place that defines what users are privileged in all cases
 def user_is_privileged(user):
     return user.is_staff or user.is_internal
+
+
+def owner_or_privileged(user, obj):
+    return user.owns_object(obj) or user_is_privileged(user)

@@ -435,13 +435,10 @@ $ source virtualenv/houston3.7/bin/activate
 Set up and install the package:
 
 ```bash
-$ tar -zxvf _db.initial.tar.gz
-$ pip install -r requirements.txt
-$ invoke app.dependencies.install-python-dependencies
-$ invoke app.dependencies.install-swagger-ui
-$ invoke app.dependencies.install
-$ pip install -e .
-$ ./scripts/build.frontend.sh
+tar -zxvf _db.initial.tar.gz
+pip install -e .
+invoke app.dependencies.install
+./scripts/build.frontend.sh
 ```
 
 #### Run Server

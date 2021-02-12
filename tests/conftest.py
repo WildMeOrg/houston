@@ -146,6 +146,17 @@ def researcher_1(temp_db_instance_helper):
 
 
 @pytest.fixture(scope='session')
+def contributor_1(temp_db_instance_helper):
+    for _ in temp_db_instance_helper(
+        utils.generate_user_instance(
+            email='contributor1@localhost',
+            is_contributor=True,
+        )
+    ):
+        yield _
+
+
+@pytest.fixture(scope='session')
 def researcher_2(temp_db_instance_helper):
     for _ in temp_db_instance_helper(
         utils.generate_user_instance(
@@ -242,6 +253,14 @@ def admin_user_login(flask_app, admin_user):
 def researcher_1_login(flask_app, researcher_1):
     with flask_app.test_request_context('/'):
         login_user(researcher_1)
+        yield current_user
+        logout_user()
+
+
+@pytest.fixture()
+def contributor_1_login(flask_app, contributor_1):
+    with flask_app.test_request_context('/'):
+        login_user(contributor_1)
         yield current_user
         logout_user()
 

@@ -251,14 +251,18 @@ def test_ObjectAccessPermission_authenticated_user(authenticated_user_login):
     # but be able to do what they like if they own the object.
     # Here be dragons. Everything in python is changable including the address of methods in objects.
     # store the previous one for restoration and then get owns_object to do what we want for testing
-    prev_owns_object = authenticated_user_login.owns_object
-    authenticated_user_login.owns_object = lambda obj: True
-    validate_can_read_object(obj)
-    validate_can_write_object(obj)
-    validate_can_delete_object(obj)
+    try:
+        prev_owns_object = authenticated_user_login.owns_object
+        authenticated_user_login.owns_object = lambda obj: True
+        validate_can_read_object(obj)
+        validate_can_write_object(obj)
+        validate_can_delete_object(obj)
+    except Exception as ex:
+        raise ex
+    finally:
+        # reset back to the real one and check that it works
+        authenticated_user_login.owns_object = prev_owns_object
 
-    # reset back to the real one and check that it works
-    authenticated_user_login.owns_object = prev_owns_object
     validate_cannot_read_object(obj)
     validate_cannot_write_object(obj)
     validate_cannot_delete_object(obj)
@@ -354,3 +358,95 @@ def test_ModuleAccessPermission_admin_user(admin_user_login):
     validate_cannot_read_module(Submission)
     validate_can_write_module(Submission)
     validate_cannot_delete_module(Submission)
+
+
+def test_ObjectAccessPermission_researcher_user(
+    db, researcher_1_login, temp_user, public_encounter, owned_encounter
+):
+    # pylint: disable=unused-argument
+    from app.modules.users.models import User
+    from app.modules.encounters.models import Encounter
+
+    # Can't access other users
+    validate_cannot_read_module(User)
+    validate_can_write_module(User)
+    validate_cannot_delete_module(User)
+
+    validate_cannot_read_object(temp_user)
+    validate_cannot_write_object(temp_user)
+    validate_cannot_delete_object(temp_user)
+
+    obj = Mock()
+    obj.is_public = lambda: False
+
+    # Researcher user should not be able to access everything
+    validate_cannot_read_object(obj)
+    validate_cannot_write_object(obj)
+    validate_cannot_delete_object(obj)
+
+    obj.is_public = lambda: True
+    validate_can_read_object(obj)
+    validate_cannot_write_object(obj)
+    validate_cannot_delete_object(obj)
+
+    validate_can_read_object(public_encounter)
+    validate_cannot_write_object(public_encounter)
+    validate_cannot_delete_object(public_encounter)
+
+    validate_can_read_object(owned_encounter)
+    validate_cannot_write_object(owned_encounter)
+    validate_cannot_delete_object(owned_encounter)
+
+    my_encounter = Encounter(owner=researcher_1_login)
+
+    with db.session.begin():
+        db.session.add(my_encounter)
+    validate_can_read_object(my_encounter)
+    validate_can_write_object(my_encounter)
+    validate_can_delete_object(my_encounter)
+
+
+def test_ObjectAccessPermission_contributor_user(
+    db, contributor_1_login, temp_user, public_encounter, owned_encounter
+):
+    # pylint: disable=unused-argument
+    from app.modules.users.models import User
+    from app.modules.encounters.models import Encounter
+
+    # Can't access other users
+    validate_cannot_read_module(User)
+    validate_can_write_module(User)
+    validate_cannot_delete_module(User)
+
+    validate_cannot_read_object(temp_user)
+    validate_cannot_write_object(temp_user)
+    validate_cannot_delete_object(temp_user)
+
+    obj = Mock()
+    obj.is_public = lambda: False
+
+    # contributor user should not be able to access everything
+    validate_cannot_read_object(obj)
+    validate_cannot_write_object(obj)
+    validate_cannot_delete_object(obj)
+
+    obj.is_public = lambda: True
+    validate_can_read_object(obj)
+    validate_cannot_write_object(obj)
+    validate_cannot_delete_object(obj)
+
+    validate_can_read_object(public_encounter)
+    validate_cannot_write_object(public_encounter)
+    validate_cannot_delete_object(public_encounter)
+
+    validate_cannot_read_object(owned_encounter)
+    validate_cannot_write_object(owned_encounter)
+    validate_cannot_delete_object(owned_encounter)
+
+    my_encounter = Encounter(owner=contributor_1_login)
+    with db.session.begin():
+        db.session.add(my_encounter)
+
+    validate_can_read_object(my_encounter)
+    validate_can_write_object(my_encounter)
+    validate_can_delete_object(my_encounter)

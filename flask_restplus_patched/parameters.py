@@ -311,3 +311,14 @@ class PatchJSONParametersWithPassword(PatchJSONParameters):
                     code=HTTPStatus.FORBIDDEN,
                     message='Updating database requires `current_password` test operation.',
                 )
+
+    @classmethod
+    def replace(cls, obj, field, value, state):
+        from app.extensions.api import abort
+
+        if not cls.SENSITIVE_FIELDS or field in cls.SENSITIVE_FIELDS:
+            if 'current_password' not in state:
+                abort(
+                    code=HTTPStatus.FORBIDDEN,
+                    message='Updating database requires `current_password` test operation.',
+                )

@@ -33,13 +33,13 @@ To submit a pull request (PR) to Houston, we require the following standards to 
 * **Ensure that the PR is properly rebased**
   * We require new feature code to be rebased onto the latest version of the `develop` branch.
   ```
-  git checkout develop
-  git pull --rebase  # Use the following to make this the default: git config pull.rebase true
+  git fetch -p
   git checkout <feature-branch>
-  git pull
-  git rebase develop
+  git diff origin/<feature-branch>..  # Check there's no difference between local branch and remote branch
+  git rebase -i origin/develop  # "Pick" all commits in feature branch
   # Resolve all conflicts
-  git merge develop  # Sanity check
+  git log --graph --oneline --decorate origin/develop HEAD  # feature-branch commits should be on top of origin/develop
+  git show --reverse origin/develop..  # Check the changes in each commit if necessary
   git push --force origin <feature-branch>
   ```
 * **Ensure that the PR uses a consolidated database migration**

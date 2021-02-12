@@ -132,7 +132,7 @@ class ModuleActionRule(DenyAbortMixin, Rule):
                 )
 
         elif self._action is AccessOperation.WRITE:
-            if self._is_module((User, Organization, HoustonConfig)):
+            if self._is_module((Organization, HoustonConfig)):
                 has_permission = user.is_admin
             elif self._is_module((Submission, User)):
                 # Any users can submit and write (create) a user
@@ -207,9 +207,9 @@ class ObjectActionRule(DenyAbortMixin, Rule):
                 )
 
             elif isinstance(self._obj, Encounter):
-                # Researchers can read other encounters, only org moderators can update and delete
+                # Researchers can read other encounters, only site admins can update and delete
                 # them and those roles are not supported yet
-                if self._action != AccessOperation.READ:
+                if self._action == AccessOperation.READ:
                     has_permission = user.is_researcher
 
         return has_permission
@@ -249,7 +249,7 @@ class ObjectActionRule(DenyAbortMixin, Rule):
                 if not has_permission:
                     if isinstance(self._obj, Encounter):
                         # Optionally add time check so that User can only access encounters after user was added to project
-                        has_permission = self._obj in project.encounters
+                        has_permission = self._obj in project.get_encounters()
                     elif isinstance(self._obj, Asset):
                         for encounter in project.get_encounters():
                             has_permission = self._obj in encounter.get_assets()

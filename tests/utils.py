@@ -233,3 +233,11 @@ def patch_remove_op(path, value=None):
         operation['value'] = value
 
     return operation
+
+
+def patch_replace_op(path, value):
+    return {
+        'op': 'replace',
+        'path': '/%s' % (path,),
+        'value': value,
+    }

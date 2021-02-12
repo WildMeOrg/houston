@@ -578,12 +578,8 @@ class User(db.Model, FeatherModel, UserEDMMixin):
         if isinstance(obj, User):
             ret_val = obj == self
         # Submission, Encounters and Projects all have an owner field, check that
-        elif (
-            isinstance(obj, Submission)
-            or isinstance(obj, Encounter)
-            or isinstance(obj, Project)
-        ):
-            ret_val = obj.owner is self
+        elif isinstance(obj, (Submission, Encounter, Project)):
+            ret_val = obj.owner == self
         elif isinstance(obj, Asset):
             # assets are not owned directly by the user but the submission they're in is.
             # todo, need to understand once assets become part of an encounter, do they still have a submission

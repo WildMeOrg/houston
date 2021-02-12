@@ -49,27 +49,25 @@ class Individuals(Resource):
         """
         return Individual.query.offset(args['offset']).limit(args['limit'])
 
-    @api.permission_required(
-        permissions.ObjectAccessPermission,
-        kwargs_on_request=lambda kwargs: {
-            'obj': kwargs['individual'],
-            'action': AccessOperation.WRITE,
-        },
-    )
     @api.login_required(oauth_scopes=['individuals:write'])
     @api.parameters(parameters.CreateIndividualParameters())
     @api.response(schemas.DetailedIndividualSchema())
     @api.response(code=HTTPStatus.CONFLICT)
     def post(self, args):
+
         """
         Create a new instance of Individual.
         """
         context = api.commit_or_abort(
             db.session, default_error_message='Failed to create a new Individual'
         )
+
+        individual = Individual(**args)
+
         with context:
-            individual = Individual(**args)
             db.session.add(individual)
+        db.session.refresh(individual)
+
         return individual
 
 
@@ -88,7 +86,7 @@ class IndividualByID(Resource):
     @api.permission_required(
         permissions.ObjectAccessPermission,
         kwargs_on_request=lambda kwargs: {
-            'module': Individual,
+            'obj': kwargs['individual'],
             'action': AccessOperation.READ,
         },
     )
@@ -96,6 +94,7 @@ class IndividualByID(Resource):
     def get(self, individual):
         """
         Get Individual details by ID.
+
         """
         return individual
 

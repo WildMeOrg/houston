@@ -22,9 +22,20 @@ class Individual(db.Model, FeatherModel):
         return (
             '<{class_name}('
             'guid={self.guid}, '
-            "title='{self.title}'"
             ')>'.format(class_name=self.__class__.__name__, self=self)
         )
 
     def get_encounters(self):
         return self.encounters
+
+    def add_encounters(self, encounters):
+        for encounter in encounters:
+            if encounter not in self.get_encounters():
+                self.encounters.append(encounter)
+
+    def add_encounter(self, encounter):
+        self.add_encounters([encounter])
+
+    def remove_encounter(self, encounter):
+        if encounter in self.get_encounters():
+            self.encounters.remove(encounter)

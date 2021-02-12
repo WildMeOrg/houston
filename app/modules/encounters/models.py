@@ -5,6 +5,7 @@ Encounters database models
 """
 
 from app.extensions import db, FeatherModel, HoustonModel
+from app.modules.individuals.models import Individual
 
 from app.modules.submissions import models as submissions_models  # NOQA
 from app.modules.assets import models as assets_models  # NOQA
@@ -71,6 +72,10 @@ class Encounter(db.Model, FeatherModel):
     # not going to check for ownership by User.get_public_user() because:
     #  a) this allows for other-user-owned data to be toggled to public
     #  b) allows for us to _disallow_ public access to public-user-owned data
+    def set_individual(self, individual):
+        if isinstance(individual, Individual):
+            self.individual = individual
+
     def is_public(self):
         return self.public
 

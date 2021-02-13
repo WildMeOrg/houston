@@ -141,29 +141,7 @@ class EDMManagerUserMixin(object):
         return success
 
 
-class EDMManagerEncounterMixin(object):
-    def get_encounters(self, target='default'):
-        response = self._get('encounters.list', target=target)
-        return response
-
-    def get_encounter_data(self, guid, target='default'):
-        assert isinstance(guid, uuid.UUID)
-        response = self._get('encounter.data', guid, target=target)
-        return response
-
-    def get_encounter_data_dict(self, guid, target='default'):
-        assert isinstance(guid, uuid.UUID)
-        response = self._get(
-            'encounter.data',
-            guid,
-            target=target,
-            decode_as_object=False,
-            decode_as_dict=True,
-        )
-        return response
-
-
-class EDMManager(EDMManagerEndpointMixin, EDMManagerUserMixin, EDMManagerEncounterMixin):
+class EDMManager(EDMManagerEndpointMixin, EDMManagerUserMixin):
     # pylint: disable=abstract-method
     """
         note the content of User in the 2nd item has stuff you can ignore. it also has the id as "uuid" (which is what it is internally, sigh).  also note it references Organizations !  we didnt touch on this on the call, but i think this should (must?) live with Users.  what we have in java is very lightweight anyway, so no loss to go away.   as you can see, user.organizations is an array of orgs, and (since it is many-to-many) you will see org.members is a list of Users.  easy peasy.  btw, by the time we got to Organizations, we did call the primary key id and make it a uuid.  "live and learn".  :confused:
@@ -407,6 +385,18 @@ class EDMManager(EDMManagerEndpointMixin, EDMManagerUserMixin, EDMManagerEncount
             items[guid] = {'version': version}
 
         return items
+
+    def get_dict(self, list_name, guid, target='default'):
+
+        assert isinstance(guid, uuid.UUID)
+        response = self._get(
+            list_name,
+            guid,
+            target=target,
+            decode_as_object=False,
+            decode_as_dict=True,
+        )
+        return response
 
     def get_data_item(self, guid, item_name, target='default'):
         assert isinstance(guid, uuid.UUID)

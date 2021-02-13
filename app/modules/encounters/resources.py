@@ -81,9 +81,8 @@ class Encounters(Resource):
         except Exception:
             pass
 
-        passthrough_kwargs = {'data': data}
         response = current_app.edm.request_passthrough(
-            'encounter.data', 'post', passthrough_kwargs, ''
+            'encounter.data', 'post', {'data': data}, ''
         )
 
         response_data = None

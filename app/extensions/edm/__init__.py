@@ -70,6 +70,12 @@ class EDMManagerEndpointMixin(object):
         },
         'passthrough': {
             'data': '',
+        },
+        'configuration': {
+            'data': '//v0/configuration/%s',
+        },
+        'configurationDefinition': {
+            'data': '//v0/configurationDefinition/%s',
         }
     }
     # fmt: on
@@ -413,8 +419,7 @@ class EDMManager(EDMManagerEndpointMixin, EDMManagerUserMixin):
             pass
 
         # Check target
-        current_app.edm.ensure_initialed()
-        targets = list(current_app.edm.targets)
+        targets = list(self.targets)
         if target not in targets:
             raise BadRequest('The specified target %r is invalid.' % (target,))
 

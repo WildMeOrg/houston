@@ -87,62 +87,6 @@ class EDMConfigurationDefinition(Resource):
         return response
 
 
-def _request_passthrough(target, path, request_func, passthrough_kwargs):
-    try:
-        # Try to convert string integers to integers
-        target = int(target)
-    except ValueError:
-        pass
-
-    # Check target
-    current_app.edm.ensure_initialed()
-    targets = list(current_app.edm.targets)
-    if target not in targets:
-        raise BadRequest('The specified target %r is invalid.' % (target,))
-
-    endpoint_url_ = current_app.edm.get_target_endpoint_url(target)
-    endpoint = '%s/api/v0/configuration/%s' % (
-        endpoint_url_,
-        path,
-    )
-
-    headers = passthrough_kwargs.get('headers', {})
-    allowed_header_key_list = [
-        'Accept',
-        'Content-Type',
-        'User-Agent',
-    ]
-    is_json = False
-    for header_key in allowed_header_key_list:
-        header_value = request.headers.get(header_key, None)
-        header_existing = headers.get(header_key, None)
-        if header_value is not None and header_existing is None:
-            headers[header_key] = header_value
-
-        if header_key == 'Content-Type':
-            if header_value is not None:
-                if header_value.lower().startswith(
-                    'application/javascript'
-                ) or header_value.lower().startswith('application/json'):
-                    is_json = True
-    passthrough_kwargs['headers'] = headers
-
-    if is_json:
-        data_ = passthrough_kwargs.pop('data', None)
-        if data_ is not None:
-            passthrough_kwargs['json'] = data_
-
-    response = request_func(
-        None,
-        endpoint=endpoint,
-        target=target,
-        decode_as_object=False,
-        decode_as_dict=False,
-        passthrough_kwargs=passthrough_kwargs,
-    )
-    return response
-
-
 @edm_configuration.route('/<string:target>', defaults={'path': ''}, doc=False)
 @edm_configuration.route('/<string:target>/<path:path>')
 # @edm_configuration.login_required(oauth_scopes=['configuration:read'])
@@ -183,10 +127,9 @@ class EDMConfiguration(Resource):
         params.update(request.args)
         params.update(request.form)
 
-        request_func = current_app.edm.get_passthrough
-        passthrough_kwargs = {'params': params}
-
-        response = _request_passthrough(target, path, request_func, passthrough_kwargs)
+        response = current_app.edm.request_passthrough(
+            'configurationDefinition.data', 'get', {'params': params}, path, target
+        )
 
         # private means cannot be read other than admin
         ####@edm_configuration.login_required(oauth_scopes=['configuration:write'])  TODO somehow need to *allow* private if has auth!!!
@@ -219,14 +162,14 @@ class EDMConfiguration(Resource):
         except Exception:
             pass
 
-        request_func = current_app.edm.post_passthrough
-
         passthrough_kwargs = {'data': data}
 
         files = request.files
         if len(files) > 0:
             passthrough_kwargs['files'] = files
 
-        response = _request_passthrough(target, path, request_func, passthrough_kwargs)
+        response = current_app.edm.request_passthrough(
+            'configurationDefinition.data', 'post', passthrough_kwargs, path, target
+        )
 
         return response

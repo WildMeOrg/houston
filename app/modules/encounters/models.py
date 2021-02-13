@@ -82,15 +82,7 @@ class Encounter(db.Model, FeatherModel):
             db.session.delete(self)
 
     def delete_from_edm(self, current_app):
-        request_func = current_app.edm.delete_passthrough
-        passthrough_kwargs = {}
-        current_app.edm.ensure_initialed()
-        endpoint_url_ = current_app.edm.get_target_endpoint_url('default')
-        endpoint = '%s/api/v0/org.ecocean.Encounter/%s' % (
-            endpoint_url_,
-            str(self.guid),
-        )
         response = current_app.edm.request_passthrough(
-            endpoint, 'default', request_func, passthrough_kwargs
+            'encounter.data', 'delete', self.guid, {}
         )
         return response

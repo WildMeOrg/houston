@@ -56,7 +56,7 @@ class EDMManagerEndpointMixin(object):
         },
         'encounter': {
             'list': '//v0/org.ecocean.Encounter/list',
-            'data': '//v0/org.ecocean.Encounter/%s?detail-org.ecocean.Encounter=max',
+            'data': '//v0/org.ecocean.Encounter/%s',
         },
         'organization': {
             'list': '//v0/org.ecocean.Organization/list',
@@ -363,10 +363,6 @@ class EDMManager(EDMManagerEndpointMixin, EDMManagerUserMixin):
         response = self._post(*args, **kwargs)
         return response
 
-    def delete_passthrough(self, *args, **kwargs):
-        response = self._delete(*args, **kwargs)
-        return response
-
     def get_list(self, list_name, target='default'):
         response = self._get(list_name, target=target)
 
@@ -403,7 +399,9 @@ class EDMManager(EDMManagerEndpointMixin, EDMManagerUserMixin):
         response = self._get(item_name, guid, target=target)
         return response
 
-    def request_passthrough(self, endpoint, target, request_func, passthrough_kwargs):
+    def request_passthrough(
+        self, tag, method, args, passthrough_kwargs, target='default'
+    ):
         self.ensure_initialed()
 
         headers = passthrough_kwargs.get('headers', {})
@@ -432,10 +430,12 @@ class EDMManager(EDMManagerEndpointMixin, EDMManagerUserMixin):
             if data_ is not None:
                 passthrough_kwargs['json'] = data_
 
-        response = request_func(
+        response = self._request(
             None,
-            endpoint=endpoint,
+            tag=tag,
+            args=args,
             target=target,
+            method=method,
             decode_as_object=False,
             decode_as_dict=False,
             passthrough_kwargs=passthrough_kwargs,

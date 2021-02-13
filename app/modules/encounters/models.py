@@ -83,6 +83,9 @@ class Encounter(db.Model, FeatherModel):
 
     def delete_from_edm(self, current_app):
         response = current_app.edm.request_passthrough(
-            'encounter.data', 'delete', self.guid, {}
+            'encounter.data',
+            'delete',
+            {},
+            self.guid,
         )
         return response

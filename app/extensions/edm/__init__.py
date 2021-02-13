@@ -5,7 +5,7 @@ Ecological Data Management (EDM) manager.
 
 """
 import logging
-
+from werkzeug.exceptions import BadRequest
 from flask import current_app, request, session, render_template  # NOQA
 from flask_login import current_user  # NOQA
 from app.extensions import db
@@ -68,6 +68,9 @@ class EDMManagerEndpointMixin(object):
         'role': {
             'list': '//v0/org.ecocean.Role/list',
         },
+        'passthrough': {
+            'data': '',
+        }
     }
     # fmt: on
 
@@ -400,9 +403,20 @@ class EDMManager(EDMManagerEndpointMixin, EDMManagerUserMixin):
         return response
 
     def request_passthrough(
-        self, tag, method, args, passthrough_kwargs, target='default'
+        self, tag, method, passthrough_kwargs, args=None, target='default'
     ):
         self.ensure_initialed()
+        try:
+            # Try to convert string integers to integers
+            target = int(target)
+        except ValueError:
+            pass
+
+        # Check target
+        current_app.edm.ensure_initialed()
+        targets = list(current_app.edm.targets)
+        if target not in targets:
+            raise BadRequest('The specified target %r is invalid.' % (target,))
 
         headers = passthrough_kwargs.get('headers', {})
         allowed_header_key_list = [
@@ -431,11 +445,10 @@ class EDMManager(EDMManagerEndpointMixin, EDMManagerUserMixin):
                 passthrough_kwargs['json'] = data_
 
         response = self._request(
-            None,
-            tag=tag,
-            args=args,
+            method,
+            tag,
+            args,
             target=target,
-            method=method,
             decode_as_object=False,
             decode_as_dict=False,
             passthrough_kwargs=passthrough_kwargs,

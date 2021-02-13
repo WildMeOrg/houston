@@ -372,10 +372,6 @@ class EDMManager(EDMManagerEndpointMixin, EDMManagerUserMixin):
         response = self._get(*args, **kwargs)
         return response
 
-    def post_passthrough(self, *args, **kwargs):
-        response = self._post(*args, **kwargs)
-        return response
-
     def get_list(self, list_name, target='default'):
         response = self._get(list_name, target=target)
 

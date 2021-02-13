@@ -34,7 +34,7 @@ class EDMPassthroughTargets(Resource):
         """
         List the possible EDM passthrough targets.
         """
-        targets = current_app.edm.targets
+        targets = current_app.edm.get_target_list()
         return targets
 
 

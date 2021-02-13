@@ -63,8 +63,10 @@ class EDMConfigurationDefinition(Resource):
             endpoint_url_,
             path,
         )
-        request_func = current_app.edm.get_passthrough
-        response = request_func(
+
+        # @jon so why is configurationDefinition different in that it does not do the headers part that is
+        # common to all other request_passthrough functionality
+        response = current_app.edm.get_passthrough(
             None,
             endpoint=endpoint,
             target=target,
@@ -126,7 +128,7 @@ class EDMConfiguration(Resource):
         params.update(request.form)
 
         response = current_app.edm.request_passthrough(
-            'configurationDefinition.data', 'get', {'params': params}, path, target
+            'configuration.data', 'get', {'params': params}, path, target
         )
 
         # private means cannot be read other than admin
@@ -167,7 +169,7 @@ class EDMConfiguration(Resource):
             passthrough_kwargs['files'] = files
 
         response = current_app.edm.request_passthrough(
-            'configurationDefinition.data', 'post', passthrough_kwargs, path, target
+            'configuration.data', 'post', passthrough_kwargs, path, target
         )
 
         return response

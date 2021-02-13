@@ -40,8 +40,7 @@ class EDMConfigurationTargets(Resource):
         """
         List the possible EDM passthrough targets.
         """
-        current_app.edm.ensure_initialed()
-        targets = list(current_app.edm.targets)
+        targets = current_app.edm.get_target_list()
         return targets
 
 
@@ -53,11 +52,10 @@ class EDMConfigurationDefinition(Resource):
     """
 
     def get(self, target, path):
-        current_app.edm.ensure_initialed()
-        targets = list(current_app.edm.targets)
+
         # Check target
-        current_app.edm.ensure_initialed()
-        targets = list(current_app.edm.targets)
+        targets = current_app.edm.get_target_list()
+
         if target not in targets:
             raise BadRequest('The specified target %r is invalid.' % (target,))
         endpoint_url_ = current_app.edm.get_target_endpoint_url(target)

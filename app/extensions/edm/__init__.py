@@ -368,10 +368,6 @@ class EDMManager(EDMManagerEndpointMixin, EDMManagerUserMixin):
     def _delete(self, *args, **kwargs):
         return self._request('delete', *args, **kwargs)
 
-    def get_passthrough(self, *args, **kwargs):
-        response = self._get(*args, **kwargs)
-        return response
-
     def get_list(self, list_name, target='default'):
         response = self._get(list_name, target=target)
 

@@ -15,8 +15,6 @@ from app.extensions.api import abort
 
 from app.modules.users.models import User
 
-from werkzeug.exceptions import BadRequest
-
 import json
 
 
@@ -29,21 +27,6 @@ edm_configurationDefinition = Namespace(
 )  # pylint: disable=invalid-name
 
 
-@edm_configuration.route('/')
-@edm_configuration.login_required(oauth_scopes=['configuration:read'])
-class EDMConfigurationTargets(Resource):
-    """
-    Manipulations with Configuration.
-    """
-
-    def get(self):
-        """
-        List the possible EDM passthrough targets.
-        """
-        targets = current_app.edm.get_target_list()
-        return targets
-
-
 @edm_configurationDefinition.route('/<string:target>/<path:path>')
 # @edm_configurationDefinition.login_required(oauth_scopes=['configuration:read'])
 class EDMConfigurationDefinition(Resource):
@@ -52,27 +35,10 @@ class EDMConfigurationDefinition(Resource):
     """
 
     def get(self, target, path):
-
-        # Check target
-        targets = current_app.edm.get_target_list()
-
-        if target not in targets:
-            raise BadRequest('The specified target %r is invalid.' % (target,))
-        endpoint_url_ = current_app.edm.get_target_endpoint_url(target)
-        endpoint = '%s/api/v0/configurationDefinition/%s' % (
-            endpoint_url_,
-            path,
+        response = current_app.edm.request_passthrough(
+            'configurationDefinition.data', 'get', {}, path, target
         )
 
-        # @jon so why is configurationDefinition different in that it does not do the headers part that is
-        # common to all other request_passthrough functionality
-        response = current_app.edm.get_passthrough(
-            None,
-            endpoint=endpoint,
-            target=target,
-            decode_as_object=False,
-            decode_as_dict=False,
-        )
         data = response.json()
         if (
             response.ok

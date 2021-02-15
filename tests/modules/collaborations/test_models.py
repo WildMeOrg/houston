@@ -43,7 +43,7 @@ def test_collaboration_create_with_members(
             assert association.initiator is False
 
 
-def test_collaboration_read_state_changes(collab_user_a, collab_user_b):
+def test_collaboration_read_state_changes(db, collab_user_a, collab_user_b):
     collab = Collaboration(
         title='Collab for state change',
         user_guids=[collab_user_a.guid, collab_user_b.guid],
@@ -106,7 +106,7 @@ def test_collaboration_read_state_changes(collab_user_a, collab_user_b):
     assert collab.get_read_state() == CollaborationUserState.DECLINED
 
 
-def test_collaboration_edit_state_changes(collab_user_a, collab_user_b):
+def test_collaboration_edit_state_changes(db, collab_user_a, collab_user_b):
 
     collab = Collaboration(
         title='Collab for state change',

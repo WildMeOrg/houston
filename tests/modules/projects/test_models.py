@@ -6,7 +6,9 @@ import sqlalchemy
 import logging
 
 
-def test_project_add_members(db, temp_user):  # pylint: disable=unused-argument
+def test_project_add_members(
+    db, temp_user, researcher_1, researcher_2
+):  # pylint: disable=unused-argument
     from app.modules.projects.models import (
         Project,
         ProjectUserMembershipEnrollment,
@@ -56,6 +58,11 @@ def test_project_add_members(db, temp_user):  # pylint: disable=unused-argument
             db.session.add(duplicate_enrollment)
     except (sqlalchemy.orm.exc.FlushError, sqlalchemy.exc.IntegrityError):
         pass
+
+    temp_proj.add_user_in_context(researcher_1)
+    # try removing a user that's not in the project
+    temp_proj.remove_user_in_context(researcher_2)
+    temp_proj.remove_user_in_context(researcher_1)
 
     with db.session.begin():
         db.session.delete(temp_proj)

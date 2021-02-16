@@ -3,8 +3,6 @@
 Individual resources utils
 -------------
 """
-import json
-
 import logging
 import json
 

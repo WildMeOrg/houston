@@ -39,3 +39,6 @@ class Individual(db.Model, FeatherModel):
     def remove_encounter(self, encounter):
         if encounter in self.get_encounters():
             self.encounters.remove(encounter)
+
+    def get_members(self):
+        return [encounter.owner for encounter in self.encounters]

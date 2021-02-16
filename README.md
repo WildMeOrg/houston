@@ -352,7 +352,7 @@ Dependencies
 
 ### Project Dependencies
 
-* [**Python**](https://www.python.org/) 2.7, 3.5+ / pypy2 (2.5.0)
+* [**Python**](https://www.python.org/) 3.7+
 * [**flask-restplus**](https://github.com/noirbizarre/flask-restplus) (+
   [*flask*](http://flask.pocoo.org/))
 * [**sqlalchemy**](http://www.sqlalchemy.org/) (+

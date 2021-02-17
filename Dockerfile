@@ -19,7 +19,8 @@ RUN apt update \
         git \
         # Magic with python-magic (MIME-type parser)
         libmagic1 \
-        # nodejs \
+        #: tool to setuid+setgid+setgroups+exec at execution time
+        gosu \
  && rm -rf /var/lib/apt/lists/*
 
 COPY . /code
@@ -34,8 +35,17 @@ RUN set -ex \
  #: Remove pip download cache
  && rm -rf ~/.cache/pip
 
-USER nobody
 EXPOSE 5000
 ENV FLASK_CONFIG production
 
-CMD [ "invoke", "app.run" ]
+# Location to mount our data
+ENV DATA_VOLUME /data
+# Location the data will be writen to
+ENV DATA_ROOT ${DATA_VOLUME}/var
+VOLUME [ "${DATA_VOLUME}" ]
+
+COPY ./.dockerfiles/docker-entrypoint.sh /docker-entrypoint.sh
+
+ENTRYPOINT [ "/docker-entrypoint.sh" ]
+#: default command within the entrypoint
+# CMD [ "invoke", "app.run" ]

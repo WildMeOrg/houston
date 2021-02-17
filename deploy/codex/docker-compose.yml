@@ -93,6 +93,7 @@ services:
       - houston-var:/data
       # FIXME: pull in development code while working on bringing up the container
       - ../../:/code
+      # FIXME: Can we define a better mountpoint for this file? Maybe /config.py?
       - ./houston/local_config.py:/code/local_config.py
 
 networks:

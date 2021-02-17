@@ -56,7 +56,7 @@ class EDMManagerEndpointMixin(object):
         },
         'encounter': {
             'list': '//v0/org.ecocean.Encounter/list',
-            'data': '//v0/org.ecocean.Encounter/%s',
+            'data': '//v0/org.ecocean.Encounter/%s?detail-org.ecocean.Encounter=max',
         },
         'organization': {
             'list': '//v0/org.ecocean.Organization/list',

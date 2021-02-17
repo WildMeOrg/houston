@@ -39,13 +39,12 @@ jobs:
           # exit-zero treats all errors as warnings.
           flake8 . --count --exit-zero --max-complexity=10 --statistics
 
-  test:
-    runs-on: ${{ matrix.os }}
+  test_macos:
+    runs-on: macos-latest
     strategy:
       max-parallel: 1
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest]
         python-version: [3.7, 3.8, 3.9]
     env:
       OS: ${{ matrix.os }}
@@ -66,14 +65,8 @@ jobs:
             ${{ runner.os }}-pip-
 
       - name: Install libmagic on macOS
-        if: runner.os == 'macOS'
         run: |
           brew install libmagic
-
-      - name: Install libmagic on Ubuntu
-        if: runner.os == 'Linux'
-        run: |
-          sudo apt install libmagic1
 
       # Install and test - Test order is randomized, run three times to ensure correctness
       - name: Reset local database
@@ -94,6 +87,98 @@ jobs:
           source virtualenv/houston3.7/bin/activate
           invoke app.db.downgrade
           invoke app.db.upgrade
+
+      - name: Run tests after DB checks
+        run: |
+          source virtualenv/houston3.7/bin/activate
+          pytest -s -v --gitlab-remote-login-pat "${{ secrets.GITLAB_REMOTE_LOGIN_PAT }}"
+
+      - name: Run Codecov
+        continue-on-error: true
+        run: |
+          source virtualenv/houston3.7/bin/activate
+          pytest -s -v --gitlab-remote-login-pat "${{ secrets.GITLAB_REMOTE_LOGIN_PAT }}" --cov=./ --cov-report=xml
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v1.0.7
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./_coverage/coverage.xml
+          env_vars: OS,PYTHON
+          fail_ci_if_error: true
+
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      max-parallel: 1
+      fail-fast: false
+      matrix:
+        python-version: [3.7, 3.8, 3.9]
+        db-uri: ["postgresql://postgres:testing@localhost/postgres", ""]
+    services:
+      db:
+        image: postgres:10
+        env:
+          POSTGRES_PASSWORD: testing
+        # Set health checks to wait until postgres has started
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+    env:
+      OS: ${{ matrix.os }}
+      PYTHON: ${{ matrix.python-version }}
+      SQLALCHEMY_DATABASE_URI: ${{ matrix.db-uri }}
+    steps:
+      # Checkout and env setup
+      - uses: actions/checkout@v2
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - uses: actions/cache@v2
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt', 'requirements/*.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install libmagic on Ubuntu
+        run: |
+          sudo apt install libmagic1
+
+      # Install and test - Test order is randomized, run three times to ensure correctness
+      - name: Reset local database
+        run: |
+          tar -zxvf _db.initial.tar.gz
+          mv _db.initial _db
+          ./scripts/install.sh
+
+      - name: Run tests (random x3)
+        run: |
+          source virtualenv/houston3.7/bin/activate
+          pytest -s -v --gitlab-remote-login-pat "${{ secrets.GITLAB_REMOTE_LOGIN_PAT }}"
+          pytest -s -v --gitlab-remote-login-pat "${{ secrets.GITLAB_REMOTE_LOGIN_PAT }}"
+          pytest -s -v --gitlab-remote-login-pat "${{ secrets.GITLAB_REMOTE_LOGIN_PAT }}"
+
+      - name: Check DB migrations (sqlite)
+        if: matrix.db-uri == ''
+        run: |
+          source virtualenv/houston3.7/bin/activate
+          invoke app.db.downgrade
+          invoke app.db.upgrade
+
+      - name: Check DB migrations (postgresql)
+        if: matrix.db-uri != ''
+        run: |
+          source virtualenv/houston3.7/bin/activate
+          invoke app.db.upgrade --no-backup
+          invoke app.db.downgrade
+          invoke app.db.upgrade --no-backup
 
       - name: Run tests after DB checks
         run: |

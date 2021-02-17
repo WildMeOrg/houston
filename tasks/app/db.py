@@ -137,6 +137,7 @@ def migrate(
     branch_label=None,
     version_path=None,
     rev_id=None,
+    autogenerate=True,
 ):
     """Alias for 'revision --autogenerate'"""
     config = _get_config(directory, opts=['autogenerate'])
@@ -144,7 +145,7 @@ def migrate(
         command.revision(
             config,
             message,
-            autogenerate=True,
+            autogenerate=autogenerate,
             sql=sql,
             head=head,
             splice=splice,
@@ -214,10 +215,17 @@ def upgrade(
     backup=True,
 ):
     """Upgrade to a later version"""
-    _db_filepath = current_app.config.get('SQLALCHEMY_DATABASE_PATH', None)
-    _db_filepath_backup = '%s.backup' % (_db_filepath,)
+    db_uri = current_app.config.get('SQLALCHEMY_DATABASE_URI')
+    sqlite = db_uri.startswith('sqlite://')
+    if sqlite:
+        _db_filepath = current_app.config.get('SQLALCHEMY_DATABASE_PATH', None)
+        _db_filepath_backup = '%s.backup' % (_db_filepath,)
 
     if backup:
+        if not sqlite:
+            raise NotImplementedError(
+                'No backup code implemented for non sqlite databases, use --no-backup'
+            )
         if os.path.exists(_db_filepath):
             log.info('Pre-upgrade Sqlite3 database backup')
             log.info('\tDatabase : %r' % (_db_filepath,))
@@ -229,13 +237,13 @@ def upgrade(
         command.upgrade(config, revision, sql=sql, tag=tag)
         command.current(config)
     except Exception:
-        if os.path.exists(_db_filepath_backup):
+        if sqlite and os.path.exists(_db_filepath_backup):
             log.error('Rolling back Sqlite3 database to backup')
             shutil.copy2(_db_filepath_backup, _db_filepath)
             log.error('...restored')
         log.critical('Database upgrade failed', exc_info=True)
     finally:
-        if os.path.exists(_db_filepath_backup):
+        if sqlite and os.path.exists(_db_filepath_backup):
             log.info('Deleting database backup %r' % (_db_filepath_backup,))
             os.remove(_db_filepath_backup)
             log.info('...deleted')

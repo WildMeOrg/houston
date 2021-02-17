@@ -84,7 +84,9 @@ class BaseConfig(object):
     ]
 
     SQLALCHEMY_DATABASE_PATH = os.path.join(PROJECT_DATABASE_PATH, 'database.sqlite3')
-    SQLALCHEMY_DATABASE_URI = 'sqlite:///%s' % (SQLALCHEMY_DATABASE_PATH)
+    SQLALCHEMY_DATABASE_URI = os.getenv('SQLALCHEMY_DATABASE_URI') or 'sqlite:///%s' % (
+        SQLALCHEMY_DATABASE_PATH
+    )
 
     DEBUG = False
     ERROR_404_HELP = False
@@ -226,7 +228,7 @@ class DevelopmentConfig(
 class TestingConfig(DevelopmentConfig):
     TESTING = True
 
-    # Use in-memory SQLite database for testing
-    SQLALCHEMY_DATABASE_URI = 'sqlite://'
+    # Use in-memory SQLite database for testing if SQLALCHEMY_DATABASE_URI is not specified
+    SQLALCHEMY_DATABASE_URI = os.getenv('SQLALCHEMY_DATABASE_URI') or 'sqlite://'
 
     MAIL_SUPPRESS_SEND = True

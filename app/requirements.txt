@@ -33,6 +33,7 @@ permission>=0.4.1,<0.5
 phonenumbers
 Pillow
 premailer
+psycopg2-binary
 
 pygeocoder
 python-gitlab

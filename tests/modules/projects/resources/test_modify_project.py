@@ -157,16 +157,12 @@ def test_owner_permission(flask_app_client, researcher_1, researcher_2):
     # Owner can do that
     data = [
         utils.patch_test_op(researcher_1.password_secret),
-        utils.patch_add_op(
-            'title', 'This is an owner modified test project, please ignore'
-        ),
+        utils.patch_add_op('title', 'An owner modified test project, please ignore'),
     ]
     response = proj_utils.patch_project(
         flask_app_client, project_guid, researcher_1, data
     )
-    assert (
-        response.json['title'] == 'This is an owner modified test project, please ignore'
-    )
+    assert response.json['title'] == 'An owner modified test project, please ignore'
 
     # Encounter addition and removal not tested for owner as it's already tested in test_modify_project
 

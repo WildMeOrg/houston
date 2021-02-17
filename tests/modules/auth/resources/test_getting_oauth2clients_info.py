@@ -22,7 +22,8 @@ def test_getting_list_of_oauth2_clients_by_authorized_user(
     assert response.content_type == 'application/json'
     assert isinstance(response.json, list)
     assert set(response.json[0].keys()) >= {'guid'}
-    assert uuid.UUID(response.json[0]['guid']) == regular_user_oauth2_client.guid
+    guids = [uuid.UUID(obj['guid']) for obj in response.json]
+    assert regular_user_oauth2_client.guid in guids
 
 
 @pytest.mark.parametrize(

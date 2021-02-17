@@ -13,6 +13,24 @@ log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
 
 @app_context_task
+def initialize_edm_admin_user(context):
+    """Set up EDM admin user"""
+    from flask import current_app
+    import requests
+
+    log.info('Initializing EDM admin user')
+    base_url = current_app.config['EDM_URIS'][0]
+    password = current_app.config['EDM_AUTHENTICATIONS'][0]['password']
+    payload = {'adminPassword': password}
+    url = f'{base_url}/edm/init.jsp'
+    # Contact EDM to initialize
+    resp = requests.get(url, params=payload)
+    if not resp.ok:
+        raise RuntimeError(f'Failed to initialize EDM admin user: {resp.reason}')
+    log.info('Initialized EDM admin user')
+
+
+@app_context_task
 def initialize_users_from_edm(context, edm_authentication=None):
     from app.modules.users.models import User
 
@@ -33,6 +51,7 @@ def all(context, edm_authentication=None, skip_on_failure=False):
     log.info('Initializing tasks...')
 
     try:
+        initialize_edm_admin_user(context)
         initialize_users_from_edm(context, edm_authentication=edm_authentication)
         initialize_orgs_from_edm(context, edm_authentication=edm_authentication)
     except AssertionError as exception:

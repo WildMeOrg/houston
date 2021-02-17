@@ -19,6 +19,11 @@ class LocalConfig(BaseConfig):
     SECRET_KEY = 'seekret'
     SENTRY_DSN = None
 
+    # FIXME: There is code that won't allow for `SQLALCHEMY_DATABASE_PATH = None`
+    #        File "/code/tasks/app/db.py", in upgrade: `if os.path.exists(_db_filepath):`
+    # SQLALCHEMY_DATABASE_PATH = None
+    SQLALCHEMY_DATABASE_URI = os.getenv('SQLALCHEMY_DATABASE_URI')
+
     EDM_URIS = {
         0: os.getenv('EDM_AUTHENTICATIONS_0_URI'),
     }

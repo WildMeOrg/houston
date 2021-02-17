@@ -32,7 +32,6 @@ api = Namespace('encounters', description='Encounters')  # pylint: disable=inval
 
 
 @api.route('/')
-@api.login_required(oauth_scopes=['encounters:read'])
 class Encounters(Resource):
     """
     Manipulations with Encounters.
@@ -45,6 +44,7 @@ class Encounters(Resource):
             'action': AccessOperation.READ,
         },
     )
+    @api.login_required(oauth_scopes=['encounters:read'])
     @api.parameters(PaginationParameters())
     @api.response(schemas.BaseEncounterSchema(many=True))
     def get(self, args):
@@ -123,7 +123,7 @@ class Encounters(Resource):
                 # TODO other houston-based relationships: orgs, projects, etc
                 owner_guid = None
                 pub = True  # legit? public if no owner?
-                if current_user is not None:
+                if current_user is not None and not current_user.is_anonymous:
                     owner_guid = current_user.guid
                     pub = False
                 encounter = Encounter(

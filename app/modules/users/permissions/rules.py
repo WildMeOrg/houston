@@ -81,6 +81,7 @@ class ModuleActionRule(DenyAbortMixin, Rule):
     def check(self):
         from app.modules.submissions.models import Submission
         from app.modules.users.models import User
+        from app.modules.encounters.models import Encounter
 
         # This Rule is for checking permissions on modules, so there must be one,
         assert self._module is not None
@@ -89,7 +90,7 @@ class ModuleActionRule(DenyAbortMixin, Rule):
         if not current_user or current_user.is_anonymous:
             has_permission = False
             if self._action == AccessOperation.WRITE:
-                has_permission = self._is_module(Submission) or self._is_module(User) or self._is_module(Encounter)
+                has_permission = self._is_module((Submission, User, Encounter))
         else:
             has_permission = (
                 # inactive users can do nothing

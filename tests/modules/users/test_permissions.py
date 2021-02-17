@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=invalid-name,missing-docstring
-from mock import Mock
+from mock import Mock, patch
 import pytest
 
 from werkzeug.exceptions import HTTPException
@@ -410,6 +410,7 @@ def test_ObjectAccessPermission_contributor_user(
     db, contributor_1_login, temp_user, public_encounter, owned_encounter
 ):
     # pylint: disable=unused-argument
+    from app.modules.assets.models import Asset
     from app.modules.users.models import User
     from app.modules.encounters.models import Encounter
 
@@ -442,6 +443,24 @@ def test_ObjectAccessPermission_contributor_user(
     validate_cannot_read_object(owned_encounter)
     validate_cannot_write_object(owned_encounter)
     validate_cannot_delete_object(owned_encounter)
+
+    # project, encounter, asset permitted via project
+    project1 = Mock(is_public=lambda: False, get_encounters=lambda: [])
+    project2 = Mock(is_public=lambda: False)
+    project2.get_encounters.return_value = [Mock(get_assets=lambda: []), owned_encounter]
+    mock_asset = Mock(__class__=Asset, is_public=lambda: False)
+    project3 = Mock(is_public=lambda: False)
+    project3.get_encounters.return_value = [Mock(get_assets=lambda: [mock_asset])]
+    # object that is not a project, encounter or asset
+    mock_other = Mock(is_public=lambda: False)
+    projects = [project1, project2, project3]
+    with patch.object(contributor_1_login, 'owns_object', return_value=False):
+        with patch.object(contributor_1_login, 'get_projects', return_value=projects):
+            validate_can_read_object(project1)
+            validate_can_read_object(owned_encounter)
+            validate_can_read_object(mock_asset)
+            # object that is not a project, encounter or asset
+            validate_cannot_read_object(mock_other)
 
     my_encounter = Encounter(owner=contributor_1_login)
     with db.session.begin():

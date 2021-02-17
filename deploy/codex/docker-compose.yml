@@ -77,7 +77,7 @@ services:
   houston:
     # https://github.com/WildMeOrg/houston
     image: wildme/houston:latest
-    command: [ 'invoke', 'app.run', '--host', '0.0.0.0' ]
+    command: [ "wait-for", "db:5432", "--", "wait-for", "edm:8080", "--", "invoke", "app.run", "--host", "0.0.0.0" ]
     networks:
       - intranet
       - frontend

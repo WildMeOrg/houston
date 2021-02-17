@@ -63,9 +63,7 @@ class Encounters(Resource):
             'action': AccessOperation.WRITE,
         },
     )
-    @api.login_required(oauth_scopes=['encounters:write'])
     @api.parameters(parameters.CreateEncounterParameters())
-    # @api.response(schemas.DetailedEncounterSchema())
     @api.response(code=HTTPStatus.CONFLICT)
     def post(self, args):
         """

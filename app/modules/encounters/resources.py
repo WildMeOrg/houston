@@ -189,8 +189,7 @@ class EncounterByID(Resource):
             # return encounter
             # return True
 
-        # @jon have you written a test for this
-        response = current_app.edm.get_dict('encounter.data', encounter.guid)
+        response = current_app.edm.get_dict('encounter.data_complete', encounter.guid)
         if not isinstance(response, dict):  # some non-200 thing, incl 404
             return response
 

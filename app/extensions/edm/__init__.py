@@ -56,7 +56,8 @@ class EDMManagerEndpointMixin(object):
         },
         'encounter': {
             'list': '//v0/org.ecocean.Encounter/list',
-            'data': '//v0/org.ecocean.Encounter/%s?detail-org.ecocean.Encounter=max',
+            'data': '//v0/org.ecocean.Encounter/%s',
+            'data_complete': '//v0/org.ecocean.Encounter/%s?detail-org.ecocean.Encounter=max',
         },
         'organization': {
             'list': '//v0/org.ecocean.Organization/list',
@@ -265,9 +266,16 @@ class EDMManager(EDMManagerEndpointMixin, EDMManagerUserMixin):
             assert password is not None, message
 
             self.sessions[target] = requests.Session()
-            self._get(
+            response = self._get(
                 'session.login', email, password, target=target, ensure_initialized=False
             )
+            assert (
+                not isinstance(response, requests.models.Response) or response.ok
+            ), 'EDM Authentication for %s returned non-OK code: %d' % (
+                target,
+                response.status_code,
+            )
+
             log.info('Created authenticated session for EDM target %r' % (target,))
 
     def _ensure_initialized(self):

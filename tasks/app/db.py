@@ -137,6 +137,7 @@ def migrate(
     branch_label=None,
     version_path=None,
     rev_id=None,
+    autogenerate=True,
 ):
     """Alias for 'revision --autogenerate'"""
     config = _get_config(directory, opts=['autogenerate'])
@@ -144,7 +145,7 @@ def migrate(
         command.revision(
             config,
             message,
-            autogenerate=True,
+            autogenerate=autogenerate,
             sql=sql,
             head=head,
             splice=splice,

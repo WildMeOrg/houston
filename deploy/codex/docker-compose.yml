@@ -87,6 +87,7 @@ services:
     environment:
       FLASK_CONFIG: local
     volumes:
+      - houston-var:/data
       # FIXME: pull in development code while working on bringing up the container
       - ../../:/code
       - ./houston/local_config.py:/code/local_config.py
@@ -100,3 +101,4 @@ volumes:
   pgadmin-var:
   pgdata-var:
   wbia-var:
+  houston-var:

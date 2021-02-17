@@ -21,7 +21,18 @@ RUN apt update \
         libmagic1 \
         #: tool to setuid+setgid+setgroups+exec at execution time
         gosu \
+        #: required by wait-for
+        netcat \
+        #: required for downloading 'wait-for'
+        curl \
  && rm -rf /var/lib/apt/lists/*
+
+# Install wait-for
+RUN set -x \
+    && curl -s https://raw.githubusercontent.com/eficode/wait-for/v2.0.0/wait-for > /usr/local/bin/wait-for \
+    && chmod a+x /usr/local/bin/wait-for \
+    # test it works
+    && wait-for google.com:80 -- echo "success"
 
 COPY . /code
 

@@ -52,7 +52,9 @@ _main() {
 		set -- invoke app.run "$@"
 	fi
 
-	if [ "$1" = 'invoke' ]; then
+	# Assume if invoke or wait-for is the first argument,
+	# then the service is set to run
+	if [ "$1" = 'invoke' ] || [ "$1" = 'wait-for' ]; then
 		docker_setup_env
 		# only run initialization on an empty data directory
 		if [ -z "$ALREADY_INITIALIZED" ]; then

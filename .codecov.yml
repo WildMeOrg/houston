@@ -2,9 +2,16 @@ codecov:
   require_ci_to_pass: yes
 
 coverage:
-  precision: 2
-  round: down
+  status:
+    project:
+      default:
+        threshold: 1%
+    patch:
+      default:
+        target: 50%
   range: "50...90"
+  round: down
+  precision: 1
 
 parsers:
   gcov:

@@ -336,7 +336,9 @@ def branches(context, directory='migrations', verbose=False):
 def current(context, directory='migrations', verbose=False, head_only=False):
     """Display the current revision for each database."""
     config = _get_config(directory)
-    if alembic_version >= (0, 7, 0):
+    if alembic_version >= (1, 5, 0):
+        command.current(config, verbose=verbose)
+    elif alembic_version >= (0, 7, 0):  # pragma: no cover
         command.current(config, verbose=verbose, head_only=head_only)
     else:
         command.current(config)

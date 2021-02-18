@@ -115,6 +115,7 @@ jobs:
       OS: ubuntu-latest
       PYTHON: ${{ matrix.python-version }}
       SQLALCHEMY_DATABASE_URI: ${{ matrix.db-uri }}
+      GITLAB_REMOTE_LOGIN_PAT: ${{ secrets.GITLAB_REMOTE_LOGIN_PAT }}
     steps:
       # Checkout and env setup
       - uses: actions/checkout@v2
@@ -176,7 +177,14 @@ jobs:
         continue-on-error: true
         run: |
           source virtualenv/houston3.7/bin/activate
-          pytest -s -v --gitlab-remote-login-pat "${{ secrets.GITLAB_REMOTE_LOGIN_PAT }}" --cov=./ --cov-report=xml --cov-append
+          pytest -s -v --gitlab-remote-login-pat "${{ secrets.GITLAB_REMOTE_LOGIN_PAT }}" --cov=./ --cov-append
+
+      - name: Run other invoke tasks for coverage and errors
+        if: matrix.python-version == '3.9'
+        run: |
+          source virtualenv/houston3.7/bin/activate
+          ./scripts/run_tasks_for_coverage.sh
+          coverage xml
 
       - name: Upload coverage to Codecov (3.9)
         if: matrix.python-version == '3.9'

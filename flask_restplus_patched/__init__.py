@@ -5,7 +5,7 @@ from .model import Schema, DefaultHTTPErrorSchema  # NOQA
 
 try:
     from .model import ModelSchema  # NOQA
-except ImportError:
+except ImportError:  # pragma: no cover
     pass
 from .namespace import Namespace  # NOQA
 from .parameters import Parameters, PostFormParameters  # NOQA

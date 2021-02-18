@@ -23,7 +23,7 @@ try:
     from alembic import __version__ as __alembic_version__
     from alembic.config import Config as AlembicConfig
     from alembic import command
-except ImportError:
+except ImportError:  # pragma: no cover
     log.warning("Alembic cannot be imported, so some app.db.* tasks won't be available!")
 else:
 

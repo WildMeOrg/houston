@@ -29,7 +29,7 @@ def crud_module(context, module_name='', module_name_singular=''):
     """
     try:
         import jinja2
-    except ImportError:
+    except ImportError:  # pragma: no cover
         log.critical(
             'jinja2 is required to create boilerplates. Please, do `pip install jinja2`'
         )

@@ -197,11 +197,9 @@ def generate_user_instance(
 
 def validate_dict_response(response, expected_code, expected_fields):
     assert response.status_code == expected_code
-    # The beauty of standards is that there as so many to choose from
-    assert (
-        response.content_type == 'application/json'
-        or response.content_type.startswith('application/javascript')
-    )
+    # after some discussion, dropping the check of response.content_type
+    # turns out response.json is very forgiving and tries to parse response.data
+    # even when response.is_json == False ... so this allows for sloppy headers but valid json getting thru
     assert isinstance(response.json, dict)
     assert set(response.json.keys()) >= expected_fields
 

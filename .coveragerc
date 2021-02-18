@@ -1,12 +1,13 @@
 [run]
 branch = True
-source = app
+source =
+    app
+    tasks
 omit =
     _db/*
     local_config.py
     setup.py
     migrations/*
-    tasks/*
     virtualenv/*
 
 [report]

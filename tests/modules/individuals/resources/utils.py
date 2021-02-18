@@ -4,7 +4,6 @@ Individual resources utils
 -------------
 """
 import logging
-import json
 
 from tests import utils as test_utils
 

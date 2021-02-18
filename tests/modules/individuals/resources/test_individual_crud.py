@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=missing-docstring
+from app.modules.individuals.models import Individual
 import logging
 import json
 
@@ -8,8 +9,6 @@ from tests.modules.individuals.resources import utils as individual_utils
 from tests import utils
 
 log = logging.getLogger(__name__)
-
-from app.modules.individuals.models import Individual
 
 
 def test_create_read_individual(flask_app_client, researcher_1, encounter_1):
@@ -68,8 +67,6 @@ def patch_individual(
 
 def test_modify_encounter(db, flask_app_client, researcher_1, empty_individual):
     # pylint: disable=invalid-name
-    from app.modules.encounters.models import Encounter
-
     # Had problems persisting and deleting fixture objects ¯\_(ツ)_/¯
     # EX: sqlalchemy.exc.InvalidRequestError: Instance '<Encounter at 0x7f72df5b2700>' has been deleted.
     mod_enc_1 = utils.generate_encounter_instance(

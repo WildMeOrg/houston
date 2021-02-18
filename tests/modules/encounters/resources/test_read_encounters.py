@@ -2,7 +2,7 @@
 # pylint: disable=missing-docstring
 from tests import utils
 
-PATH = '/api/v1/encounters'
+PATH = '/api/v1/encounters/'
 
 
 def test_read_encounters(flask_app_client, researcher_1):

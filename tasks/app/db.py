@@ -112,7 +112,7 @@ def revision(
             version_path=version_path,
             rev_id=rev_id,
         )
-    else:
+    else:  # pragma: no cover
         command.revision(config, message, autogenerate=autogenerate, sql=sql)
 
 
@@ -152,7 +152,7 @@ def migrate(
             version_path=version_path,
             rev_id=rev_id,
         )
-    else:
+    else:  # pragma: no cover
         command.revision(config, message, autogenerate=True, sql=sql)
 
 
@@ -164,7 +164,7 @@ def edit(context, revision='current', directory='migrations'):
     if alembic_version >= (0, 8, 0):
         config = _get_config(directory)
         command.edit(config, revision)
-    else:
+    else:  # pragma: no cover
         raise RuntimeError('Alembic 0.8.0 or greater is required')
 
 
@@ -190,7 +190,7 @@ def merge(
         command.merge(
             config, revisions, message=message, branch_label=branch_label, rev_id=rev_id
         )
-    else:
+    else:  # pragma: no cover
         raise RuntimeError('Alembic 0.7.0 or greater is required')
 
 
@@ -275,7 +275,7 @@ def show(context, directory='migrations', revision='head'):
     if alembic_version >= (0, 7, 0):
         config = _get_config(directory)
         command.show(config, revision)
-    else:
+    else:  # pragma: no cover
         raise RuntimeError('Alembic 0.7.0 or greater is required')
 
 
@@ -291,7 +291,7 @@ def history(context, directory='migrations', rev_range=None, verbose=False):
     config = _get_config(directory)
     if alembic_version >= (0, 7, 0):
         command.history(config, rev_range, verbose=verbose)
-    else:
+    else:  # pragma: no cover
         command.history(config, rev_range)
 
 
@@ -307,7 +307,7 @@ def heads(context, directory='migrations', verbose=False, resolve_dependencies=F
     if alembic_version >= (0, 7, 0):
         config = _get_config(directory)
         command.heads(config, verbose=verbose, resolve_dependencies=resolve_dependencies)
-    else:
+    else:  # pragma: no cover
         raise RuntimeError('Alembic 0.7.0 or greater is required')
 
 
@@ -322,7 +322,7 @@ def branches(context, directory='migrations', verbose=False):
     config = _get_config(directory)
     if alembic_version >= (0, 7, 0):
         command.branches(config, verbose=verbose)
-    else:
+    else:  # pragma: no cover
         command.branches(config)
 
 
@@ -340,7 +340,7 @@ def current(context, directory='migrations', verbose=False, head_only=False):
         command.current(config, verbose=verbose)
     elif alembic_version >= (0, 7, 0):  # pragma: no cover
         command.current(config, verbose=verbose, head_only=head_only)
-    else:
+    else:  # pragma: no cover
         command.current(config)
 
 

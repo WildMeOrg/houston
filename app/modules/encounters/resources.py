@@ -159,7 +159,6 @@ class Encounters(Resource):
 
 
 @api.route('/<uuid:encounter_guid>')
-@api.login_required(oauth_scopes=['encounters:read'])
 @api.response(
     code=HTTPStatus.NOT_FOUND,
     description='Encounter not found.',
@@ -241,7 +240,6 @@ class EncounterByID(Resource):
         """
         Delete a Encounter by ID.
         """
-
         # first try delete on edm
         response = encounter.delete_from_edm(current_app)
         response_data = None

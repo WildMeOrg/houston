@@ -9,8 +9,15 @@ from tests import utils as test_utils
 PATH = '/api/v1/encounters/'
 
 
-def create_encounter(flask_app_client, user):
-    with flask_app_client.login(user):
+def create_encounter(flask_app_client, user, expected_status_code=200):
+    if user is not None:
+        with flask_app_client.login(user):
+            response = flask_app_client.post(
+                PATH,
+                data=json.dumps({'locationId': 'PYTEST'}),
+                content_type='application/javascript',
+            )
+    else:
         response = flask_app_client.post(
             PATH,
             data=json.dumps({'locationId': 'PYTEST'}),
@@ -18,23 +25,24 @@ def create_encounter(flask_app_client, user):
         )
 
     assert isinstance(response.json, dict)
+    assert response.status_code == expected_status_code
     return response
 
 
-def read_encounter(flask_app_client, user, enc_guid):
+def read_encounter(flask_app_client, user, enc_guid, expected_status_code=200):
     with flask_app_client.login(user, auth_scopes=('encounters:read',)):
         response = flask_app_client.get('%s%s' % (PATH, enc_guid))
 
     assert isinstance(response.json, dict)
+    assert response.status_code == expected_status_code
+    if expected_status_code == 200:
+        assert response.json['id'] == str(enc_guid)
     return response
 
 
 def delete_encounter(flask_app_client, user, enc_guid, expected_status_code=204):
-    with flask_app_client.login(user, auth_scopes=('encounter:delete',)):
+    with flask_app_client.login(user, auth_scopes=('encounter:write',)):
         response = flask_app_client.delete('%s%s' % (PATH, enc_guid))
-        import utool as ut
-
-        ut.embed()
 
     if expected_status_code == 204:
         assert response.status_code == 204

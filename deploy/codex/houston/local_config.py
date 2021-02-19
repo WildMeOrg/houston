@@ -14,6 +14,7 @@ class LocalConfig(BaseConfig):
     PROJECT_DATABASE_PATH = str(DATA_ROOT)
     SUBMISSIONS_DATABASE_PATH = str(DATA_ROOT / 'submissions')
     ASSET_DATABASE_PATH = str(DATA_ROOT / 'assets')
+    UPLOADS_DATABASE_PATH = str(DATA_ROOT / 'uploads')
     SQLALCHEMY_DATABASE_PATH = str(DATA_ROOT / 'database.sqlite3')
 
     SECRET_KEY = 'seekret'

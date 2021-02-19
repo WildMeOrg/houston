@@ -6,6 +6,9 @@ Logging adapter
 import logging
 import os
 
+from flask import current_app
+
+
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
 
@@ -16,11 +19,13 @@ def init_app(app, **kwargs):
     """
     from app.extensions.tus.flask_tus_cont import TusManager
 
-    updir = tus_upload_dir()
-    if not os.path.exists(updir):
-        os.makedirs(updir)
+    # Ensure the upload directory exists
+    uploads_directory = app.config['UPLOADS_DATABASE_PATH']
+    if not os.path.exists(uploads_directory):
+        os.makedirs(uploads_directory)
+
     tm = TusManager()
-    tm.init_app(app, upload_url='/api/v1/submissions/tus', upload_folder=str(updir))
+    tm.init_app(app, upload_url='/api/v1/submissions/tus')
     tm.upload_file_handler(_tus_file_handler)
 
 
@@ -46,8 +51,8 @@ def _tus_file_handler(upload_file_path, filename, req):
 
 
 def tus_upload_dir(guid=None):
-    # TODO implement this in config.py  see: https://github.com/WildMeOrg/houston/pull/30#pullrequestreview-574566762
-    d = os.path.join('_db', 'uploads')
+    """Returns the location to an upload directory"""
+    uploads = current_app.config['UPLOADS_DATABASE_PATH']
     if guid is None:
-        return d
-    return os.path.join(d, '-'.join(['sub', str(guid)]))
+        return uploads
+    return os.path.join(uploads, '-'.join(['sub', str(guid)]))

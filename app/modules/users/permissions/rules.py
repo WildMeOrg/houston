@@ -192,7 +192,6 @@ class ObjectActionRule(DenyAbortMixin, Rule):
         return has_permission
 
     def _permitted_via_user(self, user):
-        from app.modules.individuals.models import Individual
         from app.modules.encounters.models import Encounter
         from app.modules.users.models import User
 

@@ -19,8 +19,20 @@ RUN apt update \
         git \
         # Magic with python-magic (MIME-type parser)
         libmagic1 \
-        # nodejs \
+        #: tool to setuid+setgid+setgroups+exec at execution time
+        gosu \
+        #: required by wait-for
+        netcat \
+        #: required for downloading 'wait-for'
+        curl \
  && rm -rf /var/lib/apt/lists/*
+
+# Install wait-for
+RUN set -x \
+    && curl -s https://raw.githubusercontent.com/eficode/wait-for/v2.0.0/wait-for > /usr/local/bin/wait-for \
+    && chmod a+x /usr/local/bin/wait-for \
+    # test it works
+    && wait-for google.com:80 -- echo "success"
 
 COPY . /code
 
@@ -34,8 +46,17 @@ RUN set -ex \
  #: Remove pip download cache
  && rm -rf ~/.cache/pip
 
-USER nobody
 EXPOSE 5000
 ENV FLASK_CONFIG production
 
-CMD [ "invoke", "app.run" ]
+# Location to mount our data
+ENV DATA_VOLUME /data
+# Location the data will be writen to
+ENV DATA_ROOT ${DATA_VOLUME}/var
+VOLUME [ "${DATA_VOLUME}" ]
+
+COPY ./.dockerfiles/docker-entrypoint.sh /docker-entrypoint.sh
+
+ENTRYPOINT [ "/docker-entrypoint.sh" ]
+#: default command within the entrypoint
+# CMD [ "invoke", "app.run" ]

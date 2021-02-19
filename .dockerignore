@@ -30,6 +30,7 @@ tests/
 !tests/requirements.txt
 devops/
 virtualenv/
+deploy/
 
 __pycache__
 *.pyc

@@ -1,0 +1,109 @@
+version: "3.8"
+
+services:
+
+  db:
+    image: postgres:10
+    volumes:
+      - pgdata-var:/var/lib/postgresql/data
+      # DB initialization scripts
+      - ./db/initdb.d/:/docker-entrypoint-initdb.d/
+    environment:
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD}"
+      WBIA_DB_NAME: "${WBIA_DB_NAME}"
+      WBIA_DB_USER: "${WBIA_DB_USER}"
+      WBIA_DB_PASSWORD: "${WBIA_DB_PASSWORD}"
+      WILDBOOK_DB_NAME: "${WILDBOOK_DB_NAME}"
+      WILDBOOK_DB_USER: "${WILDBOOK_DB_USER}"
+      WILDBOOK_DB_PASSWORD: "${WILDBOOK_DB_PASSWORD}"
+      HOUSTON_DB_NAME: "${HOUSTON_DB_NAME}"
+      HOUSTON_DB_USER: "${HOUSTON_DB_USER}"
+      HOUSTON_DB_PASSWORD: "${HOUSTON_DB_PASSWORD}"
+    networks:
+      - intranet
+
+  redis:
+    image: redis:latest
+    networks:
+      - intranet
+
+  pgadmin:
+    image: dpage/pgadmin4
+    environment:
+      PGADMIN_DEFAULT_EMAIL: "${PGADMIN_DEFAULT_EMAIL}"
+      PGADMIN_DEFAULT_PASSWORD: "${PGADMIN_DEFAULT_PASSWORD}"
+    volumes:
+      - pgadmin-var:/var/lib/pgadmin
+    ports:
+      - "8000:80"
+    networks:
+      - intranet
+      - frontend
+
+  wbia:
+    # https://github.com/WildMeOrg/wildbook-ia
+    image: wildme/wildbook-ia:latest
+    # FIXME: Adjust entrypoint to allow for additive command arguments
+    command: [ "wait-for", "db:5432", "--", "python3", "-m", "wbia.dev", "--dbdir", "${WBIA_DB_DIR}", "--logdir", "/data/logs/", "--web", "--port", "5000", "--web-deterministic-ports", "--containerized", "--cpudark", "--production", "--db-uri", "${WBIA_DB_URI}" ]
+    volumes:
+      # FIXME: `PermissionError: [Errno 13] Permission denied: '/data/db/_ibsdb'`
+      #        https://github.com/WildMeOrg/wildbook-ia/pull/184
+      - wbia-var:/data/db
+    networks:
+      - intranet
+    ports:
+      # FIXME: exposed for developer verification
+      - "82:5000"
+
+  edm:
+    # See: https://github.com/WildMeOrg/Wildbook/tree/next-gen
+    #  - git clone -b next-gen git@github.com:WildMeOrg/Wildbook.git && cd Wildbook
+    #  - ./scripts/build.docker.sh
+    image: wildme/edm:latest
+    volumes:
+      - edm-var:/data/wildbook_data_dir
+    # depends_on:
+    #   - db
+    networks:
+      - intranet
+    ports:
+      # FIXME: exposed for developer verification
+      - "81:8080"
+    environment:
+      DB_USER: "${WILDBOOK_DB_USER}"
+      DB_PASSWORD: "${WILDBOOK_DB_PASSWORD}"
+      DB_CONNECTION_URL: "${WILDBOOK_DB_CONNECTION_URL}"
+
+  houston:
+    # https://github.com/WildMeOrg/houston
+    image: wildme/houston:latest
+    command: [ "wait-for", "db:5432", "--", "wait-for", "edm:8080", "--", "invoke", "app.run", "--host", "0.0.0.0" ]
+    networks:
+      - intranet
+      - frontend
+    ports:
+      # FIXME: exposed for developer verification
+      - "83:5000"
+    environment:
+      FLASK_CONFIG: local
+      SQLALCHEMY_DATABASE_URI: "${SQLALCHEMY_DATABASE_URI}"
+      EDM_AUTHENTICATIONS_0_URI: "${EDM_AUTHENTICATIONS_0_URI}"
+      EDM_AUTHENTICATIONS_0_USERNAME: "${EDM_AUTHENTICATIONS_0_USERNAME}"
+      EDM_AUTHENTICATIONS_0_PASSWORD: "${EDM_AUTHENTICATIONS_0_PASSWORD}"
+    volumes:
+      - houston-var:/data
+      # FIXME: pull in development code while working on bringing up the container
+      - ../../:/code
+      # FIXME: Can we define a better mountpoint for this file? Maybe /config.py?
+      - ./houston/local_config.py:/code/local_config.py
+
+networks:
+  intranet:
+  frontend:
+
+volumes:
+  edm-var:
+  pgadmin-var:
+  pgdata-var:
+  wbia-var:
+  houston-var:

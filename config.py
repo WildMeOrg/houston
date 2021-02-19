@@ -83,6 +83,8 @@ class BaseConfig(object):
         '.tiff',
     ]
 
+    UPLOADS_DATABASE_PATH = os.path.join(PROJECT_DATABASE_PATH, 'uploads')
+
     SQLALCHEMY_DATABASE_PATH = os.path.join(PROJECT_DATABASE_PATH, 'database.sqlite3')
     SQLALCHEMY_DATABASE_URI = os.getenv('SQLALCHEMY_DATABASE_URI') or 'sqlite:///%s' % (
         SQLALCHEMY_DATABASE_PATH

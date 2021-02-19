@@ -16,6 +16,7 @@ from flask_restplus._http import HTTPStatus
 from app.extensions import db
 from app.extensions.api import Namespace
 from app.extensions.api.parameters import PaginationParameters
+from app.extensions.tus import tus_upload_dir
 from app.modules.users import permissions
 from app.modules.users.permissions.types import AccessOperation
 
@@ -275,9 +276,7 @@ class SubmissionTusCollect(Resource):
             raise werkzeug.exceptions.NotFound
 
         repo, project = submission.ensure_repository()
-        updir = os.path.join(
-            '_db', 'uploads', '-'.join(['sub', str(submission.guid)])
-        )  # note: duplicates tus_upload_dir()
+        updir = tus_upload_dir(submission.guid)
         submission_abspath = submission.get_absolute_path()
         submission_path = os.path.join(submission_abspath, '_submission')
         ct = 0

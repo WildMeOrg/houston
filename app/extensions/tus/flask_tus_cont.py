@@ -30,17 +30,10 @@ class TusManager(object):
             self.init_app(app)
 
     def init_app(self, app, **kwargs):
-        if hasattr(app, 'config'):
-            setattr(self, 'upload_url', app.config.get('tus_uploads_url', '/file-upload'))
-            setattr(
-                self, 'upload_folder', app.config.get('tus_uploads_folder', 'uploads/')
-            )
-            setattr(
-                self,
-                'tus_max_file_size',
-                app.config.get('tus_max_file_size_in_bytes', 4294967296),
-            )
-            setattr(self, 'file_overwrite', app.config.get('tus_file_overwrite', True))
+        self.upload_url = app.config.get('tus_uploads_url', '/file-upload')
+        self.upload_folder = app.config['UPLOADS_DATABASE_PATH']
+        self.tus_max_file_size = app.config.get('tus_max_file_size_in_bytes', 4294967296)
+        self.file_overwrite = app.config.get('tus_file_overwrite', True)
 
         for key, value in kwargs.items():
             setattr(self, key, value)

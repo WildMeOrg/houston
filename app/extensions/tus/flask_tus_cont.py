@@ -37,10 +37,6 @@ class TusManager(object):
 
         for key, value in kwargs.items():
             setattr(self, key, value)
-        if hasattr(self, 'upload_folder') is False:
-            self.upload_folder = 'uploads/'
-        if hasattr(self, 'upload_url') is False:
-            self.upload_url = '/file-upload'
 
         self._register_routes()
         self.app = app

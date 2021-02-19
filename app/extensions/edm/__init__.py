@@ -5,7 +5,7 @@ Ecological Data Management (EDM) manager.
 
 """
 import logging
-
+from werkzeug.exceptions import BadRequest
 from flask import current_app, request, session, render_template  # NOQA
 from flask_login import current_user  # NOQA
 from app.extensions import db
@@ -56,7 +56,8 @@ class EDMManagerEndpointMixin(object):
         },
         'encounter': {
             'list': '//v0/org.ecocean.Encounter/list',
-            'data': '//v0/org.ecocean.Encounter/%s?detail-org.ecocean.Encounter=max',
+            'data': '//v0/org.ecocean.Encounter/%s',
+            'data_complete': '//v0/org.ecocean.Encounter/%s?detail-org.ecocean.Encounter=max',
         },
         'organization': {
             'list': '//v0/org.ecocean.Organization/list',
@@ -68,6 +69,15 @@ class EDMManagerEndpointMixin(object):
         'role': {
             'list': '//v0/org.ecocean.Role/list',
         },
+        'passthrough': {
+            'data': '',
+        },
+        'configuration': {
+            'data': '//v0/configuration/%s',
+        },
+        'configurationDefinition': {
+            'data': '//v0/configurationDefinition/%s',
+        }
     }
     # fmt: on
 
@@ -109,7 +119,7 @@ class EDMManagerEndpointMixin(object):
 
 class EDMManagerUserMixin(object):
     def check_user_login(self, username, password):
-        self.ensure_initialed()
+        self._ensure_initialized()
 
         success = False
         for target in self.targets:
@@ -141,29 +151,7 @@ class EDMManagerUserMixin(object):
         return success
 
 
-class EDMManagerEncounterMixin(object):
-    def get_encounters(self, target='default'):
-        response = self._get('encounters.list', target=target)
-        return response
-
-    def get_encounter_data(self, guid, target='default'):
-        assert isinstance(guid, uuid.UUID)
-        response = self._get('encounter.data', guid, target=target)
-        return response
-
-    def get_encounter_data_dict(self, guid, target='default'):
-        assert isinstance(guid, uuid.UUID)
-        response = self._get(
-            'encounter.data',
-            guid,
-            target=target,
-            decode_as_object=False,
-            decode_as_dict=True,
-        )
-        return response
-
-
-class EDMManager(EDMManagerEndpointMixin, EDMManagerUserMixin, EDMManagerEncounterMixin):
+class EDMManager(EDMManagerEndpointMixin, EDMManagerUserMixin):
     # pylint: disable=abstract-method
     """
         note the content of User in the 2nd item has stuff you can ignore. it also has the id as "uuid" (which is what it is internally, sigh).  also note it references Organizations !  we didnt touch on this on the call, but i think this should (must?) live with Users.  what we have in java is very lightweight anyway, so no loss to go away.   as you can see, user.organizations is an array of orgs, and (since it is many-to-many) you will see org.members is a list of Users.  easy peasy.  btw, by the time we got to Organizations, we did call the primary key id and make it a uuid.  "live and learn".  :confused:
@@ -183,7 +171,7 @@ class EDMManager(EDMManagerEndpointMixin, EDMManagerUserMixin, EDMManagerEncount
         app.edm = self
 
         if pre_initialize:
-            self.ensure_initialed()
+            self._ensure_initialized()
 
     def _parse_config_edm_uris(self):
         edm_uri_dict = self.app.config.get('EDM_URIS', None)
@@ -278,12 +266,19 @@ class EDMManager(EDMManagerEndpointMixin, EDMManagerUserMixin, EDMManagerEncount
             assert password is not None, message
 
             self.sessions[target] = requests.Session()
-            self._get(
+            response = self._get(
                 'session.login', email, password, target=target, ensure_initialized=False
             )
+            assert (
+                not isinstance(response, requests.models.Response) or response.ok
+            ), 'EDM Authentication for %s returned non-OK code: %d' % (
+                target,
+                response.status_code,
+            )
+
             log.info('Created authenticated session for EDM target %r' % (target,))
 
-    def ensure_initialed(self):
+    def _ensure_initialized(self):
         if not self.initialized:
             log.info('Initializing EDM')
             self._parse_config_edm_uris()
@@ -296,6 +291,10 @@ class EDMManager(EDMManagerEndpointMixin, EDMManagerUserMixin, EDMManagerEncount
         endpoint_url = self.uris[target]
         endpoint_url_ = endpoint_url.strip('/')
         return endpoint_url_
+
+    def get_target_list(self):
+        self._ensure_initialized()
+        return list(self.targets)
 
     def _request(
         self,
@@ -313,7 +312,7 @@ class EDMManager(EDMManagerEndpointMixin, EDMManagerUserMixin, EDMManagerEncount
         verbose=True
     ):
         if ensure_initialized:
-            self.ensure_initialed()
+            self._ensure_initialized()
 
         method = method.lower()
         assert method in ['get', 'post', 'delete', 'put', 'patch']
@@ -377,18 +376,6 @@ class EDMManager(EDMManagerEndpointMixin, EDMManagerUserMixin, EDMManagerEncount
     def _delete(self, *args, **kwargs):
         return self._request('delete', *args, **kwargs)
 
-    def get_passthrough(self, *args, **kwargs):
-        response = self._get(*args, **kwargs)
-        return response
-
-    def post_passthrough(self, *args, **kwargs):
-        response = self._post(*args, **kwargs)
-        return response
-
-    def delete_passthrough(self, *args, **kwargs):
-        response = self._delete(*args, **kwargs)
-        return response
-
     def get_list(self, list_name, target='default'):
         response = self._get(list_name, target=target)
 
@@ -408,13 +395,37 @@ class EDMManager(EDMManagerEndpointMixin, EDMManagerUserMixin, EDMManagerEncount
 
         return items
 
+    def get_dict(self, list_name, guid, target='default'):
+
+        assert isinstance(guid, uuid.UUID)
+        response = self._get(
+            list_name,
+            guid,
+            target=target,
+            decode_as_object=False,
+            decode_as_dict=True,
+        )
+        return response
+
     def get_data_item(self, guid, item_name, target='default'):
         assert isinstance(guid, uuid.UUID)
         response = self._get(item_name, guid, target=target)
         return response
 
-    def request_passthrough(self, endpoint, target, request_func, passthrough_kwargs):
-        self.ensure_initialed()
+    def request_passthrough(
+        self, tag, method, passthrough_kwargs, args=None, target='default'
+    ):
+        self._ensure_initialized()
+        try:
+            # Try to convert string integers to integers
+            target = int(target)
+        except ValueError:
+            pass
+
+        # Check target
+        targets = list(self.targets)
+        if target not in targets:
+            raise BadRequest('The specified target %r is invalid.' % (target,))
 
         headers = passthrough_kwargs.get('headers', {})
         allowed_header_key_list = [
@@ -442,9 +453,10 @@ class EDMManager(EDMManagerEndpointMixin, EDMManagerUserMixin, EDMManagerEncount
             if data_ is not None:
                 passthrough_kwargs['json'] = data_
 
-        response = request_func(
-            None,
-            endpoint=endpoint,
+        response = self._request(
+            method,
+            tag,
+            args,
             target=target,
             decode_as_object=False,
             decode_as_dict=False,

@@ -198,18 +198,18 @@ class ObjectActionRule(DenyAbortMixin, Rule):
             if isinstance(self._obj, User):
                 has_permission = True
 
-        # Projects and Orgs disabled for MVP
-        # if not has_permission:
-        #     # read and write access is permitted for any projects or organisations they're in
-        #     # Details of what they're allowed to write handled in the patch parameters functionality
-        #     # Region would be handled the same way here too
-        #     if isinstance(self._obj, (Project, Organization)):
-        #         has_permission = (
-        #             user in self._obj.get_members()
-        #             and self._action != AccessOperation.DELETE
-        #         )
+        if not has_permission:
+            # Projects and Orgs disabled for MVP
+            #     # read and write access is permitted for any projects or organisations they're in
+            #     # Details of what they're allowed to write handled in the patch parameters functionality
+            #     # Region would be handled the same way here too
+            #     if isinstance(self._obj, (Project, Organization)):
+            #         has_permission = (
+            #             user in self._obj.get_members()
+            #             and self._action != AccessOperation.DELETE
+            #         )
 
-            elif isinstance(self._obj, Encounter):
+            if isinstance(self._obj, Encounter):
                 # Researchers can read other encounters, only site admins can update and delete
                 # them and those roles are not supported yet
                 if self._action == AccessOperation.READ:

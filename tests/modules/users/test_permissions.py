@@ -456,9 +456,10 @@ def test_ObjectAccessPermission_contributor_user(
     projects = [project1, project2, project3]
     with patch.object(contributor_1_login, 'owns_object', return_value=False):
         with patch.object(contributor_1_login, 'get_projects', return_value=projects):
-            validate_can_read_object(project1)
-            validate_can_read_object(owned_encounter)
-            validate_can_read_object(mock_asset)
+            # Project access disabled for MVP, the first 3 should be _can_read checks when restored
+            validate_cannot_read_object(project1)
+            validate_cannot_read_object(owned_encounter)
+            validate_cannot_read_object(mock_asset)
             # object that is not a project, encounter or asset
             validate_cannot_read_object(mock_other)
 

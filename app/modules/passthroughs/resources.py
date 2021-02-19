@@ -104,7 +104,7 @@ class EDMPassthroughs(Resource):
             passthrough_kwargs['files'] = files
 
         response = current_app.edm.request_passthrough(
-            'passthrough.data', 'get', passthrough_kwargs, path, target
+            'passthrough.data', 'post', passthrough_kwargs, path, target
         )
 
         return response

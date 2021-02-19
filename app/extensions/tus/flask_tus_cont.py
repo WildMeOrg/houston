@@ -29,14 +29,11 @@ class TusManager(object):
         if app is not None:
             self.init_app(app)
 
-    def init_app(self, app, **kwargs):
-        self.upload_url = app.config.get('tus_uploads_url', '/file-upload')
+    def init_app(self, app, upload_url='/file-upload'):
+        self.upload_url = app.config.get('tus_uploads_url', upload_url)
         self.upload_folder = app.config['UPLOADS_DATABASE_PATH']
         self.tus_max_file_size = app.config.get('tus_max_file_size_in_bytes', 4294967296)
         self.file_overwrite = app.config.get('tus_file_overwrite', True)
-
-        for key, value in kwargs.items():
-            setattr(self, key, value)
 
         self._register_routes()
         self.app = app

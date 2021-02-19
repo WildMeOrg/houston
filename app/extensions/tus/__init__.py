@@ -25,9 +25,7 @@ def init_app(app, **kwargs):
         os.makedirs(uploads_directory)
 
     tm = TusManager()
-    tm.init_app(
-        app, upload_url='/api/v1/submissions/tus', upload_folder=uploads_directory
-    )
+    tm.init_app(app, upload_url='/api/v1/submissions/tus')
     tm.upload_file_handler(_tus_file_handler)
 
 

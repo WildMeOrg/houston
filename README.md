@@ -795,11 +795,11 @@ class MyObjects(Resource):
         return create_my_object(args)
 ```
 
-How to Update Schemas
+How to Update Schemas / Create a Migration
 ============
 1. Update schema objects in `/app/modules`
-2. Run `invoke app.db.migrate`
-3. A new file should have been created in `/app/migrations/versions`. Add `import app.extensions` to the top of that file
+2. Run `invoke app.db.migrate` to create an auto generated migration or `invoke app.db.revision` to create an empty migration for non-schema updates
+3. A new file should have been created in `/app/migrations/versions`
 4. Run `invoke app.db.upgrade`
 
 RFC 6902 Compliance

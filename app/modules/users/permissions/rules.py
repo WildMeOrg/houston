@@ -120,7 +120,9 @@ class ModuleActionRule(DenyAbortMixin, Rule):
 
         has_permission = False
         if user_is_privileged(user):
-            has_permission = True
+            # Organizations and Projects not supported for MVP, no-one can create them
+            if not self._is_module((Organization, Project)):
+                has_permission = True
         elif self._action is AccessOperation.READ:
             if user.is_admin:
                 # This is where we can control what modules admin users can and cannot read
@@ -128,20 +130,19 @@ class ModuleActionRule(DenyAbortMixin, Rule):
                 # _is_module from a config parameter e.g. app.config.get(ADMIN_READ_MODULE_PERMISSION)
                 has_permission = self._is_module(User)
             if not has_permission and user.is_researcher:
-                has_permission = self._is_module(
-                    (Submission, Project, Encounter, Sighting, Asset)
-                )
+                has_permission = self._is_module((Submission, Encounter, Sighting, Asset))
 
         elif self._action is AccessOperation.WRITE:
-            if self._is_module((Organization, HoustonConfig)):
+            if self._is_module(HoustonConfig):
                 has_permission = user.is_admin
             elif self._is_module((Submission, User)):
                 # Any users can submit and write (create) a user
                 has_permission = True
-            if self._is_module(Encounter):
+            elif self._is_module(Encounter):
                 has_permission = True
-            elif self._is_module(Project):
-                has_permission = user.is_researcher
+            # Project disabled for MVP
+            # elif self._is_module(Project):
+            #     has_permission = user.is_researcher
 
         return has_permission
 
@@ -178,17 +179,15 @@ class ObjectActionRule(DenyAbortMixin, Rule):
                 current_user.is_active
                 & (
                     self._permitted_via_user(current_user)
-                    | self._permitted_via_org(current_user)
-                    | self._permitted_via_project(current_user)
+                    # | self._permitted_via_org(current_user)
+                    # | self._permitted_via_project(current_user)
                     | self._permitted_via_collaboration(current_user)
                 )
             )
         return has_permission
 
     def _permitted_via_user(self, user):
-        from app.modules.organizations.models import Organization
         from app.modules.encounters.models import Encounter
-        from app.modules.projects.models import Project
         from app.modules.users.models import User
 
         # users can read write and delete anything they own while some users can do anything
@@ -199,15 +198,16 @@ class ObjectActionRule(DenyAbortMixin, Rule):
             if isinstance(self._obj, User):
                 has_permission = True
 
-        if not has_permission:
-            # read and write access is permitted for any projects or organisations they're in
-            # Details of what they're allowed to write handled in the patch parameters functionality
-            # Region would be handled the same way here too
-            if isinstance(self._obj, (Project, Organization)):
-                has_permission = (
-                    user in self._obj.get_members()
-                    and self._action != AccessOperation.DELETE
-                )
+        # Projects and Orgs disabled for MVP
+        # if not has_permission:
+        #     # read and write access is permitted for any projects or organisations they're in
+        #     # Details of what they're allowed to write handled in the patch parameters functionality
+        #     # Region would be handled the same way here too
+        #     if isinstance(self._obj, (Project, Organization)):
+        #         has_permission = (
+        #             user in self._obj.get_members()
+        #             and self._action != AccessOperation.DELETE
+        #         )
 
             elif isinstance(self._obj, Encounter):
                 # Researchers can read other encounters, only site admins can update and delete
@@ -217,55 +217,46 @@ class ObjectActionRule(DenyAbortMixin, Rule):
 
         return has_permission
 
-    def _permitted_via_org(self, user):
-        has_permission = False
-        # Orgs not supported fully yet, but allow read if user is in it
-        if self._action == AccessOperation.READ:
-            org_index = 0
-            orgs = user.get_org_memberships()
-            while not has_permission and org_index < len(orgs):
-                org = orgs[org_index]
-                member_index = 0
-                org_members = org.get_members()
-                while not has_permission and member_index < len(org_members):
-                    has_permission = org_members[member_index].owns_object(self._obj)
-                    member_index = member_index + 1
-                org_index = org_index + 1
+    # def _permitted_via_org(self, user):
+    #     has_permission = False
+    #     # Orgs not supported fully yet, but allow read if user is in it
+    #     if self._action == AccessOperation.READ:
+    #         org_index = 0
+    #         orgs = user.get_org_memberships()
+    #         while not has_permission and org_index < len(orgs):
+    #             org = orgs[org_index]
+    #             member_index = 0
+    #             org_members = org.get_members()
+    #             while not has_permission and member_index < len(org_members):
+    #                 has_permission = org_members[member_index].owns_object(self._obj)
+    #                 member_index = member_index + 1
+    #             org_index = org_index + 1
+    #
+    #     return has_permission
 
-        return has_permission
-
-    def _permitted_via_project(self, user):
-        from app.modules.encounters.models import Encounter
-        from app.modules.assets.models import Asset
-
-        has_permission = False
-        project_index = 0
-        projects = user.get_projects()
-        # For MVP, Project ownership/membership is the driving factor for access to data within the project,
-        # not the Role. If Role specific access is later required, it would be added here.
-        # A user may read an object via permission granted via the project. The user may not update or
-        # delete an object through permissions granted via their access to the object through the project.
-        if self._action == AccessOperation.READ:
-            while not has_permission and project_index < len(projects):
-                project = projects[project_index]
-                has_permission = project == self._obj
-                if not has_permission:
-                    if isinstance(self._obj, Encounter):
-                        # Optionally add time check so that User can only access encounters after user was added to project
-                        has_permission = self._obj in project.get_encounters()
-                    elif isinstance(self._obj, Asset):
-                        for encounter in project.get_encounters():
-                            has_permission = self._obj in encounter.get_assets()
-                project_index = project_index + 1
-
-        elif self._action == AccessOperation.WRITE:
-            # only power users can write
-            has_permission = user_is_privileged(user)
-        elif self._action == AccessOperation.DELETE:
-            # or delete
-            has_permission = user_is_privileged(user)
-
-        return has_permission
+    # def _permitted_via_project(self, user):
+    #     from app.modules.encounters.models import Encounter
+    #     from app.modules.assets.models import Asset
+    #
+    #     has_permission = False
+    #     project_index = 0
+    #     projects = user.get_projects()
+    #     # For MVP, Project ownership/membership is the driving factor for access to data within the project,
+    #     # not the Role. If Role specific access is later required, it would be added here.
+    #     # A user may read an object via permission granted via the project. The user may not update or
+    #     # delete an object through permissions granted via their access to the object through the project.
+    #     if self._action == AccessOperation.READ:
+    #         while not has_permission and project_index < len(projects):
+    #             project = projects[project_index]
+    #             has_permission = project == self._obj
+    #             if not has_permission:
+    #                 if isinstance(self._obj, Encounter):
+    #                     # Optionally add time check so that User can only access encounters after user was added to project
+    #                     has_permission = self._obj in project.get_encounters()
+    #                 elif isinstance(self._obj, Asset):
+    #                     for encounter in project.get_encounters():
+    #                         has_permission = self._obj in encounter.get_assets()
+    #             project_index = project_index + 1
 
     def _permitted_via_collaboration(self, user):
         # @todo

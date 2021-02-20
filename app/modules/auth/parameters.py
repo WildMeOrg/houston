@@ -6,7 +6,7 @@ Input arguments (Parameters) for Auth resources
 """
 from flask_login import current_user
 from flask_marshmallow import base_fields
-from flask_restplus_patched import Parameters
+from flask_restx_patched import Parameters
 from marshmallow import validates, ValidationError
 
 from app.extensions import api

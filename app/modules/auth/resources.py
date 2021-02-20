@@ -9,8 +9,8 @@ import logging
 
 from flask import current_app
 from flask_login import current_user, login_user, logout_user
-from flask_restplus_patched import Resource
-from flask_restplus._http import HTTPStatus
+from flask_restx_patched import Resource
+from flask_restx_patched._http import HTTPStatus
 
 from app.extensions import oauth2
 from app.extensions.api import Namespace, api_v1

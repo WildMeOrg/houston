@@ -4,7 +4,7 @@ import logging
 
 from six import itervalues
 from flask_login import current_user
-from flask_restplus._http import HTTPStatus
+from flask_restx._http import HTTPStatus
 from flask_marshmallow import Schema, base_fields
 from marshmallow import validate, validates_schema, ValidationError
 
@@ -38,6 +38,9 @@ class Parameters(Schema):
         parameters (they can be used not only for saving new instances).
         """
         return
+
+    def items(self):
+        return self.fields.items()
 
 
 class PostFormParameters(Parameters):

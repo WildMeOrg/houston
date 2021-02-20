@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from flask_restplus import *  # NOQA
+from flask_restx import *  # NOQA
 from .api import Api  # NOQA
 from .model import Schema, DefaultHTTPErrorSchema  # NOQA
 

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from flask import jsonify
-from flask_restplus import Api as OriginalApi
-from flask_restplus._http import HTTPStatus
+from flask_restx import Api as OriginalApi
+from flask_restx._http import HTTPStatus
 from flask import make_response as original_flask_make_response
 from werkzeug import cached_property
 

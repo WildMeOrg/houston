@@ -8,7 +8,7 @@ RESTful API Passthroughs resources
 import logging
 
 from flask import current_app, request
-from flask_restplus_patched import Resource
+from flask_restx_patched import Resource
 from app.extensions.api import Namespace
 
 import json

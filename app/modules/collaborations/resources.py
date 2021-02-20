@@ -8,8 +8,8 @@ RESTful API Collaborations resources
 import logging
 
 from flask_login import current_user  # NOQA
-from flask_restplus_patched import Resource
-from flask_restplus._http import HTTPStatus
+from flask_restx_patched import Resource
+from flask_restx_patched._http import HTTPStatus
 
 from app.extensions import db
 from app.extensions.api import Namespace

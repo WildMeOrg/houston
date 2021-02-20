@@ -5,7 +5,7 @@ Input arguments (Parameters) for Encounters resources RESTful API
 """
 
 from flask_login import current_user
-from flask_restplus_patched import Parameters, PatchJSONParametersWithPassword
+from flask_restx_patched import Parameters, PatchJSONParametersWithPassword
 
 from . import schemas
 

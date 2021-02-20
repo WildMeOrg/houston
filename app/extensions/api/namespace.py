@@ -10,8 +10,8 @@ import logging
 import flask_marshmallow
 import sqlalchemy
 
-from flask_restplus_patched.namespace import Namespace as BaseNamespace
-from flask_restplus._http import HTTPStatus
+from flask_restx_patched.namespace import Namespace as BaseNamespace
+from flask_restx_patched._http import HTTPStatus
 
 from . import http_exceptions
 from .webargs_parser import CustomWebargsParser

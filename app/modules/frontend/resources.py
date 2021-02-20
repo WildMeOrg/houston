@@ -11,7 +11,7 @@ import os
 
 from flask import current_app
 from flask_login import current_user  # NOQA
-from flask_restplus_patched import Resource
+from flask_restx_patched import Resource
 
 from app.extensions.api import Namespace
 

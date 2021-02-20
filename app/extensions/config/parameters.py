@@ -3,7 +3,7 @@
 Input arguments (Parameters) for Config resources RESTful API
 -----------------------------------------------------------
 """
-from flask_restplus_patched import PatchJSONParametersWithPassword
+from flask_restx_patched import PatchJSONParametersWithPassword
 from app.extensions import _CONFIG_PATH_CHOICES
 from .models import HoustonConfig
 

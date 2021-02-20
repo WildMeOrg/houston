@@ -3,9 +3,9 @@ from functools import wraps
 
 import flask
 import flask_marshmallow
-from flask_restplus import Namespace as OriginalNamespace
-from flask_restplus.utils import merge, unpack
-from flask_restplus._http import HTTPStatus
+from flask_restx import Namespace as OriginalNamespace
+from flask_restx.utils import merge, unpack
+from flask_restx._http import HTTPStatus
 from webargs.flaskparser import parser as webargs_parser
 from werkzeug import cached_property  # NOQA
 from werkzeug import exceptions as http_exceptions

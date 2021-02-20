@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from apispec.ext.marshmallow.swagger import schema2parameters
-from flask_restplus.swagger import Swagger as OriginalSwagger
+from flask_restx.swagger import Swagger as OriginalSwagger
 
 
 class Swagger(OriginalSwagger):

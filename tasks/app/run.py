@@ -113,10 +113,10 @@ def run(
         os.execvpe('uwsgi', uwsgi_args, os.environ)
     else:
         if platform.system() == 'Windows':
-            log.warning(
-                "Auto-reloader feature doesn't work on Windows. "
-                'Follow the issue for more details: '
-                'https://github.com/frol/flask-restplus-server-example/issues/16'
-            )
+            # log.warning(
+            #     "Auto-reloader feature doesn't work on Windows. "
+            #     'Follow the issue for more details: '
+            #     'https://github.com/frol/flask-restplus-server-example/issues/16'
+            # )
             use_reloader = False
         return app.run(host=host, port=port, use_reloader=use_reloader)

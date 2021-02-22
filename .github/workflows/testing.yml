@@ -45,10 +45,7 @@ jobs:
       max-parallel: 1
       fail-fast: false
       matrix:
-        python-version: [3.7, 3.8, 3.9]
-    env:
-      OS: ${{ matrix.os }}
-      PYTHON: ${{ matrix.python-version }}
+        python-version: [3.9, 3.8, 3.7]
     steps:
       # Checkout and env setup
       - uses: actions/checkout@v2
@@ -93,28 +90,14 @@ jobs:
           source virtualenv/houston3.7/bin/activate
           pytest -s -v --gitlab-remote-login-pat "${{ secrets.GITLAB_REMOTE_LOGIN_PAT }}"
 
-      - name: Run Codecov
-        continue-on-error: true
-        run: |
-          source virtualenv/houston3.7/bin/activate
-          pytest -s -v --gitlab-remote-login-pat "${{ secrets.GITLAB_REMOTE_LOGIN_PAT }}" --cov=./ --cov-report=xml
-
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v1.0.7
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          files: ./_coverage/coverage.xml
-          env_vars: OS,PYTHON
-          fail_ci_if_error: true
-
   test:
     runs-on: ubuntu-latest
     strategy:
       max-parallel: 1
       fail-fast: false
       matrix:
-        python-version: [3.7, 3.8, 3.9]
-        db-uri: ["postgresql://postgres:testing@localhost/postgres", ""]
+        python-version: [3.9, 3.8, 3.7]
+        db-uri: ["postgresql://postgres:testing@localhost/postgres", "sqlite://"]
     services:
       db:
         image: postgres:10
@@ -129,7 +112,7 @@ jobs:
         ports:
           - 5432:5432
     env:
-      OS: ${{ matrix.os }}
+      OS: ubuntu-latest
       PYTHON: ${{ matrix.python-version }}
       SQLALCHEMY_DATABASE_URI: ${{ matrix.db-uri }}
     steps:
@@ -166,14 +149,17 @@ jobs:
           pytest -s -v --gitlab-remote-login-pat "${{ secrets.GITLAB_REMOTE_LOGIN_PAT }}"
 
       - name: Check DB migrations (sqlite)
-        if: matrix.db-uri == ''
+        if: matrix.db-uri == 'sqlite://'
         run: |
           source virtualenv/houston3.7/bin/activate
           invoke app.db.downgrade
           invoke app.db.upgrade
+        env:
+          # Don't use in memory sqlite database for database migration
+          SQLALCHEMY_DATABASE_URI: ''
 
       - name: Check DB migrations (postgresql)
-        if: matrix.db-uri != ''
+        if: matrix.db-uri != 'sqlite://'
         run: |
           source virtualenv/houston3.7/bin/activate
           invoke app.db.upgrade --no-backup
@@ -185,16 +171,18 @@ jobs:
           source virtualenv/houston3.7/bin/activate
           pytest -s -v --gitlab-remote-login-pat "${{ secrets.GITLAB_REMOTE_LOGIN_PAT }}"
 
-      - name: Run Codecov
+      - name: Run Codecov (3.9)
+        if: matrix.python-version == '3.9'
         continue-on-error: true
         run: |
           source virtualenv/houston3.7/bin/activate
           pytest -s -v --gitlab-remote-login-pat "${{ secrets.GITLAB_REMOTE_LOGIN_PAT }}" --cov=./ --cov-report=xml
 
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v1.0.7
+      - name: Upload coverage to Codecov (3.9)
+        if: matrix.python-version == '3.9'
+        uses: codecov/codecov-action@v1.2.1
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./_coverage/coverage.xml
-          env_vars: OS,PYTHON
+          env_vars: OS,PYTHON,SQLALCHEMY_DATABASE_URI
           fail_ci_if_error: true

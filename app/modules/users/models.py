@@ -109,7 +109,7 @@ class User(db.Model, FeatherModel, UserEDMMixin):
     guid = db.Column(
         db.GUID, default=uuid.uuid4, primary_key=True
     )  # pylint: disable=invalid-name
-    version = db.Column(db.Integer, default=None, nullable=True)
+    version = db.Column(db.BigInteger, default=None, nullable=True)
 
     email = db.Column(db.String(length=120), index=True, unique=True, nullable=False)
 

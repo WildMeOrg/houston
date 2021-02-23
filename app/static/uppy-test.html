@@ -12,7 +12,7 @@
     <script>
 	let subId = (window.location.search.length ? window.location.search.substring(1) : false)
 	if (!subId) {
-		alert('You can pass a (valid) submission ID via url as "?SUB-ID".')
+		alert('You can pass a (valid) transaction ID [must be valid GUID] via url as "?TRANS-ID".')
 		subId = 'xxxxxxx'
 	}
       const uppy = Uppy.Core({debug: true, autoProceed: false})
@@ -21,7 +21,8 @@
         .use(Uppy.Tus, {
 		endpoint: '/api/v1/submissions/tus',
 		headers: {
-			'x-houston-submission-id': subId
+			//'x-houston-submission-id': subId
+			'x-tus-transaction-id': subId
 		}
 	})
 

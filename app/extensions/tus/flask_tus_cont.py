@@ -126,7 +126,7 @@ class TusManager(object):
 
     # Untested. Possibly unused.
     def tus_proprietary_get_file_exists(self):
-        print('begin tus_proprietary_get_file_exists')
+        # print('begin tus_proprietary_get_file_exists')
         response = make_response('', 200)
         if 'Upload-Metadata' in request.headers:
             response.headers['Upload-Metadata'] = request.headers['Upload-Metadata']
@@ -162,7 +162,7 @@ class TusManager(object):
 
     def tus_creation_1_create(self):
         """Implements POST to create file according to Tus protocol Creation extension"""
-        print('begin tus_creation_1_create')
+        # print('begin tus_creation_1_create')
         response = make_response('', 200)
         response.headers['Tus-Resumable'] = self.tus_api_version
         response.headers['Tus-Version'] = self.tus_api_version_supported
@@ -222,7 +222,7 @@ class TusManager(object):
 
     # Untested. should be part of protocol, identify sections and verify correctness
     def tus_1_get_server_info(self):
-        print('begin tus_1_get_server_info')
+        # print('begin tus_1_get_server_info')
         response = make_response('', 200)
         if 'Upload-Metadata' in request.headers:
             response.headers['Upload-Metadata'] = request.headers['Upload-Metadata']

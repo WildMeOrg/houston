@@ -25,9 +25,7 @@ def enter(context, install_dependencies=True, upgrade_db=True):
             skip_on_failure=True,
         )
 
-    import pprint
     import logging
-    import flask
     import IPython
 
     import app
@@ -35,12 +33,6 @@ def enter(context, install_dependencies=True, upgrade_db=True):
     log = logging.getLogger(__name__)  # NOQA
 
     flask_app = app.create_app()
-
-    def shell_context():
-        context = dict(pprint=pprint.pprint)
-        context.update(vars(flask))
-        context.update(vars(app))
-        return context
 
     with flask_app.app_context():
         IPython.embed()

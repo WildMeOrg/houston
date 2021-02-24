@@ -38,11 +38,15 @@ def _tus_file_handler(upload_file_path, filename, req):
     transaction_id = None
     if 'x-houston-submission-id' in req.headers:
         submission_id = req.headers.get('x-houston-submission-id')
-        val = UUID(submission_id, version=4)  # this is just to test it is a valid uuid - will throw ValueError if not! (500 response)
+        UUID(
+            submission_id, version=4
+        )  # this is just to test it is a valid uuid - will throw ValueError if not! (500 response)
     # TODO verify submission? ownership? etc  possibly also "session-secret" to prevent anyone from adding to submission
     if 'x-tus-transaction-id' in req.headers:
         transaction_id = req.headers.get('x-tus-transaction-id')
-        val = UUID(transaction_id, version=4)  # this is just to test it is a valid uuid - will throw ValueError if not! (500 response)
+        UUID(
+            transaction_id, version=4
+        )  # this is just to test it is a valid uuid - will throw ValueError if not! (500 response)
 
     dir = os.path.join(tus_upload_dir(), 'unknown')
     if submission_id is not None:

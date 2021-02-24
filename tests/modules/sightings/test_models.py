@@ -8,9 +8,7 @@ def test_sighting_create_and_add_encounters(db):
     from app.modules.sightings.models import Sighting
     from app.modules.encounters.models import Encounter
 
-    test_sighting = Sighting(
-        title='New Test Sighting',
-    )
+    test_sighting = Sighting()
 
     test_encounter_a = Encounter()
 
@@ -52,9 +50,7 @@ def test_sighting_ensure_no_duplicate_encounters(db):
     from app.modules.sightings.models import Sighting
     from app.modules.encounters.models import Encounter
 
-    test_sighting = Sighting(
-        title='New Test Sighting',
-    )
+    test_sighting = Sighting()
 
     test_encounter = Encounter()
 

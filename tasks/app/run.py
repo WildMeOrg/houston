@@ -6,7 +6,7 @@ Application execution related tasks for Invoke.
 
 try:
     from importlib import reload
-except ImportError:
+except ImportError:  # pragma: no cover
     pass  # Python 2 has built-in reload() function
 import os
 import platform

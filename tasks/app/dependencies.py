@@ -78,7 +78,7 @@ def install_swagger_ui(context, force=False):
             # We only need the 'dist' folder
             try:
                 commonpath = os.path.commonpath
-            except Exception:  # Python 2.x fallback
+            except Exception:  # pragma: no cover Python 2.x fallback
                 commonpath = os.path.commonprefix
             if not commonpath([zipped_member_path, 'dist']):
                 continue

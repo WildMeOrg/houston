@@ -10,7 +10,7 @@ import uuid
 # before that we need to use the _request_ctx_stack.
 try:
     from flask import _app_ctx_stack as stack
-except ImportError:
+except ImportError:  # pragma: no cover
     from flask import _request_ctx_stack as stack
 
 

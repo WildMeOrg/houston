@@ -115,6 +115,7 @@ jobs:
       OS: ubuntu-latest
       PYTHON: ${{ matrix.python-version }}
       SQLALCHEMY_DATABASE_URI: ${{ matrix.db-uri }}
+      GITLAB_REMOTE_LOGIN_PAT: ${{ secrets.GITLAB_REMOTE_LOGIN_PAT }}
     steps:
       # Checkout and env setup
       - uses: actions/checkout@v2
@@ -162,21 +163,28 @@ jobs:
         if: matrix.db-uri != 'sqlite://'
         run: |
           source virtualenv/houston3.7/bin/activate
-          invoke app.db.upgrade --no-backup
-          invoke app.db.downgrade
-          invoke app.db.upgrade --no-backup
+          coverage run `which invoke` app.db.upgrade --no-backup
+          coverage run --append `which invoke` app.db.downgrade
+          coverage run --append `which invoke` app.db.upgrade --no-backup
 
       - name: Run tests after DB checks
         run: |
           source virtualenv/houston3.7/bin/activate
-          pytest -s -v --gitlab-remote-login-pat "${{ secrets.GITLAB_REMOTE_LOGIN_PAT }}"
+          pytest --no-cov -s -v --gitlab-remote-login-pat "${{ secrets.GITLAB_REMOTE_LOGIN_PAT }}"
 
       - name: Run Codecov (3.9)
         if: matrix.python-version == '3.9'
         continue-on-error: true
         run: |
           source virtualenv/houston3.7/bin/activate
-          pytest -s -v --gitlab-remote-login-pat "${{ secrets.GITLAB_REMOTE_LOGIN_PAT }}" --cov=./ --cov-report=xml
+          pytest -s -v --gitlab-remote-login-pat "${{ secrets.GITLAB_REMOTE_LOGIN_PAT }}" --cov=./ --cov-append
+
+      - name: Run other invoke tasks for coverage and errors
+        if: matrix.python-version == '3.9'
+        run: |
+          source virtualenv/houston3.7/bin/activate
+          ./scripts/run_tasks_for_coverage.sh
+          coverage xml
 
       - name: Upload coverage to Codecov (3.9)
         if: matrix.python-version == '3.9'

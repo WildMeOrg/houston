@@ -15,7 +15,7 @@ logger.setLevel(logging.INFO)
 
 try:
     import colorlog
-except ImportError:
+except ImportError:  # pragma: no cover
     pass
 else:
     formatter = colorlog.ColoredFormatter(

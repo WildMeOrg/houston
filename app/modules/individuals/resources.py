@@ -72,7 +72,6 @@ class Individuals(Resource):
 
 
 @api.route('/<uuid:individual_guid>')
-@api.login_required(oauth_scopes=['individuals:read'])
 @api.response(
     code=HTTPStatus.NOT_FOUND,
     description='Individual not found.',
@@ -105,7 +104,6 @@ class IndividualByID(Resource):
             'action': AccessOperation.WRITE,
         },
     )
-    @api.login_required(oauth_scopes=['individuals:write'])
     @api.parameters(parameters.PatchIndividualDetailsParameters())
     @api.response(schemas.DetailedIndividualSchema())
     @api.response(code=HTTPStatus.CONFLICT)

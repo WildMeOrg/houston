@@ -120,6 +120,7 @@ class ModuleActionRule(DenyAbortMixin, Rule):
         from app.modules.users.models import User
 
         has_permission = False
+
         if user_is_privileged(user):
             # Organizations and Projects not supported for MVP, no-one can create them
             if not self._is_module((Organization, Project)):
@@ -192,6 +193,7 @@ class ObjectActionRule(DenyAbortMixin, Rule):
         return has_permission
 
     def _permitted_via_user(self, user):
+        from app.modules.individuals.models import Individual
         from app.modules.encounters.models import Encounter
         from app.modules.users.models import User
 
@@ -214,7 +216,7 @@ class ObjectActionRule(DenyAbortMixin, Rule):
             #             and self._action != AccessOperation.DELETE
             #         )
 
-            if isinstance(self._obj, Encounter):
+            if isinstance(self._obj, (Encounter, Individual)):
                 # Researchers can read other encounters, only site admins can update and delete
                 # them and those roles are not supported yet
                 if self._action == AccessOperation.READ:

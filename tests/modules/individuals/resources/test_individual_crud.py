@@ -65,10 +65,8 @@ def patch_individual(
     return response
 
 
-def test_modify_encounter(db, flask_app_client, researcher_1, empty_individual):
-    # pylint: disable=invalid-name
-    # Had problems persisting and deleting fixture objects ¯\_(ツ)_/¯
-    # EX: sqlalchemy.exc.InvalidRequestError: Instance '<Encounter at 0x7f72df5b2700>' has been deleted.
+def test_modify_encounters(db, flask_app_client, researcher_1, empty_individual):
+
     mod_enc_1 = utils.generate_encounter_instance(
         user_email='mod1@user', user_password='mod1user', user_full_name='Test User'
     )
@@ -76,15 +74,22 @@ def test_modify_encounter(db, flask_app_client, researcher_1, empty_individual):
         user_email='mod2@user', user_password='mod2user', user_full_name='Test User'
     )
 
+    # You need to own an individual to modify it, and ownership is determined from it's encounters
+    mod_enc_1.owner = researcher_1
+    mod_enc_2.owner = researcher_1
+    empty_individual.add_encounter(mod_enc_1)
+
     with db.session.begin():
         db.session.add(empty_individual)
         db.session.add(mod_enc_1)
         db.session.add(mod_enc_2)
 
-    encounters = [str(mod_enc_1.guid), str(mod_enc_2.guid)]
+    assert str(mod_enc_1.guid) in [
+        str(encounter.guid) for encounter in empty_individual.get_encounters()
+    ]
 
     replace_encounters = [
-        utils.patch_replace_op('encounters', encounters),
+        utils.patch_replace_op('encounters', [str(mod_enc_2.guid)]),
     ]
 
     patch_individual(
@@ -94,19 +99,14 @@ def test_modify_encounter(db, flask_app_client, researcher_1, empty_individual):
         replace_encounters,
         200,
     )
+
     with db.session.begin():
         db.session.refresh(empty_individual)
-        db.session.refresh(mod_enc_1)
-        db.session.refresh(mod_enc_2)
 
-    assert encounters[0] in [
-        str(encounter.guid) for encounter in empty_individual.get_encounters()
-    ]
-    assert encounters[1] in [
+    assert str(mod_enc_2.guid) in [
         str(encounter.guid) for encounter in empty_individual.get_encounters()
     ]
 
     with db.session.begin():
-        db.session.delete(empty_individual)
         db.session.delete(mod_enc_1)
         db.session.delete(mod_enc_2)

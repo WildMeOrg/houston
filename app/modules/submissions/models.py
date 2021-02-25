@@ -344,7 +344,6 @@ class Submission(db.Model, HoustonModel):
                         # Skip any symbolic links (sanity check)
                         skipped.append((filepath, extension))
                         continue
-
                     mime_type = magic.from_file(filepath, mime=True)
                     if mime_type not in current_app.sub.mime_type_whitelist:
                         # Skip any unsupported MIME types

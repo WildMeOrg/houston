@@ -186,6 +186,10 @@ class EDMConfig(object):
     }
 
 
+class TusConfig(object):
+    TUS_UPLOADS_PATH = os.path.join(PROJECT_DATABASE_PATH, 'uploads')
+
+
 class SubmissionGitLabRemoteConfig(object):
     GITLAB_REMOTE_URI = 'https://sub.dyn.wildme.io/'
     GITLAB_PUBLIC_NAME = 'Houston'
@@ -194,7 +198,7 @@ class SubmissionGitLabRemoteConfig(object):
 
 
 class ProductionConfig(
-    BaseConfig, EDMConfig, SubmissionGitLabRemoteConfig, SecretProductionConfig
+    BaseConfig, EDMConfig, SubmissionGitLabRemoteConfig, SecretProductionConfig, TusConfig
 ):
     TESTING = False
 
@@ -210,7 +214,11 @@ class ProductionConfig(
 
 
 class DevelopmentConfig(
-    BaseConfig, EDMConfig, SubmissionGitLabRemoteConfig, SecretDevelopmentConfig
+    BaseConfig,
+    EDMConfig,
+    SubmissionGitLabRemoteConfig,
+    SecretDevelopmentConfig,
+    TusConfig,
 ):
     DEBUG = True
 

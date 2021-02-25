@@ -24,13 +24,15 @@ from .models import Sighting
 
 from app.extensions.api import abort
 import json
+import os
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 api = Namespace('sightings', description='Sightings')  # pylint: disable=invalid-name
 
 
-def _cleanup_post_and_abort(guid, message='Unknown error'):
+def _cleanup_post_and_abort(sighting_guid, submission_guid, message='Unknown error'):
     # TODO actually clean up edm based on guid!!!
+    # TODO cleanup submission & assets (i guess???)
     abort(success=False, passed_message=message, message='Error', code=400)
 
 
@@ -113,16 +115,23 @@ class Sightings(Resource):
                 'Sighting.post missing encounters in one of %r or %r'
                 % (data, result_data)
             )
-            _cleanup_post_and_abort(None, 'Missing encounters between data and result')
+            _cleanup_post_and_abort(
+                None, None, 'Missing encounters between data and result'
+            )
         if not len(data['encounters']) == len(result_data['encounters']):
             log.error(
                 'Sighting.post imbalanced encounters in %r or %r' % (data, result_data)
             )
             _cleanup_post_and_abort(
-                None, 'Imbalance in encounters between data and result'
+                None, None, 'Imbalance in encounters between data and result'
             )
+        # i think this was official declared as law today 2021-02-24
+        if len(data['encounters']) < 1:
+            log.error('Sighting.post empty encounters in %r / %r' % (data, result_data))
+            _cleanup_post_and_abort(None, None, 'Must have at least one encounter')
 
         # now we handle asset-related json that came in. note: arrays should be parallel in data/result_data
+        # this makes sure assetReferences is well-formed and also maps (future) assets to encounters
         arefs_found = {}
         i = 0
         while i < len(data['encounters']):
@@ -141,7 +150,9 @@ class Sightings(Resource):
                         log.error(
                             'Sighting.post malformed assetReferences data: %r' % (aref)
                         )
-                        _cleanup_post_and_abort(None, 'Malformed assetReferences data')
+                        _cleanup_post_and_abort(
+                            None, None, 'Malformed assetReferences data'
+                        )
                     key = ':'.join((aref['transactionId'], aref['path']))
                     if key in arefs_found:
                         arefs_found[key]['encs'].append(i)
@@ -150,10 +161,37 @@ class Sightings(Resource):
                         arefs_found[key]['encs'] = [i]
             i += 1
 
+        # now we have a mapping of encounters to assetReferences... so we try to create the submission + assets
+        #   first we make sure we have the files we need so we can abort if not (they may fail later for other reasons)
+        from app.extensions.tus import tus_upload_dir
+
+        for key in arefs_found:
+            aref = arefs_found[key]
+            file_path = os.path.join(
+                tus_upload_dir(current_app, transaction_id=aref['transactionId']),
+                aref['path'],
+            )
+            try:
+                sz = os.path.getsize(file_path)  # 2for1
+            except OSError as err:
+                log.error(
+                    'Sighting.post OSError %r assetReferences data: %r' % (err, aref)
+                )
+                _cleanup_post_and_abort(None, None, 'File not found: ' + str(aref))
+            if sz < 1:
+                log.error(
+                    'Sighting.post zero-size file for assetReferences data: %r' % (aref)
+                )
+                _cleanup_post_and_abort(None, None, 'File empty: ' + str(aref))
+
+        # files seem to exist in uploads dir, so lets move on
+        ##submission = Submission(major_type=filesystem, description='Sighting.post ' + result_data['id'])
+        # owner_guid ? etc!
+
+        ##log.info('created submission %r' % (submission))
+
         # import utool as ut
         # ut.embed()
-        # submission = Submission(major_type=filesystem, description='Sighting.post ' + result_data['id'])
-        # owner_guid ? etc!
 
         rtn = {
             'success': True,

@@ -46,6 +46,19 @@ docker_setup_env() {
 	fi
 }
 
+# assume the container is in development-mode when the .git directory is present
+_is_development_env() {
+	[ -d /code/.git ]
+}
+
+set_up_development_mode() {
+	pip install -e ".[testing]"
+	# stamp the version.py file in the code
+	python setup.py --version
+	# setup the swagger-ui within the development code
+	invoke app.dependencies.install-swagger-ui
+}
+
 _main() {
 	# if first arg looks like a flag, assume we want to run postgres server
 	if [ "${1:0:1}" = '-' ]; then
@@ -56,6 +69,9 @@ _main() {
 	# then the service is set to run
 	if [ "$1" = 'invoke' ] || [ "$1" = 'wait-for' ]; then
 		docker_setup_env
+		if [ _is_development_env ]; then
+			set_up_development_mode
+		fi
 		# only run initialization on an empty data directory
 		if [ -z "$ALREADY_INITIALIZED" ]; then
 			mkdir -p ${DATA_ROOT}

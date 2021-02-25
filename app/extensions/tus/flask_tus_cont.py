@@ -327,7 +327,7 @@ class TusManager(object):
                     )
                 else:
                     filename = self.upload_file_handler_cb(
-                        upload_file_path, filename, request
+                        upload_file_path, filename, request, self.app
                     )
             finally:
                 self._remove_resources(resource_id)

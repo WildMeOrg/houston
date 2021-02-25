@@ -1,5 +1,7 @@
 # Contributing to Houston
 
+All contributions are welcome and encouraged. There are a few guidelines and styling aspects that we require and encourage you to use so that we might see this project through many years of successful development.
+
 ## Development Guidelines
 
 ### Pull Request Checklist
@@ -66,6 +68,10 @@ To submit a pull request (PR) to Houston, we require the following standards to 
 
 ## Code Style
 
+The code is generally in PEP8 compliance, enforced by flake8 via pre-commit.
+
+Our code uses Google-style docstrings. See examples of this in [Example Google Style Python Docstrings](https://www.sphinx-doc.org/en/master/usage/extensions/example_google.html#example-google).
+
 ### Pre-commit
 
 It's recommended that you use `pre-commit` to ensure linting procedures are run
@@ -82,28 +88,4 @@ Reference [pre-commit's installation instructions](https://pre-commit.com/#insta
   pre-commit run --all-files
 ```
 
-### Brunette
-
-Our code base has been formatted by Brunette, which is a fork and more configurable version of Black (https://black.readthedocs.io/en/stable/).
-
-### Flake8
-
-Try to conform to PEP8.  You should set up your preferred editor to use flake8 as its Python linter, but pre-commit will ensure compliance before a git commit is completed.
-
-To run flake8 from the command line use:
-
-```bash
-  flake8
-```
-
-This will use the flake8 configuration within ``setup.cfg``,
-which ignores several errors and stylistic considerations.
-See the ``setup.cfg`` file for a full and accurate listing of stylistic codes to ignore.
-
-### PyTest
-
-Our code uses Google-style documentation tests (doctests) that uses pytest and xdoctest to enable full support.  To run the tests from the command line use:
-
-```bash
-  pytest
-```
+See `.pre-commit-config.yaml` for a list of configured linters and fixers.

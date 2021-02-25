@@ -2,8 +2,14 @@
 [![Codecov](https://codecov.io/gh/WildMeOrg/houston/branch/develop/graph/badge.svg?token=M8MR14ED6V)](https://codecov.io/gh/WildMeOrg/houston)
 [![Docker Nightly](https://img.shields.io/docker/image-size/wildme/houston/nightly)](https://hub.docker.com/r/wildme/houston)
 
-Wild Me - Houston Backend Server
-======================================================
+# Wild Me - Houston Backend Server
+
+Houston is a REST API component within the CODEX application suite. It is used to glue the frontend to [Ecological Data Module (EDM)](https://github.com/WildMeOrg/wildbook/tree/next-gen) and [Wildbook-IA](https://github.com/WildMeOrg/wildbook-ia).
+
+For a high-level explanation of the application in relation to other CODEX applications read the documentation at [CODEX - Houston](https://docs.wildme.org/docs/developers/houston).
+
+
+## About this implementation
 
 This project showcases my vision on how the RESTful API server should be
 implemented.

@@ -66,10 +66,11 @@ function build() {
 
 function install() {
     dist_install=$(get_install_path)
-    rm -rf app/static/dist-latest
+    rm -rf ${BASE_INSTALL_PATH}/dist-latest
     mkdir -p ${dist_install}
     tar -zxvf _frontend/dist.latest.tar.gz -C ${dist_install} --strip-components=1
-    ln -s ${dist_install} app/static/dist-latest
+    # Assume dist_install is also in $BASE_INSTALL_PATH
+    ln -s $(basename ${dist_install}) ${BASE_INSTALL_PATH}/dist-latest
 }
 
 # Build within a Node container

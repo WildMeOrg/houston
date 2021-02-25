@@ -59,7 +59,7 @@ def test_modify_encounter(db, flask_app_client, researcher_1, researcher_2):
     assert new_encounter_1.owner == researcher_2
 
 
-def not_a_test_asset_addition(db, flask_app_client):
+def no_test_asset_addition(db, flask_app_client):
     # pylint: disable=invalid-name
     from app.modules.encounters.models import Encounter
 
@@ -85,7 +85,7 @@ def not_a_test_asset_addition(db, flask_app_client):
     )
     assert len(new_encounter.assets) == 1
     # removed submission delete as it was going haywire
-    # new_submission.delete()
+    new_submission.delete()
 
 
 def add_file_asset_to_encounter(
@@ -108,8 +108,7 @@ def add_file_asset_to_encounter(
     ]
     patch_encounter(flask_app_client, '%s' % encounter.guid, user, add_asset)
 
-    # @todo, this directory should really have been deleted by the code. As yet it's not.
-    # assert os.path.exists(dir_path) is False
+    assert os.path.exists(dir_path) is False
 
 
 def test_asset_file_addition(db, flask_app_client, researcher_1):

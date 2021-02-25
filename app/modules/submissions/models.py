@@ -268,6 +268,9 @@ class Submission(db.Model, HoustonModel):
             self.git_commit('Tus collect commit for %d files.' % (num_files,))
             self.git_push()
 
+        if transaction_id:
+            os.rmdir(upload_dir)
+
     def realize_submission(self):
         """
         Unpack any archives and resolve any symlinks

@@ -402,15 +402,34 @@ Installation
 
 ### Using Docker
 
-It is very easy to start exploring the example using Docker:
+It is very easy to start development using Docker:
 
-```bash
-$ docker run -it --rm --publish 5000:5000 frolvlad/flask-restplus-server-example
-```
+1. Build the `wildme/houston` image:
 
-<!--
-[![](https://images.microbadger.com/badges/image/frolvlad/flask-restplus-server-example.svg)](http://microbadger.com/images/frolvlad/flask-restplus-server-example "Get your own image badge on microbadger.com")
- -->
+   ```bash
+   docker build -t wildme/houston .
+   ```
+
+2. Mount the current directory and run bash in the container:
+
+   ```bash
+   docker run --rm -u root --entrypoint= -v $PWD:/code -it wildme/houston /bin/bash
+   ```
+
+3. Install houston and run tests:
+
+   ```bash
+   pip install -e .[testing]
+   FLASK_CONFIG= pytest
+   ```
+
+4. Or to run the app:
+
+   ```bash
+   invoke app.run --host 0.0.0.0
+   ```
+
+   You should see the site at http://localhost:5000/ in your browser.
 
 ### From sources
 

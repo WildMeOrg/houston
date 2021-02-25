@@ -20,10 +20,10 @@ class CreateEncounterParameters(Parameters, schemas.DetailedEncounterSchema):
 class PatchEncounterDetailsParameters(PatchJSONParametersWithPassword):
     # pylint: disable=abstract-method,missing-docstring
 
-    # Valid options for patching are '/owner' and '/assetId'
-    # The '/current_password' and user are not patchable but must be valid fields in the patch so that they can be
-    # present for validation
-    VALID_FIELDS = ['current_password', 'user', 'owner', 'assetId']
+    # Valid options for patching are replace '/owner', and add '/assetId' and '/newSubmission'
+    # The '/current_password' and '/user' are not patchable but must be valid fields in the patch so that
+    #  they can be present for validation
+    VALID_FIELDS = ['current_password', 'user', 'owner', 'assetId', 'newSubmission']
     PATH_CHOICES = tuple('/%s' % field for field in VALID_FIELDS)
 
     @classmethod
@@ -48,18 +48,24 @@ class PatchEncounterDetailsParameters(PatchJSONParametersWithPassword):
     @classmethod
     def add(cls, obj, field, value, state):
         from app.modules.assets.models import Asset
+        from app.modules.submissions.models import Submission
 
         super(PatchEncounterDetailsParameters, cls).replace(obj, field, value, state)
         ret_val = False
 
-        if field == 'assetId':
-            asset = Asset.query.get(value)
-            if (
-                rules.owner_or_privileged(current_user, obj)
-                and asset
-                and asset.owner is current_user
-            ):
-                obj.add_asset_in_context(asset)
+        if rules.owner_or_privileged(current_user, obj):
+            if field == 'assetId':
+                asset = Asset.query.get(value)
+                if asset and asset.submission.owner == current_user:
+                    obj.add_asset_in_context(asset)
+                    ret_val = True
+
+            elif field == 'newSubmission':
+                new_submission = Submission(owner=current_user)
+                new_submission.import_tus_files(transaction_id=value)
+
+                for asset in new_submission.assets:
+                    obj.add_asset_in_context(asset)
                 ret_val = True
 
         return ret_val

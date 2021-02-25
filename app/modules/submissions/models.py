@@ -239,6 +239,35 @@ class Submission(db.Model, HoustonModel):
 
         return repo
 
+    def import_tus_files(self, transaction_id=None):
+        self.ensure_repository()
+        # @todo duplicates Jons latest tus_upload_dir() to be replaced when available
+        if transaction_id:
+            upload_dir = os.path.join(
+                '_db', 'uploads', '-'.join(['trans', transaction_id])
+            )
+        else:
+            upload_dir = os.path.join('_db', 'uploads', '-'.join(['sub', str(self.guid)]))
+        submission_abspath = self.get_absolute_path()
+        submission_path = os.path.join(submission_abspath, '_submission')
+        num_files = 0
+        for root, dirs, files in os.walk(upload_dir):
+            num_files = len(files)
+            for name in files:
+                log.debug(
+                    'moving upload %r to sub dir %r'
+                    % (
+                        name,
+                        submission_path,
+                    )
+                )
+                os.rename(os.path.join(root, name), os.path.join(submission_path, name))
+
+        if num_files > 0:
+            log.info('Tus collect for %d files moved' % (num_files))
+            self.git_commit('Tus collect commit for %d files.' % (num_files,))
+            self.git_push()
+
     def realize_submission(self):
         """
         Unpack any archives and resolve any symlinks

@@ -57,3 +57,80 @@ def test_modify_encounter(db, flask_app_client, researcher_1, researcher_2):
         flask_app_client, '%s' % new_encounter_1.guid, researcher_1, new_owner_as_res_1
     )
     assert new_encounter_1.owner == researcher_2
+
+
+def test_asset_addition(db, flask_app_client):
+    # pylint: disable=invalid-name
+    from app.modules.encounters.models import Encounter
+
+    new_researcher = utils.generate_user_instance(
+        email='reseracher47@nowhere.com', is_researcher=True
+    )
+    new_encounter = Encounter(owner=new_researcher)
+    new_submission = utils.generate_submission_instance(new_researcher)
+    new_asset = utils.generate_asset_instance(new_submission.guid)
+
+    with db.session.begin():
+        db.session.add(new_researcher)
+        db.session.add(new_encounter)
+        db.session.add(new_submission)
+        db.session.add(new_asset)
+
+    add_asset = [
+        utils.patch_test_op(new_researcher.password_secret),
+        utils.patch_add_op('assetId', '%s' % new_asset.guid),
+    ]
+    patch_encounter(
+        flask_app_client, '%s' % new_encounter.guid, new_researcher, add_asset
+    )
+    assert len(new_encounter.assets) == 1
+    # removed submission delete as it was going haywire
+    # new_submission.delete()
+
+
+def add_file_asset_to_encounter(
+    flask_app_client, user, encounter, transaction_id, filename
+):
+    # @todo cack handed way to do this as the real test will depend on work that Jon is currently doing
+    import os
+
+    dir_path = os.path.join('_db', 'uploads', '-'.join(['trans', transaction_id]))
+    if not os.path.exists(dir_path):
+        os.makedirs(dir_path)
+
+    open(os.path.join(dir_path, filename), 'a').close()
+
+    add_asset = [
+        utils.patch_test_op(user.password_secret),
+        utils.patch_add_op('newSubmission', transaction_id),
+    ]
+    patch_encounter(flask_app_client, '%s' % encounter.guid, user, add_asset)
+
+    assert os.path.exists(dir_path) is False
+
+
+def test_asset_file_addition(db, flask_app_client):
+    # pylint: disable=invalid-name
+    from app.modules.encounters.models import Encounter
+
+    new_researcher = utils.generate_user_instance(
+        email='reseracher55@nowhere.com', is_researcher=True
+    )
+    new_encounter = Encounter(owner=new_researcher)
+
+    with db.session.begin():
+        db.session.add(new_encounter)
+    try:
+        add_file_asset_to_encounter(
+            flask_app_client, new_researcher, new_encounter, 'new_stuff', 'new_file'
+        )
+        assert len(new_encounter.assets) == 1
+        add_file_asset_to_encounter(
+            flask_app_client, new_researcher, new_encounter, 'more_stuff', 'next_file'
+        )
+        assert len(new_encounter.assets) == 2
+    except Exception as ex:
+        raise ex
+    finally:
+        pass
+        # new_submission.delete()

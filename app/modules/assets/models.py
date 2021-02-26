@@ -58,6 +58,7 @@ class Asset(db.Model, HoustonModel):
         return (
             '<{class_name}('
             'guid={self.guid}, '
+            'path={self.path}, '
             'filesystem_guid={self.filesystem_guid}, '
             'semantic_guid={self.semantic_guid}, '
             'mime="{self.mime_type}", '

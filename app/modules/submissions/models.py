@@ -252,9 +252,9 @@ class Submission(db.Model, HoustonModel):
             db.session.add(submission)
 
         log.info('created submission %r' % submission)
-        paths = submission.import_tus_files(transaction_id=transaction_id)
-        log.info('submission imported %r' % paths)
-        return submission
+        added = submission.import_tus_files(transaction_id=transaction_id)
+        log.info('submission imported %r' % added)
+        return submission, added
 
     def import_tus_files(self, transaction_id=None):
         from app.extensions.tus import tus_upload_dir
@@ -268,6 +268,7 @@ class Submission(db.Model, HoustonModel):
         submission_path = os.path.join(submission_abspath, '_submission')
         num_files = 0
         paths_added = []
+        # note: this probably falls apart when subdirs exist
         for root, dirs, files in os.walk(upload_dir):
             num_files = len(files)
             for name in files:
@@ -281,15 +282,19 @@ class Submission(db.Model, HoustonModel):
                 )
                 os.rename(os.path.join(root, name), os.path.join(submission_path, name))
 
+        assets_added = []
         if num_files > 0:
             log.info('Tus collect for %d files moved' % (num_files))
             self.git_commit('Tus collect commit for %d files.' % (num_files,))
             self.git_push()
+            for asset in self.assets:
+                if asset.path in paths_added:
+                    assets_added.append(asset)
 
         # i _kind of_ think we can rmdir() for _any_ case.  have to think about this.   -jon
         if transaction_id:
             os.rmdir(upload_dir)
-        return paths_added
+        return assets_added
 
     def realize_submission(self):
         """

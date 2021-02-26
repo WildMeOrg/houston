@@ -19,8 +19,8 @@ def test_read_configurations(flask_app_client, researcher_1):
 
     with flask_app_client.login(researcher_1, auth_scopes=('configuration:read',)):
         config_response = flask_app_client.get('%s/__INVALID_KEY_' % CONFIG_PATH)
-    utils.validate_dict_response(config_response, 200, {'success', 'message'})
-    assert not config_response.json['success']  # main difference for invalid key
+    utils.validate_dict_response(config_response, 400, {'success', 'message'})
+    assert not config_response.json['success']  # should be non-success
 
 
 def test_alter_configurations(flask_app_client, researcher_1, admin_user):

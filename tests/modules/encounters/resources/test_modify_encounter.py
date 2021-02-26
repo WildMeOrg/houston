@@ -3,6 +3,9 @@
 import json
 from tests import utils
 
+from flask import current_app
+
+
 PATH = '/api/v1/encounters/'
 
 
@@ -85,6 +88,7 @@ def no_test_asset_addition(db, flask_app_client):
     )
     assert len(new_encounter.assets) == 1
     # removed submission delete as it was going haywire
+    current_app.sub.delete_remote_submission(new_submission)
     new_submission.delete()
 
 
@@ -154,4 +158,5 @@ def test_asset_file_addition(db, flask_app_client, researcher_1):
         new_encounter.delete()
         # assets are only cleaned up once the submissions are cleaned up
         for submission in researcher_1.submissions:
+            current_app.sub.delete_remote_submission(submission)
             submission.delete()

@@ -68,10 +68,14 @@ def user_staff_permissions(context):
 @app_context_task
 def cleanup_gitlab(context, dryrun=False):
     import gitlab
+    import datetime
+    import pytz
 
     TEST_GROUP_NAMES = ['TEST']
+    WHITELIST_TAG = 'type:pytest-required'
     PER_PAGE = 100
     MAX_PAGES = 100
+    DATETIME_FMTSTR = '%Y-%m-%dT%H:%M:%S.%fZ'
 
     remote_uri = current_app.config.get('GITLAB_REMOTE_URI', None)
     remote_personal_access_token = current_app.config.get(
@@ -102,17 +106,31 @@ def cleanup_gitlab(context, dryrun=False):
                 projects += projects_page
     log.info('Fetched %d projects' % (len(projects), ))
 
+    now = datetime.datetime.utcnow()
+    now = now.replace(tzinfo=pytz.UTC)
+
+    juvenile = 0
+    deleted = 0
     if dryrun:
-        log.info('[DRYRUN] Would have deleted %d projects for groups %r' % (len(projects), TEST_GROUP_NAMES,))
+        log.info('DRYRUN: Deletion skipped...')
     else:
-        deleted = 0
         for project in tqdm.tqdm(projects, desc='Deleting GitLab Projects'):
-            try:
-                gl.projects.delete(project.id)
-                deleted += 1
-            except gitlab.GitlabDeleteError:
-                pass
-        log.info('Deleted %d / %d projects for groups %r' % (deleted, len(projects), TEST_GROUP_NAMES,))
+            timestamp = project.last_activity_at
+            timestamp = datetime.datetime.strptime(timestamp, DATETIME_FMTSTR)
+            timestamp = timestamp.replace(tzinfo=pytz.UTC)
+            delta = now - timestamp
+
+            if WHITELIST_TAG in project.tag_list:
+                log.info('Skipping %r (%r), marked with %r' % (project.name, project, WHITELIST_TAG, ))
+                continue
+            if delta.total_seconds() < 60 * 60 * 24:
+                juvenile += 1
+                continue
+            success = current_app.sub.delete_remote_project(project)
+            deleted += 1 if success else 0
+
+    log.info('Deleted %d / %d projects for groups %r' % (deleted, len(projects), TEST_GROUP_NAMES,))
+    log.info('Skipped %d projects last modified within last 24 hours' % (juvenile,))
 
 
 @app_context_task

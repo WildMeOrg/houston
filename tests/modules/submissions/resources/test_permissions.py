@@ -3,6 +3,8 @@
 from tests.utils import clone_submission
 import json
 
+from flask import current_app
+
 
 def test_user_read_permissions(
     flask_app_client, regular_user, readonly_user, db, test_clone_submission_data
@@ -119,6 +121,7 @@ def test_create_patch_submission(flask_app_client, regular_user, readonly_user, 
     except Exception as ex:
         raise ex
     finally:
+        current_app.sub.delete_remote_submission(temp_submission)
         # Restore original state
         temp_submission = Submission.query.get(submission_guid)
         if temp_submission is not None:

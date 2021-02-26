@@ -5,6 +5,8 @@ import filecmp
 import config
 from os.path import join, basename
 
+from flask import current_app
+
 
 def test_create_open_submission(flask_app_client, regular_user, db):
     # pylint: disable=invalid-name
@@ -43,6 +45,7 @@ def test_create_open_submission(flask_app_client, regular_user, db):
     except Exception as ex:
         raise ex
     finally:
+        current_app.sub.delete_remote_submission(temp_submission)
         # Restore original state
         if temp_submission is not None:
             temp_submission.delete()
@@ -101,6 +104,8 @@ def test_submission_streamlined(flask_app_client, regular_user, db):
     except Exception as ex:
         raise ex
     finally:
+        current_app.sub.delete_remote_submission(temp_submission)
+
         # Restore original state
         if temp_submission is not None:
             temp_submission.delete()

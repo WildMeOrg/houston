@@ -255,14 +255,13 @@ class Submission(db.Model, HoustonModel):
         return submission
 
     def import_tus_files(self, transaction_id=None):
+        from app.extensions.tus import tus_upload_dir
+
         self.ensure_repository()
-        # TODO: duplicates Jons latest tus_upload_dir() to be replaced when available
-        if transaction_id:
-            upload_dir = os.path.join(
-                '_db', 'uploads', '-'.join(['trans', transaction_id])
-            )
-        else:
-            upload_dir = os.path.join('_db', 'uploads', '-'.join(['sub', str(self.guid)]))
+        sub_id = None if transaction_id is not None else self.guid
+        upload_dir = tus_upload_dir(
+            current_app, transaction_id=transaction_id, submission_guid=sub_id
+        )
         submission_abspath = self.get_absolute_path()
         submission_path = os.path.join(submission_abspath, '_submission')
         num_files = 0
@@ -285,9 +284,9 @@ class Submission(db.Model, HoustonModel):
             self.git_commit('Tus collect commit for %d files.' % (num_files,))
             self.git_push()
 
+        # i _kind of_ think we can rmdir() for _any_ case.  have to think about this.   -jon
         if transaction_id:
             os.rmdir(upload_dir)
-
         return paths_added
 
     def realize_submission(self):

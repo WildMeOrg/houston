@@ -132,6 +132,11 @@ class Sightings(Resource):
 
         # now we handle asset-related json that came in. note: arrays should be parallel in data/result_data
         # this makes sure assetReferences is well-formed and also maps (future) assets to encounters
+
+        # NOTE for simplicity i am going to assume assetReferences *share a common transaction id*  !!
+        #  this will very likely always be true, but in the event it proves not to be, this will have to be altered
+        #  to do multiple submission.import_tus_files() calls below
+
         arefs_found = {}
         i = 0
         while i < len(data['encounters']):
@@ -165,10 +170,12 @@ class Sightings(Resource):
         #   first we make sure we have the files we need so we can abort if not (they may fail later for other reasons)
         from app.extensions.tus import tus_upload_dir
 
+        transaction_id = None  # see note above about single common transaction id
         for key in arefs_found:
             aref = arefs_found[key]
+            transaction_id = aref['transactionId']
             file_path = os.path.join(
-                tus_upload_dir(current_app, transaction_id=aref['transactionId']),
+                tus_upload_dir(current_app, transaction_id=transaction_id),
                 aref['path'],
             )
             try:
@@ -185,75 +192,79 @@ class Sightings(Resource):
                 _cleanup_post_and_abort(None, None, 'File empty: ' + str(aref))
 
         # files seem to exist in uploads dir, so lets move on
-        ##submission = Submission(major_type=filesystem, description='Sighting.post ' + result_data['id'])
-        # owner_guid ? etc!
+        from app.modules.submissions.models import Submission, SubmissionMajorType
 
-        ##log.info('created submission %r' % (submission))
+        submission = Submission(
+            major_type=SubmissionMajorType.filesystem,
+            description='Sighting.post ' + result_data['id'],
+        )
+        pub = False
+        owner_guid = None
+        if current_user is not None and not current_user.is_anonymous:
+            owner_guid = current_user.guid
+            pub = True
+        submission.owner_guid = owner_guid
+        db.session.add(submission)
+        log.info('created submission %r' % (submission))
+        paths = submission.import_tus_files(transaction_id=transaction_id)
+        log.info('submission imported %r' % (paths))
 
-        # import utool as ut
-        # ut.embed()
+        # FIXME - we need to reduce submission.assets to only the ones represented by 'paths' here!!
 
-        rtn = {
-            'success': True,
-            'result': {
-                # 'guid': str(encounter.guid),
-                # 'version': encounter.version,
-            },
-        }
-        return rtn
+        for asset in submission.assets:
+            key = ':'.join((transaction_id, asset.path))
+            if (
+                key not in arefs_found
+            ):  # this gets around assets we dont care about, see above
+                continue
+            log.debug('>>>>> %r => %r' % (key, arefs_found[key]))
+            arefs_found[key]['asset'] = asset
 
-        # TODO genericize the code from encounter
-        # will contain EncounterAssets objects to join to assets (dont load assets themselves)
-        asset_refs = []
-        if 'assets' in data and isinstance(data['assets'], list):
-            from app.modules.encounters.models import EncounterAssets
+        sighting = Sighting(
+            guid=result_data['id'],
+            version=result_data.get('version', 2),
+        )
 
-            for asset_data in data['assets']:
-                if isinstance(asset_data, dict) and 'guid' in asset_data:
-                    # note: if an invalid asset guid is provided, foreign key contstraint error will be thrown when persisting
-                    asset_ref = EncounterAssets(
-                        encounter_guid=result_data['id'], asset_guid=asset_data['guid']
+        from app.modules.encounters.models import Encounter, EncounterAssets
+
+        if isinstance(result_data['encounters'], list):
+            i = 0
+            while i < len(result_data['encounters']):
+                encounter = Encounter(
+                    guid=result_data['encounters'][i]['id'],
+                    version=result_data['encounters'][i].get('version', 2),
+                    owner_guid=owner_guid,
+                    public=pub,
+                )
+                asset_refs = []
+                for key in arefs_found:
+                    if (
+                        i not in arefs_found[key]['encs']
+                        or 'asset' not in arefs_found[key]
+                    ):
+                        continue
+                    asset_refs.append(
+                        EncounterAssets(
+                            encounter_guid=encounter.guid,
+                            asset_guid=arefs_found[key]['asset'].guid,
+                        )
                     )
-                    asset_refs.append(asset_ref)
+                log.debug('enc=%r asset_refs=%r' % (encounter, asset_refs))
+                encounter.assets = asset_refs
+                sighting.add_encounter(encounter)
+                i += 1
 
         context = api.commit_or_abort(
             db.session, default_error_message='Failed to create a new houston Sighting'
         )
-        try:
-            with context:
-                # TODO other houston-based relationships: orgs, projects, etc
-                owner_guid = None
-                pub = True  # legit? public if no owner?
-                if current_user is not None and not current_user.is_anonymous:
-                    owner_guid = current_user.guid
-                    pub = False
-                encounter = Sighting(  # Encounter(
-                    guid=result_data['id'],
-                    version=result_data.get('version', 2),
-                    owner_guid=owner_guid,
-                    public=pub,
-                )
-                encounter.assets = asset_refs
-                db.session.add(encounter)
-        except Exception as ex:
-            log.error(
-                'Encounter.post FAILED houston feather object creation guid=%r - will attempt to DELETE edm Encounter; (payload %r) ex=%r'
-                % (
-                    encounter.guid,
-                    data,
-                    ex,
-                )
-            )
-            # clean up after ourselves by removing encounter from edm
-            encounter.delete_from_edm(current_app)
-            raise ex
-
-        log.debug('Encounter.post created edm/houston guid=%r' % (encounter.guid,))
+        with context:
+            db.session.add(sighting)
         rtn = {
             'success': True,
             'result': {
-                'guid': str(encounter.guid),
-                'version': encounter.version,
+                'id': str(sighting.guid),
+                'version': sighting.version,
+                'encounters': result_data['encounters'],
             },
         }
         return rtn

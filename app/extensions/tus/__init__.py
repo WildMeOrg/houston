@@ -6,8 +6,6 @@ Logging adapter
 import logging
 import os
 
-from flask import current_app
-
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
@@ -66,7 +64,7 @@ def tus_upload_dir(app, submission_guid=None, transaction_id=None, session_id=No
     """Returns the location to an upload directory"""
     import hashlib
 
-    base_path = app.config.get('TUS_UPLOADS_PATH', None)
+    base_path = app.config.get('UPLOADS_DATABASE_PATH', None)
     # log.warn('tus_upload_dir got base_path=%r %r %r %r' % (base_path, submission_guid, transaction_id, session_id))
     if submission_guid is None and transaction_id is None and session_id is None:
         return base_path

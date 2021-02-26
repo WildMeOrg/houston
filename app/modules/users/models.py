@@ -597,8 +597,8 @@ class User(db.Model, FeatherModel, UserEDMMixin):
     def delete(self):
         with db.session.begin():
             # TODO: Ensure proper cleanup
-            while self.submissions:
-                self.submissions.pop().delete()
+            for submission in self.submissions:
+                submission.delete()
             db.session.delete(self)
 
     @classmethod

@@ -239,6 +239,21 @@ class Submission(db.Model, HoustonModel):
 
         return repo
 
+    @classmethod
+    def create_submission_from_tus(cls, description, owner, transaction_id=None):
+        submission = Submission(
+            major_type=SubmissionMajorType.filesystem,
+            description=description,
+        )
+        submission.owner = owner
+        with db.session.begin():
+            db.session.add(submission)
+
+        log.info('created submission %r' % submission)
+        paths = submission.import_tus_files(transaction_id=transaction_id)
+        log.info('submission imported %r' % paths)
+        return submission
+
     def import_tus_files(self, transaction_id=None):
         self.ensure_repository()
         # @todo duplicates Jons latest tus_upload_dir() to be replaced when available
@@ -251,9 +266,11 @@ class Submission(db.Model, HoustonModel):
         submission_abspath = self.get_absolute_path()
         submission_path = os.path.join(submission_abspath, '_submission')
         num_files = 0
+        paths_added = []
         for root, dirs, files in os.walk(upload_dir):
             num_files = len(files)
             for name in files:
+                paths_added.append(name)
                 log.debug(
                     'moving upload %r to sub dir %r'
                     % (
@@ -270,6 +287,8 @@ class Submission(db.Model, HoustonModel):
 
         if transaction_id:
             os.rmdir(upload_dir)
+
+        return paths_added
 
     def realize_submission(self):
         """

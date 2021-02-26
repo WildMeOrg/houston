@@ -49,7 +49,6 @@ class PatchEncounterDetailsParameters(PatchJSONParametersWithPassword):
     def add(cls, obj, field, value, state):
         from app.modules.assets.models import Asset
         from app.modules.submissions.models import Submission
-        from app.extensions import db
 
         super(PatchEncounterDetailsParameters, cls).add(obj, field, value, state)
         ret_val = False
@@ -62,10 +61,9 @@ class PatchEncounterDetailsParameters(PatchJSONParametersWithPassword):
                     ret_val = True
 
             elif field == 'newSubmission':
-                new_submission = Submission(owner=current_user)
-                new_submission.import_tus_files(transaction_id=value)
-                with db.session.begin():
-                    db.session.add(new_submission)
+                new_submission = Submission.create_submission_from_tus(
+                    'Encounter.patch' + value, current_user, value
+                )
 
                 for asset in new_submission.assets:
                     obj.add_asset(asset)

@@ -16,6 +16,7 @@ class Sighting(db.Model, FeatherModel):
     guid = db.Column(
         db.GUID, default=uuid.uuid4, primary_key=True
     )  # pylint: disable=invalid-name
+    version = db.Column(db.BigInteger, default=None, nullable=True)
 
     def __repr__(self):
         return (

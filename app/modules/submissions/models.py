@@ -239,6 +239,57 @@ class Submission(db.Model, HoustonModel):
 
         return repo
 
+    @classmethod
+    def create_submission_from_tus(cls, description, owner, transaction_id=None):
+        submission = Submission(
+            major_type=SubmissionMajorType.filesystem,
+            description=description,
+        )
+        submission.owner = owner
+        with db.session.begin():
+            db.session.add(submission)
+
+        log.info('created submission %r' % submission)
+        paths = submission.import_tus_files(transaction_id=transaction_id)
+        log.info('submission imported %r' % paths)
+        return submission
+
+    def import_tus_files(self, transaction_id=None):
+        self.ensure_repository()
+        # @todo duplicates Jons latest tus_upload_dir() to be replaced when available
+        if transaction_id:
+            upload_dir = os.path.join(
+                '_db', 'uploads', '-'.join(['trans', transaction_id])
+            )
+        else:
+            upload_dir = os.path.join('_db', 'uploads', '-'.join(['sub', str(self.guid)]))
+        submission_abspath = self.get_absolute_path()
+        submission_path = os.path.join(submission_abspath, '_submission')
+        num_files = 0
+        paths_added = []
+        for root, dirs, files in os.walk(upload_dir):
+            num_files = len(files)
+            for name in files:
+                paths_added.append(name)
+                log.debug(
+                    'moving upload %r to sub dir %r'
+                    % (
+                        name,
+                        submission_path,
+                    )
+                )
+                os.rename(os.path.join(root, name), os.path.join(submission_path, name))
+
+        if num_files > 0:
+            log.info('Tus collect for %d files moved' % (num_files))
+            self.git_commit('Tus collect commit for %d files.' % (num_files,))
+            self.git_push()
+
+        if transaction_id:
+            os.rmdir(upload_dir)
+
+        return paths_added
+
     def realize_submission(self):
         """
         Unpack any archives and resolve any symlinks
@@ -315,7 +366,6 @@ class Submission(db.Model, HoustonModel):
                         # Skip any symbolic links (sanity check)
                         skipped.append((filepath, extension))
                         continue
-
                     mime_type = magic.from_file(filepath, mime=True)
                     if mime_type not in current_app.sub.mime_type_whitelist:
                         # Skip any unsupported MIME types

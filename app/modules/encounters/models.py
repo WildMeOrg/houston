@@ -70,6 +70,10 @@ class Encounter(db.Model, FeatherModel):
     def get_assets(self):
         return [ref.asset for ref in self.assets]
 
+    def add_asset(self, asset):
+        with db.session.begin():
+            self.add_asset_in_context(asset)
+
     def add_asset_in_context(self, asset):
         rel = EncounterAssets(encounter=self, asset=asset)
         db.session.add(rel)

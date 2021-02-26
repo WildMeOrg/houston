@@ -20,10 +20,10 @@ class CreateEncounterParameters(Parameters, schemas.DetailedEncounterSchema):
 class PatchEncounterDetailsParameters(PatchJSONParametersWithPassword):
     # pylint: disable=abstract-method,missing-docstring
 
-    # Valid options for patching are '/owner'
-    # The '/current_password' and user are not patchable but must be valid fields in the patch so that they can be
-    # present for validation
-    VALID_FIELDS = ['current_password', 'user', 'owner']
+    # Valid options for patching are replace '/owner', and add '/assetId' and '/newSubmission'
+    # The '/current_password' and '/user' are not patchable but must be valid fields in the patch so that
+    #  they can be present for validation
+    VALID_FIELDS = ['current_password', 'user', 'owner', 'assetId', 'newSubmission']
     PATH_CHOICES = tuple('/%s' % field for field in VALID_FIELDS)
 
     @classmethod
@@ -33,7 +33,7 @@ class PatchEncounterDetailsParameters(PatchJSONParametersWithPassword):
         super(PatchEncounterDetailsParameters, cls).replace(obj, field, value, state)
         ret_val = False
         if field == 'owner':
-            # owner is permitted to assign project ownership to another researcher
+            # owner is permitted to assign ownership to another researcher
             user = User.query.get(value)
             if (
                 rules.owner_or_privileged(current_user, obj)
@@ -42,4 +42,31 @@ class PatchEncounterDetailsParameters(PatchJSONParametersWithPassword):
             ):
                 obj.owner = user
                 ret_val = True
+
+        return ret_val
+
+    @classmethod
+    def add(cls, obj, field, value, state):
+        from app.modules.assets.models import Asset
+        from app.modules.submissions.models import Submission
+
+        super(PatchEncounterDetailsParameters, cls).add(obj, field, value, state)
+        ret_val = False
+
+        if rules.owner_or_privileged(current_user, obj):
+            if field == 'assetId':
+                asset = Asset.query.get(value)
+                if asset and asset.submission.owner == current_user:
+                    obj.add_asset(asset)
+                    ret_val = True
+
+            elif field == 'newSubmission':
+                new_submission = Submission.create_submission_from_tus(
+                    'Encounter.patch' + value, current_user, value
+                )
+
+                for asset in new_submission.assets:
+                    obj.add_asset(asset)
+                ret_val = True
+
         return ret_val

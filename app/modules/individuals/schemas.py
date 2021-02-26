@@ -4,7 +4,7 @@ Serialization schemas for Individuals resources RESTful API
 ----------------------------------------------------
 """
 
-from flask_restplus_patched import ModelSchema
+from flask_restx_patched import ModelSchema
 
 from .models import Individual
 

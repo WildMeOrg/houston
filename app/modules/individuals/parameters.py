@@ -3,7 +3,7 @@
 Input arguments (Parameters) for Individuals resources RESTful API
 -----------------------------------------------------------
 """
-from flask_restplus_patched import Parameters, PatchJSONParameters
+from flask_restx_patched import Parameters, PatchJSONParameters
 from . import schemas
 import logging
 import uuid

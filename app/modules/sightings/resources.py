@@ -199,7 +199,7 @@ class Sightings(Resource):
         if current_user is not None and not current_user.is_anonymous:
             owner_guid = current_user.guid
             pub = True
-        submission = Submission.create_submission_from_tus(
+        submission, assets_added = Submission.create_submission_from_tus(
             'Sighting.post ' + result_data['id'],
             current_user,
             transaction_id,

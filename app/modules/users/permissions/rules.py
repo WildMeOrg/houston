@@ -111,6 +111,7 @@ class ModuleActionRule(DenyAbortMixin, Rule):
     def _can_user_perform_action(self, user):
         from app.modules.organizations.models import Organization
         from app.extensions.config.models import HoustonConfig
+        from app.modules.individuals.models import Individual
         from app.modules.submissions.models import Submission
         from app.modules.encounters.models import Encounter
         from app.modules.sightings.models import Sighting
@@ -119,6 +120,7 @@ class ModuleActionRule(DenyAbortMixin, Rule):
         from app.modules.users.models import User
 
         has_permission = False
+
         if user_is_privileged(user):
             # Organizations and Projects not supported for MVP, no-one can create them
             if not self._is_module((Organization, Project)):
@@ -130,7 +132,9 @@ class ModuleActionRule(DenyAbortMixin, Rule):
                 # _is_module from a config parameter e.g. app.config.get(ADMIN_READ_MODULE_PERMISSION)
                 has_permission = self._is_module(User)
             if not has_permission and user.is_researcher:
-                has_permission = self._is_module((Submission, Encounter, Sighting, Asset))
+                has_permission = self._is_module(
+                    (Submission, Encounter, Sighting, Asset, Individual)
+                )
 
         elif self._action is AccessOperation.WRITE:
             if self._is_module(HoustonConfig):
@@ -143,6 +147,8 @@ class ModuleActionRule(DenyAbortMixin, Rule):
             # Project disabled for MVP
             # elif self._is_module(Project):
             #     has_permission = user.is_researcher
+            elif self._is_module(Individual):
+                has_permission = user.is_researcher
 
         return has_permission
 
@@ -187,6 +193,7 @@ class ObjectActionRule(DenyAbortMixin, Rule):
         return has_permission
 
     def _permitted_via_user(self, user):
+        from app.modules.individuals.models import Individual
         from app.modules.encounters.models import Encounter
         from app.modules.users.models import User
 
@@ -209,7 +216,7 @@ class ObjectActionRule(DenyAbortMixin, Rule):
             #             and self._action != AccessOperation.DELETE
             #         )
 
-            if isinstance(self._obj, Encounter):
+            if isinstance(self._obj, (Encounter, Individual)):
                 # Researchers can read other encounters, only site admins can update and delete
                 # them and those roles are not supported yet
                 if self._action == AccessOperation.READ:

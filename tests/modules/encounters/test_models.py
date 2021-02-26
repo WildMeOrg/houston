@@ -2,10 +2,14 @@
 # pylint: disable=invalid-name,missing-docstring
 
 
-def test_encounter_add_owner(db):
+import logging
 
-    from app.modules.users.models import User
+log = logging.getLogger(__name__)
+
+
+def test_encounter_add_owner(db):
     from app.modules.encounters.models import Encounter
+    from app.modules.users.models import User
 
     test_user = User(
         email='testuser@localhost',
@@ -24,7 +28,6 @@ def test_encounter_add_owner(db):
 
     assert test_encounter.get_owner() is None
 
-    # need to set up association object, but this works
     test_user.owned_encounters.append(test_encounter)
 
     with db.session.begin():
@@ -36,3 +39,11 @@ def test_encounter_add_owner(db):
 
     assert test_encounter.get_owner() is not None
     assert test_encounter.get_owner().guid == test_user.guid
+
+
+def test_encounter_set_individual(db, empty_individual, encounter_1):
+
+    assert empty_individual is not None
+    encounter_1.set_individual(empty_individual)
+    assert encounter_1.individual is not None
+    assert encounter_1.individual.guid == empty_individual.guid

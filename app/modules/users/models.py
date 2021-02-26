@@ -572,6 +572,7 @@ class User(db.Model, FeatherModel, UserEDMMixin):
         from app.modules.encounters.models import Encounter
         from app.modules.sightings.models import Sighting
         from app.modules.projects.models import Project
+        from app.modules.individuals.models import Individual
 
         ret_val = False
 
@@ -585,8 +586,8 @@ class User(db.Model, FeatherModel, UserEDMMixin):
             # todo, need to understand once assets become part of an encounter, do they still have a submission
             if obj.submission is not None:
                 ret_val = obj.submission.owner is self
-        elif isinstance(obj, Sighting):
-            # up for consideration. old world allows control of a sighting if you own at least one encounter on it.
+        elif isinstance(obj, (Sighting, Individual)):
+            # up for consideration. old world allows control of a sighting or individual if you own at least one encounter on it.
             for encounter in obj.get_encounters():
                 if encounter.get_owner() is self:
                     ret_val = True

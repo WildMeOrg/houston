@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=invalid-name,missing-docstring
 
-# import sqlalchemy
+import pytest
 
 import logging
 
@@ -107,6 +107,8 @@ def test_collaboration_edit_state_changes(db, collab_user_a, collab_user_b):
         initiator_states=[True, False],
     )
 
+    assert collab.get_initiators()[0].guid == collab_user_a.guid
+
     for association in collab.collaboration_user_associations:
         assert association.edit_approval_state == CollaborationUserState.NOT_INITIATED
 
@@ -129,3 +131,42 @@ def test_collaboration_edit_state_changes(db, collab_user_a, collab_user_b):
     )
 
     assert collab.get_edit_state() == CollaborationUserState.APPROVED
+
+
+def test_fail_create_collaboration(collab_user_a, collab_user_b):
+
+    # no guids, fail
+    with pytest.raises(ValueError):
+        bad_collab_1 = Collaboration(
+            title='Collab for state change',
+            initiator_states=[True, False],
+        )
+        assert bad_collab_1 is None
+
+    # wrong number guids, fail
+    with pytest.raises(ValueError):
+        bad_collab_2 = Collaboration(
+            title='Collab for state change',
+            user_guids=[collab_user_b.guid],
+            initiator_states=[True, False],
+        )
+        assert bad_collab_2 is None
+
+    # wrong number initiator_states, fail
+    with pytest.raises(ValueError):
+        bad_collab_3 = Collaboration(
+            title='Collab for state change',
+            user_guids=[collab_user_a.guid, collab_user_b.guid],
+            initiator_states=[False],
+        )
+        assert bad_collab_3 is None
+
+    # wrong number approval_states, fail
+    with pytest.raises(ValueError):
+        bad_collab_4 = Collaboration(
+            title='Collab for state change',
+            user_guids=[collab_user_a.guid, collab_user_b.guid],
+            approval_states=['approved'],
+            initiator_states=[True, False],
+        )
+        assert bad_collab_4 is None

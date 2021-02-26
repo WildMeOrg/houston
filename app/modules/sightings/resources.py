@@ -192,22 +192,18 @@ class Sightings(Resource):
                 _cleanup_post_and_abort(None, None, 'File empty: ' + str(aref))
 
         # files seem to exist in uploads dir, so lets move on
-        from app.modules.submissions.models import Submission, SubmissionMajorType
+        from app.modules.submissions.models import Submission
 
-        submission = Submission(
-            major_type=SubmissionMajorType.filesystem,
-            description='Sighting.post ' + result_data['id'],
-        )
         pub = False
         owner_guid = None
         if current_user is not None and not current_user.is_anonymous:
             owner_guid = current_user.guid
             pub = True
-        submission.owner_guid = owner_guid
-        db.session.add(submission)
-        log.info('created submission %r' % (submission))
-        paths = submission.import_tus_files(transaction_id=transaction_id)
-        log.info('submission imported %r' % (paths))
+        submission = Submission.create_submission_from_tus(
+            'Sighting.post ' + result_data['id'],
+            current_user,
+            transaction_id,
+        )
 
         # FIXME - we need to reduce submission.assets to only the ones represented by 'paths' here!!
 

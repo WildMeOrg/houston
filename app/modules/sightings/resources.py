@@ -36,6 +36,18 @@ def _cleanup_post_and_abort(sighting_guid, submission_guid, message='Unknown err
     abort(success=False, passed_message=message, message='Error', code=400)
 
 
+def _enc_assets(assets, enc_data):
+    if '_paths_wanted' not in enc_data or not isinstance(enc_data['_paths_wanted'], list):
+        return None
+    matches = []
+    for asset in assets:
+        # log.info('match for %r x %r' % (asset, enc_data['_paths_wanted']))
+        if asset.path in enc_data['_paths_wanted']:
+            matches.append(asset)
+    assert len(matches) == len(enc_data['_paths_wanted'])
+    return matches
+
+
 @api.route('/')
 class Sightings(Resource):
     """
@@ -146,6 +158,7 @@ class Sightings(Resource):
             if 'assetReferences' in enc_data and isinstance(
                 enc_data['assetReferences'], list
             ):
+                enc_data['_paths_wanted'] = []
                 for aref in enc_data['assetReferences']:
                     if (
                         not isinstance(aref, dict)
@@ -158,6 +171,7 @@ class Sightings(Resource):
                         _cleanup_post_and_abort(
                             None, None, 'Malformed assetReferences data'
                         )
+                    enc_data['_paths_wanted'].append(aref['path'])
                     key = ':'.join((aref['transactionId'], aref['path']))
                     if key in arefs_found:
                         arefs_found[key]['encs'].append(i)
@@ -205,23 +219,12 @@ class Sightings(Resource):
             transaction_id,
         )
 
-        # FIXME - we need to reduce submission.assets to only the ones represented by 'paths' here!!
-
-        for asset in submission.assets:
-            key = ':'.join((transaction_id, asset.path))
-            if (
-                key not in arefs_found
-            ):  # this gets around assets we dont care about, see above
-                continue
-            log.debug('>>>>> %r => %r' % (key, arefs_found[key]))
-            arefs_found[key]['asset'] = asset
-
         sighting = Sighting(
             guid=result_data['id'],
             version=result_data.get('version', 2),
         )
 
-        from app.modules.encounters.models import Encounter, EncounterAssets
+        from app.modules.encounters.models import Encounter
 
         if isinstance(result_data['encounters'], list):
             i = 0
@@ -232,21 +235,10 @@ class Sightings(Resource):
                     owner_guid=owner_guid,
                     public=pub,
                 )
-                asset_refs = []
-                for key in arefs_found:
-                    if (
-                        i not in arefs_found[key]['encs']
-                        or 'asset' not in arefs_found[key]
-                    ):
-                        continue
-                    asset_refs.append(
-                        EncounterAssets(
-                            encounter_guid=encounter.guid,
-                            asset_guid=arefs_found[key]['asset'].guid,
-                        )
-                    )
-                log.debug('enc=%r asset_refs=%r' % (encounter, asset_refs))
-                encounter.assets = asset_refs
+                enc_assets = _enc_assets(assets_added, data['encounters'][i])
+                if enc_assets is not None:
+                    encounter.add_assets_no_context(enc_assets)
+                log.debug('%r is adding enc_assets=%r' % (encounter, enc_assets))
                 sighting.add_encounter(encounter)
                 i += 1
 

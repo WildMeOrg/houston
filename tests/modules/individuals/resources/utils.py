@@ -4,7 +4,7 @@ Individual resources utils
 -------------
 """
 import logging
-
+import json
 from tests import utils as test_utils
 
 PATH = '/api/v1/individuals/'
@@ -50,3 +50,21 @@ def delete_individual(flask_app_client, user, guid, expected_status_code=204):
         test_utils.validate_dict_response(
             response, expected_status_code, {'status', 'message'}
         )
+
+
+def patch_individual(
+    flask_app_client, individual_guid, user, data, expected_status_code=200
+):
+    with flask_app_client.login(user, auth_scopes=('individuals:write',)):
+        response = flask_app_client.patch(
+            '%s%s' % (PATH, individual_guid),
+            content_type='application/json',
+            data=json.dumps(data),
+        )
+    if expected_status_code == 200:
+        test_utils.validate_dict_response(response, 200, {'guid'})
+    else:
+        test_utils.validate_dict_response(
+            response, expected_status_code, {'status', 'message'}
+        )
+    return response

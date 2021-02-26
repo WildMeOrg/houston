@@ -128,7 +128,6 @@ class IndividualByID(Resource):
             'action': AccessOperation.DELETE,
         },
     )
-    @api.login_required(oauth_scopes=['individuals:write'])
     @api.response(code=HTTPStatus.CONFLICT)
     @api.response(code=HTTPStatus.NO_CONTENT)
     def delete(self, individual):

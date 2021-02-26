@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=invalid-name,missing-docstring
 
-from app.modules.users.models import User
-from app.modules.encounters.models import Encounter
 
 import logging
 
@@ -10,6 +8,8 @@ log = logging.getLogger(__name__)
 
 
 def test_encounter_add_owner(db):
+    from app.modules.encounters.models import Encounter
+    from app.modules.users.models import User
 
     test_user = User(
         email='testuser@localhost',

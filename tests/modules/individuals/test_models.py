@@ -26,6 +26,10 @@ def test_individual_add_remove_encounters(encounter_1, encounter_2, empty_indivi
     assert encounter_1.individual is empty_individual
     assert encounter_2.individual is empty_individual
 
+    # restore to original state
+    empty_individual.encounters = []
+    assert len(empty_individual.encounters) == 0
+
 
 def test_individual_ownership(encounter_1, encounter_2, empty_individual):
     empty_individual.encounters.append(encounter_1)
@@ -37,8 +41,12 @@ def test_individual_ownership(encounter_1, encounter_2, empty_individual):
     )
 
     assert not new_owner.owns_object(empty_individual)
-
     encounter_2.owner = new_owner
     empty_individual.encounters.append(encounter_2)
-
     assert new_owner.owns_object(empty_individual)
+
+    # restore to original state
+    empty_individual.encounters = []
+    assert len(empty_individual.encounters) == 0
+    encounter_2.owner = None
+    assert encounter_2.owner is None

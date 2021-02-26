@@ -91,7 +91,7 @@ def no_test_asset_addition(db, flask_app_client):
 def add_file_asset_to_encounter(
     flask_app_client, user, encounter, transaction_id, filename, content
 ):
-    # @todo cack handed way to do this as the real test will depend on work that Jon is currently doing
+    # for efficiency, just write the files into the place that tus would upload them to
     import os
 
     dir_path = os.path.join('_db', 'uploads', '-'.join(['trans', transaction_id]))

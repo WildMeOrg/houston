@@ -32,6 +32,8 @@ See [Contributing to Houston](CONTRIBUTING.md)
 
 ### Using docker-compose (recommended)
 
+#### Setup
+
 ```bash
 git clone --recurse-submodules https://github.com/WildMeOrg/houston.git
 cd houston
@@ -45,6 +47,15 @@ docker-compose up
 
 Surf to http://localhost:83/
 
+#### Developer Usage Note
+
+To use the docker setup as a development environment:
+
+```bash
+docker-compose exec houston /bin/bash
+```
+
+This will give you a bash shell prompt within the container that is currently running houston. You can do any operation mentioned in this document within this shell (e.g. `pytest`).
 
 ### Installing from source
 

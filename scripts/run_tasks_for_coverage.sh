@@ -77,7 +77,7 @@ coverage run --append `which invoke` app.users.remove-role --role=Researcher --e
 # test app.consistency.*
 coverage run --append `which invoke` app.consistency.all
 coverage run --append `which invoke` app.consistency.user-staff-permissions
-coverage run --append `which invoke` app.consistency.cleanup_gitlab --dryrun
+coverage run --append `which invoke` app.consistency.cleanup-gitlab --dryrun
 
 # test app.submissions.*
 coverage run --append `which invoke` app.submissions.create-submission-from-path --path=tests/submissions/test-000/ || echo 'Expected failure'

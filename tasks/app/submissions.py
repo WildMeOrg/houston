@@ -80,7 +80,7 @@ def clone_submission_from_gitlab(
     Clone an existing submission from the external GitLab submission archive
 
     Command Line:
-    > invoke app.submissions.clone-submission-from-gitlab --guid 290950fb-49a8-496a-adf4-e925010f79ce --email jason@wildme.org
+    > invoke app.submissions.clone-submission-from-gitlab --guid 4d7669ea-9fbe-4f87-be14-25b5391f7333 --email jason@wildme.org
     """
     from app.modules.users.models import User
     from app.modules.submissions.models import Submission

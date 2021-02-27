@@ -31,12 +31,12 @@ def test_ensure_clone_submission_by_uuid(
 
     try:
         assert clone.temp_submission.major_type == SubmissionMajorType.test
-        assert clone.temp_submission.commit == 'e94db0cf015c6c84ab1668186924dc985fc472d6'
+        assert clone.temp_submission.commit == '1d3dd77e1fba336ae89bd9d7a2788f4a0cb2df90'
         assert clone.temp_submission.commit_mime_whitelist_guid == uuid.UUID(
             '4d46c55d-accf-29f1-abe7-a24839ec1b95'
         )
 
-        assert clone.temp_submission.commit_houston_api_version == '0.1.0.8b208226'
+        assert clone.temp_submission.commit_houston_api_version == '0.1.0.6c9d6965'
         assert clone.temp_submission.description == 'Test Submission (streamlined)'
 
         # Checks that there are two valid Assets in the database

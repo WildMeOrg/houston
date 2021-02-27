@@ -295,6 +295,19 @@ class SubmissionManager(object):
 
         return submission
 
+    def delete_remote_submission(self, submission):
+        repo, project = current_app.sub.ensure_repository(submission)
+        self.delete_remote_project(project)
+
+    def delete_remote_project(self, project):
+        self.ensure_initialed()
+        try:
+            self.gl.projects.delete(project.id)
+            return True
+        except gitlab.GitlabDeleteError:
+            pass
+        return False
+
 
 def init_app(app, **kwargs):
     # pylint: disable=unused-argument

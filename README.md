@@ -430,6 +430,11 @@ For quickstart purposes the following will set up a virtualenv for you:
 ```bash
 $ ./scripts/venv.sh
 $ source virtualenv/houston3.7/bin/activate
+
+# To add bash-completion
+$ export SCRIPT="$(pwd)/.invoke-completion.sh"
+$ invoke --print-completion-script bash > $SCRIPT
+$ echo "source $SCRIPT" >> virtualenv/houston3.7/bin/activate
 ```
 
 Set up and install the package:

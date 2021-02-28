@@ -153,8 +153,6 @@ def test_asset_file_addition(db, flask_app_client, researcher_1):
         raise ex
     finally:
         # Even though the REST API deletion fails, as it's not present, the Houston feather object remains.
-        # @todo this seems fundamentally wrong
-        # assert len(researcher_1.owned_encounters) == 0
         new_encounter.delete()
         # assets are only cleaned up once the submissions are cleaned up
         for submission in researcher_1.submissions:

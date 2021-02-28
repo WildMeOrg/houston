@@ -266,7 +266,7 @@ class ObjectActionRule(DenyAbortMixin, Rule):
     #             project_index = project_index + 1
 
     def _permitted_via_collaboration(self, user):
-        # @todo
+        # TODO:
         return False
 
 

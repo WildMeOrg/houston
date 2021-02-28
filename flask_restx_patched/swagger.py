@@ -21,3 +21,20 @@ class Swagger(OriginalSwagger):
         else:
             default_location = 'query'
         return schema2parameters(schema, default_in=default_location, required=True)
+
+    def expected_params(self, doc):
+        if 'params' in doc.keys():
+            params = doc.get('params', None)
+            assert params is not None
+
+            for name, param in params.items():
+                get_func = getattr(param, 'get', None)
+                if get_func is None:
+
+                    def _patched_get(value, default):
+                        return param.context.get(value, default)
+
+                    param.get = _patched_get
+
+            doc['params'] = params
+        return super(Swagger, self).expected_params(doc)

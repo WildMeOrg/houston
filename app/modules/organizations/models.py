@@ -18,7 +18,6 @@ log = logging.getLogger(__name__)
 
 class OrganizationEDMMixin(EDMObjectMixin):
     # All comms with EDM to exchange timestamps will use this format so it should be in one place
-    # todo, does this make sense? Does anything in EDM other than Organizations have this time format
     EDM_DATETIME_FMTSTR = '%Y-%m-%dT%H:%M:%S.%fZ'
 
     # fmt: off
@@ -28,12 +27,10 @@ class OrganizationEDMMixin(EDMObjectMixin):
     # The EDM attribute for the version, if reported
     EDM_VERSION_ATTRIBUTE = 'version'
 
-    #
     EDM_LOG_ATTRIBUTES = [
         'name',
     ]
 
-    # todo Very much a first drop of mapping
     EDM_ATTRIBUTE_MAPPING = {
         # Ignored
         'id'                    : None,

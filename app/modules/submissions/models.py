@@ -256,7 +256,7 @@ class Submission(db.Model, HoustonModel):
 
     def import_tus_files(self, transaction_id=None):
         self.ensure_repository()
-        # @todo duplicates Jons latest tus_upload_dir() to be replaced when available
+        # TODO: duplicates Jons latest tus_upload_dir() to be replaced when available
         if transaction_id:
             upload_dir = os.path.join(
                 '_db', 'uploads', '-'.join(['trans', transaction_id])

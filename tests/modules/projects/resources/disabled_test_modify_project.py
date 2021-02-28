@@ -187,7 +187,7 @@ def test_owner_permission(flask_app_client, researcher_1, researcher_2):
     ]
     proj_utils.patch_project(flask_app_client, project_guid, researcher_1, data, 409)
 
-    # @todo, This returns a 200, due to the default of True in PatchJSONParameters:perform_patch
+    # TODO: This returns a 200, due to the default of True in PatchJSONParameters:perform_patch
 
     # response = proj_utils.patch_project(
     #     flask_app_client,

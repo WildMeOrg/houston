@@ -78,13 +78,9 @@ def cleanup_gitlab(context, dryrun=False):
     DATETIME_FMTSTR = '%Y-%m-%dT%H:%M:%S.%fZ'
 
     remote_uri = current_app.config.get('GITLAB_REMOTE_URI', None)
-    remote_personal_access_token = current_app.config.get(
-        'GITLAB_REMOTE_LOGIN_PAT', None
-    )
+    remote_personal_access_token = current_app.config.get('GITLAB_REMOTE_LOGIN_PAT', None)
 
-    gl = gitlab.Gitlab(
-        remote_uri, private_token=remote_personal_access_token
-    )
+    gl = gitlab.Gitlab(remote_uri, private_token=remote_personal_access_token)
     gl.auth()
     log.info('Logged in: %r' % (gl,))
 
@@ -94,17 +90,19 @@ def cleanup_gitlab(context, dryrun=False):
         if group.name in TEST_GROUP_NAMES:
             page = 1
             log.info('Fetching projects...')
-            for page in tqdm.tqdm(range(1, MAX_PAGES + 2), desc='Fetching GitLab Project Pages'):
+            for page in tqdm.tqdm(
+                range(1, MAX_PAGES + 2), desc='Fetching GitLab Project Pages'
+            ):
                 projects_page = group.projects.list(per_page=PER_PAGE, page=page)
 
                 if len(projects_page) == 0:
-                    log.warn('Reached maximum page: %d' % (page, ))
+                    log.warn('Reached maximum page: %d' % (page,))
                     break
                 elif page == MAX_PAGES + 1:
                     log.warn('More pages exist that were not processed')
                     break
                 projects += projects_page
-    log.info('Fetched %d projects' % (len(projects), ))
+    log.info('Fetched %d projects' % (len(projects),))
 
     now = datetime.datetime.utcnow()
     now = now.replace(tzinfo=pytz.UTC)
@@ -121,7 +119,14 @@ def cleanup_gitlab(context, dryrun=False):
             delta = now - timestamp
 
             if WHITELIST_TAG in project.tag_list:
-                log.info('Skipping %r (%r), marked with %r' % (project.name, project, WHITELIST_TAG, ))
+                log.info(
+                    'Skipping %r (%r), marked with %r'
+                    % (
+                        project.name,
+                        project,
+                        WHITELIST_TAG,
+                    )
+                )
                 continue
             if delta.total_seconds() < 60 * 60 * 24:
                 juvenile += 1
@@ -129,7 +134,14 @@ def cleanup_gitlab(context, dryrun=False):
             success = current_app.sub.delete_remote_project(project)
             deleted += 1 if success else 0
 
-    log.info('Deleted %d / %d projects for groups %r' % (deleted, len(projects), TEST_GROUP_NAMES,))
+    log.info(
+        'Deleted %d / %d projects for groups %r'
+        % (
+            deleted,
+            len(projects),
+            TEST_GROUP_NAMES,
+        )
+    )
     log.info('Skipped %d projects last modified within last 24 hours' % (juvenile,))
 
 

@@ -86,7 +86,6 @@ def test_create_patch_submission(flask_app_client, regular_user, readonly_user, 
                 ),
             )
 
-        # @todo patch via regular user also fails but for a different reason, not permission
         assert create_response.status_code == 200
         submission_guid = create_response.json['guid']
         temp_submission = Submission.query.get(submission_guid)
@@ -104,20 +103,43 @@ def test_create_patch_submission(flask_app_client, regular_user, readonly_user, 
                     }
                 ),
             )
-
         assert readonly_patch_response.status_code == 403
+
+        with flask_app_client.login(regular_user, auth_scopes=('submissions:write',)):
+            # try to change very polite description slightly and type
+            service_major_type = SubmissionMajorType.test
+
+            regular_patch_response = flask_app_client.patch(
+                '/api/v1/submissions/%s' % submission_guid,
+                data=json.dumps(
+                    {
+                        'major_type': service_major_type,
+                        'description': 'This is a test submission, kindly ignore',
+                    }
+                ),
+            )
+
+        assert regular_patch_response.status_code == 200
+        assert regular_patch_response.content_type == 'application/json'
+        assert isinstance(regular_patch_response.json, dict)
+        assert set(regular_patch_response.json.keys()) >= {'guid', 'major_type'}
+        assert regular_patch_response.json['guid'] == submission_guid
+        assert regular_patch_response.json['major_type'] == service_major_type
+
+        db.session.refresh(temp_submission)
+        assert temp_submission.major_type == service_major_type
 
         with flask_app_client.login(readonly_user, auth_scopes=('submissions:write',)):
             readonly_delete_response = flask_app_client.delete(
                 '/api/v1/submissions/%s' % submission_guid
             )
         assert readonly_delete_response.status_code == 403
+
         with flask_app_client.login(regular_user, auth_scopes=('submissions:write',)):
             regular_delete_response = flask_app_client.delete(
                 '/api/v1/submissions/%s' % submission_guid
             )
-        # @todo, this shouldn't give an internal error but it's not clear why it is
-        assert regular_delete_response.status_code == 500
+        assert regular_delete_response.status_code == 204
     except Exception as ex:
         raise ex
     finally:

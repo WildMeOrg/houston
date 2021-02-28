@@ -9,13 +9,29 @@ from .namespace import Namespace
 from .swagger import Swagger
 
 import requests
+import logging
+
+log = logging.getLogger(__name__)
 
 
 class Api(OriginalApi):
     @cached_property
     def __schema__(self):
-        # The only purpose of this method is to pass custom Swagger class
-        return Swagger(self).as_dict()
+        """
+        The Swagger specifications/schema for this API
+
+        :returns dict: the schema as a serializable dict
+        """
+        if not self._schema:
+            try:
+                self._schema = Swagger(self).as_dict()
+            except Exception:
+                # Log the source exception for debugging purpose
+                # and return an error message
+                msg = 'Unable to render schema'
+                log.exception(msg)  # This will provide a full traceback
+                return {'error': msg}
+        return self._schema
 
     def init_app(self, app, **kwargs):
         # This solves the issue of late resources registration:

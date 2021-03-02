@@ -30,21 +30,27 @@ log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 api = Namespace('sightings', description='Sightings')  # pylint: disable=invalid-name
 
 
-def _cleanup_post_and_abort(sighting_guid, submission_guid, message='Unknown error'):
+def _cleanup_post_and_abort(sighting_guid, submission, message='Unknown error'):
     # TODO actually clean up edm based on guid!!!
-    # TODO cleanup submission & assets (i guess???)
+    if sighting_guid is not None:
+        log.warning('TODO need to properly cleanup edm sighting id=%r' % sighting_guid)
+    if submission is not None:
+        log.warning('TODO need to properly cleanup submission %r' % submission)
+    log.error('Bailing on sighting creation: %r' % message)
     abort(success=False, passed_message=message, message='Error', code=400)
 
 
-def _enc_assets(assets, enc_data):
-    if '_paths_wanted' not in enc_data or not isinstance(enc_data['_paths_wanted'], list):
+def _enc_assets(assets, paths_wanted):
+    if len(paths_wanted) < 1:
         return None
     matches = []
     for asset in assets:
-        # log.info('match for %r x %r' % (asset, enc_data['_paths_wanted']))
-        if asset.path in enc_data['_paths_wanted']:
+        # log.info('match for %r x %r' % (asset, paths_wanted))
+        if asset.path in paths_wanted:
             matches.append(asset)
-    assert len(matches) == len(enc_data['_paths_wanted'])
+    assert len(matches) == len(paths_wanted), (
+        'not all assets wanted found for ' + paths_wanted
+    )
     return matches
 
 
@@ -80,7 +86,6 @@ class Sightings(Resource):
             'action': AccessOperation.WRITE,
         },
     )
-    # @api.login_required(oauth_scopes=['sightings:write'])
     @api.parameters(parameters.CreateSightingParameters())
     @api.response(code=HTTPStatus.CONFLICT)
     def post(self, args):
@@ -88,15 +93,24 @@ class Sightings(Resource):
         Create a new instance of Sighting.
         """
 
-        data = {}
+        request_in = {}
         try:
-            data_ = json.loads(request.data)
-            data.update(data_)
+            request_in_ = json.loads(request.data)
+            request_in.update(request_in_)
         except Exception:
             pass
 
+        # i think this was official declared as law today 2021-02-24
+        if (
+            'encounters' not in request_in
+            or not isinstance(request_in['encounters'], list)
+            or len(request_in['encounters']) < 1
+        ):
+            log.error('Sighting.post empty encounters in %r' % (request_in,))
+            _cleanup_post_and_abort(None, None, 'Must have at least one encounter')
+
         response = current_app.edm.request_passthrough(
-            'sighting.data', 'post', {'data': data}, ''
+            'sighting.data', 'post', {'data': request_in}, ''
         )
 
         response_data = None
@@ -120,45 +134,47 @@ class Sightings(Resource):
         # and make houston for the sighting + encounters
 
         # FIXME must cleanup edm cruft!
-        if ('encounters' in data and 'encounters' not in result_data) or (
-            'encounters' not in data and 'encounters' in result_data
+        if ('encounters' in request_in and 'encounters' not in result_data) or (
+            'encounters' not in request_in and 'encounters' in result_data
         ):
             log.error(
                 'Sighting.post missing encounters in one of %r or %r'
-                % (data, result_data)
+                % (request_in, result_data)
             )
             _cleanup_post_and_abort(
-                None, None, 'Missing encounters between data and result'
+                result_data['id'],
+                None,
+                'Missing encounters between request_in and result',
             )
-        if not len(data['encounters']) == len(result_data['encounters']):
+        if not len(request_in['encounters']) == len(result_data['encounters']):
             log.error(
-                'Sighting.post imbalanced encounters in %r or %r' % (data, result_data)
+                'Sighting.post imbalanced encounters in %r or %r'
+                % (request_in, result_data)
             )
             _cleanup_post_and_abort(
-                None, None, 'Imbalance in encounters between data and result'
+                result_data['id'], None, 'Imbalance in encounters between data and result'
             )
-        # i think this was official declared as law today 2021-02-24
-        if len(data['encounters']) < 1:
-            log.error('Sighting.post empty encounters in %r / %r' % (data, result_data))
-            _cleanup_post_and_abort(None, None, 'Must have at least one encounter')
 
         # now we handle asset-related json that came in. note: arrays should be parallel in data/result_data
         # this makes sure assetReferences is well-formed and also maps (future) assets to encounters
 
         # NOTE for simplicity i am going to assume assetReferences *share a common transaction id*  !!
         #  this will very likely always be true, but in the event it proves not to be, this will have to be altered
-        #  to do multiple submission.import_tus_files() calls below
+        #  to do multiple create_submission_from_tus() calls below
 
-        arefs_found = {}
+        arefs_found = {}  # asset refs across all encounters (to handle duplicates)
+        paths_wanted = (
+            []
+        )  # parallel list to encounters of list of asset paths for that encounter
         i = 0
-        while i < len(data['encounters']):
-            enc_data = data['encounters'][i]
+        while i < len(request_in['encounters']):
+            enc_data = request_in['encounters'][i]
+            paths_wanted[i] = []
             # TODO handle regular .assets flavor
             # TODO genericize this across here and encounters
             if 'assetReferences' in enc_data and isinstance(
                 enc_data['assetReferences'], list
             ):
-                enc_data['_paths_wanted'] = []
                 for aref in enc_data['assetReferences']:
                     if (
                         not isinstance(aref, dict)
@@ -169,9 +185,9 @@ class Sightings(Resource):
                             'Sighting.post malformed assetReferences data: %r' % (aref)
                         )
                         _cleanup_post_and_abort(
-                            None, None, 'Malformed assetReferences data'
+                            result_data['id'], None, 'Malformed assetReferences data'
                         )
-                    enc_data['_paths_wanted'].append(aref['path'])
+                    paths_wanted[i].append(aref['path'])
                     key = ':'.join((aref['transactionId'], aref['path']))
                     if key in arefs_found:
                         arefs_found[key]['encs'].append(i)
@@ -198,12 +214,16 @@ class Sightings(Resource):
                 log.error(
                     'Sighting.post OSError %r assetReferences data: %r' % (err, aref)
                 )
-                _cleanup_post_and_abort(None, None, 'File not found: ' + str(aref))
+                _cleanup_post_and_abort(
+                    result_data['id'], None, 'File not found: ' + str(aref)
+                )
             if sz < 1:
                 log.error(
                     'Sighting.post zero-size file for assetReferences data: %r' % (aref)
                 )
-                _cleanup_post_and_abort(None, None, 'File empty: ' + str(aref))
+                _cleanup_post_and_abort(
+                    result_data['id'], None, 'File empty: ' + str(aref)
+                )
 
         # files seem to exist in uploads dir, so lets move on
         from app.modules.submissions.models import Submission
@@ -229,21 +249,28 @@ class Sightings(Resource):
         if isinstance(result_data['encounters'], list):
             i = 0
             while i < len(result_data['encounters']):
-                encounter = Encounter(
-                    guid=result_data['encounters'][i]['id'],
-                    version=result_data['encounters'][i].get('version', 2),
-                    owner_guid=owner_guid,
-                    public=pub,
-                )
-                enc_assets = _enc_assets(assets_added, data['encounters'][i])
-                if enc_assets is not None:
-                    encounter.add_assets_no_context(enc_assets)
-                log.debug('%r is adding enc_assets=%r' % (encounter, enc_assets))
-                sighting.add_encounter(encounter)
-                i += 1
+                try:
+                    encounter = Encounter(
+                        guid=result_data['encounters'][i]['id'],
+                        version=result_data['encounters'][i].get('version', 2),
+                        owner_guid=owner_guid,
+                        public=pub,
+                    )
+                    enc_assets = _enc_assets(
+                        assets_added, paths_wanted[i]
+                    )  # exception if we dont have all we need
+                    if enc_assets is not None:
+                        encounter.add_assets_no_context(enc_assets)
+                    log.debug('%r is adding enc_assets=%r' % (encounter, enc_assets))
+                    sighting.add_encounter(encounter)
+                    i += 1
+                except Exception:
+                    _cleanup_post_and_abort(
+                        result_data['id'], submission, 'Problem with encounter/assets'
+                    )
 
         context = api.commit_or_abort(
-            db.session, default_error_message='Failed to create a new houston Sighting'
+            db.session, default_error_message='Failed to persist new houston Sighting'
         )
         with context:
             db.session.add(sighting)

@@ -59,6 +59,7 @@ class TusManager(object):
             'tus-proprietary-get-file-exists',
             self.tus_proprietary_get_file_exists,
             methods=['GET'],
+            provide_automatic_options=False,
         )
         self.blueprint.add_url_rule(
             self.upload_url,
@@ -228,23 +229,13 @@ class TusManager(object):
             # CORS option request, return 200
             return response
 
-        if request.headers.get('Tus-Resumable') is not None:
-            response.headers['Tus-Resumable'] = self.tus_api_version
-            response.headers['Tus-Version'] = self.tus_api_version_supported
+        response.headers['Tus-Resumable'] = self.tus_api_version
+        response.headers['Tus-Version'] = self.tus_api_version_supported
 
-            response.headers['Tus-Extension'] = ','.join(self.tus_api_extensions)
-            response.headers['Tus-Max-Size'] = self.tus_max_file_size
+        response.headers['Tus-Extension'] = ','.join(self.tus_api_extensions)
+        response.headers['Tus-Max-Size'] = self.tus_max_file_size
 
-            response.status_code = 204
-            return response
-
-        else:
-            self.app.logger.warning(
-                'Received File upload for unsupported file transfer protocol'
-            )
-            response.data = 'Received File upload for unsupported file transfer protocol'
-            response.status_code = 500
-
+        response.status_code = 204
         return response
 
     def tus_1_get_resume_info(self, resource_id):

@@ -2,8 +2,14 @@
 [![Codecov](https://codecov.io/gh/WildMeOrg/houston/branch/develop/graph/badge.svg?token=M8MR14ED6V)](https://codecov.io/gh/WildMeOrg/houston)
 [![Docker Nightly](https://img.shields.io/docker/image-size/wildme/houston/nightly)](https://hub.docker.com/r/wildme/houston)
 
-Wild Me - Houston Backend Server
-======================================================
+# Wild Me - Houston Backend Server
+
+Houston is a REST API component within the CODEX application suite. It is used to glue the frontend to [Ecological Data Module (EDM)](https://github.com/WildMeOrg/wildbook/tree/next-gen) and [Wildbook-IA](https://github.com/WildMeOrg/wildbook-ia).
+
+For a high-level explanation of the application in relation to other CODEX applications read the documentation at [CODEX - Houston](https://docs.wildme.org/docs/developers/houston).
+
+
+## About this implementation
 
 This project showcases my vision on how the RESTful API server should be
 implemented.
@@ -20,108 +26,103 @@ The package Flask-RESTplus has been patched (see `flask_restplus_patched` folder
 
 ## Code Style and Development Guidelines
 
-### Pull Request Checklist
+See [Contributing to Houston](CONTRIBUTING.md)
 
-To submit a pull request (PR) to Houston, we require the following standards to be enforced.  Details on how to configure and pass each of these required checks is detailed in the sections in this guideline section.
+## Installation
 
-* **Ensure that the PR is properly formatted**
-  * We require code formatting with Brunette (a *better* version of Black) and linted with Flake8 using the pre-commit (includes automatic checks with brunette and flake8 plus includes other general line-ending, single-quote strings, permissions, and security checks)
-  ```
-  # Command Line Example
-  pre-commit run --all-files
-  ```
-* **Ensure that the PR is properly rebased**
-  * We require new feature code to be rebased onto the latest version of the `develop` branch.
-  ```
-  git fetch -p
-  git checkout <feature-branch>
-  git diff origin/<feature-branch>..  # Check there's no difference between local branch and remote branch
-  git rebase -i origin/develop  # "Pick" all commits in feature branch
-  # Resolve all conflicts
-  git log --graph --oneline --decorate origin/develop HEAD  # feature-branch commits should be on top of origin/develop
-  git show --reverse origin/develop..  # Check the changes in each commit if necessary
-  git push --force origin <feature-branch>
-  ```
-* **Ensure that the PR uses a consolidated database migration**
-  * We require new any database migrations (optional) with Alembic are consolidated and condensed into a single file and version.  Exceptions to this rule (allowing possibly up to 3) will be allowed after extensive discussion and justification.
-  * All database migrations should be created using a downgrade revision that matches the existing revision used on the `develop` branch.  Further,a PR should never be merged into develop that contains multiple revision heads.
-  ```
-  invoke app.db.downgrade <develop branch revision ID>
-  rm -rf migrations/versions/<new migrations>.py
-  invoke app.db.migrate
-  invoke app.db.upgrade
-  invoke app.db.history  # Check that the history matches
-  invoke app.db.heads  # Ensure that there is only one head
-  ```
-* **Ensure that the PR is properly tested**
-  * We require new feature code to be tested via Python tests and simulated REST API tests.  We use PyTest  to ensure that your code is working cohesively and that any new functionality is exercised.
-  * We require new feature code to also be fully compatible with a containerized runtime environment like Docker.
-  ```
-  pytest
-  ```
-* **Ensure that the PR is properly covered**
-  * We require new feature code to be tested (previous item) and that the percentage of the code covered by tests does not decrease.  We use PyTest Coverage and CodeCov.io to ensure that your code is being properly covered by new tests.
-  * To export a HTML report of the current coverage statistics, run the following:
-  ```
-  pytest -s -v --cov=./ --cov-report=html
-  open _coverage/html/index.html
-  ```
-* **Ensure that the PR is properly sanitized**
-  * We require the PR to not include large files (images, database files, etc) without using [GitHub Large File Store (LFS)](https://git-lfs.github.com).
-  ```
-  git lfs install
-  git lfs track "*.png"
-  git add .gitattributes
-  git add image.png
-  git commit -m "Add new image file"
-  git push
-  ```
-  * We also require any sensitive code, configurations, or pre-specified values be omitted, truncated, or redacted.  For example, the file `_db/secrets/py` is not committed into the repository and is ignored by `.gitignore`.
-* **Ensure that the PR is properly reviewed**
-  * After the preceding checks are satisfied, the code is ready for review.  All PRs are required to be reviewed and approved by at least one registered contributor or administrator on the Houston project.
-  * When the PR is created in GitHub, make sure that the repository is specified as `WildMeOrg/houston` and not its original fork.  Further, make sure that the base branch is specified as `develop` and not `master`.
+### Using docker-compose (recommended)
 
-### Pre-commit
-
-It's recommended that you use `pre-commit` to ensure linting procedures are run
-on any commit you make. (See also [pre-commit.com](https://pre-commit.com/)
-
-Reference [pre-commit's installation instructions](https://pre-commit.com/#install) for software installation on your OS/platform. After you have the software installed, run ``pre-commit install`` on the command line. Now every time you commit to this project's code base the linter procedures will automatically run over the changed files.  To run pre-commit on files preemtively from the command line use:
+#### Setup
 
 ```bash
-  git add .
-  pre-commit run
-
-  # or
-
-  pre-commit run --all-files
+git clone --recurse-submodules https://github.com/WildMeOrg/houston.git
+cd houston
+# build the frontend
+./scripts/build.frontend.sh
+cd deploy/codex
+docker-compose up
 ```
 
-### Brunette
+Surf to http://localhost:83/
 
-Our code base has been formatted by Brunette, which is a fork and more configurable version of Black (https://black.readthedocs.io/en/stable/).
+#### Developer Usage Note
 
-### Flake8
-
-Try to conform to PEP8.  You should set up your preferred editor to use flake8 as its Python linter, but pre-commit will ensure compliance before a git commit is completed.
-
-To run flake8 from the command line use:
+To use the docker setup as a development environment:
 
 ```bash
-  flake8
+docker-compose exec houston /bin/bash
 ```
 
-This will use the flake8 configuration within ``setup.cfg``,
-which ignores several errors and stylistic considerations.
-See the ``setup.cfg`` file for a full and accurate listing of stylistic codes to ignore.
+This will give you a bash shell prompt within the container that is currently running houston. You can do any operation mentioned in this document within this shell (e.g. `pytest`).
 
-### PyTest
+### Installing from source
 
-Our code uses Google-style documentation tests (doctests) that uses pytest and xdoctest to enable full support.  To run the tests from the command line use:
+#### Clone the Project
 
 ```bash
-  pytest
+git clone --recurse-submodules https://github.com/WildMeOrg/houston.git
+cd houston/
 ```
+
+#### Setup Environment
+
+It is recommended to use virtualenv or Anaconda/Miniconda to manage Python
+dependencies. Please, learn details yourself.
+For quickstart purposes the following will set up a virtualenv for you:
+
+```bash
+./scripts/venv.sh
+source virtualenv/houston3.7/bin/activate
+
+# To add bash-completion
+export SCRIPT="$(pwd)/.invoke-completion.sh"
+invoke --print-completion-script bash > $SCRIPT
+echo "source $SCRIPT" >> virtualenv/houston3.7/bin/activate
+```
+
+Set up and install the package:
+
+```bash
+tar -zxvf _db.initial.tar.gz
+pip install -e .
+invoke app.dependencies.install
+./scripts/build.frontend.sh
+```
+
+#### Run Server
+
+NOTE: All dependencies and database migrations will be automatically handled,
+so go ahead and turn the server ON! (Read more details on this in Tips section)
+
+```bash
+$ invoke app.run
+```
+
+#### Deploy Server
+
+In general, you deploy this app as any other Flask/WSGI application. There are
+a few basic deployment strategies documented in the [`./deploy/`](./deploy/)
+folder.
+
+
+## Usage
+
+Open online interactive API documentation:
+[http://127.0.0.1:5000/api/v1/](http://127.0.0.1:5000/api/v1/)
+
+Autogenerated swagger config is always available from
+[http://127.0.0.1:5000/api/v1/swagger.json](http://127.0.0.1:5000/api/v1/swagger.json)
+
+`example.db` (SQLite) includes 2 users:
+
+* Admin user `root` with password `q`
+* Regular user `user` with password `w`
+
+NOTE: Use On/Off switch in documentation to sign in.
+
+
+---
+
 
 Single File Example
 -------------------
@@ -395,89 +396,6 @@ life become colorful.
   just includes a pull-request to support Resource Owner Password Credentials
   Grant OAuth2 (aka Password Flow)
   ([PR #1853](https://github.com/swagger-api/swagger-ui/pull/1853)).
-
-
-Installation
-------------
-
-### Using Docker
-
-It is very easy to start exploring the example using Docker:
-
-```bash
-$ docker run -it --rm --publish 5000:5000 frolvlad/flask-restplus-server-example
-```
-
-<!--
-[![](https://images.microbadger.com/badges/image/frolvlad/flask-restplus-server-example.svg)](http://microbadger.com/images/frolvlad/flask-restplus-server-example "Get your own image badge on microbadger.com")
- -->
-
-### From sources
-
-#### Clone the Project
-
-```bash
-$ git clone --recurse-submodules https://github.com/WildMeOrg/houston.git
-$ cd houston/
-```
-
-#### Setup Environment
-
-It is recommended to use virtualenv or Anaconda/Miniconda to manage Python
-dependencies. Please, learn details yourself.
-For quickstart purposes the following will set up a virtualenv for you:
-
-```bash
-$ ./scripts/venv.sh
-$ source virtualenv/houston3.7/bin/activate
-
-# To add bash-completion
-$ export SCRIPT="$(pwd)/.invoke-completion.sh"
-$ invoke --print-completion-script bash > $SCRIPT
-$ echo "source $SCRIPT" >> virtualenv/houston3.7/bin/activate
-```
-
-Set up and install the package:
-
-```bash
-tar -zxvf _db.initial.tar.gz
-pip install -e .
-invoke app.dependencies.install
-./scripts/build.frontend.sh
-```
-
-#### Run Server
-
-NOTE: All dependencies and database migrations will be automatically handled,
-so go ahead and turn the server ON! (Read more details on this in Tips section)
-
-```bash
-$ invoke app.run
-```
-
-#### Deploy Server
-
-In general, you deploy this app as any other Flask/WSGI application. There are
-a few basic deployment strategies documented in the [`./deploy/`](./deploy/)
-folder.
-
-
-Quickstart
-----------
-
-Open online interactive API documentation:
-[http://127.0.0.1:5000/api/v1/](http://127.0.0.1:5000/api/v1/)
-
-Autogenerated swagger config is always available from
-[http://127.0.0.1:5000/api/v1/swagger.json](http://127.0.0.1:5000/api/v1/swagger.json)
-
-`example.db` (SQLite) includes 2 users:
-
-* Admin user `root` with password `q`
-* Regular user `user` with password `w`
-
-NOTE: Use On/Off switch in documentation to sign in.
-
 
 Authentication Details
 ----------------------

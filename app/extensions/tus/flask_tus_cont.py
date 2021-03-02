@@ -116,9 +116,11 @@ class TusManager(object):
 
     def _parse_metadata(self):
         metadata = {}
-        for kv in request.headers.get('Upload-Metadata', None).split(','):
-            (key, value) = kv.split(' ')
-            metadata[key] = base64.b64decode(value).decode('utf-8')
+        upload_metadata = request.headers.get('Upload-Metadata')
+        if upload_metadata:
+            for kv in upload_metadata.split(','):
+                (key, value) = kv.split(' ')
+                metadata[key] = base64.b64decode(value).decode('utf-8')
         return metadata
 
     # Untested. Possibly unused.

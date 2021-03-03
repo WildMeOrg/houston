@@ -7,7 +7,7 @@ RESTful API Rules
 import logging
 
 from flask_login import current_user
-from flask_restplus._http import HTTPStatus
+from flask_restx_patched._http import HTTPStatus
 from permission import Rule as BaseRule
 from typing import Type, Any
 from app.extensions.api import abort
@@ -266,7 +266,7 @@ class ObjectActionRule(DenyAbortMixin, Rule):
     #             project_index = project_index + 1
 
     def _permitted_via_collaboration(self, user):
-        # @todo
+        # TODO:
         return False
 
 

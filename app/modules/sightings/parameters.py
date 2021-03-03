@@ -5,7 +5,7 @@ Input arguments (Parameters) for Sightings resources RESTful API
 """
 
 # from flask_marshmallow import base_fields
-from flask_restplus_patched import Parameters, PatchJSONParameters
+from flask_restx_patched import Parameters, PatchJSONParameters
 
 from . import schemas
 from .models import Sighting

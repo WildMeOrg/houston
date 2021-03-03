@@ -5,7 +5,7 @@ Extended Api implementation with an application-specific helpers
 """
 from six import iteritems
 
-from flask_restplus_patched import Api as BaseApi
+from flask_restx_patched import Api as BaseApi
 
 from .namespace import Namespace
 
@@ -32,7 +32,8 @@ class Api(BaseApi):
     def add_namespace(self, ns, path=None):
         # Rewrite security rules for OAuth scopes since Namespaces don't have
         # enough information about authorization methods.
-        for resource, _, _ in ns.resources:
+        for ns_resource in ns.resources:
+            resource = ns_resource.resource
             for method in resource.methods:
                 method_func = getattr(resource, method.lower())
 

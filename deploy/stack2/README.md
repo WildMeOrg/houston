@@ -38,7 +38,7 @@ Installation
 #### Clone the Project
 
 ```bash
-$ git clone https://github.com/frol/flask-restplus-server-example.git
+$ git clone https://github.com/WildMeOrg/houston.git
 ```
 
 #### Run the application topology

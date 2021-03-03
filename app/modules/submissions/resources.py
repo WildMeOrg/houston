@@ -10,8 +10,8 @@ import werkzeug
 
 from flask import request
 from flask_login import current_user
-from flask_restplus_patched import Resource
-from flask_restplus._http import HTTPStatus
+from flask_restx_patched import Resource
+from flask_restx_patched._http import HTTPStatus
 
 from app.extensions import db
 from app.extensions.api import Namespace
@@ -214,6 +214,12 @@ class SubmissionByID(Resource):
         """
         Patch Submission details by ID.
         """
+        submission, submission_guids = submission
+
+        if submission is None:
+            # We have checked the submission manager and cannot find this submission, raise 404 manually
+            raise werkzeug.exceptions.NotFound
+
         context = api.commit_or_abort(
             db.session, default_error_message='Failed to update Submission details.'
         )
@@ -238,6 +244,12 @@ class SubmissionByID(Resource):
         """
         Delete a Submission by ID.
         """
+        submission, submission_guids = submission
+
+        if submission is None:
+            # We have checked the submission manager and cannot find this submission, raise 404 manually
+            raise werkzeug.exceptions.NotFound
+
         context = api.commit_or_abort(
             db.session, default_error_message='Failed to delete the Submission.'
         )

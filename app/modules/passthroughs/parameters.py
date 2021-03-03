@@ -5,7 +5,7 @@ Input arguments (Parameters) for Passthroughs resources RESTful API
 """
 
 from flask_marshmallow import base_fields
-from flask_restplus_patched import Parameters
+from flask_restx_patched import Parameters
 
 
 class CreatePassthroughParameters(Parameters):

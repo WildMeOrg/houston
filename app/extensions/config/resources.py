@@ -7,8 +7,8 @@ RESTful API Config resources
 
 import logging
 
-from flask_restplus_patched import Resource
-from flask_restplus._http import HTTPStatus
+from flask_restx_patched import Resource
+from flask_restx_patched._http import HTTPStatus
 
 from app.extensions.api import Namespace
 

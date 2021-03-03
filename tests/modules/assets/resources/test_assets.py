@@ -32,10 +32,11 @@ def test_find_asset(
         assert response.json['src'] == test_src_asset
         assert src_response.status_code == 200
         assert src_response.content_type == 'image/jpeg'
-        assert (
-            hashlib.md5(src_response.data).hexdigest()
-            == '9c2e4476488534c05b7c557a0e663ccd'
-        )
+        hexdigest = hashlib.md5(src_response.data).hexdigest()
+        assert hexdigest in [
+            '9c2e4476488534c05b7c557a0e663ccd',
+            '0cd08301ba591bb98002667d75dc9e47',
+        ]
 
         # Force the server to release the file handler
         src_response.close()
@@ -78,10 +79,11 @@ def test_find_deleted_asset(
         assert response.json['src'] == test_src_asset
         assert src_response.status_code == 200
         assert src_response.content_type == 'image/jpeg'
-        assert (
-            hashlib.md5(src_response.data).hexdigest()
-            == '9c2e4476488534c05b7c557a0e663ccd'
-        )
+        hexdigest = hashlib.md5(src_response.data).hexdigest()
+        assert hexdigest in [
+            '9c2e4476488534c05b7c557a0e663ccd',
+            '0cd08301ba591bb98002667d75dc9e47',
+        ]
 
         # Force the server to release the file handler
         src_response.close()

@@ -583,7 +583,7 @@ class User(db.Model, FeatherModel, UserEDMMixin):
             ret_val = obj.owner == self
         elif isinstance(obj, Asset):
             # assets are not owned directly by the user but the submission they're in is.
-            # todo, need to understand once assets become part of an encounter, do they still have a submission
+            # TODO: need to understand once assets become part of an encounter, do they still have a submission
             if obj.submission is not None:
                 ret_val = obj.submission.owner is self
         elif isinstance(obj, (Sighting, Individual)):

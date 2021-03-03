@@ -22,7 +22,7 @@ The goals that were achieved in this example:
 * PATCH method can be handled accordingly to [RFC 6902](http://tools.ietf.org/html/rfc6902)
 * Extensive testing with good code coverage.
 
-The package Flask-RESTplus has been patched (see `flask_restplus_patched` folder), so it can handle Marshmallow schemas and Webargs arguments.
+The package Flask-RESTX has been patched (see `flask_restx_patched` folder), so it can handle Marshmallow schemas and Webargs arguments.
 
 ## Code Style and Development Guidelines
 
@@ -128,13 +128,13 @@ Single File Example
 -------------------
 
 This example should give you a basic understanding of what you can get with
-Flask, SQLAlchemy, Marshmallow, Flask-RESTplus (+ my patched extension), and
+Flask, SQLAlchemy, Marshmallow, Flask-RESTX (+ my patched extension), and
 OpenAPI.
 
 ```python
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
-from flask_restplus_patched import Api, Namespace, Resource, ModelSchema
+from flask_restx_patched import Api, Namespace, Resource, ModelSchema
 
 # Extensions initialization
 # =========================
@@ -215,7 +215,7 @@ Project Structure
 Folders:
 
 * `app` - This RESTful API Server example implementation is here.
-* `flask_restplus_patched` - There are some patches for Flask-RESTPlus (read
+* `flask_restx_patched` - There are some patches for Flask-RESTX (read
   more in *Patched Dependencies* section).
 * `migrations` - Database migrations are stored here (see `invoke --list` to
   learn available commands, and learn more about PyInvoke usage below).
@@ -308,7 +308,7 @@ def init_app(app, **kwargs):
 ```
 
 In this example, however, `init_app` imports `resources` and registeres `api`
-(an instance of (patched) `flask_restplus.Namespace`). Learn more about the
+(an instance of (patched) `flask_restx.Namespace`). Learn more about the
 "big picture" in the next section.
 
 
@@ -336,12 +336,12 @@ Modules initialization calls `init_app()` in every enabled module
 
 Let's take `teams` module as an example to look further.
 [`app/modules/teams/__init__.py:init_app()`](app/modules/teams/__init__.py)
-imports and registers `api` instance of (patched) `flask_restplus.Namespace`
-from `.resources`. Flask-RESTPlus `Namespace` is designed to provide similar
+imports and registers `api` instance of (patched) `flask_restx.Namespace`
+from `.resources`. Flask-RESTX `Namespace` is designed to provide similar
 functionality as Flask `Blueprint`.
 
 [`api.route()`](app/modules/teams/resources.py) is used to bind a
-resource (classes inherited from `flask_restplus.Resource`) to a specific
+resource (classes inherited from `flask_restx.Resource`) to a specific
 route.
 
 Lastly, every `Resource` should have methods which are lowercased HTTP method
@@ -354,7 +354,7 @@ Dependencies
 ### Project Dependencies
 
 * [**Python**](https://www.python.org/) 3.7+
-* [**flask-restplus**](https://github.com/noirbizarre/flask-restplus) (+
+* [**flask-restx**](https://github.com/python-restx/flask-restx) (+
   [*flask*](http://flask.pocoo.org/))
 * [**sqlalchemy**](http://www.sqlalchemy.org/) (+
   [*flask-sqlalchemy*](http://flask-sqlalchemy.pocoo.org/)) - Database ORM.
@@ -364,11 +364,11 @@ Dependencies
 * [**marshmallow**](http://marshmallow.rtfd.org/) (+
   [*marshmallow-sqlalchemy*](http://marshmallow-sqlalchemy.rtfd.org/),
   [*flask-marshmallow*](http://flask-marshmallow.rtfd.org/)) - for
-  schema definitions. (*supported by the patched Flask-RESTplus*)
+  schema definitions. (*supported by the patched Flask-RESTX*)
 * [**webargs**](http://webargs.rtfd.org/) - for parameters (input arguments).
-  (*supported by the patched Flask-RESTplus*)
+  (*supported by the patched Flask-RESTX*)
 * [**apispec**](http://apispec.rtfd.org/) - for *marshmallow* and *webargs*
-  introspection. (*integrated into the patched Flask-RESTplus*)
+  introspection. (*integrated into the patched Flask-RESTX*)
 * [**oauthlib**](http://oauthlib.rtfd.org/) (+
   [*flask-oauthlib*](http://flask-oauthlib.rtfd.org/)) - for authentication.
 * [**flask-login**](http://flask-login.rtfd.org/) - for `current_user`
@@ -389,13 +389,92 @@ life become colorful.
 
 ### Patched Dependencies
 
-* **flask-restplus** is patched to handle marshmallow schemas and webargs
+* **flask-restx** is patched to handle marshmallow schemas and webargs
   input parameters
-  ([GH #9](https://github.com/noirbizarre/flask-restplus/issues/9)).
+  <!-- ([GH #9](https://github.com/noirbizarre/flask-restplus/issues/9)). -->
 * **swagger-ui** (*the bundle is automatically downloaded on the first run*)
   just includes a pull-request to support Resource Owner Password Credentials
   Grant OAuth2 (aka Password Flow)
   ([PR #1853](https://github.com/swagger-api/swagger-ui/pull/1853)).
+
+
+Installation
+------------
+
+### Using Docker
+
+It is very easy to start exploring the example using Docker:
+
+```bash
+$ docker run -it --rm --publish 5000:5000 wildme/houston
+```
+
+### From sources
+
+#### Clone the Project
+
+```bash
+$ git clone --recurse-submodules https://github.com/WildMeOrg/houston.git
+$ cd houston/
+```
+
+#### Setup Environment
+
+It is recommended to use virtualenv or Anaconda/Miniconda to manage Python
+dependencies. Please, learn details yourself.
+For quickstart purposes the following will set up a virtualenv for you:
+
+```bash
+$ ./scripts/venv.sh
+$ source virtualenv/houston3.7/bin/activate
+
+# To add bash-completion
+$ export SCRIPT="$(pwd)/.invoke-completion.sh"
+$ invoke --print-completion-script bash > $SCRIPT
+$ echo "source $SCRIPT" >> virtualenv/houston3.7/bin/activate
+```
+
+Set up and install the package:
+
+```bash
+tar -zxvf _db.initial.tar.gz
+pip install -e .
+invoke app.dependencies.install
+./scripts/build.frontend.sh
+```
+
+#### Run Server
+
+NOTE: All dependencies and database migrations will be automatically handled,
+so go ahead and turn the server ON! (Read more details on this in Tips section)
+
+```bash
+$ invoke app.run
+```
+
+#### Deploy Server
+
+In general, you deploy this app as any other Flask/WSGI application. There are
+a few basic deployment strategies documented in the [`./deploy/`](./deploy/)
+folder.
+
+
+Quickstart
+----------
+
+Open online interactive API documentation:
+[http://127.0.0.1:5000/api/v1/](http://127.0.0.1:5000/api/v1/)
+
+Autogenerated swagger config is always available from
+[http://127.0.0.1:5000/api/v1/swagger.json](http://127.0.0.1:5000/api/v1/swagger.json)
+
+`example.db` (SQLite) includes 2 users:
+
+* Admin user `root` with password `q`
+* Regular user `user` with password `w`
+
+NOTE: Use On/Off switch in documentation to sign in.
+
 
 Authentication Details
 ----------------------
@@ -654,17 +733,17 @@ package to enable detailed tracebacks. Just add `better_exceptions` to the
 Marshmallow Tricks
 ------------------
 
-There are a few helpers already available in the `flask_restplus_patched`:
+There are a few helpers already available in the `flask_restx_patched`:
 
-* `flask_restplus_patched.parameters.Parameters` - base class, which is a thin
+* `flask_restx_patched.parameters.Parameters` - base class, which is a thin
   wrapper on top of Marshmallow Schema.
-* `flask_restplus_patched.parameters.PostFormParameters` - a helper class,
+* `flask_restx_patched.parameters.PostFormParameters` - a helper class,
   which automatically mark all the fields that has no explicitly defined
   location to be form data parameters.
-* `flask_restplus_patched.parameters.PatchJSONParameters` - a helper class for
+* `flask_restx_patched.parameters.PatchJSONParameters` - a helper class for
   the common use-case of [RFC 6902](http://tools.ietf.org/html/rfc6902)
   describing JSON PATCH.
-* `flask_restplus_patched.namespace.Namespace.parameters` - a helper decorator,
+* `flask_restx_patched.namespace.Namespace.parameters` - a helper decorator,
   which automatically handles and documents the passed `Parameters`.
 
 You can find the examples of the usage throughout the code base (in
@@ -729,8 +808,6 @@ This implementation is compatible with RFC6509 with the exception that for remov
 Useful Links
 ============
 
-* [Q&A about this project](https://github.com/frol/flask-restplus-server-example/issues?utf8=%E2%9C%93&q=is%3Aissue+label%3Aquestion)
-* [Valuable extensions that didn't make into the upstream](https://github.com/frol/flask-restplus-server-example/issues?utf8=%E2%9C%93&q=label%3Aextension)
 * "[The big Picture](https://identityserver.github.io/Documentation/docsv2/overview/bigPicture.html)" -
   short yet complete idea about how the modern apps should talk.
 * "[Please. Don't PATCH Like An Idiot.](http://williamdurand.fr/2014/02/14/please-do-not-patch-like-an-idiot/)"

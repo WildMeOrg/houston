@@ -44,47 +44,51 @@ class AutoAuthFlaskClient(FlaskClient):
         self._auth_scopes = None
 
     def open(self, *args, **kwargs):
-        if self._user is not None:
-            from app.extensions import db
-            from app.modules.auth.models import OAuth2Client, OAuth2Token
+        try:
+            if self._user is not None:
+                from app.extensions import db
+                from app.modules.auth.models import OAuth2Client, OAuth2Token
 
-            oauth2_client = OAuth2Client(
-                secret='SECRET',
-                user=self._user,
-                default_scopes=[],
-            )
+                oauth2_client = OAuth2Client(
+                    secret='SECRET',
+                    user=self._user,
+                    default_scopes=[],
+                )
 
-            oauth2_bearer_token = OAuth2Token(
-                client=oauth2_client,
-                user=self._user,
-                token_type='Bearer',
-                access_token='test_access_token',
-                scopes=self._auth_scopes,
-                expires=datetime.utcnow() + timedelta(days=1),
-            )
+                oauth2_bearer_token = OAuth2Token(
+                    client=oauth2_client,
+                    user=self._user,
+                    token_type='Bearer',
+                    access_token='test_access_token',
+                    scopes=self._auth_scopes,
+                    expires=datetime.utcnow() + timedelta(days=1),
+                )
 
-            with db.session.begin():
-                db.session.add(oauth2_bearer_token)
+                with db.session.begin():
+                    db.session.add(oauth2_client)
+                    db.session.add(oauth2_bearer_token)
 
-            extra_headers = (
-                (
-                    'Authorization',
-                    '{token.token_type} {token.access_token}'.format(
-                        token=oauth2_bearer_token
+                extra_headers = (
+                    (
+                        'Authorization',
+                        '{token.token_type} {token.access_token}'.format(
+                            token=oauth2_bearer_token
+                        ),
                     ),
-                ),
-            )
-            if kwargs.get('headers'):
-                kwargs['headers'] += extra_headers
-            else:
-                kwargs['headers'] = extra_headers
+                )
+                if kwargs.get('headers'):
+                    kwargs['headers'] += extra_headers
+                else:
+                    kwargs['headers'] = extra_headers
 
-        response = super(AutoAuthFlaskClient, self).open(*args, **kwargs)
-
-        if self._user is not None:
-            with db.session.begin():
-                db.session.delete(oauth2_bearer_token)
-                db.session.delete(oauth2_bearer_token.client)
+            response = super(AutoAuthFlaskClient, self).open(*args, **kwargs)
+        except Exception:
+            raise
+        finally:
+            if self._user is not None:
+                with db.session.begin():
+                    db.session.delete(oauth2_bearer_token)
+                    db.session.delete(oauth2_bearer_token.client)
 
         return response
 

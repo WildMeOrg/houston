@@ -5,7 +5,7 @@ Input arguments (Parameters) for Projects resources RESTful API
 """
 
 from flask_login import current_user  # NOQA
-from flask_restplus_patched import Parameters, PatchJSONParametersWithPassword
+from flask_restx_patched import Parameters, PatchJSONParametersWithPassword
 from . import schemas
 from .models import Project
 from app.modules.users.permissions import rules

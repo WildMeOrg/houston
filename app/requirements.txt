@@ -20,7 +20,7 @@ Flask-Minify
 Flask-OAuthlib
 Flask-Paranoid
 
-flask-restplus>=0.11.0,<0.12
+flask-restx>=0.2.0
 Flask-SQLAlchemy>=2.4,<3
 
 gitpython

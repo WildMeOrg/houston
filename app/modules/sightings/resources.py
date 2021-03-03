@@ -306,8 +306,8 @@ class Sightings(Resource):
                     if paths_wanted is not None:
                         # will throw exception if we dont have all we need
                         enc_assets = _enc_assets(assets_added, paths_wanted[i])
-                    if enc_assets is not None:
-                        encounter.add_assets_no_context(enc_assets)
+                        if enc_assets is not None:
+                            encounter.add_assets_no_context(enc_assets)
                     log.debug('%r is adding enc_assets=%r' % (encounter, enc_assets))
                     sighting.add_encounter(encounter)
                     i += 1

@@ -111,6 +111,10 @@ jobs:
           --health-retries 5
         ports:
           - 5432:5432
+      redis:
+        image: redis:latest
+        ports:
+          - 6379:6379
     env:
       OS: ubuntu-latest
       PYTHON: ${{ matrix.python-version }}

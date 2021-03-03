@@ -243,11 +243,11 @@ class Sightings(Resource):
 
         submission = None
         assets_added = None
-        pub = False
+        pub = True
         owner_guid = None
         if current_user is not None and not current_user.is_anonymous:
             owner_guid = current_user.guid
-            pub = True
+            pub = False
 
         if all_arefs is not None and paths_wanted is not None:
             # files seem to exist in uploads dir, so lets make

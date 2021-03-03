@@ -63,6 +63,9 @@ echo | coverage run --append `which invoke` app.dev.embed
 coverage run --append `which invoke` app.run.warmup
 coverage run --append `which invoke` app.projects.list-all
 
+# test app.endpoints.*
+coverage run --append `which invoke` app.endpoints.list
+
 # test app.swagger.*
 coverage run --append `which invoke` app.swagger.export
 coverage run --append `which invoke` app.swagger.codegen --language python --version 1.0.0

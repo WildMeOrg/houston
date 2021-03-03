@@ -30,7 +30,9 @@ log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 api = Namespace('sightings', description='Sightings')  # pylint: disable=invalid-name
 
 
-def _cleanup_post_and_abort(sighting_guid, submission, message='Unknown error'):
+def _cleanup_post_and_abort(
+    sighting_guid, submission, message='Unknown error', log_message=None
+):
     # TODO actually clean up edm based on guid!!!
     if sighting_guid is not None:
         log.warning(
@@ -40,7 +42,9 @@ def _cleanup_post_and_abort(sighting_guid, submission, message='Unknown error'):
         log.warning(
             '#### TODO ####   need to properly cleanup submission %r' % submission
         )
-    log.error('Bailing on sighting creation: %r' % message)
+    if log_message is None:
+        log_message = message
+    log.error('Bailing on sighting creation: %r' % log_message)
     abort(success=False, passed_message=message, message='Error', code=400)
 
 
@@ -178,8 +182,12 @@ class Sightings(Resource):
             or not isinstance(request_in['encounters'], list)
             or len(request_in['encounters']) < 1
         ):
-            log.error('Sighting.post empty encounters in %r' % (request_in,))
-            _cleanup_post_and_abort(None, None, 'Must have at least one encounter')
+            _cleanup_post_and_abort(
+                None,
+                None,
+                'Must have at least one encounter',
+                'Sighting.post empty encounters in %r' % request_in,
+            )
 
         response = current_app.edm.request_passthrough(
             'sighting.data', 'post', {'data': request_in}, ''
@@ -209,33 +217,31 @@ class Sightings(Resource):
         if ('encounters' in request_in and 'encounters' not in result_data) or (
             'encounters' not in request_in and 'encounters' in result_data
         ):
-            log.error(
-                'Sighting.post missing encounters in one of %r or %r'
-                % (request_in, result_data)
-            )
             _cleanup_post_and_abort(
                 result_data['id'],
                 None,
                 'Missing encounters between request_in and result',
+                'Sighting.post missing encounters in one of %r or %r'
+                % (request_in, result_data),
             )
         if not len(request_in['encounters']) == len(result_data['encounters']):
-            log.error(
-                'Sighting.post imbalanced encounters in %r or %r'
-                % (request_in, result_data)
-            )
             _cleanup_post_and_abort(
-                result_data['id'], None, 'Imbalance in encounters between data and result'
+                result_data['id'],
+                None,
+                'Imbalance in encounters between data and result',
+                'Sighting.post imbalanced encounters in %r or %r'
+                % (request_in, result_data),
             )
 
         try:
             all_arefs, paths_wanted = _validate_asset_references(request_in['encounters'])
         except Exception as ex:
-            log.warning(
-                '_validate_asset_references threw %r on encounters=%r'
-                % (ex, request_in['encounters'])
-            )
             _cleanup_post_and_abort(
-                result_data['id'], None, 'Invalid assetReference data in encounter(s)'
+                result_data['id'],
+                None,
+                'Invalid assetReference data in encounter(s)',
+                '_validate_asset_references threw %r on encounters=%r'
+                % (ex, request_in['encounters']),
             )
         log.debug(
             '_validate_asset_references returned: %r, %r' % (all_arefs, paths_wanted)
@@ -264,16 +270,12 @@ class Sightings(Resource):
                     paths=all_arefs[transaction_id],
                 )
             except Exception as ex:
-                log.error(
-                    '%r on create_submission_from_tus transaction_id=%r paths=%r'
-                    % (
-                        ex,
-                        transaction_id,
-                        all_arefs[transaction_id],
-                    )
-                )
                 _cleanup_post_and_abort(
-                    result_data['id'], submission, 'Problem with encounter/assets'
+                    result_data['id'],
+                    submission,
+                    'Problem with encounter/assets',
+                    '%r on create_submission_from_tus transaction_id=%r paths=%r'
+                    % (ex, transaction_id, all_arefs[transaction_id]),
                 )
 
             assets_added = submission.assets
@@ -310,12 +312,12 @@ class Sightings(Resource):
                     sighting.add_encounter(encounter)
                     i += 1
                 except Exception as ex:
-                    log.error(
-                        '%r on encounter %d: paths_wanted=%r; enc=%r'
-                        % (ex, i, paths_wanted, request_in['encounters'][i])
-                    )
                     _cleanup_post_and_abort(
-                        result_data['id'], submission, 'Problem with encounter/assets'
+                        result_data['id'],
+                        submission,
+                        'Problem with encounter/assets',
+                        '%r on encounter %d: paths_wanted=%r; enc=%r'
+                        % (ex, i, paths_wanted, request_in['encounters'][i]),
                     )
 
         context = api.commit_or_abort(

@@ -166,6 +166,7 @@ jobs:
           coverage run `which invoke` app.db.upgrade --no-backup
           coverage run --append `which invoke` app.db.downgrade
           coverage run --append `which invoke` app.db.upgrade --no-backup
+          if [ -n "$(coverage run --append `which invoke` app.db.migrate)" ]; then echo Missing database migration; exit 1; fi
 
       - name: Run tests after DB checks
         run: |

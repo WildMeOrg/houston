@@ -256,12 +256,26 @@ class Sightings(Resource):
             )  # here is where we make single-transaciton-id assumption
             from app.modules.submissions.models import Submission
 
-            submission, assets_added = Submission.create_submission_from_tus(
-                'Sighting.post ' + result_data['id'],
-                current_user,
-                transaction_id,
-                paths=all_arefs[transaction_id],
-            )
+            try:
+                submission, assets_added = Submission.create_submission_from_tus(
+                    'Sighting.post ' + result_data['id'],
+                    current_user,
+                    transaction_id,
+                    paths=all_arefs[transaction_id],
+                )
+            except Exception as ex:
+                log.error(
+                    '%r on create_submission_from_tus transaction_id=%r paths=%r'
+                    % (
+                        ex,
+                        transaction_id,
+                        all_arefs[transaction_id],
+                    )
+                )
+                _cleanup_post_and_abort(
+                    result_data['id'], submission, 'Problem with encounter/assets'
+                )
+
             log.debug(
                 'create_submission_from_tus returned: %r, %r'
                 % (

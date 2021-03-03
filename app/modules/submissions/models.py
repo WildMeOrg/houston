@@ -254,9 +254,22 @@ class Submission(db.Model, HoustonModel):
             db.session.add(submission)
 
         log.info('created submission %r' % submission)
-        added = submission.import_tus_files(transaction_id=transaction_id, paths=paths)
+        added = None
+        try:
+            added = submission.import_tus_files(
+                transaction_id=transaction_id, paths=paths
+            )
+        except Exception:
+            log.error(
+                'create_submission_from_tus() had problems with import_tus_files(); deleting from db %r'
+                % submission
+            )
+            with db.session.begin():
+                db.session.delete(submission)
+            raise
+
         log.info('submission imported %r' % added)
-        return submission, added
+        return submission
 
     def import_tus_files(self, transaction_id=None, paths=None, purge_dir=True):
         from app.extensions.tus import tus_upload_dir
@@ -276,6 +289,7 @@ class Submission(db.Model, HoustonModel):
         if paths is not None and len(paths) > 0:
             log.debug('import_tus_files passed paths=%r' % (paths))
             for name in paths:
+                # this is where an exception will be thrown if passed a file which we dont have (or other problem)
                 os.rename(
                     os.path.join(upload_dir, name), os.path.join(submission_path, name)
                 )

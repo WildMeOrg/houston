@@ -138,8 +138,7 @@ class TusManager(object):
 
         (filename_name, extension) = os.path.splitext(metadata.get('filename'))
         if filename_name.upper() in [
-            os.path.splitext(f)[0].upper()
-            for f in os.listdir(os.path.dirname(self.upload_folder))
+            os.path.splitext(f)[0].upper() for f in os.listdir(self.upload_folder)
         ]:
             response.headers['Tus-File-Name'] = metadata.get('filename')
             response.headers['Tus-File-Exists'] = True

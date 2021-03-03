@@ -4,6 +4,7 @@ import base64
 import os
 import redis
 import uuid
+from urllib.parse import urljoin
 
 # Find the stack on which we want to store the database connection.
 # Starting with Flask 0.9, the _app_ctx_stack is the correct one,
@@ -158,7 +159,7 @@ class TusManager(object):
             and url_root.lower().startswith('http:')
         ):
             url_root = 'https://' + url_root[7:]
-        return '{}/{}/{}'.format(url_root, self.upload_url, resource_id)
+        return urljoin(url_root, f'{self.upload_url}/{resource_id}')
 
     def tus_creation_1_create(self):
         """Implements POST to create file according to Tus protocol Creation extension"""

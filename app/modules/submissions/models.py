@@ -242,7 +242,9 @@ class Submission(db.Model, HoustonModel):
     @classmethod
     # i believe if called *without* transaction_id this would be kinda nonsensical cuz it would call import_tus_files()
     #   and look for a submission dir with this newly generated submission.guid.
-    def create_submission_from_tus(cls, description, owner, transaction_id=None):
+    def create_submission_from_tus(
+        cls, description, owner, transaction_id=None, paths=None
+    ):
         submission = Submission(
             major_type=SubmissionMajorType.filesystem,
             description=description,
@@ -252,11 +254,11 @@ class Submission(db.Model, HoustonModel):
             db.session.add(submission)
 
         log.info('created submission %r' % submission)
-        added = submission.import_tus_files(transaction_id=transaction_id)
+        added = submission.import_tus_files(transaction_id=transaction_id, paths=paths)
         log.info('submission imported %r' % added)
         return submission, added
 
-    def import_tus_files(self, transaction_id=None):
+    def import_tus_files(self, transaction_id=None, paths=None):
         from app.extensions.tus import tus_upload_dir
 
         self.ensure_repository()
@@ -269,18 +271,31 @@ class Submission(db.Model, HoustonModel):
         num_files = 0
         paths_added = []
         # note: this probably falls apart when subdirs exist
-        for root, dirs, files in os.walk(upload_dir):
-            num_files = len(files)
-            for name in files:
-                paths_added.append(name)
-                log.debug(
-                    'moving upload %r to sub dir %r'
-                    % (
-                        name,
-                        submission_path,
-                    )
+
+        if paths is not None and len(paths) > 0:
+            log.debug('import_tus_files passed paths=%r' % (paths))
+            for name in paths:
+                os.rename(
+                    os.path.join(upload_dir, name), os.path.join(submission_path, name)
                 )
-                os.rename(os.path.join(root, name), os.path.join(submission_path, name))
+                paths_added.append(name)
+            assert len(paths_added) == len(paths)
+
+        else:  # traverse who upload dir and take everything
+            for root, dirs, files in os.walk(upload_dir):
+                num_files = len(files)
+                for name in files:
+                    paths_added.append(name)
+                    log.debug(
+                        'moving upload %r to sub dir %r'
+                        % (
+                            name,
+                            submission_path,
+                        )
+                    )
+                    os.rename(
+                        os.path.join(root, name), os.path.join(submission_path, name)
+                    )
 
         assets_added = []
         if num_files > 0:

@@ -257,7 +257,7 @@ class Sightings(Resource):
             from app.modules.submissions.models import Submission
 
             try:
-                submission, assets_added = Submission.create_submission_from_tus(
+                submission = Submission.create_submission_from_tus(
                     'Sighting.post ' + result_data['id'],
                     current_user,
                     transaction_id,
@@ -276,12 +276,10 @@ class Sightings(Resource):
                     result_data['id'], submission, 'Problem with encounter/assets'
                 )
 
+            assets_added = submission.assets
             log.debug(
-                'create_submission_from_tus returned: %r, %r'
-                % (
-                    submission,
-                    assets_added,
-                )
+                'create_submission_from_tus returned: %r => %r'
+                % (submission, assets_added)
             )
 
         sighting = Sighting(

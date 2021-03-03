@@ -240,11 +240,8 @@ class Submission(db.Model, HoustonModel):
         return repo
 
     @classmethod
-    # i believe if called *without* transaction_id this would be kinda nonsensical cuz it would call import_tus_files()
-    #   and look for a submission dir with this newly generated submission.guid.
-    def create_submission_from_tus(
-        cls, description, owner, transaction_id=None, paths=None
-    ):
+    def create_submission_from_tus(cls, description, owner, transaction_id, paths=None):
+        assert transaction_id is not None
         submission = Submission(
             major_type=SubmissionMajorType.filesystem,
             description=description,

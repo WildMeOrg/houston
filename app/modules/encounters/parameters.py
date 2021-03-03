@@ -61,7 +61,7 @@ class PatchEncounterDetailsParameters(PatchJSONParametersWithPassword):
                     ret_val = True
 
             elif field == 'newSubmission':
-                new_submission, assets_added = Submission.create_submission_from_tus(
+                new_submission = Submission.create_submission_from_tus(
                     'Encounter.patch' + value, current_user, value
                 )
 

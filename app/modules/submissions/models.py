@@ -258,8 +258,9 @@ class Submission(db.Model, HoustonModel):
         log.info('submission imported %r' % added)
         return submission, added
 
-    def import_tus_files(self, transaction_id=None, paths=None):
+    def import_tus_files(self, transaction_id=None, paths=None, purge_dir=True):
         from app.extensions.tus import tus_upload_dir
+        import shutil
 
         self.ensure_repository()
         sub_id = None if transaction_id is not None else self.guid
@@ -279,6 +280,7 @@ class Submission(db.Model, HoustonModel):
                     os.path.join(upload_dir, name), os.path.join(submission_path, name)
                 )
                 paths_added.append(name)
+                num_files += 1
             assert len(paths_added) == len(paths)
 
         else:  # traverse who upload dir and take everything
@@ -306,9 +308,8 @@ class Submission(db.Model, HoustonModel):
                 if asset.path in paths_added:
                     assets_added.append(asset)
 
-        # i _kind of_ think we can rmdir() for _any_ case.  have to think about this.   -jon
-        if transaction_id:
-            os.rmdir(upload_dir)
+        if purge_dir:
+            shutil.rmtree(upload_dir)  # may have some unclaimed files in it
         return assets_added
 
     def realize_submission(self):

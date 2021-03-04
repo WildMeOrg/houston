@@ -192,7 +192,7 @@ class BaseConfig(object):
 
 class EDMConfig(object):
     EDM_URIS = {
-        0: 'https://nextgen.dev-wildbook.org/',
+        '0': 'https://nextgen.dev-wildbook.org/',
     }
 
 

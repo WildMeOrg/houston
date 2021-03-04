@@ -197,24 +197,12 @@ class EDMManager(EDMManagerEndpointMixin, EDMManagerUserMixin):
                 valid = True
 
                 try:
-                    if not isinstance(key, int):
-                        # key isn't an integer or a parsable integer
-                        try:
-                            key_ = int(key)
-                            key = key_
-                        except Exception:
-                            valid = False
-
-                    if key < 0:
-                        # key is negative
+                    if not isinstance(key, str):
+                        # key isn't a string
                         valid = False
 
                     if key in key_list + invalid_key_list:
                         # key seen before, no duplicates allowed
-                        valid = False
-
-                    if key >= len(edm_uri_key_list):
-                        # key order is higher than the total, no skips allowed
                         valid = False
 
                     if key not in edm_authentication_key_list:
@@ -238,15 +226,15 @@ class EDMManager(EDMManagerEndpointMixin, EDMManagerUserMixin):
 
         key_list = sorted(key_list)
 
-        assert 0 in key_list, 'EDM_URIS must contain an integer key 0'
+        assert '0' in key_list, 'EDM_URIS must contain a string key "0"'
         assert len(key_list) == len(set(key_list)), 'EDM_URIS cannot contain duplicates'
-        assert key_list[0] == 0, 'EDM_URIS is mis-configured'
-        assert key_list[-1] == len(key_list) - 1, 'EDM_URIS is mis-configured'
+        assert key_list[0] == '0', 'EDM_URIS is mis-configured'
+        # assert key_list[-1] == len(key_list) - 1, 'EDM_URIS is mis-configured'  FIXME is there a string-equivalent here?
 
         uris = {}
         auths = {}
         for key in key_list:
-            if key == 0:
+            if key == '0':
                 uris['default'] = edm_uri_dict[key]
                 auths['default'] = edm_authentication_dict[key]
                 self.targets.add('default')

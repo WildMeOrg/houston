@@ -139,8 +139,8 @@ class UserByID(Resource):
         context = api.commit_or_abort(
             db.session, default_error_message='Failed to update user details.'
         )
+        parameters.PatchUserDetailsParameters.perform_patch(args, user)
         with context:
-            parameters.PatchUserDetailsParameters.perform_patch(args, user)
             db.session.merge(user)
         db.session.refresh(user)
 

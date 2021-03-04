@@ -4,7 +4,6 @@
 Input arguments (Parameters) for User resources RESTful API
 -----------------------------------------------------------
 """
-
 from flask import current_app
 from flask_login import current_user
 from flask_marshmallow import base_fields
@@ -16,7 +15,7 @@ from app.extensions.api.parameters import PaginationParameters
 from app.extensions.api import abort
 
 from . import schemas, permissions
-from .models import User
+from .models import User, db
 
 import logging
 
@@ -208,4 +207,43 @@ class PatchUserDetailsParameters(PatchJSONParameters):
                 #     # Access granted
                 #     pass
 
+        if field == User.profile_fileupload_guid.key:
+            value = cls.add_replace_profile_fileupload(value)
+
         return super(PatchUserDetailsParameters, cls).replace(obj, field, value, state)
+
+    @classmethod
+    def remove(cls, obj, field, value, state):
+        if field == User.profile_fileupload_guid.key:
+            obj.profile_fileupload_guid = None
+        return True
+
+    @classmethod
+    def add(cls, obj, field, value, state):
+        if field == User.profile_fileupload_guid.key:
+            obj.profile_fileupload_guid = cls.add_replace_profile_fileupload(value)
+        return True
+
+    @classmethod
+    def add_replace_profile_fileupload(cls, value):
+        if isinstance(value, dict):
+            from app.modules.fileuploads.models import FileUpload
+
+            transaction_id = value.get('transactionId')
+            if not transaction_id:
+                abort(
+                    code=HTTPStatus.UNPROCESSABLE_ENTITY,
+                    message='"transactionId" is necessary when using an object as the value',
+                )
+            files = FileUpload.create_fileuploads_from_tus(transaction_id) or []
+            if len(files) != 1:
+                for file_ in files:
+                    file_.delete()
+                abort(
+                    code=HTTPStatus.UNPROCESSABLE_ENTITY,
+                    message=f'Need exactly 1 asset but found {len(files)} assets',
+                )
+            with db.session.begin():
+                db.session.add(files[0])
+            value = str(files[0].guid)
+        return value

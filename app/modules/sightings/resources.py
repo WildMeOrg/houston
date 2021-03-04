@@ -248,7 +248,6 @@ class Sightings(Resource):
         )
 
         submission = None
-        assets_added = None
         pub = True
         owner_guid = None
         if current_user is not None and not current_user.is_anonymous:
@@ -304,7 +303,7 @@ class Sightings(Resource):
                     enc_assets = None
                     if paths_wanted is not None:
                         # will throw exception if we dont have all we need
-                        enc_assets = _enc_assets(assets_added, paths_wanted[i])
+                        enc_assets = _enc_assets(submission.assets, paths_wanted[i])
                         if enc_assets is not None:
                             encounter.add_assets_no_context(enc_assets)
                     log.debug('%r is adding enc_assets=%r' % (encounter, enc_assets))

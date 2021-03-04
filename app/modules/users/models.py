@@ -152,6 +152,11 @@ class User(db.Model, FeatherModel, UserEDMMixin):
     profile_fileupload_guid = db.Column(
         db.GUID, db.ForeignKey('file_upload.guid'), nullable=True
     )
+    # 'FileUpload' failed to locate a name (class not yet loaded)
+    # so explicitly import FileUpload here
+    from app.modules.fileuploads.models import FileUpload
+
+    profile_fileupload = db.relationship(FileUpload)
 
     organization_membership_enrollments = db.relationship(
         'OrganizationUserMembershipEnrollment', back_populates='user'

@@ -40,7 +40,7 @@ class FileUpload(db.Model, HoustonModel):
 
     def delete(self):
         filepath = self.get_absolute_path()
-        with db.session.begin():
+        with db.session.begin(subtransactions=True):
             db.session.delete(self)
         if os.path.exists(filepath):
             log.debug('FileUpload delete removing file %r' % self.get_absolute_path())

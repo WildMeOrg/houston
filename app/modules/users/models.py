@@ -174,6 +174,7 @@ class User(db.Model, FeatherModel, UserEDMMixin):
 
     class StaticRoles(enum.Enum):
         # pylint: disable=missing-docstring,unsubscriptable-object
+        USER_ADMIN = (0x80000, 'UserAdmin', 'UserAdmin')
         CONTRIBUTOR = (0x40000, 'Contributor', 'Contributor')
         RESEARCHER = (0x20000, 'Researcher', 'Researcher')
         EXPORTER = (0x10000, 'Exporter', 'Exporter')
@@ -205,6 +206,7 @@ class User(db.Model, FeatherModel, UserEDMMixin):
     is_contributor = _get_is_static_role_property(
         'is_contributor', StaticRoles.CONTRIBUTOR
     )
+    is_user_admin = _get_is_static_role_property('is_user_admin', StaticRoles.USER_ADMIN)
     is_researcher = _get_is_static_role_property('is_researcher', StaticRoles.RESEARCHER)
     is_exporter = _get_is_static_role_property('is_exporter', StaticRoles.EXPORTER)
     is_internal = _get_is_static_role_property('is_internal', StaticRoles.INTERNAL)
@@ -229,6 +231,7 @@ class User(db.Model, FeatherModel, UserEDMMixin):
 
     def get_roles(self):
         roles = []
+        roles += [self.StaticRoles.USER_ADMIN.shorthand] if self.is_user_admin else []
         roles += [self.StaticRoles.INTERNAL.shorthand] if self.is_internal else []
         roles += [self.StaticRoles.ADMIN.shorthand] if self.is_admin else []
         roles += [self.StaticRoles.STAFF.shorthand] if self.is_staff else []
@@ -283,6 +286,7 @@ class User(db.Model, FeatherModel, UserEDMMixin):
         is_staff=False,
         is_researcher=False,
         is_contributor=True,
+        is_user_admin=False,
         is_exporter=False,
         is_active=True,
         in_beta=False,
@@ -307,6 +311,7 @@ class User(db.Model, FeatherModel, UserEDMMixin):
                 is_active=is_active,
                 is_researcher=is_researcher,
                 is_contributor=is_contributor,
+                is_user_admin=is_user_admin,
                 is_exporter=is_exporter,
                 in_beta=in_beta,
                 in_alpha=in_alpha,
@@ -324,6 +329,7 @@ class User(db.Model, FeatherModel, UserEDMMixin):
             user.is_staff = is_staff
             user.is_researcher = is_researcher
             user.is_contributor = is_contributor
+            user.is_user_admin = is_user_admin
             user.is_exporter = is_exporter
             user.is_active = is_active
             user.in_beta = in_beta

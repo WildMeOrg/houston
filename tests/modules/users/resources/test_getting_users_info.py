@@ -40,10 +40,10 @@ def test_getting_list_of_users_by_unauthorized_user_must_fail(
     ),
 )
 def test_getting_list_of_users_by_authorized_user(
-    flask_app_client, admin_user, auth_scopes
+    flask_app_client, user_admin_user, auth_scopes
 ):
     # pylint: disable=invalid-name
-    with flask_app_client.login(admin_user, auth_scopes=auth_scopes):
+    with flask_app_client.login(user_admin_user, auth_scopes=auth_scopes):
         response = flask_app_client.get('/api/v1/users/')
 
     assert response.status_code == 200

@@ -349,7 +349,28 @@ def test_ModuleAccessPermission_admin_user(admin_user_login):
     validate_cannot_write_module(NotARealClass)
     validate_cannot_delete_module(NotARealClass)
 
-    # Has full access to users but can't delete the module
+    # Has virtually no access to users other than creation
+    validate_cannot_read_module(User)
+    validate_can_write_module(User)
+    validate_cannot_delete_module(User)
+
+    # Admin users can list Submissions
+    validate_can_read_module(Submission)
+    validate_can_write_module(Submission)
+    validate_cannot_delete_module(Submission)
+
+
+def test_ModuleAccessPermission_user_admin_user(user_admin_user_login):
+    # pylint: disable=unused-argument
+    from app.modules.users.models import User
+    from app.modules.submissions.models import Submission
+
+    # user Admins not especially priviliged
+    validate_cannot_read_module(NotARealClass)
+    validate_cannot_write_module(NotARealClass)
+    validate_cannot_delete_module(NotARealClass)
+
+    # But can read all users
     validate_can_read_module(User)
     validate_can_write_module(User)
     validate_cannot_delete_module(User)

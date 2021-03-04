@@ -130,19 +130,17 @@ class ModuleActionRule(DenyAbortMixin, Rule):
                 # This is where we can control what modules admin users can and cannot read
                 # This could be Client configurable if required by taking the list passed to
                 # _is_module from a config parameter e.g. app.config.get(ADMIN_READ_MODULE_PERMISSION)
+                has_permission = self._is_module((Asset, Submission))
+            if not has_permission and user.is_user_admin:
                 has_permission = self._is_module(User)
             if not has_permission and user.is_researcher:
-                has_permission = self._is_module(
-                    (Submission, Encounter, Sighting, Asset, Individual)
-                )
+                has_permission = self._is_module((Encounter, Sighting, Individual))
 
         elif self._action is AccessOperation.WRITE:
             if self._is_module(HoustonConfig):
                 has_permission = user.is_admin
-            elif self._is_module((Submission, User)):
-                # Any users can submit and write (create) a user
-                has_permission = True
-            elif self._is_module(Encounter):
+            # Any users can write (create) a user, submission and Encounter, TODO, decide on Submission
+            elif self._is_module((Submission, User, Encounter)):
                 has_permission = True
             # Project disabled for MVP
             # elif self._is_module(Project):

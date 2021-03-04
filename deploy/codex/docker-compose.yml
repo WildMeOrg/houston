@@ -92,6 +92,7 @@ services:
       EDM_AUTHENTICATIONS_0_URI: "${EDM_AUTHENTICATIONS_0_URI}"
       EDM_AUTHENTICATIONS_0_USERNAME: "${EDM_AUTHENTICATIONS_0_USERNAME}"
       EDM_AUTHENTICATIONS_0_PASSWORD: "${EDM_AUTHENTICATIONS_0_PASSWORD}"
+      REDIS_HOST: redis
     volumes:
       - houston-var:/data
       # FIXME: pull in development code while working on bringing up the container

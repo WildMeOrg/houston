@@ -4,6 +4,7 @@ import base64
 import os
 import redis
 import uuid
+from urllib.parse import urljoin
 
 # Find the stack on which we want to store the database connection.
 # Starting with Flask 0.9, the _app_ctx_stack is the correct one,
@@ -34,6 +35,7 @@ class TusManager(object):
         self.upload_folder = app.config['UPLOADS_DATABASE_PATH']
         self.tus_max_file_size = app.config.get('tus_max_file_size_in_bytes', 4294967296)
         self.file_overwrite = app.config.get('tus_file_overwrite', True)
+        self.redis_host = app.config['REDIS_HOST']
 
         self._register_routes()
         self.app = app
@@ -58,6 +60,7 @@ class TusManager(object):
             'tus-proprietary-get-file-exists',
             self.tus_proprietary_get_file_exists,
             methods=['GET'],
+            provide_automatic_options=False,
         )
         self.blueprint.add_url_rule(
             self.upload_url,
@@ -102,7 +105,7 @@ class TusManager(object):
 
     # handle redis server connection
     def redis_connect(self):
-        return redis.Redis()
+        return redis.Redis(host=self.redis_host)
 
     @property
     def redis_connection(self):
@@ -114,9 +117,11 @@ class TusManager(object):
 
     def _parse_metadata(self):
         metadata = {}
-        for kv in request.headers.get('Upload-Metadata', None).split(','):
-            (key, value) = kv.split(' ')
-            metadata[key] = base64.b64decode(value).decode('utf-8')
+        upload_metadata = request.headers.get('Upload-Metadata')
+        if upload_metadata:
+            for kv in upload_metadata.split(','):
+                (key, value) = kv.split(' ')
+                metadata[key] = base64.b64decode(value).decode('utf-8')
         return metadata
 
     # Untested. Possibly unused.
@@ -133,8 +138,7 @@ class TusManager(object):
 
         (filename_name, extension) = os.path.splitext(metadata.get('filename'))
         if filename_name.upper() in [
-            os.path.splitext(f)[0].upper()
-            for f in os.listdir(os.path.dirname(self.upload_folder))
+            os.path.splitext(f)[0].upper() for f in os.listdir(self.upload_folder)
         ]:
             response.headers['Tus-File-Name'] = metadata.get('filename')
             response.headers['Tus-File-Exists'] = True
@@ -154,7 +158,7 @@ class TusManager(object):
             and url_root.lower().startswith('http:')
         ):
             url_root = 'https://' + url_root[7:]
-        return '{}/{}/{}'.format(url_root, self.upload_url, resource_id)
+        return urljoin(url_root, f'{self.upload_url}/{resource_id}')
 
     def tus_creation_1_create(self):
         """Implements POST to create file according to Tus protocol Creation extension"""
@@ -227,23 +231,13 @@ class TusManager(object):
             # CORS option request, return 200
             return response
 
-        if request.headers.get('Tus-Resumable') is not None:
-            response.headers['Tus-Resumable'] = self.tus_api_version
-            response.headers['Tus-Version'] = self.tus_api_version_supported
+        response.headers['Tus-Resumable'] = self.tus_api_version
+        response.headers['Tus-Version'] = self.tus_api_version_supported
 
-            response.headers['Tus-Extension'] = ','.join(self.tus_api_extensions)
-            response.headers['Tus-Max-Size'] = self.tus_max_file_size
+        response.headers['Tus-Extension'] = ','.join(self.tus_api_extensions)
+        response.headers['Tus-Max-Size'] = self.tus_max_file_size
 
-            response.status_code = 204
-            return response
-
-        else:
-            self.app.logger.warning(
-                'Received File upload for unsupported file transfer protocol'
-            )
-            response.data = 'Received File upload for unsupported file transfer protocol'
-            response.status_code = 500
-
+        response.status_code = 204
         return response
 
     def tus_1_get_resume_info(self, resource_id):

@@ -14,6 +14,14 @@ def test_create_failures(flask_app_client, researcher_1):
     assert response.json['passed_message'] == 'Must have at least one encounter'
     assert not response.json['success']
 
+    # has encounters, zero assetReferences, but fails on bad taxonomy
+    data_in = {'encounters': [{'taxonomy': {'id': '0000000'}}]}
+    response = sighting_utils.create_sighting(
+        flask_app_client, researcher_1, expected_status_code=400, data_in=data_in
+    )
+    assert 'invalid taxonomy' in response.json['passed_message']['details']
+    assert not response.json['success']
+
     # has encounters, but bunk assetReferences
     data_in = {'encounters': [{'assetReferences': [{'fail': 'fail'}]}]}
     response = sighting_utils.create_sighting(

@@ -195,8 +195,11 @@ class Sightings(Resource):
 
         response_data = None
         result_data = None
-        if response.ok:
+        try:
             response_data = response.json()
+        except Exception:
+            pass
+        if response.ok and response_data is not None:
             result_data = response_data.get('result', None)
 
         if (

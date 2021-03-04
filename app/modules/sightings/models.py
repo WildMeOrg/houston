@@ -44,3 +44,9 @@ class Sighting(db.Model, FeatherModel):
     def add_encounter(self, encounter):
         if encounter not in self.encounters:
             self.encounters.append(encounter)
+
+    def delete(self):
+        with db.session.begin():
+            # while self.encounters:  #not going to do this yet!
+            # db.session.delete(self.encounters.pop())
+            db.session.delete(self)

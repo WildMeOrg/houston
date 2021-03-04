@@ -6,6 +6,7 @@ import logging
 import datetime
 import pytz
 
+import flask
 
 log = logging.getLogger(__name__)
 
@@ -183,6 +184,10 @@ class BaseConfig(object):
     REMEMBER_COOKIE_REFRESH_EACH_REQUEST = True
 
     TIMEZONE = pytz.timezone('UTC')
+
+    RESTX_JSON = {
+        'cls': flask.json.JSONEncoder,
+    }
 
 
 class EDMConfig(object):

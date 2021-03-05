@@ -208,7 +208,9 @@ class User(db.Model, FeatherModel, UserEDMMixin):
     is_contributor = _get_is_static_role_property(
         'is_contributor', StaticRoles.CONTRIBUTOR
     )
-    is_user_manager = _get_is_static_role_property('is_user_manager', StaticRoles.USER_MANAGER)
+    is_user_manager = _get_is_static_role_property(
+        'is_user_manager', StaticRoles.USER_MANAGER
+    )
     is_researcher = _get_is_static_role_property('is_researcher', StaticRoles.RESEARCHER)
     is_exporter = _get_is_static_role_property('is_exporter', StaticRoles.EXPORTER)
     is_internal = _get_is_static_role_property('is_internal', StaticRoles.INTERNAL)

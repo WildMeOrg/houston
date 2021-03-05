@@ -89,7 +89,6 @@ class ModuleAccessPermission(Permission):
              whether the current user has enough permissions to perform the action on the class.
         action (ObjectAccessOperation) - READ, WRITE, DELETE supported
         """
-        # Sometimes the obj passed is the object itself, sometimes a list with the object as the first item
         self._module = module
         self._action = action
         super().__init__(**kwargs)
@@ -110,13 +109,35 @@ class ObjectAccessPermission(Permission):
              whether the current user has enough permissions to perform the action on the object.
         action (ObjectAccessOperation) - READ, WRITE, DELETE supported
         """
-        # Sometimes the obj passed is the object itself, sometimes a list with the object as the first item
-        self._obj = obj[0] if isinstance(obj, tuple) else obj
+        self._obj = obj
         self._action = action
         super().__init__(**kwargs)
 
     def rule(self):
         return rules.ObjectActionRule(self._obj, self._action)
+
+
+class ModuleOrObjectAccessPermission(Permission):
+    """
+    Ensure that the current user has sufficient permission to perform the action on the object
+    """
+
+    def __init__(self, module=None, obj=None, action=AccessOperation.READ, **kwargs):
+        """
+        Args:
+        module (class) - any class can be passed here, this functionality will determine
+             whether the current user has enough permissions to perform the action on the class.
+        obj (object) - any object can be passed here, this functionality will determine
+             whether the current user has enough permissions to perform the action on the object.
+        action (ObjectAccessOperation) - READ, WRITE, DELETE supported
+        """
+        self._module = module
+        self._obj = obj
+        self._action = action
+        super().__init__(**kwargs)
+
+    def rule(self):
+        return rules.ModuleOrObjectActionRule(self._module, self._obj, self._action)
 
 
 class RolePermission(Permission):

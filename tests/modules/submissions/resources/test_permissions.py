@@ -7,21 +7,21 @@ from flask import current_app
 
 
 def test_user_read_permissions(
-    flask_app_client, regular_user, readonly_user, db, test_clone_submission_data
+    flask_app_client, researcher_1, readonly_user, db, test_clone_submission_data
 ):
     # Clone as the regular user and then try to reread as both regular and readonly user,
     # read by regular user should succeed, read by readonly user should be blocked
 
     clone = clone_submission(
         flask_app_client,
-        regular_user,
+        researcher_1,
         test_clone_submission_data['submission_uuid'],
         later_usage=True,
     )
 
     try:
         with flask_app_client.login(
-            regular_user,
+            researcher_1,
             auth_scopes=(
                 'submissions:read',
                 'assets:read',

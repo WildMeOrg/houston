@@ -71,7 +71,7 @@ class ModuleActionRule(DenyAbortMixin, Rule):
         """
         Args:
         module (Class) - any class can be passed here, which this functionality will
-            determine whether the current user has enough permissions to perform te action on the class.
+            determine whether the current user has enough permissions to perform the action on the class.
         action (AccessRule) - can be READ, WRITE, DELETE
         """
         self._module = module
@@ -267,6 +267,32 @@ class ObjectActionRule(DenyAbortMixin, Rule):
     def _permitted_via_collaboration(self, user):
         # TODO:
         return False
+
+
+# Some modules are special (Submissions) mad may require both access controls in one
+class ModuleOrObjectActionRule(DenyAbortMixin, Rule):
+    def __init__(self, module=None, obj=None, action=AccessOperation.READ, **kwargs):
+        """
+        Args:
+        obj (object) - any object can be passed here, which this functionality will
+            determine whether the current user has enough permissions to write given object
+            object.
+        module (Class) - any class can be passed here, which this functionality will
+            determine whether the current user has enough permissions to perform the action on the class.
+        action (AccessRule) - can be READ, WRITE, DELETE
+        """
+        self._obj = obj
+        self._action = action
+        self._module = module
+        super().__init__(**kwargs)
+
+    def check(self):
+        assert self._obj is not None or self._module is not None
+        if self._obj:
+            rule = ObjectActionRule(self._obj, self._action)
+        else:
+            rule = ModuleActionRule(self._module, self._action)
+        return rule.check()
 
 
 class ActiveUserRoleRule(DenyAbortMixin, Rule):

@@ -7,8 +7,9 @@ RESTful API Submissions resources
 
 import logging
 import werkzeug
+import uuid
 
-from flask import request
+from flask import request, current_app
 from flask_login import current_user
 from flask_restx_patched import Resource
 from flask_restx_patched._http import HTTPStatus
@@ -167,16 +168,17 @@ class SubmissionsStreamlined(Resource):
     code=HTTPStatus.NOT_FOUND,
     description='Submission not found.',
 )
-@api.resolve_object_by_model(Submission, 'submission', return_not_found=True)
 class SubmissionByID(Resource):
     """
     Manipulations with a specific Submission.
     """
 
+    @api.resolve_object_by_model(Submission, 'submission', return_not_found=True)
     @api.permission_required(
-        permissions.ObjectAccessPermission,
+        permissions.ModuleOrObjectAccessPermission,
         kwargs_on_request=lambda kwargs: {
-            'obj': kwargs['submission'],
+            'module': Submission,
+            'obj': kwargs['submission'][0],
             'action': AccessOperation.READ,
         },
     )
@@ -191,14 +193,24 @@ class SubmissionByID(Resource):
         In this event, check SubmissionManager for remote Submission
         by UUID, if not found, throw 404 as intended
         """
-        submission, submission_guids = submission
 
+        submission, submission_guids = submission
+        if submission is not None:
+            return submission
+
+        # We did not find the submission by its UUID in the Houston databse
+        # We now need to check the SubmissionManager for the existence of that repo
+        submission_guid = submission_guids[0]
+        assert isinstance(submission_guid, uuid.UUID)
+
+        submission = current_app.sub.ensure_submission(submission_guid)
         if submission is None:
             # We have checked the submission manager and cannot find this submission, raise 404 manually
             raise werkzeug.exceptions.NotFound
 
         return submission
 
+    @api.resolve_object_by_model(Submission, 'submission')
     @api.permission_required(
         permissions.ObjectAccessPermission,
         kwargs_on_request=lambda kwargs: {
@@ -214,7 +226,6 @@ class SubmissionByID(Resource):
         """
         Patch Submission details by ID.
         """
-        submission, submission_guids = submission
 
         if submission is None:
             # We have checked the submission manager and cannot find this submission, raise 404 manually
@@ -230,6 +241,7 @@ class SubmissionByID(Resource):
             db.session.merge(submission)
         return submission
 
+    @api.resolve_object_by_model(Submission, 'submission')
     @api.permission_required(
         permissions.ObjectAccessPermission,
         kwargs_on_request=lambda kwargs: {
@@ -244,7 +256,6 @@ class SubmissionByID(Resource):
         """
         Delete a Submission by ID.
         """
-        submission, submission_guids = submission
 
         if submission is None:
             # We have checked the submission manager and cannot find this submission, raise 404 manually

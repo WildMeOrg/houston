@@ -6,13 +6,13 @@ from tests import utils
 
 def test_find_asset(
     flask_app_client,
-    regular_user,
+    researcher_1,
     test_clone_submission_data,
 ):
     # Clone the known submission so that the asset data is in the database
     clone = utils.clone_submission(
         flask_app_client,
-        regular_user,
+        researcher_1,
         test_clone_submission_data['submission_uuid'],
         later_usage=True,
     )
@@ -22,7 +22,7 @@ def test_find_asset(
         test_src_asset = (
             '/api/v1/assets/src/%s' % test_clone_submission_data['asset_uuids'][0]
         )
-        with flask_app_client.login(regular_user, auth_scopes=('assets:read',)):
+        with flask_app_client.login(researcher_1, auth_scopes=('assets:read',)):
             response = flask_app_client.get(test_asset)
             src_response = flask_app_client.get(test_src_asset)
 
@@ -49,14 +49,14 @@ def test_find_asset(
 
 def test_find_deleted_asset(
     flask_app_client,
-    regular_user,
+    researcher_1,
     db,
     test_clone_submission_data,
 ):
     # Clone the known submission so that the asset data is in the database
     clone = utils.clone_submission(
         flask_app_client,
-        regular_user,
+        researcher_1,
         test_clone_submission_data['submission_uuid'],
         later_usage=True,
     )
@@ -69,7 +69,7 @@ def test_find_deleted_asset(
         test_src_asset = (
             '/api/v1/assets/src/%s' % test_clone_submission_data['asset_uuids'][0]
         )
-        with flask_app_client.login(regular_user, auth_scopes=('assets:read',)):
+        with flask_app_client.login(researcher_1, auth_scopes=('assets:read',)):
             response = flask_app_client.get(test_asset)
             src_response = flask_app_client.get(test_src_asset)
 
@@ -96,7 +96,7 @@ def test_find_deleted_asset(
 
 def test_user_asset_permissions(
     flask_app_client,
-    regular_user,
+    researcher_1,
     readonly_user,
     db,
     test_clone_submission_data,
@@ -104,7 +104,7 @@ def test_user_asset_permissions(
     # Clone the known submission so that the asset data is in the database
     clone = utils.clone_submission(
         flask_app_client,
-        regular_user,
+        researcher_1,
         test_clone_submission_data['submission_uuid'],
         later_usage=True,
     )

@@ -108,7 +108,7 @@ class JSONResponse(Response):
 # class with a cleanup method to be called if any assertions fail
 class CloneSubmission(object):
     def __init__(self, flask_app_client, user, submission_uuid, force_clone):
-        from flask import current_app
+        from app.modules.submissions.models import Submission
 
         self.temp_submission = None
         submissions_database_path = config.TestingConfig.SUBMISSIONS_DATABASE_PATH
@@ -123,8 +123,14 @@ class CloneSubmission(object):
                 shutil.rmtree(self.submission_path)
             assert not os.path.exists(self.submission_path)
 
-        # Use a backdoor way to clone this submission from EDM for testing
-        self.temp_submission = current_app.sub.ensure_submission(submission_uuid, user)
+        with flask_app_client.login(user, auth_scopes=('submissions:read',)):
+            self.response = flask_app_client.get(
+                '/api/v1/submissions/%s' % submission_uuid
+            )
+
+        # only store the transient submission for cleanup if the clone worked
+        if self.response.status_code == 200:
+            self.temp_submission = Submission.query.get(self.response.json['guid'])
 
     def remove_files(self):
         if os.path.exists(self.submission_path):

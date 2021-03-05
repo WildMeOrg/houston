@@ -10,6 +10,7 @@ DATA_ROOT = Path(os.getenv('DATA_ROOT', '/data/var'))
 
 class LocalConfig(BaseConfig):
     DEBUG = True
+    REVERSE_PROXY_SETUP = True
 
     PROJECT_DATABASE_PATH = str(DATA_ROOT)
     SUBMISSIONS_DATABASE_PATH = str(DATA_ROOT / 'submissions')

@@ -43,7 +43,7 @@ cd deploy/codex
 docker-compose up
 ```
 
-Surf to http://localhost:83/
+Surf to http://localhost:84/
 
 #### Developer Usage Note
 

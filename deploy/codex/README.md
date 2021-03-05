@@ -15,6 +15,8 @@ For development purposes, this setup exposes each of the services as follows:
 - Sage (Wildbook-IA) - http://localhost:82/
 - Houston - http://localhost:83/
 - pgAdmin - http://localhost:8000/
+- CODEX (frontend) - http://localhost:84/
+- CODEX (api docs) - http://localhost:84/api/v1/
 
 ### Usage
 

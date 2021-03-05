@@ -8,6 +8,8 @@ from . import schemas
 import logging
 import uuid
 
+from .models import Individual
+
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
 
@@ -28,7 +30,7 @@ class PatchIndividualDetailsParameters(PatchJSONParameters):
     # pylint: disable=abstract-method,missing-docstring
     OPERATION_CHOICES = (PatchJSONParameters.OP_REPLACE,)
 
-    VALID_FIELDS = ['encounters']
+    VALID_FIELDS = ['encounters', Individual.guid.key]
     PATH_CHOICES = tuple('/%s' % field for field in (VALID_FIELDS))
 
     @classmethod

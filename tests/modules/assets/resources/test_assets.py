@@ -143,19 +143,17 @@ def test_read_all_assets(
         with flask_app_client.login(researcher_1, auth_scopes=('assets:read',)):
             researcher_response = flask_app_client.get('/api/v1/assets/')
 
-        assert researcher_response.status_code == 200
-        assert researcher_response.content_type == 'application/json'
-        assert len(researcher_response.json) == 2
+        assert admin_response.status_code == 200
+        assert admin_response.content_type == 'application/json'
+        assert len(admin_response.json) == 2
         # both of these lists should be lexical order
         assert (
-            researcher_response.json[0]['guid']
-            == test_clone_submission_data['asset_uuids'][0]
+            admin_response.json[0]['guid'] == test_clone_submission_data['asset_uuids'][0]
         )
         assert (
-            researcher_response.json[1]['guid']
-            == test_clone_submission_data['asset_uuids'][1]
+            admin_response.json[1]['guid'] == test_clone_submission_data['asset_uuids'][1]
         )
-        utils.validate_dict_response(admin_response, 403, {'status', 'message'})
+        utils.validate_dict_response(researcher_response, 403, {'status', 'message'})
 
     except Exception as ex:
         raise ex

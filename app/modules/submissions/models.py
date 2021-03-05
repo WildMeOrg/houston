@@ -17,6 +17,7 @@ import uuid
 import json
 import git
 import os
+import shutil
 
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
@@ -136,8 +137,6 @@ class Submission(db.Model, HoustonModel):
         log.info('Wrote file upload and added to local repo: %r' % (file_repo_path,))
 
     def git_copy_path(self, path):
-        import shutil
-
         absolute_path = os.path.abspath(os.path.expanduser(path))
         if not os.path.exists(path):
             raise IOError('The path %r does not exist.' % (absolute_path,))
@@ -240,7 +239,8 @@ class Submission(db.Model, HoustonModel):
         return repo
 
     @classmethod
-    def create_submission_from_tus(cls, description, owner, transaction_id=None):
+    def create_submission_from_tus(cls, description, owner, transaction_id, paths=None):
+        assert transaction_id is not None
         submission = Submission(
             major_type=SubmissionMajorType.filesystem,
             description=description,
@@ -250,45 +250,78 @@ class Submission(db.Model, HoustonModel):
             db.session.add(submission)
 
         log.info('created submission %r' % submission)
-        paths = submission.import_tus_files(transaction_id=transaction_id)
-        log.info('submission imported %r' % paths)
+        added = None
+        try:
+            added = submission.import_tus_files(
+                transaction_id=transaction_id, paths=paths
+            )
+        except Exception:
+            log.error(
+                'create_submission_from_tus() had problems with import_tus_files(); deleting from db and fs %r'
+                % submission
+            )
+            if os.path.exists(submission.get_absolute_path()):
+                shutil.rmtree(submission.get_absolute_path())
+            with db.session.begin():
+                db.session.delete(submission)
+            raise
+
+        log.info('submission imported %r' % added)
         return submission
 
-    def import_tus_files(self, transaction_id=None):
+    def import_tus_files(self, transaction_id=None, paths=None, purge_dir=True):
+        from app.extensions.tus import tus_upload_dir
+
         self.ensure_repository()
-        # TODO: duplicates Jons latest tus_upload_dir() to be replaced when available
-        if transaction_id:
-            upload_dir = os.path.join(
-                '_db', 'uploads', '-'.join(['trans', transaction_id])
-            )
-        else:
-            upload_dir = os.path.join('_db', 'uploads', '-'.join(['sub', str(self.guid)]))
+        sub_id = None if transaction_id is not None else self.guid
+        upload_dir = tus_upload_dir(
+            current_app, transaction_id=transaction_id, submission_guid=sub_id
+        )
         submission_abspath = self.get_absolute_path()
         submission_path = os.path.join(submission_abspath, '_submission')
         num_files = 0
         paths_added = []
-        for root, dirs, files in os.walk(upload_dir):
-            num_files = len(files)
-            for name in files:
-                paths_added.append(name)
-                log.debug(
-                    'moving upload %r to sub dir %r'
-                    % (
-                        name,
-                        submission_path,
-                    )
-                )
-                os.rename(os.path.join(root, name), os.path.join(submission_path, name))
+        # note: this probably falls apart when subdirs exist
 
+        if paths is not None and len(paths) > 0:
+            log.debug('import_tus_files passed paths=%r' % (paths))
+            for name in paths:
+                # this is where an exception will be thrown if passed a file which we dont have (or other problem)
+                os.rename(
+                    os.path.join(upload_dir, name), os.path.join(submission_path, name)
+                )
+                paths_added.append(name)
+                num_files += 1
+            assert len(paths_added) == len(paths)
+
+        else:  # traverse who upload dir and take everything
+            for root, dirs, files in os.walk(upload_dir):
+                num_files = len(files)
+                for name in files:
+                    paths_added.append(name)
+                    log.debug(
+                        'moving upload %r to sub dir %r'
+                        % (
+                            name,
+                            submission_path,
+                        )
+                    )
+                    os.rename(
+                        os.path.join(root, name), os.path.join(submission_path, name)
+                    )
+
+        assets_added = []
         if num_files > 0:
             log.info('Tus collect for %d files moved' % (num_files))
             self.git_commit('Tus collect commit for %d files.' % (num_files,))
             self.git_push()
+            for asset in self.assets:
+                if asset.path in paths_added:
+                    assets_added.append(asset)
 
-        if transaction_id:
-            os.rmdir(upload_dir)
-
-        return paths_added
+        if purge_dir:
+            shutil.rmtree(upload_dir)  # may have some unclaimed files in it
+        return assets_added
 
     def realize_submission(self):
         """

@@ -20,4 +20,4 @@ class PatchSightingDetailsParameters(PatchJSONParameters):
     # pylint: disable=abstract-method,missing-docstring
     OPERATION_CHOICES = (PatchJSONParameters.OP_REPLACE,)
 
-    PATH_CHOICES = tuple('/%s' % field for field in (Sighting.title.key,))
+    PATH_CHOICES = tuple('/%s' % field for field in (Sighting.guid.key,))

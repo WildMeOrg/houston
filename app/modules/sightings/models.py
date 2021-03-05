@@ -16,21 +16,14 @@ class Sighting(db.Model, FeatherModel):
     guid = db.Column(
         db.GUID, default=uuid.uuid4, primary_key=True
     )  # pylint: disable=invalid-name
-    title = db.Column(db.String(length=50), nullable=False)
+    version = db.Column(db.BigInteger, default=None, nullable=True)
 
     def __repr__(self):
         return (
             '<{class_name}('
             'guid={self.guid}, '
-            "title='{self.title}'"
             ')>'.format(class_name=self.__class__.__name__, self=self)
         )
-
-    @db.validates('title')
-    def validate_title(self, key, title):  # pylint: disable=unused-argument,no-self-use
-        if len(title) < 3:
-            raise ValueError('Title has to be at least 3 characters long.')
-        return title
 
     def get_owners(self):
         owners = []
@@ -51,3 +44,9 @@ class Sighting(db.Model, FeatherModel):
     def add_encounter(self, encounter):
         if encounter not in self.encounters:
             self.encounters.append(encounter)
+
+    def delete(self):
+        with db.session.begin():
+            # while self.encounters:  #not going to do this yet!
+            # db.session.delete(self.encounters.pop())
+            db.session.delete(self)

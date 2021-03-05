@@ -18,7 +18,7 @@ def file_upload_filename():
 
 @pytest.fixture
 def file_upload_submission_id():
-    return 'my-submission-id'
+    return '11111111-1111-1111-1111-111111111111'
 
 
 @pytest.fixture

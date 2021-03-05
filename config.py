@@ -211,7 +211,10 @@ class ProductionConfig(
 
 
 class DevelopmentConfig(
-    BaseConfig, EDMConfig, SubmissionGitLabRemoteConfig, SecretDevelopmentConfig
+    BaseConfig,
+    EDMConfig,
+    SubmissionGitLabRemoteConfig,
+    SecretDevelopmentConfig,
 ):
     DEBUG = True
 

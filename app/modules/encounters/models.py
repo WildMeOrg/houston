@@ -86,10 +86,23 @@ class Encounter(db.Model, FeatherModel):
         with db.session.begin():
             self.add_asset_in_context(asset)
 
+    def add_assets(self, asset_list):
+        with db.session.begin():
+            for asset in asset_list:
+                self.add_asset_in_context(asset)
+
     def add_asset_in_context(self, asset):
         rel = EncounterAssets(encounter=self, asset=asset)
         db.session.add(rel)
         self.assets.append(rel)
+
+    def add_asset_no_context(self, asset):
+        rel = EncounterAssets(encounter_guid=self.guid, asset_guid=asset.guid)
+        self.assets.append(rel)
+
+    def add_assets_no_context(self, asset_list):
+        for asset in asset_list:
+            self.add_asset_no_context(asset)
 
     def delete(self):
         with db.session.begin():

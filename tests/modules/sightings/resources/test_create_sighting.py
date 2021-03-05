@@ -51,6 +51,8 @@ def test_create_and_delete_sighting(db, flask_app_client, researcher_1):
     from app.modules.sightings.models import Sighting
     from app.modules.encounters.models import Encounter
     import datetime
+    import os
+    import shutil
 
     timestamp = datetime.datetime.now().isoformat()
     transaction_id, test_filename = sighting_utils.prep_tus_dir()
@@ -76,8 +78,16 @@ def test_create_and_delete_sighting(db, flask_app_client, researcher_1):
 
     # until DELETE api is completed, this is our cleanup  FIXME
     encounter = Encounter.query.get(encounter_id)
+
+    # clean up submission
+    sub = encounter.get_assets()[0].submission
     # encounter.delete_from_edm(current_app)
     encounter.delete()
+
+    # now can delete sub since assets arent connected to enc
+    if os.path.exists(sub.get_absolute_path()):
+        shutil.rmtree(sub.get_absolute_path())
+    sub.delete()
 
     sighting = Sighting.query.get(sighting_id)
     # sighting.delete_from_edm(current_app)  # TODO not yet implemented!

@@ -12,10 +12,14 @@ from flask import current_app
 PATH = '/api/v1/sightings/'
 
 
+def get_transaction_id():
+    return '11111111-1111-1111-1111-111111111111'
+
+
 def prep_tus_dir():
     from app.extensions.tus import tus_upload_dir
 
-    transaction_id = '11111111-1111-1111-1111-111111111111'
+    transaction_id = get_transaction_id()
     import os
     import shutil
 

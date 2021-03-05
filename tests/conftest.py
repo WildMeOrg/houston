@@ -92,11 +92,11 @@ def readonly_user(temp_db_instance_helper):
 
 
 @pytest.fixture(scope='session')
-def user_admin_user(temp_db_instance_helper):
+def user_manager_user(temp_db_instance_helper):
     for _ in temp_db_instance_helper(
         utils.generate_user_instance(
             email='useradmin@localhost',
-            is_user_admin=True,
+            is_user_manager=True,
         )
     ):
         yield _
@@ -283,9 +283,9 @@ def admin_user_login(flask_app, admin_user):
 
 
 @pytest.fixture()
-def user_admin_user_login(flask_app, user_admin_user):
+def user_manager_user_login(flask_app, user_manager_user):
     with flask_app.test_request_context('/'):
-        login_user(user_admin_user)
+        login_user(user_manager_user)
         yield current_user
         logout_user()
 

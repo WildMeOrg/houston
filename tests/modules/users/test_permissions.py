@@ -360,7 +360,7 @@ def test_ModuleAccessPermission_admin_user(admin_user_login):
     validate_cannot_delete_module(Submission)
 
 
-def test_ModuleAccessPermission_user_admin_user(user_admin_user_login):
+def test_ModuleAccessPermission_user_manager_user(user_manager_user_login):
     # pylint: disable=unused-argument
     from app.modules.users.models import User
     from app.modules.submissions.models import Submission

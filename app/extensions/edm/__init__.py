@@ -64,6 +64,10 @@ class EDMManagerEndpointMixin(object):
             'data': '//v0/org.ecocean.Occurrence/%s',
             'data_complete': '//v0/org.ecocean.Occurrence/%s?detail-org.ecocean.Occurrence=max&detail-org.ecocean.Encounter=max',
         },
+        'individual': {
+            'list': '//v0/org.ecocean.MarkedIndividual/list',
+            'data': '//v0/org.ecocean.MarkedIndividual/%s',
+        },
         'organization': {
             'list': '//v0/org.ecocean.Organization/list',
             'data': '//v0/org.ecocean.Organization/%s',

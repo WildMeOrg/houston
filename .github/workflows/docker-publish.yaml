@@ -24,29 +24,26 @@ jobs:
       - name: Log into GitHub Packages
         run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login docker.pkg.github.com -u ${{ github.actor }} --password-stdin
 
-      # Push containers out to container registries
+      # ############################################################
+      # Push Tagged image to registries
       - name: Push to GitHub Packages
         if: ${{ github.event_name == 'push' && startsWith(github.event.ref, 'refs/tags/v') }}
         run: |
           VERSION=$(echo ${GITHUB_REF} | sed 's#.*/v##')
           ./scripts/publish.sh -t ${VERSION} -r docker.pkg.github.com houston
-          ./scripts/publish.sh -t latest -r docker.pkg.github.com houston
-
       - name: Push to Docker Hub
         if: ${{ github.event_name == 'push' && startsWith(github.event.ref, 'refs/tags/v') }}
         run: |
           VERSION=$(echo ${GITHUB_REF} | sed 's#.*/v##')
           ./scripts/publish.sh -t ${VERSION} houston
-          ./scripts/publish.sh -t latest houston
 
-      # Notify status in Slack
-      - name: Slack Notification
-        if: ${{ failure() }}
-        uses: rtCamp/action-slack-notify@master
-        env:
-          SLACK_CHANNEL: ia-development
-          SLACK_COLOR: '#FF0000'
-          SLACK_ICON: https://avatars.slack-edge.com/2020-03-02/965719891842_db87aa21ccb61076f236_44.png
-          SLACK_MESSAGE: 'Latest (tagged) build failed :sob:'
-          SLACK_USERNAME: "Latest"
-          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+      # ############################################################
+      # Push latest image to registries
+      - name: Push to GitHub Packages
+        if: github.ref == 'refs/heads/develop'
+        run: |
+          ./scripts/publish.sh -t latest -r docker.pkg.github.com houston
+      - name: Push to Docker Hub
+        if: github.ref == 'refs/heads/develop'
+        run: |
+          ./scripts/publish.sh -t latest houston

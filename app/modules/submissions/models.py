@@ -17,6 +17,7 @@ import uuid
 import json
 import git
 import os
+import shutil
 
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
@@ -136,8 +137,6 @@ class Submission(db.Model, HoustonModel):
         log.info('Wrote file upload and added to local repo: %r' % (file_repo_path,))
 
     def git_copy_path(self, path):
-        import shutil
-
         absolute_path = os.path.abspath(os.path.expanduser(path))
         if not os.path.exists(path):
             raise IOError('The path %r does not exist.' % (absolute_path,))
@@ -258,9 +257,11 @@ class Submission(db.Model, HoustonModel):
             )
         except Exception:
             log.error(
-                'create_submission_from_tus() had problems with import_tus_files(); deleting from db %r'
+                'create_submission_from_tus() had problems with import_tus_files(); deleting from db and fs %r'
                 % submission
             )
+            if os.path.exists(submission.get_absolute_path()):
+                shutil.rmtree(submission.get_absolute_path())
             with db.session.begin():
                 db.session.delete(submission)
             raise
@@ -270,7 +271,6 @@ class Submission(db.Model, HoustonModel):
 
     def import_tus_files(self, transaction_id=None, paths=None, purge_dir=True):
         from app.extensions.tus import tus_upload_dir
-        import shutil
 
         self.ensure_repository()
         sub_id = None if transaction_id is not None else self.guid

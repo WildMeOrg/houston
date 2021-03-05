@@ -7,6 +7,9 @@ import json
 import config
 from tests import utils as test_utils
 from flask import current_app
+import os
+import shutil
+from app.extensions.tus import tus_upload_dir
 
 
 PATH = '/api/v1/sightings/'
@@ -17,11 +20,7 @@ def get_transaction_id():
 
 
 def prep_tus_dir():
-    from app.extensions.tus import tus_upload_dir
-
     transaction_id = get_transaction_id()
-    import os
-    import shutil
 
     filename = 'zebra.jpg'
     image_file = os.path.join(
@@ -38,6 +37,13 @@ def prep_tus_dir():
     size = os.path.getsize(image_file)
     assert size > 0
     return transaction_id, filename
+
+
+# should always follow the above when finished
+def cleanup_tus_dir(tid):
+    upload_dir = tus_upload_dir(current_app, transaction_id=tid)
+    if os.path.exists(upload_dir):
+        shutil.rmtree(upload_dir)
 
 
 # note: default data_in will fail

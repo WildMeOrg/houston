@@ -44,6 +44,7 @@ def test_create_failures(flask_app_client, researcher_1):
         response.json['passed_message'] == 'Invalid assetReference data in encounter(s)'
     )
     assert not response.json['success']
+    sighting_utils.cleanup_tus_dir(transaction_id)
 
 
 def test_create_and_delete_sighting(db, flask_app_client, researcher_1):
@@ -92,3 +93,4 @@ def test_create_and_delete_sighting(db, flask_app_client, researcher_1):
     sighting = Sighting.query.get(sighting_id)
     # sighting.delete_from_edm(current_app)  # TODO not yet implemented!
     sighting.delete()
+    sighting_utils.cleanup_tus_dir(transaction_id)

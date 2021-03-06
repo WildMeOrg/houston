@@ -1,9 +1,7 @@
 # -*- coding: utf-8 -*-
 import base64
-import hashlib
 import os
 import pathlib
-import re
 import shutil
 import urllib.parse
 
@@ -262,10 +260,12 @@ def test_tus_corner_cases(flask_app, flask_app_client, file_upload_filename):
     )
     assert response.status_code == 204
 
-    session = re.search('session=([^;]*)', response.headers['Set-Cookie']).group(1)
-    hashed_session = hashlib.sha256(session.encode('utf-8')).hexdigest()
     upload_dir = pathlib.Path(flask_app.config['UPLOADS_DATABASE_PATH'])
-    uploaded_file = upload_dir / f'session-{hashed_session}' / file_upload_filename
-    with uploaded_file.open('r') as f:
-        assert f.read() == a_txt
-    shutil.rmtree(uploaded_file.parent)
+    found_one = False
+    for fname in upload_dir.glob(f'session-*/{file_upload_filename}'):
+        uploaded_file = pathlib.Path(fname)
+        with uploaded_file.open('r') as f:
+            if f.read() == a_txt:
+                found_one = True
+                shutil.rmtree(uploaded_file.parent)
+    assert found_one, 'Could not find uploaded file'

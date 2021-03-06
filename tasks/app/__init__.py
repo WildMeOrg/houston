@@ -7,6 +7,7 @@ from invoke import Collection
 
 from tasks.app import (
     assets,
+    fileuploads,
     boilerplates,
     config,
     consistency,
@@ -29,6 +30,7 @@ from config import BaseConfig
 
 namespace = Collection(
     assets,
+    fileuploads,
     boilerplates,
     config,
     consistency,

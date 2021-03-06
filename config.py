@@ -83,8 +83,11 @@ class BaseConfig(object):
         '.tiff',
     ]
 
+    # specifically this is where tus "temporary" files go
     UPLOADS_DATABASE_PATH = os.path.join(PROJECT_DATABASE_PATH, 'uploads')
     REDIS_HOST = os.getenv('REDIS_HOST') or 'localhost'
+
+    FILEUPLOAD_BASE_PATH = os.path.join(PROJECT_DATABASE_PATH, 'fileuploads')
 
     SQLALCHEMY_DATABASE_PATH = os.path.join(PROJECT_DATABASE_PATH, 'database.sqlite3')
     SQLALCHEMY_DATABASE_URI = os.getenv('SQLALCHEMY_DATABASE_URI') or 'sqlite:///%s' % (

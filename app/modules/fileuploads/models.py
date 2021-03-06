@@ -23,7 +23,6 @@ class FileUpload(db.Model, HoustonModel):
     guid = db.Column(
         db.GUID, default=uuid.uuid4, primary_key=True
     )  # pylint: disable=invalid-name
-    path = db.Column(db.String, nullable=False)
     mime_type = db.Column(db.String, index=True, nullable=False)
     owner_guid = db.Column(db.GUID, db.ForeignKey('user.guid'), index=True, nullable=True)
     owner = db.relationship('User', backref=db.backref('owned_fileuploads'))
@@ -32,7 +31,6 @@ class FileUpload(db.Model, HoustonModel):
         return (
             '<{class_name}('
             'guid={self.guid}, '
-            'path="{self.path}", '
             'mime_type="{self.mime_type}", '
             'absolute_path="{abspath}", '
             ')>'.format(
@@ -72,12 +70,8 @@ class FileUpload(db.Model, HoustonModel):
             fup.move_from_path(source_path)
         return fup
 
-    # both copy and move will attempt construct self.path if none is set and these are currently constructive (overwrite)
-    #  probably want to have a better target-path decision!  like maybe a subdir per user (uuid) or something....
     def copy_from_path(self, source_path):
         assert os.path.getsize(source_path) > 0
-        if self.path is None:
-            self.path = os.path.basename(source_path)
         log.debug(
             'copy_from_path: %r to %r for %r'
             % (
@@ -86,13 +80,12 @@ class FileUpload(db.Model, HoustonModel):
                 self,
             )
         )
+        os.makedirs(os.path.dirname(self.get_absolute_path()), exist_ok=True)
         shutil.copyfile(source_path, self.get_absolute_path())
         self.derive_mime_type()
 
     def move_from_path(self, source_path):
         assert os.path.getsize(source_path) > 0
-        if self.path is None:
-            self.path = os.path.basename(source_path)
         log.debug(
             'move_from_path: %r to %r for %r'
             % (
@@ -101,6 +94,7 @@ class FileUpload(db.Model, HoustonModel):
                 self,
             )
         )
+        os.makedirs(os.path.dirname(self.get_absolute_path()), exist_ok=True)
         shutil.move(source_path, self.get_absolute_path())
         self.derive_mime_type()
 
@@ -108,7 +102,11 @@ class FileUpload(db.Model, HoustonModel):
     def get_absolute_path(self):
         base_path = current_app.config.get('FILEUPLOAD_BASE_PATH', None)
         assert base_path is not None
-        return os.path.join(base_path, self.path)
+        assert self.guid is not None
+        user_path = '00000000-0000-0000-0000-000000000000'  # for owner-less
+        if self.owner is not None:
+            user_path = str(self.owner.guid)
+        return os.path.join(base_path, user_path, str(self.guid))
 
     def derive_mime_type(self):
         import magic

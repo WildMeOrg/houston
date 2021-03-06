@@ -139,6 +139,7 @@ class BaseConfig(object):
         'assets',
 
         # Miscellaneous
+        'fileuploads',
         'collaborations',
         'notifications',
         'encounters',

@@ -18,4 +18,9 @@ def from_file(context, filepath):
     from app.modules.fileuploads.models import FileUpload
 
     fup = FileUpload.create_fileupload_from_path(filepath, None, copy=True)
+
+    from app.extensions import db
+
+    with db.session.begin():
+        db.session.add(fup)
     print(fup)

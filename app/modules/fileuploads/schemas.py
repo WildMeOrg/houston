@@ -31,6 +31,8 @@ class DetailedFileUploadSchema(BaseFileUploadSchema):
         fields = BaseFileUploadSchema.Meta.fields + (
             FileUpload.created.key,
             FileUpload.updated.key,
+            FileUpload.mime_type.key,
+            'src',
         )
         dump_only = BaseFileUploadSchema.Meta.dump_only + (
             FileUpload.created.key,

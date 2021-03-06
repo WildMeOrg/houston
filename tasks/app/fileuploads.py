@@ -24,3 +24,20 @@ def from_file(context, filepath):
     with db.session.begin():
         db.session.add(fup)
     print(fup)
+
+
+@app_context_task(
+    help={
+        'guid': 'FileUpload guid',
+    }
+)
+def delete(context, guid):
+    """
+    Delete a FileUpload (and file)
+    """
+    from app.modules.fileuploads.models import FileUpload
+
+    fup = FileUpload.query.get(guid)
+    if fup is None:
+        raise Exception('FileUpload with this guid does not exist.')
+    fup.delete()

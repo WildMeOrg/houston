@@ -7,6 +7,7 @@ RESTful API FileUploads resources
 
 import logging
 
+from flask import send_file
 from flask_login import current_user  # NOQA
 from flask_restx_patched import Resource
 from flask_restx_patched._http import HTTPStatus
@@ -93,13 +94,14 @@ class FileUploadByID(Resource):
     Manipulations with a specific FileUpload.
     """
 
-    @api.permission_required(
-        permissions.ObjectAccessPermission,
-        kwargs_on_request=lambda kwargs: {
-            'obj': kwargs['fileupload'],
-            'action': AccessOperation.READ,
-        },
-    )
+    # TODO fix permissions
+    # @api.permission_required(
+    # permissions.ObjectAccessPermission,
+    # kwargs_on_request=lambda kwargs: {
+    #'obj': kwargs['fileupload'],
+    #'action': AccessOperation.READ,
+    # },
+    # )
     @api.response(schemas.DetailedFileUploadSchema())
     def get(self, fileupload):
         """
@@ -148,3 +150,25 @@ class FileUploadByID(Resource):
         """
         fileupload.delete()
         return None
+
+
+# NOTE format not yet implemented; just mimicking asset endpoints
+@api.route('/src/<uuid:fileupload_guid>', defaults={'format': 'master'}, doc=False)
+@api.route('/src/<string:format>/<uuid:fileupload_guid>')
+@api.login_required(oauth_scopes=['fileuploads:read'])
+@api.response(
+    code=HTTPStatus.NOT_FOUND,
+    description='FileUpload not found.',
+)
+@api.resolve_object_by_model(FileUpload, 'fileupload')
+class FileUploadSrcUByID(Resource):
+    # TODO fix permissions
+    # @api.permission_required(
+    # permissions.ObjectAccessPermission,
+    # kwargs_on_request=lambda kwargs: {
+    #'obj': kwargs['fileupload'],
+    #'action': AccessOperation.READ,
+    # },
+    # )
+    def get(self, fileupload, format):
+        return send_file(fileupload.get_absolute_path(), fileupload.mime_type)

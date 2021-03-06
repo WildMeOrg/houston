@@ -41,9 +41,11 @@ class FileUpload(db.Model, HoustonModel):
         )
 
     def delete(self):
-        # TODO cleanup file(s)
+        filepath = self.get_absolute_path()
         with db.session.begin():
             db.session.delete(self)
+        if os.path.exists(filepath):
+            os.remove(filepath)
 
     @classmethod
     # this is singular, so single (tus)path required
@@ -107,6 +109,10 @@ class FileUpload(db.Model, HoustonModel):
         if self.owner is not None:
             user_path = str(self.owner.guid)
         return os.path.join(base_path, user_path, str(self.guid))
+
+    @property
+    def src(self):
+        return '/api/v1/fileuploads/src/%s' % (str(self.guid),)
 
     def derive_mime_type(self):
         import magic

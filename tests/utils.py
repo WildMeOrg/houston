@@ -128,6 +128,12 @@ class CloneSubmission(object):
                 '/api/v1/submissions/%s' % submission_uuid
             )
 
+        if self.response.status_code == 428:
+            # need to do a post to call the ensure_submission
+            with flask_app_client.login(user, auth_scopes=('submissions:read',)):
+                self.response = flask_app_client.post(
+                    '/api/v1/submissions/%s' % submission_uuid
+                )
         # only store the transient submission for cleanup if the clone worked
         if self.response.status_code == 200:
             self.temp_submission = Submission.query.get(self.response.json['guid'])

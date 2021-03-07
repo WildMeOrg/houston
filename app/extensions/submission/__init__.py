@@ -254,6 +254,14 @@ class SubmissionManager(object):
 
         return repo
 
+    def is_submission_on_remote(self, submission_uuid):
+
+        self.ensure_initialed()
+
+        # Try to find remote project by Submission UUID
+        projects = self.gl.projects.list(search=str(submission_uuid))
+        return len(projects) == 1
+
     def ensure_submission(self, submission_uuid, owner=None):
         from app.modules.submissions.models import Submission
 

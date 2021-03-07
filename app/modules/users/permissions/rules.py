@@ -98,7 +98,10 @@ class ModuleActionRule(DenyAbortMixin, Rule):
                 current_user.is_active
                 & self._can_user_perform_action(current_user)
             )
-
+        if not has_permission:
+            log.debug(
+                'Access permission denied for %r by %r' % (self._module, current_user)
+            )
         return has_permission
 
     # Helper to identify what the module is
@@ -189,6 +192,8 @@ class ObjectActionRule(DenyAbortMixin, Rule):
                     | self._permitted_via_collaboration(current_user)
                 )
             )
+        if not has_permission:
+            log.debug('Access permission denied for %r by %r' % (self._obj, current_user))
         return has_permission
 
     def _permitted_via_user(self, user):
@@ -287,12 +292,17 @@ class ModuleOrObjectActionRule(DenyAbortMixin, Rule):
         super().__init__(**kwargs)
 
     def check(self):
+        from app.modules.submissions.models import Submission
+
+        has_permission = False
         assert self._obj is not None or self._module is not None
         if self._obj:
-            rule = ObjectActionRule(self._obj, self._action)
+            has_permission = ObjectActionRule(self._obj, self._action).check()
         else:
-            rule = ModuleActionRule(self._module, self._action)
-        return rule.check()
+            if self._module == Submission:
+                has_permission = current_user.is_researcher
+
+        return has_permission
 
 
 class ActiveUserRoleRule(DenyAbortMixin, Rule):

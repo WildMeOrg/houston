@@ -192,16 +192,7 @@ class EncounterByID(Resource):
         if not isinstance(response, dict):  # some non-200 thing, incl 404
             return response
 
-        if len(encounter.assets) > 0:
-            from app.modules.assets.schemas import DetailedAssetSchema
-
-            sch = DetailedAssetSchema(many=False, only=('guid', 'filename', 'src'))
-            response['result']['assets'] = []
-            for asset in encounter.get_assets():
-                json, err = sch.dump(asset)
-                response['result']['assets'].append(json)
-
-        return response['result']
+        return encounter.augment_edm_json(response['result'])
 
     @api.permission_required(
         permissions.ObjectAccessPermission,

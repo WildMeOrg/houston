@@ -183,6 +183,8 @@ jobs:
         run: |
           source virtualenv/houston3.7/bin/activate
           pytest -s -v --gitlab-remote-login-pat "${{ secrets.GITLAB_REMOTE_LOGIN_PAT }}" --cov=./ --cov-append
+          pytest -s -v -m separate tests/test_transactions.py::test_transactions[None-request_transaction] --cov-append
+          pytest -s -v -m separate tests/test_transactions.py::test_transactions[None-commit_or_abort] --cov-append
 
       - name: Run other invoke tasks for coverage and errors
         if: matrix.python-version == '3.9'

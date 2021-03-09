@@ -358,12 +358,19 @@ class SightingByID(Resource):
             'action': AccessOperation.READ,
         },
     )
-    @api.response(schemas.DetailedSightingSchema())
     def get(self, sighting):
         """
         Get Sighting details by ID.
         """
-        return sighting
+
+        # note: should probably _still_ check edm for: stale cache, deletion!
+        #      user.edm_sync(version)
+
+        response = current_app.edm.get_dict('sighting.data_complete', sighting.guid)
+        if not isinstance(response, dict):  # some non-200 thing, incl 404
+            return response
+
+        return sighting.augment_edm_json(response['result'])
 
     @api.permission_required(
         permissions.ObjectAccessPermission,

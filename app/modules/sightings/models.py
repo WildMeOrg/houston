@@ -6,6 +6,9 @@ Sightings database models
 
 from app.extensions import FeatherModel, db
 import uuid
+import logging
+
+log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
 
 class Sighting(db.Model, FeatherModel):
@@ -50,3 +53,20 @@ class Sighting(db.Model, FeatherModel):
             # while self.encounters:  #not going to do this yet!
             # db.session.delete(self.encounters.pop())
             db.session.delete(self)
+
+    # given edm_json (verbose json from edm) will populate with houston-specific data from feather object
+    # note: this modifies the passed in edm_json, so not sure how legit that is?
+    def augment_edm_json(self, edm_json):
+        if (self.encounters is not None and edm_json['encounters'] is None) or (
+            self.encounters is None and edm_json['encounters'] is not None
+        ):
+            log.warning('Only one None encounters value between edm/feather objects!')
+        if self.encounters is not None and edm_json['encounters'] is not None:
+            if len(self.encounters) != len(edm_json['encounters']):
+                log.warning('Imbalanced encounters between edm/feather objects!')
+            else:
+                i = 0
+                while i < len(self.encounters):  # now we augment each encounter
+                    self.encounters[i].augment_edm_json(edm_json['encounters'][i])
+                    i += 1
+        return edm_json

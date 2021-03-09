@@ -181,12 +181,8 @@ class EncounterByID(Resource):
         Get Encounter full details by ID.
         """
 
-        if encounter is not None:
-            print('####### found encounter within houston : %s' % (encounter,))
-            # note: should probably _still_ check edm for: stale cache, deletion!
-            #      user.edm_sync(version)
-            # return encounter
-            # return True
+        # note: should probably _still_ check edm for: stale cache, deletion!
+        #      user.edm_sync(version)
 
         response = current_app.edm.get_dict('encounter.data_complete', encounter.guid)
         if not isinstance(response, dict):  # some non-200 thing, incl 404

@@ -226,18 +226,12 @@ class EDMManager(EDMManagerEndpointMixin, EDMManagerUserMixin):
 
         key_list = sorted(key_list)
 
-        assert '0' in key_list, 'EDM_URIS must contain a string key "0"'
+        assert 'default' in key_list, 'EDM_URIS must contain a string key "default"'
         assert len(key_list) == len(set(key_list)), 'EDM_URIS cannot contain duplicates'
-        assert key_list[0] == '0', 'EDM_URIS is mis-configured'
-        # assert key_list[-1] == len(key_list) - 1, 'EDM_URIS is mis-configured'  FIXME is there a string-equivalent here?
 
         uris = {}
         auths = {}
         for key in key_list:
-            if key == '0':
-                uris['default'] = edm_uri_dict[key]
-                auths['default'] = edm_authentication_dict[key]
-                self.targets.add('default')
             uris[key] = edm_uri_dict[key]
             auths[key] = edm_authentication_dict[key]
             self.targets.add(key)

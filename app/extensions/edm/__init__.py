@@ -62,7 +62,7 @@ class EDMManagerEndpointMixin(object):
         'sighting': {
             'list': '//v0/org.ecocean.Occurrence/list',
             'data': '//v0/org.ecocean.Occurrence/%s',
-            #'data_complete': '//v0/org.ecocean.Encounter/%s?detail-org.ecocean.Encounter=max',
+            'data_complete': '//v0/org.ecocean.Occurrence/%s?detail-org.ecocean.Occurrence=max&detail-org.ecocean.Encounter=max',
         },
         'organization': {
             'list': '//v0/org.ecocean.Organization/list',
@@ -330,7 +330,7 @@ class EDMManager(EDMManagerEndpointMixin, EDMManagerUserMixin):
         if tag is None:
             assert endpoint is not None
 
-        endpoint_encoded = requests.utils.quote(endpoint, safe='/?:=')
+        endpoint_encoded = requests.utils.quote(endpoint, safe='/?:=&')
 
         if verbose:
             log.info('Sending request to: %r' % (endpoint_encoded,))

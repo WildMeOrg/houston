@@ -64,8 +64,6 @@ class FileUpload(db.Model, HoustonModel):
         db.GUID, default=uuid.uuid4, primary_key=True
     )  # pylint: disable=invalid-name
     mime_type = db.Column(db.String, index=True, nullable=False)
-    owner_guid = db.Column(db.GUID, db.ForeignKey('user.guid'), index=True, nullable=True)
-    owner = db.relationship('User', backref=db.backref('owned_fileuploads'))
 
     def __repr__(self):
         return (
@@ -90,33 +88,32 @@ class FileUpload(db.Model, HoustonModel):
     # this is singular, so single (tus)path required
     #   note: this is 'path' from { transaction_id, path } in tus args.  sorry so many things called path.
     @classmethod
-    def create_fileupload_from_tus(cls, transaction_id, owner, path):
+    def create_fileupload_from_tus(cls, transaction_id, path):
         assert transaction_id is not None
         assert path is not None
         source_path = _tus_filepath_from(transaction_id, path)
-        fup = FileUpload.create_fileupload_from_path(source_path, owner)
+        fup = FileUpload.create_fileupload_from_path(source_path)
         _tus_purge(transaction_id)
         return fup
 
     # plural paths is optional (will do all files in dir if skipped)
     @classmethod
-    def create_fileuploads_from_tus(cls, transaction_id, owner, paths=None):
+    def create_fileuploads_from_tus(cls, transaction_id, paths=None):
         assert transaction_id is not None
         source_paths = _tus_filepaths_from(transaction_id, paths)
         if source_paths is None or len(source_paths) < 1:
             return None
         fups = []
         for source_path in source_paths:
-            fups.append(FileUpload.create_fileupload_from_path(source_path, owner))
+            fups.append(FileUpload.create_fileupload_from_path(source_path))
         _tus_purge(transaction_id)
         return fups
 
     @classmethod
     # default behavior is to *move*
-    def create_fileupload_from_path(cls, source_path, owner, copy=False):
+    def create_fileupload_from_path(cls, source_path, copy=False):
         assert source_path is not None
         fup = FileUpload()
-        fup.owner = owner
         if copy:
             fup.copy_from_path(source_path)
         else:

@@ -314,15 +314,12 @@ class SubmissionByID(Resource):
         """
         submission = self._get_submission_with_428(submission)
 
-        if submission is None:
-            # TODO Shouldn't this be a 204 No Content?
-            raise werkzeug.exceptions.NotFound
-
-        context = api.commit_or_abort(
-            db.session, default_error_message='Failed to delete the Submission.'
-        )
-        with context:
-            db.session.delete(submission)
+        if submission is not None:
+            context = api.commit_or_abort(
+                db.session, default_error_message='Failed to delete the Submission.'
+            )
+            with context:
+                db.session.delete(submission)
         return None
 
 

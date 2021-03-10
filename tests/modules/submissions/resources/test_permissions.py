@@ -2,6 +2,7 @@
 # pylint: disable=missing-docstring
 from tests.utils import clone_submission
 import json
+import uuid
 
 from flask import current_app
 
@@ -9,8 +10,8 @@ from flask import current_app
 def test_user_read_permissions(
     flask_app_client, researcher_1, readonly_user, db, test_clone_submission_data
 ):
-    # Clone as the regular user and then try to reread as both regular and readonly user,
-    # read by regular user should succeed, read by readonly user should be blocked
+    # Clone as the researcher user and then try to reread as both researcher and readonly user,
+    # read by researcher user should succeed, read by readonly user should be blocked
 
     clone = clone_submission(
         flask_app_client,
@@ -66,7 +67,7 @@ def test_user_read_permissions(
         clone.cleanup()
 
 
-def test_create_patch_submission(flask_app_client, regular_user, readonly_user, db):
+def test_create_patch_submission(flask_app_client, researcher_1, readonly_user, db):
     # pylint: disable=invalid-name
     submission_guid = None
 
@@ -75,7 +76,7 @@ def test_create_patch_submission(flask_app_client, regular_user, readonly_user, 
 
         test_major_type = SubmissionMajorType.test
 
-        with flask_app_client.login(regular_user, auth_scopes=('submissions:write',)):
+        with flask_app_client.login(researcher_1, auth_scopes=('submissions:write',)):
             create_response = flask_app_client.post(
                 '/api/v1/submissions/',
                 data=json.dumps(
@@ -105,7 +106,7 @@ def test_create_patch_submission(flask_app_client, regular_user, readonly_user, 
             )
         assert readonly_patch_response.status_code == 403
 
-        with flask_app_client.login(regular_user, auth_scopes=('submissions:write',)):
+        with flask_app_client.login(researcher_1, auth_scopes=('submissions:write',)):
             # try to change very polite description slightly and type
             service_major_type = SubmissionMajorType.test
 
@@ -135,11 +136,25 @@ def test_create_patch_submission(flask_app_client, regular_user, readonly_user, 
             )
         assert readonly_delete_response.status_code == 403
 
-        with flask_app_client.login(regular_user, auth_scopes=('submissions:write',)):
+        with flask_app_client.login(researcher_1, auth_scopes=('submissions:write',)):
             regular_delete_response = flask_app_client.delete(
                 '/api/v1/submissions/%s' % submission_guid
             )
         assert regular_delete_response.status_code == 204
+
+        # And if the submission is already gone, a re attempt at deletion should get the same response
+        with flask_app_client.login(researcher_1, auth_scopes=('submissions:write',)):
+            regular_delete_response = flask_app_client.delete(
+                '/api/v1/submissions/%s' % submission_guid
+            )
+        assert regular_delete_response.status_code == 428
+
+        with flask_app_client.login(researcher_1, auth_scopes=('submissions:write',)):
+            regular_delete_response = flask_app_client.delete(
+                '/api/v1/submissions/%s' % uuid.uuid4()
+            )
+        assert regular_delete_response.status_code == 204
+
     except Exception as ex:
         raise ex
     finally:

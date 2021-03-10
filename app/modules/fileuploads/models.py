@@ -83,6 +83,7 @@ class FileUpload(db.Model, HoustonModel):
         with db.session.begin():
             db.session.delete(self)
         if os.path.exists(filepath):
+            log.debug('FileUpload delete removing file %r' % self.get_absolute_path())
             os.remove(filepath)
 
     # this is singular, so single (tus)path required
@@ -130,7 +131,7 @@ class FileUpload(db.Model, HoustonModel):
                 self,
             )
         )
-        os.makedirs(self.dirname(), exist_ok=True)
+        os.makedirs(self.get_absolute_dirname(), exist_ok=True)
         shutil.copyfile(source_path, self.get_absolute_path())
         self.derive_mime_type()
 
@@ -153,12 +154,9 @@ class FileUpload(db.Model, HoustonModel):
         base_path = current_app.config.get('FILEUPLOAD_BASE_PATH', None)
         assert base_path is not None
         assert self.guid is not None
-        user_path = '00000000-0000-0000-0000-000000000000'  # for owner-less
-        if self.owner is not None:
-            user_path = str(self.owner.guid)
-        return os.path.join(base_path, user_path, str(self.guid))
+        return os.path.join(base_path, self.relative_dirpath(), str(self.guid))
 
-    def dirname(self):
+    def get_absolute_dirname(self):
         return os.path.dirname(self.get_absolute_path())
 
     @property
@@ -169,3 +167,13 @@ class FileUpload(db.Model, HoustonModel):
         import magic
 
         self.mime_type = magic.from_file(self.get_absolute_path(), mime=True)
+
+    # this is relative path, based on first 4 chars of guid, e.g. 'ab/cd' for 'abcd000e-7320-4072-80aa-2304989dc8d3'
+    def relative_dirpath(self):
+        return FileUpload.dirpath_from_guid(self.guid)
+
+    @classmethod
+    def dirpath_from_guid(cls, guid):
+        assert isinstance(guid, uuid.UUID)
+        s = str(guid)
+        return os.path.join(s[0:2], s[2:4])

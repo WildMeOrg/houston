@@ -17,7 +17,7 @@ def from_file(context, filepath):
     """
     from app.modules.fileuploads.models import FileUpload
 
-    fup = FileUpload.create_fileupload_from_path(filepath, None, copy=True)
+    fup = FileUpload.create_fileupload_from_path(filepath, copy=True)
 
     from app.extensions import db
 

@@ -5,7 +5,7 @@ Individuals database models
 """
 
 from app.extensions import FeatherModel, db
-
+from flask import current_app
 import uuid
 
 
@@ -25,6 +25,8 @@ class Individual(db.Model, FeatherModel):
             ')>'.format(class_name=self.__class__.__name__, self=self)
         )
 
+    version = db.Column(db.BigInteger, default=None, nullable=True)
+
     def get_encounters(self):
         return self.encounters
 
@@ -40,5 +42,25 @@ class Individual(db.Model, FeatherModel):
         if encounter in self.get_encounters():
             self.encounters.remove(encounter)
 
+            # If an individual has not been encountered, it does not exist
+            # Although... I'm not satisfied with this. Auto delete only if the object is persisted? Hmm...
+            # TODO Fix this
+            # if len(self.encounters) == 0 and  Individual.query.get(self.guid) is not None:
+            #     self.delete_from_edm(current_app)
+            #     self.delete()
+
     def get_members(self):
         return [encounter.owner for encounter in self.encounters]
+
+    def delete(self):
+        with db.session.begin():
+            db.session.delete(self)
+
+    def delete_from_edm(self, current_app):
+        response = current_app.edm.request_passthrough(
+            'individual.data',
+            'delete',
+            {},
+            self.guid,
+        )
+        return response

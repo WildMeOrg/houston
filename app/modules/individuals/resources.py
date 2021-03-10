@@ -94,7 +94,7 @@ class Individuals(Resource):
             )
 
         response = current_app.edm.request_passthrough(
-            'sighting.data', 'post', {'data': request_in}, ''
+            'individual.data', 'post', {'data': request_in}, ''
         )
 
         response_data = None
@@ -146,7 +146,11 @@ class Individuals(Resource):
                 abort(success=False, message='Error', code=500)
 
         # finally make the Individual if all encounters are found
-        individual = Individual(guid=result_data['id'], encounters=encounters)
+        individual = Individual(
+            guid=result_data['id'],
+            encounters=encounters,
+            version=result_data.get('version'),
+        )
 
         context = api.commit_or_abort(
             db.session, default_error_message='Failed to create a new Individual'
@@ -156,7 +160,16 @@ class Individuals(Resource):
             db.session.add(individual)
         db.session.refresh(individual)
 
-        return individual
+        rtn = {
+            'success': True,
+            'result': {
+                'id': str(individual.guid),
+                'version': individual.version,
+                'encounters': result_data['encounters'],
+            },
+        }
+
+        return rtn
 
 
 @api.route('/<uuid:individual_guid>')
@@ -181,9 +194,31 @@ class IndividualByID(Resource):
     def get(self, individual):
         """
         Get Individual details by ID.
-
         """
-        return individual
+        if individual is not None:
+            log.info(
+                'GET passthrough called for Individual with GUID: %r ', individual.guid
+            )
+        else:
+            log.error('GET passthrough called for nonexistent Individual')
+
+        response = current_app.edm.get_dict('individual.data_complete', individual.guid)
+        if not isinstance(response, dict):
+            return response
+
+        if len(individual.encounters) > 0:
+            from app.modules.encounters.schemas import DetailedEncounterSchema
+
+            sch = DetailedEncounterSchema(
+                many=False, only=('guid', 'owner_guid', 'public')
+            )
+            response['result']['encounters'] = []
+
+            for encounter in individual.encounters:
+                result = sch.dump(encounter)
+                response['result']['encounters'].append(result)
+
+        return response['result']
 
     @api.permission_required(
         permissions.ObjectAccessPermission,
@@ -220,11 +255,20 @@ class IndividualByID(Resource):
     @api.response(code=HTTPStatus.NO_CONTENT)
     def delete(self, individual):
         """
-        Delete a Individual by ID.
+        Delete an Individual by ID.
         """
-        context = api.commit_or_abort(
-            db.session, default_error_message='Failed to delete the Individual.'
-        )
-        with context:
-            db.session.delete(individual)
+        response = individual.delete_from_edm(current_app)
+        response_data = None
+        if response.ok:
+            response_data = response.json()
+            individual.delete()
+
+        if not response.ok or not response_data.get('success', False):
+            log.warning(
+                'Individual.delete %r failed: %r' % (individual.guid, response_data)
+            )
+            abort(
+                success=False, passed_message='Delete failed', message='Error', code=400
+            )
+
         return None

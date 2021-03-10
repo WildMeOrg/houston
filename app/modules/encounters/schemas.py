@@ -31,6 +31,8 @@ class DetailedEncounterSchema(BaseEncounterSchema):
         fields = BaseEncounterSchema.Meta.fields + (
             Encounter.created.key,
             Encounter.updated.key,
+            Encounter.owner_guid.key,
+            Encounter.public.key,
         )
         dump_only = BaseEncounterSchema.Meta.dump_only + (
             Encounter.created.key,

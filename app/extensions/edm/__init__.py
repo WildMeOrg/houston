@@ -56,6 +56,7 @@ class EDMManager(RestManager):
         'individual': {
             'list': '//v0/org.ecocean.MarkedIndividual/list',
             'data': '//v0/org.ecocean.MarkedIndividual/%s',
+            'data_complete': '//v0/org.ecocean.MarkedIndividual/%s?detail-org.ecocean.MarkedIndividual=max',
         },
         'organization': {
             'list': '//v0/org.ecocean.Organization/list',

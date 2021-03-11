@@ -48,6 +48,7 @@ def test_fileuploads_get_src(flask_app_client, db):
     with db.session.begin():
         db.session.add(fup)
     response = flask_app_client.get('/api/v1/fileuploads/src/' + str(fup.guid))
+    response.close()  # h/t https://github.com/pallets/flask/issues/2468#issuecomment-517797518
     fup.delete()
     assert response.status_code == 200
     assert response.content_type == 'image/jpeg'

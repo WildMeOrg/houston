@@ -146,6 +146,7 @@ class BaseConfig(object):
         'projects',
         'sightings',
         'individuals',
+        'annotations',
 
         # Front-end
         #   Dependencies: Users, Auth, Assets

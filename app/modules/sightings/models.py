@@ -50,8 +50,9 @@ class Sighting(db.Model, FeatherModel):
 
     def delete(self):
         with db.session.begin():
-            # while self.encounters:  #not going to do this yet!
-            # db.session.delete(self.encounters.pop())
+            while self.encounters:
+                enc = self.encounters.pop()
+                enc.delete()
             db.session.delete(self)
 
     # given edm_json (verbose json from edm) will populate with houston-specific data from feather object

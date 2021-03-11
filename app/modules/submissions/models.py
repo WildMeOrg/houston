@@ -587,9 +587,16 @@ class Submission(db.Model, HoustonModel):
 
         return submission_path
 
+    # TODO should this blow away remote repo?  by default?
     def delete(self):
         for asset in self.assets:
             asset.delete()
         db.session.refresh(self)
         with db.session.begin():
             db.session.delete(self)
+
+    # stub of DEX-220 ... to be continued
+    def justify_existence(self):
+        if self.assets:  # we have assets, so we live on
+            return
+        self.delete()  # TODO will this also kill remote repo?

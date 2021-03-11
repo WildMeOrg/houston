@@ -27,6 +27,7 @@ def _ensure_storage(app=None):
     config_list = [
         ('DB', 'PROJECT_DATABASE_PATH'),
         ('Submission', 'SUBMISSIONS_DATABASE_PATH'),
+        ('FileUpload', 'FILEUPLOAD_BASE_PATH'),
         ('Asset', 'ASSET_DATABASE_PATH'),
     ]
 

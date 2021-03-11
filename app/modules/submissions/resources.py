@@ -162,8 +162,9 @@ class SubmissionsStreamlined(Resource):
         return submission
 
 
-@api.resolve_object_by_model(Submission, 'submission', return_not_found=True)
+@api.login_required(oauth_scopes=['submissions:read'])
 @api.route('/<uuid:submission_guid>')
+@api.resolve_object_by_model(Submission, 'submission', return_not_found=True)
 @api.response(
     code=HTTPStatus.NOT_FOUND,
     description='Submission not found.',
@@ -196,7 +197,6 @@ class SubmissionByID(Resource):
             # Submission neither local nor remote
             return None
 
-    @api.login_required(oauth_scopes=['submissions:read'])
     @api.permission_required(
         permissions.ModuleOrObjectAccessPermission,
         kwargs_on_request=lambda kwargs: {

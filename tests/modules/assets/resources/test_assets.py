@@ -2,16 +2,19 @@
 # pylint: disable=missing-docstring
 import hashlib
 from tests import utils
+import tests.modules.submissions.resources.utils as submission_utils
 
 
 def test_find_asset(
     flask_app_client,
+    admin_user,
     researcher_1,
     test_clone_submission_data,
 ):
     # Clone the known submission so that the asset data is in the database
-    clone = utils.clone_submission(
+    clone = submission_utils.clone_submission(
         flask_app_client,
+        admin_user,
         researcher_1,
         test_clone_submission_data['submission_uuid'],
         later_usage=True,
@@ -49,13 +52,15 @@ def test_find_asset(
 
 def test_find_deleted_asset(
     flask_app_client,
+    admin_user,
     researcher_1,
     db,
     test_clone_submission_data,
 ):
     # Clone the known submission so that the asset data is in the database
-    clone = utils.clone_submission(
+    clone = submission_utils.clone_submission(
         flask_app_client,
+        admin_user,
         researcher_1,
         test_clone_submission_data['submission_uuid'],
         later_usage=True,
@@ -96,14 +101,16 @@ def test_find_deleted_asset(
 
 def test_user_asset_permissions(
     flask_app_client,
+    admin_user,
     researcher_1,
     readonly_user,
     db,
     test_clone_submission_data,
 ):
     # Clone the known submission so that the asset data is in the database
-    clone = utils.clone_submission(
+    clone = submission_utils.clone_submission(
         flask_app_client,
+        admin_user,
         researcher_1,
         test_clone_submission_data['submission_uuid'],
         later_usage=True,
@@ -130,8 +137,9 @@ def test_read_all_assets(
     test_clone_submission_data,
 ):
     # Clone the known submission so that the asset data is in the database
-    clone = utils.clone_submission(
+    clone = submission_utils.clone_submission(
         flask_app_client,
+        admin_user,
         researcher_1,
         test_clone_submission_data['submission_uuid'],
         later_usage=True,

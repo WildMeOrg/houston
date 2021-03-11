@@ -12,10 +12,8 @@ from flask import Response
 from flask.testing import FlaskClient
 from werkzeug.utils import cached_property
 from app.extensions.auth import security
-import config
+
 import uuid
-import shutil
-import os
 
 
 class AutoAuthFlaskClient(FlaskClient):
@@ -102,63 +100,6 @@ class JSONResponse(Response):
     @cached_property
     def json(self):
         return json.loads(self.get_data(as_text=True))
-
-
-# multiple tests clone a submission, do something with it and clean it up. Make sure this always happens using a
-# class with a cleanup method to be called if any assertions fail
-class CloneSubmission(object):
-    def __init__(self, flask_app_client, user, submission_uuid, force_clone):
-        from app.modules.submissions.models import Submission
-
-        self.temp_submission = None
-        submissions_database_path = config.TestingConfig.SUBMISSIONS_DATABASE_PATH
-        self.submission_path = os.path.join(
-            submissions_database_path, str(submission_uuid)
-        )
-
-        # Allow the option of forced cloning, this could raise an exception if the assertion fails
-        # but this does not need to be in the try/except/finally construct as no resources are allocated yet
-        if force_clone:
-            if os.path.exists(self.submission_path):
-                shutil.rmtree(self.submission_path)
-            assert not os.path.exists(self.submission_path)
-
-        with flask_app_client.login(user, auth_scopes=('submissions:read',)):
-            self.response = flask_app_client.get(
-                '/api/v1/submissions/%s' % submission_uuid
-            )
-
-        if self.response.status_code == 428:
-            # need to do a post to call the ensure_submission
-            with flask_app_client.login(user, auth_scopes=('submissions:read',)):
-                self.response = flask_app_client.post(
-                    '/api/v1/submissions/%s' % submission_uuid
-                )
-        # only store the transient submission for cleanup if the clone worked
-        if self.response.status_code == 200:
-            self.temp_submission = Submission.query.get(self.response.json['guid'])
-
-    def remove_files(self):
-        if os.path.exists(self.submission_path):
-            shutil.rmtree(self.submission_path)
-
-    def cleanup(self):
-        # Restore original state
-        if self.temp_submission is not None:
-            self.temp_submission.delete()
-            self.temp_submission = None
-        self.remove_files()
-
-
-# Clone the submission
-# If later_usage is set, it's the callers responsibility to call the cleanup method.
-def clone_submission(
-    flask_app_client, user, submission_uuid, force_clone=False, later_usage=False
-):
-    clone = CloneSubmission(flask_app_client, user, submission_uuid, force_clone)
-    if not later_usage:
-        clone.cleanup()
-    return clone
 
 
 def generate_encounter_instance(user_email=None, user_password=None, user_full_name=None):

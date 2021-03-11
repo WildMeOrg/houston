@@ -111,6 +111,9 @@ class PatchJSONParameters(Parameters):
         is prepended with '/'.
         Removing '/' in the beginning to simplify usage in resource.
         """
+        if 'op' not in data:
+            raise ValidationError('operation not supported')
+
         if data['op'] not in self.NO_VALUE_OPERATIONS and 'value' not in data:
             raise ValidationError('value is required')
 

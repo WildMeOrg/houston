@@ -300,7 +300,16 @@ class ModuleOrObjectActionRule(DenyAbortMixin, Rule):
             has_permission = ObjectActionRule(self._obj, self._action).check()
         else:
             if self._module == Submission:
-                has_permission = current_user.is_researcher
+                # Read in this case equates to learn that the submission exists on gitlab,
+                # Delete is to allow the researcher to know that it's on gitlab but not local
+                if (
+                    self._action == AccessOperation.READ
+                    or self._action == AccessOperation.DELETE
+                ):
+                    has_permission = current_user.is_researcher
+                # Write equates to allowing the cloning of the submission from gitlab
+                elif self._action == AccessOperation.WRITE:
+                    has_permission = current_user.is_admin
 
         return has_permission
 

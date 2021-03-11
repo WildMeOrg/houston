@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=missing-docstring
-from tests.utils import clone_submission
+import tests.modules.submissions.resources.utils as utils
 import json
 import uuid
 
@@ -8,13 +8,19 @@ from flask import current_app
 
 
 def test_user_read_permissions(
-    flask_app_client, researcher_1, readonly_user, db, test_clone_submission_data
+    flask_app_client,
+    admin_user,
+    researcher_1,
+    readonly_user,
+    db,
+    test_clone_submission_data,
 ):
     # Clone as the researcher user and then try to reread as both researcher and readonly user,
     # read by researcher user should succeed, read by readonly user should be blocked
 
-    clone = clone_submission(
+    clone = utils.clone_submission(
         flask_app_client,
+        admin_user,
         researcher_1,
         test_clone_submission_data['submission_uuid'],
         later_usage=True,

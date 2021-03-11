@@ -136,7 +136,6 @@ def _enc_assets(assets, paths_wanted):
 
 
 @api.route('/')
-@api.login_required(oauth_scopes=['sightings:read'])
 class Sightings(Resource):
     """
     Manipulations with Sightings.

@@ -71,7 +71,7 @@ class ModuleActionRule(DenyAbortMixin, Rule):
         """
         Args:
         module (Class) - any class can be passed here, which this functionality will
-            determine whether the current user has enough permissions to perform te action on the class.
+            determine whether the current user has enough permissions to perform the action on the class.
         action (AccessRule) - can be READ, WRITE, DELETE
         """
         self._module = module
@@ -98,7 +98,10 @@ class ModuleActionRule(DenyAbortMixin, Rule):
                 current_user.is_active
                 & self._can_user_perform_action(current_user)
             )
-
+        if not has_permission:
+            log.debug(
+                'Access permission denied for %r by %r' % (self._module, current_user)
+            )
         return has_permission
 
     # Helper to identify what the module is
@@ -189,6 +192,8 @@ class ObjectActionRule(DenyAbortMixin, Rule):
                     | self._permitted_via_collaboration(current_user)
                 )
             )
+        if not has_permission:
+            log.debug('Access permission denied for %r by %r' % (self._obj, current_user))
         return has_permission
 
     def _permitted_via_user(self, user):
@@ -267,6 +272,46 @@ class ObjectActionRule(DenyAbortMixin, Rule):
     def _permitted_via_collaboration(self, user):
         # TODO:
         return False
+
+
+# Some modules are special (Submissions) mad may require both access controls in one
+class ModuleOrObjectActionRule(DenyAbortMixin, Rule):
+    def __init__(self, module=None, obj=None, action=AccessOperation.READ, **kwargs):
+        """
+        Args:
+        obj (object) - any object can be passed here, which this functionality will
+            determine whether the current user has enough permissions to write given object
+            object.
+        module (Class) - any class can be passed here, which this functionality will
+            determine whether the current user has enough permissions to perform the action on the class.
+        action (AccessRule) - can be READ, WRITE, DELETE
+        """
+        self._obj = obj
+        self._action = action
+        self._module = module
+        super().__init__(**kwargs)
+
+    def check(self):
+        from app.modules.submissions.models import Submission
+
+        has_permission = False
+        assert self._obj is not None or self._module is not None
+        if self._obj:
+            has_permission = ObjectActionRule(self._obj, self._action).check()
+        else:
+            if self._module == Submission:
+                # Read in this case equates to learn that the submission exists on gitlab,
+                # Delete is to allow the researcher to know that it's on gitlab but not local
+                if (
+                    self._action == AccessOperation.READ
+                    or self._action == AccessOperation.DELETE
+                ):
+                    has_permission = current_user.is_researcher
+                # Write equates to allowing the cloning of the submission from gitlab
+                elif self._action == AccessOperation.WRITE:
+                    has_permission = current_user.is_admin
+
+        return has_permission
 
 
 class ActiveUserRoleRule(DenyAbortMixin, Rule):

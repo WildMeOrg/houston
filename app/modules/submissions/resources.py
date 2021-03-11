@@ -7,8 +7,9 @@ RESTful API Submissions resources
 
 import logging
 import werkzeug
+import uuid
 
-from flask import request
+from flask import request, current_app
 from flask_login import current_user
 from flask_restx_patched import Resource
 from flask_restx_patched._http import HTTPStatus
@@ -161,22 +162,46 @@ class SubmissionsStreamlined(Resource):
         return submission
 
 
-@api.route('/<uuid:submission_guid>')
 @api.login_required(oauth_scopes=['submissions:read'])
+@api.route('/<uuid:submission_guid>')
+@api.resolve_object_by_model(Submission, 'submission', return_not_found=True)
 @api.response(
     code=HTTPStatus.NOT_FOUND,
     description='Submission not found.',
 )
-@api.resolve_object_by_model(Submission, 'submission', return_not_found=True)
+@api.response(
+    code=HTTPStatus.PRECONDITION_REQUIRED,
+    description='Submission not local, need to post',
+)
 class SubmissionByID(Resource):
     """
     Manipulations with a specific Submission.
     """
 
+    # the resolve_object_by_model returns a tuple if the return_not_found is set as it is here
+    # a common helper to get the submission object or raise 428 if remote only
+    def _get_submission_with_428(self, submission):
+        submission, submission_guids = submission
+        if submission is not None:
+            return submission
+
+        # We did not find the submission by its UUID in the Houston database
+        # We now need to check the SubmissionManager for the existence of that repo
+        submission_guid = submission_guids[0]
+        assert isinstance(submission_guid, uuid.UUID)
+
+        if current_app.sub.is_submission_on_remote(submission_guid):
+            # Submission is not local but is on remote
+            raise werkzeug.exceptions.PreconditionRequired
+        else:
+            # Submission neither local nor remote
+            return None
+
     @api.permission_required(
-        permissions.ObjectAccessPermission,
+        permissions.ModuleOrObjectAccessPermission,
         kwargs_on_request=lambda kwargs: {
-            'obj': kwargs['submission'],
+            'module': Submission,
+            'obj': kwargs['submission'][0],
             'action': AccessOperation.READ,
         },
     )
@@ -185,14 +210,51 @@ class SubmissionByID(Resource):
         """
         Get Submission details by ID.
 
-        If submission is not found locally in database, a None submission
-        will be returned.
+        If submission is not found locally in database, but is on the remote Github,
+        a 428 PRECONDITION_REQUIRED will be returned.
 
-        In this event, check SubmissionManager for remote Submission
-        by UUID, if not found, throw 404 as intended
+        If submission is not local and not on remote github, 404 will be returned.
+
+        Otherwise the submission will be returned
+        """
+        submission = self._get_submission_with_428(submission)
+        if submission is None:
+            raise werkzeug.exceptions.NotFound
+
+        return submission
+
+    @api.login_required(oauth_scopes=['submissions:write'])
+    @api.permission_required(
+        permissions.ModuleOrObjectAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'module': Submission,
+            'obj': kwargs['submission'][0],
+            'action': AccessOperation.WRITE,
+        },
+    )
+    @api.response(schemas.DetailedSubmissionSchema())
+    def post(self, submission):
+        """
+        Post Submission details by ID. (Actually a get with clone)
+
+        If submission is not found locally in database, but is on the remote Github,
+        it will be cloned from the remote github
+
+        If submission is not local and not on remote github, 404 will be returned.
+
+        Otherwise the submission will be returned
         """
         submission, submission_guids = submission
+        if submission is not None:
+            return submission
 
+        # We did not find the submission by its UUID in the Houston database
+        # We now need to check the SubmissionManager for the existence of that repo
+        submission_guid = submission_guids[0]
+        assert isinstance(submission_guid, uuid.UUID)
+
+        # Clone if present on gitlab
+        submission = current_app.sub.ensure_submission(submission_guid)
         if submission is None:
             # We have checked the submission manager and cannot find this submission, raise 404 manually
             raise werkzeug.exceptions.NotFound
@@ -200,9 +262,10 @@ class SubmissionByID(Resource):
         return submission
 
     @api.permission_required(
-        permissions.ObjectAccessPermission,
+        permissions.ModuleOrObjectAccessPermission,
         kwargs_on_request=lambda kwargs: {
-            'obj': kwargs['submission'],
+            'module': Submission,
+            'obj': kwargs['submission'][0],
             'action': AccessOperation.WRITE,
         },
     )
@@ -213,11 +276,16 @@ class SubmissionByID(Resource):
     def patch(self, args, submission):
         """
         Patch Submission details by ID.
-        """
-        submission, submission_guids = submission
 
+        If submission is not found locally in database, but is on the remote Github,
+        a 428 PRECONDITION_REQUIRED will be returned.
+
+        If submission is not local and not on remote github, 404 will be returned.
+
+        Otherwise the submission will be patched
+        """
+        submission = self._get_submission_with_428(submission)
         if submission is None:
-            # We have checked the submission manager and cannot find this submission, raise 404 manually
             raise werkzeug.exceptions.NotFound
 
         context = api.commit_or_abort(
@@ -231,9 +299,10 @@ class SubmissionByID(Resource):
         return submission
 
     @api.permission_required(
-        permissions.ObjectAccessPermission,
+        permissions.ModuleOrObjectAccessPermission,
         kwargs_on_request=lambda kwargs: {
-            'obj': kwargs['submission'],
+            'module': Submission,
+            'obj': kwargs['submission'][0],
             'action': AccessOperation.DELETE,
         },
     )
@@ -244,17 +313,14 @@ class SubmissionByID(Resource):
         """
         Delete a Submission by ID.
         """
-        submission, submission_guids = submission
+        submission = self._get_submission_with_428(submission)
 
-        if submission is None:
-            # We have checked the submission manager and cannot find this submission, raise 404 manually
-            raise werkzeug.exceptions.NotFound
-
-        context = api.commit_or_abort(
-            db.session, default_error_message='Failed to delete the Submission.'
-        )
-        with context:
-            db.session.delete(submission)
+        if submission is not None:
+            context = api.commit_or_abort(
+                db.session, default_error_message='Failed to delete the Submission.'
+            )
+            with context:
+                db.session.delete(submission)
         return None
 
 

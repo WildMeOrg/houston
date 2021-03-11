@@ -107,7 +107,8 @@ class Encounter(db.Model, FeatherModel):
     def delete(self):
         with db.session.begin():
             while self.assets:
-                db.session.delete(self.assets.pop())
+                asset = self.assets.pop()
+                asset.delete()
             db.session.delete(self)
 
     def delete_from_edm(self, current_app):

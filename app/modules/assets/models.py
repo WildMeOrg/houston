@@ -186,8 +186,10 @@ class Asset(db.Model, HoustonModel):
         return target_path
 
     def delete(self):
+        sub = self.submission
         with db.session.begin():
             db.session.delete(self)
+        sub.justify_existence()
 
     @classmethod
     def find(cls, guid):

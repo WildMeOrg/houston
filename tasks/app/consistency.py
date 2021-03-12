@@ -66,7 +66,7 @@ def user_staff_permissions(context):
 
 
 @app_context_task
-def cleanup_gitlab(context, dryrun=False):
+def cleanup_gitlab(context, dryrun=False, clean=False):
     import gitlab
     import datetime
     import pytz
@@ -76,6 +76,11 @@ def cleanup_gitlab(context, dryrun=False):
     PER_PAGE = 100
     MAX_PAGES = 100
     DATETIME_FMTSTR = '%Y-%m-%dT%H:%M:%S.%fZ'
+    GRACE_PERIOD = 60 * 60 * 24
+
+    if clean:
+        WHITELIST_TAG = ''
+        GRACE_PERIOD = 0
 
     remote_uri = current_app.config.get('GITLAB_REMOTE_URI', None)
     remote_personal_access_token = current_app.config.get('GITLAB_REMOTE_LOGIN_PAT', None)
@@ -107,7 +112,7 @@ def cleanup_gitlab(context, dryrun=False):
     now = datetime.datetime.utcnow()
     now = now.replace(tzinfo=pytz.UTC)
 
-    juvenile = 0
+    skipped = 0
     deleted = 0
     if dryrun:
         log.info('DRYRUN: Deletion skipped...')
@@ -128,8 +133,8 @@ def cleanup_gitlab(context, dryrun=False):
                     )
                 )
                 continue
-            if delta.total_seconds() < 60 * 60 * 24:
-                juvenile += 1
+            if delta.total_seconds() <= GRACE_PERIOD:
+                skipped += 1
                 continue
             success = current_app.sub.delete_remote_project(project)
             deleted += 1 if success else 0
@@ -142,7 +147,7 @@ def cleanup_gitlab(context, dryrun=False):
             TEST_GROUP_NAMES,
         )
     )
-    log.info('Skipped %d projects last modified within last 24 hours' % (juvenile,))
+    log.info('Skipped %d projects last modified within the grace period (%d seconds)' % (skipped, GRACE_PERIOD,))
 
 
 @app_context_task

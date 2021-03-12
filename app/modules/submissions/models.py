@@ -122,8 +122,8 @@ class Submission(db.Model, HoustonModel):
             ')>'.format(class_name=self.__class__.__name__, self=self)
         )
 
-    def ensure_repository(self):
-        return current_app.sub.ensure_repository(self)
+    def ensure_repository(self, **kwargs):
+        return current_app.sub.ensure_repository(self, **kwargs)
 
     def get_repository(self):
         return current_app.sub.get_repository(self)
@@ -154,14 +154,28 @@ class Submission(db.Model, HoustonModel):
 
         shutil.copytree(absolute_path, repo_path)
 
-    def git_commit(self, message, realize=True, update=True):
+    def git_copy_file_add(self, filepath):
+        absolute_filepath = os.path.abspath(os.path.expanduser(filepath))
+        if not os.path.exists(absolute_filepath):
+            raise IOError('The filepath %r does not exist.' % (absolute_filepath,))
+
+        repo = self.get_repository()
+        repo_path = os.path.join(repo.working_tree_dir, '_submission')
+        _, filename = os.path.split(absolute_filepath)
+        repo_filepath = os.path.join(repo_path, filename)
+
+        shutil.copyfile(absolute_filepath, repo_filepath)
+
+        return repo_filepath
+
+    def git_commit(self, message, realize=True, update=True, **kwargs):
         repo = self.get_repository()
 
         if realize:
             self.realize_submission()
 
         if update:
-            self.update_asset_symlinks()
+            self.update_asset_symlinks(**kwargs)
 
         submission_path = self.get_absolute_path()
         submission_metadata_path = os.path.join(submission_path, 'metadata.json')
@@ -211,7 +225,7 @@ class Submission(db.Model, HoustonModel):
 
         return repo
 
-    def git_clone(self, project):
+    def git_clone(self, project, **kwargs):
         repo = self.get_repository()
         assert repo is None
 
@@ -234,7 +248,7 @@ class Submission(db.Model, HoustonModel):
         self.update_metadata_from_repo(repo)
 
         # Traverse the repo and create Asset objects in database
-        self.update_asset_symlinks()
+        self.update_asset_symlinks(**kwargs)
 
         return repo
 
@@ -341,7 +355,7 @@ class Submission(db.Model, HoustonModel):
         ]
         pass
 
-    def update_asset_symlinks(self, verbose=True):
+    def update_asset_symlinks(self, verbose=True, existing_filepath_guid_mapping={}):
         """
         Traverse the files in the _submission/ folder and add/update symlinks
         for any relevant files we identify
@@ -359,7 +373,7 @@ class Submission(db.Model, HoustonModel):
         submission_path = os.path.join(submission_abspath, '_submission')
         assets_path = os.path.join(submission_abspath, '_assets')
 
-        current_app.sub.ensure_initialed()
+        current_app.sub.ensure_initialized()
 
         # Walk the submission path, looking for white-listed MIME type files
         files = []
@@ -454,7 +468,6 @@ class Submission(db.Model, HoustonModel):
             file_data['semantic_guid'] = ut.hashable_to_uuid(semantic_guid_data)
 
         # Delete all existing symlinks
-        existing_filepath_guid_mapping = {}
         existing_asset_symlinks = ut.glob(os.path.join(assets_path, '*'))
         for existing_asset_symlink in existing_asset_symlinks:
             basename = os.path.basename(existing_asset_symlink)
@@ -467,12 +480,13 @@ class Submission(db.Model, HoustonModel):
             if os.path.exists(existing_asset_target_):
                 uuid_str, _ = os.path.splitext(basename)
                 uuid_str = uuid_str.strip().strip('.')
-                try:
-                    existing_filepath_guid_mapping[existing_asset_target_] = uuid.UUID(
-                        uuid_str
-                    )
-                except Exception:
-                    pass
+                if existing_asset_target_ not in existing_filepath_guid_mapping:
+                    try:
+                        existing_filepath_guid_mapping[existing_asset_target_] = uuid.UUID(
+                            uuid_str
+                        )
+                    except Exception:
+                        pass
             os.remove(existing_asset_symlink)
 
         # Add new or update any existing Assets found in the Submission

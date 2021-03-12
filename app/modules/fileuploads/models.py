@@ -168,7 +168,7 @@ class FileUpload(db.Model, HoustonModel):
 
         self.mime_type = magic.from_file(self.get_absolute_path(), mime=True)
 
-    # this is relative path, based on first 4 chars of guid, e.g. 'ab/cd' for 'abcd000e-7320-4072-80aa-2304989dc8d3'
+    # this is relative path, based on first 4 chars of guid, e.g. 'ab/cd' for 'abcdef01-2345-6789-abcd-ef0123456789'
     def relative_dirpath(self):
         return FileUpload.dirpath_from_guid(self.guid)
 

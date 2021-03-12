@@ -275,10 +275,7 @@ class Submission(db.Model, HoustonModel):
                 'create_submission_from_tus() had problems with import_tus_files(); deleting from db and fs %r'
                 % submission
             )
-            if os.path.exists(submission.get_absolute_path()):
-                shutil.rmtree(submission.get_absolute_path())
-            with db.session.begin():
-                db.session.delete(submission)
+            submission.delete()
             raise
 
         log.info('submission imported %r' % added)
@@ -587,6 +584,10 @@ class Submission(db.Model, HoustonModel):
 
         return submission_path
 
+    def delete_dirs(self):
+        if os.path.exists(self.get_absolute_path()):
+            shutil.rmtree(self.get_absolute_path())
+
     # TODO should this blow away remote repo?  by default?
     def delete(self):
         for asset in self.assets:
@@ -594,6 +595,7 @@ class Submission(db.Model, HoustonModel):
         db.session.refresh(self)
         with db.session.begin(subtransactions=True):
             db.session.delete(self)
+        self.delete_dirs()
 
     # stub of DEX-220 ... to be continued
     def justify_existence(self):

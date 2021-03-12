@@ -31,7 +31,13 @@ def _cleanup_post_and_abort(db, guid, message='Unknown error'):
         failed_individual = Individual.query.get(guid)
         if failed_individual is not None:
             with db.session.begin():
+                # may be overkill, idk
+                try:
+                    failed_individual.delete_from_edm(current_app)
+                except Exception:
+                    pass
                 db.session.delete(failed_individual)
+
             log.error(
                 'The Individual with guid %r was not successfully persisted to the EDM and has been deleted from Houston'
             )
@@ -90,7 +96,7 @@ class Individuals(Resource):
             _cleanup_post_and_abort(
                 None,
                 None,
-                'Must reference at least one encounter to create an Individual',
+                'A new Individual must reference at least one encounter',
             )
 
         response = current_app.edm.request_passthrough(

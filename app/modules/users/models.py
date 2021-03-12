@@ -597,11 +597,9 @@ class User(db.Model, FeatherModel, UserEDMMixin):
             if obj.submission is not None:
                 ret_val = obj.submission.owner is self
         elif isinstance(obj, (Sighting, Individual)):
-            # up for consideration. old world allows control of a sighting or individual if you own at least one encounter on it.
-            for encounter in obj.get_encounters():
-                if encounter.get_owner() is self:
-                    ret_val = True
-                    break
+            # decided (2021-03-12) that "owner" of these objects is not applicable therefore always False
+            #   permissions on these objects must be handled in ways not dependent on ownership
+            ret_val = False
 
         return ret_val
 

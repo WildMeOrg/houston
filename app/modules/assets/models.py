@@ -187,7 +187,7 @@ class Asset(db.Model, HoustonModel):
 
     def delete(self):
         sub = self.submission
-        with db.session.begin():
+        with db.session.begin(subtransactions=True):
             db.session.delete(self)
         sub.justify_existence()
 

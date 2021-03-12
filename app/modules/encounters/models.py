@@ -105,11 +105,14 @@ class Encounter(db.Model, FeatherModel):
             self.add_asset_no_context(asset)
 
     def delete(self):
-        with db.session.begin():
+        assets = self.get_assets()
+        with db.session.begin(subtransactions=True):
             while self.assets:
-                asset = self.assets.pop()
-                asset.delete()
+                db.session.delete(self.assets.pop())
             db.session.delete(self)
+        while assets:
+            asset = assets.pop()
+            asset.delete()
 
     def delete_from_edm(self, current_app):
         response = current_app.edm.request_passthrough(

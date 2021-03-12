@@ -49,11 +49,20 @@ class Sighting(db.Model, FeatherModel):
             self.encounters.append(encounter)
 
     def delete(self):
-        with db.session.begin():
+        with db.session.begin(subtransactions=True):
             while self.encounters:
                 enc = self.encounters.pop()
                 enc.delete()
             db.session.delete(self)
+
+    def delete_from_edm(self, current_app):
+        response = current_app.edm.request_passthrough(
+            'sighting.data',
+            'delete',
+            {},
+            self.guid,
+        )
+        return response
 
     # given edm_json (verbose json from edm) will populate with houston-specific data from feather object
     # note: this modifies the passed in edm_json, so not sure how legit that is?

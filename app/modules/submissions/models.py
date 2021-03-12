@@ -592,11 +592,12 @@ class Submission(db.Model, HoustonModel):
         for asset in self.assets:
             asset.delete()
         db.session.refresh(self)
-        with db.session.begin():
+        with db.session.begin(subtransactions=True):
             db.session.delete(self)
 
     # stub of DEX-220 ... to be continued
     def justify_existence(self):
         if self.assets:  # we have assets, so we live on
             return
+        log.warning('justify_existence() found ZERO assets, self-destructing %r' % self)
         self.delete()  # TODO will this also kill remote repo?

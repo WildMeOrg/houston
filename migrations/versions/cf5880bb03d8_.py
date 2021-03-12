@@ -1,13 +1,13 @@
 """empty message
 
-Revision ID: 204c9bb3fcc8
+Revision ID: cf5880bb03d8
 Revises: 60224b2588fd
-Create Date: 2021-03-11 15:41:24.486409
+Create Date: 2021-03-12 10:15:14.202745
 
 """
 
 # revision identifiers, used by Alembic.
-revision = '204c9bb3fcc8'
+revision = 'cf5880bb03d8'
 down_revision = '60224b2588fd'
 
 from alembic import op
@@ -28,7 +28,9 @@ def upgrade():
     op.create_table('annotation',
     sa.Column('created', sa.DateTime(), nullable=False),
     sa.Column('updated', sa.DateTime(), nullable=False),
+    sa.Column('viewed', sa.DateTime(), nullable=False),
     sa.Column('guid', app.extensions.GUID(), nullable=False),
+    sa.Column('version', sa.BigInteger(), nullable=True),
     sa.Column('asset_guid', app.extensions.GUID(), nullable=False),
     sa.ForeignKeyConstraint(['asset_guid'], ['asset.guid'], name=op.f('fk_annotation_asset_guid_asset'), ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('guid', name=op.f('pk_annotation'))

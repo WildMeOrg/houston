@@ -4,14 +4,12 @@ Annotations database models
 --------------------
 """
 
-from sqlalchemy_utils import Timestamp
-
-from app.extensions import db
+from app.extensions import db, FeatherModel
 
 import uuid
 
 
-class Annotation(db.Model, Timestamp):
+class Annotation(db.Model, FeatherModel):
     """
     Annotations database model.
     """
@@ -19,6 +17,7 @@ class Annotation(db.Model, Timestamp):
     guid = db.Column(
         db.GUID, default=uuid.uuid4, primary_key=True
     )  # pylint: disable=invalid-name
+    version = db.Column(db.BigInteger, default=None, nullable=True)
 
     asset_guid = db.Column(
         db.GUID,

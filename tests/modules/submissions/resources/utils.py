@@ -76,43 +76,46 @@ def delete_submission(flask_app_client, user, submission_guid, expected_status_c
 # multiple tests clone a submission, do something with it and clean it up. Make sure this always happens using a
 # class with a cleanup method to be called if any assertions fail
 class CloneSubmission(object):
-    def __init__(self, flask_app_client, admin_user, user, submission_guid, force_clone):
+    def __init__(self, client, admin_user, owner, guid, force_clone):
         from app.modules.submissions.models import Submission
 
         self.submission = None
-        self.guid = submission_guid
+        self.guid = guid
 
         # Allow the option of forced cloning, this could raise an exception if the assertion fails
         # but this does not need to be in any try/except/finally construct as no resources are allocated yet
         if force_clone:
             database_path = config.TestingConfig.SUBMISSIONS_DATABASE_PATH
-            submission_path = os.path.join(database_path, str(submission_guid))
+            submission_path = os.path.join(database_path, str(guid))
 
             if os.path.exists(submission_path):
                 shutil.rmtree(submission_path)
             assert not os.path.exists(submission_path)
 
-        with flask_app_client.login(user, auth_scopes=('submissions:read',)):
-            self.response = flask_app_client.get('%s%s' % (PATH, submission_guid))
+        with client.login(owner, auth_scopes=('submissions:read',)):
+            self.response = client.get('%s%s' % (PATH, guid))
 
-        if self.response.status_code == 428:
+        # only store the submission if the clone worked
+        if self.response.status_code == 200:
+            self.submission = Submission.query.get(self.response.json['guid'])
 
-            with flask_app_client.login(admin_user, auth_scopes=('submissions:write',)):
-                self.response = flask_app_client.post('%s%s' % (PATH, submission_guid))
+        elif self.response.status_code == 428:
+            with client.login(admin_user, auth_scopes=('submissions:write',)):
+                self.response = client.post('%s%s' % (PATH, guid))
 
-            # only store the transient submission for cleanup if the clone worked
+            # only store the submission if the clone worked
             if self.response.status_code == 200:
                 self.submission = Submission.query.get(self.response.json['guid'])
 
             # reassign ownership
             data = [
-                test_utils.patch_add_op('owner', '%s' % user.guid),
+                test_utils.patch_add_op('owner', '%s' % owner.guid),
             ]
-            patch_submission(flask_app_client, submission_guid, admin_user, data)
+            patch_submission(client, guid, admin_user, data)
 
             # and read it back as the real user
-            with flask_app_client.login(user, auth_scopes=('submissions:read',)):
-                self.response = flask_app_client.get('%s%s' % (PATH, submission_guid))
+            with client.login(owner, auth_scopes=('submissions:read',)):
+                self.response = client.get('%s%s' % (PATH, guid))
 
     def remove_files(self):
         database_path = config.TestingConfig.SUBMISSIONS_DATABASE_PATH
@@ -129,18 +132,18 @@ class CloneSubmission(object):
 
 
 # Clone the submission
-# If later_usage is set, it's the callers responsibility to call the cleanup method.
 def clone_submission(
-    flask_app_client,
+    client,
     admin_user,
-    user,
-    submission_uuid,
+    owner,
+    guid,
     force_clone=False,
     later_usage=False,
+    expect_failure=False,
 ):
-    clone = CloneSubmission(
-        flask_app_client, admin_user, user, submission_uuid, force_clone
-    )
+    clone = CloneSubmission(client, admin_user, owner, guid, force_clone)
     if not later_usage:
         clone.cleanup()
+    if not expect_failure:
+        assert clone.response.status_code == 200
     return clone

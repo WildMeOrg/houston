@@ -115,6 +115,7 @@ class ModuleActionRule(DenyAbortMixin, Rule):
     def _can_user_perform_action(self, user):
         from app.modules.organizations.models import Organization
         from app.extensions.config.models import HoustonConfig
+        from app.modules.annotations.models import Annotation
         from app.modules.individuals.models import Individual
         from app.modules.submissions.models import Submission
         from app.modules.encounters.models import Encounter
@@ -146,6 +147,8 @@ class ModuleActionRule(DenyAbortMixin, Rule):
             # Any users can write (create) a user, submission, sighting and Encounter, TODO, decide on Submission
             elif self._is_module((Submission, User, Encounter, Sighting)):
                 has_permission = True
+            elif self._is_module(Annotation):
+                has_permission = user.is_researcher
             # Project disabled for MVP
             # elif self._is_module(Project):
             #     has_permission = user.is_researcher

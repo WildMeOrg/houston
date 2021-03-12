@@ -25,10 +25,10 @@ def test_find_asset(
         test_src_asset = (
             '/api/v1/assets/src/%s' % test_clone_submission_data['asset_uuids'][0]
         )
+
         with flask_app_client.login(researcher_1, auth_scopes=('assets:read',)):
             response = flask_app_client.get(test_asset)
             src_response = flask_app_client.get(test_src_asset)
-
         assert response.status_code == 200
         assert response.content_type == 'application/json'
         assert response.json['filename'] == 'zebra.jpg'

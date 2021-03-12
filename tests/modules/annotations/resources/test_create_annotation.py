@@ -2,20 +2,28 @@
 # pylint: disable=missing-docstring
 
 from tests.modules.annotations.resources import utils as annot_utils
+from tests.modules.submissions.resources import utils as sub_utils
 
 
-def test_create_and_delete_annotation(flask_app_client, researcher_1):
+def test_create_and_delete_annotation(
+    flask_app_client, admin_user, researcher_1, test_clone_submission_data
+):
     # pylint: disable=invalid-name
     from app.modules.annotations.models import Annotation
 
+    sub_utils.clone_submission(
+        flask_app_client,
+        admin_user,
+        researcher_1,
+        test_clone_submission_data['submission_uuid'],
+    )
     response = annot_utils.create_annotation(
-        flask_app_client, researcher_1, 'This is a test annotation, please ignore'
+        flask_app_client, researcher_1, test_clone_submission_data['asset_uuids'][0]
     )
 
     annotation_guid = response.json['guid']
     read_annotation = Annotation.query.get(response.json['guid'])
-    assert read_annotation.title == 'This is a test annotation, please ignore'
-    assert read_annotation.owner == researcher_1
+    assert read_annotation.asset_uuid == test_clone_submission_data['asset_uuids'][0]
 
     # Try reading it back
     annot_utils.read_annotation(flask_app_client, researcher_1, annotation_guid)
@@ -28,13 +36,18 @@ def test_create_and_delete_annotation(flask_app_client, researcher_1):
 
 
 def test_annotation_permission(
-    flask_app_client, admin_user, staff_user, researcher_1, researcher_2
+    flask_app_client,
+    admin_user,
+    staff_user,
+    researcher_1,
+    researcher_2,
+    test_clone_submission_data,
 ):
-    # Before we create any Projects, find out how many are there already
+    # Before we create any Annotations, find out how many are there already
     previous_list = annot_utils.read_all_annotations(flask_app_client, staff_user)
 
     response = annot_utils.create_annotation(
-        flask_app_client, researcher_1, 'This is a test annotation, please ignore'
+        flask_app_client, researcher_1, test_clone_submission_data['asset_uuids'][0]
     )
 
     annotation_guid = response.json['guid']

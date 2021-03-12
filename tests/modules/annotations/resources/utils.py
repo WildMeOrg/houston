@@ -7,15 +7,16 @@ import json
 from tests import utils as test_utils
 
 PATH = '/api/v1/annotations/'
+EXPECTED_KEYS = {'guid', 'asset_uuid'}
 
 
-def create_annotation(flask_app_client, user, title, expected_status_code=200):
+def create_annotation(flask_app_client, user, asset_uuid, expected_status_code=200):
     with flask_app_client.login(user, auth_scopes=('annotations:write',)):
-        response = flask_app_client.post(PATH, data=json.dumps({'title': title}))
+        response = flask_app_client.post(PATH, data={'asset_guid': asset_uuid})
 
     if expected_status_code == 200:
-        test_utils.validate_dict_response(response, 200, {'guid', 'title'})
-        assert response.json['title'] == title
+        test_utils.validate_dict_response(response, 200, EXPECTED_KEYS)
+        assert response.json['asset_guid'] == asset_uuid
     else:
         test_utils.validate_dict_response(
             response, expected_status_code, {'status', 'message'}
@@ -34,7 +35,7 @@ def patch_annotation(
         )
 
     if expected_status_code == 200:
-        test_utils.validate_dict_response(response, 200, {'guid', 'title'})
+        test_utils.validate_dict_response(response, 200, EXPECTED_KEYS)
     else:
         test_utils.validate_dict_response(
             response, expected_status_code, {'status', 'message'}
@@ -47,7 +48,7 @@ def read_annotation(flask_app_client, user, annotation_guid, expected_status_cod
         response = flask_app_client.get('%s%s' % (PATH, annotation_guid))
 
     if expected_status_code == 200:
-        test_utils.validate_dict_response(response, 200, {'guid', 'title'})
+        test_utils.validate_dict_response(response, 200, EXPECTED_KEYS)
     else:
         test_utils.validate_dict_response(
             response, expected_status_code, {'status', 'message'}

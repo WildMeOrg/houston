@@ -17,6 +17,7 @@ import uuid
 import json
 import git
 import os
+import pathlib
 import shutil
 
 
@@ -284,45 +285,22 @@ class Submission(db.Model, HoustonModel):
         return submission
 
     def import_tus_files(self, transaction_id=None, paths=None, purge_dir=True):
-        from app.extensions.tus import tus_upload_dir
+        from app.extensions.tus import _tus_filepaths_from, _tus_purge
 
         self.ensure_repository()
         sub_id = None if transaction_id is not None else self.guid
-        upload_dir = tus_upload_dir(
-            current_app, transaction_id=transaction_id, submission_guid=sub_id
-        )
         submission_abspath = self.get_absolute_path()
         submission_path = os.path.join(submission_abspath, '_submission')
-        num_files = 0
         paths_added = []
-        # note: this probably falls apart when subdirs exist
+        num_files = 0
 
-        if paths is not None and len(paths) > 0:
-            log.debug('import_tus_files passed paths=%r' % (paths))
-            for name in paths:
-                # this is where an exception will be thrown if passed a file which we dont have (or other problem)
-                os.rename(
-                    os.path.join(upload_dir, name), os.path.join(submission_path, name)
-                )
-                paths_added.append(name)
-                num_files += 1
-            assert len(paths_added) == len(paths)
-
-        else:  # traverse who upload dir and take everything
-            for root, dirs, files in os.walk(upload_dir):
-                num_files = len(files)
-                for name in files:
-                    paths_added.append(name)
-                    log.debug(
-                        'moving upload %r to sub dir %r'
-                        % (
-                            name,
-                            submission_path,
-                        )
-                    )
-                    os.rename(
-                        os.path.join(root, name), os.path.join(submission_path, name)
-                    )
+        for path in _tus_filepaths_from(
+            submission_guid=sub_id, transaction_id=transaction_id, paths=paths
+        ):
+            name = pathlib.Path(path).name
+            paths_added.append(name)
+            num_files += 1
+            os.rename(path, os.path.join(submission_path, name))
 
         assets_added = []
         if num_files > 0:
@@ -334,7 +312,8 @@ class Submission(db.Model, HoustonModel):
                     assets_added.append(asset)
 
         if purge_dir:
-            shutil.rmtree(upload_dir)  # may have some unclaimed files in it
+            # may have some unclaimed files in it
+            _tus_purge(submission_guid=sub_id, transaction_id=transaction_id)
         return assets_added
 
     def realize_submission(self):

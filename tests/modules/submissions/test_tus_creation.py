@@ -21,7 +21,7 @@ def test_create_submission_from_tus(db, researcher_1):
 
     # now with a file dir+files but ask for wrong one
     tid, valid_file = prep_tus_dir()
-    with pytest.raises(OSError):
+    with pytest.raises(AssertionError):
         sub = Submission.create_submission_from_tus(
             'PYTEST', researcher_1, tid, paths={'fail.jpg'}
         )

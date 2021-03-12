@@ -31,6 +31,30 @@ _is_sourced() {
 		&& [ "${FUNCNAME[1]}" = 'source' ]
 }
 
+# usage: docker_process_init_files [file [file [...]]]
+#    ie: docker_process_init_files /init.d/*
+# process initializer files, based on file extensions and permissions
+docker_process_init_files() {
+	local f
+	for f; do
+		case "$f" in
+			*.sh)
+				# https://github.com/docker-library/postgres/issues/450#issuecomment-393167936
+				# https://github.com/docker-library/postgres/pull/452
+				if [ -x "$f" ]; then
+					echo "$0: running $f"
+					"$f"
+				else
+					echo "$0: sourcing $f"
+					. "$f"
+				fi
+				;;
+			*)        echo "$0: ignoring $f" ;;
+		esac
+		echo
+	done
+}
+
 # Loads various settings that are used elsewhere in the script
 # This should be called before any other functions
 docker_setup_env() {
@@ -87,6 +111,9 @@ _main() {
 			# Assume a possible need to initialize the EDM admin user
 			gosu nobody invoke app.initialize.initialize-edm-admin-user
 
+			if [ -d /docker-entrypoint-init.d ]; then
+				docker_process_init_files /docker-entrypoint-init.d/*
+			fi
 			echo
 			echo 'docker-entrypoint init process complete; ready for start up.'
 			echo

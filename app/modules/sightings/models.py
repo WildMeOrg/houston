@@ -78,11 +78,16 @@ class Sighting(db.Model, FeatherModel):
             db.session.delete(self)
 
     def delete_from_edm(self, current_app):
+        return Sighting.delete_from_edm_by_guid(current_app, self.guid)
+
+    @classmethod
+    def delete_from_edm_by_guid(cls, current_app, guid):
+        assert guid is not None
         response = current_app.edm.request_passthrough(
             'sighting.data',
             'delete',
             {},
-            self.guid,
+            guid,
         )
         return response
 

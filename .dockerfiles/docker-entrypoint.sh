@@ -126,6 +126,10 @@ _main() {
 		fi
 	fi
 
+	# Always process these initialization scripts
+	if [ -d /docker-entrypoint-always-init.d ]; then
+		docker_process_init_files /docker-entrypoint-always-init.d/*
+	fi
 	if [ "$(id -u)" = '0' ]; then
 		exec gosu nobody "$@"
 	else

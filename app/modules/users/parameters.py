@@ -119,7 +119,7 @@ class PatchUserDetailsParameters(PatchJSONParameters):
         User.receive_newsletter_emails.key,
         User.shares_data.key,
         User.default_identification_catalogue.key,
-        User.profile_asset_guid.key,
+        User.profile_fileupload_guid.key,
         User.is_active.fget.__name__,
         User.is_staff.fget.__name__,
         User.is_admin.fget.__name__,

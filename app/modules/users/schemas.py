@@ -46,7 +46,7 @@ class DetailedUserSchema(BaseUserSchema):
             User.is_active.fget.__name__,
             User.is_staff.fget.__name__,
             User.is_admin.fget.__name__,
-            User.profile_asset_guid.key,
+            User.profile_fileupload_guid.key,
             User.affiliation.key,
             User.location.key,
             User.forum_id.key,

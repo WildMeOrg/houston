@@ -423,5 +423,5 @@ class SightingByID(Resource):
 
         # if we get here, edm has deleted the sighting, now houston feather
         # TODO handle failure of feather deletion (when edm successful!)  out-of-sync == bad
-        sighting.delete()  # this will cascade through encounters/assets/submissions
+        sighting.delete_cascade()
         return None

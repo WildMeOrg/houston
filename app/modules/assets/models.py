@@ -186,6 +186,10 @@ class Asset(db.Model, HoustonModel):
         return target_path
 
     def delete(self):
+        with db.session.begin():
+            db.session.delete(self)
+
+    def delete_cascade(self):
         sub = self.submission
         with db.session.begin(subtransactions=True):
             db.session.delete(self)

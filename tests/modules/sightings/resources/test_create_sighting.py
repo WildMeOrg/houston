@@ -84,7 +84,7 @@ def test_create_and_delete_sighting(db, flask_app_client, researcher_1, staff_us
 
     # upon success (yay) we clean up our mess
     sighting_utils.cleanup_tus_dir(transaction_id)
-    sighting_utils.delete_sighting(flask_app_client, staff_user, sighting_id)
+    sighting_utils.delete_sighting(flask_app_client, researcher_1, sighting_id)
 
     post_ct = test_utils.multi_count(db, (Sighting, Encounter, Asset, Submission))
     assert orig_ct == post_ct

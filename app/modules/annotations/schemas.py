@@ -17,7 +17,10 @@ class BaseAnnotationSchema(ModelSchema):
     class Meta:
         # pylint: disable=missing-docstring
         model = Annotation
-        fields = (Annotation.guid.key,)
+        fields = (
+            Annotation.guid.key,
+            Annotation.asset_guid.key,
+        )
         dump_only = (Annotation.guid.key,)
 
 

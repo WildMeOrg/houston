@@ -11,7 +11,7 @@ from flask_restx_patched import Resource
 from flask_restx._http import HTTPStatus
 
 from app.extensions import db
-from app.extensions.api import Namespace
+from app.extensions.api import Namespace, abort
 from app.extensions.api.parameters import PaginationParameters
 from app.modules.users import permissions
 from app.modules.users.permissions.types import AccessOperation
@@ -59,11 +59,23 @@ class Annotations(Resource):
     @api.login_required(oauth_scopes=['annotations:write'])
     @api.parameters(parameters.CreateAnnotationParameters())
     @api.response(schemas.DetailedAnnotationSchema())
+    @api.response(code=HTTPStatus.BAD_REQUEST)
     @api.response(code=HTTPStatus.CONFLICT)
     def post(self, args):
         """
         Create a new instance of Annotation.
         """
+        from app.modules.assets.models import Asset
+
+        if 'asset_uuid' not in args:
+            abort(code=HTTPStatus.BAD_REQUEST, message='Must provide an asset_uuid')
+
+        asset_uuid = args.get('asset_guid', None)
+        asset = Asset.query.get(asset_uuid)
+        if not asset:
+            abort(code=HTTPStatus.BAD_REQUEST, message='asset_uuid not found')
+        args['asset_uuid'] = asset_uuid
+
         context = api.commit_or_abort(
             db.session, default_error_message='Failed to create a new Annotation'
         )

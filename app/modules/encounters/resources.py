@@ -208,8 +208,8 @@ class EncounterByID(Resource):
         context = api.commit_or_abort(
             db.session, default_error_message='Failed to update Encounter details.'
         )
-        parameters.PatchEncounterDetailsParameters.perform_patch(args, obj=encounter)
         with context:
+            parameters.PatchEncounterDetailsParameters.perform_patch(args, obj=encounter)
             db.session.merge(encounter)
         return encounter
 

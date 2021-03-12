@@ -260,7 +260,7 @@ class Submission(db.Model, HoustonModel):
             description=description,
         )
         submission.owner = owner
-        with db.session.begin():
+        with db.session.begin(subtransactions=True):
             db.session.add(submission)
 
         log.info('created submission %r' % submission)
@@ -276,7 +276,7 @@ class Submission(db.Model, HoustonModel):
             )
             if os.path.exists(submission.get_absolute_path()):
                 shutil.rmtree(submission.get_absolute_path())
-            with db.session.begin():
+            with db.session.begin(subtransactions=True):
                 db.session.delete(submission)
             raise
 
@@ -494,7 +494,7 @@ class Submission(db.Model, HoustonModel):
             file_data.pop('filepath', None) for file_data in files
         ]
         assets = []
-        with db.session.begin():
+        with db.session.begin(subtransactions=True):
             for file_data, asset_submission_filepath in zip(
                 files, asset_submission_filepath_list
             ):
@@ -544,7 +544,7 @@ class Submission(db.Model, HoustonModel):
         deleted_assets = list(set(self.assets) - set(assets))
         if verbose:
             print('Deleting %d orphaned Assets' % (len(deleted_assets),))
-        with db.session.begin():
+        with db.session.begin(subtransactions=True):
             for deleted_asset in deleted_assets:
                 deleted_asset.delete()
         db.session.refresh(self)
@@ -579,7 +579,7 @@ class Submission(db.Model, HoustonModel):
         return repo
 
     def update_metadata_from_commit(self, commit):
-        with db.session.begin():
+        with db.session.begin(subtransactions=True):
             self.commit = commit.hexsha
 
             metadata_path = os.path.join(commit.repo.working_dir, 'metadata.json')

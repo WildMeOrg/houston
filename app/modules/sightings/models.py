@@ -49,10 +49,14 @@ class Sighting(db.Model, FeatherModel):
             self.encounters.append(encounter)
 
     def delete(self):
+        with db.session.begin():
+            db.session.delete(self)
+
+    def delete_cascade(self):
         with db.session.begin(subtransactions=True):
             while self.encounters:
                 enc = self.encounters.pop()
-                enc.delete()
+                enc.delete_cascade()
             db.session.delete(self)
 
     def delete_from_edm(self, current_app):

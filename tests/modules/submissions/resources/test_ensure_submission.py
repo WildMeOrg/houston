@@ -48,11 +48,12 @@ def test_ensure_clone_submission_by_uuid(
         )
 
         # Checks that there are two valid Assets in the database
-        assert len(clone.submission.assets) == 2
+        assert len(clone.submission.assets) == 3
         temp_assets = sorted(clone.submission.assets)
         expected_guid_list = [
             uuid.UUID(test_clone_submission_data['asset_uuids'][0]),
             uuid.UUID(test_clone_submission_data['asset_uuids'][1]),
+            uuid.UUID(test_clone_submission_data['asset_uuids'][2]),
         ]
 
         for asset, expected_guid in zip(temp_assets, expected_guid_list):

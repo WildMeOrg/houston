@@ -67,14 +67,14 @@ class Annotations(Resource):
         """
         from app.modules.assets.models import Asset
 
-        if 'asset_uuid' not in args:
-            abort(code=HTTPStatus.BAD_REQUEST, message='Must provide an asset_uuid')
+        if 'asset_guid' not in args:
+            abort(code=HTTPStatus.BAD_REQUEST, message='Must provide an asset_guid')
 
-        asset_uuid = args.get('asset_guid', None)
-        asset = Asset.query.get(asset_uuid)
+        asset_guid = args.get('asset_guid', None)
+        asset = Asset.query.get(asset_guid)
         if not asset:
-            abort(code=HTTPStatus.BAD_REQUEST, message='asset_uuid not found')
-        args['asset_uuid'] = asset_uuid
+            abort(code=HTTPStatus.BAD_REQUEST, message='asset_guid not found')
+        args['asset_guid'] = asset_guid
 
         context = api.commit_or_abort(
             db.session, default_error_message='Failed to create a new Annotation'

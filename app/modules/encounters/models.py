@@ -83,7 +83,7 @@ class Encounter(db.Model, FeatherModel):
         return [ref.asset for ref in self.assets]
 
     def add_asset(self, asset):
-        with db.session.begin():
+        with db.session.begin(subtransactions=True):
             self.add_asset_in_context(asset)
 
     def add_assets(self, asset_list):

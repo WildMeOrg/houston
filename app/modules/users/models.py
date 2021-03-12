@@ -149,12 +149,12 @@ class User(db.Model, FeatherModel, UserEDMMixin):
         db.GUID, nullable=True
     )  # this may just be a string, however EDM wants to do ID catalogues
 
-    profile_asset_guid = db.Column(
-        db.GUID, nullable=True
-    )  # should be reconciled with Jon's MediaAsset class
-    footer_logo_asset_guid = db.Column(
-        db.GUID, nullable=True
-    )  # should be reconciled with Jon's MediaAsset class
+    profile_fileupload_guid = db.Column(
+        db.GUID, db.ForeignKey('file_upload.guid'), nullable=True
+    )
+    footer_logo_fileupload_guid = db.Column(
+        db.GUID, db.ForeignKey('file_upload.guid'), nullable=True
+    )
 
     organization_membership_enrollments = db.relationship(
         'OrganizationUserMembershipEnrollment', back_populates='user'
@@ -470,7 +470,7 @@ class User(db.Model, FeatherModel, UserEDMMixin):
     def picture(self):
         from app.modules.assets.models import Asset
 
-        asset = Asset.query.filter_by(id=self.profile_asset_guid).first()
+        asset = Asset.query.filter_by(id=self.profile_fileupload_guid).first()
         if asset is None:
             placeholder_guid = (self.guid % 7) + 1
             filename = 'images/placeholder_profile_%d.png' % (placeholder_guid,)

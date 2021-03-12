@@ -2,6 +2,7 @@
 # pylint: disable=missing-docstring
 
 from tests.modules.sightings.resources import utils as sighting_utils
+from tests import utils as test_utils
 
 
 def test_create_failures(flask_app_client, researcher_1):
@@ -55,12 +56,7 @@ def test_create_and_delete_sighting(db, flask_app_client, researcher_1, staff_us
     import datetime
 
     # we should end up with these same counts (which _should be_ all zeros!)
-    orig_ct = [
-        sighting_utils.row_count(db, Sighting),
-        sighting_utils.row_count(db, Encounter),
-        sighting_utils.row_count(db, Asset),
-        sighting_utils.row_count(db, Submission),
-    ]
+    orig_ct = test_utils.multi_count(db, (Sighting, Encounter, Asset, Submission))
 
     timestamp = datetime.datetime.now().isoformat()
     transaction_id, test_filename = sighting_utils.prep_tus_dir()
@@ -90,10 +86,5 @@ def test_create_and_delete_sighting(db, flask_app_client, researcher_1, staff_us
     sighting_utils.cleanup_tus_dir(transaction_id)
     sighting_utils.delete_sighting(flask_app_client, staff_user, sighting_id)
 
-    post_ct = [
-        sighting_utils.row_count(db, Sighting),
-        sighting_utils.row_count(db, Encounter),
-        sighting_utils.row_count(db, Asset),
-        sighting_utils.row_count(db, Submission),
-    ]
+    post_ct = test_utils.multi_count(db, (Sighting, Encounter, Asset, Submission))
     assert orig_ct == post_ct

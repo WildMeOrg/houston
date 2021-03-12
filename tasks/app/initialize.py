@@ -74,8 +74,14 @@ def initialize_gitlab_submissions(context, email):
         config.TestingConfig.PROJECT_ROOT, 'tests', 'submissions', 'test-000'
     )
     image_data = [
-        (uuid.UUID('00000000-0000-0000-0000-000000000011'), os.path.join(test_root, 'zebra.jpg')),
-        (uuid.UUID('00000000-0000-0000-0000-000000000012'), os.path.join(test_root, 'fluke.jpg')),
+        (
+            uuid.UUID('00000000-0000-0000-0000-000000000011'),
+            os.path.join(test_root, 'zebra.jpg'),
+        ),
+        (
+            uuid.UUID('00000000-0000-0000-0000-000000000012'),
+            os.path.join(test_root, 'fluke.jpg'),
+        ),
     ]
     submission_data = [
         (uuid.UUID('00000000-0000-0000-0000-000000000001'), []),
@@ -90,14 +96,24 @@ def initialize_gitlab_submissions(context, email):
         if len(projects) > 0:
             assert len(projects) == 1
             project = projects[0]
-            log.info('Submission %r already on GitLab, existing tags: %r' % (submission_guid, project.tag_list, ))
+            log.info(
+                'Submission %r already on GitLab, existing tags: %r'
+                % (
+                    submission_guid,
+                    project.tag_list,
+                )
+            )
         else:
-            log.info('Submission %r missing on GitLab, provisioning...' % (submission_guid, ))
+            log.info(
+                'Submission %r missing on GitLab, provisioning...' % (submission_guid,)
+            )
 
             submission = Submission.query.get(submission_guid)
 
             if submission is None:
-                log.info('Submission %r missing locally, creating...' % (submission_guid, ))
+                log.info(
+                    'Submission %r missing locally, creating...' % (submission_guid,)
+                )
                 with db.session.begin():
                     args = {
                         'guid': submission_guid,
@@ -108,9 +124,9 @@ def initialize_gitlab_submissions(context, email):
                     submission = Submission(**args)
                     db.session.add(submission)
                 db.session.refresh(submission)
-                log.info('Submission %r created' % (submission, ))
+                log.info('Submission %r created' % (submission,))
             else:
-                log.info('Submission %r found locally' % (submission, ))
+                log.info('Submission %r found locally' % (submission,))
 
             repo, project = submission.ensure_repository(additional_tags=[WHITELIST_TAG])
 
@@ -122,14 +138,21 @@ def initialize_gitlab_submissions(context, email):
                 repo_filepath = submission.git_copy_file_add(filepath)
                 filepath_guid_mapping[repo_filepath] = file_guid
 
-            submission.git_commit('Initial commit for testing', existing_filepath_guid_mapping=filepath_guid_mapping)
+            submission.git_commit(
+                'Initial commit for testing',
+                existing_filepath_guid_mapping=filepath_guid_mapping,
+            )
 
             submission.git_push()
 
             print('Created and pushed new submission: %r' % (submission,))
 
-        assert WHITELIST_TAG in project.tag_list, 'Project %r needs to be re-provisioned: %r' % (project, project.tag_list, )
-
+        assert (
+            WHITELIST_TAG in project.tag_list
+        ), 'Project %r needs to be re-provisioned: %r' % (
+            project,
+            project.tag_list,
+        )
 
 
 @app_context_task

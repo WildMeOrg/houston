@@ -482,9 +482,9 @@ class Submission(db.Model, HoustonModel):
                 uuid_str = uuid_str.strip().strip('.')
                 if existing_asset_target_ not in existing_filepath_guid_mapping:
                     try:
-                        existing_filepath_guid_mapping[existing_asset_target_] = uuid.UUID(
-                            uuid_str
-                        )
+                        existing_filepath_guid_mapping[
+                            existing_asset_target_
+                        ] = uuid.UUID(uuid_str)
                     except Exception:
                         pass
             os.remove(existing_asset_symlink)

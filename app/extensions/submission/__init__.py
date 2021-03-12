@@ -170,7 +170,7 @@ class SubmissionManager(object):
 
             if project is None:
                 tag_list = [
-                    'type:%s' % (submission.major_type.name, ),
+                    'type:%s' % (submission.major_type.name,),
                 ]
                 for tag in additional_tags:
                     if isinstance(tag, str):

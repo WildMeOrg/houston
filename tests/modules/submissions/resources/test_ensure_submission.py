@@ -42,7 +42,10 @@ def test_ensure_clone_submission_by_uuid(
         )
 
         # assert clone.submission.commit_houston_api_version == '0.1.0.xxxxxxxx'
-        assert clone.submission.description == 'This is a required PyTest submission (do not delete)'
+        assert (
+            clone.submission.description
+            == 'This is a required PyTest submission (do not delete)'
+        )
 
         # Checks that there are two valid Assets in the database
         assert len(clone.submission.assets) == 2

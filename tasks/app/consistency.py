@@ -147,7 +147,13 @@ def cleanup_gitlab(context, dryrun=False, clean=False):
             TEST_GROUP_NAMES,
         )
     )
-    log.info('Skipped %d projects last modified within the grace period (%d seconds)' % (skipped, GRACE_PERIOD,))
+    log.info(
+        'Skipped %d projects last modified within the grace period (%d seconds)'
+        % (
+            skipped,
+            GRACE_PERIOD,
+        )
+    )
 
 
 @app_context_task

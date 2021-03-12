@@ -409,9 +409,19 @@ class SightingByID(Resource):
         """
         Delete a Sighting by ID.
         """
-        context = api.commit_or_abort(
-            db.session, default_error_message='Failed to delete the Sighting.'
-        )
-        with context:
-            db.session.delete(sighting)
+        # first try delete on edm
+        response = sighting.delete_from_edm(current_app)
+        response_data = None
+        if response.ok:
+            response_data = response.json()
+
+        if not response.ok or not response_data.get('success', False):
+            log.warning('Sighting.delete %r failed: %r' % (sighting.guid, response_data))
+            abort(
+                success=False, passed_message='Delete failed', message='Error', code=400
+            )
+
+        # if we get here, edm has deleted the sighting, now houston feather
+        # TODO handle failure of feather deletion (when edm successful!)  out-of-sync == bad
+        sighting.delete()  # this will cascade through encounters/assets/submissions
         return None

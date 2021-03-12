@@ -70,21 +70,20 @@ def create_sighting(
 
 
 # not yet implemented
-def read_sighting(flask_app_client, user, enc_guid, expected_status_code=200):
+def read_sighting(flask_app_client, user, sight_guid, expected_status_code=200):
     with flask_app_client.login(user, auth_scopes=('sightings:read',)):
-        response = flask_app_client.get('%s%s' % (PATH, enc_guid))
+        response = flask_app_client.get('%s%s' % (PATH, sight_guid))
 
     assert isinstance(response.json, dict)
     assert response.status_code == expected_status_code
     if expected_status_code == 200:
-        assert response.json['id'] == str(enc_guid)
+        assert response.json['id'] == str(sight_guid)
     return response
 
 
-# not yet implemented
-def delete_sighting(flask_app_client, user, enc_guid, expected_status_code=204):
-    with flask_app_client.login(user, auth_scopes=('sighting:write',)):
-        response = flask_app_client.delete('%s%s' % (PATH, enc_guid))
+def delete_sighting(flask_app_client, user, sight_guid, expected_status_code=204):
+    with flask_app_client.login(user, auth_scopes=('sightings:write',)):
+        response = flask_app_client.delete('%s%s' % (PATH, sight_guid))
 
     if expected_status_code == 204:
         assert response.status_code == 204
@@ -92,3 +91,7 @@ def delete_sighting(flask_app_client, user, enc_guid, expected_status_code=204):
         test_utils.validate_dict_response(
             response, expected_status_code, {'status', 'message'}
         )
+
+
+def row_count(db, cls):
+    return db.session.query(cls).count()

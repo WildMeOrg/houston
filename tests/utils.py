@@ -239,3 +239,14 @@ def patch_replace_op(path, value):
         'path': '/%s' % (path,),
         'value': value,
     }
+
+
+def multi_count(db, cls_list):
+    cts = []
+    for cls in cls_list:
+        cts.append(row_count(db, cls))
+    return cts
+
+
+def row_count(db, cls):
+    return db.session.query(cls).count()

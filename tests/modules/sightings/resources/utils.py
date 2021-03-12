@@ -91,7 +91,3 @@ def delete_sighting(flask_app_client, user, sight_guid, expected_status_code=204
         test_utils.validate_dict_response(
             response, expected_status_code, {'status', 'message'}
         )
-
-
-def row_count(db, cls):
-    return db.session.query(cls).count()

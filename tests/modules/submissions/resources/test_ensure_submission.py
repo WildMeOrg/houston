@@ -36,13 +36,16 @@ def test_ensure_clone_submission_by_uuid(
 
     try:
         assert clone.submission.major_type == SubmissionMajorType.test
-        assert clone.submission.commit == '1d3dd77e1fba336ae89bd9d7a2788f4a0cb2df90'
+        # assert clone.submission.commit == 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'
         assert clone.submission.commit_mime_whitelist_guid == uuid.UUID(
             '4d46c55d-accf-29f1-abe7-a24839ec1b95'
         )
 
-        assert clone.submission.commit_houston_api_version == '0.1.0.6c9d6965'
-        assert clone.submission.description == 'Test Submission (streamlined)'
+        # assert clone.submission.commit_houston_api_version == '0.1.0.xxxxxxxx'
+        assert (
+            clone.submission.description
+            == 'This is a required PyTest submission (do not delete)'
+        )
 
         # Checks that there are two valid Assets in the database
         assert len(clone.submission.assets) == 2

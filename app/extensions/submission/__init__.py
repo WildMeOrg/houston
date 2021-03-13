@@ -45,9 +45,9 @@ class SubmissionManager(object):
         self.mime_type_whitelist_guid = None
 
         if pre_initialize:
-            self.ensure_initialed()
+            self.ensure_initialized()
 
-    def ensure_initialed(self):
+    def ensure_initialized(self):
         if not self.initialized:
             assert self.gl is None
 
@@ -59,7 +59,7 @@ class SubmissionManager(object):
 
             log.info('Logging into Submission GitLab...')
             log.info('\t URI: %r' % (remote_uri,))
-            log.info('\t PAT: %r' % (remote_personal_access_token,))
+            # log.info('\t PAT: %r' % (remote_personal_access_token,))
             log.info('\t NS : %r' % (remote_namespace,))
 
             try:
@@ -131,7 +131,7 @@ class SubmissionManager(object):
                     'GitLab remote failed to authenticate and/or initialize'
                 )
 
-    def ensure_repository(self, submission, remote=True):
+    def ensure_repository(self, submission, remote=True, additional_tags=[]):
         submission_path = submission.get_absolute_path()
 
         submission_git_path = os.path.join(submission_path, '.git')
@@ -151,7 +151,7 @@ class SubmissionManager(object):
         project = None
 
         if remote:
-            self.ensure_initialed()
+            self.ensure_initialized()
 
             projects = self.gl.projects.list(search=str(submission.guid))
             if len(projects) > 0:
@@ -169,11 +169,20 @@ class SubmissionManager(object):
                         project = project_
 
             if project is None:
+                tag_list = [
+                    'type:%s' % (submission.major_type.name,),
+                ]
+                for tag in additional_tags:
+                    if isinstance(tag, str):
+                        tag_list.append(tag)
+
                 args = (
                     self.namespace,
                     submission.guid,
+                    tag_list,
                 )
-                log.info('Creating remote project in GitLab: %r / %r' % args)
+
+                log.info('Creating remote project in GitLab: %r / %r (tags: %r)' % args)
                 project = self.gl.projects.create(
                     {
                         'path': str(submission.guid),
@@ -182,9 +191,7 @@ class SubmissionManager(object):
                         'namespace_id': self.namespace.id,
                         'visibility': 'private',
                         'merge_method': 'rebase_merge',
-                        'tag_list': [
-                            'type:%s' % (submission.major_type.name,),
-                        ],
+                        'tag_list': tag_list,
                         'lfs_enabled': True,
                         # 'tag_list': [],
                     }
@@ -256,7 +263,7 @@ class SubmissionManager(object):
 
     def is_submission_on_remote(self, submission_uuid):
 
-        self.ensure_initialed()
+        self.ensure_initialized()
 
         # Try to find remote project by Submission UUID
         projects = self.gl.projects.list(search=str(submission_uuid))
@@ -269,7 +276,7 @@ class SubmissionManager(object):
         if submission is None:
             from app.extensions import db
 
-            self.ensure_initialed()
+            self.ensure_initialized()
 
             # Try to find remote project by Submission UUID
             projects = self.gl.projects.list(search=str(submission_uuid))
@@ -308,7 +315,7 @@ class SubmissionManager(object):
         self.delete_remote_project(project)
 
     def delete_remote_project(self, project):
-        self.ensure_initialed()
+        self.ensure_initialized()
         try:
             self.gl.projects.delete(project.id)
             return True

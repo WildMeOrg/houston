@@ -47,7 +47,7 @@ def initialize_orgs_from_edm(context, edm_authentication=None):
 
 
 @app_context_task
-def initialize_gitlab_submissions(context, email):
+def initialize_gitlab_submissions(context, email, dryrun=False):
     """
     Create test submissions in GitLab
 
@@ -127,6 +127,10 @@ def initialize_gitlab_submissions(context, email):
                 log.info('Submission %r created' % (submission,))
             else:
                 log.info('Submission %r found locally' % (submission,))
+
+            if dryrun:
+                log.info('DRYRUN: Submission creation skipped...')
+                continue
 
             repo, project = submission.ensure_repository(additional_tags=[WHITELIST_TAG])
 

@@ -77,6 +77,9 @@ coverage run --append `which invoke` app.users.list-all
 coverage run --append `which invoke` app.users.add-role --role=Researcher --email=user@example.org
 coverage run --append `which invoke` app.users.remove-role --role=Researcher --email=user@example.org
 
+# test app.initialize.*
+coverage run --append `which invoke` app.initialize.initialize-gitlab-submissions --email user@example.org --dryrun
+
 # test app.consistency.*
 coverage run --append `which invoke` app.consistency.all
 coverage run --append `which invoke` app.consistency.user-staff-permissions

@@ -35,3 +35,9 @@ class LocalConfig(BaseConfig):
             'password' : os.getenv('EDM_AUTHENTICATIONS_0_PASSWORD'),
         },
     }
+
+    GITLAB_REMOTE_URI = os.getenv('GITLAB_REMOTE_URI')
+    GITLAB_PUBLIC_NAME = os.getenv('GITLAB_PUBLIC_NAME')
+    GITLAB_EMAIL = os.getenv('GITLAB_EMAIL')
+    GITLAB_NAMESPACE = os.getenv('GITLAB_NAMESPACE')
+    GITLAB_REMOTE_LOGIN_PAT = os.getenv('GITLAB_REMOTE_LOGIN_PAT')

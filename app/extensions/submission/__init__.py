@@ -127,6 +127,9 @@ class SubmissionManager(object):
                 self.mime_type_whitelist_guid = None
                 self.initialized = False
 
+                if self.app.debug:
+                    log.exception('problem initializing GitLab integration')
+
                 raise RuntimeError(
                     'GitLab remote failed to authenticate and/or initialize'
                 )

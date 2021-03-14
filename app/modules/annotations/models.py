@@ -33,3 +33,7 @@ class Annotation(db.Model, FeatherModel):
             'guid={self.guid}, '
             ')>'.format(class_name=self.__class__.__name__, self=self)
         )
+
+    def delete(self):
+        with db.session.begin(subtransactions=True):
+            db.session.delete(self)

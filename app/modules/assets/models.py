@@ -187,6 +187,8 @@ class Asset(db.Model, HoustonModel):
 
     def delete(self):
         with db.session.begin():
+            for annotation in self.annotations:
+                annotation.delete()
             db.session.delete(self)
 
     @classmethod

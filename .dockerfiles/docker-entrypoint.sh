@@ -49,6 +49,12 @@ docker_process_init_files() {
 					. "$f"
 				fi
 				;;
+			*.source-sh)
+				# test -x "$f" on a volume mounted file causes `-x` to report
+				# true if the file exist regardless of execution permissions
+				echo "$0: sourcing $f"
+				. "$f"
+				;;
 			*)        echo "$0: ignoring $f" ;;
 		esac
 		echo

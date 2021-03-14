@@ -25,3 +25,9 @@ class LocalConfig(BaseConfig):
     #        File "/code/tasks/app/db.py", in upgrade: `if os.path.exists(_db_filepath):`
     # SQLALCHEMY_DATABASE_PATH = None
     SQLALCHEMY_DATABASE_URI = os.getenv('SQLALCHEMY_DATABASE_URI')
+
+    GITLAB_REMOTE_URI = os.getenv('GITLAB_REMOTE_URI')
+    GITLAB_PUBLIC_NAME = os.getenv('GITLAB_PUBLIC_NAME')
+    GITLAB_EMAIL = os.getenv('GITLAB_EMAIL')
+    GITLAB_NAMESPACE = os.getenv('GITLAB_NAMESPACE')
+    GITLAB_REMOTE_LOGIN_PAT = os.getenv('GITLAB_REMOTE_LOGIN_PAT')

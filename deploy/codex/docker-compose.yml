@@ -112,8 +112,18 @@ services:
       EDM_AUTHENTICATIONS_USERNAME__DEFAULT: "${EDM_AUTHENTICATIONS_USERNAME__DEFAULT}"
       EDM_AUTHENTICATIONS_PASSWORD__DEFAULT: "${EDM_AUTHENTICATIONS_PASSWORD__DEFAULT}"
       REDIS_HOST: redis
+      GITLAB_PROTO: "${GITLAB_PROTO}"
+      GITLAB_HOST: "${GITLAB_HOST}"
+      GITLAB_PORT: "${GITLAB_PORT}"
+      GITLAB_ADMIN_PASSWORD: "${GITLAB_ADMIN_PASSWORD}"
+      GITLAB_REMOTE_URI: "${GITLAB_REMOTE_URI}"
+      GITLAB_PUBLIC_NAME: "${GITLAB_PUBLIC_NAME}"
+      GITLAB_EMAIL: "${GITLAB_EMAIL}"
+      GITLAB_NAMESPACE: "${GITLAB_NAMESPACE}"
     volumes:
       - houston-var:/data
+      - ./houston/docker-entrypoint-init.d:/docker-entrypoint-init.d
+      - ./houston/docker-entrypoint-always-init.d:/docker-entrypoint-always-init.d
       # FIXME: pull in development code while working on bringing up the container
       - ../../:/code
       # FIXME: Can we define a better mountpoint for this file? Maybe /config.py?

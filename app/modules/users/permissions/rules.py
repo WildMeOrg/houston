@@ -201,13 +201,13 @@ class ObjectActionRule(DenyAbortMixin, Rule):
 
     def _permitted_via_user(self, user):
         from app.modules.individuals.models import Individual
+        from app.modules.annotations.models import Annotation
         from app.modules.encounters.models import Encounter
         from app.modules.sightings.models import Sighting
         from app.modules.users.models import User
 
         # users can read write and delete anything they own while some users can do anything
         has_permission = owner_or_privileged(user, self._obj)
-
         if not has_permission and user.is_admin:
             # Admins can access all users
             if isinstance(self._obj, User):
@@ -229,6 +229,10 @@ class ObjectActionRule(DenyAbortMixin, Rule):
                 # them and those roles are not supported yet
                 if self._action == AccessOperation.READ:
                     has_permission = user.is_researcher
+            elif isinstance(self._obj, Annotation):
+                # Annotation has no owner, but it has one asset, that has one submission that has an owner
+                # TODO should this be the encounter owner?
+                has_permission = user == self._obj.asset.submission.owner
 
         # Sightings depend on if user is the _only_ owner of referenced Encounters
         if not has_permission and isinstance(self._obj, Sighting):

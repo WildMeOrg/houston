@@ -7,7 +7,7 @@ import json
 from tests import utils as test_utils
 
 PATH = '/api/v1/annotations/'
-EXPECTED_KEYS = {'guid', 'asset_uuid'}
+EXPECTED_KEYS = {'guid', 'asset_guid'}
 
 
 def create_annotation(flask_app_client, user, asset_uuid, expected_status_code=200):
@@ -70,7 +70,7 @@ def read_all_annotations(flask_app_client, user, expected_status_code=200):
 
 
 def delete_annotation(flask_app_client, user, annotation_guid, expected_status_code=204):
-    with flask_app_client.login(user, auth_scopes=('annotations:delete',)):
+    with flask_app_client.login(user, auth_scopes=('annotations:write',)):
         response = flask_app_client.delete('%s%s' % (PATH, annotation_guid))
 
     if expected_status_code == 204:

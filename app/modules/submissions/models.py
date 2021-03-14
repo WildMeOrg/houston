@@ -44,7 +44,7 @@ class GitLabPAT(object):
 
         self.repo = repo
         if url is None:
-            assert repo is not None
+            assert repo is not None, 'both repo and url parameters provided, choose one'
             url = repo.remotes.origin.url
         self.original_url = url
 

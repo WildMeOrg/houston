@@ -190,10 +190,62 @@ class BaseConfig(object):
     }
 
 
+def parse_edm_config_items():
+    """Parse EDM configuration from environment variables"""
+    # Parse all uris from environment variables
+    uris = {}
+    for varname in [e for e in os.environ if e.startswith('EDM_AUTHENTICATIONS_URI__')]:
+        #: e.g. EDM_AUTHENTICATIONS_URI__DEFAULT
+        key = varname.split('__')[-1].lower()
+        value = os.environ[varname]
+        uris[key] = value
+
+    # Parse all authentication info from environment variables
+    authns = {}
+    for varname in [
+        e for e in os.environ if e.startswith('EDM_AUTHENTICATIONS_USERNAME__')
+    ]:
+        key = varname.split('__')[-1].lower()
+        authns.setdefault(key, {})
+        username = os.environ[varname]
+        password_varname = f'EDM_AUTHENTICATIONS_PASSWORD__{key.upper()}'
+        try:
+            password = os.environ[password_varname]
+        except KeyError:
+            raise RuntimeError(
+                f"unconfigured password that pairs with '{varname}'; "
+                f"should be in environment variable '{password_varname}'"
+            )
+        authns[key]['username'] = username
+        authns[key]['password'] = password
+
+    # Check for the 'default' EDM
+    assert uris.get(
+        'default'
+    ), "Missing a 'default' EDM URI (env-var `EDM_AUTHENTICATIONS_URI__DEFAULT`)"
+    has_required_default_authn = (
+        authns.get('default')
+        and authns['default'].get('username')
+        and authns['default'].get('password')
+    )
+    assertion_msg = (
+        "Missing authentication credentials for 'default' "
+        '(env-var `EDM_AUTHENTICATIONS_USERNAME__DEFAULT` '
+        '& `EDM_AUTHENTICATIONS_PASSWORD__DEFAULT`)'
+    )
+    assert has_required_default_authn, assertion_msg
+
+    # Check URIs have matching credentials
+    missing_creds = [k for k in uris.keys() if not authns.get(k)]
+    assert (
+        not missing_creds
+    ), f"Missing credentials for named EDM configs: {', '.join(missing_creds)}"
+
+    return uris, authns
+
+
 class EDMConfig(object):
-    EDM_URIS = {
-        'default': 'https://nextgen.dev-wildbook.org/',
-    }
+    EDM_URIS, EDM_AUTHENTICATIONS = parse_edm_config_items()
 
 
 class SubmissionGitLabRemoteConfig(object):

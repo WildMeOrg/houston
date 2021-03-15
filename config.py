@@ -193,7 +193,8 @@ class BaseConfig(object):
 def parse_edm_config_items():
     """Parse EDM configuration from environment variables"""
     # Parse all uris from environment variables
-    uris = {}
+    # BBB assign a default URI
+    uris = {'default': 'https://nextgen.dev-wildbook.org/'}
     for varname in [e for e in os.environ if e.startswith('EDM_AUTHENTICATIONS_URI__')]:
         #: e.g. EDM_AUTHENTICATIONS_URI__DEFAULT
         key = varname.split('__')[-1].lower()

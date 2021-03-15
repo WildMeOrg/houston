@@ -88,6 +88,7 @@ services:
       - "83:5000"
     environment:
       FLASK_CONFIG: local
+      FLASK_CONFIG_IMPORT: "docker_local_config.LocalConfig"
       SQLALCHEMY_DATABASE_URI: "${SQLALCHEMY_DATABASE_URI}"
       EDM_AUTHENTICATIONS_0_URI: "${EDM_AUTHENTICATIONS_0_URI}"
       EDM_AUTHENTICATIONS_0_USERNAME: "${EDM_AUTHENTICATIONS_0_USERNAME}"
@@ -98,7 +99,7 @@ services:
       # FIXME: pull in development code while working on bringing up the container
       - ../../:/code
       # FIXME: Can we define a better mountpoint for this file? Maybe /config.py?
-      - ./houston/local_config.py:/code/local_config.py
+      - ./houston/local_config.py:/code/docker_local_config.py
 
   dev-frontend:
     # this component is intended to only be used in development

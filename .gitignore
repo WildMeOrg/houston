@@ -76,3 +76,6 @@ pip-wheel-metadata/
 
 cookie.jar
 .invoke-completion.sh
+
+# Docker / Container specific files
+docker_local_config.py

@@ -53,3 +53,22 @@ def list(context):
 
     for houston_config in houston_configs:
         print('{}'.format(houston_config))
+
+
+@app_context_task
+def show(context):
+    """
+    Show application configuration data
+    """
+    from flask import current_app
+    from functools import reduce
+
+    config = current_app.config
+    max_key_len = reduce(
+        lambda x, y: max(isinstance(x, str) and len(x) or x, len(y)), config.keys()
+    )
+
+    print(f"{'Config Key': ^{max_key_len}} | Value")
+    print('-' * 78)
+    for key, value in config.items():
+        print(f'{key: <{max_key_len}} | {value}')

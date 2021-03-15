@@ -179,65 +179,38 @@ class EDMManager(EDMManagerEndpointMixin, EDMManagerUserMixin):
             self._ensure_initialized()
 
     def _parse_config_edm_uris(self):
-        edm_uri_dict = self.app.config.get('EDM_URIS', None)
-        edm_authentication_dict = self.app.config.get('EDM_AUTHENTICATIONS', None)
+        """Obtain and verify the required configuration settings and
+        update the list of known EDM targets by URI.
 
-        assert edm_uri_dict is not None, 'Must specify EDM_URIS in config'
-        message = 'Must specify EDM_AUTHENTICATIONS in the secret config'
-        assert edm_authentication_dict is not None, message
+        This procedure is primarily focused on matching a URI to
+        authentication credentials. It ignores matching in the other direction.
 
-        try:
-            key_list = []
-            invalid_key_list = []
+        """
+        uris = self.app.config.get('EDM_URIS', {})
+        authns = self.app.config.get('EDM_AUTHENTICATIONS', {})
 
-            edm_uri_key_list = sorted(edm_uri_dict.keys())
-            edm_authentication_key_list = sorted(edm_authentication_dict.keys())
+        # Check for the 'default' EDM
+        assert uris.get('default'), "Missing a 'default' EDM_URI"
+        has_required_default_authn = (
+            isinstance(authns.get('default'), dict)
+            and authns['default'].get('username')
+            and authns['default'].get('password')
+        )
+        assertion_msg = "Missing EDM_AUTHENTICATION credentials for 'default'"
+        assert has_required_default_authn, assertion_msg
 
-            for key in edm_uri_key_list:
-                valid = True
+        # Check URIs have matching credentials
+        missing_creds = [k for k in uris.keys() if not authns.get(k)]
+        assert (
+            not missing_creds
+        ), f"Missing credentials for named EDM configs: {', '.join(missing_creds)}"
 
-                try:
-                    if not isinstance(key, str):
-                        # key isn't a string
-                        valid = False
+        # Update the list of known named targets
+        self.targets.update(uris.keys())
 
-                    if key in key_list + invalid_key_list:
-                        # key seen before, no duplicates allowed
-                        valid = False
-
-                    if key not in edm_authentication_key_list:
-                        # Authentication not provided
-                        valid = False
-
-                except Exception:
-                    valid = False
-
-                if valid:
-                    key_list.append(key)
-                else:
-                    invalid_key_list.append(key)
-
-            if len(invalid_key_list) > 0:
-                raise ValueError('Invalid keys provided')
-
-        except Exception as exception:
-            print('Invalid keys %r provided in EDM_URIS' % (invalid_key_list,))
-            raise exception
-
-        key_list = sorted(key_list)
-
-        assert 'default' in key_list, 'EDM_URIS must contain a string key "default"'
-        assert len(key_list) == len(set(key_list)), 'EDM_URIS cannot contain duplicates'
-
-        uris = {}
-        auths = {}
-        for key in key_list:
-            uris[key] = edm_uri_dict[key]
-            auths[key] = edm_authentication_dict[key]
-            self.targets.add(key)
-
+        # Assign local references to the configuration settings
         self.uris = uris
-        self.auths = auths
+        self.auths = authns
 
     def _init_sessions(self):
         self.sessions = {}
@@ -296,7 +269,7 @@ class EDMManager(EDMManagerEndpointMixin, EDMManagerUserMixin):
         decode_as_dict=False,
         passthrough_kwargs={},
         ensure_initialized=True,
-        verbose=True
+        verbose=True,
     ):
         if ensure_initialized:
             self._ensure_initialized()

@@ -220,28 +220,6 @@ def parse_edm_config_items():
         authns[key]['username'] = username
         authns[key]['password'] = password
 
-    # Check for the 'default' EDM
-    assert uris.get(
-        'default'
-    ), "Missing a 'default' EDM URI (env-var `EDM_AUTHENTICATIONS_URI__DEFAULT`)"
-    has_required_default_authn = (
-        authns.get('default')
-        and authns['default'].get('username')
-        and authns['default'].get('password')
-    )
-    assertion_msg = (
-        "Missing authentication credentials for 'default' "
-        '(env-var `EDM_AUTHENTICATIONS_USERNAME__DEFAULT` '
-        '& `EDM_AUTHENTICATIONS_PASSWORD__DEFAULT`)'
-    )
-    assert has_required_default_authn, assertion_msg
-
-    # Check URIs have matching credentials
-    missing_creds = [k for k in uris.keys() if not authns.get(k)]
-    assert (
-        not missing_creds
-    ), f"Missing credentials for named EDM configs: {', '.join(missing_creds)}"
-
     return uris, authns
 
 

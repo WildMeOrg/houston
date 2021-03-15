@@ -62,6 +62,9 @@ def initialize_gitlab_submissions(context, email, dryrun=False):
     import uuid
     import os
 
+    # This is a tag applied to the repository within GitLab. Whitelisted
+    # repositories are excluded from the externally automated
+    # cleanup procedure.
     WHITELIST_TAG = 'type:pytest-required'
 
     user = User.find(email=email)

@@ -152,9 +152,6 @@ class User(db.Model, FeatherModel, UserEDMMixin):
     profile_asset_guid = db.Column(
         db.GUID, nullable=True
     )  # should be reconciled with Jon's MediaAsset class
-    footer_logo_asset_guid = db.Column(
-        db.GUID, nullable=True
-    )  # should be reconciled with Jon's MediaAsset class
 
     organization_membership_enrollments = db.relationship(
         'OrganizationUserMembershipEnrollment', back_populates='user'

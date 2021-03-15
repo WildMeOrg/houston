@@ -63,7 +63,6 @@ class PersonalUserSchema(DetailedUserSchema):
     class Meta(DetailedUserSchema.Meta):
         fields = DetailedUserSchema.Meta.fields + (
             User.default_identification_catalogue.key,
-            User.footer_logo_asset_guid.key,
             User.shares_data.key,
             User.receive_newsletter_emails.key,
             User.receive_notification_emails.key,

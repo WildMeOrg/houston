@@ -596,10 +596,15 @@ class User(db.Model, FeatherModel, UserEDMMixin):
             # TODO: need to understand once assets become part of an encounter, do they still have a submission
             if obj.submission is not None:
                 ret_val = obj.submission.owner is self
-        elif isinstance(obj, (Sighting, Individual)):
-            # decided (2021-03-12) that "owner" of these objects is not applicable therefore always False
-            #   permissions on these objects must be handled in ways not dependent on ownership
+        elif isinstance(obj, Sighting):
+            # decided (2021-03-12) that "owner" of a Sighting is not applicable therefore always False
+            #   permissions must be handled in ways not dependent on ownership
             ret_val = False
+        elif isinstance(obj, Individual):
+            for encounter in obj.get_encounters():
+                if encounter.get_owner() is self:
+                    ret_val = True
+                    break
 
         return ret_val
 

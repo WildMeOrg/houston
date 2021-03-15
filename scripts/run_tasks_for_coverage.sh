@@ -35,7 +35,7 @@ coverage run --append `which invoke` app.db.init --directory=test-db-init
 
 # make sure swagger-ui.zip doesn't exist
 rm -f app/static/bower/swagger-ui.zip
-coverage run --append `which invoke` app.dependencies.install-swagger-ui --force
+coverage run --append `which invoke` dependencies.install-swagger-ui --force
 
 # test app.boilerplates.crud-module
 rm -rf app/modules/testapp

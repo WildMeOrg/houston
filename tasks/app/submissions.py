@@ -42,13 +42,14 @@ def create_submission_from_path(
     if not os.path.exists(path):
         raise IOError('The path %r does not exist.' % (absolute_path,))
 
+    args = {
+        'owner_guid': user.guid,
+        'major_type': SubmissionMajorType.filesystem,
+        'description': description,
+    }
+    submission = Submission(**args)
+
     with db.session.begin():
-        args = {
-            'owner_guid': user.guid,
-            'major_type': SubmissionMajorType.filesystem,
-            'description': description,
-        }
-        submission = Submission(**args)
         db.session.add(submission)
 
     db.session.refresh(submission)

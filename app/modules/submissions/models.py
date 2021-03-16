@@ -470,6 +470,7 @@ class Submission(db.Model, HoustonModel):
             file_data.pop('filepath', None) for file_data in files
         ]
         assets = []
+        # TODO: slim down this DB context
         with db.session.begin(subtransactions=True):
             for file_data, asset_submission_filepath in zip(
                 files, asset_submission_filepath_list
@@ -555,21 +556,21 @@ class Submission(db.Model, HoustonModel):
         return repo
 
     def update_metadata_from_commit(self, commit):
+        self.commit = commit.hexsha
+
+        metadata_path = os.path.join(commit.repo.working_dir, 'metadata.json')
+        assert os.path.exists(metadata_path)
+        with open(metadata_path, 'r') as metadata_file:
+            metadata_dict = json.load(metadata_file)
+
+        self.commit_mime_whitelist_guid = metadata_dict.get(
+            'commit_mime_whitelist_guid', current_app.sub.mime_type_whitelist_guid
+        )
+        self.commit_houston_api_version = metadata_dict.get(
+            'commit_houston_api_version', version
+        )
+
         with db.session.begin(subtransactions=True):
-            self.commit = commit.hexsha
-
-            metadata_path = os.path.join(commit.repo.working_dir, 'metadata.json')
-            assert os.path.exists(metadata_path)
-            with open(metadata_path, 'r') as metadata_file:
-                metadata_dict = json.load(metadata_file)
-
-            self.commit_mime_whitelist_guid = metadata_dict.get(
-                'commit_mime_whitelist_guid', current_app.sub.mime_type_whitelist_guid
-            )
-            self.commit_houston_api_version = metadata_dict.get(
-                'commit_houston_api_version', version
-            )
-
             db.session.merge(self)
         db.session.refresh(self)
 
@@ -590,10 +591,9 @@ class Submission(db.Model, HoustonModel):
 
     # TODO should this blow away remote repo?  by default?
     def delete(self):
-        for asset in self.assets:
-            asset.delete()
-        db.session.refresh(self)
-        with db.session.begin(subtransactions=True):
+        with db.session.begin():
+            for asset in self.assets:
+                asset.delete()
             db.session.delete(self)
         self.delete_dirs()
 

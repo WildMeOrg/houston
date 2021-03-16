@@ -418,8 +418,8 @@ class Code(db.Model, HoustonModel):
                 'reject_code': reject_code,
                 'expires': expires_utc,
             }
+            code = Code(**code_kwargs)
             with db.session.begin():
-                code = Code(**code_kwargs)
                 db.session.add(code)
             db.session.refresh(code)
             db.session.refresh(user)

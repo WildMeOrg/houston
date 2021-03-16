@@ -22,47 +22,49 @@ def user_staff_permissions(context):
 
     users = User.query.all()
 
-    updated = 0
+    updates = []
+    for user in tqdm.tqdm(users):
+
+        update = False
+
+        if not user.in_alpha:
+            user.in_alpha = True
+            update = True
+        if not user.in_beta:
+            user.in_beta = True
+            update = True
+
+        email = user.email.strip()
+        whitlist = [
+            'bluemellophone@gmail.com',
+            'sito.org+giraffeadmin@gmail.com',
+            'sito.org+gstest@gmail.com',
+        ]
+        is_wildme = email.endswith('@wildme.org') or email in whitlist
+        if is_wildme:
+            if not user.is_staff:
+                user.is_staff = True
+                update = True
+            if not user.is_admin:
+                user.is_admin = True
+                update = True
+            print(user)
+        else:
+            if user.is_staff:
+                user.is_staff = False
+                update = True
+            if user.is_admin:
+                user.is_admin = False
+                update = True
+
+        if update:
+            updates.append(user)
+
     with db.session.begin():
-        for user in tqdm.tqdm(users):
+        for user in updates:
+            db.session.merge(user)
 
-            update = False
-
-            if not user.in_alpha:
-                user.in_alpha = True
-                update = True
-            if not user.in_beta:
-                user.in_beta = True
-                update = True
-
-            email = user.email.strip()
-            whitlist = [
-                'bluemellophone@gmail.com',
-                'sito.org+giraffeadmin@gmail.com',
-                'sito.org+gstest@gmail.com',
-            ]
-            is_wildme = email.endswith('@wildme.org') or email in whitlist
-            if is_wildme:
-                if not user.is_staff:
-                    user.is_staff = True
-                    update = True
-                if not user.is_admin:
-                    user.is_admin = True
-                    update = True
-                print(user)
-            else:
-                if user.is_staff:
-                    user.is_staff = False
-                    update = True
-                if user.is_admin:
-                    user.is_admin = False
-                    update = True
-
-            if update:
-                db.session.merge(user)
-                updated += 1
-
-    print('Updated %d users' % (updated,))
+    print('Updated %d users' % (len(updates),))
 
 
 @app_context_task

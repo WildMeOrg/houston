@@ -95,17 +95,18 @@ class HoustonFlaskConfig(flask.Config):
 
             app = current_app
 
-        with app_db.session.begin():
             houston_config = HoustonConfig.query.filter(HoustonConfig.key == key).first()
             if houston_config is None:
                 houston_config = HoustonConfig(key=key, value=value)
-                app_db.session.add(houston_config)
+                with app_db.session.begin():
+                    app_db.session.add(houston_config)
                 label = 'Added'
             else:
                 if self.USE_UPDATE_OR_INSERT:
                     if value != houston_config.value:
                         houston_config.value = value
-                        app_db.session.merge(houston_config)
+                        with app_db.session.begin():
+                            app_db.session.merge(houston_config)
                         label = 'Updated'
                     else:
                         label = 'Checked'
@@ -134,13 +135,14 @@ class HoustonFlaskConfig(flask.Config):
 
             app = current_app
 
-        with app_db.session.begin():
-            houston_config = HoustonConfig.query.filter(HoustonConfig.key == key).first()
-            if houston_config is None:
-                label = 'Skipped'
-            else:
+        houston_config = HoustonConfig.query.filter(HoustonConfig.key == key).first()
+        if houston_config is None:
+            label = 'Skipped'
+        else:
+            label = 'Deleted'
+            with app_db.session.begin():
                 app_db.session.delete(houston_config)
-                label = 'Deleted'
+
         log.warning(
             '%s non-volatile database configuration for key %r'
             % (

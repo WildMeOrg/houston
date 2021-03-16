@@ -297,12 +297,13 @@ class SubmissionManager(object):
             if owner is None:
                 owner = current_user
 
+            submission = Submission(
+                created=created,
+                guid=submission_uuid,
+                owner_guid=owner.guid,
+            )
+
             with db.session.begin():
-                submission = Submission(
-                    created=created,
-                    guid=submission_uuid,
-                    owner_guid=owner.guid,
-                )
                 db.session.add(submission)
             db.session.refresh(submission)
 

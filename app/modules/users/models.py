@@ -6,7 +6,7 @@ User database models
 import enum
 import logging
 
-from flask import url_for, current_app
+from flask import current_app
 from sqlalchemy_utils import types as column_types
 
 from flask_login import current_user  # NOQA
@@ -467,17 +467,6 @@ class User(db.Model, FeatherModel, UserEDMMixin):
         if code is None:
             return False
         return code.is_resolved
-
-    @property
-    def picture(self):
-        from app.modules.assets.models import Asset
-
-        asset = Asset.query.filter_by(id=self.profile_fileupload_guid).first()
-        if asset is None:
-            placeholder_guid = (self.guid % 7) + 1
-            filename = 'images/placeholder_profile_%d.png' % (placeholder_guid,)
-            return url_for('static', filename=filename)
-        return url_for('backend.asset', code=asset.code)
 
     def get_org_memberships(self):
         return [

@@ -5,6 +5,9 @@ Logging adapter
 """
 import logging
 import os
+import shutil
+
+from flask import current_app
 
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
@@ -75,3 +78,39 @@ def tus_upload_dir(app, submission_guid=None, transaction_id=None, session_id=No
     # must be session_id
     h = hashlib.sha256(session_id)
     return os.path.join(base_path, '-'.join(['session', h.hexdigest()]))
+
+
+def _tus_filepaths_from(
+    submission_guid=None, session_id=None, transaction_id=None, paths=None
+):
+    upload_dir = tus_upload_dir(
+        current_app,
+        submission_guid=submission_guid,
+        session_id=session_id,
+        transaction_id=transaction_id,
+    )
+    log.debug('_tus_filepaths_from passed paths=%r' % (paths))
+    filepaths = []
+    if paths is None:  # traverse who upload dir and take everything
+        for root, dirs, files in os.walk(upload_dir):
+            for path in files:
+                filepaths.append(os.path.join(upload_dir, path))
+    else:
+        if len(paths) < 1:
+            return None
+        for path in paths:
+            want_path = os.path.join(upload_dir, path)
+            assert os.path.exists(want_path), f'{want_path} does not exist'
+            filepaths.append(want_path)
+
+    return filepaths
+
+
+def _tus_purge(submission_guid=None, session_id=None, transaction_id=None):
+    upload_dir = tus_upload_dir(
+        current_app,
+        submission_guid=submission_guid,
+        session_id=session_id,
+        transaction_id=transaction_id,
+    )
+    shutil.rmtree(upload_dir)

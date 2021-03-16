@@ -4,14 +4,22 @@ import importlib
 import os
 import logging
 import datetime
+from pathlib import Path
+
 import pytz
+from dotenv import load_dotenv
 
 import flask
 
 log = logging.getLogger(__name__)
 
+HERE = Path(__file__).parent
 
-PROJECT_ROOT = os.path.abspath(os.path.dirname(__file__))
+# Load .env into environment variables (then available under os.environ)
+_dotenv = HERE / '.env'
+load_dotenv(_dotenv, override=False)  # gracefully fails if file doesn't exist
+
+PROJECT_ROOT = str(HERE)
 PROJECT_DATABASE_PATH = os.path.join(PROJECT_ROOT, '_db')
 
 # Load config from database folder

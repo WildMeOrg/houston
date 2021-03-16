@@ -591,13 +591,13 @@ class Submission(db.Model, HoustonModel):
 
     # TODO should this blow away remote repo?  by default?
     def delete(self):
-        with db.session.begin():
+        with db.session.begin(subtransactions=True):
             for asset in self.assets:
                 asset.delete()
         db.session.refresh(self)
         # TODO: This is potentially dangerous as it decouples the Asset deletion
         #       transaction with the Submission deletion transaction, bad for rollbacks
-        with db.session.begin():
+        with db.session.begin(subtransactions=True):
             db.session.delete(self)
         self.delete_dirs()
 

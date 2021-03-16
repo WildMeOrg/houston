@@ -95,24 +95,26 @@ class HoustonFlaskConfig(flask.Config):
 
             app = current_app
 
-        with app_db.session.begin():
-            houston_config = HoustonConfig.query.filter(HoustonConfig.key == key).first()
-            if houston_config is None:
-                houston_config = HoustonConfig(key=key, value=value)
+        houston_config = HoustonConfig.query.filter(HoustonConfig.key == key).first()
+        if houston_config is None:
+            houston_config = HoustonConfig(key=key, value=value)
+            with app_db.session.begin():
                 app_db.session.add(houston_config)
-                label = 'Added'
-            else:
-                if self.USE_UPDATE_OR_INSERT:
-                    if value != houston_config.value:
-                        houston_config.value = value
+            label = 'Added'
+        else:
+            if self.USE_UPDATE_OR_INSERT:
+                if value != houston_config.value:
+                    houston_config.value = value
+                    with app_db.session.begin():
                         app_db.session.merge(houston_config)
-                        label = 'Updated'
-                    else:
-                        label = 'Checked'
+                    label = 'Updated'
                 else:
-                    raise ValueError(
-                        'You tried to update a database config that already exists (use update_or_insert=True)'
-                    )
+                    label = 'Checked'
+            else:
+                raise ValueError(
+                    'You tried to update a database config that already exists (use update_or_insert=True)'
+                )
+
         app_db.session.refresh(houston_config)
         log.warning(
             '%s non-volatile database configuration %r'
@@ -134,13 +136,14 @@ class HoustonFlaskConfig(flask.Config):
 
             app = current_app
 
-        with app_db.session.begin():
-            houston_config = HoustonConfig.query.filter(HoustonConfig.key == key).first()
-            if houston_config is None:
-                label = 'Skipped'
-            else:
+        houston_config = HoustonConfig.query.filter(HoustonConfig.key == key).first()
+        if houston_config is None:
+            label = 'Skipped'
+        else:
+            label = 'Deleted'
+            with app_db.session.begin():
                 app_db.session.delete(houston_config)
-                label = 'Deleted'
+
         log.warning(
             '%s non-volatile database configuration for key %r'
             % (

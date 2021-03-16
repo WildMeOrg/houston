@@ -116,14 +116,14 @@ def initialize_gitlab_submissions(context, email, dryrun=False):
                 log.info(
                     'Submission %r missing locally, creating...' % (submission_guid,)
                 )
+                args = {
+                    'guid': submission_guid,
+                    'owner_guid': user.guid,
+                    'major_type': SubmissionMajorType.test,
+                    'description': 'This is a required PyTest submission (do not delete)',
+                }
+                submission = Submission(**args)
                 with db.session.begin():
-                    args = {
-                        'guid': submission_guid,
-                        'owner_guid': user.guid,
-                        'major_type': SubmissionMajorType.test,
-                        'description': 'This is a required PyTest submission (do not delete)',
-                    }
-                    submission = Submission(**args)
                     db.session.add(submission)
                 db.session.refresh(submission)
                 log.info('Submission %r created' % (submission,))

@@ -261,7 +261,7 @@ class Submission(db.Model, HoustonModel):
             description=description,
         )
         submission.owner = owner
-        with db.session.begin():
+        with db.session.begin(subtransactions=True):
             db.session.add(submission)
 
         log.info('created submission %r' % submission)
@@ -424,7 +424,7 @@ class Submission(db.Model, HoustonModel):
             print('\tErrors  : %d' % (len(errors),))
 
         # Compute the xxHash64 for all found files
-        filepath_list = [file_data['filepath'] for file_data in files]
+        filepath_list = [file_data_['filepath'] for file_data_ in files]
         arguments_list = list(zip(filepath_list))
         print('Computing filesystem xxHash64...')
         filesystem_xxhash64_list = parallel(
@@ -470,7 +470,8 @@ class Submission(db.Model, HoustonModel):
             file_data.pop('filepath', None) for file_data in files
         ]
         assets = []
-        with db.session.begin():
+        # TODO: slim down this DB context
+        with db.session.begin(subtransactions=True):
             for file_data, asset_submission_filepath in zip(
                 files, asset_submission_filepath_list
             ):
@@ -520,7 +521,7 @@ class Submission(db.Model, HoustonModel):
         deleted_assets = list(set(self.assets) - set(assets))
         if verbose:
             print('Deleting %d orphaned Assets' % (len(deleted_assets),))
-        with db.session.begin():
+        with db.session.begin(subtransactions=True):
             for deleted_asset in deleted_assets:
                 deleted_asset.delete()
         db.session.refresh(self)
@@ -555,21 +556,21 @@ class Submission(db.Model, HoustonModel):
         return repo
 
     def update_metadata_from_commit(self, commit):
-        with db.session.begin():
-            self.commit = commit.hexsha
+        self.commit = commit.hexsha
 
-            metadata_path = os.path.join(commit.repo.working_dir, 'metadata.json')
-            assert os.path.exists(metadata_path)
-            with open(metadata_path, 'r') as metadata_file:
-                metadata_dict = json.load(metadata_file)
+        metadata_path = os.path.join(commit.repo.working_dir, 'metadata.json')
+        assert os.path.exists(metadata_path)
+        with open(metadata_path, 'r') as metadata_file:
+            metadata_dict = json.load(metadata_file)
 
-            self.commit_mime_whitelist_guid = metadata_dict.get(
-                'commit_mime_whitelist_guid', current_app.sub.mime_type_whitelist_guid
-            )
-            self.commit_houston_api_version = metadata_dict.get(
-                'commit_houston_api_version', version
-            )
+        self.commit_mime_whitelist_guid = metadata_dict.get(
+            'commit_mime_whitelist_guid', current_app.sub.mime_type_whitelist_guid
+        )
+        self.commit_houston_api_version = metadata_dict.get(
+            'commit_houston_api_version', version
+        )
 
+        with db.session.begin(subtransactions=True):
             db.session.merge(self)
         db.session.refresh(self)
 
@@ -590,9 +591,12 @@ class Submission(db.Model, HoustonModel):
 
     # TODO should this blow away remote repo?  by default?
     def delete(self):
-        for asset in self.assets:
-            asset.delete()
+        with db.session.begin(subtransactions=True):
+            for asset in self.assets:
+                asset.delete()
         db.session.refresh(self)
+        # TODO: This is potentially dangerous as it decouples the Asset deletion
+        #       transaction with the Submission deletion transaction, bad for rollbacks
         with db.session.begin(subtransactions=True):
             db.session.delete(self)
         self.delete_dirs()

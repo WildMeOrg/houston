@@ -65,23 +65,23 @@ class UserEDMMixin(EDMObjectMixin):
 
     @classmethod
     def ensure_edm_obj(cls, guid):
-        with db.session.begin():
-            user = User.query.filter(User.guid == guid).first()
-            is_new = False
+        user = User.query.filter(User.guid == guid).first()
+        is_new = user is None
 
-            if user is None:
-                email = '%s@localhost' % (guid,)
-                password = security.generate_random(128)
-                user = User(
-                    guid=guid,
-                    email=email,
-                    password=password,
-                    version=None,
-                    is_active=True,
-                    in_alpha=True,
-                )
+        if is_new:
+            email = '%s@localhost' % (guid,)
+            password = security.generate_random(128)
+            user = User(
+                guid=guid,
+                email=email,
+                password=password,
+                version=None,
+                is_active=True,
+                in_alpha=True,
+            )
+            with db.session.begin():
                 db.session.add(user)
-                is_new = True
+            db.session.refresh(user)
 
         return user, is_new
 

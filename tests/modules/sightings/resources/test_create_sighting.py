@@ -2,6 +2,7 @@
 # pylint: disable=missing-docstring
 
 from tests.modules.sightings.resources import utils as sighting_utils
+from tests import utils as test_utils
 
 
 def test_create_failures(flask_app_client, researcher_1):
@@ -47,13 +48,15 @@ def test_create_failures(flask_app_client, researcher_1):
     sighting_utils.cleanup_tus_dir(transaction_id)
 
 
-def test_create_and_delete_sighting(db, flask_app_client, researcher_1):
-    # from flask import current_app
+def test_create_and_delete_sighting(db, flask_app_client, researcher_1, staff_user):
     from app.modules.sightings.models import Sighting
     from app.modules.encounters.models import Encounter
+    from app.modules.assets.models import Asset
+    from app.modules.submissions.models import Submission
     import datetime
-    import os
-    import shutil
+
+    # we should end up with these same counts (which _should be_ all zeros!)
+    orig_ct = test_utils.multi_count(db, (Sighting, Encounter, Asset, Submission))
 
     timestamp = datetime.datetime.now().isoformat()
     transaction_id, test_filename = sighting_utils.prep_tus_dir()
@@ -74,23 +77,14 @@ def test_create_and_delete_sighting(db, flask_app_client, researcher_1):
         flask_app_client, researcher_1, expected_status_code=200, data_in=data_in
     )
     assert response.json['success']
+
     sighting_id = response.json['result']['id']
-    encounter_id = response.json['result']['encounters'][0]['id']
-
-    # until DELETE api is completed, this is our cleanup  FIXME
-    encounter = Encounter.query.get(encounter_id)
-
-    # clean up submission
-    sub = encounter.get_assets()[0].submission
-    # encounter.delete_from_edm(current_app)
-    encounter.delete()
-
-    # now can delete sub since assets arent connected to enc
-    if os.path.exists(sub.get_absolute_path()):
-        shutil.rmtree(sub.get_absolute_path())
-    sub.delete()
-
     sighting = Sighting.query.get(sighting_id)
-    # sighting.delete_from_edm(current_app)  # TODO not yet implemented!
-    sighting.delete()
+    assert sighting is not None
+
+    # upon success (yay) we clean up our mess
     sighting_utils.cleanup_tus_dir(transaction_id)
+    sighting_utils.delete_sighting(flask_app_client, researcher_1, sighting_id)
+
+    post_ct = test_utils.multi_count(db, (Sighting, Encounter, Asset, Submission))
+    assert orig_ct == post_ct

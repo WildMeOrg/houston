@@ -41,6 +41,24 @@ class Sighting(db.Model, FeatherModel):
             return self.get_owners()[0]
         return None
 
+    # will return None if not a single owner of all encounters (otherwise that user)
+    def single_encounter_owner(self):
+        single = None
+        for encounter in self.encounters:
+            if (
+                single is not None and not single == encounter.owner
+            ):  # basically a mismatch, so we fail
+                return None
+            if encounter.owner is not None:
+                single = encounter.owner
+        return single
+
+    def user_owns_all_encounters(self, user):
+        return user is not None and user == self.single_encounter_owner()
+
+    def user_can_edit_all_encounters(self, user):
+        return self.user_owns_all_encounters(user)
+
     def get_encounters(self):
         return self.encounters
 
@@ -50,9 +68,28 @@ class Sighting(db.Model, FeatherModel):
 
     def delete(self):
         with db.session.begin():
-            # while self.encounters:  #not going to do this yet!
-            # db.session.delete(self.encounters.pop())
             db.session.delete(self)
+
+    def delete_cascade(self):
+        with db.session.begin(subtransactions=True):
+            while self.encounters:
+                enc = self.encounters.pop()
+                enc.delete_cascade()
+            db.session.delete(self)
+
+    def delete_from_edm(self, current_app):
+        return Sighting.delete_from_edm_by_guid(current_app, self.guid)
+
+    @classmethod
+    def delete_from_edm_by_guid(cls, current_app, guid):
+        assert guid is not None
+        response = current_app.edm.request_passthrough(
+            'sighting.data',
+            'delete',
+            {},
+            guid,
+        )
+        return response
 
     # given edm_json (verbose json from edm) will populate with houston-specific data from feather object
     # note: this modifies the passed in edm_json, so not sure how legit that is?

@@ -189,6 +189,12 @@ class Asset(db.Model, HoustonModel):
         with db.session.begin():
             db.session.delete(self)
 
+    def delete_cascade(self):
+        sub = self.submission
+        with db.session.begin(subtransactions=True):
+            db.session.delete(self)
+        sub.justify_existence()
+
     @classmethod
     def find(cls, guid):
         if not guid:

@@ -104,11 +104,25 @@ class Encounter(db.Model, FeatherModel):
         for asset in asset_list:
             self.add_asset_no_context(asset)
 
+    # we dont delete .assets here because that is complex (due to annotations)
     def delete(self):
         with db.session.begin():
             while self.assets:
+                # this is actually removing the EncounterAssets joining object (not the assets)
                 db.session.delete(self.assets.pop())
             db.session.delete(self)
+
+    def delete_cascade(self):
+        assets = self.get_assets()
+        # TODO modify behavior when we have annotations
+        with db.session.begin(subtransactions=True):
+            while self.assets:
+                # this is actually removing the EncounterAssets joining object (not the assets)
+                db.session.delete(self.assets.pop())
+            db.session.delete(self)
+        while assets:
+            asset = assets.pop()
+            asset.delete_cascade()
 
     def delete_from_edm(self, current_app):
         response = current_app.edm.request_passthrough(

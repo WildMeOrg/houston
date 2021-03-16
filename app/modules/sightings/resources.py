@@ -30,22 +30,23 @@ log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 api = Namespace('sightings', description='Sightings')  # pylint: disable=invalid-name
 
 
-def _cleanup_post_and_abort(
-    sighting_guid, submission, message='Unknown error', log_message=None
-):
-    # TODO actually clean up edm based on guid!!!
-    if sighting_guid is not None:
-        log.warning(
-            '#### TODO ####   need to properly cleanup edm sighting id=%r' % sighting_guid
-        )
-    if submission is not None:
-        log.warning(
-            '#### TODO ####   need to properly cleanup submission %r' % submission
-        )
-    if log_message is None:
-        log_message = message
-    log.error('Bailing on sighting creation: %r' % log_message)
-    abort(success=False, passed_message=message, message='Error', code=400)
+class SightingCleanup(object):
+    def __init__(self):
+        self.sighting_guid = None
+        self.submission = None
+
+    def rollback_and_abort(self, message='Unknown error', log_message=None):
+        if log_message is None:
+            log_message = message
+        log.error('Bailing on sighting creation: %r' % log_message)
+        if self.sighting_guid is not None:
+            log.warning('Cleanup removing Sighting %r from EDM' % self.sighting_guid)
+            Sighting.delete_from_edm_by_guid(current_app, self.sighting_guid)
+        if self.submission is not None:
+            log.warning('Cleanup removing %r' % self.submission)
+            self.submission.delete()
+            self.submission = None
+        abort(success=False, passed_message=message, message='Error', code=400)
 
 
 def _validate_asset_references(enc_list):
@@ -169,6 +170,7 @@ class Sightings(Resource):
         Create a new instance of Sighting.
         """
 
+        cleanup = SightingCleanup()
         request_in = {}
         try:
             request_in_ = json.loads(request.data)
@@ -182,9 +184,7 @@ class Sightings(Resource):
             or not isinstance(request_in['encounters'], list)
             or len(request_in['encounters']) < 1
         ):
-            _cleanup_post_and_abort(
-                None,
-                None,
+            cleanup.rollback_and_abort(
                 'Must have at least one encounter',
                 'Sighting.post empty encounters in %r' % request_in,
             )
@@ -207,11 +207,13 @@ class Sightings(Resource):
             or not response_data.get('success', False)
             or result_data is None
         ):
-            log.warning('Sighting.post failed')
             passed_message = {'message': {'key': 'error'}}
             if response_data is not None and 'message' in response_data:
                 passed_message = response_data['message']
-            abort(success=False, passed_message=passed_message, message='Error', code=400)
+            cleanup.rollback_and_abort(passed_message, 'Sighting.post failed')
+
+        # Created it, need to clean it up if we rollback
+        cleanup.sighting_guid = result_data['id']
 
         # if we get here, edm has made the sighting.  now we have to consider encounters contained within,
         # and make houston for the sighting + encounters
@@ -220,17 +222,13 @@ class Sightings(Resource):
         if ('encounters' in request_in and 'encounters' not in result_data) or (
             'encounters' not in request_in and 'encounters' in result_data
         ):
-            _cleanup_post_and_abort(
-                result_data['id'],
-                None,
+            cleanup.rollback_and_abort(
                 'Missing encounters between request_in and result',
                 'Sighting.post missing encounters in one of %r or %r'
                 % (request_in, result_data),
             )
         if not len(request_in['encounters']) == len(result_data['encounters']):
-            _cleanup_post_and_abort(
-                result_data['id'],
-                None,
+            cleanup.rollback_and_abort(
                 'Imbalance in encounters between data and result',
                 'Sighting.post imbalanced encounters in %r or %r'
                 % (request_in, result_data),
@@ -239,9 +237,7 @@ class Sightings(Resource):
         try:
             all_arefs, paths_wanted = _validate_asset_references(request_in['encounters'])
         except Exception as ex:
-            _cleanup_post_and_abort(
-                result_data['id'],
-                None,
+            cleanup.rollback_and_abort(
                 'Invalid assetReference data in encounter(s)',
                 '_validate_asset_references threw %r on encounters=%r'
                 % (ex, request_in['encounters']),
@@ -251,7 +247,6 @@ class Sightings(Resource):
         )
 
         submission = None
-        assets_added = None
         pub = True
         owner_guid = None
         if current_user is not None and not current_user.is_anonymous:
@@ -273,18 +268,17 @@ class Sightings(Resource):
                     paths=all_arefs[transaction_id],
                 )
             except Exception as ex:
-                _cleanup_post_and_abort(
-                    result_data['id'],
-                    submission,
+                cleanup.submission = submission
+                cleanup.rollback_and_abort(
                     'Problem with encounter/assets',
                     '%r on create_submission_from_tus transaction_id=%r paths=%r'
                     % (ex, transaction_id, all_arefs[transaction_id]),
                 )
+            cleanup.submission = submission
 
-            assets_added = submission.assets
             log.debug(
                 'create_submission_from_tus returned: %r => %r'
-                % (submission, assets_added)
+                % (submission, submission.assets)
             )
 
         sighting = Sighting(
@@ -308,16 +302,14 @@ class Sightings(Resource):
                     enc_assets = None
                     if paths_wanted is not None:
                         # will throw exception if we dont have all we need
-                        enc_assets = _enc_assets(assets_added, paths_wanted[i])
+                        enc_assets = _enc_assets(submission.assets, paths_wanted[i])
                         if enc_assets is not None:
                             encounter.add_assets_no_context(enc_assets)
                     log.debug('%r is adding enc_assets=%r' % (encounter, enc_assets))
                     sighting.add_encounter(encounter)
                     i += 1
                 except Exception as ex:
-                    _cleanup_post_and_abort(
-                        result_data['id'],
-                        submission,
+                    cleanup.rollback_and_abort(
                         'Problem with encounter/assets',
                         '%r on encounter %d: paths_wanted=%r; enc=%r'
                         % (ex, i, paths_wanted, request_in['encounters'][i]),
@@ -409,9 +401,19 @@ class SightingByID(Resource):
         """
         Delete a Sighting by ID.
         """
-        context = api.commit_or_abort(
-            db.session, default_error_message='Failed to delete the Sighting.'
-        )
-        with context:
-            db.session.delete(sighting)
+        # first try delete on edm
+        response = sighting.delete_from_edm(current_app)
+        response_data = None
+        if response.ok:
+            response_data = response.json()
+
+        if not response.ok or not response_data.get('success', False):
+            log.warning('Sighting.delete %r failed: %r' % (sighting.guid, response_data))
+            abort(
+                success=False, passed_message='Delete failed', message='Error', code=400
+            )
+
+        # if we get here, edm has deleted the sighting, now houston feather
+        # TODO handle failure of feather deletion (when edm successful!)  out-of-sync == bad
+        sighting.delete_cascade()
         return None

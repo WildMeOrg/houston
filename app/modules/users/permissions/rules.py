@@ -199,6 +199,7 @@ class ObjectActionRule(DenyAbortMixin, Rule):
     def _permitted_via_user(self, user):
         from app.modules.individuals.models import Individual
         from app.modules.encounters.models import Encounter
+        from app.modules.sightings.models import Sighting
         from app.modules.users.models import User
 
         # users can read write and delete anything they own while some users can do anything
@@ -225,6 +226,11 @@ class ObjectActionRule(DenyAbortMixin, Rule):
                 # them and those roles are not supported yet
                 if self._action == AccessOperation.READ:
                     has_permission = user.is_researcher
+
+        # Sightings depend on if user is the _only_ owner of referenced Encounters
+        if not has_permission and isinstance(self._obj, Sighting):
+            if self._action == AccessOperation.DELETE:
+                has_permission = self._obj.user_can_edit_all_encounters(user)
 
         return has_permission
 

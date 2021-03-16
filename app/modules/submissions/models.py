@@ -594,6 +594,10 @@ class Submission(db.Model, HoustonModel):
         with db.session.begin():
             for asset in self.assets:
                 asset.delete()
+        db.session.refresh(self)
+        # TODO: This is potentially dangerous as it decouples the Asset deletion
+        #       transaction with the Submission deletion transaction, bad for rollbacks
+        with db.session.begin():
             db.session.delete(self)
         self.delete_dirs()
 

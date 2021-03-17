@@ -6,11 +6,9 @@ import logging
 import os
 import shutil
 import zipfile
+from pathlib import Path
 
-try:
-    from invoke import ctask as task
-except ImportError:  # Invoke 0.13 renamed ctask to task
-    from invoke import task
+from invoke import task
 
 from tasks.utils import download_file
 
@@ -36,19 +34,14 @@ def install_swagger_ui(context, force=False):
     """
     log.info('Installing Swagger UI assets...')
 
-    try:
-        FileExistsError  # NOQA
-    except NameError:
-        FileExistsError = OSError
-    try:
-        os.makedirs(os.path.join(context.app.static_root, 'bower'))
-    except FileExistsError:
-        pass
+    import app
 
-    swagger_ui_zip_filepath = os.path.join(
-        context.app.static_root, 'bower', 'swagger-ui.zip'
-    )
-    swagger_ui_root = os.path.join(context.app.static_root, 'bower', 'swagger-ui')
+    static_root = Path(app.__file__).parent / 'static'
+    bower_dir = static_root / 'bower'
+    bower_dir.mkdir(exist_ok=True)
+
+    swagger_ui_zip_filepath = str(bower_dir / 'swagger-ui.zip')
+    swagger_ui_root = str(bower_dir / 'swagger-ui')
 
     if force:
         try:

@@ -35,7 +35,7 @@ coverage run --append `which invoke` app.db.init --directory=test-db-init
 
 # make sure swagger-ui.zip doesn't exist
 rm -f app/static/bower/swagger-ui.zip
-coverage run --append `which invoke` app.dependencies.install-swagger-ui --force
+coverage run --append `which invoke` dependencies.install-swagger-ui --force
 
 # test app.boilerplates.crud-module
 rm -rf app/modules/testapp
@@ -48,6 +48,7 @@ coverage run --append `which invoke` app.boilerplates.crud-module --module-name=
 coverage run --append `which invoke` app.config.set --key=BASE_URL --value=http://localhost/
 coverage run --append `which invoke` app.config.list
 coverage run --append `which invoke` app.config.forget --key=BASE_URL
+coverage run --append `which invoke` app.config.show
 
 # test app.env.enter
 if [ "$SQLALCHEMY_DATABASE_URI" == "" ]

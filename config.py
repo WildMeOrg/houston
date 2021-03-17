@@ -4,14 +4,22 @@ import importlib
 import os
 import logging
 import datetime
+from pathlib import Path
+
 import pytz
+from dotenv import load_dotenv
 
 import flask
 
 log = logging.getLogger(__name__)
 
+HERE = Path(__file__).parent
 
-PROJECT_ROOT = os.path.abspath(os.path.dirname(__file__))
+# Load .env into environment variables (then available under os.environ)
+_dotenv = HERE / '.env'
+load_dotenv(_dotenv, override=False)  # gracefully fails if file doesn't exist
+
+PROJECT_ROOT = str(HERE)
 PROJECT_DATABASE_PATH = os.path.join(PROJECT_ROOT, '_db')
 
 # Load config from database folder
@@ -190,10 +198,41 @@ class BaseConfig(object):
     }
 
 
+def parse_edm_config_items():
+    """Parse EDM configuration from environment variables"""
+    # Parse all uris from environment variables
+    # BBB assign a default URI
+    uris = {'default': 'https://nextgen.dev-wildbook.org/'}
+    for varname in [e for e in os.environ if e.startswith('EDM_AUTHENTICATIONS_URI__')]:
+        #: e.g. EDM_AUTHENTICATIONS_URI__DEFAULT
+        key = varname.split('__')[-1].lower()
+        value = os.environ[varname]
+        uris[key] = value
+
+    # Parse all authentication info from environment variables
+    authns = {}
+    for varname in [
+        e for e in os.environ if e.startswith('EDM_AUTHENTICATIONS_USERNAME__')
+    ]:
+        key = varname.split('__')[-1].lower()
+        authns.setdefault(key, {})
+        username = os.environ[varname]
+        password_varname = f'EDM_AUTHENTICATIONS_PASSWORD__{key.upper()}'
+        try:
+            password = os.environ[password_varname]
+        except KeyError:
+            raise RuntimeError(
+                f"unconfigured password that pairs with '{varname}'; "
+                f"should be in environment variable '{password_varname}'"
+            )
+        authns[key]['username'] = username
+        authns[key]['password'] = password
+
+    return uris, authns
+
+
 class EDMConfig(object):
-    EDM_URIS = {
-        0: 'https://nextgen.dev-wildbook.org/',
-    }
+    EDM_URIS, EDM_AUTHENTICATIONS = parse_edm_config_items()
 
 
 class SubmissionGitLabRemoteConfig(object):

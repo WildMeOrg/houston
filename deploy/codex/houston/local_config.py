@@ -25,13 +25,3 @@ class LocalConfig(BaseConfig):
     #        File "/code/tasks/app/db.py", in upgrade: `if os.path.exists(_db_filepath):`
     # SQLALCHEMY_DATABASE_PATH = None
     SQLALCHEMY_DATABASE_URI = os.getenv('SQLALCHEMY_DATABASE_URI')
-
-    EDM_URIS = {
-        0: os.getenv('EDM_AUTHENTICATIONS_0_URI'),
-    }
-    EDM_AUTHENTICATIONS = {
-        0: {
-            'username' : os.getenv('EDM_AUTHENTICATIONS_0_USERNAME'),
-            'password' : os.getenv('EDM_AUTHENTICATIONS_0_PASSWORD'),
-        },
-    }

@@ -19,8 +19,8 @@ def initialize_edm_admin_user(context):
     import requests
 
     log.info('Initializing EDM admin user')
-    base_url = current_app.config['EDM_URIS'][0]
-    password = current_app.config['EDM_AUTHENTICATIONS'][0]['password']
+    base_url = current_app.config['EDM_URIS']['default']
+    password = current_app.config['EDM_AUTHENTICATIONS']['default']['password']
     payload = {'adminPassword': password}
     url = f'{base_url}/edm/init.jsp'
     # Contact EDM to initialize

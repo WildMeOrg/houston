@@ -18,7 +18,7 @@ CONFIG_NAME_MAPPER = {
     'development': 'config.DevelopmentConfig',
     'testing': 'config.TestingConfig',
     'production': 'config.ProductionConfig',
-    'local': 'local_config.LocalConfig',
+    'local': os.getenv('FLASK_CONFIG_IMPORT', 'local_config.LocalConfig'),
 }
 
 

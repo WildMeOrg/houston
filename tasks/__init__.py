@@ -58,10 +58,12 @@ from invoke import Collection  # NOQA
 from invoke.executor import Executor  # NOQA
 
 from tasks import app as tasks_app  # NOQA
+from tasks import dependencies as task_dependencies  # NOQA
 
 # NOTE: `namespace` or `ns` name is required!
 namespace = Collection(
     tasks_app,
+    task_dependencies,
 )
 
 

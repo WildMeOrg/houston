@@ -42,7 +42,7 @@ services:
 
   wbia:
     # https://github.com/WildMeOrg/wildbook-ia
-    image: wildme/wildbook-ia:latest
+    image: wildme/wildbook-ia:nightly
     # FIXME: Adjust entrypoint to allow for additive command arguments
     command: [ "wait-for", "db:5432", "--", "python3.7", "-m", "wbia.dev", "--dbdir", "${WBIA_DB_DIR}", "--logdir", "/data/logs/", "--web", "--port", "5000", "--web-deterministic-ports", "--containerized", "--cpudark", "--production", "--db-uri", "${WBIA_DB_URI}" ]
     volumes:

@@ -53,10 +53,8 @@ EOF
     echo "Create the 'test' group"
     group_resp_json=$(gitlab -g local-user group create --name TEST --path test)
 
-    echo "Write 'houston' PAT to environment variable sourcing location"
-    echo "GITLAB_REMOTE_LOGIN_PAT=${houston_pat}" >> ${DATA_ROOT}/.env
-    chown root:root ${DATA_ROOT}/.env
-    chmod 600 ${DATA_ROOT}/.env
+    echo "Write 'houston' PAT to ${HOUSTON_DOTENV}"
+    dotenv -f ${HOUSTON_DOTENV} set GITLAB_REMOTE_LOGIN_PAT "${houston_pat}"
 
     echo "GitLab setup complete"
 }

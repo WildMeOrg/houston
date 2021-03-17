@@ -1,6 +1,0 @@
-#!/bin/bash
-
-# Note, this file purposely does not have execution permission.
-# This is done so that the calling script knows to source this file rather than execute it.
-
-export $(cat ${DATA_ROOT}/.env | xargs)

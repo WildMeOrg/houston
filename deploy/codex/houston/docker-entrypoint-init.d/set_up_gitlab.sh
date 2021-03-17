@@ -56,6 +56,9 @@ EOF
     echo "Write 'houston' PAT to ${HOUSTON_DOTENV}"
     dotenv -f ${HOUSTON_DOTENV} set GITLAB_REMOTE_LOGIN_PAT "${houston_pat}"
 
+    # Fix permissions on files
+    chmod 644 ${HOUSTON_DOTENV} ${PYTHON_GITLAB_CFG}
+
     echo "GitLab setup complete"
 }
 

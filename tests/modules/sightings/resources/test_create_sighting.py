@@ -82,6 +82,11 @@ def test_create_and_delete_sighting(db, flask_app_client, researcher_1, staff_us
     sighting = Sighting.query.get(sighting_id)
     assert sighting is not None
 
+    response = sighting_utils.read_sighting(
+        flask_app_client, researcher_1, sighting_id, expected_status_code=200
+    )
+    assert response.json['id'] == sighting_id
+
     # upon success (yay) we clean up our mess
     sighting_utils.cleanup_tus_dir(transaction_id)
     sighting_utils.delete_sighting(flask_app_client, researcher_1, sighting_id)

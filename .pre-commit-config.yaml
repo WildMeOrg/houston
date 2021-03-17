@@ -8,7 +8,6 @@ exclude: |
       ^app/static/ |
       ^app/templates/ |
       ^clients/ |
-      ^deploy/ |
       ^Houston.egg-info |
       ^virtualenv |
       ^migrations/versions/

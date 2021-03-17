@@ -16,7 +16,8 @@ log = logging.getLogger(__name__)
 HERE = Path(__file__).parent
 
 # Load .env into environment variables (then available under os.environ)
-_dotenv = HERE / '.env'
+_DEFAULT_DOTENV = HERE / '.env'
+_dotenv = os.getenv('HOUSTON_DOTENV', _DEFAULT_DOTENV)
 load_dotenv(_dotenv, override=False)  # gracefully fails if file doesn't exist
 
 PROJECT_ROOT = str(HERE)

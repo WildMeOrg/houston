@@ -2,7 +2,7 @@
 set -Eueo pipefail
 
 HERE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-PYTHON_GITLAB_CFG="/root/.python-gitlab.cfg"
+PYTHON_GITLAB_CFG="${DATA_ROOT}/.python-gitlab.cfg"
 GITLAB_REMOTE_URI="${GITLAB_REMOTE_URI:-${GITLAB_PROTO:-https}://${GITLAB_HOST}:${GITLAB_PORT}}"
 
 write_initial_config() {

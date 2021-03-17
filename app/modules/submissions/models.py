@@ -260,7 +260,8 @@ class Submission(db.Model, HoustonModel):
             major_type=SubmissionMajorType.filesystem,
             description=description,
         )
-        submission.owner = owner
+        if owner is not None and not owner.is_anonymous:
+            submission.owner = owner
         with db.session.begin(subtransactions=True):
             db.session.add(submission)
 

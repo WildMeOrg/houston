@@ -93,3 +93,45 @@ def test_create_and_delete_sighting(db, flask_app_client, researcher_1, staff_us
 
     post_ct = test_utils.multi_count(db, (Sighting, Encounter, Asset, Submission))
     assert orig_ct == post_ct
+
+
+def test_create_anon_and_delete_sighting(db, flask_app_client, staff_user):
+    from app.modules.sightings.models import Sighting
+    from app.modules.encounters.models import Encounter
+    from app.modules.assets.models import Asset
+    from app.modules.submissions.models import Submission
+    import datetime
+
+    # we should end up with these same counts (which _should be_ all zeros!)
+    orig_ct = test_utils.multi_count(db, (Sighting, Encounter, Asset, Submission))
+
+    timestamp = datetime.datetime.now().isoformat()
+    transaction_id, test_filename = sighting_utils.prep_tus_dir()
+    data_in = {
+        'startTime': timestamp,
+        'encounters': [
+            {
+                'assetReferences': [
+                    {
+                        'transactionId': transaction_id,
+                        'path': test_filename,
+                    }
+                ]
+            }
+        ],
+    }
+    response = sighting_utils.create_sighting(
+        flask_app_client, None, expected_status_code=200, data_in=data_in
+    )
+    assert response.json['success']
+
+    sighting_id = response.json['result']['id']
+    sighting = Sighting.query.get(sighting_id)
+    assert sighting is not None
+
+    # upon success (yay) we clean up our mess (but need staff_user to do it)
+    sighting_utils.cleanup_tus_dir(transaction_id)
+    sighting_utils.delete_sighting(flask_app_client, staff_user, sighting_id)
+
+    post_ct = test_utils.multi_count(db, (Sighting, Encounter, Asset, Submission))
+    assert orig_ct == post_ct

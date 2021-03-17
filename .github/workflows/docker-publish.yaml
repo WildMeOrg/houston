@@ -40,10 +40,10 @@ jobs:
       # ############################################################
       # Push latest image to registries
       - name: Push to GitHub Packages
-        if: github.ref == 'refs/heads/develop'
+        if: github.ref == 'refs/heads/main'
         run: |
           ./scripts/publish.sh -t latest -r docker.pkg.github.com houston
       - name: Push to Docker Hub
-        if: github.ref == 'refs/heads/develop'
+        if: github.ref == 'refs/heads/main'
         run: |
           ./scripts/publish.sh -t latest houston

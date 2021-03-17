@@ -51,6 +51,9 @@ services:
       - wbia-var:/data/db
     networks:
       - intranet
+    environment:
+      # FIXME: Run as root to fix the PermissionError in volumes
+      EXEC_PRIVILEGED: 1
     ports:
       # FIXME: exposed for developer verification
       - "82:5000"

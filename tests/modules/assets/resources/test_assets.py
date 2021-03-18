@@ -5,6 +5,11 @@ from tests import utils
 import tests.modules.submissions.resources.utils as submission_utils
 
 
+def test_get_asset_not_found(flask_app_client):
+    response = flask_app_client.get('/api/v1/assets/wrong-uuid')
+    assert response.status_code == 404
+
+
 def test_find_asset(
     flask_app_client,
     admin_user,

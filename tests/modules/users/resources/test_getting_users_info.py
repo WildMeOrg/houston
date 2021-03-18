@@ -99,3 +99,15 @@ def test_getting_user_me_info(flask_app_client, regular_user):
     assert isinstance(response.json, dict)
     assert set(response.json.keys()) >= {'guid', 'email'}
     assert 'password' not in response.json.keys()
+
+
+def test_getting_user_id_not_found(flask_app_client, regular_user):
+    with flask_app_client.login(
+        regular_user,
+        auth_scopes=(
+            'users:read',
+            'users:write',
+        ),
+    ):
+        response = flask_app_client.get('/api/v1/users/wrong-uuid')
+        assert response.status_code == 404

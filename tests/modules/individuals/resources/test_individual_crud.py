@@ -10,6 +10,11 @@ from tests import utils
 log = logging.getLogger(__name__)
 
 
+def test_get_individual_not_found(flask_app_client):
+    response = flask_app_client.get('/api/v1/individuals/wrong-uuid')
+    assert response.status_code == 404
+
+
 def test_create_read_delete_individual(db, flask_app_client):
 
     temp_owner = utils.generate_user_instance(

@@ -10,6 +10,30 @@ from app.modules.users.models import User
 from app.modules.fileuploads.models import FileUpload
 
 
+def test_user_id_not_found(flask_app_client, regular_user):
+    with flask_app_client.login(
+        regular_user,
+        auth_scopes=(
+            'users:read',
+            'users:write',
+        ),
+    ):
+        response = flask_app_client.patch(
+            '/api/v1/users/wrong-uuid',
+            content_type='application/json',
+            data=json.dumps(
+                [
+                    {
+                        'op': 'replace',
+                        'path': '/full_name',
+                        'value': 'Modified Full Name',
+                    }
+                ]
+            ),
+        )
+        assert response.status_code == 404
+
+
 def test_modifying_user_info_by_owner(flask_app_client, regular_user, db):
     # pylint: disable=invalid-name
     saved_full_name = regular_user.full_name

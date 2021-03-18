@@ -199,13 +199,14 @@ class BaseConfig(object):
     }
 
 
-def parse_edm_config_items():
-    """Parse EDM configuration from environment variables"""
+def get_env_rest_config(interface):
+    """Parse ACM/EDM configuration from environment variables"""
     # Parse all uris from environment variables
-    # BBB assign a default URI
-    uris = {'default': 'https://nextgen.dev-wildbook.org/'}
-    for varname in [e for e in os.environ if e.startswith('EDM_AUTHENTICATIONS_URI__')]:
-        #: e.g. EDM_AUTHENTICATIONS_URI__DEFAULT
+    uris = {}
+    for varname in [
+        e for e in os.environ if e.startswith(f'{interface}_AUTHENTICATIONS_URI__')
+    ]:
+        #: e.g. ACM_AUTHENTICATIONS_URI__DEFAULT
         key = varname.split('__')[-1].lower()
         value = os.environ[varname]
         uris[key] = value
@@ -213,12 +214,12 @@ def parse_edm_config_items():
     # Parse all authentication info from environment variables
     authns = {}
     for varname in [
-        e for e in os.environ if e.startswith('EDM_AUTHENTICATIONS_USERNAME__')
+        e for e in os.environ if e.startswith(f'{interface}_AUTHENTICATIONS_USERNAME__')
     ]:
         key = varname.split('__')[-1].lower()
         authns.setdefault(key, {})
         username = os.environ[varname]
-        password_varname = f'EDM_AUTHENTICATIONS_PASSWORD__{key.upper()}'
+        password_varname = f'{interface}_AUTHENTICATIONS_PASSWORD__{key.upper()}'
         try:
             password = os.environ[password_varname]
         except KeyError:
@@ -232,8 +233,19 @@ def parse_edm_config_items():
     return uris, authns
 
 
+class ACMConfig(object):
+    # Read the config from the environment but ensure that there is always a default URI
+    ACM_URIS, ACM_AUTHENTICATIONS = get_env_rest_config('ACM')
+    if 'default' not in ACM_URIS:
+        # TODO this is definitely wrong but it at least allows a login
+        ACM_URIS['default'] = 'http://demo.wildbook.org/'
+
+
 class EDMConfig(object):
-    EDM_URIS, EDM_AUTHENTICATIONS = parse_edm_config_items()
+    # Read the config from the environment but ensure that there is always a default URI
+    EDM_URIS, EDM_AUTHENTICATIONS = get_env_rest_config('EDM')
+    if 'default' not in EDM_URIS:
+        EDM_URIS['default'] = 'http://demo.wildbook.org/'
 
 
 class SubmissionGitLabRemoteConfig(object):

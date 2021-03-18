@@ -57,6 +57,8 @@ from .email import mail  # NOQA
 
 from . import edm  # NOQA
 
+from . import acm  # NOQA
+
 from . import submission  # NOQA
 
 from . import tus  # NOQA
@@ -267,6 +269,7 @@ def init_app(app):
         cross_origin_resource_sharing,
         marshmallow,
         edm,
+        acm,
         submission,
         tus,
         mail,

@@ -4,14 +4,14 @@ import pytest
 
 
 @pytest.mark.parametrize(
-    'http_method,http_path',
+    'http_method,http_path,expected_code',
     (
-        ('GET', '/api/v1/users/'),
-        ('GET', '/api/v1/users/11111111-1111-1111-1111-111111111111'),
-        ('PATCH', '/api/v1/users/11111111-1111-1111-1111-111111111111'),
-        ('GET', '/api/v1/users/me'),
+        ('GET', '/api/v1/users/', 401),
+        ('GET', '/api/v1/users/11111111-1111-1111-1111-111111111111', 404),
+        ('PATCH', '/api/v1/users/11111111-1111-1111-1111-111111111111', 404),
+        ('GET', '/api/v1/users/me', 401),
     ),
 )
-def test_unauthorized_access(http_method, http_path, flask_app_client):
+def test_unauthorized_access(http_method, http_path, expected_code, flask_app_client):
     response = flask_app_client.open(method=http_method, path=http_path)
-    assert response.status_code == 401
+    assert response.status_code == expected_code

@@ -69,7 +69,6 @@ def create_sighting(
     return response
 
 
-# not yet implemented
 def read_sighting(flask_app_client, user, sight_guid, expected_status_code=200):
     with flask_app_client.login(user, auth_scopes=('sightings:read',)):
         response = flask_app_client.get('%s%s' % (PATH, sight_guid))

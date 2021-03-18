@@ -238,6 +238,8 @@ class ObjectActionRule(DenyAbortMixin, Rule):
         if not has_permission and isinstance(self._obj, Sighting):
             if self._action == AccessOperation.DELETE:
                 has_permission = self._obj.user_can_edit_all_encounters(user)
+            if self._action == AccessOperation.READ:
+                has_permission = user in self._obj.get_owners()
 
         return has_permission
 

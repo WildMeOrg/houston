@@ -24,22 +24,15 @@ def test_create_read_delete_individual(db, flask_app_client):
     temp_enc = utils.generate_encounter_instance(
         user_email='enc@user', user_password='encuser', user_full_name='enc user 1'
     )
-    #encounter_json = {"encounters": [{"id":str(temp_enc.guid)}] }
-    encounter_json = {"encounters": [{}] }
+    encounter_json = {'encounters': [{'id': str(temp_enc.guid)}]}
     temp_enc.owner = temp_owner
-    response = individual_utils.create_individual(flask_app_client, temp_owner, expected_status_code=200, data_in=encounter_json)
-    individual_guid = response.json['guid']
+    response = individual_utils.create_individual(
+        flask_app_client, temp_owner, expected_status_code=200, data_in=encounter_json
+    )
+    individual_guid = response.json['result']['id']
 
     assert individual_guid is not None
 
-    read_individual = Individual.query.get(individual_guid)
-    assert read_individual is not None
-    #read_individual.add_encounter(temp_enc)
-
-    response = individual_utils.read_individual(
-        flask_app_client, temp_owner, individual_guid
-    )
-    individual_guid = response.json['guid']
     read_individual = Individual.query.get(individual_guid)
     assert read_individual is not None
 
@@ -58,9 +51,10 @@ def test_read_failure_if_not_member_or_researcher(
     fail_enc = utils.generate_encounter_instance(
         user_email='fail_enc@user', user_password='mod1user', user_full_name='Test User'
     )
-    #encounter_json = {"encounters": [{"id":str(fail_enc.guid)}] }
-    encounter_json = {"encounters": [{}] }
-    response = individual_utils.create_individual(flask_app_client, researcher_1, expected_status_code=200, data_in=encounter_json)
+    encounter_json = {'encounters': [{'id': str(fail_enc.guid)}]}
+    response = individual_utils.create_individual(
+        flask_app_client, researcher_1, expected_status_code=200, data_in=encounter_json
+    )
     individual_guid = response.json['guid']
     response = individual_utils.read_individual(
         flask_app_client, regular_user, individual_guid, 403

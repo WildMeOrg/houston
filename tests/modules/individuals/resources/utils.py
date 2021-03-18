@@ -18,12 +18,15 @@ def create_individual(flask_app_client, user, expected_status_code=200, data_in=
             PATH,
             data=json.dumps(data_in),
             content_type='application/javascript',
-            )
+        )
 
-    log.warning("create_individual got status code "+str(response.status_code))
     assert isinstance(response.json, dict)
     assert response.status_code == expected_status_code
+    if response.status_code == 200:
+        assert response.json['success'] is not None
+        assert response.json['result'] is not None
     return response
+
 
 def read_individual(
     flask_app_client, regular_user, individual_guid, expected_status_code=200
@@ -31,12 +34,10 @@ def read_individual(
     with flask_app_client.login(regular_user, auth_scopes=('individuals:read',)):
         response = flask_app_client.get('%s%s' % (PATH, individual_guid))
 
-    if expected_status_code == 200:
-        test_utils.validate_dict_response(response, 200, {'guid'})
-    else:
-        test_utils.validate_dict_response(
-            response, expected_status_code, {'status', 'message'}
-        )
+    assert response.status_code == expected_status_code
+    if response.status_code == 200:
+        assert response.json is not None
+
     return response
 
 

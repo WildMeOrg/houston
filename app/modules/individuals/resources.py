@@ -5,8 +5,10 @@ RESTful API Individuals resources
 --------------------------
 """
 
-from app.extensions.api import abort
+import logging
+import json
 from flask_restx_patched import Resource
+from app.extensions.api import abort
 from flask_restx._http import HTTPStatus
 from flask import request, current_app
 from app.extensions import db
@@ -16,8 +18,6 @@ from app.modules.users import permissions
 from app.modules.users.permissions.types import AccessOperation
 
 from . import parameters, schemas
-import logging
-import json
 from .models import Individual
 from app.modules.encounters.models import Encounter
 
@@ -75,7 +75,6 @@ class Individuals(Resource):
 
     @api.login_required(oauth_scopes=['individuals:write'])
     @api.parameters(parameters.CreateIndividualParameters())
-    @api.response(schemas.DetailedIndividualSchema())
     @api.response(code=HTTPStatus.CONFLICT)
     def post(self, args):
         """
@@ -125,7 +124,6 @@ class Individuals(Resource):
             abort(success=False, passed_message=passed_message, message='Error', code=400)
 
         if 'encounters' in request_in and 'encounters' not in result_data:
-            # Shouldn't ever be encounters in the request_in but not result_data (!?)
             _cleanup_post_and_abort(
                 result_data['id'],
                 None,
@@ -139,12 +137,11 @@ class Individuals(Resource):
                 'Individual.post: Imbalance in encounters between request_in and result_data',
             )
 
-        # will we ever want to create an Individual with encounters that have not been created elsewhere? probably not?
         encounters = []
-        for encounter_guid in request_in['encounters']:
-            encounter_to_add = Encounter.query.get(encounter_guid)
-            if encounter_to_add is not None:
-                encounters.append(encounter_to_add)
+        for result_encounter_json in request_in['encounters']:
+            result_encounter = Encounter.query.get(result_encounter_json['id'])
+            if result_encounter is not None:
+                encounters.append(result_encounter)
             else:
                 log.error(
                     'Individual.post: at least one encounter found in request_in or result_data was not found in the Houston database. Aborting Individual creation.'

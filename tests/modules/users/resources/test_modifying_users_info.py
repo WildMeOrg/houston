@@ -394,7 +394,10 @@ def test_user_profile_fileupload(db, flask_app, flask_app_client, regular_user, 
         response = flask_app_client.patch(*args, **kwargs)
         assert response.status_code == 200, response.data
         fup = FileUpload.query.get(response.json['profile_fileupload']['guid'])
-        assert flask_app_client.get(fup.src).data == b'1234'
+        src_response = flask_app_client.get(fup.src)
+        src_data = src_response.data
+        src_response.close()  # h/t https://github.com/pallets/flask/issues/2468#issuecomment-517797518
+        assert src_data == b'1234'
         clean_up_objects.append(fup)
         clean_up_paths.append(td)
 

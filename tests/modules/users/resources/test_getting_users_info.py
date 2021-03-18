@@ -59,10 +59,10 @@ def test_getting_user_info_by_unauthorized_user(
     with flask_app_client.login(regular_user, auth_scopes=('users:read',)):
         response = flask_app_client.get('/api/v1/users/%s' % admin_user.guid)
 
-    assert response.status_code == 403
+    assert response.status_code == 200
     assert response.content_type == 'application/json'
     assert isinstance(response.json, dict)
-    assert set(response.json.keys()) >= {'status', 'message'}
+    assert set(response.json.keys()) == {'full_name', 'guid', 'profile_fileupload'}
 
 
 def test_getting_user_info_by_authorized_user(flask_app_client, regular_user, admin_user):

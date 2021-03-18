@@ -10,7 +10,7 @@ REPLACE_KEY = '<REPLACE_UUID>'
     'path,status_code,expected_allowed_methods',
     (
         ('/api/v1/users/', 204, {'POST', 'OPTIONS'}),
-        ('/api/v1/users/11111111-1111-1111-1111-111111111111', 401, None),
+        ('/api/v1/users/11111111-1111-1111-1111-111111111111', 404, None),
     ),
 )
 def test_users_options_unauthorized(

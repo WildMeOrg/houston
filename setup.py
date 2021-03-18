@@ -188,6 +188,7 @@ def do_setup():
     # Define optional requirements (e.g. `pip install ".[testing]"`)
     optional_requirements = {
         'testing': parse_requirements('tests/requirements.txt'),
+        'docs': parse_requirements('docs/requirements.txt'),
     }
 
     write_version_py()

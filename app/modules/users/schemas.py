@@ -5,8 +5,9 @@ User schemas
 ------------
 """
 
-# from flask_marshmallow import base_fields
+from flask_marshmallow import base_fields
 from flask_restx_patched import ModelSchema
+from app.modules.fileuploads.schemas import DetailedFileUploadSchema  # noqa
 
 from .models import User
 
@@ -27,6 +28,21 @@ class BaseUserSchema(ModelSchema):
         dump_only = (User.guid.key,)
 
 
+class PublicUserSchema(ModelSchema):
+    """ Only fields which are safe for public display (very minimal). """
+
+    profile_fileupload = base_fields.Nested('DetailedFileUploadSchema')
+
+    class Meta:
+        # pylint: disable=missing-docstring
+        model = User
+        fields = (
+            User.guid.key,
+            User.full_name.key,
+            User.profile_fileupload.key,
+        )
+
+
 class DetailedUserPermissionsSchema(ModelSchema):
     class Meta:
         # pylint: disable=missing-docstring
@@ -38,6 +54,8 @@ class DetailedUserPermissionsSchema(ModelSchema):
 class DetailedUserSchema(BaseUserSchema):
     """ Detailed user schema exposes all fields used to render a normal user profile. """
 
+    profile_fileupload = base_fields.Nested('DetailedFileUploadSchema')
+
     class Meta(BaseUserSchema.Meta):
         fields = BaseUserSchema.Meta.fields + (
             User.created.key,
@@ -46,11 +64,11 @@ class DetailedUserSchema(BaseUserSchema):
             User.is_active.fget.__name__,
             User.is_staff.fget.__name__,
             User.is_admin.fget.__name__,
-            User.profile_fileupload_guid.key,
             User.affiliation.key,
             User.location.key,
             User.forum_id.key,
             User.website.key,
+            User.profile_fileupload.key,
         )
 
 

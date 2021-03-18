@@ -96,7 +96,6 @@ class Users(Resource):
 
 
 @api.route('/<uuid:user_guid>')
-@api.login_required(oauth_scopes=['users:read'])
 @api.response(
     code=HTTPStatus.NOT_FOUND,
     description='User not found.',
@@ -107,19 +106,19 @@ class UserByID(Resource):
     Manipulations with a specific user.
     """
 
-    @api.permission_required(
-        permissions.ObjectAccessPermission,
-        kwargs_on_request=lambda kwargs: {
-            'obj': kwargs['user'],
-            'action': AccessOperation.READ,
-        },
-    )
-    @api.response(schemas.DetailedUserSchema())
+    # no decorators here for permissions or schemas, as getting specific user data is "public"
+    #   with the schema being determined based on privileges below
     def get(self, user):
         """
         Get user details by ID.
         """
-        return user
+        from app.modules.users.permissions import rules
+        from app.modules.users.schemas import DetailedUserSchema, PublicUserSchema
+        if not current_user.is_anonymous and (rules.owner_or_privileged(current_user, user) or current_user.is_admin):
+            schema = DetailedUserSchema()
+        else:
+            schema = PublicUserSchema()
+        return schema.dump(user)
 
     @api.login_required(oauth_scopes=['users:write'])
     @api.permission_required(

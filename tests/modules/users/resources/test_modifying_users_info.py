@@ -301,7 +301,7 @@ def test_user_profile_fileupload(db, flask_app, flask_app_client, regular_user, 
         }
         response = flask_app_client.patch(*args, **kwargs)
         assert response.status_code == 200, response.data
-        assert response.json['profile_fileupload_guid'] == str(fup.guid)
+        assert response.json['profile_fileupload']['guid'] == str(fup.guid)
         updated_user = User.query.get(regular_user.guid)
         assert updated_user.profile_fileupload_guid == fup.guid
 
@@ -393,7 +393,7 @@ def test_user_profile_fileupload(db, flask_app, flask_app_client, regular_user, 
         }
         response = flask_app_client.patch(*args, **kwargs)
         assert response.status_code == 200, response.data
-        fup = FileUpload.query.get(response.json['profile_fileupload_guid'])
+        fup = FileUpload.query.get(response.json['profile_fileupload']['guid'])
         assert flask_app_client.get(fup.src).data == b'1234'
         clean_up_objects.append(fup)
         clean_up_paths.append(td)
@@ -417,7 +417,7 @@ def test_user_profile_fileupload(db, flask_app, flask_app_client, regular_user, 
         }
         response = flask_app_client.patch(*args, **kwargs)
         assert response.status_code == 200, response.data
-        response_asset_guid = response.json['profile_fileupload_guid']
+        response_asset_guid = response.json['profile_fileupload']['guid']
         updated_user = User.query.get(regular_user.guid)
         assert str(updated_user.profile_fileupload_guid) == response_asset_guid
         fileupload = FileUpload.query.get(response_asset_guid)

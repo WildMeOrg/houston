@@ -137,24 +137,6 @@ The [_tus_](https://tus.io) portions of this application require [**Redis**](htt
 
 [**Postgres**](https://www.postgresql.org/) is an optional dependency that can be used for a highly reliable scaled database solution.
 
-### Build Dependencies
-
-I use [`pyinvoke`](http://pyinvoke.org) with custom tasks to maintain easy and
-nice command-line interface. Thus, it is required to have `invoke` Python
-package installed, and optionally you may want to install `colorlog`, so your
-life become colorful.
-
-### Patched Dependencies
-
-* **flask-restx** is patched to handle marshmallow schemas and webargs
-  input parameters
-  <!-- ([GH #9](https://github.com/noirbizarre/flask-restplus/issues/9)). -->
-* **swagger-ui** (*the bundle is automatically downloaded on the first run*)
-  just includes a pull-request to support Resource Owner Password Credentials
-  Grant OAuth2 (aka Password Flow)
-  ([PR #1853](https://github.com/swagger-api/swagger-ui/pull/1853)).
-
-
 Installation
 ------------
 

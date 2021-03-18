@@ -41,7 +41,7 @@ def test_DetailedUserSchema_dump_user_instance(user_instance):
         'is_active',
         'is_staff',
         'is_admin',
-        'profile_fileupload_guid',
+        'profile_fileupload',
         'affiliation',
         'location',
         'forum_id',

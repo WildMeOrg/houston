@@ -35,7 +35,9 @@ class SightingCleanup(object):
         self.sighting_guid = None
         self.submission = None
 
-    def rollback_and_abort(self, message='Unknown error', log_message=None, error_code=400):
+    def rollback_and_abort(
+        self, message='Unknown error', log_message=None, error_code=400
+    ):
         if log_message is None:
             log_message = message
         log.error('Bailing on sighting creation: %r' % log_message)
@@ -195,24 +197,31 @@ class Sightings(Resource):
         submitter_guid = None
         if current_user is None or current_user.is_anonymous:
             from app.modules.users.models import User
+
             owner = User.get_public_user()
             pub = True
             submitter_email = request_in.get('submitterEmail', None)
             log.info(f'Anonymous submission posted, submitter_email={submitter_email}')
-            if submitter_email is not None:  # if not provided, submitter_guid is allowed to be null
+            if (
+                submitter_email is not None
+            ):  # if not provided, submitter_guid is allowed to be null
                 exists = User.find(email=submitter_email)
                 if exists is None:
-                    new_inactive = User.ensure_user(submitter_email, User.initial_random_password(), is_active=False)
+                    new_inactive = User.ensure_user(
+                        submitter_email, User.initial_random_password(), is_active=False
+                    )
                     submitter_guid = new_inactive.guid
                     log.info(f'New inactive user created as submitter: {new_inactive}')
-                elif not exists.is_active:  # we trust it, what can i say?  they are inactive so its weak and public anyway
+                elif (
+                    not exists.is_active
+                ):  # we trust it, what can i say?  they are inactive so its weak and public anyway
                     submitter_guid = exists.guid
                     log.info(f'Existing inactive user assigned to submitter: {exists}')
                 else:  # now this is no good; this *active* user must login!  no spoofing active users.
                     cleanup.rollback_and_abort(
                         'Invalid submitter data',
                         f'Anonymous submitter using active user email {submitter_email}; rejecting',
-                        error_code=403
+                        error_code=403,
                     )
         else:  # logged-in user
             owner = current_user

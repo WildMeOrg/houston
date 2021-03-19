@@ -114,7 +114,10 @@ class UserByID(Resource):
         """
         from app.modules.users.permissions import rules
         from app.modules.users.schemas import DetailedUserSchema, PublicUserSchema
-        if not current_user.is_anonymous and (rules.owner_or_privileged(current_user, user) or current_user.is_admin):
+
+        if not current_user.is_anonymous and (
+            rules.owner_or_privileged(current_user, user) or current_user.is_admin
+        ):
             schema = DetailedUserSchema()
         else:
             schema = PublicUserSchema()

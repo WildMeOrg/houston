@@ -44,7 +44,6 @@ def test_create_and_delete_annotation(
         clone.cleanup()
 
 
-# TODO doesn't work at the moment
 def test_annotation_permission(
     flask_app_client,
     admin_user,

@@ -104,6 +104,7 @@ def test_create_anon_and_delete_sighting(db, flask_app_client, staff_user):
     from app.modules.sightings.models import Sighting
     from app.modules.encounters.models import Encounter
     from app.modules.assets.models import Asset
+    from app.modules.users.models import User
     from app.modules.submissions.models import Submission
     import datetime
 
@@ -137,6 +138,38 @@ def test_create_anon_and_delete_sighting(db, flask_app_client, staff_user):
     # upon success (yay) we clean up our mess (but need staff_user to do it)
     sighting_utils.cleanup_tus_dir(transaction_id)
     sighting_utils.delete_sighting(flask_app_client, staff_user, sighting_id)
+
+    # anonymous, but using valid (active) user - should be blocked with 403
+    data_in = {
+        'startTime': timestamp,
+        'submitterEmail': 'public@localhost',
+        'encounters': [{}],
+    }
+    response = sighting_utils.create_sighting(
+        flask_app_client, None, expected_status_code=403, data_in=data_in
+    )
+
+    # anonymous, but using acceptable email address (should create new inactive user)
+    test_email = 'test_anon_123@example.com'
+    data_in = {
+        'startTime': timestamp,
+        'submitterEmail': test_email,
+        'encounters': [{}],
+    }
+    response = sighting_utils.create_sighting(
+        flask_app_client, None, expected_status_code=200, data_in=data_in
+    )
+    sighting_id = response.json['result']['id']
+    sighting = Sighting.query.get(sighting_id)
+    assert sighting is not None
+    new_user = User.find(email=test_email)
+    assert new_user is not None
+    sighting.single_encounter_owner() == new_user
+
+    # upon success (yay) we clean up our mess (but need staff_user to do it)
+    sighting_utils.cleanup_tus_dir(transaction_id)
+    sighting_utils.delete_sighting(flask_app_client, staff_user, sighting_id)
+    new_user.delete()
 
     post_ct = test_utils.multi_count(db, (Sighting, Encounter, Asset, Submission))
     assert orig_ct == post_ct

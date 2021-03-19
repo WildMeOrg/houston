@@ -139,7 +139,9 @@ class ModuleActionRule(DenyAbortMixin, Rule):
             if not has_permission and user.is_user_manager:
                 has_permission = self._is_module(User)
             if not has_permission and user.is_researcher:
-                has_permission = self._is_module((Encounter, Sighting, Individual))
+                has_permission = self._is_module(
+                    (Encounter, Sighting, Individual, Annotation)
+                )
 
         elif self._action is AccessOperation.WRITE:
             if self._is_module(HoustonConfig):

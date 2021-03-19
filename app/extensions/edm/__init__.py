@@ -75,11 +75,8 @@ class EDMManager(RestManager):
     }
     # fmt: on
 
-    def __init__(self, app, pre_initialize=False, *args, **kwargs):
-        super(EDMManager, self).__init__(app, pre_initialize, *args, **kwargs)
-
-    # Implemented in derived class as it has dependencies upon "EDM_URIS' 'EDM_AUTHENTICATIONS' and
-    # 'default'. Once ACMManager is finalised, see if this can move into the base class
+    def __init__(self, pre_initialize=False, *args, **kwargs):
+        super(EDMManager, self).__init__(True, pre_initialize, *args, **kwargs)
 
 
 class EDMObjectMixin(object):
@@ -230,4 +227,4 @@ def init_app(app, **kwargs):
     """
     API extension initialization point.
     """
-    EDMManager(app)
+    app.edm = EDMManager()

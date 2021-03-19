@@ -56,9 +56,14 @@ def read_annotation(flask_app_client, user, annotation_guid, expected_status_cod
     return response
 
 
-def read_all_annotations(flask_app_client, user, expected_status_code=200):
+def read_all_annotations(
+    flask_app_client, user, local_only=False, expected_status_code=200
+):
     with flask_app_client.login(user, auth_scopes=('annotations:read',)):
-        response = flask_app_client.get(PATH)
+        if local_only:
+            response = flask_app_client.get(f'{PATH}local/')
+        else:
+            response = flask_app_client.get(PATH)
 
     if expected_status_code == 200:
         test_utils.validate_list_response(response, 200)

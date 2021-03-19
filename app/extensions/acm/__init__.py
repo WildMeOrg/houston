@@ -22,18 +22,19 @@ class ACMManager(RestManager):
     """"""
     NAME = 'ACM'
     ENDPOINT_PREFIX = 'api'
-
     # We use // as a shorthand for prefix
     # fmt: off
     ENDPOINTS = {
-        'session': {
-            'login': '//v0/login?content={"login":"%s","password":"%s"}',
+        # No user.session, wbia doesn't support logins
+        'annotations': {
+            'list': '//annot/json/',
+            'data': '//annot/name/uuid/json/?annot_uuid_list=[{"__UUID__": "%s"}]',
         },
     }
     # fmt: on
 
-    def __init__(self, app, pre_initialize=False, *args, **kwargs):
-        super(ACMManager, self).__init__(app, pre_initialize, *args, **kwargs)
+    def __init__(self, pre_initialize=False, *args, **kwargs):
+        super(ACMManager, self).__init__(False, pre_initialize, *args, **kwargs)
 
 
 def init_app(app, **kwargs):
@@ -41,4 +42,4 @@ def init_app(app, **kwargs):
     """
     API extension initialization point.
     """
-    ACMManager(app)
+    app.acm = ACMManager()

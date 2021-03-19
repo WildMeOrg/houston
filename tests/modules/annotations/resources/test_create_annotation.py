@@ -45,7 +45,7 @@ def test_create_and_delete_annotation(
 
 
 # TODO doesn't work at the moment
-def disabled_test_annotation_permission(
+def test_annotation_permission(
     flask_app_client,
     admin_user,
     staff_user,
@@ -54,7 +54,10 @@ def disabled_test_annotation_permission(
     test_clone_submission_data,
 ):
     # Before we create any Annotations, find out how many are there already
-    previous_list = annot_utils.read_all_annotations(flask_app_client, staff_user)
+    previous_wbia_annots = annot_utils.read_all_annotations(flask_app_client, staff_user)
+    previous_local_annots = annot_utils.read_all_annotations(
+        flask_app_client, staff_user, local_only=True
+    )
     clone = sub_utils.clone_submission(
         flask_app_client,
         admin_user,
@@ -75,17 +78,23 @@ def disabled_test_annotation_permission(
 
         # admin user should not be able to read any annotations
         annot_utils.read_annotation(flask_app_client, admin_user, annotation_guid, 403)
-        annot_utils.read_all_annotations(flask_app_client, admin_user, 403)
+        annot_utils.read_all_annotations(
+            flask_app_client, admin_user, expected_status_code=403
+        )
 
         # user that created annotation can read it back plus the list
         annot_utils.read_annotation(flask_app_client, researcher_1, annotation_guid)
-        list_response = annot_utils.read_all_annotations(flask_app_client, researcher_1)
+        wbia_annots = annot_utils.read_all_annotations(flask_app_client, researcher_1)
+        local_annots = annot_utils.read_all_annotations(
+            flask_app_client, researcher_1, local_only=True
+        )
 
         # due to the way the tests are run, there may be annotations left lying about,
         # don't rely on there only being one
-        assert len(list_response.json) == len(previous_list.json) + 1
+        assert wbia_annots.json == previous_wbia_annots.json
+        assert len(local_annots.json) == len(previous_local_annots.json) + 1
         annotation_present = False
-        for annotation in list_response.json:
+        for annotation in local_annots.json:
             if annotation['guid'] == annotation_guid:
                 annotation_present = True
             break

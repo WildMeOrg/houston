@@ -80,7 +80,7 @@ class RestManager(RestManagerUserMixin):
     ENDPOINTS = None
     NAME = None
 
-    def __init__(self, app, pre_initialize=False, *args, **kwargs):
+    def __init__(self, require_login=True, pre_initialize=False, *args, **kwargs):
         super(RestManager, self).__init__(*args, **kwargs)
         self.initialized = False
 
@@ -89,10 +89,9 @@ class RestManager(RestManagerUserMixin):
         assert self.ENDPOINT_PREFIX is not None
         assert self.ENDPOINTS is not None
 
-        self.app = app
-        self.targets = set([])
+        self.require_login = require_login
 
-        app.edm = self
+        self.targets = set([])
 
         if pre_initialize:
             self._ensure_initialized()
@@ -127,6 +126,17 @@ class RestManager(RestManagerUserMixin):
         return endpoint
 
     def _parse_config_uris(self):
+        uris = current_app.config.get(f'{self.NAME}_URIS', {})
+        # Check for the 'default'
+        assert uris.get('default'), f"Missing a 'default' {self.NAME}_URI"
+
+        # Update the list of known named targets
+        self.targets.update(uris.keys())
+
+        # Assign local references to the configuration settings
+        self.uris = uris
+
+    def _parse_config_auths(self):
         """Obtain and verify the required configuration settings and
         update the list of known EDM targets by URI.
 
@@ -134,11 +144,8 @@ class RestManager(RestManagerUserMixin):
         authentication credentials. It ignores matching in the other direction.
 
         """
-        uris = self.app.config.get(f'{self.NAME}_URIS', {})
-        authns = self.app.config.get(f'{self.NAME}_AUTHENTICATIONS', {})
+        authns = current_app.config.get(f'{self.NAME}_AUTHENTICATIONS', {})
 
-        # Check for the 'default' EDM
-        assert uris.get('default'), f"Missing a 'default' {self.NAME}_URI"
         has_required_default_authn = (
             isinstance(authns.get('default'), dict)
             and authns['default'].get('username')
@@ -148,48 +155,51 @@ class RestManager(RestManagerUserMixin):
         assert has_required_default_authn, assertion_msg
 
         # Check URIs have matching credentials
-        missing_creds = [k for k in uris.keys() if not authns.get(k)]
+        missing_creds = [k for k in self.uris.keys() if not authns.get(k)]
         assert (
             not missing_creds
         ), f"Missing credentials for named {self.NAME} configs: {', '.join(missing_creds)}"
 
-        # Update the list of known named targets
-        self.targets.update(uris.keys())
-
         # Assign local references to the configuration settings
-        self.uris = uris
         self.auths = authns
 
     def _init_sessions(self):
         self.sessions = {}
         for target in self.uris:
-            auth = self.auths[target]
-
-            email = auth.get('username', auth.get('email', None))
-            password = auth.get('password', auth.get('pass', None))
-
-            message = '%s Authentication for %s unspecified (email)' % (
-                self.NAME,
-                target,
-            )
-            assert email is not None, message
-            message = f'{self.NAME} Authentication for {target} unspecified (password)'
-            assert password is not None, message
-
             self.sessions[target] = requests.Session()
-            response = self._get(
-                'session.login', email, password, target=target, ensure_initialized=False
-            )
-            assert (
-                not isinstance(response, requests.models.Response) or response.ok
-            ), f'{self.NAME} Authentication for {target} returned non-OK code: {response.status_code}'
 
-            log.info('Created authenticated session for EDM target %r' % (target,))
+            if self.require_login:
+                auth = self.auths[target]
+
+                email = auth.get('username', auth.get('email', None))
+                password = auth.get('password', auth.get('pass', None))
+
+                message = f'{self.NAME} Authentication for {target} unspecified (email)'
+                assert email is not None, message
+                message = (
+                    f'{self.NAME} Authentication for {target} unspecified (password)'
+                )
+                assert password is not None, message
+
+                response = self._get(
+                    'session.login',
+                    email,
+                    password,
+                    target=target,
+                    ensure_initialized=False,
+                )
+                assert (
+                    not isinstance(response, requests.models.Response) or response.ok
+                ), f'{self.NAME} Authentication for {target} returned non-OK code: {response.status_code}'
+
+            log.info(f'Created authenticated session for {self.NAME} target {target}')
 
     def _ensure_initialized(self):
         if not self.initialized:
             log.info('Initializing %s' % self.NAME)
             self._parse_config_uris()
+            if self.require_login:
+                self._parse_config_auths()
             self._init_sessions()
             log.info('\t%s' % (ut.repr3(self.uris)))
             log.info('%s Manager is ready' % self.NAME)
@@ -221,14 +231,16 @@ class RestManager(RestManagerUserMixin):
     ):
         if ensure_initialized:
             self._ensure_initialized()
-
         method = method.lower()
         assert method in ['get', 'post', 'delete', 'put', 'patch']
 
         if endpoint is None:
             assert tag is not None
             endpoint_fmtstr = self._endpoint_fmtstr(tag, target=target)
-            endpoint = endpoint_fmtstr % args
+            if len(args) == 1 and args[0] is None:
+                endpoint = endpoint_fmtstr
+            else:
+                endpoint = endpoint_fmtstr % args
 
         if tag is None:
             assert endpoint is not None

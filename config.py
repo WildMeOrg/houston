@@ -235,10 +235,11 @@ def get_env_rest_config(interface):
 
 class ACMConfig(object):
     # Read the config from the environment but ensure that there is always a default URI
+    # WBIA doesn't currently support authentications but no reason to not use the same function to read
+    # the env config.
     ACM_URIS, ACM_AUTHENTICATIONS = get_env_rest_config('ACM')
     if 'default' not in ACM_URIS:
-        # TODO this is definitely wrong but it at least allows a login
-        ACM_URIS['default'] = 'http://demo.wildbook.org/'
+        ACM_URIS['default'] = 'https://tier2.dyn.wildme.io:5010'
 
 
 class EDMConfig(object):
@@ -256,7 +257,7 @@ class SubmissionGitLabRemoteConfig(object):
 
 
 class ProductionConfig(
-    BaseConfig, EDMConfig, SubmissionGitLabRemoteConfig, SecretProductionConfig
+    BaseConfig, EDMConfig, ACMConfig, SubmissionGitLabRemoteConfig, SecretProductionConfig
 ):
     TESTING = False
 
@@ -274,6 +275,7 @@ class ProductionConfig(
 class DevelopmentConfig(
     BaseConfig,
     EDMConfig,
+    ACMConfig,
     SubmissionGitLabRemoteConfig,
     SecretDevelopmentConfig,
 ):

@@ -164,7 +164,7 @@ def test_create_anon_and_delete_sighting(db, flask_app_client, staff_user):
     assert sighting is not None
     new_user = User.find(email=test_email)
     assert new_user is not None
-    sighting.single_encounter_owner() == new_user
+    assert sighting.encounters[0].submitter == new_user
 
     # upon success (yay) we clean up our mess (but need staff_user to do it)
     sighting_utils.cleanup_tus_dir(transaction_id)

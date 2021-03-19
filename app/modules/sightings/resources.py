@@ -191,11 +191,11 @@ class Sightings(Resource):
 
         # we must resolve any weirdness with owner/submitter ahead of time so we can bail if problems
         pub = False
-        owner_guid = None
+        owner = None
         submitter_guid = None
         if current_user is None or current_user.is_anonymous:
             from app.modules.users.models import User
-            owner_guid = User.get_public_user().guid
+            owner = User.get_public_user()
             pub = True
             submitter_email = request_in.get('submitterEmail', None)
             log.info(f'Anonymous submission posted, submitter_email={submitter_email}')
@@ -215,7 +215,7 @@ class Sightings(Resource):
                         error_code=403
                     )
         else:  # logged-in user
-            owner_guid = current_user.guid
+            owner = current_user
             submitter_guid = current_user.guid
 
         response = current_app.edm.request_passthrough(
@@ -287,7 +287,7 @@ class Sightings(Resource):
             try:
                 submission = Submission.create_submission_from_tus(
                     'Sighting.post ' + result_data['id'],
-                    current_user,
+                    owner,
                     transaction_id,
                     paths=all_arefs[transaction_id],
                 )
@@ -320,7 +320,7 @@ class Sightings(Resource):
                     encounter = Encounter(
                         guid=result_data['encounters'][i]['id'],
                         version=result_data['encounters'][i].get('version', 2),
-                        owner_guid=owner_guid,
+                        owner_guid=owner.guid,
                         submitter_guid=submitter_guid,
                         public=pub,
                     )

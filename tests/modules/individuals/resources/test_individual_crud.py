@@ -45,27 +45,6 @@ def test_create_read_delete_individual(db, flask_app_client):
         db.session.delete(temp_enc)
 
 
-def test_read_failure_if_not_member_or_researcher(
-    db, flask_app_client, regular_user, researcher_1
-):
-    fail_enc = utils.generate_encounter_instance(
-        user_email='fail_enc@user', user_password='mod1user', user_full_name='Test User'
-    )
-    encounter_json = {'encounters': [{'id': str(fail_enc.guid)}]}
-    response = individual_utils.create_individual(
-        flask_app_client, researcher_1, expected_status_code=200, data_in=encounter_json
-    )
-    individual_guid = response.json['guid']
-    response = individual_utils.read_individual(
-        flask_app_client, regular_user, individual_guid, 403
-    )
-    assert 'guid' not in response.json.items()
-    read_individual = Individual.query.get(individual_guid)
-
-    with db.session.begin():
-        db.session.delete(read_individual)
-
-
 def test_modify_encounters(db, flask_app_client, researcher_1, empty_individual):
 
     mod_enc_1 = utils.generate_encounter_instance(

@@ -56,7 +56,7 @@ class Individual(db.Model, FeatherModel):
         with db.session.begin():
             db.session.delete(self)
 
-    def delete_from_edm(self, current_app):
+    def delete_from_edm(self):
         response = current_app.edm.request_passthrough(
             'individual.data',
             'delete',

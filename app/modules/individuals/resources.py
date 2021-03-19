@@ -260,7 +260,7 @@ class IndividualByID(Resource):
         """
         Delete an Individual by ID.
         """
-        response = individual.delete_from_edm(current_app)
+        response = individual.delete_from_edm()
         response_data = None
         if response.ok:
             response_data = response.json()

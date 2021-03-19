@@ -17,7 +17,9 @@ import logging
 log = logging.getLogger(__name__)
 
 
+api_v1_blueprint = Blueprint('api', __name__, url_prefix='/api/v1')
 api_v1 = Api(  # pylint: disable=invalid-name
+    api_v1_blueprint,
     version='1.0.0',
     title='Houston',
     description=(
@@ -43,3 +45,4 @@ def init_app(app, **kwargs):
     """
     # Prevent config variable modification with runtime changes
     api_v1.authorizations = deepcopy(app.config['AUTHORIZATIONS'])
+    app.register_blueprint(api_v1_blueprint)

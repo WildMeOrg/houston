@@ -246,7 +246,7 @@ class EDMConfig(object):
     # Read the config from the environment but ensure that there is always a default URI
     EDM_URIS, EDM_AUTHENTICATIONS = get_env_rest_config('EDM')
     if 'default' not in EDM_URIS:
-        EDM_URIS['default'] = 'http://demo.wildbook.org/'
+        EDM_URIS['default'] = 'https://nextgen.dev-wildbook.org/'
 
 
 class SubmissionGitLabRemoteConfig(object):

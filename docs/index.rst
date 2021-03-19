@@ -9,6 +9,8 @@ For a high-level explanation of the application in relation to other CODEX appli
    :maxdepth: 2
    :caption: Contents:
 
+   project_file_structure
+   development
 
 
 Indices and tables

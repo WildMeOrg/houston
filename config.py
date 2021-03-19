@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=too-few-public-methods,invalid-name,missing-docstring
-import importlib
 import os
 import logging
 import datetime
@@ -22,27 +21,6 @@ load_dotenv(_dotenv, override=False)  # gracefully fails if file doesn't exist
 
 PROJECT_ROOT = str(HERE)
 PROJECT_DATABASE_PATH = os.path.join(PROJECT_ROOT, '_db')
-
-# Load config from database folder
-SecretDevelopmentConfig = object
-SecretProductionConfig = object
-
-_config_filepath = os.path.join(PROJECT_DATABASE_PATH, 'secrets.py')
-if os.path.exists(_config_filepath):
-    _config_relative_filepath = os.path.relpath(_config_filepath)
-    _config_relative_filepath = _config_relative_filepath.strip('.py')
-    _config_relative_filepath = _config_relative_filepath.replace('/', '.')
-    _config_module = importlib.import_module(_config_relative_filepath)
-
-    secret_config = getattr(_config_module, 'SecretProductionConfig', None)
-    if secret_config is not None:
-        # log.info('Inheriting production secrets config %r' % (secret_config, ))
-        SecretProductionConfig = secret_config
-
-    secret_config = getattr(_config_module, 'SecretDevelopmentConfig', None)
-    if secret_config is not None:
-        # log.info('Inheriting development secrets config %r' % (secret_config, ))
-        SecretDevelopmentConfig = secret_config
 
 
 class BaseConfig(object):
@@ -109,6 +87,8 @@ class BaseConfig(object):
 
     PREFERRED_URL_SCHEME = 'http'
     REVERSE_PROXY_SETUP = os.getenv('HOSTON_REVERSE_PROXY_SETUP', False)
+
+    SECRET_KEY = os.getenv('SECRET_KEY')
 
     AUTHORIZATIONS = {
         'oauth2_password': {
@@ -200,6 +180,41 @@ class BaseConfig(object):
     }
 
 
+class EmailConfig(object):
+    MAIL_SERVER = os.getenv('MAIL_SERVER', 'smtp.gmail.com')
+    MAIL_PORT = int(os.getenv('MAIL_PORT', 587))
+    MAIL_USE_TLS = bool(os.getenv('MAIL_USE_TLS', True))
+    MAIL_USE_SSL = bool(os.getenv('MAIL_USE_SSL', False))
+    MAIL_USERNAME = os.getenv('MAIL_USERNAME', 'dev@wildme.org')
+    MAIL_PASSWORD = os.getenv('MAIL_PASSWORD', 'XXX')
+    MAIL_DEFAULT_SENDER = (
+        os.getenv('MAIL_DEFAULT_SENDER_NAME', 'Wild Me'),
+        os.getenv('MAIL_DEFAULT_SENDER_EMAIL', 'dev@wildme.org'),
+    )
+
+
+class ReCaptchaConfig(object):
+    RECAPTCHA_PUBLIC_KEY = os.getenv('RECAPTCHA_PUBLIC_KEY', 'XXX')
+    RECAPTCHA_BYPASS = os.getenv('RECAPTCHA_BYPASS', 'XXX')
+
+
+class StripeConfig(object):
+    STRIPE_PUBLIC_KEY = 'pk_test_XXX'
+    STRIPE_SECRET_KEY = 'sk_test_XXX'
+
+
+class GoogleAnalyticsConfig(object):
+    GOOGLE_ANALYTICS_TAG = 'G-XXX'
+
+
+class GoogleMapsConfig(object):
+    GOOGLE_MAP_API_KEY = 'XXX'
+
+
+class GoogleConfig(GoogleAnalyticsConfig, GoogleMapsConfig):
+    pass
+
+
 def get_env_rest_config(interface):
     """Parse ACM/EDM configuration from environment variables"""
     # Parse all uris from environment variables
@@ -259,7 +274,13 @@ class SubmissionGitLabRemoteConfig(object):
 
 
 class ProductionConfig(
-    BaseConfig, EDMConfig, ACMConfig, SubmissionGitLabRemoteConfig, SecretProductionConfig
+    BaseConfig,
+    EDMConfig,
+    ACMConfig,
+    EmailConfig,
+    GoogleConfig,
+    SubmissionGitLabRemoteConfig,
+    ReCaptchaConfig,
 ):
     TESTING = False
 
@@ -278,8 +299,10 @@ class DevelopmentConfig(
     BaseConfig,
     EDMConfig,
     ACMConfig,
+    EmailConfig,
+    GoogleConfig,
     SubmissionGitLabRemoteConfig,
-    SecretDevelopmentConfig,
+    ReCaptchaConfig,
 ):
     DEBUG = True
 

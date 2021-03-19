@@ -72,11 +72,6 @@ jobs:
         run: |
           sudo apt install libmagic1
 
-      - name: Create _db/secrets.py
-        run: |
-          tar -zxvf _db.initial.tar.gz
-          mv _db.initial _db
-
       - name: Create frontend static directory (tests complains if static directory does not exist)
         run: |
           mkdir -p app/static/dist-latest
@@ -90,7 +85,6 @@ jobs:
           docker-compose up -d db redis gitlab edm houston
           # Check the state of the containers
           sleep 1m
-          docker-compose exec -T houston chmod a+r .env
           # Wait until houston is up
           while sleep 15
           do

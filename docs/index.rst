@@ -12,6 +12,7 @@ For a high-level explanation of the application in relation to other CODEX appli
    project_file_structure
    development
    api_usage
+   design_decisions
 
 
 Indices and tables

@@ -5,15 +5,12 @@ Ecological Data Management (EDM) manager.
 
 """
 import logging
-from werkzeug.exceptions import BadRequest
 from flask import current_app, request, session, render_template  # NOQA
 from flask_login import current_user  # NOQA
 from app.extensions import db
-import requests
-from collections import namedtuple
-import utool as ut
+from app.extensions.restManager.RestManager import RestManager
+
 import types
-import json
 import tqdm
 import keyword
 import uuid
@@ -24,24 +21,16 @@ KEYWORD_SET = set(keyword.kwlist)
 log = logging.getLogger(__name__)
 
 
-def _json_object_hook(data):
-    keys = list(data.keys())
-    keys_set = set(keys)
-    keys_ = []
-    for key in keys:
-        if key in KEYWORD_SET:
-            key_ = '%s_' % (key,)
-            assert key_ not in keys_set
-        else:
-            key_ = key
-        keys_.append(key_)
-    values = data.values()
-    data_ = namedtuple('obj', keys_)(*values)
-    return data_
+class EDMManager(RestManager):
+    """
+        note the content of User in the 2nd item has stuff you can ignore. it also has the id as "uuid" (which is what it is internally, sigh).  also note it references Organizations !  we didnt touch on this on the call, but i think this should (must?) live with Users.  what we have in java is very lightweight anyway, so no loss to go away.   as you can see, user.organizations is an array of orgs, and (since it is many-to-many) you will see org.members is a list of Users.  easy peasy.  btw, by the time we got to Organizations, we did call the primary key id and make it a uuid.  "live and learn".  :confused:
+    also!  the user.profileAsset is fabricated!  ben wanted something so i literally hardcoded a random choice (including empty) from a list of like 4 user faces. haha.  so you arent going crazy if you see this change per user.  and obviously in the future the contents of this will be more whatever we land on for final asset format.
 
+        btw, as a bonus.  here is what an Organization is on wildbook[edm] ... they are hierarchical -- which i would argue we drop!!  it was fun for playing with, but i do not want to have to support that when security starts using these!!!  (no real world orgs use this currently anyway, not in any important way.)   other than that (and killing it off!) there are .members and .logoAsset.  boringly simple.
+    https://nextgen.dev-wildbook.org/api/org.ecocean.Organization?id==%273b868b21-729f-46ca-933f-c4ecdf02e97d%27
+    """
 
-class EDMManagerEndpointMixin(object):
-
+    NAME = 'EDM'
     ENDPOINT_PREFIX = 'api'
 
     # We use // as a shorthand for prefix
@@ -86,343 +75,8 @@ class EDMManagerEndpointMixin(object):
     }
     # fmt: on
 
-    def _endpoint_fmtstr(self, tag, target='default'):
-        endpoint_tag_fmtstr = self._endpoint_tag_fmtstr(tag)
-        assert endpoint_tag_fmtstr is not None, 'The endpoint tag was not recognized'
-
-        if endpoint_tag_fmtstr.startswith('//'):
-            endpoint_tag_fmtstr = endpoint_tag_fmtstr[2:]
-            endpoint_tag_fmtstr = '%s/%s' % (
-                self.ENDPOINT_PREFIX,
-                endpoint_tag_fmtstr,
-            )
-
-        endpoint_url_ = self.get_target_endpoint_url(target)
-        endpoint_fmtstr = '%s/%s' % (
-            endpoint_url_,
-            endpoint_tag_fmtstr,
-        )
-        return endpoint_fmtstr
-
-    def _endpoint_tag_fmtstr(self, tag):
-        endpoint = self.ENDPOINTS
-
-        component_list = tag.split('.')
-        for component in component_list:
-            try:
-                endpoint_ = endpoint.get(component, None)
-            except Exception:
-                endpoint_ = None
-
-            if endpoint_ is None:
-                break
-
-            endpoint = endpoint_
-
-        return endpoint
-
-
-class EDMManagerUserMixin(object):
-    def check_user_login(self, username, password):
-        self._ensure_initialized()
-
-        success = False
-        for target in self.targets:
-            # Create temporary session
-            temporary_session = requests.Session()
-            try:
-                response = self._get(
-                    'session.login',
-                    username,
-                    password,
-                    target=target,
-                    target_session=temporary_session,
-                )
-
-                assert response.ok
-                decoded_response = response.json()
-                assert decoded_response['message']['key'] == 'success'
-
-                log.info('User authenticated via EDM (target = %r)' % (target,))
-                success = True
-                break
-            except Exception:
-                pass
-            finally:
-                # Cleanup temporary session
-                temporary_session.cookies.clear_session_cookies()
-                temporary_session.close()
-
-        return success
-
-
-class EDMManager(EDMManagerEndpointMixin, EDMManagerUserMixin):
-    # pylint: disable=abstract-method
-    """
-        note the content of User in the 2nd item has stuff you can ignore. it also has the id as "uuid" (which is what it is internally, sigh).  also note it references Organizations !  we didnt touch on this on the call, but i think this should (must?) live with Users.  what we have in java is very lightweight anyway, so no loss to go away.   as you can see, user.organizations is an array of orgs, and (since it is many-to-many) you will see org.members is a list of Users.  easy peasy.  btw, by the time we got to Organizations, we did call the primary key id and make it a uuid.  "live and learn".  :confused:
-    also!  the user.profileAsset is fabricated!  ben wanted something so i literally hardcoded a random choice (including empty) from a list of like 4 user faces. haha.  so you arent going crazy if you see this change per user.  and obviously in the future the contents of this will be more whatever we land on for final asset format.
-
-        btw, as a bonus.  here is what an Organization is on wildbook[edm] ... they are hierarchical -- which i would argue we drop!!  it was fun for playing with, but i do not want to have to support that when security starts using these!!!  (no real world orgs use this currently anyway, not in any important way.)   other than that (and killing it off!) there are .members and .logoAsset.  boringly simple.
-    https://nextgen.dev-wildbook.org/api/org.ecocean.Organization?id==%273b868b21-729f-46ca-933f-c4ecdf02e97d%27
-    """
-
-    def __init__(self, app, pre_initialize=False, *args, **kwargs):
-        super(EDMManager, self).__init__(*args, **kwargs)
-        self.initialized = False
-
-        self.app = app
-        self.targets = set([])
-
-        app.edm = self
-
-        if pre_initialize:
-            self._ensure_initialized()
-
-    def _parse_config_edm_uris(self):
-        """Obtain and verify the required configuration settings and
-        update the list of known EDM targets by URI.
-
-        This procedure is primarily focused on matching a URI to
-        authentication credentials. It ignores matching in the other direction.
-
-        """
-        uris = self.app.config.get('EDM_URIS', {})
-        authns = self.app.config.get('EDM_AUTHENTICATIONS', {})
-
-        # Check for the 'default' EDM
-        assert uris.get('default'), "Missing a 'default' EDM_URI"
-        has_required_default_authn = (
-            isinstance(authns.get('default'), dict)
-            and authns['default'].get('username')
-            and authns['default'].get('password')
-        )
-        assertion_msg = "Missing EDM_AUTHENTICATION credentials for 'default'"
-        assert has_required_default_authn, assertion_msg
-
-        # Check URIs have matching credentials
-        missing_creds = [k for k in uris.keys() if not authns.get(k)]
-        assert (
-            not missing_creds
-        ), f"Missing credentials for named EDM configs: {', '.join(missing_creds)}"
-
-        # Update the list of known named targets
-        self.targets.update(uris.keys())
-
-        # Assign local references to the configuration settings
-        self.uris = uris
-        self.auths = authns
-
-    def _init_sessions(self):
-        self.sessions = {}
-        for target in self.uris:
-            auth = self.auths[target]
-
-            email = auth.get('username', auth.get('email', None))
-            password = auth.get('password', auth.get('pass', None))
-
-            message = 'EDM Authentication for %s unspecified (email)' % (target,)
-            assert email is not None, message
-            message = 'EDM Authentication for %s unspecified (password)' % (target,)
-            assert password is not None, message
-
-            self.sessions[target] = requests.Session()
-            response = self._get(
-                'session.login', email, password, target=target, ensure_initialized=False
-            )
-            assert (
-                not isinstance(response, requests.models.Response) or response.ok
-            ), 'EDM Authentication for %s returned non-OK code: %d' % (
-                target,
-                response.status_code,
-            )
-
-            log.info('Created authenticated session for EDM target %r' % (target,))
-
-    def _ensure_initialized(self):
-        if not self.initialized:
-            log.info('Initializing EDM')
-            self._parse_config_edm_uris()
-            self._init_sessions()
-            log.info('\t%s' % (ut.repr3(self.uris)))
-            log.info('EDM Manager is ready')
-            self.initialized = True
-
-    def get_target_endpoint_url(self, target='default'):
-        endpoint_url = self.uris[target]
-        endpoint_url_ = endpoint_url.strip('/')
-        return endpoint_url_
-
-    def get_target_list(self):
-        self._ensure_initialized()
-        return list(self.targets)
-
-    def _request(
-        self,
-        method,
-        tag,
-        *args,
-        endpoint=None,
-        target='default',
-        target_session=None,
-        _pre_request_func=None,
-        decode_as_object=True,
-        decode_as_dict=False,
-        passthrough_kwargs={},
-        ensure_initialized=True,
-        verbose=True,
-    ):
-        if ensure_initialized:
-            self._ensure_initialized()
-
-        method = method.lower()
-        assert method in ['get', 'post', 'delete', 'put', 'patch']
-
-        if endpoint is None:
-            assert tag is not None
-            endpoint_fmtstr = self._endpoint_fmtstr(tag, target=target)
-            endpoint = endpoint_fmtstr % args
-
-        if tag is None:
-            assert endpoint is not None
-
-        endpoint_encoded = requests.utils.quote(endpoint, safe='/?:=&')
-
-        if verbose:
-            log.info('Sending request to: %r' % (endpoint_encoded,))
-
-        if target_session is None:
-            target_session = self.sessions[target]
-
-        with target_session:
-            if _pre_request_func is not None:
-                target_session = _pre_request_func(target_session)
-
-            request_func = getattr(target_session, method, None)
-            assert request_func is not None
-
-            response = request_func(endpoint_encoded, **passthrough_kwargs)
-
-        if response.ok:
-            if decode_as_object and decode_as_dict:
-                log.warning(
-                    'Both decode_object and decode_dict are True, defaulting to object'
-                )
-                decode_as_dict = False
-
-            if decode_as_object:
-                response = json.loads(response.text, object_hook=_json_object_hook)
-
-            if decode_as_dict:
-                response = response.json()
-        else:
-            log.warning(
-                'Non-OK (%r) response on %r %r: %r'
-                % (
-                    response.status_code,
-                    method,
-                    endpoint,
-                    response.content,
-                )
-            )
-
-        return response
-
-    def _get(self, *args, **kwargs):
-        return self._request('get', *args, **kwargs)
-
-    def _post(self, *args, **kwargs):
-        return self._request('post', *args, **kwargs)
-
-    def _delete(self, *args, **kwargs):
-        return self._request('delete', *args, **kwargs)
-
-    def get_list(self, list_name, target='default'):
-        response = self._get(list_name, target=target)
-
-        items = {}
-        for value in response:
-            try:
-                guid = value.id
-                version = value.version
-            except AttributeError as exception:
-                log.error('Invalid response from EDM [%s]' % (list_name,))
-                raise exception
-
-            guid = uuid.UUID(guid)
-            assert isinstance(version, int)
-
-            items[guid] = {'version': version}
-
-        return items
-
-    def get_dict(self, list_name, guid, target='default'):
-
-        assert isinstance(guid, uuid.UUID)
-        response = self._get(
-            list_name,
-            guid,
-            target=target,
-            decode_as_object=False,
-            decode_as_dict=True,
-        )
-        return response
-
-    def get_data_item(self, guid, item_name, target='default'):
-        assert isinstance(guid, uuid.UUID)
-        response = self._get(item_name, guid, target=target)
-        return response
-
-    def request_passthrough(
-        self, tag, method, passthrough_kwargs, args=None, target='default'
-    ):
-        self._ensure_initialized()
-        try:
-            # Try to convert string integers to integers
-            target = int(target)
-        except ValueError:
-            pass
-
-        # Check target
-        targets = list(self.targets)
-        if target not in targets:
-            raise BadRequest('The specified target %r is invalid.' % (target,))
-
-        headers = passthrough_kwargs.get('headers', {})
-        allowed_header_key_list = [
-            'Accept',
-            'Content-Type',
-            'User-Agent',
-        ]
-        is_json = False
-        for header_key in allowed_header_key_list:
-            header_value = request.headers.get(header_key, None)
-            header_existing = headers.get(header_key, None)
-            if header_value is not None and header_existing is None:
-                headers[header_key] = header_value
-
-            if header_key == 'Content-Type':
-                if header_value is not None:
-                    if header_value.lower().startswith(
-                        'application/javascript'
-                    ) or header_value.lower().startswith('application/json'):
-                        is_json = True
-        passthrough_kwargs['headers'] = headers
-
-        if is_json:
-            data_ = passthrough_kwargs.pop('data', None)
-            if data_ is not None:
-                passthrough_kwargs['json'] = data_
-
-        response = self._request(
-            method,
-            tag,
-            args,
-            target=target,
-            decode_as_object=False,
-            decode_as_dict=False,
-            passthrough_kwargs=passthrough_kwargs,
-        )
-        return response
+    def __init__(self, pre_initialize=False, *args, **kwargs):
+        super(EDMManager, self).__init__(True, pre_initialize, *args, **kwargs)
 
 
 class EDMObjectMixin(object):
@@ -466,7 +120,7 @@ class EDMObjectMixin(object):
         failed_items = []
         for model_obj, version in tqdm.tqdm(stale_items):
             try:
-                model_obj.sync_edm_item(model_obj.guid, version)
+                model_obj._sync_item(model_obj.guid, version)
                 updated_items.append(model_obj)
             except sqlalchemy.exc.IntegrityError:
                 log.error(
@@ -557,7 +211,7 @@ class EDMObjectMixin(object):
         else:
             log.info('Updating to found version %r' % (found_version,))
 
-    def sync_edm_item(self, guid, version):
+    def _sync_item(self, guid, version):
         response = current_app.edm.get_data_item(guid, '%s.data' % (self.EDM_NAME,))
 
         assert response.success
@@ -573,4 +227,4 @@ def init_app(app, **kwargs):
     """
     API extension initialization point.
     """
-    EDMManager(app)
+    app.edm = EDMManager()

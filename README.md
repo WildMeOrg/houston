@@ -181,6 +181,21 @@ The [_tus_](https://tus.io) portions of this application require [**Redis**](htt
 
 [**Postgres**](https://www.postgresql.org/) is an optional dependency that can be used for a highly reliable scaled database solution.
 
+
+## Documentation
+
+### Build the documentation
+
+To build and view the documentation use the following commands:
+
+```
+cd docs
+pip install -r requirements.txt
+make html
+open _build/html/index.html
+```
+
+
 ## License
 
 This software is subject to the provisions of Apache License Version 2.0 (APL). See `LICENSE` for details. Copyright (c) 2020 Wild Me

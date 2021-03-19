@@ -36,8 +36,10 @@ def test_create_and_delete_encounter_anonymous(
     enc_guid = response.json['result']['guid']
 
     # note this is only feather object, but enough just to test owner
+    from app.modules.users.models import User
+
     read_enc = Encounter.query.get(enc_guid)
-    assert read_enc.owner is None
+    assert read_enc.owner is User.get_public_user()
 
     # Try reading it back
     response = enc_utils.read_encounter(flask_app_client, researcher_1, enc_guid)

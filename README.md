@@ -180,3 +180,7 @@ The [_tus_](https://tus.io) portions of this application require [**Redis**](htt
 [**GitLab**](https://about.gitlab.com/install/) (community edition) is required for asset and submission storage and management.
 
 [**Postgres**](https://www.postgresql.org/) is an optional dependency that can be used for a highly reliable scaled database solution.
+
+## License
+
+This software is subject to the provisions of Apache License Version 2.0 (APL). See `LICENSE` for details. Copyright (c) 2020 Wild Me

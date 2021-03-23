@@ -55,6 +55,9 @@ ENV DATA_VOLUME /data
 ENV DATA_ROOT ${DATA_VOLUME}/var
 VOLUME [ "${DATA_VOLUME}" ]
 
+# Location to source additional environment variables
+ENV HOUSTON_DOTENV ${DATA_ROOT}/.env
+
 COPY ./.dockerfiles/docker-entrypoint.sh /docker-entrypoint.sh
 
 ENTRYPOINT [ "/docker-entrypoint.sh" ]

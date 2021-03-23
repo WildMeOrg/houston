@@ -5,6 +5,7 @@ Submissions database models
 """
 
 import enum
+import re
 from flask import current_app
 
 from app.extensions import db, HoustonModel, parallel
@@ -44,15 +45,19 @@ class GitLabPAT(object):
 
         self.repo = repo
         if url is None:
-            assert repo is not None
+            assert repo is not None, 'both repo and url parameters provided, choose one'
             url = repo.remotes.origin.url
         self.original_url = url
 
         remote_personal_access_token = current_app.config.get(
             'GITLAB_REMOTE_LOGIN_PAT', None
         )
-        self.authenticated_url = self.original_url.replace(
-            'https://', 'https://oauth2:%s@' % (remote_personal_access_token,)
+        self.authenticated_url = re.sub(
+            #: match on either http or https
+            r'(https?)://(.*)$',
+            #: replace with basic-auth entities
+            r'\1://oauth2:%s@\2' % (remote_personal_access_token,),
+            self.original_url,
         )
 
     def __enter__(self):

@@ -40,6 +40,21 @@ services:
       - intranet
       - frontend
 
+  gitlab:
+    image: gitlab/gitlab-ce:13.9.3-ce.0
+    volumes:
+      - gitlab-var-config:/etc/gitlab
+      - gitlab-var-logs:/var/log/gitlab
+      - gitlab-var-data:/var/opt/gitlab
+    networks:
+      - intranet
+    ports:
+      # - "22:22"
+      # - "80:80"
+      # - "443:443"
+      # FIXME: exposed for developers
+      - "85:80"
+
   wbia:
     # https://github.com/WildMeOrg/wildbook-ia
     image: wildme/wildbook-ia:nightly
@@ -97,8 +112,18 @@ services:
       EDM_AUTHENTICATIONS_USERNAME__DEFAULT: "${EDM_AUTHENTICATIONS_USERNAME__DEFAULT}"
       EDM_AUTHENTICATIONS_PASSWORD__DEFAULT: "${EDM_AUTHENTICATIONS_PASSWORD__DEFAULT}"
       REDIS_HOST: redis
+      GITLAB_PROTO: "${GITLAB_PROTO}"
+      GITLAB_HOST: "${GITLAB_HOST}"
+      GITLAB_PORT: "${GITLAB_PORT}"
+      GITLAB_ADMIN_PASSWORD: "${GITLAB_ADMIN_PASSWORD}"
+      GITLAB_REMOTE_URI: "${GITLAB_REMOTE_URI}"
+      GITLAB_PUBLIC_NAME: "${GITLAB_PUBLIC_NAME}"
+      GITLAB_EMAIL: "${GITLAB_EMAIL}"
+      GITLAB_NAMESPACE: "${GITLAB_NAMESPACE}"
     volumes:
       - houston-var:/data
+      - ./houston/docker-entrypoint-init.d:/docker-entrypoint-init.d
+      - ./houston/docker-entrypoint-always-init.d:/docker-entrypoint-always-init.d
       # FIXME: pull in development code while working on bringing up the container
       - ../../:/code
       # FIXME: Can we define a better mountpoint for this file? Maybe /config.py?
@@ -139,3 +164,6 @@ volumes:
   pgdata-var:
   wbia-var:
   houston-var:
+  gitlab-var-config:
+  gitlab-var-logs:
+  gitlab-var-data:

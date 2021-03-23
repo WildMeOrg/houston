@@ -1,7 +1,10 @@
 # -*- coding: utf-8 -*-
+import pathlib
+import shutil
+import uuid
+
 import sqlalchemy
 import pytest
-import uuid
 from flask_login import current_user, login_user, logout_user
 from tests import utils
 
@@ -208,20 +211,75 @@ def empty_individual():
     return _individual
 
 
-@pytest.fixture(scope='session')
-def test_submission_uuid(flask_app):
-    return uuid.UUID('00000000-0000-0000-0000-000000000002')
+def create_submission_repo(flask_app, db, submission, file_data=[]):
+    if pathlib.Path(submission.get_absolute_path()).exists():
+        shutil.rmtree(submission.get_absolute_path())
+    flask_app.sub.ensure_initialized()
+    projects = flask_app.sub.gl.projects.list(search=str(submission.guid))
+    if len(projects) > 0:
+        # repo already exists
+        return
+
+    with db.session.begin():
+        db.session.add(submission)
+    db.session.refresh(submission)
+    submission.ensure_repository(additional_tags=['type:pytest-required'])
+    filepath_guid_mapping = {}
+    for uuid_, path in file_data:
+        repo_filepath = submission.git_copy_file_add(str(path))
+        filepath_guid_mapping[repo_filepath] = uuid_
+    submission.git_commit(
+        'Initial commit for testing',
+        existing_filepath_guid_mapping=filepath_guid_mapping,
+    )
+    submission.git_push()
 
 
 @pytest.fixture(scope='session')
-def test_empty_submission_uuid(flask_app):
-    return uuid.UUID('00000000-0000-0000-0000-000000000001')
+def test_submission_uuid(flask_app, db, admin_user):
+    from app.modules.submissions.models import Submission, SubmissionMajorType
+
+    submission = Submission(
+        guid='00000000-0000-0000-0000-000000000002',
+        owner_guid=admin_user.guid,
+        major_type=SubmissionMajorType.test,
+        description='This is a required PyTest submission (do not delete)',
+    )
+    file_root = (
+        pathlib.Path(flask_app.config.get('PROJECT_ROOT')) / 'tests/submissions/test-000'
+    )
+    file_data = [
+        (
+            uuid.UUID('00000000-0000-0000-0000-000000000011'),
+            file_root / 'zebra.jpg',
+        ),
+        (
+            uuid.UUID('00000000-0000-0000-0000-000000000012'),
+            file_root / 'fluke.jpg',
+        ),
+    ]
+    create_submission_repo(flask_app, db, submission, file_data)
+    return submission.guid
 
 
 @pytest.fixture(scope='session')
-def test_clone_submission_data(flask_app):
+def test_empty_submission_uuid(flask_app, db, admin_user):
+    from app.modules.submissions.models import Submission, SubmissionMajorType
+
+    submission = Submission(
+        guid='00000000-0000-0000-0000-000000000001',
+        owner_guid=admin_user.guid,
+        major_type=SubmissionMajorType.test,
+        description='',
+    )
+    create_submission_repo(flask_app, db, submission)
+    return submission.guid
+
+
+@pytest.fixture(scope='session')
+def test_clone_submission_data(test_submission_uuid):
     return {
-        'submission_uuid': '00000000-0000-0000-0000-000000000002',
+        'submission_uuid': test_submission_uuid,
         'asset_uuids': [
             '00000000-0000-0000-0000-000000000011',
             '00000000-0000-0000-0000-000000000012',

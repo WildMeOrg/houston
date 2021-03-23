@@ -99,7 +99,9 @@ class CloneSubmission(object):
         if self.response.status_code == 200:
             self.submission = Submission.query.get(self.response.json['guid'])
 
-        elif self.response.status_code == 428:
+        elif self.response.status_code in (428, 403):
+            # 428 Precondition Required
+            # 403 Forbidden
             with client.login(admin_user, auth_scopes=('submissions:write',)):
                 self.response = client.post('%s%s' % (PATH, guid))
 

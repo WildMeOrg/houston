@@ -319,7 +319,7 @@ def test_user_profile_fileupload(db, flask_app, flask_app_client, regular_user, 
         clean_up_objects += [fup]
         clean_up_paths += [Path(fup.get_absolute_path())]
 
-        # PATCH replace /profile_fileupload_guid with asset.guid
+        # PATCH replace /profile_fileupload_guid without dict
         kwargs = {
             'content_type': 'application/json',
             'data': json.dumps(
@@ -328,6 +328,26 @@ def test_user_profile_fileupload(db, flask_app, flask_app_client, regular_user, 
                         'op': 'replace',
                         'path': '/profile_fileupload_guid',
                         'value': str(fup.guid),
+                    },
+                ],
+            ),
+        }
+        response = flask_app_client.patch(*args, **kwargs)
+        assert response.status_code == 422, response.data
+        assert (
+            response.json['message']
+            == 'Expected {"transactionId": "..."} or {"guid": "..."}'
+        )
+
+        # PATCH replace /profile_fileupload_guid with asset.guid
+        kwargs = {
+            'content_type': 'application/json',
+            'data': json.dumps(
+                [
+                    {
+                        'op': 'replace',
+                        'path': '/profile_fileupload_guid',
+                        'value': {'guid': str(fup.guid)},
                     }
                 ]
             ),
@@ -353,7 +373,7 @@ def test_user_profile_fileupload(db, flask_app, flask_app_client, regular_user, 
         }
         response = flask_app_client.patch(*args, **kwargs)
         assert response.status_code == 422, response.data
-        assert response.json['message'].startswith('"transactionId" is necessary')
+        assert response.json['message'] == '"transactionId" or "guid" is mandatory'
 
         # PATCH replace /profile_fileupload_guid with transaction_id with no assets
         td = Path(tempfile.mkdtemp(prefix='trans-', dir=upload_dir))
@@ -490,7 +510,7 @@ def test_user_profile_fileupload(db, flask_app, flask_app_client, regular_user, 
                     {
                         'op': 'add',
                         'path': '/profile_fileupload_guid',
-                        'value': str(fup.guid),
+                        'value': {'guid': str(fup.guid)},
                     }
                 ]
             ),

@@ -230,25 +230,31 @@ class PatchUserDetailsParameters(PatchJSONParameters):
 
     @classmethod
     def add_replace_profile_fileupload(cls, value):
-        if isinstance(value, dict):
-            from app.modules.fileuploads.models import FileUpload
-
-            transaction_id = value.get('transactionId')
-            if not transaction_id:
-                abort(
-                    code=HTTPStatus.UNPROCESSABLE_ENTITY,
-                    message='"transactionId" is necessary when using an object as the value',
-                )
-            paths = [value.get('path')] if value.get('path') else None
-            files = (
-                FileUpload.create_fileuploads_from_tus(transaction_id, paths=paths) or []
+        if not isinstance(value, dict):
+            abort(
+                code=HTTPStatus.UNPROCESSABLE_ENTITY,
+                message='Expected {"transactionId": "..."} or {"guid": "..."}',
             )
-            if len(files) != 1:
-                abort(
-                    code=HTTPStatus.UNPROCESSABLE_ENTITY,
-                    message=f'Need exactly 1 asset but found {len(files)} assets',
-                )
-            with db.session.begin(subtransactions=True):
-                db.session.add(files[0])
-            value = str(files[0].guid)
-        return value
+
+        from app.modules.fileuploads.models import FileUpload
+
+        guid = value.get('guid')
+        transaction_id = value.get('transactionId')
+        if not transaction_id and not guid:
+            abort(
+                code=HTTPStatus.UNPROCESSABLE_ENTITY,
+                message='"transactionId" or "guid" is mandatory',
+            )
+        if guid:
+            return guid
+
+        paths = [value.get('path')] if value.get('path') else None
+        files = FileUpload.create_fileuploads_from_tus(transaction_id, paths=paths) or []
+        if len(files) != 1:
+            abort(
+                code=HTTPStatus.UNPROCESSABLE_ENTITY,
+                message=f'Need exactly 1 asset but found {len(files)} assets',
+            )
+        with db.session.begin(subtransactions=True):
+            db.session.add(files[0])
+        return str(files[0].guid)

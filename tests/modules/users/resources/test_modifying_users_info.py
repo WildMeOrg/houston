@@ -261,19 +261,28 @@ def test_user_profile_fileupload(db, flask_app, flask_app_client, regular_user, 
     upload_dir = Path(flask_app.config['UPLOADS_DATABASE_PATH'])
     fileupload_dir = Path(flask_app.config['FILEUPLOAD_BASE_PATH'])
 
+    with (
+        Path(flask_app.config.get('PROJECT_ROOT'))
+        / 'tests/submissions/test-000/zebra.jpg'
+    ).open('rb') as f:
+        zebra = f.read()
+
     def cleanup_fileupload_dir(path):
         for c in path.glob('*'):
             child = Path(c)
             if child.is_dir():
                 cleanup_fileupload_dir(child)
-                if not list(path.glob('*')):
+                if not list(child.glob('*')):
                     child.rmdir()
 
     def cleanup():
         regular_user.profile_fileupload_guid = None
         db.session.merge(regular_user)
         for obj in clean_up_objects:
-            db.session.delete(obj)
+            if hasattr(obj, 'delete'):
+                obj.delete()
+            else:
+                db.session.delete(obj)
         for path in clean_up_paths:
             if path.exists():
                 shutil.rmtree(path, ignore_errors=True)
@@ -372,8 +381,8 @@ def test_user_profile_fileupload(db, flask_app, flask_app_client, regular_user, 
         td = Path(tempfile.mkdtemp(prefix='trans-', dir=upload_dir))
         transaction_id = td.name[len('trans-') :]
         transaction_id = td.name[len('trans-') :]
-        with (td / 'image.png').open('w') as f:
-            f.write('1234')
+        with (td / 'image.jpg').open('wb') as f:
+            f.write(zebra)
         with (td / 'a.txt').open('w') as f:
             f.write('abcd')
         kwargs = {
@@ -399,8 +408,8 @@ def test_user_profile_fileupload(db, flask_app, flask_app_client, regular_user, 
         td = Path(tempfile.mkdtemp(prefix='trans-', dir=upload_dir))
         transaction_id = td.name[len('trans-') :]
         transaction_id = td.name[len('trans-') :]
-        with (td / 'image.png').open('w') as f:
-            f.write('1234')
+        with (td / 'image.jpg').open('wb') as f:
+            f.write(zebra)
         with (td / 'a.txt').open('w') as f:
             f.write('abcd')
         kwargs = {
@@ -410,7 +419,7 @@ def test_user_profile_fileupload(db, flask_app, flask_app_client, regular_user, 
                     {
                         'op': 'replace',
                         'path': '/profile_fileupload_guid',
-                        'value': {'transactionId': transaction_id, 'path': 'image.png'},
+                        'value': {'transactionId': transaction_id, 'path': 'image.jpg'},
                     }
                 ]
             ),
@@ -421,15 +430,15 @@ def test_user_profile_fileupload(db, flask_app, flask_app_client, regular_user, 
         src_response = flask_app_client.get(fup.src)
         src_data = src_response.data
         src_response.close()  # h/t https://github.com/pallets/flask/issues/2468#issuecomment-517797518
-        assert src_data == b'1234'
+        assert src_data == zebra
         clean_up_objects.append(fup)
         clean_up_paths.append(td)
 
         # PATCH replace /profile_fileupload_guid with transaction_id
         td = Path(tempfile.mkdtemp(prefix='trans-', dir=upload_dir))
         transaction_id = td.name[len('trans-') :]
-        with (td / 'image.png').open('w') as f:
-            f.write('1234')
+        with (td / 'image.jpg').open('wb') as f:
+            f.write(zebra)
         kwargs = {
             'content_type': 'application/json',
             'data': json.dumps(
@@ -464,9 +473,9 @@ def test_user_profile_fileupload(db, flask_app, flask_app_client, regular_user, 
 
         # Create file upload
         with tempfile.TemporaryDirectory() as td:
-            testfile = Path(td) / 'a.txt'
-            with testfile.open('w') as f:
-                f.write('abcd\n')
+            testfile = Path(td) / 'image.jpg'
+            with testfile.open('wb') as f:
+                f.write(zebra)
             fup = FileUpload.create_fileupload_from_path(str(testfile))
         with db.session.begin():
             db.session.add(fup)

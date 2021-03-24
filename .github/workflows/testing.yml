@@ -72,6 +72,12 @@ jobs:
           mv _db.initial _db
           ./scripts/install.sh
 
+      - name: Create frontend static directory (tests complains if static directory does not exist)
+        run: |
+          mkdir -p app/static/dist-latest
+          touch app/static/dist-latest/404.html
+          touch app/static/dist-latest/index.html
+
       - name: Run tests (random x3)
         run: |
           source virtualenv/houston3.7/bin/activate
@@ -145,6 +151,12 @@ jobs:
           tar -zxvf _db.initial.tar.gz
           mv _db.initial _db
           ./scripts/install.sh
+
+      - name: Create frontend static directory (tests complains if static directory does not exist)
+        run: |
+          mkdir -p app/static/dist-latest
+          touch app/static/dist-latest/404.html
+          touch app/static/dist-latest/index.html
 
       - name: Run tests (random x3)
         run: |

@@ -39,8 +39,7 @@ frontend_blueprint = Blueprint(
 
 
 @frontend_blueprint.route('/', defaults={'path': None}, methods=['GET'])
-@frontend_blueprint.route('/<path:path>', methods=['GET'])
-def home(path=None, *args, **kwargs):
+def home(*args, **kwargs):
     # pylint: disable=unused-argument
 
     """
@@ -56,12 +55,17 @@ def home(path=None, *args, **kwargs):
         )
         raise werkzeug.exceptions.InternalServerError
 
-    if path is None:
-        path = 'index.html'
-    try:
+    path = 'index.html'
+    return send_from_directory(frontend_blueprint.static_folder, path)
+
+
+@frontend_blueprint.route(
+    '/<path:path>', methods=['GET', 'POST', 'PUT', 'DELETE', 'HEAD', 'OPTIONS', 'PATCH']
+)
+def catchall(path, *args, **kwargs):
+    if request.method == 'GET':
         return send_from_directory(frontend_blueprint.static_folder, path)
-    except werkzeug.exceptions.NotFound:
-        return home(path=None, *args, **kwargs)
+    raise werkzeug.exceptions.NotFound
 
 
 @frontend_blueprint.route('/login', methods=['POST'])

@@ -6,6 +6,11 @@ from tests.modules.annotations.resources import utils as annot_utils
 from tests.modules.submissions.resources import utils as sub_utils
 
 
+def test_get_annotation_not_found(flask_app_client):
+    response = flask_app_client.get('/api/v1/annotations/wrong-uuid')
+    assert response.status_code == 404
+
+
 def test_create_and_delete_annotation(
     flask_app_client, admin_user, researcher_1, test_clone_submission_data
 ):

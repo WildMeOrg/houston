@@ -5,6 +5,11 @@ from tests.modules.sightings.resources import utils as sighting_utils
 from tests import utils as test_utils
 
 
+def test_get_sighting_not_found(flask_app_client):
+    response = flask_app_client.get('/api/v1/sightings/wrong-uuid')
+    assert response.status_code == 404
+
+
 def test_create_failures(flask_app_client, researcher_1):
     transaction_id, test_filename = sighting_utils.prep_tus_dir()
 

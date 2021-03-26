@@ -9,7 +9,6 @@ import logging
 
 from flask_restx_patched import Resource
 from flask_restx._http import HTTPStatus
-from flask import current_app
 
 from app.extensions import db
 from app.extensions.api import Namespace, abort
@@ -25,11 +24,11 @@ log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 api = Namespace('annotations', description='Annotations')  # pylint: disable=invalid-name
 
 
-@api.route('/local/')
+@api.route('/')
 @api.login_required(oauth_scopes=['annotations:read'])
-class AnnotationsLocal(Resource):
+class Annotations(Resource):
     """
-    Read Annotations that are on Houston but not on ACM
+    Manipulations with Annotations.
     """
 
     @api.permission_required(
@@ -49,39 +48,6 @@ class AnnotationsLocal(Resource):
         parameter.
         """
         return Annotation.query.offset(args['offset']).limit(args['limit'])
-
-
-@api.route('/')
-@api.login_required(oauth_scopes=['annotations:read'])
-class Annotations(Resource):
-    """
-    Manipulations with Annotations.
-    """
-
-    @api.permission_required(
-        permissions.ModuleAccessPermission,
-        kwargs_on_request=lambda kwargs: {
-            'module': Annotation,
-            'action': AccessOperation.READ,
-        },
-    )
-    @api.parameters(PaginationParameters())
-    def get(self, args):
-        """
-        List of Annotation.
-
-        Returns the unprocessed passthrough response from WBIA
-        """
-        response = current_app.acm.request_passthrough('annotations.list', 'get', {})
-        # TODO what should this actually pass back?
-        # Should this parse what has come back from ACM to return a list of the uuids from WBIA
-        # but without the __UUID__ construct so that they appear to be just within Houston to the frontend?
-        # Could Houston know about annotations that WBIA doesn't?
-        data = response.json()
-        if response.ok and 'response' in data:
-            return data['response']
-
-        return response
 
     @api.permission_required(
         permissions.ModuleAccessPermission,

@@ -57,11 +57,10 @@ def test_annotation_permission(
     researcher_2,
     test_clone_submission_data,
 ):
+    import tests.modules.submissions.resources.utils as sub_utils
+
     # Before we create any Annotations, find out how many are there already
-    previous_wbia_annots = annot_utils.read_all_annotations(flask_app_client, staff_user)
-    previous_local_annots = annot_utils.read_all_annotations(
-        flask_app_client, staff_user, local_only=True
-    )
+    previous_annots = annot_utils.read_all_annotations(flask_app_client, staff_user)
     clone = sub_utils.clone_submission(
         flask_app_client,
         admin_user,
@@ -88,17 +87,13 @@ def test_annotation_permission(
 
         # user that created annotation can read it back plus the list
         annot_utils.read_annotation(flask_app_client, researcher_1, annotation_guid)
-        wbia_annots = annot_utils.read_all_annotations(flask_app_client, researcher_1)
-        local_annots = annot_utils.read_all_annotations(
-            flask_app_client, researcher_1, local_only=True
-        )
+        annots = annot_utils.read_all_annotations(flask_app_client, researcher_1)
 
         # due to the way the tests are run, there may be annotations left lying about,
         # don't rely on there only being one
-        assert wbia_annots.json == previous_wbia_annots.json
-        assert len(local_annots.json) == len(previous_local_annots.json) + 1
+        assert len(annots.json) == len(previous_annots.json) + 1
         annotation_present = False
-        for annotation in local_annots.json:
+        for annotation in annots.json:
             if annotation['guid'] == annotation_guid:
                 annotation_present = True
             break

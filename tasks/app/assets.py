@@ -17,17 +17,3 @@ def list_all(context):
 
     for asset in assets:
         print('Asset : {} '.format(asset))
-
-
-@app_context_task(
-    help={
-        'guid': 'guid of asset to sync',
-    }
-)
-def sync_from_acm(context, guid):
-    """
-    Sync a single asset from ACM
-    """
-    from app.modules.assets.models import AssetSync
-
-    AssetSync.acm_sync_item(guid)

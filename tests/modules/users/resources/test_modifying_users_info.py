@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=missing-docstring
+import io
 import json
 from pathlib import Path
 import shutil
@@ -8,6 +9,7 @@ import uuid
 
 from app.modules.users.models import User
 from app.modules.fileuploads.models import FileUpload
+from PIL import Image
 
 
 def test_user_id_not_found(flask_app_client, regular_user):
@@ -261,19 +263,28 @@ def test_user_profile_fileupload(db, flask_app, flask_app_client, regular_user, 
     upload_dir = Path(flask_app.config['UPLOADS_DATABASE_PATH'])
     fileupload_dir = Path(flask_app.config['FILEUPLOAD_BASE_PATH'])
 
+    with (
+        Path(flask_app.config.get('PROJECT_ROOT'))
+        / 'tests/submissions/test-000/zebra.jpg'
+    ).open('rb') as f:
+        zebra = f.read()
+
     def cleanup_fileupload_dir(path):
         for c in path.glob('*'):
             child = Path(c)
             if child.is_dir():
                 cleanup_fileupload_dir(child)
-                if not list(path.glob('*')):
+                if not list(child.glob('*')):
                     child.rmdir()
 
     def cleanup():
         regular_user.profile_fileupload_guid = None
         db.session.merge(regular_user)
         for obj in clean_up_objects:
-            db.session.delete(obj)
+            if hasattr(obj, 'delete'):
+                obj.delete()
+            else:
+                db.session.delete(obj)
         for path in clean_up_paths:
             if path.exists():
                 shutil.rmtree(path, ignore_errors=True)
@@ -310,7 +321,7 @@ def test_user_profile_fileupload(db, flask_app, flask_app_client, regular_user, 
         clean_up_objects += [fup]
         clean_up_paths += [Path(fup.get_absolute_path())]
 
-        # PATCH replace /profile_fileupload_guid with asset.guid
+        # PATCH replace /profile_fileupload_guid without dict
         kwargs = {
             'content_type': 'application/json',
             'data': json.dumps(
@@ -319,6 +330,26 @@ def test_user_profile_fileupload(db, flask_app, flask_app_client, regular_user, 
                         'op': 'replace',
                         'path': '/profile_fileupload_guid',
                         'value': str(fup.guid),
+                    },
+                ],
+            ),
+        }
+        response = flask_app_client.patch(*args, **kwargs)
+        assert response.status_code == 422, response.data
+        assert (
+            response.json['message']
+            == 'Expected {"transactionId": "..."} or {"guid": "..."}'
+        )
+
+        # PATCH replace /profile_fileupload_guid with asset.guid
+        kwargs = {
+            'content_type': 'application/json',
+            'data': json.dumps(
+                [
+                    {
+                        'op': 'replace',
+                        'path': '/profile_fileupload_guid',
+                        'value': {'guid': str(fup.guid)},
                     }
                 ]
             ),
@@ -344,7 +375,7 @@ def test_user_profile_fileupload(db, flask_app, flask_app_client, regular_user, 
         }
         response = flask_app_client.patch(*args, **kwargs)
         assert response.status_code == 422, response.data
-        assert response.json['message'].startswith('"transactionId" is necessary')
+        assert response.json['message'] == '"transactionId" or "guid" is mandatory'
 
         # PATCH replace /profile_fileupload_guid with transaction_id with no assets
         td = Path(tempfile.mkdtemp(prefix='trans-', dir=upload_dir))
@@ -372,8 +403,8 @@ def test_user_profile_fileupload(db, flask_app, flask_app_client, regular_user, 
         td = Path(tempfile.mkdtemp(prefix='trans-', dir=upload_dir))
         transaction_id = td.name[len('trans-') :]
         transaction_id = td.name[len('trans-') :]
-        with (td / 'image.png').open('w') as f:
-            f.write('1234')
+        with (td / 'image.jpg').open('wb') as f:
+            f.write(zebra)
         with (td / 'a.txt').open('w') as f:
             f.write('abcd')
         kwargs = {
@@ -399,8 +430,8 @@ def test_user_profile_fileupload(db, flask_app, flask_app_client, regular_user, 
         td = Path(tempfile.mkdtemp(prefix='trans-', dir=upload_dir))
         transaction_id = td.name[len('trans-') :]
         transaction_id = td.name[len('trans-') :]
-        with (td / 'image.png').open('w') as f:
-            f.write('1234')
+        with (td / 'image.jpg').open('wb') as f:
+            f.write(zebra)
         with (td / 'a.txt').open('w') as f:
             f.write('abcd')
         kwargs = {
@@ -410,7 +441,7 @@ def test_user_profile_fileupload(db, flask_app, flask_app_client, regular_user, 
                     {
                         'op': 'replace',
                         'path': '/profile_fileupload_guid',
-                        'value': {'transactionId': transaction_id, 'path': 'image.png'},
+                        'value': {'transactionId': transaction_id, 'path': 'image.jpg'},
                     }
                 ]
             ),
@@ -421,15 +452,15 @@ def test_user_profile_fileupload(db, flask_app, flask_app_client, regular_user, 
         src_response = flask_app_client.get(fup.src)
         src_data = src_response.data
         src_response.close()  # h/t https://github.com/pallets/flask/issues/2468#issuecomment-517797518
-        assert src_data == b'1234'
+        assert src_data == zebra
         clean_up_objects.append(fup)
         clean_up_paths.append(td)
 
         # PATCH replace /profile_fileupload_guid with transaction_id
         td = Path(tempfile.mkdtemp(prefix='trans-', dir=upload_dir))
         transaction_id = td.name[len('trans-') :]
-        with (td / 'image.png').open('w') as f:
-            f.write('1234')
+        with (td / 'image.jpg').open('wb') as f:
+            f.write(zebra)
         kwargs = {
             'content_type': 'application/json',
             'data': json.dumps(
@@ -464,9 +495,9 @@ def test_user_profile_fileupload(db, flask_app, flask_app_client, regular_user, 
 
         # Create file upload
         with tempfile.TemporaryDirectory() as td:
-            testfile = Path(td) / 'a.txt'
-            with testfile.open('w') as f:
-                f.write('abcd\n')
+            testfile = Path(td) / 'image.jpg'
+            with testfile.open('wb') as f:
+                f.write(zebra)
             fup = FileUpload.create_fileupload_from_path(str(testfile))
         with db.session.begin():
             db.session.add(fup)
@@ -481,7 +512,7 @@ def test_user_profile_fileupload(db, flask_app, flask_app_client, regular_user, 
                     {
                         'op': 'add',
                         'path': '/profile_fileupload_guid',
-                        'value': str(fup.guid),
+                        'value': {'guid': str(fup.guid)},
                     }
                 ]
             ),
@@ -490,3 +521,95 @@ def test_user_profile_fileupload(db, flask_app, flask_app_client, regular_user, 
         assert response.status_code == 200, response.data
         updated_user = User.query.get(regular_user.guid)
         assert str(updated_user.profile_fileupload_guid) == str(fup.guid)
+
+        # PATCH add /profile_fileupload_guid with invalid crop
+        kwargs = {
+            'content_type': 'application/json',
+            'data': json.dumps(
+                [
+                    {
+                        'op': 'add',
+                        'path': '/profile_fileupload_guid',
+                        'value': {
+                            'guid': str(fup.guid),
+                            'crop': 'invalid',
+                        },
+                    }
+                ]
+            ),
+        }
+        response = flask_app_client.patch(*args, **kwargs)
+        assert response.status_code == 422, response.data
+        assert (
+            response.json['message']
+            == 'Expected {"crop": {"x": <int>, "y": <int>, "width": <int>, "height": <int>}}'
+        )
+
+        with Image.open(fup.get_absolute_path()) as image:
+            assert image.size == (1000, 664)
+
+        # PATCH add /profile_fileupload_guid with crop
+        kwargs = {
+            'content_type': 'application/json',
+            'data': json.dumps(
+                [
+                    {
+                        'op': 'add',
+                        'path': '/profile_fileupload_guid',
+                        'value': {
+                            'guid': str(fup.guid),
+                            'crop': {
+                                'x': 650,
+                                'y': 150,
+                                'width': 150,
+                                'height': 150,
+                            },
+                        },
+                    }
+                ]
+            ),
+        }
+        response = flask_app_client.patch(*args, **kwargs)
+        assert response.status_code == 200, response.data
+        src = response.json['profile_fileupload']['src']
+        response = flask_app_client.get(src)
+        assert response.headers['Content-Type'] == 'image/jpeg'
+        with Image.open(io.BytesIO(response.data)) as image:
+            assert image.size == (150, 150)
+
+        # Create non image fileupload
+        with tempfile.TemporaryDirectory() as td:
+            testfile = Path(td) / 'a.txt'
+            with testfile.open('w') as f:
+                f.write('abcd\n')
+            fup = FileUpload.create_fileupload_from_path(str(testfile))
+        with db.session.begin():
+            db.session.add(fup)
+        clean_up_objects += [fup]
+
+        # PATCH add /profile_fileupload_guid with crop not image
+        kwargs = {
+            'content_type': 'application/json',
+            'data': json.dumps(
+                [
+                    {
+                        'op': 'add',
+                        'path': '/profile_fileupload_guid',
+                        'value': {
+                            'guid': str(fup.guid),
+                            'crop': {
+                                'x': 650,
+                                'y': 150,
+                                'width': 150,
+                                'height': 150,
+                            },
+                        },
+                    }
+                ]
+            ),
+        }
+        response = flask_app_client.patch(*args, **kwargs)
+        assert response.status_code == 422, response.data
+        assert response.json['message'].startswith(
+            'UnidentifiedImageError: cannot identify image file'
+        )

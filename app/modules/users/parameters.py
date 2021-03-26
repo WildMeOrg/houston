@@ -4,20 +4,22 @@
 Input arguments (Parameters) for User resources RESTful API
 -----------------------------------------------------------
 """
+import logging
+from pathlib import Path
+
 from flask import current_app
 from flask_login import current_user
 from flask_marshmallow import base_fields
 from flask_restx_patched import Parameters, PatchJSONParameters
 from flask_restx_patched._http import HTTPStatus
 from marshmallow import validates_schema
+import PIL
 
 from app.extensions.api.parameters import PaginationParameters
 from app.extensions.api import abort
 
 from . import schemas, permissions
 from .models import User, db
-
-import logging
 
 
 log = logging.getLogger(__name__)
@@ -245,16 +247,48 @@ class PatchUserDetailsParameters(PatchJSONParameters):
                 code=HTTPStatus.UNPROCESSABLE_ENTITY,
                 message='"transactionId" or "guid" is mandatory',
             )
-        if guid:
-            return guid
 
-        paths = [value.get('path')] if value.get('path') else None
-        files = FileUpload.create_fileuploads_from_tus(transaction_id, paths=paths) or []
-        if len(files) != 1:
-            abort(
-                code=HTTPStatus.UNPROCESSABLE_ENTITY,
-                message=f'Need exactly 1 asset but found {len(files)} assets',
+        if guid:
+            fileupload = FileUpload.query.get(guid)
+
+        if transaction_id:
+            paths = [value.get('path')] if value.get('path') else None
+            files = (
+                FileUpload.create_fileuploads_from_tus(transaction_id, paths=paths) or []
             )
-        with db.session.begin(subtransactions=True):
-            db.session.add(files[0])
-        return str(files[0].guid)
+            if len(files) != 1:
+                for file_ in files:
+                    # Delete the files in the filesystem
+                    # FileUpload isn't persisted yet so can't use .delete()
+                    path = Path(file_.get_absolute_path())
+                    if path.exists():
+                        path.unlink()
+                abort(
+                    code=HTTPStatus.UNPROCESSABLE_ENTITY,
+                    message=f'Need exactly 1 asset but found {len(files)} assets',
+                )
+            with db.session.begin(subtransactions=True):
+                db.session.add(files[0])
+            fileupload = files[0]
+
+        if value.get('crop'):
+            crop = value['crop']
+            if not isinstance(crop, dict) or sorted(crop.keys()) != [
+                'height',
+                'width',
+                'x',
+                'y',
+            ]:
+                abort(
+                    code=HTTPStatus.UNPROCESSABLE_ENTITY,
+                    message='Expected {"crop": {"x": <int>, "y": <int>, "width": <int>, "height": <int>}}',
+                )
+            try:
+                fileupload.crop(**crop)
+            except PIL.UnidentifiedImageError as e:
+                abort(
+                    code=HTTPStatus.UNPROCESSABLE_ENTITY,
+                    message=f'UnidentifiedImageError: {str(e)}',
+                )
+
+        return str(fileupload.guid)

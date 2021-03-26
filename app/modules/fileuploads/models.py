@@ -3,16 +3,30 @@
 FileUploads database models
 --------------------
 """
-
-from flask import current_app
-from app.extensions import db, HoustonModel
-
 import logging
 import uuid
 import os
 import shutil
 
+from flask import current_app
+from PIL import Image
+
+from app.extensions import db, HoustonModel
+
 log = logging.getLogger(__name__)
+
+
+def modify_image(source_path, operation, args=(), kwargs={}, target_path=None):
+    operations_supported = ('crop',)
+    with Image.open(source_path) as source_image:
+        if operation not in operations_supported or not hasattr(source_image, operation):
+            raise RuntimeError(
+                f'modify_image operation "{operation}" not supported: {operations_supported}'
+            )
+        result = getattr(source_image, operation)(*args, **kwargs)
+        if isinstance(result, Image.Image) and target_path is not None:
+            result.save(target_path, format=source_image.format)
+    return result
 
 
 class FileUpload(db.Model, HoustonModel):
@@ -141,3 +155,10 @@ class FileUpload(db.Model, HoustonModel):
         assert isinstance(guid, uuid.UUID)
         s = str(guid)
         return os.path.join(s[0:2], s[2:4])
+
+    def crop(self, x, y, width, height):
+        # Crop and modify the image
+        path = self.get_absolute_path()
+        modify_image(
+            path, 'crop', args=(tuple([x, y, x + width, y + height]),), target_path=path
+        )

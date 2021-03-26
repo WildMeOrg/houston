@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=missing-docstring
+import io
 import json
 from pathlib import Path
 import shutil
@@ -8,6 +9,7 @@ import uuid
 
 from app.modules.users.models import User
 from app.modules.fileuploads.models import FileUpload
+from PIL import Image
 
 
 def test_user_id_not_found(flask_app_client, regular_user):
@@ -519,3 +521,95 @@ def test_user_profile_fileupload(db, flask_app, flask_app_client, regular_user, 
         assert response.status_code == 200, response.data
         updated_user = User.query.get(regular_user.guid)
         assert str(updated_user.profile_fileupload_guid) == str(fup.guid)
+
+        # PATCH add /profile_fileupload_guid with invalid crop
+        kwargs = {
+            'content_type': 'application/json',
+            'data': json.dumps(
+                [
+                    {
+                        'op': 'add',
+                        'path': '/profile_fileupload_guid',
+                        'value': {
+                            'guid': str(fup.guid),
+                            'crop': 'invalid',
+                        },
+                    }
+                ]
+            ),
+        }
+        response = flask_app_client.patch(*args, **kwargs)
+        assert response.status_code == 422, response.data
+        assert (
+            response.json['message']
+            == 'Expected {"crop": {"x": <int>, "y": <int>, "width": <int>, "height": <int>}}'
+        )
+
+        with Image.open(fup.get_absolute_path()) as image:
+            assert image.size == (1000, 664)
+
+        # PATCH add /profile_fileupload_guid with crop
+        kwargs = {
+            'content_type': 'application/json',
+            'data': json.dumps(
+                [
+                    {
+                        'op': 'add',
+                        'path': '/profile_fileupload_guid',
+                        'value': {
+                            'guid': str(fup.guid),
+                            'crop': {
+                                'x': 650,
+                                'y': 150,
+                                'width': 150,
+                                'height': 150,
+                            },
+                        },
+                    }
+                ]
+            ),
+        }
+        response = flask_app_client.patch(*args, **kwargs)
+        assert response.status_code == 200, response.data
+        src = response.json['profile_fileupload']['src']
+        response = flask_app_client.get(src)
+        assert response.headers['Content-Type'] == 'image/jpeg'
+        with Image.open(io.BytesIO(response.data)) as image:
+            assert image.size == (150, 150)
+
+        # Create non image fileupload
+        with tempfile.TemporaryDirectory() as td:
+            testfile = Path(td) / 'a.txt'
+            with testfile.open('w') as f:
+                f.write('abcd\n')
+            fup = FileUpload.create_fileupload_from_path(str(testfile))
+        with db.session.begin():
+            db.session.add(fup)
+        clean_up_objects += [fup]
+
+        # PATCH add /profile_fileupload_guid with crop not image
+        kwargs = {
+            'content_type': 'application/json',
+            'data': json.dumps(
+                [
+                    {
+                        'op': 'add',
+                        'path': '/profile_fileupload_guid',
+                        'value': {
+                            'guid': str(fup.guid),
+                            'crop': {
+                                'x': 650,
+                                'y': 150,
+                                'width': 150,
+                                'height': 150,
+                            },
+                        },
+                    }
+                ]
+            ),
+        }
+        response = flask_app_client.patch(*args, **kwargs)
+        assert response.status_code == 422, response.data
+        assert response.json['message'].startswith(
+            'UnidentifiedImageError: cannot identify image file'
+        )

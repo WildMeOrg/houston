@@ -248,7 +248,7 @@ class RestManager(RestManagerUserMixin):
         endpoint_encoded = requests.utils.quote(endpoint, safe='/?:=&')
 
         if verbose:
-            log.info(f'Sending request to {self.NAME} : {endpoint_encoded}')
+            log.info(f'Sending request to {self.NAME}: {endpoint_encoded}')
 
         if target_session is None:
             target_session = self.sessions[target]

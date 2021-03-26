@@ -8,12 +8,82 @@ from functools import total_ordering
 import os
 
 from app.extensions import db, HoustonModel
+from app.extensions.acm import ACMSyncMixin
+
 from PIL import Image
 
 import uuid
 import logging
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
+
+
+class AssetSync(ACMSyncMixin):
+    """
+    Class to build up the required data to create an asset,
+    relies upon the ACMSyncMixin calling acm_sync_complete to do so
+    """
+
+    # fmt: off
+    # Name of the module, used for knowing what to sync i.e asset.list, asset.data
+    ACM_NAME = 'assets'
+
+    ACM_LOG_ATTRIBUTES = [
+        'name',
+    ]
+
+    ACM_ATTRIBUTE_MAPPING = {
+        # TODO no idea at the moment as have not yet found the correct
+        # incantation to see this kind of information from WBIA
+        # Ignored
+        #'id'                    : None,
+        #'created'               : None,
+        #'modified'              : None,
+
+        # # Attributes
+        #'name'                  : 'title',
+        #'url'                   : 'website',
+        #'version'               : 'version',
+
+        # # Functions
+        #'annotations'           : '_process_annotations',
+        #'createdDate'           : '_process_created_date',
+        #'modifiedDate'          : '_process_modified_date',
+    }
+    # fmt: on
+
+    def __init__(self, guid):
+        super().__init__()
+        self.guid = uuid.UUID(guid)
+        self.annotations = []
+
+    @classmethod
+    def ensure_acm_obj(cls, guid):
+        """
+        Doesn't ensure that an object exists, creates a new one to perform the sync
+        """
+        assetSync = AssetSync(guid=guid)
+
+        return assetSync
+
+    def acm_sync_complete(self):
+        # TODO update existing asset or create the new asset from the populated data in AssetSync
+        pass
+
+    # First draft, absolutely no idea what's going to come back from WBIA yet
+    def _process_annotations(self, annotations):
+        from app.modules.annotations.models import Annotation
+
+        for annot in annotations:
+            log.info('Adding Annot ID %s' % (annot.id,))
+            user, is_new = Annotation.ensure_edm_obj(annot.id)
+            if user not in self.annotations:
+                new_annot = Annotation(
+                    asset=self,
+                )
+
+                with db.session.begin():
+                    self.annotations.append(new_annot)
 
 
 @total_ordering

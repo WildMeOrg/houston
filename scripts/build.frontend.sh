@@ -3,8 +3,15 @@
 
 set -e
 
+function parse_git_hash() {
+    if [ -d _frontend ]; then
+        GIT_DIR='_frontend/.git'
+    fi
+    GIT_DIR=$GIT_DIR git rev-parse --short HEAD 2> /dev/null | sed "s/\(.*\)/\1/"
+}
+
 # Get last commit hash prepended with @ (i.e. @8a323d0)
-GIT_BRANCH=$(git rev-parse --short HEAD 2> /dev/null | sed "s/\(.*\)/\1/")
+GIT_BRANCH=$(parse_git_hash)
 # Copy dist packages out of _frontend repo and deploy
 BASE_INSTALL_PATH="app/static/"
 
@@ -16,7 +23,7 @@ function get_install_path() {
 
 function checkout() {
     # Look for a previous submodule checkout prior to initializing
-    if [ ! -d _frontend/package.json ]; then
+    if [ ! -f _frontend/package.json ]; then
         echo "Checking out  submodules..."
         git submodule update --init --recursive
     fi

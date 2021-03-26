@@ -194,6 +194,19 @@ class RestManager(RestManagerUserMixin):
 
             log.info(f'Created authenticated session for {self.NAME} target {target}')
 
+    def pseudo_initialize(self, target):
+        """
+        Basically gives us the ability to create a session for a target which _does not_ rely
+        on actually having authentication credentials.  This is useful for requests to the EDM which
+        do not need authentication, like configuration reading and first-time admin creation.
+
+        """
+        if not self.initialized:
+            log.debug('Pseudo-initializing')
+            self.sessions = {}
+            self.sessions[target] = requests.Session()
+            self._parse_config_uris()
+
     def _ensure_initialized(self):
         if not self.initialized:
             log.info('Initializing %s' % self.NAME)

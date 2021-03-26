@@ -235,9 +235,52 @@ class AdminUserInitialized(Resource):
                 is_admin=True,
                 update=True,
             )
-            log.info('Success creating startup admin user via API: %r.' % (admin,))
+            log.info(
+                'Success creating startup (houston) admin user via API: %r.' % (admin,)
+            )
+            rtn = {'initialized': True, 'edmInitialized': False}
 
-        return {'initialized': True}
+            # now we attempt to create on edm as well
+            from flask import current_app
+            import json
+
+            edm_data = {
+                'admin_user_initialized': {
+                    'email': email,
+                    'password': password,
+                    'username': email,
+                }
+            }
+            target = 'default'  # TODO will we create admin on other targets?
+            current_app.edm.pseudo_initialize(target)
+            data = current_app.edm._get(
+                'configuration.init',
+                json.dumps(edm_data),
+                target=target,
+                ensure_initialized=False,
+                decode_as_object=False,
+                decode_as_dict=True,
+            )
+            if data.get('success', False):
+                edm_auth = current_app.config.get('EDM_AUTHENTICATIONS', {})
+                log.warning(f'BEFORE edm_auth => {edm_auth}')
+                edm_auth[target] = {'email': email, 'password': password}
+                log.warning(f'AFTER  edm_auth => {edm_auth}')
+                from app.extensions.config.models import HoustonConfig
+
+                HoustonConfig.set('EDM_AUTHENTICATIONS', edm_auth)
+                log.info(
+                    'Success creating startup (edm) admin user via API: %r. (saved credentials in HoustonConfig)'
+                    % (email,)
+                )
+                rtn['edmInitialized'] = True
+            else:
+                log.info(
+                    'Failed creating startup (edm) admin user via API; maybe OK. (response %r)'
+                    % (data)
+                )
+
+            return rtn
 
 
 @api.route('/edm/sync')

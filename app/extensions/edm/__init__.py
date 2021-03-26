@@ -73,6 +73,7 @@ class EDMManager(RestManager):
         },
         'configuration': {
             'data': '//v0/configuration/%s',
+            'init': '//v0/init?content=%s',
         },
         'configurationDefinition': {
             'data': '//v0/configurationDefinition/%s',

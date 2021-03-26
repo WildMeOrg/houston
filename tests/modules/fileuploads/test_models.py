@@ -5,8 +5,11 @@ import config
 import os
 import pathlib
 import shutil
+import tempfile
 
-from app.modules.fileuploads.models import FileUpload
+from app.modules.fileuploads.models import FileUpload, modify_image
+from PIL import Image
+import pytest
 
 
 def _source_file():
@@ -166,3 +169,38 @@ def test_fileuploads_get_src(flask_app, flask_app_client, db, request):
     assert response.status_code == 200
     assert response.content_type == 'image/jpeg'
     assert response.content_length == sz
+
+
+def test_modify_image(flask_app):
+    with tempfile.TemporaryDirectory() as td:
+        test_file = pathlib.Path(td) / 'zebra.jpg'
+        with (
+            pathlib.Path(flask_app.config.get('PROJECT_ROOT'))
+            / 'tests/submissions/test-000/zebra.jpg'
+        ).open('rb') as f:
+            with test_file.open('wb') as g:
+                g.write(f.read())
+
+        with Image.open(test_file) as image:
+            assert image.size == (1000, 664)
+
+        # Check crop works
+        image = modify_image(str(test_file), 'crop', args=((10, 10, 20, 20),))
+        assert image.size == (10, 10)
+
+        # Check source image isn't modified
+        with Image.open(test_file) as image:
+            assert image.size == (1000, 664)
+
+        # Unsupported operation
+        with pytest.raises(RuntimeError):
+            image = modify_image(str(test_file), 'unsupported')
+
+        # Add target path
+        image = modify_image(
+            str(test_file), 'crop', args=((10, 10, 20, 20),), target_path=test_file
+        )
+
+        # Check source image is modified
+        with Image.open(test_file) as image:
+            assert image.size == (10, 10)

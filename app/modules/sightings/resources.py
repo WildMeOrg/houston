@@ -35,7 +35,9 @@ class SightingCleanup(object):
         self.sighting_guid = None
         self.submission = None
 
-    def rollback_and_abort(self, message='Unknown error', log_message=None):
+    def rollback_and_abort(
+        self, message='Unknown error', log_message=None, error_code=400
+    ):
         if log_message is None:
             log_message = message
         log.error('Bailing on sighting creation: %r' % log_message)
@@ -46,7 +48,7 @@ class SightingCleanup(object):
             log.warning('Cleanup removing %r' % self.submission)
             self.submission.delete()
             self.submission = None
-        abort(success=False, passed_message=message, message='Error', code=400)
+        abort(success=False, passed_message=message, message='Error', code=error_code)
 
 
 def _validate_asset_references(enc_list):
@@ -189,6 +191,42 @@ class Sightings(Resource):
                 'Sighting.post empty encounters in %r' % request_in,
             )
 
+        # we must resolve any weirdness with owner/submitter ahead of time so we can bail if problems
+        pub = False
+        owner = None
+        submitter_guid = None
+        if current_user is None or current_user.is_anonymous:
+            from app.modules.users.models import User
+
+            owner = User.get_public_user()
+            pub = True
+            submitter_email = request_in.get('submitterEmail', None)
+            log.info(f'Anonymous submission posted, submitter_email={submitter_email}')
+            if (
+                submitter_email is not None
+            ):  # if not provided, submitter_guid is allowed to be null
+                exists = User.find(email=submitter_email)
+                if exists is None:
+                    new_inactive = User.ensure_user(
+                        submitter_email, User.initial_random_password(), is_active=False
+                    )
+                    submitter_guid = new_inactive.guid
+                    log.info(f'New inactive user created as submitter: {new_inactive}')
+                elif (
+                    not exists.is_active
+                ):  # we trust it, what can i say?  they are inactive so its weak and public anyway
+                    submitter_guid = exists.guid
+                    log.info(f'Existing inactive user assigned to submitter: {exists}')
+                else:  # now this is no good; this *active* user must login!  no spoofing active users.
+                    cleanup.rollback_and_abort(
+                        'Invalid submitter data',
+                        f'Anonymous submitter using active user email {submitter_email}; rejecting',
+                        error_code=403,
+                    )
+        else:  # logged-in user
+            owner = current_user
+            submitter_guid = current_user.guid
+
         response = current_app.edm.request_passthrough(
             'sighting.data', 'post', {'data': request_in}, ''
         )
@@ -247,11 +285,6 @@ class Sightings(Resource):
         )
 
         submission = None
-        pub = True
-        owner_guid = None
-        if current_user is not None and not current_user.is_anonymous:
-            owner_guid = current_user.guid
-            pub = False
 
         if all_arefs is not None and paths_wanted is not None:
             # files seem to exist in uploads dir, so lets make
@@ -263,7 +296,7 @@ class Sightings(Resource):
             try:
                 submission = Submission.create_submission_from_tus(
                     'Sighting.post ' + result_data['id'],
-                    current_user,
+                    owner,
                     transaction_id,
                     paths=all_arefs[transaction_id],
                 )
@@ -296,7 +329,8 @@ class Sightings(Resource):
                     encounter = Encounter(
                         guid=result_data['encounters'][i]['id'],
                         version=result_data['encounters'][i].get('version', 2),
-                        owner_guid=owner_guid,
+                        owner_guid=owner.guid,
+                        submitter_guid=submitter_guid,
                         public=pub,
                     )
                     enc_assets = None

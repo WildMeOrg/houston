@@ -70,7 +70,7 @@ class UserEDMMixin(EDMObjectMixin):
 
         if is_new:
             email = '%s@localhost' % (guid,)
-            password = security.generate_random(128)
+            password = User.initial_random_password()
             user = User(
                 guid=guid,
                 email=email,
@@ -607,10 +607,14 @@ class User(db.Model, FeatherModel, UserEDMMixin):
             db.session.delete(self)
 
     @classmethod
+    def initial_random_password(cls):
+        return security.generate_random(128)
+
+    @classmethod
     def get_public_user(cls):
         return User.ensure_user(
             email=User.PUBLIC_USER_EMAIL,
-            password=security.generate_random(128),
+            password=User.initial_random_password(),
             full_name='Public User',
             is_internal=True,
         )

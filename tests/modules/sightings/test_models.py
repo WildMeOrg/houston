@@ -2,6 +2,8 @@
 # pylint: disable=invalid-name,missing-docstring
 import logging
 
+from app.modules.users.models import User
+
 
 def test_sighting_create_and_add_encounters(db):
 
@@ -9,10 +11,13 @@ def test_sighting_create_and_add_encounters(db):
     from app.modules.encounters.models import Encounter
 
     test_sighting = Sighting()
+    owner = User.get_public_user()
 
     test_encounter_a = Encounter()
+    test_encounter_a.owner_guid = owner.guid
 
     test_encounter_b = Encounter()
+    test_encounter_b.owner_guid = owner.guid
 
     with db.session.begin():
         db.session.add(test_encounter_a)
@@ -51,8 +56,10 @@ def test_sighting_ensure_no_duplicate_encounters(db):
     from app.modules.encounters.models import Encounter
 
     test_sighting = Sighting()
+    owner = User.get_public_user()
 
     test_encounter = Encounter()
+    test_encounter.owner_guid = owner.guid
 
     with db.session.begin():
         db.session.add(test_encounter)

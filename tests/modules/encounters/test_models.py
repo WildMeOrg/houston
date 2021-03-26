@@ -17,7 +17,9 @@ def test_encounter_add_owner(db):
         full_name='Gregor Samsa ',
     )
 
+    public_owner = User.get_public_user()
     test_encounter = Encounter()
+    test_encounter.owner_guid = public_owner.guid
 
     with db.session.begin():
         db.session.add(test_encounter)
@@ -26,7 +28,7 @@ def test_encounter_add_owner(db):
     db.session.refresh(test_encounter)
     db.session.refresh(test_user)
 
-    assert test_encounter.get_owner() is None
+    assert test_encounter.get_owner() is public_owner
 
     test_user.owned_encounters.append(test_encounter)
 

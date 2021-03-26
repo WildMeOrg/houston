@@ -45,8 +45,19 @@ class Encounter(db.Model, FeatherModel):
     )
     individual = db.relationship('Individual', backref=db.backref('encounters'))
 
-    owner_guid = db.Column(db.GUID, db.ForeignKey('user.guid'), index=True, nullable=True)
-    owner = db.relationship('User', backref=db.backref('owned_encounters'))
+    owner_guid = db.Column(
+        db.GUID, db.ForeignKey('user.guid'), index=True, nullable=False
+    )
+    owner = db.relationship(
+        'User', backref=db.backref('owned_encounters'), foreign_keys=[owner_guid]
+    )
+
+    submitter_guid = db.Column(
+        db.GUID, db.ForeignKey('user.guid'), index=True, nullable=True
+    )
+    submitter = db.relationship(
+        'User', backref=db.backref('submitted_encounters'), foreign_keys=[submitter_guid]
+    )
 
     public = db.Column(db.Boolean, default=False, nullable=False)
 

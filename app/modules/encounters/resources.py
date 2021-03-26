@@ -56,6 +56,8 @@ class Encounters(Resource):
         """
         return Encounter.query.offset(args['offset']).limit(args['limit'])
 
+    # NOTE: question whether POST /encounter should be allowed at all, since it would be detached from a sighting!
+    #       probably consider deprecating this
     @api.permission_required(
         permissions.ModuleAccessPermission,
         kwargs_on_request=lambda kwargs: {
@@ -119,9 +121,11 @@ class Encounters(Resource):
             db.session, default_error_message='Failed to create a new houston Encounter'
         )
         try:
+            from app.modules.users.models import User
+
+            owner_guid = User.get_public_user().guid
             with context:
                 # TODO other houston-based relationships: orgs, projects, etc
-                owner_guid = None
                 pub = True  # legit? public if no owner?
                 if current_user is not None and not current_user.is_anonymous:
                     owner_guid = current_user.guid

@@ -151,7 +151,7 @@ class RestManager(RestManagerUserMixin):
             and authns['default'].get('username')
             and authns['default'].get('password')
         )
-        assertion_msg = f"Missing {self.NAME}_AUTHENTICATION credentials for 'default'"
+        assertion_msg = f"Missing {self.NAME}_AUTHENTICATIONS credentials for 'default'"
         assert has_required_default_authn, assertion_msg
 
         # Check URIs have matching credentials

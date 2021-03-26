@@ -263,9 +263,7 @@ class AdminUserInitialized(Resource):
             )
             if data.get('success', False):
                 edm_auth = current_app.config.get('EDM_AUTHENTICATIONS', {})
-                log.warning(f'BEFORE edm_auth => {edm_auth}')
-                edm_auth[target] = {'email': email, 'password': password}
-                log.warning(f'AFTER  edm_auth => {edm_auth}')
+                edm_auth[target] = {'username': email, 'password': password}
                 from app.extensions.config.models import HoustonConfig
 
                 HoustonConfig.set('EDM_AUTHENTICATIONS', edm_auth)

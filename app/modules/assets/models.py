@@ -8,6 +8,7 @@ from functools import total_ordering
 import os
 
 from app.extensions import db, HoustonModel
+
 from PIL import Image
 
 import uuid

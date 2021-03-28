@@ -105,16 +105,8 @@ class EDMObjectMixin(object):
                 stale_items.append((model_obj, version))
 
         if verbose:
-            log.info('Added %d new %ss' % (len(new_items), cls.EDM_NAME))
-
-        if verbose:
-            log.info(
-                'Updating %d stale %ss using EDM...'
-                % (
-                    len(stale_items),
-                    cls.EDM_NAME,
-                )
-            )
+            log.info(f'Added {len(new_items)} new {cls.EDM_NAME}s')
+            log.info(f'Updating {len(stale_items)} stale {cls.EDM_NAME}s using EDM...')
 
         updated_items = []
         failed_items = []
@@ -123,13 +115,8 @@ class EDMObjectMixin(object):
                 model_obj._sync_item(model_obj.guid, version)
                 updated_items.append(model_obj)
             except sqlalchemy.exc.IntegrityError:
-                log.error(
-                    'Error updating %s %r'
-                    % (
-                        cls.EDM_NAME,
-                        model_obj,
-                    )
-                )
+                log.error(f'Error updating {cls.EDM_NAME} {model_obj}')
+
                 failed_items.append(model_obj)
 
         return edm_items, new_items, updated_items, failed_items

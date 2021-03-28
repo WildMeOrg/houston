@@ -4,12 +4,11 @@
 Asset Curation Model (ACM) manager.
 
 """
-import logging
 
 from flask import current_app, request, session, render_template  # NOQA
 from flask_login import current_user  # NOQA
 from app.extensions.restManager.RestManager import RestManager
-
+import logging
 import keyword
 
 KEYWORD_SET = set(keyword.kwlist)
@@ -30,6 +29,9 @@ class ACMManager(RestManager):
             'list': '//annot/json/',
             'data': '//annot/name/uuid/json/?annot_uuid_list=[{"__UUID__": "%s"}]',
         },
+        'assets': {
+            'list': '//image/json/',
+        }
     }
     # fmt: on
 

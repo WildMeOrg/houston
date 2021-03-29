@@ -48,7 +48,10 @@ def cleanup_tus_dir(tid):
 
 # note: default data_in will fail
 def create_sighting(
-    flask_app_client, user, expected_status_code=200, data_in={'location_id': 'PYTEST'}
+    flask_app_client,
+    user,
+    expected_status_code=200,
+    data_in={'locationId': 'PYTEST', 'context': 'test'},
 ):
     if user is not None:
         with flask_app_client.login(user):

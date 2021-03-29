@@ -36,11 +36,17 @@ class SightingCleanup(object):
         self.submission = None
 
     def rollback_and_abort(
-        self, message='Unknown error', log_message=None, error_code=400
+        self,
+        message='Unknown error',
+        log_message=None,
+        status_code=400,
+        error_fields=None,
     ):
         if log_message is None:
             log_message = message
-        log.error('Bailing on sighting creation: %r' % log_message)
+        log.error(
+            f'Bailing on sighting creation: {log_message} (error_fields {error_fields})'
+        )
         if self.sighting_guid is not None:
             log.warning('Cleanup removing Sighting %r from EDM' % self.sighting_guid)
             Sighting.delete_from_edm_by_guid(current_app, self.sighting_guid)
@@ -48,7 +54,13 @@ class SightingCleanup(object):
             log.warning('Cleanup removing %r' % self.submission)
             self.submission.delete()
             self.submission = None
-        abort(success=False, passed_message=message, message='Error', code=error_code)
+        abort(
+            success=False,
+            passed_message=message,
+            message='Error',
+            errorFields=error_fields,
+            code=status_code,
+        )
 
 
 def _validate_asset_references(enc_list):
@@ -221,7 +233,7 @@ class Sightings(Resource):
                     cleanup.rollback_and_abort(
                         'Invalid submitter data',
                         f'Anonymous submitter using active user email {submitter_email}; rejecting',
-                        error_code=403,
+                        status_code=403,
                     )
         else:  # logged-in user
             owner = current_user
@@ -246,9 +258,14 @@ class Sightings(Resource):
             or result_data is None
         ):
             passed_message = {'message': {'key': 'error'}}
+            error_fields = None
             if response_data is not None and 'message' in response_data:
                 passed_message = response_data['message']
-            cleanup.rollback_and_abort(passed_message, 'Sighting.post failed')
+            if response_data is not None and 'errorFields' in response_data:
+                error_fields = response_data['errorFields']
+            cleanup.rollback_and_abort(
+                passed_message, 'Sighting.post failed', error_fields=error_fields
+            )
 
         # Created it, need to clean it up if we rollback
         cleanup.sighting_guid = result_data['id']

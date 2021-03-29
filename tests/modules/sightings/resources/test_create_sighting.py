@@ -20,7 +20,7 @@ def test_create_failures(flask_app_client, researcher_1):
     assert response.json['passed_message'] == 'Must have at least one encounter'
     assert not response.json['success']
 
-    # has encounters, zero assetReferences, but fails on bad taxonomy
+    # has encounters, zero assetReferences, but fails on bad (missing) context value
     data_in = {'encounters': [{'taxonomy': {'id': '0000000'}}]}
     response = sighting_utils.create_sighting(
         flask_app_client, researcher_1, expected_status_code=400, data_in=data_in
@@ -29,7 +29,11 @@ def test_create_failures(flask_app_client, researcher_1):
     assert not response.json['success']
 
     # has encounters, but bunk assetReferences
-    data_in = {'encounters': [{'assetReferences': [{'fail': 'fail'}]}]}
+    data_in = {
+        'encounters': [{'assetReferences': [{'fail': 'fail'}]}],
+        'context': 'test',
+        'locationId': 'test',
+    }
     response = sighting_utils.create_sighting(
         flask_app_client, researcher_1, expected_status_code=400, data_in=data_in
     )
@@ -67,6 +71,8 @@ def test_create_and_delete_sighting(db, flask_app_client, researcher_1, staff_us
     transaction_id, test_filename = sighting_utils.prep_tus_dir()
     data_in = {
         'startTime': timestamp,
+        'context': 'test',
+        'locationId': 'test',
         'encounters': [
             {
                 'assetReferences': [
@@ -115,6 +121,8 @@ def test_create_anon_and_delete_sighting(db, flask_app_client, staff_user):
     transaction_id, test_filename = sighting_utils.prep_tus_dir()
     data_in = {
         'startTime': timestamp,
+        'context': 'test',
+        'locationId': 'test',
         'encounters': [
             {
                 'assetReferences': [
@@ -142,6 +150,8 @@ def test_create_anon_and_delete_sighting(db, flask_app_client, staff_user):
     # anonymous, but using valid (active) user - should be blocked with 403
     data_in = {
         'startTime': timestamp,
+        'context': 'test',
+        'locationId': 'test',
         'submitterEmail': 'public@localhost',
         'encounters': [{}],
     }
@@ -153,6 +163,8 @@ def test_create_anon_and_delete_sighting(db, flask_app_client, staff_user):
     test_email = 'test_anon_123@example.com'
     data_in = {
         'startTime': timestamp,
+        'context': 'test',
+        'locationId': 'test',
         'submitterEmail': test_email,
         'encounters': [{}],
     }

@@ -133,8 +133,7 @@ jobs:
           source virtualenv/houston3.7/bin/activate
           pytest --no-cov -s -v --gitlab-remote-login-pat "${{ secrets.GITLAB_REMOTE_LOGIN_PAT }}"
 
-      - name: Run Codecov (3.9)
-        if: matrix.python-version == '3.9'
+      - name: Run Codecov
         continue-on-error: true
         run: |
           source virtualenv/houston3.7/bin/activate
@@ -143,14 +142,12 @@ jobs:
           pytest -s -v -m separate tests/test_transactions.py::test_transactions[None-commit_or_abort] --cov-append
 
       - name: Run other invoke tasks for coverage and errors
-        if: matrix.python-version == '3.9'
         run: |
           source virtualenv/houston3.7/bin/activate
           ./scripts/run_tasks_for_coverage.sh
           coverage xml
 
-      - name: Upload coverage to Codecov (3.9)
-        if: matrix.python-version == '3.9'
+      - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v1.2.1
         with:
           token: ${{ secrets.CODECOV_TOKEN }}

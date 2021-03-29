@@ -10,7 +10,8 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [3.7]
+        # Use the same Python version used the Dockerfile
+        python-version: [3.9]
 
     steps:
       # Checkout and env setup
@@ -39,70 +40,14 @@ jobs:
           # exit-zero treats all errors as warnings.
           flake8 . --count --exit-zero --max-complexity=10 --statistics
 
-  test_macos:
-    runs-on: macos-latest
-    strategy:
-      max-parallel: 1
-      fail-fast: false
-      matrix:
-        python-version: [3.9, 3.8, 3.7]
-    steps:
-      # Checkout and env setup
-      - uses: actions/checkout@v2
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v2
-        with:
-          python-version: ${{ matrix.python-version }}
-
-      - uses: actions/cache@v2
-        with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt', 'requirements/*.txt') }}
-          restore-keys: |
-            ${{ runner.os }}-pip-
-
-      - name: Install libmagic on macOS
-        run: |
-          brew install libmagic
-
-      # Install and test - Test order is randomized, run three times to ensure correctness
-      - name: Reset local database
-        run: |
-          tar -zxvf _db.initial.tar.gz
-          mv _db.initial _db
-          ./scripts/install.sh
-
-      - name: Create frontend static directory (tests complains if static directory does not exist)
-        run: |
-          mkdir -p app/static/dist-latest
-          touch app/static/dist-latest/404.html
-          touch app/static/dist-latest/index.html
-
-      - name: Run tests (random x3)
-        run: |
-          source virtualenv/houston3.7/bin/activate
-          pytest -s -v --gitlab-remote-login-pat "${{ secrets.GITLAB_REMOTE_LOGIN_PAT }}"
-          pytest -s -v --gitlab-remote-login-pat "${{ secrets.GITLAB_REMOTE_LOGIN_PAT }}"
-          pytest -s -v --gitlab-remote-login-pat "${{ secrets.GITLAB_REMOTE_LOGIN_PAT }}"
-
-      - name: Check DB migrations
-        run: |
-          source virtualenv/houston3.7/bin/activate
-          invoke app.db.downgrade
-          invoke app.db.upgrade
-
-      - name: Run tests after DB checks
-        run: |
-          source virtualenv/houston3.7/bin/activate
-          pytest -s -v --gitlab-remote-login-pat "${{ secrets.GITLAB_REMOTE_LOGIN_PAT }}"
-
   test:
     runs-on: ubuntu-latest
     strategy:
       max-parallel: 1
       fail-fast: false
       matrix:
-        python-version: [3.9, 3.8, 3.7]
+        # Use the same Python version used the Dockerfile
+        python-version: [3.9]
         db-uri: ["postgresql://postgres:testing@localhost/postgres", "sqlite://"]
     services:
       db:

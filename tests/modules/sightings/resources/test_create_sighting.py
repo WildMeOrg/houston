@@ -25,7 +25,7 @@ def test_create_failures(flask_app_client, researcher_1):
     response = sighting_utils.create_sighting(
         flask_app_client, researcher_1, expected_status_code=400, data_in=data_in
     )
-    assert 'invalid taxonomy' in response.json['passed_message']['details']
+    assert response.json['errorFields'][0] == 'context'
     assert not response.json['success']
 
     # has encounters, but bunk assetReferences

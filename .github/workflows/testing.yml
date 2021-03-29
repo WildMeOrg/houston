@@ -43,7 +43,6 @@ jobs:
   test:
     runs-on: ubuntu-latest
     strategy:
-      max-parallel: 1
       fail-fast: false
       matrix:
         # Use the same Python version used the Dockerfile

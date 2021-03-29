@@ -44,7 +44,9 @@ class SightingCleanup(object):
     ):
         if log_message is None:
             log_message = message
-        log.error('Bailing on sighting creation: %r' % log_message)
+        log.error(
+            f'Bailing on sighting creation: {log_message} (error_fields {error_fields})'
+        )
         if self.sighting_guid is not None:
             log.warning('Cleanup removing Sighting %r from EDM' % self.sighting_guid)
             Sighting.delete_from_edm_by_guid(current_app, self.sighting_guid)

@@ -47,16 +47,19 @@ Precision nuke example:
 
 #### Running the tests
 
-Place yourself in a shell within the houston container:
+During development, we mount the code directory and by default run commands as
+root. In Linux, this causes newly created files to be owned as root.  We can
+either `chown` it or try to run as the host user.
 
-    docker-compose exec db psql -U postgres -d houston -c "drop schema public cascade; create schema public;"
-    docker-compose exec houston /bin/bash -c "invoke app.db.upgrade --no-backup; invoke app.db.init-development-data --no-upgrade-db; invoke app.initialize.initialize-gitlab-submissions --email test@localhost"
-    docker-compose exec db psql -U postgres -d houston -c "drop schema public cascade; create schema public;"
+First create the user with the host user uid and gid:
 
-This round about way of initializing the required gitlab repositories is necessary.
-We'll need TODO something to set these repositories up within the testing framework rather than outside of it.
+    GID=$(id -g); docker-compose exec -u root houston /bin/bash -xec "groupadd --gid $GID $USER; useradd --uid $UID --gid $GID $USER"
 
-Start a shell within the houston container:
+Start a shell within the houston container as the host user:
+
+    docker-compose exec -u $USER houston /bin/bash
+
+Or start a shell within the houston container as root:
 
     docker-compose exec houston /bin/bash
 

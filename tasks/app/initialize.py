@@ -96,7 +96,9 @@ def initialize_gitlab_submissions(context, email, dryrun=False):
     for submission_guid, submission_data in submission_data:
 
         current_app.sub.ensure_initialized()
-        projects = current_app.sub.gl.projects.list(search=str(submission_guid))
+        projects = current_app.sub.gl.projects.list(
+            search=str(submission_guid), retry_transient_errors=True
+        )
 
         if len(projects) > 0:
             assert len(projects) == 1

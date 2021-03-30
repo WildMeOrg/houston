@@ -100,7 +100,9 @@ def cleanup_gitlab(context, dryrun=False, clean=False):
             for page in tqdm.tqdm(
                 range(1, MAX_PAGES + 2), desc='Fetching GitLab Project Pages'
             ):
-                projects_page = group.projects.list(per_page=PER_PAGE, page=page)
+                projects_page = group.projects.list(
+                    per_page=PER_PAGE, page=page, retry_transient_errors=True
+                )
 
                 if len(projects_page) == 0:
                     log.warn('Reached maximum page: %d' % (page,))

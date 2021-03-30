@@ -47,29 +47,12 @@ jobs:
       matrix:
         # Use the same Python version used the Dockerfile
         python-version: [3.9]
-        db-uri: ["postgresql://postgres:testing@localhost/postgres", "sqlite://"]
-    services:
-      db:
-        image: postgres:10
-        env:
-          POSTGRES_PASSWORD: testing
-        # Set health checks to wait until postgres has started
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - 5432:5432
-      redis:
-        image: redis:latest
-        ports:
-          - 6379:6379
+        db-uri: ["postgresql://houston:development@db/houston", "sqlite://"]
     env:
       OS: ubuntu-latest
       PYTHON: ${{ matrix.python-version }}
       SQLALCHEMY_DATABASE_URI: ${{ matrix.db-uri }}
-      GITLAB_REMOTE_LOGIN_PAT: ${{ secrets.GITLAB_REMOTE_LOGIN_PAT }}
+      COMPOSE_FILE: deploy/codex/docker-compose.yml
     steps:
       # Checkout and env setup
       - uses: actions/checkout@v2
@@ -89,12 +72,10 @@ jobs:
         run: |
           sudo apt install libmagic1
 
-      # Install and test - Test order is randomized, run three times to ensure correctness
-      - name: Reset local database
+      - name: Create _db/secrets.py
         run: |
           tar -zxvf _db.initial.tar.gz
           mv _db.initial _db
-          ./scripts/install.sh
 
       - name: Create frontend static directory (tests complains if static directory does not exist)
         run: |
@@ -102,19 +83,42 @@ jobs:
           touch app/static/dist-latest/404.html
           touch app/static/dist-latest/index.html
 
+      - name: Run docker-compose
+        run: |
+          set -ex
+          cd deploy/codex
+          docker-compose up -d db redis gitlab edm houston
+          # Check the state of the containers
+          sleep 1m
+          docker-compose exec -T houston chmod a+r .env
+          # Wait until houston is up
+          while sleep 15
+          do
+            docker-compose logs houston | tail
+            docker-compose ps
+            if [ -n "$(docker-compose ps | grep Exit)" ]
+            then
+              exit 1
+            fi
+            wget --tries=1 -O - http://localhost:83/ && break
+          done
+        env:
+          # docker-compose.yml mounts ../.. so we need to be in the
+          # deploy/codex directory
+          COMPOSE_FILE: 'docker-compose.yml'
+
+      # Install and test - Test order is randomized, run three times to ensure correctness
       - name: Run tests (random x3)
         run: |
-          source virtualenv/houston3.7/bin/activate
-          pytest -s -v --gitlab-remote-login-pat "${{ secrets.GITLAB_REMOTE_LOGIN_PAT }}"
-          pytest -s -v --gitlab-remote-login-pat "${{ secrets.GITLAB_REMOTE_LOGIN_PAT }}"
-          pytest -s -v --gitlab-remote-login-pat "${{ secrets.GITLAB_REMOTE_LOGIN_PAT }}"
+          docker-compose exec -T -e FLASK_CONFIG=$FLASK_CONFIG -e SQLALCHEMY_DATABASE_URI=$SQLALCHEMY_DATABASE_URI houston pytest -s -v
+          docker-compose exec -T -e FLASK_CONFIG=$FLASK_CONFIG -e SQLALCHEMY_DATABASE_URI=$SQLALCHEMY_DATABASE_URI houston pytest -s -v
+          docker-compose exec -T -e FLASK_CONFIG=$FLASK_CONFIG -e SQLALCHEMY_DATABASE_URI=$SQLALCHEMY_DATABASE_URI houston pytest -s -v
 
       - name: Check DB migrations (sqlite)
         if: matrix.db-uri == 'sqlite://'
         run: |
-          source virtualenv/houston3.7/bin/activate
-          invoke app.db.downgrade
-          invoke app.db.upgrade
+          docker-compose exec -T -e FLASK_CONFIG=$FLASK_CONFIG -e SQLALCHEMY_DATABASE_URI=$SQLALCHEMY_DATABASE_URI houston invoke app.db.downgrade
+          docker-compose exec -T -e FLASK_CONFIG=$FLASK_CONFIG -e SQLALCHEMY_DATABASE_URI=$SQLALCHEMY_DATABASE_URI houston invoke app.db.upgrade
         env:
           # Don't use in memory sqlite database for database migration
           SQLALCHEMY_DATABASE_URI: ''
@@ -122,30 +126,28 @@ jobs:
       - name: Check DB migrations (postgresql)
         if: matrix.db-uri != 'sqlite://'
         run: |
-          source virtualenv/houston3.7/bin/activate
-          coverage run `which invoke` app.db.upgrade --no-backup
-          coverage run --append `which invoke` app.db.downgrade
-          coverage run --append `which invoke` app.db.upgrade --no-backup
-          if [ -n "$(coverage run --append `which invoke` app.db.migrate)" ]; then echo Missing database migration; exit 1; fi
+          set -ex
+          docker-compose exec -T db psql -U postgres houston -c 'DROP TABLE alembic_version;'
+          docker-compose exec -T -e FLASK_CONFIG=$FLASK_CONFIG -e SQLALCHEMY_DATABASE_URI=$SQLALCHEMY_DATABASE_URI houston coverage run /usr/local/bin/invoke app.db.upgrade --no-backup
+          docker-compose exec -T -e FLASK_CONFIG=$FLASK_CONFIG -e SQLALCHEMY_DATABASE_URI=$SQLALCHEMY_DATABASE_URI houston coverage run --append /usr/local/bin/invoke app.db.downgrade
+          docker-compose exec -T -e FLASK_CONFIG=$FLASK_CONFIG -e SQLALCHEMY_DATABASE_URI=$SQLALCHEMY_DATABASE_URI houston coverage run --append /usr/local/bin/invoke app.db.upgrade --no-backup
+          docker-compose exec -T -e FLASK_CONFIG=$FLASK_CONFIG -e SQLALCHEMY_DATABASE_URI=$SQLALCHEMY_DATABASE_URI houston /bin/bash -c 'if [ -n "$(coverage run --append /usr/local/bin/invoke app.db.migrate)" ]; then echo Missing database migration; exit 1; fi'
 
       - name: Run tests after DB checks
         run: |
-          source virtualenv/houston3.7/bin/activate
-          pytest --no-cov -s -v --gitlab-remote-login-pat "${{ secrets.GITLAB_REMOTE_LOGIN_PAT }}"
+          docker-compose exec -T -e FLASK_CONFIG=$FLASK_CONFIG -e SQLALCHEMY_DATABASE_URI=$SQLALCHEMY_DATABASE_URI houston pytest --no-cov -s -v
 
       - name: Run Codecov
         continue-on-error: true
         run: |
-          source virtualenv/houston3.7/bin/activate
-          pytest -s -v --gitlab-remote-login-pat "${{ secrets.GITLAB_REMOTE_LOGIN_PAT }}" --cov=./ --cov-append
-          pytest -s -v -m separate tests/test_transactions.py::test_transactions[None-request_transaction] --cov-append
-          pytest -s -v -m separate tests/test_transactions.py::test_transactions[None-commit_or_abort] --cov-append
+          docker-compose exec -T -e FLASK_CONFIG=$FLASK_CONFIG -e SQLALCHEMY_DATABASE_URI=$SQLALCHEMY_DATABASE_URI houston pytest -s -v --cov=./ --cov-append
+          docker-compose exec -T -e FLASK_CONFIG=$FLASK_CONFIG -e SQLALCHEMY_DATABASE_URI=$SQLALCHEMY_DATABASE_URI houston pytest -s -v -m separate tests/test_transactions.py::test_transactions[None-request_transaction] --cov-append
+          docker-compose exec -T -e FLASK_CONFIG=$FLASK_CONFIG -e SQLALCHEMY_DATABASE_URI=$SQLALCHEMY_DATABASE_URI houston pytest -s -v -m separate tests/test_transactions.py::test_transactions[None-commit_or_abort] --cov-append
 
       - name: Run other invoke tasks for coverage and errors
         run: |
-          source virtualenv/houston3.7/bin/activate
-          ./scripts/run_tasks_for_coverage.sh
-          coverage xml
+          docker-compose exec -T -e FLASK_CONFIG=$FLASK_CONFIG -e SQLALCHEMY_DATABASE_URI=$SQLALCHEMY_DATABASE_URI houston ./scripts/run_tasks_for_coverage.sh
+          docker-compose exec -T -e FLASK_CONFIG=$FLASK_CONFIG -e SQLALCHEMY_DATABASE_URI=$SQLALCHEMY_DATABASE_URI houston coverage xml
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v1.2.1

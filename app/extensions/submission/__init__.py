@@ -156,7 +156,9 @@ class SubmissionManager(object):
         if remote:
             self.ensure_initialized()
 
-            projects = self.gl.projects.list(search=str(submission.guid))
+            projects = self.gl.projects.list(
+                search=str(submission.guid), retry_transient_errors=True
+            )
             if len(projects) > 0:
                 assert len(projects) == 1
                 project_ = projects[0]
@@ -269,7 +271,9 @@ class SubmissionManager(object):
         self.ensure_initialized()
 
         # Try to find remote project by Submission UUID
-        projects = self.gl.projects.list(search=str(submission_uuid))
+        projects = self.gl.projects.list(
+            search=str(submission_uuid), retry_transient_errors=True
+        )
         return len(projects) == 1
 
     def ensure_submission(self, submission_uuid, owner=None):
@@ -282,7 +286,9 @@ class SubmissionManager(object):
             self.ensure_initialized()
 
             # Try to find remote project by Submission UUID
-            projects = self.gl.projects.list(search=str(submission_uuid))
+            projects = self.gl.projects.list(
+                search=str(submission_uuid), retry_transient_errors=True
+            )
             if len(projects) == 0:
                 # submission is not found either locally or remote, return None
                 return None

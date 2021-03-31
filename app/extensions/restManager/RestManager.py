@@ -48,7 +48,8 @@ class RestManagerUserMixin(object):
             # Create temporary session
             temporary_session = requests.Session()
             try:
-                response = self._get(
+                response = self._request(
+                    'get',
                     'session.login',
                     username,
                     password,
@@ -92,6 +93,8 @@ class RestManager(RestManagerUserMixin):
         self.require_login = require_login
 
         self.targets = set([])
+        self.sessions = {}
+        self.uris = None
 
         if pre_initialize:
             self._ensure_initialized()
@@ -125,16 +128,17 @@ class RestManager(RestManagerUserMixin):
 
         return endpoint
 
-    def _parse_config_uris(self):
-        uris = current_app.config.get(f'{self.NAME}_URIS', {})
-        # Check for the 'default'
-        assert uris.get('default'), f"Missing a 'default' {self.NAME}_URI"
+    def _ensure_config_uris(self):
+        if not self.uris:
+            uris = current_app.config.get(f'{self.NAME}_URIS', {})
+            # Check for the 'default'
+            assert uris.get('default'), f"Missing a 'default' {self.NAME}_URI"
 
-        # Update the list of known named targets
-        self.targets.update(uris.keys())
+            # Update the list of known named targets
+            self.targets.update(uris.keys())
 
-        # Assign local references to the configuration settings
-        self.uris = uris
+            # Assign local references to the configuration settings
+            self.uris = uris
 
     def _parse_config_auths(self):
         """Obtain and verify the required configuration settings and
@@ -166,7 +170,8 @@ class RestManager(RestManagerUserMixin):
     def _init_sessions(self):
         self.sessions = {}
         for target in self.uris:
-            self.sessions[target] = requests.Session()
+            if target not in self.sessions:
+                self.sessions[target] = requests.Session()
 
             if self.require_login:
                 auth = self.auths[target]
@@ -181,7 +186,8 @@ class RestManager(RestManagerUserMixin):
                 )
                 assert password is not None, message
 
-                response = self._get(
+                response = self._request(
+                    'get',
                     'session.login',
                     email,
                     password,
@@ -194,23 +200,21 @@ class RestManager(RestManagerUserMixin):
 
             log.info(f'Created authenticated session for {self.NAME} target {target}')
 
-    def pseudo_initialize(self, target):
+    def _ensure_session(self, target):
         """
         Basically gives us the ability to create a session for a target which _does not_ rely
         on actually having authentication credentials.  This is useful for requests to the EDM which
         do not need authentication, like configuration reading and first-time admin creation.
 
         """
-        if not self.initialized:
-            log.debug('Pseudo-initializing')
-            self.sessions = {}
+        if not self.initialized and target not in self.sessions:
+            log.debug(f'Creating anonymous session for {target}')
             self.sessions[target] = requests.Session()
-            self._parse_config_uris()
 
     def _ensure_initialized(self):
         if not self.initialized:
             log.info('Initializing %s' % self.NAME)
-            self._parse_config_uris()
+            self._ensure_config_uris()
             if self.require_login:
                 self._parse_config_auths()
             self._init_sessions()
@@ -237,13 +241,17 @@ class RestManager(RestManagerUserMixin):
         target_session=None,
         _pre_request_func=None,
         decode_as_object=True,
-        decode_as_dict=False,
         passthrough_kwargs={},
         ensure_initialized=True,
         verbose=True,
     ):
         if ensure_initialized:
             self._ensure_initialized()
+        else:
+            # Don't need to fully log in but do need config and a session to do anything
+            self._ensure_config_uris()
+            self._ensure_session(target)
+
         method = method.lower()
         assert method in ['get', 'post', 'delete', 'put', 'patch']
 
@@ -276,17 +284,8 @@ class RestManager(RestManagerUserMixin):
             response = request_func(endpoint_encoded, **passthrough_kwargs)
 
         if response.ok:
-            if decode_as_object and decode_as_dict:
-                log.warning(
-                    'Both decode_object and decode_dict are True, defaulting to object'
-                )
-                decode_as_dict = False
-
             if decode_as_object:
                 response = json.loads(response.text, object_hook=_json_object_hook)
-
-            if decode_as_dict:
-                response = response.json()
         else:
             log.warning(
                 f'Non-OK ({response.status_code}) response on {method} {endpoint}: {response.content}'
@@ -294,17 +293,8 @@ class RestManager(RestManagerUserMixin):
 
         return response
 
-    def _get(self, *args, **kwargs):
-        return self._request('get', *args, **kwargs)
-
-    def _post(self, *args, **kwargs):
-        return self._request('post', *args, **kwargs)
-
-    def _delete(self, *args, **kwargs):
-        return self._request('delete', *args, **kwargs)
-
     def get_list(self, list_name, target='default'):
-        response = self._get(list_name, target=target)
+        response = self._request('get', list_name, target=target)
 
         items = {}
         for value in response:
@@ -322,21 +312,23 @@ class RestManager(RestManagerUserMixin):
 
         return items
 
-    def get_dict(self, list_name, guid, target='default'):
+    def get_dict(self, list_name, guid, target='default', ensure_initialized=False):
 
-        assert isinstance(guid, uuid.UUID)
-        response = self._get(
+        response = self._request(
+            'get',
             list_name,
             guid,
             target=target,
             decode_as_object=False,
-            decode_as_dict=True,
+            ensure_initialized=ensure_initialized,
         )
+        if response.ok:
+            response = response.json()
         return response
 
     def get_data_item(self, guid, item_name, target='default'):
         assert isinstance(guid, uuid.UUID)
-        response = self._get(item_name, guid, target=target)
+        response = self._request('get', item_name, guid, target=target)
         return response
 
     def request_passthrough(
@@ -386,7 +378,6 @@ class RestManager(RestManagerUserMixin):
             args,
             target=target,
             decode_as_object=False,
-            decode_as_dict=False,
             passthrough_kwargs=passthrough_kwargs,
         )
         return response

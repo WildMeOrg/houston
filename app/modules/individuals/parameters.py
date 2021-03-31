@@ -8,8 +8,6 @@ from . import schemas
 import logging
 import uuid
 
-from .models import Individual
-
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
 

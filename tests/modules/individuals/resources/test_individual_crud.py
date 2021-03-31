@@ -6,6 +6,7 @@ import logging
 from tests.modules.individuals.resources import utils as individual_utils
 
 from tests import utils
+import json
 
 log = logging.getLogger(__name__)
 
@@ -16,7 +17,6 @@ def test_get_individual_not_found(flask_app_client):
 
 
 def test_create_read_delete_individual(db, flask_app_client):
-
     temp_owner = utils.generate_user_instance(
         email='owner@localhost',
         is_researcher=True,

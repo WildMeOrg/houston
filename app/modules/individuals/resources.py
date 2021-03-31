@@ -24,29 +24,31 @@ log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 api = Namespace('individuals', description='Individuals')  # pylint: disable=invalid-name
 
 
-def _cleanup_post_and_abort(db, guid, message='Unknown error'):
-    # if we fail, don't leave the Individual record anywhere TODO doublecheck EDM
-    if guid is not None:
-        failed_individual = Individual.query.get(guid)
-        if failed_individual is not None:
-            with db.session.begin():
-                # may be overkill, idk
-                try:
-                    failed_individual.delete_from_edm(current_app)
-                except Exception:
-                    pass
-                db.session.delete(failed_individual)
+class IndividualCleanup(object):
+    def __init__(self):
+        self.individual_guid = None
 
-            log.error(
-                'The Individual with guid %r was not successfully persisted to the EDM and has been deleted from Houston'
-                % guid
-            )
-        else:
-            log.error(
-                'Unexpected Error: The Individual with guid %r was not persisted to the EDM and could not be found in Houston'
-                % guid
-            )
-    abort(success=False, passed_message=message, message='Error', code=400)
+    def rollback_and_abort(self, message='Unknown Error', code=400):
+        if self.individual_guid is not None:
+            failed_individual = Individual.query.get(self.individual_guid)
+            if failed_individual is not None:
+                with db.session.begin():
+                    try:
+                        failed_individual.delete_from_edm(current_app)
+                    except Exception:
+                        pass
+                    db.session.delete(failed_individual)
+
+                log.error(
+                    'The Individual with guid %r was not persisted to the EDM and has been deleted from Houston'
+                    % self.individual_guid
+                )
+        abort(
+            success=False,
+            passed_message=message,
+            message='Error',
+            code=code,
+        )
 
 
 @api.route('/')
@@ -81,6 +83,9 @@ class Individuals(Resource):
         """
         Create a new instance of Individual.
         """
+
+        cleanup = IndividualCleanup()
+
         request_in = {}
         try:
             request_in_ = json.loads(request.data)
@@ -93,11 +98,7 @@ class Individuals(Resource):
             or not isinstance(request_in['encounters'], list)
             or len(request_in['encounters']) < 1
         ):
-            _cleanup_post_and_abort(
-                None,
-                None,
-                'A new Individual must reference at least one encounter',
-            )
+            cleanup.rollback_and_abort(message='No Encounters in POST')
 
         response = current_app.edm.request_passthrough(
             'individual.data', 'post', {'data': request_in}, ''
@@ -122,20 +123,24 @@ class Individuals(Resource):
             passed_message = {'message': {'key': 'error'}}
             if response_data is not None and 'message' in response_data:
                 passed_message = response_data['message']
-            abort(success=False, passed_message=passed_message, message='Error', code=400)
+                cleanup.rollback_and_abort(message=passed_message)
+
+        # if you get 'success' back and there is no id, we have problems indeed
+        if result_data['id'] is not None:
+            cleanup.individual_guid = result_data['id']
+        else:
+            cleanup.rollback_and_abort(
+                message='Individual.post: Improbable error. success=True but no Individual id in response.'
+            )
 
         if 'encounters' in request_in and 'encounters' not in result_data:
-            _cleanup_post_and_abort(
-                result_data['id'],
-                None,
-                'Individual.post: request_in had an encounters list, but result_data did not.',
+            cleanup.rollback_and_abort(
+                message='Individual.post: request_in had an encounters list, but result_data did not.'
             )
 
         if not len(request_in['encounters']) == len(result_data['encounters']):
-            _cleanup_post_and_abort(
-                result_data['id'],
-                None,
-                'Individual.post: Imbalance in encounters between request_in and result_data',
+            cleanup.rollback_and_abort(
+                message='Individual.post: Imbalance in encounters between request_in and result_data.'
             )
 
         encounters = []
@@ -149,7 +154,10 @@ class Individuals(Resource):
                 log.error(
                     'Individual.post: at least one encounter found in request_in or result_data was not found in the Houston database. Aborting Individual creation.'
                 )
-                abort(success=False, message='Error', code=500)
+                cleanup.rollback_and_abort(
+                    message='Encounter(s) in request or response not in Houston db.',
+                    code=500,
+                )
 
         # finally make the Individual if all encounters are found
         individual = Individual(
@@ -209,22 +217,7 @@ class IndividualByID(Resource):
             log.error('GET passthrough called for nonexistent Individual')
 
         response = current_app.edm.get_dict('individual.data_complete', individual.guid)
-        if not isinstance(response, dict):
-            return response
-
-        if len(individual.encounters) > 0:
-            from app.modules.encounters.schemas import DetailedEncounterSchema
-
-            sch = DetailedEncounterSchema(
-                many=False, only=('guid', 'owner_guid', 'public')
-            )
-            response['result']['encounters'] = []
-
-            for encounter in individual.encounters:
-                result = sch.dump(encounter)
-                response['result']['encounters'].append(result)
-
-        return response['result']
+        return response
 
     @api.permission_required(
         permissions.ObjectAccessPermission,

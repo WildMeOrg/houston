@@ -19,7 +19,6 @@ from app.modules.users.permissions.types import AccessOperation
 
 from . import parameters, schemas
 from .models import Individual
-from app.modules.encounters.models import Encounter
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 api = Namespace('individuals', description='Individuals')  # pylint: disable=invalid-name
@@ -40,10 +39,12 @@ def _cleanup_post_and_abort(db, guid, message='Unknown error'):
 
             log.error(
                 'The Individual with guid %r was not successfully persisted to the EDM and has been deleted from Houston'
+                % guid
             )
         else:
             log.error(
                 'Unexpected Error: The Individual with guid %r was not persisted to the EDM and could not be found in Houston'
+                % guid
             )
     abort(success=False, passed_message=message, message='Error', code=400)
 
@@ -138,6 +139,8 @@ class Individuals(Resource):
             )
 
         encounters = []
+        from app.modules.encounters.models import Encounter
+
         for result_encounter_json in request_in['encounters']:
             result_encounter = Encounter.query.get(result_encounter_json['id'])
             if result_encounter is not None:

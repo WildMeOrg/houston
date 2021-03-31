@@ -33,14 +33,11 @@ class EDMConfigurationDefinition(Resource):
     """
 
     def get(self, target, path):
-        current_app.edm.pseudo_initialize(target)
-        data = current_app.edm._get(
+        data = current_app.edm.get_dict(
             'configurationDefinition.data',
             path,
             target=target,
             ensure_initialized=False,
-            decode_as_object=False,
-            decode_as_dict=True,
         )
         # TODO also traverse private here FIXME
         return data
@@ -86,14 +83,11 @@ class EDMConfiguration(Resource):
         params.update(request.args)
         params.update(request.form)
 
-        current_app.edm.pseudo_initialize(target)
-        data = current_app.edm._get(
+        data = current_app.edm.get_dict(
             'configuration.data',
             path,
             target=target,
             ensure_initialized=False,
-            decode_as_object=False,
-            decode_as_dict=True,
         )
 
         # TODO make private private - traverse bundles too

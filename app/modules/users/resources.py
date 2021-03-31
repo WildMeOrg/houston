@@ -252,14 +252,11 @@ class AdminUserInitialized(Resource):
                 }
             }
             target = 'default'  # TODO will we create admin on other targets?
-            current_app.edm.pseudo_initialize(target)
-            data = current_app.edm._get(
+            data = current_app.edm.get_dict(
                 'configuration.init',
                 json.dumps(edm_data),
                 target=target,
                 ensure_initialized=False,
-                decode_as_object=False,
-                decode_as_dict=True,
             )
             if data.get('success', False):
                 edm_auth = current_app.config.get('EDM_AUTHENTICATIONS', {})

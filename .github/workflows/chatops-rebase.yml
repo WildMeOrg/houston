@@ -6,7 +6,7 @@ on:
 jobs:
   rebase:
     name: Rebase
-    if: github.event.issue.pull_request != '' && contains(github.event.comment.body, '/rebase') && github.event.comment.author_association == 'MEMBER'
+    if: github.event.issue.pull_request != '' && contains(github.event.comment.body, '/rebase') && (github.event.comment.author_association == 'MEMBER' || github.event.comment.author_association == 'OWNER' || github.event.comment.author_association == 'COLLABORATOR')
     runs-on: ubuntu-latest
     steps:
       - name: Checkout the latest code
@@ -18,3 +18,27 @@ jobs:
         uses: cirrus-actions/rebase@1.4
         env:
           GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
+
+  debug:
+    runs-on: ubuntu-latest
+    steps:
+      - if: github.event.issue.pull_request == ''
+        run: echo 'Not pull request'
+      - if: contains(github.event.comment.body, '/rebase')
+        run: echo 'Comment body contains /rebase'
+      - if: github.event.comment.author_association == 'COLLABORATOR'
+        run: echo 'Comment author COLLABORATOR'
+      - if: github.event.comment.author_association == 'CONTRIBUTOR'
+        run: echo 'Comment author CONTRIBUTOR'
+      - if: github.event.comment.author_association == 'FIRST_TIMER'
+        run: echo 'Comment author FIRST_TIMER'
+      - if: github.event.comment.author_association == 'FIRST_TIME_CONTRIBUTOR'
+        run: echo 'Comment author FIRST_TIME_CONTRIBUTOR'
+      - if: github.event.comment.author_association == 'MANNEQUIN'
+        run: echo 'Comment author MANNEQUIN'
+      - if: github.event.comment.author_association == 'MEMBER'
+        run: echo 'Comment author MEMBER'
+      - if: github.event.comment.author_association == 'NONE'
+        run: echo 'Comment author NONE'
+      - if: github.event.comment.author_association == 'OWNER'
+        run: echo 'Comment author OWNER'

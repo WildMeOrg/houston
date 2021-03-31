@@ -257,15 +257,16 @@ class IndividualByID(Resource):
         Delete an Individual by ID.
         """
         response = individual.delete_from_edm()
-        response_data = None
         if response.ok:
             response_data = response.json()
-            individual.delete()
-
         if not response.ok or not response_data.get('success', False):
             log.warning(
-                'Individual.delete %r failed: %r' % (individual.guid, response_data)
+                'Individual.delete:  Failed to delete id %r using delete_from_edm(). response_data=%r'
+                % (individual.guid, response_data)
             )
+        try:
+            individual.delete()
+        except Exception:
             abort(
                 success=False, passed_message='Delete failed', message='Error', code=400
             )

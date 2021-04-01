@@ -430,6 +430,10 @@ class SightingByID(Resource):
         """
         Patch Sighting details by ID.
         """
+        if args[0]['path'] in parameters.PatchSightingDetailsParameters.PATH_CHOICES_EDM:
+            log.warning('wanting to do edm patch on path=%r' % args[0]['path'])
+            return {}
+
         context = api.commit_or_abort(
             db.session, default_error_message='Failed to update Sighting details.'
         )

@@ -204,7 +204,6 @@ class IndividualByID(Resource):
             'action': AccessOperation.READ,
         },
     )
-    @api.response(schemas.DetailedIndividualSchema())
     def get(self, individual):
         """
         Get Individual details by ID.
@@ -216,8 +215,7 @@ class IndividualByID(Resource):
         else:
             log.error('GET passthrough called for nonexistent Individual')
 
-        response = current_app.edm.get_dict('individual.data_complete', individual.guid)
-        return response
+        return current_app.edm.get_dict('individual.data_complete', individual.guid)
 
     @api.permission_required(
         permissions.ObjectAccessPermission,

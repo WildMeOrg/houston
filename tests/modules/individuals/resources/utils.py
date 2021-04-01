@@ -36,8 +36,8 @@ def read_individual(
 
     assert response.status_code == expected_status_code
     if response.status_code == 200:
-        assert response.json is not None
-
+        assert response.json['success'] is not None
+        assert response.json['result'] is not None
     return response
 
 

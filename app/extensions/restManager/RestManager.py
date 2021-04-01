@@ -92,9 +92,11 @@ class RestManager(RestManagerUserMixin):
 
         self.require_login = require_login
 
+        # Start with all contents as empty structures
         self.targets = set([])
         self.sessions = {}
-        self.uris = None
+        self.uris = {}
+        self.auths = {}
 
         if pre_initialize:
             self._ensure_initialized()
@@ -140,7 +142,7 @@ class RestManager(RestManagerUserMixin):
             # Assign local references to the configuration settings
             self.uris = uris
 
-    def _parse_config_auths(self):
+    def _ensure_config_auths(self):
         """Obtain and verify the required configuration settings and
         update the list of known EDM targets by URI.
 
@@ -148,27 +150,29 @@ class RestManager(RestManagerUserMixin):
         authentication credentials. It ignores matching in the other direction.
 
         """
-        authns = current_app.config.get(f'{self.NAME}_AUTHENTICATIONS', {})
+        if not self.auths and self.require_login:
+            authns = current_app.config.get(f'{self.NAME}_AUTHENTICATIONS', {})
 
-        has_required_default_authn = (
-            isinstance(authns.get('default'), dict)
-            and authns['default'].get('username')
-            and authns['default'].get('password')
-        )
-        assertion_msg = f"Missing {self.NAME}_AUTHENTICATIONS credentials for 'default'"
-        assert has_required_default_authn, assertion_msg
+            has_required_default_authn = (
+                isinstance(authns.get('default'), dict)
+                and authns['default'].get('username')
+                and authns['default'].get('password')
+            )
+            assertion_msg = (
+                f"Missing {self.NAME}_AUTHENTICATIONS credentials for 'default'"
+            )
+            assert has_required_default_authn, assertion_msg
 
-        # Check URIs have matching credentials
-        missing_creds = [k for k in self.uris.keys() if not authns.get(k)]
-        assert (
-            not missing_creds
-        ), f"Missing credentials for named {self.NAME} configs: {', '.join(missing_creds)}"
+            # Check URIs have matching credentials
+            missing_creds = [k for k in self.uris.keys() if not authns.get(k)]
+            assert (
+                not missing_creds
+            ), f"Missing credentials for named {self.NAME} configs: {', '.join(missing_creds)}"
 
-        # Assign local references to the configuration settings
-        self.auths = authns
+            # Assign local references to the configuration settings
+            self.auths = authns
 
     def _init_sessions(self):
-        self.sessions = {}
         for target in self.uris:
             if target not in self.sessions:
                 self.sessions[target] = requests.Session()
@@ -215,8 +219,7 @@ class RestManager(RestManagerUserMixin):
         if not self.initialized:
             log.info('Initializing %s' % self.NAME)
             self._ensure_config_uris()
-            if self.require_login:
-                self._parse_config_auths()
+            self._ensure_config_auths()
             self._init_sessions()
             log.info('\t%s' % (ut.repr3(self.uris)))
             log.info('%s Manager is ready' % self.NAME)
@@ -248,7 +251,7 @@ class RestManager(RestManagerUserMixin):
         if ensure_initialized:
             self._ensure_initialized()
         else:
-            # Don't need to fully log in but do need config and a session to do anything
+            # Don't need to fully log in but do need config uris and a session to do anything
             self._ensure_config_uris()
             self._ensure_session(target)
 

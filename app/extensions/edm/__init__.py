@@ -77,7 +77,7 @@ class EDMManager(RestManager):
     # fmt: on
 
     def __init__(self, pre_initialize=False, *args, **kwargs):
-        super(EDMManager, self).__init__(True, pre_initialize, *args, **kwargs)
+        super(EDMManager, self).__init__(pre_initialize, *args, **kwargs)
 
 
 class EDMObjectMixin(object):

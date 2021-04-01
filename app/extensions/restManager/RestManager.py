@@ -81,7 +81,7 @@ class RestManager(RestManagerUserMixin):
     ENDPOINTS = None
     NAME = None
 
-    def __init__(self, require_login=True, pre_initialize=False, *args, **kwargs):
+    def __init__(self, pre_initialize=False, *args, **kwargs):
         super(RestManager, self).__init__(*args, **kwargs)
         self.initialized = False
 
@@ -89,8 +89,6 @@ class RestManager(RestManagerUserMixin):
         assert self.NAME is not None
         assert self.ENDPOINT_PREFIX is not None
         assert self.ENDPOINTS is not None
-
-        self.require_login = require_login
 
         # Start with all contents as empty structures
         self.targets = set([])
@@ -143,16 +141,20 @@ class RestManager(RestManagerUserMixin):
             self.uris = uris
 
     def _ensure_config_auths(self):
-        """Obtain and verify the required configuration settings and
-        update the list of known EDM targets by URI.
+        """Obtain and verify the authentication settings.
 
         This procedure is primarily focused on matching a URI to
         authentication credentials. It ignores matching in the other direction.
 
+        There are certain configurations that do not have authentication credentials
+        This method allows auth credentials to be completely missing but if they are
+        present, then a 'default' target must be present.
         """
-        if not self.auths and self.require_login:
+        if not self.auths:
             authns = current_app.config.get(f'{self.NAME}_AUTHENTICATIONS', {})
 
+            if not authns:
+                log.info(f'No authentication for {self.NAME}, using anonymous sessions')
             has_required_default_authn = (
                 isinstance(authns.get('default'), dict)
                 and authns['default'].get('username')
@@ -172,55 +174,50 @@ class RestManager(RestManagerUserMixin):
             # Assign local references to the configuration settings
             self.auths = authns
 
-    def _init_sessions(self):
+    def _init_all_sessions(self):
         for target in self.uris:
-            if target not in self.sessions:
-                self.sessions[target] = requests.Session()
-
-            if self.require_login:
-                auth = self.auths[target]
-
-                email = auth.get('username', auth.get('email', None))
-                password = auth.get('password', auth.get('pass', None))
-
-                message = f'{self.NAME} Authentication for {target} unspecified (email)'
-                assert email is not None, message
-                message = (
-                    f'{self.NAME} Authentication for {target} unspecified (password)'
-                )
-                assert password is not None, message
-
-                response = self._request(
-                    'get',
-                    'session.login',
-                    email,
-                    password,
-                    target=target,
-                    ensure_initialized=False,
-                )
-                assert (
-                    not isinstance(response, requests.models.Response) or response.ok
-                ), f'{self.NAME} Authentication for {target} returned non-OK code: {response.status_code}'
-
-            log.info(f'Created authenticated session for {self.NAME} target {target}')
+            self._ensure_session(target)
 
     def _ensure_session(self, target):
         """
-        Basically gives us the ability to create a session for a target which _does not_ rely
-        on actually having authentication credentials.  This is useful for requests to the EDM which
-        do not need authentication, like configuration reading and first-time admin creation.
-
+        Ensures that a session always exists, uses the presence of the auth credentials in the
+        environment to determine if a login is required.
         """
-        if not self.initialized and target not in self.sessions:
+        if target not in self.sessions:
             log.debug(f'Creating anonymous session for {target}')
             self.sessions[target] = requests.Session()
+
+        if target in self.auths:
+            auth = self.auths[target]
+
+            email = auth.get('username', auth.get('email', None))
+            password = auth.get('password', auth.get('pass', None))
+
+            message = f'{self.NAME} Authentication for {target} unspecified (email)'
+            assert email is not None, message
+            message = f'{self.NAME} Authentication for {target} unspecified (password)'
+            assert password is not None, message
+
+            response = self._request(
+                'get',
+                'session.login',
+                email,
+                password,
+                target=target,
+                ensure_initialized=False,
+            )
+            assert (
+                not isinstance(response, requests.models.Response) or response.ok
+            ), f'{self.NAME} Authentication for {target} returned non-OK code: {response.status_code}'
+
+        log.info(f'Created authenticated session for {self.NAME} target {target}')
 
     def _ensure_initialized(self):
         if not self.initialized:
             log.info('Initializing %s' % self.NAME)
             self._ensure_config_uris()
             self._ensure_config_auths()
-            self._init_sessions()
+            self._init_all_sessions()
             log.info('\t%s' % (ut.repr3(self.uris)))
             log.info('%s Manager is ready' % self.NAME)
             self.initialized = True
@@ -231,7 +228,7 @@ class RestManager(RestManagerUserMixin):
         return endpoint_url_
 
     def get_target_list(self):
-        self._ensure_initialized()
+        self._ensure_config_uris()
         return list(self.targets)
 
     def _request(
@@ -250,10 +247,6 @@ class RestManager(RestManagerUserMixin):
     ):
         if ensure_initialized:
             self._ensure_initialized()
-        else:
-            # Don't need to fully log in but do need config uris and a session to do anything
-            self._ensure_config_uris()
-            self._ensure_session(target)
 
         method = method.lower()
         assert method in ['get', 'post', 'delete', 'put', 'patch']
@@ -315,7 +308,7 @@ class RestManager(RestManagerUserMixin):
 
         return items
 
-    def get_dict(self, list_name, guid, target='default', ensure_initialized=False):
+    def get_dict(self, list_name, guid, target='default'):
 
         response = self._request(
             'get',
@@ -323,7 +316,6 @@ class RestManager(RestManagerUserMixin):
             guid,
             target=target,
             decode_as_object=False,
-            ensure_initialized=ensure_initialized,
         )
         if response.ok:
             response = response.json()

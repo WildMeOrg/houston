@@ -37,7 +37,6 @@ class EDMConfigurationDefinition(Resource):
             'configurationDefinition.data',
             path,
             target=target,
-            ensure_initialized=False,
         )
         # TODO also traverse private here FIXME
         return data
@@ -87,7 +86,6 @@ class EDMConfiguration(Resource):
             'configuration.data',
             path,
             target=target,
-            ensure_initialized=False,
         )
 
         # TODO make private private - traverse bundles too

@@ -155,6 +155,8 @@ class RestManager(RestManagerUserMixin):
 
             if not authns:
                 log.info(f'No authentication for {self.NAME}, using anonymous sessions')
+                return
+
             has_required_default_authn = (
                 isinstance(authns.get('default'), dict)
                 and authns['default'].get('username')

@@ -256,7 +256,6 @@ class AdminUserInitialized(Resource):
                 'configuration.init',
                 json.dumps(edm_data),
                 target=target,
-                ensure_initialized=False,
             )
             if data.get('success', False):
                 edm_auth = current_app.config.get('EDM_AUTHENTICATIONS', {})

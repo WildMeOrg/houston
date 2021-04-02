@@ -238,42 +238,16 @@ class AdminUserInitialized(Resource):
             log.info(
                 'Success creating startup (houston) admin user via API: %r.' % (admin,)
             )
-            rtn = {'initialized': True, 'edmInitialized': False}
+            rtn = {'initialized': True}
 
             # now we attempt to create on edm as well
             from flask import current_app
-            import json
 
-            edm_data = {
-                'admin_user_initialized': {
-                    'email': email,
-                    'password': password,
-                    'username': email,
-                }
-            }
-            target = 'default'  # TODO will we create admin on other targets?
-            data = current_app.edm.get_dict(
-                'configuration.init',
-                json.dumps(edm_data),
-                target=target,
+            rtn['edmInitialized'] = current_app.edm.initialize_edm_admin_user(
+                email, password
             )
-            if data.get('success', False):
-                edm_auth = current_app.config.get('EDM_AUTHENTICATIONS', {})
-                edm_auth[target] = {'username': email, 'password': password}
-                from app.extensions.config.models import HoustonConfig
-
-                HoustonConfig.set('EDM_AUTHENTICATIONS', edm_auth)
-                log.info(
-                    'Success creating startup (edm) admin user via API: %r. (saved credentials in HoustonConfig)'
-                    % (email,)
-                )
-                rtn['edmInitialized'] = True
-            else:
-                log.info(
-                    'Failed creating startup (edm) admin user via API; maybe OK. (response %r)'
-                    % (data)
-                )
-
+            if not rtn['edmInitialized']:
+                log.warning('EDM admin user not created; previous may have existed.')
             return rtn
 
 

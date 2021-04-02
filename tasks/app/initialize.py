@@ -16,17 +16,13 @@ log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 def initialize_edm_admin_user(context):
     """Set up EDM admin user"""
     from flask import current_app
-    import requests
 
-    log.info('Initializing EDM admin user')
-    base_url = current_app.config['EDM_URIS']['default']
+    email = 'admin@example.com'
     password = current_app.config['EDM_AUTHENTICATIONS']['default']['password']
-    payload = {'adminPassword': password}
-    url = f'{base_url}/edm/init.jsp'
-    # Contact EDM to initialize
-    resp = requests.get(url, params=payload)
-    if not resp.ok:
-        raise RuntimeError(f'Failed to initialize EDM admin user: {resp.reason}')
+    log.info('Initializing EDM admin user')
+    success = current_app.edm.initialize_edm_admin_user(email, password)
+    if not success:
+        raise RuntimeError('Failed to initialize EDM admin user')
     log.info('Initialized EDM admin user')
 
 

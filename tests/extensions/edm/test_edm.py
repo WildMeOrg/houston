@@ -14,3 +14,11 @@ def test_edm_initializes(flask_app):
     # a 401 or 403 means valid login for edm, but that login has bad permissions!
     # if you get a 200 here, see jon for a prize
     assert response.status_code == 404
+
+
+def test_initialize_admin_user(flask_app):
+    # this should fail as admin_user should exist and/or email address is invalid
+    email = None
+    password = 'test'
+    success = flask_app.edm.initialize_edm_admin_user(email, password)
+    assert not success

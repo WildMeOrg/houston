@@ -1,7 +1,10 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=missing-docstring
-from app.modules.individuals.models import Individual
 import logging
+
+# import json
+import uuid
+from app.modules.individuals.models import Individual
 
 from tests.modules.individuals.resources import utils as individual_utils
 
@@ -10,13 +13,14 @@ from tests import utils
 log = logging.getLogger(__name__)
 
 
-def test_get_individual_not_found(flask_app_client):
-    response = flask_app_client.get('/api/v1/individuals/wrong-uuid')
+def test_get_individual_not_found(flask_app_client, researcher_1):
+    response = individual_utils.read_individual(
+        flask_app_client, researcher_1, uuid.uuid4, expected_status_code=404
+    )
     assert response.status_code == 404
 
 
 def test_create_read_delete_individual(db, flask_app_client):
-
     temp_owner = utils.generate_user_instance(
         email='owner@localhost',
         is_researcher=True,
@@ -24,21 +28,15 @@ def test_create_read_delete_individual(db, flask_app_client):
     temp_enc = utils.generate_encounter_instance(
         user_email='enc@user', user_password='encuser', user_full_name='enc user 1'
     )
-
+    encounter_json = {'encounters': [{'id': str(temp_enc.guid)}]}
     temp_enc.owner = temp_owner
-    response = individual_utils.create_individual(flask_app_client, temp_owner)
-    individual_guid = response.json['guid']
+    response = individual_utils.create_individual(
+        flask_app_client, temp_owner, expected_status_code=200, data_in=encounter_json
+    )
+    individual_guid = response.json['result']['id']
 
     assert individual_guid is not None
 
-    read_individual = Individual.query.get(individual_guid)
-    read_individual.add_encounter(temp_enc)
-    assert read_individual is not None
-
-    response = individual_utils.read_individual(
-        flask_app_client, temp_owner, individual_guid
-    )
-    individual_guid = response.json['guid']
     read_individual = Individual.query.get(individual_guid)
     assert read_individual is not None
 
@@ -46,24 +44,51 @@ def test_create_read_delete_individual(db, flask_app_client):
     read_individual = Individual.query.get(individual_guid)
     assert read_individual is None
 
+    response = individual_utils.read_individual(
+        flask_app_client, temp_owner, individual_guid, expected_status_code=404
+    )
+    assert response.status_code == 404
+
     with db.session.begin():
         db.session.delete(temp_owner)
         db.session.delete(temp_enc)
 
 
-def test_read_failure_if_not_member_or_researcher(
-    db, flask_app_client, regular_user, researcher_1
-):
-    response = individual_utils.create_individual(flask_app_client, researcher_1)
-    individual_guid = response.json['guid']
-    response = individual_utils.read_individual(
-        flask_app_client, regular_user, individual_guid, 403
+def test_read_encounter_from_edm(db, flask_app_client):
+    temp_owner = utils.generate_user_instance(
+        email='owner@localhost',
+        is_researcher=True,
     )
-    assert 'guid' not in response.json.items()
+    temp_enc = utils.generate_encounter_instance(
+        user_email='enc@user', user_password='encuser', user_full_name='enc user 1'
+    )
+    encounter_json = {'encounters': [{'id': str(temp_enc.guid)}]}
+    temp_enc.owner = temp_owner
+    response = individual_utils.create_individual(
+        flask_app_client, temp_owner, expected_status_code=200, data_in=encounter_json
+    )
+
+    individual_guid = response.json['result']['id']
+
+    read_response = individual_utils.read_individual(
+        flask_app_client, temp_owner, individual_guid, expected_status_code=200
+    )
+
+    read_guid = read_response.json['result']['id']
+    assert read_guid is not None
+
+    read_individual = Individual.query.get(read_guid)
+
+    assert read_individual is not None
+
+    individual_utils.delete_individual(flask_app_client, temp_owner, individual_guid)
     read_individual = Individual.query.get(individual_guid)
 
+    assert read_individual is None
+
     with db.session.begin():
-        db.session.delete(read_individual)
+        db.session.delete(temp_owner)
+        db.session.delete(temp_enc)
 
 
 def test_modify_encounters(db, flask_app_client, researcher_1, empty_individual):

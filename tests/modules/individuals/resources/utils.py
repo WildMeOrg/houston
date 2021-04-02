@@ -12,16 +12,19 @@ PATH = '/api/v1/individuals/'
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
 
-def create_individual(flask_app_client, user, expected_status_code=200):
+def create_individual(flask_app_client, user, expected_status_code=200, data_in={}):
     with flask_app_client.login(user, auth_scopes=('individuals:write',)):
-        response = flask_app_client.post(PATH)
-
-    if expected_status_code == 200:
-        test_utils.validate_dict_response(response, 200, {'guid'})
-    else:
-        test_utils.validate_dict_response(
-            response, expected_status_code, {'status', 'message'}
+        response = flask_app_client.post(
+            PATH,
+            data=json.dumps(data_in),
+            content_type='application/javascript',
         )
+
+    assert isinstance(response.json, dict)
+    assert response.status_code == expected_status_code
+    if response.status_code == 200:
+        assert response.json['success'] is not None
+        assert response.json['result'] is not None
     return response
 
 
@@ -31,12 +34,10 @@ def read_individual(
     with flask_app_client.login(regular_user, auth_scopes=('individuals:read',)):
         response = flask_app_client.get('%s%s' % (PATH, individual_guid))
 
-    if expected_status_code == 200:
-        test_utils.validate_dict_response(response, 200, {'guid'})
-    else:
-        test_utils.validate_dict_response(
-            response, expected_status_code, {'status', 'message'}
-        )
+    assert response.status_code == expected_status_code
+    if response.status_code == 200:
+        assert response.json['success'] is not None
+        assert response.json['result'] is not None
     return response
 
 

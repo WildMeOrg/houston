@@ -6,10 +6,11 @@ RESTful API Individuals resources
 """
 
 import logging
-
+import json
 from flask_restx_patched import Resource
+from app.extensions.api import abort
 from flask_restx._http import HTTPStatus
-
+from flask import request, current_app
 from app.extensions import db
 from app.extensions.api import Namespace
 from app.extensions.api.parameters import PaginationParameters
@@ -19,9 +20,35 @@ from app.modules.users.permissions.types import AccessOperation
 from . import parameters, schemas
 from .models import Individual
 
-
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 api = Namespace('individuals', description='Individuals')  # pylint: disable=invalid-name
+
+
+class IndividualCleanup(object):
+    def __init__(self):
+        self.individual_guid = None
+
+    def rollback_and_abort(self, message='Unknown Error', code=400):
+        if self.individual_guid is not None:
+            failed_individual = Individual.query.get(self.individual_guid)
+            if failed_individual is not None:
+                with db.session.begin():
+                    try:
+                        failed_individual.delete_from_edm(current_app)
+                    except Exception:
+                        pass
+                    db.session.delete(failed_individual)
+
+                log.error(
+                    'The Individual with guid %r was not persisted to the EDM and has been deleted from Houston'
+                    % self.individual_guid
+                )
+        abort(
+            success=False,
+            passed_message=message,
+            message='Error',
+            code=code,
+        )
 
 
 @api.route('/')
@@ -51,24 +78,112 @@ class Individuals(Resource):
 
     @api.login_required(oauth_scopes=['individuals:write'])
     @api.parameters(parameters.CreateIndividualParameters())
-    @api.response(schemas.DetailedIndividualSchema())
     @api.response(code=HTTPStatus.CONFLICT)
     def post(self, args):
-
         """
         Create a new instance of Individual.
         """
+
+        cleanup = IndividualCleanup()
+
+        request_in = {}
+        try:
+            request_in_ = json.loads(request.data)
+            request_in.update(request_in_)
+        except Exception:
+            pass
+
+        if (
+            'encounters' not in request_in
+            or not isinstance(request_in['encounters'], list)
+            or len(request_in['encounters']) < 1
+        ):
+            cleanup.rollback_and_abort(message='No Encounters in POST')
+
+        response = current_app.edm.request_passthrough(
+            'individual.data', 'post', {'data': request_in}, ''
+        )
+
+        response_data = None
+        result_data = None
+
+        try:
+            response_data = response.json()
+        except Exception:
+            pass
+        if response.ok and response_data is not None:
+            result_data = response_data.get('result', None)
+
+        if (
+            not response.ok
+            or not response_data.get('success', False)
+            or result_data is None
+        ):
+            log.warning('Individual.post failed')
+            passed_message = {'message': {'key': 'error'}}
+            if response_data is not None and 'message' in response_data:
+                passed_message = response_data['message']
+                cleanup.rollback_and_abort(message=passed_message)
+
+        # if you get 'success' back and there is no id, we have problems indeed
+        if result_data['id'] is not None:
+            cleanup.individual_guid = result_data['id']
+        else:
+            cleanup.rollback_and_abort(
+                message='Individual.post: Improbable error. success=True but no Individual id in response.'
+            )
+
+        if 'encounters' in request_in and 'encounters' not in result_data:
+            cleanup.rollback_and_abort(
+                message='Individual.post: request_in had an encounters list, but result_data did not.'
+            )
+
+        if not len(request_in['encounters']) == len(result_data['encounters']):
+            cleanup.rollback_and_abort(
+                message='Individual.post: Imbalance in encounters between request_in and result_data.'
+            )
+
+        encounters = []
+        from app.modules.encounters.models import Encounter
+
+        for result_encounter_json in request_in['encounters']:
+            result_encounter = Encounter.query.get(result_encounter_json['id'])
+            if result_encounter is not None:
+                encounters.append(result_encounter)
+            else:
+                log.error(
+                    'Individual.post: at least one encounter found in request_in or result_data was not found in the Houston database. Aborting Individual creation.'
+                )
+                cleanup.rollback_and_abort(
+                    message='Encounter(s) in request or response not in Houston db.',
+                    code=500,
+                )
+
+        # finally make the Individual if all encounters are found
+        individual = Individual(
+            guid=result_data['id'],
+            encounters=encounters,
+            version=result_data.get('version'),
+        )
+
         context = api.commit_or_abort(
             db.session, default_error_message='Failed to create a new Individual'
         )
-
-        individual = Individual(**args)
 
         with context:
             db.session.add(individual)
         db.session.refresh(individual)
 
-        return individual
+        rtn = {
+            'success': True,
+            'result': {
+                'id': str(individual.guid),
+                'version': individual.version,
+                'encounters': result_data['encounters'],
+            },
+        }
+
+        return rtn
 
 
 @api.route('/<uuid:individual_guid>')
@@ -89,13 +204,18 @@ class IndividualByID(Resource):
             'action': AccessOperation.READ,
         },
     )
-    @api.response(schemas.DetailedIndividualSchema())
     def get(self, individual):
         """
         Get Individual details by ID.
-
         """
-        return individual
+        if individual is not None:
+            log.info(
+                'GET passthrough called for Individual with GUID: %r ', individual.guid
+            )
+        else:
+            log.error('GET passthrough called for nonexistent Individual')
+
+        return current_app.edm.get_dict('individual.data_complete', individual.guid)
 
     @api.permission_required(
         permissions.ObjectAccessPermission,
@@ -132,11 +252,21 @@ class IndividualByID(Resource):
     @api.response(code=HTTPStatus.NO_CONTENT)
     def delete(self, individual):
         """
-        Delete a Individual by ID.
+        Delete an Individual by ID.
         """
-        context = api.commit_or_abort(
-            db.session, default_error_message='Failed to delete the Individual.'
-        )
-        with context:
-            db.session.delete(individual)
+        response = individual.delete_from_edm()
+        if response.ok:
+            response_data = response.json()
+        if not response.ok or not response_data.get('success', False):
+            log.warning(
+                'Individual.delete:  Failed to delete id %r using delete_from_edm(). response_data=%r'
+                % (individual.guid, response_data)
+            )
+        try:
+            individual.delete()
+        except Exception:
+            abort(
+                success=False, passed_message='Delete failed', message='Error', code=400
+            )
+
         return None

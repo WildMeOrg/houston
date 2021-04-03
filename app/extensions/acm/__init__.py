@@ -36,7 +36,7 @@ class ACMManager(RestManager):
     # fmt: on
 
     def __init__(self, pre_initialize=False, *args, **kwargs):
-        super(ACMManager, self).__init__(False, pre_initialize, *args, **kwargs)
+        super(ACMManager, self).__init__(pre_initialize, *args, **kwargs)
 
 
 def init_app(app, **kwargs):

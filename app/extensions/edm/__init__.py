@@ -73,6 +73,7 @@ class EDMManager(RestManager):
         },
         'configuration': {
             'data': '//v0/configuration/%s',
+            'init': '//v0/init?content=%s',
         },
         'configurationDefinition': {
             'data': '//v0/configurationDefinition/%s',
@@ -81,7 +82,39 @@ class EDMManager(RestManager):
     # fmt: on
 
     def __init__(self, pre_initialize=False, *args, **kwargs):
-        super(EDMManager, self).__init__(True, pre_initialize, *args, **kwargs)
+        super(EDMManager, self).__init__(pre_initialize, *args, **kwargs)
+
+    def initialize_edm_admin_user(self, email, password):
+        import json
+
+        edm_data = {
+            'admin_user_initialized': {
+                'email': email,
+                'password': password,
+                'username': email,
+            }
+        }
+        target = 'default'  # TODO will we create admin on other targets?
+        data = current_app.edm.get_dict(
+            'configuration.init',
+            json.dumps(edm_data),
+            target=target,
+        )
+        if data.get('success', False):
+            edm_auth = current_app.config.get('EDM_AUTHENTICATIONS', {})
+            edm_auth[target] = {'username': email, 'password': password}
+            from app.extensions.config.models import HoustonConfig
+
+            HoustonConfig.set('EDM_AUTHENTICATIONS', edm_auth)
+            log.info(
+                f'Success creating startup (edm) admin user via API: {email}. (saved credentials in HoustonConfig)'
+            )
+            return True
+        else:
+            log.warning(
+                f'Failed creating startup (edm) admin user {email} via API. (response {data})'
+            )
+            return False
 
 
 class EDMObjectMixin(object):

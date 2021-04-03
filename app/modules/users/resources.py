@@ -235,9 +235,20 @@ class AdminUserInitialized(Resource):
                 is_admin=True,
                 update=True,
             )
-            log.info('Success creating startup admin user via API: %r.' % (admin,))
+            log.info(
+                'Success creating startup (houston) admin user via API: %r.' % (admin,)
+            )
+            rtn = {'initialized': True}
 
-        return {'initialized': True}
+            # now we attempt to create on edm as well
+            from flask import current_app
+
+            rtn['edmInitialized'] = current_app.edm.initialize_edm_admin_user(
+                email, password
+            )
+            if not rtn['edmInitialized']:
+                log.warning('EDM admin user not created; previous may have existed.')
+            return rtn
 
 
 @api.route('/edm/sync')

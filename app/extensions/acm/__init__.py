@@ -8,10 +8,8 @@ Asset Curation Model (ACM) manager.
 from flask import current_app, request, session, render_template  # NOQA
 from flask_login import current_user  # NOQA
 from app.extensions.restManager.RestManager import RestManager
+from app.extensions.task_manager import TaskManager
 import logging
-import keyword
-
-KEYWORD_SET = set(keyword.kwlist)
 
 log = logging.getLogger(__name__)
 
@@ -37,6 +35,15 @@ class ACMManager(RestManager):
 
     def __init__(self, pre_initialize=False, *args, **kwargs):
         super(ACMManager, self).__init__(pre_initialize, *args, **kwargs)
+
+    def _ensure_initialized(self):
+        super(ACMManager, self)._ensure_initialized()
+        # Check on what the jobs are doing every half hour
+        TaskManager.register_callback(30, self.periodic)
+
+    def periodic(self):
+        # Presume this is where we would check jobs
+        pass
 
 
 def init_app(app, **kwargs):

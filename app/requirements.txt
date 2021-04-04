@@ -64,3 +64,5 @@ werkzeug>=0.15,<0.16
 wheel
 
 xxhash
+
+celery>=5.0

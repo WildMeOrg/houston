@@ -119,7 +119,7 @@ class ACMPassthroughTargets(Resource):
 
     def get(self):
         """
-        List the possible EDM passthrough targets.
+        List the possible ACM passthrough targets.
         """
         targets = current_app.acm.get_target_list()
         return targets

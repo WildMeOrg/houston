@@ -103,6 +103,7 @@ class EDMManager(RestManager):
             json.dumps(edm_data),
             target=target,
         )
+        current_app.edm.initialized = False
         current_app.config['EDM_AUTHENTICATIONS'] = auth_orig
         if data.get('success', False):
             edm_auth = current_app.config.get('EDM_AUTHENTICATIONS', {})

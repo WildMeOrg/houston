@@ -11,13 +11,15 @@ import logging
 import pytz
 import types
 from celery import Celery
+
 log = logging.getLogger(__name__)
 
 # only allow periodicity up to 24hrs
-MAX_PERIOD = (24*60)
+MAX_PERIOD = 24 * 60
 
 # TODO, broker endpoint(maybe) and port (definitely) need to be config param
 celeryTask = Celery(__name__, broker='redis://localhost:6379/0')
+
 
 class TaskManager(object):
     # pylint: disable=abstract-method
@@ -25,6 +27,7 @@ class TaskManager(object):
     Manager for handling asynchronous task processing. Currently implemented using Celery
     """
     __instance = None
+
     @staticmethod
     def getInstance():
         """ Static access method. """
@@ -34,15 +37,15 @@ class TaskManager(object):
 
     def __init__(self):
         if TaskManager.__instance is not None:
-            raise Exception("TaskManager is a singleton!")
+            raise Exception('TaskManager is a singleton!')
         else:
             TaskManager.__instance = self
         # pylint: disable=unused-argument
         # Create periodic background checking of stuff, one minute chosen as arbitrary value
         celeryTask.conf.beat_schedule = {
             'one-minute-periodic': {
-                'task': "task_manager.one_minute_periodic",
-                'schedule': 60
+                'task': 'task_manager.one_minute_periodic',
+                'schedule': 60.0,
             }
         }
         timezone = current_app.config.get('TIMEZONE')
@@ -59,9 +62,9 @@ class TaskManager(object):
         TaskManager.getInstance().register_callback_method(period, method)
 
     def register_callback_method(self, period, method):
-        assert(isinstance(period, int))
-        assert(period <= MAX_PERIOD)
-        assert(isinstance(method, (types.MethodType,)))
+        assert isinstance(period, int)
+        assert period <= MAX_PERIOD
+        assert isinstance(method, (types.MethodType,))
 
         if period in self.minute_callbacks.keys():
             self.minute_callbacks[period].append(method)
@@ -71,8 +74,8 @@ class TaskManager(object):
 
 @celeryTask.task()
 def one_minute_periodic(self):
-
-    log.warning("doing periodic stuff")
+    breakpoint()
+    log.warning('doing periodic stuff')
     # Feels slightly clunky, is there a better way to do this?
     self.minute_counter += 1
     for period in self.minute_callbacks.keys():

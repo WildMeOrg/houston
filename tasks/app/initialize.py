@@ -17,8 +17,9 @@ def initialize_edm_admin_user(context):
     """Set up EDM admin user"""
     from flask import current_app
 
-    email = 'admin@example.com'
-    password = current_app.config['EDM_AUTHENTICATIONS']['default']['password']
+    def_vals = current_app.config.get('EDM_AUTHENTICATIONS', {}).get('default', {})
+    email = def_vals.get('username', 'admin@example.com')
+    password = def_vals.get('password', 'test1234')
     log.info('Initializing EDM admin user')
     success = current_app.edm.initialize_edm_admin_user(email, password)
     if not success:

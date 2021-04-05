@@ -95,11 +95,15 @@ class EDMManager(RestManager):
             }
         }
         target = 'default'  # TODO will we create admin on other targets?
+        # we unset EDM_AUTHENTICATIONS here so the get_dict() request will *not* try to authenticate; then set it back after. hacktacular!
+        auth_orig = current_app.config.get('EDM_AUTHENTICATIONS', {})
+        current_app.config['EDM_AUTHENTICATIONS'] = None
         data = current_app.edm.get_dict(
             'configuration.init',
             json.dumps(edm_data),
             target=target,
         )
+        current_app.config['EDM_AUTHENTICATIONS'] = auth_orig
         if data.get('success', False):
             edm_auth = current_app.config.get('EDM_AUTHENTICATIONS', {})
             edm_auth[target] = {'username': email, 'password': password}

@@ -11,7 +11,7 @@ from flask_login import current_user
 from flask_restx_patched import Resource
 from flask_restx_patched._http import HTTPStatus
 from app.extensions.api import abort
-
+from flask import current_app
 from app.extensions.api import Namespace
 
 from . import permissions, schemas, parameters
@@ -274,5 +274,29 @@ class UserEDMSync(Resource):
             'updated': len(updated_users),
             'failed': len(failed_users),
         }
+
+        return response
+
+
+@api.route('/<uuid:user_guid>/sightings')
+@api.resolve_object_by_model(User, 'user')
+class UserSightings(Resource):
+    """
+    EDM Sightings for a given Houston user
+    """
+
+    @api.login_required(oauth_scopes=['users:read'])
+    def get(self, user):
+        """
+        Get Sightings for user with EDM metadata
+        """
+        response = {'sightings': [], 'success': True}
+
+        for sighting in user.get_sightings():
+
+            sighting_response = current_app.edm.get_dict('sighting.data', sighting.guid)
+
+            if sighting_response['result'] is not None:
+                response['sightings'].append(sighting_response['result'])
 
         return response

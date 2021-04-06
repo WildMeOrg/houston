@@ -622,3 +622,10 @@ class User(db.Model, FeatherModel, UserEDMMixin):
             full_name='Public User',
             is_internal=True,
         )
+
+    def get_sightings(self):
+        sightings = []
+        for encounter in self.owned_encounters:
+            if encounter.get_sighting() not in sightings:
+                sightings.append(encounter.get_sighting())
+        return sightings

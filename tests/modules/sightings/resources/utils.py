@@ -83,6 +83,21 @@ def read_sighting(flask_app_client, user, sight_guid, expected_status_code=200):
     return response
 
 
+def update_sighting(
+    flask_app_client, user, sighting_guid, expected_status_code=200, patch_data=[]
+):
+    with flask_app_client.login(user, auth_scopes=('sightings:write',)):
+        response = flask_app_client.patch(
+            '%s%s' % (PATH, sighting_guid),
+            data=json.dumps(patch_data),
+            content_type='application/javascript',
+        )
+
+    assert isinstance(response.json, dict)
+    assert response.status_code == expected_status_code
+    return response
+
+
 def delete_sighting(flask_app_client, user, sight_guid, expected_status_code=204):
     with flask_app_client.login(user, auth_scopes=('sightings:write',)):
         response = flask_app_client.delete('%s%s' % (PATH, sight_guid))

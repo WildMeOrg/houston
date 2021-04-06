@@ -57,7 +57,9 @@ def test_create_failures(flask_app_client, researcher_1):
     sighting_utils.cleanup_tus_dir(transaction_id)
 
 
-def test_create_and_delete_sighting(db, flask_app_client, researcher_1, staff_user):
+def test_create_and_modify_and_delete_sighting(
+    db, flask_app_client, researcher_1, staff_user
+):
     from app.modules.sightings.models import Sighting
     from app.modules.encounters.models import Encounter
     from app.modules.assets.models import Asset
@@ -97,6 +99,18 @@ def test_create_and_delete_sighting(db, flask_app_client, researcher_1, staff_us
         flask_app_client, researcher_1, sighting_id, expected_status_code=200
     )
     assert response.json['id'] == sighting_id
+
+    # test some modification
+    new_loc_id = 'test_2'
+    response = sighting_utils.update_sighting(
+        flask_app_client,
+        researcher_1,
+        sighting_id,
+        patch_data=[
+            {'op': 'replace', 'path': '/locationId', 'value': new_loc_id},
+        ],
+    )
+    assert response.json['xid'] == sighting_id
 
     # upon success (yay) we clean up our mess
     sighting_utils.cleanup_tus_dir(transaction_id)

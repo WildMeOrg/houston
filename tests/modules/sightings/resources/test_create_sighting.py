@@ -110,7 +110,13 @@ def test_create_and_modify_and_delete_sighting(
             {'op': 'replace', 'path': '/locationId', 'value': new_loc_id},
         ],
     )
-    assert response.json['xid'] == sighting_id
+
+    # check that change was made
+    response = sighting_utils.read_sighting(
+        flask_app_client, researcher_1, sighting_id, expected_status_code=200
+    )
+    assert response.json['id'] == sighting_id
+    # assert response.json['locationId'] == new_loc_id  # FIXME not yet functional in edm .... soon!
 
     # upon success (yay) we clean up our mess
     sighting_utils.cleanup_tus_dir(transaction_id)

@@ -91,6 +91,10 @@ services:
       DB_USER: "${WILDBOOK_DB_USER}"
       DB_PASSWORD: "${WILDBOOK_DB_PASSWORD}"
       DB_CONNECTION_URL: "${WILDBOOK_DB_CONNECTION_URL}"
+      # Admin user created on startup,
+      # https://github.com/WildMeOrg/Wildbook/commit/6d65e70e43691f1b281bb76edf151e5c7cdb7403
+      ADMIN_EMAIL: "${EDM_AUTHENTICATIONS_USERNAME__DEFAULT}"
+      ADMIN_PASSWORD: "${EDM_AUTHENTICATIONS_PASSWORD__DEFAULT}"
 
   houston:
     # https://github.com/WildMeOrg/houston

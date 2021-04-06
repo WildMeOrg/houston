@@ -114,8 +114,6 @@ _main() {
 			# FIXME: `--no-backup` is necessary because this apparently has the side-effect
 			#        of doing doing a backup for a database it may not know how to backup.
 			gosu nobody invoke app.db.upgrade --no-backup
-			# Assume a possible need to initialize the EDM admin user
-			gosu nobody invoke app.initialize.initialize-edm-admin-user
 
 			if [ -d /docker-entrypoint-init.d ]; then
 				docker_process_init_files /docker-entrypoint-init.d/*

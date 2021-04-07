@@ -59,7 +59,7 @@ SQLAlchemy-Utils>=0.34,<0.35
 stripe
 tqdm
 utool
-webargs==5.5.2
+webargs==5.5.3
 werkzeug>=0.15,<0.16
 wheel
 

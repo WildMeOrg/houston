@@ -69,7 +69,10 @@ coverage run --append `which invoke` app.endpoints.list
 
 # test app.swagger.*
 coverage run --append `which invoke` app.swagger.export
-coverage run --append `which invoke` app.swagger.codegen --language python --version 1.0.0
+if which docker
+then
+  coverage run --append `which invoke` app.swagger.codegen --language python --version 1.0.0
+fi
 
 # test app.users.*
 echo password | coverage run --append `which invoke` app.users.create-user user@example.org

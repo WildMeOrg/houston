@@ -114,12 +114,12 @@ def test_getting_user_id_not_found(flask_app_client, regular_user):
         assert response.status_code == 404
 
 
-def test_getting_sightings_for_user(flask_app_client, staff_user):
+def test_getting_sightings_for_user(flask_app_client, staff_user, db):
 
     from tests.modules.sightings.resources import utils as sighting_utils
 
     temp_owner = utils.generate_user_instance(
-        email='owner@localhost',
+        email='user_4_sightings@localhost',
         is_researcher=True,
     )
 
@@ -156,3 +156,5 @@ def test_getting_sightings_for_user(flask_app_client, staff_user):
 
     # cleanup time
     sighting_utils.delete_sighting(flask_app_client, staff_user, sighting_id)
+    with db.session.begin():
+        db.session.delete(temp_owner)

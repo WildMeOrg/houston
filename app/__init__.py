@@ -75,8 +75,8 @@ def configure_from_config_file(app, flask_config_name=None):
         app.config.from_object(config_name)
     except ImportError:
         if flask_config_name == 'local':
-            app.logger.error(  # pylint: disable=no-member
-                'You have to have `local_config.py` or `local_config/__init__.py` in order to use '
+            app.logger.exception(  # pylint: disable=no-member
+                f"You have to have '{CONFIG_NAME_MAPPER[flask_config_name]}' in order to use "
                 "the default 'local' Flask Config. Alternatively, you may set `FLASK_CONFIG` "
                 'environment variable to one of the following options: development, production, '
                 'testing.'

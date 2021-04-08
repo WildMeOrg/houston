@@ -286,6 +286,13 @@ class UserSightings(Resource):
     """
 
     @api.login_required(oauth_scopes=['users:read'])
+    @api.permission_required(
+        permissions.ObjectAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'obj': kwargs['user'],
+            'action': AccessOperation.READ,
+        },
+    )
     def get(self, user):
         """
         Get Sightings for user with EDM metadata

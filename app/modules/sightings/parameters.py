@@ -27,6 +27,10 @@ class PatchSightingDetailsParameters(PatchJSONParameters):
         '/locationId',
         '/startTime',
         '/endTime',
+        '/taxonomies',
+        '/context',
+        '/decimalLatitude',
+        '/decimalLongitude',
     )
     PATH_CHOICES = (
         PATH_CHOICES_EDM  # for now, no patching on houston sighting needed/supported

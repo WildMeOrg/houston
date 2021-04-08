@@ -149,8 +149,6 @@ def test_asset_file_addition(db, flask_app_client, researcher_1):
 
         # The Submission will be in gitlab but not on the EDM so the delete will "fail"
         assert response.status_code == 400
-    except Exception as ex:
-        raise ex
     finally:
         # Even though the REST API deletion fails, as it's not present, the Houston feather object remains.
         new_encounter.delete()

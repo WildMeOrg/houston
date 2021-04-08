@@ -98,7 +98,8 @@ def add_file_asset_to_encounter(
     # for efficiency, just write the files into the place that tus would upload them to
     import os
 
-    dir_path = os.path.join('_db', 'uploads', '-'.join(['trans', transaction_id]))
+    uploads_dir = flask_app_client.application.config['UPLOADS_DATABASE_PATH']
+    dir_path = os.path.join(uploads_dir, '-'.join(['trans', transaction_id]))
     if not os.path.exists(dir_path):
         os.makedirs(dir_path)
 

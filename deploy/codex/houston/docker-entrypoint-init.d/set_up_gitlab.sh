@@ -54,7 +54,7 @@ EOF
     group_resp_json=$(gitlab -g local-user group create --name TEST --path test)
 
     echo "Write 'houston' PAT to ${HOUSTON_DOTENV}"
-    dotenv -f ${HOUSTON_DOTENV} set GITLAB_REMOTE_LOGIN_PAT "${houston_pat}"
+    dotenv -f ${HOUSTON_DOTENV} set GITLAB_REMOTE_LOGIN_PAT -- "${houston_pat}"
 
     # Fix permissions on files
     chmod 644 ${HOUSTON_DOTENV} ${PYTHON_GITLAB_CFG}

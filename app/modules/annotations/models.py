@@ -27,6 +27,14 @@ class Annotation(db.Model, FeatherModel):
     )
     asset = db.relationship('Asset', backref=db.backref('annotations'))
 
+    encounter_guid = db.Column(
+        db.GUID,
+        db.ForeignKey('encounter.guid', ondelete='CASCADE'),
+        index=True,
+        nullable=False,
+    )
+    encounter = db.relationship('Encounter', backref=db.backref('annotations'))
+
     def __repr__(self):
         return (
             '<{class_name}('

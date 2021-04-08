@@ -20,6 +20,7 @@ class BaseAnnotationSchema(ModelSchema):
         fields = (
             Annotation.guid.key,
             Annotation.asset_guid.key,
+            Annotation.encounter_guid.key,
         )
         dump_only = (Annotation.guid.key,)
 

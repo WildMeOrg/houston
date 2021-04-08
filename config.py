@@ -20,15 +20,15 @@ _dotenv = os.getenv('HOUSTON_DOTENV', _DEFAULT_DOTENV)
 load_dotenv(_dotenv, override=False)  # gracefully fails if file doesn't exist
 
 PROJECT_ROOT = str(HERE)
-PROJECT_DATABASE_PATH = os.path.join(PROJECT_ROOT, '_db')
+DATA_ROOT = Path(os.getenv('DATA_ROOT', HERE / '_db'))
 
 
 class BaseConfig(object):
     # SQLITE
     PROJECT_ROOT = PROJECT_ROOT
-    PROJECT_DATABASE_PATH = PROJECT_DATABASE_PATH
+    PROJECT_DATABASE_PATH = str(DATA_ROOT)
 
-    SUBMISSIONS_DATABASE_PATH = os.path.join(PROJECT_DATABASE_PATH, 'submissions')
+    SUBMISSIONS_DATABASE_PATH = str(DATA_ROOT / 'submissions')
     SUBMISSIONS_MIME_TYPE_WHITELIST = [
         'application/json',
         'application/ld+json',
@@ -58,7 +58,7 @@ class BaseConfig(object):
         'video/webm',
     ]
 
-    ASSET_DATABASE_PATH = os.path.join(PROJECT_DATABASE_PATH, 'assets')
+    ASSET_DATABASE_PATH = str(DATA_ROOT / 'assets')
     ASSET_ALLOWED_EXTS = [
         '.jpg',
         '.jpe',
@@ -72,12 +72,15 @@ class BaseConfig(object):
     ]
 
     # specifically this is where tus "temporary" files go
-    UPLOADS_DATABASE_PATH = os.path.join(PROJECT_DATABASE_PATH, 'uploads')
+    UPLOADS_DATABASE_PATH = str(DATA_ROOT / 'uploads')
     REDIS_HOST = os.getenv('REDIS_HOST') or 'localhost'
 
     FILEUPLOAD_BASE_PATH = os.path.join(PROJECT_DATABASE_PATH, 'fileuploads')
 
-    SQLALCHEMY_DATABASE_PATH = os.path.join(PROJECT_DATABASE_PATH, 'database.sqlite3')
+    # FIXME: There is code that won't allow for `SQLALCHEMY_DATABASE_PATH = None`
+    #        File "/code/tasks/app/db.py", in upgrade: `if os.path.exists(_db_filepath):`
+    # SQLALCHEMY_DATABASE_PATH = None
+    SQLALCHEMY_DATABASE_PATH = str(DATA_ROOT / 'database.sqlite3')
     SQLALCHEMY_DATABASE_URI = os.getenv('SQLALCHEMY_DATABASE_URI') or 'sqlite:///%s' % (
         SQLALCHEMY_DATABASE_PATH
     )

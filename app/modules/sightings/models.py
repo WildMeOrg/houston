@@ -94,6 +94,8 @@ class Sighting(db.Model, FeatherModel):
     # given edm_json (verbose json from edm) will populate with houston-specific data from feather object
     # note: this modifies the passed in edm_json, so not sure how legit that is?
     def augment_edm_json(self, edm_json):
+        edm_json['createdHouston'] = self.created.isoformat()
+        edm_json['updatedHouston'] = self.updated.isoformat()
         if (self.encounters is not None and edm_json['encounters'] is None) or (
             self.encounters is None and edm_json['encounters'] is not None
         ):

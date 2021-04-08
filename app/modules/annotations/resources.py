@@ -66,6 +66,7 @@ class Annotations(Resource):
         Create a new instance of Annotation.
         """
         from app.modules.assets.models import Asset
+        from app.modules.encounters.models import Encounter
 
         if 'asset_guid' not in args:
             abort(code=HTTPStatus.BAD_REQUEST, message='Must provide an asset_guid')
@@ -75,6 +76,15 @@ class Annotations(Resource):
         if not asset:
             abort(code=HTTPStatus.BAD_REQUEST, message='asset_guid not found')
         args['asset_guid'] = asset_guid
+
+        if 'encounter_guid' not in args:
+            abort(code=HTTPStatus.BAD_REQUEST, message='Must provide an encounter_guid')
+
+        encounter_guid = args.get('encounter_guid', None)
+        encounter = Encounter.query.get(encounter_guid)
+        if not encounter:
+            abort(code=HTTPStatus.BAD_REQUEST, message='encounter_guid not found')
+        args['encounter_guid'] = encounter_guid
 
         context = api.commit_or_abort(
             db.session, default_error_message='Failed to create a new Annotation'

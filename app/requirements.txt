@@ -48,7 +48,7 @@ scikit-build
 sentry-sdk>=0.10.2
 sentry-sdk[flask]>=0.10.2
 
-setuptools>=42
+setuptools>=45
 setuptools_scm[toml]>=3.4
 
 six

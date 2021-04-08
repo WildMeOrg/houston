@@ -4,6 +4,7 @@
 import uuid
 from tests.modules.annotations.resources import utils as annot_utils
 from tests.modules.submissions.resources import utils as sub_utils
+from tests.modules.encounters.resources import utils as enc_utils
 
 
 def test_get_annotation_not_found(flask_app_client):
@@ -25,8 +26,13 @@ def test_create_and_delete_annotation(
         later_usage=True,
     )
     try:
+        response = enc_utils.create_encounter(flask_app_client, researcher_1)
+        enc_guid = response.json['result']['guid']
         response = annot_utils.create_annotation(
-            flask_app_client, researcher_1, test_clone_submission_data['asset_uuids'][0]
+            flask_app_client,
+            researcher_1,
+            test_clone_submission_data['asset_uuids'][0],
+            enc_guid,
         )
 
         annotation_guid = response.json['guid']
@@ -69,8 +75,13 @@ def test_annotation_permission(
         later_usage=True,
     )
     try:
+        response = enc_utils.create_encounter(flask_app_client, researcher_1)
+        enc_guid = response.json['result']['guid']
         response = annot_utils.create_annotation(
-            flask_app_client, researcher_1, test_clone_submission_data['asset_uuids'][0]
+            flask_app_client,
+            researcher_1,
+            test_clone_submission_data['asset_uuids'][0],
+            enc_guid,
         )
 
         annotation_guid = response.json['guid']

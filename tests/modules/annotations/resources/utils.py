@@ -7,12 +7,16 @@ import json
 from tests import utils as test_utils
 
 PATH = '/api/v1/annotations/'
-EXPECTED_KEYS = {'guid', 'asset_guid'}
+EXPECTED_KEYS = {'guid', 'asset_guid', 'encounter_guid'}
 
 
-def create_annotation(flask_app_client, user, asset_uuid, expected_status_code=200):
+def create_annotation(
+    flask_app_client, user, asset_uuid, encounter_guid, expected_status_code=200
+):
     with flask_app_client.login(user, auth_scopes=('annotations:write',)):
-        response = flask_app_client.post(PATH, data={'asset_guid': asset_uuid})
+        response = flask_app_client.post(
+            PATH, data={'asset_guid': asset_uuid, 'encounter_guid': encounter_guid}
+        )
 
     if expected_status_code == 200:
         test_utils.validate_dict_response(response, 200, EXPECTED_KEYS)

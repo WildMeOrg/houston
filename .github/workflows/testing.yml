@@ -111,7 +111,11 @@ jobs:
       - name: Check DB migrations (sqlite)
         if: matrix.db-uri == 'sqlite://'
         run: |
+          # initialize the database
+          docker-compose exec -T -e FLASK_CONFIG=$FLASK_CONFIG -e SQLALCHEMY_DATABASE_URI=$SQLALCHEMY_DATABASE_URI houston invoke app.db.upgrade --no-backup
+          # downgrade to the previous migration step
           docker-compose exec -T -e FLASK_CONFIG=$FLASK_CONFIG -e SQLALCHEMY_DATABASE_URI=$SQLALCHEMY_DATABASE_URI houston invoke app.db.downgrade
+          # upgrade to the latest version
           docker-compose exec -T -e FLASK_CONFIG=$FLASK_CONFIG -e SQLALCHEMY_DATABASE_URI=$SQLALCHEMY_DATABASE_URI houston invoke app.db.upgrade
         env:
           # Don't use in memory sqlite database for database migration

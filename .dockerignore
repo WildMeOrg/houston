@@ -11,6 +11,7 @@
 .travis.yml
 
 _assets/
+_db.initial.tar.gz
 
 *.egg-info/
 

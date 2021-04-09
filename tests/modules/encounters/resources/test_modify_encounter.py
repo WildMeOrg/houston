@@ -98,8 +98,7 @@ def add_file_asset_to_encounter(
     # for efficiency, just write the files into the place that tus would upload them to
     import os
 
-    uploads_dir = flask_app_client.application.config['UPLOADS_DATABASE_PATH']
-    dir_path = os.path.join(uploads_dir, '-'.join(['trans', transaction_id]))
+    dir_path = os.path.join('_db', 'uploads', '-'.join(['trans', transaction_id]))
     if not os.path.exists(dir_path):
         os.makedirs(dir_path)
 
@@ -150,6 +149,8 @@ def test_asset_file_addition(db, flask_app_client, researcher_1):
 
         # The Submission will be in gitlab but not on the EDM so the delete will "fail"
         assert response.status_code == 400
+    except Exception as ex:
+        raise ex
     finally:
         # Even though the REST API deletion fails, as it's not present, the Houston feather object remains.
         new_encounter.delete()

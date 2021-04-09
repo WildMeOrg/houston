@@ -102,7 +102,7 @@ def test_create_and_modify_and_delete_sighting(
 
     # test some modification (should succeed)
     new_loc_id = 'test_2'
-    response = sighting_utils.update_sighting(
+    response = sighting_utils.patch_sighting(
         flask_app_client,
         researcher_1,
         sighting_id,
@@ -118,7 +118,7 @@ def test_create_and_modify_and_delete_sighting(
     assert response.json['locationId'] == new_loc_id
 
     # test some modification (should fail due to invalid data)
-    response = sighting_utils.update_sighting(
+    response = sighting_utils.patch_sighting(
         flask_app_client,
         researcher_1,
         sighting_id,
@@ -175,7 +175,7 @@ def test_create_anon_and_delete_sighting(db, flask_app_client, staff_user):
 
     # test some modification; this should fail (401) cuz anon should not be allowed
     new_loc_id = 'test_2_fail'
-    response = sighting_utils.update_sighting(
+    response = sighting_utils.patch_sighting(
         flask_app_client,
         None,
         sighting_id,

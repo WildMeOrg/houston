@@ -83,7 +83,7 @@ def read_sighting(flask_app_client, user, sight_guid, expected_status_code=200):
     return response
 
 
-def update_sighting(
+def patch_sighting(
     flask_app_client, user, sighting_guid, patch_data=[], expected_status_code=200
 ):
     with flask_app_client.login(user, auth_scopes=('sightings:write',)):

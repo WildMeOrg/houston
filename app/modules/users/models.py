@@ -626,6 +626,6 @@ class User(db.Model, FeatherModel, UserEDMMixin):
     def get_sightings(self):
         sightings = []
         for encounter in self.owned_encounters:
-            if encounter.get_sighting() not in sightings:
-                sightings.append(encounter.get_sighting())
-        return sightings
+            sightings.append(encounter.get_sighting())
+        sighting_set = set(sightings)
+        return list(sighting_set)

@@ -30,7 +30,7 @@ class Sighting(db.Model, FeatherModel):
 
     def get_owners(self):
         owners = []
-        for encounter in self.owned_encounters:
+        for encounter in self.get_encounters():
             if encounter.get_owner() is not None and encounter.get_owner() not in owners:
                 owners.append(encounter.get_owner())
         return owners

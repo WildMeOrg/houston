@@ -16,6 +16,14 @@ from app.modules.users.permissions.types import AccessOperation
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
 
+PERMISSION_ROLE_MAP = {
+    ('SiteSetting', AccessOperation.READ, 'Module'): ['is_privileged', 'is_admin'],
+    ('SiteSetting', AccessOperation.WRITE, 'Module'): ['is_privileged', 'is_admin'],
+    ('SiteSetting', AccessOperation.READ, 'Object'): ['is_privileged', 'obj_is_public'],
+    ('SiteSetting', AccessOperation.WRITE, 'Object'): ['is_privileged', 'is_admin'],
+}
+
+
 class DenyAbortMixin(object):
     """
     A helper permissions mixin raising an HTTP Error (specified in
@@ -83,6 +91,14 @@ class ModuleActionRule(DenyAbortMixin, Rule):
         from app.modules.users.models import User
         from app.modules.encounters.models import Encounter
         from app.modules.sightings.models import Sighting
+
+        roles = PERMISSION_ROLE_MAP.get((self._module.__name__, self._action, 'Module'))
+        if roles:
+            for role in roles:
+                if hasattr(current_user, role):
+                    if getattr(current_user, role):
+                        return True
+            return False
 
         # This Rule is for checking permissions on modules, so there must be one,
         assert self._module is not None
@@ -181,6 +197,19 @@ class ObjectActionRule(DenyAbortMixin, Rule):
         # This Rule is for checking permissions on objects, so there must be one, Use the ModuleActionRule for
         # permissions checking without objects
         assert self._obj is not None
+
+        roles = PERMISSION_ROLE_MAP.get(
+            (self._obj.__class__.__name__, self._action, 'Object')
+        )
+        if roles:
+            for role in roles:
+                if hasattr(current_user, role):
+                    if getattr(current_user, role):
+                        return True
+                elif role == 'obj_is_public':
+                    if self._obj.is_public():
+                        return True
+            return False
 
         # Anyone can read public data, even anonymous users
         has_permission = self._action == AccessOperation.READ and self._obj.is_public()

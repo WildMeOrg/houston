@@ -36,7 +36,13 @@ class SiteSettings(Resource):
     Manipulations with Site Settings.
     """
 
-    @api.permission_required(permissions.AdminRolePermission())
+    @api.permission_required(
+        permissions.ModuleAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'module': SiteSetting,
+            'action': AccessOperation.READ,
+        },
+    )
     @api.parameters(PaginationParameters())
     @api.response(schemas.BaseSiteSettingSchema(many=True))
     def get(self, args):
@@ -50,7 +56,13 @@ class SiteSettings(Resource):
             SiteSetting.query.order_by('key').offset(args['offset']).limit(args['limit'])
         )
 
-    @api.permission_required(permissions.AdminRolePermission())
+    @api.permission_required(
+        permissions.ModuleAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'module': SiteSetting,
+            'action': AccessOperation.WRITE,
+        },
+    )
     @api.login_required(oauth_scopes=['site-settings:write'])
     @api.parameters(parameters.CreateSiteSettingParameters())
     @api.response(schemas.DetailedSiteSettingSchema())
@@ -116,7 +128,13 @@ class SiteSettingByKey(Resource):
             )
         )
 
-    @api.permission_required(permissions.AdminRolePermission())
+    @api.permission_required(
+        permissions.ObjectAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'obj': kwargs['site_setting'],
+            'action': AccessOperation.WRITE,
+        },
+    )
     @api.login_required(oauth_scopes=['site-settings:write'])
     @api.response(code=HTTPStatus.CONFLICT)
     @api.response(code=HTTPStatus.NO_CONTENT)

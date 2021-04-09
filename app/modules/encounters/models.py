@@ -151,20 +151,20 @@ class Encounter(db.Model, FeatherModel):
         edm_json['updatedHouston'] = self.updated.isoformat()
         from app.modules.users.schemas import PublicUserSchema
 
-        usch = PublicUserSchema(many=False)
-        json, err = usch.dump(self.get_owner())
+        user_schema = PublicUserSchema(many=False)
+        json, err = user_schema.dump(self.get_owner())
         edm_json['owner'] = json
         if self.submitter_guid is not None:
-            json, err = usch.dump(self.submitter)
+            json, err = user_schema.dump(self.submitter)
             edm_json['submitter'] = json
 
         if self.assets is None or len(self.assets) < 1:
             return edm_json
         from app.modules.assets.schemas import DetailedAssetSchema
 
-        sch = DetailedAssetSchema(many=False, only=('guid', 'filename', 'src'))
+        asset_schema = DetailedAssetSchema(many=False, only=('guid', 'filename', 'src'))
         edm_json['assets'] = []
         for asset in self.get_assets():
-            json, err = sch.dump(asset)
+            json, err = asset_schema.dump(asset)
             edm_json['assets'].append(json)
         return edm_json

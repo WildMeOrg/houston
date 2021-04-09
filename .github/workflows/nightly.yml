@@ -62,6 +62,8 @@ jobs:
       fail-fast: false
       matrix:
         python-version: [3.9, 3.8, 3.7]
+    env:
+      HOUSTON_DOTENV: ./.env
     steps:
       # Checkout and env setup
       - uses: actions/checkout@v2
@@ -81,11 +83,15 @@ jobs:
         run: |
           brew install libmagic
 
-      # Install and test - Test order is randomized, run three times to ensure correctness
-      - name: Reset local database
+      - name: Install & Configure Houston
         run: |
-          tar -zxvf _db.initial.tar.gz
-          mv _db.initial _db
+          pip install "python-dotenv[cli]"
+          # Set secrets
+          dotenv -f ${HOUSTON_DOTENV} set GITLAB_REMOTE_LOGIN_PAT -- "${{ secrets.GITLAB_REMOTE_LOGIN_PAT }}"
+          dotenv -f ${HOUSTON_DOTENV} set SECRET_KEY -- "secret"
+          dotenv -f ${HOUSTON_DOTENV} set EDM_AUTHENTICATIONS_USERNAME__DEFAULT -- "${{ secrets.EDM_AUTHENTICATIONS_USERNAME__DEFAULT }}"
+          dotenv -f ${HOUSTON_DOTENV} set EDM_AUTHENTICATIONS_PASSWORD__DEFAULT -- "${{ secrets.EDM_AUTHENTICATIONS_PASSWORD__DEFAULT }}"
+          # Install application
           ./scripts/install.sh
 
       - name: Create frontend static directory (tests complains if static directory does not exist)
@@ -104,7 +110,11 @@ jobs:
       - name: Check DB migrations
         run: |
           source virtualenv/houston3.7/bin/activate
+          # initialize the database
+          invoke app.db.upgrade --no-backup
+          # downgrade to the previous migration step
           invoke app.db.downgrade
+          # upgrade to the latest version
           invoke app.db.upgrade
 
       - name: Run tests after DB checks
@@ -154,6 +164,7 @@ jobs:
       PYTHON: ${{ matrix.python-version }}
       SQLALCHEMY_DATABASE_URI: ${{ matrix.db-uri }}
       GITLAB_REMOTE_LOGIN_PAT: ${{ secrets.GITLAB_REMOTE_LOGIN_PAT }}
+      HOUSTON_DOTENV: ./.env
     steps:
       # Checkout and env setup
       - uses: actions/checkout@v2
@@ -173,11 +184,15 @@ jobs:
         run: |
           sudo apt install libmagic1
 
-      # Install and test - Test order is randomized, run three times to ensure correctness
-      - name: Reset local database
+      - name: Install & Configure Houston
         run: |
-          tar -zxvf _db.initial.tar.gz
-          mv _db.initial _db
+          pip install "python-dotenv[cli]"
+          # Set secrets
+          dotenv -f ${HOUSTON_DOTENV} set GITLAB_REMOTE_LOGIN_PAT -- "${{ secrets.GITLAB_REMOTE_LOGIN_PAT }}"
+          dotenv -f ${HOUSTON_DOTENV} set SECRET_KEY -- "secret"
+          dotenv -f ${HOUSTON_DOTENV} set EDM_AUTHENTICATIONS_USERNAME__DEFAULT -- "${{ secrets.EDM_AUTHENTICATIONS_USERNAME__DEFAULT }}"
+          dotenv -f ${HOUSTON_DOTENV} set EDM_AUTHENTICATIONS_PASSWORD__DEFAULT -- "${{ secrets.EDM_AUTHENTICATIONS_PASSWORD__DEFAULT }}"
+          # Install application
           ./scripts/install.sh
 
       - name: Create frontend static directory (tests complains if static directory does not exist)
@@ -197,7 +212,11 @@ jobs:
         if: matrix.db-uri == 'sqlite://'
         run: |
           source virtualenv/houston3.7/bin/activate
+          # initialize the database
+          invoke app.db.upgrade --no-backup
+          # downgrade to the previous migration step
           invoke app.db.downgrade
+          # upgrade to the latest version
           invoke app.db.upgrade
         env:
           # Don't use in memory sqlite database for database migration

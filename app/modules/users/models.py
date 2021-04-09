@@ -226,6 +226,10 @@ class User(db.Model, FeatherModel, UserEDMMixin):
     in_reset = _get_is_static_role_property('in_reset', StaticRoles.RESET)
     in_setup = _get_is_static_role_property('in_setup', StaticRoles.SETUP)
 
+    @property
+    def is_privileged(self):
+        return self.is_staff or self.is_internal
+
     def get_state(self):
         state = []
         state += [self.StaticRoles.ACTIVE.shorthand] if self.is_active else []

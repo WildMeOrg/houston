@@ -126,7 +126,7 @@ class ModuleActionRule(DenyAbortMixin, Rule):
 
         has_permission = False
 
-        if user_is_privileged(user):
+        if user.is_privileged:
             # Organizations and Projects not supported for MVP, no-one can create them
             if not self._is_module((Organization, Project)):
                 has_permission = True
@@ -387,9 +387,5 @@ class PartialPermissionDeniedRule(Rule):
 
 
 # Helpers to have one place that defines what users are privileged in all cases
-def user_is_privileged(user):
-    return user.is_staff or user.is_internal
-
-
 def owner_or_privileged(user, obj):
-    return user.owns_object(obj) or user_is_privileged(user)
+    return user.owns_object(obj) or user.is_privileged

@@ -50,8 +50,8 @@ def cleanup_tus_dir(tid):
 def create_sighting(
     flask_app_client,
     user,
-    expected_status_code=200,
     data_in={'locationId': 'PYTEST', 'context': 'test'},
+    expected_status_code=200,
 ):
     if user is not None:
         with flask_app_client.login(user):
@@ -84,7 +84,7 @@ def read_sighting(flask_app_client, user, sight_guid, expected_status_code=200):
 
 
 def update_sighting(
-    flask_app_client, user, sighting_guid, expected_status_code=200, patch_data=[]
+    flask_app_client, user, sighting_guid, patch_data=[], expected_status_code=200
 ):
     with flask_app_client.login(user, auth_scopes=('sightings:write',)):
         response = flask_app_client.patch(

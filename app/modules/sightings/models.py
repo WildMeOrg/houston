@@ -103,9 +103,18 @@ class Sighting(db.Model, FeatherModel):
         if self.encounters is not None and edm_json['encounters'] is not None:
             if len(self.encounters) != len(edm_json['encounters']):
                 log.warning('Imbalanced encounters between edm/feather objects!')
+                raise ValueError('imbalanced encounter count between edm/feather')
             else:
                 i = 0
                 while i < len(self.encounters):  # now we augment each encounter
-                    self.encounters[i].augment_edm_json(edm_json['encounters'][i])
+                    found_edm = None
+                    for edm_enc in edm_json['encounters']:
+                        if edm_enc['id'] == str(self.encounters[i].guid):
+                            found_edm = edm_enc
+                    if found_edm is None:
+                        raise ValueError(
+                            f'could not find edm encounter matching {self.encounters[i]}'
+                        )
+                    self.encounters[i].augment_edm_json(edm_enc)
                     i += 1
         return edm_json

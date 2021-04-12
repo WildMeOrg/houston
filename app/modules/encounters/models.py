@@ -147,16 +147,24 @@ class Encounter(db.Model, FeatherModel):
     # given edm_json (verbose json from edm) will populate with houston-specific data from feather object
     # note: this modifies the passed in edm_json, so not sure how legit that is?
     def augment_edm_json(self, edm_json):
+        edm_json['createdHouston'] = self.created.isoformat()
+        edm_json['updatedHouston'] = self.updated.isoformat()
+        from app.modules.users.schemas import PublicUserSchema
+
+        user_schema = PublicUserSchema(many=False)
+        json, err = user_schema.dump(self.get_owner())
+        edm_json['owner'] = json
+        if self.submitter_guid is not None:
+            json, err = user_schema.dump(self.submitter)
+            edm_json['submitter'] = json
+
         if self.assets is None or len(self.assets) < 1:
             return edm_json
         from app.modules.assets.schemas import DetailedAssetSchema
 
-        sch = DetailedAssetSchema(many=False, only=('guid', 'filename', 'src'))
+        asset_schema = DetailedAssetSchema(many=False, only=('guid', 'filename', 'src'))
         edm_json['assets'] = []
-        owner = self.get_owner()
-        if owner is not None:
-            edm_json['owner'] = {'guid': str(owner.guid), 'full_name': owner.full_name}
         for asset in self.get_assets():
-            json, err = sch.dump(asset)
+            json, err = asset_schema.dump(asset)
             edm_json['assets'].append(json)
         return edm_json

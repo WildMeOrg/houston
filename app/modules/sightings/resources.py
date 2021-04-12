@@ -424,12 +424,43 @@ class SightingByID(Resource):
     )
     @api.login_required(oauth_scopes=['sightings:write'])
     @api.parameters(parameters.PatchSightingDetailsParameters())
-    @api.response(schemas.DetailedSightingSchema())
     @api.response(code=HTTPStatus.CONFLICT)
     def patch(self, args, sighting):
         """
         Patch Sighting details by ID.
         """
+
+        edm_count = 0
+        for arg in args:
+            if (
+                'path' in arg
+                and arg['path']
+                in parameters.PatchSightingDetailsParameters.PATH_CHOICES_EDM
+            ):
+                edm_count += 1
+        if edm_count > 0 and edm_count != len(args):
+            log.error(f'Mixed edm/houston patch called with args {args}')
+            abort(
+                success=False,
+                passed_message='Cannot mix EDM patch paths and houston patch paths',
+                message='Error',
+                code=400,
+            )
+
+        if edm_count > 0:
+            log.debug(f'wanting to do edm patch on args={args}')
+            response = current_app.edm.request_passthrough(
+                'sighting.data', 'patch', {'data': args}, sighting.guid
+            )
+            rdata = response.json()
+            if not response.ok or response.status_code != 200 or not rdata['success']:
+                code = response.status_code
+                if code == 601:
+                    code = 400  # flask doesnt like us to use "invalid" codes. :(
+                log.warning(f'EDM patch got {response.status_code} response of {rdata}')
+                abort(success=False, passed_message=rdata['message'], code=code)
+            return rdata
+
         context = api.commit_or_abort(
             db.session, default_error_message='Failed to update Sighting details.'
         )

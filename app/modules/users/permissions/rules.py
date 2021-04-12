@@ -238,6 +238,8 @@ class ObjectActionRule(DenyAbortMixin, Rule):
 
         # Sightings depend on if user is the _only_ owner of referenced Encounters
         if not has_permission and isinstance(self._obj, Sighting):
+            if self._action == AccessOperation.WRITE:
+                has_permission = self._obj.single_encounter_owner() == user
             if self._action == AccessOperation.DELETE:
                 has_permission = self._obj.user_can_edit_all_encounters(user)
             if self._action == AccessOperation.READ:

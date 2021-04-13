@@ -56,8 +56,7 @@ class PatchProjectDetailsParameters(PatchJSONParametersWithPassword):
         elif field == 'encounter':
             encounter = Encounter.query.get(value)
             if encounter and (
-                current_user in obj.get_members()
-                or rules.user_is_privileged(current_user)
+                current_user in obj.get_members() or current_user.is_privileged
             ):
                 obj.add_encounter_in_context(encounter)
                 ret_val = True
@@ -99,9 +98,7 @@ class PatchProjectDetailsParameters(PatchJSONParametersWithPassword):
         elif field == 'encounter':
 
             encounter = Encounter.query.get(value)
-            if current_user not in obj.get_members() and not rules.user_is_privileged(
-                current_user
-            ):
+            if current_user not in obj.get_members() and not current_user.is_privileged:
                 ret_val = False
             elif encounter:
                 obj.remove_encounter_in_context(encounter)

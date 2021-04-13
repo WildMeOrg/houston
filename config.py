@@ -140,6 +140,7 @@ class BaseConfig(object):
         'sightings',
         'individuals',
         'annotations',
+        'site_settings',
 
         # Front-end
         #   Dependencies: Users, Auth, Assets

@@ -15,7 +15,9 @@ def create_annotation(
 ):
     with flask_app_client.login(user, auth_scopes=('annotations:write',)):
         response = flask_app_client.post(
-            PATH, data={'asset_guid': asset_uuid, 'encounter_guid': encounter_guid}
+            PATH,
+            content_type='application/json',
+            data=json.dumps({'asset_guid': asset_uuid, 'encounter_guid': encounter_guid}),
         )
 
     if expected_status_code == 200:

@@ -17,7 +17,7 @@ def create_individual(flask_app_client, user, expected_status_code=200, data_in=
         response = flask_app_client.post(
             PATH,
             data=json.dumps(data_in),
-            content_type='application/javascript',
+            content_type='application/json',
         )
 
     assert isinstance(response.json, dict)

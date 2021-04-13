@@ -58,13 +58,13 @@ def create_sighting(
             response = flask_app_client.post(
                 PATH,
                 data=json.dumps(data_in),
-                content_type='application/javascript',
+                content_type='application/json',
             )
     else:
         response = flask_app_client.post(
             PATH,
             data=json.dumps(data_in),
-            content_type='application/javascript',
+            content_type='application/json',
         )
 
     assert isinstance(response.json, dict)
@@ -90,7 +90,7 @@ def patch_sighting(
         response = flask_app_client.patch(
             '%s%s' % (PATH, sighting_guid),
             data=json.dumps(patch_data),
-            content_type='application/javascript',
+            content_type='application/json',
         )
 
     assert isinstance(response.json, dict)

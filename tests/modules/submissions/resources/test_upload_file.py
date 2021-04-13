@@ -20,6 +20,7 @@ def test_create_open_submission(flask_app_client, regular_user, db):
         with flask_app_client.login(regular_user, auth_scopes=('submissions:write',)):
             response = flask_app_client.post(
                 '/api/v1/submissions/',
+                content_type='application/json',
                 data=json.dumps(
                     {
                         'major_type': test_major_type,

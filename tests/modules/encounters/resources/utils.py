@@ -15,13 +15,13 @@ def create_encounter(flask_app_client, user, expected_status_code=200):
             response = flask_app_client.post(
                 PATH,
                 data=json.dumps({'locationId': 'PYTEST'}),
-                content_type='application/javascript',
+                content_type='application/json',
             )
     else:
         response = flask_app_client.post(
             PATH,
             data=json.dumps({'locationId': 'PYTEST'}),
-            content_type='application/javascript',
+            content_type='application/json',
         )
 
     assert isinstance(response.json, dict)

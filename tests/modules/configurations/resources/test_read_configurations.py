@@ -28,7 +28,7 @@ def test_alter_configurations(flask_app_client, researcher_1, admin_user):
         response = flask_app_client.post(
             '%s' % CONFIG_PATH,
             data=json.dumps({'site.general.description': 'Testing as researcher_1.'}),
-            content_type='application/javascript',
+            content_type='application/json',
         )
     assert response.status_code == 401  # researcher cannot do this
 
@@ -36,7 +36,7 @@ def test_alter_configurations(flask_app_client, researcher_1, admin_user):
         response = flask_app_client.post(
             '%s' % CONFIG_PATH,
             data=json.dumps({'site.general.description': 'Testing as admin.'}),
-            content_type='application/javascript',
+            content_type='application/json',
         )
 
     utils.validate_dict_response(

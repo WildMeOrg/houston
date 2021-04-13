@@ -8,7 +8,9 @@ PATH = '/api/v1/organizations/'
 
 def create_organization(flask_app_client, user, title):
     with flask_app_client.login(user, auth_scopes=('organizations:write',)):
-        response = flask_app_client.post(PATH, data=json.dumps({'title': title}))
+        response = flask_app_client.post(
+            PATH, content_type='application/json', data=json.dumps({'title': title})
+        )
     return response
 
 

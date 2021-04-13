@@ -85,6 +85,7 @@ def test_create_patch_submission(flask_app_client, researcher_1, readonly_user, 
         with flask_app_client.login(researcher_1, auth_scopes=('submissions:write',)):
             create_response = flask_app_client.post(
                 '/api/v1/submissions/',
+                content_type='application/json',
                 data=json.dumps(
                     {
                         'major_type': test_major_type,

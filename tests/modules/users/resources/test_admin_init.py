@@ -11,13 +11,17 @@ def test_admin_creation(flask_app_client):
 
     # fails due to bad email address
     data = json.dumps({'email': 'fail', 'password': 'test1234'})
-    response = flask_app_client.post('/api/v1/users/admin_user_initialized', data=data)
+    response = flask_app_client.post(
+        '/api/v1/users/admin_user_initialized', content_type='application/json', data=data
+    )
     assert response.status_code == 422
 
     # create one
     valid_email = 'test-admin@example.com'
     data = json.dumps({'email': valid_email, 'password': 'test1234'})
-    response = flask_app_client.post('/api/v1/users/admin_user_initialized', data=data)
+    response = flask_app_client.post(
+        '/api/v1/users/admin_user_initialized', content_type='application/json', data=data
+    )
     assert response.status_code == 200
     assert response.json['initialized']
 

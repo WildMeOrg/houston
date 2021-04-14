@@ -130,7 +130,7 @@ def test_getting_sightings_for_user(flask_app_client, db, staff_user):
     }
 
     sighting_create_response = sighting_utils.create_sighting(
-        flask_app_client, temp_owner, expected_status_code=200, data_in=data_in
+        flask_app_client, temp_owner, data_in
     )
 
     from app.modules.sightings.models import Sighting

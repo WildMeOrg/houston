@@ -42,6 +42,7 @@ class EDMManager(RestManager):
         'user': {
             'list': '//v0/org.ecocean.User/list',
             'data': '//v0/org.ecocean.User/%s',
+            'data_complete': '//v0/org.ecocean.User/%s?detail-org.ecocean.User=max',
         },
         'encounter': {
             'list': '//v0/org.ecocean.Encounter/list',

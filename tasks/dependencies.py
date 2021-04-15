@@ -21,35 +21,45 @@ def install_python_dependencies(context, force=False):
 
 
 @task
-def install_frontend_ui(context):
+def install_frontend_ui(context, on_error='raise'):
     # pylint: disable=unused-argument
     """
     Install Front-end UI HTML/JS/CSS assets.
     """
     log.info('Installing Front-end UI assets...')
-    context.run('bash scripts/build.frontend.sh')
-    log.info('Front-end UI is installed.')
+    try:
+        context.run('bash scripts/build.frontend.sh')
+        log.info('Front-end UI is installed.')
+    except Exception as ex:
+        if on_error in ['raise']:
+            raise ex
+        log.warn('Front-end UI failed to install. (on_error = %r)' % (on_error,))
 
 
 @task
-def install_swagger_ui(context):
+def install_swagger_ui(context, on_error='raise'):
     # pylint: disable=unused-argument
     """
     Install Swagger UI HTML/JS/CSS assets.
     """
     log.info('Installing Swagger UI assets...')
-    context.run('bash scripts/build.swagger-ui.sh')
-    log.info('Swagger UI is installed.')
+    try:
+        context.run('bash scripts/build.swagger-ui.sh')
+        log.info('Swagger UI is installed.')
+    except Exception as ex:
+        if on_error in ['raise']:
+            raise ex
+        log.warn('Swagger UI failed to install. (on_error = %r)' % (on_error,))
 
 
 @task
-def install_all_ui(context):
+def install_all_ui(context, on_error='raise'):
     # pylint: disable=unused-argument
     """
     Install project user interface dependencies.
     """
-    install_frontend_ui(context)
-    install_swagger_ui(context)
+    install_frontend_ui(context, on_error=on_error)
+    install_swagger_ui(context, on_error=on_error)
 
 
 @task

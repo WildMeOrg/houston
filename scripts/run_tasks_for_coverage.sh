@@ -57,7 +57,7 @@ else
 fi
 
 echo | coverage run --append `which invoke` app.dev.embed
-coverage run --append `which invoke` app.run.warmup
+coverage run --append `which invoke` app.run.warmup --print-routes
 coverage run --append `which invoke` app.projects.list-all
 
 # test app.endpoints.*
@@ -98,3 +98,5 @@ coverage run --append `which invoke` app.submissions.list-all
 coverage run --append `which invoke` app.organizations.list-all
 coverage run --append `which invoke` app.assets.list-all
 coverage run --append `which invoke` app.encounters.list-all
+
+coverage run --append `which invoke` dependencies.install-all-ui --on-error skip

@@ -21,7 +21,18 @@ def install_python_dependencies(context, force=False):
 
 
 @task
-def install_swagger_ui(context, force=False):
+def install_frontend_ui(context):
+    # pylint: disable=unused-argument
+    """
+    Install Front-end UI HTML/JS/CSS assets.
+    """
+    log.info('Installing Front-end UI assets...')
+    context.run('bash scripts/build.frontend.sh')
+    log.info('Front-end UI is installed.')
+
+
+@task
+def install_swagger_ui(context):
     # pylint: disable=unused-argument
     """
     Install Swagger UI HTML/JS/CSS assets.
@@ -32,10 +43,13 @@ def install_swagger_ui(context, force=False):
 
 
 @task
-def install(context):
+def install(context, only_user_interfaces=False):
     # pylint: disable=unused-argument
     """
     Install project dependencies.
     """
-    install_python_dependencies(context)
-    # install_swagger_ui(context)
+    if not only_user_interfaces:
+        install_python_dependencies(context)
+
+    install_frontend_ui(context)
+    install_swagger_ui(context)

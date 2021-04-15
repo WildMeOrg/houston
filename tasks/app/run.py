@@ -42,7 +42,7 @@ def warmup(
         os.environ['FLASK_CONFIG'] = flask_config
 
     if install_dependencies:
-        context.invoke_execute(context, 'dependencies.install')
+        context.invoke_execute(context, 'dependencies.install-python-dependencies')
 
     from app import create_app
 

@@ -41,7 +41,7 @@ See [Project Structure](PROJECT_STRUCTURE.md)
 ```bash
 git clone --recurse-submodules https://github.com/WildMeOrg/houston.git
 cd houston
-invoke dependencies.install --only-user-interfaces
+invoke dependencies.install-all-ui
 cd deploy/codex
 docker-compose up
 ```

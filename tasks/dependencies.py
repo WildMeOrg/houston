@@ -43,13 +43,21 @@ def install_swagger_ui(context):
 
 
 @task
-def install(context, only_user_interfaces=False):
+def install_all_ui(context):
+    # pylint: disable=unused-argument
+    """
+    Install project user interface dependencies.
+    """
+    install_frontend_ui(context)
+    install_swagger_ui(context)
+
+
+@task
+def install(context):
     # pylint: disable=unused-argument
     """
     Install project dependencies.
     """
-    if not only_user_interfaces:
-        install_python_dependencies(context)
-
+    install_python_dependencies(context)
     install_frontend_ui(context)
     install_swagger_ui(context)

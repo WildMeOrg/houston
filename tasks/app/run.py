@@ -119,4 +119,10 @@ def run(
             #     'https://github.com/frol/flask-restplus-server-example/issues/16'
             # )
             use_reloader = False
+
+        if app.debug:
+            log.info('Using route rules:')
+            for rule in app.url_map.iter_rules():
+                log.info('\t%r' % (rule,))
+
         return app.run(host=host, port=port, use_reloader=use_reloader)

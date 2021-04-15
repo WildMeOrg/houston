@@ -25,7 +25,7 @@ Dependencies
 
 ### Project Dependencies
 
-* [**RESTful API Server Example**](../../api/) 
+* [**RESTful API Server Example**](../../api/)
 * [**Docker**](https://www.docker.com/) 1.11+
 * [**Docker Compose**](https://docs.docker.com/compose/overview/) 1.8+
 

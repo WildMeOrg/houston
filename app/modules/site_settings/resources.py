@@ -132,7 +132,7 @@ class SiteSettingByKey(Resource):
         permissions.ObjectAccessPermission,
         kwargs_on_request=lambda kwargs: {
             'obj': kwargs['site_setting'],
-            'action': AccessOperation.WRITE,
+            'action': AccessOperation.DELETE,
         },
     )
     @api.login_required(oauth_scopes=['site-settings:write'])

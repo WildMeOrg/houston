@@ -67,60 +67,60 @@ def test_site_settings(admin_user, flask_app_client, flask_app, db, request):
 
         # Edit site setting using transactionId
         upload_dir = flask_app.config['UPLOADS_DATABASE_PATH']
-        with tempfile.TemporaryDirectory(prefix='trans-', dir=upload_dir) as td:
-            transaction_id = Path(td).name[len('trans-') :]
+        td = tempfile.mkdtemp(prefix='trans-', dir=upload_dir)
+        transaction_id = Path(td).name[len('trans-') :]
 
-            with (Path(td) / 'image.jpg').open('wb') as f:
-                with zebra_path.open('rb') as g:
-                    f.write(g.read())
-            resp = flask_app_client.post(
-                '/api/v1/site-settings/',
-                data={
-                    'key': 'header_image',
-                    'transactionId': transaction_id,
-                },
-            )
-            assert resp.status_code == 200, resp.data
-            assert resp.json['key'] == 'header_image'
-            assert resp.json['file_upload_guid'] != str(fup.guid)
+        with (Path(td) / 'image.jpg').open('wb') as f:
+            with zebra_path.open('rb') as g:
+                f.write(g.read())
+        resp = flask_app_client.post(
+            '/api/v1/site-settings/',
+            data={
+                'key': 'header_image',
+                'transactionId': transaction_id,
+            },
+        )
+        assert resp.status_code == 200, resp.data
+        assert resp.json['key'] == 'header_image'
+        assert resp.json['file_upload_guid'] != str(fup.guid)
 
         # Edit site setting using transactionId with 2 files
-        with tempfile.TemporaryDirectory(prefix='trans-', dir=upload_dir) as td:
-            transaction_id = Path(td).name[len('trans-') :]
-            with (Path(td) / 'a.txt').open('w') as f:
-                f.write('1234')
-            with (Path(td) / 'b.txt').open('w') as f:
-                f.write('5678')
-            resp = flask_app_client.post(
-                '/api/v1/site-settings/',
-                data={
-                    'key': 'header_image',
-                    'transactionId': transaction_id,
-                },
-            )
-            assert resp.status_code == 422
-            assert (
-                resp.json['message']
-                == f'Transaction {transaction_id} has 2 files, need exactly 1.'
-            )
+        td = tempfile.mkdtemp(prefix='trans-', dir=upload_dir)
+        transaction_id = Path(td).name[len('trans-') :]
+        with (Path(td) / 'a.txt').open('w') as f:
+            f.write('1234')
+        with (Path(td) / 'b.txt').open('w') as f:
+            f.write('5678')
+        resp = flask_app_client.post(
+            '/api/v1/site-settings/',
+            data={
+                'key': 'header_image',
+                'transactionId': transaction_id,
+            },
+        )
+        assert resp.status_code == 422
+        assert (
+            resp.json['message']
+            == f'Transaction {transaction_id} has 2 files, need exactly 1.'
+        )
 
         # Edit site setting using transactionId and transactionPath
-        with tempfile.TemporaryDirectory(prefix='trans-', dir=upload_dir) as td:
-            transaction_id = Path(td).name[len('trans-') :]
-            with (Path(td) / 'a.txt').open('w') as f:
-                f.write('1234')
-            with (Path(td) / 'b.txt').open('w') as f:
-                f.write('5678')
-            resp = flask_app_client.post(
-                '/api/v1/site-settings/',
-                data={
-                    'key': 'header_image',
-                    'transactionId': transaction_id,
-                    'transactionPath': 'a.txt',
-                },
-            )
-            assert resp.status_code == 200
-            assert resp.json['key'] == 'header_image'
+        td = tempfile.mkdtemp(prefix='trans-', dir=upload_dir)
+        transaction_id = Path(td).name[len('trans-') :]
+        with (Path(td) / 'a.txt').open('w') as f:
+            f.write('1234')
+        with (Path(td) / 'b.txt').open('w') as f:
+            f.write('5678')
+        resp = flask_app_client.post(
+            '/api/v1/site-settings/',
+            data={
+                'key': 'header_image',
+                'transactionId': transaction_id,
+                'transactionPath': 'a.txt',
+            },
+        )
+        assert resp.status_code == 200
+        assert resp.json['key'] == 'header_image'
 
         # Delete site setting
         resp = flask_app_client.delete('/api/v1/site-settings/header_image')

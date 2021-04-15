@@ -5,7 +5,6 @@ import config
 import os
 import pathlib
 import shutil
-import tempfile
 
 from app.modules.fileuploads.models import FileUpload, modify_image
 from PIL import Image

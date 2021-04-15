@@ -86,7 +86,7 @@ def initialize_gitlab_submissions(context, email, dryrun=False):
     ]
     submission_data = [
         (uuid.UUID('00000000-0000-0000-0000-000000000001'), []),
-        (uuid.UUID('00000000-0000-0000-0000-000000000002'), image_data),
+        (uuid.UUID('00000000-0000-0000-0000-000000000003'), image_data),
     ]
 
     for submission_guid, submission_data in submission_data:
@@ -130,7 +130,6 @@ def initialize_gitlab_submissions(context, email, dryrun=False):
                 log.info('Submission %r created' % (submission,))
             else:
                 log.info('Submission %r found locally' % (submission,))
-
             if dryrun:
                 log.info('DRYRUN: Submission creation skipped...')
                 continue

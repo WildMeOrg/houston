@@ -95,7 +95,7 @@ def test_submission_streamlined(flask_app_client, regular_user, db):
         # compares file in local repo
         for filename in test_image_list:
             local_filepath = join(test_root, filename)
-            repo_filepath = join(repo.working_tree_dir, '_submission', filename)
+            repo_filepath = join(repo.working_tree_dir, '_asset_group', filename)
             assert filecmp.cmp(local_filepath, repo_filepath)
 
         assert temp_submission.commit == repo.head.object.hexsha

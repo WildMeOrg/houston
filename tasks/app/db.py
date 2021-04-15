@@ -395,12 +395,12 @@ def _reset(context, edm_authentication=None):
     Delete the database and initialize it with data from the EDM
     """
     _db_filepath = current_app.config.get('SQLALCHEMY_DATABASE_PATH', None)
-    _submissions_filepath = current_app.config.get('SUBMISSIONS_DATABASE_PATH', None)
+    _asset_groups_filepath = current_app.config.get('ASSET_GROUP_DATABASE_PATH', None)
     _asset_filepath = current_app.config.get('ASSET_DATABASE_PATH', None)
 
     delete_filepaths = [
         _db_filepath,
-        _submissions_filepath,
+        _asset_groups_filepath,
         _asset_filepath,
     ]
 

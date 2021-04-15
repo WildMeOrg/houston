@@ -169,19 +169,18 @@ class SubmissionManager(object):
         submission_path = submission.get_absolute_path()
 
         submission_git_path = os.path.join(submission_path, '.git')
-        submission_sub_path = os.path.join(submission_path, '_submission')
+        submission_group_path = os.path.join(submission_path, '_asset_group')
         submission_asset_path = os.path.join(submission_path, '_assets')
         submission_metadata_path = os.path.join(submission_path, 'metadata.json')
 
         # Submission Repo Structure:
         #     _db/submissions/<submission GUID>/
         #         - .git/
-        #         - _submission/
+        #         - _asset_group/
         #         - - <user's uploaded data>
         #         - _assets/
-        #         - - <symlinks into _submission/ folder> with name <asset GUID >.ext --> ../_submissions/path/to/asset/original_name.ext
+        #         - - <symlinks into _asset_group/ folder> with name <asset GUID >.ext --> ../_asset_group/path/to/asset/original_name.ext
         #         - metadata.json
-
         project = None
 
         if remote:
@@ -247,9 +246,9 @@ class SubmissionManager(object):
                 origin = repo.remotes.origin
             assert origin.url == project.web_url
 
-        if not os.path.exists(submission_sub_path):
-            os.mkdir(submission_sub_path)
-        Path(os.path.join(submission_sub_path, '.touch')).touch()
+        if not os.path.exists(submission_group_path):
+            os.mkdir(submission_group_path)
+        Path(os.path.join(submission_group_path, '.touch')).touch()
 
         if not os.path.exists(submission_asset_path):
             os.mkdir(submission_asset_path)

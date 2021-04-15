@@ -240,7 +240,7 @@ def test_submission_uuid(flask_app, db, admin_user):
     from app.modules.submissions.models import Submission, SubmissionMajorType
 
     submission = Submission(
-        guid='00000000-0000-0000-0000-000000000002',
+        guid='00000000-0000-0000-0000-000000000003',
         owner_guid=admin_user.guid,
         major_type=SubmissionMajorType.test,
         description='This is a required PyTest submission (do not delete)',

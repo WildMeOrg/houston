@@ -21,6 +21,7 @@ PERMISSION_ROLE_MAP = {
     ('SiteSetting', AccessOperation.WRITE, 'Module'): ['is_privileged', 'is_admin'],
     ('SiteSetting', AccessOperation.READ, 'Object'): ['is_privileged', 'obj_is_public'],
     ('SiteSetting', AccessOperation.WRITE, 'Object'): ['is_privileged', 'is_admin'],
+    ('SiteSetting', AccessOperation.DELETE, 'Object'): ['is_privileged', 'is_admin'],
 }
 
 

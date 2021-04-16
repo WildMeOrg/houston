@@ -30,7 +30,7 @@ See [Contributing to Houston](CONTRIBUTING.md)
 
 ## Project's Code Structure
 
-See [Project Structure](PROJECT_STRUCTURE.md)
+See [Project Structure](docs/project_file_structure.md)
 
 ## Installation
 

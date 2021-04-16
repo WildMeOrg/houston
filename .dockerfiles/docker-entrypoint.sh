@@ -85,8 +85,6 @@ set_up_development_mode() {
 	pip install -e ".[testing]"
 	# stamp the version.py file in the code
 	python setup.py --version
-	# setup the swagger-ui within the development code
-	invoke dependencies.install-swagger-ui
 }
 
 _main() {

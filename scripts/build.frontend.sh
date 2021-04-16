@@ -22,15 +22,20 @@ function get_install_path() {
 }
 
 function checkout() {
+    set -ex
+
     # Look for a previous submodule checkout prior to initializing
     if [ ! -f _frontend/package.json ]; then
-        echo "Checking out  submodules..."
+        echo "Checking out submodules..."
         git submodule update --init --recursive
     fi
 }
 
 function build_in_docker() {
+    set -ex
+
     echo "Running the frontend build within Docker..."
+    docker pull node:latest
     docker run --rm -v $(pwd)/:/code -w /code node:latest /bin/bash -c "./scripts/build.frontend.sh --exec"
     echo "Finished running the build within Docker"
 }
@@ -50,7 +55,13 @@ function build() {
     rm -rf dist.*.tar.gz
 
     # Install dependencies fresh
-    npm install
+    npm cache clean -f
+
+    npm install -g npm@latest
+
+    npm install --legacy-peer-deps
+
+    npm audit fix --force
 
     # Create API file, if it doesn't exist
     if [[ ! -f src/constants/apiKeys.js ]]

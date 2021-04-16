@@ -34,6 +34,7 @@ def warmup(
     install_dependencies=False,
     build_frontend=True,
     upgrade_db=True,
+    print_routes=False,
 ):
     """
     Pre-configure the Houston API Server before running
@@ -42,7 +43,7 @@ def warmup(
         os.environ['FLASK_CONFIG'] = flask_config
 
     if install_dependencies:
-        context.invoke_execute(context, 'dependencies.install')
+        context.invoke_execute(context, 'dependencies.install-python-dependencies')
 
     from app import create_app
 
@@ -65,6 +66,11 @@ def warmup(
         #         upgrade_db=False,
         #         skip_on_failure=True,
         #     )
+
+    if print_routes or app.debug:
+        log.info('Using route rules:')
+        for rule in app.url_map.iter_rules():
+            log.info('\t%r' % (rule,))
 
     return app
 
@@ -119,4 +125,5 @@ def run(
             #     'https://github.com/frol/flask-restplus-server-example/issues/16'
             # )
             use_reloader = False
+
         return app.run(host=host, port=port, use_reloader=use_reloader)

@@ -33,6 +33,10 @@ coverage run --append `which invoke` app.db.revision
 rm -rf test-db-init
 coverage run --append `which invoke` app.db.init --directory=test-db-init
 
+# make sure swagger-ui.zip doesn't exist
+rm -f app/static/bower/swagger-ui.zip
+coverage run --append `which invoke` dependencies.install-swagger-ui --force
+
 # test app.boilerplates.crud-module
 rm -rf app/modules/testapp
 coverage run --append `which invoke` app.boilerplates.crud-module
@@ -57,7 +61,7 @@ else
 fi
 
 echo | coverage run --append `which invoke` app.dev.embed
-coverage run --append `which invoke` app.run.warmup --print-routes
+coverage run --append `which invoke` app.run.warmup
 coverage run --append `which invoke` app.projects.list-all
 
 # test app.endpoints.*
@@ -98,5 +102,3 @@ coverage run --append `which invoke` app.submissions.list-all
 coverage run --append `which invoke` app.organizations.list-all
 coverage run --append `which invoke` app.assets.list-all
 coverage run --append `which invoke` app.encounters.list-all
-
-coverage run --append `which invoke` dependencies.install-all-ui --on-error skip

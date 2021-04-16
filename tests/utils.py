@@ -7,7 +7,6 @@ Testing utils
 from contextlib import contextmanager
 from datetime import datetime, timedelta
 import json
-import tempfile
 
 from flask import Response
 from flask.testing import FlaskClient
@@ -15,7 +14,6 @@ from werkzeug.utils import cached_property
 from app.extensions.auth import security
 
 import uuid
-import os
 
 
 class AutoAuthFlaskClient(FlaskClient):
@@ -102,14 +100,6 @@ class JSONResponse(Response):
     @cached_property
     def json(self):
         return json.loads(self.get_data(as_text=True))
-
-
-class TemporaryDirectoryGraceful(tempfile.TemporaryDirectory):
-    def __exit__(self, *args, **kwargs):
-        try:
-            super(TemporaryDirectoryGraceful, self).__exit__(*args, **kwargs)
-        except FileNotFoundError:
-            assert not os.path.exists(self.name)
 
 
 def generate_encounter_instance(user_email=None, user_password=None, user_full_name=None):

@@ -41,7 +41,8 @@ See [Project Structure](PROJECT_STRUCTURE.md)
 ```bash
 git clone --recurse-submodules https://github.com/WildMeOrg/houston.git
 cd houston
-invoke dependencies.install-all-ui
+# build the frontend
+./scripts/build.frontend.sh
 cd deploy/codex
 docker-compose up
 ```
@@ -86,7 +87,9 @@ echo "source $SCRIPT" >> virtualenv/houston3.7/bin/activate
 Set up and install the package:
 
 ```bash
-invoke dependencies.install
+pip install -e .
+invoke app.dependencies.install
+./scripts/build.frontend.sh
 ```
 
 #### Run Server

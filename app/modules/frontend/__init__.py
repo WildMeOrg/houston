@@ -16,12 +16,14 @@ def init_app(app, **kwargs):
     api_v1.add_oauth_scope('frontends:write', 'Provide write access to Frontend details')
 
     # Touch underlying modules
-    from . import views_backend, views_frontend
+    from . import views_backend, views_frontend, views_documentation
 
     # Mount front-end routes
     app.register_blueprint(views_frontend.frontend_blueprint)
 
     app.register_blueprint(views_backend.backend_blueprint)
+
+    app.register_blueprint(views_documentation.documentation_blueprint)
 
     from . import resources  # NOQA
 

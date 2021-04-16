@@ -42,9 +42,9 @@ $ invoke app.module.task
 - [ ] Ensure that the PR is properly formatted
   - Example: All lint checks are passing
 - [ ] Ensure that the PR is properly rebased
-  - Example: The PR is rebased on `main` (commit: `<insert commit hash>`)
+  - Example: The PR is rebased on `develop` (commit: `<insert develop commit hash>`)
 - [ ] Ensure that the PR uses a consolidated database migration
-  - Example: One database migration is proposed (revision `<insert revision>` -> `<insert new revision>`)
+  - Example: One database migration is proposed (revision `<insert develop revision>` -> `<insert new revision>`)
 - [ ] Ensure that the PR is properly tested
   - Example: All automated tests are passing
 - [ ] Ensure that the PR is properly covered

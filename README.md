@@ -32,6 +32,10 @@ See [Contributing to Houston](CONTRIBUTING.md)
 
 See [Project Structure](docs/project_file_structure.md)
 
+## Background and Periodic Tasks using Celery
+
+See [Background and Periodic Tasks](docs/background_tasks.md)
+
 ## Installation
 
 ### Using docker-compose (recommended)

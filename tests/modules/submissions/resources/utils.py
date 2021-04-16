@@ -115,7 +115,6 @@ class CloneSubmission(object):
                 test_utils.patch_add_op('owner', '%s' % owner.guid),
             ]
             patch_submission(client, guid, admin_user, data)
-
             # and read it back as the real user
             with client.login(owner, auth_scopes=('submissions:read',)):
                 self.response = client.get(url)

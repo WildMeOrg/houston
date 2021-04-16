@@ -29,7 +29,7 @@ class BaseConfig(object):
     PROJECT_DATABASE_PATH = str(DATA_ROOT)
 
     ASSET_GROUP_DATABASE_PATH = str(DATA_ROOT / 'assetGroup')
-    SUBMISSIONS_MIME_TYPE_WHITELIST = [
+    ASSET_MIME_TYPE_WHITELIST = [
         'application/json',
         'application/ld+json',
         'application/msword',

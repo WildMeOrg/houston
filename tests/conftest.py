@@ -211,35 +211,34 @@ def empty_individual():
     return _individual
 
 
-def create_submission_repo(flask_app, db, submission, file_data=[]):
-    if pathlib.Path(submission.get_absolute_path()).exists():
-        shutil.rmtree(submission.get_absolute_path())
-    flask_app.sub.ensure_initialized()
-    projects = flask_app.sub.gl.projects.list(search=str(submission.guid))
-    if len(projects) > 0:
+def ensure_asset_group_repo(flask_app, db, asset_group, file_data=[]):
+    if pathlib.Path(asset_group.get_absolute_path()).exists():
+        shutil.rmtree(asset_group.get_absolute_path())
+    repo = flask_app.agm.get_repository(asset_group)
+    if repo:
         # repo already exists
         return
 
     with db.session.begin():
-        db.session.add(submission)
-    db.session.refresh(submission)
-    submission.ensure_repository(additional_tags=['type:pytest-required'])
+        db.session.add(asset_group)
+    db.session.refresh(asset_group)
+    flask_app.agm.create_repository(asset_group, additional_tags=['type:pytest-required'])
     filepath_guid_mapping = {}
     for uuid_, path in file_data:
-        repo_filepath = submission.git_copy_file_add(str(path))
+        repo_filepath = asset_group.git_copy_file_add(str(path))
         filepath_guid_mapping[repo_filepath] = uuid_
-    submission.git_commit(
+    asset_group.git_commit(
         'Initial commit for testing',
         existing_filepath_guid_mapping=filepath_guid_mapping,
     )
-    submission.git_push()
+    asset_group.git_push()
 
 
 @pytest.fixture(scope='session')
 def test_submission_uuid(flask_app, db, admin_user):
     from app.modules.submissions.models import Submission, SubmissionMajorType
 
-    submission = Submission(
+    asset_group = Submission(
         guid='00000000-0000-0000-0000-000000000003',
         owner_guid=admin_user.guid,
         major_type=SubmissionMajorType.test,
@@ -258,22 +257,22 @@ def test_submission_uuid(flask_app, db, admin_user):
             file_root / 'fluke.jpg',
         ),
     ]
-    create_submission_repo(flask_app, db, submission, file_data)
-    return submission.guid
+    ensure_asset_group_repo(flask_app, db, asset_group, file_data)
+    return asset_group.guid
 
 
 @pytest.fixture(scope='session')
 def test_empty_submission_uuid(flask_app, db, admin_user):
     from app.modules.submissions.models import Submission, SubmissionMajorType
 
-    submission = Submission(
+    asset_group = Submission(
         guid='00000000-0000-0000-0000-000000000001',
         owner_guid=admin_user.guid,
         major_type=SubmissionMajorType.test,
         description='',
     )
-    create_submission_repo(flask_app, db, submission)
-    return submission.guid
+    ensure_asset_group_repo(flask_app, db, asset_group)
+    return asset_group.guid
 
 
 @pytest.fixture(scope='session')

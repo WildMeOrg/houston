@@ -95,7 +95,9 @@ class Submissions(Resource):
             args['owner_guid'] = current_user.guid
             submission = Submission(**args)
             db.session.add(submission)
-        repo, project = submission.ensure_repository()
+
+        # Get the repo to make sure it's configured
+        current_app.agm.get_repository(submission)
         return submission
 
 
@@ -150,7 +152,8 @@ class SubmissionsStreamlined(Resource):
             submission = Submission(**args)
             db.session.add(submission)
 
-        repo, project = submission.ensure_repository()
+        # Get the repo to make sure it's configured
+        current_app.agm.get_repository(submission)
 
         for upload_file in request.files.getlist('files'):
             submission.git_write_upload_file(upload_file)
@@ -190,8 +193,9 @@ class SubmissionByID(Resource):
         submission_guid = submission_guids[0]
         assert isinstance(submission_guid, uuid.UUID)
 
-        if current_app.sub.is_submission_on_remote(submission_guid):
+        if current_app.agm.is_asset_group_on_remote(submission_guid):
             # Submission is not local but is on remote
+            log.info(f'Submission {submission_guid} on remote but not local')
             raise werkzeug.exceptions.PreconditionRequired
         else:
             # Submission neither local nor remote
@@ -246,6 +250,7 @@ class SubmissionByID(Resource):
         """
         submission, submission_guids = submission
         if submission is not None:
+            log.info(f'Submission {submission.guid} found locally on post')
             return submission
 
         # We did not find the submission by its UUID in the Houston database
@@ -254,7 +259,7 @@ class SubmissionByID(Resource):
         assert isinstance(submission_guid, uuid.UUID)
 
         # Clone if present on gitlab
-        submission = current_app.sub.ensure_submission(submission_guid)
+        submission = Submission.ensure_asset_group(submission_guid)
         if submission is None:
             # We have checked the submission manager and cannot find this submission, raise 404 manually
             raise werkzeug.exceptions.NotFound

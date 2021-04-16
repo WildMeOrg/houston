@@ -91,25 +91,16 @@ def initialize_gitlab_submissions(context, email, dryrun=False):
 
     for submission_guid, submission_data in submission_data:
 
-        current_app.sub.ensure_initialized()
-        projects = current_app.sub.gl.projects.list(
-            search=str(submission_guid), retry_transient_errors=True
-        )
+        current_app.agm.ensure_initialized()
+        project = current_app.agm.get_remote_project(submission_guid)
 
-        if len(projects) > 0:
-            assert len(projects) == 1
-            project = projects[0]
+        if project:
+
             log.info(
-                'Submission %r already on GitLab, existing tags: %r'
-                % (
-                    submission_guid,
-                    project.tag_list,
-                )
+                f'Submission {submission_guid} already on GitLab, existing tags: {project.tag_list}'
             )
         else:
-            log.info(
-                'Submission %r missing on GitLab, provisioning...' % (submission_guid,)
-            )
+            log.info(f'Submission {submission_guid} missing on GitLab, provisioning...')
 
             submission = Submission.query.get(submission_guid)
 

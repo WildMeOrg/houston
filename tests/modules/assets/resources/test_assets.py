@@ -48,9 +48,6 @@ def test_find_asset(
 
         # Force the server to release the file handler
         src_response.close()
-
-    except Exception as ex:
-        raise ex
     finally:
         clone.cleanup()
 
@@ -97,9 +94,6 @@ def test_find_deleted_asset(
 
         # Force the server to release the file handler
         src_response.close()
-
-    except Exception as ex:
-        raise ex
     finally:
         clone.cleanup()
 
@@ -128,9 +122,6 @@ def test_user_asset_permissions(
             response = flask_app_client.get(test_asset)
 
         assert response.status_code == 403
-
-    except Exception as ex:
-        raise ex
     finally:
         clone.cleanup()
 
@@ -167,8 +158,5 @@ def test_read_all_assets(
             admin_response.json[1]['guid'] == test_clone_submission_data['asset_uuids'][1]
         )
         utils.validate_dict_response(researcher_response, 403, {'status', 'message'})
-
-    except Exception as ex:
-        raise ex
     finally:
         clone.cleanup()

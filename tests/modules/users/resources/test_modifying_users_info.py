@@ -73,8 +73,6 @@ def test_modifying_user_info_by_owner(flask_app_client, regular_user, db):
 
         assert temp_user.email == regular_user.email
         assert temp_user.full_name == 'Modified Full Name'
-    except Exception as ex:
-        raise ex
     finally:
         # Restore original state
         regular_user.full_name = saved_full_name
@@ -125,8 +123,6 @@ def test_modifying_user_info_by_admin(flask_app_client, admin_user, regular_user
         assert not temp_user.is_active
         assert not temp_user.is_staff
         assert temp_user.is_admin
-    except Exception as ex:
-        raise ex
     finally:
         # Restore original state
         regular_user.full_name = saved_full_name
@@ -170,8 +166,6 @@ def test_modifying_user_info_admin_fields_by_not_admin(
         assert response.content_type == 'application/json'
         assert isinstance(response.json, dict)
         assert set(response.json.keys()) >= {'status', 'message'}
-    except Exception as ex:
-        raise ex
     finally:
         regular_user.full_name = saved_full_name
         regular_user.is_active = True

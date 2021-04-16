@@ -32,8 +32,6 @@ def test_modifying_db_config_by_regular_user(flask_app_client, regular_user, db)
             assert set(response.json.keys()) >= {'status', 'message'}
 
             utils.get_and_check_houston_configs()  # Ensure an empty database of existing configs
-    except Exception as ex:
-        raise ex
     finally:
         utils.delete_all_houston_configs(db)
 
@@ -63,8 +61,6 @@ def test_modifying_db_config_by_admin(flask_app_client, staff_user, db):
 
             assert response.json
             utils.get_and_check_houston_configs()
-    except Exception as ex:
-        raise ex
     finally:
         utils.delete_all_houston_configs(db)
 
@@ -91,8 +87,6 @@ def test_modifying_db_config_by_admin_with_invalid_password_must_fail(
             assert set(response.json.keys()) >= {'status', 'message'}
 
             utils.get_and_check_houston_configs()  # Ensure an empty database of existing configs
-    except Exception as ex:
-        raise ex
     finally:
         utils.delete_all_houston_configs(db)
 
@@ -149,8 +143,6 @@ def test_modifying_db_config_by_admin_with_idempotence(flask_app_client, staff_u
             assert response.json
             utils.get_and_check_houston_configs()
 
-    except Exception as ex:
-        raise ex
     finally:
         utils.delete_all_houston_configs(db)
 
@@ -173,8 +165,6 @@ def test_modifying_db_config_by_admin_with_batch(flask_app_client, staff_user, d
 
             assert response.json
             utils.get_and_check_houston_configs(key='ENV', value=new_env)
-    except Exception as ex:
-        raise ex
     finally:
         utils.delete_all_houston_configs(db)
 
@@ -197,8 +187,6 @@ def test_modifying_nonexistent_db_config_by_admin(flask_app_client, staff_user, 
             assert set(response.json.keys()) >= {'status', 'message'}
 
             utils.get_and_check_houston_configs()  # Ensure an empty database of existing configs
-    except Exception as ex:
-        raise ex
     finally:
         utils.delete_all_houston_configs(db)
 
@@ -221,7 +209,5 @@ def test_modifying_db_config_by_admin_with_bad_value(flask_app_client, staff_use
             assert set(response.json.keys()) >= {'status', 'message'}
 
             utils.get_and_check_houston_configs()  # Ensure an empty database of existing configs
-    except Exception as ex:
-        raise ex
     finally:
         utils.delete_all_houston_configs(db)

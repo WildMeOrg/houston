@@ -67,8 +67,6 @@ def test_user_read_permissions(
         #    )
         # assert submission_response.status_code == 403
 
-    except Exception as ex:
-        raise ex
     finally:
         clone.cleanup()
 
@@ -161,9 +159,6 @@ def test_create_patch_submission(flask_app_client, researcher_1, readonly_user, 
                 '/api/v1/submissions/%s' % uuid.uuid4()
             )
         assert regular_delete_response.status_code == 204
-
-    except Exception as ex:
-        raise ex
     finally:
         current_app.sub.delete_remote_submission(temp_submission)
         # Restore original state

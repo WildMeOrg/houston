@@ -63,7 +63,5 @@ def test_patch_annotation(
 
         read_annotation = Annotation.query.get(annotation_guid)
         assert read_annotation is None
-    except Exception as ex:
-        raise ex
     finally:
         clone.cleanup()

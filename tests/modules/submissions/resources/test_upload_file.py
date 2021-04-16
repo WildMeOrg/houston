@@ -43,8 +43,6 @@ def test_create_open_submission(flask_app_client, regular_user, db):
 
         assert temp_submission.commit is None
         assert temp_submission.major_type == test_major_type
-    except Exception as ex:
-        raise ex
     finally:
         current_app.sub.delete_remote_submission(temp_submission)
         # Restore original state
@@ -102,8 +100,6 @@ def test_submission_streamlined(flask_app_client, regular_user, db):
 
         assert temp_submission.commit == repo.head.object.hexsha
         assert temp_submission.major_type == test_major_type
-    except Exception as ex:
-        raise ex
     finally:
         current_app.sub.delete_remote_submission(temp_submission)
 

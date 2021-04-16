@@ -59,8 +59,5 @@ def test_ensure_clone_submission_by_uuid(
             db_asset = Asset.query.get(asset.guid)
             assert asset == db_asset
             assert asset.guid == expected_guid
-
-    except Exception as ex:
-        raise ex
     finally:
         clone.cleanup()

@@ -257,8 +257,6 @@ def test_ObjectAccessPermission_authenticated_user(authenticated_user_login):
         validate_can_read_object(obj)
         validate_can_write_object(obj)
         validate_can_delete_object(obj)
-    except Exception as ex:
-        raise ex
     finally:
         # reset back to the real one and check that it works
         authenticated_user_login.owns_object = prev_owns_object

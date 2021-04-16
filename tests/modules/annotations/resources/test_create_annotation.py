@@ -49,8 +49,6 @@ def test_create_and_delete_annotation(
 
         read_annotation = Annotation.query.get(annotation_guid)
         assert read_annotation is None
-    except Exception as ex:
-        raise ex
     finally:
         clone.cleanup()
 
@@ -116,8 +114,5 @@ def test_annotation_permission(
 
         # delete it
         annot_utils.delete_annotation(flask_app_client, researcher_1, annotation_guid)
-
-    except Exception as ex:
-        raise ex
     finally:
         clone.cleanup()

@@ -30,7 +30,11 @@ See [Contributing to Houston](CONTRIBUTING.md)
 
 ## Project's Code Structure
 
-See [Project Structure](PROJECT_STRUCTURE.md)
+See [Project Structure](docs/project_file_structure.md)
+
+## Background and Periodic Tasks using Celery
+
+See [Background and Periodic Tasks](docs/background_tasks.md)
 
 ## Installation
 

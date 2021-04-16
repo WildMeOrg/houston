@@ -5,6 +5,7 @@ Houston API Server.
 import os
 import sys
 
+from celery import Celery
 from flask import Flask
 from werkzeug.contrib.fixers import ProxyFix
 import logging
@@ -135,6 +136,19 @@ def create_app(flask_config_name=None, config_override={}, testing=False, **kwar
 
     # Replace app.config (flask.Config) with our HoustonFlaskConfig version
     configure_using_houston_flask_config(app)
+
+    # Set up celery using redis as the broker and result backend
+    # Use the same redis instance as tus but use database "1"
+    redis_uri = f'redis://{app.config["REDIS_HOST"]}/1'
+    app.celery = Celery('houston', broker=redis_uri, backend=redis_uri)
+    # celery.conf.update(app.config)
+
+    class ContextTask(app.celery.Task):
+        def __call__(self, *args, **kwargs):
+            with app.app_context():
+                return self.run(*args, **kwargs)
+
+    app.celery.Task = ContextTask
 
     if testing:
         return app

@@ -5,12 +5,11 @@ import config
 import os
 import pathlib
 import shutil
+import tempfile
 
 from app.modules.fileuploads.models import FileUpload, modify_image
 from PIL import Image
 import pytest
-
-from tests.utils import TemporaryDirectoryGraceful
 
 
 def _source_file():
@@ -173,7 +172,7 @@ def test_fileuploads_get_src(flask_app, flask_app_client, db, request):
 
 
 def test_modify_image(flask_app):
-    with TemporaryDirectoryGraceful() as td:
+    with tempfile.TemporaryDirectory() as td:
         test_file = pathlib.Path(td) / 'zebra.jpg'
         with (
             pathlib.Path(flask_app.config.get('PROJECT_ROOT'))

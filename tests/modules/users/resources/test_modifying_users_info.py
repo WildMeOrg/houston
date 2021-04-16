@@ -11,8 +11,6 @@ from app.modules.users.models import User
 from app.modules.fileuploads.models import FileUpload
 from PIL import Image
 
-from tests.utils import TemporaryDirectoryGraceful
-
 
 def test_user_id_not_found(flask_app_client, regular_user):
     with flask_app_client.login(
@@ -313,7 +311,7 @@ def test_user_profile_fileupload(db, flask_app, flask_app_client, regular_user, 
         assert response.status_code == 200, response.data
 
         # Create file upload
-        with TemporaryDirectoryGraceful() as td:
+        with tempfile.TemporaryDirectory() as td:
             testfile = Path(td) / 'a.txt'
             with testfile.open('w') as f:
                 f.write('abcd\n')
@@ -496,7 +494,7 @@ def test_user_profile_fileupload(db, flask_app, flask_app_client, regular_user, 
         assert updated_user.profile_fileupload_guid is None
 
         # Create file upload
-        with TemporaryDirectoryGraceful() as td:
+        with tempfile.TemporaryDirectory() as td:
             testfile = Path(td) / 'image.jpg'
             with testfile.open('wb') as f:
                 f.write(zebra)
@@ -580,7 +578,7 @@ def test_user_profile_fileupload(db, flask_app, flask_app_client, regular_user, 
             assert image.size == (150, 150)
 
         # Create non image fileupload
-        with TemporaryDirectoryGraceful() as td:
+        with tempfile.TemporaryDirectory() as td:
             testfile = Path(td) / 'a.txt'
             with testfile.open('w') as f:
                 f.write('abcd\n')

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 import argparse
 import time
 
@@ -8,12 +7,8 @@ import requests
 
 def parser(argv):
     p = argparse.ArgumentParser()
-    p.add_argument(
-        'gitlab_url', help='url to the gitlab instance (e.g. http://gitlab:80)'
-    )
-    p.add_argument(
-        '--admin-password', help='password to assign or use for the admin user'
-    )
+    p.add_argument('gitlab_url', help='url to the gitlab instance (e.g. http://gitlab:80)')
+    p.add_argument('--admin-password', help='password to assign or use for the admin user')
     return p.parse_args(argv)
 
 
@@ -53,7 +48,7 @@ def main(argv=None):
         except AssertionError:
             # the gitlab service isn't up quite yet
             if retry_count >= 4:
-                print('Something unexpected happen during the setup of GitLab')
+                print("Something unexpected happen during the setup of GitLab")
                 raise
             retry_count += 1
             time.sleep(30)

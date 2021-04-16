@@ -4,11 +4,18 @@ Sightings database models
 --------------------
 """
 
-from app.extensions import FeatherModel, db
+from app.extensions import FeatherModel, HoustonModel, db
 import uuid
 import logging
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
+
+
+class SightingAssets(db.Model, HoustonModel):
+    sighting_guid = db.Column(db.GUID, db.ForeignKey('sighting.guid'), primary_key=True)
+    asset_guid = db.Column(db.GUID, db.ForeignKey('asset.guid'), primary_key=True)
+    encounter = db.relationship('Sighting', back_populates='assets')
+    asset = db.relationship('Asset')
 
 
 class Sighting(db.Model, FeatherModel):
@@ -20,6 +27,8 @@ class Sighting(db.Model, FeatherModel):
         db.GUID, default=uuid.uuid4, primary_key=True
     )  # pylint: disable=invalid-name
     version = db.Column(db.BigInteger, default=None, nullable=True)
+
+    assets = db.relationship('SightingAssets')
 
     def __repr__(self):
         return (
@@ -66,16 +75,48 @@ class Sighting(db.Model, FeatherModel):
         if encounter not in self.encounters:
             self.encounters.append(encounter)
 
+    def get_assets(self):
+        return [ref.asset for ref in self.assets]
+
+    def add_asset(self, asset):
+        with db.session.begin(subtransactions=True):
+            self.add_asset_in_context(asset)
+
+    def add_assets(self, asset_list):
+        with db.session.begin():
+            for asset in asset_list:
+                self.add_asset_in_context(asset)
+
+    def add_asset_in_context(self, asset):
+        rel = SightingAssets(sighting=self, asset=asset)
+        db.session.add(rel)
+        self.assets.append(rel)
+
+    def add_asset_no_context(self, asset):
+        rel = SightingAssets(sighting_guid=self.guid, asset_guid=asset.guid)
+        self.assets.append(rel)
+
+    def add_assets_no_context(self, asset_list):
+        for asset in asset_list:
+            self.add_asset_no_context(asset)
+
     def delete(self):
         with db.session.begin():
             db.session.delete(self)
 
     def delete_cascade(self):
+        assets = self.get_assets()
         with db.session.begin(subtransactions=True):
+            while self.assets:
+                # this is actually removing the SightingAssets joining object (not the assets)
+                db.session.delete(self.assets.pop())
             while self.encounters:
                 enc = self.encounters.pop()
                 enc.delete_cascade()
             db.session.delete(self)
+            while assets:
+                asset = assets.pop()
+                asset.delete_cascade()
 
     def delete_from_edm(self, current_app):
         return Sighting.delete_from_edm_by_guid(current_app, self.guid)
@@ -117,4 +158,13 @@ class Sighting(db.Model, FeatherModel):
                         )
                     self.encounters[i].augment_edm_json(edm_enc)
                     i += 1
+        if self.assets is None or len(self.assets) < 1:
+            return edm_json
+        from app.modules.assets.schemas import DetailedAssetSchema
+
+        asset_schema = DetailedAssetSchema(many=False, only=('guid', 'filename', 'src'))
+        edm_json['assets'] = []
+        for asset in self.get_assets():
+            json, err = asset_schema.dump(asset)
+            edm_json['assets'].append(json)
         return edm_json

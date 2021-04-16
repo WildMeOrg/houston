@@ -63,9 +63,7 @@ class SightingCleanup(object):
         )
 
 
-def _validate_asset_references(enc_list):
-    # now we handle asset-related json that came in. note: arrays should be parallel in request_in/result_data
-    # we make sure assetReferences is well-formed and also maps (future) assets to encounters
+def _validate_asset_references(asset_references):
 
     # NOTE for simplicity i am going to assume assetReferences *share a common transaction id*  !!
     #  this will very likely always be true, but in the event it proves not to be, this will have to be altered
@@ -76,40 +74,31 @@ def _validate_asset_references(enc_list):
         []
     )  # parallel list (to encounters) of set of asset paths for that encounter
     i = 0
-    while i < len(enc_list):
-        enc_data = enc_list[i]
-        paths_wanted.append(set())
-        # TODO handle regular .assets flavor
-        # TODO genericize this across here and encounters
-        if 'assetReferences' not in enc_data or not isinstance(
-            enc_data['assetReferences'], list
+    paths_wanted.append(set())
+    if not isinstance(asset_references, list) or len(asset_references) < 1:
+        return None, None
+
+    for reference in asset_references:
+        if (
+            not isinstance(reference, dict)
+            or 'path' not in reference
+            or 'transactionId' not in reference
         ):
-            i += 1
-            continue  # dont have any assetReferences!  try next encounter....
+            log.error('Sighting.post malformed assetReferences data: %r' % (reference))
+            raise ValueError('malformed assetReference in json')
+        paths_wanted[i].add(reference['path'])
+        if reference['transactionId'] not in all_references:
+            all_references[reference['transactionId']] = set()
+        all_references[reference['transactionId']].add(reference['path'])
 
-        for aref in enc_data['assetReferences']:
-            if (
-                not isinstance(aref, dict)
-                or 'path' not in aref
-                or 'transactionId' not in aref
-            ):
-                log.error('Sighting.post malformed assetReferences data: %r' % (aref))
-                raise ValueError('malformed assetReference in json')
-            paths_wanted[i].add(aref['path'])
-            if aref['transactionId'] not in all_arefs:
-                all_arefs[aref['transactionId']] = set()
-            all_arefs[aref['transactionId']].add(aref['path'])
-
-        i += 1  # on to next encounter...
-
-    if len(all_arefs.keys()) < 1:  # hmm... no one had any assetReferences!
+    if len(all_references.keys()) < 1:  # hmm... no one had any assetReferences!
         return None, None
 
     # now we make sure we have the files we need so we can abort if not (they may fail later for other reasons)
     from app.extensions.tus import tus_upload_dir
 
-    for tid in all_arefs:
-        for path in all_arefs[tid]:
+    for tid in all_references:
+        for path in all_references[tid]:
             file_path = os.path.join(
                 tus_upload_dir(current_app, transaction_id=tid), path
             )
@@ -128,10 +117,10 @@ def _validate_asset_references(enc_list):
                 )
                 raise ValueError('Error with path ' + path)
 
-    return all_arefs, paths_wanted
+    return all_references, paths_wanted
 
 
-def _enc_assets(assets, paths_wanted):
+def _validate_assets(assets, paths_wanted):
     if len(paths_wanted) < 1:
         return None
     matches = []
@@ -290,11 +279,13 @@ class Sightings(Resource):
             )
 
         try:
-            all_arefs, paths_wanted = _validate_asset_references(request_in['encounters'])
+            all_arefs, paths_wanted = _validate_asset_references(
+                request_in['assetReferences']
+            )
         except Exception as ex:
             cleanup.rollback_and_abort(
                 'Invalid assetReference data in encounter(s)',
-                '_validate_asset_references threw %r on encounters=%r'
+                '_validate_asset_references threw %r on assets=%r'
                 % (ex, request_in['encounters']),
             )
         log.debug(
@@ -335,7 +326,14 @@ class Sightings(Resource):
             version=result_data.get('version', 2),
         )
 
-        # create encounters (including adding their assets if applicable)
+        assets = None
+        if paths_wanted is not None:
+            assets = _validate_assets(submission.assets, paths_wanted)
+            if assets is not None:
+                sighting.add_assets_no_context(assets)
+        log.debug('Sighting with guid=%r is adding assets=%r' % (sighting.guid, assets))
+
+        # create encounters
         from app.modules.encounters.models import Encounter
 
         if isinstance(result_data['encounters'], list):
@@ -349,20 +347,13 @@ class Sightings(Resource):
                         submitter_guid=submitter_guid,
                         public=pub,
                     )
-                    enc_assets = None
-                    if paths_wanted is not None:
-                        # will throw exception if we dont have all we need
-                        enc_assets = _enc_assets(asset_group.assets, paths_wanted[i])
-                        if enc_assets is not None:
-                            encounter.add_assets_no_context(enc_assets)
-                    log.debug('%r is adding enc_assets=%r' % (encounter, enc_assets))
                     sighting.add_encounter(encounter)
                     i += 1
                 except Exception as ex:
                     cleanup.rollback_and_abort(
-                        'Problem with encounter/assets',
-                        '%r on encounter %d: paths_wanted=%r; enc=%r'
-                        % (ex, i, paths_wanted, request_in['encounters'][i]),
+                        'Problem with creating encounter: ',
+                        '%r on encounter %d: enc=%r'
+                        % (ex, i, request_in['encounters'][i]),
                     )
 
         context = api.commit_or_abort(
@@ -376,6 +367,7 @@ class Sightings(Resource):
                 'id': str(sighting.guid),
                 'version': sighting.version,
                 'encounters': result_data['encounters'],
+                'assets': assets,
             },
         }
         return rtn

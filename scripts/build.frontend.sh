@@ -8,6 +8,12 @@ if [ ! -z ${DEBUG} ]; then
     set -x
 fi
 
+# check to see if this file is being run or sourced from another script
+function _is_sourced() {
+    # https://unix.stackexchange.com/a/215279
+    [ ${#BASH_SOURCE[@]} -eq 0 ]
+}
+
 function trap_error_help() {
     set +x
     echo "If you are having issues building:"
@@ -85,21 +91,29 @@ function build() {
 }
 
 function install() {
+    echo "Installing ..."
     dist_install=$(get_install_path)
     rm -rf ${BASE_INSTALL_PATH}/dist-latest
     mkdir -p ${dist_install}
     tar -zxvf _frontend/dist.latest.tar.gz -C ${dist_install} --strip-components=1
     # Assume dist_install is also in $BASE_INSTALL_PATH
     ln -s $(basename ${dist_install}) ${BASE_INSTALL_PATH}/dist-latest
+    echo "Finished Installing"
 }
 
-# Build within a Node container
-if [[ "$1" != "--exec" ]]; then
-    trap trap_error_help ERR
-    checkout
-    build_in_docker
-    install
-    exit $?
-else
-    build
+function _main() {
+    # Build within a Node container
+    if [[ "$1" != "--exec" ]]; then
+        trap trap_error_help ERR
+        checkout
+        build_in_docker
+        install
+        exit $?
+    else
+        build
+    fi
+}
+
+if ! _is_sourced; then
+    _main "$@"
 fi

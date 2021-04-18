@@ -69,19 +69,27 @@ class SubmissionManager(object):
                 self.gl.auth()
                 log.info('Logged in: %r' % (self.gl,))
 
+                def get_namespaces():
+                    # Can't do exact search via the api, but we can filter to an exact match
+                    return [
+                        n
+                        for n in self.gl.namespaces.list(search=remote_namespace)
+                        if n.name == remote_namespace
+                    ]
+
                 # Check for namespace
                 if remote_namespace is None:
                     namespace = self.gl.namespaces.get(id=self.gl.user.id)
                 else:
-                    namespaces = self.gl.namespaces.list(search=remote_namespace)
+                    namespaces = get_namespaces()
                     if len(namespaces) == 0:
                         path = remote_namespace.lower()
                         group = self.gl.groups.create(
                             {'name': remote_namespace, 'path': path}
                         )
                         namespace = self.gl.namespaces.get(id=group.id)
-                        namespaces = self.gl.namespaces.list(search=remote_namespace)
-                    assert len(namespaces) == 1
+                        namespaces = get_namespaces()
+                    assert len(namespaces) >= 1, 'Failed to create gitlab namespace!?'
                     namespace = namespaces[0]
 
                 self.namespace = namespace

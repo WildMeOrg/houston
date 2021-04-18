@@ -92,8 +92,9 @@ class CloneSubmission(object):
                 shutil.rmtree(submission_path)
             assert not os.path.exists(submission_path)
 
+        url = f'{PATH}{guid}'
         with client.login(owner, auth_scopes=('submissions:read',)):
-            self.response = client.get('%s%s' % (PATH, guid))
+            self.response = client.get(url)
 
         # only store the submission if the clone worked
         if self.response.status_code == 200:
@@ -103,7 +104,7 @@ class CloneSubmission(object):
             # 428 Precondition Required
             # 403 Forbidden
             with client.login(admin_user, auth_scopes=('submissions:write',)):
-                self.response = client.post('%s%s' % (PATH, guid))
+                self.response = client.post(url)
 
             # only store the submission if the clone worked
             if self.response.status_code == 200:
@@ -117,7 +118,7 @@ class CloneSubmission(object):
 
             # and read it back as the real user
             with client.login(owner, auth_scopes=('submissions:read',)):
-                self.response = client.get('%s%s' % (PATH, guid))
+                self.response = client.get(url)
 
     def remove_files(self):
         database_path = config.TestingConfig.SUBMISSIONS_DATABASE_PATH

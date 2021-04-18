@@ -15,21 +15,24 @@ def check_db_connection(_app):
         return list(results) == [(1,)]
 
 
+def check_gitlab(app):
+    """Check the gitlab connection indirectly through the SubmissionManager"""
+    app.sub.ensure_initialized()
+    app.sub.gl.projects.list()
+    return True
+
+
 @app_context_task()
 def check(context):
     """Check integration connectivity"""
     from flask import current_app as app
 
-    max_service_len = 60
-    header = f"{'Service': ^{max_service_len}} | Status"
-    print(header)
-    print('-' * len(header))
-
     service_checks = {
         f"db ({app.config['SQLALCHEMY_DATABASE_URI']})": check_db_connection,
+        'gitlab': check_gitlab,
         # ...
     }
     # Check connectivity to integration services
     for name, state_check in service_checks.items():
         status = bool_to_emoji(state_check(app))
-        print(f'{name: <{max_service_len}} | {status}')
+        print(f'{status} {name}')

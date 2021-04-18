@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import logging
+import sys
 
 from ._utils import app_context_task
 
@@ -52,7 +53,13 @@ def check(context):
         'edm': check_edm,
         # ...
     }
+
+    overall_status = True
     # Check connectivity to integration services
     for name, state_check in service_checks.items():
-        status = bool_to_emoji(state_check(app))
-        print(f'{status} {name}')
+        status = state_check(app)
+        print(f'{bool_to_emoji(status)} {name}')
+        overall_status = overall_status and status
+
+    if not overall_status:
+        sys.exit(1)

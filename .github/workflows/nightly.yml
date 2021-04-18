@@ -94,6 +94,11 @@ jobs:
           # Install application
           ./scripts/install.sh
 
+      - name: Check connectivity to required services
+        run: |
+          source virtualenv/houston3.7/bin/activate
+          invoke app.integrations.check
+
       - name: Create frontend static directory (tests complains if static directory does not exist)
         run: |
           mkdir -p app/static/dist-latest
@@ -200,6 +205,11 @@ jobs:
           mkdir -p app/static/dist-latest
           touch app/static/dist-latest/404.html
           touch app/static/dist-latest/index.html
+
+      - name: Check connectivity to required services
+        run: |
+          source virtualenv/houston3.7/bin/activate
+          invoke app.integrations.check
 
       - name: Run tests (random x3)
         run: |

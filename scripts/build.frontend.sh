@@ -1,7 +1,20 @@
-#!/bin/bash
+#!/bin/bash -e
 # Assumes it is run from the project root.
 
-set -e
+
+if [ ! -z ${DEBUG} ]; then
+    echo 'DEBUG enabled'
+    # Enable execution lines
+    set -x
+fi
+
+function trap_error_help() {
+    set +x
+    echo "If you are having issues building:"
+    echo " 1. first try 'git submodule update --remote', then ..."
+    echo "    if that works, remember to commit the submodule change"
+    echo " 2. file an issue"
+}
 
 function parse_git_hash() {
     if [ -d _frontend ]; then
@@ -82,6 +95,7 @@ function install() {
 
 # Build within a Node container
 if [[ "$1" != "--exec" ]]; then
+    trap trap_error_help ERR
     checkout
     build_in_docker
     install

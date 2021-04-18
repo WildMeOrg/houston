@@ -1,0 +1,56 @@
+name: GitLab Cleanup
+on:
+  schedule:
+    - cron: '0 2 * * *' # Every day at 02:00
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/gitlab-cleanup.yml'
+  pull_request:
+    paths:
+      - '.github/workflows/gitlab-cleanup.yml'
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    env:
+      GITLAB_REMOTE_LOGIN_PAT: ${{ secrets.GITLAB_REMOTE_LOGIN_PAT }}
+      HOUSTON_DOTENV: ./.env
+    steps:
+      # Checkout and env setup
+      - uses: actions/checkout@v2
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - uses: actions/cache@v2
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt', 'requirements/*.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install libmagic on Ubuntu
+        run: |
+          sudo apt install libmagic1
+
+      - name: Install & Configure Houston
+        run: |
+          pip install "python-dotenv[cli]"
+          # Set secrets
+          dotenv -f ${HOUSTON_DOTENV} set GITLAB_REMOTE_LOGIN_PAT -- "${{ secrets.GITLAB_REMOTE_LOGIN_PAT }}"
+          dotenv -f ${HOUSTON_DOTENV} set SECRET_KEY -- "secret"
+          # Install application
+          ./scripts/install.sh
+
+      - name: Create frontend static directory (tests complains if static directory does not exist)
+        run: |
+          mkdir -p app/static/dist-latest
+          touch app/static/dist-latest/404.html
+          touch app/static/dist-latest/index.html
+
+      - name: Cleanup
+        run: |
+          source virtualenv/houston3.7/bin/activate
+          invoke app.consistency.cleanup-gitlab

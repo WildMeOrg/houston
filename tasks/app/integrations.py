@@ -6,6 +6,15 @@ def bool_to_emoji(b):
     return '⭐' if b else '❌'
 
 
+def check_db_connection(_app):
+    """Check the database connection"""
+    from app.extensions import db
+
+    with db.engine.connect() as conn:
+        results = conn.execute('select 1;')
+        return list(results) == [(1,)]
+
+
 @app_context_task()
 def check(context):
     """Check integration connectivity"""
@@ -17,9 +26,8 @@ def check(context):
     print('-' * len(header))
 
     service_checks = {
-        'a': lambda a: True,
-        'b': lambda a: False,
-        'c': lambda a: True,
+        f"db ({app.config['SQLALCHEMY_DATABASE_URI']})": check_db_connection,
+        # ...
     }
     # Check connectivity to integration services
     for name, state_check in service_checks.items():

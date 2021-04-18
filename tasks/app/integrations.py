@@ -1,5 +1,10 @@
 # -*- coding: utf-8 -*-
+import logging
+
 from ._utils import app_context_task
+
+
+log = logging.getLogger(__name__)
 
 
 def bool_to_emoji(b):
@@ -17,14 +22,22 @@ def check_db_connection(_app):
 
 def check_edm(app):
     """Check for connectivity to EDM"""
-    app.edm._ensure_initialized()
+    try:
+        app.edm._ensure_initialized()
+    except Exception:
+        log.exception('')
+        return False
     return True
 
 
 def check_gitlab(app):
     """Check the gitlab connection indirectly through the SubmissionManager"""
-    app.sub.ensure_initialized()
-    app.sub.gl.projects.list()
+    try:
+        app.sub.ensure_initialized()
+        app.sub.gl.projects.list()
+    except Exception:
+        log.exception('')
+        return False
     return True
 
 

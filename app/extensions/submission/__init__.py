@@ -47,6 +47,29 @@ class SubmissionManager(object):
         if pre_initialize:
             self.ensure_initialized()
 
+    @property
+    def _gitlab_group(self):
+        """Lookup the GitLab Group from the Namespace"""
+        # Assumes ensure_initialized called upstack
+
+        # Lookup the cached group
+        if hasattr(self, '_gl_group'):
+            return self._gl_group
+
+        # Lookup and cache the Group object
+        group_id = self.namespace.id
+        self._gl_group = self.gl.groups.get(group_id, retry_transient_errors=True)
+        return self._gl_group
+
+    def _get_gitlab_project(self, name):
+        """Lookup a specific gitlab project/repo by name that is within the preconfigured namespace/group"""
+        try:
+            return self._gitlab_group.projects.list(
+                search=name, retry_transient_errors=True
+            )[0]
+        except IndexError:
+            return None
+
     def ensure_initialized(self):
         if not self.initialized:
             assert self.gl is None
@@ -164,24 +187,18 @@ class SubmissionManager(object):
         if remote:
             self.ensure_initialized()
 
-            projects = self.gl.projects.list(
-                search=str(submission.guid), retry_transient_errors=True
-            )
-            if len(projects) > 0:
-                assert len(projects) == 1
-                project_ = projects[0]
-                if project_.path == str(submission.guid):
-                    if project_.namespace['id'] == self.namespace.id:
-                        args = (
-                            project_.namespace['name'],
-                            project_.path,
-                        )
-                        log.info(
-                            'Found existing remote project in GitLab: %r / %r' % args
-                        )
-                        project = project_
-
-            if project is None:
+            project_name = str(submission.guid)
+            project = self._get_gitlab_project(project_name)
+            if project:
+                log.info(
+                    f'Found existing remote project in GitLab: {project.path_with_namespace}'
+                )
+                # Clone remote repo
+                if os.path.exists(submission_path):
+                    submission.git_pull()
+                else:
+                    submission.git_clone(project)
+            else:
                 tag_list = [
                     'type:%s' % (submission.major_type.name,),
                 ]
@@ -189,16 +206,13 @@ class SubmissionManager(object):
                     if isinstance(tag, str):
                         tag_list.append(tag)
 
-                args = (
-                    self.namespace,
-                    submission.guid,
-                    tag_list,
+                log.info(
+                    'Creating remote project in GitLab: '
+                    f'{self.namespace.name}/{submission.guid} (tags: {tag_list})'
                 )
-
-                log.info('Creating remote project in GitLab: %r / %r (tags: %r)' % args)
                 project = self.gl.projects.create(
                     {
-                        'path': str(submission.guid),
+                        'path': project_name,
                         'description': submission.description,
                         'emails_disabled': True,
                         'namespace_id': self.namespace.id,
@@ -206,15 +220,8 @@ class SubmissionManager(object):
                         'merge_method': 'rebase_merge',
                         'tag_list': tag_list,
                         'lfs_enabled': True,
-                        # 'tag_list': [],
                     }
                 )
-            else:
-                # Clone remote repo
-                if os.path.exists(submission_path):
-                    submission.git_pull()
-                else:
-                    submission.git_clone(project)
 
         if not os.path.exists(submission_path):
             # Initialize local repo
@@ -275,14 +282,11 @@ class SubmissionManager(object):
         return repo
 
     def is_submission_on_remote(self, submission_uuid):
-
         self.ensure_initialized()
 
         # Try to find remote project by Submission UUID
-        projects = self.gl.projects.list(
-            search=str(submission_uuid), retry_transient_errors=True
-        )
-        return len(projects) == 1
+        project = self._get_gitlab_project(str(submission_uuid))
+        return bool(project)
 
     def ensure_submission(self, submission_uuid, owner=None):
         from app.modules.submissions.models import Submission
@@ -294,15 +298,10 @@ class SubmissionManager(object):
             self.ensure_initialized()
 
             # Try to find remote project by Submission UUID
-            projects = self.gl.projects.list(
-                search=str(submission_uuid), retry_transient_errors=True
-            )
-            if len(projects) == 0:
+            project = self._get_gitlab_project(str(submission_uuid))
+            if not project:
                 # submission is not found either locally or remote, return None
                 return None
-
-            assert len(projects) == 1
-            project = projects[0]
 
             created = datetime.datetime.strptime(
                 project.created_at, GITLAB_TIMESTAMP_FORMAT_STR

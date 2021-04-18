@@ -15,6 +15,12 @@ def check_db_connection(_app):
         return list(results) == [(1,)]
 
 
+def check_edm(app):
+    """Check for connectivity to EDM"""
+    app.edm._ensure_initialized()
+    return True
+
+
 def check_gitlab(app):
     """Check the gitlab connection indirectly through the SubmissionManager"""
     app.sub.ensure_initialized()
@@ -30,6 +36,7 @@ def check(context):
     service_checks = {
         f"db ({app.config['SQLALCHEMY_DATABASE_URI']})": check_db_connection,
         'gitlab': check_gitlab,
+        'edm': check_edm,
         # ...
     }
     # Check connectivity to integration services

@@ -15,7 +15,8 @@ def enter(context, install_dependencies=True, upgrade_db=True):
     Enter into IPython notebook shell with an initialized app.
     """
     if install_dependencies:
-        context.invoke_execute(context, 'dependencies.install')
+        context.invoke_execute(context, 'dependencies.install-python-dependencies')
+
     if upgrade_db:
         context.invoke_execute(context, 'app.db.upgrade')
         context.invoke_execute(

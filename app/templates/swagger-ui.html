@@ -6,10 +6,10 @@
 {% endblock %}
 
 {% block style %}
-  <link media="screen" rel="stylesheet" type="text/css" href="{{ url_for('backend.static', filename='swagger-ui/droid-sans.css') }}" />
-  <link media="screen" rel="stylesheet" type="text/css" href="{{ url_for('backend.static', filename='swagger-ui/swagger-ui.css') }}" />
-  <link rel="icon" type="image/png" href="{{ url_for('backend.static', filename='swagger-ui/favicon-32x32.png') }}" sizes="32x32" />
-  <link rel="icon" type="image/png" href="{{ url_for('backend.static', filename='swagger-ui/favicon-16x16.png') }}" sizes="16x16" />
+  <link media="screen" rel="stylesheet" type="text/css" href="{{ url_for('customized_swagger_ui.static', filename='droid-sans.css') }}" />
+  <link media="screen" rel="stylesheet" type="text/css" href="{{ url_for('customized_swagger_ui.static', filename='swagger-ui.css') }}" />
+  <link rel="icon" type="image/png" href="{{ url_for('customized_swagger_ui.static', filename='favicon-32x32.png') }}" sizes="32x32" />
+  <link rel="icon" type="image/png" href="{{ url_for('customized_swagger_ui.static', filename='favicon-16x16.png') }}" sizes="16x16" />
 
   <style>
     html
@@ -93,8 +93,8 @@
 {% block foot %}{% endblock %}
 
 {% block script %}
-    <script src="{{ url_for('backend.static', filename='swagger-ui/swagger-ui-bundle.js') }}"></script>
-    <script src="{{ url_for('backend.static', filename='swagger-ui/swagger-ui-standalone-preset.js') }}"></script>
+    <script src="{{ url_for('customized_swagger_ui.static', filename='swagger-ui-bundle.js') }}"></script>
+    <script src="{{ url_for('customized_swagger_ui.static', filename='swagger-ui-standalone-preset.js') }}"></script>
   
     <script type="text/javascript">
         window.onload = function() {

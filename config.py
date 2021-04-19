@@ -145,6 +145,7 @@ class BaseConfig(object):
         # Front-end
         #   Dependencies: Users, Auth, Assets
         'frontend',
+        'swagger_ui',
 
         # REST APIs = API, Passthroughs, Configuration
         #   Dependencies: Users, Auth
@@ -158,6 +159,10 @@ class BaseConfig(object):
     FRONTEND_DIST = os.getenv(
         'FRONTEND_DIST',
         os.path.join(PROJECT_ROOT, 'app', 'static', 'dist-latest'),
+    )
+    SWAGGER_UI_DIST = os.getenv(
+        'SWAGGER_UI_DIST',
+        os.path.join(PROJECT_ROOT, 'app', 'static', 'swagger-ui'),
     )
 
     SWAGGER_UI_JSONEDITOR = True

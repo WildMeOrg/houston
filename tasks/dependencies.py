@@ -27,7 +27,7 @@ def install_swagger_ui(context, force=False):
     Install Swagger UI HTML/JS/CSS assets.
     """
     log.info('Installing Swagger UI assets...')
-    context.run('bash scripts/build.swagger.sh')
+    context.run('bash scripts/build.swagger-ui.sh')
     log.info('Swagger UI is installed.')
 
 

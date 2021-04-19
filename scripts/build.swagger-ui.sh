@@ -14,20 +14,21 @@ function _is_sourced() {
     [[ "${#BASH_SOURCE[@]}" -eq 0 ]] || { [ "${#FUNCNAME[@]}" -ge 2 ]  && [ "${FUNCNAME[0]}" = '_is_sourced' ] && [ "${FUNCNAME[1]}" = 'source' ]; }
 }
 
-# Copy dist packages out of _frontend repo and deploy
+# Copy dist packages out of _swagger-ui
 BASE_INSTALL_PATH="app/static/swagger-ui/"
-
+# Package source resides in...
+SOURCE_PATH="_swagger-ui"
 
 function build_in_docker() {
     echo "Running the Swagger build within Docker..."
     docker pull node:latest
-    docker run --rm -v $(pwd)/:/code -w /code node:latest /bin/bash -c "./scripts/build.swagger.sh --exec"
+    docker run --rm -v $(pwd)/:/code -w /code node:latest /bin/bash -c "./scripts/build.swagger-ui.sh --exec"
     echo "Finished running the build within Docker"
 }
 
 function build() {
     # Update code
-    pushd docs/
+    pushd "${SOURCE_PATH}"
 
     # Remove any pre-downloaded modules
     rm -rf node_modules/
@@ -61,7 +62,7 @@ function install() {
 
     mkdir -p ${BASE_INSTALL_PATH}
 
-    cp -R docs/swagger_static/* ${BASE_INSTALL_PATH}
+    cp -R ${SOURCE_PATH}/swagger_static/* ${BASE_INSTALL_PATH}
     echo "Finished Installing"
 }
 

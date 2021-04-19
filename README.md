@@ -45,6 +45,8 @@ See [Background and Periodic Tasks](docs/background_tasks.md)
 ```bash
 git clone --recurse-submodules https://github.com/WildMeOrg/houston.git
 cd houston
+./scripts/build.frontend.sh
+./scripts/build.swagger-ui.sh
 cd deploy/codex
 docker-compose up
 ```

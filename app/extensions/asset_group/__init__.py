@@ -8,7 +8,6 @@ import logging
 
 from flask import current_app, request, session, render_template  # NOQA
 from flask_login import current_user  # NOQA
-import gitlab
 import git
 import json
 import os
@@ -16,6 +15,8 @@ from pathlib import Path
 import utool as ut
 
 import keyword
+
+from .. import git_remote
 
 
 KEYWORD_SET = set(keyword.kwlist)
@@ -52,8 +53,8 @@ class AssetGroupManager(object):
         return self._mime_type_whitelist_guid
 
     @property
-    def _gitlab_group(self):
-        """Lookup the GitLab Group from the Namespace"""
+    def _git_remote_group(self):
+        """Lookup the Git remote Group from the Namespace"""
 
         self._ensure_initialized()
         # Lookup the cached group
@@ -65,16 +66,16 @@ class AssetGroupManager(object):
         self._gl_group = self.gl.groups.get(group_id, retry_transient_errors=True)
         return self._gl_group
 
-    def _get_gitlab_project(self, name):
-        """Lookup a specific gitlab project/repo by name that is within the preconfigured namespace/group"""
+    def _get_git_remote_project(self, name):
+        """Lookup a specific git remote project/repo by name that is within the preconfigured namespace/group"""
         self._ensure_initialized()
 
         # Try to find remote project by asset_group UUID
-        projects = self._gitlab_group.projects.list(
+        projects = self._git_remote_group.projects.list(
             search=name, retry_transient_errors=True
         )
         if len(projects) != 0:
-            assert len(projects) >= 1, 'Failed to create gitlab namespace!?'
+            assert len(projects) >= 1, 'Failed to create git remote namespace!?'
             return projects[0]
         else:
             return None
@@ -94,7 +95,7 @@ class AssetGroupManager(object):
             log.info('\t NS : %r' % (remote_namespace,))
 
             try:
-                self.gl = gitlab.Gitlab(
+                self.gl = git_remote.GitRemote(
                     remote_uri, private_token=remote_personal_access_token
                 )
                 self.gl.auth()
@@ -112,7 +113,7 @@ class AssetGroupManager(object):
                         )
                         namespace = self.gl.namespaces.get(id=group.id)
                         namespaces = self.gl.namespaces.list(search=remote_namespace)
-                    assert len(namespaces) >= 1, 'Failed to create gitlab namespace!?'
+                    assert len(namespaces) >= 1, 'Failed to create git remote namespace!?'
                     namespace = namespaces[0]
 
                 self.namespace = namespace
@@ -171,7 +172,7 @@ class AssetGroupManager(object):
         self._ensure_initialized()
 
         project_name = str(asset_group.guid)
-        project = self._get_gitlab_project(project_name)
+        project = self._get_git_remote_project(project_name)
 
         if project:
             log.info(
@@ -232,11 +233,11 @@ class AssetGroupManager(object):
         if not os.path.exists(git_path):
             repo = git.Repo.init(group_path)
             assert len(repo.remotes) == 0
-            gitlab_remote_public_name = current_app.config.get('GITLAB_PUBLIC_NAME', None)
-            gitlab_remote_email = current_app.config.get('GITLAB_EMAIL', None)
-            assert None not in [gitlab_remote_public_name, gitlab_remote_email]
-            repo.git.config('user.name', gitlab_remote_public_name)
-            repo.git.config('user.email', gitlab_remote_email)
+            git_remote_public_name = current_app.config.get('GITLAB_PUBLIC_NAME', None)
+            git_remote_email = current_app.config.get('GITLAB_EMAIL', None)
+            assert None not in [git_remote_public_name, git_remote_email]
+            repo.git.config('user.name', git_remote_public_name)
+            repo.git.config('user.email', git_remote_email)
         else:
             repo = git.Repo(group_path)
 
@@ -304,7 +305,7 @@ class AssetGroupManager(object):
 
     def assert_taglist(self, asset_group_uuid, whitelist_tag):
         project_name = str(asset_group_uuid)
-        project = self._get_gitlab_project(project_name)
+        project = self._get_git_remote_project(project_name)
         assert (
             whitelist_tag in project.tag_list
         ), 'Project %r needs to be re-provisioned: %r' % (
@@ -313,12 +314,12 @@ class AssetGroupManager(object):
         )
 
     def is_asset_group_on_remote(self, asset_group_uuid):
-        project = self._get_gitlab_project(asset_group_uuid)
+        project = self._get_git_remote_project(asset_group_uuid)
         return project is not None
 
     def delete_remote_asset_group(self, asset_group):
         self._ensure_initialized()
-        project = self._get_gitlab_project(asset_group)
+        project = self._get_git_remote_project(asset_group)
         if project:
             self.delete_remote_project(project)
 
@@ -327,7 +328,7 @@ class AssetGroupManager(object):
         try:
             self.gl.projects.delete(project.id)
             return True
-        except gitlab.GitlabDeleteError:
+        except git_remote.GitRemote.GitRemoteDeleteError:
             pass
         return False
 

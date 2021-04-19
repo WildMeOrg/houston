@@ -89,9 +89,7 @@ echo "source $SCRIPT" >> virtualenv/houston3.7/bin/activate
 Set up and install the package:
 
 ```bash
-pip install -e .
-invoke app.dependencies.install
-./scripts/build.frontend.sh
+invoke dependencies.install
 ```
 
 #### Run Server

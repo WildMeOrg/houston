@@ -33,8 +33,6 @@ coverage run --append `which invoke` app.db.revision
 rm -rf test-db-init
 coverage run --append `which invoke` app.db.init --directory=test-db-init
 
-coverage run --append `which invoke` dependencies.install-swagger-ui --force
-
 # test app.boilerplates.crud-module
 rm -rf app/modules/testapp
 coverage run --append `which invoke` app.boilerplates.crud-module

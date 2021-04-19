@@ -24,7 +24,6 @@ from app.modules.auth.views import (
 )
 
 from .views import (
-    HOUSTON_STATIC_ROOT,
     create_session_oauth2_token,
     delete_session_oauth2_token,
     _render_template,
@@ -37,8 +36,12 @@ backend_blueprint = Blueprint(
     'backend',
     __name__,
     url_prefix='/houston',
-    static_folder=HOUSTON_STATIC_ROOT,
 )  # pylint: disable=invalid-name
+
+
+def init_app(app):
+    backend_blueprint.static_folder = app.config['STATIC_ROOT']
+    app.register_blueprint(backend_blueprint)
 
 
 # @backend_blueprint.before_app_request

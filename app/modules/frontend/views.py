@@ -15,15 +15,9 @@ import logging
 
 import datetime
 import pytz
-import os
+
 
 log = logging.getLogger(__name__)
-
-PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
-
-HOUSTON_STATIC_ROOT = os.path.join(PROJECT_ROOT, 'app', 'static')
-
-FRONTEND_STATIC_ROOT = os.path.join(HOUSTON_STATIC_ROOT, 'dist-latest')
 
 
 def _render_template(template, **kwargs):

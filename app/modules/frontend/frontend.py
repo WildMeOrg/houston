@@ -24,7 +24,6 @@ from app.modules.auth.views import (
 )
 
 from .views import (
-    FRONTEND_STATIC_ROOT,
     create_session_oauth2_token,
     delete_session_oauth2_token,
 )
@@ -34,8 +33,12 @@ log = logging.getLogger(__name__)
 frontend_blueprint = Blueprint(
     'frontend',
     __name__,
-    static_folder=FRONTEND_STATIC_ROOT,
 )  # pylint: disable=invalid-name
+
+
+def init_app(app):
+    frontend_blueprint.static_folder = app.config['FRONTEND_DIST']
+    app.register_blueprint(frontend_blueprint)
 
 
 @frontend_blueprint.route('/', defaults={'path': None}, methods=['GET'])

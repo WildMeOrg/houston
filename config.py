@@ -155,6 +155,10 @@ class BaseConfig(object):
     # fmt: on
 
     STATIC_ROOT = os.path.join(PROJECT_ROOT, 'app', 'static')
+    FRONTEND_DIST = os.getenv(
+        'FRONTEND_DIST',
+        os.path.join(PROJECT_ROOT, 'app', 'static', 'dist-latest'),
+    )
 
     SWAGGER_UI_JSONEDITOR = True
     SWAGGER_UI_OAUTH_CLIENT_ID = 'documentation'

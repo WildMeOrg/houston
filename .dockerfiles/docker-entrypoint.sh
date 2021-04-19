@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -Eeo pipefail
 
+# A flag file used to indicate that the application's data has been initialized
+INITIALIZED_FLAG_FILE="${DATA_ROOT}/.initialized"
+
 # usage: file_env VAR [DEFAULT]
 #    ie: file_env 'XYZ_DB_PASSWORD' 'example'
 # (will allow for "$XYZ_DB_PASSWORD_FILE" to fill in the value of
@@ -71,7 +74,7 @@ docker_setup_env() {
 
 	declare -g ALREADY_INITIALIZED
 	# look specifically for a dictory that marks the data as initialized
-	if [ -d "${DATA_ROOT}/submissions" ]; then
+	if [ -f "${INITIALIZED_FLAG_FILE}" ]; then
 		ALREADY_INITIALIZED='true'
 	fi
 }
@@ -121,6 +124,7 @@ _main() {
 			echo
 			echo 'docker-entrypoint init process complete; ready for start up.'
 			echo
+			echo "initialized on $(date)" > ${INITIALIZED_FLAG_FILE}
 		fi
 	fi
 

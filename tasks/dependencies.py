@@ -38,4 +38,4 @@ def install(context):
     Install project dependencies.
     """
     install_python_dependencies(context)
-    install_swagger_ui(context)
+    # install_swagger_ui(context)

@@ -51,6 +51,34 @@ class AssetGroupManager(object):
         self._ensure_initialized()
         return self._mime_type_whitelist_guid
 
+    @property
+    def _gitlab_group(self):
+        """Lookup the GitLab Group from the Namespace"""
+
+        self._ensure_initialized()
+        # Lookup the cached group
+        if hasattr(self, '_gl_group'):
+            return self._gl_group
+
+        # Lookup and cache the Group object
+        group_id = self.namespace.id
+        self._gl_group = self.gl.groups.get(group_id, retry_transient_errors=True)
+        return self._gl_group
+
+    def _get_gitlab_project(self, name):
+        """Lookup a specific gitlab project/repo by name that is within the preconfigured namespace/group"""
+        self._ensure_initialized()
+
+        # Try to find remote project by asset_group UUID
+        projects = self._gitlab_group.projects.list(
+            search=name, retry_transient_errors=True
+        )
+        if len(projects) != 0:
+            assert len(projects) >= 1, 'Failed to create gitlab namespace!?'
+            return projects[0]
+        else:
+            return None
+
     def _ensure_initialized(self):
         if not self.initialized:
             assert self.gl is None
@@ -84,7 +112,7 @@ class AssetGroupManager(object):
                         )
                         namespace = self.gl.namespaces.get(id=group.id)
                         namespaces = self.gl.namespaces.list(search=remote_namespace)
-                    assert len(namespaces) == 1
+                    assert len(namespaces) >= 1, 'Failed to create gitlab namespace!?'
                     namespace = namespaces[0]
 
                 self.namespace = namespace
@@ -141,21 +169,20 @@ class AssetGroupManager(object):
         group_path = asset_group.get_absolute_path()
 
         self._ensure_initialized()
-        project = None
 
-        remote_project = self.get_remote_project(asset_group.guid)
+        project_name = str(asset_group.guid)
+        project = self._get_gitlab_project(project_name)
 
-        if remote_project:
-            if remote_project.path == str(asset_group.guid):
-                if remote_project.namespace['id'] == self.namespace.id:
-                    args = (
-                        remote_project.namespace['name'],
-                        remote_project.path,
-                    )
-                    log.info('Found existing remote project in GitLab: %r / %r' % args)
-                    project = remote_project
-
-        if project is None:
+        if project:
+            log.info(
+                f'Found existing remote project in GitLab: {project.path_with_namespace}'
+            )
+            # Clone remote repo
+            if os.path.exists(group_path):
+                asset_group.git_pull()
+            else:
+                asset_group.git_clone(project)
+        else:
             tag_list = [
                 'type:%s' % (asset_group.major_type.name,),
             ]
@@ -163,16 +190,13 @@ class AssetGroupManager(object):
                 if isinstance(tag, str):
                     tag_list.append(tag)
 
-            args = (
-                self.namespace,
-                asset_group.guid,
-                tag_list,
+            log.info(
+                'Creating remote project in GitLab: '
+                f'{self.namespace.name}/{asset_group.guid} (tags: {tag_list})'
             )
-
-            log.info('Creating remote project in GitLab: %r / %r (tags: %r)' % args)
             project = self.gl.projects.create(
                 {
-                    'path': str(asset_group.guid),
+                    'path': project_name,
                     'description': asset_group.description,
                     'emails_disabled': True,
                     'namespace_id': self.namespace.id,
@@ -181,14 +205,9 @@ class AssetGroupManager(object):
                     'tag_list': tag_list,
                     'lfs_enabled': True,
                     # 'tag_list': [],
-                }
+                },
+                retry_transient_errors=True,
             )
-        else:
-            # Clone remote repo
-            if os.path.exists(group_path):
-                asset_group.git_pull()
-            else:
-                asset_group.git_clone(project)
 
         return project
 
@@ -254,6 +273,10 @@ class AssetGroupManager(object):
 
         return repo
 
+    def ensure_repository(self, asset_group):
+        if self.get_repository(asset_group) is None:
+            self.create_repository(asset_group)
+
     def create_repository(self, asset_group, additional_tags=[]):
         group_path = asset_group.get_absolute_path()
         git_path = os.path.join(group_path, '.git')
@@ -267,7 +290,6 @@ class AssetGroupManager(object):
         return repo
 
     def get_repository(self, asset_group):
-
         if asset_group is None:
             return None
         group_path = asset_group.get_absolute_path()
@@ -280,26 +302,23 @@ class AssetGroupManager(object):
 
         return repo
 
-    def get_remote_project(self, asset_group_uuid):
-        self._ensure_initialized()
-
-        # Try to find remote project by asset_group UUID
-        projects = self.gl.projects.list(
-            search=str(asset_group_uuid), retry_transient_errors=True
+    def assert_taglist(self, asset_group_uuid, whitelist_tag):
+        project_name = str(asset_group_uuid)
+        project = self._get_gitlab_project(project_name)
+        assert (
+            whitelist_tag in project.tag_list
+        ), 'Project %r needs to be re-provisioned: %r' % (
+            project,
+            project.tag_list,
         )
-        if len(projects) != 0:
-            assert len(projects) == 1
-            return projects[0]
-        else:
-            return None
 
     def is_asset_group_on_remote(self, asset_group_uuid):
-        project = self.get_remote_project(asset_group_uuid)
+        project = self._get_gitlab_project(asset_group_uuid)
         return project is not None
 
     def delete_remote_asset_group(self, asset_group):
         self._ensure_initialized()
-        project = self.get_remote_project(asset_group)
+        project = self._get_gitlab_project(asset_group)
         if project:
             self.delete_remote_project(project)
 

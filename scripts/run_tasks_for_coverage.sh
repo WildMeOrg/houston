@@ -93,10 +93,10 @@ coverage run --append `which invoke` app.consistency.cleanup-gitlab --dryrun
 coverage run --append `which invoke` app.submissions.create-submission-from-path --path=tests/submissions/test-000/ || echo 'Expected failure'
 coverage run --append `which invoke` app.submissions.create-submission-from-path --path=tests/does-not-exist/ --email=user@example.org || echo 'Expected failure'
 coverage run --append `which invoke` app.submissions.create-submission-from-path --path=tests/submissions/test-000/ --email=user@example.org
-coverage run --append `which invoke` app.submissions.clone-submission-from-gitlab --guid=00000000-0000-0000-0000-000000000002 || echo 'Expected failure'
+coverage run --append `which invoke` app.submissions.clone-submission-from-gitlab --guid=00000000-0000-0000-0000-000000000003 || echo 'Expected failure'
 coverage run --append `which invoke` app.submissions.clone-submission-from-gitlab --guid=11111111-1111-1111-1111-111111111111 --email=user@example.org || echo 'Expected failure'
-coverage run --append `which invoke` app.submissions.clone-submission-from-gitlab --guid=00000000-0000-0000-0000-000000000002 --email=user@example.org
-coverage run --append `which invoke` app.submissions.clone-submission-from-gitlab --guid=00000000-0000-0000-0000-000000000002 --email=user@example.org
+coverage run --append `which invoke` app.submissions.clone-submission-from-gitlab --guid=00000000-0000-0000-0000-000000000003 --email=user@example.org
+coverage run --append `which invoke` app.submissions.clone-submission-from-gitlab --guid=00000000-0000-0000-0000-000000000003 --email=user@example.org
 coverage run --append `which invoke` app.submissions.list-all
 
 coverage run --append `which invoke` app.organizations.list-all

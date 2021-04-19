@@ -5,6 +5,7 @@ Application Users management related tasks for Invoke.
 
 from ._utils import app_context_task
 import os
+from flask import current_app
 
 
 @app_context_task(
@@ -54,7 +55,8 @@ def create_submission_from_path(
 
     db.session.refresh(submission)
 
-    repo, project = submission.ensure_repository()
+    # Make sure that the repo for this asset group exists
+    current_app.agm.ensure_repository(submission)
 
     submission.git_copy_path(absolute_path)
 
@@ -98,10 +100,10 @@ def clone_submission_from_gitlab(
 
     if submission is not None:
         print('Submission is already cloned locally:\n\t%s' % (submission,))
-        app.sub.ensure_repository(submission)
+        app.agm.ensure_repository(submission)
         return
 
-    submission = app.sub.ensure_submission(guid, owner=user)
+    submission = Submission.ensure_asset_group(guid, owner=user)
 
     if submission is None:
         raise ValueError('Could not find submission in GitLab using GUID %r' % (guid,))

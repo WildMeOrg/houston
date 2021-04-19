@@ -273,8 +273,7 @@ class Submission(db.Model, HoustonModel):
             db.session.refresh(asset_group)
 
         # Make sure that the repo for this asset group exists
-        if current_app.agm.get_repository(asset_group) is None:
-            current_app.agm.create_repository(asset_group)
+        current_app.agm.ensure_repository(asset_group)
 
         return asset_group
 

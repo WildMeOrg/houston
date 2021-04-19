@@ -90,24 +90,15 @@ def initialize_gitlab_submissions(context, email, dryrun=False):
     ]
 
     for submission_guid, submission_data in submission_data:
-
-        current_app.agm.ensure_initialized()
-        project = current_app.agm.get_remote_project(submission_guid)
-
-        if project:
-
-            log.info(
-                f'Submission {submission_guid} already on GitLab, existing tags: {project.tag_list}'
-            )
+        if current_app.agm.is_asset_group_on_remote(submission_guid):
+            log.info(f'Submission {submission_guid} already on GitLab')
         else:
             log.info(f'Submission {submission_guid} missing on GitLab, provisioning...')
 
             submission = Submission.query.get(submission_guid)
 
             if submission is None:
-                log.info(
-                    'Submission %r missing locally, creating...' % (submission_guid,)
-                )
+                log.info(f'Submission {submission_guid} missing locally, creating...')
                 args = {
                     'guid': submission_guid,
                     'owner_guid': user.guid,
@@ -144,12 +135,7 @@ def initialize_gitlab_submissions(context, email, dryrun=False):
 
             print('Created and pushed new submission: %r' % (submission,))
 
-        assert (
-            WHITELIST_TAG in project.tag_list
-        ), 'Project %r needs to be re-provisioned: %r' % (
-            project,
-            project.tag_list,
-        )
+        current_app.agm.assert_taglist(submission_guid, WHITELIST_TAG)
 
 
 @app_context_task

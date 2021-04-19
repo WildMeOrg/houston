@@ -12,6 +12,8 @@ from .api import Api  # NOQA
 from .namespace import Namespace  # NOQA
 from .http_exceptions import abort  # NOQA
 
+from app.version import version
+
 import logging
 
 log = logging.getLogger(__name__)
@@ -20,21 +22,11 @@ log = logging.getLogger(__name__)
 api_v1_blueprint = Blueprint('api', __name__, url_prefix='/api/v1')
 api_v1 = Api(  # pylint: disable=invalid-name
     api_v1_blueprint,
-    version='1.0.0',
-    title='Houston',
-    description=(
-        '\n'.join(
-            [
-                'This is the backend API documentation for the Houston server.',
-                '',
-                'The API features:',
-                '* Self-documented RESTful API server using auto-generated OpenAPI specifications;',
-                '* OAuth2 Password Flow (Resource Owner Password Credentials Grant) support;',
-                '* Role-based permission system (it is also auto-documented);',
-                '* PATCH method handled accordingly to RFC 6902;',
-            ]
-        )
-    ),
+    version='Version: %s' % (version,),
+    title='Wild Me Codex',
+    contact='info@wildme.org',
+    # license='Apache License 2.0',
+    # license_url='https://www.apache.org/licenses/LICENSE-2.0',
 )
 
 

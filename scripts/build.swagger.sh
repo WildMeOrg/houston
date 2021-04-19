@@ -1,15 +1,24 @@
-#!/bin/bash
+#!/bin/bash -e
 # Assumes it is run from the project root.
 
-set -e
+if [ ! -z ${DEBUG} ]; then
+    echo 'DEBUG enabled'
+    # Enable execution lines
+    set -x
+fi
+
+# check to see if this file is being run or sourced from another script
+function _is_sourced() {
+    # See also https://unix.stackexchange.com/a/215279
+    # macos bash source check OR { linux shell check }
+    [[ "${#BASH_SOURCE[@]}" -eq 0 ]] || { [ "${#FUNCNAME[@]}" -ge 2 ]  && [ "${FUNCNAME[0]}" = '_is_sourced' ] && [ "${FUNCNAME[1]}" = 'source' ]; }
+}
 
 # Copy dist packages out of _frontend repo and deploy
 BASE_INSTALL_PATH="app/static/swagger-ui/"
 
 
 function build_in_docker() {
-    set -ex
-
     echo "Running the Swagger build within Docker..."
     docker pull node:latest
     docker run --rm -v $(pwd)/:/code -w /code node:latest /bin/bash -c "./scripts/build.swagger.sh --exec"
@@ -17,8 +26,6 @@ function build_in_docker() {
 }
 
 function build() {
-    set -ex
-
     # Update code
     pushd docs/
 
@@ -49,20 +56,28 @@ function build() {
 }
 
 function install() {
-    set -ex
-
+    echo "Installing ..."
     rm -rf ${BASE_INSTALL_PATH}
 
     mkdir -p ${BASE_INSTALL_PATH}
 
     cp -R docs/swagger_static/* ${BASE_INSTALL_PATH}
+    echo "Finished Installing"
 }
 
 # Build within a Node container
-if [[ "$1" != "--exec" ]]; then
-    build_in_docker
-    install
-    exit $?
-else
-    build
+
+function _main() {
+    # Build within a Node container
+    if [[ "$1" != "--exec" ]]; then
+        build_in_docker
+        install
+        exit $?
+    else
+        build
+    fi
+}
+
+if ! _is_sourced; then
+    _main "$@"
 fi

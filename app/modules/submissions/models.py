@@ -7,7 +7,7 @@ Submissions database models
 import enum
 import re
 from flask import current_app
-
+from flask_login import current_user  # NOQA
 from app.extensions import db, HoustonModel, parallel
 
 from app.version import version
@@ -20,7 +20,6 @@ import git
 import os
 import pathlib
 import shutil
-
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
@@ -90,10 +89,10 @@ class Submission(db.Model, HoustonModel):
     Submission Structure:
         _db/submissions/<submission GUID>/
             - .git/
-            - _submission/
+            - _asset_group/
             - - <user's uploaded data>
             - _assets/
-            - - <symlinks into _submission/ folder> with name <asset GUID >.ext --> ../_submissions/path/to/asset/original_name.ext
+            - - <symlinks into _asset_group/ folder> with name <asset GUID >.ext --> ../_asset_group/path/to/asset/original_name.ext
             - metadata.json
     """
 
@@ -128,16 +127,10 @@ class Submission(db.Model, HoustonModel):
             ')>'.format(class_name=self.__class__.__name__, self=self)
         )
 
-    def ensure_repository(self, **kwargs):
-        return current_app.sub.ensure_repository(self, **kwargs)
-
-    def get_repository(self):
-        return current_app.sub.get_repository(self)
-
     def git_write_upload_file(self, upload_file):
-        repo = self.get_repository()
+        repo = current_app.agm.create_repository(self)
         file_repo_path = os.path.join(
-            repo.working_tree_dir, '_submission', upload_file.filename
+            repo.working_tree_dir, '_asset_group', upload_file.filename
         )
         upload_file.save(file_repo_path)
         log.info('Wrote file upload and added to local repo: %r' % (file_repo_path,))
@@ -147,8 +140,8 @@ class Submission(db.Model, HoustonModel):
         if not os.path.exists(path):
             raise IOError('The path %r does not exist.' % (absolute_path,))
 
-        repo = self.get_repository()
-        repo_path = os.path.join(repo.working_tree_dir, '_submission')
+        repo = current_app.agm.get_repository(self)
+        repo_path = os.path.join(repo.working_tree_dir, '_asset_group')
 
         absolute_path = absolute_path.rstrip('/')
         repo_path = repo_path.rstrip('/')
@@ -165,8 +158,8 @@ class Submission(db.Model, HoustonModel):
         if not os.path.exists(absolute_filepath):
             raise IOError('The filepath %r does not exist.' % (absolute_filepath,))
 
-        repo = self.get_repository()
-        repo_path = os.path.join(repo.working_tree_dir, '_submission')
+        repo = current_app.agm.get_repository(self)
+        repo_path = os.path.join(repo.working_tree_dir, '_asset_group')
         _, filename = os.path.split(absolute_filepath)
         repo_filepath = os.path.join(repo_path, filename)
 
@@ -175,7 +168,7 @@ class Submission(db.Model, HoustonModel):
         return repo_filepath
 
     def git_commit(self, message, realize=True, update=True, **kwargs):
-        repo = self.get_repository()
+        repo = current_app.agm.get_repository(self)
 
         if realize:
             self.realize_submission()
@@ -183,15 +176,15 @@ class Submission(db.Model, HoustonModel):
         if update:
             self.update_asset_symlinks(**kwargs)
 
-        submission_path = self.get_absolute_path()
-        submission_metadata_path = os.path.join(submission_path, 'metadata.json')
+        asset_group_path = self.get_absolute_path()
+        submission_metadata_path = os.path.join(asset_group_path, 'metadata.json')
 
         assert os.path.exists(submission_metadata_path)
         with open(submission_metadata_path, 'r') as submission_metadata_file:
             submission_metadata = json.load(submission_metadata_file)
 
         submission_metadata['commit_mime_whitelist_guid'] = str(
-            current_app.sub.mime_type_whitelist_guid
+            current_app.agm.mime_type_whitelist_guid
         )
         submission_metadata['commit_houston_api_version'] = str(version)
 
@@ -200,7 +193,7 @@ class Submission(db.Model, HoustonModel):
 
         # repo.index.add('.gitignore')
         repo.index.add('_assets/')
-        repo.index.add('_submission/')
+        repo.index.add('_asset_group/')
         repo.index.add('metadata.json')
 
         commit = repo.index.commit(message)
@@ -208,7 +201,7 @@ class Submission(db.Model, HoustonModel):
         self.update_metadata_from_commit(commit)
 
     def git_push(self):
-        repo = self.get_repository()
+        repo = current_app.agm.get_repository(self)
         assert repo is not None
 
         with GitLabPAT(repo):
@@ -219,7 +212,7 @@ class Submission(db.Model, HoustonModel):
         return repo
 
     def git_pull(self):
-        repo = self.get_repository()
+        repo = current_app.agm.get_repository(self)
         assert repo is not None
 
         with GitLabPAT(repo):
@@ -232,7 +225,7 @@ class Submission(db.Model, HoustonModel):
         return repo
 
     def git_clone(self, project, **kwargs):
-        repo = self.get_repository()
+        repo = current_app.agm.get_repository(self)
         assert repo is None
 
         submission_abspath = self.get_absolute_path()
@@ -247,7 +240,7 @@ class Submission(db.Model, HoustonModel):
             glpat.repo = git.Repo.clone_from(glpat.authenticated_url, submission_abspath)
             log.info('...cloned')
 
-        repo = self.get_repository()
+        repo = current_app.agm.get_repository(self)
         assert repo is not None
 
         self.update_metadata_from_project(project)
@@ -257,6 +250,32 @@ class Submission(db.Model, HoustonModel):
         self.update_asset_symlinks(**kwargs)
 
         return repo
+
+    @classmethod
+    def ensure_asset_group(cls, asset_group_uuid, owner=None):
+        asset_group = Submission.query.get(asset_group_uuid)
+        if asset_group is None:
+            from app.extensions import db
+
+            if not current_app.agm.is_asset_group_on_remote(asset_group_uuid):
+                return None
+
+            if owner is None:
+                owner = current_user
+
+            asset_group = Submission(
+                guid=asset_group_uuid,
+                owner_guid=owner.guid,
+            )
+
+            with db.session.begin():
+                db.session.add(asset_group)
+            db.session.refresh(asset_group)
+
+        # Make sure that the repo for this asset group exists
+        current_app.agm.ensure_repository(asset_group)
+
+        return asset_group
 
     @classmethod
     def create_submission_from_tus(cls, description, owner, transaction_id, paths=None):
@@ -290,10 +309,11 @@ class Submission(db.Model, HoustonModel):
     def import_tus_files(self, transaction_id=None, paths=None, purge_dir=True):
         from app.extensions.tus import _tus_filepaths_from, _tus_purge
 
-        self.ensure_repository()
+        current_app.agm.create_repository(self)
+
         sub_id = None if transaction_id is not None else self.guid
         submission_abspath = self.get_absolute_path()
-        submission_path = os.path.join(submission_abspath, '_submission')
+        asset_group_path = os.path.join(submission_abspath, '_asset_group')
         paths_added = []
         num_files = 0
 
@@ -303,7 +323,7 @@ class Submission(db.Model, HoustonModel):
             name = pathlib.Path(path).name
             paths_added.append(name)
             num_files += 1
-            os.rename(path, os.path.join(submission_path, name))
+            os.rename(path, os.path.join(asset_group_path, name))
 
         assets_added = []
         if num_files > 0:
@@ -339,7 +359,7 @@ class Submission(db.Model, HoustonModel):
 
     def update_asset_symlinks(self, verbose=True, existing_filepath_guid_mapping={}):
         """
-        Traverse the files in the _submission/ folder and add/update symlinks
+        Traverse the files in the _asset_group/ folder and add/update symlinks
         for any relevant files we identify
 
         Ref:
@@ -352,17 +372,15 @@ class Submission(db.Model, HoustonModel):
         import magic
 
         submission_abspath = self.get_absolute_path()
-        submission_path = os.path.join(submission_abspath, '_submission')
+        asset_group_path = os.path.join(submission_abspath, '_asset_group')
         assets_path = os.path.join(submission_abspath, '_assets')
-
-        current_app.sub.ensure_initialized()
 
         # Walk the submission path, looking for white-listed MIME type files
         files = []
         skipped = []
         errors = []
-        walk_list = sorted(list(os.walk(submission_path)))
-        print('Walking submission...')
+        walk_list = sorted(list(os.walk(asset_group_path)))
+        log.info('Walking submission...')
         for root, directories, filenames in tqdm.tqdm(walk_list):
             filenames = sorted(filenames)
             for filename in filenames:
@@ -396,7 +414,7 @@ class Submission(db.Model, HoustonModel):
                         skipped.append((filepath, extension))
                         continue
                     mime_type = magic.from_file(filepath, mime=True)
-                    if mime_type not in current_app.sub.mime_type_whitelist:
+                    if mime_type not in current_app.agm.mime_type_whitelist:
                         # Skip any unsupported MIME types
                         skipped.append((filepath, extension))
                         continue
@@ -552,7 +570,7 @@ class Submission(db.Model, HoustonModel):
         db.session.refresh(self)
 
     def update_metadata_from_repo(self, repo):
-        repo = self.get_repository()
+        repo = current_app.agm.get_repository(self)
         assert repo is not None
 
         if len(repo.branches) > 0:
@@ -570,7 +588,7 @@ class Submission(db.Model, HoustonModel):
             metadata_dict = json.load(metadata_file)
 
         self.commit_mime_whitelist_guid = metadata_dict.get(
-            'commit_mime_whitelist_guid', current_app.sub.mime_type_whitelist_guid
+            'commit_mime_whitelist_guid', current_app.agm.mime_type_whitelist_guid
         )
         self.commit_houston_api_version = metadata_dict.get(
             'commit_houston_api_version', version
@@ -581,15 +599,15 @@ class Submission(db.Model, HoustonModel):
         db.session.refresh(self)
 
     def get_absolute_path(self):
-        submissions_database_path = current_app.config.get(
-            'SUBMISSIONS_DATABASE_PATH', None
+        asset_group_database_path = current_app.config.get(
+            'ASSET_GROUP_DATABASE_PATH', None
         )
-        assert submissions_database_path is not None
-        assert os.path.exists(submissions_database_path)
+        assert asset_group_database_path is not None
+        assert os.path.exists(asset_group_database_path)
 
-        submission_path = os.path.join(submissions_database_path, str(self.guid))
+        asset_group_path = os.path.join(asset_group_database_path, str(self.guid))
 
-        return submission_path
+        return asset_group_path
 
     def delete_dirs(self):
         if os.path.exists(self.get_absolute_path()):

@@ -140,7 +140,7 @@ def cleanup_gitlab(context, dryrun=False, clean=False):
             if delta.total_seconds() <= GRACE_PERIOD:
                 skipped += 1
                 continue
-            success = current_app.sub.delete_remote_project(project)
+            success = current_app.agm.delete_remote_project(project)
             deleted += 1 if success else 0
 
     log.info(

@@ -44,7 +44,7 @@ def test_create_open_submission(flask_app_client, regular_user, db):
         assert temp_submission.commit is None
         assert temp_submission.major_type == test_major_type
     finally:
-        current_app.sub.delete_remote_submission(temp_submission)
+        current_app.agm.delete_remote_asset_group(temp_submission)
         # Restore original state
         if temp_submission is not None:
             temp_submission.delete()
@@ -90,18 +90,18 @@ def test_submission_streamlined(flask_app_client, regular_user, db):
             'owner_guid',
         }
 
-        repo = temp_submission.get_repository()
+        repo = current_app.agm.get_repository(temp_submission)
 
         # compares file in local repo
         for filename in test_image_list:
             local_filepath = join(test_root, filename)
-            repo_filepath = join(repo.working_tree_dir, '_submission', filename)
+            repo_filepath = join(repo.working_tree_dir, '_asset_group', filename)
             assert filecmp.cmp(local_filepath, repo_filepath)
 
         assert temp_submission.commit == repo.head.object.hexsha
         assert temp_submission.major_type == test_major_type
     finally:
-        current_app.sub.delete_remote_submission(temp_submission)
+        current_app.agm.delete_remote_asset_group(temp_submission)
 
         # Restore original state
         if temp_submission is not None:

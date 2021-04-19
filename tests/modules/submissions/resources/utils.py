@@ -85,7 +85,7 @@ class CloneSubmission(object):
         # Allow the option of forced cloning, this could raise an exception if the assertion fails
         # but this does not need to be in any try/except/finally construct as no resources are allocated yet
         if force_clone:
-            database_path = config.TestingConfig.SUBMISSIONS_DATABASE_PATH
+            database_path = config.TestingConfig.ASSET_GROUP_DATABASE_PATH
             submission_path = os.path.join(database_path, str(guid))
 
             if os.path.exists(submission_path):
@@ -115,13 +115,12 @@ class CloneSubmission(object):
                 test_utils.patch_add_op('owner', '%s' % owner.guid),
             ]
             patch_submission(client, guid, admin_user, data)
-
             # and read it back as the real user
             with client.login(owner, auth_scopes=('submissions:read',)):
                 self.response = client.get(url)
 
     def remove_files(self):
-        database_path = config.TestingConfig.SUBMISSIONS_DATABASE_PATH
+        database_path = config.TestingConfig.ASSET_GROUP_DATABASE_PATH
         submission_path = os.path.join(database_path, str(self.guid))
         if os.path.exists(submission_path):
             shutil.rmtree(submission_path)

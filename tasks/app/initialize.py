@@ -86,37 +86,19 @@ def initialize_gitlab_submissions(context, email, dryrun=False):
     ]
     submission_data = [
         (uuid.UUID('00000000-0000-0000-0000-000000000001'), []),
-        (uuid.UUID('00000000-0000-0000-0000-000000000002'), image_data),
+        (uuid.UUID('00000000-0000-0000-0000-000000000003'), image_data),
     ]
 
     for submission_guid, submission_data in submission_data:
-
-        current_app.sub.ensure_initialized()
-        projects = current_app.sub.gl.projects.list(
-            search=str(submission_guid), retry_transient_errors=True
-        )
-
-        if len(projects) > 0:
-            assert len(projects) == 1
-            project = projects[0]
-            log.info(
-                'Submission %r already on GitLab, existing tags: %r'
-                % (
-                    submission_guid,
-                    project.tag_list,
-                )
-            )
+        if current_app.agm.is_asset_group_on_remote(submission_guid):
+            log.info(f'Submission {submission_guid} already on GitLab')
         else:
-            log.info(
-                'Submission %r missing on GitLab, provisioning...' % (submission_guid,)
-            )
+            log.info(f'Submission {submission_guid} missing on GitLab, provisioning...')
 
             submission = Submission.query.get(submission_guid)
 
             if submission is None:
-                log.info(
-                    'Submission %r missing locally, creating...' % (submission_guid,)
-                )
+                log.info(f'Submission {submission_guid} missing locally, creating...')
                 args = {
                     'guid': submission_guid,
                     'owner_guid': user.guid,
@@ -130,7 +112,6 @@ def initialize_gitlab_submissions(context, email, dryrun=False):
                 log.info('Submission %r created' % (submission,))
             else:
                 log.info('Submission %r found locally' % (submission,))
-
             if dryrun:
                 log.info('DRYRUN: Submission creation skipped...')
                 continue
@@ -154,12 +135,7 @@ def initialize_gitlab_submissions(context, email, dryrun=False):
 
             print('Created and pushed new submission: %r' % (submission,))
 
-        assert (
-            WHITELIST_TAG in project.tag_list
-        ), 'Project %r needs to be re-provisioned: %r' % (
-            project,
-            project.tag_list,
-        )
+        current_app.agm.assert_taglist(submission_guid, WHITELIST_TAG)
 
 
 @app_context_task

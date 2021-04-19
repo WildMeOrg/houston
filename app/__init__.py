@@ -27,7 +27,7 @@ def _ensure_storage(app=None):
     # Ensure database submissions and asset store
     config_list = [
         ('DB', 'PROJECT_DATABASE_PATH'),
-        ('Submission', 'SUBMISSIONS_DATABASE_PATH'),
+        ('AssetGroup', 'ASSET_GROUP_DATABASE_PATH'),
         ('FileUpload', 'FILEUPLOAD_BASE_PATH'),
         ('Asset', 'ASSET_DATABASE_PATH'),
     ]

@@ -7,7 +7,7 @@ RESTful API Assets resources
 
 import logging
 
-from flask import send_file, current_app
+from flask import send_file
 from flask_restx_patched import Resource
 from flask_restx_patched._http import HTTPStatus
 from app.extensions.api import Namespace
@@ -122,7 +122,9 @@ class AssetSrcUByID(Resource):
         },
     )
     def get(self, asset, format):
-        current_app.sub.ensure_submission(asset.submission_guid)
+        from app.modules.submissions.models import Submission
+
+        Submission.ensure_asset_group(asset.submission_guid)
         try:
             asset_format_path = asset.get_or_make_format_path(format)
         except Exception:

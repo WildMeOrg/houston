@@ -152,15 +152,16 @@ def test_create_patch_submission(flask_app_client, researcher_1, readonly_user, 
             regular_delete_response = flask_app_client.delete(
                 '/api/v1/submissions/%s' % submission_guid
             )
-        assert regular_delete_response.status_code == 428
+        assert regular_delete_response.status_code == 204
 
+        # As should a delete of a random uuid
         with flask_app_client.login(researcher_1, auth_scopes=('submissions:write',)):
             regular_delete_response = flask_app_client.delete(
                 '/api/v1/submissions/%s' % uuid.uuid4()
             )
         assert regular_delete_response.status_code == 204
     finally:
-        current_app.sub.delete_remote_submission(temp_submission)
+        current_app.agm.delete_remote_asset_group(temp_submission)
         # Restore original state
         temp_submission = Submission.query.get(submission_guid)
         if temp_submission is not None:

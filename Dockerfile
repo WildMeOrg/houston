@@ -56,7 +56,6 @@ WORKDIR /code
 
 RUN set -ex \
  && pip install -e . \
- && invoke dependencies.install \
  #: Install developer tools
  && pip install utool ipython \
  #: Remove pip download cache

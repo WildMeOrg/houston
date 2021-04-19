@@ -8,6 +8,12 @@ rm -rf htmlcov
 rm -rf *.egg-info
 
 rm -rf app/static/dist-*/
+rm -rf app/static/swagger-ui/
+
+rm -rf docs/node_modules/
+rm -rf docs/swagger_static/
+rm -rf docs/package-lock.json
+
 rm -rf dist.*.tar.gz
 
 rm -rf mb_work

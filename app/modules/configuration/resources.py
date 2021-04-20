@@ -120,3 +120,18 @@ class EDMConfiguration(Resource):
         )
 
         return response
+
+    @edm_configuration.login_required(oauth_scopes=['configuration:write'])
+    def patch(self, target, path):
+        data = {}
+        try:
+            data = json.loads(request.data)
+        except Exception:
+            pass
+
+        passthrough_kwargs = {'data': data}
+        response = current_app.edm.request_passthrough(
+            'configuration.data', 'patch', passthrough_kwargs, path, target
+        )
+
+        return response

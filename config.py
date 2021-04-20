@@ -145,6 +145,7 @@ class BaseConfig(object):
         # Front-end
         #   Dependencies: Users, Auth, Assets
         'frontend',
+        'app_ui',
         'swagger_ui',
 
         # REST APIs = API, Passthroughs, Configuration

@@ -1,14 +1,5 @@
 # -*- coding: utf-8 -*-
-"""
-OAuth2 provider setup.
-
-It is based on the code from the example:
-https://github.com/lepture/example-oauth2-server
-
-More details are available here:
-* http://flask-oauthlib.readthedocs.org/en/latest/oauth2.html
-* http://lepture.com/en/2013/create-oauth-server
-"""
+"""Provides UI space served directly from this application"""
 import datetime
 import logging
 from functools import wraps

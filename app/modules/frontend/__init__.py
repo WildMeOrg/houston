@@ -11,8 +11,7 @@ def init_app(app, **kwargs):
     Init front-end module.
     """
     # Touch underlying modules
-    from . import backend, frontend
+    from . import frontend
 
     # Mount front-end routes
-    backend.init_app(app)
     frontend.init_app(app)

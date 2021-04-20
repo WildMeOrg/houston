@@ -24,19 +24,17 @@ from flask import (
 )
 from flask_login import login_user, logout_user, login_required, current_user
 
-from .util import ensure_admin_exists
-from app.modules.users.models import User
 from app.modules.assets.models import Asset
-
 from app.modules.auth.views import (
     _url_for,
     _is_safe_url,
 )
-
-from .views import (
+from app.modules.auth.utils import (
     create_session_oauth2_token,
     delete_session_oauth2_token,
 )
+from app.modules.users.models import User
+from .util import ensure_admin_exists
 
 
 log = logging.getLogger(__name__)

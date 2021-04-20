@@ -9,24 +9,24 @@ More details are available here:
 * http://flask-oauthlib.readthedocs.org/en/latest/oauth2.html
 * http://lepture.com/en/2013/create-oauth-server
 """
-import flask
-from flask import Blueprint, send_from_directory, current_app, request
-from flask_login import login_user, logout_user, login_required, current_user
-import werkzeug
 import logging
 import os
 
-from app.modules.users.models import User
+import flask
+import werkzeug
+from flask import Blueprint, send_from_directory, current_app, request
+from flask_login import login_user, logout_user, login_required, current_user
 
 from app.modules.auth.views import (
     _url_for,
     _is_safe_url,
 )
-
-from .views import (
+from app.modules.auth.utils import (
     create_session_oauth2_token,
     delete_session_oauth2_token,
 )
+from app.modules.users.models import User
+
 
 log = logging.getLogger(__name__)
 

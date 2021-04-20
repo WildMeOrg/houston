@@ -61,10 +61,13 @@ RUN set -x \
     # test it works
     && wait-for google.com:80 -- echo "success"
 
+ENV FRONTEND_DIST /var/www/frontend
+ENV SWAGGER_UI_DIST /var/www/swagger-ui
+
 COPY . /code
 RUN ls -lah /code/app/static
-COPY --from=frontend /code/app/static /code/app/static
-COPY --from=swagger-ui /code/app/static /code/app/static
+COPY --from=frontend /code/app/static/dist-latest ${FRONTEND_DIST}
+COPY --from=swagger-ui /code/app/static/swagger-ui ${SWAGGER_UI_DIST}
 RUN ls -lah /code/app/static
 
 WORKDIR /code

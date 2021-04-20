@@ -11,6 +11,7 @@ More details are available here:
 """
 import datetime
 import logging
+from functools import wraps
 
 # from app.modules.users.permissions import PasswordRequiredPermissionMixin
 import flask
@@ -18,9 +19,11 @@ from flask import (
     Blueprint,
     current_app,
     flash,
+    redirect,
     render_template,
     request,
     send_file,
+    url_for,
 )
 from flask_login import login_user, logout_user, login_required, current_user
 
@@ -34,7 +37,6 @@ from app.modules.auth.utils import (
     delete_session_oauth2_token,
 )
 from app.modules.users.models import User
-from .util import ensure_admin_exists
 
 
 log = logging.getLogger(__name__)
@@ -62,6 +64,16 @@ def _render_template(template, **kwargs):
     }
     config.update(kwargs)
     return render_template(template, **config)
+
+
+def ensure_admin_exists(func):
+    @wraps(func)
+    def decorated_function(*args, **kwargs):
+        if not current_user and not User.admin_user_initialized():
+            return redirect(url_for('backend.admin_init'))
+        return func(*args, **kwargs)
+
+    return decorated_function
 
 
 # @backend_blueprint.before_app_request

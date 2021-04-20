@@ -9,11 +9,21 @@ More details are available here:
 * http://flask-oauthlib.readthedocs.org/en/latest/oauth2.html
 * http://lepture.com/en/2013/create-oauth-server
 """
+import datetime
+import logging
+
 # from app.modules.users.permissions import PasswordRequiredPermissionMixin
 import flask
-from flask import Blueprint, request, flash, send_file
+from flask import (
+    Blueprint,
+    current_app,
+    flash,
+    render_template,
+    request,
+    send_file,
+)
 from flask_login import login_user, logout_user, login_required, current_user
-import logging
+
 from .util import ensure_admin_exists
 from app.modules.users.models import User
 from app.modules.assets.models import Asset
@@ -26,7 +36,6 @@ from app.modules.auth.views import (
 from .views import (
     create_session_oauth2_token,
     delete_session_oauth2_token,
-    _render_template,
 )
 
 
@@ -42,6 +51,19 @@ backend_blueprint = Blueprint(
 def init_app(app):
     backend_blueprint.static_folder = app.config['STATIC_ROOT']
     app.register_blueprint(backend_blueprint)
+
+
+def _render_template(template, **kwargs):
+    now = datetime.datetime.now(tz=current_app.config.get('TIMEZONE'))
+    config = {
+        'base_url': current_app.config.get('BASE_URL'),
+        'google_analytics_tag': current_app.config.get('GOOGLE_ANALYTICS_TAG'),
+        'stripe_public_key': current_app.config.get('STRIPE_PUBLIC_KEY'),
+        'year': now.year,
+        'cachebuster': '20200322-0',
+    }
+    config.update(kwargs)
+    return render_template(template, **config)
 
 
 # @backend_blueprint.before_app_request

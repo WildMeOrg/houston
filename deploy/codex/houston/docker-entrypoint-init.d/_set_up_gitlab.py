@@ -1,14 +1,21 @@
+# -*- coding: utf-8 -*-
 import argparse
+import sys
 import time
 
 import lxml.html
 import requests
+from lxml.cssselect import CSSSelector
 
 
 def parser(argv):
     p = argparse.ArgumentParser()
-    p.add_argument('gitlab_url', help='url to the gitlab instance (e.g. http://gitlab:80)')
-    p.add_argument('--admin-password', help='password to assign or use for the admin user')
+    p.add_argument(
+        'gitlab_url', help='url to the gitlab instance (e.g. http://gitlab:80)'
+    )
+    p.add_argument(
+        '--admin-password', help='password to assign or use for the admin user'
+    )
     return p.parse_args(argv)
 
 
@@ -26,6 +33,13 @@ def parse_form(session, url, form_id):
     except KeyError:  # NoneType
         raise RuntimeError(f'form not found in {resp} for {url}')
     return dict(form.fields), form.action
+
+
+def is_signed_in(resp):
+    """Check the user is signed into GitLab"""
+    selector = CSSSelector('.current-user')
+    html = lxml.html.document_fromstring(resp.content)
+    return bool(selector(html))
 
 
 def main(argv=None):
@@ -48,12 +62,14 @@ def main(argv=None):
         except AssertionError:
             # the gitlab service isn't up quite yet
             if retry_count >= 4:
-                print("Something unexpected happen during the setup of GitLab")
+                print('Something unexpected happen during the setup of GitLab')
                 raise
             retry_count += 1
             time.sleep(30)
         else:
             break
+
+    assert not is_signed_in(resp)
 
     if resp.status_code == 302:  # assume new installation; assign password
         form_data, action = parse_form(session, sign_in_url, 'new_user')
@@ -63,13 +79,18 @@ def main(argv=None):
         resp = session.post(url, data=form_data)
         assert resp.status_code == 200, resp
 
+    assert not is_signed_in(resp)
+
     # Sign In
     form_data, action = parse_form(session, sign_in_url, 'new_user')
     url = f'{gitlab_url}{action}'
     form_data['user[login]'] = 'root'
     form_data['user[password]'] = admin_password
     resp = session.post(url, data=form_data)
-    assert resp.status_code == 200, resp
+    if not is_signed_in(resp):
+        print(f'Failed to sign into GitLab at:  {url}')
+        print('... try logging into the site manually to verify your credentials')
+        sys.exit(1)
 
     # Create a Personal Access Token
     url = f'{gitlab_url}/-/profile/personal_access_tokens'

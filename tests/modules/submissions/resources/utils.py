@@ -77,7 +77,7 @@ def delete_submission(flask_app_client, user, submission_guid, expected_status_c
 # class with a cleanup method to be called if any assertions fail
 class CloneSubmission(object):
     def __init__(self, client, admin_user, owner, guid, force_clone):
-        from app.modules.submissions.models import Submission
+        from app.modules.asset_groups.models import Submission
 
         self.submission = None
         self.guid = guid

@@ -51,7 +51,7 @@ def initialize_gitlab_submissions(context, email, dryrun=False):
     > invoke app.initialize.initialize-gitlab-submissions --email jason@wildme.org
     """
     from app.modules.users.models import User
-    from app.modules.submissions.models import Submission, SubmissionMajorType
+    from app.modules.asset_groups.models import Submission, SubmissionMajorType
     from app.extensions import db
     from flask import current_app
     import config

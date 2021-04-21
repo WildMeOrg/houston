@@ -18,7 +18,7 @@ import app
 import app.extensions
 
 
-from app.modules.submissions.models import SubmissionMajorType
+from app.modules.asset_groups.models import SubmissionMajorType
 
 
 def upgrade():

@@ -236,7 +236,7 @@ def ensure_asset_group_repo(flask_app, db, asset_group, file_data=[]):
 
 @pytest.fixture(scope='session')
 def test_submission_uuid(flask_app, db, admin_user):
-    from app.modules.submissions.models import Submission, SubmissionMajorType
+    from app.modules.asset_groups.models import Submission, SubmissionMajorType
 
     asset_group = Submission(
         guid='00000000-0000-0000-0000-000000000003',
@@ -263,7 +263,7 @@ def test_submission_uuid(flask_app, db, admin_user):
 
 @pytest.fixture(scope='session')
 def test_empty_submission_uuid(flask_app, db, admin_user):
-    from app.modules.submissions.models import Submission, SubmissionMajorType
+    from app.modules.asset_groups.models import Submission, SubmissionMajorType
 
     asset_group = Submission(
         guid='00000000-0000-0000-0000-000000000001',

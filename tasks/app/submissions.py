@@ -28,7 +28,7 @@ def create_submission_from_path(
     > invoke app.submissions.create-submission-from-path --path tests/submissions/test-000/ --email jason@wildme.org
     """
     from app.modules.users.models import User
-    from app.modules.submissions.models import Submission, SubmissionMajorType
+    from app.modules.asset_groups.models import Submission, SubmissionMajorType
     from app.extensions import db
     import socket
 
@@ -86,7 +86,7 @@ def clone_submission_from_gitlab(
     > invoke app.submissions.clone-submission-from-gitlab --guid 00000000-0000-0000-0000-000000000002 --email jason@wildme.org
     """
     from app.modules.users.models import User
-    from app.modules.submissions.models import Submission
+    from app.modules.asset_groups.models import Submission
 
     user = User.find(email=email)
 
@@ -118,7 +118,7 @@ def list_all(context):
     """
     Show existing submissions.
     """
-    from app.modules.submissions.models import Submission
+    from app.modules.asset_groups.models import Submission
 
     submissions = Submission.query.all()
 

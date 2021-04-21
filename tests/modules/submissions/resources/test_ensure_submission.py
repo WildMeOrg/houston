@@ -23,7 +23,7 @@ def test_ensure_empty_submission_by_uuid(
 def test_ensure_clone_submission_by_uuid(
     flask_app_client, admin_user, researcher_1, db, test_clone_submission_data
 ):
-    from app.modules.submissions.models import SubmissionMajorType
+    from app.modules.asset_groups.models import SubmissionMajorType
     from app.modules.assets.models import Asset
 
     clone = utils.clone_submission(

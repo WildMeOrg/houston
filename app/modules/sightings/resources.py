@@ -308,7 +308,7 @@ class Sightings(Resource):
             transaction_id = next(
                 iter(all_arefs)
             )  # here is where we make single-transaciton-id assumption
-            from app.modules.submissions.models import Submission
+            from app.modules.asset_groups.models import Submission
 
             try:
                 submission = Submission.create_submission_from_tus(

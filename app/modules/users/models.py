@@ -573,7 +573,7 @@ class User(db.Model, FeatherModel, UserEDMMixin):
 
     def owns_object(self, obj):
         from app.modules.assets.models import Asset
-        from app.modules.submissions.models import Submission
+        from app.modules.asset_groups.models import Submission
         from app.modules.encounters.models import Encounter
         from app.modules.sightings.models import Sighting
         from app.modules.projects.models import Project

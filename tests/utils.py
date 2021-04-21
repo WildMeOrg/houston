@@ -178,7 +178,7 @@ def generate_user_instance(
 
 
 def generate_submission_instance(owner):
-    from app.modules.submissions.models import Submission
+    from app.modules.asset_groups.models import Submission
 
     submission_instance = Submission(guid=uuid.uuid4(), owner=owner)
     return submission_instance

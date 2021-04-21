@@ -123,12 +123,12 @@ class BaseConfig(object):
         #   Dependencies: Users
         'auth',
 
-        # Submissions
+        # Asset_groups
         #   Dependencies: Users
-        'submissions',
+        'asset_groups',
 
         # Assets
-        #   Dependencies: Submissions
+        #   Dependencies: Asset_groups
         'assets',
 
         # Miscellaneous

@@ -7,7 +7,7 @@ import shutil
 
 def test_create_submission_from_tus(db, researcher_1):
 
-    from app.modules.submissions.models import Submission
+    from app.modules.asset_groups.models import Submission
     from tests.modules.sightings.resources.utils import (
         prep_tus_dir,
         get_transaction_id,

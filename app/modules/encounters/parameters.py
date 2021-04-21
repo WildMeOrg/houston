@@ -48,7 +48,7 @@ class PatchEncounterDetailsParameters(PatchJSONParametersWithPassword):
     @classmethod
     def add(cls, obj, field, value, state):
         from app.modules.assets.models import Asset
-        from app.modules.submissions.models import Submission
+        from app.modules.asset_groups.models import Submission
 
         super(PatchEncounterDetailsParameters, cls).add(obj, field, value, state)
         ret_val = False

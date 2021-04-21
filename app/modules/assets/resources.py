@@ -122,7 +122,7 @@ class AssetSrcUByID(Resource):
         },
     )
     def get(self, asset, format):
-        from app.modules.submissions.models import Submission
+        from app.modules.asset_groups.models import Submission
 
         Submission.ensure_asset_group(asset.submission_guid)
         try:

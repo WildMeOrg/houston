@@ -13,7 +13,7 @@ def test_create_open_submission(flask_app_client, regular_user, db):
     temp_submission = None
 
     try:
-        from app.modules.submissions.models import Submission, SubmissionMajorType
+        from app.modules.asset_groups.models import Submission, SubmissionMajorType
 
         test_major_type = SubmissionMajorType.test
 
@@ -55,7 +55,7 @@ def test_submission_streamlined(flask_app_client, regular_user, db):
     temp_submission = None
 
     try:
-        from app.modules.submissions.models import Submission, SubmissionMajorType
+        from app.modules.asset_groups.models import Submission, SubmissionMajorType
 
         test_major_type = SubmissionMajorType.test
         test_root = join(

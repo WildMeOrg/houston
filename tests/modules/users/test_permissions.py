@@ -300,7 +300,7 @@ def test_ObjectAccessPermission_admin_user(
 def test_ModuleAccessPermission_anonymous_user(anonymous_user_login):
     # pylint: disable=unused-argument
     from app.modules.users.models import User
-    from app.modules.submissions.models import Submission
+    from app.modules.asset_groups.models import Submission
 
     # anon user cannot do anything with most classes
     validate_cannot_read_module(NotARealClass)
@@ -320,7 +320,7 @@ def test_ModuleAccessPermission_anonymous_user(anonymous_user_login):
 def test_ModuleAccessPermission_authenticated_user(authenticated_user_login):
     # pylint: disable=unused-argument
     from app.modules.users.models import User
-    from app.modules.submissions.models import Submission
+    from app.modules.asset_groups.models import Submission
 
     # regular users also shouldn't be able to access most classes
     validate_cannot_read_module(NotARealClass)
@@ -340,7 +340,7 @@ def test_ModuleAccessPermission_authenticated_user(authenticated_user_login):
 def test_ModuleAccessPermission_admin_user(admin_user_login):
     # pylint: disable=unused-argument
     from app.modules.users.models import User
-    from app.modules.submissions.models import Submission
+    from app.modules.asset_groups.models import Submission
 
     # Admin users cannot do what they like
     validate_cannot_read_module(NotARealClass)
@@ -361,7 +361,7 @@ def test_ModuleAccessPermission_admin_user(admin_user_login):
 def test_ModuleAccessPermission_user_manager_user(user_manager_user_login):
     # pylint: disable=unused-argument
     from app.modules.users.models import User
-    from app.modules.submissions.models import Submission
+    from app.modules.asset_groups.models import Submission
 
     # user Admins not especially priviliged
     validate_cannot_read_module(NotARealClass)

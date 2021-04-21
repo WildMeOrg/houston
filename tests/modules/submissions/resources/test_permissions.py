@@ -76,7 +76,7 @@ def test_create_patch_submission(flask_app_client, researcher_1, readonly_user, 
     submission_guid = None
 
     try:
-        from app.modules.submissions.models import Submission, SubmissionMajorType
+        from app.modules.asset_groups.models import Submission, SubmissionMajorType
 
         test_major_type = SubmissionMajorType.test
 

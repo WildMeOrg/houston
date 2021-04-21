@@ -63,7 +63,7 @@ def test_create_and_modify_and_delete_sighting(
     from app.modules.sightings.models import Sighting
     from app.modules.encounters.models import Encounter
     from app.modules.assets.models import Asset
-    from app.modules.submissions.models import Submission
+    from app.modules.asset_groups.models import Submission
     import datetime
 
     # we should end up with these same counts (which _should be_ all zeros!)
@@ -141,7 +141,7 @@ def test_create_anon_and_delete_sighting(db, flask_app_client, staff_user):
     from app.modules.encounters.models import Encounter
     from app.modules.assets.models import Asset
     from app.modules.users.models import User
-    from app.modules.submissions.models import Submission
+    from app.modules.asset_groups.models import Submission
     import datetime
 
     # we should end up with these same counts (which _should be_ all zeros!)

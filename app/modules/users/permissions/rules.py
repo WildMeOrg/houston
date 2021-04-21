@@ -88,7 +88,7 @@ class ModuleActionRule(DenyAbortMixin, Rule):
         super().__init__(**kwargs)
 
     def check(self):
-        from app.modules.submissions.models import Submission
+        from app.modules.asset_groups.models import Submission
         from app.modules.users.models import User
         from app.modules.encounters.models import Encounter
         from app.modules.sightings.models import Sighting
@@ -134,7 +134,7 @@ class ModuleActionRule(DenyAbortMixin, Rule):
         from app.extensions.config.models import HoustonConfig
         from app.modules.annotations.models import Annotation
         from app.modules.individuals.models import Individual
-        from app.modules.submissions.models import Submission
+        from app.modules.asset_groups.models import Submission
         from app.modules.encounters.models import Encounter
         from app.modules.sightings.models import Sighting
         from app.modules.projects.models import Project
@@ -341,7 +341,7 @@ class ModuleOrObjectActionRule(DenyAbortMixin, Rule):
         super().__init__(**kwargs)
 
     def check(self):
-        from app.modules.submissions.models import Submission
+        from app.modules.asset_groups.models import Submission
 
         has_permission = False
         assert self._obj is not None or self._module is not None

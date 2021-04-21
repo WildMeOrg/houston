@@ -277,11 +277,11 @@ class Sightings(Resource):
                 'Sighting.post imbalanced encounters in %r or %r'
                 % (request_in, result_data),
             )
-
+        asset_references = None
+        if 'assetReferences' in request_in:
+            asset_references = request_in['assetReferences']
         try:
-            all_arefs, paths_wanted = _validate_asset_references(
-                request_in['assetReferences']
-            )
+            all_arefs, paths_wanted = _validate_asset_references(asset_references)
         except Exception as ex:
             cleanup.rollback_and_abort(
                 'Invalid assetReference data in encounter(s)',

@@ -1,7 +1,27 @@
-#!/bin/bash
+#!/bin/bash -e
 # Assumes it is run from the project root.
 
-set -e
+
+if [ ! -z ${DEBUG} ]; then
+    echo 'DEBUG enabled'
+    # Enable execution lines
+    set -x
+fi
+
+# check to see if this file is being run or sourced from another script
+function _is_sourced() {
+    # See also https://unix.stackexchange.com/a/215279
+    # macos bash source check OR { linux shell check }
+    [[ "${#BASH_SOURCE[@]}" -eq 0 ]] || { [ "${#FUNCNAME[@]}" -ge 2 ]  && [ "${FUNCNAME[0]}" = '_is_sourced' ] && [ "${FUNCNAME[1]}" = 'source' ]; }
+}
+
+function trap_error_help() {
+    set +x
+    echo "If you are having issues building:"
+    echo " 1. first try 'git submodule update --remote', then ..."
+    echo "    if that works, remember to commit the submodule change"
+    echo " 2. file an issue"
+}
 
 function parse_git_hash() {
     if [ -d _frontend ]; then
@@ -72,20 +92,29 @@ function build() {
 }
 
 function install() {
+    echo "Installing ..."
     dist_install=$(get_install_path)
     rm -rf ${BASE_INSTALL_PATH}/dist-latest
     mkdir -p ${dist_install}
     tar -zxvf _frontend/dist.latest.tar.gz -C ${dist_install} --strip-components=1
     # Assume dist_install is also in $BASE_INSTALL_PATH
     ln -s $(basename ${dist_install}) ${BASE_INSTALL_PATH}/dist-latest
+    echo "Finished Installing"
 }
 
-# Build within a Node container
-if [[ "$1" != "--exec" ]]; then
-    checkout
-    build_in_docker
-    install
-    exit $?
-else
-    build
+function _main() {
+    # Build within a Node container
+    if [[ "$1" != "--exec" ]]; then
+        trap trap_error_help ERR
+        checkout
+        build_in_docker
+        install
+        exit $?
+    else
+        build
+    fi
+}
+
+if ! _is_sourced; then
+    _main "$@"
 fi

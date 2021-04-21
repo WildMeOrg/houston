@@ -31,7 +31,14 @@ def parse_form(session, url, form_id):
     try:
         form = html.get_element_by_id(form_id)
     except KeyError:  # NoneType
-        raise RuntimeError(f'form not found in {resp} for {url}')
+        formatted_forms = '\n'.join(
+            [f"{f.attrib.get('id', '?no-id?')} ({f})" for f in html.forms]
+        )
+        print(
+            f"ERROR: form '{form_id}' not found in {resp} for '{url}'; found the following forms: "
+        )
+        print(formatted_forms)
+        sys.exit(1)
     return dict(form.fields), form.action
 
 

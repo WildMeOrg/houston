@@ -156,7 +156,7 @@ class Sighting(db.Model, FeatherModel):
                         raise ValueError(
                             f'could not find edm encounter matching {self.encounters[i]}'
                         )
-                    self.encounters[i].augment_edm_json(edm_enc)
+                    self.encounters[i].augment_edm_json(found_edm)
                     i += 1
         if self.assets is None or len(self.assets) < 1:
             return edm_json
@@ -168,3 +168,29 @@ class Sighting(db.Model, FeatherModel):
             json, err = asset_schema.dump(asset)
             edm_json['assets'].append(json)
         return edm_json
+
+    # pass results-json for sighting.encounters from changes made (e.g. PATCH) and update houston encounters accordingly
+    def rectify_edm_encounters(self, edm_encs_json):
+        log.debug(f' RECTIFY IN {edm_encs_json}')
+        edm_map = {}  # id => version of new results
+        if edm_encs_json:
+            for edm_enc in edm_encs_json:
+                edm_map[edm_enc['id']] = edm_enc
+        log.debug(f' RECTIFY EDM_MAP {edm_map}')
+        # find which have been removed and which updated
+        if self.encounters:
+            for enc in self.encounters:
+                if str(enc.guid) not in edm_map.keys():
+                    log.info(f'houston Encounter {enc.guid} removed')
+                    enc.delete_cascade()
+                else:
+                    if edm_map[str(enc.guid)]['version'] > enc.version:
+                        log.debug(
+                            f'houston Encounter {enc.guid} VERSION UPDATED {edm_map[str(enc.guid)]} > {enc.version}'
+                        )
+                    del edm_map[str(enc.guid)]
+        # now any left should be new encounters from edm
+        for enc_id in edm_map.keys():
+            log.debug(
+                f'houston Encounter {enc_id} NEWLY ADDED ENCOUNTER = {edm_map[enc_id]}'
+            )

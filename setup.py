@@ -41,7 +41,7 @@ CLASSIFIERS = """
 Development Status :: 3 - Alpha
 Intended Audience :: Developers
 Intended Audience :: System Administrators
-License :: OSI Approved :: Apache Software License
+License :: OSI Approved :: GNU General Public License v3 (GPLv3)
 Natural Language :: English
 Operating System :: POSIX
 Operating System :: Unix
@@ -58,7 +58,7 @@ LONG_DESCRIPTION = DESCRIPTION
 KEYWORDS = ['wild me', 'hoston', 'wildbook']
 URL = 'https://hoston.dyn.wildme.io/'
 DOWNLOAD_URL = ''
-LICENSE = 'Apache License 2.0'
+LICENSE = 'Apache'
 AUTHOR = MAINTAINER
 AUTHOR_EMAIL = MAINTAINER_EMAIL
 PLATFORMS = ['Linux', 'Mac OS-X', 'Unix']

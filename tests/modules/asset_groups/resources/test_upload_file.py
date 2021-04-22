@@ -2,7 +2,6 @@
 # pylint: disable=missing-docstring
 import json
 import filecmp
-import config
 from os.path import join, basename
 
 from flask import current_app
@@ -50,7 +49,7 @@ def test_create_open_submission(flask_app_client, regular_user, db):
             temp_submission.delete()
 
 
-def test_submission_streamlined(flask_app_client, regular_user, db):
+def test_submission_streamlined(flask_app_client, test_root, regular_user, db):
     # pylint: disable=invalid-name
     temp_submission = None
 
@@ -58,9 +57,7 @@ def test_submission_streamlined(flask_app_client, regular_user, db):
         from app.modules.asset_groups.models import Submission, SubmissionMajorType
 
         test_major_type = SubmissionMajorType.test
-        test_root = join(
-            config.TestingConfig.PROJECT_ROOT, 'tests', 'submissions', 'test-000'
-        )
+
         test_image_list = ['zebra.jpg', 'fluke.jpg']
         files = [
             _upload_content(join(test_root, filename)) for filename in test_image_list

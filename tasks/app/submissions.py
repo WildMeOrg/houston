@@ -25,7 +25,7 @@ def create_submission_from_path(
     Create a new submission via a local file or folder path.
 
     Command Line:
-    > invoke app.submissions.create-submission-from-path --path tests/submissions/test-000/ --email jason@wildme.org
+    > invoke app.submissions.create-submission-from-path --path tests/asset_groups/test-000/ --email jason@wildme.org
     """
     from app.modules.users.models import User
     from app.modules.asset_groups.models import Submission, SubmissionMajorType

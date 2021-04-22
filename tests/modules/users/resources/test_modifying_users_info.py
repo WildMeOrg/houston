@@ -253,16 +253,15 @@ def test_modifying_user_info_with_conflict_data_must_fail(
     assert set(response.json.keys()) >= {'status', 'message'}
 
 
-def test_user_profile_fileupload(db, flask_app, flask_app_client, regular_user, request):
+def test_user_profile_fileupload(
+    db, flask_app, flask_app_client, regular_user, request, test_root
+):
     clean_up_objects = []
     clean_up_paths = []
     upload_dir = Path(flask_app.config['UPLOADS_DATABASE_PATH'])
     fileupload_dir = Path(flask_app.config['FILEUPLOAD_BASE_PATH'])
 
-    with (
-        Path(flask_app.config.get('PROJECT_ROOT'))
-        / 'tests/submissions/test-000/zebra.jpg'
-    ).open('rb') as f:
+    with (test_root / 'zebra.jpg').open('rb') as f:
         zebra = f.read()
 
     def cleanup_fileupload_dir(path):

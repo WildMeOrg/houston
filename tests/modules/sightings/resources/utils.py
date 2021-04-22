@@ -4,7 +4,6 @@ Project resources utils
 -------------
 """
 import json
-import config
 from tests import utils as test_utils
 from flask import current_app
 import os
@@ -19,17 +18,12 @@ def get_transaction_id():
     return '11111111-1111-1111-1111-111111111111'
 
 
-def prep_tus_dir():
+def prep_tus_dir(test_root):
     transaction_id = get_transaction_id()
 
     filename = 'zebra.jpg'
-    image_file = os.path.join(
-        config.TestingConfig.PROJECT_ROOT,
-        'tests',
-        'submissions',
-        'test-000',
-        filename,
-    )
+    image_file = os.path.join(test_root, filename)
+
     upload_dir = tus_upload_dir(current_app, transaction_id=transaction_id)
     if not os.path.isdir(upload_dir):
         os.mkdir(upload_dir)

@@ -7,7 +7,7 @@ from app.modules.site_settings.models import SiteSetting
 from invoke import MockContext
 
 
-def test_site_settings(flask_app, db, request):
+def test_site_settings(flask_app, db, request, test_root):
     def cleanup():
         header_image = SiteSetting.query.get('header_image')
         if header_image:
@@ -18,9 +18,8 @@ def test_site_settings(flask_app, db, request):
                 file_path.unlink()
 
     request.addfinalizer(cleanup)
-    test_image = (
-        Path(flask_app.config['PROJECT_ROOT']) / 'tests/submissions/test-000/zebra.jpg'
-    )
+    test_image = test_root / 'zebra.jpg'
+
     with mock.patch('app.create_app'):
         with mock.patch('sys.stdout', new=io.StringIO()) as stdout:
             from tasks.app import site_settings

@@ -72,7 +72,7 @@ def initialize_gitlab_submissions(context, email, dryrun=False):
         raise Exception("User with email '%s' does not exist." % email)
 
     test_root = os.path.join(
-        config.TestingConfig.PROJECT_ROOT, 'tests', 'submissions', 'test-000'
+        config.TestingConfig.PROJECT_ROOT, 'tests', 'asset_groups', 'test-000'
     )
     image_data = [
         (

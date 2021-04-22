@@ -1,4 +1,4 @@
-Wildbook - Houston Backend Server - Submission Test 000
+Wildbook - Houston Backend Server - Asset Group Test 000
 =======================================================
 
 This test simply holds two valid images.

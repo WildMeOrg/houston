@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=invalid-name,missing-docstring
 
-import config
 import os
 import pathlib
 import shutil
@@ -11,16 +10,6 @@ from PIL import Image
 import pytest
 
 from tests.utils import TemporaryDirectoryGraceful
-
-
-def _source_file():
-    return os.path.join(
-        config.TestingConfig.PROJECT_ROOT,
-        'tests',
-        'submissions',
-        'test-000',
-        'zebra.jpg',
-    )
 
 
 def cleanup_fileuploads_directory(fileuploads_directory):
@@ -33,7 +22,7 @@ def cleanup_fileuploads_directory(fileuploads_directory):
                 c.rmdir()
 
 
-def test_fileupload_create_delete(db, flask_app, request):
+def test_fileupload_create_delete(db, flask_app, test_root, request):
     fup_dir = None
     FILEUPLOAD_BASE_PATH = pathlib.Path(flask_app.config.get('FILEUPLOAD_BASE_PATH'))
 
@@ -44,7 +33,7 @@ def test_fileupload_create_delete(db, flask_app, request):
 
     request.addfinalizer(cleanup)
 
-    source_file = _source_file()
+    source_file = os.path.join(test_root, 'zebra.jpg')
     sz = os.path.getsize(source_file)
     assert sz > 0
 
@@ -68,7 +57,7 @@ def test_fileupload_create_delete(db, flask_app, request):
     assert not os.path.exists(fup_path)
 
 
-def test_fileupload_from_tus(db, flask_app, request):
+def test_fileupload_from_tus(db, flask_app, test_root, request):
     UPLOADS_DATABASE_PATH = pathlib.Path(flask_app.config.get('UPLOADS_DATABASE_PATH'))
     FILEUPLOAD_BASE_PATH = pathlib.Path(flask_app.config.get('FILEUPLOAD_BASE_PATH'))
     TRANSACTION_ID = 'transaction-id'
@@ -86,7 +75,8 @@ def test_fileupload_from_tus(db, flask_app, request):
 
     tus_dir.mkdir(parents=True, exist_ok=True)
     with (tus_dir / 'a.jpg').open('wb') as f:
-        with pathlib.Path(_source_file()).open('rb') as g:
+        source_file = os.path.join(test_root, 'zebra.jpg')
+        with pathlib.Path(source_file).open('rb') as g:
             f.write(g.read())
 
     # Create fileupload using file from tus
@@ -103,7 +93,7 @@ def test_fileupload_from_tus(db, flask_app, request):
     fup.delete()
 
 
-def test_fileuploads_from_tus(db, flask_app, request):
+def test_fileuploads_from_tus(db, flask_app, test_root, request):
     UPLOADS_DATABASE_PATH = pathlib.Path(flask_app.config.get('UPLOADS_DATABASE_PATH'))
     FILEUPLOAD_BASE_PATH = pathlib.Path(flask_app.config.get('FILEUPLOAD_BASE_PATH'))
     TRANSACTION_ID = 'transaction-id'
@@ -129,7 +119,8 @@ def test_fileuploads_from_tus(db, flask_app, request):
     assert FileUpload.create_fileuploads_from_tus(TRANSACTION_ID) is None
 
     with (tus_dir / 'a.jpg').open('wb') as f:
-        with pathlib.Path(_source_file()).open('rb') as g:
+        source_file = os.path.join(test_root, 'zebra.jpg')
+        with pathlib.Path(source_file).open('rb') as g:
             f.write(g.read())
 
     with (tus_dir / 'a.txt').open('w') as f:
@@ -148,7 +139,7 @@ def test_fileuploads_from_tus(db, flask_app, request):
     assert all([fup_path.is_file() for fup_path in fup_paths])
 
 
-def test_fileuploads_get_src(flask_app, flask_app_client, db, request):
+def test_fileuploads_get_src(flask_app, flask_app_client, db, test_root, request):
     fup_dir = None
     FILEUPLOAD_BASE_PATH = pathlib.Path(flask_app.config.get('FILEUPLOAD_BASE_PATH'))
 
@@ -158,7 +149,7 @@ def test_fileuploads_get_src(flask_app, flask_app_client, db, request):
         cleanup_fileuploads_directory(FILEUPLOAD_BASE_PATH)
 
     request.addfinalizer(cleanup)
-    source_file = _source_file()
+    source_file = os.path.join(test_root, 'zebra.jpg')
     sz = os.path.getsize(source_file)
     fup = FileUpload.create_fileupload_from_path(source_file, copy=True)
     fup_dir = pathlib.Path(fup.get_absolute_path())
@@ -172,13 +163,10 @@ def test_fileuploads_get_src(flask_app, flask_app_client, db, request):
     assert response.content_length == sz
 
 
-def test_modify_image(flask_app):
+def test_modify_image(flask_app, test_root):
     with TemporaryDirectoryGraceful() as td:
         test_file = pathlib.Path(td) / 'zebra.jpg'
-        with (
-            pathlib.Path(flask_app.config.get('PROJECT_ROOT'))
-            / 'tests/submissions/test-000/zebra.jpg'
-        ).open('rb') as f:
+        with (test_root / 'zebra.jpg').open('rb') as f:
             with test_file.open('wb') as g:
                 g.write(f.read())
 

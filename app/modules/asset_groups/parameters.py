@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Input arguments (Parameters) for Submissions resources RESTful API
+Input arguments (Parameters) for Asset_groups resources RESTful API
 -----------------------------------------------------------
 """
 
@@ -12,12 +12,12 @@ from .models import Submission
 from app.modules.users.permissions import rules
 
 
-class CreateSubmissionParameters(Parameters, schemas.CreateSubmissionSchema):
-    class Meta(schemas.CreateSubmissionSchema.Meta):
+class CreateAssetGroupParameters(Parameters, schemas.CreateAssetGroupSchema):
+    class Meta(schemas.CreateAssetGroupSchema.Meta):
         pass
 
 
-class PatchSubmissionDetailsParameters(PatchJSONParameters):
+class PatchAssetGroupDetailsParameters(PatchJSONParameters):
     # pylint: disable=abstract-method,missing-docstring
     OPERATION_CHOICES = (PatchJSONParameters.OP_REPLACE, PatchJSONParameters.OP_ADD)
 

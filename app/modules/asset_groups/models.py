@@ -87,7 +87,7 @@ class Submission(db.Model, HoustonModel):
     Submission database model.
 
     Submission Structure:
-        _db/submissions/<submission GUID>/
+        _db/asset_groups/<submission GUID>/
             - .git/
             - _asset_group/
             - - <user's uploaded data>

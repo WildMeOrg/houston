@@ -17,9 +17,9 @@ def test_create_open_submission(flask_app_client, regular_user, db):
 
         test_major_type = SubmissionMajorType.test
 
-        with flask_app_client.login(regular_user, auth_scopes=('submissions:write',)):
+        with flask_app_client.login(regular_user, auth_scopes=('asset_groups:write',)):
             response = flask_app_client.post(
-                '/api/v1/submissions/',
+                '/api/v1/asset_groups/',
                 content_type='application/json',
                 data=json.dumps(
                     {
@@ -66,9 +66,9 @@ def test_submission_streamlined(flask_app_client, regular_user, db):
             _upload_content(join(test_root, filename)) for filename in test_image_list
         ]
 
-        with flask_app_client.login(regular_user, auth_scopes=('submissions:write',)):
+        with flask_app_client.login(regular_user, auth_scopes=('asset_groups:write',)):
             response = flask_app_client.post(
-                '/api/v1/submissions/streamlined',
+                '/api/v1/asset_groups/streamlined',
                 data=dict(
                     major_type=test_major_type,
                     description='Test Submission (streamlined)',

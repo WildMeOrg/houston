@@ -30,7 +30,7 @@ class DetailedAssetSchema(BaseAssetSchema):
     Detailed Asset schema exposes all useful fields.
     """
 
-    submission = base_fields.Nested('BaseSubmissionSchema')
+    submission = base_fields.Nested('BaseAssetGroupSchema')
 
     class Meta(BaseAssetSchema.Meta):
         fields = BaseAssetSchema.Meta.fields + (

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=missing-docstring
-import tests.modules.submissions.resources.utils as utils
-import json
+import tests.modules.submissions.resources.utils as asset_group_utils
+import tests.modules.assets.resources.utils as asset_utils
 import uuid
 
 from flask import current_app
@@ -13,156 +13,108 @@ def test_user_read_permissions(
     researcher_1,
     readonly_user,
     db,
-    test_clone_submission_data,
+    test_clone_asset_group_data,
 ):
     # Clone as the researcher user and then try to reread as both researcher and readonly user,
     # read by researcher user should succeed, read by readonly user should be blocked
 
-    clone = utils.clone_submission(
+    clone = asset_group_utils.clone_asset_group(
         flask_app_client,
         admin_user,
         researcher_1,
-        test_clone_submission_data['submission_uuid'],
+        test_clone_asset_group_data['asset_group_uuid'],
         later_usage=True,
     )
 
     try:
-        with flask_app_client.login(
+        asset_utils.read_asset(
+            flask_app_client,
             researcher_1,
-            auth_scopes=(
-                'submissions:read',
-                'assets:read',
-            ),
-        ):
-            submission_response = flask_app_client.get(
-                '/api/v1/submissions/%s' % test_clone_submission_data['submission_uuid']
-            )
-            asset_response = flask_app_client.get(
-                '/api/v1/assets/%s' % test_clone_submission_data['asset_uuids'][0]
-            )
-            assert submission_response.status_code == 200
-            assert asset_response.status_code == 200
-
-        with flask_app_client.login(
+            test_clone_asset_group_data['asset_uuids'][0],
+        )
+        asset_group_utils.read_asset_group(
+            flask_app_client,
+            researcher_1,
+            test_clone_asset_group_data['asset_group_uuid'],
+        )
+        asset_utils.read_asset(
+            flask_app_client,
             readonly_user,
-            auth_scopes=(
-                'submissions:read',
-                'assets_read',
-            ),
-        ):
-            submission_response = flask_app_client.get(
-                '/api/v1/submissions/%s' % test_clone_submission_data['submission_uuid']
-            )
-            asset_response = flask_app_client.get(
-                '/api/v1/assets/%s' % test_clone_submission_data['asset_uuids'][0]
-            )
-            assert submission_response.status_code == 403
-            assert asset_response.status_code == 401
-
-        # and as no user, removed for now as the
-        # @api.login_required(oauth_scopes=['submissions:read']) has been added back to
-        # class SubmissionByID and the anonymous user is blocked by that
-        # submission_response = flask_app_client.get(
-        #        '/api/v1/submissions/%s' % test_clone_submission_uuid
-        #    )
-        # assert submission_response.status_code == 403
+            test_clone_asset_group_data['asset_uuids'][0],
+            403,
+        )
+        asset_group_utils.read_asset_group(
+            flask_app_client,
+            readonly_user,
+            test_clone_asset_group_data['asset_group_uuid'],
+            403,
+        )
+        # and as no user
+        asset_group_utils.read_asset_group(
+            flask_app_client, None, test_clone_asset_group_data['asset_group_uuid'], 401
+        )
 
     finally:
         clone.cleanup()
 
 
-def test_create_patch_submission(flask_app_client, researcher_1, readonly_user, db):
+def test_create_patch_asset_group(flask_app_client, researcher_1, readonly_user, db):
     # pylint: disable=invalid-name
-    submission_guid = None
+    asset_group_guid = None
 
     try:
         from app.modules.asset_groups.models import Submission, SubmissionMajorType
 
-        test_major_type = SubmissionMajorType.test
+        major_type = SubmissionMajorType.test
+        data = {
+            'major_type': major_type,
+            'description': 'This is a test asset_group, please ignore',
+        }
+        create_response = asset_group_utils.create_asset_group(
+            flask_app_client, researcher_1, data
+        )
 
-        with flask_app_client.login(researcher_1, auth_scopes=('submissions:write',)):
-            create_response = flask_app_client.post(
-                '/api/v1/submissions/',
-                content_type='application/json',
-                data=json.dumps(
-                    {
-                        'major_type': test_major_type,
-                        'description': 'This is a test submission, please ignore',
-                    }
-                ),
-            )
+        asset_group_guid = create_response.json['guid']
+        temp_asset_group = Submission.query.get(asset_group_guid)
 
-        assert create_response.status_code == 200
-        submission_guid = create_response.json['guid']
-        temp_submission = Submission.query.get(submission_guid)
+        data['description'] = 'This is a test asset_group, kindly ignore'
+        # Try to patch as non owner and validate it fails
+        asset_group_utils.patch_asset_group(
+            flask_app_client, readonly_user, asset_group_guid, data, 403
+        )
 
-        with flask_app_client.login(readonly_user, auth_scopes=('submissions:write',)):
-            # try to change very polite description slightly and type
-            service_major_type = SubmissionMajorType.test
+        # Should pass as owner
+        patch_response = asset_group_utils.patch_asset_group(
+            flask_app_client, researcher_1, asset_group_guid, data
+        )
 
-            readonly_patch_response = flask_app_client.patch(
-                '/api/v1/submissions/%s' % submission_guid,
-                data=json.dumps(
-                    {
-                        'major_type': service_major_type,
-                        'description': 'This is a test submission, kindly ignore',
-                    }
-                ),
-            )
-        assert readonly_patch_response.status_code == 403
+        assert patch_response.json['guid'] == asset_group_guid
+        assert patch_response.json['major_type'] == major_type
 
-        with flask_app_client.login(researcher_1, auth_scopes=('submissions:write',)):
-            # try to change very polite description slightly and type
-            service_major_type = SubmissionMajorType.test
+        db.session.refresh(temp_asset_group)
+        assert temp_asset_group.major_type == major_type
 
-            regular_patch_response = flask_app_client.patch(
-                '/api/v1/submissions/%s' % submission_guid,
-                data=json.dumps(
-                    {
-                        'major_type': service_major_type,
-                        'description': 'This is a test submission, kindly ignore',
-                    }
-                ),
-            )
+        # Readonly user should not be able to delete
+        asset_group_utils.delete_asset_group(
+            flask_app_client, readonly_user, asset_group_guid, 403
+        )
 
-        assert regular_patch_response.status_code == 200
-        assert regular_patch_response.content_type == 'application/json'
-        assert isinstance(regular_patch_response.json, dict)
-        assert set(regular_patch_response.json.keys()) >= {'guid', 'major_type'}
-        assert regular_patch_response.json['guid'] == submission_guid
-        assert regular_patch_response.json['major_type'] == service_major_type
+        # researcher should
+        asset_group_utils.delete_asset_group(
+            flask_app_client, researcher_1, asset_group_guid
+        )
 
-        db.session.refresh(temp_submission)
-        assert temp_submission.major_type == service_major_type
-
-        with flask_app_client.login(readonly_user, auth_scopes=('submissions:write',)):
-            readonly_delete_response = flask_app_client.delete(
-                '/api/v1/submissions/%s' % submission_guid
-            )
-        assert readonly_delete_response.status_code == 403
-
-        with flask_app_client.login(researcher_1, auth_scopes=('submissions:write',)):
-            regular_delete_response = flask_app_client.delete(
-                '/api/v1/submissions/%s' % submission_guid
-            )
-        assert regular_delete_response.status_code == 204
-
-        # And if the submission is already gone, a re attempt at deletion should get the same response
-        with flask_app_client.login(researcher_1, auth_scopes=('submissions:write',)):
-            regular_delete_response = flask_app_client.delete(
-                '/api/v1/submissions/%s' % submission_guid
-            )
-        assert regular_delete_response.status_code == 204
+        # And if the asset_group is already gone, a re attempt at deletion should get the same response
+        asset_group_utils.delete_asset_group(
+            flask_app_client, researcher_1, asset_group_guid
+        )
 
         # As should a delete of a random uuid
-        with flask_app_client.login(researcher_1, auth_scopes=('submissions:write',)):
-            regular_delete_response = flask_app_client.delete(
-                '/api/v1/submissions/%s' % uuid.uuid4()
-            )
-        assert regular_delete_response.status_code == 204
+        asset_group_utils.delete_asset_group(flask_app_client, researcher_1, uuid.uuid4())
+
     finally:
-        current_app.agm.delete_remote_asset_group(temp_submission)
+        current_app.agm.delete_remote_asset_group(temp_asset_group)
         # Restore original state
-        temp_submission = Submission.query.get(submission_guid)
-        if temp_submission is not None:
-            temp_submission.delete()
+        temp_asset_group = Submission.query.get(asset_group_guid)
+        if temp_asset_group is not None:
+            temp_asset_group.delete()

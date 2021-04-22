@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Serialization schemas for Submissions resources RESTful API
+Serialization schemas for Asset_groups resources RESTful API
 ----------------------------------------------------
 """
 
@@ -10,9 +10,9 @@ from flask_restx_patched import ModelSchema
 from .models import Submission
 
 
-class BaseSubmissionSchema(ModelSchema):
+class BaseAssetGroupSchema(ModelSchema):
     """
-    Base Submission schema exposes only the most general fields.
+    Base Asset_group schema exposes only the most general fields.
     """
 
     class Meta:
@@ -30,37 +30,37 @@ class BaseSubmissionSchema(ModelSchema):
         )
 
 
-class CreateSubmissionSchema(BaseSubmissionSchema):
+class CreateAssetGroupSchema(BaseAssetGroupSchema):
     """
-    Detailed Submission schema exposes all useful fields.
+    Detailed Asset_group schema exposes all useful fields.
     """
 
-    class Meta(BaseSubmissionSchema.Meta):
-        fields = BaseSubmissionSchema.Meta.fields + (
+    class Meta(BaseAssetGroupSchema.Meta):
+        fields = BaseAssetGroupSchema.Meta.fields + (
             Submission.owner_guid.key,
             Submission.created.key,
             Submission.updated.key,
         )
-        dump_only = BaseSubmissionSchema.Meta.dump_only + (
+        dump_only = BaseAssetGroupSchema.Meta.dump_only + (
             Submission.owner_guid.key,
             Submission.created.key,
             Submission.updated.key,
         )
 
 
-class DetailedSubmissionSchema(CreateSubmissionSchema):
+class DetailedAssetGroupSchema(CreateAssetGroupSchema):
     """
-    Detailed Submission schema exposes all useful fields.
+    Detailed Asset_group schema exposes all useful fields.
     """
 
     from app.modules.assets.models import Asset
 
     assets = base_fields.Nested(
         'BaseAssetSchema',
-        exclude=(Asset.submission_guid.key),
+        exclude=Asset.submission_guid.key,
         many=True,
     )
 
-    class Meta(CreateSubmissionSchema.Meta):
-        fields = CreateSubmissionSchema.Meta.fields + ('assets',)
-        dump_only = CreateSubmissionSchema.Meta.dump_only
+    class Meta(CreateAssetGroupSchema.Meta):
+        fields = CreateAssetGroupSchema.Meta.fields + ('assets',)
+        dump_only = CreateAssetGroupSchema.Meta.dump_only

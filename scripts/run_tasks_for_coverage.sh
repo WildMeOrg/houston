@@ -78,22 +78,22 @@ coverage run --append `which invoke` app.users.add-role --role=Researcher --emai
 coverage run --append `which invoke` app.users.remove-role --role=Researcher --email=user@example.org
 
 # test app.initialize.*
-coverage run --append `which invoke` app.initialize.initialize-gitlab-submissions --email user@example.org --dryrun
+coverage run --append `which invoke` app.initialize.initialize-gitlab-asset-groups --email user@example.org --dryrun
 
 # test app.consistency.*
 coverage run --append `which invoke` app.consistency.all
 coverage run --append `which invoke` app.consistency.user-staff-permissions
 coverage run --append `which invoke` app.consistency.cleanup-gitlab --dryrun
 
-# test app.submissions.*
-coverage run --append `which invoke` app.submissions.create-submission-from-path --path=tests/submissions/test-000/ || echo 'Expected failure'
-coverage run --append `which invoke` app.submissions.create-submission-from-path --path=tests/does-not-exist/ --email=user@example.org || echo 'Expected failure'
-coverage run --append `which invoke` app.submissions.create-submission-from-path --path=tests/submissions/test-000/ --email=user@example.org
-coverage run --append `which invoke` app.submissions.clone-submission-from-gitlab --guid=00000000-0000-0000-0000-000000000003 || echo 'Expected failure'
-coverage run --append `which invoke` app.submissions.clone-submission-from-gitlab --guid=11111111-1111-1111-1111-111111111111 --email=user@example.org || echo 'Expected failure'
-coverage run --append `which invoke` app.submissions.clone-submission-from-gitlab --guid=00000000-0000-0000-0000-000000000003 --email=user@example.org
-coverage run --append `which invoke` app.submissions.clone-submission-from-gitlab --guid=00000000-0000-0000-0000-000000000003 --email=user@example.org
-coverage run --append `which invoke` app.submissions.list-all
+# test app.asset_groups.*
+coverage run --append `which invoke` app.asset-groups.create-asset-group-from-path --path=tests/asset_groups/test-000/ || echo 'Expected failure'
+coverage run --append `which invoke` app.asset-groups.create-asset-group-from-path --path=tests/does-not-exist/ --email=user@example.org || echo 'Expected failure'
+coverage run --append `which invoke` app.asset-groups.create-asset-group-from-path --path=tests/asset_groups/test-000/ --email=user@example.org
+coverage run --append `which invoke` app.asset-groups.clone-asset-group-from-gitlab --guid=00000000-0000-0000-0000-000000000003 || echo 'Expected failure'
+coverage run --append `which invoke` app.asset-groups.clone-asset-group-from-gitlab --guid=11111111-1111-1111-1111-111111111111 --email=user@example.org || echo 'Expected failure'
+coverage run --append `which invoke` app.asset-groups.clone-asset-group-from-gitlab --guid=00000000-0000-0000-0000-000000000003 --email=user@example.org
+coverage run --append `which invoke` app.asset-groups.clone-asset-group-from-gitlab --guid=00000000-0000-0000-0000-000000000003 --email=user@example.org
+coverage run --append `which invoke` app.asset-groups.list-all
 
 coverage run --append `which invoke` app.organizations.list-all
 coverage run --append `which invoke` app.assets.list-all

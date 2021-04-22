@@ -587,8 +587,8 @@ class User(db.Model, FeatherModel, UserEDMMixin):
         elif isinstance(obj, (AssetGroup, Encounter, Project)):
             ret_val = obj.owner == self
         elif isinstance(obj, Asset):
-            # assets are not owned directly by the user but the submission they're in is.
-            # TODO: need to understand once assets become part of an encounter, do they still have a submission
+            # assets are not owned directly by the user but the asset_group they're in is.
+            # TODO: need to understand once assets become part of an encounter, do they still have a asset_group
             if obj.asset_group is not None:
                 ret_val = obj.asset_group.owner is self
         elif isinstance(obj, Sighting):
@@ -606,8 +606,8 @@ class User(db.Model, FeatherModel, UserEDMMixin):
     def delete(self):
         with db.session.begin():
             # TODO: Ensure proper cleanup
-            for submission in self.submissions:
-                submission.delete()
+            for asset_group in self.asset_groups:
+                asset_group.delete()
             db.session.delete(self)
 
     @classmethod

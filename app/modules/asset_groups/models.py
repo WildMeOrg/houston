@@ -87,7 +87,7 @@ class AssetGroup(db.Model, HoustonModel):
     AssetGroup database model.
 
     AssetGroup Structure:
-        _db/asset_groups/<submission GUID>/
+        _db/asset_groups/<asset_group GUID>/
             - .git/
             - _asset_group/
             - - <user's uploaded data>
@@ -118,7 +118,7 @@ class AssetGroup(db.Model, HoustonModel):
     owner_guid = db.Column(
         db.GUID, db.ForeignKey('user.guid'), index=True, nullable=False
     )
-    owner = db.relationship('User', backref=db.backref('submissions'))
+    owner = db.relationship('User', backref=db.backref('asset_groups'))
 
     def __repr__(self):
         return (
@@ -171,25 +171,25 @@ class AssetGroup(db.Model, HoustonModel):
         repo = current_app.agm.get_repository(self)
 
         if realize:
-            self.realize_submission()
+            self.realize_asset_group()
 
         if update:
             self.update_asset_symlinks(**kwargs)
 
         asset_group_path = self.get_absolute_path()
-        submission_metadata_path = os.path.join(asset_group_path, 'metadata.json')
+        asset_group_metadata_path = os.path.join(asset_group_path, 'metadata.json')
 
-        assert os.path.exists(submission_metadata_path)
-        with open(submission_metadata_path, 'r') as submission_metadata_file:
-            submission_metadata = json.load(submission_metadata_file)
+        assert os.path.exists(asset_group_metadata_path)
+        with open(asset_group_metadata_path, 'r') as asset_group_metadata_file:
+            asset_group_metadata = json.load(asset_group_metadata_file)
 
-        submission_metadata['commit_mime_whitelist_guid'] = str(
+        asset_group_metadata['commit_mime_whitelist_guid'] = str(
             current_app.agm.mime_type_whitelist_guid
         )
-        submission_metadata['commit_houston_api_version'] = str(version)
+        asset_group_metadata['commit_houston_api_version'] = str(version)
 
-        with open(submission_metadata_path, 'w') as submission_metadata_file:
-            json.dump(submission_metadata, submission_metadata_file)
+        with open(asset_group_metadata_path, 'w') as asset_group_metadata_file:
+            json.dump(asset_group_metadata, asset_group_metadata_file)
 
         # repo.index.add('.gitignore')
         repo.index.add('_assets/')
@@ -228,16 +228,16 @@ class AssetGroup(db.Model, HoustonModel):
         repo = current_app.agm.get_repository(self)
         assert repo is None
 
-        submission_abspath = self.get_absolute_path()
+        asset_group_abspath = self.get_absolute_path()
         gitlab_url = project.web_url
 
         with GitLabPAT(url=gitlab_url) as glpat:
             args = (
                 gitlab_url,
-                submission_abspath,
+                asset_group_abspath,
             )
-            log.info('Cloning remote submission:\n\tremote: %r\n\tlocal:  %r' % args)
-            glpat.repo = git.Repo.clone_from(glpat.authenticated_url, submission_abspath)
+            log.info('Cloning remote asset_group:\n\tremote: %r\n\tlocal:  %r' % args)
+            glpat.repo = git.Repo.clone_from(glpat.authenticated_url, asset_group_abspath)
             log.info('...cloned')
 
         repo = current_app.agm.get_repository(self)
@@ -278,33 +278,33 @@ class AssetGroup(db.Model, HoustonModel):
         return asset_group
 
     @classmethod
-    def create_submission_from_tus(cls, description, owner, transaction_id, paths=None):
+    def create_from_tus(cls, description, owner, transaction_id, paths=None):
         assert transaction_id is not None
-        submission = AssetGroup(
+        asset_group = AssetGroup(
             major_type=AssetGroupMajorType.filesystem,
             description=description,
         )
         if owner is not None and not owner.is_anonymous:
-            submission.owner = owner
+            asset_group.owner = owner
         with db.session.begin(subtransactions=True):
-            db.session.add(submission)
+            db.session.add(asset_group)
 
-        log.info('created submission %r' % submission)
+        log.info('created asset_group %r' % asset_group)
         added = None
         try:
-            added = submission.import_tus_files(
+            added = asset_group.import_tus_files(
                 transaction_id=transaction_id, paths=paths
             )
         except Exception:
             log.error(
-                'create_submission_from_tus() had problems with import_tus_files(); deleting from db and fs %r'
-                % submission
+                'create_from_tus() had problems with import_tus_files(); deleting from db and fs %r'
+                % asset_group
             )
-            submission.delete()
+            asset_group.delete()
             raise
 
-        log.info('submission imported %r' % added)
-        return submission
+        log.info('asset_group imported %r' % added)
+        return asset_group
 
     def import_tus_files(self, transaction_id=None, paths=None, purge_dir=True):
         from app.extensions.tus import _tus_filepaths_from, _tus_purge
@@ -312,13 +312,13 @@ class AssetGroup(db.Model, HoustonModel):
         current_app.agm.create_repository(self)
 
         sub_id = None if transaction_id is not None else self.guid
-        submission_abspath = self.get_absolute_path()
-        asset_group_path = os.path.join(submission_abspath, '_asset_group')
+        asset_group_abspath = self.get_absolute_path()
+        asset_group_path = os.path.join(asset_group_abspath, '_asset_group')
         paths_added = []
         num_files = 0
 
         for path in _tus_filepaths_from(
-            submission_guid=sub_id, transaction_id=transaction_id, paths=paths
+            asset_group_guid=sub_id, transaction_id=transaction_id, paths=paths
         ):
             name = pathlib.Path(path).name
             paths_added.append(name)
@@ -336,10 +336,10 @@ class AssetGroup(db.Model, HoustonModel):
 
         if purge_dir:
             # may have some unclaimed files in it
-            _tus_purge(submission_guid=sub_id, transaction_id=transaction_id)
+            _tus_purge(asset_group_guid=sub_id, transaction_id=transaction_id)
         return assets_added
 
-    def realize_submission(self):
+    def realize_asset_group(self):
         """
         Unpack any archives and resolve any symlinks
 
@@ -371,16 +371,16 @@ class AssetGroup(db.Model, HoustonModel):
         import utool as ut
         import magic
 
-        submission_abspath = self.get_absolute_path()
-        asset_group_path = os.path.join(submission_abspath, '_asset_group')
-        assets_path = os.path.join(submission_abspath, '_assets')
+        asset_group_abspath = self.get_absolute_path()
+        asset_group_path = os.path.join(asset_group_abspath, '_asset_group')
+        assets_path = os.path.join(asset_group_abspath, '_assets')
 
-        # Walk the submission path, looking for white-listed MIME type files
+        # Walk the asset_group path, looking for white-listed MIME type files
         files = []
         skipped = []
         errors = []
         walk_list = sorted(list(os.walk(asset_group_path)))
-        log.info('Walking submission...')
+        log.info('Walking asset_group...')
         for root, directories, filenames in tqdm.tqdm(walk_list):
             filenames = sorted(filenames)
             for filename in filenames:
@@ -437,7 +437,7 @@ class AssetGroup(db.Model, HoustonModel):
                     errors.append(filepath)
 
         if verbose:
-            print('Processed asset files from submission: %r' % (self,))
+            print('Processed asset files from asset_group: %r' % (self,))
             print('\tFiles   : %d' % (len(files),))
             print('\tSkipped : %d' % (len(skipped),))
             if len(skipped) > 0:
@@ -490,21 +490,21 @@ class AssetGroup(db.Model, HoustonModel):
             os.remove(existing_asset_symlink)
 
         # Add new or update any existing Assets found in the AssetGroup
-        asset_submission_filepath_list = [
+        asset_asset_group_filepath_list = [
             file_data.pop('filepath', None) for file_data in files
         ]
         assets = []
         # TODO: slim down this DB context
         with db.session.begin(subtransactions=True):
-            for file_data, asset_submission_filepath in zip(
-                files, asset_submission_filepath_list
+            for file_data, asset_asset_group_filepath in zip(
+                files, asset_asset_group_filepath_list
             ):
                 semantic_guid = file_data.get('semantic_guid', None)
                 asset = Asset.query.filter(Asset.semantic_guid == semantic_guid).first()
                 if asset is None:
                     # Check if we can recycle existing GUID from symlink
                     recycle_guid = existing_filepath_guid_mapping.get(
-                        asset_submission_filepath, None
+                        asset_asset_group_filepath, None
                     )
                     if recycle_guid is not None:
                         file_data['guid'] = recycle_guid
@@ -526,11 +526,11 @@ class AssetGroup(db.Model, HoustonModel):
                 assets.append(asset)
 
         # Update all symlinks for each Asset
-        for asset, asset_submission_filepath in zip(
-            assets, asset_submission_filepath_list
+        for asset, asset_asset_group_filepath in zip(
+            assets, asset_asset_group_filepath_list
         ):
             db.session.refresh(asset)
-            asset.update_symlink(asset_submission_filepath)
+            asset.update_symlink(asset_asset_group_filepath)
             if verbose:
                 print(filepath)
                 print('\tAsset         : %s' % (asset,))

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Application Users management related tasks for Invoke.
+Application AssetGroup management related tasks for Invoke.
 """
 
 from ._utils import app_context_task
@@ -10,22 +10,22 @@ from flask import current_app
 
 @app_context_task(
     help={
-        'path': '/path/to/submission/folder/ or /path/to/submission/file.ext',
-        'email': 'temp@localhost.  This is the email for the user who will be assigned as the owner of the new submission',
-        'description': 'An optional description for the submission',
+        'path': '/path/to/asset_group/folder/ or /path/to/asset_group/file.ext',
+        'email': 'temp@localhost.  This is the email for the user who will be assigned as the owner of the new asset_group',
+        'description': 'An optional description for the asset_group',
     }
 )
-def create_submission_from_path(
+def create_asset_group_from_path(
     context,
     path,
     email,
     description=None,
 ):
     """
-    Create a new submission via a local file or folder path.
+    Create a new asset_group via a local file or folder path.
 
     Command Line:
-    > invoke app.submissions.create-submission-from-path --path tests/asset_groups/test-000/ --email jason@wildme.org
+    > invoke app.asset_groups.create-asset_group-from-path --path tests/asset_groups/test-000/ --email jason@wildme.org
     """
     from app.modules.users.models import User
     from app.modules.asset_groups.models import AssetGroup, AssetGroupMajorType
@@ -48,42 +48,42 @@ def create_submission_from_path(
         'major_type': AssetGroupMajorType.filesystem,
         'description': description,
     }
-    submission = AssetGroup(**args)
+    asset_group = AssetGroup(**args)
 
     with db.session.begin():
-        db.session.add(submission)
+        db.session.add(asset_group)
 
-    db.session.refresh(submission)
+    db.session.refresh(asset_group)
 
     # Make sure that the repo for this asset group exists
-    current_app.agm.ensure_repository(submission)
+    current_app.agm.ensure_repository(asset_group)
 
-    submission.git_copy_path(absolute_path)
+    asset_group.git_copy_path(absolute_path)
 
     hostname = socket.gethostname()
-    submission.git_commit('Initial commit via CLI on host %r' % (hostname,))
+    asset_group.git_commit('Initial commit via CLI on host %r' % (hostname,))
 
-    submission.git_push()
+    asset_group.git_push()
 
-    print('Created and pushed new submission: %r' % (submission,))
+    print('Created and pushed new asset_group: %r' % (asset_group,))
 
 
 @app_context_task(
     help={
-        'guid': 'A UUID4 for the submission',
-        'email': 'temp@localhost.  This is the email for the user who will be assigned as the owner of the new submission',
+        'guid': 'A UUID4 for the asset_group',
+        'email': 'temp@localhost.  This is the email for the user who will be assigned as the owner of the new asset_group',
     }
 )
-def clone_submission_from_gitlab(
+def clone_asset_group_from_gitlab(
     context,
     guid,
     email,
 ):
     """
-    Clone an existing submission from the external GitLab submission archive
+    Clone an existing asset_group from the external GitLab asset_group archive
 
     Command Line:
-    > invoke app.submissions.clone-submission-from-gitlab --guid 00000000-0000-0000-0000-000000000002 --email jason@wildme.org
+    > invoke app.asset_groups.clone-asset_group-from-gitlab --guid 00000000-0000-0000-0000-000000000002 --email jason@wildme.org
     """
     from app.modules.users.models import User
     from app.modules.asset_groups.models import AssetGroup
@@ -96,31 +96,31 @@ def clone_submission_from_gitlab(
     from app import create_app
 
     app = create_app()
-    submission = AssetGroup.query.get(guid)
+    asset_group = AssetGroup.query.get(guid)
 
-    if submission is not None:
-        print('AssetGroup is already cloned locally:\n\t%s' % (submission,))
-        app.agm.ensure_repository(submission)
+    if asset_group is not None:
+        print('AssetGroup is already cloned locally:\n\t%s' % (asset_group,))
+        app.agm.ensure_repository(asset_group)
         return
 
-    submission = AssetGroup.ensure_asset_group(guid, owner=user)
+    asset_group = AssetGroup.ensure_asset_group(guid, owner=user)
 
-    if submission is None:
-        raise ValueError('Could not find submission in GitLab using GUID %r' % (guid,))
+    if asset_group is None:
+        raise ValueError('Could not find asset_group in GitLab using GUID %r' % (guid,))
 
-    print('Cloned submission from GitLab:')
-    print('\tAssetGroup: %r' % (submission,))
-    print('\tLocal Path: %r' % (submission.get_absolute_path(),))
+    print('Cloned asset_group from GitLab:')
+    print('\tAssetGroup: %r' % (asset_group,))
+    print('\tLocal Path: %r' % (asset_group.get_absolute_path(),))
 
 
 @app_context_task
 def list_all(context):
     """
-    Show existing submissions.
+    Show existing asset_groups.
     """
     from app.modules.asset_groups.models import AssetGroup
 
-    submissions = AssetGroup.query.all()
+    asset_groups = AssetGroup.query.all()
 
-    for submission in submissions:
-        print('AssetGroup : {} {}'.format(submission, submission.assets))
+    for asset_group in asset_groups:
+        print('AssetGroup : {} {}'.format(asset_group, asset_group.assets))

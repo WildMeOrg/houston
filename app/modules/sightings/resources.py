@@ -33,7 +33,7 @@ api = Namespace('sightings', description='Sightings')  # pylint: disable=invalid
 class SightingCleanup(object):
     def __init__(self):
         self.sighting_guid = None
-        self.submission = None
+        self.asset_group = None
 
     def rollback_and_abort(
         self,
@@ -50,10 +50,10 @@ class SightingCleanup(object):
         if self.sighting_guid is not None:
             log.warning('Cleanup removing Sighting %r from EDM' % self.sighting_guid)
             Sighting.delete_from_edm_by_guid(current_app, self.sighting_guid)
-        if self.submission is not None:
-            log.warning('Cleanup removing %r' % self.submission)
-            self.submission.delete()
-            self.submission = None
+        if self.asset_group is not None:
+            log.warning('Cleanup removing %r' % self.asset_group)
+            self.asset_group.delete()
+            self.asset_group = None
         abort(
             success=False,
             passed_message=message,
@@ -69,7 +69,7 @@ def _validate_asset_references(enc_list):
 
     # NOTE for simplicity i am going to assume assetReferences *share a common transaction id*  !!
     #  this will very likely always be true, but in the event it proves not to be, this will have to be altered
-    #  to do multiple create_submission_from_tus() calls
+    #  to do multiple create_from_tus() calls
 
     all_arefs = {}  # all paths needed, keyed by transaction id
     paths_wanted = (
@@ -213,7 +213,7 @@ class Sightings(Resource):
             owner = User.get_public_user()
             pub = True
             submitter_email = request_in.get('submitterEmail', None)
-            log.info(f'Anonymous submission posted, submitter_email={submitter_email}')
+            log.info(f'Anonymous asset_group posted, submitter_email={submitter_email}')
             if (
                 submitter_email is not None
             ):  # if not provided, submitter_guid is allowed to be null
@@ -301,7 +301,7 @@ class Sightings(Resource):
             '_validate_asset_references returned: %r, %r' % (all_arefs, paths_wanted)
         )
 
-        submission = None
+        asset_group = None
 
         if all_arefs is not None and paths_wanted is not None:
             # files seem to exist in uploads dir, so lets make
@@ -311,24 +311,23 @@ class Sightings(Resource):
             from app.modules.asset_groups.models import AssetGroup
 
             try:
-                submission = AssetGroup.create_submission_from_tus(
+                asset_group = AssetGroup.create_from_tus(
                     'Sighting.post ' + result_data['id'],
                     owner,
                     transaction_id,
                     paths=all_arefs[transaction_id],
                 )
             except Exception as ex:
-                cleanup.submission = submission
+                cleanup.asset_group = asset_group
                 cleanup.rollback_and_abort(
                     'Problem with encounter/assets',
-                    '%r on create_submission_from_tus transaction_id=%r paths=%r'
+                    '%r on create_from_tus transaction_id=%r paths=%r'
                     % (ex, transaction_id, all_arefs[transaction_id]),
                 )
-            cleanup.submission = submission
+            cleanup.asset_group = asset_group
 
             log.debug(
-                'create_submission_from_tus returned: %r => %r'
-                % (submission, submission.assets)
+                'create_from_tus returned: %r => %r' % (asset_group, asset_group.assets)
             )
 
         sighting = Sighting(
@@ -353,7 +352,7 @@ class Sightings(Resource):
                     enc_assets = None
                     if paths_wanted is not None:
                         # will throw exception if we dont have all we need
-                        enc_assets = _enc_assets(submission.assets, paths_wanted[i])
+                        enc_assets = _enc_assets(asset_group.assets, paths_wanted[i])
                         if enc_assets is not None:
                             encounter.add_assets_no_context(enc_assets)
                     log.debug('%r is adding enc_assets=%r' % (encounter, enc_assets))

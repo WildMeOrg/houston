@@ -307,7 +307,7 @@ def test_ModuleAccessPermission_anonymous_user(anonymous_user_login):
     validate_cannot_write_module(NotARealClass)
     validate_cannot_delete_module(NotARealClass)
 
-    # but can write a user (sign up) or a submission
+    # but can write a user (sign up) or an asset_group
     validate_cannot_read_module(User)
     validate_can_write_module(User)
     validate_cannot_delete_module(User)
@@ -327,7 +327,7 @@ def test_ModuleAccessPermission_authenticated_user(authenticated_user_login):
     validate_cannot_write_module(NotARealClass)
     validate_cannot_delete_module(NotARealClass)
 
-    # but can they write (create) users & (upload) submissions,
+    # but can they write (create) users & (upload) asset_groups,
     validate_cannot_read_module(User)
     validate_can_write_module(User)
     validate_cannot_delete_module(User)
@@ -373,7 +373,7 @@ def test_ModuleAccessPermission_user_manager_user(user_manager_user_login):
     validate_can_write_module(User)
     validate_cannot_delete_module(User)
 
-    # But not Data, other than create submission like everyone else
+    # But not Data, other than create assetGroups like everyone else
     validate_cannot_read_module(AssetGroup)
     validate_can_write_module(AssetGroup)
     validate_cannot_delete_module(AssetGroup)

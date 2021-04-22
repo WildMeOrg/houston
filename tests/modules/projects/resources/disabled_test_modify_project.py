@@ -79,7 +79,7 @@ def test_invalid_encounters(
     admin_user,
     researcher_1,
     researcher_2,
-    test_empty_submission_uuid,
+    test_empty_asset_group_uuid,
 ):
     # pylint: disable=invalid-name
     from app.modules.projects.models import Project
@@ -113,7 +113,7 @@ def test_invalid_encounters(
     # Try adding a garbage guid
     add_invalid = [
         utils.patch_test_op(researcher_1.password_secret),
-        utils.patch_add_op('encounter', '%s' % test_empty_submission_uuid),
+        utils.patch_add_op('encounter', '%s' % test_empty_asset_group_uuid),
     ]
     proj_utils.patch_project(
         flask_app_client, project_guid, researcher_1, add_invalid, 409
@@ -134,7 +134,7 @@ def test_invalid_encounters(
     # remove garbage guid
     remove_invalid = [
         utils.patch_test_op(researcher_1.password_secret),
-        utils.patch_remove_op('encounter', '%s' % test_empty_submission_uuid),
+        utils.patch_remove_op('encounter', '%s' % test_empty_asset_group_uuid),
     ]
     proj_utils.patch_project(flask_app_client, project_guid, researcher_1, remove_invalid)
     assert len(proj.get_encounters()) == 2

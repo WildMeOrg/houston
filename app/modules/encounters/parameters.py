@@ -56,16 +56,16 @@ class PatchEncounterDetailsParameters(PatchJSONParametersWithPassword):
         if rules.owner_or_privileged(current_user, obj):
             if field == 'assetId':
                 asset = Asset.query.get(value)
-                if asset and asset.submission.owner == current_user:
+                if asset and asset.asset_group.owner == current_user:
                     obj.add_asset(asset)
                     ret_val = True
 
             elif field == 'newAssetGroup':
-                new_submission = AssetGroup.create_submission_from_tus(
+                new_asset_group = AssetGroup.create_from_tus(
                     'Encounter.patch' + value, current_user, value
                 )
 
-                for asset in new_submission.assets:
+                for asset in new_asset_group.assets:
                     obj.add_asset(asset)
                 ret_val = True
 

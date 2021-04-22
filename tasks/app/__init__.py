@@ -22,7 +22,7 @@ from tasks.app import (
     projects,
     run,
     site_settings,
-    submissions,
+    asset_groups,
     swagger,
     users,
 )
@@ -46,7 +46,7 @@ namespace = Collection(
     projects,
     run,
     site_settings,
-    submissions,
+    asset_groups,
     swagger,
     users,
 )

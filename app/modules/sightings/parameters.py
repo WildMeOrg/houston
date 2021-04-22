@@ -6,6 +6,7 @@ Input arguments (Parameters) for Sightings resources RESTful API
 
 # from flask_marshmallow import base_fields
 
+from flask_restx_patched.parameters import PatchJSONParametersWithPassword
 from flask_login import current_user
 from flask_restx_patched import Parameters, PatchJSONParameters
 
@@ -19,8 +20,9 @@ class CreateSightingParameters(Parameters, schemas.DetailedSightingSchema):
         pass
 
 
-class PatchSightingDetailsParameters(PatchJSONParameters):
+class PatchSightingDetailsParameters(PatchJSONParametersWithPassword):
     # pylint: disable=abstract-method,missing-docstring
+
     OPERATION_CHOICES = (
         PatchJSONParameters.OP_ADD,
         PatchJSONParameters.OP_REPLACE,
@@ -40,6 +42,8 @@ class PatchSightingDetailsParameters(PatchJSONParameters):
         '/startTime',
         '/taxonomies',
         '/verbatimLocality',
+        '/assetId',
+        '/newSubmission',
     )
 
     PATH_CHOICES_HOUSTON = ('assetId', 'newAssetGroup')
@@ -55,6 +59,7 @@ class PatchSightingDetailsParameters(PatchJSONParameters):
         ret_val = False
 
         if rules.owner_or_privileged(current_user, obj):
+
             if field == 'assetId':
                 asset = Asset.query.get(value)
                 if asset and asset.submission.owner == current_user:
@@ -65,8 +70,6 @@ class PatchSightingDetailsParameters(PatchJSONParameters):
                 new_submission = Submission.create_submission_from_tus(
                     'Encounter.patch' + value, current_user, value
                 )
-
-                # need to move work to sighting
 
                 for asset in new_submission.assets:
                     obj.add_asset(asset)

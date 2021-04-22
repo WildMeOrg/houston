@@ -28,7 +28,7 @@ def create_submission_from_path(
     > invoke app.submissions.create-submission-from-path --path tests/asset_groups/test-000/ --email jason@wildme.org
     """
     from app.modules.users.models import User
-    from app.modules.asset_groups.models import Submission, SubmissionMajorType
+    from app.modules.asset_groups.models import AssetGroup, AssetGroupMajorType
     from app.extensions import db
     import socket
 
@@ -45,10 +45,10 @@ def create_submission_from_path(
 
     args = {
         'owner_guid': user.guid,
-        'major_type': SubmissionMajorType.filesystem,
+        'major_type': AssetGroupMajorType.filesystem,
         'description': description,
     }
-    submission = Submission(**args)
+    submission = AssetGroup(**args)
 
     with db.session.begin():
         db.session.add(submission)
@@ -86,7 +86,7 @@ def clone_submission_from_gitlab(
     > invoke app.submissions.clone-submission-from-gitlab --guid 00000000-0000-0000-0000-000000000002 --email jason@wildme.org
     """
     from app.modules.users.models import User
-    from app.modules.asset_groups.models import Submission
+    from app.modules.asset_groups.models import AssetGroup
 
     user = User.find(email=email)
 
@@ -96,20 +96,20 @@ def clone_submission_from_gitlab(
     from app import create_app
 
     app = create_app()
-    submission = Submission.query.get(guid)
+    submission = AssetGroup.query.get(guid)
 
     if submission is not None:
-        print('Submission is already cloned locally:\n\t%s' % (submission,))
+        print('AssetGroup is already cloned locally:\n\t%s' % (submission,))
         app.agm.ensure_repository(submission)
         return
 
-    submission = Submission.ensure_asset_group(guid, owner=user)
+    submission = AssetGroup.ensure_asset_group(guid, owner=user)
 
     if submission is None:
         raise ValueError('Could not find submission in GitLab using GUID %r' % (guid,))
 
     print('Cloned submission from GitLab:')
-    print('\tSubmission: %r' % (submission,))
+    print('\tAssetGroup: %r' % (submission,))
     print('\tLocal Path: %r' % (submission.get_absolute_path(),))
 
 
@@ -118,9 +118,9 @@ def list_all(context):
     """
     Show existing submissions.
     """
-    from app.modules.asset_groups.models import Submission
+    from app.modules.asset_groups.models import AssetGroup
 
-    submissions = Submission.query.all()
+    submissions = AssetGroup.query.all()
 
     for submission in submissions:
-        print('Submission : {} {}'.format(submission, submission.assets))
+        print('AssetGroup : {} {}'.format(submission, submission.assets))

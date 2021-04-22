@@ -51,7 +51,7 @@ def initialize_gitlab_submissions(context, email, dryrun=False):
     > invoke app.initialize.initialize-gitlab-submissions --email jason@wildme.org
     """
     from app.modules.users.models import User
-    from app.modules.asset_groups.models import Submission, SubmissionMajorType
+    from app.modules.asset_groups.models import AssetGroup, AssetGroupMajorType
     from app.extensions import db
     from flask import current_app
     import config
@@ -91,29 +91,29 @@ def initialize_gitlab_submissions(context, email, dryrun=False):
 
     for submission_guid, submission_data in submission_data:
         if current_app.agm.is_asset_group_on_remote(submission_guid):
-            log.info(f'Submission {submission_guid} already on GitLab')
+            log.info(f'AssetGroup {submission_guid} already on GitLab')
         else:
-            log.info(f'Submission {submission_guid} missing on GitLab, provisioning...')
+            log.info(f'AssetGroup {submission_guid} missing on GitLab, provisioning...')
 
-            submission = Submission.query.get(submission_guid)
+            submission = AssetGroup.query.get(submission_guid)
 
             if submission is None:
-                log.info(f'Submission {submission_guid} missing locally, creating...')
+                log.info(f'AssetGroup {submission_guid} missing locally, creating...')
                 args = {
                     'guid': submission_guid,
                     'owner_guid': user.guid,
-                    'major_type': SubmissionMajorType.test,
+                    'major_type': AssetGroupMajorType.test,
                     'description': 'This is a required PyTest submission (do not delete)',
                 }
-                submission = Submission(**args)
+                submission = AssetGroup(**args)
                 with db.session.begin():
                     db.session.add(submission)
                 db.session.refresh(submission)
-                log.info('Submission %r created' % (submission,))
+                log.info('AssetGroup %r created' % (submission,))
             else:
-                log.info('Submission %r found locally' % (submission,))
+                log.info('AssetGroup %r found locally' % (submission,))
             if dryrun:
-                log.info('DRYRUN: Submission creation skipped...')
+                log.info('DRYRUN: AssetGroup creation skipped...')
                 continue
 
             repo, project = submission.ensure_repository(additional_tags=[WHITELIST_TAG])

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Submissions database models
+AssetGroups database models
 --------------------
 """
 
@@ -71,7 +71,7 @@ class GitLabPAT(object):
         return True
 
 
-class SubmissionMajorType(str, enum.Enum):
+class AssetGroupMajorType(str, enum.Enum):
     filesystem = 'filesystem'
     archive = 'archive'
     service = 'service'
@@ -82,11 +82,11 @@ class SubmissionMajorType(str, enum.Enum):
     reject = 'reject'
 
 
-class Submission(db.Model, HoustonModel):
+class AssetGroup(db.Model, HoustonModel):
     """
-    Submission database model.
+    AssetGroup database model.
 
-    Submission Structure:
+    AssetGroup Structure:
         _db/asset_groups/<submission GUID>/
             - .git/
             - _asset_group/
@@ -101,8 +101,8 @@ class Submission(db.Model, HoustonModel):
     )  # pylint: disable=invalid-name
 
     major_type = db.Column(
-        db.Enum(SubmissionMajorType),
-        default=SubmissionMajorType.unknown,
+        db.Enum(AssetGroupMajorType),
+        default=AssetGroupMajorType.unknown,
         index=True,
         nullable=False,
     )
@@ -253,7 +253,7 @@ class Submission(db.Model, HoustonModel):
 
     @classmethod
     def ensure_asset_group(cls, asset_group_uuid, owner=None):
-        asset_group = Submission.query.get(asset_group_uuid)
+        asset_group = AssetGroup.query.get(asset_group_uuid)
         if asset_group is None:
             from app.extensions import db
 
@@ -263,7 +263,7 @@ class Submission(db.Model, HoustonModel):
             if owner is None:
                 owner = current_user
 
-            asset_group = Submission(
+            asset_group = AssetGroup(
                 guid=asset_group_uuid,
                 owner_guid=owner.guid,
             )
@@ -280,8 +280,8 @@ class Submission(db.Model, HoustonModel):
     @classmethod
     def create_submission_from_tus(cls, description, owner, transaction_id, paths=None):
         assert transaction_id is not None
-        submission = Submission(
-            major_type=SubmissionMajorType.filesystem,
+        submission = AssetGroup(
+            major_type=AssetGroupMajorType.filesystem,
             description=description,
         )
         if owner is not None and not owner.is_anonymous:
@@ -429,7 +429,7 @@ class Submission(db.Model, HoustonModel):
                         'mime_type': mime_type,
                         'magic_signature': magic_signature,
                         'size_bytes': size_bytes,
-                        'submission_guid': self.guid,
+                        'asset_group_guid': self.guid,
                     }
                     files.append(file_data)
                 except Exception:
@@ -462,7 +462,7 @@ class Submission(db.Model, HoustonModel):
             file_data['filesystem_xxhash64'] = filesystem_xxhash64
             file_data['filesystem_guid'] = filesystem_guid
             semantic_guid_data = (
-                file_data['submission_guid'],
+                file_data['asset_group_guid'],
                 file_data['filesystem_guid'],
             )
             file_data['semantic_guid'] = ut.hashable_to_uuid(semantic_guid_data)
@@ -489,7 +489,7 @@ class Submission(db.Model, HoustonModel):
                         pass
             os.remove(existing_asset_symlink)
 
-        # Add new or update any existing Assets found in the Submission
+        # Add new or update any existing Assets found in the AssetGroup
         asset_submission_filepath_list = [
             file_data.pop('filepath', None) for file_data in files
         ]
@@ -514,7 +514,11 @@ class Submission(db.Model, HoustonModel):
                 else:
                     # Update record if Asset exists
                     for key in file_data:
-                        if key in ['submission_guid', 'filesystem_guid', 'semantic_guid']:
+                        if key in [
+                            'asset_group_guid',
+                            'filesystem_guid',
+                            'semantic_guid',
+                        ]:
                             continue
                         value = file_data[key]
                         setattr(asset, key, value)
@@ -538,7 +542,7 @@ class Submission(db.Model, HoustonModel):
                 print('\tFS xxHash64   : %s' % (asset.filesystem_xxhash64,))
                 print('\tFS GUID       : %s' % (asset.filesystem_guid,))
 
-        # Get all historical and current Assets for this Submission
+        # Get all historical and current Assets for this AssetGroup
         db.session.refresh(self)
 
         # Delete any historical Assets that have been deleted from this commit
@@ -559,9 +563,9 @@ class Submission(db.Model, HoustonModel):
                 key_ = key.lower()
                 value_ = value.lower()
                 if key_ == 'type':
-                    default_major_type = SubmissionMajorType.unknown
+                    default_major_type = AssetGroupMajorType.unknown
                     self.major_type = getattr(
-                        SubmissionMajorType, value_, default_major_type
+                        AssetGroupMajorType, value_, default_major_type
                     )
 
         self.description = project.description
@@ -620,7 +624,7 @@ class Submission(db.Model, HoustonModel):
                 asset.delete()
         db.session.refresh(self)
         # TODO: This is potentially dangerous as it decouples the Asset deletion
-        #       transaction with the Submission deletion transaction, bad for rollbacks
+        #       transaction with the AssetGroup deletion transaction, bad for rollbacks
         with db.session.begin(subtransactions=True):
             db.session.delete(self)
         self.delete_dirs()

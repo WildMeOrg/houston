@@ -36,7 +36,7 @@ class DetailedAssetSchema(BaseAssetSchema):
         fields = BaseAssetSchema.Meta.fields + (
             Asset.created.key,
             Asset.updated.key,
-            Asset.submission.key,
+            Asset.asset_group.key,
             'filename',
             'src',
         )

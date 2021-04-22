@@ -100,7 +100,7 @@ def delete_asset_group(
 # class with a cleanup method to be called if any assertions fail
 class CloneAssetGroup(object):
     def __init__(self, client, admin_user, owner, guid, force_clone):
-        from app.modules.asset_groups.models import Submission
+        from app.modules.asset_groups.models import AssetGroup
 
         self.asset_group = None
         self.guid = guid
@@ -121,7 +121,7 @@ class CloneAssetGroup(object):
 
         # only store the asset_group if the clone worked
         if self.response.status_code == 200:
-            self.asset_group = Submission.query.get(self.response.json['guid'])
+            self.asset_group = AssetGroup.query.get(self.response.json['guid'])
 
         elif self.response.status_code in (428, 403):
             # 428 Precondition Required
@@ -131,7 +131,7 @@ class CloneAssetGroup(object):
 
             # only store the asset_group if the clone worked
             if self.response.status_code == 200:
-                self.asset_group = Submission.query.get(self.response.json['guid'])
+                self.asset_group = AssetGroup.query.get(self.response.json['guid'])
 
             # reassign ownership
             data = [

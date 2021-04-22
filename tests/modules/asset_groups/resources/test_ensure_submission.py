@@ -23,7 +23,7 @@ def test_ensure_empty_asset_group_by_uuid(
 def test_ensure_clone_asset_group_by_uuid(
     flask_app_client, admin_user, researcher_1, db, test_clone_asset_group_data
 ):
-    from app.modules.asset_groups.models import SubmissionMajorType
+    from app.modules.asset_groups.models import AssetGroupMajorType
     from app.modules.assets.models import Asset
 
     clone = utils.clone_asset_group(
@@ -35,7 +35,7 @@ def test_ensure_clone_asset_group_by_uuid(
     )
 
     try:
-        assert clone.asset_group.major_type == SubmissionMajorType.test
+        assert clone.asset_group.major_type == AssetGroupMajorType.test
         # assert clone.asset_group.commit == 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'
         assert clone.asset_group.commit_mime_whitelist_guid == uuid.UUID(
             '4d46c55d-accf-29f1-abe7-a24839ec1b95'

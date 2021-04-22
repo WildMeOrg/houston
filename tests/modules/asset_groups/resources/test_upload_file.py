@@ -12,9 +12,9 @@ def test_create_open_submission(flask_app_client, regular_user, db):
     temp_submission = None
 
     try:
-        from app.modules.asset_groups.models import Submission, SubmissionMajorType
+        from app.modules.asset_groups.models import AssetGroup, AssetGroupMajorType
 
-        test_major_type = SubmissionMajorType.test
+        test_major_type = AssetGroupMajorType.test
 
         with flask_app_client.login(regular_user, auth_scopes=('asset_groups:write',)):
             response = flask_app_client.post(
@@ -28,7 +28,7 @@ def test_create_open_submission(flask_app_client, regular_user, db):
                 ),
             )
 
-        temp_submission = Submission.query.get(response.json['guid'])
+        temp_submission = AssetGroup.query.get(response.json['guid'])
 
         assert response.status_code == 200
         assert response.content_type == 'application/json'
@@ -54,9 +54,9 @@ def test_submission_streamlined(flask_app_client, test_root, regular_user, db):
     temp_submission = None
 
     try:
-        from app.modules.asset_groups.models import Submission, SubmissionMajorType
+        from app.modules.asset_groups.models import AssetGroup, AssetGroupMajorType
 
-        test_major_type = SubmissionMajorType.test
+        test_major_type = AssetGroupMajorType.test
 
         test_image_list = ['zebra.jpg', 'fluke.jpg']
         files = [
@@ -68,14 +68,14 @@ def test_submission_streamlined(flask_app_client, test_root, regular_user, db):
                 '/api/v1/asset_groups/streamlined',
                 data=dict(
                     major_type=test_major_type,
-                    description='Test Submission (streamlined)',
+                    description='Test AssetGroup (streamlined)',
                     files=files,
                 ),
             )
         # since we passed file descriptors to files we need to close them now
         [f[0].close() for f in files]
 
-        temp_submission = Submission.query.get(response.json['guid'])
+        temp_submission = AssetGroup.query.get(response.json['guid'])
 
         assert response.status_code == 200
         assert response.content_type == 'application/json'

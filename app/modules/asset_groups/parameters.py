@@ -8,7 +8,7 @@ from flask_restx_patched import Parameters, PatchJSONParameters
 from flask_login import current_user  # NOQA
 
 from . import schemas
-from .models import Submission
+from .models import AssetGroup
 from app.modules.users.permissions import rules
 
 
@@ -21,7 +21,7 @@ class PatchAssetGroupDetailsParameters(PatchJSONParameters):
     # pylint: disable=abstract-method,missing-docstring
     OPERATION_CHOICES = (PatchJSONParameters.OP_REPLACE, PatchJSONParameters.OP_ADD)
 
-    PATH_CHOICES = tuple('/%s' % field for field in (Submission.description.key, 'owner'))
+    PATH_CHOICES = tuple('/%s' % field for field in (AssetGroup.description.key, 'owner'))
 
     @classmethod
     def add(cls, obj, field, value, state):
@@ -35,7 +35,7 @@ class PatchAssetGroupDetailsParameters(PatchJSONParameters):
         ret_val = False
         # Permissions for all fields are the same so have one check
         if rules.owner_or_privileged(current_user, obj) or current_user.is_admin:
-            if field == Submission.description.key:
+            if field == AssetGroup.description.key:
                 obj.description = value
                 ret_val = True
             elif field == 'owner':

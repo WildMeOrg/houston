@@ -7,7 +7,7 @@ import shutil
 
 def test_create_submission_from_tus(db, researcher_1, test_root):
 
-    from app.modules.asset_groups.models import Submission
+    from app.modules.asset_groups.models import AssetGroup
     from tests.modules.sightings.resources.utils import (
         prep_tus_dir,
         get_transaction_id,
@@ -17,17 +17,17 @@ def test_create_submission_from_tus(db, researcher_1, test_root):
 
     # first no such dir exists
     with pytest.raises(OSError):
-        sub = Submission.create_submission_from_tus('PYTEST', researcher_1, tid)
+        sub = AssetGroup.create_submission_from_tus('PYTEST', researcher_1, tid)
 
     # now with a file dir+files but ask for wrong one
     tid, valid_file = prep_tus_dir(test_root)
     with pytest.raises(AssertionError):
-        sub = Submission.create_submission_from_tus(
+        sub = AssetGroup.create_submission_from_tus(
             'PYTEST', researcher_1, tid, paths={'fail.jpg'}
         )
 
     # test with explicit paths (should succeed)
-    sub = Submission.create_submission_from_tus(
+    sub = AssetGroup.create_submission_from_tus(
         'PYTEST', researcher_1, tid, paths={valid_file}
     )
     assert len(sub.assets) == 1
@@ -38,7 +38,7 @@ def test_create_submission_from_tus(db, researcher_1, test_root):
 
     # test with no paths (should succeed same as above)
     tid, valid_file = prep_tus_dir(test_root)
-    sub = Submission.create_submission_from_tus('PYTEST', researcher_1, tid)
+    sub = AssetGroup.create_submission_from_tus('PYTEST', researcher_1, tid)
     assert len(sub.assets) == 1
     assert sub.assets[0].path == valid_file
     if os.path.exists(sub.get_absolute_path()):

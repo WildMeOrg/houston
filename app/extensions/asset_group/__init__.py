@@ -213,7 +213,7 @@ class AssetGroupManager(object):
 
     def _ensure_repository_files(self, group_path, project):
 
-        # Submission Repo Structure:
+        # AssetGroup Repo Structure:
         #     _db/assetGroup/<asset_group GUID>/
         #         - .git/
         #         - _asset_group/

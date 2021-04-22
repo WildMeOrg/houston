@@ -21,7 +21,7 @@ from app.modules.users import permissions
 from app.modules.users.permissions.types import AccessOperation
 
 from . import parameters, schemas
-from .models import Submission
+from .models import AssetGroup
 
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
@@ -40,7 +40,7 @@ class AssetGroups(Resource):
     @api.permission_required(
         permissions.ModuleAccessPermission,
         kwargs_on_request=lambda kwargs: {
-            'module': Submission,
+            'module': AssetGroup,
             'action': AccessOperation.READ,
         },
     )
@@ -53,12 +53,12 @@ class AssetGroups(Resource):
         Returns a list of Asset_group starting from ``offset`` limited by ``limit``
         parameter.
         """
-        return Submission.query.offset(args['offset']).limit(args['limit'])
+        return AssetGroup.query.offset(args['offset']).limit(args['limit'])
 
     @api.permission_required(
         permissions.ModuleAccessPermission,
         kwargs_on_request=lambda kwargs: {
-            'module': Submission,
+            'module': AssetGroup,
             'action': AccessOperation.WRITE,
         },
     )
@@ -95,7 +95,7 @@ class AssetGroups(Resource):
         )
         with context:
             args['owner_guid'] = current_user.guid
-            asset_group = Submission(**args)
+            asset_group = AssetGroup(**args)
             db.session.add(asset_group)
 
         # Get the repo to make sure it's configured
@@ -113,7 +113,7 @@ class AssetGroupsStreamlined(Resource):
     @api.permission_required(
         permissions.ModuleAccessPermission,
         kwargs_on_request=lambda kwargs: {
-            'module': Submission,
+            'module': AssetGroup,
             'action': AccessOperation.WRITE,
         },
     )
@@ -151,7 +151,7 @@ class AssetGroupsStreamlined(Resource):
         )
         with context:
             args['owner_guid'] = current_user.guid
-            asset_group = Submission(**args)
+            asset_group = AssetGroup(**args)
             db.session.add(asset_group)
 
         # Get the repo to make sure it's configured
@@ -169,7 +169,7 @@ class AssetGroupsStreamlined(Resource):
 
 @api.login_required(oauth_scopes=['asset_groups:read'])
 @api.route('/<uuid:asset_group_guid>')
-@api.resolve_object_by_model(Submission, 'asset_group', return_not_found=True)
+@api.resolve_object_by_model(AssetGroup, 'asset_group', return_not_found=True)
 @api.response(
     code=HTTPStatus.NOT_FOUND,
     description='Asset_group not found.',
@@ -206,7 +206,7 @@ class AssetGroupByID(Resource):
     @api.permission_required(
         permissions.ModuleOrObjectAccessPermission,
         kwargs_on_request=lambda kwargs: {
-            'module': Submission,
+            'module': AssetGroup,
             'obj': kwargs['asset_group'][0],
             'action': AccessOperation.READ,
         },
@@ -233,7 +233,7 @@ class AssetGroupByID(Resource):
     @api.permission_required(
         permissions.ModuleOrObjectAccessPermission,
         kwargs_on_request=lambda kwargs: {
-            'module': Submission,
+            'module': AssetGroup,
             'obj': kwargs['asset_group'][0],
             'action': AccessOperation.WRITE,
         },
@@ -261,7 +261,7 @@ class AssetGroupByID(Resource):
         assert isinstance(asset_group_guid, uuid.UUID)
 
         # Clone if present on gitlab
-        asset_group = Submission.ensure_asset_group(asset_group_guid)
+        asset_group = AssetGroup.ensure_asset_group(asset_group_guid)
         if asset_group is None:
             # We have checked the asset_group manager and cannot find this asset_group, raise 404 manually
             raise werkzeug.exceptions.NotFound
@@ -271,7 +271,7 @@ class AssetGroupByID(Resource):
     @api.permission_required(
         permissions.ModuleOrObjectAccessPermission,
         kwargs_on_request=lambda kwargs: {
-            'module': Submission,
+            'module': AssetGroup,
             'obj': kwargs['asset_group'][0],
             'action': AccessOperation.WRITE,
         },
@@ -308,7 +308,7 @@ class AssetGroupByID(Resource):
     @api.permission_required(
         permissions.ModuleOrObjectAccessPermission,
         kwargs_on_request=lambda kwargs: {
-            'module': Submission,
+            'module': AssetGroup,
             'obj': kwargs['asset_group'][0],
             'action': AccessOperation.DELETE,
         },
@@ -337,7 +337,7 @@ class AssetGroupByID(Resource):
     code=HTTPStatus.NOT_FOUND,
     description='Asset_group not found.',
 )
-@api.resolve_object_by_model(Submission, 'asset_group', return_not_found=True)
+@api.resolve_object_by_model(AssetGroup, 'asset_group', return_not_found=True)
 class AssetGroupTusCollect(Resource):
     """
     Collect files uploaded by Tus endpoint for this Asset_group

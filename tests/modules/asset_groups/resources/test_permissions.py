@@ -63,9 +63,9 @@ def test_create_patch_asset_group(flask_app_client, researcher_1, readonly_user,
     asset_group_guid = None
 
     try:
-        from app.modules.asset_groups.models import Submission, SubmissionMajorType
+        from app.modules.asset_groups.models import AssetGroup, AssetGroupMajorType
 
-        major_type = SubmissionMajorType.test
+        major_type = AssetGroupMajorType.test
         data = {
             'major_type': major_type,
             'description': 'This is a test asset_group, please ignore',
@@ -75,7 +75,7 @@ def test_create_patch_asset_group(flask_app_client, researcher_1, readonly_user,
         )
 
         asset_group_guid = create_response.json['guid']
-        temp_asset_group = Submission.query.get(asset_group_guid)
+        temp_asset_group = AssetGroup.query.get(asset_group_guid)
 
         data['description'] = 'This is a test asset_group, kindly ignore'
         # Try to patch as non owner and validate it fails
@@ -115,6 +115,6 @@ def test_create_patch_asset_group(flask_app_client, researcher_1, readonly_user,
     finally:
         current_app.agm.delete_remote_asset_group(temp_asset_group)
         # Restore original state
-        temp_asset_group = Submission.query.get(asset_group_guid)
+        temp_asset_group = AssetGroup.query.get(asset_group_guid)
         if temp_asset_group is not None:
             temp_asset_group.delete()

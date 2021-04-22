@@ -18,7 +18,7 @@ import app
 import app.extensions
 
 
-from app.modules.asset_groups.models import SubmissionMajorType
+from app.modules.asset_groups.models import AssetGroupMajorType
 
 
 def upgrade():
@@ -31,7 +31,7 @@ def upgrade():
         batch_op.alter_column('submission_major_type',
                existing_type=sa.VARCHAR(length=10),
                nullable=False,
-               server_default=SubmissionMajorType.unknown,
+               server_default=AssetGroupMajorType.unknown,
         )
         batch_op.create_index(batch_op.f('ix_submission_submission_major_type'), ['submission_major_type'], unique=False)
 

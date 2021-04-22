@@ -109,7 +109,7 @@ def add_file_asset_to_encounter(
 
     add_asset = [
         utils.patch_test_op(user.password_secret),
-        utils.patch_add_op('newSubmission', transaction_id),
+        utils.patch_add_op('newAssetGroup', transaction_id),
     ]
     patch_encounter(flask_app_client, '%s' % encounter.guid, user, add_asset)
 
@@ -148,7 +148,7 @@ def test_asset_file_addition(db, flask_app_client, researcher_1):
                 '%s%s' % (PATH, new_encounter.guid),
             )
 
-        # The Submission will be in gitlab but not on the EDM so the delete will "fail"
+        # The AssetGroup will be in gitlab but not on the EDM so the delete will "fail"
         assert response.status_code == 400
     finally:
         # Even though the REST API deletion fails, as it's not present, the Houston feather object remains.

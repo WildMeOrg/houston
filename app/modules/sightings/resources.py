@@ -308,10 +308,10 @@ class Sightings(Resource):
             transaction_id = next(
                 iter(all_arefs)
             )  # here is where we make single-transaciton-id assumption
-            from app.modules.asset_groups.models import Submission
+            from app.modules.asset_groups.models import AssetGroup
 
             try:
-                submission = Submission.create_submission_from_tus(
+                submission = AssetGroup.create_submission_from_tus(
                     'Sighting.post ' + result_data['id'],
                     owner,
                     transaction_id,

@@ -20,10 +20,10 @@ class CreateEncounterParameters(Parameters, schemas.DetailedEncounterSchema):
 class PatchEncounterDetailsParameters(PatchJSONParametersWithPassword):
     # pylint: disable=abstract-method,missing-docstring
 
-    # Valid options for patching are replace '/owner', and add '/assetId' and '/newSubmission'
+    # Valid options for patching are replace '/owner', and add '/assetId' and '/newAssetGroup'
     # The '/current_password' and '/user' are not patchable but must be valid fields in the patch so that
     #  they can be present for validation
-    VALID_FIELDS = ['current_password', 'user', 'owner', 'assetId', 'newSubmission']
+    VALID_FIELDS = ['current_password', 'user', 'owner', 'assetId', 'newAssetGroup']
     PATH_CHOICES = tuple('/%s' % field for field in VALID_FIELDS)
 
     @classmethod
@@ -48,7 +48,7 @@ class PatchEncounterDetailsParameters(PatchJSONParametersWithPassword):
     @classmethod
     def add(cls, obj, field, value, state):
         from app.modules.assets.models import Asset
-        from app.modules.asset_groups.models import Submission
+        from app.modules.asset_groups.models import AssetGroup
 
         super(PatchEncounterDetailsParameters, cls).add(obj, field, value, state)
         ret_val = False
@@ -60,8 +60,8 @@ class PatchEncounterDetailsParameters(PatchJSONParametersWithPassword):
                     obj.add_asset(asset)
                     ret_val = True
 
-            elif field == 'newSubmission':
-                new_submission = Submission.create_submission_from_tus(
+            elif field == 'newAssetGroup':
+                new_submission = AssetGroup.create_submission_from_tus(
                     'Encounter.patch' + value, current_user, value
                 )
 

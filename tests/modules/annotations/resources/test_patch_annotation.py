@@ -4,7 +4,7 @@
 import uuid
 from tests import utils
 from tests.modules.annotations.resources import utils as annot_utils
-from tests.modules.submissions.resources import utils as sub_utils
+from tests.modules.asset_groups.resources import utils as sub_utils
 from tests.modules.encounters.resources import utils as enc_utils
 
 

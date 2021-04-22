@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=missing-docstring
 import uuid
-import tests.modules.submissions.resources.utils as utils
+import tests.modules.asset_groups.resources.utils as utils
 
 
 def test_ensure_asset_group_by_uuid(

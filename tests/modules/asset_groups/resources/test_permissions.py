@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=missing-docstring
-import tests.modules.submissions.resources.utils as asset_group_utils
+import tests.modules.asset_groups.resources.utils as asset_group_utils
 import tests.modules.assets.resources.utils as asset_utils
 import uuid
 

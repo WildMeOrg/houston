@@ -2,7 +2,7 @@
 # pylint: disable=missing-docstring
 import hashlib
 from tests import utils
-import tests.modules.submissions.resources.utils as asset_group_utils
+import tests.modules.asset_groups.resources.utils as asset_group_utils
 
 
 def test_get_asset_not_found(flask_app_client):

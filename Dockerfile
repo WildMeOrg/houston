@@ -1,4 +1,31 @@
-FROM python:3.9
+FROM node:latest as frontend
+# Copy the necessary source items
+RUN mkdir /code
+COPY ./scripts /code/scripts
+# Build the frontend
+RUN set -x \
+    && cd /code \
+    && git clone https://github.com/WildMeOrg/codex-frontend.git _frontend \
+    && export DEBUG=1 \
+    && /bin/bash -c "source ./scripts/build.frontend.sh && build" \
+    && /bin/bash -c "source ./scripts/build.frontend.sh && install"
+
+
+FROM node:latest as swagger-ui
+# Copy the necessary source items
+RUN mkdir /code
+COPY ./_swagger-ui /code/_swagger-ui
+COPY ./scripts /code/scripts
+# Build the frontend
+RUN set -x \
+    && cd /code \
+    && ls -lah \
+    && export DEBUG=1 \
+    && /bin/bash -c "source ./scripts/build.swagger-ui.sh && build" \
+    && /bin/bash -c "source ./scripts/build.swagger-ui.sh && install"
+
+
+FROM python:3.9 as main
 
 RUN apt update \
  # && curl -sL https://deb.nodesource.com/setup_14.x | bash - \
@@ -34,13 +61,19 @@ RUN set -x \
     # test it works
     && wait-for google.com:80 -- echo "success"
 
+ENV FRONTEND_DIST /var/www/frontend
+ENV SWAGGER_UI_DIST /var/www/swagger-ui
+
 COPY . /code
+RUN ls -lah /code/app/static
+COPY --from=frontend /code/app/static/dist-latest ${FRONTEND_DIST}
+COPY --from=swagger-ui /code/app/static/swagger-ui ${SWAGGER_UI_DIST}
+RUN ls -lah /code/app/static
 
 WORKDIR /code
 
 RUN set -ex \
  && pip install -e . \
- && invoke dependencies.install \
  #: Install developer tools
  && pip install utool ipython \
  #: Remove pip download cache

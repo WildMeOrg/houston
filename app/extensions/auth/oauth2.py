@@ -179,7 +179,7 @@ class OAuth2Provider(provider.OAuth2Provider):
 
                     # if 'username' in request.form and 'password' in request.form:
                     #     from app.modules.users.models import User
-                    #     from app.modules.frontend.views import create_session_oauth2_token
+                    #     from app.modules.auth.utils import create_session_oauth2_token
 
                     #     log.debug('Found FORM email and password')
                     #     email = request.form['username']

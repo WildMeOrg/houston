@@ -9,38 +9,15 @@ More details are available here:
 * http://flask-oauthlib.readthedocs.org/en/latest/oauth2.html
 * http://lepture.com/en/2013/create-oauth-server
 """
-from flask import render_template, session, current_app
-from flask_login import current_user
+import datetime
 import logging
 
-import datetime
 import pytz
-import os
+from flask import session
+from flask_login import current_user
+
 
 log = logging.getLogger(__name__)
-
-PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
-
-HOUSTON_STATIC_ROOT = os.path.join(PROJECT_ROOT, 'app', 'static')
-
-FRONTEND_STATIC_ROOT = os.path.join(HOUSTON_STATIC_ROOT, 'dist-latest')
-
-DOCUMENTATION_STATIC_ROOT = os.path.join(
-    HOUSTON_STATIC_ROOT, 'bower', 'swagger-ui', 'dist'
-)
-
-
-def _render_template(template, **kwargs):
-    now = datetime.datetime.now(tz=current_app.config.get('TIMEZONE'))
-    config = {
-        'base_url': current_app.config.get('BASE_URL'),
-        'google_analytics_tag': current_app.config.get('GOOGLE_ANALYTICS_TAG'),
-        'stripe_public_key': current_app.config.get('STRIPE_PUBLIC_KEY'),
-        'year': now.year,
-        'cachebuster': '20200322-0',
-    }
-    config.update(kwargs)
-    return render_template(template, **config)
 
 
 def create_session_oauth2_token(
@@ -49,7 +26,6 @@ def create_session_oauth2_token(
     from app.extensions import db
     from app.modules.auth.models import OAuth2Client, OAuth2Token
     from app.extensions.api import api_v1
-    import datetime
 
     if user is None:
         user = current_user

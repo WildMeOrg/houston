@@ -144,7 +144,9 @@ class BaseConfig(object):
 
         # Front-end
         #   Dependencies: Users, Auth, Assets
-        'frontend',
+        'frontend_ui',
+        'app_ui',
+        'swagger_ui',
 
         # REST APIs = API, Passthroughs, Configuration
         #   Dependencies: Users, Auth
@@ -155,6 +157,14 @@ class BaseConfig(object):
     # fmt: on
 
     STATIC_ROOT = os.path.join(PROJECT_ROOT, 'app', 'static')
+    FRONTEND_DIST = os.getenv(
+        'FRONTEND_DIST',
+        os.path.join(PROJECT_ROOT, 'app', 'static', 'dist-latest'),
+    )
+    SWAGGER_UI_DIST = os.getenv(
+        'SWAGGER_UI_DIST',
+        os.path.join(PROJECT_ROOT, 'app', 'static', 'swagger-ui'),
+    )
 
     SWAGGER_UI_JSONEDITOR = True
     SWAGGER_UI_OAUTH_CLIENT_ID = 'documentation'

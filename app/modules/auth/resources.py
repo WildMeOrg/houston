@@ -15,16 +15,15 @@ from flask_restx_patched._http import HTTPStatus
 from app.extensions import oauth2
 from app.extensions.api import Namespace, api_v1
 from app.extensions.api.parameters import PaginationParameters
+from app.modules.users.models import User
 
 from . import schemas, parameters
 from .models import db, OAuth2Client
-
-from app.modules.users.models import User
-
-from app.modules.frontend.views import (
+from .utils import (
     create_session_oauth2_token,
     delete_session_oauth2_token,
 )
+
 
 log = logging.getLogger(__name__)
 api = Namespace('auth', description='Authentication')

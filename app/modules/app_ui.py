@@ -1,34 +1,33 @@
 # -*- coding: utf-8 -*-
-"""
-OAuth2 provider setup.
+"""Provides UI space served directly from this application"""
+import datetime
+import logging
+from functools import wraps
 
-It is based on the code from the example:
-https://github.com/lepture/example-oauth2-server
-
-More details are available here:
-* http://flask-oauthlib.readthedocs.org/en/latest/oauth2.html
-* http://lepture.com/en/2013/create-oauth-server
-"""
 # from app.modules.users.permissions import PasswordRequiredPermissionMixin
 import flask
-from flask import Blueprint, request, flash, send_file
+from flask import (
+    Blueprint,
+    current_app,
+    flash,
+    redirect,
+    render_template,
+    request,
+    send_file,
+    url_for,
+)
 from flask_login import login_user, logout_user, login_required, current_user
-import logging
-from .util import ensure_admin_exists
-from app.modules.users.models import User
-from app.modules.assets.models import Asset
 
+from app.modules.assets.models import Asset
 from app.modules.auth.views import (
     _url_for,
     _is_safe_url,
 )
-
-from .views import (
-    HOUSTON_STATIC_ROOT,
+from app.modules.auth.utils import (
     create_session_oauth2_token,
     delete_session_oauth2_token,
-    _render_template,
 )
+from app.modules.users.models import User
 
 
 log = logging.getLogger(__name__)
@@ -37,8 +36,35 @@ backend_blueprint = Blueprint(
     'backend',
     __name__,
     url_prefix='/houston',
-    static_folder=HOUSTON_STATIC_ROOT,
 )  # pylint: disable=invalid-name
+
+
+def init_app(app):
+    backend_blueprint.static_folder = app.config['STATIC_ROOT']
+    app.register_blueprint(backend_blueprint)
+
+
+def _render_template(template, **kwargs):
+    now = datetime.datetime.now(tz=current_app.config.get('TIMEZONE'))
+    config = {
+        'base_url': current_app.config.get('BASE_URL'),
+        'google_analytics_tag': current_app.config.get('GOOGLE_ANALYTICS_TAG'),
+        'stripe_public_key': current_app.config.get('STRIPE_PUBLIC_KEY'),
+        'year': now.year,
+        'cachebuster': '20200322-0',
+    }
+    config.update(kwargs)
+    return render_template(template, **config)
+
+
+def ensure_admin_exists(func):
+    @wraps(func)
+    def decorated_function(*args, **kwargs):
+        if not current_user and not User.admin_user_initialized():
+            return redirect(url_for('backend.admin_init'))
+        return func(*args, **kwargs)
+
+    return decorated_function
 
 
 # @backend_blueprint.before_app_request
@@ -56,27 +82,14 @@ def home(*args, **kwargs):
     """
     This endpoint offers the home page
     """
-    from app.version import version as version_houston
-    from app.modules.frontend.resources import parse_frontend_versions
+    from app.version import version
 
-    frontend_versions = parse_frontend_versions()
-    version_frontend = None
-    timestamp_frontend = None
-    for frontend_version in frontend_versions:
-        if frontend_versions[frontend_version].get('active'):
-            version_frontend = frontend_version
-            timestamp_frontend = frontend_versions[frontend_version].get('built')
-
-    commit_houston = version_houston.split('.')[-1]
-    commit_frontend = version_frontend
+    commit_houston = version.split('.')[-1]
 
     return _render_template(
         'home.jinja2',
-        version_houston=version_houston,
-        version_frontend=version_frontend,
-        timestamp_frontend=timestamp_frontend,
+        version_houston=version,
         commit_houston=commit_houston,
-        commit_frontend=commit_frontend,
         user=current_user,
     )
 

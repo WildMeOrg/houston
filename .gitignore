@@ -45,6 +45,10 @@ _coverage/
 
 # Sphinx documentation
 docs/_build/
+_swagger-ui/node_modules/
+_swagger-ui/package-lock.json
+_swagger-ui/swagger_static/
+app/static/swagger-ui/
 
 # Project specific ignores
 *.swp

@@ -3,14 +3,8 @@
 Application dependencies related tasks for Invoke.
 """
 import logging
-import os
-import shutil
-import zipfile
-from pathlib import Path
 
 from invoke import task
-
-from tasks.utils import download_file
 
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
@@ -27,69 +21,45 @@ def install_python_dependencies(context, force=False):
 
 
 @task
-def install_swagger_ui(context, force=False):
+def install_frontend_ui(context, on_error='raise'):
+    # pylint: disable=unused-argument
+    """
+    Install Front-end UI HTML/JS/CSS assets.
+    """
+    log.info('Installing Front-end UI assets...')
+    try:
+        context.run('bash scripts/build.frontend.sh')
+        log.info('Front-end UI is installed.')
+    except Exception as ex:
+        if on_error in ['raise']:
+            raise ex
+        log.warn('Front-end UI failed to install. (on_error = %r)' % (on_error,))
+
+
+@task
+def install_swagger_ui(context, on_error='raise'):
     # pylint: disable=unused-argument
     """
     Install Swagger UI HTML/JS/CSS assets.
     """
     log.info('Installing Swagger UI assets...')
+    try:
+        context.run('bash scripts/build.swagger-ui.sh')
+        log.info('Swagger UI is installed.')
+    except Exception as ex:
+        if on_error in ['raise']:
+            raise ex
+        log.warn('Swagger UI failed to install. (on_error = %r)' % (on_error,))
 
-    import app
 
-    static_root = Path(app.__file__).parent / 'static'
-    bower_dir = static_root / 'bower'
-    bower_dir.mkdir(exist_ok=True)
-
-    swagger_ui_zip_filepath = str(bower_dir / 'swagger-ui.zip')
-    swagger_ui_root = str(bower_dir / 'swagger-ui')
-
-    if force:
-        try:
-            os.remove(swagger_ui_zip_filepath)
-        except FileNotFoundError:
-            pass
-        try:
-            shutil.rmtree(swagger_ui_root)
-        except FileNotFoundError:
-            pass
-
-    # We are going to install Swagger UI from a fork which includes useful patches
-    log.info('Downloading Swagger UI assets...')
-    download_file(
-        url='https://github.com/swagger-api/swagger-ui/archive/v2.2.10.zip',
-        local_filepath=swagger_ui_zip_filepath,
-    )
-
-    # Unzip swagger-ui.zip/dist into swagger-ui folder
-    log.info('Unpacking Swagger UI assets...')
-    with zipfile.ZipFile(swagger_ui_zip_filepath) as swagger_ui_zip_file:
-        for zipped_member in swagger_ui_zip_file.infolist():
-            zipped_member_path = os.path.relpath(
-                zipped_member.filename, 'swagger-ui-2.2.10'
-            )
-
-            # We only need the 'dist' folder
-            try:
-                commonpath = os.path.commonpath
-            except Exception:  # pragma: no cover Python 2.x fallback
-                commonpath = os.path.commonprefix
-            if not commonpath([zipped_member_path, 'dist']):
-                continue
-
-            extract_path = os.path.join(swagger_ui_root, zipped_member_path)
-            if not os.path.split(zipped_member.filename)[1]:
-                # If the path is folder, just create a folder
-                try:
-                    os.makedirs(extract_path)
-                except FileExistsError:
-                    pass
-            else:
-                # Otherwise, read zipped file contents and write them to a file
-                with swagger_ui_zip_file.open(zipped_member) as zipped_file:
-                    with open(extract_path, mode='wb') as unzipped_file:
-                        unzipped_file.write(zipped_file.read())
-
-    log.info('Swagger UI is installed.')
+@task
+def install_all_ui(context, on_error='raise'):
+    # pylint: disable=unused-argument
+    """
+    Install project user interface dependencies.
+    """
+    install_frontend_ui(context, on_error=on_error)
+    install_swagger_ui(context, on_error=on_error)
 
 
 @task
@@ -99,4 +69,5 @@ def install(context):
     Install project dependencies.
     """
     install_python_dependencies(context)
+    install_frontend_ui(context)
     install_swagger_ui(context)

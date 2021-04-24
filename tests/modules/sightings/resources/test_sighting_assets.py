@@ -59,7 +59,6 @@ def add_file_asset_to_sighting(
         file.close()
 
     add_asset = [
-        utils.patch_test_op(user.password_secret),
         utils.patch_add_op('newSubmission', transaction_id),
     ]
     sighting_utils.patch_sighting(flask_app_client, user, '%s' % sighting.guid, add_asset)

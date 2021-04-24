@@ -14,7 +14,7 @@ log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 class SightingAssets(db.Model, HoustonModel):
     sighting_guid = db.Column(db.GUID, db.ForeignKey('sighting.guid'), primary_key=True)
     asset_guid = db.Column(db.GUID, db.ForeignKey('asset.guid'), primary_key=True)
-    encounter = db.relationship('Sighting', back_populates='assets')
+    sighting = db.relationship('Sighting', back_populates='assets')
     asset = db.relationship('Asset')
 
 

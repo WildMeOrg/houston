@@ -333,7 +333,6 @@ class Sightings(Resource):
                 sighting.add_assets_no_context(assets)
         log.debug('Sighting with guid=%r is adding assets=%r' % (sighting.guid, assets))
 
-        # create encounters
         from app.modules.encounters.models import Encounter
 
         if isinstance(result_data['encounters'], list):
@@ -374,7 +373,7 @@ class Sightings(Resource):
 
 
 @api.route('/<uuid:sighting_guid>')
-@api.login_required(oauth_scopes=['sightings:read'])
+@api.login_required(oauth_scopes=[])
 @api.response(
     code=HTTPStatus.NOT_FOUND,
     description='Sighting not found.',
@@ -415,6 +414,7 @@ class SightingByID(Resource):
     )
     @api.login_required(oauth_scopes=['sightings:write'])
     @api.parameters(parameters.PatchSightingDetailsParameters())
+    @api.response(schemas.DetailedSightingSchema())
     @api.response(code=HTTPStatus.CONFLICT)
     def patch(self, args, sighting):
         """

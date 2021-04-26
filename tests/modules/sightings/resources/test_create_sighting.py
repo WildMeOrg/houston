@@ -84,7 +84,8 @@ def test_create_and_modify_and_delete_sighting(
                         'path': test_filename,
                     }
                 ]
-            }
+            },
+            {'locationId': 'test2'},
         ],
     }
     response = sighting_utils.create_sighting(
@@ -96,12 +97,22 @@ def test_create_and_modify_and_delete_sighting(
     sighting = Sighting.query.get(sighting_id)
     assert sighting is not None
 
+    enc0_id = response.json['result']['encounters'][0]['id']
+    enc1_id = response.json['result']['encounters'][1]['id']
+    assert enc0_id is not None
+    assert enc1_id is not None
+
     response = sighting_utils.read_sighting(
         flask_app_client, researcher_1, sighting_id, expected_status_code=200
     )
     assert response.json['id'] == sighting_id
 
-    # test some modification (should succeed)
+    # test to see if we grew by 1 sighting and 2 encounters
+    ct = test_utils.multi_count(db, (Sighting, Encounter, Asset, Submission))
+    assert ct[0] == orig_ct[0] + 1
+    assert ct[1] == orig_ct[1] + 2
+
+    # test some simple modification (should succeed)
     new_loc_id = 'test_2'
     response = sighting_utils.patch_sighting(
         flask_app_client,
@@ -128,6 +139,35 @@ def test_create_and_modify_and_delete_sighting(
         ],
         expected_status_code=400,
     )
+
+    # more complex patch: we op=remove the first encounter; should succeed no problem cuz there is one enc remaining
+    response = sighting_utils.patch_sighting(
+        flask_app_client,
+        researcher_1,
+        sighting_id,
+        patch_data=[
+            {'op': 'remove', 'path': '/encounters', 'value': enc0_id},
+        ],
+    )
+    # test to see if we now are -1 encounter
+    ct = test_utils.multi_count(db, (Sighting, Encounter, Asset, Submission))
+    assert ct[1] == orig_ct[1] + 1  # previously was + 2
+
+    # similar to above, but this should fail as this is our final encounter, and thus cascade-deletes the occurrence -- and this
+    #   requires confirmation
+    response = sighting_utils.patch_sighting(
+        flask_app_client,
+        researcher_1,
+        sighting_id,
+        patch_data=[
+            {'op': 'remove', 'path': '/encounters', 'value': enc1_id},
+        ],
+        expected_status_code=400,
+    )
+    assert response.json['edm_status_code'] == 602
+    # should still have same number encounters as above here
+    ct = test_utils.multi_count(db, (Sighting, Encounter, Asset, Submission))
+    assert ct[1] == orig_ct[1] + 1
 
     # upon success (yay) we clean up our mess
     sighting_utils.cleanup_tus_dir(transaction_id)

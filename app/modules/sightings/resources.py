@@ -476,6 +476,12 @@ class SightingByID(Resource):
             else:
                 sighting.rectify_edm_encounters(rdata['result'].get('encounters'))
 
+            new_version = rdata['result'].get('version', None)
+            if new_version is not None:
+                sighting.version = new_version
+            with db.session.begin():
+                db.session.merge(sighting)
+
         else:  # no edm
             context = api.commit_or_abort(
                 db.session, default_error_message='Failed to update Sighting details.'

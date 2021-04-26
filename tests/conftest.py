@@ -211,6 +211,14 @@ def empty_individual():
     return _individual
 
 
+@pytest.fixture(scope='session')
+def test_root(flask_app):
+    _test_root = (
+        pathlib.Path(flask_app.config.get('PROJECT_ROOT')) / 'tests/asset_groups/test-000'
+    )
+    return _test_root
+
+
 def ensure_asset_group_repo(flask_app, db, asset_group, file_data=[]):
     if pathlib.Path(asset_group.get_absolute_path()).exists():
         shutil.rmtree(asset_group.get_absolute_path())
@@ -235,26 +243,24 @@ def ensure_asset_group_repo(flask_app, db, asset_group, file_data=[]):
 
 
 @pytest.fixture(scope='session')
-def test_submission_uuid(flask_app, db, admin_user):
-    from app.modules.submissions.models import Submission, SubmissionMajorType
+def test_asset_group_uuid(flask_app, db, test_root, admin_user):
+    from app.modules.asset_groups.models import AssetGroup, AssetGroupMajorType
 
-    asset_group = Submission(
+    asset_group = AssetGroup(
         guid='00000000-0000-0000-0000-000000000003',
         owner_guid=admin_user.guid,
-        major_type=SubmissionMajorType.test,
+        major_type=AssetGroupMajorType.test,
         description='This is a required PyTest submission (do not delete)',
     )
-    file_root = (
-        pathlib.Path(flask_app.config.get('PROJECT_ROOT')) / 'tests/submissions/test-000'
-    )
+
     file_data = [
         (
             uuid.UUID('00000000-0000-0000-0000-000000000011'),
-            file_root / 'zebra.jpg',
+            test_root / 'zebra.jpg',
         ),
         (
             uuid.UUID('00000000-0000-0000-0000-000000000012'),
-            file_root / 'fluke.jpg',
+            test_root / 'fluke.jpg',
         ),
     ]
     ensure_asset_group_repo(flask_app, db, asset_group, file_data)
@@ -262,13 +268,13 @@ def test_submission_uuid(flask_app, db, admin_user):
 
 
 @pytest.fixture(scope='session')
-def test_empty_submission_uuid(flask_app, db, admin_user):
-    from app.modules.submissions.models import Submission, SubmissionMajorType
+def test_empty_asset_group_uuid(flask_app, db, admin_user):
+    from app.modules.asset_groups.models import AssetGroup, AssetGroupMajorType
 
-    asset_group = Submission(
+    asset_group = AssetGroup(
         guid='00000000-0000-0000-0000-000000000001',
         owner_guid=admin_user.guid,
-        major_type=SubmissionMajorType.test,
+        major_type=AssetGroupMajorType.test,
         description='',
     )
     ensure_asset_group_repo(flask_app, db, asset_group)
@@ -276,9 +282,9 @@ def test_empty_submission_uuid(flask_app, db, admin_user):
 
 
 @pytest.fixture(scope='session')
-def test_clone_submission_data(test_submission_uuid):
+def test_clone_asset_group_data(test_asset_group_uuid):
     return {
-        'submission_uuid': test_submission_uuid,
+        'asset_group_uuid': test_asset_group_uuid,
         'asset_uuids': [
             '00000000-0000-0000-0000-000000000011',
             '00000000-0000-0000-0000-000000000012',

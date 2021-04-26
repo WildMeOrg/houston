@@ -4,22 +4,22 @@
 import uuid
 from tests import utils
 from tests.modules.annotations.resources import utils as annot_utils
-from tests.modules.submissions.resources import utils as sub_utils
+from tests.modules.asset_groups.resources import utils as sub_utils
 from tests.modules.encounters.resources import utils as enc_utils
 
 
 def test_patch_annotation(
-    flask_app_client, admin_user, researcher_1, test_clone_submission_data
+    flask_app_client, admin_user, researcher_1, test_clone_asset_group_data
 ):
     # pylint: disable=invalid-name
     from app.modules.annotations.models import Annotation
     from app.modules.encounters.models import Encounter
 
-    clone = sub_utils.clone_submission(
+    clone = sub_utils.clone_asset_group(
         flask_app_client,
         admin_user,
         researcher_1,
-        test_clone_submission_data['submission_uuid'],
+        test_clone_asset_group_data['asset_group_uuid'],
         later_usage=True,
     )
     try:
@@ -29,14 +29,14 @@ def test_patch_annotation(
         response = annot_utils.create_annotation(
             flask_app_client,
             researcher_1,
-            test_clone_submission_data['asset_uuids'][0],
+            test_clone_asset_group_data['asset_uuids'][0],
             first_enc_guid,
         )
 
         annotation_guid = response.json['guid']
         read_annotation = Annotation.query.get(annotation_guid)
         assert read_annotation.asset_guid == uuid.UUID(
-            test_clone_submission_data['asset_uuids'][0]
+            test_clone_asset_group_data['asset_uuids'][0]
         )
         first_encounter = Encounter.query.get(first_enc_guid)
         assert len(first_encounter.annotations) == 1

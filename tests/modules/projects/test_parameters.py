@@ -3,7 +3,7 @@
 
 
 def test_project_remove_encounters(
-    db, researcher_1, researcher_1_login, test_empty_submission_uuid
+    db, researcher_1, researcher_1_login, test_empty_asset_group_uuid
 ):  # pylint: disable=unused-argument
     # pylint: disable=unused-argument
     from app.modules.projects.parameters import PatchProjectDetailsParameters
@@ -23,7 +23,7 @@ def test_project_remove_encounters(
     # Use a dummy guid to test this, don't need an actual encounter
     assert (
         PatchProjectDetailsParameters.remove(
-            temp_proj, 'encounter', test_empty_submission_uuid, state
+            temp_proj, 'encounter', test_empty_asset_group_uuid, state
         )
         is False
     )

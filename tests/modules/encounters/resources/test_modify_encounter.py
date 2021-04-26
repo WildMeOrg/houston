@@ -70,13 +70,13 @@ def no_test_asset_addition(db, flask_app_client):
         email='reseracher47@nowhere.com', is_researcher=True
     )
     new_encounter = Encounter(owner=new_researcher)
-    new_submission = utils.generate_submission_instance(new_researcher)
-    new_asset = utils.generate_asset_instance(new_submission.guid)
+    new_asset_group = utils.generate_asset_group_instance(new_researcher)
+    new_asset = utils.generate_asset_instance(new_asset_group.guid)
 
     with db.session.begin():
         db.session.add(new_researcher)
         db.session.add(new_encounter)
-        db.session.add(new_submission)
+        db.session.add(new_asset_group)
         db.session.add(new_asset)
 
     add_asset = [
@@ -87,9 +87,9 @@ def no_test_asset_addition(db, flask_app_client):
         flask_app_client, '%s' % new_encounter.guid, new_researcher, add_asset
     )
     assert len(new_encounter.assets) == 1
-    # removed submission delete as it was going haywire
-    current_app.agm.delete_remote_asset_group(new_submission)
-    new_submission.delete()
+    # removed asset_group delete as it was going haywire
+    current_app.agm.delete_remote_asset_group(new_asset_group)
+    new_asset_group.delete()
 
 
 def add_file_asset_to_encounter(
@@ -109,7 +109,7 @@ def add_file_asset_to_encounter(
 
     add_asset = [
         utils.patch_test_op(user.password_secret),
-        utils.patch_add_op('newSubmission', transaction_id),
+        utils.patch_add_op('newAssetGroup', transaction_id),
     ]
     patch_encounter(flask_app_client, '%s' % encounter.guid, user, add_asset)
 
@@ -148,12 +148,12 @@ def test_asset_file_addition(db, flask_app_client, researcher_1):
                 '%s%s' % (PATH, new_encounter.guid),
             )
 
-        # The Submission will be in gitlab but not on the EDM so the delete will "fail"
+        # The AssetGroup will be in gitlab but not on the EDM so the delete will "fail"
         assert response.status_code == 400
     finally:
         # Even though the REST API deletion fails, as it's not present, the Houston feather object remains.
         new_encounter.delete()
-        # assets are only cleaned up once the submissions are cleaned up
-        for submission in researcher_1.submissions:
-            current_app.agm.delete_remote_asset_group(submission)
-            submission.delete()
+        # assets are only cleaned up once the asset_groups are cleaned up
+        for asset_group in researcher_1.asset_groups:
+            current_app.agm.delete_remote_asset_group(asset_group)
+            asset_group.delete()

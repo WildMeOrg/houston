@@ -88,7 +88,7 @@ class ModuleActionRule(DenyAbortMixin, Rule):
         super().__init__(**kwargs)
 
     def check(self):
-        from app.modules.submissions.models import Submission
+        from app.modules.asset_groups.models import AssetGroup
         from app.modules.users.models import User
         from app.modules.encounters.models import Encounter
         from app.modules.sightings.models import Sighting
@@ -104,11 +104,11 @@ class ModuleActionRule(DenyAbortMixin, Rule):
         # This Rule is for checking permissions on modules, so there must be one,
         assert self._module is not None
 
-        # Anonymous users can create: a submission, encounter, sighting, or themselves
+        # Anonymous users can create: a asset_group, encounter, sighting, or themselves
         if not current_user or current_user.is_anonymous:
             has_permission = False
             if self._action == AccessOperation.WRITE:
-                has_permission = self._is_module((Submission, User, Encounter, Sighting))
+                has_permission = self._is_module((AssetGroup, User, Encounter, Sighting))
         else:
             has_permission = (
                 # inactive users can do nothing
@@ -134,7 +134,7 @@ class ModuleActionRule(DenyAbortMixin, Rule):
         from app.extensions.config.models import HoustonConfig
         from app.modules.annotations.models import Annotation
         from app.modules.individuals.models import Individual
-        from app.modules.submissions.models import Submission
+        from app.modules.asset_groups.models import AssetGroup
         from app.modules.encounters.models import Encounter
         from app.modules.sightings.models import Sighting
         from app.modules.projects.models import Project
@@ -152,7 +152,7 @@ class ModuleActionRule(DenyAbortMixin, Rule):
                 # This is where we can control what modules admin users can and cannot read
                 # This could be Client configurable if required by taking the list passed to
                 # _is_module from a config parameter e.g. app.config.get(ADMIN_READ_MODULE_PERMISSION)
-                has_permission = self._is_module((Asset, Submission))
+                has_permission = self._is_module((Asset, AssetGroup))
             if not has_permission and user.is_user_manager:
                 has_permission = self._is_module(User)
             if not has_permission and user.is_researcher:
@@ -163,8 +163,8 @@ class ModuleActionRule(DenyAbortMixin, Rule):
         elif self._action is AccessOperation.WRITE:
             if self._is_module(HoustonConfig):
                 has_permission = user.is_admin
-            # Any users can write (create) a user, submission, sighting and Encounter, TODO, decide on Submission
-            elif self._is_module((Submission, User, Encounter, Sighting)):
+            # Any users can write (create) a user, asset_group, sighting and Encounter, TODO, decide on AssetGroup
+            elif self._is_module((AssetGroup, User, Encounter, Sighting)):
                 has_permission = True
             elif self._is_module(Annotation):
                 has_permission = user.is_researcher
@@ -262,9 +262,9 @@ class ObjectActionRule(DenyAbortMixin, Rule):
                 if self._action == AccessOperation.READ:
                     has_permission = user.is_researcher
             elif isinstance(self._obj, Annotation):
-                # Annotation has no owner, but it has one asset, that has one submission that has an owner
+                # Annotation has no owner, but it has one asset, that has one asset_group that has an owner
                 # TODO should this be the encounter owner?
-                has_permission = user == self._obj.asset.submission.owner
+                has_permission = user == self._obj.asset.asset_group.owner
 
         # Sightings depend on if user is the _only_ owner of referenced Encounters
         if not has_permission and isinstance(self._obj, Sighting):
@@ -323,7 +323,7 @@ class ObjectActionRule(DenyAbortMixin, Rule):
         return False
 
 
-# Some modules are special (Submissions) mad may require both access controls in one
+# Some modules are special (AssetGroups) mad may require both access controls in one
 class ModuleOrObjectActionRule(DenyAbortMixin, Rule):
     def __init__(self, module=None, obj=None, action=AccessOperation.READ, **kwargs):
         """
@@ -341,22 +341,22 @@ class ModuleOrObjectActionRule(DenyAbortMixin, Rule):
         super().__init__(**kwargs)
 
     def check(self):
-        from app.modules.submissions.models import Submission
+        from app.modules.asset_groups.models import AssetGroup
 
         has_permission = False
         assert self._obj is not None or self._module is not None
         if self._obj:
             has_permission = ObjectActionRule(self._obj, self._action).check()
         else:
-            if self._module == Submission:
-                # Read in this case equates to learn that the submission exists on gitlab,
+            if self._module == AssetGroup:
+                # Read in this case equates to learn that the asset_group exists on gitlab,
                 # Delete is to allow the researcher to know that it's on gitlab but not local
                 if (
                     self._action == AccessOperation.READ
                     or self._action == AccessOperation.DELETE
                 ):
                     has_permission = current_user.is_researcher
-                # Write equates to allowing the cloning of the submission from gitlab
+                # Write equates to allowing the cloning of the asset_group from gitlab
                 elif self._action == AccessOperation.WRITE:
                     has_permission = current_user.is_admin
 

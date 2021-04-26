@@ -300,47 +300,47 @@ def test_ObjectAccessPermission_admin_user(
 def test_ModuleAccessPermission_anonymous_user(anonymous_user_login):
     # pylint: disable=unused-argument
     from app.modules.users.models import User
-    from app.modules.submissions.models import Submission
+    from app.modules.asset_groups.models import AssetGroup
 
     # anon user cannot do anything with most classes
     validate_cannot_read_module(NotARealClass)
     validate_cannot_write_module(NotARealClass)
     validate_cannot_delete_module(NotARealClass)
 
-    # but can write a user (sign up) or a submission
+    # but can write a user (sign up) or an asset_group
     validate_cannot_read_module(User)
     validate_can_write_module(User)
     validate_cannot_delete_module(User)
 
-    validate_cannot_read_module(Submission)
-    validate_can_write_module(Submission)
-    validate_cannot_delete_module(Submission)
+    validate_cannot_read_module(AssetGroup)
+    validate_can_write_module(AssetGroup)
+    validate_cannot_delete_module(AssetGroup)
 
 
 def test_ModuleAccessPermission_authenticated_user(authenticated_user_login):
     # pylint: disable=unused-argument
     from app.modules.users.models import User
-    from app.modules.submissions.models import Submission
+    from app.modules.asset_groups.models import AssetGroup
 
     # regular users also shouldn't be able to access most classes
     validate_cannot_read_module(NotARealClass)
     validate_cannot_write_module(NotARealClass)
     validate_cannot_delete_module(NotARealClass)
 
-    # but can they write (create) users & (upload) submissions,
+    # but can they write (create) users & (upload) asset_groups,
     validate_cannot_read_module(User)
     validate_can_write_module(User)
     validate_cannot_delete_module(User)
 
-    validate_cannot_read_module(Submission)
-    validate_can_write_module(Submission)
-    validate_cannot_delete_module(Submission)
+    validate_cannot_read_module(AssetGroup)
+    validate_can_write_module(AssetGroup)
+    validate_cannot_delete_module(AssetGroup)
 
 
 def test_ModuleAccessPermission_admin_user(admin_user_login):
     # pylint: disable=unused-argument
     from app.modules.users.models import User
-    from app.modules.submissions.models import Submission
+    from app.modules.asset_groups.models import AssetGroup
 
     # Admin users cannot do what they like
     validate_cannot_read_module(NotARealClass)
@@ -352,16 +352,16 @@ def test_ModuleAccessPermission_admin_user(admin_user_login):
     validate_can_write_module(User)
     validate_cannot_delete_module(User)
 
-    # Admin users can list Submissions
-    validate_can_read_module(Submission)
-    validate_can_write_module(Submission)
-    validate_cannot_delete_module(Submission)
+    # Admin users can list AssetGroups
+    validate_can_read_module(AssetGroup)
+    validate_can_write_module(AssetGroup)
+    validate_cannot_delete_module(AssetGroup)
 
 
 def test_ModuleAccessPermission_user_manager_user(user_manager_user_login):
     # pylint: disable=unused-argument
     from app.modules.users.models import User
-    from app.modules.submissions.models import Submission
+    from app.modules.asset_groups.models import AssetGroup
 
     # user Admins not especially priviliged
     validate_cannot_read_module(NotARealClass)
@@ -373,10 +373,10 @@ def test_ModuleAccessPermission_user_manager_user(user_manager_user_login):
     validate_can_write_module(User)
     validate_cannot_delete_module(User)
 
-    # But not Data, other than create submission like everyone else
-    validate_cannot_read_module(Submission)
-    validate_can_write_module(Submission)
-    validate_cannot_delete_module(Submission)
+    # But not Data, other than create assetGroups like everyone else
+    validate_cannot_read_module(AssetGroup)
+    validate_can_write_module(AssetGroup)
+    validate_cannot_delete_module(AssetGroup)
 
 
 def test_ObjectAccessPermission_researcher_user(

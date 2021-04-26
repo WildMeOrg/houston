@@ -43,15 +43,15 @@ def initialize_orgs_from_edm(context, edm_authentication=None):
 
 
 @app_context_task
-def initialize_gitlab_submissions(context, email, dryrun=False):
+def initialize_gitlab_asset_groups(context, email, dryrun=False):
     """
-    Create test submissions in GitLab
+    Create test asset_groups in GitLab
 
     Command Line:
-    > invoke app.initialize.initialize-gitlab-submissions --email jason@wildme.org
+    > invoke app.initialize.initialize-gitlab-asset-groups --email jason@wildme.org
     """
     from app.modules.users.models import User
-    from app.modules.submissions.models import Submission, SubmissionMajorType
+    from app.modules.asset_groups.models import AssetGroup, AssetGroupMajorType
     from app.extensions import db
     from flask import current_app
     import config
@@ -72,7 +72,7 @@ def initialize_gitlab_submissions(context, email, dryrun=False):
         raise Exception("User with email '%s' does not exist." % email)
 
     test_root = os.path.join(
-        config.TestingConfig.PROJECT_ROOT, 'tests', 'submissions', 'test-000'
+        config.TestingConfig.PROJECT_ROOT, 'tests', 'asset_groups', 'test-000'
     )
     image_data = [
         (
@@ -84,58 +84,58 @@ def initialize_gitlab_submissions(context, email, dryrun=False):
             os.path.join(test_root, 'fluke.jpg'),
         ),
     ]
-    submission_data = [
+    asset_group_data = [
         (uuid.UUID('00000000-0000-0000-0000-000000000001'), []),
         (uuid.UUID('00000000-0000-0000-0000-000000000003'), image_data),
     ]
 
-    for submission_guid, submission_data in submission_data:
-        if current_app.agm.is_asset_group_on_remote(submission_guid):
-            log.info(f'Submission {submission_guid} already on GitLab')
+    for asset_group_guid, asset_group_data in asset_group_data:
+        if current_app.agm.is_asset_group_on_remote(asset_group_guid):
+            log.info(f'AssetGroup {asset_group_guid} already on GitLab')
         else:
-            log.info(f'Submission {submission_guid} missing on GitLab, provisioning...')
+            log.info(f'AssetGroup {asset_group_guid} missing on GitLab, provisioning...')
 
-            submission = Submission.query.get(submission_guid)
+            asset_group = AssetGroup.query.get(asset_group_guid)
 
-            if submission is None:
-                log.info(f'Submission {submission_guid} missing locally, creating...')
+            if asset_group is None:
+                log.info(f'AssetGroup {asset_group_guid} missing locally, creating...')
                 args = {
-                    'guid': submission_guid,
+                    'guid': asset_group_guid,
                     'owner_guid': user.guid,
-                    'major_type': SubmissionMajorType.test,
-                    'description': 'This is a required PyTest submission (do not delete)',
+                    'major_type': AssetGroupMajorType.test,
+                    'description': 'This is a required PyTest asset_group (do not delete)',
                 }
-                submission = Submission(**args)
+                asset_group = AssetGroup(**args)
                 with db.session.begin():
-                    db.session.add(submission)
-                db.session.refresh(submission)
-                log.info('Submission %r created' % (submission,))
+                    db.session.add(asset_group)
+                db.session.refresh(asset_group)
+                log.info('AssetGroup %r created' % (asset_group,))
             else:
-                log.info('Submission %r found locally' % (submission,))
+                log.info('AssetGroup %r found locally' % (asset_group,))
             if dryrun:
-                log.info('DRYRUN: Submission creation skipped...')
+                log.info('DRYRUN: AssetGroup creation skipped...')
                 continue
 
-            repo, project = submission.ensure_repository(additional_tags=[WHITELIST_TAG])
+            repo, project = asset_group.ensure_repository(additional_tags=[WHITELIST_TAG])
 
             filepath_guid_mapping = {}
-            for file_guid, filename in submission_data:
+            for file_guid, filename in asset_group_data:
                 filepath = os.path.abspath(os.path.expanduser(filename))
                 if not os.path.exists(filepath):
                     raise IOError('The path %r does not exist.' % (filepath,))
-                repo_filepath = submission.git_copy_file_add(filepath)
+                repo_filepath = asset_group.git_copy_file_add(filepath)
                 filepath_guid_mapping[repo_filepath] = file_guid
 
-            submission.git_commit(
+            asset_group.git_commit(
                 'Initial commit for testing',
                 existing_filepath_guid_mapping=filepath_guid_mapping,
             )
 
-            submission.git_push()
+            asset_group.git_push()
 
-            print('Created and pushed new submission: %r' % (submission,))
+            print('Created and pushed new asset_group: %r' % (asset_group,))
 
-        current_app.agm.assert_taglist(submission_guid, WHITELIST_TAG)
+        current_app.agm.assert_taglist(asset_group_guid, WHITELIST_TAG)
 
 
 @app_context_task
@@ -146,7 +146,7 @@ def all(context, edm_authentication=None, skip_on_failure=False):
         initialize_edm_admin_user(context)
         initialize_users_from_edm(context, edm_authentication=edm_authentication)
         initialize_orgs_from_edm(context, edm_authentication=edm_authentication)
-        # initialize_gitlab_submissions(context)
+        # initialize_gitlab_asset_groups(context)
     except AssertionError as exception:
         if not skip_on_failure:
             log.error('%s', exception)

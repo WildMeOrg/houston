@@ -39,7 +39,7 @@ class Asset(db.Model, HoustonModel):
     filesystem_guid = db.Column(db.GUID, nullable=False)
     semantic_guid = db.Column(
         db.GUID, nullable=False, unique=True
-    )  # must be unique for (submission.guid, asset.filesystem_guid)
+    )  # must be unique for (AssetGroup.guid, asset.filesystem_guid)
     content_guid = db.Column(db.GUID, nullable=True)
 
     title = db.Column(db.String(length=128), nullable=True)
@@ -47,13 +47,13 @@ class Asset(db.Model, HoustonModel):
 
     meta = db.Column(db.JSON, nullable=True)
 
-    submission_guid = db.Column(
+    asset_group_guid = db.Column(
         db.GUID,
-        db.ForeignKey('submission.guid', ondelete='CASCADE'),
+        db.ForeignKey('asset_group.guid', ondelete='CASCADE'),
         index=True,
         nullable=False,
     )
-    submission = db.relationship('Submission', backref=db.backref('assets'))
+    asset_group = db.relationship('AssetGroup', backref=db.backref('assets'))
 
     def __repr__(self):
         return (
@@ -99,37 +99,37 @@ class Asset(db.Model, HoustonModel):
 
     def get_relative_path(self):
         relpath = os.path.join(
-            'submissions',
-            str(self.submission.guid),
+            'asset_groups',
+            str(self.asset_group.guid),
             '_assets',
             self.get_filename(),
         )
         return relpath
 
     def get_symlink(self):
-        submission_abspath = self.submission.get_absolute_path()
-        assets_path = os.path.join(submission_abspath, '_assets')
+        asset_group_abspath = self.asset_group.get_absolute_path()
+        assets_path = os.path.join(asset_group_abspath, '_assets')
         asset_symlink_filepath = os.path.join(assets_path, self.get_filename())
         return asset_symlink_filepath
 
     def get_derived_path(self):
-        submission_abspath = self.submission.get_absolute_path()
-        assets_path = os.path.join(submission_abspath, '_assets')
+        asset_group_abspath = self.asset_group.get_absolute_path()
+        assets_path = os.path.join(asset_group_abspath, '_assets')
         asset_symlink_filepath = os.path.join(assets_path, 'derived', self.get_filename())
         return asset_symlink_filepath
 
-    def update_symlink(self, asset_submission_filepath):
-        assert os.path.exists(asset_submission_filepath)
+    def update_symlink(self, asset_asset_group_filepath):
+        assert os.path.exists(asset_asset_group_filepath)
 
         asset_symlink_filepath = self.get_symlink()
         if os.path.exists(asset_symlink_filepath):
             os.remove(asset_symlink_filepath)
 
-        submission_abspath = self.submission.get_absolute_path()
-        asset_submission_filepath_relative = asset_submission_filepath.replace(
-            submission_abspath, '..'
+        asset_group_abspath = self.asset_group.get_absolute_path()
+        asset_asset_group_filepath_relative = asset_asset_group_filepath.replace(
+            asset_group_abspath, '..'
         )
-        os.symlink(asset_submission_filepath_relative, asset_symlink_filepath)
+        os.symlink(asset_asset_group_filepath_relative, asset_symlink_filepath)
         assert os.path.exists(asset_symlink_filepath)
         assert os.path.islink(asset_symlink_filepath)
 
@@ -193,7 +193,7 @@ class Asset(db.Model, HoustonModel):
             db.session.delete(self)
 
     def delete_cascade(self):
-        sub = self.submission
+        sub = self.asset_group
         with db.session.begin(subtransactions=True):
             db.session.delete(self)
         sub.justify_existence()

@@ -7,9 +7,8 @@ from app.modules.site_settings.models import SiteSetting
 from tests.utils import TemporaryDirectoryGraceful
 
 
-def test_site_settings(admin_user, flask_app_client, flask_app, db, request):
-    project_root = Path(flask_app.config['PROJECT_ROOT'])
-    zebra_path = project_root / 'tests/submissions/test-000/zebra.jpg'
+def test_site_settings(admin_user, flask_app_client, flask_app, db, request, test_root):
+    zebra_path = test_root / 'zebra.jpg'
     fup = FileUpload.create_fileupload_from_path(str(zebra_path), copy=True)
     with db.session.begin():
         db.session.add(fup)
@@ -136,10 +135,9 @@ def test_site_settings(admin_user, flask_app_client, flask_app, db, request):
 
 
 def test_site_settings_permissions(
-    regular_user, flask_app_client, flask_app, db, request
+    regular_user, flask_app_client, flask_app, db, request, test_root
 ):
-    project_root = Path(flask_app.config['PROJECT_ROOT'])
-    zebra_path = project_root / 'tests/submissions/test-000/zebra.jpg'
+    zebra_path = test_root / 'zebra.jpg'
     fup = FileUpload.create_fileupload_from_path(str(zebra_path), copy=True)
     with db.session.begin():
         db.session.add(fup)

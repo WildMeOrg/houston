@@ -3,7 +3,7 @@
 
 import uuid
 from tests.modules.annotations.resources import utils as annot_utils
-from tests.modules.submissions.resources import utils as sub_utils
+from tests.modules.asset_groups.resources import utils as sub_utils
 from tests.modules.encounters.resources import utils as enc_utils
 
 
@@ -13,16 +13,16 @@ def test_get_annotation_not_found(flask_app_client):
 
 
 def test_create_and_delete_annotation(
-    flask_app_client, admin_user, researcher_1, test_clone_submission_data
+    flask_app_client, admin_user, researcher_1, test_clone_asset_group_data
 ):
     # pylint: disable=invalid-name
     from app.modules.annotations.models import Annotation
 
-    clone = sub_utils.clone_submission(
+    clone = sub_utils.clone_asset_group(
         flask_app_client,
         admin_user,
         researcher_1,
-        test_clone_submission_data['submission_uuid'],
+        test_clone_asset_group_data['asset_group_uuid'],
         later_usage=True,
     )
     try:
@@ -31,14 +31,14 @@ def test_create_and_delete_annotation(
         response = annot_utils.create_annotation(
             flask_app_client,
             researcher_1,
-            test_clone_submission_data['asset_uuids'][0],
+            test_clone_asset_group_data['asset_uuids'][0],
             enc_guid,
         )
 
         annotation_guid = response.json['guid']
         read_annotation = Annotation.query.get(response.json['guid'])
         assert read_annotation.asset_guid == uuid.UUID(
-            test_clone_submission_data['asset_uuids'][0]
+            test_clone_asset_group_data['asset_uuids'][0]
         )
 
         # Try reading it back
@@ -59,17 +59,15 @@ def test_annotation_permission(
     staff_user,
     researcher_1,
     researcher_2,
-    test_clone_submission_data,
+    test_clone_asset_group_data,
 ):
-    import tests.modules.submissions.resources.utils as sub_utils
-
     # Before we create any Annotations, find out how many are there already
     previous_annots = annot_utils.read_all_annotations(flask_app_client, staff_user)
-    clone = sub_utils.clone_submission(
+    clone = sub_utils.clone_asset_group(
         flask_app_client,
         admin_user,
         researcher_1,
-        test_clone_submission_data['submission_uuid'],
+        test_clone_asset_group_data['asset_group_uuid'],
         later_usage=True,
     )
     try:
@@ -78,7 +76,7 @@ def test_annotation_permission(
         response = annot_utils.create_annotation(
             flask_app_client,
             researcher_1,
-            test_clone_submission_data['asset_uuids'][0],
+            test_clone_asset_group_data['asset_uuids'][0],
             enc_guid,
         )
 

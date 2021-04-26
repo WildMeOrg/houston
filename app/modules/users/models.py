@@ -573,7 +573,7 @@ class User(db.Model, FeatherModel, UserEDMMixin):
 
     def owns_object(self, obj):
         from app.modules.assets.models import Asset
-        from app.modules.submissions.models import Submission
+        from app.modules.asset_groups.models import AssetGroup
         from app.modules.encounters.models import Encounter
         from app.modules.sightings.models import Sighting
         from app.modules.projects.models import Project
@@ -583,14 +583,14 @@ class User(db.Model, FeatherModel, UserEDMMixin):
 
         if isinstance(obj, User):
             ret_val = obj == self
-        # Submission, Encounters and Projects all have an owner field, check that
-        elif isinstance(obj, (Submission, Encounter, Project)):
+        # AssetGroup, Encounters and Projects all have an owner field, check that
+        elif isinstance(obj, (AssetGroup, Encounter, Project)):
             ret_val = obj.owner == self
         elif isinstance(obj, Asset):
-            # assets are not owned directly by the user but the submission they're in is.
-            # TODO: need to understand once assets become part of an encounter, do they still have a submission
-            if obj.submission is not None:
-                ret_val = obj.submission.owner is self
+            # assets are not owned directly by the user but the asset_group they're in is.
+            # TODO: need to understand once assets become part of an encounter, do they still have a asset_group
+            if obj.asset_group is not None:
+                ret_val = obj.asset_group.owner is self
         elif isinstance(obj, Sighting):
             # decided (2021-03-12) that "owner" of a Sighting is not applicable therefore always False
             #   permissions must be handled in ways not dependent on ownership
@@ -606,8 +606,8 @@ class User(db.Model, FeatherModel, UserEDMMixin):
     def delete(self):
         with db.session.begin():
             # TODO: Ensure proper cleanup
-            for submission in self.submissions:
-                submission.delete()
+            for asset_group in self.asset_groups:
+                asset_group.delete()
             db.session.delete(self)
 
     @classmethod

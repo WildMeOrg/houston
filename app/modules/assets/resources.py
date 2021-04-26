@@ -122,9 +122,9 @@ class AssetSrcUByID(Resource):
         },
     )
     def get(self, asset, format):
-        from app.modules.submissions.models import Submission
+        from app.modules.asset_groups.models import AssetGroup
 
-        Submission.ensure_asset_group(asset.submission_guid)
+        AssetGroup.ensure_asset_group(asset.asset_group_guid)
         try:
             asset_format_path = asset.get_or_make_format_path(format)
         except Exception:

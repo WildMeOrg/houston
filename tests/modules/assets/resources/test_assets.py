@@ -2,7 +2,7 @@
 # pylint: disable=missing-docstring
 import hashlib
 from tests import utils
-import tests.modules.submissions.resources.utils as submission_utils
+import tests.modules.asset_groups.resources.utils as asset_group_utils
 
 
 def test_get_asset_not_found(flask_app_client):
@@ -14,21 +14,21 @@ def test_find_asset(
     flask_app_client,
     admin_user,
     researcher_1,
-    test_clone_submission_data,
+    test_clone_asset_group_data,
 ):
-    # Clone the known submission so that the asset data is in the database
-    clone = submission_utils.clone_submission(
+    # Clone the known asset_group so that the asset data is in the database
+    clone = asset_group_utils.clone_asset_group(
         flask_app_client,
         admin_user,
         researcher_1,
-        test_clone_submission_data['submission_uuid'],
+        test_clone_asset_group_data['asset_group_uuid'],
         later_usage=True,
     )
 
     try:
-        test_asset = '/api/v1/assets/%s' % test_clone_submission_data['asset_uuids'][0]
+        test_asset = '/api/v1/assets/%s' % test_clone_asset_group_data['asset_uuids'][0]
         test_src_asset = (
-            '/api/v1/assets/src/%s' % test_clone_submission_data['asset_uuids'][0]
+            '/api/v1/assets/src/%s' % test_clone_asset_group_data['asset_uuids'][0]
         )
 
         with flask_app_client.login(researcher_1, auth_scopes=('assets:read',)):
@@ -57,14 +57,14 @@ def test_find_deleted_asset(
     admin_user,
     researcher_1,
     db,
-    test_clone_submission_data,
+    test_clone_asset_group_data,
 ):
-    # Clone the known submission so that the asset data is in the database
-    clone = submission_utils.clone_submission(
+    # Clone the known asset_group so that the asset data is in the database
+    clone = asset_group_utils.clone_asset_group(
         flask_app_client,
         admin_user,
         researcher_1,
-        test_clone_submission_data['submission_uuid'],
+        test_clone_asset_group_data['asset_group_uuid'],
         later_usage=True,
     )
 
@@ -72,9 +72,9 @@ def test_find_deleted_asset(
         # As for the test above but now remove the files so that Houston knows about the asset but does not have the files
         clone.remove_files()
 
-        test_asset = '/api/v1/assets/%s' % test_clone_submission_data['asset_uuids'][0]
+        test_asset = '/api/v1/assets/%s' % test_clone_asset_group_data['asset_uuids'][0]
         test_src_asset = (
-            '/api/v1/assets/src/%s' % test_clone_submission_data['asset_uuids'][0]
+            '/api/v1/assets/src/%s' % test_clone_asset_group_data['asset_uuids'][0]
         )
         with flask_app_client.login(researcher_1, auth_scopes=('assets:read',)):
             response = flask_app_client.get(test_asset)
@@ -104,19 +104,19 @@ def test_user_asset_permissions(
     researcher_1,
     readonly_user,
     db,
-    test_clone_submission_data,
+    test_clone_asset_group_data,
 ):
-    # Clone the known submission so that the asset data is in the database
-    clone = submission_utils.clone_submission(
+    # Clone the known asset_group so that the asset data is in the database
+    clone = asset_group_utils.clone_asset_group(
         flask_app_client,
         admin_user,
         researcher_1,
-        test_clone_submission_data['submission_uuid'],
+        test_clone_asset_group_data['asset_group_uuid'],
         later_usage=True,
     )
 
     try:
-        test_asset = '/api/v1/assets/%s' % test_clone_submission_data['asset_uuids'][0]
+        test_asset = '/api/v1/assets/%s' % test_clone_asset_group_data['asset_uuids'][0]
         # Try reading it as a different user and check this fails
         with flask_app_client.login(readonly_user, auth_scopes=('assets:read',)):
             response = flask_app_client.get(test_asset)
@@ -130,14 +130,14 @@ def test_read_all_assets(
     flask_app_client,
     admin_user,
     researcher_1,
-    test_clone_submission_data,
+    test_clone_asset_group_data,
 ):
-    # Clone the known submission so that the asset data is in the database
-    clone = submission_utils.clone_submission(
+    # Clone the known asset_group so that the asset data is in the database
+    clone = asset_group_utils.clone_asset_group(
         flask_app_client,
         admin_user,
         researcher_1,
-        test_clone_submission_data['submission_uuid'],
+        test_clone_asset_group_data['asset_group_uuid'],
         later_usage=True,
     )
 
@@ -152,10 +152,12 @@ def test_read_all_assets(
         assert len(admin_response.json) == 2
         # both of these lists should be lexical order
         assert (
-            admin_response.json[0]['guid'] == test_clone_submission_data['asset_uuids'][0]
+            admin_response.json[0]['guid']
+            == test_clone_asset_group_data['asset_uuids'][0]
         )
         assert (
-            admin_response.json[1]['guid'] == test_clone_submission_data['asset_uuids'][1]
+            admin_response.json[1]['guid']
+            == test_clone_asset_group_data['asset_uuids'][1]
         )
         utils.validate_dict_response(researcher_response, 403, {'status', 'message'})
     finally:

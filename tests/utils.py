@@ -177,14 +177,14 @@ def generate_user_instance(
     return user_instance
 
 
-def generate_submission_instance(owner):
-    from app.modules.submissions.models import Submission
+def generate_asset_group_instance(owner):
+    from app.modules.asset_groups.models import AssetGroup
 
-    submission_instance = Submission(guid=uuid.uuid4(), owner=owner)
-    return submission_instance
+    asset_group_instance = AssetGroup(guid=uuid.uuid4(), owner=owner)
+    return asset_group_instance
 
 
-def generate_asset_instance(submission_guid):
+def generate_asset_instance(asset_group_guid):
     from app.modules.assets.models import Asset
 
     asset_instance = Asset(
@@ -196,7 +196,7 @@ def generate_asset_instance(submission_guid):
         filesystem_xxhash64='42',
         filesystem_guid=uuid.uuid4(),
         semantic_guid=uuid.uuid4(),
-        submission_guid=submission_guid,
+        asset_group_guid=asset_group_guid,
     )
     return asset_instance
 

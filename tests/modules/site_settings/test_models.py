@@ -5,14 +5,9 @@ from app.modules.fileuploads.models import FileUpload
 from app.modules.site_settings.models import SiteSetting
 
 
-def test_create_header_image(db, flask_app):
-    project_root = Path(flask_app.config['PROJECT_ROOT'])
-    fup = FileUpload.create_fileupload_from_path(
-        str(project_root / 'tests/submissions/test-000/zebra.jpg'), copy=True
-    )
-    fup2 = FileUpload.create_fileupload_from_path(
-        str(project_root / 'tests/submissions/test-000/fluke.jpg'), copy=True
-    )
+def test_create_header_image(db, flask_app, test_root):
+    fup = FileUpload.create_fileupload_from_path(str(test_root / 'zebra.jpg'), copy=True)
+    fup2 = FileUpload.create_fileupload_from_path(str(test_root / 'fluke.jpg'), copy=True)
     with db.session.begin():
         db.session.add(fup)
         db.session.add(fup2)

@@ -108,6 +108,10 @@ jobs:
           docker-compose exec -T -e FLASK_CONFIG=$FLASK_CONFIG -e SQLALCHEMY_DATABASE_URI=$SQLALCHEMY_DATABASE_URI houston pytest -s -v
           docker-compose exec -T -e FLASK_CONFIG=$FLASK_CONFIG -e SQLALCHEMY_DATABASE_URI=$SQLALCHEMY_DATABASE_URI houston pytest -s -v
 
+      - name: Run tests with local git
+        run: |
+          docker-compose exec -T -e FLASK_CONFIG=$FLASK_CONFIG -e SQLALCHEMY_DATABASE_URI=$SQLALCHEMY_DATABASE_URI -e GITLAB_REMOTE_URI=/data/var/git_remote houston pytest -s -v
+
       - name: Check DB migrations (sqlite)
         if: matrix.db-uri == 'sqlite://'
         run: |

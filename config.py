@@ -141,6 +141,7 @@ class BaseConfig(object):
         'individuals',
         'annotations',
         'site_settings',
+        'site_info',
 
         # Front-end
         #   Dependencies: Users, Auth, Assets

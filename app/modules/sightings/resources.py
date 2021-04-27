@@ -69,7 +69,7 @@ def _validate_asset_references(asset_references):
     #  this will very likely always be true, but in the event it proves not to be, this will have to be altered
     #  to do multiple create_from_tus() calls
 
-    all_arefs = {}  # all paths needed, keyed by transaction id
+    all_references = {}  # all paths needed, keyed by transaction id
     paths_wanted = (
         []
     )  # parallel list (to encounters) of set of asset paths for that encounter
@@ -328,7 +328,7 @@ class Sightings(Resource):
 
         assets = None
         if paths_wanted is not None:
-            assets = _validate_assets(submission.assets, paths_wanted)
+            assets = _validate_assets(asset_group.assets, paths_wanted)
             if assets is not None:
                 sighting.add_assets_no_context(assets)
         log.debug('Sighting with guid=%r is adding assets=%r' % (sighting.guid, assets))

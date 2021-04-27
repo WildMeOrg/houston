@@ -169,12 +169,23 @@ def test_create_and_modify_and_delete_sighting(
     ct = test_utils.multi_count(db, (Sighting, Encounter, Asset, Submission))
     assert ct[1] == orig_ct[1] + 1
 
+    # now we try again, but this time with header to allow for cascade deletion of sighting
+    response = sighting_utils.patch_sighting(
+        flask_app_client,
+        researcher_1,
+        sighting_id,
+        patch_data=[
+            {'op': 'remove', 'path': '/encounters', 'value': enc1_id},
+        ],
+        headers=(('x-allow-delete-cascade-sighting', True),),
+    )
+    # now this should bring us back to where we started
+    ct = test_utils.multi_count(db, (Sighting, Encounter, Asset, Submission))
+    assert ct == orig_ct
+
     # upon success (yay) we clean up our mess
     sighting_utils.cleanup_tus_dir(transaction_id)
-    sighting_utils.delete_sighting(flask_app_client, researcher_1, sighting_id)
-
-    post_ct = test_utils.multi_count(db, (Sighting, Encounter, Asset, AssetGroup))
-    assert orig_ct == post_ct
+    # no longer need to utils.delete_sighting() cuz cascade killed it above
 
 
 def test_create_anon_and_delete_sighting(db, flask_app_client, staff_user, test_root):

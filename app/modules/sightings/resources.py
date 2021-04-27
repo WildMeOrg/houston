@@ -451,7 +451,6 @@ class SightingByID(Resource):
                     'x-allow-delete-cascade-sighting', 'false'
                 ),
             }
-            log.warning(f'headers={headers}')
             response = current_app.edm.request_passthrough(
                 'sighting.data',
                 'patch',
@@ -470,17 +469,21 @@ class SightingByID(Resource):
                     code=code,
                     edm_status_code=response.status_code,
                 )
-            if 'deleted' in rdata['result']:
-                log.warning(f"EDM triggered self-deletion {rdata['result']}")
-                sighting.delete_cascade()
+            if 'deletedSighting' in rdata['result']:
+                log.warning(
+                    f"EDM triggered self-deletion of {sighting} result={rdata['result']}"
+                )
+                sighting.delete_cascade()  # this will get rid of our encounter(s) as well so no need to rectify_edm_encounters()
+                sighting = None
             else:
                 sighting.rectify_edm_encounters(rdata['result'].get('encounters'))
 
-            new_version = rdata['result'].get('version', None)
-            if new_version is not None:
-                sighting.version = new_version
-            with db.session.begin():
-                db.session.merge(sighting)
+            if sighting is not None:
+                new_version = rdata['result'].get('version', None)
+                if new_version is not None:
+                    sighting.version = new_version
+                with db.session.begin():
+                    db.session.merge(sighting)
 
         else:  # no edm
             context = api.commit_or_abort(

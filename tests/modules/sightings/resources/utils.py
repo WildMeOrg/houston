@@ -78,13 +78,19 @@ def read_sighting(flask_app_client, user, sight_guid, expected_status_code=200):
 
 
 def patch_sighting(
-    flask_app_client, user, sighting_guid, patch_data=[], expected_status_code=200
+    flask_app_client,
+    user,
+    sighting_guid,
+    patch_data=[],
+    headers=None,
+    expected_status_code=200,
 ):
     with flask_app_client.login(user, auth_scopes=('sightings:write',)):
         response = flask_app_client.patch(
             '%s%s' % (PATH, sighting_guid),
             data=json.dumps(patch_data),
             content_type='application/json',
+            headers=headers,
         )
 
     assert isinstance(response.json, dict)

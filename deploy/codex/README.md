@@ -45,6 +45,23 @@ Precision nuke example:
 
     docker-compose stop houston && docker-compose rm -f houston && docker volume rm codex_houston-var
 
+#### Running without gitlab
+
+Running the gitlab service takes up lots of memory and if you are unable to run
+it , it is possible to use the development local git alternative.  If you
+already started gitlab and houston, you can stop them by doing:
+
+    docker-compose rm --stop -f houston gitlab
+    docker volume rm $(docker volume ls -q -f dangling=true | grep gitlab-var)
+    docker volume rm $(docker volume ls -q -f dangling=true | grep houston-var)
+
+Use the development docker-compose file:
+
+    ln -s docker-compose.dev.yml docker-compose.override.yml
+    docker-compose up -d
+
+This should create the houston service again but not the gitlab one.
+
 #### Running the tests
 
 During development, we mount the code directory and by default run commands as

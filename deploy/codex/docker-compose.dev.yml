@@ -1,0 +1,11 @@
+version: "3.8"
+
+services:
+
+  gitlab:  # disable gitlab
+    deploy:
+      replicas: 0
+
+  houston:
+    environment:
+      GITLAB_REMOTE_URI: /data/var/git_remote

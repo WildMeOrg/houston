@@ -23,6 +23,11 @@ gitlab() {
 }
 
 _main() {
+    if [ "${GITLAB_REMOTE_URI:0:4}" != "http" ]; then
+        echo "Not using gitlab, exit"
+        exit
+    fi
+
     # Wait for gitlab to come online... this takes awhile, so we give feedback
     while ! $(wait-for -t 10 "${GITLAB_HOST}:${GITLAB_PORT}"); do
         echo "Waiting for the GitLab instance to come online"

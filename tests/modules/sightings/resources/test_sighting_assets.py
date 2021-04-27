@@ -10,37 +10,75 @@ from tests.modules.sightings.resources import utils as sighting_utils
 PATH = '/api/v1/sightings/'
 
 
-def no_test_asset_addition(db, flask_app_client):
+def test_asset_addition(db, flask_app_client, staff_user):
     # pylint: disable=invalid-name
     from app.modules.sightings.models import Sighting
 
-    new_researcher = utils.generate_user_instance(
-        email='reseracher47@nowhere.com', is_researcher=True
-    )
-    new_sighting = Sighting()
-    new_asset_group = utils.generate_asset_group_instance(new_researcher)
-    new_asset = utils.generate_asset_instance(new_asset_group.guid)
+    try:
 
-    with db.session.begin():
-        db.session.add(new_researcher)
-        db.session.add(new_sighting)
-        db.session.add(new_asset_group)
-        db.session.add(new_asset)
+        new_researcher = utils.generate_user_instance(
+            email='adder_of_assets@mail.com', is_researcher=True
+        )
 
-    add_asset = [
-        utils.patch_test_op(new_researcher.password_secret),
-        utils.patch_add_op('assetId', '%s' % new_asset.guid),
-    ]
-    sighting_utils.patch_sighting(
-        flask_app_client, '%s' % new_sighting.guid, new_researcher, add_asset
-    )
-    assert len(new_sighting.assets) == 1
-    # removed submission delete as it was going haywire
-    current_app.agm.delete_remote_asset_group(new_asset_group)
-    new_asset_group.delete()
-    new_researcher.delete()
-    new_asset.delete()
-    new_sighting.delete()
+        with db.session.begin():
+            db.session.add(new_researcher)
+
+        data_in = {
+            'context': 'test',
+            'locationId': 'test',
+            'encounters': [{}],
+        }
+        response = sighting_utils.create_sighting(
+            flask_app_client, new_researcher, expected_status_code=200, data_in=data_in
+        )
+        sighting_id = response.json['result']['id']
+        new_sighting = Sighting.query.get(sighting_id)
+        new_asset_group = utils.generate_asset_group_instance(new_researcher)
+
+        with db.session.begin():
+            db.session.add(new_asset_group)
+
+        new_asset_1 = utils.generate_asset_instance(new_asset_group.guid)
+        new_asset_2 = utils.generate_asset_instance(new_asset_group.guid)
+        new_asset_3 = utils.generate_asset_instance(new_asset_group.guid)
+
+        with db.session.begin():
+            db.session.add(new_sighting)
+            db.session.add(new_asset_group)
+            db.session.add(new_asset_1)
+            db.session.add(new_asset_2)
+            db.session.add(new_asset_3)
+
+        # lets try a list internally first
+        assets = [new_asset_1, new_asset_2]
+        new_sighting.add_assets(assets)
+
+        assert len(new_sighting.assets) == 2
+
+        add_asset = [
+            utils.patch_add_op('assetId', '%s' % new_asset_3.guid),
+        ]
+
+        sighting_utils.patch_sighting(
+            flask_app_client, new_researcher, '%s' % new_sighting.guid, add_asset
+        )
+
+        assert len(new_sighting.assets) == 3
+
+    finally:
+        # staff can do this, no need to revisit encounter based ownership here
+        sighting_utils.delete_sighting(
+            flask_app_client, staff_user, str(new_sighting.guid)
+        )
+        current_app.agm.delete_remote_asset_group(new_asset_group)
+        new_asset_1.delete()
+        new_asset_2.delete()
+        new_asset_3.delete()
+        new_asset_group.delete()
+        new_researcher.delete()
+
+        with db.session.begin():
+            db.session.delete(new_asset_group)
 
 
 def add_file_asset_to_sighting(

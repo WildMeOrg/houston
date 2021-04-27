@@ -61,11 +61,14 @@ class PatchSightingDetailsParameters(PatchJSONParameters):
         ret_val = False
 
         has_permission = rules.ObjectActionRule(obj, AccessOperation.WRITE).check()
+
         if has_permission:
 
             if field == 'assetId':
                 asset = Asset.query.get(value)
-                if asset and asset.asset_group.owner == current_user:
+                if asset and (
+                    asset.asset_group.owner == current_user or current_user.is_admin
+                ):
                     obj.add_asset(asset)
                     ret_val = True
 

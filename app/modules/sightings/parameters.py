@@ -44,7 +44,7 @@ class PatchSightingDetailsParameters(PatchJSONParameters):
         '/verbatimLocality',
     )
 
-    PATH_CHOICES_HOUSTON = ('assetId', 'newAssetGroup')
+    PATH_CHOICES_HOUSTON = ('/assetId', '/newAssetGroup')
 
     PATH_CHOICES = PATH_CHOICES_EDM + PATH_CHOICES_HOUSTON
 
@@ -53,7 +53,7 @@ class PatchSightingDetailsParameters(PatchJSONParameters):
     @classmethod
     def add(cls, obj, field, value, state):
         from app.modules.assets.models import Asset
-        from app.modules.submissions.models import Submission
+        from app.modules.asset_groups.models import AssetGroup
 
         if ('/' + field) not in PatchSightingDetailsParameters.COMPLEX_PATH_CHOICES:
             super(PatchSightingDetailsParameters, cls).add(obj, field, value, state)
@@ -65,17 +65,17 @@ class PatchSightingDetailsParameters(PatchJSONParameters):
 
             if field == 'assetId':
                 asset = Asset.query.get(value)
-                if asset and asset.submission.owner == current_user:
+                if asset and asset.asset_group.owner == current_user:
                     obj.add_asset(asset)
                     ret_val = True
 
-            elif field == 'newSubmission':
+            elif field == 'newAssetGroup':
 
-                new_submission = Submission.create_submission_from_tus(
+                new_asset_group = AssetGroup.create_from_tus(
                     'Sighting.patch' + value, current_user, value
                 )
 
-                for asset in new_submission.assets:
+                for asset in new_asset_group.assets:
                     obj.add_asset(asset)
                 ret_val = True
 

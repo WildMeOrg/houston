@@ -18,13 +18,13 @@ def no_test_asset_addition(db, flask_app_client):
         email='reseracher47@nowhere.com', is_researcher=True
     )
     new_sighting = Sighting()
-    new_submission = utils.generate_submission_instance(new_researcher)
-    new_asset = utils.generate_asset_instance(new_submission.guid)
+    new_asset_group = utils.generate_asset_group_instance(new_researcher)
+    new_asset = utils.generate_asset_instance(new_asset_group.guid)
 
     with db.session.begin():
         db.session.add(new_researcher)
         db.session.add(new_sighting)
-        db.session.add(new_submission)
+        db.session.add(new_asset_group)
         db.session.add(new_asset)
 
     add_asset = [
@@ -36,8 +36,8 @@ def no_test_asset_addition(db, flask_app_client):
     )
     assert len(new_sighting.assets) == 1
     # removed submission delete as it was going haywire
-    current_app.agm.delete_remote_asset_group(new_submission)
-    new_submission.delete()
+    current_app.agm.delete_remote_asset_group(new_asset_group)
+    new_asset_group.delete()
     new_researcher.delete()
     new_asset.delete()
     new_sighting.delete()
@@ -59,7 +59,7 @@ def add_file_asset_to_sighting(
         file.close()
 
     add_asset = [
-        utils.patch_add_op('newSubmission', transaction_id),
+        utils.patch_add_op('newAssetGroup', transaction_id),
     ]
     sighting_utils.patch_sighting(flask_app_client, user, '%s' % sighting.guid, add_asset)
 
@@ -112,6 +112,6 @@ def test_asset_file_addition(db, flask_app_client, staff_user):
         sighting_utils.delete_sighting(flask_app_client, staff_user, sighting_id)
         new_researcher.delete()
         # assets are only cleaned up once the submissions are cleaned up
-        for submission in new_researcher.submissions:
-            current_app.agm.delete_remote_asset_group(submission)
-            submission.delete()
+        for asset_group in new_researcher.asset_groups:
+            current_app.agm.delete_remote_asset_group(asset_group)
+            asset_group.delete()

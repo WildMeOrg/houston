@@ -11,5 +11,7 @@ import enum
 
 class AccessOperation(enum.Enum):
     READ = 1
-    WRITE = 2
-    DELETE = 3
+    # Some information needs to be much more secure
+    READ_PRIVILEGED = 2
+    WRITE = 3
+    DELETE = 4

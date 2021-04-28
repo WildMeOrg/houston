@@ -133,3 +133,23 @@ class AssetSrcUByID(Resource):
         return send_file(
             asset_format_path, 'image/jpeg'
         )  # TODO we need to alter mime_type to reflect path, if ever it changes from jpg
+
+
+@api.route('/src_raw/<uuid:asset_guid>', doc=False)
+@api.login_required(oauth_scopes=['assets:read'])
+@api.response(
+    code=HTTPStatus.NOT_FOUND,
+    description='Asset not found.',
+)
+@api.resolve_object_by_model(Asset, 'asset')
+class AssetSrcRawByID(Resource):
+    @api.permission_required(
+        permissions.ObjectAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'obj': kwargs['asset'],
+            'action': AccessOperation.READ_PRIVILEGED,
+        },
+    )
+    def get(self, asset):
+        # TODO does WBIA depend on the mime_type being jpg and do we need to change it if it's not
+        return send_file(asset.get_symlink())

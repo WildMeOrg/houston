@@ -163,12 +163,10 @@ def clone_asset_group(
     owner,
     guid,
     force_clone=False,
-    later_usage=False,
     expect_failure=False,
 ):
     clone = CloneAssetGroup(client, admin_user, owner, guid, force_clone)
-    if not later_usage:
-        clone.cleanup()
+
     if not expect_failure:
         assert clone.response.status_code == 200
     return clone

@@ -18,44 +18,39 @@ def test_user_read_permissions(
     # Clone as the researcher user and then try to reread as both researcher and readonly user,
     # read by researcher user should succeed, read by readonly user should be blocked
 
-    clone = asset_group_utils.clone_asset_group(
+    asset_group_utils.clone_asset_group(
         flask_app_client,
         admin_user,
         researcher_1,
         test_clone_asset_group_data['asset_group_uuid'],
-        later_usage=True,
     )
 
-    try:
-        asset_utils.read_asset(
-            flask_app_client,
-            researcher_1,
-            test_clone_asset_group_data['asset_uuids'][0],
-        )
-        asset_group_utils.read_asset_group(
-            flask_app_client,
-            researcher_1,
-            test_clone_asset_group_data['asset_group_uuid'],
-        )
-        asset_utils.read_asset(
-            flask_app_client,
-            readonly_user,
-            test_clone_asset_group_data['asset_uuids'][0],
-            403,
-        )
-        asset_group_utils.read_asset_group(
-            flask_app_client,
-            readonly_user,
-            test_clone_asset_group_data['asset_group_uuid'],
-            403,
-        )
-        # and as no user
-        asset_group_utils.read_asset_group(
-            flask_app_client, None, test_clone_asset_group_data['asset_group_uuid'], 401
-        )
-
-    finally:
-        clone.cleanup()
+    asset_utils.read_asset(
+        flask_app_client,
+        researcher_1,
+        test_clone_asset_group_data['asset_uuids'][0],
+    )
+    asset_group_utils.read_asset_group(
+        flask_app_client,
+        researcher_1,
+        test_clone_asset_group_data['asset_group_uuid'],
+    )
+    asset_utils.read_asset(
+        flask_app_client,
+        readonly_user,
+        test_clone_asset_group_data['asset_uuids'][0],
+        403,
+    )
+    asset_group_utils.read_asset_group(
+        flask_app_client,
+        readonly_user,
+        test_clone_asset_group_data['asset_group_uuid'],
+        403,
+    )
+    # and as no user
+    asset_group_utils.read_asset_group(
+        flask_app_client, None, test_clone_asset_group_data['asset_group_uuid'], 401
+    )
 
 
 def test_create_patch_asset_group(flask_app_client, researcher_1, readonly_user, db):

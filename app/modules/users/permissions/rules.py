@@ -16,12 +16,15 @@ from app.modules.users.permissions.types import AccessOperation
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
 
-PERMISSION_ROLE_MAP = {
+ANY_ROLE_MAP = {
     ('SiteSetting', AccessOperation.READ, 'Module'): ['is_privileged', 'is_admin'],
     ('SiteSetting', AccessOperation.WRITE, 'Module'): ['is_privileged', 'is_admin'],
-    ('SiteSetting', AccessOperation.READ, 'Object'): ['is_privileged', 'obj_is_public'],
+    ('SiteSetting', AccessOperation.READ, 'Object'): ['is_privileged'],
     ('SiteSetting', AccessOperation.WRITE, 'Object'): ['is_privileged', 'is_admin'],
     ('SiteSetting', AccessOperation.DELETE, 'Object'): ['is_privileged', 'is_admin'],
+}
+ANY_OBJECT_METHOD_MAP = {
+    ('SiteSetting', AccessOperation.READ, 'Object'): ['is_public'],
 }
 
 
@@ -93,7 +96,7 @@ class ModuleActionRule(DenyAbortMixin, Rule):
         from app.modules.encounters.models import Encounter
         from app.modules.sightings.models import Sighting
 
-        roles = PERMISSION_ROLE_MAP.get((self._module.__name__, self._action, 'Module'))
+        roles = ANY_ROLE_MAP.get((self._module.__name__, self._action, 'Module'))
         if roles:
             for role in roles:
                 if hasattr(current_user, role):
@@ -194,23 +197,41 @@ class ObjectActionRule(DenyAbortMixin, Rule):
         self._action = action
         super().__init__(**kwargs)
 
+    def any_table_driven_permission(self):
+        roles = ANY_ROLE_MAP.get((self._obj.__class__.__name__, self._action, 'Object'))
+        object_methods = ANY_OBJECT_METHOD_MAP.get(
+            (self._obj.__class__.__name__, self._action, 'Object')
+        )
+        if roles is None and object_methods is None:
+            return False, True
+
+        if roles is not None:
+            for role in roles:
+                if not hasattr(current_user, role):
+                    log.warning(f'user object does not have accessor {role}')
+                elif getattr(current_user, role):
+                    return True, True
+
+        if object_methods is not None:
+            for method in object_methods:
+                if not hasattr(self._obj, method):
+                    log.warning(
+                        f'{self._obj.__class__.__name__} object does not have accessor {method}'
+                    )
+                elif getattr(self._obj, method)():
+                    return True, True
+
+        return True, False
+
     def check(self):
         # This Rule is for checking permissions on objects, so there must be one, Use the ModuleActionRule for
         # permissions checking without objects
         assert self._obj is not None
 
-        roles = PERMISSION_ROLE_MAP.get(
-            (self._obj.__class__.__name__, self._action, 'Object')
-        )
-        if roles:
-            for role in roles:
-                if hasattr(current_user, role):
-                    if getattr(current_user, role):
-                        return True
-                elif role == 'obj_is_public':
-                    if self._obj.is_public():
-                        return True
-            return False
+        was_table_driven, has_permission = self.any_table_driven_permission()
+
+        if was_table_driven:
+            return has_permission
 
         # Anyone can read public data, even anonymous users
         has_permission = self._action == AccessOperation.READ and self._obj.is_public()
@@ -236,10 +257,20 @@ class ObjectActionRule(DenyAbortMixin, Rule):
         from app.modules.annotations.models import Annotation
         from app.modules.encounters.models import Encounter
         from app.modules.sightings.models import Sighting
+        from app.modules.assets.models import Asset
         from app.modules.users.models import User
 
-        # users can read write and delete anything they own while some users can do anything
-        has_permission = owner_or_privileged(user, self._obj)
+        # The exception to the rule of owners and privileged users can do anything is for access to raw
+        # assets as this contains potentially extremely sensitive information and is only required for the
+        # detection task within WBIA
+        if (
+            isinstance(self._obj, Asset)
+            and self._action == AccessOperation.READ_PRIVILEGED
+        ):
+            # users can read write and delete anything they own while some users can do anything
+            has_permission = user.is_internal and self._obj.is_detection()
+        else:
+            has_permission = owner_or_privileged(user, self._obj)
         if not has_permission and user.is_admin:
             # Admins can access all users
             if isinstance(self._obj, User):

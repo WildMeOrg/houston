@@ -108,7 +108,7 @@ def test_create_and_modify_and_delete_sighting(
     assert response.json['id'] == sighting_id
 
     # test to see if we grew by 1 sighting and 2 encounters
-    ct = test_utils.multi_count(db, (Sighting, Encounter, Asset, Submission))
+    ct = test_utils.multi_count(db, (Sighting, Encounter, Asset, AssetGroup))
     assert ct[0] == orig_ct[0] + 1
     assert ct[1] == orig_ct[1] + 2
 
@@ -150,7 +150,7 @@ def test_create_and_modify_and_delete_sighting(
         ],
     )
     # test to see if we now are -1 encounter
-    ct = test_utils.multi_count(db, (Sighting, Encounter, Asset, Submission))
+    ct = test_utils.multi_count(db, (Sighting, Encounter, Asset, AssetGroup))
     assert ct[1] == orig_ct[1] + 1  # previously was + 2
 
     # similar to above, but this should fail as this is our final encounter, and thus cascade-deletes the occurrence -- and this
@@ -166,7 +166,7 @@ def test_create_and_modify_and_delete_sighting(
     )
     assert response.json['edm_status_code'] == 602
     # should still have same number encounters as above here
-    ct = test_utils.multi_count(db, (Sighting, Encounter, Asset, Submission))
+    ct = test_utils.multi_count(db, (Sighting, Encounter, Asset, AssetGroup))
     assert ct[1] == orig_ct[1] + 1
 
     # now we try again, but this time with header to allow for cascade deletion of sighting
@@ -180,7 +180,7 @@ def test_create_and_modify_and_delete_sighting(
         headers=(('x-allow-delete-cascade-sighting', True),),
     )
     # now this should bring us back to where we started
-    ct = test_utils.multi_count(db, (Sighting, Encounter, Asset, Submission))
+    ct = test_utils.multi_count(db, (Sighting, Encounter, Asset, AssetGroup))
     assert ct == orig_ct
 
     # upon success (yay) we clean up our mess

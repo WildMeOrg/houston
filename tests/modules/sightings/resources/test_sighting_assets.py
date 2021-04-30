@@ -7,15 +7,11 @@ from flask import current_app
 from tests.modules.sightings.resources import utils as sighting_utils
 
 
-PATH = '/api/v1/sightings/'
-
-
 def test_asset_addition(db, flask_app_client, staff_user):
     # pylint: disable=invalid-name
     from app.modules.sightings.models import Sighting
 
     try:
-
         new_researcher = utils.generate_user_instance(
             email='adder_of_assets@mail.com', is_researcher=True
         )

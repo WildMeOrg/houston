@@ -373,7 +373,6 @@ class Sightings(Resource):
 
 
 @api.route('/<uuid:sighting_guid>')
-@api.login_required(oauth_scopes=[])
 @api.response(
     code=HTTPStatus.NOT_FOUND,
     description='Sighting not found.',
@@ -391,6 +390,7 @@ class SightingByID(Resource):
             'action': AccessOperation.READ,
         },
     )
+    @api.login_required(oauth_scopes=['sightings:read'])
     def get(self, sighting):
         """
         Get Sighting details by ID.

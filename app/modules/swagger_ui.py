@@ -10,6 +10,8 @@ which should not be confused with the customizations made here.
 """
 from flask import Blueprint
 
+from .utils import fail_on_missing_static_folder
+
 
 blueprint = Blueprint(
     'customized_swagger_ui',
@@ -20,4 +22,5 @@ blueprint = Blueprint(
 
 def init_app(app):
     blueprint.static_folder = app.config['SWAGGER_UI_DIST']
+    fail_on_missing_static_folder(blueprint.static_folder, file='swagger-ui.js')
     app.register_blueprint(blueprint)

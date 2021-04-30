@@ -10,7 +10,6 @@ More details are available here:
 * http://lepture.com/en/2013/create-oauth-server
 """
 import logging
-import os
 
 import flask
 import werkzeug
@@ -27,6 +26,8 @@ from app.modules.auth.utils import (
 )
 from app.modules.users.models import User
 
+from .utils import fail_on_missing_static_folder
+
 
 log = logging.getLogger(__name__)
 
@@ -38,6 +39,7 @@ frontend_blueprint = Blueprint(
 
 def init_app(app):
     frontend_blueprint.static_folder = app.config['FRONTEND_DIST']
+    fail_on_missing_static_folder(frontend_blueprint.static_folder, file='index.html')
     app.register_blueprint(frontend_blueprint)
 
 
@@ -50,13 +52,6 @@ def home(*args, **kwargs):
     """
     if not current_app.debug:
         log.warning('Front-end files are recommended to be served by NGINX')
-
-    if not os.path.exists(frontend_blueprint.static_folder):
-        log.exception(
-            'Front-end static directory improperly configured - could not locate a valid installation at: %r'
-            % (os.path.abspath(frontend_blueprint.static_folder),)
-        )
-        raise werkzeug.exceptions.InternalServerError
 
     path = 'index.html'
     return send_from_directory(frontend_blueprint.static_folder, path)

@@ -59,7 +59,7 @@ from . import edm  # NOQA
 
 from . import acm  # NOQA
 
-from . import asset_group  # NOQA
+from . import gitlab  # NOQA
 
 from . import tus  # NOQA
 
@@ -270,7 +270,7 @@ def init_app(app):
         marshmallow,
         edm,
         acm,
-        asset_group,
+        gitlab,
         tus,
         mail,
         stripe,

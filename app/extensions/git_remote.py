@@ -106,11 +106,13 @@ class LocalProjects:
                 except (json.decoder.JSONDecodeError, TypeError):
                     self.projects = {}
 
-    def list(self, search, **kwargs):
-        search = str(search)
-        if search in self.projects:
-            return [self.projects[search]]
-        return []
+    def list(self, search=None, **kwargs):
+        if search is not None:
+            search = str(search)
+            if search in self.projects:
+                return [self.projects[search]]
+            return []
+        return list(self.projects.values())
 
     def create(self, args, **kwargs):
         project = LocalProject(

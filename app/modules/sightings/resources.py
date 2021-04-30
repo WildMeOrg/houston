@@ -383,6 +383,7 @@ class SightingByID(Resource):
     Manipulations with a specific Sighting.
     """
 
+    @api.login_required(oauth_scopes=['sightings:read'])
     @api.permission_required(
         permissions.ObjectAccessPermission,
         kwargs_on_request=lambda kwargs: {
@@ -390,7 +391,6 @@ class SightingByID(Resource):
             'action': AccessOperation.READ,
         },
     )
-    @api.login_required(oauth_scopes=['sightings:read'])
     def get(self, sighting):
         """
         Get Sighting details by ID.
@@ -405,6 +405,7 @@ class SightingByID(Resource):
 
         return sighting.augment_edm_json(response['result'])
 
+    @api.login_required(oauth_scopes=['sightings:write'])
     @api.permission_required(
         permissions.ObjectAccessPermission,
         kwargs_on_request=lambda kwargs: {
@@ -412,7 +413,6 @@ class SightingByID(Resource):
             'action': AccessOperation.WRITE,
         },
     )
-    @api.login_required(oauth_scopes=['sightings:write'])
     @api.parameters(parameters.PatchSightingDetailsParameters())
     @api.response(schemas.DetailedSightingSchema())
     @api.response(code=HTTPStatus.CONFLICT)
@@ -460,6 +460,7 @@ class SightingByID(Resource):
             db.session.merge(sighting)
         return sighting
 
+    @api.login_required(oauth_scopes=['sightings:write'])
     @api.permission_required(
         permissions.ObjectAccessPermission,
         kwargs_on_request=lambda kwargs: {
@@ -467,7 +468,6 @@ class SightingByID(Resource):
             'action': AccessOperation.DELETE,
         },
     )
-    @api.login_required(oauth_scopes=['sightings:write'])
     @api.response(code=HTTPStatus.CONFLICT)
     @api.response(code=HTTPStatus.NO_CONTENT)
     def delete(self, sighting):

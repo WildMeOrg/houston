@@ -86,9 +86,26 @@ def test_git_remote_local(request):
     assert project.namespace == {'id': 'TEST', 'name': 'TEST'}
     assert project.tag_list == ['tag:pytest']
 
+    g.projects.create(
+        {
+            'path': 'different_project',
+            'description': 'project description',
+            'emails_disabled': True,
+            'namespace_id': 'TEST',
+            'visibility': 'private',
+            'merge_method': 'rebase_merge',
+            'tag_list': ['tag:pytest'],
+            'lfs_enabled': True,
+        },
+        retry_transient_errors=True,
+    )
+
     projects = g.projects.list('project_name')
     assert len(projects) == 1
     assert projects[0] == project
+
+    projects = g.projects.list()
+    assert len(projects) == 2
 
     g.projects.delete(project.id)
     assert g.projects.list('project_name') == []

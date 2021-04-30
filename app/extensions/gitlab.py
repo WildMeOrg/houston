@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=no-self-use
 """
-Asset Group Management.
+Gitlab Management.
 
 """
 import logging
@@ -27,9 +27,9 @@ GITLAB_TIMESTAMP_FORMAT_STR = '%Y-%m-%dT%H:%M:%S.%fZ'  # Ex: '2020-10-23T16:57:5
 log = logging.getLogger(__name__)
 
 
-class AssetGroupManager(object):
+class GitlabManager(object):
     def __init__(self, pre_initialize=False, *args, **kwargs):
-        super(AssetGroupManager, self).__init__(*args, **kwargs)
+        super(GitlabManager, self).__init__(*args, **kwargs)
         self.initialized = False
 
         self.gl = None
@@ -339,4 +339,4 @@ def init_app(app, **kwargs):
     """
     API extension initialization point.
     """
-    app.agm = AssetGroupManager()
+    app.git_backend = GitlabManager()

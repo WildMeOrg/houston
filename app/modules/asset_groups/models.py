@@ -450,7 +450,7 @@ class AssetGroup(db.Model, HoustonModel):
         return self.request_metadata.bulk_upload if self.request_metadata else False
 
     def git_write_upload_file(self, upload_file):
-        repo = current_app.agm.create_repository(self)
+        repo = current_app.git_backend.create_repository(self)
         file_repo_path = os.path.join(
             repo.working_tree_dir, '_asset_group', upload_file.filename
         )
@@ -462,7 +462,7 @@ class AssetGroup(db.Model, HoustonModel):
         if not os.path.exists(path):
             raise IOError('The path %r does not exist.' % (absolute_path,))
 
-        repo = current_app.agm.get_repository(self)
+        repo = current_app.git_backend.get_repository(self)
         repo_path = os.path.join(repo.working_tree_dir, '_asset_group')
 
         absolute_path = absolute_path.rstrip('/')
@@ -480,7 +480,7 @@ class AssetGroup(db.Model, HoustonModel):
         if not os.path.exists(absolute_filepath):
             raise IOError('The filepath %r does not exist.' % (absolute_filepath,))
 
-        repo = current_app.agm.get_repository(self)
+        repo = current_app.git_backend.get_repository(self)
         repo_path = os.path.join(repo.working_tree_dir, '_asset_group')
         _, filename = os.path.split(absolute_filepath)
         repo_filepath = os.path.join(repo_path, filename)
@@ -490,7 +490,7 @@ class AssetGroup(db.Model, HoustonModel):
         return repo_filepath
 
     def git_commit(self, message, realize=True, update=True, **kwargs):
-        repo = current_app.agm.get_repository(self)
+        repo = current_app.git_backend.get_repository(self)
 
         if realize:
             self.realize_asset_group()
@@ -506,7 +506,7 @@ class AssetGroup(db.Model, HoustonModel):
             asset_group_metadata = json.load(asset_group_metadata_file)
 
         asset_group_metadata['commit_mime_whitelist_guid'] = str(
-            current_app.agm.mime_type_whitelist_guid
+            current_app.git_backend.mime_type_whitelist_guid
         )
         asset_group_metadata['commit_houston_api_version'] = str(version)
 
@@ -526,7 +526,7 @@ class AssetGroup(db.Model, HoustonModel):
         self.update_metadata_from_commit(commit)
 
     def git_push(self):
-        repo = current_app.agm.get_repository(self)
+        repo = current_app.git_backend.get_repository(self)
         assert repo is not None
 
         with GitLabPAT(repo):
@@ -537,7 +537,7 @@ class AssetGroup(db.Model, HoustonModel):
         return repo
 
     def git_pull(self):
-        repo = current_app.agm.get_repository(self)
+        repo = current_app.git_backend.get_repository(self)
         assert repo is not None
 
         with GitLabPAT(repo):
@@ -550,7 +550,7 @@ class AssetGroup(db.Model, HoustonModel):
         return repo
 
     def git_clone(self, project, **kwargs):
-        repo = current_app.agm.get_repository(self)
+        repo = current_app.git_backend.get_repository(self)
         assert repo is None
 
         asset_group_abspath = self.get_absolute_path()
@@ -565,7 +565,7 @@ class AssetGroup(db.Model, HoustonModel):
             glpat.repo = git.Repo.clone_from(glpat.authenticated_url, asset_group_abspath)
             log.info('...cloned')
 
-        repo = current_app.agm.get_repository(self)
+        repo = current_app.git_backend.get_repository(self)
         assert repo is not None
 
         self.update_metadata_from_project(project)
@@ -582,7 +582,7 @@ class AssetGroup(db.Model, HoustonModel):
         if asset_group is None:
             from app.extensions import db
 
-            if not current_app.agm.is_asset_group_on_remote(asset_group_uuid):
+            if not current_app.git_backend.is_asset_group_on_remote(asset_group_uuid):
                 return None
 
             if owner is None:
@@ -598,7 +598,7 @@ class AssetGroup(db.Model, HoustonModel):
             db.session.refresh(asset_group)
 
         # Make sure that the repo for this asset group exists
-        current_app.agm.ensure_repository(asset_group)
+        current_app.git_backend.ensure_repository(asset_group)
 
         return asset_group
 
@@ -634,7 +634,7 @@ class AssetGroup(db.Model, HoustonModel):
     def import_tus_files(self, transaction_id=None, paths=None, purge_dir=True):
         from app.extensions.tus import _tus_filepaths_from, _tus_purge
 
-        current_app.agm.create_repository(self)
+        current_app.git_backend.create_repository(self)
 
         sub_id = None if transaction_id is not None else self.guid
         asset_group_abspath = self.get_absolute_path()
@@ -739,7 +739,7 @@ class AssetGroup(db.Model, HoustonModel):
                         skipped.append((filepath, extension))
                         continue
                     mime_type = magic.from_file(filepath, mime=True)
-                    if mime_type not in current_app.agm.mime_type_whitelist:
+                    if mime_type not in current_app.git_backend.mime_type_whitelist:
                         # Skip any unsupported MIME types
                         skipped.append((filepath, extension))
                         continue
@@ -899,7 +899,7 @@ class AssetGroup(db.Model, HoustonModel):
         db.session.refresh(self)
 
     def update_metadata_from_repo(self, repo):
-        repo = current_app.agm.get_repository(self)
+        repo = current_app.git_backend.get_repository(self)
         assert repo is not None
 
         if len(repo.branches) > 0:
@@ -917,7 +917,7 @@ class AssetGroup(db.Model, HoustonModel):
             metadata_dict = json.load(metadata_file)
 
         self.commit_mime_whitelist_guid = metadata_dict.get(
-            'commit_mime_whitelist_guid', current_app.agm.mime_type_whitelist_guid
+            'commit_mime_whitelist_guid', current_app.git_backend.mime_type_whitelist_guid
         )
         self.commit_houston_api_version = metadata_dict.get(
             'commit_houston_api_version', version
@@ -990,7 +990,7 @@ class AssetGroup(db.Model, HoustonModel):
         self.sightings.append(new_sighting)
 
         # make sure the repo is created
-        current_app.agm.ensure_repository(self)
+        current_app.git_backend.ensure_repository(self)
         self.request_metadata = metadata
         description = 'Adding Creation metadata'
         if metadata.description != '':

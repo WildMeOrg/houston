@@ -56,7 +56,7 @@ def create_asset_group_from_path(
     db.session.refresh(asset_group)
 
     # Make sure that the repo for this asset group exists
-    current_app.agm.ensure_repository(asset_group)
+    current_app.git_backend.ensure_repository(asset_group)
 
     asset_group.git_copy_path(absolute_path)
 
@@ -100,7 +100,7 @@ def clone_asset_group_from_gitlab(
 
     if asset_group is not None:
         print('AssetGroup is already cloned locally:\n\t%s' % (asset_group,))
-        app.agm.ensure_repository(asset_group)
+        app.git_backend.ensure_repository(asset_group)
         return
 
     asset_group = AssetGroup.ensure_asset_group(guid, owner=user)

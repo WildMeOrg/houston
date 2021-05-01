@@ -22,5 +22,5 @@ blueprint = Blueprint(
 
 def init_app(app):
     blueprint.static_folder = app.config['SWAGGER_UI_DIST']
-    fail_on_missing_static_folder(blueprint.static_folder, file='swagger-ui.js')
+    fail_on_missing_static_folder(blueprint, specific_file='swagger-ui.js')
     app.register_blueprint(blueprint)

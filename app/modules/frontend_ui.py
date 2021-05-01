@@ -39,7 +39,7 @@ frontend_blueprint = Blueprint(
 
 def init_app(app):
     frontend_blueprint.static_folder = app.config['FRONTEND_DIST']
-    fail_on_missing_static_folder(frontend_blueprint.static_folder, file='index.html')
+    fail_on_missing_static_folder(frontend_blueprint, specific_file='index.html')
     app.register_blueprint(frontend_blueprint)
 
 

@@ -94,16 +94,18 @@ jobs:
           # Install application
           ./scripts/install.sh
 
-      - name: Check connectivity to required services
-        run: |
-          source virtualenv/houston3.7/bin/activate
-          invoke app.integrations.check
-
       - name: Create frontend static directory (tests complains if static directory does not exist)
         run: |
           mkdir -p app/static/dist-latest
           touch app/static/dist-latest/404.html
           touch app/static/dist-latest/index.html
+          mkdir -p app/static/swagger-ui
+          touch app/static/swagger-ui/swagger-ui.js
+
+      - name: Check connectivity to required services
+        run: |
+          source virtualenv/houston3.7/bin/activate
+          invoke app.integrations.check
 
       - name: Run tests (random x3)
         run: |
@@ -205,6 +207,8 @@ jobs:
           mkdir -p app/static/dist-latest
           touch app/static/dist-latest/404.html
           touch app/static/dist-latest/index.html
+          mkdir -p app/static/swagger-ui
+          touch app/static/swagger-ui/swagger-ui.js
 
       - name: Check connectivity to required services
         run: |

@@ -21,7 +21,7 @@ def test_create_failures(flask_app_client, test_root, researcher_1):
     assert not response.json['success']
 
     # has encounters, zero assetReferences, but fails on bad (missing) context value
-    data_in = {'encounters': [{'taxonomy': {'id': '0000000'}}]}
+    data_in = {'encounters': [{}]}
     response = sighting_utils.create_sighting(
         flask_app_client, researcher_1, expected_status_code=400, data_in=data_in
     )
@@ -30,7 +30,8 @@ def test_create_failures(flask_app_client, test_root, researcher_1):
 
     # has encounters, but bunk assetReferences
     data_in = {
-        'encounters': [{'assetReferences': [{'fail': 'fail'}]}],
+        'encounters': [{}],
+        'assetReferences': [{'fail': 'fail'}],
         'context': 'test',
         'locationId': 'test',
     }
@@ -43,7 +44,7 @@ def test_create_failures(flask_app_client, test_root, researcher_1):
     assert not response.json['success']
 
     # assetReferences, but no files for them
-    data_in['encounters'][0]['assetReferences'][0] = {
+    data_in['assetReferences'][0] = {
         'transactionId': transaction_id,
         'path': 'i-dont-exist.jpg',
     }

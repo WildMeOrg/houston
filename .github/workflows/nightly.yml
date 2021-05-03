@@ -129,19 +129,7 @@ jobs:
           source virtualenv/houston3.7/bin/activate
           pytest -s -v --gitlab-remote-login-pat "${{ secrets.GITLAB_REMOTE_LOGIN_PAT }}"
 
-      # Notify status in Slack
-      - name: Slack Notification
-        if: failure() && github.event_name == 'schedule'
-        uses: rtCamp/action-slack-notify@master
-        env:
-          SLACK_CHANNEL: dev-houston
-          SLACK_COLOR: '#FF0000'
-          SLACK_ICON: https://avatars.slack-edge.com/2020-03-02/965719891842_db87aa21ccb61076f236_44.png
-          SLACK_MESSAGE: 'nightly test on MacOS failed :sob:'
-          SLACK_USERNAME: "Nightly"
-          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
-
-  test:
+  test_linux:
     runs-on: ubuntu-latest
     strategy:
       max-parallel: 1
@@ -250,14 +238,19 @@ jobs:
           source virtualenv/houston3.7/bin/activate
           pytest --no-cov -s -v --gitlab-remote-login-pat "${{ secrets.GITLAB_REMOTE_LOGIN_PAT }}"
 
+  report_failure:
+    runs-on: ubuntu-latest
+    if: always()
+    needs: [test_macos, test_linux]
+    steps:
       # Notify status in Slack
       - name: Slack Notification
-        if: failure() && github.event_name == 'schedule'
+        if: (needs.test_macos.result == 'failure' || needs.test_linux.result == 'failure') && github.event_name == 'schedule'
         uses: rtCamp/action-slack-notify@master
         env:
           SLACK_CHANNEL: dev-houston
           SLACK_COLOR: '#FF0000'
           SLACK_ICON: https://avatars.slack-edge.com/2020-03-02/965719891842_db87aa21ccb61076f236_44.png
-          SLACK_MESSAGE: 'nightly tests on Linux failed :sob:'
+          SLACK_MESSAGE: 'nightly tests failed :sob:'
           SLACK_USERNAME: "Nightly"
           SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}

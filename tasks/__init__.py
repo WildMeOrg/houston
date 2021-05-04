@@ -57,14 +57,20 @@ else:
 from invoke import Collection  # NOQA
 from invoke.executor import Executor  # NOQA
 
-from tasks import app as tasks_app  # NOQA
+namespaces = []
+try:
+    from tasks import app as tasks_app  # NOQA
+
+    namespaces.append(tasks_app)
+except ModuleNotFoundError as e:
+    logger.warning(f'Unable to load tasks.app.*\n{str(e)}')
+
 from tasks import dependencies as task_dependencies  # NOQA
 
+namespaces.append(task_dependencies)
+
 # NOTE: `namespace` or `ns` name is required!
-namespace = Collection(
-    tasks_app,
-    task_dependencies,
-)
+namespace = Collection(*namespaces)
 
 
 def invoke_execute(context, command_name, **kwargs):

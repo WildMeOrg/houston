@@ -45,6 +45,38 @@ Precision nuke example:
 
     docker-compose stop houston && docker-compose rm -f houston && docker volume rm codex_houston-var
 
+Docker is conservative about cleaning up unused objects. This can cause Docker to run out of disk space or 
+other problems. If a new build is experiencing errors try using prune commands.
+
+Prune images not used by existing containers:
+
+    docker image prune -a
+
+Remove all stopped containers:
+
+    docker container prune
+
+Remove networks connecting resources used by Docker:
+
+    docker network prune
+
+Remove all volumes:
+
+    docker volume prune
+
+    NOTE: Removing volumes destroys data stored in them. If you have other Docker projects you are working on or need to preserve development data
+    refer to the Docker documentation to filter what volumes you prune.
+
+Remove everything except volumes:
+
+    docker system prune
+
+Including volumes: 
+
+    docker system prune --volumes
+
+You can bypass the confirmation for these actions by adding a -f flag.
+
 #### Running the tests
 
 During development, we mount the code directory and by default run commands as

@@ -103,9 +103,10 @@ class AssetGroupJob(db.Model, HoustonModel):
         db.GUID,
         db.ForeignKey('asset_group_sighting.guid'),
         index=True,
+        nullable=False,
     )
     asset_group = db.relationship('AssetGroupSighting', backref=db.backref('jobs'))
-    jobId = db.Column(db.String(length=20), nullable=False)
+    jobId = db.Column(db.GUID, nullable=False)
 
 
 # AssetGroup can have many sightings, so needs a table
@@ -120,6 +121,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
         db.GUID,
         db.ForeignKey('asset_group.guid'),
         index=True,
+        nullable=False,
     )
     asset_group = db.relationship('AssetGroup', backref=db.backref('sightings'))
 

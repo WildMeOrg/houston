@@ -66,8 +66,10 @@ except ModuleNotFoundError as e:
     logger.warning(f'Unable to load tasks.app.*\n{str(e)}')
 
 from tasks import dependencies as task_dependencies  # NOQA
+from tasks import docker_compose as task_docker_compose  # NOQA
 
 namespaces.append(task_dependencies)
+namespaces.append(task_docker_compose)
 
 # NOTE: `namespace` or `ns` name is required!
 namespace = Collection(*namespaces)

@@ -24,6 +24,8 @@ services:
 
   redis:
     image: redis:latest
+    volumes:
+      - redis-var:/data
     networks:
       - intranet
 
@@ -165,6 +167,7 @@ networks:
 
 volumes:
   edm-var:
+  redis-var:
   pgadmin-var:
   pgdata-var:
   acm-var:

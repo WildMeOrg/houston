@@ -31,6 +31,32 @@ Note, the composition can take several minutes to successfully come up.
 There are a number of operations setting up the services and automating the connections between them.
 All re-ups should be relatively fast.
 
+#### Running the tests
+
+During development, we mount the code directory and by default run commands as
+root. In Linux, this causes newly created files to be owned as root.  We can
+either `chown` it or try to run as the host user.
+
+First create the user with the host user uid and gid:
+
+    GID=$(id -g); docker-compose exec -u root houston /bin/bash -xec "groupadd --gid $GID $USER; useradd --uid $UID --gid $GID $USER"
+
+Start a shell within the houston container as the host user:
+
+    docker-compose exec -u $USER houston /bin/bash
+
+Or start a shell within the houston container as root:
+
+    docker-compose exec houston /bin/bash
+
+Now within the houston container you can run the tests:
+
+    unset FLASK_CONFIG
+    pytest
+
+Note, `FLASK_CONFIG` is unset here because it conflicts with the tests.
+It's something that will need fixed. This is simply a work around until then.
+
 #### Cleaning up
 
 Cleanup volumes:
@@ -76,29 +102,3 @@ Including volumes:
     docker system prune --volumes
 
 You can bypass the confirmation for these actions by adding a -f flag.
-
-#### Running the tests
-
-During development, we mount the code directory and by default run commands as
-root. In Linux, this causes newly created files to be owned as root.  We can
-either `chown` it or try to run as the host user.
-
-First create the user with the host user uid and gid:
-
-    GID=$(id -g); docker-compose exec -u root houston /bin/bash -xec "groupadd --gid $GID $USER; useradd --uid $UID --gid $GID $USER"
-
-Start a shell within the houston container as the host user:
-
-    docker-compose exec -u $USER houston /bin/bash
-
-Or start a shell within the houston container as root:
-
-    docker-compose exec houston /bin/bash
-
-Now within the houston container you can run the tests:
-
-    unset FLASK_CONFIG
-    pytest
-
-Note, `FLASK_CONFIG` is unset here because it conflicts with the tests.
-It's something that will need fixed. This is simply a work around until then.

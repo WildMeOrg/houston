@@ -103,6 +103,9 @@ def test_modifying_user_info_by_admin(flask_app_client, admin_user, regular_user
                         {'op': 'replace', 'path': '/is_active', 'value': False},
                         {'op': 'replace', 'path': '/is_staff', 'value': False},
                         {'op': 'replace', 'path': '/is_admin', 'value': True},
+                        {'op': 'replace', 'path': '/is_contributor', 'value': True},
+                        {'op': 'replace', 'path': '/is_researcher', 'value': True},
+                        {'op': 'replace', 'path': '/is_user_manager', 'value': True},
                     ]
                 ),
             )
@@ -110,7 +113,9 @@ def test_modifying_user_info_by_admin(flask_app_client, admin_user, regular_user
         from app.modules.users.models import User
 
         temp_user = User.query.get(response.json['guid'])
-
+        assert temp_user.is_researcher
+        assert temp_user.is_contributor
+        assert temp_user.is_user_manager
         assert response.status_code == 200
         assert response.content_type == 'application/json'
         assert isinstance(response.json, dict)
@@ -129,6 +134,9 @@ def test_modifying_user_info_by_admin(flask_app_client, admin_user, regular_user
         regular_user.is_active = True
         regular_user.is_staff = False
         regular_user.is_admin = False
+        regular_user.is_researcher = False
+        regular_user.is_contributor = False
+        regular_user.is_user_manager = False
         with db.session.begin():
             db.session.merge(regular_user)
 

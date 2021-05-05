@@ -124,6 +124,9 @@ class PatchUserDetailsParameters(PatchJSONParameters):
         User.is_active.fget.__name__,
         User.is_staff.fget.__name__,
         User.is_admin.fget.__name__,
+        User.is_user_manager.fget.__name__,
+        User.is_researcher.fget.__name__,
+        User.is_contributor.fget.__name__,
         User.in_beta.fget.__name__,
         User.in_alpha.fget.__name__,
     )
@@ -137,6 +140,9 @@ class PatchUserDetailsParameters(PatchJSONParameters):
         User.is_active.fget.__name__,
         User.is_staff.fget.__name__,
         User.is_admin.fget.__name__,
+        User.is_user_manager.fget.__name__,
+        User.is_researcher.fget.__name__,
+        User.is_contributor.fget.__name__,
         User.in_beta.fget.__name__,
         User.in_alpha.fget.__name__,
     )

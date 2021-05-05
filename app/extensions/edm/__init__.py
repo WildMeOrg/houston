@@ -33,6 +33,9 @@ class EDMManager(RestManager):
     NAME = 'EDM'
     ENDPOINT_PREFIX = 'api'
 
+    # this is based on edm date of most recent commit (we must be at or greater than this)
+    VERSION_REQUIRED = '2021-04-28 14:00:00 -0700'
+
     # We use // as a shorthand for prefix
     # fmt: off
     ENDPOINTS = {
@@ -87,6 +90,21 @@ class EDMManager(RestManager):
 
     def __init__(self, pre_initialize=False, *args, **kwargs):
         super(EDMManager, self).__init__(pre_initialize, *args, **kwargs)
+
+    def version_check(self):
+        edm_version = current_app.edm.get_dict('version.dict', None)
+        if edm_version is None or 'date' not in edm_version:
+            log.error('could not determine EDM version')
+            return False
+        if edm_version['date'] >= self.VERSION_REQUIRED:
+            log.info(
+                f"EDM version check passed: edm_version={edm_version['date']}  >=  version_required={self.VERSION_REQUIRED}"
+            )
+            return True
+        log.error(
+            f"EDM version check FAILED: edm_version={edm_version['date']}  <  version_required={self.VERSION_REQUIRED}"
+        )
+        return False
 
     def initialize_edm_admin_user(self, email, password):
         import json

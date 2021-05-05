@@ -55,7 +55,7 @@ services:
       # FIXME: exposed for developers
       - "85:80"
 
-  wbia:
+  acm:
     # https://github.com/WildMeOrg/wildbook-ia
     image: wildme/wildbook-ia:nightly
     # FIXME: Adjust entrypoint to allow for additive command arguments
@@ -63,7 +63,7 @@ services:
     volumes:
       # FIXME: `PermissionError: [Errno 13] Permission denied: '/data/db/_ibsdb'`
       #        https://github.com/WildMeOrg/wildbook-ia/pull/184
-      - wbia-var:/data/db
+      - acm-var:/data/db
     networks:
       - intranet
     environment:
@@ -115,6 +115,7 @@ services:
       EDM_AUTHENTICATIONS_URI__DEFAULT: "${EDM_AUTHENTICATIONS_URI__DEFAULT}"
       EDM_AUTHENTICATIONS_USERNAME__DEFAULT: "${EDM_AUTHENTICATIONS_USERNAME__DEFAULT}"
       EDM_AUTHENTICATIONS_PASSWORD__DEFAULT: "${EDM_AUTHENTICATIONS_PASSWORD__DEFAULT}"
+      ACM_AUTHENTICATIONS_URI__DEFAULT: "${ACM_AUTHENTICATIONS_URI__DEFAULT}"
       REDIS_HOST: redis
       GITLAB_PROTO: "${GITLAB_PROTO}"
       GITLAB_HOST: "${GITLAB_HOST}"
@@ -166,7 +167,7 @@ volumes:
   edm-var:
   pgadmin-var:
   pgdata-var:
-  wbia-var:
+  acm-var:
   houston-var:
   gitlab-var-config:
   gitlab-var-logs:

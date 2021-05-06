@@ -92,27 +92,59 @@ See `.pre-commit-config.yaml` for a list of configured linters and fixers.
 
 ## Development Environment
 
+### PyInvoke Installation
+Several `invoke` commands are referenced in this doc. These are helpful tools using the PyInvoke library, which must
+be installed on your local machine. Install it following instructions in the [PyInvoke docs.](https://docs.pyinvoke.org/en/stable//)
+
+Be sure to list other invoke commands with `invoke -l` while in the virtual environment and inspect them.
+There are many useful tools here that can save you time.
+
+### Virtual Environment
+As mentioned in the README, you will need to set up a virtual environment. Most `invoke` commands assume
+that you are using the virtual environment provided, and you should activate it whenever developing on Houston.
+
+```
+#initial setup
+bash
+./scripts/venv.sh
+
+#activation whenever developing or in a new terminal
+source virtualenv/houston3.7/bin/activate
+
+# To add bash-completion
+export SCRIPT="$(pwd)/.invoke-completion.sh"
+invoke --print-completion-script bash > $SCRIPT
+echo "source $SCRIPT" >> virtualenv/houston3.7/bin/activate
+```
+
+### Install Dependencies
+
+```bash
+invoke dependencies.install
+```
+
 ### Running Docker Containers
 
 When `docker-compose up` is run from the `deploy/codex/` directory, several Docker containers are started. These are the connected components of the Codex application.
 
-You can view them by using the command `docker ps -a` and see something like this: 
+You can view them by using the command `docker-compose ps` in the `deploy/codex/` directory and see something like this:
 
 ```
-CONTAINER ID   IMAGE                          COMMAND                  CREATED             STATUS                       PORTS                                 NAMES
-e3939c800021   codex_houston                  "/docker-entrypoint.…"   About an hour ago   Up About an hour             0.0.0.0:83->5000/tcp                  codex_houston_1
-5c0b2ab64bdc   dpage/pgadmin4                 "/entrypoint.sh"         22 hours ago        Up About an hour             443/tcp, 0.0.0.0:8000->80/tcp         codex_pgadmin_1
-4761da5d9168   redis:latest                   "docker-entrypoint.s…"   22 hours ago        Up About an hour             6379/tcp                              codex_redis_1
-9560f26f0227   wildme/edm:latest              "/usr/local/tomcat/b…"   22 hours ago        Up About an hour             0.0.0.0:81->8080/tcp                  codex_edm_1
-566e59074f42   nginx:latest                   "/docker-entrypoint.…"   22 hours ago        Up About an hour             0.0.0.0:84->80/tcp                    codex_www_1
-7925cbde4337   wildme/wildbook-ia:nightly     "/docker-entrypoint.…"   22 hours ago        Up About an hour             0.0.0.0:82->5000/tcp                  codex_wbia_1
-77624c19e02d   postgres:10                    "docker-entrypoint.s…"   22 hours ago        Up About an hour             5432/tcp                              codex_db_1
-ba8962d4cf8e   gitlab/gitlab-ce:13.9.3-ce.0   "/assets/wrapper"        22 hours ago        Up About an hour (healthy)   22/tcp, 443/tcp, 0.0.0.0:85->80/tcp   codex_gitlab_1
-f259ede38b22   node:latest                    "/docker-entrypoint.…"   22 hours ago        Up About an hour                                                   codex_dev-frontend_1
+        Name                      Command                       State                          Ports
+-------------------------------------------------------------------------------------------------------------------
+codex_acm_1            /docker-entrypoint.sh wait ...   Up                      0.0.0.0:82->5000/tcp
+codex_db_1             docker-entrypoint.sh postgres    Up                      5432/tcp
+codex_dev-frontend_1   /docker-entrypoint.sh            Up
+codex_edm_1            /usr/local/tomcat/bin/cata ...   Up                      0.0.0.0:81->8080/tcp
+codex_gitlab_1         /assets/wrapper                  Up (health: starting)   22/tcp, 443/tcp, 0.0.0.0:85->80/tcp
+codex_houston_1        /docker-entrypoint.sh wait ...   Up                      0.0.0.0:83->5000/tcp
+codex_pgadmin_1        /entrypoint.sh                   Up                      443/tcp, 0.0.0.0:8000->80/tcp
+codex_redis_1          docker-entrypoint.sh redis ...   Up                      6379/tcp
+codex_www_1            /docker-entrypoint.sh ngin ...   Up                      0.0.0.0:84->80/tcp
 ```
 
-These containers are available to enter on the command line using `docker exec -it [CONTAINER NAME] \bin\bash`. This command will grant you command line access as a root user for 
-whichever Codex application component you choose; `codex_dev-frontend_1` for the react front end, `codex_houston_1` for Houston or `codex_edm_1` for the EDM.
+These containers are available to enter on the command line using `docker-compose exec [CONTAINER NAME] /bin/bash`. This command will grant you command line access as a root user for
+whichever Codex application component you choose. These are defined in the `docker-compose.yml` as different services. You will likely want to connect to `dev-frontend` for the react front end, `houston` for Houston or `edm` for the EDM.
 
 Please refer to the Docker documentation for other common container actions.
 
@@ -121,51 +153,105 @@ Development on Houston or other Codex components should be done by testing new c
 ### Mounted Directories
 
 #### Houston
-The docker-compose arrangement will attempt to mount local directories for development purposes. For Houston, this is the root repository directory. 
+The docker-compose arrangement will attempt to mount local directories for development purposes. For Houston, this is the root repository directory.
 
-If you create or modify a file in the local Houston repository you will be able to see the changes reflected when you `docker exec` inside the Houston container.
+If you create or modify a file in the local Houston repository you will be able to see the changes reflected when you `docker exec` inside the Houston container, and
+changes in the container will be reflected outside much like a symlinked directory.
 
-This does not go the other way. Changes made inside the container reside only there.
 
 #### Frontend
-The docker-compose.yml file also mounts a `_frontend` directory for the front end application. Since we do not build the front end locally by default, this does not map to any location.
-If you want to build the front end, use the command `invoke dependencies.install-frontend-ui`. This will create a `_frontend` folder in the houston repo that contains files which 
-can be modified, and the changes will be reflected in your running `codex_dev-frontend` container.
+The docker-compose.yml file also mounts a `_frontend` directory for the front end application. If you clone the houston repository with the README recommended
+`git clone --recurse-submodules https://github.com/WildMeOrg/houston.git` the `_frontend` directory will contain the front end code, but not necessarily the latest.
 
-If you want to change the mountpoint to a different directory for your locally cloned Codex frontend repository to make changes and commits easier, you can change it
-in the `deploy/codex/docker-compose.yml` by altering the `dev-frontent` volume mapping `- ../../_frontend:/code` to a directory outside your Houston repository.
+If you want to rebuild the front end, use the command `invoke dependencies.install-frontend-ui`. This will update the `_frontend` folder in the houston repo. Like houston the files in this folder can be modified, and the changes will be reflected in your running `dev-frontend` container.
+
+If you want to change the mountpoint to a different directory for your locally cloned codex-frontend repository to make changes and commits easier, you can change it
+in the `deploy/codex/docker-compose.yml` by altering the `dev-frontend` volume mapping `- ../../_frontend:/code` to a directory outside your Houston repository.
 
 More details about Codex front end contribution are outside the scope of this README but can be found here: [**codex-frontend**](https://github.com/WildMeOrg/codex-frontend)
 
 #### EDM
-The EDM is a compiled Java application, and no volume mapping solution to a running Docker container is available at this time. 
+The EDM is a compiled Java application, and no volume mapping solution to a running Docker container is available at this time.
 
 ### Testing
 
-New Houston code must be tested with `pytest`. If dependencies are set up correctly an initial testing run can be done outside the docker container 
+New Houston code must be tested with `pytest`. If dependencies are set up correctly an initial testing run can be done outside the docker container
 with the `pytest` command at the root level of the repository.
 
-To fully test, `docker exec` into the Houston container and run tests there by setting `FLASK_CONFIG= pytest -s -x` on the command line. 
+To fully test you can `docker-compose exec houston /bin/bash` and set `FLASK_CONFIG= pytest` or
+test files inside the container from outside the container in one line using `docker-compose exec -e FLASK_CONFIG= houston pytest`.
 
-Both of these methods can target a specific app module by altering the command to something like this:
+They can also be run locally with simply `pytest`.
 
-`pytest tests/modules/[MODULE NAME]` or `FLASK_CONFIG= pytest tests/modules/[MODULE NAME] -s -x`
+These methods can target a specific app module by altering the command to something like this:
+
+    pytest tests/modules/[MODULE NAME]` or `FLASK_CONFIG= pytest tests/modules/[MODULE NAME]
+
+And may also the flags `-s` to print all additional logging or `-x` to stop on the first failed test.
 
 ### Migrations
 
 If your modifications creates a database migration, the `invoke` tasks to perform the migration must be tested inside the Houston docker container.
 
-### Rebuilding
+### Rebuilding with Invoke
 
-In the process of contributing you will want to sync up with the latest Houston/Codex code and not be working against Docker leftovers. 
+In the process of contributing you will want to sync up with the latest Houston/Codex code. This can result in a database or Docker orchestration
+that is incompatible with the new code. Invoke commands will assist in a clean start.
 
-These invoke commands will assist you in a clean start: 
+If there are containers failing, database changes that are not migrating successfully or connections between these containers
+that are not being established try rebuilding all containerized Docker resources:
+`invoke docker-compose.rebuild`
 
-Command `invoke docker-compose.rebuild` will rebuild all retained Codex services.
 
-Command `invoke docker-compose.rebuild-gitlab` is a targeted rebuild to the Gitlab component used for asset storage.
+If there are specifically Gitlab authentication or startup issues, try rebuilding Gitlab:
+`invoke docker-compose.rebuild-gitlab`
 
-### Other Actions
+#### Cleaning up with Docker commands
 
-Be sure to list other invoke commands with `invoke -l` while in the virtual environment and inspect them. 
-There are many useful tools here that can save you time. 
+If the above invoke commands are overkill or not sufficient for cleanup, you can experiment with these commands.
+Consider contributing a new invoke command or altering an existing one if you find a common use case
+bringing you here.
+
+Cleanup volumes:
+
+    docker volume rm $(docker volume ls -q | grep codex_)
+
+Big red button:
+
+    docker-compose down && docker volume rm $(docker volume ls -q | grep codex_)
+
+Precision nuke example:
+
+    docker-compose stop houston && docker-compose rm -f houston && docker volume rm codex_houston-var
+
+Docker is conservative about cleaning up unused objects. This can cause Docker to run out of disk space or
+other problems. If a new build is experiencing errors try using prune commands.
+
+Prune images not used by existing containers:
+
+    docker image prune -a
+
+Remove all stopped containers:
+
+    docker container prune
+
+Remove networks connecting resources used by Docker:
+
+    docker network prune
+
+Remove all volumes:
+
+    docker volume prune
+
+    NOTE: Removing volumes destroys data stored in them. If you have other Docker projects you are working on or need to preserve development data
+    refer to the Docker documentation to filter what volumes you prune.
+
+Remove everything except volumes:
+
+    docker system prune
+
+Including volumes:
+
+    docker system prune --volumes
+
+You can bypass the confirmation for these actions by adding a -f flag.

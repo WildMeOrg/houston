@@ -82,6 +82,50 @@ class AssetGroupMajorType(str, enum.Enum):
     reject = 'reject'
 
 
+class AssetGroupSightingStage(str, enum.Enum):
+    unknown = 'unknown'
+    detection = 'detection'
+    curation = 'curation'
+    committed = 'committed'
+    processed = 'processed'
+    failed = 'failed'
+
+
+# AssetGroupSighting may have many jobs so needs a table
+class AssetGroupJob(db.Model, HoustonModel):
+    guid = db.Column(db.GUID, default=uuid.uuid4, primary_key=True)
+    stage = db.Column(
+        db.Enum(AssetGroupSightingStage),
+        default=AssetGroupSightingStage.unknown,
+        nullable=False,
+    )
+    owner_guid = db.Column(
+        db.GUID,
+        db.ForeignKey('asset_group_sighting.guid'),
+        index=True,
+        nullable=False,
+    )
+    asset_group = db.relationship('AssetGroupSighting', backref=db.backref('jobs'))
+    jobId = db.Column(db.GUID, nullable=False)
+
+
+# AssetGroup can have many sightings, so needs a table
+class AssetGroupSighting(db.Model, HoustonModel):
+    guid = db.Column(db.GUID, default=uuid.uuid4, primary_key=True)
+    stage = db.Column(
+        db.Enum(AssetGroupSightingStage),
+        default=AssetGroupSightingStage.unknown,
+        nullable=False,
+    )
+    owner_guid = db.Column(
+        db.GUID,
+        db.ForeignKey('asset_group.guid'),
+        index=True,
+        nullable=False,
+    )
+    asset_group = db.relationship('AssetGroup', backref=db.backref('sightings'))
+
+
 class AssetGroup(db.Model, HoustonModel):
     """
     AssetGroup database model.
@@ -616,6 +660,27 @@ class AssetGroup(db.Model, HoustonModel):
     def delete_dirs(self):
         if os.path.exists(self.get_absolute_path()):
             shutil.rmtree(self.get_absolute_path())
+
+    def is_partially_in_stage(self, stage):
+        if self.sightings:
+            for sighting in self.sightings:
+                if sighting.stage == stage:
+                    return True
+        return False
+
+    def is_completely_in_stage(self, stage):
+        if self.sightings:
+            for sighting in self.sightings:
+                if sighting.stage != stage:
+                    return False
+        # TODO, what if no sightings?
+        return True
+
+    def is_detection_in_progress(self):
+        return self.is_partially_in_stage(AssetGroupSightingStage.detection)
+
+    def is_processed(self):
+        return self.is_completely_in_stage(AssetGroupSightingStage.processed)
 
     # TODO should this blow away remote repo?  by default?
     def delete(self):

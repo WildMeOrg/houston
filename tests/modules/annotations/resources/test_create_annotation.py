@@ -18,39 +18,36 @@ def test_create_and_delete_annotation(
     # pylint: disable=invalid-name
     from app.modules.annotations.models import Annotation
 
-    clone = sub_utils.clone_asset_group(
+    sub_utils.clone_asset_group(
         flask_app_client,
         admin_user,
         researcher_1,
         test_clone_asset_group_data['asset_group_uuid'],
-        later_usage=True,
     )
-    try:
-        response = enc_utils.create_encounter(flask_app_client, researcher_1)
-        enc_guid = response.json['result']['guid']
-        response = annot_utils.create_annotation(
-            flask_app_client,
-            researcher_1,
-            test_clone_asset_group_data['asset_uuids'][0],
-            enc_guid,
-        )
 
-        annotation_guid = response.json['guid']
-        read_annotation = Annotation.query.get(response.json['guid'])
-        assert read_annotation.asset_guid == uuid.UUID(
-            test_clone_asset_group_data['asset_uuids'][0]
-        )
+    response = enc_utils.create_encounter(flask_app_client, researcher_1)
+    enc_guid = response.json['result']['guid']
+    response = annot_utils.create_annotation(
+        flask_app_client,
+        researcher_1,
+        test_clone_asset_group_data['asset_uuids'][0],
+        enc_guid,
+    )
 
-        # Try reading it back
-        annot_utils.read_annotation(flask_app_client, researcher_1, annotation_guid)
+    annotation_guid = response.json['guid']
+    read_annotation = Annotation.query.get(response.json['guid'])
+    assert read_annotation.asset_guid == uuid.UUID(
+        test_clone_asset_group_data['asset_uuids'][0]
+    )
 
-        # And deleting it
-        annot_utils.delete_annotation(flask_app_client, researcher_1, annotation_guid)
+    # Try reading it back
+    annot_utils.read_annotation(flask_app_client, researcher_1, annotation_guid)
 
-        read_annotation = Annotation.query.get(annotation_guid)
-        assert read_annotation is None
-    finally:
-        clone.cleanup()
+    # And deleting it
+    annot_utils.delete_annotation(flask_app_client, researcher_1, annotation_guid)
+
+    read_annotation = Annotation.query.get(annotation_guid)
+    assert read_annotation is None
 
 
 def test_annotation_permission(
@@ -63,54 +60,51 @@ def test_annotation_permission(
 ):
     # Before we create any Annotations, find out how many are there already
     previous_annots = annot_utils.read_all_annotations(flask_app_client, staff_user)
-    clone = sub_utils.clone_asset_group(
+    sub_utils.clone_asset_group(
         flask_app_client,
         admin_user,
         researcher_1,
         test_clone_asset_group_data['asset_group_uuid'],
-        later_usage=True,
     )
-    try:
-        response = enc_utils.create_encounter(flask_app_client, researcher_1)
-        enc_guid = response.json['result']['guid']
-        response = annot_utils.create_annotation(
-            flask_app_client,
-            researcher_1,
-            test_clone_asset_group_data['asset_uuids'][0],
-            enc_guid,
-        )
 
-        annotation_guid = response.json['guid']
+    response = enc_utils.create_encounter(flask_app_client, researcher_1)
+    enc_guid = response.json['result']['guid']
+    response = annot_utils.create_annotation(
+        flask_app_client,
+        researcher_1,
+        test_clone_asset_group_data['asset_uuids'][0],
+        enc_guid,
+    )
 
-        # staff user should be able to read anything
-        annot_utils.read_annotation(flask_app_client, staff_user, annotation_guid)
-        annot_utils.read_all_annotations(flask_app_client, staff_user)
+    annotation_guid = response.json['guid']
 
-        # admin user should not be able to read any annotations
-        annot_utils.read_annotation(flask_app_client, admin_user, annotation_guid, 403)
-        annot_utils.read_all_annotations(
-            flask_app_client, admin_user, expected_status_code=403
-        )
+    # staff user should be able to read anything
+    annot_utils.read_annotation(flask_app_client, staff_user, annotation_guid)
+    annot_utils.read_all_annotations(flask_app_client, staff_user)
 
-        # user that created annotation can read it back plus the list
-        annot_utils.read_annotation(flask_app_client, researcher_1, annotation_guid)
-        annots = annot_utils.read_all_annotations(flask_app_client, researcher_1)
+    # admin user should not be able to read any annotations
+    annot_utils.read_annotation(flask_app_client, admin_user, annotation_guid, 403)
+    annot_utils.read_all_annotations(
+        flask_app_client, admin_user, expected_status_code=403
+    )
 
-        # due to the way the tests are run, there may be annotations left lying about,
-        # don't rely on there only being one
-        assert len(annots.json) == len(previous_annots.json) + 1
-        annotation_present = False
-        for annotation in annots.json:
-            if annotation['guid'] == annotation_guid:
-                annotation_present = True
-            break
-        assert annotation_present
+    # user that created annotation can read it back plus the list
+    annot_utils.read_annotation(flask_app_client, researcher_1, annotation_guid)
+    annots = annot_utils.read_all_annotations(flask_app_client, researcher_1)
 
-        # but a different researcher can read the list but not the annotation
-        annot_utils.read_annotation(flask_app_client, researcher_2, annotation_guid, 403)
-        annot_utils.read_all_annotations(flask_app_client, researcher_2)
+    # due to the way the tests are run, there may be annotations left lying about,
+    # don't rely on there only being one
+    assert len(annots.json) == len(previous_annots.json) + 1
+    annotation_present = False
+    for annotation in annots.json:
+        if annotation['guid'] == annotation_guid:
+            annotation_present = True
+        break
+    assert annotation_present
 
-        # delete it
-        annot_utils.delete_annotation(flask_app_client, researcher_1, annotation_guid)
-    finally:
-        clone.cleanup()
+    # but a different researcher can read the list but not the annotation
+    annot_utils.read_annotation(flask_app_client, researcher_2, annotation_guid, 403)
+    annot_utils.read_all_annotations(flask_app_client, researcher_2)
+
+    # delete it
+    annot_utils.delete_annotation(flask_app_client, researcher_1, annotation_guid)

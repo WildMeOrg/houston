@@ -37,9 +37,8 @@ def upgrade():
     sa.ForeignKeyConstraint(['owner_guid'], ['asset_group.guid'], name=op.f('fk_asset_group_sighting_owner_guid_asset_group')),
     sa.PrimaryKeyConstraint('guid', name=op.f('pk_asset_group_sighting'))
     )
-    op.add_column('asset_group_sighting', sa.Column('stage', AssetGroupSightingStage, nullable=True))
-
     with op.batch_alter_table('asset_group_sighting', schema=None) as batch_op:
+        batch_op.add_column(sa.Column('stage', AssetGroupSightingStage, nullable=True))
         batch_op.create_index(batch_op.f('ix_asset_group_sighting_owner_guid'), ['owner_guid'], unique=False)
 
     op.create_table('asset_group_job',
@@ -52,8 +51,8 @@ def upgrade():
     sa.ForeignKeyConstraint(['owner_guid'], ['asset_group_sighting.guid'], name=op.f('fk_asset_group_job_owner_guid_asset_group_sighting')),
     sa.PrimaryKeyConstraint('guid', name=op.f('pk_asset_group_job'))
     )
-    op.add_column('asset_group_job', sa.Column('stage', AssetGroupSightingStage, nullable=True))
     with op.batch_alter_table('asset_group_job', schema=None) as batch_op:
+        batch_op.add_column(sa.Column('stage', AssetGroupSightingStage, nullable=True))
         batch_op.create_index(batch_op.f('ix_asset_group_job_owner_guid'), ['owner_guid'], unique=False)
 
     # ### end Alembic commands ###

@@ -34,7 +34,7 @@ class EDMManager(RestManager):
     ENDPOINT_PREFIX = 'api'
 
     # this is based on edm date of most recent commit (we must be at or greater than this)
-    VERSION_REQUIRED = '2021-04-28 14:00:00 -0700'
+    MIN_VERSION = '2021-04-28 14:00:00 -0700'
 
     # We use // as a shorthand for prefix
     # fmt: off
@@ -96,13 +96,13 @@ class EDMManager(RestManager):
         if edm_version is None or 'date' not in edm_version:
             log.error('could not determine EDM version')
             return False
-        if edm_version['date'] >= self.VERSION_REQUIRED:
-            log.info(
-                f"EDM version check passed: edm_version={edm_version['date']}  >=  version_required={self.VERSION_REQUIRED}"
+        if edm_version['date'] >= self.MIN_VERSION:
+            log.debug(
+                f"EDM version check passed: edm_version={edm_version['date']}  >=  min_version={self.MIN_VERSION}"
             )
             return True
         log.error(
-            f"EDM version check FAILED: edm_version={edm_version['date']}  <  version_required={self.VERSION_REQUIRED}"
+            f"EDM version check FAILED: edm_version={edm_version['date']}  <  min_version={self.MIN_VERSION}"
         )
         return False
 

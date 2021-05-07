@@ -93,6 +93,8 @@ class AssetGroupManager(object):
             log.info('Logging into Asset Group GitLab...')
             log.info('\t URI: %r' % (remote_uri,))
             log.info('\t NS : %r' % (remote_namespace,))
+            if current_app.config.get('DEBUG', False):
+                log.info(f'\t GITLAB_REMOTE_LOGIN_PAT: {remote_personal_access_token}')
 
             try:
                 self.gl = git_remote.GitRemote(

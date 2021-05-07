@@ -464,4 +464,11 @@ def downgrade():
 
     op.drop_table('file_upload')
     op.drop_table('collaboration')
+
+    # Remove the enums created as part of the upgrade above
+    sa.Enum(name='assetgroupmajortype').drop(op.get_bind(), checkfirst=False)
+    sa.Enum(name='codetypes').drop(op.get_bind(), checkfirst=False)
+    sa.Enum(name='codedecisions').drop(op.get_bind(), checkfirst=False)
+    sa.Enum(name='clientlevels').drop(op.get_bind(), checkfirst=False)
+    sa.Enum(name='tokentypes').drop(op.get_bind(), checkfirst=False)
     # ### end Alembic commands ###

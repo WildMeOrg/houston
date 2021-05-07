@@ -477,8 +477,6 @@ class SightingByID(Resource):
                 sighting = None
             else:
                 sighting.rectify_edm_encounters(rdata['result'].get('encounters'))
-
-            if sighting is not None:
                 new_version = rdata['result'].get('version', None)
                 if new_version is not None:
                     sighting.version = new_version

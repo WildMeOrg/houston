@@ -181,6 +181,7 @@ class Sighting(db.Model, FeatherModel):
         if self.encounters:
             for enc in self.encounters:
                 if str(enc.guid) not in edm_map.keys():
+                    # TODO candidate for audit log
                     log.info(f'houston Encounter {enc.guid} removed')
                     enc.delete_cascade()
                 else:

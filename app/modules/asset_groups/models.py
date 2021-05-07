@@ -97,7 +97,7 @@ class AssetGroupJob(db.Model, HoustonModel):
     stage = db.Column(
         db.Enum(AssetGroupSightingStage),
         default=AssetGroupSightingStage.unknown,
-        nullable=True,
+        nullable=False,
     )
     owner_guid = db.Column(
         db.GUID,
@@ -115,7 +115,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
     stage = db.Column(
         db.Enum(AssetGroupSightingStage),
         default=AssetGroupSightingStage.unknown,
-        nullable=True,
+        nullable=False,
     )
     owner_guid = db.Column(
         db.GUID,

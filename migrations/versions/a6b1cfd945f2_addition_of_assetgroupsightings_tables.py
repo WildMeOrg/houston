@@ -31,7 +31,7 @@ def upgrade():
     sa.Column('viewed', sa.DateTime(), nullable=False),
     sa.Column('guid', app.extensions.GUID(), nullable=False),
     sa.Column('stage', sa.Enum('unknown', 'detection', 'curation', 'committed', 'processed', 'failed', name='assetgroupsightingstage'), nullable=False),
-    sa.Column('owner_guid', app.extensions.GUID(), nullable=True),
+    sa.Column('owner_guid', app.extensions.GUID(), nullable=False),
     sa.ForeignKeyConstraint(['owner_guid'], ['asset_group.guid'], name=op.f('fk_asset_group_sighting_owner_guid_asset_group')),
     sa.PrimaryKeyConstraint('guid', name=op.f('pk_asset_group_sighting'))
     )
@@ -44,8 +44,8 @@ def upgrade():
     sa.Column('viewed', sa.DateTime(), nullable=False),
     sa.Column('guid', app.extensions.GUID(), nullable=False),
     sa.Column('stage', sa.Enum('unknown', 'detection', 'curation', 'committed', 'processed', 'failed', name='assetgroupsightingstage'), nullable=False),
-    sa.Column('owner_guid', app.extensions.GUID(), nullable=True),
-    sa.Column('jobId', sa.String(length=20), nullable=False),
+    sa.Column('owner_guid', app.extensions.GUID(), nullable=False),
+    sa.Column('jobId', app.extensions.GUID(), nullable=False),
     sa.ForeignKeyConstraint(['owner_guid'], ['asset_group_sighting.guid'], name=op.f('fk_asset_group_job_owner_guid_asset_group_sighting')),
     sa.PrimaryKeyConstraint('guid', name=op.f('pk_asset_group_job'))
     )

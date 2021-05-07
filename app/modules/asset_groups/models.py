@@ -125,6 +125,13 @@ class AssetGroupSighting(db.Model, HoustonModel):
     )
     asset_group = db.relationship('AssetGroup', backref=db.backref('sightings'))
 
+    def delete(self):
+        with db.session.begin(subtransactions=True):
+            for job in self.jobs:
+                db.session.delete(job)
+            db.session.refresh(self)
+            db.session.delete(self)
+
 
 class AssetGroup(db.Model, HoustonModel):
     """
@@ -687,6 +694,8 @@ class AssetGroup(db.Model, HoustonModel):
         with db.session.begin(subtransactions=True):
             for asset in self.assets:
                 asset.delete()
+            for sighting in self.sightings:
+                sighting.delete()
         db.session.refresh(self)
         # TODO: This is potentially dangerous as it decouples the Asset deletion
         #       transaction with the AssetGroup deletion transaction, bad for rollbacks

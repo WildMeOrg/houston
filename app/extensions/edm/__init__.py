@@ -80,7 +80,7 @@ class EDMManager(RestManager):
             'data': '//v0/configurationDefinition/%s',
         },
         'version': {
-            'dict': '/wildbook/edm/json/git-info.json',
+            'dict': '/edm/json/git-info.json',
         }
     }
     # fmt: on

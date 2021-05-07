@@ -26,6 +26,5 @@ def test_initialize_admin_user(flask_app):
 
 # test that we are running against minimal needed version
 def test_edm_version(flask_app):
-    return  # disabling until edm-version bug is fixed
     version_ok = flask_app.edm.version_check()
     assert version_ok

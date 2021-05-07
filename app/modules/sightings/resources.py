@@ -412,7 +412,6 @@ class SightingByID(Resource):
         },
     )
     @api.parameters(parameters.PatchSightingDetailsParameters())
-    @api.response(schemas.DetailedSightingSchema())
     @api.response(code=HTTPStatus.CONFLICT)
     def patch(self, args, sighting):
         """
@@ -454,19 +453,24 @@ class SightingByID(Resource):
                 sighting.guid,
             )
             rdata = response.json()
-            if not response.ok or response.status_code != 200 or not rdata['success']:
+            if (
+                not response.ok
+                or response.status_code != 200
+                or not rdata['success']
+                or 'result' not in rdata
+            ):
                 code = response.status_code
                 if code > 600:
                     code = 400  # flask doesnt like us to use "invalid" codes. :(
                 log.warning(f'EDM patch got {response.status_code} response of {rdata}')
                 abort(
                     success=False,
-                    passed_message=rdata['message'],
+                    passed_message=rdata.get('message', 'unknown error'),
                     code=code,
                     edm_status_code=response.status_code,
                 )
             if 'deletedSighting' in rdata['result']:
-                log.warning(
+                log.warning(  # TODO future audit log here
                     f"EDM triggered self-deletion of {sighting} result={rdata['result']}"
                 )
                 sighting.delete_cascade()  # this will get rid of our encounter(s) as well so no need to rectify_edm_encounters()
@@ -476,20 +480,26 @@ class SightingByID(Resource):
                 new_version = rdata['result'].get('version', None)
                 if new_version is not None:
                     sighting.version = new_version
-                with db.session.begin():
-                    db.session.merge(sighting)
+                    context = api.commit_or_abort(
+                        db.session,
+                        default_error_message='Failed to update Sighting version.',
+                    )
+                    with context:
+                        db.session.merge(sighting)
+            return rdata
 
-        else:  # no edm
-            context = api.commit_or_abort(
-                db.session, default_error_message='Failed to update Sighting details.'
-            )
-            with context:
-                parameters.PatchSightingDetailsParameters.perform_patch(
-                    args, obj=sighting
-                )
-                db.session.merge(sighting)
-            rdata[id] = str(sighting.guid)
-        return rdata
+        # no EDM, so fall thru to regular houston-patching
+        context = api.commit_or_abort(
+            db.session, default_error_message='Failed to update Sighting details.'
+        )
+        with context:
+            parameters.PatchSightingDetailsParameters.perform_patch(args, obj=sighting)
+            db.session.merge(sighting)
+        # this mimics output format of edm-patching
+        return {
+            'success': True,
+            'result': {'id': str(sighting.guid), 'version': sighting.version},
+        }
 
     @api.login_required(oauth_scopes=['sightings:write'])
     @api.permission_required(

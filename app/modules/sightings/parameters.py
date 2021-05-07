@@ -34,6 +34,7 @@ class PatchSightingDetailsParameters(PatchJSONParameters):
         '/behavior',
         '/comments',
         '/context',
+        '/customFields',
         '/decimalLatitude',
         '/decimalLongitude',
         '/distance',

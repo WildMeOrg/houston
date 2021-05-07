@@ -122,6 +122,7 @@ def test_create_and_modify_and_delete_sighting(
             {'op': 'replace', 'path': '/locationId', 'value': new_loc_id},
         ],
     )
+    assert response.json['success']
     # check that change was made
     response = sighting_utils.read_sighting(
         flask_app_client, researcher_1, sighting_id, expected_status_code=200

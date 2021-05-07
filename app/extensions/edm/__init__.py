@@ -92,7 +92,7 @@ class EDMManager(RestManager):
         super(EDMManager, self).__init__(pre_initialize, *args, **kwargs)
 
     def version_check(self):
-        edm_version = current_app.edm.get_dict('version.dict', None)
+        edm_version = self.get_dict('version.dict', None)
         if edm_version is None or 'date' not in edm_version:
             log.error('could not determine EDM version')
             return False

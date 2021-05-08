@@ -120,11 +120,11 @@ def _validate_asset_references(asset_references):
     return all_references, paths_wanted
 
 
-def _validate_assets(assets, paths_wanted):
-    if len(paths_wanted) < 1:
+def _validate_assets(assets, paths_wanted_list):
+    if len(assets) != len(paths_wanted_list):
         return None
     matches = []
-    for asset in assets:
+    for asset, paths_wanted in zip(assets, paths_wanted_list):
         # log.info('match for %r x %r' % (asset, paths_wanted))
         if asset.path in paths_wanted:
             matches.append(asset)
@@ -277,16 +277,14 @@ class Sightings(Resource):
                 'Sighting.post imbalanced encounters in %r or %r'
                 % (request_in, result_data),
             )
-        asset_references = None
-        if 'assetReferences' in request_in:
-            asset_references = request_in['assetReferences']
+        asset_references = request_in.get('assetReferences')
         try:
             all_arefs, paths_wanted = _validate_asset_references(asset_references)
         except Exception as ex:
             cleanup.rollback_and_abort(
                 'Invalid assetReference data in encounter(s)',
                 '_validate_asset_references threw %r on assets=%r'
-                % (ex, request_in['encounters']),
+                % (ex, request_in['assetReferences']),
             )
         log.debug(
             '_validate_asset_references returned: %r, %r' % (all_arefs, paths_wanted)
@@ -360,13 +358,17 @@ class Sightings(Resource):
         )
         with context:
             db.session.add(sighting)
+
+        from app.modules.assets.schemas import DetailedAssetSchema
+
+        asset_schema = DetailedAssetSchema(only=('guid', 'filename', 'src'))
         rtn = {
             'success': True,
             'result': {
                 'id': str(sighting.guid),
                 'version': sighting.version,
                 'encounters': result_data['encounters'],
-                'assets': assets,
+                'assets': asset_schema.dump(assets, many=True)[0],
             },
         }
         return rtn

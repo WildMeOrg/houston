@@ -201,6 +201,7 @@ def test_create_anon_and_delete_sighting(db, flask_app_client, staff_user, test_
 
     timestamp = datetime.datetime.now().isoformat()
     transaction_id, test_filename = sighting_utils.prep_tus_dir(test_root)
+    sighting_utils.prep_tus_dir(test_root, filename='fluke.jpg')
     data_in = {
         'startTime': timestamp,
         'context': 'test',
@@ -210,17 +211,43 @@ def test_create_anon_and_delete_sighting(db, flask_app_client, staff_user, test_
             {
                 'transactionId': transaction_id,
                 'path': test_filename,
-            }
+            },
+            {
+                'transactionId': transaction_id,
+                'path': 'fluke.jpg',
+            },
         ],
     }
     response = sighting_utils.create_sighting(
         flask_app_client, None, expected_status_code=200, data_in=data_in
     )
     assert response.json['success']
+    assets = sorted(response.json['result']['assets'], key=lambda a: a['filename'])
+    asset_guids = [a['guid'] for a in assets]
+    assert assets == [
+        {
+            'filename': 'fluke.jpg',
+            'guid': asset_guids[0],
+            'src': f'/api/v1/assets/src/{asset_guids[0]}',
+        },
+        {
+            'filename': 'zebra.jpg',
+            'guid': asset_guids[1],
+            'src': f'/api/v1/assets/src/{asset_guids[1]}',
+        },
+    ]
 
+    # Check sighting and assets are stored in the database
     sighting_id = response.json['result']['id']
     sighting = Sighting.query.get(sighting_id)
     assert sighting is not None
+    asset_guids.sort()
+    assert sorted([str(a.asset_guid) for a in sighting.assets]) == asset_guids
+
+    # Check assets are returned in GET sighting
+    with flask_app_client.login(staff_user, auth_scopes=('sightings:read',)):
+        response = flask_app_client.get(f'/api/v1/sightings/{sighting_id}')
+        assert sorted([a['guid'] for a in response.json['assets']]) == asset_guids
 
     # test some modification; this should fail (401) cuz anon should not be allowed
     new_loc_id = 'test_2_fail'

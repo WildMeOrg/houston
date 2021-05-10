@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=missing-docstring
-from tests import utils
-
 from flask import current_app
+import sqlalchemy
 
+from tests import utils
 from tests.modules.sightings.resources import utils as sighting_utils
 
 
@@ -70,7 +70,10 @@ def test_asset_addition(db, flask_app_client, staff_user):
         new_asset_1.delete()
         new_asset_2.delete()
         new_asset_3.delete()
-        new_asset_group.delete()
+        try:
+            new_asset_group.delete()
+        except sqlalchemy.exc.InvalidRequestError:  # already deleted
+            pass
         new_researcher.delete()
 
         with db.session.begin():

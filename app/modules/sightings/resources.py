@@ -440,27 +440,60 @@ class SightingByID(Resource):
                 code=400,
             )
 
+        rdata = {}
         if edm_count > 0:
             log.debug(f'wanting to do edm patch on args={args}')
+            headers = {
+                'x-allow-delete-cascade-individual': request.headers.get(
+                    'x-allow-delete-cascade-individual', 'false'
+                ),
+                'x-allow-delete-cascade-sighting': request.headers.get(
+                    'x-allow-delete-cascade-sighting', 'false'
+                ),
+            }
             response = current_app.edm.request_passthrough(
-                'sighting.data', 'patch', {'data': args}, sighting.guid
+                'sighting.data',
+                'patch',
+                {'data': args, 'headers': headers},
+                sighting.guid,
             )
             rdata = response.json()
             if not response.ok or response.status_code != 200 or not rdata['success']:
                 code = response.status_code
-                if code == 601:
+                if code > 600:
                     code = 400  # flask doesnt like us to use "invalid" codes. :(
                 log.warning(f'EDM patch got {response.status_code} response of {rdata}')
-                abort(success=False, passed_message=rdata['message'], code=code)
-            return rdata
+                abort(
+                    success=False,
+                    passed_message=rdata['message'],
+                    code=code,
+                    edm_status_code=response.status_code,
+                )
+            if 'deletedSighting' in rdata['result']:
+                log.warning(
+                    f"EDM triggered self-deletion of {sighting} result={rdata['result']}"
+                )
+                sighting.delete_cascade()  # this will get rid of our encounter(s) as well so no need to rectify_edm_encounters()
+                sighting = None
+            else:
+                sighting.rectify_edm_encounters(rdata['result'].get('encounters'))
+                new_version = rdata['result'].get('version', None)
+                if new_version is not None:
+                    sighting.version = new_version
+                with db.session.begin():
+                    db.session.merge(sighting)
 
-        context = api.commit_or_abort(
-            db.session, default_error_message='Failed to update Sighting details.'
-        )
-        with context:
-            parameters.PatchSightingDetailsParameters.perform_patch(args, obj=sighting)
-            db.session.merge(sighting)
-        return sighting
+        else:  # no edm
+            context = api.commit_or_abort(
+                db.session, default_error_message='Failed to update Sighting details.'
+            )
+            with context:
+                parameters.PatchSightingDetailsParameters.perform_patch(
+                    args, obj=sighting
+                )
+                db.session.merge(sighting)
+            rdata[id] = str(sighting.guid)
+        return rdata
 
     @api.login_required(oauth_scopes=['sightings:write'])
     @api.permission_required(

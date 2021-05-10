@@ -70,11 +70,7 @@ def _validate_asset_references(asset_references):
     #  to do multiple create_from_tus() calls
 
     all_references = {}  # all paths needed, keyed by transaction id
-    paths_wanted = (
-        []
-    )  # parallel list (to encounters) of set of asset paths for that encounter
-    i = 0
-    paths_wanted.append(set())
+    paths_wanted = set()
     if not isinstance(asset_references, list) or len(asset_references) < 1:
         return None, None
 
@@ -86,7 +82,7 @@ def _validate_asset_references(asset_references):
         ):
             log.error('Sighting.post malformed assetReferences data: %r' % (reference))
             raise ValueError('malformed assetReference in json')
-        paths_wanted[i].add(reference['path'])
+        paths_wanted.add(reference['path'])
         if reference['transactionId'] not in all_references:
             all_references[reference['transactionId']] = set()
         all_references[reference['transactionId']].add(reference['path'])
@@ -120,11 +116,11 @@ def _validate_asset_references(asset_references):
     return all_references, paths_wanted
 
 
-def _validate_assets(assets, paths_wanted_list):
-    if len(assets) != len(paths_wanted_list):
+def _validate_assets(assets, paths_wanted):
+    if len(assets) != len(paths_wanted):
         return None
     matches = []
-    for asset, paths_wanted in zip(assets, paths_wanted_list):
+    for asset in assets:
         # log.info('match for %r x %r' % (asset, paths_wanted))
         if asset.path in paths_wanted:
             matches.append(asset)

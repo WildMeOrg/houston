@@ -18,10 +18,10 @@ def get_transaction_id():
     return '11111111-1111-1111-1111-111111111111'
 
 
-def prep_tus_dir(test_root):
-    transaction_id = get_transaction_id()
+def prep_tus_dir(test_root, transaction_id=None, filename='zebra.jpg'):
+    if transaction_id is None:
+        transaction_id = get_transaction_id()
 
-    filename = 'zebra.jpg'
     image_file = os.path.join(test_root, filename)
 
     upload_dir = tus_upload_dir(current_app, transaction_id=transaction_id)

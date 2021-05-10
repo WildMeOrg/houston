@@ -154,14 +154,11 @@ def test_create_anon_and_delete_sighting(db, flask_app_client, staff_user, test_
         'startTime': timestamp,
         'context': 'test',
         'locationId': 'test',
-        'encounters': [
+        'encounters': [{}],
+        'assetReferences': [
             {
-                'assetReferences': [
-                    {
-                        'transactionId': transaction_id,
-                        'path': test_filename,
-                    }
-                ]
+                'transactionId': transaction_id,
+                'path': test_filename,
             }
         ],
     }

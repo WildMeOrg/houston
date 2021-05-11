@@ -278,7 +278,7 @@ class Sightings(Resource):
             all_arefs, paths_wanted = _validate_asset_references(asset_references)
         except Exception as ex:
             cleanup.rollback_and_abort(
-                'Invalid assetReference data in encounter(s)',
+                'Invalid assetReference data',
                 '_validate_asset_references threw %r on assets=%r'
                 % (ex, request_in['assetReferences']),
             )

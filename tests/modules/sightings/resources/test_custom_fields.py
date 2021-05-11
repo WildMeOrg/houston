@@ -37,7 +37,9 @@ def test_custom_fields_on_sighting(
         'encounters': [{}],
     }
     response = sighting_utils.create_sighting(
-        flask_app_client, researcher_1, expected_status_code=200, data_in=data_in
+        flask_app_client,
+        researcher_1,
+        data_in,
     )
     assert response.json['success']
 

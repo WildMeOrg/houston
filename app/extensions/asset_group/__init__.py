@@ -330,7 +330,7 @@ class AssetGroupManager(object):
         try:
             self.gl.projects.delete(project.id)
             return True
-        except git_remote.GitRemote.GitRemoteDeleteError:
+        except self.gl.GitRemoteDeleteError:
             pass
         return False
 

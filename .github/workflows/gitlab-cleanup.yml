@@ -49,6 +49,8 @@ jobs:
           mkdir -p app/static/dist-latest
           touch app/static/dist-latest/404.html
           touch app/static/dist-latest/index.html
+          mkdir -p app/static/swagger-ui
+          touch app/static/swagger-ui/swagger-ui.js
 
       - name: Cleanup
         run: |

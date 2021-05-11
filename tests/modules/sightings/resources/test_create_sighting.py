@@ -38,9 +38,7 @@ def test_create_failures(flask_app_client, test_root, researcher_1):
     response = sighting_utils.create_sighting(
         flask_app_client, researcher_1, expected_status_code=400, data_in=data_in
     )
-    assert (
-        response.json['passed_message'] == 'Invalid assetReference data in encounter(s)'
-    )
+    assert response.json['passed_message'] == 'Invalid assetReference data'
     assert not response.json['success']
 
     # assetReferences, but no files for them
@@ -51,9 +49,7 @@ def test_create_failures(flask_app_client, test_root, researcher_1):
     response = sighting_utils.create_sighting(
         flask_app_client, researcher_1, expected_status_code=400, data_in=data_in
     )
-    assert (
-        response.json['passed_message'] == 'Invalid assetReference data in encounter(s)'
-    )
+    assert response.json['passed_message'] == 'Invalid assetReference data'
     assert not response.json['success']
     sighting_utils.cleanup_tus_dir(transaction_id)
 
@@ -141,7 +137,40 @@ def test_create_and_modify_and_delete_sighting(
         expected_status_code=400,
     )
 
-    # more complex patch: we op=remove the first encounter; should succeed no problem cuz there is one enc remaining
+    # patch op=add will create a new (3rd) encounter
+    response = sighting_utils.patch_sighting(
+        flask_app_client,
+        researcher_1,
+        sighting_id,
+        patch_data=[
+            {
+                'op': 'add',
+                'path': '/encounters',
+                'value': {'locationId': 'encounter_patch_add'},
+            }
+        ],
+    )
+    # test to see if we now are +1 encounter
+    ct = test_utils.multi_count(db, (Sighting, Encounter, Asset, AssetGroup))
+    assert ct[1] == orig_ct[1] + 3  # previously was + 2
+    assert len(sighting.encounters) == 3
+    enc2_id = str(sighting.encounters[2].guid)
+
+    # patch op=remove the one we just added to get us back to where we started
+    response = sighting_utils.patch_sighting(
+        flask_app_client,
+        researcher_1,
+        sighting_id,
+        patch_data=[
+            {'op': 'remove', 'path': '/encounters', 'value': enc2_id},
+        ],
+    )
+    assert len(sighting.encounters) == 2
+    # test to see if we now are back to where we started
+    ct = test_utils.multi_count(db, (Sighting, Encounter, Asset, AssetGroup))
+    assert ct[1] == orig_ct[1] + 2
+
+    # patch op=remove the first encounter; should succeed no problem cuz there is one enc remaining
     response = sighting_utils.patch_sighting(
         flask_app_client,
         researcher_1,

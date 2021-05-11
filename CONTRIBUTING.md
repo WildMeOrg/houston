@@ -96,12 +96,19 @@ See `.pre-commit-config.yaml` for a list of configured linters and fixers.
 Several `invoke` commands are referenced in this doc. These are helpful tools using the PyInvoke library, which must
 be installed on your local machine. Install it following instructions in the [PyInvoke docs.](https://docs.pyinvoke.org/en/stable//)
 
-Be sure to list other invoke commands with `invoke -l` while in the virtual environment and inspect them.
+Be sure to list other invoke commands with `invoke -l` and inspect them.
 There are many useful tools here that can save you time.
 
+#### To add Invoke bash-completion
+```
+export SCRIPT="$(pwd)/.invoke-completion.sh"
+invoke --print-completion-script bash > $SCRIPT
+echo "source $SCRIPT" >> virtualenv/houston3.7/bin/activate
+```
 ### Virtual Environment
-As mentioned in the README, you will need to set up a virtual environment. Most `invoke` commands assume
-that you are using the virtual environment provided, and you should activate it whenever developing on Houston.
+If you are running Houston outside the docker-compose setup for any reason you will need to set up a virtual environment.
+Most `invoke` commands assume that you are using the virtual environment provided, and you should activate it if you plan
+to use them outside the Houston the docker container.
 
 ```
 #initial setup
@@ -111,13 +118,11 @@ bash
 #activation whenever developing or in a new terminal
 source virtualenv/houston3.7/bin/activate
 
-# To add bash-completion
-export SCRIPT="$(pwd)/.invoke-completion.sh"
-invoke --print-completion-script bash > $SCRIPT
-echo "source $SCRIPT" >> virtualenv/houston3.7/bin/activate
 ```
 
 ### Install Dependencies
+
+For locally running Houston. Can be skipped if you develop entirely inside the docker-compose containers.
 
 ```bash
 invoke dependencies.install
@@ -141,6 +146,17 @@ codex_houston_1        /docker-entrypoint.sh wait ...   Up                      
 codex_pgadmin_1        /entrypoint.sh                   Up                      443/tcp, 0.0.0.0:8000->80/tcp
 codex_redis_1          docker-entrypoint.sh redis ...   Up                      6379/tcp
 codex_www_1            /docker-entrypoint.sh ngin ...   Up                      0.0.0.0:84->80/tcp
+```
+
+This describes the container name, status and ports to access. Access can be interpreted thus:
+
+```
+    http://localhost:82 to access acm,
+    http://localhost:81 to access edm,
+    http://localhost:85 to access gitlab,
+    http://localhost:83 to access houston,
+    http://localhost:8000 to access pgadmin,
+    http://localhost:84 to access the frontend.
 ```
 
 These containers are available to enter on the command line using `docker-compose exec [CONTAINER NAME] /bin/bash`. This command will grant you command line access as a root user for
@@ -189,10 +205,6 @@ These methods can target a specific app module by altering the command to someth
 
 And may also the flags `-s` to print all additional logging or `-x` to stop on the first failed test.
 
-### Migrations
-
-If your modifications creates a database migration, the `invoke` tasks to perform the migration must be tested inside the Houston docker container.
-
 ### Rebuilding with Invoke
 
 In the process of contributing you will want to sync up with the latest Houston/Codex code. This can result in a database or Docker orchestration
@@ -207,22 +219,6 @@ If there are specifically Gitlab authentication or startup issues, try rebuildin
 `invoke docker-compose.rebuild-gitlab`
 
 #### Cleaning up with Docker commands
-
-If the above invoke commands are overkill or not sufficient for cleanup, you can experiment with these commands.
-Consider contributing a new invoke command or altering an existing one if you find a common use case
-bringing you here.
-
-Cleanup volumes:
-
-    docker volume rm $(docker volume ls -q | grep codex_)
-
-Big red button:
-
-    docker-compose down && docker volume rm $(docker volume ls -q | grep codex_)
-
-Precision nuke example:
-
-    docker-compose stop houston && docker-compose rm -f houston && docker volume rm codex_houston-var
 
 Docker is conservative about cleaning up unused objects. This can cause Docker to run out of disk space or
 other problems. If a new build is experiencing errors try using prune commands.

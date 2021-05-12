@@ -5,7 +5,7 @@ AssetGroups database models
 """
 
 import enum
-import re
+
 from flask import current_app
 from flask_login import current_user  # NOQA
 from app.extensions import db, HoustonModel, parallel
@@ -16,7 +16,6 @@ import logging
 import tqdm
 import uuid
 import json
-import git
 import os
 import pathlib
 import shutil
@@ -36,39 +35,6 @@ def compute_xxhash64_digest_filepath(filepath):
     except Exception:
         digest = None
     return digest
-
-
-class GitLabPAT(object):
-    def __init__(self, repo=None, url=None):
-        assert repo is not None or url is not None, 'Must specify one of repo or url'
-
-        self.repo = repo
-        if url is None:
-            assert repo is not None, 'both repo and url parameters provided, choose one'
-            url = repo.remotes.origin.url
-        self.original_url = url
-
-        remote_personal_access_token = current_app.config.get(
-            'GITLAB_REMOTE_LOGIN_PAT', None
-        )
-        self.authenticated_url = re.sub(
-            #: match on either http or https
-            r'(https?)://(.*)$',
-            #: replace with basic-auth entities
-            r'\1://oauth2:%s@\2' % (remote_personal_access_token,),
-            self.original_url,
-        )
-
-    def __enter__(self):
-        # Update remote URL with PAT
-        if self.repo is not None:
-            self.repo.remotes.origin.set_url(self.authenticated_url)
-        return self
-
-    def __exit__(self, type, value, traceback):
-        if self.repo is not None:
-            self.repo.remotes.origin.set_url(self.original_url)
-        return True
 
 
 class AssetGroupMajorType(str, enum.Enum):
@@ -201,46 +167,17 @@ class AssetGroup(db.Model, HoustonModel):
         self.update_metadata_from_commit(commit)
 
     def git_push(self):
-        repo = current_app.agm.get_repository(self)
-        assert repo is not None
-
-        with GitLabPAT(repo):
-            log.info('Pushing to authorized URL')
-            repo.git.push('--set-upstream', repo.remotes.origin, repo.head.ref)
-            log.info('...pushed to %s' % (repo.head.ref,))
-
-        return repo
+        return current_app.agm.git_push(self)
 
     def git_pull(self):
-        repo = current_app.agm.get_repository(self)
+        repo = current_app.agm.git_pull(self)
         assert repo is not None
-
-        with GitLabPAT(repo):
-            log.info('Pulling from authorized URL')
-            repo.git.pull(repo.remotes.origin, repo.head.ref)
-            log.info('...pulled')
-
         self.update_metadata_from_repo(repo)
 
         return repo
 
     def git_clone(self, project, **kwargs):
-        repo = current_app.agm.get_repository(self)
-        assert repo is None
-
-        asset_group_abspath = self.get_absolute_path()
-        gitlab_url = project.web_url
-
-        with GitLabPAT(url=gitlab_url) as glpat:
-            args = (
-                gitlab_url,
-                asset_group_abspath,
-            )
-            log.info('Cloning remote asset_group:\n\tremote: %r\n\tlocal:  %r' % args)
-            glpat.repo = git.Repo.clone_from(glpat.authenticated_url, asset_group_abspath)
-            log.info('...cloned')
-
-        repo = current_app.agm.get_repository(self)
+        repo = current_app.agm.git_clone(self, project, kwargs)
         assert repo is not None
 
         self.update_metadata_from_project(project)

@@ -4,7 +4,7 @@ from collections import namedtuple
 import datetime
 import json
 from pathlib import Path
-
+from flask import current_app
 import git
 
 
@@ -25,6 +25,42 @@ class GitRemote:
             gl.GitRemoteDeleteError = GitRemoteDeleteError
             return gl
 
+    class PAT(object):
+        def __init__(self, repo=None, url=None):
+            import re
+
+            assert repo is not None or url is not None, 'Must specify one of repo or url'
+
+            self.repo = repo
+            if url is None:
+                assert (
+                    repo is not None
+                ), 'both repo and url parameters provided, choose one'
+                url = repo.remotes.origin.url
+            self.original_url = url
+
+            remote_personal_access_token = current_app.config.get(
+                'GITLAB_REMOTE_LOGIN_PAT', None
+            )
+            self.authenticated_url = re.sub(
+                #: match on either http or https
+                r'(https?)://(.*)$',
+                #: replace with basic-auth entities
+                r'\1://oauth2:%s@\2' % (remote_personal_access_token,),
+                self.original_url,
+            )
+
+        def __enter__(self):
+            # Update remote URL with PAT
+            if self.repo is not None:
+                self.repo.remotes.origin.set_url(self.authenticated_url)
+            return self
+
+        def __exit__(self, type, value, traceback):
+            if self.repo is not None:
+                self.repo.remotes.origin.set_url(self.original_url)
+            return True
+
 
 class GitRemoteLocal:
     def __init__(self, remote_uri, **kwargs):
@@ -38,6 +74,13 @@ class GitRemoteLocal:
     def auth(self):
         # Not implementing auth
         pass
+
+    class PAT(object):
+        def __enter__(self):
+            return self
+
+        def __exit__(self, type, value, traceback):
+            return True
 
 
 LocalUser = namedtuple('LocalUser', ['id'])

@@ -16,8 +16,6 @@ import utool as ut
 
 import keyword
 
-from .. import git_remote
-
 
 KEYWORD_SET = set(keyword.kwlist)
 
@@ -29,10 +27,10 @@ log = logging.getLogger(__name__)
 
 
 class AssetGroupManager(object):
-    def __init__(self, pre_initialize=False, *args, **kwargs):
+    def __init__(self, backup, pre_initialize=False, *args, **kwargs):
         super(AssetGroupManager, self).__init__(*args, **kwargs)
         self.initialized = False
-
+        self.backup = backup
         self.gl = None
         self.namespace = None
 
@@ -95,7 +93,7 @@ class AssetGroupManager(object):
             log.info('\t NS : %r' % (remote_namespace,))
 
             try:
-                self.gl = git_remote.GitRemote(
+                self.gl = self.backup(
                     remote_uri, private_token=remote_personal_access_token
                 )
                 self.gl.auth()
@@ -328,9 +326,53 @@ class AssetGroupManager(object):
         try:
             self.gl.projects.delete(project.id)
             return True
-        except git_remote.GitRemote.GitRemoteDeleteError:
+        except self.backup.GitRemoteDeleteError:
             pass
         return False
+
+    def git_pull(self, asset_group):
+        self._ensure_initialized()
+        repo = self.get_repository(asset_group)
+        assert repo is not None
+
+        with self.backup.PAT(repo):
+            log.info('Pulling from authorized URL')
+            repo.git.pull(repo.remotes.origin, repo.head.ref)
+            log.info('...pulled')
+
+        return repo
+
+    def git_push(self, asset_group):
+        self._ensure_initialized()
+        repo = self.get_repository(asset_group)
+        assert repo is not None
+
+        with self.backup.PAT(repo):
+            log.info('Pushing to authorized URL')
+            repo.git.push('--set-upstream', repo.remotes.origin, repo.head.ref)
+            log.info('...pushed to %s' % (repo.head.ref,))
+
+        return repo
+
+    def git_clone(self, asset_group, project, **kwargs):
+        self._ensure_initialized()
+        repo = self.get_repository(asset_group)
+        assert repo is None
+
+        asset_group_abspath = asset_group.get_absolute_path()
+        gitlab_url = project.web_url
+        with self.backup.PAT(repo) as pat:
+            args = (
+                gitlab_url,
+                asset_group_abspath,
+            )
+            log.info('Cloning remote asset_group:\n\tremote: %r\n\tlocal:  %r' % args)
+            pat.repo = git.Repo.clone_from(pat.authenticated_url, asset_group_abspath)
+            log.info('...cloned')
+
+        repo = self.get_repository(asset_group)
+        assert repo is not None
+        return repo
 
 
 def init_app(app, **kwargs):
@@ -338,4 +380,10 @@ def init_app(app, **kwargs):
     """
     API extension initialization point.
     """
-    app.agm = AssetGroupManager()
+    from .. import git_remote
+
+    remote = git_remote.GitRemote
+    if False:
+        remote = git_remote.GitRemoteLocal
+
+    app.agm = AssetGroupManager(remote)

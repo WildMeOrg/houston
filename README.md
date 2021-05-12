@@ -50,17 +50,16 @@ docker-compose up
 
 Surf to http://localhost:84/
 
-#### Developer Usage Note
-
-To use the docker setup as a development environment:
-
-```bash
-docker-compose exec houston /bin/bash
-```
-
-This will give you a bash shell prompt within the container that is currently running houston. You can do any operation mentioned in this document within this shell (e.g. `pytest`).
 
 ### Installing from source
+
+#### Development Setup Note
+
+Installation of Houston and the other components of Codex from source is intended to facilitate development leveraging the docker-compose environment.
+
+See **Development Environment** section in [Contributing to Houston](CONTRIBUTING.md)
+for details. Full deployment of Codex outside docker-compose orchestration is not supported, and any 
+changes should not be considered finished until they have been tested in the docker-compose environment.
 
 #### Clone the Project
 
@@ -165,7 +164,6 @@ common migration commands are `app.db.upgrade` (it is automatically run on
 You can use [`better_exceptions`](https://github.com/Qix-/better-exceptions)
 package to enable detailed tracebacks. Just add `better_exceptions` to the
 `app/requirements.txt` and `import better_exceptions` in the `app/__init__.py`.
-
 
 ## Dependencies
 

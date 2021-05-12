@@ -246,7 +246,7 @@ def test_root(flask_app):
 def ensure_asset_group_repo(flask_app, db, asset_group, file_data=[]):
     if pathlib.Path(asset_group.get_absolute_path()).exists():
         shutil.rmtree(asset_group.get_absolute_path())
-    repo = flask_app.agm.get_repository(asset_group)
+    repo = flask_app.git_backend.get_repository(asset_group)
     if repo:
         # repo already exists
         return
@@ -254,7 +254,9 @@ def ensure_asset_group_repo(flask_app, db, asset_group, file_data=[]):
     with db.session.begin():
         db.session.add(asset_group)
     db.session.refresh(asset_group)
-    flask_app.agm.create_repository(asset_group, additional_tags=['type:pytest-required'])
+    flask_app.git_backend.create_repository(
+        asset_group, additional_tags=['type:pytest-required']
+    )
     filepath_guid_mapping = {}
     for uuid_, path in file_data:
         repo_filepath = asset_group.git_copy_file_add(str(path))

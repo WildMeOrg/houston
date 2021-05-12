@@ -90,7 +90,7 @@ def initialize_gitlab_asset_groups(context, email, dryrun=False):
     ]
 
     for asset_group_guid, asset_group_data in asset_group_data:
-        if current_app.agm.is_asset_group_on_remote(asset_group_guid):
+        if current_app.git_backend.is_asset_group_on_remote(asset_group_guid):
             log.info(f'AssetGroup {asset_group_guid} already on GitLab')
         else:
             log.info(f'AssetGroup {asset_group_guid} missing on GitLab, provisioning...')
@@ -135,7 +135,7 @@ def initialize_gitlab_asset_groups(context, email, dryrun=False):
 
             print('Created and pushed new asset_group: %r' % (asset_group,))
 
-        current_app.agm.assert_taglist(asset_group_guid, WHITELIST_TAG)
+        current_app.git_backend.assert_taglist(asset_group_guid, WHITELIST_TAG)
 
 
 @app_context_task

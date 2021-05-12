@@ -103,7 +103,7 @@ def test_create_patch_asset_group(
         asset_group_utils.delete_asset_group(
             flask_app_client, researcher_1, asset_group_guid
         )
-        current_app.agm.delete_remote_asset_group(temp_asset_group)
+        current_app.git_backend.delete_remote_asset_group(temp_asset_group)
 
         # And if the asset_group is already gone, a re attempt at deletion should get the same response
         asset_group_utils.delete_asset_group(
@@ -115,7 +115,7 @@ def test_create_patch_asset_group(
 
     finally:
         tus_utils.cleanup_tus_dir(transaction_id)
-        current_app.agm.delete_remote_asset_group(temp_asset_group)
+        current_app.git_backend.delete_remote_asset_group(temp_asset_group)
         # Restore original state
         temp_asset_group = AssetGroup.query.get(asset_group_guid)
         if temp_asset_group is not None:

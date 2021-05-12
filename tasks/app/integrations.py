@@ -32,10 +32,10 @@ def check_edm(app):
 
 
 def check_gitlab(app):
-    """Check the gitlab connection indirectly through the AssetGroupManager"""
+    """Check the gitlab connection indirectly through the GitlabManager"""
     try:
-        app.agm._ensure_initialized()
-        app.agm.gl.projects.list()
+        app.git_backend._ensure_initialized()
+        app.git_backend.gl.projects.list()
     except Exception:
         log.exception('')
         return False

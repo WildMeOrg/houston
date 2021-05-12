@@ -37,6 +37,7 @@ class PatchSightingDetailsParameters(PatchJSONParameters):
         '/decimalLatitude',
         '/decimalLongitude',
         '/distance',
+        '/encounters',
         '/endTime',
         '/locationId',
         '/startTime',

@@ -240,7 +240,8 @@ def upgrade(
             log.error('Rolling back Sqlite3 database to backup')
             shutil.copy2(_db_filepath_backup, _db_filepath)
             log.error('...restored')
-        log.critical('Database upgrade failed', exc_info=True)
+        log.critical('Database upgrade failed')
+        raise
     finally:
         if sqlite and os.path.exists(_db_filepath_backup):
             log.info('Deleting database backup %r' % (_db_filepath_backup,))

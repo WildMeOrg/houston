@@ -70,11 +70,7 @@ def _validate_asset_references(asset_references):
     #  to do multiple create_from_tus() calls
 
     all_references = {}  # all paths needed, keyed by transaction id
-    paths_wanted = (
-        []
-    )  # parallel list (to encounters) of set of asset paths for that encounter
-    i = 0
-    paths_wanted.append(set())
+    paths_wanted = set()
     if not isinstance(asset_references, list) or len(asset_references) < 1:
         return None, None
 
@@ -86,7 +82,7 @@ def _validate_asset_references(asset_references):
         ):
             log.error('Sighting.post malformed assetReferences data: %r' % (reference))
             raise ValueError('malformed assetReference in json')
-        paths_wanted[i].add(reference['path'])
+        paths_wanted.add(reference['path'])
         if reference['transactionId'] not in all_references:
             all_references[reference['transactionId']] = set()
         all_references[reference['transactionId']].add(reference['path'])
@@ -121,7 +117,7 @@ def _validate_asset_references(asset_references):
 
 
 def _validate_assets(assets, paths_wanted):
-    if len(paths_wanted) < 1:
+    if len(assets) != len(paths_wanted):
         return None
     matches = []
     for asset in assets:
@@ -277,16 +273,14 @@ class Sightings(Resource):
                 'Sighting.post imbalanced encounters in %r or %r'
                 % (request_in, result_data),
             )
-        asset_references = None
-        if 'assetReferences' in request_in:
-            asset_references = request_in['assetReferences']
+        asset_references = request_in.get('assetReferences')
         try:
             all_arefs, paths_wanted = _validate_asset_references(asset_references)
         except Exception as ex:
             cleanup.rollback_and_abort(
                 'Invalid assetReference data in encounter(s)',
                 '_validate_asset_references threw %r on assets=%r'
-                % (ex, request_in['encounters']),
+                % (ex, request_in['assetReferences']),
             )
         log.debug(
             '_validate_asset_references returned: %r, %r' % (all_arefs, paths_wanted)
@@ -360,13 +354,17 @@ class Sightings(Resource):
         )
         with context:
             db.session.add(sighting)
+
+        from app.modules.assets.schemas import DetailedAssetSchema
+
+        asset_schema = DetailedAssetSchema(only=('guid', 'filename', 'src'))
         rtn = {
             'success': True,
             'result': {
                 'id': str(sighting.guid),
                 'version': sighting.version,
                 'encounters': result_data['encounters'],
-                'assets': assets,
+                'assets': asset_schema.dump(assets, many=True)[0],
             },
         }
         return rtn
@@ -438,27 +436,60 @@ class SightingByID(Resource):
                 code=400,
             )
 
+        rdata = {}
         if edm_count > 0:
             log.debug(f'wanting to do edm patch on args={args}')
+            headers = {
+                'x-allow-delete-cascade-individual': request.headers.get(
+                    'x-allow-delete-cascade-individual', 'false'
+                ),
+                'x-allow-delete-cascade-sighting': request.headers.get(
+                    'x-allow-delete-cascade-sighting', 'false'
+                ),
+            }
             response = current_app.edm.request_passthrough(
-                'sighting.data', 'patch', {'data': args}, sighting.guid
+                'sighting.data',
+                'patch',
+                {'data': args, 'headers': headers},
+                sighting.guid,
             )
             rdata = response.json()
             if not response.ok or response.status_code != 200 or not rdata['success']:
                 code = response.status_code
-                if code == 601:
+                if code > 600:
                     code = 400  # flask doesnt like us to use "invalid" codes. :(
                 log.warning(f'EDM patch got {response.status_code} response of {rdata}')
-                abort(success=False, passed_message=rdata['message'], code=code)
-            return rdata
+                abort(
+                    success=False,
+                    passed_message=rdata['message'],
+                    code=code,
+                    edm_status_code=response.status_code,
+                )
+            if 'deletedSighting' in rdata['result']:
+                log.warning(
+                    f"EDM triggered self-deletion of {sighting} result={rdata['result']}"
+                )
+                sighting.delete_cascade()  # this will get rid of our encounter(s) as well so no need to rectify_edm_encounters()
+                sighting = None
+            else:
+                sighting.rectify_edm_encounters(rdata['result'].get('encounters'))
+                new_version = rdata['result'].get('version', None)
+                if new_version is not None:
+                    sighting.version = new_version
+                with db.session.begin():
+                    db.session.merge(sighting)
 
-        context = api.commit_or_abort(
-            db.session, default_error_message='Failed to update Sighting details.'
-        )
-        with context:
-            parameters.PatchSightingDetailsParameters.perform_patch(args, obj=sighting)
-            db.session.merge(sighting)
-        return sighting
+        else:  # no edm
+            context = api.commit_or_abort(
+                db.session, default_error_message='Failed to update Sighting details.'
+            )
+            with context:
+                parameters.PatchSightingDetailsParameters.perform_patch(
+                    args, obj=sighting
+                )
+                db.session.merge(sighting)
+            rdata[id] = str(sighting.guid)
+        return rdata
 
     @api.login_required(oauth_scopes=['sightings:write'])
     @api.permission_required(

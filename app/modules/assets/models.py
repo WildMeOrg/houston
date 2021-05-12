@@ -197,10 +197,11 @@ class Asset(db.Model, HoustonModel):
             db.session.delete(self)
 
     def delete_cascade(self):
-        sub = self.asset_group
+        asset_group = self.asset_group
         with db.session.begin(subtransactions=True):
             db.session.delete(self)
-        sub.justify_existence()
+        db.session.refresh(asset_group)
+        asset_group.justify_existence()
 
     @classmethod
     def find(cls, guid):

@@ -18,10 +18,10 @@ def get_transaction_id():
     return '11111111-1111-1111-1111-111111111111'
 
 
-def prep_tus_dir(test_root):
-    transaction_id = get_transaction_id()
+def prep_tus_dir(test_root, transaction_id=None, filename='zebra.jpg'):
+    if transaction_id is None:
+        transaction_id = get_transaction_id()
 
-    filename = 'zebra.jpg'
     image_file = os.path.join(test_root, filename)
 
     upload_dir = tus_upload_dir(current_app, transaction_id=transaction_id)
@@ -62,7 +62,7 @@ def create_sighting(
         )
 
     assert isinstance(response.json, dict)
-    assert response.status_code == expected_status_code
+    assert response.status_code == expected_status_code, response.json
     return response
 
 
@@ -78,13 +78,19 @@ def read_sighting(flask_app_client, user, sight_guid, expected_status_code=200):
 
 
 def patch_sighting(
-    flask_app_client, user, sighting_guid, patch_data=[], expected_status_code=200
+    flask_app_client,
+    user,
+    sighting_guid,
+    patch_data=[],
+    headers=None,
+    expected_status_code=200,
 ):
     with flask_app_client.login(user, auth_scopes=('sightings:write',)):
         response = flask_app_client.patch(
             '%s%s' % (PATH, sighting_guid),
             data=json.dumps(patch_data),
             content_type='application/json',
+            headers=headers,
         )
 
     assert isinstance(response.json, dict)

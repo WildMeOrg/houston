@@ -4,12 +4,7 @@ EDM utils
 -------------
 """
 import json
-
-# from tests import utils as test_utils
-# from flask import current_app
-# import os
-# import shutil
-# from app.extensions.tus import tus_upload_dir
+from tests import utils as test_utils
 
 CONFIG_PATH = '/api/v1/configuration/default'
 
@@ -22,12 +17,12 @@ def configuration_post(
 ):
     with flask_app_client.login(user, auth_scopes=('configuration:write',)):
         response = flask_app_client.post(
-            '%s' % CONFIG_PATH,
+            CONFIG_PATH,
             data=json.dumps(data_in),
             content_type='application/json',
         )
-    assert response.status_code == expected_status_code
-    assert isinstance(response.json, dict)
+    test_utils.validate_dict_response(response, expected_status_code, {'success'})
+    assert response.json['success']
     return response
 
 

@@ -6,9 +6,6 @@ from tests.extensions.edm import utils as edm_utils
 from tests import utils as test_utils
 
 
-CONFIG_PATH = '/api/v1/configuration/default'
-
-
 def test_custom_fields_on_sighting(
     db, flask_app_client, researcher_1, test_root, staff_user, admin_user
 ):

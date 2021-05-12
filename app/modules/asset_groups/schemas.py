@@ -7,7 +7,19 @@ Serialization schemas for Asset_groups resources RESTful API
 from flask_marshmallow import base_fields
 from flask_restx_patched import ModelSchema
 
-from .models import AssetGroup
+from .models import AssetGroup, AssetGroupSighting
+
+
+class AssetGroupSightingSchema(ModelSchema):
+    """
+    Asset_group sighting schema
+    """
+
+    class Meta:
+        # pylint: disable=missing-docstring
+        model = AssetGroupSighting
+        fields = (AssetGroupSighting.guid.key,)
+        dump_only = (AssetGroupSighting.guid.key,)
 
 
 class BaseAssetGroupSchema(ModelSchema):
@@ -60,7 +72,11 @@ class DetailedAssetGroupSchema(CreateAssetGroupSchema):
         exclude=Asset.asset_group_guid.key,
         many=True,
     )
+    sightings = base_fields.Nested(
+        'AssetGroupSightingSchema',
+        many=True,
+    )
 
     class Meta(CreateAssetGroupSchema.Meta):
-        fields = CreateAssetGroupSchema.Meta.fields + ('assets',)
+        fields = CreateAssetGroupSchema.Meta.fields + ('assets', 'sightings')
         dump_only = CreateAssetGroupSchema.Meta.dump_only

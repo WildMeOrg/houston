@@ -249,7 +249,7 @@ class ObjectActionRule(DenyAbortMixin, Rule):
                 )
             )
         if not has_permission:
-            log.debug('Access permission denied for %r by %r' % (self._obj, current_user))
+            log.info('Access permission denied for %r by %r' % (self._obj, current_user))
         return has_permission
 
     def _permitted_via_user(self, user):

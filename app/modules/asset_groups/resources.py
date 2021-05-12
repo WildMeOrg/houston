@@ -15,13 +15,13 @@ from flask_restx_patched import Resource
 from flask_restx_patched._http import HTTPStatus
 
 from app.extensions import db
-from app.extensions.api import Namespace
+from app.extensions.api import Namespace, abort
 from app.extensions.api.parameters import PaginationParameters
 from app.modules.users import permissions
 from app.modules.users.permissions.types import AccessOperation
 
 from . import parameters, schemas
-from .models import AssetGroup
+from .models import AssetGroup, AssetGroupMetadata, AssetGroupMetadataError
 
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
@@ -31,7 +31,6 @@ api = Namespace(
 
 
 @api.route('/')
-@api.login_required(oauth_scopes=['asset_groups:read'])
 class AssetGroups(Resource):
     """
     Manipulations with Asset_groups.
@@ -62,44 +61,56 @@ class AssetGroups(Resource):
             'action': AccessOperation.WRITE,
         },
     )
-    @api.login_required(oauth_scopes=['asset_groups:write'])
     @api.parameters(parameters.CreateAssetGroupParameters())
     @api.response(schemas.DetailedAssetGroupSchema())
     @api.response(code=HTTPStatus.CONFLICT)
     def post(self, args):
-        r"""
-        Create a new instance of Asset_group.
-
-        CommandLine:
-            EMAIL='test@localhost'
-            PASSWORD='test'
-            TIMESTAMP=$(date '+%Y%m%d-%H%M%S%Z')
-            curl \
-                -X POST \
-                -c cookie.jar \
-                -F email=${EMAIL} \
-                -F password=${PASSWORD} \
-                https://houston.dyn.wildme.io/api/v1/auth/sessions | jq
-            curl \
-                -X GET \
-                -b cookie.jar \
-                https://houston.dyn.wildme.io/api/v1/users/me | jq
-            curl \
-                -X POST \
-                -b cookie.jar \
-                -F description="This is a test asset_group (via CURL), please ignore" \
-                https://houston.dyn.wildme.io/api/v1/asset_groups/ | jq
         """
+        Create a new instance of Asset_group.
+        """
+        from app.extensions.elapsed_time import ElapsedTime
+        from app.modules.users.models import User
+
+        timer = ElapsedTime()
+        metadata = AssetGroupMetadata(request)
+        try:
+            metadata.process_request()
+        except AssetGroupMetadataError as error:
+            abort(
+                success=False,
+                passed_message=error.message,
+                code=error.status_code,
+            )
+
+        if (
+            metadata.anonymous
+            and metadata.submitter_email is not None
+            and metadata.anonymous_submitter is None
+        ):
+            metadata.anonymous_submitter = User.ensure_user(
+                metadata.submitter_email, User.initial_random_password(), is_active=False
+            )
+            log.info(
+                f'New inactive user created as submitter: {metadata.submitter_email}'
+            )
+
         context = api.commit_or_abort(
             db.session, default_error_message='Failed to create a new Asset_group'
         )
         with context:
-            args['owner_guid'] = current_user.guid
-            asset_group = AssetGroup(**args)
+            args['owner_guid'] = metadata.owner.guid
+            asset_group = AssetGroup.create_from_tus(
+                metadata.description,
+                metadata.owner,
+                metadata.tus_transaction_id,
+                metadata.files,
+            )
             db.session.add(asset_group)
 
-        # Get the repo to make sure it's configured
-        current_app.agm.get_repository(asset_group)
+        asset_group.begin_ia_pipeline(metadata)
+        log.info(
+            f'AssetGroup {asset_group.guid}:"{metadata.description}" created by {metadata.owner.email} in {timer.elapsed()} seconds'
+        )
         return asset_group
 
 
@@ -318,16 +329,13 @@ class AssetGroupByID(Resource):
     @api.response(code=HTTPStatus.NO_CONTENT)
     def delete(self, asset_group):
         """
-        Delete a Asset_group by ID.
+        Delete an Asset_group by ID.
         """
         asset_group = self._get_asset_group_with_428(asset_group)
 
         if asset_group is not None:
-            context = api.commit_or_abort(
-                db.session, default_error_message='Failed to delete the Asset_group.'
-            )
-            with context:
-                db.session.delete(asset_group)
+            asset_group.delete()
+
         return None
 
 

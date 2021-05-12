@@ -5,27 +5,24 @@ import filecmp
 from os.path import join, basename
 
 from flask import current_app
+import tests.modules.asset_groups.resources.utils as asset_group_utils
+import tests.extensions.tus.utils as tus_utils
 
 
-def test_create_open_submission(flask_app_client, regular_user, db):
+def test_create_open_submission(flask_app_client, regular_user, test_root, db):
     # pylint: disable=invalid-name
     temp_submission = None
+    transaction_id, test_filename = tus_utils.prep_tus_dir(test_root)
 
     try:
-        from app.modules.asset_groups.models import AssetGroup, AssetGroupMajorType
+        from app.modules.asset_groups.models import AssetGroup
 
-        test_major_type = AssetGroupMajorType.test
-
+        data = asset_group_utils.get_form_creation_data(transaction_id, test_filename)
         with flask_app_client.login(regular_user, auth_scopes=('asset_groups:write',)):
             response = flask_app_client.post(
                 '/api/v1/asset_groups/',
                 content_type='application/json',
-                data=json.dumps(
-                    {
-                        'major_type': test_major_type,
-                        'description': 'This is a test submission, please ignore',
-                    }
-                ),
+                data=json.dumps(data),
             )
 
         temp_submission = AssetGroup.query.get(response.json['guid'])
@@ -39,9 +36,8 @@ def test_create_open_submission(flask_app_client, regular_user, db):
             'major_type',
             'owner_guid',
         }
-
-        assert temp_submission.commit is None
-        assert temp_submission.major_type == test_major_type
+        # TODO this is what the test checked, that there was not commit, what we are now specifically not permitting
+        # assert temp_submission.commit is None
     finally:
         current_app.agm.delete_remote_asset_group(temp_submission)
         # Restore original state

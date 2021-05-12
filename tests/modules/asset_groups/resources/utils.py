@@ -12,8 +12,95 @@ from tests import utils as test_utils
 PATH = '/api/v1/asset_groups/'
 
 
-def create_asset_group(flask_app_client, user, data, expected_status_code=200):
-    with flask_app_client.login(user, auth_scopes=('asset_groups:write',)):
+class TestCreationData(object):
+    def __init__(self, transaction_id, populate_default=True):
+
+        if not populate_default:
+            self.content = {}
+        else:
+            self.content = {
+                'description': 'This is a test asset_group, please ignore',
+                'bulkUpload': False,
+                'speciesDetectionModel': [
+                    None,
+                ],
+                'transactionId': transaction_id,
+                'sightings': [
+                    {
+                        # Yes, that really is a location, it's a village in Wiltshire https://en.wikipedia.org/wiki/Tiddleywink
+                        'locationId': 'Tiddleywink',
+                        'encounters': [{'assetReferences': []}],
+                    },
+                ],
+            }
+
+    def add_filename(self, sighting, encounter, filename):
+        self.content['sightings'][sighting]['encounters'][encounter][
+            'assetReferences'
+        ].append(filename)
+
+    def add_sighting(self, location):
+        self.content['sightings'].append({'locationId': location, 'encounters': []})
+
+    def add_encounter(self, sighting):
+        self.content['sightings'][sighting]['encounters'].append({'assetReferences': []})
+
+    def set_field(self, field, value):
+        self.content[field] = value
+
+    def remove_field(self, field):
+        del self.content[field]
+
+    def set_sighting_field(self, sighting, field, value):
+        self.content['sightings'][sighting][field] = value
+
+    def set_encounter_field(self, sighting, encounter, field, value):
+        self.content['sightings'][sighting]['encounters'][encounter][field] = value
+
+    def remove_encounter_field(self, sighting, encounter, field):
+        del self.content['sightings'][sighting]['encounters'][encounter][field]
+
+    def get(self):
+        return self.content
+
+
+# Asset Group creation is now a bit of a beast so make the tests simpler by
+# providing a known valid data set
+def get_form_creation_data(transaction_id, test_filename):
+    return {
+        'description': 'This is a test asset_group, please ignore',
+        'bulkUpload': False,
+        'speciesDetectionModel': [
+            None,
+        ],
+        'transactionId': transaction_id,
+        'sightings': [
+            {
+                # Yes, that really is a location, it's a village in Wiltshire https://en.wikipedia.org/wiki/Tiddleywink
+                'locationId': 'Tiddleywink',
+                'encounters': [
+                    {
+                        'assetReferences': [
+                            test_filename,
+                        ]
+                    }
+                ],
+            },
+        ],
+    }
+
+
+def create_asset_group(
+    flask_app_client, user, data, expected_status_code=200, expected_error=''
+):
+    if user:
+        with flask_app_client.login(user, auth_scopes=('asset_groups:write',)):
+            response = flask_app_client.post(
+                '%s' % PATH,
+                content_type='application/json',
+                data=json.dumps(data),
+            )
+    else:
         response = flask_app_client.post(
             '%s' % PATH,
             content_type='application/json',
@@ -24,6 +111,11 @@ def create_asset_group(flask_app_client, user, data, expected_status_code=200):
         test_utils.validate_dict_response(
             response, 200, {'guid', 'description', 'major_type'}
         )
+    elif 400 <= expected_status_code < 500:
+        test_utils.validate_dict_response(
+            response, expected_status_code, {'status', 'message', 'passed_message'}
+        )
+        assert response.json['passed_message'] == expected_error
     else:
         test_utils.validate_dict_response(
             response, expected_status_code, {'status', 'message'}

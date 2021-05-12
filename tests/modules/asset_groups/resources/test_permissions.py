@@ -2,6 +2,8 @@
 # pylint: disable=missing-docstring
 import tests.modules.asset_groups.resources.utils as asset_group_utils
 import tests.modules.assets.resources.utils as asset_utils
+import tests.extensions.tus.utils as tus_utils
+from tests import utils as test_utils
 import uuid
 
 from flask import current_app
@@ -53,41 +55,44 @@ def test_user_read_permissions(
     )
 
 
-def test_create_patch_asset_group(flask_app_client, researcher_1, readonly_user, db):
+def test_create_patch_asset_group(
+    flask_app_client, researcher_1, readonly_user, test_root, db
+):
     # pylint: disable=invalid-name
     asset_group_guid = None
-
+    transaction_id, test_filename = tus_utils.prep_tus_dir(test_root)
     try:
-        from app.modules.asset_groups.models import AssetGroup, AssetGroupMajorType
+        from app.modules.asset_groups.models import AssetGroup
 
-        major_type = AssetGroupMajorType.test
-        data = {
-            'major_type': major_type,
-            'description': 'This is a test asset_group, please ignore',
-        }
+        data = asset_group_utils.get_form_creation_data(transaction_id, test_filename)
+
         create_response = asset_group_utils.create_asset_group(
             flask_app_client, researcher_1, data
         )
-
+        assert create_response.json['description'] == data['description']
         asset_group_guid = create_response.json['guid']
         temp_asset_group = AssetGroup.query.get(asset_group_guid)
 
+        # reassign ownership
+        patch_data = [
+            test_utils.patch_add_op(
+                'description', 'This is a test asset_group, kindly ignore'
+            ),
+        ]
         data['description'] = 'This is a test asset_group, kindly ignore'
         # Try to patch as non owner and validate it fails
         asset_group_utils.patch_asset_group(
-            flask_app_client, readonly_user, asset_group_guid, data, 403
+            flask_app_client, readonly_user, asset_group_guid, patch_data, 403
         )
 
         # Should pass as owner
         patch_response = asset_group_utils.patch_asset_group(
-            flask_app_client, researcher_1, asset_group_guid, data
+            flask_app_client, researcher_1, asset_group_guid, patch_data
         )
-
+        assert patch_response.json['description'] == data['description']
         assert patch_response.json['guid'] == asset_group_guid
-        assert patch_response.json['major_type'] == major_type
 
         db.session.refresh(temp_asset_group)
-        assert temp_asset_group.major_type == major_type
 
         # Readonly user should not be able to delete
         asset_group_utils.delete_asset_group(
@@ -98,6 +103,7 @@ def test_create_patch_asset_group(flask_app_client, researcher_1, readonly_user,
         asset_group_utils.delete_asset_group(
             flask_app_client, researcher_1, asset_group_guid
         )
+        current_app.agm.delete_remote_asset_group(temp_asset_group)
 
         # And if the asset_group is already gone, a re attempt at deletion should get the same response
         asset_group_utils.delete_asset_group(
@@ -108,6 +114,7 @@ def test_create_patch_asset_group(flask_app_client, researcher_1, readonly_user,
         asset_group_utils.delete_asset_group(flask_app_client, researcher_1, uuid.uuid4())
 
     finally:
+        tus_utils.cleanup_tus_dir(transaction_id)
         current_app.agm.delete_remote_asset_group(temp_asset_group)
         # Restore original state
         temp_asset_group = AssetGroup.query.get(asset_group_guid)

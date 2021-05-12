@@ -7,6 +7,8 @@ import json
 from tests import utils as test_utils
 
 PATH = '/api/v1/assets/'
+SRC_PATH = '/api/v1/assets/src/'
+RAW_SRC_PATH = 'api/v1/assets/src_raw/'
 
 
 def patch_asset(flask_app_client, asset_guid, user, data, expected_status_code=200):
@@ -28,14 +30,47 @@ def patch_asset(flask_app_client, asset_guid, user, data, expected_status_code=2
     return response
 
 
-def read_asset(flask_app_client, user, asset_guid, expected_status_code=200):
+def read_src_asset(flask_app_client, user, asset_guid, expected_status_code=200):
     with flask_app_client.login(user, auth_scopes=('assets:read',)):
-        response = flask_app_client.get('%s%s' % (PATH, asset_guid))
+        response = flask_app_client.get(f'{SRC_PATH}{asset_guid}')
+
+    if expected_status_code == 200:
+        assert response.status_code == expected_status_code
+        assert response.content_type == 'image/jpeg'
+    else:
+        test_utils.validate_dict_response(
+            response, expected_status_code, {'status', 'message'}
+        )
+    return response
+
+
+def read_raw_src_asset(flask_app_client, user, asset_guid, expected_status_code=200):
+    with flask_app_client.login(user, auth_scopes=('assets:read',)):
+        response = flask_app_client.get(f'{RAW_SRC_PATH}{asset_guid}')
+
+    if expected_status_code == 200:
+        assert response.status_code == expected_status_code
+        assert response.content_type == 'image/jpeg'
+    else:
+        test_utils.validate_dict_response(
+            response, expected_status_code, {'status', 'message'}
+        )
+    return response
+
+
+def read_asset(flask_app_client, user, asset_guid, expected_status_code=200):
+    if user:
+        with flask_app_client.login(user, auth_scopes=('assets:read',)):
+            response = flask_app_client.get(f'{PATH}{asset_guid}')
+    else:
+        response = flask_app_client.get(f'{PATH}{asset_guid}')
 
     if expected_status_code == 200:
         test_utils.validate_dict_response(
             response, 200, {'asset_group', 'src', 'guid', 'filename'}
         )
+    elif expected_status_code == 404:
+        test_utils.validate_dict_response(response, expected_status_code, {'message'})
     else:
         test_utils.validate_dict_response(
             response, expected_status_code, {'status', 'message'}

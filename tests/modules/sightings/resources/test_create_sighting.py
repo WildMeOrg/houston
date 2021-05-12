@@ -84,7 +84,8 @@ def test_create_and_modify_and_delete_sighting(
                         'path': test_filename,
                     }
                 ]
-            }
+            },
+            {'locationId': 'test2'},
         ],
     }
     response = sighting_utils.create_sighting(
@@ -96,12 +97,22 @@ def test_create_and_modify_and_delete_sighting(
     sighting = Sighting.query.get(sighting_id)
     assert sighting is not None
 
+    enc0_id = response.json['result']['encounters'][0]['id']
+    enc1_id = response.json['result']['encounters'][1]['id']
+    assert enc0_id is not None
+    assert enc1_id is not None
+
     response = sighting_utils.read_sighting(
         flask_app_client, researcher_1, sighting_id, expected_status_code=200
     )
     assert response.json['id'] == sighting_id
 
-    # test some modification (should succeed)
+    # test to see if we grew by 1 sighting and 2 encounters
+    ct = test_utils.multi_count(db, (Sighting, Encounter, Asset, AssetGroup))
+    assert ct[0] == orig_ct[0] + 1
+    assert ct[1] == orig_ct[1] + 2
+
+    # test some simple modification (should succeed)
     new_loc_id = 'test_2'
     response = sighting_utils.patch_sighting(
         flask_app_client,
@@ -129,12 +140,52 @@ def test_create_and_modify_and_delete_sighting(
         expected_status_code=400,
     )
 
+    # more complex patch: we op=remove the first encounter; should succeed no problem cuz there is one enc remaining
+    response = sighting_utils.patch_sighting(
+        flask_app_client,
+        researcher_1,
+        sighting_id,
+        patch_data=[
+            {'op': 'remove', 'path': '/encounters', 'value': enc0_id},
+        ],
+    )
+    # test to see if we now are -1 encounter
+    ct = test_utils.multi_count(db, (Sighting, Encounter, Asset, AssetGroup))
+    assert ct[1] == orig_ct[1] + 1  # previously was + 2
+
+    # similar to above, but this should fail as this is our final encounter, and thus cascade-deletes the occurrence -- and this
+    #   requires confirmation
+    response = sighting_utils.patch_sighting(
+        flask_app_client,
+        researcher_1,
+        sighting_id,
+        patch_data=[
+            {'op': 'remove', 'path': '/encounters', 'value': enc1_id},
+        ],
+        expected_status_code=400,
+    )
+    assert response.json['edm_status_code'] == 602
+    # should still have same number encounters as above here
+    ct = test_utils.multi_count(db, (Sighting, Encounter, Asset, AssetGroup))
+    assert ct[1] == orig_ct[1] + 1
+
+    # now we try again, but this time with header to allow for cascade deletion of sighting
+    response = sighting_utils.patch_sighting(
+        flask_app_client,
+        researcher_1,
+        sighting_id,
+        patch_data=[
+            {'op': 'remove', 'path': '/encounters', 'value': enc1_id},
+        ],
+        headers=(('x-allow-delete-cascade-sighting', True),),
+    )
+    # now this should bring us back to where we started
+    ct = test_utils.multi_count(db, (Sighting, Encounter, Asset, AssetGroup))
+    assert ct == orig_ct
+
     # upon success (yay) we clean up our mess
     sighting_utils.cleanup_tus_dir(transaction_id)
-    sighting_utils.delete_sighting(flask_app_client, researcher_1, sighting_id)
-
-    post_ct = test_utils.multi_count(db, (Sighting, Encounter, Asset, AssetGroup))
-    assert orig_ct == post_ct
+    # no longer need to utils.delete_sighting() cuz cascade killed it above
 
 
 def test_create_anon_and_delete_sighting(db, flask_app_client, staff_user, test_root):
@@ -150,29 +201,53 @@ def test_create_anon_and_delete_sighting(db, flask_app_client, staff_user, test_
 
     timestamp = datetime.datetime.now().isoformat()
     transaction_id, test_filename = sighting_utils.prep_tus_dir(test_root)
+    sighting_utils.prep_tus_dir(test_root, filename='fluke.jpg')
     data_in = {
         'startTime': timestamp,
         'context': 'test',
         'locationId': 'test',
-        'encounters': [
+        'encounters': [{}],
+        'assetReferences': [
             {
-                'assetReferences': [
-                    {
-                        'transactionId': transaction_id,
-                        'path': test_filename,
-                    }
-                ]
-            }
+                'transactionId': transaction_id,
+                'path': test_filename,
+            },
+            {
+                'transactionId': transaction_id,
+                'path': 'fluke.jpg',
+            },
         ],
     }
     response = sighting_utils.create_sighting(
         flask_app_client, None, expected_status_code=200, data_in=data_in
     )
     assert response.json['success']
+    assets = sorted(response.json['result']['assets'], key=lambda a: a['filename'])
+    asset_guids = [a['guid'] for a in assets]
+    assert assets == [
+        {
+            'filename': 'fluke.jpg',
+            'guid': asset_guids[0],
+            'src': f'/api/v1/assets/src/{asset_guids[0]}',
+        },
+        {
+            'filename': 'zebra.jpg',
+            'guid': asset_guids[1],
+            'src': f'/api/v1/assets/src/{asset_guids[1]}',
+        },
+    ]
 
+    # Check sighting and assets are stored in the database
     sighting_id = response.json['result']['id']
     sighting = Sighting.query.get(sighting_id)
     assert sighting is not None
+    asset_guids.sort()
+    assert sorted([str(a.asset_guid) for a in sighting.assets]) == asset_guids
+
+    # Check assets are returned in GET sighting
+    with flask_app_client.login(staff_user, auth_scopes=('sightings:read',)):
+        response = flask_app_client.get(f'/api/v1/sightings/{sighting_id}')
+        assert sorted([a['guid'] for a in response.json['assets']]) == asset_guids
 
     # test some modification; this should fail (401) cuz anon should not be allowed
     new_loc_id = 'test_2_fail'

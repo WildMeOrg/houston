@@ -78,6 +78,10 @@ class Asset(db.Model, HoustonModel):
     def __hash__(self):
         return hash(self.guid)
 
+    def is_detection(self):
+        # only checks at the granularity of any asset in the asset group in the detection stage
+        return self.asset_group.is_detection_in_progress()
+
     @property
     def src(self):
         return '/api/v1/assets/src/%s' % (str(self.guid),)
@@ -193,10 +197,11 @@ class Asset(db.Model, HoustonModel):
             db.session.delete(self)
 
     def delete_cascade(self):
-        sub = self.asset_group
+        asset_group = self.asset_group
         with db.session.begin(subtransactions=True):
             db.session.delete(self)
-        sub.justify_existence()
+        db.session.refresh(asset_group)
+        asset_group.justify_existence()
 
     @classmethod
     def find(cls, guid):

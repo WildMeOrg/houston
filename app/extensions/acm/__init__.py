@@ -31,7 +31,10 @@ class ACMManager(RestManager):
         },
         'assets': {
             'list': '//image/json/',
-        }
+        },
+        'version': {
+            'dict': '//version/',
+        },
     }
     # fmt: on
 

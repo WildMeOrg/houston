@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import pathlib
 import shutil
+import tempfile
 import uuid
 
 import sqlalchemy
@@ -34,18 +35,41 @@ def pytest_generate_tests(metafunc):
 
 @pytest.fixture(scope='session')
 def flask_app(gitlab_remote_login_pat):
+    with tempfile.TemporaryDirectory() as td:
+        config_override = {}
+        if gitlab_remote_login_pat is not None:
+            config_override['GITLAB_REMOTE_LOGIN_PAT'] = gitlab_remote_login_pat
+        # Override all the directory settings
+        config_override['PROJECT_DATABASE_PATH'] = td
+        config_override['ASSET_GROUP_DATABASE_PATH'] = str(
+            pathlib.Path(td) / 'asset_group'
+        )
+        config_override['ASSET_DATABASE_PATH'] = str(pathlib.Path(td) / 'assets')
+        config_override['UPLOADS_DATABASE_PATH'] = str(pathlib.Path(td) / 'uploads')
+        config_override['FILEUPLOAD_BASE_PATH'] = str(pathlib.Path(td) / 'fileuploads')
+        config_override['SQLALCHEMY_DATABASE_PATH'] = str(
+            pathlib.Path(td) / 'database.sqlite3'
+        )
 
-    config_override = {}
-    if gitlab_remote_login_pat is not None:
-        config_override['GITLAB_REMOTE_LOGIN_PAT'] = gitlab_remote_login_pat
+        app = create_app(flask_config_name='testing', config_override=config_override)
+        from app.extensions import db
 
-    app = create_app(flask_config_name='testing', config_override=config_override)
-    from app.extensions import db
-
-    with app.app_context():
-        db.create_all()
-        yield app
-        db.drop_all()
+        with app.app_context():
+            try:
+                db.create_all()
+            except sqlalchemy.exc.OperationalError as e:
+                if 'does not exist' in str(e):
+                    db_uri, dbname = app.config['SQLALCHEMY_DATABASE_URI'].rsplit('/', 1)
+                    engine = sqlalchemy.create_engine(db_uri)
+                    engine.execution_options(isolation_level='AUTOCOMMIT').execute(
+                        f'CREATE DATABASE {dbname}'
+                    )
+                    engine.dispose()
+                    db.create_all()
+                else:
+                    raise
+            yield app
+            db.drop_all()
 
 
 @pytest.fixture(scope='session')

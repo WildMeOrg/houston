@@ -47,11 +47,11 @@ jobs:
       matrix:
         # Use the same Python version used the Dockerfile
         python-version: [3.9]
-        db-uri: ["postgresql://houston:development@db/houston", "sqlite://"]
+        db-uri: ["postgresql://houston:development@db/houston_test", "sqlite://"]
     env:
       OS: ubuntu-latest
       PYTHON: ${{ matrix.python-version }}
-      SQLALCHEMY_DATABASE_URI: ${{ matrix.db-uri }}
+      TEST_DATABASE_URI: ${{ matrix.db-uri }}
       COMPOSE_FILE: deploy/codex/docker-compose.yml
     steps:
       # Checkout and env setup
@@ -104,13 +104,13 @@ jobs:
       # Install and test - Test order is randomized, run three times to ensure correctness
       - name: Run tests (random x3)
         run: |
-          docker-compose exec -T -e FLASK_CONFIG=$FLASK_CONFIG -e SQLALCHEMY_DATABASE_URI=$SQLALCHEMY_DATABASE_URI houston pytest -s -v
-          docker-compose exec -T -e FLASK_CONFIG=$FLASK_CONFIG -e SQLALCHEMY_DATABASE_URI=$SQLALCHEMY_DATABASE_URI houston pytest -s -v
-          docker-compose exec -T -e FLASK_CONFIG=$FLASK_CONFIG -e SQLALCHEMY_DATABASE_URI=$SQLALCHEMY_DATABASE_URI houston pytest -s -v
+          docker-compose exec -T -e FLASK_CONFIG=$FLASK_CONFIG -e TEST_DATABASE_URI=$TEST_DATABASE_URI houston pytest -s -v
+          docker-compose exec -T -e FLASK_CONFIG=$FLASK_CONFIG -e TEST_DATABASE_URI=$TEST_DATABASE_URI houston pytest -s -v
+          docker-compose exec -T -e FLASK_CONFIG=$FLASK_CONFIG -e TEST_DATABASE_URI=$TEST_DATABASE_URI houston pytest -s -v
 
       - name: Run tests with local git
         run: |
-          docker-compose exec -T -e FLASK_CONFIG=$FLASK_CONFIG -e SQLALCHEMY_DATABASE_URI=$SQLALCHEMY_DATABASE_URI -e GITLAB_REMOTE_URI=/data/var/git_remote houston pytest -s -v
+          docker-compose exec -T -e FLASK_CONFIG=$FLASK_CONFIG -e TEST_DATABASE_URI=$TEST_DATABASE_URI -e GITLAB_REMOTE_URI=/data/var/git_remote houston pytest -s -v
 
       - name: Check DB migrations (sqlite)
         if: matrix.db-uri == 'sqlite://'
@@ -129,32 +129,31 @@ jobs:
         if: matrix.db-uri != 'sqlite://'
         run: |
           set -ex
-          docker-compose exec -T db psql -U postgres houston -c 'DROP TABLE alembic_version;'
-          docker-compose exec -T -e FLASK_CONFIG=$FLASK_CONFIG -e SQLALCHEMY_DATABASE_URI=$SQLALCHEMY_DATABASE_URI houston coverage run /usr/local/bin/invoke app.db.upgrade --no-backup
-          docker-compose exec -T -e FLASK_CONFIG=$FLASK_CONFIG -e SQLALCHEMY_DATABASE_URI=$SQLALCHEMY_DATABASE_URI houston coverage run --append /usr/local/bin/invoke app.db.downgrade
-          docker-compose exec -T -e FLASK_CONFIG=$FLASK_CONFIG -e SQLALCHEMY_DATABASE_URI=$SQLALCHEMY_DATABASE_URI houston coverage run --append /usr/local/bin/invoke app.db.upgrade --no-backup
-          docker-compose exec -T -e FLASK_CONFIG=$FLASK_CONFIG -e SQLALCHEMY_DATABASE_URI=$SQLALCHEMY_DATABASE_URI houston /bin/bash -c 'if [ -n "$(coverage run --append /usr/local/bin/invoke app.db.migrate)" ]; then echo Missing database migration; exit 1; fi'
+          docker-compose exec -T -e FLASK_CONFIG=$FLASK_CONFIG -e SQLALCHEMY_DATABASE_URI=$TEST_DATABASE_URI houston coverage run /usr/local/bin/invoke app.db.upgrade --no-backup
+          docker-compose exec -T -e FLASK_CONFIG=$FLASK_CONFIG -e SQLALCHEMY_DATABASE_URI=$TEST_DATABASE_URI houston coverage run --append /usr/local/bin/invoke app.db.downgrade
+          docker-compose exec -T -e FLASK_CONFIG=$FLASK_CONFIG -e SQLALCHEMY_DATABASE_URI=$TEST_DATABASE_URI houston coverage run --append /usr/local/bin/invoke app.db.upgrade --no-backup
+          docker-compose exec -T -e FLASK_CONFIG=$FLASK_CONFIG -e SQLALCHEMY_DATABASE_URI=$TEST_DATABASE_URI houston /bin/bash -c 'if [ -n "$(coverage run --append /usr/local/bin/invoke app.db.migrate)" ]; then echo Missing database migration; exit 1; fi'
 
       - name: Run tests after DB checks
         run: |
-          docker-compose exec -T -e FLASK_CONFIG=$FLASK_CONFIG -e SQLALCHEMY_DATABASE_URI=$SQLALCHEMY_DATABASE_URI houston pytest --no-cov -s -v
+          docker-compose exec -T -e FLASK_CONFIG=$FLASK_CONFIG -e TEST_DATABASE_URI=$TEST_DATABASE_URI houston pytest --no-cov -s -v
 
       - name: Run Codecov
         continue-on-error: true
         run: |
-          docker-compose exec -T -e FLASK_CONFIG=$FLASK_CONFIG -e SQLALCHEMY_DATABASE_URI=$SQLALCHEMY_DATABASE_URI houston pytest -s -v --cov=./ --cov-append
-          docker-compose exec -T -e FLASK_CONFIG=$FLASK_CONFIG -e SQLALCHEMY_DATABASE_URI=$SQLALCHEMY_DATABASE_URI houston pytest -s -v -m separate tests/test_transactions.py::test_transactions[None-request_transaction] --cov-append
-          docker-compose exec -T -e FLASK_CONFIG=$FLASK_CONFIG -e SQLALCHEMY_DATABASE_URI=$SQLALCHEMY_DATABASE_URI houston pytest -s -v -m separate tests/test_transactions.py::test_transactions[None-commit_or_abort] --cov-append
+          docker-compose exec -T -e FLASK_CONFIG=$FLASK_CONFIG -e TEST_DATABASE_URI=$TEST_DATABASE_URI houston pytest -s -v --cov=./ --cov-append
+          docker-compose exec -T -e FLASK_CONFIG=$FLASK_CONFIG -e TEST_DATABASE_URI=$TEST_DATABASE_URI houston pytest -s -v -m separate tests/test_transactions.py::test_transactions[None-request_transaction] --cov-append
+          docker-compose exec -T -e FLASK_CONFIG=$FLASK_CONFIG -e TEST_DATABASE_URI=$TEST_DATABASE_URI houston pytest -s -v -m separate tests/test_transactions.py::test_transactions[None-commit_or_abort] --cov-append
 
       - name: Run other invoke tasks for coverage and errors
         run: |
-          docker-compose exec -T -e FLASK_CONFIG=$FLASK_CONFIG -e SQLALCHEMY_DATABASE_URI=$SQLALCHEMY_DATABASE_URI houston ./scripts/run_tasks_for_coverage.sh
-          docker-compose exec -T -e FLASK_CONFIG=$FLASK_CONFIG -e SQLALCHEMY_DATABASE_URI=$SQLALCHEMY_DATABASE_URI houston coverage xml
+          docker-compose exec -T -e FLASK_CONFIG=$FLASK_CONFIG -e SQLALCHEMY_DATABASE_URI=$TEST_DATABASE_URI houston ./scripts/run_tasks_for_coverage.sh
+          docker-compose exec -T -e FLASK_CONFIG=$FLASK_CONFIG -e SQLALCHEMY_DATABASE_URI=$TEST_DATABASE_URI houston coverage xml
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v1.2.1
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./_coverage/coverage.xml
-          env_vars: OS,PYTHON,SQLALCHEMY_DATABASE_URI
+          env_vars: OS,PYTHON,TEST_DATABASE_URI
           fail_ci_if_error: true

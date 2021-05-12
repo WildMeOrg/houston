@@ -13,7 +13,6 @@ import git
 import json
 import os
 from pathlib import Path
-import utool as ut
 
 import keyword
 
@@ -35,21 +34,8 @@ class GitlabManager(object):
         self.gl = None
         self.namespace = None
 
-        self._mime_type_whitelist = None
-        self._mime_type_whitelist_guid = None
-
         if pre_initialize:
             self._ensure_initialized()
-
-    @property
-    def mime_type_whitelist(self):
-        self._ensure_initialized()
-        return self._mime_type_whitelist
-
-    @property
-    def mime_type_whitelist_guid(self):
-        self._ensure_initialized()
-        return self._mime_type_whitelist_guid
 
     @property
     def _gitlab_group(self):
@@ -120,44 +106,10 @@ class GitlabManager(object):
                 self.namespace = namespace
                 log.info('Using namespace: %r' % (self.namespace,))
 
-                # Populate MIME type white-list for assets
-                asset_mime_type_whitelist = current_app.config.get(
-                    'ASSET_MIME_TYPE_WHITELIST', []
-                )
-                asset_mime_type_whitelist = sorted(
-                    list(map(str, asset_mime_type_whitelist))
-                )
-
-                self._mime_type_whitelist = set(asset_mime_type_whitelist)
-                self._mime_type_whitelist_guid = ut.hashable_to_uuid(
-                    asset_mime_type_whitelist
-                )
-
-                mime_type_whitelist_mapping_filepath = os.path.join(
-                    current_app.config.get('PROJECT_DATABASE_PATH'),
-                    'mime.whitelist.%s.json' % (self._mime_type_whitelist_guid,),
-                )
-                if not os.path.exists(mime_type_whitelist_mapping_filepath):
-                    log.info(
-                        'Creating new MIME whitelist manifest: %r'
-                        % (mime_type_whitelist_mapping_filepath,)
-                    )
-                    with open(
-                        mime_type_whitelist_mapping_filepath, 'w'
-                    ) as mime_type_file:
-                        mime_type_whitelist_dict = {
-                            str(self._mime_type_whitelist_guid): sorted(
-                                list(self._mime_type_whitelist)
-                            ),
-                        }
-                        mime_type_file.write(json.dumps(mime_type_whitelist_dict))
-
                 self.initialized = True
             except Exception:
                 self.gl = None
                 self.namespace = None
-                self._mime_type_whitelist = None
-                self._mime_type_whitelist_guid = None
                 self.initialized = False
 
                 if current_app.debug:

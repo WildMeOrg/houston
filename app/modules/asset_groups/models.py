@@ -8,6 +8,8 @@ import enum
 import re
 from flask import current_app
 from flask_login import current_user  # NOQA
+import utool as ut
+
 from app.extensions import db, HoustonModel, parallel
 from app.version import version
 
@@ -483,6 +485,42 @@ class AssetGroup(db.Model, HoustonModel):
 
         return self.owner is User.get_public_user()
 
+    @property
+    def mime_type_whitelist(self):
+        if getattr(self, '_mime_type_whitelist', None) is None:
+            asset_mime_type_whitelist = current_app.config.get(
+                'ASSET_MIME_TYPE_WHITELIST', []
+            )
+            asset_mime_type_whitelist = sorted(list(map(str, asset_mime_type_whitelist)))
+
+            self._mime_type_whitelist = set(asset_mime_type_whitelist)
+        return self._mime_type_whitelist
+
+    @property
+    def mime_type_whitelist_guid(self):
+        if getattr(self, '_mime_type_whitelist_guid', None) is None:
+            self._mime_type_whitelist_guid = ut.hashable_to_uuid(
+                sorted(list(self.mime_type_whitelist))
+            )
+            # Write mime.whitelist.<mime-type-whitelist-guid>.json
+            mime_type_whitelist_mapping_filepath = os.path.join(
+                current_app.config.get('PROJECT_DATABASE_PATH'),
+                'mime.whitelist.%s.json' % (self._mime_type_whitelist_guid,),
+            )
+            if not os.path.exists(mime_type_whitelist_mapping_filepath):
+                log.info(
+                    'Creating new MIME whitelist manifest: %r'
+                    % (mime_type_whitelist_mapping_filepath,)
+                )
+                with open(mime_type_whitelist_mapping_filepath, 'w') as mime_type_file:
+                    mime_type_whitelist_dict = {
+                        str(self._mime_type_whitelist_guid): sorted(
+                            list(self.mime_type_whitelist)
+                        ),
+                    }
+                    mime_type_file.write(json.dumps(mime_type_whitelist_dict))
+        return self._mime_type_whitelist_guid
+
     def git_write_upload_file(self, upload_file):
         repo = current_app.git_backend.create_repository(self)
         file_repo_path = os.path.join(
@@ -540,7 +578,7 @@ class AssetGroup(db.Model, HoustonModel):
             asset_group_metadata = json.load(asset_group_metadata_file)
 
         asset_group_metadata['commit_mime_whitelist_guid'] = str(
-            current_app.git_backend.mime_type_whitelist_guid
+            self.mime_type_whitelist_guid
         )
         asset_group_metadata['commit_houston_api_version'] = str(version)
 
@@ -789,7 +827,7 @@ class AssetGroup(db.Model, HoustonModel):
                         skipped.append((filepath, extension))
                         continue
                     mime_type = magic.from_file(filepath, mime=True)
-                    if mime_type not in current_app.git_backend.mime_type_whitelist:
+                    if mime_type not in self.mime_type_whitelist:
                         # Skip any unsupported MIME types
                         skipped.append((filepath, extension))
                         continue
@@ -967,7 +1005,7 @@ class AssetGroup(db.Model, HoustonModel):
             metadata_dict = json.load(metadata_file)
 
         self.commit_mime_whitelist_guid = metadata_dict.get(
-            'commit_mime_whitelist_guid', current_app.git_backend.mime_type_whitelist_guid
+            'commit_mime_whitelist_guid', self.mime_type_whitelist_guid
         )
         self.commit_houston_api_version = metadata_dict.get(
             'commit_houston_api_version', version

@@ -319,7 +319,7 @@ class AssetGroupManager(object):
 
     def delete_remote_asset_group(self, asset_group):
         self._ensure_initialized()
-        project = self._get_git_remote_project(asset_group)
+        project = self._get_git_remote_project(asset_group.guid)
         if project:
             self.delete_remote_project(project)
 

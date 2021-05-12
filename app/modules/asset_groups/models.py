@@ -423,8 +423,6 @@ class AssetGroup(db.Model, HoustonModel):
         nullable=False,
     )
 
-    bulk_upload = db.Column(db.Boolean, default=False, nullable=False)
-
     commit = db.Column(db.String(length=40), nullable=True, unique=True)
     commit_mime_whitelist_guid = db.Column(db.GUID, index=True, nullable=True)
     commit_houston_api_version = db.Column(db.String, index=True, nullable=True)
@@ -446,6 +444,10 @@ class AssetGroup(db.Model, HoustonModel):
             'guid={self.guid}, '
             ')>'.format(class_name=self.__class__.__name__, self=self)
         )
+
+    @property
+    def bulk_upload(self):
+        return self.request_metadata.bulk_upload if self.request_metadata else False
 
     def git_write_upload_file(self, upload_file):
         repo = current_app.agm.create_repository(self)

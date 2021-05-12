@@ -58,13 +58,10 @@ def test_create_and_modify_and_delete_sighting(
     db, flask_app_client, researcher_1, test_root, staff_user
 ):
     from app.modules.sightings.models import Sighting
-    from app.modules.encounters.models import Encounter
-    from app.modules.assets.models import Asset
-    from app.modules.asset_groups.models import AssetGroup
     import datetime
 
     # we should end up with these same counts (which _should be_ all zeros!)
-    orig_ct = test_utils.multi_count(db, (Sighting, Encounter, Asset, AssetGroup))
+    orig_ct = test_utils.all_count(db)
 
     timestamp = datetime.datetime.now().isoformat()
     transaction_id, test_filename = sighting_utils.prep_tus_dir(test_root)
@@ -104,7 +101,7 @@ def test_create_and_modify_and_delete_sighting(
     assert response.json['id'] == sighting_id
 
     # test to see if we grew by 1 sighting and 2 encounters
-    ct = test_utils.multi_count(db, (Sighting, Encounter, Asset, AssetGroup))
+    ct = test_utils.all_count(db)
     assert ct[0] == orig_ct[0] + 1
     assert ct[1] == orig_ct[1] + 2
 
@@ -151,7 +148,7 @@ def test_create_and_modify_and_delete_sighting(
         ],
     )
     # test to see if we now are +1 encounter
-    ct = test_utils.multi_count(db, (Sighting, Encounter, Asset, AssetGroup))
+    ct = test_utils.all_count(db)
     assert ct[1] == orig_ct[1] + 3  # previously was + 2
     assert len(sighting.encounters) == 3
     enc2_id = str(sighting.encounters[2].guid)
@@ -167,7 +164,7 @@ def test_create_and_modify_and_delete_sighting(
     )
     assert len(sighting.encounters) == 2
     # test to see if we now are back to where we started
-    ct = test_utils.multi_count(db, (Sighting, Encounter, Asset, AssetGroup))
+    ct = test_utils.all_count(db)
     assert ct[1] == orig_ct[1] + 2
 
     # patch op=remove the first encounter; should succeed no problem cuz there is one enc remaining
@@ -180,7 +177,7 @@ def test_create_and_modify_and_delete_sighting(
         ],
     )
     # test to see if we now are -1 encounter
-    ct = test_utils.multi_count(db, (Sighting, Encounter, Asset, AssetGroup))
+    ct = test_utils.all_count(db)
     assert ct[1] == orig_ct[1] + 1  # previously was + 2
 
     # similar to above, but this should fail as this is our final encounter, and thus cascade-deletes the occurrence -- and this
@@ -196,7 +193,7 @@ def test_create_and_modify_and_delete_sighting(
     )
     assert response.json['edm_status_code'] == 602
     # should still have same number encounters as above here
-    ct = test_utils.multi_count(db, (Sighting, Encounter, Asset, AssetGroup))
+    ct = test_utils.all_count(db)
     assert ct[1] == orig_ct[1] + 1
 
     # now we try again, but this time with header to allow for cascade deletion of sighting
@@ -210,7 +207,7 @@ def test_create_and_modify_and_delete_sighting(
         headers=(('x-allow-delete-cascade-sighting', True),),
     )
     # now this should bring us back to where we started
-    ct = test_utils.multi_count(db, (Sighting, Encounter, Asset, AssetGroup))
+    ct = test_utils.all_count(db)
     assert ct == orig_ct
 
     # upon success (yay) we clean up our mess
@@ -220,14 +217,11 @@ def test_create_and_modify_and_delete_sighting(
 
 def test_create_anon_and_delete_sighting(db, flask_app_client, staff_user, test_root):
     from app.modules.sightings.models import Sighting
-    from app.modules.encounters.models import Encounter
-    from app.modules.assets.models import Asset
     from app.modules.users.models import User
-    from app.modules.asset_groups.models import AssetGroup
     import datetime
 
     # we should end up with these same counts (which _should be_ all zeros!)
-    orig_ct = test_utils.multi_count(db, (Sighting, Encounter, Asset, AssetGroup))
+    orig_ct = test_utils.all_count(db)
 
     timestamp = datetime.datetime.now().isoformat()
     transaction_id, test_filename = sighting_utils.prep_tus_dir(test_root)
@@ -331,5 +325,5 @@ def test_create_anon_and_delete_sighting(db, flask_app_client, staff_user, test_
     sighting_utils.delete_sighting(flask_app_client, staff_user, sighting_id)
     new_user.delete()
 
-    post_ct = test_utils.multi_count(db, (Sighting, Encounter, Asset, AssetGroup))
+    post_ct = test_utils.all_count(db)
     assert orig_ct == post_ct

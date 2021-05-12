@@ -251,11 +251,21 @@ def patch_replace_op(path, value):
     }
 
 
+# for counts of _specific_ classes.  see: all_count() for handy shortcut
 def multi_count(db, cls_list):
     cts = []
     for cls in cls_list:
         cts.append(row_count(db, cls))
     return cts
+
+
+def all_count(db):
+    from app.modules.sightings.models import Sighting
+    from app.modules.encounters.models import Encounter
+    from app.modules.assets.models import Asset
+    from app.modules.asset_groups.models import AssetGroup
+
+    return multi_count(db, (Sighting, Encounter, Asset, AssetGroup))
 
 
 def row_count(db, cls):

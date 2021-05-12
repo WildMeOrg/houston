@@ -10,16 +10,13 @@ def test_custom_fields_on_sighting(
     db, flask_app_client, researcher_1, test_root, staff_user, admin_user
 ):
     from app.modules.sightings.models import Sighting
-    from app.modules.encounters.models import Encounter
-    from app.modules.assets.models import Asset
-    from app.modules.asset_groups.models import AssetGroup
     import datetime
 
     cfd_id = edm_utils.custom_field_create(flask_app_client, admin_user, 'test_cfd')
     assert cfd_id is not None
 
     # we should end up with these same counts (which _should be_ all zeros!)
-    orig_ct = test_utils.multi_count(db, (Sighting, Encounter, Asset, AssetGroup))
+    orig_ct = test_utils.all_count(db)
 
     timestamp = datetime.datetime.now().isoformat()
     transaction_id, test_filename = sighting_utils.prep_tus_dir(test_root)
@@ -82,5 +79,5 @@ def test_custom_fields_on_sighting(
     # clean up
     sighting_utils.delete_sighting(flask_app_client, researcher_1, sighting_id)
 
-    post_ct = test_utils.multi_count(db, (Sighting, Encounter, Asset, AssetGroup))
+    post_ct = test_utils.all_count(db)
     assert orig_ct == post_ct

@@ -354,14 +354,14 @@ class AssetGroupManager(object):
 
         return repo
 
-    def git_clone(self, asset_group, project, **kwargs):
+    def git_clone(self, asset_group, project):
         self._ensure_initialized()
         repo = self.get_repository(asset_group)
         assert repo is None
 
         asset_group_abspath = asset_group.get_absolute_path()
         gitlab_url = project.web_url
-        with self.backup.PAT(repo) as pat:
+        with self.backup.PAT(url=gitlab_url) as pat:
             args = (
                 gitlab_url,
                 asset_group_abspath,

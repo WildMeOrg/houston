@@ -177,7 +177,7 @@ class AssetGroup(db.Model, HoustonModel):
         return repo
 
     def git_clone(self, project, **kwargs):
-        repo = current_app.agm.git_clone(self, project, kwargs)
+        repo = current_app.agm.git_clone(self, project)
         assert repo is not None
 
         self.update_metadata_from_project(project)

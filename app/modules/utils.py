@@ -1,8 +1,12 @@
 # -*- coding: utf-8 -*-
 from pathlib import Path
 from typing import NoReturn, Optional, Union
+from app.extensions.api import abort
+from flask import Blueprint, Flask, current_app
 
-from flask import Blueprint, Flask
+import logging
+
+log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
 
 def fail_on_missing_static_folder(
@@ -22,3 +26,47 @@ def fail_on_missing_static_folder(
         raise RuntimeError(
             f'static folder improperly configured - could not locate a valid installation at: {folder}'
         )
+
+
+# Many module resources create things and then need to clean up when it fails. This helper class cleans up
+class Cleanup(object):
+    def __init__(self, name):
+        self.name = name
+        # For things where a guid has been created on EDM but not an object in Houston
+        self.allocated_guids = []
+        # Real things, that must have a delete method
+        self.allocated_objs = []
+
+    def add_guid(self, guid, obj_type):
+        self.allocated_guids.append({'guid': guid, 'type': obj_type})
+
+    def add_object(self, obj):
+        self.allocated_objs.append(obj)
+
+    def rollback_and_abort(
+        self,
+        message='Unknown error',
+        log_message=None,
+        status_code=400,
+        error_fields=None,
+    ):
+        from app.modules.sightings.models import Sighting
+
+        if log_message is None:
+            log_message = message
+        log.error(
+            f'Bailing on {self.name} creation: {log_message} (error_fields {error_fields})'
+        )
+        breakpoint()
+
+        for alloc_guid in self.allocated_guids:
+            if alloc_guid['type'] == Sighting:
+                guid = alloc_guid['guid']
+                log.warning(f'Cleanup removing Sighting {guid} from EDM ')
+                Sighting.delete_from_edm_by_guid(current_app, guid)
+
+        for alloc_obj in self.allocated_objs:
+            log.warning('Cleanup removing %r' % alloc_obj)
+            alloc_obj.delete()
+
+        abort(status_code, message, errorFields=error_fields)

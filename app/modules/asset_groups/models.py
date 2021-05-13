@@ -9,7 +9,6 @@ import re
 from flask import current_app
 from flask_login import current_user  # NOQA
 from app.extensions import db, HoustonModel, parallel
-
 from app.version import version
 
 import logging
@@ -44,7 +43,7 @@ class AssetGroupMetadataError(Exception):
         self.status_code = status_code
         if self.message is None:
             self.message = log_message
-        log.error(f'Failed: {log_message} {self.status_code}')
+        log.warning(f'Failed: {log_message} {self.status_code}')
 
 
 # Class used to process and validate the json data. This json may be received from the frontend or
@@ -58,7 +57,8 @@ class AssetGroupMetadata(object):
         sightings = 2
         complete = 3
 
-    def __init__(self, request_json):
+    def __init__(self, request_json, existing_dir=None):
+        self.existing_dir = existing_dir  # For none, this checks the tus dir
         self.request_json = request_json
         # Data that is built up from the parsed json that cannot be easily implemented as properties
         self.request = {}
@@ -90,8 +90,11 @@ class AssetGroupMetadata(object):
 
     @property
     def num_sightings(self):
+        return len(self.get_sightings())
+
+    def get_sightings(self):
         assert self.data_processed >= AssetGroupMetadata.DataProcessed.first_level
-        return len(self.request['sightings'])
+        return self.request['sightings']
 
     @property
     def submitter_email(self):
@@ -114,8 +117,7 @@ class AssetGroupMetadata(object):
 
     def process_request(self):
         try:
-            request_in_ = json.loads(self.request_json.data)
-            self.request.update(request_in_)
+            self.request.update(self.request_json)
         except Exception:
             raise AssetGroupMetadataError('Failed to parse request')
 
@@ -128,7 +130,7 @@ class AssetGroupMetadata(object):
             ('submitterEmail', str, False),
             ('description', str, False),
         ]
-        self.validate_fields(self.request, top_level_fields, 'request')
+        self._validate_fields(self.request, top_level_fields, 'request')
 
         self.data_processed = AssetGroupMetadata.DataProcessed.first_level
         if len(self.detection_configs) > 1:
@@ -142,20 +144,33 @@ class AssetGroupMetadata(object):
         # validate num sightings
         if not self.bulk_upload and self.num_sightings != 1:
             raise AssetGroupMetadataError(
-                'Incorrect num sightings, there must be exactly one'
+                'Incorrect num sightings in form submission, there must be exactly one'
             )
 
-        # Ensure that the sighting received are valid
-        self.validate_sightings()
+        # Ensure that the sighting (and encounters within them) received are valid
+        self._validate_sightings()
         self.data_processed = AssetGroupMetadata.DataProcessed.sightings
 
-        # Message was valid, is the user allowed to do so
+        if not self.bulk_upload and len(self.request['sightings'][0]['encounters']) != 1:
+            raise AssetGroupMetadataError(
+                'Incorrect num encounters in form submission, there must be exactly one'
+            )
+
         from app.modules.users.models import User
 
         if current_user is not None and not current_user.is_anonymous:
             self.owner = current_user
         else:
             self.owner = User.get_public_user()
+
+        # individual fields in the message are all valid, now check that it's valid in total
+        self._validate_contents()
+        self.data_processed = AssetGroupMetadata.DataProcessed.complete
+
+    def _validate_contents(self):
+        # Message was valid, is the user allowed to do so
+        from app.modules.users.models import User
+
         if self.anonymous:
             if self.bulk_upload:
                 raise AssetGroupMetadataError(
@@ -203,12 +218,13 @@ class AssetGroupMetadata(object):
                     f'You have {unprocessed_groups} Asset groups outstanding, please finish these first'
                 )
 
-        self.data_processed = AssetGroupMetadata.DataProcessed.complete
-
-    def validate_sightings(self):
+    def _validate_sightings(self):
         from app.extensions.tus import tus_upload_dir
 
-        tus_dir = tus_upload_dir(current_app, transaction_id=self.tus_transaction_id)
+        if self.existing_dir:
+            dir = self.existing_dir
+        else:
+            dir = tus_upload_dir(current_app, transaction_id=self.tus_transaction_id)
 
         sighting_num = 0
         # validate sightings content
@@ -221,11 +237,13 @@ class AssetGroupMetadata(object):
                 )
 
             sighting_fields = [
-                ('locationId', str, True),
+                ('locationId', str, False),
+                ('startTime', str, True),
+                ('context', str, True),
                 ('encounters', list, True),
                 ('name', str, False),
             ]
-            self.validate_fields(sighting, sighting_fields, f'Sighting {sighting_num}')
+            self._validate_fields(sighting, sighting_fields, f'Sighting {sighting_num}')
 
             encounter_num = 0
             # Have a sighting with multiple encounters, make sure we have all of the files
@@ -236,10 +254,10 @@ class AssetGroupMetadata(object):
                         f'Encounter {sighting_num}.{encounter_num} needs to be a dict'
                     )
                 encounter_fields = [
-                    ('assetReferences', list, True),
+                    ('assetReferences', list, False),
                     ('ownerEmail', str, False),
                 ]
-                self.validate_fields(
+                self._validate_fields(
                     encounter,
                     encounter_fields,
                     f'Encounter {sighting_num}.{encounter_num}',
@@ -263,7 +281,8 @@ class AssetGroupMetadata(object):
                         self.owner_assignment = True
 
                 for filename in encounter['assetReferences']:
-                    file_path = os.path.join(tus_dir, filename)
+
+                    file_path = os.path.join(dir, filename)
                     file_size = 0
                     try:
                         file_size = os.path.getsize(file_path)  # 2for1
@@ -279,7 +298,7 @@ class AssetGroupMetadata(object):
                     self.files.add(filename)
 
     # Helper for validating the required fields in any level dictionary
-    def validate_fields(self, dictionary, fields, error_str):
+    def _validate_fields(self, dictionary, fields, error_str):
         for field, field_type, mandatory in fields:
             if mandatory:
                 if field not in dictionary or not isinstance(
@@ -923,11 +942,14 @@ class AssetGroup(db.Model, HoustonModel):
             'commit_houston_api_version', version
         )
 
-        # Only re parse metadata if it's new.
+        # Only re parse metadata if it's present and new.
+        request_json = metadata_dict.get('frontend_sightings_data')
         # TODO Are there cases where this does need to happen?
-        if not self.request_metadata:
-            request_json = metadata_dict.get('frontend_sightings_data')
-            self.request_metadata = AssetGroupMetadata(request_json)
+        if request_json != {} and not self.request_metadata:
+            self.request_metadata = AssetGroupMetadata(
+                request_json, self.get_absolute_path() + '/_asset_group'
+            )
+            log.info(f'New metadata created {self.request_metadata}')
             try:
                 self.request_metadata.process_request()
             except AssetGroupMetadataError:
@@ -978,16 +1000,19 @@ class AssetGroup(db.Model, HoustonModel):
         assert len(metadata.detection_configs) == 1
         for sighting in range(metadata.num_sightings):
             new_sighting = AssetGroupSighting(owner_guid=self.guid)
-            if 'None' == metadata.detection_configs[0]:
+            if not metadata.detection_configs[0]:
                 new_sighting.stage = AssetGroupSightingStage.curation
             else:
                 new_sighting.stage = AssetGroupSightingStage.detection
                 # TODO for each detection config create the required jobs in the AssetGroupSighting
                 # and begin them in wbia
 
-        with db.session.begin(subtransactions=True):
-            db.session.add(new_sighting)
-        self.sightings.append(new_sighting)
+            metadata.request['sightings'][sighting]['assetGroupSightingGuid'] = str(
+                new_sighting.guid
+            )
+            with db.session.begin(subtransactions=True):
+                db.session.add(new_sighting)
+            self.sightings.append(new_sighting)
 
         # make sure the repo is created
         current_app.git_backend.ensure_repository(self)
@@ -996,6 +1021,22 @@ class AssetGroup(db.Model, HoustonModel):
         if metadata.description != '':
             description = metadata.description
         self.git_commit(description)
+
+    def get_metadata_for_sighting(self, asset_group_sighting):
+        # Find the metadata for this AssetGroupSighting.
+        # This feels a bit laborious, is there a more pythonic way to do this?
+        import uuid
+
+        if not self.request_metadata:
+            self.update_metadata_from_repo(None)
+
+        for metadata_sighting in self.request_metadata.get_sightings():
+            if (
+                uuid.UUID(metadata_sighting['assetGroupSightingGuid'])
+                == asset_group_sighting.guid
+            ):
+                return metadata_sighting
+        return None
 
     # TODO should this blow away remote repo?  by default?
     def delete(self):

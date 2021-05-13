@@ -21,8 +21,14 @@ from app.modules.users import permissions
 from app.modules.users.permissions.types import AccessOperation
 
 from . import parameters, schemas
-from .models import AssetGroup, AssetGroupMetadata, AssetGroupMetadataError
-
+from .models import (
+    AssetGroup,
+    AssetGroupSighting,
+    AssetGroupSightingStage,
+    AssetGroupMetadata,
+    AssetGroupMetadataError,
+)
+from app.modules.sightings.schemas import BaseSightingSchema
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 api = Namespace(
@@ -70,9 +76,10 @@ class AssetGroups(Resource):
         """
         from app.extensions.elapsed_time import ElapsedTime
         from app.modules.users.models import User
+        import json
 
         timer = ElapsedTime()
-        metadata = AssetGroupMetadata(request)
+        metadata = AssetGroupMetadata(json.loads(request.data))
         try:
             metadata.process_request()
         except AssetGroupMetadataError as error:
@@ -109,7 +116,7 @@ class AssetGroups(Resource):
 
         asset_group.begin_ia_pipeline(metadata)
         log.info(
-            f'AssetGroup {asset_group.guid}:"{metadata.description}" created by {metadata.owner.email} in {timer.elapsed()} seconds'
+            f'AssetGroup {asset_group.guid}:"{metadata.description}" {asset_group.request_metadata} created by {metadata.owner.email} in {timer.elapsed()} seconds'
         )
         return asset_group
 
@@ -337,6 +344,119 @@ class AssetGroupByID(Resource):
             asset_group.delete()
 
         return None
+
+
+@api.route('/<uuid:asset_group_guid>/<uuid:asset_group_sighting_guid>/commit')
+@api.login_required(oauth_scopes=['asset_groups:write'])
+@api.response(
+    code=HTTPStatus.NOT_FOUND,
+    description='Asset_group not found.',
+)
+@api.resolve_object_by_model(AssetGroup, 'asset_group')
+@api.resolve_object_by_model(AssetGroupSighting, 'asset_group_sighting')
+class AssetGroupSightingCommit(Resource):
+    """
+    Commit the Asset Group Sighting
+    """
+
+    @api.permission_required(
+        permissions.ObjectAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'obj': kwargs['asset_group'],
+            'action': AccessOperation.WRITE,
+        },
+    )
+    # NOTE this returns a sighting schema not an AssetGroup one as the output of this is that
+    # a sighting is created
+    @api.response(BaseSightingSchema())
+    def post(self, asset_group, asset_group_sighting):
+        from app.modules.utils import Cleanup
+        from app.modules.sightings.models import Sighting
+        from app.modules.encounters.models import Encounter
+
+        if asset_group_sighting not in asset_group.sightings:
+            abort(
+                HTTPStatus.BAD_REQUEST,
+                f'AssetGroupSighting {asset_group_sighting.guid} not in AssetGroup {asset_group.guid}',
+            )
+        if asset_group_sighting.stage != AssetGroupSightingStage.curation:
+            abort(
+                HTTPStatus.BAD_REQUEST,
+                'AssetGroupSighting %s is currently %s, not curating cannot commit'
+                % (asset_group_sighting.guid, asset_group_sighting.stage),
+            )
+
+        sighting_metadata = asset_group.get_metadata_for_sighting(asset_group_sighting)
+        if not sighting_metadata:
+            abort(
+                HTTPStatus.BAD_REQUEST,
+                f'AssetGroupSighting {asset_group_sighting.guid} has no metadata',
+            )
+
+        # Create sighting in EDM
+        result_data, message, error = current_app.edm.request_passthrough_result(
+            'sighting.data', 'post', {'data': sighting_metadata}, ''
+        )
+
+        if not result_data:
+            abort(HTTPStatus.BAD_REQUEST, message, errorFields=error)
+
+        cleanup = Cleanup('AssetGroup')
+        cleanup.add_guid(result_data['id'], Sighting)
+
+        # if we get here, edm has made the sighting.  now we have to consider encounters contained within,
+        # and make houston for the sighting + encounters
+
+        # encounters via sighting_metadata and edm (result_data) need to have same count!
+        if ('encounters' in sighting_metadata and 'encounters' not in result_data) or (
+            'encounters' not in sighting_metadata and 'encounters' in result_data
+        ):
+            cleanup.rollback_and_abort(
+                'Missing encounters between sighting_metadata and result',
+                'Sighting.post missing encounters in one of %r or %r'
+                % (sighting_metadata, result_data),
+            )
+        if not len(sighting_metadata['encounters']) == len(result_data['encounters']):
+            cleanup.rollback_and_abort(
+                'Imbalance in encounters between data and result',
+                'Sighting.post imbalanced encounters in %r or %r'
+                % (sighting_metadata, result_data),
+            )
+
+        sighting = Sighting(
+            guid=result_data['id'],
+            version=result_data.get('version', 2),
+        )
+
+        cleanup.add_object(sighting)
+
+        asset_group_metadata = asset_group.request_metadata
+        assert asset_group_metadata
+
+        for encounter_num in range(len(sighting_metadata['encounters'])):
+            req_data = sighting_metadata['encounters'][encounter_num]
+            res_data = result_data['encounters'][encounter_num]
+            try:
+                submitter_guid = asset_group_sighting.owner_guid
+
+                if asset_group_metadata.anonymous_submitter:
+                    submitter_guid = asset_group_metadata.anonymous_submitter.guid
+
+                new_encounter = Encounter(
+                    guid=res_data['id'],
+                    version=res_data.get('version', 2),
+                    owner_guid=asset_group.owner_guid,
+                    submitter_guid=submitter_guid,
+                    public=asset_group_metadata.anonymous,
+                )
+                sighting.add_encounter(new_encounter)
+
+            except Exception as ex:
+                cleanup.rollback_and_abort(
+                    'Problem with creating encounter: ',
+                    f'{ex} on encounter {encounter_num}: enc={req_data}',
+                )
+        return sighting
 
 
 @api.route('/tus/collect/<uuid:asset_group_guid>')

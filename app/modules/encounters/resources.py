@@ -81,26 +81,11 @@ class Encounters(Resource):
         except Exception:
             pass
 
-        response = current_app.edm.request_passthrough(
+        result_data, message, error = current_app.edm.request_passthrough_result(
             'encounter.data', 'post', {'data': data}, ''
         )
-
-        response_data = None
-        result_data = None
-        if response.ok:
-            response_data = response.json()
-            result_data = response_data.get('result', None)
-
-        if (
-            not response.ok
-            or not response_data.get('success', False)
-            or result_data is None
-        ):
-            log.warning('Encounter.post failed')
-            passed_message = {'message': {'key': 'error'}}
-            if response_data is not None and 'message' in response_data:
-                passed_message = response_data['message']
-            abort(success=False, passed_message=passed_message, message='Error', code=400)
+        if not result_data:
+            abort(success=False, passed_message=message, message='Error', code=400)
 
         # if we get here, edm has made the encounter, now we create & persist the feather model in houston
 

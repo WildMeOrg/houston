@@ -54,13 +54,18 @@ def test_create_asset_group(flask_app_client, researcher_1, readonly_user, test_
                 {},
             ],
         )
-        resp_msg = 'locationId field missing from Sighting 1'
+        resp_msg = 'startTime field missing from Sighting 1'
         asset_group_utils.create_asset_group(
             flask_app_client, researcher_1, data.get(), 400, resp_msg
         )
 
-        # Yes, that really is a location, it's a village in Wiltshire
-        data.set_sighting_field(0, 'locationId', 'Tiddleywink')
+        data.set_sighting_field(0, 'startTime', 'never')
+        resp_msg = 'context field missing from Sighting 1'
+        asset_group_utils.create_asset_group(
+            flask_app_client, researcher_1, data.get(), 400, resp_msg
+        )
+        data.set_sighting_field(0, 'context', 'nothing')
+
         resp_msg = 'encounters field missing from Sighting 1'
         asset_group_utils.create_asset_group(
             flask_app_client, researcher_1, data.get(), 400, resp_msg
@@ -74,7 +79,7 @@ def test_create_asset_group(flask_app_client, researcher_1, readonly_user, test_
 
         data.set_sighting_field(0, 'encounters', [{'assetReferences': ''}])
         # data.set_encounter_field(0, 0, 'assetReferences', '')
-        resp_msg = 'assetReferences field missing from Encounter 1.1'
+        resp_msg = 'assetReferences incorrect type in Encounter 1.1'
         asset_group_utils.create_asset_group(
             flask_app_client, researcher_1, data.get(), 400, resp_msg
         )
@@ -95,8 +100,19 @@ def test_create_asset_group(flask_app_client, researcher_1, readonly_user, test_
         assert os.path.exists(asset_group_metadata_path)
         with open(asset_group_metadata_path, 'r') as asset_group_metadata_file:
             metadata_dict = json.load(asset_group_metadata_file)
-        request_json = metadata_dict.get('frontend_sightings_data')
-        assert request_json == data.get()
+        file_json = metadata_dict.get('frontend_sightings_data')
+        request_json = data.get()
+        # Stored data is a superset of what was sent so ony check fields sent
+        for key in request_json.keys():
+            if key != 'sightings':
+                assert request_json[key] == file_json[key]
+            else:
+                for sighting_num in range(len(request_json['sightings'])):
+                    for sighting_key in request_json['sightings'][sighting_num].keys():
+                        assert (
+                            request_json[key][sighting_num][sighting_key]
+                            == file_json[key][sighting_num][sighting_key]
+                        )
         asset_group_utils.delete_asset_group(
             flask_app_client, researcher_1, resp.json['guid']
         )

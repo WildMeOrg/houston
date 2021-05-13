@@ -70,14 +70,13 @@ def test_asset_addition(db, flask_app_client, staff_user):
         new_asset_1.delete()
         new_asset_2.delete()
         new_asset_3.delete()
+        with db.session.begin():
+            db.session.delete(new_asset_group)
         try:
             new_asset_group.delete()
         except sqlalchemy.exc.InvalidRequestError:  # already deleted
             pass
         new_researcher.delete()
-
-        with db.session.begin():
-            db.session.delete(new_asset_group)
 
 
 def add_file_asset_to_sighting(

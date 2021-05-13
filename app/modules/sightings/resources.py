@@ -22,9 +22,11 @@ from app.utils import HoustonException
 from . import parameters, schemas
 from .models import Sighting
 
+from app.modules import utils
 from app.extensions.api import abort
 import json
 import os
+from uuid import UUID
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 api = Namespace('sightings', description='Sightings')  # pylint: disable=invalid-name
@@ -513,3 +515,52 @@ class SightingByID(Resource):
         # TODO handle failure of feather deletion (when edm successful!)  out-of-sync == bad
         sighting.delete_cascade()
         return None
+
+
+@api.route('/<uuid:sighting_guid>/featured_asset_guid')
+@api.resolve_object_by_model(Sighting, 'sighting')
+class FeaturedAssetGuidBySightingID(Resource):
+    """
+    Featured Asset guid set and retrieval.
+    """
+
+    @api.login_required(oauth_scopes=['sightings:read'])
+    @api.permission_required(
+        permissions.ObjectAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'obj': kwargs['sighting'],
+            'action': AccessOperation.READ,
+        },
+    )
+    def get(self, sighting):
+        """
+        Get featured Asset guid.
+        """
+        return {'featured_asset_guid': '%s' % sighting.get_featured_asset_guid()}
+
+    @api.login_required(oauth_scopes=['sightings:write'])
+    @api.permission_required(
+        permissions.ObjectAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'obj': kwargs['sighting'],
+            'action': AccessOperation.WRITE,
+        },
+    )
+    def post(self, sighting):
+
+        request_in = json.loads(request.data)
+
+        context = api.commit_or_abort(
+            db.session,
+            default_error_message='Failed to update Sighting.featured_asset_guid.',
+        )
+        featured_asset_guid = request_in.get('featured_asset_guid', None)
+
+        success = False
+
+        if utils.is_valid_guid(featured_asset_guid):
+            sighting.set_featured_asset_guid(UUID(featured_asset_guid, version=4))
+            with context:
+                db.session.merge(sighting)
+            success = True
+        return {'success': success}

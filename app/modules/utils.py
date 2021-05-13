@@ -28,9 +28,10 @@ def fail_on_missing_static_folder(
             f'static folder improperly configured - could not locate a valid installation at: {folder}'
         )
 
+
 def is_valid_guid(guid):
     try:
-        uuid_obj = UUID(guid, version=4)
+        _ = UUID(guid, version=4)  # pylint: disable=W0612,W0641
     except ValueError:
         return False
     return True

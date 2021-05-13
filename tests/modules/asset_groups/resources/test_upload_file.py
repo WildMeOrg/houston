@@ -3,7 +3,6 @@
 import filecmp
 from os.path import join, basename
 
-from flask import current_app
 import tests.modules.asset_groups.resources.utils as asset_group_utils
 import tests.extensions.tus.utils as tus_utils
 
@@ -36,7 +35,7 @@ def test_create_open_submission(flask_app_client, regular_user, test_root, db):
         # TODO this is what the test checked, that there was not commit, what we are now specifically not permitting
         # assert temp_submission.commit is None
     finally:
-        current_app.git_backend.delete_remote_asset_group(temp_submission)
+        temp_submission.delete_remote()
         # Restore original state
         if temp_submission is not None:
             temp_submission.delete()
@@ -80,7 +79,7 @@ def test_submission_streamlined(flask_app_client, test_root, regular_user, db):
             'owner_guid',
         }
 
-        repo = current_app.git_backend.get_repository(temp_submission)
+        repo = temp_submission.get_repository()
 
         # compares file in local repo
         for filename in test_image_list:
@@ -91,7 +90,7 @@ def test_submission_streamlined(flask_app_client, test_root, regular_user, db):
         assert temp_submission.commit == repo.head.object.hexsha
         assert temp_submission.major_type == test_major_type
     finally:
-        current_app.git_backend.delete_remote_asset_group(temp_submission)
+        temp_submission.delete_remote()
 
         # Restore original state
         if temp_submission is not None:

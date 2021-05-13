@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=missing-docstring
-from flask import current_app
 import sqlalchemy
 
 from tests import utils
@@ -66,7 +65,7 @@ def test_asset_addition(db, flask_app_client, staff_user):
         sighting_utils.delete_sighting(
             flask_app_client, staff_user, str(new_sighting.guid)
         )
-        current_app.git_backend.delete_remote_asset_group(new_asset_group)
+        new_asset_group.delete_remote()
         new_asset_1.delete()
         new_asset_2.delete()
         new_asset_3.delete()
@@ -150,5 +149,5 @@ def test_asset_file_addition(db, flask_app_client, staff_user):
         new_researcher.delete()
         # assets are only cleaned up once the submissions are cleaned up
         for asset_group in new_researcher.asset_groups:
-            current_app.git_backend.delete_remote_asset_group(asset_group)
+            asset_group.delete_remote()
             asset_group.delete()

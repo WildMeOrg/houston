@@ -9,10 +9,7 @@ import logging
 from flask import current_app, request, session, render_template  # NOQA
 from flask_login import current_user  # NOQA
 import gitlab
-import git
-import json
 import os
-from pathlib import Path
 
 import keyword
 
@@ -51,7 +48,7 @@ class GitlabManager(object):
         self._gl_group = self.gl.groups.get(group_id, retry_transient_errors=True)
         return self._gl_group
 
-    def _get_gitlab_project(self, name):
+    def get_project(self, name):
         """Lookup a specific gitlab project/repo by name that is within the preconfigured namespace/group"""
         self._ensure_initialized()
 
@@ -119,26 +116,20 @@ class GitlabManager(object):
                     'GitLab remote failed to authenticate and/or initialize'
                 )
 
-    def _ensure_project(self, asset_group, additional_tags=[]):
-        group_path = asset_group.get_absolute_path()
-
+    def _ensure_project(
+        self, project_name, repo_path, project_type, description, additional_tags=[]
+    ):
         self._ensure_initialized()
 
-        project_name = str(asset_group.guid)
-        project = self._get_gitlab_project(project_name)
+        project = self.get_project(project_name)
 
         if project:
             log.info(
                 f'Found existing remote project in GitLab: {project.path_with_namespace}'
             )
-            # Clone remote repo
-            if os.path.exists(group_path):
-                asset_group.git_pull()
-            else:
-                asset_group.git_clone(project)
         else:
             tag_list = [
-                'type:%s' % (asset_group.major_type.name,),
+                'type:%s' % (project_type,),
             ]
             for tag in additional_tags:
                 if isinstance(tag, str):
@@ -146,12 +137,12 @@ class GitlabManager(object):
 
             log.info(
                 'Creating remote project in GitLab: '
-                f'{self.namespace.name}/{asset_group.guid} (tags: {tag_list})'
+                f'{self.namespace.name}/{project_name} (tags: {tag_list})'
             )
             project = self.gl.projects.create(
                 {
                     'path': project_name,
-                    'description': asset_group.description,
+                    'description': description,
                     'emails_disabled': True,
                     'namespace_id': self.namespace.id,
                     'visibility': 'private',
@@ -165,104 +156,26 @@ class GitlabManager(object):
 
         return project
 
-    def _ensure_repository_files(self, group_path, project):
+    def create_project(
+        self, project_name, repo_path, project_type, description, additional_tags=[]
+    ):
+        git_path = os.path.join(repo_path, '.git')
+        project = None
 
-        # AssetGroup Repo Structure:
-        #     _db/assetGroup/<asset_group GUID>/
-        #         - .git/
-        #         - _asset_group/
-        #         - - <user's uploaded data>
-        #         - _assets/
-        #         - - <symlinks into _asset_group/ folder> with name <asset GUID >.ext --> ../_asset_group/path/to/asset/original_name.ext
-        #         - metadata.json
-
-        if not os.path.exists(group_path):
-            # Initialize local repo
-            log.info('Creating asset_groups structure: %r' % (group_path,))
-            os.mkdir(group_path)
-
-        # Create the repo
-        git_path = os.path.join(group_path, '.git')
         if not os.path.exists(git_path):
-            repo = git.Repo.init(group_path)
-            assert len(repo.remotes) == 0
-            gitlab_remote_public_name = current_app.config.get('GITLAB_PUBLIC_NAME', None)
-            gitlab_remote_email = current_app.config.get('GITLAB_EMAIL', None)
-            assert None not in [gitlab_remote_public_name, gitlab_remote_email]
-            repo.git.config('user.name', gitlab_remote_public_name)
-            repo.git.config('user.email', gitlab_remote_email)
-        else:
-            repo = git.Repo(group_path)
+            project = self._ensure_project(
+                project_name, repo_path, project_type, description, additional_tags
+            )
 
-        if project is not None:
-            if len(repo.remotes) == 0:
-                origin = repo.create_remote('origin', project.web_url)
-            else:
-                origin = repo.remotes.origin
-            assert origin.url == project.web_url
+        return project
 
-        asset_group_path = os.path.join(group_path, '_asset_group')
-        if not os.path.exists(asset_group_path):
-            os.mkdir(asset_group_path)
-        Path(os.path.join(asset_group_path, '.touch')).touch()
-
-        assets_path = os.path.join(group_path, '_assets')
-        if not os.path.exists(assets_path):
-            os.mkdir(assets_path)
-        Path(os.path.join(assets_path, '.touch')).touch()
-
-        metatdata_path = os.path.join(group_path, 'metadata.json')
-        if not os.path.exists(metatdata_path):
-            with open(metatdata_path, 'w') as metatdata_file:
-                json.dump({}, metatdata_file)
-
-        with open(metatdata_path, 'r') as metatdata_file:
-            group_metadata = json.load(metatdata_file)
-
-        with open(metatdata_path, 'w') as metatdata_file:
-            json.dump(group_metadata, metatdata_file)
-
-        log.info('LOCAL  REPO: %r' % (repo.working_tree_dir,))
-        log.info('REMOTE REPO: %r' % (project.web_url,))
-
-        return repo
-
-    def ensure_repository(self, asset_group):
-        if self.get_repository(asset_group) is None:
-            self.create_repository(asset_group)
-
-    def create_repository(self, asset_group, additional_tags=[]):
-        group_path = asset_group.get_absolute_path()
-        git_path = os.path.join(group_path, '.git')
-
-        if os.path.exists(git_path):
-            repo = git.Repo(group_path)
-        else:
-            project = self._ensure_project(asset_group, additional_tags)
-            repo = self._ensure_repository_files(group_path, project)
-
-        return repo
-
-    def get_repository(self, asset_group):
-        if asset_group is None:
-            return None
-        group_path = asset_group.get_absolute_path()
-        git_path = os.path.join(group_path, '.git')
-
-        if os.path.exists(git_path):
-            repo = git.Repo(group_path)
-        else:
-            repo = None
-
-        return repo
-
-    def is_asset_group_on_remote(self, asset_group_uuid):
-        project = self._get_gitlab_project(asset_group_uuid)
+    def is_project_on_remote(self, project_name):
+        project = self.get_project(project_name)
         return project is not None
 
-    def delete_remote_asset_group(self, asset_group):
+    def delete_remote_project_by_name(self, project_name):
         self._ensure_initialized()
-        project = self._get_gitlab_project(asset_group.guid)
+        project = self.get_project(project_name)
         if project:
             self.delete_remote_project(project)
 

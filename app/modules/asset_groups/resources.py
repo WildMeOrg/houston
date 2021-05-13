@@ -173,7 +173,7 @@ class AssetGroupsStreamlined(Resource):
             db.session.add(asset_group)
 
         # Get the repo to make sure it's configured
-        current_app.git_backend.get_repository(asset_group)
+        asset_group.ensure_repository()
 
         for upload_file in request.files.getlist('files'):
             asset_group.git_write_upload_file(upload_file)
@@ -213,7 +213,7 @@ class AssetGroupByID(Resource):
         asset_group_guid = asset_group_guids[0]
         assert isinstance(asset_group_guid, uuid.UUID)
 
-        if current_app.git_backend.is_asset_group_on_remote(asset_group_guid):
+        if AssetGroup.is_on_remote(asset_group_guid):
             # Asset_group is not local but is on remote
             log.info(f'Asset_group {asset_group_guid} on remote but not local')
             raise werkzeug.exceptions.PreconditionRequired

@@ -1,12 +1,14 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=invalid-name,missing-docstring
 import os
+import pathlib
 import pytest
 import shutil
 
 
-def test_create_submission_from_tus(db, researcher_1, test_root):
+def test_create_submission_from_tus(flask_app, db, researcher_1, test_root):
 
+    from app.extensions.tus import tus_upload_dir
     from app.modules.asset_groups.models import AssetGroup
     from tests.modules.sightings.resources.utils import (
         prep_tus_dir,
@@ -16,6 +18,9 @@ def test_create_submission_from_tus(db, researcher_1, test_root):
     tid = get_transaction_id()  # '11111111-1111-1111-1111-111111111111'
 
     # first no such dir exists
+    transaction_dir = pathlib.Path(tus_upload_dir(flask_app, transaction_id=tid))
+    if (transaction_dir).exists():
+        shutil.rmtree(transaction_dir)
     with pytest.raises(OSError):
         sub = AssetGroup.create_from_tus('PYTEST', researcher_1, tid)
 

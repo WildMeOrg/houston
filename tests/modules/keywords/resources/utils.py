@@ -24,12 +24,14 @@ def patch_keyword(flask_app_client, user, keyword_guid, data, expected_status_co
     return response
 
 
-def create_keyword(flask_app_client, user, value, expected_status_code=200):
+def create_keyword(
+    flask_app_client, user, value, source='user', expected_status_code=200
+):
     if user:
         with flask_app_client.login(user, auth_scopes=('keywords:write',)):
             response = flask_app_client.post(
                 PATH,
-                data=json.dumps({'value': value}),
+                data=json.dumps({'value': value, 'source': source}),
                 content_type='application/json',
             )
     else:

@@ -7,6 +7,12 @@ Keywords database models
 from app.extensions import db, HoustonModel
 
 import uuid
+import enum
+
+
+class KeywordSource(str, enum.Enum):
+    user = 'user'
+    wbia = 'wbia'
 
 
 class Keyword(db.Model, HoustonModel):
@@ -17,7 +23,13 @@ class Keyword(db.Model, HoustonModel):
     guid = db.Column(
         db.GUID, default=uuid.uuid4, primary_key=True
     )  # pylint: disable=invalid-name
-    value = db.Column(db.String, nullable=False)
+    value = db.Column(db.String, nullable=False, unique=True)
+    source = db.Column(
+        db.Enum(KeywordSource),
+        default=KeywordSource.user,
+        index=True,
+        nullable=False,
+    )
 
     def get_value(self):
         return self.value
@@ -27,6 +39,7 @@ class Keyword(db.Model, HoustonModel):
             '<{class_name}('
             'guid={self.guid}, '
             'value={self.value}, '
+            'source={self.source}, '
             ')>'.format(class_name=self.__class__.__name__, self=self)
         )
 

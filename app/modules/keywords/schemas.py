@@ -20,6 +20,7 @@ class BaseKeywordSchema(ModelSchema):
         fields = (
             Keyword.guid.key,
             Keyword.value.key,
+            Keyword.source.key,
         )
         dump_only = (Keyword.guid.key,)
 

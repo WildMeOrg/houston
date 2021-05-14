@@ -143,6 +143,7 @@ class ModuleActionRule(DenyAbortMixin, Rule):
         from app.modules.projects.models import Project
         from app.modules.assets.models import Asset
         from app.modules.users.models import User
+        from app.modules.keywords.models import Keyword
 
         has_permission = False
 
@@ -162,12 +163,14 @@ class ModuleActionRule(DenyAbortMixin, Rule):
                 has_permission = self._is_module(
                     (Encounter, Sighting, Individual, Annotation)
                 )
+            if self._is_module(Keyword):
+                has_permission = True  # anyone can read keywords
 
         elif self._action is AccessOperation.WRITE:
             if self._is_module(HoustonConfig):
                 has_permission = user.is_admin
             # Any users can write (create) a user, asset_group, sighting and Encounter, TODO, decide on AssetGroup
-            elif self._is_module((AssetGroup, User, Encounter, Sighting)):
+            elif self._is_module((AssetGroup, User, Encounter, Sighting, Keyword)):
                 has_permission = True
             elif self._is_module(Annotation):
                 has_permission = user.is_researcher
@@ -259,6 +262,7 @@ class ObjectActionRule(DenyAbortMixin, Rule):
         from app.modules.sightings.models import Sighting
         from app.modules.assets.models import Asset
         from app.modules.users.models import User
+        from app.modules.keywords.models import Keyword
 
         # The exception to the rule of owners and privileged users can do anything is for access to raw
         # assets as this contains potentially extremely sensitive information and is only required for the
@@ -305,6 +309,11 @@ class ObjectActionRule(DenyAbortMixin, Rule):
                 has_permission = self._obj.user_can_edit_all_encounters(user)
             if self._action == AccessOperation.READ:
                 has_permission = user in self._obj.get_owners()
+
+        # Keyword can be read by anyone
+        if not has_permission and isinstance(self._obj, Keyword):
+            if self._action == AccessOperation.READ:
+                has_permission = True
 
         return has_permission
 

@@ -19,11 +19,11 @@ from app.modules.users import permissions
 from app.modules.users.permissions.types import AccessOperation
 from app.utils import HoustonException
 
+from app.extensions.api import abort
 from . import parameters, schemas
 from .models import Sighting
 
 from app.modules import utils
-from app.extensions.api import abort
 import json
 import os
 from uuid import UUID

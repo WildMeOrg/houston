@@ -185,6 +185,8 @@ class Sighting(db.Model, FeatherModel):
         for asset in self.get_assets():
             json, err = asset_schema.dump(asset)
             edm_json['assets'].append(json)
+        edm_json['featuredAssetGuid'] = self.get_featured_asset_guid()
+
         return edm_json
 
     # pass results-json for sighting.encounters from changes made (e.g. PATCH) and update houston encounters accordingly

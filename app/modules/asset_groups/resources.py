@@ -437,7 +437,7 @@ class AssetGroupSightingCommit(Resource):
             req_data = sighting_metadata['encounters'][encounter_num]
             res_data = result_data['encounters'][encounter_num]
             try:
-                submitter_guid = asset_group_sighting.owner_guid
+                submitter_guid = asset_group.owner_guid
 
                 if asset_group_metadata.anonymous_submitter:
                     submitter_guid = asset_group_metadata.anonymous_submitter.guid
@@ -456,6 +456,17 @@ class AssetGroupSightingCommit(Resource):
                     'Problem with creating encounter: ',
                     f'{ex} on encounter {encounter_num}: enc={req_data}',
                 )
+
+        context = api.commit_or_abort(
+            db.session, default_error_message='Failed to persist new houston Sighting'
+        )
+        with context:
+            db.session.add(sighting)
+            for encounter in sighting.get_encounters():
+                db.session.add(encounter)
+
+        asset_group_sighting.stage = AssetGroupSightingStage.processed
+
         return sighting
 
 

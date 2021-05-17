@@ -52,4 +52,8 @@ def downgrade():
         batch_op.drop_index(batch_op.f('ix_keyword_source'))
 
     op.drop_table('keyword')
+
+    # Remove the enum created as part of the upgrade above
+    sa.Enum(name='keywordsource').drop(op.get_bind(), checkfirst=False)
+
     # ### end Alembic commands ###

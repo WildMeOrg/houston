@@ -57,7 +57,6 @@ class Cleanup(object):
         log.error(
             f'Bailing on {self.name} creation: {log_message} (error_fields {error_fields})'
         )
-        breakpoint()
 
         for alloc_guid in self.allocated_guids:
             if alloc_guid['type'] == Sighting:

@@ -210,7 +210,7 @@ class AssetGroupMetadata(object):
         else:  # Form upload by logged in user
             unprocessed_groups = 0
             for group in current_user.asset_groups:
-                if not group.bulk_upload and not group.is_processed():
+                if not group.is_processed() and not group.bulk_upload:
                     unprocessed_groups += 1
             # TODO arbitrary limit chosen for now
             if unprocessed_groups > 10:
@@ -409,6 +409,8 @@ class AssetGroupSighting(db.Model, HoustonModel):
     )
     asset_group = db.relationship('AssetGroup', backref=db.backref('sightings'))
 
+    meta = db.Column(db.JSON, nullable=True)
+
     def delete(self):
         with db.session.begin(subtransactions=True):
             for job in self.jobs:
@@ -453,9 +455,18 @@ class AssetGroup(db.Model, HoustonModel):
     owner_guid = db.Column(
         db.GUID, db.ForeignKey('user.guid'), index=True, nullable=False
     )
-    owner = db.relationship('User', backref=db.backref('asset_groups'))
+    owner = db.relationship(
+        'User', backref=db.backref('asset_groups'), foreign_keys=[owner_guid]
+    )
 
-    request_metadata = None
+    submitter_guid = db.Column(
+        db.GUID, db.ForeignKey('user.guid'), index=True, nullable=True
+    )
+    submitter = db.relationship(
+        'User',
+        backref=db.backref('submitted_asset_groups'),
+        foreign_keys=[submitter_guid],
+    )
 
     def __repr__(self):
         return (
@@ -466,7 +477,15 @@ class AssetGroup(db.Model, HoustonModel):
 
     @property
     def bulk_upload(self):
-        return self.request_metadata.bulk_upload if self.request_metadata else False
+        return (
+            self.meta['bulkUpload'] if self.meta and 'bulkUpload' in self.meta else False
+        )
+
+    @property
+    def anonymous(self):
+        from app.modules.users.models import User
+
+        return self.owner is User.get_public_user()
 
     def git_write_upload_file(self, upload_file):
         repo = current_app.git_backend.create_repository(self)
@@ -529,8 +548,13 @@ class AssetGroup(db.Model, HoustonModel):
         )
         asset_group_metadata['commit_houston_api_version'] = str(version)
 
-        metadata_request = self.request_metadata.request if self.request_metadata else {}
-        asset_group_metadata['frontend_sightings_data'] = metadata_request
+        if 'frontend_sightings_data' not in asset_group_metadata and self.meta:
+            metadata_request = self.meta
+            metadata_request['sightings'] = []
+            for sighting in self.sightings:
+                metadata_request['sightings'].append(sighting.meta)
+
+            asset_group_metadata['frontend_sightings_data'] = metadata_request
 
         with open(asset_group_metadata_path, 'w') as asset_group_metadata_file:
             json.dump(asset_group_metadata, asset_group_metadata_file)
@@ -622,14 +646,25 @@ class AssetGroup(db.Model, HoustonModel):
         return asset_group
 
     @classmethod
-    def create_from_tus(cls, description, owner, transaction_id, paths=None):
+    def create_from_tus(
+        cls, description, owner, transaction_id, paths=None, submitter=None
+    ):
         assert transaction_id is not None
+        if owner is not None and not owner.is_anonymous:
+            group_owner = owner
+        else:
+            from app.modules.users.models import User
+
+            group_owner = User.get_public_user()
         asset_group = AssetGroup(
             major_type=AssetGroupMajorType.filesystem,
             description=description,
+            owner_guid=group_owner.guid,
         )
-        if owner is not None and not owner.is_anonymous:
-            asset_group.owner = owner
+
+        if submitter:
+            asset_group.submitter = submitter
+
         with db.session.begin(subtransactions=True):
             db.session.add(asset_group)
 
@@ -942,20 +977,6 @@ class AssetGroup(db.Model, HoustonModel):
             'commit_houston_api_version', version
         )
 
-        # Only re parse metadata if it's present and new.
-        request_json = metadata_dict.get('frontend_sightings_data')
-        # TODO Are there cases where this does need to happen?
-        if request_json != {} and not self.request_metadata:
-            self.request_metadata = AssetGroupMetadata(
-                request_json, self.get_absolute_path() + '/_asset_group'
-            )
-            log.info(f'New metadata created {self.request_metadata}')
-            try:
-                self.request_metadata.process_request()
-            except AssetGroupMetadataError:
-                # Presuming this is not a filesystem asset group
-                pass
-
         with db.session.begin(subtransactions=True):
             db.session.merge(self)
         db.session.refresh(self)
@@ -987,7 +1008,9 @@ class AssetGroup(db.Model, HoustonModel):
             for sighting in self.sightings:
                 if sighting.stage != stage:
                     return False
-        # TODO, what if no sightings?
+        else:
+            # If there are no sightings, the only stage that is valid is unknown
+            return stage == AssetGroupSightingStage.unknown
         return True
 
     def is_detection_in_progress(self):
@@ -996,10 +1019,21 @@ class AssetGroup(db.Model, HoustonModel):
     def is_processed(self):
         return self.is_completely_in_stage(AssetGroupSightingStage.processed)
 
+    def get_asset_for_file(self, filename):
+        for asset in self.assets:
+            if asset.path == filename:
+                return asset
+        return None
+
     def begin_ia_pipeline(self, metadata):
         assert len(metadata.detection_configs) == 1
-        for sighting in range(metadata.num_sightings):
-            new_sighting = AssetGroupSighting(owner_guid=self.guid)
+        assert metadata.data_processed == AssetGroupMetadata.DataProcessed.complete
+
+        for sighting_meta in metadata.request['sightings']:
+            new_sighting = AssetGroupSighting(
+                owner_guid=self.guid,
+                meta=dict(sighting_meta),
+            )
             if not metadata.detection_configs[0]:
                 new_sighting.stage = AssetGroupSightingStage.curation
             else:
@@ -1007,36 +1041,21 @@ class AssetGroup(db.Model, HoustonModel):
                 # TODO for each detection config create the required jobs in the AssetGroupSighting
                 # and begin them in wbia
 
-            metadata.request['sightings'][sighting]['assetGroupSightingGuid'] = str(
-                new_sighting.guid
-            )
             with db.session.begin(subtransactions=True):
                 db.session.add(new_sighting)
             self.sightings.append(new_sighting)
 
         # make sure the repo is created
         current_app.git_backend.ensure_repository(self)
-        self.request_metadata = metadata
+
+        # Store the metadata in the AssetGroup but not the sightings, that is stored on the AssetGroupSightings
+        self.meta = dict(metadata.request)
+        del self.meta['sightings']
+
         description = 'Adding Creation metadata'
         if metadata.description != '':
             description = metadata.description
         self.git_commit(description)
-
-    def get_metadata_for_sighting(self, asset_group_sighting):
-        # Find the metadata for this AssetGroupSighting.
-        # This feels a bit laborious, is there a more pythonic way to do this?
-        import uuid
-
-        if not self.request_metadata:
-            self.update_metadata_from_repo(None)
-
-        for metadata_sighting in self.request_metadata.get_sightings():
-            if (
-                uuid.UUID(metadata_sighting['assetGroupSightingGuid'])
-                == asset_group_sighting.guid
-            ):
-                return metadata_sighting
-        return None
 
     # TODO should this blow away remote repo?  by default?
     def delete(self):

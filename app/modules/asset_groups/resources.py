@@ -111,12 +111,12 @@ class AssetGroups(Resource):
                 metadata.owner,
                 metadata.tus_transaction_id,
                 metadata.files,
+                metadata.anonymous_submitter,
             )
-            db.session.add(asset_group)
 
         asset_group.begin_ia_pipeline(metadata)
         log.info(
-            f'AssetGroup {asset_group.guid}:"{metadata.description}" {asset_group.request_metadata} created by {metadata.owner.email} in {timer.elapsed()} seconds'
+            f'AssetGroup {asset_group.guid}:"{metadata.description}" created by {metadata.owner.email} in {timer.elapsed()} seconds'
         )
         return asset_group
 
@@ -386,8 +386,8 @@ class AssetGroupSightingCommit(Resource):
                 % (asset_group_sighting.guid, asset_group_sighting.stage),
             )
 
-        sighting_metadata = asset_group.get_metadata_for_sighting(asset_group_sighting)
-        if not sighting_metadata:
+        request_data = asset_group_sighting.meta
+        if not request_data:
             abort(
                 HTTPStatus.BAD_REQUEST,
                 f'AssetGroupSighting {asset_group_sighting.guid} has no metadata',
@@ -395,7 +395,7 @@ class AssetGroupSightingCommit(Resource):
 
         # Create sighting in EDM
         result_data, message, error = current_app.edm.request_passthrough_result(
-            'sighting.data', 'post', {'data': sighting_metadata}, ''
+            'sighting.data', 'post', {'data': request_data}, ''
         )
 
         if not result_data:
@@ -407,20 +407,20 @@ class AssetGroupSightingCommit(Resource):
         # if we get here, edm has made the sighting.  now we have to consider encounters contained within,
         # and make houston for the sighting + encounters
 
-        # encounters via sighting_metadata and edm (result_data) need to have same count!
-        if ('encounters' in sighting_metadata and 'encounters' not in result_data) or (
-            'encounters' not in sighting_metadata and 'encounters' in result_data
+        # encounters via request_data and edm (result_data) need to have same count!
+        if ('encounters' in request_data and 'encounters' not in result_data) or (
+            'encounters' not in request_data and 'encounters' in result_data
         ):
             cleanup.rollback_and_abort(
-                'Missing encounters between sighting_metadata and result',
+                'Missing encounters between request_data and result',
                 'Sighting.post missing encounters in one of %r or %r'
-                % (sighting_metadata, result_data),
+                % (request_data, result_data),
             )
-        if not len(sighting_metadata['encounters']) == len(result_data['encounters']):
+        if not len(request_data['encounters']) == len(result_data['encounters']):
             cleanup.rollback_and_abort(
                 'Imbalance in encounters between data and result',
                 'Sighting.post imbalanced encounters in %r or %r'
-                % (sighting_metadata, result_data),
+                % (request_data, result_data),
             )
 
         sighting = Sighting(
@@ -428,27 +428,28 @@ class AssetGroupSightingCommit(Resource):
             version=result_data.get('version', 2),
         )
 
+        # Add the assets for all of the encounters to the created sighting object
+        # TODO removed until the delete side of it works
+        # for encounter in request_data['encounters']:
+        #     for reference in encounter['assetReferences']:
+        #         asset = asset_group.get_asset_for_file(reference)
+        #         assert asset
+        #         sighting.add_asset(asset)
+
         cleanup.add_object(sighting)
 
-        asset_group_metadata = asset_group.request_metadata
-        assert asset_group_metadata
-
-        for encounter_num in range(len(sighting_metadata['encounters'])):
-            req_data = sighting_metadata['encounters'][encounter_num]
+        for encounter_num in range(len(request_data['encounters'])):
+            req_data = request_data['encounters'][encounter_num]
             res_data = result_data['encounters'][encounter_num]
             try:
-                submitter_guid = asset_group.owner_guid
-
-                if asset_group_metadata.anonymous_submitter:
-                    submitter_guid = asset_group_metadata.anonymous_submitter.guid
-
                 new_encounter = Encounter(
                     guid=res_data['id'],
                     version=res_data.get('version', 2),
                     owner_guid=asset_group.owner_guid,
-                    submitter_guid=submitter_guid,
-                    public=asset_group_metadata.anonymous,
+                    submitter_guid=asset_group.submitter_guid,
+                    public=asset_group.anonymous,
                 )
+                # TODO, we now have an encounter, add the appropriate annotations to it
                 sighting.add_encounter(new_encounter)
 
             except Exception as ex:
@@ -465,7 +466,8 @@ class AssetGroupSightingCommit(Resource):
             for encounter in sighting.get_encounters():
                 db.session.add(encounter)
 
-        asset_group_sighting.stage = AssetGroupSightingStage.processed
+        # AssetGroupSighting is finished, all subsequent processing is on the Sighting
+        asset_group_sighting.delete()
 
         return sighting
 

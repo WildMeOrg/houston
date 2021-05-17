@@ -43,102 +43,6 @@ def initialize_orgs_from_edm(context, edm_authentication=None):
 
 
 @app_context_task
-def initialize_gitlab_asset_groups(context, email, dryrun=False):
-    """
-    Create test asset_groups in GitLab
-
-    Command Line:
-    > invoke app.initialize.initialize-gitlab-asset-groups --email jason@wildme.org
-    """
-    from app.modules.users.models import User
-    from app.modules.asset_groups.models import AssetGroup, AssetGroupMajorType
-    from app.extensions import db
-    from flask import current_app
-    import config
-    import uuid
-    import os
-
-    # This is a tag applied to the repository within GitLab. Whitelisted
-    # repositories are excluded from the externally automated
-    # cleanup procedure.
-    WHITELIST_TAG = 'type:pytest-required'
-
-    user = User.find(email=email)
-    # Coverage runs this a user@example.com who does not have admin role so this check was removed as
-    # the initialisation works without it
-    # assert user.is_admin, 'Specified user must be an admin'
-
-    if user is None:
-        raise Exception("User with email '%s' does not exist." % email)
-
-    test_root = os.path.join(
-        config.TestingConfig.PROJECT_ROOT, 'tests', 'asset_groups', 'test-000'
-    )
-    image_data = [
-        (
-            uuid.UUID('00000000-0000-0000-0000-000000000011'),
-            os.path.join(test_root, 'zebra.jpg'),
-        ),
-        (
-            uuid.UUID('00000000-0000-0000-0000-000000000012'),
-            os.path.join(test_root, 'fluke.jpg'),
-        ),
-    ]
-    asset_group_data = [
-        (uuid.UUID('00000000-0000-0000-0000-000000000001'), []),
-        (uuid.UUID('00000000-0000-0000-0000-000000000003'), image_data),
-    ]
-
-    for asset_group_guid, asset_group_data in asset_group_data:
-        if current_app.git_backend.is_asset_group_on_remote(asset_group_guid):
-            log.info(f'AssetGroup {asset_group_guid} already on GitLab')
-        else:
-            log.info(f'AssetGroup {asset_group_guid} missing on GitLab, provisioning...')
-
-            asset_group = AssetGroup.query.get(asset_group_guid)
-
-            if asset_group is None:
-                log.info(f'AssetGroup {asset_group_guid} missing locally, creating...')
-                args = {
-                    'guid': asset_group_guid,
-                    'owner_guid': user.guid,
-                    'major_type': AssetGroupMajorType.test,
-                    'description': 'This is a required PyTest asset_group (do not delete)',
-                }
-                asset_group = AssetGroup(**args)
-                with db.session.begin():
-                    db.session.add(asset_group)
-                db.session.refresh(asset_group)
-                log.info('AssetGroup %r created' % (asset_group,))
-            else:
-                log.info('AssetGroup %r found locally' % (asset_group,))
-            if dryrun:
-                log.info('DRYRUN: AssetGroup creation skipped...')
-                continue
-
-            repo, project = asset_group.ensure_repository(additional_tags=[WHITELIST_TAG])
-
-            filepath_guid_mapping = {}
-            for file_guid, filename in asset_group_data:
-                filepath = os.path.abspath(os.path.expanduser(filename))
-                if not os.path.exists(filepath):
-                    raise IOError('The path %r does not exist.' % (filepath,))
-                repo_filepath = asset_group.git_copy_file_add(filepath)
-                filepath_guid_mapping[repo_filepath] = file_guid
-
-            asset_group.git_commit(
-                'Initial commit for testing',
-                existing_filepath_guid_mapping=filepath_guid_mapping,
-            )
-
-            asset_group.git_push()
-
-            print('Created and pushed new asset_group: %r' % (asset_group,))
-
-        current_app.git_backend.assert_taglist(asset_group_guid, WHITELIST_TAG)
-
-
-@app_context_task
 def all(context, edm_authentication=None, skip_on_failure=False):
     log.info('Initializing tasks...')
 
@@ -146,7 +50,6 @@ def all(context, edm_authentication=None, skip_on_failure=False):
         initialize_edm_admin_user(context)
         initialize_users_from_edm(context, edm_authentication=edm_authentication)
         initialize_orgs_from_edm(context, edm_authentication=edm_authentication)
-        # initialize_gitlab_asset_groups(context)
     except AssertionError as exception:
         if not skip_on_failure:
             log.error('%s', exception)

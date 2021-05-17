@@ -278,7 +278,7 @@ class Sightings(Resource):
             all_arefs, paths_wanted = _validate_asset_references(asset_references)
         except Exception as ex:
             cleanup.rollback_and_abort(
-                'Invalid assetReference data in encounter(s)',
+                'Invalid assetReference data',
                 '_validate_asset_references threw %r on assets=%r'
                 % (ex, request_in['assetReferences']),
             )
@@ -476,7 +476,9 @@ class SightingByID(Resource):
                 sighting.delete_cascade()  # this will get rid of our encounter(s) as well so no need to rectify_edm_encounters()
                 sighting = None
             else:
-                sighting.rectify_edm_encounters(rdata['result'].get('encounters'))
+                sighting.rectify_edm_encounters(
+                    rdata['result'].get('encounters'), current_user
+                )
                 new_version = rdata['result'].get('version', None)
                 if new_version is not None:
                     sighting.version = new_version

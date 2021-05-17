@@ -170,7 +170,7 @@ class Sighting(db.Model, FeatherModel):
         return edm_json
 
     # pass results-json for sighting.encounters from changes made (e.g. PATCH) and update houston encounters accordingly
-    def rectify_edm_encounters(self, edm_encs_json):
+    def rectify_edm_encounters(self, edm_encs_json, user=None):
         log.debug(f' RECTIFY IN {edm_encs_json}')
         edm_map = {}  # id => version of new results
         if edm_encs_json:
@@ -190,8 +190,17 @@ class Sighting(db.Model, FeatherModel):
                             f'houston Encounter {enc.guid} VERSION UPDATED {edm_map[str(enc.guid)]} > {enc.version}'
                         )
                     del edm_map[str(enc.guid)]
+
         # now any left should be new encounters from edm
+        from app.modules.encounters.models import Encounter
+
         for enc_id in edm_map.keys():
-            log.debug(
-                f'houston Encounter {enc_id} NEWLY ADDED ENCOUNTER = {edm_map[enc_id]}'
+            log.debug(f'adding new houston Encounter guid={enc_id}')
+            user_guid = user.guid if user else None
+            encounter = Encounter(
+                guid=enc_id,
+                version=edm_map[enc_id].get('version', 3),
+                owner_guid=user_guid,
+                submitter_guid=user_guid,
             )
+            self.add_encounter(encounter)

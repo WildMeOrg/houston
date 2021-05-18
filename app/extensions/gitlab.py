@@ -256,16 +256,6 @@ class GitlabManager(object):
 
         return repo
 
-    def assert_taglist(self, asset_group_uuid, whitelist_tag):
-        project_name = str(asset_group_uuid)
-        project = self._get_gitlab_project(project_name)
-        assert (
-            whitelist_tag in project.tag_list
-        ), 'Project %r needs to be re-provisioned: %r' % (
-            project,
-            project.tag_list,
-        )
-
     def is_asset_group_on_remote(self, asset_group_uuid):
         project = self._get_gitlab_project(asset_group_uuid)
         return project is not None

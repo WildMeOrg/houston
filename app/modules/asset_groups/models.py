@@ -401,7 +401,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
         default=AssetGroupSightingStage.unknown,
         nullable=False,
     )
-    owner_guid = db.Column(
+    asset_group_guid = db.Column(
         db.GUID,
         db.ForeignKey('asset_group.guid'),
         index=True,
@@ -1031,7 +1031,7 @@ class AssetGroup(db.Model, HoustonModel):
 
         for sighting_meta in metadata.request['sightings']:
             new_sighting = AssetGroupSighting(
-                owner_guid=self.guid,
+                asset_group_guid=self.guid,
                 meta=dict(sighting_meta),
             )
             if not metadata.detection_configs[0]:

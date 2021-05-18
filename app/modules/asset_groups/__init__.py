@@ -16,7 +16,13 @@ def init_app(app, **kwargs):
     api_v1.add_oauth_scope(
         'asset_groups:write', 'Provide write access to Asset_groups details'
     )
-
+    api_v1.add_oauth_scope(
+        'asset_group_sightings:read', 'Provide access to Asset_group_sightings details'
+    )
+    api_v1.add_oauth_scope(
+        'asset_group_sightings:write',
+        'Provide write access to Asset_group_sightings details',
+    )
     # Touch underlying modules
     from . import models, resources  # NOQA
 

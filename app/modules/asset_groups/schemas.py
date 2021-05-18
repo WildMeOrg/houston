@@ -10,7 +10,7 @@ from flask_restx_patched import ModelSchema
 from .models import AssetGroup, AssetGroupSighting
 
 
-class AssetGroupSightingSchema(ModelSchema):
+class BaseAssetGroupSightingSchema(ModelSchema):
     """
     Asset_group sighting schema
     """
@@ -20,6 +20,19 @@ class AssetGroupSightingSchema(ModelSchema):
         model = AssetGroupSighting
         fields = (AssetGroupSighting.guid.key,)
         dump_only = (AssetGroupSighting.guid.key,)
+
+
+class DetailedAssetGroupSightingSchema(BaseAssetGroupSightingSchema):
+    """
+    Detailed Asset_group_sighting schema exposes all useful fields.
+    """
+
+    class Meta(BaseAssetGroupSightingSchema.Meta):
+        fields = BaseAssetGroupSightingSchema.Meta.fields + (
+            AssetGroupSighting.stage.key,
+            AssetGroupSighting.config.key,
+        )
+        dump_only = BaseAssetGroupSightingSchema.Meta.dump_only
 
 
 class BaseAssetGroupSchema(ModelSchema):
@@ -73,7 +86,7 @@ class DetailedAssetGroupSchema(CreateAssetGroupSchema):
         many=True,
     )
     sightings = base_fields.Nested(
-        'AssetGroupSightingSchema',
+        'BaseAssetGroupSightingSchema',
         many=True,
     )
 

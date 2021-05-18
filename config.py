@@ -132,6 +132,7 @@ class BaseConfig(object):
         'assets',
 
         # Miscellaneous
+        'keywords',
         'fileuploads',
         'collaborations',
         'notifications',

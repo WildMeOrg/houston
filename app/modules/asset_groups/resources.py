@@ -8,6 +8,7 @@ RESTful API Asset_groups resources
 import logging
 import werkzeug
 import uuid
+import json
 
 from flask import request, current_app
 from flask_login import current_user
@@ -21,7 +22,11 @@ from app.modules.users import permissions
 from app.modules.users.permissions.types import AccessOperation
 
 from . import parameters, schemas
-from .metadata import AssetGroupMetadataError, CreateAssetGroupMetadata
+from .metadata import (
+    AssetGroupMetadataError,
+    CreateAssetGroupMetadata,
+    PatchAssetGroupSightingMetadata,
+)
 from .models import (
     AssetGroup,
     AssetGroupSighting,
@@ -75,7 +80,6 @@ class AssetGroups(Resource):
         """
         from app.extensions.elapsed_time import ElapsedTime
         from app.modules.users.models import User
-        import json
 
         timer = ElapsedTime()
         metadata = CreateAssetGroupMetadata(json.loads(request.data))
@@ -345,11 +349,69 @@ class AssetGroupByID(Resource):
         return None
 
 
-@api.route('/sighting/<uuid:asset_group_sighting_guid>/commit')
-@api.login_required(oauth_scopes=['asset_groups:write'])
+@api.route('/sighting/<uuid:asset_group_sighting_guid>')
 @api.response(
     code=HTTPStatus.NOT_FOUND,
-    description='Asset_group not found.',
+    description='Asset_group_sighting not found.',
+)
+@api.resolve_object_by_model(AssetGroupSighting, 'asset_group_sighting')
+class AssetGroupSightingByID(Resource):
+    """
+    The Asset Group Sighting may be read or patched as part of curation
+    """
+
+    @api.permission_required(
+        permissions.ObjectAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'obj': kwargs['asset_group_sighting'],
+            'action': AccessOperation.READ,
+        },
+    )
+    @api.response(schemas.DetailedAssetGroupSightingSchema())
+    @api.login_required(oauth_scopes=['asset_group_sightings:read'])
+    def get(self, asset_group_sighting):
+        """
+        Get Asset_group_sighting details by ID.
+        """
+        return asset_group_sighting
+
+    @api.permission_required(
+        permissions.ObjectAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'obj': kwargs['asset_group_sighting'],
+            'action': AccessOperation.WRITE,
+        },
+    )
+    @api.login_required(oauth_scopes=['asset_group_sightings:write'])
+    @api.parameters(parameters.PatchAssetGroupSightingDetailsParameters())
+    @api.response(schemas.DetailedAssetGroupSightingSchema())
+    def patch(self, args, asset_group_sighting):
+        patchData = PatchAssetGroupSightingMetadata(json.loads(request.data))
+        try:
+            patchData.process_request(asset_group_sighting)
+        except AssetGroupMetadataError as error:
+            abort(
+                success=False,
+                passed_message=error.message,
+                code=error.status_code,
+            )
+        context = api.commit_or_abort(
+            db.session,
+            default_error_message='Failed to update Asset_group_sighting details.',
+        )
+        with context:
+            parameters.PatchAssetGroupSightingDetailsParameters.perform_patch(
+                args, obj=asset_group_sighting
+            )
+            db.session.merge(asset_group_sighting)
+        return asset_group_sighting
+
+
+@api.route('/sighting/<uuid:asset_group_sighting_guid>/commit')
+@api.login_required(oauth_scopes=['asset_group_sightings:write'])
+@api.response(
+    code=HTTPStatus.NOT_FOUND,
+    description='Asset_group_sighting not found.',
 )
 @api.resolve_object_by_model(AssetGroupSighting, 'asset_group_sighting')
 class AssetGroupSightingCommit(Resource):

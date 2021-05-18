@@ -244,6 +244,10 @@ class ObjectActionRule(DenyAbortMixin, Rule):
         was_table_driven, has_permission = self.any_table_driven_permission()
 
         if was_table_driven:
+            if not has_permission:
+                log.info(
+                    'Access permission denied for %r by %r' % (self._obj, current_user)
+                )
             return has_permission
 
         # Anyone can read public data, even anonymous users

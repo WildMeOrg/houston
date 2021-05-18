@@ -4,7 +4,8 @@ Annotations database models
 --------------------
 """
 
-from app.extensions import db, FeatherModel
+from app.extensions import db, HoustonModel
+from app.modules.keywords.models import Keyword, KeywordSource
 
 import uuid
 import logging
@@ -13,7 +14,16 @@ import json
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
 
-class Annotation(db.Model, FeatherModel):
+class AnnotationKeywords(db.Model, HoustonModel):
+    annotation_guid = db.Column(
+        db.GUID, db.ForeignKey('annotation.guid'), primary_key=True
+    )
+    keyword_guid = db.Column(db.GUID, db.ForeignKey('keyword.guid'), primary_key=True)
+    annotation = db.relationship('Annotation', back_populates='keywords')
+    keyword = db.relationship('Keyword')
+
+
+class Annotation(db.Model, HoustonModel):
     """
     Annotations database model.
     """
@@ -38,6 +48,7 @@ class Annotation(db.Model, FeatherModel):
         nullable=True,
     )
     encounter = db.relationship('Encounter', backref=db.backref('annotations'))
+    keywords = db.relationship('AnnotationKeywords')
 
     # May have multiple jobs outstanding, store as Json obj uuid_str is key, In_progress Bool is value
     jobs = db.Column(db.JSON, nullable=True)
@@ -48,6 +59,31 @@ class Annotation(db.Model, FeatherModel):
             'guid={self.guid}, '
             ')>'.format(class_name=self.__class__.__name__, self=self)
         )
+
+    def get_keywords(self):
+        return [ref.keyword for ref in self.keywords]
+
+    def add_keyword(self, keyword):
+        with db.session.begin(subtransactions=True):
+            self.add_keyword_in_context(keyword)
+
+    def add_new_keyword(self, value, source=KeywordSource.user):
+        with db.session.begin(subtransactions=True):
+            keyword = Keyword(value=value, source=source)
+            db.session.add(keyword)
+            self.add_keyword_in_context(keyword)
+        return keyword
+
+    def add_keywords(self, keyword_list):
+        with db.session.begin():
+            for keyword in keyword_list:
+                self.add_keyword_in_context(keyword)
+
+    def add_keyword_in_context(self, keyword):
+        # TODO disallow duplicates
+        rel = AnnotationKeywords(annotation=self, keyword=keyword)
+        db.session.add(rel)
+        self.keywords.append(rel)
 
     def delete(self):
         with db.session.begin(subtransactions=True):

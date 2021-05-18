@@ -25,11 +25,18 @@ class PatchAnnotationDetailsParameters(PatchJSONParameters):
     # pylint: disable=abstract-method,missing-docstring
     OPERATION_CHOICES = (PatchJSONParameters.OP_REPLACE, PatchJSONParameters.OP_ADD)
 
-    PATH_CHOICES = tuple('/%s' % field for field in ('encounter_guid',))
+    PATH_CHOICES = tuple(
+        '/%s' % field
+        for field in (
+            'encounter_guid',
+            'keywords',
+        )
+    )
 
     @classmethod
     def add(cls, obj, field, value, state):
         # Add and replace are the same operation so reuse the one method
+        # if field == User.profile_fileupload_guid.key:
         return cls.replace(obj, field, value, state)
 
     @classmethod

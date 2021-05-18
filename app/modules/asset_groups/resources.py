@@ -21,12 +21,11 @@ from app.modules.users import permissions
 from app.modules.users.permissions.types import AccessOperation
 
 from . import parameters, schemas
+from .metadata import AssetGroupMetadataError, CreateAssetGroupMetadata
 from .models import (
     AssetGroup,
     AssetGroupSighting,
     AssetGroupSightingStage,
-    AssetGroupMetadata,
-    AssetGroupMetadataError,
 )
 from app.modules.sightings.schemas import BaseSightingSchema
 
@@ -79,7 +78,7 @@ class AssetGroups(Resource):
         import json
 
         timer = ElapsedTime()
-        metadata = AssetGroupMetadata(json.loads(request.data))
+        metadata = CreateAssetGroupMetadata(json.loads(request.data))
         try:
             metadata.process_request()
         except AssetGroupMetadataError as error:

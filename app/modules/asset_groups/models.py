@@ -543,11 +543,11 @@ class AssetGroup(db.Model, HoustonModel):
         if not os.path.exists(git_path):
             repo = git.Repo.init(group_path)
             assert len(repo.remotes) == 0
-            gitlab_remote_public_name = current_app.config.get('GITLAB_PUBLIC_NAME', None)
-            gitlab_remote_email = current_app.config.get('GITLAB_EMAIL', None)
-            assert None not in [gitlab_remote_public_name, gitlab_remote_email]
-            repo.git.config('user.name', gitlab_remote_public_name)
-            repo.git.config('user.email', gitlab_remote_email)
+            git_remote_public_name = current_app.config.get('GIT_PUBLIC_NAME', None)
+            git_remote_email = current_app.config.get('GIT_EMAIL', None)
+            assert None not in [git_remote_public_name, git_remote_email]
+            repo.git.config('user.name', git_remote_public_name)
+            repo.git.config('user.email', git_remote_email)
         else:
             repo = git.Repo(group_path)
 

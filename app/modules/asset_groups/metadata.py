@@ -71,9 +71,8 @@ class CreateAssetGroupMetadata(BaseAssetGroupMetadata):
         sightings = 2
         complete = 3
 
-    def __init__(self, request_json, existing_dir=None):
+    def __init__(self, request_json):
         super().__init__(request_json)
-        self.existing_dir = existing_dir  # For none, this checks the tus dir
         self.files = set()
         self.owner = None
         self.owner_assignment = False
@@ -230,11 +229,6 @@ class CreateAssetGroupMetadata(BaseAssetGroupMetadata):
     def _validate_sightings(self):
         from app.extensions.tus import tus_upload_dir
 
-        if self.existing_dir:
-            dir = self.existing_dir
-        else:
-            dir = tus_upload_dir(current_app, transaction_id=self.tus_transaction_id)
-
         sighting_num = 0
         # validate sightings content
         for sighting in self.request['sightings']:
@@ -289,9 +283,12 @@ class CreateAssetGroupMetadata(BaseAssetGroupMetadata):
                     else:
                         self.owner_assignment = True
 
+                file_dir = tus_upload_dir(
+                    current_app, transaction_id=self.tus_transaction_id
+                )
                 for filename in encounter['assetReferences']:
 
-                    file_path = os.path.join(dir, filename)
+                    file_path = os.path.join(file_dir, filename)
                     file_size = 0
                     try:
                         file_size = os.path.getsize(file_path)  # 2for1

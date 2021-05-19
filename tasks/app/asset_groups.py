@@ -5,7 +5,6 @@ Application AssetGroup management related tasks for Invoke.
 
 from ._utils import app_context_task
 import os
-from flask import current_app
 
 
 @app_context_task(
@@ -56,7 +55,7 @@ def create_asset_group_from_path(
     db.session.refresh(asset_group)
 
     # Make sure that the repo for this asset group exists
-    current_app.git_backend.ensure_repository(asset_group)
+    asset_group.ensure_repository()
 
     asset_group.git_copy_path(absolute_path)
 
@@ -93,14 +92,11 @@ def clone_asset_group_from_gitlab(
     if user is None:
         raise Exception("User with email '%s' does not exist." % email)
 
-    from app import create_app
-
-    app = create_app()
     asset_group = AssetGroup.query.get(guid)
 
     if asset_group is not None:
         print('AssetGroup is already cloned locally:\n\t%s' % (asset_group,))
-        app.git_backend.ensure_repository(asset_group)
+        asset_group.ensure_repository()
         return
 
     asset_group = AssetGroup.ensure_asset_group(guid, owner=user)

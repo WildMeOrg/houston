@@ -281,10 +281,10 @@ class EDMConfig(object):
         EDM_URIS['default'] = 'https://nextgen.dev-wildbook.org/'
 
 
-class SubmissionGitLabRemoteConfig(object):
+class AssetGroupConfig(object):
     GITLAB_REMOTE_URI = os.getenv('GITLAB_REMOTE_URI', 'https://sub.dyn.wildme.io/')
-    GITLAB_PUBLIC_NAME = os.getenv('GITLAB_PUBLIC_NAME', 'Houston')
-    GITLAB_EMAIL = os.getenv('GITLAB_EMAIL', 'dev@wildme.org')
+    GIT_PUBLIC_NAME = os.getenv('GIT_PUBLIC_NAME', 'Houston')
+    GIT_EMAIL = os.getenv('GIT_EMAIL', 'dev@wildme.org')
     GITLAB_NAMESPACE = os.getenv('GITLAB_NAMESPACE', 'TEST')
     GITLAB_REMOTE_LOGIN_PAT = os.getenv('GITLAB_REMOTE_LOGIN_PAT')
 
@@ -295,7 +295,7 @@ class ProductionConfig(
     ACMConfig,
     EmailConfig,
     GoogleConfig,
-    SubmissionGitLabRemoteConfig,
+    AssetGroupConfig,
     ReCaptchaConfig,
 ):
     TESTING = False
@@ -317,7 +317,7 @@ class DevelopmentConfig(
     ACMConfig,
     EmailConfig,
     GoogleConfig,
-    SubmissionGitLabRemoteConfig,
+    AssetGroupConfig,
     ReCaptchaConfig,
 ):
     DEBUG = True

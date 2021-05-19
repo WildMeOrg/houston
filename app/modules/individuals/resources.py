@@ -100,30 +100,11 @@ class Individuals(Resource):
         ):
             cleanup.rollback_and_abort(message='No Encounters in POST')
 
-        response = current_app.edm.request_passthrough(
+        result_data, message, error = current_app.edm.request_passthrough_result(
             'individual.data', 'post', {'data': request_in}, ''
         )
-
-        response_data = None
-        result_data = None
-
-        try:
-            response_data = response.json()
-        except Exception:
-            pass
-        if response.ok and response_data is not None:
-            result_data = response_data.get('result', None)
-
-        if (
-            not response.ok
-            or not response_data.get('success', False)
-            or result_data is None
-        ):
-            log.warning('Individual.post failed')
-            passed_message = {'message': {'key': 'error'}}
-            if response_data is not None and 'message' in response_data:
-                passed_message = response_data['message']
-                cleanup.rollback_and_abort(message=passed_message)
+        if not result_data:
+            cleanup.rollback_and_abort(message=message)
 
         # if you get 'success' back and there is no id, we have problems indeed
         if result_data['id'] is not None:

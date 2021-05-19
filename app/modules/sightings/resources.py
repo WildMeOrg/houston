@@ -224,32 +224,13 @@ class Sightings(Resource):
             owner = current_user
             submitter_guid = current_user.guid
 
-        response = current_app.edm.request_passthrough(
+        result_data, message, error = current_app.edm.request_passthrough_result(
             'sighting.data', 'post', {'data': request_in}, ''
         )
 
-        response_data = None
-        result_data = None
-        try:
-            response_data = response.json()
-        except Exception:
-            pass
-        if response.ok and response_data is not None:
-            result_data = response_data.get('result', None)
-
-        if (
-            not response.ok
-            or not response_data.get('success', False)
-            or result_data is None
-        ):
-            passed_message = {'message': {'key': 'error'}}
-            error_fields = None
-            if response_data is not None and 'message' in response_data:
-                passed_message = response_data['message']
-            if response_data is not None and 'errorFields' in response_data:
-                error_fields = response_data['errorFields']
+        if not result_data:
             cleanup.rollback_and_abort(
-                passed_message, 'Sighting.post failed', error_fields=error_fields
+                message, 'Sighting.post failed', error_fields=error
             )
 
         # Created it, need to clean it up if we rollback

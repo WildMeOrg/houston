@@ -59,17 +59,19 @@ def test_create_patch_asset_group(
     flask_app_client, researcher_1, readonly_user, test_root, db
 ):
     # pylint: disable=invalid-name
+
     asset_group_guid = None
     transaction_id, test_filename = tus_utils.prep_tus_dir(test_root)
     try:
         from app.modules.asset_groups.models import AssetGroup
 
-        data = asset_group_utils.get_form_creation_data(transaction_id, test_filename)
+        data = asset_group_utils.TestCreationData(transaction_id)
+        data.add_filename(0, 0, test_filename)
 
         create_response = asset_group_utils.create_asset_group(
-            flask_app_client, researcher_1, data
+            flask_app_client, researcher_1, data.get()
         )
-        assert create_response.json['description'] == data['description']
+        assert create_response.json['description'] == data.get()['description']
         asset_group_guid = create_response.json['guid']
         temp_asset_group = AssetGroup.query.get(asset_group_guid)
 
@@ -79,7 +81,7 @@ def test_create_patch_asset_group(
                 'description', 'This is a test asset_group, kindly ignore'
             ),
         ]
-        data['description'] = 'This is a test asset_group, kindly ignore'
+
         # Try to patch as non owner and validate it fails
         asset_group_utils.patch_asset_group(
             flask_app_client, readonly_user, asset_group_guid, patch_data, 403
@@ -89,7 +91,8 @@ def test_create_patch_asset_group(
         patch_response = asset_group_utils.patch_asset_group(
             flask_app_client, researcher_1, asset_group_guid, patch_data
         )
-        assert patch_response.json['description'] == data['description']
+
+        assert patch_response.json['description'] == patch_data[0]['value']
         assert patch_response.json['guid'] == asset_group_guid
 
         db.session.refresh(temp_asset_group)

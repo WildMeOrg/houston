@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=missing-docstring
-import json
 import filecmp
 from os.path import join, basename
 
@@ -17,13 +16,11 @@ def test_create_open_submission(flask_app_client, regular_user, test_root, db):
     try:
         from app.modules.asset_groups.models import AssetGroup
 
-        data = asset_group_utils.get_form_creation_data(transaction_id, test_filename)
-        with flask_app_client.login(regular_user, auth_scopes=('asset_groups:write',)):
-            response = flask_app_client.post(
-                '/api/v1/asset_groups/',
-                content_type='application/json',
-                data=json.dumps(data),
-            )
+        data = asset_group_utils.TestCreationData(transaction_id)
+        data.add_filename(0, 0, test_filename)
+        response = asset_group_utils.create_asset_group(
+            flask_app_client, regular_user, data.get()
+        )
 
         temp_submission = AssetGroup.query.get(response.json['guid'])
 

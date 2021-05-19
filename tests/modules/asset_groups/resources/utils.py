@@ -27,6 +27,8 @@ class TestCreationData(object):
                 'transactionId': transaction_id,
                 'sightings': [
                     {
+                        'startTime': 'sometime or other',
+                        'context': 'something',
                         # Yes, that really is a location, it's a village in Wiltshire https://en.wikipedia.org/wiki/Tiddleywink
                         'locationId': 'Tiddleywink',
                         'encounters': [{'assetReferences': []}],
@@ -40,7 +42,14 @@ class TestCreationData(object):
         ].append(filename)
 
     def add_sighting(self, location):
-        self.content['sightings'].append({'locationId': location, 'encounters': []})
+        self.content['sightings'].append(
+            {
+                'locationId': location,
+                'startTime': 'now',
+                'context': 'none',
+                'encounters': [],
+            }
+        )
 
     def add_encounter(self, sighting):
         self.content['sightings'][sighting]['encounters'].append({'assetReferences': []})
@@ -62,32 +71,6 @@ class TestCreationData(object):
 
     def get(self):
         return self.content
-
-
-# Asset Group creation is now a bit of a beast so make the tests simpler by
-# providing a known valid data set
-def get_form_creation_data(transaction_id, test_filename):
-    return {
-        'description': 'This is a test asset_group, please ignore',
-        'bulkUpload': False,
-        'speciesDetectionModel': [
-            None,
-        ],
-        'transactionId': transaction_id,
-        'sightings': [
-            {
-                # Yes, that really is a location, it's a village in Wiltshire https://en.wikipedia.org/wiki/Tiddleywink
-                'locationId': 'Tiddleywink',
-                'encounters': [
-                    {
-                        'assetReferences': [
-                            test_filename,
-                        ]
-                    }
-                ],
-            },
-        ],
-    }
 
 
 def create_asset_group(
@@ -116,6 +99,28 @@ def create_asset_group(
             response, expected_status_code, {'status', 'message', 'passed_message'}
         )
         assert response.json['passed_message'] == expected_error
+    else:
+        test_utils.validate_dict_response(
+            response, expected_status_code, {'status', 'message'}
+        )
+    return response
+
+
+def commit_asset_group_sighting(
+    flask_app_client,
+    user,
+    asset_group_guid,
+    asset_group_sighting_guid,
+    expected_status_code=200,
+):
+    with flask_app_client.login(user, auth_scopes=('asset_groups:write',)):
+        response = flask_app_client.post(
+            f'{PATH}{asset_group_guid}/{asset_group_sighting_guid}/commit',
+            content_type='application/json',
+        )
+
+    if expected_status_code == 200:
+        test_utils.validate_dict_response(response, 200, {'guid'})
     else:
         test_utils.validate_dict_response(
             response, expected_status_code, {'status', 'message'}

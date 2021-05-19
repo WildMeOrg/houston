@@ -128,7 +128,8 @@ def test_find_raw_asset(
         )
 
         new_sighting = AssetGroupSighting(
-            stage=AssetGroupSightingStage.detection, owner_guid=clone.asset_group.guid
+            stage=AssetGroupSightingStage.detection,
+            asset_group_guid=clone.asset_group.guid,
         )
         with db.session.begin():
             db.session.add(new_sighting)

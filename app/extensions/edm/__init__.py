@@ -138,6 +138,38 @@ class EDMManager(RestManager):
             )
             return False
 
+    # The edm API returns a success and a result, this processes it to just return the result to the caller
+    # TODO is this identical for acm and therefore, should this move into the RestManager
+    def request_passthrough_result(
+        self, tag, method, passthrough_kwargs, args=None, target='default'
+    ):
+        response = self.request_passthrough(tag, method, passthrough_kwargs, args, target)
+        response_data = None
+        result_data = None
+        message = None
+        error = None
+        try:
+            response_data = response.json()
+        except Exception:
+            pass
+        if response.ok and response_data is not None:
+            result_data = response_data.get('result', None)
+
+        if (
+            not response.ok
+            or not response_data.get('success', False)
+            or result_data is None
+        ):
+            message = {'message': {'key': 'error'}}
+
+            if response_data is not None and 'message' in response_data:
+                message = response_data['message']
+            if response_data is not None and 'errorFields' in response_data:
+                error = response_data['errorFields']
+            log.warning(f'{tag} {method} failed {message}')
+
+        return result_data, message, error
+
 
 class EDMObjectMixin(object):
     @classmethod

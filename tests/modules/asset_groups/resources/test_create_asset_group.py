@@ -10,6 +10,7 @@ def test_create_asset_group(flask_app_client, researcher_1, readonly_user, test_
     from tests.modules.asset_groups.resources.utils import TestCreationData
 
     transaction_id, test_filename = tus_utils.prep_tus_dir(test_root)
+    asset_group_uuid = None
 
     try:
         data = TestCreationData(transaction_id, False)
@@ -54,13 +55,18 @@ def test_create_asset_group(flask_app_client, researcher_1, readonly_user, test_
                 {},
             ],
         )
-        resp_msg = 'locationId field missing from Sighting 1'
+        resp_msg = 'startTime field missing from Sighting 1'
         asset_group_utils.create_asset_group(
             flask_app_client, researcher_1, data.get(), 400, resp_msg
         )
 
-        # Yes, that really is a location, it's a village in Wiltshire
-        data.set_sighting_field(0, 'locationId', 'Tiddleywink')
+        data.set_sighting_field(0, 'startTime', 'never')
+        resp_msg = 'context field missing from Sighting 1'
+        asset_group_utils.create_asset_group(
+            flask_app_client, researcher_1, data.get(), 400, resp_msg
+        )
+        data.set_sighting_field(0, 'context', 'nothing')
+
         resp_msg = 'encounters field missing from Sighting 1'
         asset_group_utils.create_asset_group(
             flask_app_client, researcher_1, data.get(), 400, resp_msg
@@ -74,7 +80,7 @@ def test_create_asset_group(flask_app_client, researcher_1, readonly_user, test_
 
         data.set_sighting_field(0, 'encounters', [{'assetReferences': ''}])
         # data.set_encounter_field(0, 0, 'assetReferences', '')
-        resp_msg = 'assetReferences field missing from Encounter 1.1'
+        resp_msg = 'assetReferences incorrect type in Encounter 1.1'
         asset_group_utils.create_asset_group(
             flask_app_client, researcher_1, data.get(), 400, resp_msg
         )
@@ -84,6 +90,7 @@ def test_create_asset_group(flask_app_client, researcher_1, readonly_user, test_
             flask_app_client, researcher_1, data.get()
         )
 
+        asset_group_uuid = resp.json['guid']
         # Read the metadata file and make sure that the frontend sightings are exactly what we sent
         from app.modules.asset_groups.models import AssetGroup
         import os
@@ -95,12 +102,25 @@ def test_create_asset_group(flask_app_client, researcher_1, readonly_user, test_
         assert os.path.exists(asset_group_metadata_path)
         with open(asset_group_metadata_path, 'r') as asset_group_metadata_file:
             metadata_dict = json.load(asset_group_metadata_file)
-        request_json = metadata_dict.get('frontend_sightings_data')
-        assert request_json == data.get()
-        asset_group_utils.delete_asset_group(
-            flask_app_client, researcher_1, resp.json['guid']
-        )
+        file_json = metadata_dict.get('frontend_sightings_data')
+        request_json = data.get()
+        # Stored data is a superset of what was sent so ony check fields sent
+        for key in request_json.keys():
+            if key != 'sightings':
+                assert request_json[key] == file_json[key]
+            else:
+                for sighting_num in range(len(request_json['sightings'])):
+                    for sighting_key in request_json['sightings'][sighting_num].keys():
+                        assert (
+                            request_json[key][sighting_num][sighting_key]
+                            == file_json[key][sighting_num][sighting_key]
+                        )
+
     finally:
+        if asset_group_uuid:
+            asset_group_utils.delete_asset_group(
+                flask_app_client, researcher_1, asset_group_uuid
+            )
         tus_utils.cleanup_tus_dir(transaction_id)
 
 
@@ -110,6 +130,7 @@ def test_create_asset_group_2_assets(flask_app_client, researcher_1, test_root, 
 
     transaction_id, test_filename = tus_utils.prep_tus_dir(test_root)
     tus_utils.prep_tus_dir(test_root, filename='coelacanth.png')
+    asset_group_uuid = None
     try:
         data = TestCreationData(transaction_id)
         data.add_filename(0, 0, test_filename)
@@ -117,6 +138,7 @@ def test_create_asset_group_2_assets(flask_app_client, researcher_1, test_root, 
         resp = asset_group_utils.create_asset_group(
             flask_app_client, researcher_1, data.get()
         )
+        asset_group_uuid = resp.json['guid']
         assets = sorted(resp.json['assets'], key=lambda a: a['filename'])
         asset_guids = [a['guid'] for a in assets]
         assert assets == [
@@ -131,10 +153,11 @@ def test_create_asset_group_2_assets(flask_app_client, researcher_1, test_root, 
                 'src': f'/api/v1/assets/src/{asset_guids[1]}',
             },
         ]
-        asset_group_utils.delete_asset_group(
-            flask_app_client, researcher_1, resp.json['guid']
-        )
     finally:
+        if asset_group_uuid:
+            asset_group_utils.delete_asset_group(
+                flask_app_client, researcher_1, asset_group_uuid
+            )
         tus_utils.cleanup_tus_dir(transaction_id)
 
 
@@ -145,6 +168,7 @@ def test_create_asset_group_anonymous(
     from tests.modules.asset_groups.resources.utils import TestCreationData
 
     transaction_id, test_filename = tus_utils.prep_tus_dir(test_root)
+    asset_group_uuid = None
     try:
         data = TestCreationData(transaction_id)
         data.add_filename(0, 0, test_filename)
@@ -171,14 +195,17 @@ def test_create_asset_group_anonymous(
 
         data.set_field('submitterEmail', 'joe@blogs.com')
         resp = asset_group_utils.create_asset_group(flask_app_client, None, data.get())
+        asset_group_uuid = resp.json['guid']
         from app.modules.users.models import User
         import uuid
 
         assert uuid.UUID(resp.json['owner_guid']) == User.get_public_user().guid
-        asset_group_utils.delete_asset_group(
-            flask_app_client, staff_user, resp.json['guid']
-        )
+
     finally:
+        if asset_group_uuid:
+            asset_group_utils.delete_asset_group(
+                flask_app_client, staff_user, asset_group_uuid
+            )
         tus_utils.cleanup_tus_dir(transaction_id)
 
 
@@ -191,7 +218,7 @@ def test_create_bulk_asset_group(flask_app_client, researcher_1, test_root, db):
     tus_utils.prep_tus_dir(test_root, filename='coelacanth.png')
     tus_utils.prep_tus_dir(test_root, filename='fluke.jpg')
     tus_utils.prep_tus_dir(test_root, filename='phoenix.jpg')
-
+    asset_group_uuid = None
     try:
         data = TestCreationData(transaction_id)
         data.add_filename(0, 0, test_filename)
@@ -208,6 +235,8 @@ def test_create_bulk_asset_group(flask_app_client, researcher_1, test_root, db):
         resp = asset_group_utils.create_asset_group(
             flask_app_client, researcher_1, data.get()
         )
+        asset_group_uuid = resp.json['guid']
+
         assert resp.json['description'] == data.get()['description']
         assert uuid.UUID(resp.json['owner_guid']) == researcher_1.guid
         assets = sorted(resp.json['assets'], key=lambda a: a['filename'])
@@ -234,9 +263,9 @@ def test_create_bulk_asset_group(flask_app_client, researcher_1, test_root, db):
                 'src': f'/api/v1/assets/src/{asset_guids[3]}',
             },
         ]
-
-        asset_group_utils.delete_asset_group(
-            flask_app_client, researcher_1, resp.json['guid']
-        )
     finally:
+        if asset_group_uuid:
+            asset_group_utils.delete_asset_group(
+                flask_app_client, researcher_1, asset_group_uuid
+            )
         tus_utils.cleanup_tus_dir(transaction_id)

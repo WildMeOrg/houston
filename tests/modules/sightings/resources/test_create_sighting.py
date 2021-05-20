@@ -3,6 +3,9 @@
 
 from tests.modules.sightings.resources import utils as sighting_utils
 from tests import utils as test_utils
+import datetime
+
+timestamp = datetime.datetime.now().isoformat() + 'Z'
 
 
 def test_get_sighting_not_found(flask_app_client):
@@ -21,7 +24,7 @@ def test_create_failures(flask_app_client, test_root, researcher_1):
     assert not response.json['success']
 
     # has encounters, zero assetReferences, but fails on bad (missing) context value
-    data_in = {'encounters': [{}]}
+    data_in = {'startTime': timestamp, 'encounters': [{}]}
     response = sighting_utils.create_sighting(
         flask_app_client, researcher_1, expected_status_code=400, data_in=data_in
     )
@@ -31,6 +34,7 @@ def test_create_failures(flask_app_client, test_root, researcher_1):
     # has encounters, but bunk assetReferences
     data_in = {
         'encounters': [{}],
+        'startTime': timestamp,
         'assetReferences': [{'fail': 'fail'}],
         'context': 'test',
         'locationId': 'test',
@@ -58,12 +62,10 @@ def test_create_and_modify_and_delete_sighting(
     db, flask_app_client, researcher_1, test_root, staff_user
 ):
     from app.modules.sightings.models import Sighting
-    import datetime
 
     # we should end up with these same counts (which _should be_ all zeros!)
     orig_ct = test_utils.all_count(db)
 
-    timestamp = datetime.datetime.now().isoformat()
     transaction_id, test_filename = sighting_utils.prep_tus_dir(test_root)
     data_in = {
         'startTime': timestamp,
@@ -218,12 +220,10 @@ def test_create_and_modify_and_delete_sighting(
 def test_create_anon_and_delete_sighting(db, flask_app_client, staff_user, test_root):
     from app.modules.sightings.models import Sighting
     from app.modules.users.models import User
-    import datetime
 
     # we should end up with these same counts (which _should be_ all zeros!)
     orig_ct = test_utils.all_count(db)
 
-    timestamp = datetime.datetime.now().isoformat()
     transaction_id, test_filename = sighting_utils.prep_tus_dir(test_root)
     sighting_utils.prep_tus_dir(test_root, filename='fluke.jpg')
     data_in = {

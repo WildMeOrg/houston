@@ -536,7 +536,10 @@ class FeaturedAssetGuidBySightingID(Resource):
         """
         Get featured Asset guid.
         """
-        return {'featured_asset_guid': '%s' % sighting.get_featured_asset_guid()}
+        from app.modules.sightings.schemas import FeaturedAssetOnlySchema
+
+        asset_schema = FeaturedAssetOnlySchema()
+        return asset_schema.dump(sighting)
 
     @api.login_required(oauth_scopes=['sightings:write'])
     @api.permission_required(

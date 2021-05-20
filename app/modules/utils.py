@@ -36,6 +36,7 @@ def is_valid_guid(guid):
         return False
     return True
 
+
 # Many module resources create things and then need to clean up when it fails. This helper class cleans up
 class Cleanup(object):
     def __init__(self, name):

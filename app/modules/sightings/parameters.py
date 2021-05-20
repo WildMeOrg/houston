@@ -57,6 +57,11 @@ class PatchSightingDetailsParameters(PatchJSONParameters):
 
     @classmethod
     def add(cls, obj, field, value, state):
+        return cls.replace(obj, field, value, state)
+
+    @classmethod
+    def replace(cls, obj, field, value, state):
+
         from app.modules.assets.models import Asset
         from app.modules.asset_groups.models import AssetGroup
 
@@ -69,7 +74,7 @@ class PatchSightingDetailsParameters(PatchJSONParameters):
 
         if has_permission:
 
-            if field == 'assetId':
+            if field == 'assetId' and util.is_valid_guid(value):
                 asset = Asset.query.get(value)
                 if asset and (
                     asset.asset_group.owner == current_user or current_user.is_admin
@@ -87,22 +92,8 @@ class PatchSightingDetailsParameters(PatchJSONParameters):
                     obj.add_asset(asset)
                 ret_val = True
 
-        return ret_val
-
-    @classmethod
-    def replace(cls, obj, field, value, state):
-        ret_val = False
-        has_permission = rules.ObjectActionRule(obj, AccessOperation.WRITE).check()
-        if has_permission:
-
-            if field == 'featured_asset_guid' and util.is_valid_guid(value):
-
+            elif field == 'featured_asset_guid' and util.is_valid_guid(value):
                 obj.set_featured_asset_guid(UUID(value, version=4))
                 ret_val = True
-
-            else:
-                super(PatchSightingDetailsParameters, cls).replace(
-                    obj, field, value, state
-                )
 
         return ret_val

@@ -30,7 +30,7 @@ class Sighting(db.Model, FeatherModel):
 
     assets = db.relationship('SightingAssets')
 
-    _featured_asset_guid = db.Column(db.GUID, default=None, nullable=True)
+    featured_asset_guid = db.Column(db.GUID, default=None, nullable=True)
 
     def __repr__(self):
         return (
@@ -93,10 +93,14 @@ class Sighting(db.Model, FeatherModel):
         rel = SightingAssets(sighting=self, asset=asset)
         db.session.add(rel)
         self.assets.append(rel)
+        if self.featured_asset_guid is None:
+            self.featured_asset_guid = asset.guid
 
     def add_asset_no_context(self, asset):
         rel = SightingAssets(sighting_guid=self.guid, asset_guid=asset.guid)
         self.assets.append(rel)
+        if self.featured_asset_guid is None:
+            self.featured_asset_guid = asset.guid
 
     def add_assets_no_context(self, asset_list):
         for asset in asset_list:
@@ -105,10 +109,10 @@ class Sighting(db.Model, FeatherModel):
     def get_featured_asset_guid(self):
         asset_guids = [sighting_asset.asset_guid for sighting_asset in self.assets]
         rtn_val = None
-        if self._featured_asset_guid not in asset_guids:
-            self._featured_asset_guid = None
-        if self._featured_asset_guid is not None:
-            rtn_val = self._featured_asset_guid
+        if self.featured_asset_guid not in asset_guids:
+            self.featured_asset_guid = None
+        if self.featured_asset_guid is not None:
+            rtn_val = self.featured_asset_guid
         if rtn_val is None and asset_guids:
             rtn_val = asset_guids[0]
         return rtn_val
@@ -116,7 +120,7 @@ class Sighting(db.Model, FeatherModel):
     def set_featured_asset_guid(self, guid):
         asset_guids = [sighting_asset.asset_guid for sighting_asset in self.assets]
         if guid in asset_guids:
-            self._featured_asset_guid = guid
+            self.featured_asset_guid = guid
 
     def delete(self):
         with db.session.begin():

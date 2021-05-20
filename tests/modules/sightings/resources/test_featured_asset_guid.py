@@ -3,18 +3,11 @@
 import json
 from app.modules.sightings.models import Sighting
 from tests.modules.sightings.resources import utils as sighting_utils
-from flask import current_app
+from tests.modules.asset_groups.resources import utils as asset_group_utils
 from tests import utils
 
 
-def test_featured_asset_guid_endpoint(db, flask_app_client):
-
-    new_researcher = utils.generate_user_instance(
-        email='asset_guid_getter@mail.com', is_researcher=True
-    )
-
-    with db.session.begin():
-        db.session.add(new_researcher)
+def test_featured_asset_guid_endpoint(db, flask_app_client, researcher_1):
 
     data_in = {
         'encounters': [{}],
@@ -23,45 +16,49 @@ def test_featured_asset_guid_endpoint(db, flask_app_client):
     }
 
     response = sighting_utils.create_sighting(
-        flask_app_client, new_researcher, data_in=data_in
+        flask_app_client, researcher_1, data_in=data_in
     )
 
     sighting_id = response.json['result']['id']
     sighting = Sighting.query.get(sighting_id)
     assert sighting is not None
 
-    new_asset_group = utils.generate_asset_group_instance(new_researcher)
+    new_asset_group = utils.generate_asset_group_instance(researcher_1)
 
     with db.session.begin():
         db.session.add(new_asset_group)
-        db.session.add(sighting)
 
     PATH = '/api/v1/sightings/' + str(sighting.guid) + '/featured_asset_guid'
     SIGHTINGS_READ = 'sightings:read'
 
-    with flask_app_client.login(new_researcher, auth_scopes=(SIGHTINGS_READ,)):
+    with flask_app_client.login(researcher_1, auth_scopes=(SIGHTINGS_READ,)):
         response = flask_app_client.get(PATH)
-    assert response.json['featured_asset_guid'] == 'None'
+
+    assert response.json['featured_asset_guid'] is None
 
     new_asset_1 = utils.generate_asset_instance(new_asset_group.guid)
     new_asset_2 = utils.generate_asset_instance(new_asset_group.guid)
     new_asset_3 = utils.generate_asset_instance(new_asset_group.guid)
 
     with db.session.begin():
-        db.session.add(sighting)
-        db.session.add(new_asset_group)
         db.session.add(new_asset_1)
         db.session.add(new_asset_2)
         db.session.add(new_asset_3)
 
     sighting.add_asset(new_asset_1)
-    with flask_app_client.login(new_researcher, auth_scopes=(SIGHTINGS_READ,)):
+    db.session.refresh(sighting)
+
+    with flask_app_client.login(researcher_1, auth_scopes=(SIGHTINGS_READ,)):
         response = flask_app_client.get(PATH)
+
+    assert str(sighting.get_featured_asset_guid()) == str(new_asset_1.guid)
+    assert str(sighting.featured_asset_guid) == str(new_asset_1.guid)
+    assert response.json['guid'] == str(sighting.guid)
     assert response.json['featured_asset_guid'] == str(new_asset_1.guid)
 
     sighting.add_asset(new_asset_2)
 
-    with flask_app_client.login(new_researcher, auth_scopes=('sightings:write',)):
+    with flask_app_client.login(researcher_1, auth_scopes=('sightings:write',)):
         response = flask_app_client.post(
             '%s' % PATH,
             content_type='application/json',
@@ -69,35 +66,28 @@ def test_featured_asset_guid_endpoint(db, flask_app_client):
         )
 
     assert response.json['success'] is True
-    with flask_app_client.login(new_researcher, auth_scopes=(SIGHTINGS_READ,)):
+    with flask_app_client.login(researcher_1, auth_scopes=(SIGHTINGS_READ,)):
         response = flask_app_client.get(PATH)
 
     assert response.json['featured_asset_guid'] == str(new_asset_2.guid)
     sighting.set_featured_asset_guid(new_asset_3.guid)
-    with flask_app_client.login(new_researcher, auth_scopes=(SIGHTINGS_READ,)):
+    with flask_app_client.login(researcher_1, auth_scopes=(SIGHTINGS_READ,)):
         response = flask_app_client.get(PATH)
 
     assert response.json['featured_asset_guid'] == str(new_asset_2.guid)
 
-    sighting_utils.delete_sighting(flask_app_client, new_researcher, str(sighting.guid))
-    current_app.git_backend.delete_remote_asset_group(new_asset_group)
-    new_asset_1.delete()
-    new_asset_2.delete()
-    new_asset_3.delete()
-    with db.session.begin():
-        db.session.delete(new_asset_group)
+    # new_asset_group.delete_remote()
+    # new_asset_group.delete()
+    # sighting_utils.delete_sighting(flask_app_client, researcher_1, str(sighting.guid))
 
-    new_researcher.delete()
-
-
-def test_patch_featured_asset_guid(db, flask_app_client):
-
-    new_researcher = utils.generate_user_instance(
-        email='asset_guid_patcher@mail.com', is_researcher=True
+    sighting_utils.delete_sighting(flask_app_client, researcher_1, str(sighting.guid))
+    new_asset_group.delete_remote()
+    asset_group_utils.delete_asset_group(
+        flask_app_client, researcher_1, new_asset_group.guid
     )
 
-    with db.session.begin():
-        db.session.add(new_researcher)
+
+def test_patch_featured_asset_guid(db, flask_app_client, researcher_1):
 
     data_in = {
         'encounters': [{}],
@@ -106,24 +96,22 @@ def test_patch_featured_asset_guid(db, flask_app_client):
     }
 
     response = sighting_utils.create_sighting(
-        flask_app_client, new_researcher, data_in=data_in
+        flask_app_client, researcher_1, data_in=data_in
     )
 
     sighting_id = response.json['result']['id']
     sighting = Sighting.query.get(sighting_id)
     assert sighting is not None
 
-    new_asset_group = utils.generate_asset_group_instance(new_researcher)
+    new_asset_group = utils.generate_asset_group_instance(researcher_1)
 
     with db.session.begin():
         db.session.add(new_asset_group)
-        db.session.add(sighting)
 
     new_asset_1 = utils.generate_asset_instance(new_asset_group.guid)
     new_asset_2 = utils.generate_asset_instance(new_asset_group.guid)
 
     with db.session.begin():
-        db.session.add(sighting)
         db.session.add(new_asset_group)
         db.session.add(new_asset_1)
         db.session.add(new_asset_2)
@@ -132,7 +120,7 @@ def test_patch_featured_asset_guid(db, flask_app_client):
 
     assert new_asset_1.guid == sighting.get_featured_asset_guid()
 
-    sighting.add_asset(new_asset_2)
+    sighting.add_asset_no_context(new_asset_2)
     db.session.refresh(sighting)
 
     patch_op = [
@@ -140,16 +128,13 @@ def test_patch_featured_asset_guid(db, flask_app_client):
     ]
 
     sighting_utils.patch_sighting(
-        flask_app_client, new_researcher, '%s' % sighting.guid, patch_op
+        flask_app_client, researcher_1, '%s' % sighting.guid, patch_op
     )
 
     assert new_asset_2.guid == sighting.get_featured_asset_guid()
 
-    sighting_utils.delete_sighting(flask_app_client, new_researcher, str(sighting.guid))
-    current_app.git_backend.delete_remote_asset_group(new_asset_group)
-    new_asset_1.delete()
-    new_asset_2.delete()
-    with db.session.begin():
-        db.session.delete(new_asset_group)
-
-    new_researcher.delete()
+    sighting_utils.delete_sighting(flask_app_client, researcher_1, str(sighting.guid))
+    new_asset_group.delete_remote()
+    asset_group_utils.delete_asset_group(
+        flask_app_client, researcher_1, new_asset_group.guid
+    )

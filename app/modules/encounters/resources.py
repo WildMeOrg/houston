@@ -176,19 +176,89 @@ class EncounterByID(Resource):
     )
     @api.login_required(oauth_scopes=['encounters:write'])
     @api.parameters(parameters.PatchEncounterDetailsParameters())
-    @api.response(schemas.DetailedEncounterSchema())
+    # @api.response(schemas.DetailedEncounterSchema())
     @api.response(code=HTTPStatus.CONFLICT)
     def patch(self, args, encounter):
         """
         Patch Encounter details by ID.
         """
+
+        edm_count = 0
+        for arg in args:
+            if (
+                'path' in arg
+                and arg['path']
+                in parameters.PatchEncounterDetailsParameters.PATH_CHOICES_EDM
+            ):
+                edm_count += 1
+        if edm_count > 0 and edm_count != len(args):
+            log.error(f'Mixed edm/houston patch called with args {args}')
+            abort(
+                success=False,
+                passed_message='Cannot mix EDM patch paths and houston patch paths',
+                message='Error',
+                code=400,
+            )
+
+        rdata = {}
+        if edm_count > 0:
+            log.debug(f'wanting to do edm patch on args={args}')
+            headers = {
+                'x-allow-delete-cascade-individual': request.headers.get(
+                    'x-allow-delete-cascade-individual', 'false'
+                ),
+                'x-allow-delete-cascade-sighting': request.headers.get(
+                    'x-allow-delete-cascade-sighting', 'false'
+                ),
+            }
+            response = current_app.edm.request_passthrough(
+                'sighting.data',
+                'patch',
+                {'data': args, 'headers': headers},
+                encounter.guid,
+            )
+            rdata = response.json()
+            if (
+                not response.ok
+                or response.status_code != 200
+                or not rdata['success']
+                or 'result' not in rdata
+            ):
+                code = response.status_code
+                if code > 600:
+                    code = 400  # flask doesnt like us to use "invalid" codes. :(
+                log.warning(f'EDM patch got {response.status_code} response of {rdata}')
+                abort(
+                    success=False,
+                    passed_message=rdata.get('message', 'unknown error'),
+                    code=code,
+                    edm_status_code=response.status_code,
+                )
+
+            # edm patch was successful
+            new_version = rdata['result'].get('version', None)
+            if new_version is not None:
+                encounter.version = new_version
+                context = api.commit_or_abort(
+                    db.session,
+                    default_error_message='Failed to update Encounter version.',
+                )
+                with context:
+                    db.session.merge(encounter)
+            return rdata
+
+        # no EDM, so fall thru to regular houston-patching
         context = api.commit_or_abort(
             db.session, default_error_message='Failed to update Encounter details.'
         )
         with context:
             parameters.PatchEncounterDetailsParameters.perform_patch(args, obj=encounter)
             db.session.merge(encounter)
-        return encounter
+        # this mimics output format of edm-patching
+        return {
+            'success': True,
+            'result': {'id': str(encounter.guid), 'version': encounter.version},
+        }
 
     @api.permission_required(
         permissions.ObjectAccessPermission,

@@ -17,7 +17,7 @@ def patch_encounter(
             data=json.dumps(data),
         )
     if expected_status_code == 200:
-        utils.validate_dict_response(response, 200, {'guid'})
+        utils.validate_dict_response(response, 200, {'success', 'result'})
     else:
         utils.validate_dict_response(
             response, expected_status_code, {'status', 'message'}
@@ -58,3 +58,12 @@ def test_modify_encounter(db, flask_app_client, researcher_1, researcher_2):
         flask_app_client, '%s' % new_encounter_1.guid, researcher_1, new_owner_as_res_1
     )
     assert new_encounter_1.owner == researcher_2
+
+    # test changing locationID via patch
+    new_val = 'LOCATION_TEST_VALUE'
+    patch_data = [utils.patch_replace_op('locationID', new_val)]
+    res = patch_encounter(
+        flask_app_client, '%s' % new_encounter_1.guid, researcher_1, patch_data
+    )
+    print(f'(<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<{res})')
+    assert res is None

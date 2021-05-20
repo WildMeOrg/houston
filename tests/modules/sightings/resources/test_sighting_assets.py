@@ -21,6 +21,7 @@ def test_asset_addition(db, flask_app_client, staff_user):
         data_in = {
             'context': 'test',
             'locationId': 'test',
+            'startTime': '2000-01-01T00:00Z',
             'encounters': [{}],
         }
         response = sighting_utils.create_sighting(
@@ -116,6 +117,7 @@ def test_asset_file_addition(db, flask_app_client, staff_user):
     data_in = {
         'context': 'test',
         'locationId': 'test',
+        'startTime': '2000-01-01T00:00Z',
         'encounters': [{}],
     }
     response = sighting_utils.create_sighting(

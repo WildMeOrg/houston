@@ -3,6 +3,7 @@ import pathlib
 import shutil
 import tempfile
 import uuid
+from unittest import mock
 
 import sqlalchemy
 import pytest
@@ -54,7 +55,7 @@ def flask_app(gitlab_remote_login_pat):
         app = create_app(flask_config_name='testing', config_override=config_override)
         from app.extensions import db
 
-        with app.app_context():
+        with app.app_context() as ctx:
             try:
                 db.create_all()
             except sqlalchemy.exc.OperationalError as e:
@@ -68,7 +69,16 @@ def flask_app(gitlab_remote_login_pat):
                     db.create_all()
                 else:
                     raise
-            yield app
+
+            # This is necessary to make celery tasks work when calling
+            # in the foreground.  Otherwise there's some weird error:
+            #
+            # sqlalchemy.orm.exc.DetachedInstanceError: Instance <User
+            # at 0x7fe1e592a640> is not bound to a Session; attribute
+            # refresh operation cannot proceed (Background on this error
+            # at: http://sqlalche.me/e/13/bhk3)
+            with mock.patch.object(app, 'app_context', return_value=ctx):
+                yield app
             db.drop_all()
 
 

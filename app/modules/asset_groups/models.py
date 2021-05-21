@@ -945,13 +945,6 @@ class AssetGroup(db.Model, HoustonModel):
         log.warning('justify_existence() found ZERO assets, self-destructing %r' % self)
         self.delete()  # TODO will this also kill remote repo?
 
-    @classmethod
-    def delete_remote_repository(cls, guid):
-        return current_app.git_backend.delete_remote_project_by_name(str(guid))
-
-    def delete_remote(self):
-        return self.__class__.delete_remote_repository(self.guid)
-
     def get_repository(self):
         repo_path = pathlib.Path(self.get_absolute_path())
         if (repo_path / '.git').exists():

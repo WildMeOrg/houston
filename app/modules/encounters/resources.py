@@ -21,9 +21,6 @@ from app.utils import HoustonException
 
 from app.extensions.api import abort
 
-import json
-
-
 from . import parameters, schemas
 from .models import Encounter
 
@@ -56,89 +53,6 @@ class Encounters(Resource):
         parameter.
         """
         return Encounter.query.offset(args['offset']).limit(args['limit'])
-
-    # NOTE: question whether POST /encounter should be allowed at all, since it would be detached from a sighting!
-    #       probably consider deprecating this
-    @api.permission_required(
-        permissions.ModuleAccessPermission,
-        kwargs_on_request=lambda kwargs: {
-            'module': Encounter,
-            'action': AccessOperation.WRITE,
-        },
-    )
-    @api.parameters(parameters.CreateEncounterParameters())
-    @api.response(code=HTTPStatus.CONFLICT)
-    def post(self, args):
-        """
-        Create a new instance of Encounter.
-        """
-
-        abort(
-            success=False,
-            message='Error: Encounter must be made as part of a Sighting via POST or PATCH',
-            code=400,
-        )
-
-        data = {}
-        # data.update(request.args)
-        # data.update(args)
-        try:
-            data_ = json.loads(request.data)
-            data.update(data_)
-        except Exception:
-            pass
-
-        try:
-            result_data = current_app.edm.request_passthrough_result(
-                'encounter.data', 'post', {'data': data}, ''
-            )
-        except HoustonException as ex:
-            abort(400, 'Error', success=False, passed_message=ex.message)
-
-        # if we get here, edm has made the encounter, now we create & persist the feather model in houston
-
-        context = api.commit_or_abort(
-            db.session, default_error_message='Failed to create a new houston Encounter'
-        )
-        try:
-            from app.modules.users.models import User
-
-            owner_guid = User.get_public_user().guid
-            with context:
-                # TODO other houston-based relationships: orgs, projects, etc
-                pub = True  # legit? public if no owner?
-                if current_user is not None and not current_user.is_anonymous:
-                    owner_guid = current_user.guid
-                    pub = False
-                encounter = Encounter(
-                    guid=result_data['id'],
-                    version=result_data.get('version', 2),
-                    owner_guid=owner_guid,
-                    public=pub,
-                )
-                db.session.add(encounter)
-        except Exception as ex:
-            log.error(
-                'Encounter.post FAILED houston feather object creation guid=%r - will attempt to DELETE edm Encounter; (payload %r) ex=%r'
-                % (
-                    encounter.guid,
-                    data,
-                    ex,
-                )
-            )
-            # clean up after ourselves by removing encounter from edm
-            encounter.delete_from_edm(current_app)
-            raise ex
-
-        log.debug('Encounter.post created edm/houston guid=%r' % (encounter.guid,))
-        rtn = {
-            'success': True,
-            'result': {
-                'guid': str(encounter.guid),
-                'version': encounter.version,
-            },
-        }
-        return rtn
 
 
 @api.route('/<uuid:encounter_guid>')

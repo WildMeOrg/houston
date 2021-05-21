@@ -18,7 +18,7 @@ def patch_encounter(
             data=json.dumps(data),
         )
     if expected_status_code == 200:
-        utils.validate_dict_response(response, 200, {'success', 'result'})
+        utils.validate_dict_response(response, 200, {'id', 'version'})
     else:
         utils.validate_dict_response(
             response, expected_status_code, {'status', 'message'}
@@ -38,12 +38,12 @@ def test_modify_encounter(db, flask_app_client, researcher_1, researcher_2):
     # non Owner cannot make themselves the owner
     new_owner_as_res_2 = [
         utils.patch_test_op(researcher_2.password_secret),
-        utils.patch_replace_op('owner', '%s' % researcher_2.guid),
+        utils.patch_replace_op('owner', str(researcher_2.guid)),
     ]
 
     patch_encounter(
         flask_app_client,
-        '%s' % new_encounter_1.guid,
+        new_encounter_1.guid,
         researcher_2,
         new_owner_as_res_2,
         403,
@@ -53,10 +53,10 @@ def test_modify_encounter(db, flask_app_client, researcher_1, researcher_2):
     # But the owner can
     new_owner_as_res_1 = [
         utils.patch_test_op(researcher_1.password_secret),
-        utils.patch_replace_op('owner', '%s' % researcher_2.guid),
+        utils.patch_replace_op('owner', str(researcher_2.guid)),
     ]
     patch_encounter(
-        flask_app_client, '%s' % new_encounter_1.guid, researcher_1, new_owner_as_res_1
+        flask_app_client, new_encounter_1.guid, researcher_1, new_owner_as_res_1
     )
     assert new_encounter_1.owner == researcher_2
 
@@ -64,6 +64,8 @@ def test_modify_encounter(db, flask_app_client, researcher_1, researcher_2):
     new_val = 'LOCATION_TEST_VALUE'
     patch_data = [utils.patch_replace_op('locationId', new_val)]
     res = patch_encounter(
-        flask_app_client, '%s' % new_encounter_1.guid, researcher_2, patch_data
+        flask_app_client, new_encounter_1.guid, researcher_2, patch_data
     )
-    assert res is None
+    assert res is not None
+    assert res.status_code == 200
+    assert res.json['id'] == str(new_encounter_1.guid)

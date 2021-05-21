@@ -251,7 +251,9 @@ class EncounterByID(Resource):
                 )
                 with context:
                     db.session.merge(encounter)
-            return rdata
+            rtn = rdata['result']
+            rtn['_patchResults'] = rdata.get('patchResults', None)
+            return rtn
 
         # no EDM, so fall thru to regular houston-patching
         context = api.commit_or_abort(
@@ -262,8 +264,8 @@ class EncounterByID(Resource):
             db.session.merge(encounter)
         # this mimics output format of edm-patching
         return {
-            'success': True,
-            'result': {'id': str(encounter.guid), 'version': encounter.version},
+            'id': str(encounter.guid),
+            'version': encounter.version,
         }
 
     @api.permission_required(

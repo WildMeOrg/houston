@@ -5,7 +5,7 @@
       "name": "African terrestrial mammal detector",
       "description": "Trained on zebras, giraffes, lions, hyenas, leopards, cheetahs, and wild dogs.",
       "config_dict": {
-        "start_detect": "https://kaiju.dyn.wildme.io:5010/api/engine/detect/cnn/lightnet/",
+        "start_detect": "/api/engine/detect/cnn/lightnet/",
         "labeler_algo": "densenet",
         "labeler_model_tag": "zebra_v1",
         "model_tag": "ggr2",

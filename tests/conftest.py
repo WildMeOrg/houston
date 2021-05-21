@@ -254,6 +254,8 @@ def test_root(flask_app):
 
 
 def ensure_asset_group_repo(flask_app, db, asset_group, file_data=[]):
+    from app.modules.asset_groups.tasks import git_push
+
     if pathlib.Path(asset_group.get_absolute_path()).exists():
         shutil.rmtree(asset_group.get_absolute_path())
     repo = asset_group.get_repository()
@@ -273,7 +275,8 @@ def ensure_asset_group_repo(flask_app, db, asset_group, file_data=[]):
         'Initial commit for testing',
         existing_filepath_guid_mapping=filepath_guid_mapping,
     )
-    asset_group.git_push()
+    # Call git_push without .delay in tests to do it in the foreground
+    git_push(str(asset_group.guid))
 
 
 @pytest.fixture(scope='session')

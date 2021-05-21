@@ -427,17 +427,6 @@ class AssetGroup(db.Model, HoustonModel):
 
         self.update_metadata_from_commit(commit)
 
-    def git_push(self):
-        repo = self.ensure_repository()
-        assert repo is not None
-
-        with GitLabPAT(repo):
-            log.info('Pushing to authorized URL')
-            repo.git.push('--set-upstream', repo.remotes.origin, repo.head.ref)
-            log.info('...pushed to %s' % (repo.head.ref,))
-
-        return repo
-
     def git_pull(self):
         repo = self.get_repository()
         assert repo is not None
@@ -550,6 +539,7 @@ class AssetGroup(db.Model, HoustonModel):
 
     def import_tus_files(self, transaction_id=None, paths=None, purge_dir=True):
         from app.extensions.tus import _tus_filepaths_from, _tus_purge
+        from .tasks import git_push
 
         self.ensure_remote()
 
@@ -571,7 +561,9 @@ class AssetGroup(db.Model, HoustonModel):
         if num_files > 0:
             log.info('Tus collect for %d files moved' % (num_files))
             self.git_commit('Tus collect commit for %d files.' % (num_files,))
-            self.git_push()
+            # Do git push to gitlab in the background (we won't wait for its
+            # completion here)
+            git_push.delay(str(self.guid))
             for asset in self.assets:
                 if asset.path in paths_added:
                     assets_added.append(asset)

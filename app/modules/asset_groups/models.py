@@ -969,7 +969,7 @@ class AssetGroup(db.Model, HoustonModel):
     def ensure_remote(self, additional_tags=[]):
         project = current_app.git_backend.get_project(str(self.guid))
         if not project:
-            project = current_app.git_backend.create_project(
+            project = current_app.git_backend.ensure_project(
                 str(self.guid),
                 self.get_absolute_path(),
                 self.major_type.name,

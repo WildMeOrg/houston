@@ -9,7 +9,6 @@ import logging
 from flask import current_app, request, session, render_template  # NOQA
 from flask_login import current_user  # NOQA
 import gitlab
-import os
 
 import keyword
 
@@ -116,7 +115,7 @@ class GitlabManager(object):
                     'GitLab remote failed to authenticate and/or initialize'
                 )
 
-    def _ensure_project(
+    def ensure_project(
         self, project_name, repo_path, project_type, description, additional_tags=[]
     ):
         self._ensure_initialized()
@@ -163,19 +162,6 @@ class GitlabManager(object):
                     project = self.get_project(project_name)
                 if not project:
                     raise
-
-        return project
-
-    def create_project(
-        self, project_name, repo_path, project_type, description, additional_tags=[]
-    ):
-        git_path = os.path.join(repo_path, '.git')
-        project = None
-
-        if not os.path.exists(git_path):
-            project = self._ensure_project(
-                project_name, repo_path, project_type, description, additional_tags
-            )
 
         return project
 

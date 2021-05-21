@@ -34,7 +34,7 @@ def test_ensure_project_name_taken(flask_app):
             'create',
             side_effect=create_project_raise_gitlab_exception,
         ):
-            project = flask_app.git_backend.create_project(
+            project = flask_app.git_backend.ensure_project(
                 project_name, repo_path, 'test', 'project description'
             )
             assert project.name == project_name
@@ -50,6 +50,6 @@ def test_ensure_project_name_taken(flask_app):
             side_effect=raise_gitlab_exception,
         ):
             with pytest.raises(gitlab.exceptions.GitlabCreateError):
-                flask_app.git_backend.create_project(
+                flask_app.git_backend.ensure_project(
                     project_name, repo_path, 'test', 'project description'
                 )

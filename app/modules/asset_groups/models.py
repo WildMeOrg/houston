@@ -68,9 +68,11 @@ class GitLabPAT(object):
             self.repo.remotes.origin.set_url(self.authenticated_url)
         return self
 
-    def __exit__(self, type, value, traceback):
+    def __exit__(self, exc_type, exc_value, traceback):
         if self.repo is not None:
             self.repo.remotes.origin.set_url(self.original_url)
+        if exc_type:
+            return False
         return True
 
 
@@ -442,8 +444,12 @@ class AssetGroup(db.Model, HoustonModel):
 
         with GitLabPAT(repo):
             log.info('Pulling from authorized URL')
-            repo.git.pull(repo.remotes.origin, repo.head.ref)
-            log.info('...pulled')
+            try:
+                repo.git.pull(repo.remotes.origin, repo.head.ref)
+            except git.exc.GitCommandError as e:
+                log.info(f'git pull failed for {self.guid}: {str(e)}')
+            else:
+                log.info('...pulled')
 
         self.update_metadata_from_repo(repo)
 

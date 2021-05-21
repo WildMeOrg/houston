@@ -2,6 +2,7 @@
 # pylint: disable=missing-docstring
 import json
 from tests import utils
+from tests.modules.encounters.resources import utils as enc_utils
 
 
 PATH = '/api/v1/encounters/'
@@ -29,10 +30,10 @@ def test_modify_encounter(db, flask_app_client, researcher_1, researcher_2):
     # pylint: disable=invalid-name
     from app.modules.encounters.models import Encounter
 
-    new_encounter_1 = Encounter(owner=researcher_1)
-
-    with db.session.begin():
-        db.session.add(new_encounter_1)
+    response = enc_utils.create_encounter(flask_app_client, researcher_1)
+    first_enc_guid = response.json['result']['encounters'][0]['id']
+    assert first_enc_guid is not None
+    new_encounter_1 = Encounter.query.get(first_enc_guid)
 
     # non Owner cannot make themselves the owner
     new_owner_as_res_2 = [
@@ -59,11 +60,10 @@ def test_modify_encounter(db, flask_app_client, researcher_1, researcher_2):
     )
     assert new_encounter_1.owner == researcher_2
 
-    # test changing locationID via patch
+    # test changing locationId via patch
     new_val = 'LOCATION_TEST_VALUE'
-    patch_data = [utils.patch_replace_op('locationID', new_val)]
+    patch_data = [utils.patch_replace_op('locationId', new_val)]
     res = patch_encounter(
-        flask_app_client, '%s' % new_encounter_1.guid, researcher_1, patch_data
+        flask_app_client, '%s' % new_encounter_1.guid, researcher_2, patch_data
     )
-    print(f'(<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<{res})')
     assert res is None

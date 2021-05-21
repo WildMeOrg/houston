@@ -23,7 +23,7 @@ def test_patch_annotation(
     )
 
     response = enc_utils.create_encounter(flask_app_client, researcher_1)
-    first_enc_guid = response.json['result']['guid']
+    first_enc_guid = response.json['result']['encounters'][0]['id']
 
     response = annot_utils.create_annotation(
         flask_app_client,
@@ -42,7 +42,7 @@ def test_patch_annotation(
     assert first_encounter.annotations[0].guid == uuid.UUID(annotation_guid)
 
     response = enc_utils.create_encounter(flask_app_client, researcher_1)
-    second_enc_guid = response.json['result']['guid']
+    second_enc_guid = response.json['result']['encounters'][0]['id']
     move_to_second_enc = [
         utils.patch_replace_op('encounter_guid', '%s' % second_enc_guid),
     ]

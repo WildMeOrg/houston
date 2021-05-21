@@ -73,6 +73,12 @@ class Encounters(Resource):
         Create a new instance of Encounter.
         """
 
+        abort(
+            success=False,
+            message='Error: Encounter must be made as part of a Sighting via POST or PATCH',
+            code=400,
+        )
+
         data = {}
         # data.update(request.args)
         # data.update(args)
@@ -212,7 +218,7 @@ class EncounterByID(Resource):
                 ),
             }
             response = current_app.edm.request_passthrough(
-                'sighting.data',
+                'encounter.data',
                 'patch',
                 {'data': args, 'headers': headers},
                 encounter.guid,

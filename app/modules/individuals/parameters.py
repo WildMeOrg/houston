@@ -5,8 +5,11 @@ Input arguments (Parameters) for Individuals resources RESTful API
 """
 from flask_restx_patched import Parameters, PatchJSONParameters
 from . import schemas
+from app.modules.users.permissions import rules
+from app.modules.users.permissions.types import AccessOperation
 import logging
 import uuid
+
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
@@ -26,29 +29,56 @@ class CreateIndividualParameters(Parameters, schemas.DetailedIndividualSchema):
 
 class PatchIndividualDetailsParameters(PatchJSONParameters):
     # pylint: disable=abstract-method,missing-docstring
-    OPERATION_CHOICES = (PatchJSONParameters.OP_REPLACE,)
+    OPERATION_CHOICES = (
+        PatchJSONParameters.OP_REPLACE,
+        PatchJSONParameters.OP_ADD,
+        PatchJSONParameters.OP_REMOVE,
+    )
 
     VALID_FIELDS = ['encounters']
     PATH_CHOICES = tuple('/%s' % field for field in (VALID_FIELDS))
 
     @classmethod
-    def replace(cls, obj, field, value, state):
+    def remove(cls, obj, field, value, state):
+        has_permission = rules.ObjectActionRule(obj, AccessOperation.WRITE).check()
         ret_val = False
-        if field == 'encounters':
-            if len(value) == 0:
-                ret_val = True
-            encounter_list = []
-            for encounter_guid in value:
-                if is_valid_uuid(encounter_guid):
-                    from app.modules.encounters.models import Encounter
+        if has_permission:
+            if field == 'encounters':
+                for encounter_guid in value:
+                    if is_valid_uuid(encounter_guid):
+                        from app.modules.encounters.models import Encounter
 
-                    encounter = Encounter.query.filter(
-                        Encounter.guid == encounter_guid
-                    ).first()
-                    if encounter is not None and encounter not in encounter_list:
-                        encounter_list.append(encounter)
-                    ret_val = True
-            obj.encounters = encounter_list
-        if ret_val is False:
+                        encounter = Encounter.query.filter(
+                            Encounter.guid == encounter_guid
+                        ).first()
+                        if encounter is not None and encounter not in obj.encounters:
+                            obj.remove_encounter(encounter)
+                            ret_val = True
+        return ret_val
+
+    @classmethod
+    def add(cls, obj, field, value, state):
+        has_permission = rules.ObjectActionRule(obj, AccessOperation.WRITE).check()
+        ret_val = False
+        if has_permission:
+            if field == 'encounters':
+                for encounter_guid in value:
+                    if is_valid_uuid(encounter_guid):
+                        from app.modules.encounters.models import Encounter
+
+                        encounter = Encounter.query.filter(
+                            Encounter.guid == encounter_guid
+                        ).first()
+                        if encounter is not None and encounter not in obj.encounters:
+                            obj.add_encounter(encounter)
+                            ret_val = True
+        return ret_val
+
+    @classmethod
+    def replace(cls, obj, field, value, state):
+        has_permission = rules.ObjectActionRule(obj, AccessOperation.WRITE).check()
+        ret_val = False
+        if has_permission:
             super(PatchIndividualDetailsParameters, cls).replace(obj, field, value, state)
+            ret_val = True
         return ret_val

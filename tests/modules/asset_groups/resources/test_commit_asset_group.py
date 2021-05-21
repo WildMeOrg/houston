@@ -20,8 +20,13 @@ def test_commit_asset_group(flask_app_client, researcher_1, regular_user, test_r
         asset_group_uuid = response.json['guid']
         asset_group_sighting_guid = response.json['sightings'][0]['guid']
 
+        # Should not be able to commit as contributor
+        asset_group_utils.commit_asset_group_sighting(
+            flask_app_client, regular_user, asset_group_sighting_guid, 403
+        )
+        # researcher should though
         response = asset_group_utils.commit_asset_group_sighting(
-            flask_app_client, regular_user, asset_group_uuid, asset_group_sighting_guid
+            flask_app_client, researcher_1, asset_group_sighting_guid
         )
         from app.modules.sightings.models import Sighting
 

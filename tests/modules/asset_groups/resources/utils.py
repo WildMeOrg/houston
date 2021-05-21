@@ -109,13 +109,12 @@ def create_asset_group(
 def commit_asset_group_sighting(
     flask_app_client,
     user,
-    asset_group_guid,
     asset_group_sighting_guid,
     expected_status_code=200,
 ):
     with flask_app_client.login(user, auth_scopes=('asset_groups:write',)):
         response = flask_app_client.post(
-            f'{PATH}{asset_group_guid}/{asset_group_sighting_guid}/commit',
+            f'{PATH}sighting/{asset_group_sighting_guid}/commit',
             content_type='application/json',
         )
 

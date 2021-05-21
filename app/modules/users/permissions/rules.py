@@ -22,6 +22,16 @@ ANY_ROLE_MAP = {
     ('SiteSetting', AccessOperation.READ, 'Object'): ['is_privileged'],
     ('SiteSetting', AccessOperation.WRITE, 'Object'): ['is_privileged', 'is_admin'],
     ('SiteSetting', AccessOperation.DELETE, 'Object'): ['is_privileged', 'is_admin'],
+    ('AssetGroupSighting', AccessOperation.READ, 'Object'): [
+        'is_privileged',
+        'is_admin',
+        'is_researcher',
+    ],
+    ('AssetGroupSighting', AccessOperation.WRITE, 'Object'): [
+        'is_privileged',
+        'is_admin',
+        'is_researcher',
+    ],
 }
 ANY_OBJECT_METHOD_MAP = {
     ('SiteSetting', AccessOperation.READ, 'Object'): ['is_public'],

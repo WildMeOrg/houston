@@ -345,13 +345,12 @@ class AssetGroupByID(Resource):
         return None
 
 
-@api.route('/<uuid:asset_group_guid>/<uuid:asset_group_sighting_guid>/commit')
+@api.route('/sighting/<uuid:asset_group_sighting_guid>/commit')
 @api.login_required(oauth_scopes=['asset_groups:write'])
 @api.response(
     code=HTTPStatus.NOT_FOUND,
     description='Asset_group not found.',
 )
-@api.resolve_object_by_model(AssetGroup, 'asset_group')
 @api.resolve_object_by_model(AssetGroupSighting, 'asset_group_sighting')
 class AssetGroupSightingCommit(Resource):
     """
@@ -361,23 +360,18 @@ class AssetGroupSightingCommit(Resource):
     @api.permission_required(
         permissions.ObjectAccessPermission,
         kwargs_on_request=lambda kwargs: {
-            'obj': kwargs['asset_group'],
+            'obj': kwargs['asset_group_sighting'],
             'action': AccessOperation.WRITE,
         },
     )
     # NOTE this returns a sighting schema not an AssetGroup one as the output of this is that
     # a sighting is created
     @api.response(BaseSightingSchema())
-    def post(self, asset_group, asset_group_sighting):
+    def post(self, asset_group_sighting):
         from app.modules.utils import Cleanup
         from app.modules.sightings.models import Sighting
         from app.modules.encounters.models import Encounter
 
-        if asset_group_sighting not in asset_group.sightings:
-            abort(
-                HTTPStatus.BAD_REQUEST,
-                f'AssetGroupSighting {asset_group_sighting.guid} not in AssetGroup {asset_group.guid}',
-            )
         if asset_group_sighting.stage != AssetGroupSightingStage.curation:
             abort(
                 HTTPStatus.BAD_REQUEST,
@@ -385,7 +379,7 @@ class AssetGroupSightingCommit(Resource):
                 % (asset_group_sighting.guid, asset_group_sighting.stage),
             )
 
-        request_data = asset_group_sighting.meta
+        request_data = asset_group_sighting.config
         if not request_data:
             abort(
                 HTTPStatus.BAD_REQUEST,
@@ -436,6 +430,7 @@ class AssetGroupSightingCommit(Resource):
         #         sighting.add_asset(asset)
 
         cleanup.add_object(sighting)
+        asset_group = asset_group_sighting.asset_group
 
         for encounter_num in range(len(request_data['encounters'])):
             req_data = request_data['encounters'][encounter_num]

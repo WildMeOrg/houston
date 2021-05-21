@@ -94,24 +94,6 @@ class AssetGroupSightingStage(str, enum.Enum):
     failed = 'failed'
 
 
-# AssetGroupSighting may have many jobs so needs a table
-class AssetGroupJob(db.Model, HoustonModel):
-    guid = db.Column(db.GUID, default=uuid.uuid4, primary_key=True)
-    stage = db.Column(
-        db.Enum(AssetGroupSightingStage),
-        default=AssetGroupSightingStage.unknown,
-        nullable=False,
-    )
-    owner_guid = db.Column(
-        db.GUID,
-        db.ForeignKey('asset_group_sighting.guid'),
-        index=True,
-        nullable=False,
-    )
-    asset_group = db.relationship('AssetGroupSighting', backref=db.backref('jobs'))
-    jobId = db.Column(db.GUID, nullable=False)
-
-
 # AssetGroup can have many sightings, so needs a table
 class AssetGroupSighting(db.Model, HoustonModel):
     guid = db.Column(db.GUID, default=uuid.uuid4, primary_key=True)
@@ -128,12 +110,17 @@ class AssetGroupSighting(db.Model, HoustonModel):
     )
     asset_group = db.relationship('AssetGroup', backref=db.backref('sightings'))
 
-    meta = db.Column(db.JSON, nullable=True)
+    # configuration metadata from the create request
+    config = db.Column(db.JSON, nullable=True)
+
+    # May have multiple jobs outstanding, store as json array of job_ids
+    jobs = db.Column(db.JSON, nullable=True)
 
     def delete(self):
         with db.session.begin(subtransactions=True):
-            for job in self.jobs:
-                db.session.delete(job)
+            if self.jobs:
+                for job in self.jobs:
+                    db.session.delete(job)
             db.session.refresh(self)
             db.session.delete(self)
 
@@ -169,7 +156,7 @@ class AssetGroup(db.Model, HoustonModel):
 
     description = db.Column(db.String(length=255), nullable=True)
 
-    meta = db.Column(db.JSON, nullable=True)
+    config = db.Column(db.JSON, nullable=True)
 
     owner_guid = db.Column(
         db.GUID, db.ForeignKey('user.guid'), index=True, nullable=False
@@ -196,9 +183,10 @@ class AssetGroup(db.Model, HoustonModel):
 
     @property
     def bulk_upload(self):
-        return (
-            self.meta['bulkUpload'] if self.meta and 'bulkUpload' in self.meta else False
-        )
+        ret_val = False
+        if self.config and 'bulkUpload' in self.config:
+            ret_val = self.config['bulkUpload']
+        return ret_val
 
     @property
     def anonymous(self):
@@ -366,11 +354,11 @@ class AssetGroup(db.Model, HoustonModel):
         )
         asset_group_metadata['commit_houston_api_version'] = str(version)
 
-        if 'frontend_sightings_data' not in asset_group_metadata and self.meta:
-            metadata_request = self.meta
+        if 'frontend_sightings_data' not in asset_group_metadata and self.config:
+            metadata_request = self.config
             metadata_request['sightings'] = []
             for sighting in self.sightings:
-                metadata_request['sightings'].append(sighting.meta)
+                metadata_request['sightings'].append(sighting.config)
 
             asset_group_metadata['frontend_sightings_data'] = metadata_request
 
@@ -846,11 +834,12 @@ class AssetGroup(db.Model, HoustonModel):
     def begin_ia_pipeline(self, metadata):
         assert len(metadata.detection_configs) == 1
         assert metadata.data_processed == CreateAssetGroupMetadata.DataProcessed.complete
+        import copy
 
         for sighting_meta in metadata.request['sightings']:
             new_sighting = AssetGroupSighting(
                 asset_group_guid=self.guid,
-                meta=dict(sighting_meta),
+                config=copy.deepcopy(sighting_meta),
             )
             if not metadata.detection_configs[0]:
                 new_sighting.stage = AssetGroupSightingStage.curation
@@ -867,8 +856,8 @@ class AssetGroup(db.Model, HoustonModel):
         self.ensure_remote()
 
         # Store the metadata in the AssetGroup but not the sightings, that is stored on the AssetGroupSightings
-        self.meta = dict(metadata.request)
-        del self.meta['sightings']
+        self.config = dict(metadata.request)
+        del self.config['sightings']
 
         description = 'Adding Creation metadata'
         if metadata.description != '':

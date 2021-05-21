@@ -487,6 +487,13 @@ class User(db.Model, FeatherModel, UserEDMMixin):
     def get_projects(self):
         return [enrollment.project for enrollment in self.project_membership_enrollments]
 
+    def unprocessed_asset_groups(self):
+        return [
+            asset_group.guid
+            for asset_group in self.asset_groups
+            if not asset_group.is_processed()
+        ]
+
     def get_id(self):
         return self.guid
 

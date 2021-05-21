@@ -32,14 +32,9 @@ class BaseAssetGroupSchema(ModelSchema):
         model = AssetGroup
         fields = (
             AssetGroup.guid.key,
-            AssetGroup.commit.key,
-            AssetGroup.major_type.key,
-            AssetGroup.description.key,
+            AssetGroup.is_processed.__name__,
         )
-        dump_only = (
-            AssetGroup.guid.key,
-            AssetGroup.commit.key,
-        )
+        dump_only = (AssetGroup.guid.key,)
 
 
 class CreateAssetGroupSchema(BaseAssetGroupSchema):
@@ -52,9 +47,13 @@ class CreateAssetGroupSchema(BaseAssetGroupSchema):
             AssetGroup.owner_guid.key,
             AssetGroup.created.key,
             AssetGroup.updated.key,
+            AssetGroup.commit.key,
+            AssetGroup.major_type.key,
+            AssetGroup.description.key,
         )
         dump_only = BaseAssetGroupSchema.Meta.dump_only + (
             AssetGroup.owner_guid.key,
+            AssetGroup.commit.key,
             AssetGroup.created.key,
             AssetGroup.updated.key,
         )
@@ -78,5 +77,9 @@ class DetailedAssetGroupSchema(CreateAssetGroupSchema):
     )
 
     class Meta(CreateAssetGroupSchema.Meta):
-        fields = CreateAssetGroupSchema.Meta.fields + ('assets', 'sightings')
+        fields = CreateAssetGroupSchema.Meta.fields + (
+            'assets',
+            'sightings',
+            AssetGroup.bulk_upload.fget.__name__,
+        )
         dump_only = CreateAssetGroupSchema.Meta.dump_only

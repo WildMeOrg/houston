@@ -8,6 +8,7 @@ User schemas
 from flask_marshmallow import base_fields
 from flask_restx_patched import ModelSchema
 from app.modules.fileuploads.schemas import DetailedFileUploadSchema  # noqa
+from app.modules.asset_groups.schemas import BaseAssetGroupSchema  # noqa
 
 from .models import User
 
@@ -82,6 +83,7 @@ class PersonalUserSchema(DetailedUserSchema):
 
     class Meta(DetailedUserSchema.Meta):
         fields = DetailedUserSchema.Meta.fields + (
+            User.unprocessed_asset_groups.__name__,
             User.default_identification_catalogue.key,
             User.shares_data.key,
             User.receive_newsletter_emails.key,

@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=missing-docstring
 import tests.modules.asset_groups.resources.utils as asset_group_utils
+import tests.modules.users.resources.utils as user_utils
 import tests.extensions.tus.utils as tus_utils
 
 
@@ -263,6 +264,14 @@ def test_create_bulk_asset_group(flask_app_client, researcher_1, test_root, db):
                 'src': f'/api/v1/assets/src/{asset_guids[3]}',
             },
         ]
+
+        # Make sure that the user has the group and it's in the correct state
+        user_resp = user_utils.read_user(flask_app_client, researcher_1, 'me')
+        assert 'unprocessed_asset_groups' in user_resp.json
+        groups = user_resp.json['unprocessed_asset_groups']
+        assert len(groups) == 1
+        assert asset_group_uuid == groups[0]
+
     finally:
         if asset_group_uuid:
             asset_group_utils.delete_asset_group(

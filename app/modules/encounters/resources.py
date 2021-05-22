@@ -96,7 +96,6 @@ class EncounterByID(Resource):
     )
     @api.login_required(oauth_scopes=['encounters:write'])
     @api.parameters(parameters.PatchEncounterDetailsParameters())
-    # @api.response(schemas.DetailedEncounterSchema())
     @api.response(code=HTTPStatus.CONFLICT)
     def patch(self, args, encounter):
         """

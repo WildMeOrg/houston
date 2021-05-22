@@ -3,6 +3,7 @@
 import json
 from tests import utils
 from tests.modules.encounters.resources import utils as enc_utils
+from tests.extensions.edm import utils as edm_utils
 
 
 PATH = '/api/v1/encounters/'
@@ -26,7 +27,7 @@ def patch_encounter(
     return response
 
 
-def test_modify_encounter(db, flask_app_client, researcher_1, researcher_2):
+def test_modify_encounter(db, flask_app_client, researcher_1, researcher_2, admin_user):
     # pylint: disable=invalid-name
     from app.modules.encounters.models import Encounter
 
@@ -73,3 +74,30 @@ def test_modify_encounter(db, flask_app_client, researcher_1, researcher_2):
     enc = enc_utils.read_encounter(flask_app_client, researcher_2, new_encounter_1.guid)
     assert enc.json['id'] == str(new_encounter_1.guid)
     assert enc.json['locationId'] == new_val
+
+    # now we test modifying customFields
+    cfd_id = edm_utils.custom_field_create(
+        flask_app_client, admin_user, 'test_cfd', cls='Encounter'
+    )
+    assert cfd_id is not None
+
+    # test patch on customFields
+    new_cfd_test_value = 'NEW_CFD_TEST_VALUE'
+    patch_data = [
+        utils.patch_replace_op(
+            'customFields', {'id': cfd_id, 'value': new_cfd_test_value}
+        )
+    ]
+    response = patch_encounter(
+        flask_app_client, new_encounter_1.guid, researcher_2, patch_data
+    )
+
+    assert response.status_code == 200
+    assert response.json['id'] == str(new_encounter_1.guid)
+    # check that change was made
+    enc = enc_utils.read_encounter(flask_app_client, researcher_2, new_encounter_1.guid)
+    assert enc.json['id'] == str(new_encounter_1.guid)
+    # make sure customFields value has been altered
+    assert 'customFields' in enc.json
+    assert cfd_id in enc.json['customFields']
+    assert enc.json['customFields'][cfd_id] == new_cfd_test_value

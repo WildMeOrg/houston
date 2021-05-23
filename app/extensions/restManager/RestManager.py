@@ -246,6 +246,7 @@ class RestManager(RestManagerUserMixin):
         passthrough_kwargs={},
         ensure_initialized=True,
         verbose=True,
+        reauthenticated=False,
     ):
         if ensure_initialized:
             self._ensure_initialized()
@@ -269,14 +270,13 @@ class RestManager(RestManagerUserMixin):
         if verbose:
             log.info(f'Sending request to {self.NAME}: {endpoint_encoded}')
 
-        if target_session is None:
-            target_session = self.sessions[target]
+        session_ = target_session or self.sessions[target]
 
-        with target_session:
+        with session_:
             if _pre_request_func is not None:
-                target_session = _pre_request_func(target_session)
+                session_ = _pre_request_func(session_)
 
-            request_func = getattr(target_session, method, None)
+            request_func = getattr(session_, method, None)
             assert request_func is not None
 
             response = request_func(endpoint_encoded, **passthrough_kwargs)
@@ -284,6 +284,23 @@ class RestManager(RestManagerUserMixin):
         if response.ok:
             if decode_as_object:
                 response = json.loads(response.text, object_hook=_json_object_hook)
+        elif response.status_code == 401 and not reauthenticated:
+            # Try re-authenticating
+            self._ensure_session(target)
+            return self._request(
+                method,
+                tag,
+                *args,
+                endpoint=endpoint,
+                target=target,
+                target_session=target_session,
+                _pre_request_func=_pre_request_func,
+                decode_as_object=decode_as_object,
+                passthrough_kwargs=passthrough_kwargs,
+                ensure_initialized=ensure_initialized,
+                verbose=verbose,
+                reauthenticated=True,
+            )
         else:
             log.warning(
                 f'Non-OK ({response.status_code}) response on {method} {endpoint}: {response.content}'

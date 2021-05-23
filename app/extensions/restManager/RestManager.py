@@ -332,11 +332,6 @@ class RestManager(RestManagerUserMixin):
         self, tag, method, passthrough_kwargs, args=None, target='default'
     ):
         self._ensure_initialized()
-        try:
-            # Try to convert string integers to integers
-            target = int(target)
-        except ValueError:
-            pass
 
         # Check target
         targets = list(self.targets)

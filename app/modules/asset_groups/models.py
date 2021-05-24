@@ -815,8 +815,11 @@ class AssetGroup(db.Model, HoustonModel):
                 if sighting.stage != stage:
                     return False
         else:
-            # If there are no sightings, the only stage that is valid is unknown
-            return stage == AssetGroupSightingStage.unknown
+            # If there are no sightings, the only stages that are valid are unknown and processed
+            return stage in [
+                AssetGroupSightingStage.unknown,
+                AssetGroupSightingStage.processed,
+            ]
         return True
 
     def is_detection_in_progress(self):

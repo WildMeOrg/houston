@@ -65,17 +65,12 @@ class PatchAssetGroupSightingDetailsParameters(PatchJSONParameters):
     def replace(cls, obj, field, value, state):
 
         ret_val = False
-        # Permissions for all fields are the same so have one check
-        if (
-            current_user.is_privileged
-            or current_user.is_admin
-            or current_user.is_researcher
-        ):
-            if field == 'config':
-                # The permissions check of what is allowed to be updated is done in the
-                # PatchAssetGroupSightingMetadata, this assumes that the data is valid
-                obj.meta = value
-                ret_val = True
+
+        if field == 'config':
+            # The permissions check of what is allowed to be updated is done in the
+            # PatchAssetGroupSightingMetadata, this assumes that the data is valid
+            obj.meta = value
+            ret_val = True
         return ret_val
 
     @classmethod

@@ -116,11 +116,22 @@ class AssetGroupSighting(db.Model, HoustonModel):
     # May have multiple jobs outstanding, store as json array of job_ids
     jobs = db.Column(db.JSON, nullable=True)
 
+    def check_job_status(self, job_id):
+        if str(job_id) not in self.jobs:
+            log.warning(f'check_job_status called for invalid job {job_id}')
+            return False
+
+        # TODO Poll ACM to see what's happening with this job, if it's ready to handle and we missed the
+        # response, process it here
+        return True
+
     def delete(self):
+        from app.modules.job_control.models import JobControl
+
         with db.session.begin(subtransactions=True):
             if self.jobs:
                 for job in self.jobs:
-                    db.session.delete(job)
+                    JobControl.delete_job(uuid.UUID(job))
             db.session.refresh(self)
             db.session.delete(self)
 

@@ -143,6 +143,7 @@ class BaseConfig(object):
         'annotations',
         'site_settings',
         'site_info',
+        'job_control',
 
         # Front-end
         #   Dependencies: Users, Auth, Assets

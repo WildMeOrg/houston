@@ -32,6 +32,8 @@ class Sighting(db.Model, FeatherModel):
 
     featured_asset_guid = db.Column(db.GUID, default=None, nullable=True)
 
+    jobs = db.Column(db.JSON, nullable=True)
+
     def __repr__(self):
         return (
             '<{class_name}('
@@ -228,3 +230,12 @@ class Sighting(db.Model, FeatherModel):
                 submitter_guid=user_guid,
             )
             self.add_encounter(encounter)
+
+    def check_job_status(self, job_id):
+        if job_id not in self.jobs:
+            log.warning(f'check_job_status called for invalid job {job_id}')
+            return False
+
+        # TODO Poll ACM to see what's happening with this job, if it's ready to handle and we missed the
+        # response, process it here
+        return True

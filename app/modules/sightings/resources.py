@@ -17,7 +17,7 @@ from app.extensions.api import Namespace
 from app.extensions.api.parameters import PaginationParameters
 from app.modules.users import permissions
 from app.modules.users.permissions.types import AccessOperation
-
+from app.utils import HoustonException
 
 from . import parameters, schemas
 from .models import Sighting
@@ -224,13 +224,16 @@ class Sightings(Resource):
             owner = current_user
             submitter_guid = current_user.guid
 
-        result_data, message, error = current_app.edm.request_passthrough_result(
-            'sighting.data', 'post', {'data': request_in}, ''
-        )
-
-        if not result_data:
+        try:
+            result_data = current_app.edm.request_passthrough_result(
+                'sighting.data', 'post', {'data': request_in}, ''
+            )
+        except HoustonException as ex:
             cleanup.rollback_and_abort(
-                message, 'Sighting.post failed', error_fields=error
+                ex.message,
+                'Sighting.post failed',
+                ex.status_code,
+                ex.get_val('error', 'Error'),
             )
 
         # Created it, need to clean it up if we rollback
@@ -416,7 +419,6 @@ class SightingByID(Resource):
                 code=400,
             )
 
-        rdata = {}
         if edm_count > 0:
             log.debug(f'wanting to do edm patch on args={args}')
             headers = {
@@ -427,40 +429,37 @@ class SightingByID(Resource):
                     'x-allow-delete-cascade-sighting', 'false'
                 ),
             }
-            response = current_app.edm.request_passthrough(
-                'sighting.data',
-                'patch',
-                {'data': args, 'headers': headers},
-                sighting.guid,
-            )
-            rdata = response.json()
-            if (
-                not response.ok
-                or response.status_code != 200
-                or not rdata['success']
-                or 'result' not in rdata
-            ):
-                code = response.status_code
-                if code > 600:
-                    code = 400  # flask doesnt like us to use "invalid" codes. :(
-                log.warning(f'EDM patch got {response.status_code} response of {rdata}')
+
+            result = None
+            try:
+                (
+                    response,
+                    response_data,
+                    result,
+                ) = current_app.edm.request_passthrough_parsed(
+                    'sighting.data',
+                    'patch',
+                    {'data': args, 'headers': headers},
+                    sighting.guid,
+                )
+            except HoustonException as ex:
+                edm_status_code = ex.get_val('edm_status_code', 400)
                 abort(
                     success=False,
-                    passed_message=rdata.get('message', 'unknown error'),
-                    code=code,
-                    edm_status_code=response.status_code,
+                    passed_message=ex.message,
+                    code=ex.status_code,
+                    edm_status_code=edm_status_code,
                 )
-            if 'deletedSighting' in rdata['result']:
+
+            if 'deletedSighting' in result:
                 log.warning(  # TODO future audit log here
-                    f"EDM triggered self-deletion of {sighting} result={rdata['result']}"
+                    f'EDM triggered self-deletion of {sighting} result={result}'
                 )
                 sighting.delete_cascade()  # this will get rid of our encounter(s) as well so no need to rectify_edm_encounters()
                 sighting = None
             else:
-                sighting.rectify_edm_encounters(
-                    rdata['result'].get('encounters'), current_user
-                )
-                new_version = rdata['result'].get('version', None)
+                sighting.rectify_edm_encounters(result.get('encounters'), current_user)
+                new_version = result.get('version', None)
                 if new_version is not None:
                     sighting.version = new_version
                     context = api.commit_or_abort(
@@ -469,7 +468,7 @@ class SightingByID(Resource):
                     )
                     with context:
                         db.session.merge(sighting)
-            return rdata
+            return response_data
 
         # no EDM, so fall thru to regular houston-patching
         context = api.commit_or_abort(

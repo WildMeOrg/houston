@@ -20,6 +20,7 @@ from app.extensions.api import Namespace, abort
 from app.extensions.api.parameters import PaginationParameters
 from app.modules.users import permissions
 from app.modules.users.permissions.types import AccessOperation
+from app.utils import HoustonException
 
 from . import parameters, schemas
 from .metadata import (
@@ -449,12 +450,12 @@ class AssetGroupSightingCommit(Resource):
             )
 
         # Create sighting in EDM
-        result_data, message, error = current_app.edm.request_passthrough_result(
-            'sighting.data', 'post', {'data': request_data}, ''
-        )
-
-        if not result_data:
-            abort(HTTPStatus.BAD_REQUEST, message, errorFields=error)
+        try:
+            result_data = current_app.edm.request_passthrough_result(
+                'sighting.data', 'post', {'data': request_data}, ''
+            )
+        except HoustonException as ex:
+            abort(ex.status_code, ex.message, errorFields=ex.get_val('error', 'Error'))
 
         cleanup = Cleanup('AssetGroup')
         cleanup.add_guid(result_data['id'], Sighting)

@@ -28,12 +28,7 @@ class BaseAssetGroupMetadata(object):
     def __init__(self, request_json):
         self.request_json = request_json
         self.request = {}
-
-    def process_json_req(self):
-        try:
-            self.request.update(self.request_json)
-        except Exception:
-            raise AssetGroupMetadataError('Failed to parse request')
+        self.files = set()
 
     # Helper for validating the required fields in any level dictionary
     def _validate_fields(self, dictionary, fields, error_str):
@@ -59,6 +54,67 @@ class BaseAssetGroupMetadata(object):
                         f'{field} incorrect type in {error_str}'
                     )
 
+    def _validate_sighting(self, sighting, file_dir, sighting_debug, encounter_debug):
+
+        sighting_fields = [
+            ('locationId', str, False),
+            ('startTime', str, True),
+            ('context', str, True),
+            ('encounters', list, True),
+            ('name', str, False),
+        ]
+        self._validate_fields(sighting, sighting_fields, sighting_debug)
+
+        encounter_num = 0
+        # Have a sighting with multiple encounters, make sure we have all of the files
+        for encounter in sighting['encounters']:
+            encounter_num += 1
+            if not isinstance(encounter, dict):
+                raise AssetGroupMetadataError(
+                    f'{encounter_debug}{encounter_num} needs to be a dict'
+                )
+            encounter_fields = [
+                ('assetReferences', list, False),
+                ('ownerEmail', str, False),
+            ]
+            self._validate_fields(
+                encounter,
+                encounter_fields,
+                f'{encounter_debug}{encounter_num}',
+            )
+
+            # Can reassign encounter owner but only to a valid user
+            if 'ownerEmail' in encounter:
+                from app.modules.users.models import User
+
+                if not isinstance(encounter['ownerEmail'], str):
+                    raise AssetGroupMetadataError(
+                        f'{encounter_debug}{encounter_num} ownerEmail must be a string'
+                    )
+                owner_email = encounter['ownerEmail']
+                encounter_owner = User.find(email=owner_email)
+                if encounter_owner is None:
+                    raise AssetGroupMetadataError(
+                        f'{encounter_debug}{encounter_num} owner {owner_email} not found'
+                    )
+                else:
+                    self.owner_assignment = True
+
+            for filename in encounter['assetReferences']:
+
+                file_path = os.path.join(file_dir, filename)
+                file_size = 0
+                try:
+                    file_size = os.path.getsize(file_path)  # 2for1
+                except OSError as err:
+                    raise AssetGroupMetadataError(
+                        f'Failed to find {filename} in transaction {err} '
+                    )
+                if file_size < 1:
+                    raise AssetGroupMetadataError(f'found zero-size file for {filename}')
+                # Set ensures no duplicates
+                self.files.add(filename)
+
 
 # Class used to process and validate the json data. This json may be received from the frontend or
 # read from a file in the case of a restart. This class creates no DB objects, it just validates
@@ -73,7 +129,6 @@ class CreateAssetGroupMetadata(BaseAssetGroupMetadata):
 
     def __init__(self, request_json):
         super().__init__(request_json)
-        self.files = set()
         self.owner = None
         self.owner_assignment = False
         self.anonymous_submitter = None
@@ -127,7 +182,10 @@ class CreateAssetGroupMetadata(BaseAssetGroupMetadata):
         return self.owner is User.get_public_user()
 
     def process_request(self):
-        self.process_json_req()
+        try:
+            self.request.update(self.request_json)
+        except Exception:
+            raise AssetGroupMetadataError('Failed to parse request')
 
         # Parse according to docs.google.com/document/d/11TMq1qzaQxva97M3XYwaEYYUawJ5VsrRXnJvTQR_nG0/edit?pli=1#
         top_level_fields = [
@@ -229,6 +287,8 @@ class CreateAssetGroupMetadata(BaseAssetGroupMetadata):
     def _validate_sightings(self):
         from app.extensions.tus import tus_upload_dir
 
+        file_dir = tus_upload_dir(current_app, transaction_id=self.tus_transaction_id)
+
         sighting_num = 0
         # validate sightings content
         for sighting in self.request['sightings']:
@@ -239,82 +299,32 @@ class CreateAssetGroupMetadata(BaseAssetGroupMetadata):
                     f'Sighting {sighting_num} needs to be a dict'
                 )
 
-            sighting_fields = [
-                ('locationId', str, False),
-                ('startTime', str, True),
-                ('context', str, True),
-                ('encounters', list, True),
-                ('name', str, False),
-            ]
-            self._validate_fields(sighting, sighting_fields, f'Sighting {sighting_num}')
-
-            encounter_num = 0
-            # Have a sighting with multiple encounters, make sure we have all of the files
-            for encounter in sighting['encounters']:
-                encounter_num += 1
-                if not isinstance(encounter, dict):
-                    raise AssetGroupMetadataError(
-                        f'Encounter {sighting_num}.{encounter_num} needs to be a dict'
-                    )
-                encounter_fields = [
-                    ('assetReferences', list, False),
-                    ('ownerEmail', str, False),
-                ]
-                self._validate_fields(
-                    encounter,
-                    encounter_fields,
-                    f'Encounter {sighting_num}.{encounter_num}',
-                )
-
-                # Can reassign encounter owner but only to a valid user
-                if 'ownerEmail' in encounter:
-                    from app.modules.users.models import User
-
-                    if not isinstance(encounter['ownerEmail'], str):
-                        raise AssetGroupMetadataError(
-                            f'Encounter {sighting_num}.{encounter_num} ownerEmail must be a string'
-                        )
-                    owner_email = encounter['ownerEmail']
-                    encounter_owner = User.find(email=owner_email)
-                    if encounter_owner is None:
-                        raise AssetGroupMetadataError(
-                            f'Encounter {sighting_num}.{encounter_num} owner {owner_email} not found'
-                        )
-                    else:
-                        self.owner_assignment = True
-
-                file_dir = tus_upload_dir(
-                    current_app, transaction_id=self.tus_transaction_id
-                )
-                for filename in encounter['assetReferences']:
-
-                    file_path = os.path.join(file_dir, filename)
-                    file_size = 0
-                    try:
-                        file_size = os.path.getsize(file_path)  # 2for1
-                    except OSError as err:
-                        raise AssetGroupMetadataError(
-                            f'Failed to find {filename} in transaction {self.tus_transaction_id} {err} '
-                        )
-                    if file_size < 1:
-                        raise AssetGroupMetadataError(
-                            f'found zero-size file for {filename}'
-                        )
-                    # Set ensures no duplicates
-                    self.files.add(filename)
+            # all files referenced must exist in the tus dir
+            self._validate_sighting(
+                sighting,
+                file_dir,
+                f'Sighting {sighting_num}',
+                f'Encounter {sighting_num}.',
+            )
 
 
 class PatchAssetGroupSightingMetadata(BaseAssetGroupMetadata):
-    def process_request(self):
-        self.process_json_req()
+    def process_request(self, asset_group_sighting):
+        # TODO is this a valid test, can we assume that "our" patch is always patch 0
+        if (
+            not isinstance(self.request_json, list)
+            or not len(self.request_json) == 1
+            or not isinstance(self.request_json[0], dict)
+            or 'value' not in self.request_json[0]
+        ):
+            raise AssetGroupMetadataError('patch needs to be a list of 1')
+        self.request = self.request_json[0]['value']
 
-        sighting_fields = [
-            ('locationId', str, False),
-            ('startTime', str, True),
-            ('context', str, True),
-            ('encounters', list, True),
-            ('name', str, False),
-        ]
-
-        self._validate_fields(self.request, sighting_fields, 'AssetGroupSighting')
-        # TODO DEX 299 check that the files in the request are actually in the AssetGroup
+        # all files referenced must exist in the asset_group dir and the same validity checks for the
+        # sighting fields are applied as for the creation
+        self._validate_sighting(
+            self.request,
+            f'{asset_group_sighting.asset_group.get_absolute_path()}/_asset_group/',
+            'AssetGroupSighting ',
+            'Encounter ',
+        )

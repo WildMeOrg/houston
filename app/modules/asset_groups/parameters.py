@@ -48,3 +48,31 @@ class PatchAssetGroupDetailsParameters(PatchJSONParameters):
     @classmethod
     def remove(cls, obj, field, value, state):
         raise NotImplementedError()
+
+
+class PatchAssetGroupSightingDetailsParameters(PatchJSONParameters):
+    # pylint: disable=abstract-method,missing-docstring
+    OPERATION_CHOICES = (PatchJSONParameters.OP_REPLACE, PatchJSONParameters.OP_ADD)
+    VALID_FIELDS = ['config']
+    PATH_CHOICES = tuple('/%s' % field for field in VALID_FIELDS)
+
+    @classmethod
+    def add(cls, obj, field, value, state):
+        # Add and replace are the same operation so reuse the one method
+        return cls.replace(obj, field, value, state)
+
+    @classmethod
+    def replace(cls, obj, field, value, state):
+
+        ret_val = False
+
+        if field == 'config':
+            # The permissions check of what is allowed to be updated is done in the
+            # PatchAssetGroupSightingMetadata, this assumes that the data is valid
+            obj.meta = value
+            ret_val = True
+        return ret_val
+
+    @classmethod
+    def remove(cls, obj, field, value, state):
+        raise NotImplementedError()

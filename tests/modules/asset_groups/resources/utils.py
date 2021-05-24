@@ -112,7 +112,7 @@ def commit_asset_group_sighting(
     asset_group_sighting_guid,
     expected_status_code=200,
 ):
-    with flask_app_client.login(user, auth_scopes=('asset_groups:write',)):
+    with flask_app_client.login(user, auth_scopes=('asset_group_sightings:write',)):
         response = flask_app_client.post(
             f'{PATH}sighting/{asset_group_sighting_guid}/commit',
             content_type='application/json',
@@ -190,6 +190,42 @@ def delete_asset_group(
         test_utils.validate_dict_response(
             response, expected_status_code, {'status', 'message'}
         )
+
+
+def patch_asset_group_sighting(
+    flask_app_client, user, asset_group_sighting_guid, data, expected_status_code=200
+):
+    with flask_app_client.login(user, auth_scopes=('asset_group_sightings:write',)):
+        response = flask_app_client.patch(
+            f'{PATH}sighting/{asset_group_sighting_guid}',
+            content_type='application/json',
+            data=json.dumps(data),
+        )
+
+    if expected_status_code == 200:
+        test_utils.validate_dict_response(response, 200, {'guid', 'stage', 'config'})
+    else:
+        test_utils.validate_dict_response(
+            response, expected_status_code, {'status', 'message'}
+        )
+    return response
+
+
+def read_asset_group_sighting(
+    flask_app_client, user, asset_group_sighting_guid, expected_status_code=200
+):
+    if user:
+        with flask_app_client.login(user, auth_scopes=('asset_group_sightings:read',)):
+            response = flask_app_client.get(f'{PATH}sighting/{asset_group_sighting_guid}')
+    else:
+        response = flask_app_client.get(f'{PATH}sighting/{asset_group_sighting_guid}')
+    if expected_status_code == 200:
+        test_utils.validate_dict_response(response, 200, {'guid', 'stage', 'config'})
+    else:
+        test_utils.validate_dict_response(
+            response, expected_status_code, {'status', 'message'}
+        )
+    return response
 
 
 # multiple tests clone a asset_group, do something with it and clean it up. Make sure this always happens using a

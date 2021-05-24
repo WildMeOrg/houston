@@ -8,7 +8,6 @@ User schemas
 from flask_marshmallow import base_fields
 from flask_restx_patched import ModelSchema
 from app.modules.fileuploads.schemas import DetailedFileUploadSchema  # noqa
-from app.modules.asset_groups.schemas import BaseAssetGroupSchema  # noqa
 
 from .models import User
 

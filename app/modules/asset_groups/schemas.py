@@ -39,7 +39,6 @@ class BaseAssetGroupSchema(ModelSchema):
         dump_only = (
             AssetGroup.guid.key,
             AssetGroup.commit.key,
-            AssetGroup.is_processed.__name__,
         )
 
 

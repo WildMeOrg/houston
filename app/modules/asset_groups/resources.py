@@ -455,7 +455,7 @@ class AssetGroupSightingCommit(Resource):
                 'sighting.data', 'post', {'data': request_data}, ''
             )
         except HoustonException as ex:
-            abort(ex.status_code, ex.message, errorFields=ex.get_string_val('error'))
+            abort(ex.status_code, ex.message, errorFields=ex.get_val('error', 'Error'))
 
         cleanup = Cleanup('AssetGroup')
         cleanup.add_guid(result_data['id'], Sighting)

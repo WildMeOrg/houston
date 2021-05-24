@@ -233,7 +233,7 @@ class Sightings(Resource):
                 ex.message,
                 'Sighting.post failed',
                 ex.status_code,
-                ex.get_string_val('error'),
+                ex.get_val('error', 'Error'),
             )
 
         # Created it, need to clean it up if we rollback
@@ -443,7 +443,7 @@ class SightingByID(Resource):
                     sighting.guid,
                 )
             except HoustonException as ex:
-                edm_status_code = ex.get_int_val('edm_status_code')
+                edm_status_code = ex.get_val('edm_status_code', 400)
                 abort(
                     success=False,
                     passed_message=ex.message,

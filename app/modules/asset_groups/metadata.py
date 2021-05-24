@@ -11,16 +11,25 @@ import os
 
 from flask import current_app
 from flask_login import current_user  # NOQA
+from app.utils import HoustonException
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
 
-class AssetGroupMetadataError(Exception):
+class AssetGroupMetadataError(HoustonException):
     def __init__(self, log_message, message=None, status_code=400):
-        self.message = message
-        self.status_code = status_code
-        if self.message is None:
-            self.message = log_message
+        if message:
+            super(AssetGroupMetadataError, self).__init__(
+                log_message=f'AssetGroupMetadata {log_message}',
+                message=message,
+                status_code=status_code,
+            )
+        else:
+            super(AssetGroupMetadataError, self).__init__(
+                log_message=f'AssetGroupMetadata {log_message}',
+                message=log_message,
+                status_code=status_code,
+            )
         log.warning(f'Failed: {log_message} {self.status_code}')
 
 

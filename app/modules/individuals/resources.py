@@ -16,6 +16,7 @@ from app.extensions.api import Namespace
 from app.extensions.api.parameters import PaginationParameters
 from app.modules.users import permissions
 from app.modules.users.permissions.types import AccessOperation
+from app.utils import HoustonException
 
 from . import parameters, schemas
 from .models import Individual
@@ -100,11 +101,12 @@ class Individuals(Resource):
         ):
             cleanup.rollback_and_abort(message='No Encounters in POST')
 
-        result_data, message, error = current_app.edm.request_passthrough_result(
-            'individual.data', 'post', {'data': request_in}, ''
-        )
-        if not result_data:
-            cleanup.rollback_and_abort(message=message)
+        try:
+            result_data = current_app.edm.request_passthrough_result(
+                'individual.data', 'post', {'data': request_in}, ''
+            )
+        except HoustonException as ex:
+            cleanup.rollback_and_abort(ex.message)
 
         # if you get 'success' back and there is no id, we have problems indeed
         if result_data['id'] is not None:

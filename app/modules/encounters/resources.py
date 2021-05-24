@@ -17,6 +17,7 @@ from app.extensions.api import Namespace
 from app.extensions.api.parameters import PaginationParameters
 from app.modules.users import permissions
 from app.modules.users.permissions.types import AccessOperation
+from app.utils import HoustonException
 
 from app.extensions.api import abort
 
@@ -81,11 +82,12 @@ class Encounters(Resource):
         except Exception:
             pass
 
-        result_data, message, error = current_app.edm.request_passthrough_result(
-            'encounter.data', 'post', {'data': data}, ''
-        )
-        if not result_data:
-            abort(success=False, passed_message=message, message='Error', code=400)
+        try:
+            result_data = current_app.edm.request_passthrough_result(
+                'encounter.data', 'post', {'data': data}, ''
+            )
+        except HoustonException as ex:
+            abort(400, 'Error', success=False, passed_message=ex.message)
 
         # if we get here, edm has made the encounter, now we create & persist the feather model in houston
 

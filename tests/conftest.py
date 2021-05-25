@@ -254,7 +254,7 @@ def test_root(flask_app):
 
 
 def ensure_asset_group_repo(flask_app, db, asset_group, file_data=[]):
-    from app.modules.asset_groups.tasks import git_push
+    from app.modules.asset_groups.tasks import git_push, ensure_remote
 
     if pathlib.Path(asset_group.get_absolute_path()).exists():
         shutil.rmtree(asset_group.get_absolute_path())
@@ -266,7 +266,9 @@ def ensure_asset_group_repo(flask_app, db, asset_group, file_data=[]):
     with db.session.begin():
         db.session.add(asset_group)
     db.session.refresh(asset_group)
-    asset_group.ensure_remote(additional_tags=['type:pytest-required'])
+    asset_group.ensure_repository()
+    # Call ensure_remote without .delay in tests to do it in the foreground
+    ensure_remote(str(asset_group.guid), additional_tags=['type:pytest-required'])
     filepath_guid_mapping = {}
     for uuid_, path in file_data:
         repo_filepath = asset_group.git_copy_file_add(str(path))

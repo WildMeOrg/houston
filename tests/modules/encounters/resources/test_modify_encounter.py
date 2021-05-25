@@ -36,6 +36,19 @@ def test_modify_encounter(db, flask_app_client, researcher_1, researcher_2, admi
     assert first_enc_guid is not None
     new_encounter_1 = Encounter.query.get(first_enc_guid)
 
+    # test that we cant mix edm/houston
+    patch_data = [
+        utils.patch_replace_op('owner', str(researcher_1.guid)),
+        utils.patch_replace_op('locationId', 'FAIL'),
+    ]
+    res = patch_encounter(
+        flask_app_client,
+        new_encounter_1.guid,
+        researcher_1,
+        patch_data,
+        400,
+    )
+
     # non Owner cannot make themselves the owner
     new_owner_as_res_2 = [
         utils.patch_test_op(researcher_2.password_secret),

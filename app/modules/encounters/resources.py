@@ -102,25 +102,17 @@ class EncounterByID(Resource):
         Patch Encounter details by ID.
         """
 
-        edm_count = 0
-        for arg in args:
-            if (
-                'path' in arg
-                and arg['path']
-                in parameters.PatchEncounterDetailsParameters.PATH_CHOICES_EDM
-            ):
-                edm_count += 1
-        if edm_count > 0 and edm_count != len(args):
+        edm_args = [
+            arg
+            for arg in args
+            if arg.get('path')
+            in parameters.PatchEncounterDetailsParameters.PATH_CHOICES_EDM
+        ]
+        if edm_args and len(edm_args) != len(args):
             log.error(f'Mixed edm/houston patch called with args {args}')
-            abort(
-                success=False,
-                passed_message='Cannot mix EDM patch paths and houston patch paths',
-                message='Error',
-                code=400,
-            )
+            abort(400, 'Cannot mix EDM patch paths and houston patch paths')
 
-        rdata = {}
-        if edm_count > 0:
+        if edm_args:
             log.debug(f'wanting to do edm patch on args={args}')
             headers = {
                 'x-allow-delete-cascade-individual': request.headers.get(
@@ -130,32 +122,19 @@ class EncounterByID(Resource):
                     'x-allow-delete-cascade-sighting', 'false'
                 ),
             }
-            response = current_app.edm.request_passthrough(
-                'encounter.data',
-                'patch',
-                {'data': args, 'headers': headers},
-                encounter.guid,
-            )
-            rdata = response.json()
-            if (
-                not response.ok
-                or response.status_code != 200
-                or not rdata['success']
-                or 'result' not in rdata
-            ):
-                code = response.status_code
-                if code > 600:
-                    code = 400  # flask doesnt like us to use "invalid" codes. :(
-                log.warning(f'EDM patch got {response.status_code} response of {rdata}')
-                abort(
-                    success=False,
-                    passed_message=rdata.get('message', 'unknown error'),
-                    code=code,
-                    edm_status_code=response.status_code,
+            try:
+                result_data = current_app.edm.request_passthrough_result(
+                    'encounter.data',
+                    'patch',
+                    {'data': args, 'headers': headers},
+                    encounter.guid,
                 )
+            except HoustonException as ex:
+                log.warning(f'EDM patch got {ex}')
+                abort(400, ex.message, error=ex.error, edm_status_code=ex.edm_status_code)
 
             # edm patch was successful
-            new_version = rdata['result'].get('version', None)
+            new_version = result_data.get('version', None)
             if new_version is not None:
                 encounter.version = new_version
                 context = api.commit_or_abort(
@@ -164,9 +143,8 @@ class EncounterByID(Resource):
                 )
                 with context:
                     db.session.merge(encounter)
-            rtn = rdata['result']
-            rtn['_patchResults'] = rdata.get('patchResults', None)
-            return rtn
+            # rtn['_patchResults'] = rdata.get('patchResults', None)  # FIXME i think this gets lost cuz not part of results_data
+            return result_data
 
         # no EDM, so fall thru to regular houston-patching
         context = api.commit_or_abort(

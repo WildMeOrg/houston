@@ -142,8 +142,24 @@ class EDMManager(RestManager):
     # The edm API returns a success and a result, this processes it to raise an exception on any
     # error and provide validated parsed output for further processing
     def request_passthrough_parsed(
-        self, tag, method, passthrough_kwargs, args=None, target='default'
+        self,
+        tag,
+        method,
+        passthrough_kwargs,
+        args=None,
+        target='default',
+        request_headers=None,
     ):
+        # here we handle special headers needed specifically for EDM, which come via incoming request_headers
+        if request_headers is not None:
+            headers = passthrough_kwargs.get('headers', {})
+            headers['x-allow-delete-cascade-individual'] = request_headers.get(
+                'x-allow-delete-cascade-individual', 'false'
+            )
+            headers['x-allow-delete-cascade-sighting'] = request_headers.get(
+                'x-allow-delete-cascade-sighting', 'false'
+            )
+            passthrough_kwargs['headers'] = headers
         response = self.request_passthrough(tag, method, passthrough_kwargs, args, target)
         response_data = None
         result_data = None
@@ -183,7 +199,9 @@ class EDMManager(RestManager):
         return response, response_data, result_data
 
     # Provides the same validation and exception raising as above but just returns the result
-    def request_passthrough_result(self, tag, method, passthrough_kwargs, args=None):
+    def request_passthrough_result(
+        self, tag, method, passthrough_kwargs, args=None, request_headers=None
+    ):
         response, response_data, result = self.request_passthrough_parsed(
             tag, method, passthrough_kwargs, args
         )

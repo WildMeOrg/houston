@@ -114,20 +114,13 @@ class EncounterByID(Resource):
 
         if edm_args:
             log.debug(f'wanting to do edm patch on args={args}')
-            headers = {
-                'x-allow-delete-cascade-individual': request.headers.get(
-                    'x-allow-delete-cascade-individual', 'false'
-                ),
-                'x-allow-delete-cascade-sighting': request.headers.get(
-                    'x-allow-delete-cascade-sighting', 'false'
-                ),
-            }
             try:
                 result_data = current_app.edm.request_passthrough_result(
                     'encounter.data',
                     'patch',
-                    {'data': args, 'headers': headers},
+                    {'data': args},
                     encounter.guid,
+                    request_headers=request.headers,
                 )
             except HoustonException as ex:
                 log.warning(f'EDM patch got {ex}')

@@ -423,15 +423,6 @@ class SightingByID(Resource):
 
         if edm_count > 0:
             log.debug(f'wanting to do edm patch on args={args}')
-            headers = {
-                'x-allow-delete-cascade-individual': request.headers.get(
-                    'x-allow-delete-cascade-individual', 'false'
-                ),
-                'x-allow-delete-cascade-sighting': request.headers.get(
-                    'x-allow-delete-cascade-sighting', 'false'
-                ),
-            }
-
             result = None
             try:
                 (
@@ -441,8 +432,9 @@ class SightingByID(Resource):
                 ) = current_app.edm.request_passthrough_parsed(
                     'sighting.data',
                     'patch',
-                    {'data': args, 'headers': headers},
+                    {'data': args},
                     sighting.guid,
+                    request_headers=request.headers,
                 )
             except HoustonException as ex:
                 edm_status_code = ex.get_val('edm_status_code', 400)

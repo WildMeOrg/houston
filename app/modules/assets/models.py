@@ -63,6 +63,7 @@ class Asset(db.Model, HoustonModel):
             'filesystem_guid={self.filesystem_guid}, '
             'semantic_guid={self.semantic_guid}, '
             'mime="{self.mime_type}", '
+            'asset_group_guid="{self.asset_group_guid}", '
             ')>'.format(class_name=self.__class__.__name__, self=self)
         )
 

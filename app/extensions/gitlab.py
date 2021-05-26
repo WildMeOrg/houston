@@ -22,6 +22,10 @@ GITLAB_TIMESTAMP_FORMAT_STR = '%Y-%m-%dT%H:%M:%S.%fZ'  # Ex: '2020-10-23T16:57:5
 log = logging.getLogger(__name__)
 
 
+class GitlabInitializationError(RuntimeError):
+    pass
+
+
 class GitlabManager(object):
     def __init__(self, pre_initialize=False, *args, **kwargs):
         super(GitlabManager, self).__init__(*args, **kwargs)
@@ -111,7 +115,7 @@ class GitlabManager(object):
                 if current_app.debug:
                     log.exception('problem initializing GitLab integration')
 
-                raise RuntimeError(
+                raise GitlabInitializationError(
                     'GitLab remote failed to authenticate and/or initialize'
                 )
 

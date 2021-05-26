@@ -272,6 +272,10 @@ class CloneAssetGroup(object):
             # and read it back as the real user
             with client.login(owner, auth_scopes=('asset_groups:read',)):
                 self.response = client.get(url)
+        else:
+            assert (
+                False
+            ), f'url={url} status_code={self.response.status_code} data={self.response.data}'
 
     def remove_files(self):
         database_path = config.TestingConfig.ASSET_GROUP_DATABASE_PATH
@@ -299,5 +303,5 @@ def clone_asset_group(
     clone = CloneAssetGroup(client, admin_user, owner, guid, force_clone)
 
     if not expect_failure:
-        assert clone.response.status_code == 200
+        assert clone.response.status_code == 200, clone.response.data
     return clone

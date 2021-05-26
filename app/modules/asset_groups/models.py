@@ -8,9 +8,11 @@ import enum
 import re
 from flask import current_app
 from flask_login import current_user  # NOQA
+import requests.exceptions
 import utool as ut
 
 from app.extensions import db, HoustonModel, parallel
+from app.extensions.gitlab import GitlabInitializationError
 from app.version import version
 from app.utils import HoustonException
 
@@ -1009,8 +1011,15 @@ class AssetGroup(db.Model, HoustonModel):
 
     @classmethod
     def get_remote(cls, guid):
-        return current_app.git_backend.get_project(str(guid))
+        try:
+            return current_app.git_backend.get_project(str(guid))
+        except (GitlabInitializationError, requests.exceptions.RequestException):
+            log.error(f'Error when calling AssetGroup.get_remote({guid})')
 
     @classmethod
     def is_on_remote(cls, guid):
-        return current_app.git_backend.is_project_on_remote(str(guid))
+        try:
+            return current_app.git_backend.is_project_on_remote(str(guid))
+        except (GitlabInitializationError, requests.exceptions.RequestException):
+            log.error(f'Error when calling AssetGroup.is_on_remote({guid})')
+            return False

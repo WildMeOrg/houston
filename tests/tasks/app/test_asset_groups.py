@@ -10,6 +10,8 @@ import pytest
 
 
 def test_create_asset_group_from_path(flask_app, test_root, admin_user, request):
+    from app.modules.asset_groups.models import AssetGroup
+
     with mock.patch('app.create_app'):
         from tasks.app.asset_groups import create_asset_group_from_path
 
@@ -26,14 +28,22 @@ def test_create_asset_group_from_path(flask_app, test_root, admin_user, request)
             assert str(e) == 'The path /does-not-exist does not exist.'
 
         with mock.patch('sys.stdout', new=io.StringIO()) as stdout:
-            create_asset_group_from_path(
-                MockContext(), test_root, admin_user.email, 'AssetGroup creation test'
-            )
+            from app.extensions.gitlab import GitlabInitializationError
+
+            asset_group_guids = [a.guid for a in AssetGroup.query.all()]
+            try:
+                create_asset_group_from_path(
+                    MockContext(), test_root, admin_user.email, 'AssetGroup creation test'
+                )
+            except GitlabInitializationError:
+                asset_group = AssetGroup.query.filter(
+                    AssetGroup.guid.notin_(asset_group_guids)
+                ).first()
+                asset_group.delete()
+                pytest.skip('Gitlab unavailable')
             last_line = stdout.getvalue().splitlines()[-1]
             assert last_line.startswith('Created and pushed new asset_group:')
             guid = re.search(r'<AssetGroup\(guid=([a-f0-9-]*)', last_line).group(1)
-
-    from app.modules.asset_groups.models import AssetGroup
 
     asset_group = AssetGroup.query.get(guid)
     assert asset_group is not None
@@ -47,6 +57,12 @@ def test_create_asset_group_from_path(flask_app, test_root, admin_user, request)
 
 
 def test_clone_asset_group_from_gitlab(flask_app, db, test_asset_group_uuid, admin_user):
+    from app.extensions.gitlab import GitlabInitializationError
+
+    try:
+        flask_app.git_backend._ensure_initialized()
+    except GitlabInitializationError:
+        pytest.skip('gitlab unavailable')
     clone_root = pathlib.Path(flask_app.config['ASSET_GROUP_DATABASE_PATH'])
     repo_path = clone_root / str(test_asset_group_uuid)
 

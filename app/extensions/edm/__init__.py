@@ -203,7 +203,11 @@ class EDMManager(RestManager):
         self, tag, method, passthrough_kwargs, args=None, request_headers=None
     ):
         response, response_data, result = self.request_passthrough_parsed(
-            tag, method, passthrough_kwargs, args
+            tag,
+            method,
+            passthrough_kwargs,
+            args,
+            request_headers=request_headers,
         )
         return result
 

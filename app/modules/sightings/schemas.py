@@ -44,13 +44,7 @@ class FeaturedAssetOnlySchema(BaseSightingSchema):
 
     class Meta(BaseSightingSchema.Meta):
 
-        fields = BaseSightingSchema.Meta.fields + (
-            Sighting.created.key,
-            Sighting.featured_asset_guid.key,
-            Sighting.updated.key,
-        )
+        fields = BaseSightingSchema.Meta.fields + (Sighting.featured_asset_guid.key,)
         dump_only = BaseSightingSchema.Meta.dump_only + (
-            Sighting.created.key,
             Sighting.featured_asset_guid.key,
-            Sighting.updated.key,
         )

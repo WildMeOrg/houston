@@ -124,7 +124,7 @@ def test_patch_featured_asset_guid(db, flask_app_client, researcher_1):
     db.session.refresh(sighting)
 
     patch_op = [
-        utils.patch_replace_op('featured_asset_guid', '%s' % new_asset_2.guid),
+        utils.patch_replace_op('featuredAssetGuid', '%s' % new_asset_2.guid),
     ]
 
     sighting_utils.patch_sighting(

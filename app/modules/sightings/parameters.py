@@ -49,7 +49,7 @@ class PatchSightingDetailsParameters(PatchJSONParameters):
         '/verbatimLocality',
     )
 
-    PATH_CHOICES_HOUSTON = ('/assetId', '/newAssetGroup', '/featured_asset_guid')
+    PATH_CHOICES_HOUSTON = ('/assetId', '/newAssetGroup', '/featuredAssetGuid')
 
     PATH_CHOICES = PATH_CHOICES_EDM + PATH_CHOICES_HOUSTON
 
@@ -92,7 +92,7 @@ class PatchSightingDetailsParameters(PatchJSONParameters):
                     obj.add_asset(asset)
                 ret_val = True
 
-            elif field == 'featured_asset_guid' and util.is_valid_guid(value):
+            elif field == 'featuredAssetGuid' and util.is_valid_guid(value):
                 obj.set_featured_asset_guid(UUID(value, version=4))
                 ret_val = True
 

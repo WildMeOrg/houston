@@ -113,7 +113,7 @@ class Sighting(db.Model, FeatherModel):
             self.featured_asset_guid = None
         if self.featured_asset_guid is not None:
             rtn_val = self.featured_asset_guid
-        if rtn_val is None and asset_guids:
+        elif asset_guids:
             rtn_val = asset_guids[0]
         return rtn_val
 

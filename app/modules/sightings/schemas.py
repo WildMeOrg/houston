@@ -35,3 +35,16 @@ class DetailedSightingSchema(BaseSightingSchema):
             Sighting.created.key,
             Sighting.updated.key,
         )
+
+
+class FeaturedAssetOnlySchema(BaseSightingSchema):
+    """
+    Sighting schema for featured_asset_guid only API.
+    """
+
+    class Meta(BaseSightingSchema.Meta):
+
+        fields = BaseSightingSchema.Meta.fields + (Sighting.featured_asset_guid.key,)
+        dump_only = BaseSightingSchema.Meta.dump_only + (
+            Sighting.featured_asset_guid.key,
+        )

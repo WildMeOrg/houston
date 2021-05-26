@@ -14,6 +14,9 @@ from . import schemas
 from app.modules.users.permissions.types import AccessOperation
 from app.modules.users.permissions import rules
 
+import app.modules.utils as util
+from uuid import UUID
+
 
 class CreateSightingParameters(Parameters, schemas.DetailedSightingSchema):
     class Meta(schemas.DetailedSightingSchema.Meta):
@@ -46,7 +49,7 @@ class PatchSightingDetailsParameters(PatchJSONParameters):
         '/verbatimLocality',
     )
 
-    PATH_CHOICES_HOUSTON = ('/assetId', '/newAssetGroup')
+    PATH_CHOICES_HOUSTON = ('/assetId', '/newAssetGroup', '/featuredAssetGuid')
 
     PATH_CHOICES = PATH_CHOICES_EDM + PATH_CHOICES_HOUSTON
 
@@ -54,6 +57,11 @@ class PatchSightingDetailsParameters(PatchJSONParameters):
 
     @classmethod
     def add(cls, obj, field, value, state):
+        return cls.replace(obj, field, value, state)
+
+    @classmethod
+    def replace(cls, obj, field, value, state):
+
         from app.modules.assets.models import Asset
         from app.modules.asset_groups.models import AssetGroup
 
@@ -66,7 +74,7 @@ class PatchSightingDetailsParameters(PatchJSONParameters):
 
         if has_permission:
 
-            if field == 'assetId':
+            if field == 'assetId' and util.is_valid_guid(value):
                 asset = Asset.query.get(value)
                 if asset and (
                     asset.asset_group.owner == current_user or current_user.is_admin
@@ -82,6 +90,10 @@ class PatchSightingDetailsParameters(PatchJSONParameters):
 
                 for asset in new_asset_group.assets:
                     obj.add_asset(asset)
+                ret_val = True
+
+            elif field == 'featuredAssetGuid' and util.is_valid_guid(value):
+                obj.set_featured_asset_guid(UUID(value, version=4))
                 ret_val = True
 
         return ret_val

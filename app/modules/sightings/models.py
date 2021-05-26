@@ -30,6 +30,8 @@ class Sighting(db.Model, FeatherModel):
 
     assets = db.relationship('SightingAssets')
 
+    featured_asset_guid = db.Column(db.GUID, default=None, nullable=True)
+
     def __repr__(self):
         return (
             '<{class_name}('
@@ -91,14 +93,34 @@ class Sighting(db.Model, FeatherModel):
         rel = SightingAssets(sighting=self, asset=asset)
         db.session.add(rel)
         self.assets.append(rel)
+        if self.featured_asset_guid is None:
+            self.featured_asset_guid = asset.guid
 
     def add_asset_no_context(self, asset):
         rel = SightingAssets(sighting_guid=self.guid, asset_guid=asset.guid)
         self.assets.append(rel)
+        if self.featured_asset_guid is None:
+            self.featured_asset_guid = asset.guid
 
     def add_assets_no_context(self, asset_list):
         for asset in asset_list:
             self.add_asset_no_context(asset)
+
+    def get_featured_asset_guid(self):
+        asset_guids = [sighting_asset.asset_guid for sighting_asset in self.assets]
+        rtn_val = None
+        if self.featured_asset_guid not in asset_guids:
+            self.featured_asset_guid = None
+        if self.featured_asset_guid is not None:
+            rtn_val = self.featured_asset_guid
+        elif asset_guids:
+            rtn_val = asset_guids[0]
+        return rtn_val
+
+    def set_featured_asset_guid(self, guid):
+        asset_guids = [sighting_asset.asset_guid for sighting_asset in self.assets]
+        if guid in asset_guids:
+            self.featured_asset_guid = guid
 
     def delete(self):
         with db.session.begin():
@@ -167,6 +189,8 @@ class Sighting(db.Model, FeatherModel):
         for asset in self.get_assets():
             json, err = asset_schema.dump(asset)
             edm_json['assets'].append(json)
+        edm_json['featuredAssetGuid'] = self.get_featured_asset_guid()
+
         return edm_json
 
     # pass results-json for sighting.encounters from changes made (e.g. PATCH) and update houston encounters accordingly

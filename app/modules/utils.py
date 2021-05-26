@@ -6,6 +6,7 @@ from flask import Blueprint, Flask, current_app
 
 import logging
 
+from uuid import UUID
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
 
@@ -26,6 +27,14 @@ def fail_on_missing_static_folder(
         raise RuntimeError(
             f'static folder improperly configured - could not locate a valid installation at: {folder}'
         )
+
+
+def is_valid_guid(guid):
+    try:
+        _ = UUID(guid, version=4)  # pylint: disable=W0612,W0641
+    except ValueError:
+        return False
+    return True
 
 
 # Many module resources create things and then need to clean up when it fails. This helper class cleans up

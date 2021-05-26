@@ -59,16 +59,13 @@ class OAuth2Sessions(Resource):
 
         failure = None
         if user is not None:
-            if True not in [user.in_alpha, user.in_beta, user.is_staff, user.is_admin]:
-                failure = 'Account Not Authorized'
-            else:
-                status = login_user(user, remember=False)
+            status = login_user(user, remember=False)
 
-                if status:
-                    log.info('Logged in User via API: %r' % (user,))
-                    create_session_oauth2_token()
-                else:
-                    failure = 'Account Disabled'
+            if status:
+                log.info('Logged in User via API: %r' % (user,))
+                create_session_oauth2_token()
+            else:
+                failure = 'Account Disabled'
         else:
             failure = 'Account Not Found'
 

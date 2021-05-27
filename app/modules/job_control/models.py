@@ -12,7 +12,7 @@ log = logging.getLogger(__name__)
 class JobControl(db.Model, HoustonModel):
     guid = db.Column(db.GUID, default=uuid.uuid4, primary_key=True)
     asset_group_sighting_uuid = db.Column(db.GUID, nullable=True)
-    sighting_uuid = db.Column(db.GUID, nullable=True)
+    annotation_uuid = db.Column(db.GUID, nullable=True)
 
     def delete(self):
         with db.session.begin(subtransactions=True):
@@ -31,8 +31,8 @@ class JobControl(db.Model, HoustonModel):
             db.session.add(new_job)
 
     @classmethod
-    def add_sighting_job(cls, job_uuid, obj_uuid):
-        new_job = JobControl(guid=job_uuid, sighting_uuid=obj_uuid)
+    def add_annotation_job(cls, job_uuid, obj_uuid):
+        new_job = JobControl(guid=job_uuid, annotation_uuid=obj_uuid)
         with db.session.begin(subtransactions=True):
             db.session.add(new_job)
 
@@ -52,12 +52,12 @@ class JobControl(db.Model, HoustonModel):
             obj_uuid = self.asset_group_sighting_uuid
             type_str = 'AssetGroupSighting'
             job_obj = AssetGroupSighting.query.get(obj_uuid)
-        elif self.sighting_uuid:
-            from app.modules.sightings.models import Sighting
+        elif self.annotation_uuid:
+            from app.modules.annotations.models import Annotation
 
-            type_str = 'Sighting'
-            obj_uuid = self.sighting_uuid
-            job_obj = Sighting.query.get(obj_uuid)
+            type_str = 'Annotation'
+            obj_uuid = self.annotation_uuid
+            job_obj = Annotation.query.get(obj_uuid)
         else:
             log.warning('Job created without any obj uuid, deleting')
             self.delete()

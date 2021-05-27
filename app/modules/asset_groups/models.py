@@ -113,7 +113,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
     # configuration metadata from the create request
     config = db.Column(db.JSON, nullable=True)
 
-    # May have multiple jobs outstanding, store as json array of job_ids
+    # May have multiple jobs outstanding, store as Json obj uuid_str is key, In_progress Bool is value
     jobs = db.Column(db.JSON, nullable=True)
 
     def check_job_status(self, job_id):
@@ -125,13 +125,53 @@ class AssetGroupSighting(db.Model, HoustonModel):
         # response, process it here
         return True
 
+    def _get_jobs(self):
+        if self.jobs:
+            return json.loads(self.jobs)
+        else:
+            return dict()
+
+    def _set_jobs(self, jobs):
+        self.jobs = json.dumps(jobs)
+        with db.session.begin(subtransactions=True):
+            db.session.merge(self)
+
+    def complete(self):
+        # TODO check that the jobs are all actually complete
+        self.stage = AssetGroupSightingStage.processed
+        with db.session.begin(subtransactions=True):
+            db.session.merge(self)
+        db.session.refresh(self)
+
+    def job_complete(self, job_id):
+        jobs = self._get_jobs()
+        if job_id in jobs:
+            jobs[job_id]['active'] = False
+            self._set_jobs(jobs)
+            from app.modules.job_control.models import JobControl
+
+            JobControl.delete_job(job_id)
+        else:
+            log.warning(f'job_id {job_id} not found in AssetGroupSighting')
+
+    # Noddy test function before the real thing is merged in PR 188
+    def start_job(self, model):
+        from app.modules.job_control.models import JobControl
+
+        job_id = uuid.uuid4()
+        jobs = self._get_jobs()
+        jobs[str(job_id)] = {'model': model, 'active': True}
+        self._set_jobs(jobs)
+
+        JobControl.add_asset_group_sighting_job(job_id, self.guid)
+
     def delete(self):
         from app.modules.job_control.models import JobControl
 
         with db.session.begin(subtransactions=True):
-            if self.jobs:
-                for job in self.jobs:
-                    JobControl.delete_job(uuid.UUID(job))
+            jobs = self._get_jobs()
+            for job in jobs.keys():
+                JobControl.delete_job(uuid.UUID(job))
             db.session.refresh(self)
             db.session.delete(self)
 

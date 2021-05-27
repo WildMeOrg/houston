@@ -524,7 +524,7 @@ class AssetGroupSightingCommit(Resource):
                 db.session.add(encounter)
 
         # AssetGroupSighting is finished, all subsequent processing is on the Sighting
-        asset_group_sighting.delete()
+        asset_group_sighting.complete()
 
         return sighting
 

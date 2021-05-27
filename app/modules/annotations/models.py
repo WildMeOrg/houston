@@ -85,8 +85,21 @@ class Annotation(db.Model, HoustonModel):
         db.session.add(rel)
         self.keywords.append(rel)
 
+    def remove_keyword(self, keyword):
+        with db.session.begin(subtransactions=True):
+            self.remove_keyword_in_context(keyword)
+
+    def remove_keyword_in_context(self, keyword):
+        for rel in self.keywords:
+            if rel.keyword == keyword:
+                db.session.delete(rel)
+                break
+
     def delete(self):
         with db.session.begin(subtransactions=True):
+            while self.keywords:
+                # this is actually removing the AnnotationKeywords refs (not actual Keywords)
+                db.session.delete(self.keywords.pop())
             db.session.delete(self)
 
     def check_job_status(self, job_id):

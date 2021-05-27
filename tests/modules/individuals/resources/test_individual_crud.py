@@ -91,7 +91,7 @@ def test_read_encounter_from_edm(db, flask_app_client):
         db.session.delete(temp_enc)
 
 
-def test_modify_encounters(db, flask_app_client, researcher_1, empty_individual):
+def test_add_remove_encounters(db, flask_app_client, researcher_1, empty_individual):
 
     mod_enc_1 = utils.generate_encounter_instance(
         user_email='mod1@user', user_password='mod1user', user_full_name='Test User'
@@ -103,6 +103,8 @@ def test_modify_encounters(db, flask_app_client, researcher_1, empty_individual)
     # You need to own an individual to modify it, and ownership is determined from it's encounters
     mod_enc_1.owner = researcher_1
     mod_enc_2.owner = researcher_1
+
+    # let's start with one
     empty_individual.add_encounter(mod_enc_1)
 
     with db.session.begin():
@@ -114,38 +116,38 @@ def test_modify_encounters(db, flask_app_client, researcher_1, empty_individual)
         str(encounter.guid) for encounter in empty_individual.get_encounters()
     ]
 
-    replace_encounters = [
-        utils.patch_replace_op('encounters', [str(mod_enc_2.guid)]),
+    add_encounters = [
+        utils.patch_add_op('encounters', [str(mod_enc_2.guid)]),
     ]
 
     individual_utils.patch_individual(
         flask_app_client,
         '%s' % empty_individual.guid,
         researcher_1,
-        replace_encounters,
+        add_encounters,
         200,
     )
-
-    with db.session.begin():
-        db.session.refresh(empty_individual)
 
     assert str(mod_enc_2.guid) in [
         str(encounter.guid) for encounter in empty_individual.get_encounters()
     ]
 
-    # restore to original state with no encounters
-    # (although we need this to fail in the near future when the constraint is added to require >0 encounters!)
-    replace_encounters = [
-        utils.patch_replace_op('encounters', []),
+    # remove the one we just verified was there
+    remove_encounters = [
+        utils.patch_remove_op('encounters', [str(mod_enc_1.guid)]),
     ]
 
     individual_utils.patch_individual(
         flask_app_client,
         '%s' % empty_individual.guid,
         researcher_1,
-        replace_encounters,
+        remove_encounters,
         200,
     )
+
+    assert str(mod_enc_1.guid) not in [
+        str(encounter.guid) for encounter in empty_individual.get_encounters()
+    ]
 
     with db.session.begin():
         db.session.delete(mod_enc_1)

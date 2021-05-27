@@ -51,7 +51,7 @@ class PatchIndividualDetailsParameters(PatchJSONParameters):
                         encounter = Encounter.query.filter(
                             Encounter.guid == encounter_guid
                         ).first()
-                        if encounter is not None and encounter not in obj.encounters:
+                        if encounter is not None and encounter in obj.encounters:
                             obj.remove_encounter(encounter)
                             ret_val = True
         return ret_val

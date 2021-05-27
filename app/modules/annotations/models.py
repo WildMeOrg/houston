@@ -31,7 +31,7 @@ class Annotation(db.Model, FeatherModel):
         db.GUID,
         db.ForeignKey('encounter.guid', ondelete='CASCADE'),
         index=True,
-        nullable=False,
+        nullable=True,
     )
     encounter = db.relationship('Encounter', backref=db.backref('annotations'))
 

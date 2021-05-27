@@ -3,6 +3,7 @@
 
 from tests import utils
 from tests.modules.annotations.resources import utils as annot_utils
+from tests.modules.asset_groups.resources import utils as sub_utils
 from tests.modules.keywords.resources import utils as keyword_utils
 
 
@@ -20,6 +21,13 @@ def test_keywords_on_annotation(
         db.session.add(keyword)
     assert keyword is not None
 
+    sub_utils.clone_asset_group(
+        flask_app_client,
+        admin_user,
+        researcher_1,
+        test_clone_asset_group_data['asset_group_uuid'],
+    )
+
     response = annot_utils.create_annotation_simple(
         flask_app_client,
         researcher_1,
@@ -34,7 +42,7 @@ def test_keywords_on_annotation(
     res = annot_utils.patch_annotation(
         flask_app_client,
         annotation.guid,
-        admin_user,
+        researcher_1,
         [utils.patch_add_op('keywords', str(keyword.guid))],
     )
     kw = annotation.get_keywords()
@@ -46,7 +54,7 @@ def test_keywords_on_annotation(
     res = annot_utils.patch_annotation(
         flask_app_client,
         annotation.guid,
-        admin_user,
+        researcher_1,
         [
             utils.patch_add_op(
                 'keywords', {'value': keyword_value2, 'source': KeywordSource.user}
@@ -61,7 +69,7 @@ def test_keywords_on_annotation(
     res = annot_utils.patch_annotation(
         flask_app_client,
         annotation.guid,
-        admin_user,
+        researcher_1,
         [
             utils.patch_add_op(
                 'keywords', {'value': keyword_value2, 'source': KeywordSource.user}
@@ -74,7 +82,7 @@ def test_keywords_on_annotation(
     res = annot_utils.patch_annotation(
         flask_app_client,
         annotation.guid,
-        admin_user,
+        researcher_1,
         [utils.patch_add_op('keywords', '00000000-0000-0000-0000-000000002170')],
         409,
     )
@@ -83,7 +91,7 @@ def test_keywords_on_annotation(
     res = annot_utils.patch_annotation(
         flask_app_client,
         annotation.guid,
-        admin_user,
+        researcher_1,
         [utils.patch_remove_op('keywords', str(keyword.guid))],
     )
     kw = annotation.get_keywords()
@@ -94,7 +102,7 @@ def test_keywords_on_annotation(
     assert len(res.json) == 2
 
     # And deleting it
-    annot_utils.delete_annotation(flask_app_client, admin_user, annotation_guid)
+    annot_utils.delete_annotation(flask_app_client, researcher_1, annotation_guid)
     read_annotation = Annotation.query.get(annotation_guid)
     assert read_annotation is None
 

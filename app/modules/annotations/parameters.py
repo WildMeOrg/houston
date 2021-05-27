@@ -14,7 +14,8 @@ from .models import Annotation
 class CreateAnnotationParameters(Parameters, schemas.DetailedAnnotationSchema):
     asset_guid = base_fields.UUID(description='The GUID of the asset', required=True)
     encounter_guid = base_fields.UUID(
-        description='The GUID of the encounter', required=True
+        description='The GUID of the encounter',
+        required=False,
     )
 
     class Meta(schemas.DetailedAnnotationSchema.Meta):

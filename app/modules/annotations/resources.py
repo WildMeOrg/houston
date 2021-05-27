@@ -77,14 +77,12 @@ class Annotations(Resource):
             abort(code=HTTPStatus.BAD_REQUEST, message='asset_guid not found')
         args['asset_guid'] = asset_guid
 
-        if 'encounter_guid' not in args:
-            abort(code=HTTPStatus.BAD_REQUEST, message='Must provide an encounter_guid')
-
-        encounter_guid = args.get('encounter_guid', None)
-        encounter = Encounter.query.get(encounter_guid)
-        if not encounter:
-            abort(code=HTTPStatus.BAD_REQUEST, message='encounter_guid not found')
-        args['encounter_guid'] = encounter_guid
+        if 'encounter_guid' in args:
+            encounter_guid = args.get('encounter_guid', None)
+            encounter = Encounter.query.get(encounter_guid)
+            if not encounter:
+                abort(code=HTTPStatus.BAD_REQUEST, message='encounter_guid not found')
+            args['encounter_guid'] = encounter_guid
 
         context = api.commit_or_abort(
             db.session, default_error_message='Failed to create a new Annotation'

@@ -30,13 +30,16 @@ class DetailedAnnotationSchema(BaseAnnotationSchema):
     Detailed Annotation schema exposes all useful fields.
     """
 
-    keywords = base_fields.Nested('BaseKeywordSchema')
+    keywords = base_fields.Nested(
+        'BaseKeywordSchema',
+        many=True,
+    )
 
     class Meta(BaseAnnotationSchema.Meta):
         fields = BaseAnnotationSchema.Meta.fields + (
             Annotation.created.key,
             Annotation.updated.key,
-            Annotation.keywords.key,
+            'keywords',
         )
         dump_only = BaseAnnotationSchema.Meta.dump_only + (
             Annotation.created.key,

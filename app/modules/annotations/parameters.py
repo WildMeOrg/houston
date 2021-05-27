@@ -24,7 +24,11 @@ class CreateAnnotationParameters(Parameters, schemas.DetailedAnnotationSchema):
 
 class PatchAnnotationDetailsParameters(PatchJSONParameters):
     # pylint: disable=abstract-method,missing-docstring
-    OPERATION_CHOICES = (PatchJSONParameters.OP_REPLACE, PatchJSONParameters.OP_ADD)
+    OPERATION_CHOICES = (
+        PatchJSONParameters.OP_REPLACE,
+        PatchJSONParameters.OP_ADD,
+        PatchJSONParameters.OP_REMOVE,
+    )
 
     PATH_CHOICES = tuple(
         '/%s' % field
@@ -36,8 +40,23 @@ class PatchAnnotationDetailsParameters(PatchJSONParameters):
 
     @classmethod
     def add(cls, obj, field, value, state):
-        # Add and replace are the same operation so reuse the one method
-        # if field == User.profile_fileupload_guid.key:
+        if field == 'keywords':
+            from app.modules.keywords.models import Keyword
+
+            if isinstance(value, dict):  # (possible) new keyword
+                keyword = obj.add_new_keyword(
+                    value.get('value', None), value.get('source', None)
+                )
+                if keyword is None:
+                    return False
+            else:
+                keyword = Keyword.query.get(value)
+                if keyword is None:
+                    return False
+                obj.add_keyword(keyword)
+            return True
+
+        # otherwise, add and replace are the same operation so reuse the one method
         return cls.replace(obj, field, value, state)
 
     @classmethod
@@ -57,3 +76,15 @@ class PatchAnnotationDetailsParameters(PatchJSONParameters):
                     ret_val = True
 
         return ret_val
+
+    @classmethod
+    def remove(cls, obj, field, value, state):
+        if field == 'keywords':
+            from app.modules.keywords.models import Keyword
+
+            keyword = Keyword.query.get(value)
+            if keyword is None:
+                return False
+            obj.remove_keyword(keyword)
+            return True
+        return False

@@ -158,9 +158,5 @@ class AnnotationByID(Resource):
         """
         Delete a Annotation by ID.
         """
-        context = api.commit_or_abort(
-            db.session, default_error_message='Failed to delete the Annotation.'
-        )
-        with context:
-            db.session.delete(annotation)
+        annotation.delete()
         return None

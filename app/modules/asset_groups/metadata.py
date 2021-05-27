@@ -109,20 +109,23 @@ class BaseAssetGroupMetadata(object):
                 else:
                     self.owner_assignment = True
 
-            for filename in encounter['assetReferences']:
+            if 'assetReferences' in encounter:
+                for filename in encounter['assetReferences']:
 
-                file_path = os.path.join(file_dir, filename)
-                file_size = 0
-                try:
-                    file_size = os.path.getsize(file_path)  # 2for1
-                except OSError as err:
-                    raise AssetGroupMetadataError(
-                        f'Failed to find {filename} in transaction {err} '
-                    )
-                if file_size < 1:
-                    raise AssetGroupMetadataError(f'found zero-size file for {filename}')
-                # Set ensures no duplicates
-                self.files.add(filename)
+                    file_path = os.path.join(file_dir, filename)
+                    file_size = 0
+                    try:
+                        file_size = os.path.getsize(file_path)  # 2for1
+                    except OSError as err:
+                        raise AssetGroupMetadataError(
+                            f'Failed to find {filename} in transaction {err} '
+                        )
+                    if file_size < 1:
+                        raise AssetGroupMetadataError(
+                            f'found zero-size file for {filename}'
+                        )
+                    # Set ensures no duplicates
+                    self.files.add(filename)
 
 
 # Class used to process and validate the json data. This json may be received from the frontend or

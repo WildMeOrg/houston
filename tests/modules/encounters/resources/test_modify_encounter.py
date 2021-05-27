@@ -58,8 +58,6 @@ def test_modify_encounter(db, flask_app_client, researcher_1, researcher_2, admi
     res = enc_utils.patch_encounter(
         flask_app_client, new_encounter_1.guid, researcher_2, patch_data
     )
-    assert res is not None
-    assert res.status_code == 200
     assert res.json['id'] == str(new_encounter_1.guid)
 
     enc = enc_utils.read_encounter(flask_app_client, researcher_2, new_encounter_1.guid)

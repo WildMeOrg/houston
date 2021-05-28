@@ -139,20 +139,30 @@ class GitlabManager(object):
                 'Creating remote project in GitLab: '
                 f'{self.namespace.name}/{project_name} (tags: {tag_list})'
             )
-            project = self.gl.projects.create(
-                {
-                    'path': project_name,
-                    'description': description,
-                    'emails_disabled': True,
-                    'namespace_id': self.namespace.id,
-                    'visibility': 'private',
-                    'merge_method': 'rebase_merge',
-                    'tag_list': tag_list,
-                    'lfs_enabled': True,
-                    # 'tag_list': [],
-                },
-                retry_transient_errors=True,
-            )
+            try:
+                project = self.gl.projects.create(
+                    {
+                        'path': project_name,
+                        'description': description,
+                        'emails_disabled': True,
+                        'namespace_id': self.namespace.id,
+                        'visibility': 'private',
+                        'merge_method': 'rebase_merge',
+                        'tag_list': tag_list,
+                        'lfs_enabled': True,
+                        # 'tag_list': [],
+                    },
+                    retry_transient_errors=True,
+                )
+            except gitlab.exceptions.GitlabCreateError as e:
+                project = None
+                if 'has already been taken' in str(e):
+                    # The project was probably created but gitlab returned an error
+                    # and because we have retry_transient_errors=True, gitlab tries
+                    # to create the project again and failed.
+                    project = self.get_project(project_name)
+                if not project:
+                    raise
 
         return project
 

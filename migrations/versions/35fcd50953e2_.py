@@ -1,13 +1,13 @@
 """empty message
 
-Revision ID: 6d9526df2adc
+Revision ID: 35fcd50953e2
 Revises: 9e71ecc2708a
-Create Date: 2021-05-27 20:59:50.512424
+Create Date: 2021-05-28 23:40:04.638197
 
 """
 
 # revision identifiers, used by Alembic.
-revision = '6d9526df2adc'
+revision = '35fcd50953e2'
 down_revision = '9e71ecc2708a'
 
 from alembic import op

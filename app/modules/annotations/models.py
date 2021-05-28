@@ -19,7 +19,7 @@ class AnnotationKeywords(db.Model, HoustonModel):
         db.GUID, db.ForeignKey('annotation.guid'), primary_key=True
     )
     keyword_guid = db.Column(db.GUID, db.ForeignKey('keyword.guid'), primary_key=True)
-    annotation = db.relationship('Annotation', back_populates='keywords')
+    annotation = db.relationship('Annotation', back_populates='keyword_refs')
     keyword = db.relationship('Keyword')
 
 
@@ -48,7 +48,7 @@ class Annotation(db.Model, HoustonModel):
         nullable=True,
     )
     encounter = db.relationship('Encounter', backref=db.backref('annotations'))
-    keywords = db.relationship('AnnotationKeywords')
+    keyword_refs = db.relationship('AnnotationKeywords')
 
     # May have multiple jobs outstanding, store as Json obj uuid_str is key, In_progress Bool is value
     jobs = db.Column(db.JSON, nullable=True)
@@ -60,8 +60,12 @@ class Annotation(db.Model, HoustonModel):
             ')>'.format(class_name=self.__class__.__name__, self=self)
         )
 
+    @property
+    def keywords(self):
+        return self.get_keywords()
+
     def get_keywords(self):
-        return [ref.keyword for ref in self.keywords]
+        return [ref.keyword for ref in self.keyword_refs]
 
     def add_keyword(self, keyword):
         with db.session.begin(subtransactions=True):
@@ -83,23 +87,23 @@ class Annotation(db.Model, HoustonModel):
         # TODO disallow duplicates
         rel = AnnotationKeywords(annotation=self, keyword=keyword)
         db.session.add(rel)
-        self.keywords.append(rel)
+        self.keyword_refs.append(rel)
 
     def remove_keyword(self, keyword):
         with db.session.begin(subtransactions=True):
             self.remove_keyword_in_context(keyword)
 
     def remove_keyword_in_context(self, keyword):
-        for rel in self.keywords:
-            if rel.keyword == keyword:
-                db.session.delete(rel)
+        for ref in self.keyword_refs:
+            if ref.keyword == keyword:
+                db.session.delete(ref)
                 break
 
     def delete(self):
         with db.session.begin(subtransactions=True):
-            while self.keywords:
+            while self.keyword_refs:
                 # this is actually removing the AnnotationKeywords refs (not actual Keywords)
-                db.session.delete(self.keywords.pop())
+                db.session.delete(self.keyword_refs.pop())
             db.session.delete(self)
 
     def check_job_status(self, job_id):

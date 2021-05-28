@@ -48,7 +48,6 @@ def test_keywords_on_annotation(
     kw = annotation.get_keywords()
     assert len(kw) == 1
     assert kw[0].value == keyword_value1
-    return
 
     # patch to add *new* keyword (by value)
     keyword_value2 = 'TEST_VALUE_2'

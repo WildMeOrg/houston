@@ -26,7 +26,7 @@ def test_create_and_delete_annotation(
     )
 
     response = enc_utils.create_encounter(flask_app_client, researcher_1)
-    enc_guid = response.json['result']['guid']
+    enc_guid = response.json['result']['encounters'][0]['id']
     response = annot_utils.create_annotation(
         flask_app_client,
         researcher_1,
@@ -68,7 +68,7 @@ def test_annotation_permission(
     )
 
     response = enc_utils.create_encounter(flask_app_client, researcher_1)
-    enc_guid = response.json['result']['guid']
+    enc_guid = response.json['result']['encounters'][0]['id']
     response = annot_utils.create_annotation(
         flask_app_client,
         researcher_1,

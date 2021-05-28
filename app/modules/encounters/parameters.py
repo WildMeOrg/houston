@@ -20,11 +20,27 @@ class CreateEncounterParameters(Parameters, schemas.DetailedEncounterSchema):
 class PatchEncounterDetailsParameters(PatchJSONParametersWithPassword):
     # pylint: disable=abstract-method,missing-docstring
 
+    PATH_CHOICES_EDM = (
+        '/behavior',
+        '/comments',
+        '/customFields',
+        '/decimalLatitude',
+        '/decimalLongitude',
+        '/lifeStage',
+        '/locationId',
+        '/sex',
+        '/taxonomy',
+        '/time',
+        '/timeValues',
+        '/verbatimLocality',
+    )
+
     # Valid options for patching are replace '/owner'
     # The '/current_password' and '/user' are not patchable but must be valid fields in the patch so that
     #  they can be present for validation
-    VALID_FIELDS = ['current_password', 'user', 'owner']
-    PATH_CHOICES = tuple('/%s' % field for field in VALID_FIELDS)
+    PATH_CHOICES_HOUSTON = ('/current_password', '/user', '/owner')
+
+    PATH_CHOICES = PATH_CHOICES_EDM + PATH_CHOICES_HOUSTON
 
     @classmethod
     def replace(cls, obj, field, value, state):

@@ -21,9 +21,6 @@ from app.utils import HoustonException
 
 from app.extensions.api import abort
 
-import json
-
-
 from . import parameters, schemas
 from .models import Encounter
 
@@ -56,83 +53,6 @@ class Encounters(Resource):
         parameter.
         """
         return Encounter.query.offset(args['offset']).limit(args['limit'])
-
-    # NOTE: question whether POST /encounter should be allowed at all, since it would be detached from a sighting!
-    #       probably consider deprecating this
-    @api.permission_required(
-        permissions.ModuleAccessPermission,
-        kwargs_on_request=lambda kwargs: {
-            'module': Encounter,
-            'action': AccessOperation.WRITE,
-        },
-    )
-    @api.parameters(parameters.CreateEncounterParameters())
-    @api.response(code=HTTPStatus.CONFLICT)
-    def post(self, args):
-        """
-        Create a new instance of Encounter.
-        """
-
-        data = {}
-        # data.update(request.args)
-        # data.update(args)
-        try:
-            data_ = json.loads(request.data)
-            data.update(data_)
-        except Exception:
-            pass
-
-        try:
-            result_data = current_app.edm.request_passthrough_result(
-                'encounter.data', 'post', {'data': data}, ''
-            )
-        except HoustonException as ex:
-            abort(400, 'Error', success=False, passed_message=ex.message)
-
-        # if we get here, edm has made the encounter, now we create & persist the feather model in houston
-
-        context = api.commit_or_abort(
-            db.session, default_error_message='Failed to create a new houston Encounter'
-        )
-        try:
-            from app.modules.users.models import User
-
-            owner_guid = User.get_public_user().guid
-            with context:
-                # TODO other houston-based relationships: orgs, projects, etc
-                pub = True  # legit? public if no owner?
-                if current_user is not None and not current_user.is_anonymous:
-                    owner_guid = current_user.guid
-                    pub = False
-                encounter = Encounter(
-                    guid=result_data['id'],
-                    version=result_data.get('version', 2),
-                    owner_guid=owner_guid,
-                    public=pub,
-                )
-                db.session.add(encounter)
-        except Exception as ex:
-            log.error(
-                'Encounter.post FAILED houston feather object creation guid=%r - will attempt to DELETE edm Encounter; (payload %r) ex=%r'
-                % (
-                    encounter.guid,
-                    data,
-                    ex,
-                )
-            )
-            # clean up after ourselves by removing encounter from edm
-            encounter.delete_from_edm(current_app)
-            raise ex
-
-        log.debug('Encounter.post created edm/houston guid=%r' % (encounter.guid,))
-        rtn = {
-            'success': True,
-            'result': {
-                'guid': str(encounter.guid),
-                'version': encounter.version,
-            },
-        }
-        return rtn
 
 
 @api.route('/<uuid:encounter_guid>')
@@ -176,19 +96,67 @@ class EncounterByID(Resource):
     )
     @api.login_required(oauth_scopes=['encounters:write'])
     @api.parameters(parameters.PatchEncounterDetailsParameters())
-    @api.response(schemas.DetailedEncounterSchema())
     @api.response(code=HTTPStatus.CONFLICT)
     def patch(self, args, encounter):
         """
         Patch Encounter details by ID.
         """
-        context = api.commit_or_abort(
-            db.session, default_error_message='Failed to update Encounter details.'
-        )
-        with context:
-            parameters.PatchEncounterDetailsParameters.perform_patch(args, obj=encounter)
-            db.session.merge(encounter)
-        return encounter
+
+        edm_args = [
+            arg
+            for arg in args
+            if arg.get('path')
+            in parameters.PatchEncounterDetailsParameters.PATH_CHOICES_EDM
+        ]
+        if edm_args and len(edm_args) != len(args):
+            log.error(f'Mixed edm/houston patch called with args {args}')
+            abort(400, 'Cannot mix EDM patch paths and houston patch paths')
+
+        if not edm_args:
+            context = api.commit_or_abort(
+                db.session, default_error_message='Failed to update Encounter details.'
+            )
+            with context:
+                parameters.PatchEncounterDetailsParameters.perform_patch(
+                    args, obj=encounter
+                )
+                db.session.merge(encounter)
+            # this mimics output format of edm-patching
+            return {
+                'id': str(encounter.guid),
+                'version': encounter.version,
+            }
+
+        # must be edm patch
+        log.debug(f'wanting to do edm patch on args={args}')
+        try:
+            result_data = current_app.edm.request_passthrough_result(
+                'encounter.data',
+                'patch',
+                {'data': args},
+                encounter.guid,
+                request_headers=request.headers,
+            )
+        except HoustonException as ex:
+            abort(
+                ex.status_code,
+                ex.message,
+                error=ex.error,
+                edm_status_code=ex.edm_status_code,
+            )
+
+        # edm patch was successful
+        new_version = result_data.get('version', None)
+        if new_version is not None:
+            encounter.version = new_version
+            context = api.commit_or_abort(
+                db.session,
+                default_error_message='Failed to update Encounter version.',
+            )
+            with context:
+                db.session.merge(encounter)
+        # rtn['_patchResults'] = rdata.get('patchResults', None)  # FIXME i think this gets lost cuz not part of results_data
+        return result_data
 
     @api.permission_required(
         permissions.ObjectAccessPermission,

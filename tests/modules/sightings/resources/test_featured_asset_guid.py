@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=missing-docstring
 import json
-from app.modules.sightings.models import Sighting
 from tests.modules.sightings.resources import utils as sighting_utils
 from tests.modules.asset_groups.resources import utils as asset_group_utils
 from tests import utils
 
 
 def test_featured_asset_guid_endpoint(db, flask_app_client, researcher_1):
+    from app.modules.sightings.models import Sighting
 
     data_in = {
         'encounters': [{}],
@@ -88,6 +88,7 @@ def test_featured_asset_guid_endpoint(db, flask_app_client, researcher_1):
 
 
 def test_patch_featured_asset_guid(db, flask_app_client, researcher_1):
+    from app.modules.sightings.models import Sighting
 
     data_in = {
         'encounters': [{}],

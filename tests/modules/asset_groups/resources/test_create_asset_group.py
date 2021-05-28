@@ -206,6 +206,31 @@ def test_create_asset_group_anonymous(
         tus_utils.cleanup_tus_dir(transaction_id)
 
 
+def no_test_create_asset_group_detection(
+    flask_app_client, researcher_1, staff_user, test_root, db
+):
+    # pylint: disable=invalid-name
+    from tests.modules.asset_groups.resources.utils import TestCreationData
+
+    transaction_id, test_filename = tus_utils.prep_tus_dir(test_root)
+    asset_group_uuid = None
+    try:
+        data = TestCreationData(transaction_id)
+        data.add_filename(0, test_filename)
+        data.set_field('speciesDetectionModel', ['someSortOfModel'])
+        resp_msg = 'Invalid submitter data'
+        asset_group_utils.create_asset_group(
+            flask_app_client, None, data.get(), 403, resp_msg
+        )
+
+    finally:
+        if asset_group_uuid:
+            asset_group_utils.delete_asset_group(
+                flask_app_client, staff_user, asset_group_uuid
+            )
+        tus_utils.cleanup_tus_dir(transaction_id)
+
+
 def test_create_bulk_asset_group(flask_app_client, researcher_1, test_root, db):
     # pylint: disable=invalid-name
     from tests.modules.asset_groups.resources.utils import TestCreationData

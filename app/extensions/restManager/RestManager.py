@@ -102,7 +102,6 @@ class RestManager(RestManagerUserMixin):
     def _endpoint_fmtstr(self, tag, target='default'):
         endpoint_tag_fmtstr = self._endpoint_tag_fmtstr(tag)
         assert endpoint_tag_fmtstr is not None, 'The endpoint tag was not recognized'
-
         if endpoint_tag_fmtstr.startswith('//'):
             endpoint_tag_fmtstr = endpoint_tag_fmtstr[2:]
             endpoint_tag_fmtstr = f'{self.ENDPOINT_PREFIX}/{endpoint_tag_fmtstr}'
@@ -112,12 +111,13 @@ class RestManager(RestManagerUserMixin):
         return endpoint_fmtstr
 
     def _endpoint_tag_fmtstr(self, tag):
-        endpoint = self.ENDPOINTS
+        endpoints = self.ENDPOINTS
+        endpoint = None
 
         component_list = tag.split('.')
         for component in component_list:
             try:
-                endpoint_ = endpoint.get(component, None)
+                endpoint_ = endpoints.get(component, None)
             except Exception:
                 endpoint_ = None
 
@@ -125,6 +125,7 @@ class RestManager(RestManagerUserMixin):
                 break
 
             endpoint = endpoint_
+            endpoints = endpoint
 
         return endpoint
 

@@ -39,7 +39,7 @@ class DetailedAnnotationSchema(BaseAnnotationSchema):
         fields = BaseAnnotationSchema.Meta.fields + (
             Annotation.created.key,
             Annotation.updated.key,
-            'keywords',
+            Annotation.keywords.key,
         )
         dump_only = BaseAnnotationSchema.Meta.dump_only + (
             Annotation.created.key,

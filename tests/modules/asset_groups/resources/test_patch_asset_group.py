@@ -14,7 +14,7 @@ def test_patch_asset_group(flask_app_client, researcher_1, regular_user, test_ro
     asset_group_uuid = None
     try:
         data = TestCreationData(transaction_id)
-        data.add_filename(0, 0, test_filename)
+        data.add_filename(0, test_filename)
         response = asset_group_utils.create_asset_group(
             flask_app_client, regular_user, data.get()
         )
@@ -42,7 +42,7 @@ def test_patch_asset_group(flask_app_client, researcher_1, regular_user, test_ro
         )
 
         new_absent_file = copy.deepcopy(group_sighting.json['config'])
-        new_absent_file['encounters'][0]['assetReferences'].append('absent_file.jpg')
+        new_absent_file['assetReferences'].append('absent_file.jpg')
         patch_data = [utils.patch_replace_op('config', new_absent_file)]
         asset_group_utils.patch_asset_group_sighting(
             flask_app_client, researcher_1, asset_group_sighting_guid, patch_data, 400

@@ -39,9 +39,16 @@ _main() {
     echo "Write the python-gitlab configuration file to: ${PYTHON_GITLAB_CFG}"
     write_initial_config $admin_pat
 
-    echo "Create the 'houston' user"
-    user_resp_json=$(gitlab user create --username houston --name Houston --email dev@wildme.org --password 'development' --can-create-group true --skip-confirmation true)
-    user_id=$(echo "$user_resp_json" | python -c 'import json, sys; d = json.load(sys.stdin); print(d["id"])')
+    echo "Look for the 'houston' user"
+    user_list_json=$(gitlab user list --username houston)
+    if [ "$user_list_json" == "[]" ]; then
+        echo "Create the 'houston' user"
+        user_resp_json=$(gitlab user create --username houston --name Houston --email dev@wildme.org --password 'development' --can-create-group true --skip-confirmation true)
+        user_id=$(echo "$user_resp_json" | python -c 'import json, sys; d = json.load(sys.stdin); print(d["id"])')
+    else
+        echo "User 'houston' already exists"
+        user_id=$(echo "$user_list_json" | python -c 'import json, sys; d = json.load(sys.stdin); print(d[0]["id"])')
+    fi
 
     echo "Create a PAT for the 'houston' user"
     pat_resp_json=$(curl --silent --request POST --header "PRIVATE-TOKEN: ${admin_pat}" --data "name=houston-integration" --data "scopes[]=api" "${GITLAB_REMOTE_URI}/api/v4/users/${user_id}/personal_access_tokens")
@@ -55,8 +62,11 @@ private_token = $houston_pat
 ssl_verify = false
 EOF
 
-    echo "Create the 'test' group"
-    group_resp_json=$(gitlab -g local-user group create --name TEST --path test)
+    group_resp_json=$(gitlab -g local-user group list --search test)
+    if ! echo $group_resp_json | grep '"path": "test"'; then
+        echo "Create the 'test' group"
+        group_resp_json=$(gitlab -g local-user group create --name TEST --path test)
+    fi
 
     echo "Write 'houston' PAT to ${HOUSTON_DOTENV}"
     dotenv -f ${HOUSTON_DOTENV} set GITLAB_REMOTE_LOGIN_PAT -- "${houston_pat}"

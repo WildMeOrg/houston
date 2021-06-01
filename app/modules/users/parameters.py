@@ -179,7 +179,7 @@ class PatchUserDetailsParameters(PatchJSONParameters):
         """
         log.debug('Updating replace field %s' % (field,))
         log.debug('sensitive %s' % (cls.SENSITIVE_FIELDS,))
-        log.debug('sensitive %s' % (cls.PRIVILEGED_FIELDS,))
+        log.debug('privileged %s' % (cls.PRIVILEGED_FIELDS,))
         if field in cls.SENSITIVE_FIELDS or field in cls.PRIVILEGED_FIELDS:
             log.debug('Updating sensitive field %s' % (field,))
             if 'current_password' not in state:

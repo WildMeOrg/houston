@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=missing-docstring
+from unittest import mock
+
 from tests import utils
 from tests.modules.encounters.resources import utils as enc_utils
 from tests.extensions.edm import utils as edm_utils
@@ -90,3 +92,28 @@ def test_modify_encounter(db, flask_app_client, researcher_1, researcher_2, admi
     assert 'customFields' in enc.json
     assert cfd_id in enc.json['customFields']
     assert enc.json['customFields'][cfd_id] == new_cfd_test_value
+
+
+def test_modify_encounter_error(flask_app, flask_app_client, researcher_1):
+    response = enc_utils.create_encounter(flask_app_client, researcher_1)
+    first_enc_guid = response.json['result']['encounters'][0]['id']
+
+    def edm_return_500(*args, **kwargs):
+        response = mock.Mock(ok=False, status_code=500)
+        response.json.return_value = None
+        return response
+
+    # test edm returning 500 error
+    new_val = 'LOCATION_TEST_VALUE'
+    patch_data = [utils.patch_replace_op('locationId', new_val)]
+    with mock.patch.object(
+        flask_app.edm, 'request_passthrough', side_effect=edm_return_500
+    ):
+        res = enc_utils.patch_encounter(
+            flask_app_client,
+            first_enc_guid,
+            researcher_1,
+            patch_data,
+            expected_status_code=500,
+        )
+    assert res.json['status'] == 500

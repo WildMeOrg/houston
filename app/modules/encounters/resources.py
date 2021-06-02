@@ -141,8 +141,8 @@ class EncounterByID(Resource):
             abort(
                 ex.status_code,
                 ex.message,
-                error=ex.error,
-                edm_status_code=ex.edm_status_code,
+                error=ex.get_val('error', 'Error'),
+                edm_status_code=ex.get_val('edm_status_code', None),
             )
 
         # edm patch was successful

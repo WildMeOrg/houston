@@ -63,7 +63,8 @@ def test_keywords_on_annotation(
     )
     kw = annotation.get_keywords()
     assert len(kw) == 2
-    assert kw[1].value == keyword_value2
+    # since keyword order is arbitrary, we dont know which this is, but should be one of them!
+    assert kw[0].value == keyword_value2 or kw[1].value == keyword_value2
 
     # patch to add *new* keyword (by value) -- except will fail (409) cuz keyword exists
     res = annot_utils.patch_annotation(

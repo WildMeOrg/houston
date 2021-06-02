@@ -62,11 +62,13 @@ def test_asset_addition(db, flask_app_client, staff_user):
         assert len(new_sighting.assets) == 3
 
     finally:
+        from app.modules.asset_groups.tasks import delete_remote
+
         # staff can do this, no need to revisit encounter based ownership here
         sighting_utils.delete_sighting(
             flask_app_client, staff_user, str(new_sighting.guid)
         )
-        new_asset_group.delete_remote()
+        delete_remote(str(new_asset_group.guid))
         new_asset_1.delete()
         new_asset_2.delete()
         new_asset_3.delete()
@@ -146,9 +148,11 @@ def test_asset_file_addition(db, flask_app_client, staff_user):
         assert len(new_sighting.assets) == 2
 
     finally:
+        from app.modules.asset_groups.tasks import delete_remote
+
         sighting_utils.delete_sighting(flask_app_client, staff_user, sighting_id)
         new_researcher.delete()
         # assets are only cleaned up once the submissions are cleaned up
         for asset_group in new_researcher.asset_groups:
-            asset_group.delete_remote()
+            delete_remote(str(asset_group.guid))
             asset_group.delete()

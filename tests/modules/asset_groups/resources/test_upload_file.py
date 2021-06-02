@@ -35,7 +35,9 @@ def test_create_open_submission(flask_app_client, regular_user, test_root, db):
         # TODO this is what the test checked, that there was not commit, what we are now specifically not permitting
         # assert temp_submission.commit is None
     finally:
-        temp_submission.delete_remote()
+        from app.modules.asset_groups.tasks import delete_remote
+
+        delete_remote(str(temp_submission.guid))
         # Restore original state
         if temp_submission is not None:
             temp_submission.delete()
@@ -90,7 +92,9 @@ def test_submission_streamlined(flask_app_client, test_root, regular_user, db):
         assert temp_submission.commit == repo.head.object.hexsha
         assert temp_submission.major_type == test_major_type
     finally:
-        temp_submission.delete_remote()
+        from app.modules.asset_groups.tasks import delete_remote
+
+        delete_remote(str(temp_submission.guid))
 
         # Restore original state
         if temp_submission is not None:

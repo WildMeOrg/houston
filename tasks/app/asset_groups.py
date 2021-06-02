@@ -28,6 +28,7 @@ def create_asset_group_from_path(
     """
     from app.modules.users.models import User
     from app.modules.asset_groups.models import AssetGroup, AssetGroupMajorType
+    from app.modules.asset_groups.tasks import git_push
     from app.extensions import db
     import socket
 
@@ -62,7 +63,7 @@ def create_asset_group_from_path(
     hostname = socket.gethostname()
     asset_group.git_commit('Initial commit via CLI on host %r' % (hostname,))
 
-    asset_group.git_push()
+    git_push(str(asset_group.guid))
 
     print('Created and pushed new asset_group: %r' % (asset_group,))
 

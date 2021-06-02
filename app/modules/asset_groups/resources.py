@@ -168,6 +168,8 @@ class AssetGroupsStreamlined(Resource):
                 -F files="@tests/asset_groups/test-000/fluke.jpg" \
                 https://houston.dyn.wildme.io/api/v1/asset_groups/streamlined | jq
         """
+        from .tasks import git_push
+
         context = api.commit_or_abort(
             db.session, default_error_message='Failed to create a new Asset_group'
         )
@@ -184,7 +186,9 @@ class AssetGroupsStreamlined(Resource):
 
         asset_group.git_commit('Initial commit via %s' % (request.url_rule,))
 
-        asset_group.git_push()
+        # Do git push to gitlab in the background (we won't wait for its
+        # completion here)
+        git_push.delay(str(asset_group.guid))
 
         return asset_group
 

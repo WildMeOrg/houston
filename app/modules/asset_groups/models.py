@@ -68,9 +68,11 @@ class GitLabPAT(object):
             self.repo.remotes.origin.set_url(self.authenticated_url)
         return self
 
-    def __exit__(self, type, value, traceback):
+    def __exit__(self, exc_type, exc_value, traceback):
         if self.repo is not None:
             self.repo.remotes.origin.set_url(self.original_url)
+        if exc_type:
+            return False
         return True
 
 
@@ -281,7 +283,7 @@ class AssetGroup(db.Model, HoustonModel):
                     mime_type_file.write(json.dumps(mime_type_whitelist_dict))
         return self._mime_type_whitelist_guid
 
-    def _ensure_repository_files(self, project):
+    def _ensure_repository_files(self):
         group_path = self.get_absolute_path()
 
         # AssetGroup Repo Structure:
@@ -311,13 +313,6 @@ class AssetGroup(db.Model, HoustonModel):
         else:
             repo = git.Repo(group_path)
 
-        if project is not None:
-            if len(repo.remotes) == 0:
-                origin = repo.create_remote('origin', project.web_url)
-            else:
-                origin = repo.remotes.origin
-            assert origin.url == project.web_url
-
         asset_group_path = os.path.join(group_path, '_asset_group')
         if not os.path.exists(asset_group_path):
             os.mkdir(asset_group_path)
@@ -340,7 +335,6 @@ class AssetGroup(db.Model, HoustonModel):
             json.dump(group_metadata, metatdata_file)
 
         log.info('LOCAL  REPO: %r' % (repo.working_tree_dir,))
-        log.info('REMOTE REPO: %r' % (project.web_url,))
 
         return repo
 
@@ -425,25 +419,18 @@ class AssetGroup(db.Model, HoustonModel):
 
         self.update_metadata_from_commit(commit)
 
-    def git_push(self):
-        repo = self.ensure_repository()
-        assert repo is not None
-
-        with GitLabPAT(repo):
-            log.info('Pushing to authorized URL')
-            repo.git.push('--set-upstream', repo.remotes.origin, repo.head.ref)
-            log.info('...pushed to %s' % (repo.head.ref,))
-
-        return repo
-
     def git_pull(self):
         repo = self.get_repository()
         assert repo is not None
 
         with GitLabPAT(repo):
             log.info('Pulling from authorized URL')
-            repo.git.pull(repo.remotes.origin, repo.head.ref)
-            log.info('...pulled')
+            try:
+                repo.git.pull(repo.remotes.origin, repo.head.ref)
+            except git.exc.GitCommandError as e:
+                log.info(f'git pull failed for {self.guid}: {str(e)}')
+            else:
+                log.info('...pulled')
 
         self.update_metadata_from_repo(repo)
 
@@ -478,6 +465,8 @@ class AssetGroup(db.Model, HoustonModel):
 
     @classmethod
     def ensure_asset_group(cls, asset_group_uuid, owner=None):
+        from .tasks import ensure_remote
+
         asset_group = AssetGroup.query.get(asset_group_uuid)
         if asset_group is None:
             from app.extensions import db
@@ -499,6 +488,9 @@ class AssetGroup(db.Model, HoustonModel):
 
         # Make sure that the repo for this asset group exists
         asset_group.ensure_repository()
+        # Create gitlab project in the background (we won't wait for its
+        # completion here)
+        ensure_remote.delay(str(asset_group.guid))
 
         return asset_group
 
@@ -544,8 +536,9 @@ class AssetGroup(db.Model, HoustonModel):
 
     def import_tus_files(self, transaction_id=None, paths=None, purge_dir=True):
         from app.extensions.tus import _tus_filepaths_from, _tus_purge
+        from .tasks import git_push
 
-        self.ensure_remote()
+        self.ensure_repository()
 
         sub_id = None if transaction_id is not None else self.guid
         asset_group_abspath = self.get_absolute_path()
@@ -565,7 +558,9 @@ class AssetGroup(db.Model, HoustonModel):
         if num_files > 0:
             log.info('Tus collect for %d files moved' % (num_files))
             self.git_commit('Tus collect commit for %d files.' % (num_files,))
-            self.git_push()
+            # Do git push to gitlab in the background (we won't wait for its
+            # completion here)
+            git_push.delay(str(self.guid))
             for asset in self.assets:
                 if asset.path in paths_added:
                     assets_added.append(asset)
@@ -907,7 +902,7 @@ class AssetGroup(db.Model, HoustonModel):
             self.sightings.append(new_sighting)
 
         # make sure the repo is created
-        self.ensure_remote()
+        self.ensure_repository()
 
         # Store the metadata in the AssetGroup but not the sightings, that is stored on the AssetGroupSightings
         self.config = dict(metadata.request)
@@ -939,40 +934,27 @@ class AssetGroup(db.Model, HoustonModel):
         log.warning('justify_existence() found ZERO assets, self-destructing %r' % self)
         self.delete()  # TODO will this also kill remote repo?
 
-    @classmethod
-    def delete_remote_repository(cls, guid):
-        return current_app.git_backend.delete_remote_project_by_name(str(guid))
-
-    def delete_remote(self):
-        return self.__class__.delete_remote_repository(self.guid)
-
     def get_repository(self):
         repo_path = pathlib.Path(self.get_absolute_path())
         if (repo_path / '.git').exists():
             return git.Repo(repo_path)
 
     def ensure_repository(self):
-        if self.get_repository():
-            return self.git_pull()
-        project = current_app.git_backend.get_project(str(self.guid))
+        repo = self.get_repository()
+        if repo:
+            if 'origin' in repo.remotes:
+                return self.git_pull()
+            return repo
+        project = AssetGroup.get_remote(self.guid)
         if project:
             return self.git_clone(project)
-        self.ensure_remote()
-        return self.get_repository()
+        repo = git.Repo.init(self.get_absolute_path())
+        self._ensure_repository_files()
+        return repo
 
-    def ensure_remote(self, additional_tags=[]):
-        project = current_app.git_backend.get_project(str(self.guid))
-        if not project:
-            project = current_app.git_backend.create_project(
-                str(self.guid),
-                self.get_absolute_path(),
-                self.major_type.name,
-                self.description,
-                additional_tags,
-            )
-            self._ensure_repository_files(project)
-
-        return project
+    @classmethod
+    def get_remote(cls, guid):
+        return current_app.git_backend.get_project(str(guid))
 
     @classmethod
     def is_on_remote(cls, guid):

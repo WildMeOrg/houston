@@ -80,8 +80,10 @@ def test_featured_asset_guid_endpoint(db, flask_app_client, researcher_1):
     # new_asset_group.delete()
     # sighting_utils.delete_sighting(flask_app_client, researcher_1, str(sighting.guid))
 
+    from app.modules.asset_groups.tasks import delete_remote
+
     sighting_utils.delete_sighting(flask_app_client, researcher_1, str(sighting.guid))
-    new_asset_group.delete_remote()
+    delete_remote(str(new_asset_group.guid))
     asset_group_utils.delete_asset_group(
         flask_app_client, researcher_1, new_asset_group.guid
     )
@@ -134,8 +136,10 @@ def test_patch_featured_asset_guid(db, flask_app_client, researcher_1):
 
     assert new_asset_2.guid == sighting.get_featured_asset_guid()
 
+    from app.modules.asset_groups.tasks import delete_remote
+
     sighting_utils.delete_sighting(flask_app_client, researcher_1, str(sighting.guid))
-    new_asset_group.delete_remote()
+    delete_remote(str(new_asset_group.guid))
     asset_group_utils.delete_asset_group(
         flask_app_client, researcher_1, new_asset_group.guid
     )

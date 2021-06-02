@@ -57,6 +57,7 @@ def test_create_patch_asset_group(
     flask_app_client, researcher_1, readonly_user, test_root, db
 ):
     # pylint: disable=invalid-name
+    from app.modules.asset_groups.tasks import delete_remote
 
     asset_group_guid = None
     transaction_id, test_filename = tus_utils.prep_tus_dir(test_root)
@@ -104,7 +105,7 @@ def test_create_patch_asset_group(
         asset_group_utils.delete_asset_group(
             flask_app_client, researcher_1, asset_group_guid
         )
-        temp_asset_group.delete_remote()
+        delete_remote(str(temp_asset_group.guid))
 
         # And if the asset_group is already gone, a re attempt at deletion should get the same response
         asset_group_utils.delete_asset_group(
@@ -116,7 +117,7 @@ def test_create_patch_asset_group(
 
     finally:
         tus_utils.cleanup_tus_dir(transaction_id)
-        temp_asset_group.delete_remote()
+        delete_remote(str(temp_asset_group.guid))
         # Restore original state
         temp_asset_group = AssetGroup.query.get(asset_group_guid)
         if temp_asset_group is not None:

@@ -31,15 +31,15 @@ class TestCreationData(object):
                         'context': 'something',
                         # Yes, that really is a location, it's a village in Wiltshire https://en.wikipedia.org/wiki/Tiddleywink
                         'locationId': 'Tiddleywink',
-                        'encounters': [{'assetReferences': []}],
+                        'encounters': [{}],
                     },
                 ],
             }
 
-    def add_filename(self, sighting, encounter, filename):
-        self.content['sightings'][sighting]['encounters'][encounter][
-            'assetReferences'
-        ].append(filename)
+    def add_filename(self, sighting, filename):
+        if 'assetReferences' not in self.content['sightings'][sighting]:
+            self.content['sightings'][sighting]['assetReferences'] = []
+        self.content['sightings'][sighting]['assetReferences'].append(filename)
 
     def add_sighting(self, location):
         self.content['sightings'].append(
@@ -47,12 +47,13 @@ class TestCreationData(object):
                 'locationId': location,
                 'startTime': 'now',
                 'context': 'none',
+                'assetReferences': [],
                 'encounters': [],
             }
         )
 
     def add_encounter(self, sighting):
-        self.content['sightings'][sighting]['encounters'].append({'assetReferences': []})
+        self.content['sightings'][sighting]['encounters'].append({})
 
     def set_field(self, field, value):
         self.content[field] = value

@@ -19,7 +19,7 @@ def test_job_control_add_remove(flask_app_client, researcher_1, test_root, db):
 
     try:
         data = asset_group_utils.TestCreationData(transaction_id)
-        data.add_filename(0, 0, test_filename)
+        data.add_filename(0, test_filename)
         data.set_field('speciesDetectionModel', ['ActualModel'])
         resp = asset_group_utils.create_asset_group(
             flask_app_client, researcher_1, data.get()

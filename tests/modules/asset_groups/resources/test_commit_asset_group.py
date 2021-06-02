@@ -13,7 +13,7 @@ def test_commit_asset_group(flask_app_client, researcher_1, regular_user, test_r
     asset_group_uuid = None
     try:
         data = TestCreationData(transaction_id)
-        data.add_filename(0, 0, test_filename)
+        data.add_filename(0, test_filename)
         response = asset_group_utils.create_asset_group(
             flask_app_client, regular_user, data.get()
         )

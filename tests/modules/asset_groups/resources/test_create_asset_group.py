@@ -78,15 +78,16 @@ def test_create_asset_group(flask_app_client, researcher_1, readonly_user, test_
         asset_group_utils.create_asset_group(
             flask_app_client, researcher_1, data.get(), 400, resp_msg
         )
+        data.set_sighting_field(0, 'encounters', [{}])
 
-        data.set_sighting_field(0, 'encounters', [{'assetReferences': ''}])
+        data.set_sighting_field(0, 'assetReferences', '')
         # data.set_encounter_field(0, 0, 'assetReferences', '')
-        resp_msg = 'assetReferences incorrect type in Encounter 1.1'
+        resp_msg = 'assetReferences incorrect type in Sighting 1'
         asset_group_utils.create_asset_group(
             flask_app_client, researcher_1, data.get(), 400, resp_msg
         )
 
-        data.set_encounter_field(0, 0, 'assetReferences', [test_filename])
+        data.set_sighting_field(0, 'assetReferences', [test_filename])
         resp = asset_group_utils.create_asset_group(
             flask_app_client, researcher_1, data.get()
         )
@@ -134,8 +135,8 @@ def test_create_asset_group_2_assets(flask_app_client, researcher_1, test_root, 
     asset_group_uuid = None
     try:
         data = TestCreationData(transaction_id)
-        data.add_filename(0, 0, test_filename)
-        data.add_filename(0, 0, 'coelacanth.png')
+        data.add_filename(0, test_filename)
+        data.add_filename(0, 'coelacanth.png')
         resp = asset_group_utils.create_asset_group(
             flask_app_client, researcher_1, data.get()
         )
@@ -172,7 +173,7 @@ def test_create_asset_group_anonymous(
     asset_group_uuid = None
     try:
         data = TestCreationData(transaction_id)
-        data.add_filename(0, 0, test_filename)
+        data.add_filename(0, test_filename)
         data.set_field('submitterEmail', researcher_1.email)
         resp_msg = 'Invalid submitter data'
         asset_group_utils.create_asset_group(
@@ -222,15 +223,15 @@ def test_create_bulk_asset_group(flask_app_client, researcher_1, test_root, db):
     asset_group_uuid = None
     try:
         data = TestCreationData(transaction_id)
-        data.add_filename(0, 0, test_filename)
+        data.add_filename(0, test_filename)
         data.add_encounter(0)
-        data.add_filename(0, 1, 'fluke.jpg')
+        data.add_filename(0, 'fluke.jpg')
         data.add_sighting('Hogpits Bottom')
         data.add_encounter(1)
-        data.add_filename(1, 0, 'coelacanth.png')
+        data.add_filename(1, 'coelacanth.png')
         data.add_encounter(1)
-        data.add_filename(1, 1, 'fluke.jpg')
-        data.add_filename(1, 1, 'phoenix.jpg')
+        data.add_filename(1, 'fluke.jpg')
+        data.add_filename(1, 'phoenix.jpg')
         data.set_field('bulkUpload', True)
 
         resp = asset_group_utils.create_asset_group(

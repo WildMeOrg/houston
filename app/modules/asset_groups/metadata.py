@@ -71,8 +71,25 @@ class BaseAssetGroupMetadata(object):
             ('context', str, True),
             ('encounters', list, True),
             ('name', str, False),
+            ('assetReferences', list, False),
         ]
         self._validate_fields(sighting, sighting_fields, sighting_debug)
+
+        if 'assetReferences' in sighting:
+            for filename in sighting['assetReferences']:
+
+                file_path = os.path.join(file_dir, filename)
+                file_size = 0
+                try:
+                    file_size = os.path.getsize(file_path)  # 2for1
+                except OSError as err:
+                    raise AssetGroupMetadataError(
+                        f'Failed to find {filename} in transaction {err} '
+                    )
+                if file_size < 1:
+                    raise AssetGroupMetadataError(f'found zero-size file for {filename}')
+                # Set ensures no duplicates
+                self.files.add(filename)
 
         encounter_num = 0
         # Have a sighting with multiple encounters, make sure we have all of the files
@@ -83,7 +100,6 @@ class BaseAssetGroupMetadata(object):
                     f'{encounter_debug}{encounter_num} needs to be a dict'
                 )
             encounter_fields = [
-                ('assetReferences', list, False),
                 ('ownerEmail', str, False),
             ]
             self._validate_fields(
@@ -108,24 +124,6 @@ class BaseAssetGroupMetadata(object):
                     )
                 else:
                     self.owner_assignment = True
-
-            if 'assetReferences' in encounter:
-                for filename in encounter['assetReferences']:
-
-                    file_path = os.path.join(file_dir, filename)
-                    file_size = 0
-                    try:
-                        file_size = os.path.getsize(file_path)  # 2for1
-                    except OSError as err:
-                        raise AssetGroupMetadataError(
-                            f'Failed to find {filename} in transaction {err} '
-                        )
-                    if file_size < 1:
-                        raise AssetGroupMetadataError(
-                            f'found zero-size file for {filename}'
-                        )
-                    # Set ensures no duplicates
-                    self.files.add(filename)
 
 
 # Class used to process and validate the json data. This json may be received from the frontend or

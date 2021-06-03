@@ -23,12 +23,12 @@ def test_create_failures(flask_app_client, test_root, researcher_1):
     assert response.json['passed_message'] == 'Must have at least one encounter'
     assert not response.json['success']
 
-    # has encounters, zero assetReferences, but fails on bad (missing) context value
+    # has encounters, zero assetReferences, but fails on bad (missing) locationId value
     data_in = {'startTime': timestamp, 'encounters': [{}]}
     response = sighting_utils.create_sighting(
         flask_app_client, researcher_1, expected_status_code=400, data_in=data_in
     )
-    assert response.json['errorFields'][0] == 'context'
+    assert response.json['errorFields'][0] == 'locationId'
     assert not response.json['success']
 
     # has encounters, but bunk assetReferences

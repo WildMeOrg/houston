@@ -119,13 +119,11 @@ class AssetGroupSighting(db.Model, HoustonModel):
     # May have multiple jobs outstanding, store as Json obj uuid_str is key, In_progress Bool is value
     jobs = db.Column(db.JSON, nullable=True)
 
-    def start_sage_detection(self, model_config):
+    def start_sage_detection(self, model_config, detection):
         # TODO make this a task so that it's non blocking but handle the response and
         # inform AssetGroupSighting if it fails
         current_app.acm.request_passthrough_result(
-            'passthrough.data',
-            'post',
-            {'params': {'request': model_config}},
+            'job.detect_request', 'post', {'params': model_config}, detection
         )
 
     def run_sage_detection(self, model):
@@ -137,30 +135,30 @@ class AssetGroupSighting(db.Model, HoustonModel):
             'endpoint': '/api/engine/detect/cnn/lightnet/',
             'function': 'start_detect_image_lightnet',
             'jobid': str(job_id),
+            'callback_url': callback_url,
+            'image_uuid_list': [],
             'input': {
                 'callback_url': callback_url,
                 'image_url': f'{base_url}api/v1/asset/src-raw/',
                 'labeler_model_tag': 'iot_v0',
-                'image_uuid_list': [],
                 'model_tag': 'iot_v0',
                 'labeler_algo': 'densenet',
                 'sensitivity': 0.36,
                 'nms_aware': 'ispart',
                 'nms_thresh': 0.5,
+                'callback_detailed': True,
             },
         }
 
-        encounters = self.config.get('encounters')
-        for encounter in encounters:
-            if 'assetReferences' in encounter:
-                for filename in encounter['assetReferences']:
-                    asset = self.asset_group.get_asset_for_file(filename)
-                    assert asset
-                    model_config['input']['image_uuid_list'].append(
-                        {'UUID': str(asset.guid)}
-                    )
+        for filename in self.config.get('assetReferences'):
+            asset = self.asset_group.get_asset_for_file(filename)
+            assert asset
+            model_config['image_uuid_list'].append({'UUID': str(asset.guid)})
+            # model_config['input']['image_uuid_list'].append({'UUID': str(asset.guid)})
 
-        self.start_sage_detection(model_config)
+        # TODO model comes from ia_config and also decide if the "//api/engine/detect/" part lives in the ia_config
+        # or the acm/__init__.py.
+        self.start_sage_detection(model_config, 'cnn/lightnet')
         jobs = self._get_jobs()
         jobs[str(job_id)] = {'model': model, 'active': True}
         self._set_jobs(jobs)

@@ -82,7 +82,7 @@ jobs:
         run: |
           set -ex
           cd deploy/codex
-          docker-compose up -d db redis gitlab edm houston
+          docker-compose up -d db redis gitlab edm houston acm
           # Check the state of the containers
           sleep 1m
           # Wait until houston is up

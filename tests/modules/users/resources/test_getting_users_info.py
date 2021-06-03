@@ -2,6 +2,9 @@
 # pylint: disable=missing-docstring
 import pytest
 from tests import utils
+import datetime
+
+timestamp = datetime.datetime.now().isoformat() + 'Z'
 
 
 @pytest.mark.parametrize(

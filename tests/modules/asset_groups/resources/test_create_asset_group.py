@@ -206,7 +206,7 @@ def test_create_asset_group_anonymous(
         tus_utils.cleanup_tus_dir(transaction_id)
 
 
-def no_test_create_asset_group_detection(
+def test_create_asset_group_detection(
     flask_app_client, researcher_1, staff_user, test_root, db
 ):
     # pylint: disable=invalid-name
@@ -218,10 +218,16 @@ def no_test_create_asset_group_detection(
         data = TestCreationData(transaction_id)
         data.add_filename(0, test_filename)
         data.set_field('speciesDetectionModel', ['someSortOfModel'])
-        resp_msg = 'Invalid submitter data'
+
+        resp_msg = 'failed to start detection'
         asset_group_utils.create_asset_group(
-            flask_app_client, None, data.get(), 403, resp_msg
+            flask_app_client, None, data.get(), 400, resp_msg
         )
+        # TODO this is what the response should be
+        # resp_msg = 'Invalid submitter data'
+        # asset_group_utils.create_asset_group(
+        #    flask_app_client, None, data.get(), 403, resp_msg
+        # )
 
     finally:
         if asset_group_uuid:

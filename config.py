@@ -323,7 +323,7 @@ class DevelopmentConfig(
 ):
     DEBUG = True
 
-    BASE_URL = 'https://wildme.ngrok.io/'
+    BASE_URL = os.environ.get('HOUSTON_URL', 'https://wildme.ngrok.io/')
 
     MAIL_BASE_URL = BASE_URL
     MAIL_OVERRIDE_RECIPIENTS = [

@@ -10,6 +10,27 @@ PATH = '/api/v1/annotations/'
 EXPECTED_KEYS = {'guid', 'asset_guid', 'encounter_guid'}
 
 
+def create_annotation_simple(
+    flask_app_client, user, asset_uuid, expected_status_code=200
+):
+    with flask_app_client.login(user, auth_scopes=('annotations:write',)):
+        response = flask_app_client.post(
+            PATH,
+            content_type='application/json',
+            data=json.dumps({'asset_guid': asset_uuid}),
+        )
+
+    if expected_status_code == 200:
+        test_utils.validate_dict_response(response, 200, {'guid', 'asset_guid'})
+        assert response.json['asset_guid'] == asset_uuid
+    else:
+        test_utils.validate_dict_response(
+            response, expected_status_code, {'status', 'message'}
+        )
+    return response
+
+
+# NOTE: now (due to DEX-301) an encounter can be made *without* an encounter.  see create_annotation_simple() above.
 def create_annotation(
     flask_app_client, user, asset_uuid, encounter_guid, expected_status_code=200
 ):

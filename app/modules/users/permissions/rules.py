@@ -312,7 +312,7 @@ class ObjectActionRule(DenyAbortMixin, Rule):
                     has_permission = user.is_researcher
             elif isinstance(self._obj, Annotation):
                 # Annotation has no owner, but it has one asset, that has one asset_group that has an owner
-                # TODO should this be the encounter owner?
+                # (encounter is no longer required on Annotation, so best route to owner is via Asset/Group)
                 has_permission = user == self._obj.asset.asset_group.owner
 
         # Sightings depend on if user is the _only_ owner of referenced Encounters

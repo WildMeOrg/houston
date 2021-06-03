@@ -11,10 +11,11 @@ from . import schemas
 from .models import Annotation
 
 
-class CreateAnnotationParameters(Parameters, schemas.DetailedAnnotationSchema):
+class CreateAnnotationParameters(Parameters, schemas.BaseAnnotationSchema):
     asset_guid = base_fields.UUID(description='The GUID of the asset', required=True)
     encounter_guid = base_fields.UUID(
-        description='The GUID of the encounter', required=True
+        description='The GUID of the encounter',
+        required=False,
     )
 
     class Meta(schemas.DetailedAnnotationSchema.Meta):
@@ -23,13 +24,39 @@ class CreateAnnotationParameters(Parameters, schemas.DetailedAnnotationSchema):
 
 class PatchAnnotationDetailsParameters(PatchJSONParameters):
     # pylint: disable=abstract-method,missing-docstring
-    OPERATION_CHOICES = (PatchJSONParameters.OP_REPLACE, PatchJSONParameters.OP_ADD)
+    OPERATION_CHOICES = (
+        PatchJSONParameters.OP_REPLACE,
+        PatchJSONParameters.OP_ADD,
+        PatchJSONParameters.OP_REMOVE,
+    )
 
-    PATH_CHOICES = tuple('/%s' % field for field in ('encounter_guid',))
+    PATH_CHOICES = tuple(
+        '/%s' % field
+        for field in (
+            'encounter_guid',
+            'keywords',
+        )
+    )
 
     @classmethod
     def add(cls, obj, field, value, state):
-        # Add and replace are the same operation so reuse the one method
+        if field == 'keywords':
+            from app.modules.keywords.models import Keyword
+
+            if isinstance(value, dict):  # (possible) new keyword
+                keyword = obj.add_new_keyword(
+                    value.get('value', None), value.get('source', None)
+                )
+                if keyword is None:
+                    return False
+            else:
+                keyword = Keyword.query.get(value)
+                if keyword is None:
+                    return False
+                obj.add_keyword(keyword)
+            return True
+
+        # otherwise, add and replace are the same operation so reuse the one method
         return cls.replace(obj, field, value, state)
 
     @classmethod
@@ -49,3 +76,15 @@ class PatchAnnotationDetailsParameters(PatchJSONParameters):
                     ret_val = True
 
         return ret_val
+
+    @classmethod
+    def remove(cls, obj, field, value, state):
+        if field == 'keywords':
+            from app.modules.keywords.models import Keyword
+
+            keyword = Keyword.query.get(value)
+            if keyword is None:
+                return False
+            obj.remove_keyword(keyword)
+            return True
+        return False

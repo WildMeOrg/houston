@@ -4,8 +4,8 @@ Serialization schemas for Annotations resources RESTful API
 ----------------------------------------------------
 """
 
+from flask_marshmallow import base_fields
 from flask_restx_patched import ModelSchema
-
 from .models import Annotation
 
 
@@ -30,10 +30,16 @@ class DetailedAnnotationSchema(BaseAnnotationSchema):
     Detailed Annotation schema exposes all useful fields.
     """
 
+    keywords = base_fields.Nested(
+        'BaseKeywordSchema',
+        many=True,
+    )
+
     class Meta(BaseAnnotationSchema.Meta):
         fields = BaseAnnotationSchema.Meta.fields + (
             Annotation.created.key,
             Annotation.updated.key,
+            'keywords',
         )
         dump_only = BaseAnnotationSchema.Meta.dump_only + (
             Annotation.created.key,

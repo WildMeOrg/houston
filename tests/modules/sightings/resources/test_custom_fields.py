@@ -23,7 +23,6 @@ def test_custom_fields_on_sighting(
     cfd_test_value = 'CFD_TEST_VALUE'
     data_in = {
         'startTime': timestamp,
-        'context': 'test',
         'locationId': 'test',
         'customFields': {
             cfd_id: cfd_test_value,

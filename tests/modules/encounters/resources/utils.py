@@ -15,7 +15,7 @@ def create_encounter(flask_app_client, user, expected_status_code=200):
 
     data_in = {
         'locationId': 'PYTEST-SIGHTING',
-        'context': 'TEXT',
+        'startTime': '2000-01-01T01:01:01Z',
         'encounters': [{'locationId': 'PYTEST-ENCOUNTER'}],
     }
     response = sighting_utils.create_sighting(flask_app_client, user, data_in)

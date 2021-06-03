@@ -11,7 +11,7 @@ def test_featured_asset_guid_endpoint(db, flask_app_client, researcher_1):
 
     data_in = {
         'encounters': [{}],
-        'context': 'test',
+        'startTime': '2000-01-01T01:01:01Z',
         'locationId': 'test',
     }
 
@@ -94,7 +94,7 @@ def test_patch_featured_asset_guid(db, flask_app_client, researcher_1):
 
     data_in = {
         'encounters': [{}],
-        'context': 'test',
+        'startTime': '2000-01-01T01:01:01Z',
         'locationId': 'test',
     }
 

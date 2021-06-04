@@ -118,7 +118,17 @@ class AssetGroups(Resource):
                 metadata.anonymous_submitter,
             )
 
-        asset_group.begin_ia_pipeline(metadata)
+        try:
+            asset_group.begin_ia_pipeline(metadata)
+        except HoustonException as ex:
+            asset_group.delete()
+            abort(
+                success=False,
+                passed_message=ex.message,
+                code=ex.status_code,
+                acm_status_code=ex.get_val('acm_status_code', None),
+            )
+
         log.info(
             f'AssetGroup {asset_group.guid}:"{metadata.description}" created by {metadata.owner.email} in {timer.elapsed()} seconds'
         )

@@ -191,7 +191,7 @@ class EDMManager(RestManager):
             raise HoustonException(
                 status_code=status_code,
                 message=message,
-                log_message=f'{tag} {method} failed {message}',
+                log_message=f'{tag} {method} failed {message} {response.status_code}',
                 error=error,
                 edm_status_code=response.status_code,
             )

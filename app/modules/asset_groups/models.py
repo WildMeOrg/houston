@@ -12,6 +12,7 @@ import utool as ut
 
 from app.extensions import db, HoustonModel, parallel
 from app.version import version
+from app.utils import HoustonException
 
 import logging
 import tqdm
@@ -117,6 +118,53 @@ class AssetGroupSighting(db.Model, HoustonModel):
 
     # May have multiple jobs outstanding, store as Json obj uuid_str is key, In_progress Bool is value
     jobs = db.Column(db.JSON, nullable=True)
+
+    def start_sage_detection(self, model_config, detection):
+        # TODO make this a task so that it's non blocking but handle the response and
+        # inform AssetGroupSighting if it fails
+        current_app.acm.request_passthrough_result(
+            'job.detect_request', 'post', {'params': model_config}, detection
+        )
+
+    def run_sage_detection(self, model):
+        job_id = uuid.uuid4()
+        base_url = current_app.config.get('BASE_URL')
+        callback_url = f'{base_url}api/v1/asset_group/sighting/{str(self.guid)}/sage_detected/{str(job_id)}'
+        # TODO use model to build up the input, also not clear on where the endpoint & function come from
+        model_config = {
+            'endpoint': '/api/engine/detect/cnn/lightnet/',
+            'function': 'start_detect_image_lightnet',
+            'jobid': str(job_id),
+            'callback_url': callback_url,
+            'image_uuid_list': [],
+            'input': {
+                'callback_url': callback_url,
+                'image_url': f'{base_url}api/v1/asset/src-raw/',
+                'labeler_model_tag': 'iot_v0',
+                'model_tag': 'iot_v0',
+                'labeler_algo': 'densenet',
+                'sensitivity': 0.36,
+                'nms_aware': 'ispart',
+                'nms_thresh': 0.5,
+                'callback_detailed': True,
+            },
+        }
+
+        asset_guids = []
+        for filename in self.config.get('assetReferences'):
+            asset = self.asset_group.get_asset_for_file(filename)
+            assert asset
+            if asset.guid not in asset_guids:
+                asset_guids.append(asset.guid)
+                model_config['image_uuid_list'].append({'UUID': str(asset.guid)})
+            # model_config['input']['image_uuid_list'].append({'UUID': str(asset.guid)})
+
+        # TODO model comes from ia_config and also decide if the "//api/engine/detect/" part lives in the ia_config
+        # or the acm/__init__.py.
+        self.start_sage_detection(model_config, 'cnn/lightnet')
+        jobs = self._get_jobs()
+        jobs[str(job_id)] = {'model': model, 'active': True}
+        self._set_jobs(jobs)
 
     def check_job_status(self, job_id):
         if str(job_id) not in self.jobs:
@@ -887,18 +935,25 @@ class AssetGroup(db.Model, HoustonModel):
 
         for sighting_meta in metadata.request['sightings']:
             new_sighting = AssetGroupSighting(
+                asset_group=self,
                 asset_group_guid=self.guid,
                 config=copy.deepcopy(sighting_meta),
             )
-            if not metadata.detection_configs[0]:
+            if len(metadata.detection_configs) == 1 and not metadata.detection_configs[0]:
                 new_sighting.stage = AssetGroupSightingStage.curation
             else:
                 new_sighting.stage = AssetGroupSightingStage.detection
-                # TODO for each detection config create the required jobs in the AssetGroupSighting
-                # and begin them in wbia
+                try:
+                    for config in metadata.detection_configs:
+                        new_sighting.run_sage_detection(config)
+                except HoustonException as ex:
+                    new_sighting.delete()
+                    raise ex
 
             with db.session.begin(subtransactions=True):
                 db.session.add(new_sighting)
+            db.session.refresh(new_sighting)
+
             self.sightings.append(new_sighting)
 
         # make sure the repo is created

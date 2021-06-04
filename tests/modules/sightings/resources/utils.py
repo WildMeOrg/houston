@@ -62,7 +62,7 @@ def create_sighting(
         )
 
     assert isinstance(response.json, dict)
-    assert response.status_code == expected_status_code, response.json
+    assert response.status_code == expected_status_code
     return response
 
 

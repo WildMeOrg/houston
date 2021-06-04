@@ -57,6 +57,59 @@ def test_patch_annotation(
     assert len(second_encounter.annotations) == 1
     assert second_encounter.annotations[0].guid == uuid.UUID(annotation_guid)
 
+    # change ia_class via patch
+    assert read_annotation.ia_class == 'test'
+    new_ia_class = 'test2'
+    patch_arg = [
+        utils.patch_replace_op('ia_class', new_ia_class),
+    ]
+    annot_utils.patch_annotation(
+        flask_app_client, annotation_guid, researcher_1, patch_arg
+    )
+    read_annotation = Annotation.query.get(annotation_guid)
+    assert read_annotation.ia_class == new_ia_class
+
+    # fail setting ia_class null
+    patch_arg = [
+        utils.patch_replace_op('ia_class', None),
+    ]
+    annot_utils.patch_annotation(
+        flask_app_client,
+        annotation_guid,
+        researcher_1,
+        patch_arg,
+        expected_status_code=422,
+    )
+    read_annotation = Annotation.query.get(annotation_guid)
+    assert read_annotation.ia_class == new_ia_class  # unchanged from before
+
+    # change bounds via patch
+    new_bounds = {'rect': [100, 200, 300, 400]}
+    patch_arg = [
+        utils.patch_replace_op('bounds', new_bounds),
+    ]
+    annot_utils.patch_annotation(
+        flask_app_client, annotation_guid, researcher_1, patch_arg
+    )
+    read_annotation = Annotation.query.get(annotation_guid)
+    assert read_annotation.bounds == new_bounds
+
+    # change bounds via patch, but invalid bounds value
+    new_bounds = {'rect': [100, 200]}
+    patch_arg = [
+        utils.patch_replace_op('bounds', new_bounds),
+    ]
+    response = annot_utils.patch_annotation(
+        flask_app_client,
+        annotation_guid,
+        researcher_1,
+        patch_arg,
+        expected_status_code=422,
+    )
+    assert response.json['message'] == 'bounds value is invalid'
+    read_annotation = Annotation.query.get(annotation_guid)
+    assert read_annotation.bounds != new_bounds
+
     # And deleting it
     annot_utils.delete_annotation(flask_app_client, researcher_1, annotation_guid)
 

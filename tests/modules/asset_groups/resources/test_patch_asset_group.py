@@ -33,14 +33,6 @@ def test_patch_asset_group(flask_app_client, researcher_1, regular_user, test_ro
 
         import copy
 
-        no_context_config = copy.deepcopy(group_sighting.json['config'])
-        del no_context_config['context']
-        patch_data = [utils.patch_replace_op('config', no_context_config)]
-
-        asset_group_utils.patch_asset_group_sighting(
-            flask_app_client, researcher_1, asset_group_sighting_guid, patch_data, 400
-        )
-
         new_absent_file = copy.deepcopy(group_sighting.json['config'])
         new_absent_file['assetReferences'].append('absent_file.jpg')
         patch_data = [utils.patch_replace_op('config', new_absent_file)]

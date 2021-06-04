@@ -68,7 +68,6 @@ class BaseAssetGroupMetadata(object):
         sighting_fields = [
             ('locationId', str, False),
             ('startTime', str, True),
-            ('context', str, True),
             ('encounters', list, True),
             ('name', str, False),
             ('assetReferences', list, False),

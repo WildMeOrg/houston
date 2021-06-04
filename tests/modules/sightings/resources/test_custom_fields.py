@@ -18,12 +18,11 @@ def test_custom_fields_on_sighting(
     # we should end up with these same counts (which _should be_ all zeros!)
     orig_ct = test_utils.all_count(db)
 
-    timestamp = datetime.datetime.now().isoformat()
+    timestamp = datetime.datetime.now().isoformat() + 'Z'
     transaction_id, test_filename = sighting_utils.prep_tus_dir(test_root)
     cfd_test_value = 'CFD_TEST_VALUE'
     data_in = {
         'startTime': timestamp,
-        'context': 'test',
         'locationId': 'test',
         'customFields': {
             cfd_id: cfd_test_value,

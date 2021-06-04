@@ -27,8 +27,7 @@ class TestCreationData(object):
                 'transactionId': transaction_id,
                 'sightings': [
                     {
-                        'startTime': 'sometime or other',
-                        'context': 'something',
+                        'startTime': '2000-01-01T01:01:01Z',
                         # Yes, that really is a location, it's a village in Wiltshire https://en.wikipedia.org/wiki/Tiddleywink
                         'locationId': 'Tiddleywink',
                         'encounters': [{}],
@@ -45,8 +44,7 @@ class TestCreationData(object):
         self.content['sightings'].append(
             {
                 'locationId': location,
-                'startTime': 'now',
-                'context': 'none',
+                'startTime': '2000-01-01T01:01:01Z',
                 'assetReferences': [],
                 'encounters': [],
             }

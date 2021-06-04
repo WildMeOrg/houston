@@ -125,7 +125,7 @@ def test_getting_sightings_for_user(flask_app_client, db, staff_user):
 
     data_in = {
         'encounters': [{}],
-        'context': 'test',
+        'startTime': '2000-01-01T01:01:01Z',
         'locationId': 'test',
     }
 

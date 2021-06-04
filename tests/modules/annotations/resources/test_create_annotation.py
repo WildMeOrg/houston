@@ -12,6 +12,40 @@ def test_get_annotation_not_found(flask_app_client):
     assert response.status_code == 404
 
 
+def test_create_failures(
+    flask_app_client, admin_user, researcher_1, test_clone_asset_group_data, db
+):
+    # pylint: disable=invalid-name
+    # from app.modules.annotations.models import Annotation
+
+    sub_utils.clone_asset_group(
+        flask_app_client,
+        admin_user,
+        researcher_1,
+        test_clone_asset_group_data['asset_group_uuid'],
+    )
+
+    # invalid ia_class
+    response = annot_utils.create_annotation_simple(
+        flask_app_client,
+        researcher_1,
+        test_clone_asset_group_data['asset_uuids'][0],
+        ia_class=None,
+        expected_status_code=422,
+    )
+    assert 'ia_class' in response.json['messages']
+
+    # invalid bounds
+    response = annot_utils.create_annotation_simple(
+        flask_app_client,
+        researcher_1,
+        test_clone_asset_group_data['asset_uuids'][0],
+        bounds={'rect': [0, 1, 2, 3, 4, 5]},
+        expected_status_code=422,
+    )
+    assert response.json['message'] == 'bounds value is invalid'
+
+
 def test_create_and_delete_annotation(
     flask_app_client, admin_user, researcher_1, test_clone_asset_group_data
 ):

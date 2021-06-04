@@ -4,11 +4,14 @@ Input arguments (Parameters) for Annotations resources RESTful API
 -----------------------------------------------------------
 """
 from flask_marshmallow import base_fields
+from marshmallow import validates_schema
 from flask_restx_patched import Parameters, PatchJSONParameters
 from flask_login import current_user
 from app.modules.users.permissions import rules
 from . import schemas
 from .models import Annotation
+from app.extensions.api import abort
+from flask_restx_patched._http import HTTPStatus
 
 
 class CreateAnnotationParameters(Parameters, schemas.BaseAnnotationSchema):
@@ -18,8 +21,18 @@ class CreateAnnotationParameters(Parameters, schemas.BaseAnnotationSchema):
         required=False,
     )
 
-    class Meta(schemas.DetailedAnnotationSchema.Meta):
-        pass
+    class Meta(schemas.BaseAnnotationSchema.Meta):
+        fields = schemas.BaseAnnotationSchema.Meta.fields + (
+            Annotation.ia_class.key,
+            Annotation.bounds.key,
+        )
+
+    @validates_schema
+    def validate_bounds(self, data):
+        try:
+            Annotation.validate_bounds(data.get('bounds'))
+        except Exception:
+            abort(code=HTTPStatus.UNPROCESSABLE_ENTITY, message='bounds value is invalid')
 
 
 class PatchAnnotationDetailsParameters(PatchJSONParameters):

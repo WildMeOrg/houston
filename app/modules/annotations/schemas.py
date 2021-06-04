@@ -21,6 +21,7 @@ class BaseAnnotationSchema(ModelSchema):
             Annotation.guid.key,
             Annotation.asset_guid.key,
             Annotation.encounter_guid.key,
+            Annotation.ia_class.key,
         )
         dump_only = (Annotation.guid.key,)
 
@@ -39,6 +40,7 @@ class DetailedAnnotationSchema(BaseAnnotationSchema):
         fields = BaseAnnotationSchema.Meta.fields + (
             Annotation.created.key,
             Annotation.updated.key,
+            Annotation.bounds.key,
             'keywords',
         )
         dump_only = BaseAnnotationSchema.Meta.dump_only + (

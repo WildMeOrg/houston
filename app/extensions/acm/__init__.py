@@ -43,7 +43,7 @@ class ACMManager(RestManager):
         'job': {
             'detect_request': '//engine/detect/%s',
             'identification_request': '//engine/identify/%s',
-            'response': '//engine/job/metadata/?jobid=%s'
+            'response': '//engine/job/result/?jobid=%s'
         }
     }
     # fmt: on

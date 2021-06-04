@@ -150,10 +150,13 @@ class AssetGroupSighting(db.Model, HoustonModel):
             },
         }
 
+        asset_guids = []
         for filename in self.config.get('assetReferences'):
             asset = self.asset_group.get_asset_for_file(filename)
             assert asset
-            model_config['image_uuid_list'].append({'UUID': str(asset.guid)})
+            if asset.guid not in asset_guids:
+                asset_guids.append(asset.guid)
+                model_config['image_uuid_list'].append({'UUID': str(asset.guid)})
             # model_config['input']['image_uuid_list'].append({'UUID': str(asset.guid)})
 
         # TODO model comes from ia_config and also decide if the "//api/engine/detect/" part lives in the ia_config

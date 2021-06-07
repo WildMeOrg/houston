@@ -94,7 +94,6 @@ class AssetGroupSightingStage(str, enum.Enum):
     unknown = 'unknown'
     detection = 'detection'
     curation = 'curation'
-    committed = 'committed'
     processed = 'processed'
     failed = 'failed'
 
@@ -251,7 +250,6 @@ class AssetGroupSighting(db.Model, HoustonModel):
             if asset.guid not in asset_guids:
                 asset_guids.append(asset.guid)
                 model_config['image_uuid_list'].append({'UUID': str(asset.guid)})
-            # model_config['input']['image_uuid_list'].append({'UUID': str(asset.guid)})
 
         # TODO model comes from ia_config and also decide if the "//api/engine/detect/" part lives in the ia_config
         # or the acm/__init__.py.

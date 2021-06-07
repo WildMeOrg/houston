@@ -7,6 +7,7 @@ Sightings database models
 from app.extensions import FeatherModel, HoustonModel, db
 import uuid
 import logging
+import enum
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
@@ -16,6 +17,13 @@ class SightingAssets(db.Model, HoustonModel):
     asset_guid = db.Column(db.GUID, db.ForeignKey('asset.guid'), primary_key=True)
     sighting = db.relationship('Sighting', back_populates='assets')
     asset = db.relationship('Asset')
+
+
+class SightingStage(str, enum.Enum):
+    identification = 'identification'
+    un_reviewed = 'un-reviewed'
+    processed = 'processed'
+    failed = 'failed'
 
 
 class Sighting(db.Model, FeatherModel):
@@ -29,7 +37,10 @@ class Sighting(db.Model, FeatherModel):
     version = db.Column(db.BigInteger, default=None, nullable=True)
 
     assets = db.relationship('SightingAssets')
-
+    stage = db.Column(
+        db.Enum(SightingStage),
+        nullable=False,
+    )
     featured_asset_guid = db.Column(db.GUID, default=None, nullable=True)
 
     def __repr__(self):

@@ -269,7 +269,7 @@ class RestManager(RestManagerUserMixin):
         endpoint_encoded = requests.utils.quote(endpoint, safe='/?:=&')
 
         if verbose:
-            log.info(f'Sending request to {self.NAME}: {endpoint_encoded}')
+            log.info(f'Sending {method} request to {self.NAME}: {endpoint_encoded}')
             log.info(f'Contents {passthrough_kwargs}')
 
         session_ = target_session or self.sessions[target]

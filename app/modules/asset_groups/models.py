@@ -373,15 +373,15 @@ class AssetGroup(db.Model, HoustonModel):
             os.mkdir(assets_path)
         pathlib.Path(os.path.join(assets_path, '.touch')).touch()
 
-        metatdata_path = os.path.join(group_path, 'metadata.json')
-        if not os.path.exists(metatdata_path):
-            with open(metatdata_path, 'w') as metatdata_file:
+        metadata_path = os.path.join(group_path, 'metadata.json')
+        if not os.path.exists(metadata_path):
+            with open(metadata_path, 'w') as metatdata_file:
                 json.dump({}, metatdata_file)
 
-        with open(metatdata_path, 'r') as metatdata_file:
+        with open(metadata_path, 'r') as metatdata_file:
             group_metadata = json.load(metatdata_file)
 
-        with open(metatdata_path, 'w') as metatdata_file:
+        with open(metadata_path, 'w') as metatdata_file:
             json.dump(group_metadata, metatdata_file)
 
         log.info('LOCAL  REPO: %r' % (repo.working_tree_dir,))

@@ -11,13 +11,20 @@ EXPECTED_KEYS = {'guid', 'asset_guid', 'encounter_guid'}
 
 
 def create_annotation_simple(
-    flask_app_client, user, asset_uuid, expected_status_code=200
+    flask_app_client,
+    user,
+    asset_uuid,
+    ia_class='test',
+    bounds={'rect': [0, 1, 2, 3]},
+    expected_status_code=200,
 ):
     with flask_app_client.login(user, auth_scopes=('annotations:write',)):
         response = flask_app_client.post(
             PATH,
             content_type='application/json',
-            data=json.dumps({'asset_guid': asset_uuid}),
+            data=json.dumps(
+                {'asset_guid': asset_uuid, 'ia_class': ia_class, 'bounds': bounds}
+            ),
         )
 
     if expected_status_code == 200:
@@ -32,13 +39,26 @@ def create_annotation_simple(
 
 # NOTE: now (due to DEX-301) an encounter can be made *without* an encounter.  see create_annotation_simple() above.
 def create_annotation(
-    flask_app_client, user, asset_uuid, encounter_guid, expected_status_code=200
+    flask_app_client,
+    user,
+    asset_uuid,
+    encounter_guid,
+    ia_class='test',
+    bounds={'rect': [0, 1, 2, 3]},
+    expected_status_code=200,
 ):
     with flask_app_client.login(user, auth_scopes=('annotations:write',)):
         response = flask_app_client.post(
             PATH,
             content_type='application/json',
-            data=json.dumps({'asset_guid': asset_uuid, 'encounter_guid': encounter_guid}),
+            data=json.dumps(
+                {
+                    'asset_guid': asset_uuid,
+                    'encounter_guid': encounter_guid,
+                    'ia_class': ia_class,
+                    'bounds': bounds,
+                }
+            ),
         )
 
     if expected_status_code == 200:

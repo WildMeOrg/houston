@@ -49,6 +49,8 @@ class Annotation(db.Model, HoustonModel):
     )
     encounter = db.relationship('Encounter', backref=db.backref('annotations'))
     keyword_refs = db.relationship('AnnotationKeywords')
+    ia_class = db.Column(db.String(length=255), nullable=False)
+    bounds = db.Column(db.JSON, nullable=False)
 
     # May have multiple jobs outstanding, store as Json obj uuid_str is key, In_progress Bool is value
     jobs = db.Column(db.JSON, nullable=True)
@@ -119,3 +121,14 @@ class Annotation(db.Model, HoustonModel):
         # TODO Poll ACM to see what's happening with this job, if it's ready to handle and we missed the
         # response, process it here
         return True
+
+    def set_bounds(self, bounds):
+        self.validate_bounds(bounds)
+        self.bounds = bounds
+
+    @classmethod
+    def validate_bounds(cls, bounds):
+        assert isinstance(bounds, dict)
+        assert 'rect' in bounds
+        assert isinstance(bounds['rect'], list)
+        assert len(bounds['rect']) == 4

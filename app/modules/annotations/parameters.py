@@ -4,11 +4,14 @@ Input arguments (Parameters) for Annotations resources RESTful API
 -----------------------------------------------------------
 """
 from flask_marshmallow import base_fields
+from marshmallow import validates_schema
 from flask_restx_patched import Parameters, PatchJSONParameters
 from flask_login import current_user
 from app.modules.users.permissions import rules
 from . import schemas
 from .models import Annotation
+from app.extensions.api import abort
+from flask_restx_patched._http import HTTPStatus
 
 
 class CreateAnnotationParameters(Parameters, schemas.BaseAnnotationSchema):
@@ -18,8 +21,18 @@ class CreateAnnotationParameters(Parameters, schemas.BaseAnnotationSchema):
         required=False,
     )
 
-    class Meta(schemas.DetailedAnnotationSchema.Meta):
-        pass
+    class Meta(schemas.BaseAnnotationSchema.Meta):
+        fields = schemas.BaseAnnotationSchema.Meta.fields + (
+            Annotation.ia_class.key,
+            Annotation.bounds.key,
+        )
+
+    @validates_schema
+    def validate_bounds(self, data):
+        try:
+            Annotation.validate_bounds(data.get('bounds'))
+        except Exception:
+            abort(code=HTTPStatus.UNPROCESSABLE_ENTITY, message='bounds value is invalid')
 
 
 class PatchAnnotationDetailsParameters(PatchJSONParameters):
@@ -34,6 +47,8 @@ class PatchAnnotationDetailsParameters(PatchJSONParameters):
         '/%s' % field
         for field in (
             'encounter_guid',
+            'ia_class',
+            'bounds',
             'keywords',
         )
     )
@@ -64,16 +79,30 @@ class PatchAnnotationDetailsParameters(PatchJSONParameters):
         from app.modules.encounters.models import Encounter
 
         ret_val = False
-        # Annotations don't have an owner, so check the encounter owner
+        # Annotations don't have an owner and encounter are (briefly) optional, so we check asset(_group)
+        #  future consideration: first check encounter (IF exists), fallback to asset(_group)
         if (
-            rules.owner_or_privileged(current_user, obj.encounter)
+            rules.owner_or_privileged(current_user, obj.asset.asset_group)
             or current_user.is_admin
         ):
+            # only can assign encounter if have privileges there
             if field == Annotation.encounter_guid.key:
                 encounter = Encounter.query.get(value)
                 if encounter and rules.owner_or_privileged(current_user, encounter):
                     obj.encounter_guid = value
                     ret_val = True
+            else:  # any other field
+                if field == Annotation.bounds.key:
+                    try:
+                        Annotation.validate_bounds(value)
+                    except Exception:
+                        abort(
+                            code=HTTPStatus.UNPROCESSABLE_ENTITY,
+                            message='bounds value is invalid',
+                        )
+                ret_val = super(PatchAnnotationDetailsParameters, cls).replace(
+                    obj, field, value, state
+                )
 
         return ret_val
 

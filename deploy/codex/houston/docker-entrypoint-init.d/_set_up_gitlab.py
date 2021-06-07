@@ -65,12 +65,17 @@ def main(argv=None):
     while True:
         resp = session.get(sign_in_url, allow_redirects=False)
         try:
-            assert resp.status_code < 500, resp
+            assert resp.status_code < 500, resp.content
         except AssertionError:
             # the gitlab service isn't up quite yet
-            if retry_count >= 4:
-                print('Something unexpected happen during the setup of GitLab')
+            if retry_count >= 6:
+                sys.stderr.write(
+                    'Something unexpected happen during the setup of GitLab\n'
+                )
                 raise
+            sys.stderr.write(
+                f'Signing in to {sign_in_url} failed {resp}, retry_count={retry_count}\n'
+            )
             retry_count += 1
             time.sleep(30)
         else:

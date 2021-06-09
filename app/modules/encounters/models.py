@@ -89,14 +89,15 @@ class Encounter(db.Model, FeatherModel):
         with db.session.begin(subtransactions=True):
             db.session.delete(self)
 
-    def delete_from_edm(self, current_app):
-        response = current_app.edm.request_passthrough(
+    def delete_from_edm(self, current_app, request):
+        (response, response_data, result,) = current_app.edm.request_passthrough_parsed(
             'encounter.data',
             'delete',
             {},
             self.guid,
+            request_headers=request.headers,
         )
-        return response
+        return (response, response_data, result)
 
     def augment_edm_json(self, edm_json):
         edm_json['createdHouston'] = self.created.isoformat()

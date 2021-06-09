@@ -10,7 +10,7 @@ import logging
 from flask_login import current_user  # NOQA
 from flask_restx_patched import Resource
 from flask_restx_patched._http import HTTPStatus
-from flask import request, current_app
+from flask import request, current_app, make_response
 
 from app.extensions import db
 from app.extensions.api import Namespace
@@ -173,20 +173,50 @@ class EncounterByID(Resource):
         Delete a Encounter by ID.
         """
         # first try delete on edm
-        response = encounter.delete_from_edm(current_app)
-        response_data = None
-        if response.ok:
-            response_data = response.json()
-
-        if not response.ok or not response_data.get('success', False):
+        response = None
+        try:
+            (response, response_data, result) = encounter.delete_from_edm(
+                current_app, request
+            )
+        except HoustonException as ex:
+            edm_status_code = ex.get_val('edm_status_code', 400)
             log.warning(
-                'Encounter.delete %r failed: %r' % (encounter.guid, response_data)
+                f'Encounter.delete {encounter.guid} failed: ({ex.status_code} / edm={edm_status_code}) {ex.message}'
             )
             abort(
-                success=False, passed_message='Delete failed', message='Error', code=400
+                success=False,
+                edm_status_code=edm_status_code,
+                passed_message='Delete failed',
+                message='Error',
+                code=400,
             )
 
-        # if we get here, edm has deleted the encounter, now houston feather
+        resp = make_response()
+        resp.status_code = 204
+        sighting_id = None
+        if result is not None:
+            sighting_id = result.get('deletedSighting', None)
+        if sighting_id is not None:
+            from app.modules.sightings.models import Sighting
+
+            sighting = Sighting.query.get(sighting_id)
+            if sighting is None:
+                log.error(
+                    f'deletion of {encounter} triggered deletion of sighting {sighting_id}; but this was not found!'
+                )
+                abort(
+                    success=False,
+                    message=f'Cascade-deleted Sighting not found id={sighting_id}',
+                    code=400,
+                )
+            else:
+                log.warning(  # TODO future audit log here
+                    f'EDM triggered self-deletion of {sighting} result={result}'
+                )
+                sighting.delete_cascade()  # this will get rid of our encounter(s) as well so no need to encounter.delete()
+                resp.headers['x-deletedSighting-guid'] = sighting_id
+        else:
+            encounter.delete()
         # TODO handle failure of feather deletion (when edm successful!)  out-of-sync == bad
-        encounter.delete()
-        return None
+
+        return resp

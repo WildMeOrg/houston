@@ -53,9 +53,11 @@ def read_encounter(flask_app_client, user, enc_guid, expected_status_code=200):
     return response
 
 
-def delete_encounter(flask_app_client, user, enc_guid, expected_status_code=204):
+def delete_encounter(
+    flask_app_client, user, enc_guid, expected_status_code=204, headers=None
+):
     with flask_app_client.login(user, auth_scopes=('encounter:write',)):
-        response = flask_app_client.delete('%s%s' % (PATH, enc_guid))
+        response = flask_app_client.delete('%s%s' % (PATH, enc_guid), headers=headers)
 
     if expected_status_code == 204:
         assert response.status_code == 204
@@ -63,3 +65,4 @@ def delete_encounter(flask_app_client, user, enc_guid, expected_status_code=204)
         test_utils.validate_dict_response(
             response, expected_status_code, {'status', 'message'}
         )
+    return response

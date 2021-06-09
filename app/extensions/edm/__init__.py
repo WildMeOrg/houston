@@ -174,7 +174,6 @@ class EDMManager(RestManager):
             not response.ok
             or not response_data.get('success', False)
             or response.status_code != 200
-            or result_data is None
         ):
             status_code = response.status_code
             if status_code > 600:

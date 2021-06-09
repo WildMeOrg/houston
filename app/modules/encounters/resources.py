@@ -191,6 +191,9 @@ class EncounterByID(Resource):
                 code=400,
             )
 
+        # we have to roll our own response here (to return) as it seems the only way we can add a header
+        #   (which we are using to denote the encounter DELETE also triggered a sighting DELETE, since
+        #   no body is returned on a 204 for DELETE
         resp = make_response()
         resp.status_code = 204
         sighting_id = None

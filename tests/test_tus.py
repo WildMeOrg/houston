@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 import base64
-import os
 import pathlib
 import shutil
 import urllib.parse
 
 import pytest
-import redis
+
+from tests.utils import redis_unavailable
 
 
 @pytest.fixture
@@ -26,15 +26,6 @@ def file_upload_path(flask_app, file_upload_asset_group_id, file_upload_filename
     yield path
     if path.parent.exists():
         shutil.rmtree(path.parent)
-
-
-def redis_unavailable(*args):
-    try:
-        host = os.getenv('REDIS_HOST') or 'localhost'
-        redis.Redis(host=host).get('test')
-        return False
-    except redis.exceptions.ConnectionError:
-        return True
 
 
 def test_tus_options(flask_app_client):

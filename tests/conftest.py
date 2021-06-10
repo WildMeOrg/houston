@@ -69,6 +69,35 @@ def flask_app(gitlab_remote_login_pat):
                 else:
                     raise
 
+            if utils.redis_unavailable():
+                # Run code in foreground if redis not available
+                from app.modules.asset_groups import tasks
+
+                tasks_patch = []
+                tasks_patch.append(
+                    mock.patch.object(
+                        tasks.delete_remote,
+                        'delay',
+                        lambda *args, **kwargs: tasks.delete_remote(*args, **kwargs),
+                    )
+                )
+                tasks_patch.append(
+                    mock.patch.object(
+                        tasks.ensure_remote,
+                        'delay',
+                        lambda *args, **kwargs: tasks.ensure_remote(*args, **kwargs),
+                    )
+                )
+                tasks_patch.append(
+                    mock.patch.object(
+                        tasks.git_push,
+                        'delay',
+                        lambda *args, **kwargs: tasks.git_push(*args, **kwargs),
+                    )
+                )
+                for patch in tasks_patch:
+                    patch.start()
+
             # This is necessary to make celery tasks work when calling
             # in the foreground.  Otherwise there's some weird error:
             #
@@ -79,6 +108,10 @@ def flask_app(gitlab_remote_login_pat):
             with mock.patch.object(app, 'app_context', return_value=ctx):
                 yield app
             db.drop_all()
+
+            if utils.redis_unavailable():
+                for patch in tasks_patch:
+                    patch.stop()
 
 
 @pytest.fixture(scope='session')

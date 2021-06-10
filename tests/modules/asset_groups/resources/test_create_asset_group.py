@@ -16,21 +16,12 @@ def test_create_asset_group(flask_app_client, researcher_1, readonly_user, test_
     try:
         data = TestCreationData(transaction_id, False)
         data.set_field('description', 'This is a test asset_group, please ignore')
-        resp_msg = 'bulkUpload field missing from request'
-        asset_group_utils.create_asset_group(
-            flask_app_client, researcher_1, data.get(), 400, resp_msg
-        )
 
-        data.set_field('bulkUpload', False)
         resp_msg = 'speciesDetectionModel field missing from request'
         asset_group_utils.create_asset_group(
             flask_app_client, researcher_1, data.get(), 400, resp_msg
         )
-        data.set_field('speciesDetectionModel', [None])
-        resp_msg = 'transactionId field missing from request'
-        asset_group_utils.create_asset_group(
-            flask_app_client, researcher_1, data.get(), 400, resp_msg
-        )
+        data.set_field('speciesDetectionModel', [False])
 
         data.set_field('transactionId', transaction_id)
         resp_msg = 'sightings field missing from request'
@@ -83,6 +74,13 @@ def test_create_asset_group(flask_app_client, researcher_1, readonly_user, test_
         )
 
         data.set_sighting_field(0, 'assetReferences', [test_filename])
+        resp_msg = "Use uploadType to define type 'bulk' or 'form'"
+        asset_group_utils.create_asset_group(
+            flask_app_client, researcher_1, data.get(), 400, resp_msg
+        )
+
+        data.set_field('uploadType', 'form')
+
         resp = asset_group_utils.create_asset_group(
             flask_app_client, researcher_1, data.get()
         )
@@ -156,6 +154,35 @@ def test_create_asset_group_2_assets(flask_app_client, researcher_1, test_root, 
                 flask_app_client, researcher_1, asset_group_uuid
             )
         tus_utils.cleanup_tus_dir(transaction_id)
+
+
+def test_create_asset_group_no_assets(
+    flask_app_client, researcher_1, contributor_1, test_root, db
+):
+    # pylint: disable=invalid-name
+    from tests.modules.asset_groups.resources.utils import TestCreationData
+
+    try:
+        data = TestCreationData(None)
+        data.remove_field('transactionId')
+        # Should fail as not permitted for contributor
+        expected_resp = 'Only a Researcher can create an AssetGroup without any Assets'
+        asset_group_utils.create_asset_group(
+            flask_app_client, contributor_1, data.get(), 400, expected_resp
+        )
+        resp = asset_group_utils.create_asset_group(
+            flask_app_client, researcher_1, data.get()
+        )
+        asset_group_uuid = resp.json['guid']
+        # sighting_uuid = resp.json['sighting_guid']
+    finally:
+        if asset_group_uuid:
+            asset_group_utils.delete_asset_group(
+                flask_app_client, researcher_1, asset_group_uuid
+            )
+        # if sighting_uuid:
+        #     import tests.modules.sightings.resources.utils as sighting_utils
+        #     sighting_utils.delete_sighting(flask_app_client, researcher_1, asset_group_uuid)
 
 
 def test_create_asset_group_anonymous(
@@ -258,7 +285,7 @@ def test_create_bulk_asset_group(flask_app_client, researcher_1, test_root, db):
         data.add_encounter(1)
         data.add_filename(1, 'fluke.jpg')
         data.add_filename(1, 'phoenix.jpg')
-        data.set_field('bulkUpload', True)
+        data.set_field('uploadType', 'bulk')
 
         resp = asset_group_utils.create_asset_group(
             flask_app_client, researcher_1, data.get()

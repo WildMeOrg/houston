@@ -146,7 +146,9 @@ class CreateAssetGroupMetadata(BaseAssetGroupMetadata):
     @property
     def bulk_upload(self):
         assert self.data_processed >= CreateAssetGroupMetadata.DataProcessed.first_level
-        return self.request['bulkUpload']
+        return ('bulkUpload' in self.request and self.request['bulkUpload']) or (
+            'uploadType' in self.request and self.request['uploadType'] == 'bulk'
+        )
 
     @property
     def location_id(self):
@@ -156,7 +158,7 @@ class CreateAssetGroupMetadata(BaseAssetGroupMetadata):
     @property
     def tus_transaction_id(self):
         assert self.data_processed >= CreateAssetGroupMetadata.DataProcessed.first_level
-        return self.request['transactionId']
+        return self.request.get('transactionId', None)
 
     @property
     def detection_configs(self):
@@ -198,9 +200,10 @@ class CreateAssetGroupMetadata(BaseAssetGroupMetadata):
 
         # Parse according to docs.google.com/document/d/11TMq1qzaQxva97M3XYwaEYYUawJ5VsrRXnJvTQR_nG0/edit?pli=1#
         top_level_fields = [
-            ('bulkUpload', bool, True),
+            ('bulkUpload', bool, False),  # Temporary, to be removed
+            ('uploadType', str, False),  # Will become mandatory
             ('speciesDetectionModel', list, True),
-            ('transactionId', str, True),
+            ('transactionId', str, False),
             ('sightings', list, True),
             ('submitterEmail', str, False),
             ('description', str, False),
@@ -245,6 +248,11 @@ class CreateAssetGroupMetadata(BaseAssetGroupMetadata):
     def _validate_contents(self):
         # Message was valid, is the user allowed to do so
         from app.modules.users.models import User
+
+        if 'bulkUpload' not in self.request and 'uploadType' not in self.request:
+            raise AssetGroupMetadataError(
+                "Use uploadType to define type 'bulk' or 'form'"
+            )
 
         if self.anonymous:
             if self.bulk_upload:

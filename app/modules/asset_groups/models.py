@@ -121,6 +121,98 @@ class AssetGroupSighting(db.Model, HoustonModel):
     # May have multiple jobs outstanding, store as Json obj uuid_str is key, In_progress Bool is value
     jobs = db.Column(db.JSON, nullable=True)
 
+    def commit(self):
+        from app.modules.utils import Cleanup
+        from app.modules.sightings.models import Sighting
+        from app.modules.encounters.models import Encounter
+
+        if self.stage != AssetGroupSightingStage.curation:
+            raise HoustonException(
+                message=f'AssetGroupSighting {self.guid} is currently {self.stage}, not curating cannot commit',
+            )
+
+        if not self.config:
+            raise HoustonException(
+                message=f'AssetGroupSighting {self.guid} has no metadata',
+            )
+
+        # Create sighting in EDM
+        result_data = current_app.edm.request_passthrough_result(
+            'sighting.data', 'post', {'data': self.config}, ''
+        )
+
+        cleanup = Cleanup('AssetGroup')
+        cleanup.add_guid(result_data['id'], Sighting)
+
+        # if we get here, edm has made the sighting.  now we have to consider encounters contained within,
+        # and make houston for the sighting + encounters
+
+        # encounters via self.config and edm (result_data) need to have same count!
+        if ('encounters' in self.config and 'encounters' not in result_data) or (
+            'encounters' not in self.config and 'encounters' in result_data
+        ):
+            cleanup.rollback_and_houston_exception(
+                'Missing encounters between requested config and result',
+                'Sighting.post missing encounters in one of %r or %r'
+                % (self.config, result_data),
+            )
+        if not len(self.config['encounters']) == len(result_data['encounters']):
+            cleanup.rollback_and_houston_exception(
+                'Imbalance in encounters between data and result',
+                'Sighting.post imbalanced encounters in %r or %r'
+                % (self.config, result_data),
+            )
+
+        sighting = Sighting(
+            guid=result_data['id'],
+            version=result_data.get('version', 2),
+        )
+
+        # Add the assets for all of the encounters to the created sighting object
+        # TODO DEX-298 removed until the delete side of it works
+        # for encounter in self.config['encounters']:
+        #     for reference in encounter['assetReferences']:
+        #         asset = asset_group.get_asset_for_file(reference)
+        #         assert asset
+        #         sighting.add_asset(asset)
+
+        cleanup.add_object(sighting)
+
+        for encounter_num in range(len(self.config['encounters'])):
+            req_data = self.config['encounters'][encounter_num]
+            res_data = result_data['encounters'][encounter_num]
+            try:
+                new_encounter = Encounter(
+                    guid=res_data['id'],
+                    version=res_data.get('version', 2),
+                    owner_guid=self.asset_group.owner_guid,
+                    submitter_guid=self.asset_group.submitter_guid,
+                    public=self.asset_group.anonymous,
+                )
+                # TODO, DEX-296 we now have an encounter, add the appropriate annotations to it
+                sighting.add_encounter(new_encounter)
+
+            except Exception as ex:
+                cleanup.rollback_and_houston_exception(
+                    'Problem with creating encounter: ',
+                    f'{ex} on encounter {encounter_num}: enc={req_data}',
+                )
+
+        with db.session.begin(subtransactions=True):
+            db.session.add(sighting)
+            for encounter in sighting.get_encounters():
+                db.session.add(encounter)
+
+        # AssetGroupSighting is finished, all subsequent processing is on the Sighting
+        self.complete()
+        sighting.ia_pipeline()
+
+        num_encounters = len(self.config['encounters'])
+        log.info(
+            f'Created Sighting guid {sighting.guid} with {num_encounters} encounters'
+        )
+        return sighting
+
     def start_sage_detection(self, model_config, detection):
         # TODO make this a task so that it's non blocking but handle the response and
         # inform AssetGroupSighting if it fails
@@ -545,6 +637,53 @@ class AssetGroup(db.Model, HoustonModel):
         return asset_group
 
     @classmethod
+    def create_from_metadata(cls, metadata):
+        if metadata.owner is not None and not metadata.owner.is_anonymous:
+            group_owner = metadata.owner
+        else:
+            from app.modules.users.models import User
+
+            group_owner = User.get_public_user()
+
+        if metadata.tus_transaction_id and not metadata.files:
+            raise HoustonException(
+                message='Tus transaction AssetGroup must contain files',
+            )
+        if not metadata.files and not group_owner.is_researcher:
+            raise HoustonException(
+                message='Only a Researcher can create an AssetGroup without any Assets',
+            )
+        asset_group = AssetGroup(
+            major_type=AssetGroupMajorType.filesystem,
+            description=metadata.description,
+            owner_guid=group_owner.guid,
+        )
+
+        if metadata.anonymous_submitter:
+            asset_group.submitter = metadata.anonymous_submitter
+
+        with db.session.begin(subtransactions=True):
+            db.session.add(asset_group)
+
+        log.info('created asset_group %r' % asset_group)
+
+        if metadata.tus_transaction_id:
+            try:
+                added = asset_group.import_tus_files(
+                    transaction_id=metadata.tus_transaction_id, paths=metadata.files
+                )
+            except Exception:
+                log.error(
+                    'create_from_tus() had problems with import_tus_files(); deleting from db and fs %r'
+                    % asset_group
+                )
+                asset_group.delete()
+                raise
+
+            log.info('asset_group imported %r' % added)
+        return asset_group
+
+    @classmethod
     def create_from_tus(
         cls, description, owner, transaction_id, paths=None, submitter=None
     ):
@@ -931,6 +1070,7 @@ class AssetGroup(db.Model, HoustonModel):
         return None
 
     def begin_ia_pipeline(self, metadata):
+        # Temporary restriction for MVP
         assert len(metadata.detection_configs) == 1
         assert metadata.data_processed == CreateAssetGroupMetadata.DataProcessed.complete
         import copy
@@ -941,7 +1081,19 @@ class AssetGroup(db.Model, HoustonModel):
                 asset_group_guid=self.guid,
                 config=copy.deepcopy(sighting_meta),
             )
-            if len(metadata.detection_configs) == 1 and not metadata.detection_configs[0]:
+
+            # Allow sightings to have no Assets, they go straight to Commit
+            if (
+                'assetReferences' not in sighting_meta
+                or len(sighting_meta['assetReferences']) == 0
+            ):
+                new_sighting.stage = AssetGroupSightingStage.curation
+                new_sighting.commit()
+
+            elif len(metadata.detection_configs) == 1 and (
+                not metadata.detection_configs[0]
+                or metadata.detection_configs[0] == 'None'
+            ):
                 new_sighting.stage = AssetGroupSightingStage.curation
             else:
                 new_sighting.stage = AssetGroupSightingStage.detection

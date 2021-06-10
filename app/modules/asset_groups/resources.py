@@ -10,7 +10,7 @@ import werkzeug
 import uuid
 import json
 
-from flask import request, current_app
+from flask import request
 from flask_login import current_user
 from flask_restx_patched import Resource
 from flask_restx_patched._http import HTTPStatus
@@ -28,11 +28,7 @@ from .metadata import (
     CreateAssetGroupMetadata,
     PatchAssetGroupSightingMetadata,
 )
-from .models import (
-    AssetGroup,
-    AssetGroupSighting,
-    AssetGroupSightingStage,
-)
+from .models import AssetGroup, AssetGroupSighting
 from app.modules.sightings.schemas import BaseSightingSchema
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
@@ -87,11 +83,7 @@ class AssetGroups(Resource):
         try:
             metadata.process_request()
         except AssetGroupMetadataError as error:
-            abort(
-                success=False,
-                passed_message=error.message,
-                code=error.status_code,
-            )
+            abort(error.status_code, error.message)
 
         if (
             metadata.anonymous
@@ -105,29 +97,28 @@ class AssetGroups(Resource):
                 f'New inactive user created as submitter: {metadata.submitter_email}'
             )
 
-        context = api.commit_or_abort(
-            db.session, default_error_message='Failed to create a new Asset_group'
-        )
-        with context:
-            args['owner_guid'] = metadata.owner.guid
-            asset_group = AssetGroup.create_from_tus(
-                metadata.description,
-                metadata.owner,
-                metadata.tus_transaction_id,
-                metadata.files,
-                metadata.anonymous_submitter,
+        try:
+            asset_group = AssetGroup.create_from_metadata(metadata)
+        except HoustonException as ex:
+            log.warning(
+                f'AssetGroup creation for transaction_id={metadata.tus_transaction_id} failed'
             )
+            abort(ex.status_code, ex.message)
+        except Exception as ex:
+            abort(400, f'Creation failed {ex}')
 
         try:
             asset_group.begin_ia_pipeline(metadata)
         except HoustonException as ex:
             asset_group.delete()
             abort(
-                success=False,
-                passed_message=ex.message,
-                code=ex.status_code,
+                ex.status_code,
+                ex.message,
                 acm_status_code=ex.get_val('acm_status_code', None),
             )
+        except Exception as ex:
+            asset_group.delete()
+            abort(400, f'IA pipeline failed {ex}')
 
         log.info(
             f'AssetGroup {asset_group.guid}:"{metadata.description}" created by {metadata.owner.email} in {timer.elapsed()} seconds'
@@ -406,7 +397,6 @@ class AssetGroupSightingByID(Resource):
             patchData.process_request(asset_group_sighting)
         except AssetGroupMetadataError as error:
             abort(
-                success=False,
                 passed_message=error.message,
                 code=error.status_code,
             )
@@ -445,100 +435,10 @@ class AssetGroupSightingCommit(Resource):
     # a sighting is created
     @api.response(BaseSightingSchema())
     def post(self, asset_group_sighting):
-        from app.modules.utils import Cleanup
-        from app.modules.sightings.models import Sighting
-        from app.modules.encounters.models import Encounter
-
-        if asset_group_sighting.stage != AssetGroupSightingStage.curation:
-            abort(
-                HTTPStatus.BAD_REQUEST,
-                'AssetGroupSighting %s is currently %s, not curating cannot commit'
-                % (asset_group_sighting.guid, asset_group_sighting.stage),
-            )
-
-        request_data = asset_group_sighting.config
-        if not request_data:
-            abort(
-                HTTPStatus.BAD_REQUEST,
-                f'AssetGroupSighting {asset_group_sighting.guid} has no metadata',
-            )
-
-        # Create sighting in EDM
         try:
-            result_data = current_app.edm.request_passthrough_result(
-                'sighting.data', 'post', {'data': request_data}, ''
-            )
+            sighting = asset_group_sighting.commit()
         except HoustonException as ex:
             abort(ex.status_code, ex.message, errorFields=ex.get_val('error', 'Error'))
-
-        cleanup = Cleanup('AssetGroup')
-        cleanup.add_guid(result_data['id'], Sighting)
-
-        # if we get here, edm has made the sighting.  now we have to consider encounters contained within,
-        # and make houston for the sighting + encounters
-
-        # encounters via request_data and edm (result_data) need to have same count!
-        if ('encounters' in request_data and 'encounters' not in result_data) or (
-            'encounters' not in request_data and 'encounters' in result_data
-        ):
-            cleanup.rollback_and_abort(
-                'Missing encounters between request_data and result',
-                'Sighting.post missing encounters in one of %r or %r'
-                % (request_data, result_data),
-            )
-        if not len(request_data['encounters']) == len(result_data['encounters']):
-            cleanup.rollback_and_abort(
-                'Imbalance in encounters between data and result',
-                'Sighting.post imbalanced encounters in %r or %r'
-                % (request_data, result_data),
-            )
-
-        sighting = Sighting(
-            guid=result_data['id'],
-            version=result_data.get('version', 2),
-        )
-
-        # Add the assets for all of the encounters to the created sighting object
-        # TODO removed until the delete side of it works
-        # for encounter in request_data['encounters']:
-        #     for reference in encounter['assetReferences']:
-        #         asset = asset_group.get_asset_for_file(reference)
-        #         assert asset
-        #         sighting.add_asset(asset)
-
-        cleanup.add_object(sighting)
-        asset_group = asset_group_sighting.asset_group
-
-        for encounter_num in range(len(request_data['encounters'])):
-            req_data = request_data['encounters'][encounter_num]
-            res_data = result_data['encounters'][encounter_num]
-            try:
-                new_encounter = Encounter(
-                    guid=res_data['id'],
-                    version=res_data.get('version', 2),
-                    owner_guid=asset_group.owner_guid,
-                    submitter_guid=asset_group.submitter_guid,
-                    public=asset_group.anonymous,
-                )
-                # TODO, we now have an encounter, add the appropriate annotations to it
-                sighting.add_encounter(new_encounter)
-
-            except Exception as ex:
-                cleanup.rollback_and_abort(
-                    'Problem with creating encounter: ',
-                    f'{ex} on encounter {encounter_num}: enc={req_data}',
-                )
-
-        context = api.commit_or_abort(
-            db.session, default_error_message='Failed to persist new houston Sighting'
-        )
-        with context:
-            db.session.add(sighting)
-            for encounter in sighting.get_encounters():
-                db.session.add(encounter)
-
-        # AssetGroupSighting is finished, all subsequent processing is on the Sighting
-        asset_group_sighting.complete()
 
         return sighting
 

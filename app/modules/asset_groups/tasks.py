@@ -1,14 +1,21 @@
 # -*- coding: utf-8 -*-
 import logging
 
+import git
 from flask import current_app
+import requests.exceptions
 
 from app.extensions.celery import celery
+from app.extensions.gitlab import GitlabInitializationError
 
 log = logging.getLogger(__name__)
 
 
-@celery.task()
+@celery.task(
+    autoretry_for=(GitlabInitializationError, requests.exceptions.RequestException),
+    default_retry_delay=600,
+    max_retries=10,
+)
 def ensure_remote(asset_group_guid, additional_tags=[]):
     from .models import AssetGroup
 
@@ -28,12 +35,28 @@ def ensure_remote(asset_group_guid, additional_tags=[]):
         repo.create_remote('origin', project.web_url)
 
 
-@celery.task()
-def delete_remote(asset_group_guid):
-    current_app.git_backend.delete_remote_project_by_name(asset_group_guid)
+@celery.task(
+    autoretry_for=(GitlabInitializationError, requests.exceptions.RequestException),
+    default_retry_delay=600,
+    max_retries=10,
+)
+def delete_remote(asset_group_guid, ignore_error=True):
+    try:
+        current_app.git_backend.delete_remote_project_by_name(asset_group_guid)
+    except (GitlabInitializationError, requests.exceptions.RequestException):
+        if not ignore_error:
+            raise
 
 
-@celery.task()
+@celery.task(
+    autoretry_for=(
+        GitlabInitializationError,
+        requests.exceptions.RequestException,
+        git.exc.GitCommandError,
+    ),
+    default_retry_delay=600,
+    max_retries=10,
+)
 def git_push(asset_group_guid):
     from .models import AssetGroup, GitLabPAT
 

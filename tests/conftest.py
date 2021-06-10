@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 import pathlib
-import shutil
 import tempfile
 import uuid
 from unittest import mock
@@ -254,10 +253,9 @@ def test_root(flask_app):
 
 
 def ensure_asset_group_repo(flask_app, db, asset_group, file_data=[]):
+    from app.extensions.gitlab import GitlabInitializationError
     from app.modules.asset_groups.tasks import git_push, ensure_remote
 
-    if pathlib.Path(asset_group.get_absolute_path()).exists():
-        shutil.rmtree(asset_group.get_absolute_path())
     repo = asset_group.get_repository()
     if repo:
         # repo already exists
@@ -268,7 +266,12 @@ def ensure_asset_group_repo(flask_app, db, asset_group, file_data=[]):
     db.session.refresh(asset_group)
     asset_group.ensure_repository()
     # Call ensure_remote without .delay in tests to do it in the foreground
-    ensure_remote(str(asset_group.guid), additional_tags=['type:pytest-required'])
+    try:
+        ensure_remote(str(asset_group.guid), additional_tags=['type:pytest-required'])
+    except GitlabInitializationError:
+        print(
+            f'gitlab unavailable, skip ensure_remote for asset group {asset_group.guid}'
+        )
     filepath_guid_mapping = {}
     for uuid_, path in file_data:
         repo_filepath = asset_group.git_copy_file_add(str(path))
@@ -278,11 +281,15 @@ def ensure_asset_group_repo(flask_app, db, asset_group, file_data=[]):
         existing_filepath_guid_mapping=filepath_guid_mapping,
     )
     # Call git_push without .delay in tests to do it in the foreground
-    git_push(str(asset_group.guid))
+    try:
+        git_push(str(asset_group.guid))
+    except GitlabInitializationError:
+        print(f'gitlab unavailable, skip git_push for asset group {asset_group.guid}')
 
 
 @pytest.fixture(scope='session')
 def test_asset_group_uuid(flask_app, db, test_root, admin_user):
+    from app.extensions.gitlab import GitlabInitializationError
     from app.modules.asset_groups.models import AssetGroup, AssetGroupMajorType
 
     asset_group = AssetGroup(
@@ -302,7 +309,10 @@ def test_asset_group_uuid(flask_app, db, test_root, admin_user):
             test_root / 'fluke.jpg',
         ),
     ]
-    ensure_asset_group_repo(flask_app, db, asset_group, file_data)
+    try:
+        ensure_asset_group_repo(flask_app, db, asset_group, file_data)
+    except GitlabInitializationError:
+        print(f'gitlab unavailable, skip ensure_asset_group_repo for {asset_group.guid}')
     return asset_group.guid
 
 

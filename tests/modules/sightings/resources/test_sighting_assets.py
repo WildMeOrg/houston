@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=missing-docstring
+from app.extensions.gitlab import GitlabInitializationError
 import sqlalchemy
 
 from tests import utils
@@ -68,7 +69,10 @@ def test_asset_addition(db, flask_app_client, staff_user):
         sighting_utils.delete_sighting(
             flask_app_client, staff_user, str(new_sighting.guid)
         )
-        delete_remote(str(new_asset_group.guid))
+        try:
+            delete_remote(str(new_asset_group.guid))
+        except GitlabInitializationError:
+            pass
         new_asset_1.delete()
         new_asset_2.delete()
         new_asset_3.delete()
@@ -154,5 +158,8 @@ def test_asset_file_addition(db, flask_app_client, staff_user):
         new_researcher.delete()
         # assets are only cleaned up once the submissions are cleaned up
         for asset_group in new_researcher.asset_groups:
-            delete_remote(str(asset_group.guid))
+            try:
+                delete_remote(str(asset_group.guid))
+            except GitlabInitializationError:
+                pass
             asset_group.delete()

@@ -6,9 +6,14 @@ import uuid
 import gitlab.exceptions
 import pytest
 
+from app.extensions.gitlab import GitlabInitializationError
+
 
 def test_ensure_project_name_taken(flask_app):
-    flask_app.git_backend._ensure_initialized()
+    try:
+        flask_app.git_backend._ensure_initialized()
+    except GitlabInitializationError:
+        pytest.skip('Gitlab unavailable')
     projects_create = flask_app.git_backend.gl.projects.create
 
     def raise_gitlab_exception(*args, error_message='Unknown', **kwargs):

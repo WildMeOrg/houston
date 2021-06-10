@@ -8,9 +8,11 @@ import enum
 import re
 from flask import current_app
 from flask_login import current_user  # NOQA
+import requests.exceptions
 import utool as ut
 
 from app.extensions import db, HoustonModel, parallel
+from app.extensions.gitlab import GitlabInitializationError
 from app.version import version
 from app.utils import HoustonException
 
@@ -371,15 +373,15 @@ class AssetGroup(db.Model, HoustonModel):
             os.mkdir(assets_path)
         pathlib.Path(os.path.join(assets_path, '.touch')).touch()
 
-        metatdata_path = os.path.join(group_path, 'metadata.json')
-        if not os.path.exists(metatdata_path):
-            with open(metatdata_path, 'w') as metatdata_file:
+        metadata_path = os.path.join(group_path, 'metadata.json')
+        if not os.path.exists(metadata_path):
+            with open(metadata_path, 'w') as metatdata_file:
                 json.dump({}, metatdata_file)
 
-        with open(metatdata_path, 'r') as metatdata_file:
+        with open(metadata_path, 'r') as metatdata_file:
             group_metadata = json.load(metatdata_file)
 
-        with open(metatdata_path, 'w') as metatdata_file:
+        with open(metadata_path, 'w') as metatdata_file:
             json.dump(group_metadata, metatdata_file)
 
         log.info('LOCAL  REPO: %r' % (repo.working_tree_dir,))
@@ -1009,8 +1011,15 @@ class AssetGroup(db.Model, HoustonModel):
 
     @classmethod
     def get_remote(cls, guid):
-        return current_app.git_backend.get_project(str(guid))
+        try:
+            return current_app.git_backend.get_project(str(guid))
+        except (GitlabInitializationError, requests.exceptions.RequestException):
+            log.error(f'Error when calling AssetGroup.get_remote({guid})')
 
     @classmethod
     def is_on_remote(cls, guid):
-        return current_app.git_backend.is_project_on_remote(str(guid))
+        try:
+            return current_app.git_backend.is_project_on_remote(str(guid))
+        except (GitlabInitializationError, requests.exceptions.RequestException):
+            log.error(f'Error when calling AssetGroup.is_on_remote({guid})')
+            return False

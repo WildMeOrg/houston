@@ -3,6 +3,8 @@
 import filecmp
 from os.path import join, basename
 
+from app.extensions.gitlab import GitlabInitializationError
+
 import tests.modules.asset_groups.resources.utils as asset_group_utils
 import tests.extensions.tus.utils as tus_utils
 
@@ -37,7 +39,10 @@ def test_create_open_submission(flask_app_client, regular_user, test_root, db):
     finally:
         from app.modules.asset_groups.tasks import delete_remote
 
-        delete_remote(str(temp_submission.guid))
+        try:
+            delete_remote(str(temp_submission.guid))
+        except GitlabInitializationError:
+            pass
         # Restore original state
         if temp_submission is not None:
             temp_submission.delete()
@@ -94,7 +99,10 @@ def test_submission_streamlined(flask_app_client, test_root, regular_user, db):
     finally:
         from app.modules.asset_groups.tasks import delete_remote
 
-        delete_remote(str(temp_submission.guid))
+        try:
+            delete_remote(str(temp_submission.guid))
+        except GitlabInitializationError:
+            pass
 
         # Restore original state
         if temp_submission is not None:

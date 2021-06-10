@@ -108,6 +108,10 @@ jobs:
           docker-compose exec -T -e FLASK_CONFIG=$FLASK_CONFIG -e TEST_DATABASE_URI=$TEST_DATABASE_URI houston pytest -s -v
           docker-compose exec -T -e FLASK_CONFIG=$FLASK_CONFIG -e TEST_DATABASE_URI=$TEST_DATABASE_URI houston pytest -s -v
 
+      - name: Run tests without gitlab
+        run: |
+          docker-compose exec -T -e FLASK_CONFIG=$FLASK_CONFIG -e TEST_DATABASE_URI=$TEST_DATABASE_URI -e GITLAB_REMOTE_URI=http://connection-error/ houston pytest -s -v
+
       - name: Check DB migrations (sqlite)
         if: matrix.db-uri == 'sqlite://'
         run: |

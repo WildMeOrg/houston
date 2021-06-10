@@ -35,7 +35,7 @@ class EDMManager(RestManager):
     ENDPOINT_PREFIX = 'api'
 
     # this is based on edm date of most recent commit (we must be at or greater than this)
-    MIN_VERSION = '2021-06-02 16:48:00 -0700'
+    MIN_VERSION = '2021-06-08 22:55:00 -0700'
 
     # We use // as a shorthand for prefix
     # fmt: off
@@ -174,7 +174,6 @@ class EDMManager(RestManager):
             not response.ok
             or not response_data.get('success', False)
             or response.status_code != 200
-            or result_data is None
         ):
             status_code = response.status_code
             if status_code > 600:

@@ -7,6 +7,7 @@ from flask import Blueprint, Flask, current_app
 import logging
 
 from uuid import UUID
+
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
 
@@ -52,11 +53,10 @@ class Cleanup(object):
     def add_object(self, obj):
         self.allocated_objs.append(obj)
 
-    def rollback_and_abort(
+    def rollback(
         self,
         message='Unknown error',
         log_message=None,
-        status_code=400,
         error_fields=None,
     ):
         from app.modules.sightings.models import Sighting
@@ -77,4 +77,29 @@ class Cleanup(object):
             log.warning('Cleanup removing %r' % alloc_obj)
             alloc_obj.delete()
 
+    def rollback_and_abort(
+        self,
+        message='Unknown error',
+        log_message=None,
+        status_code=400,
+        error_fields=None,
+    ):
+        self.rollback(message, log_message, error_fields)
         abort(status_code, message, errorFields=error_fields)
+
+    def rollback_and_houston_exception(
+        self,
+        message='Unknown error',
+        log_message=None,
+        status_code=400,
+        error_fields=None,
+    ):
+        from app.utils import HoustonException
+
+        self.rollback(message, log_message, error_fields)
+        raise HoustonException(
+            status_code=status_code,
+            message=message,
+            log_message=log_message,
+            error=error_fields,
+        )

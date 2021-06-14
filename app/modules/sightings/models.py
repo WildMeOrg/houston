@@ -228,3 +228,8 @@ class Sighting(db.Model, FeatherModel):
                 submitter_guid=user_guid,
             )
             self.add_encounter(encounter)
+
+    def ia_pipeline(self):
+        # TODO DEX-296 Trigger the sighting to start Identification if annotations present or to go to
+        # un reviewed if not
+        pass

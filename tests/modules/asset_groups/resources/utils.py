@@ -20,9 +20,9 @@ class TestCreationData(object):
         else:
             self.content = {
                 'description': 'This is a test asset_group, please ignore',
-                'bulkUpload': False,
+                'uploadType': 'form',
                 'speciesDetectionModel': [
-                    None,
+                    'None',
                 ],
                 'transactionId': transaction_id,
                 'sightings': [
@@ -95,9 +95,9 @@ def create_asset_group(
         )
     elif 400 <= expected_status_code < 500:
         test_utils.validate_dict_response(
-            response, expected_status_code, {'status', 'message', 'passed_message'}
+            response, expected_status_code, {'status', 'message'}
         )
-        assert response.json['passed_message'] == expected_error
+        assert response.json['message'] == expected_error, response.json['message']
     else:
         test_utils.validate_dict_response(
             response, expected_status_code, {'status', 'message'}

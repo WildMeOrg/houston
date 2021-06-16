@@ -1,4 +1,4 @@
-from flask import Blueprint, Flask, current_app
+from flask import Flask, current_app
 
 import logging
 import json
@@ -19,7 +19,7 @@ def load_config_to_dict(fname):
 
 
 def short_config_name_to_full_filename(config_name):
-    fname = f'IA.{name}.json'
+    fname = f'IA.{config_name}.json'
     return fname
 
 

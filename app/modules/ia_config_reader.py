@@ -23,6 +23,18 @@ def short_config_name_to_full_filename(config_name):
     return fname
 
 
+# detects @-links in values from any level of the ia config
+def _is_link(config_value):
+    is_link = type(config_value) is str and config_value.startswith('@')
+    return is_link
+
+
+# simply takes the '@' off the beginning of a link
+def _link_destination(link_str):
+    destination = link_str.split('@')[1]
+    return destination
+
+
 class IaConfig:
 
     def __init__(self, name="zebra"):
@@ -52,16 +64,6 @@ class IaConfig:
             next_keys = keys[1:]
             value = self.get_recursive(next_keys, current_value)
         return value
-
-    # detects @-links in values from any level of the ia config
-    def _is_link(config_value):
-        is_link = type(config_value) is str and config_value.startswith('@')
-        return is_link
-
-    # simply takes the '@' off the beginning of a link
-    def _link_destination(link_str):
-        destination = link_str.split('@')[1]
-        return destination
 
     def get_detectors_with_links(self, genus_species):
         species_key = genus_species.replace(' ', '.')

@@ -450,6 +450,7 @@ class SightingByID(Resource):
                 log.warning(  # TODO future audit log here
                     f'EDM triggered self-deletion of {sighting} result={result}'
                 )
+                response_data['threatened_sighting_id'] = str(sighting.guid)
                 sighting.delete_cascade()  # this will get rid of our encounter(s) as well so no need to rectify_edm_encounters()
                 sighting = None
             else:

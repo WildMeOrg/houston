@@ -38,6 +38,7 @@ def test_detector_dict_vs_link(flask_app_client):
 
 def test_config_to_filename(flask_app_client):
     from app.modules.ia_config_reader import short_config_name_to_full_filename
+
     config_name = 'zebra'
     filename = short_config_name_to_full_filename(config_name)
     assert filename == 'IA.zebra.json'
@@ -46,6 +47,7 @@ def test_config_to_filename(flask_app_client):
 def test_loading_config_dict(flask_app_client):
     from app.modules.ia_config_reader import short_config_name_to_full_filename
     from app.modules.ia_config_reader import load_config_to_dict
+
     config_name = 'zebra'
     filename = short_config_name_to_full_filename(config_name)
     config_dict = load_config_to_dict(filename)

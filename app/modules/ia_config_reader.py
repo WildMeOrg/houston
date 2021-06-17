@@ -1,10 +1,8 @@
-from flask import Flask, current_app
+# -*- coding: utf-8 -*-
 
 import logging
 import json
 import os.path as path
-
-import utool as ut
 
 log = logging.getLogger(__name__)
 
@@ -36,8 +34,7 @@ def _link_destination(link_str):
 
 
 class IaConfig:
-
-    def __init__(self, name="zebra"):
+    def __init__(self, name='zebra'):
         self.name = name
         self.fname = short_config_name_to_full_filename(self.name)
         self.config_dict = load_config_to_dict(self.fname)
@@ -47,13 +44,12 @@ class IaConfig:
         return self.get_recursive(keys, self.config_dict)
 
     def get_recursive(self, keys, config_dict_level):
-        print(f'get_recursive called on keys {keys}')
         current_key = keys[0]
         current_value = config_dict_level[current_key]
         is_base_case = len(keys) == 1
 
         # following @-links
-        if (_is_link(current_value)):
+        if _is_link(current_value):
             # resolve the link destination. It will look like an unlinked current_value.
             current_value = self.get(_link_destination(current_value))
         # base case, no link
@@ -99,9 +95,7 @@ class IaConfig:
 
     def _resolve_links_in_value_list(self, value_list):
         resolved_list = [
-            self.get(_link_destination(value))
-            if _is_link(value)
-            else value
+            self.get(_link_destination(value)) if _is_link(value) else value
             for value in value_list
         ]
         return resolved_list
@@ -113,5 +107,3 @@ class IaConfig:
             for link in link_list
         }
         return resolved_dicts
-
-    globals().update(locals())  # just for pasting into ipython

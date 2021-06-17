@@ -29,6 +29,18 @@ services:
     networks:
       - intranet
 
+  elasticsearch:
+    # https://www.elastic.co/guide/en/elasticsearch/reference/current/docker.html
+    image: docker.elastic.co/elasticsearch/elasticsearch-oss:7.10.1
+    environment:
+      "discovery.type": single-node
+    ports:
+      # development exposure, not exposed in production
+      - 9200:9200
+      - 9300:9300
+    networks:
+      - intranet
+
   pgadmin:
     image: dpage/pgadmin4
     environment:
@@ -119,6 +131,7 @@ services:
       EDM_AUTHENTICATIONS_USERNAME__DEFAULT: "${EDM_AUTHENTICATIONS_USERNAME__DEFAULT}"
       EDM_AUTHENTICATIONS_PASSWORD__DEFAULT: "${EDM_AUTHENTICATIONS_PASSWORD__DEFAULT}"
       ACM_AUTHENTICATIONS_URI__DEFAULT: "${ACM_AUTHENTICATIONS_URI__DEFAULT}"
+      ELASTICSEARCH_HOSTS: "${ELASTICSEARCH_HOSTS}"
       HOUSTON_URL: "${HOUSTON_URL}"
       REDIS_HOST: redis
       GITLAB_PROTO: "${GITLAB_PROTO}"

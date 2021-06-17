@@ -28,12 +28,14 @@ class DetailedAssetSchema(BaseAssetSchema):
     """
 
     asset_group = base_fields.Nested('BaseAssetGroupSchema')
+    annotations = base_fields.Nested('DetailedAnnotationSchema', many=True)
 
     class Meta(BaseAssetSchema.Meta):
         fields = BaseAssetSchema.Meta.fields + (
             Asset.created.key,
             Asset.updated.key,
             Asset.asset_group.key,
+            'annotations',
         )
         dump_only = BaseAssetSchema.Meta.dump_only + (
             Asset.created.key,

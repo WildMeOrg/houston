@@ -5,6 +5,7 @@ import uuid
 from tests.modules.annotations.resources import utils as annot_utils
 from tests.modules.asset_groups.resources import utils as sub_utils
 from tests.modules.encounters.resources import utils as enc_utils
+from tests.modules.assets.resources import utils as asset_utils
 
 
 def test_get_annotation_not_found(flask_app_client):
@@ -58,13 +59,14 @@ def test_create_and_delete_annotation(
         researcher_1,
         test_clone_asset_group_data['asset_group_uuid'],
     )
+    asset_guid = test_clone_asset_group_data['asset_uuids'][0]
 
     response = enc_utils.create_encounter(flask_app_client, researcher_1)
     enc_guid = response.json['result']['encounters'][0]['id']
     response = annot_utils.create_annotation(
         flask_app_client,
         researcher_1,
-        test_clone_asset_group_data['asset_uuids'][0],
+        asset_guid,
         enc_guid,
     )
 
@@ -76,6 +78,10 @@ def test_create_and_delete_annotation(
 
     # Try reading it back
     annot_utils.read_annotation(flask_app_client, researcher_1, annotation_guid)
+
+    # make sure annot shows up on asset
+    asset_res = asset_utils.read_asset(flask_app_client, researcher_1, asset_guid)
+    assert len(asset_res.json['annotations']) == 1
 
     # And deleting it
     annot_utils.delete_annotation(flask_app_client, researcher_1, annotation_guid)

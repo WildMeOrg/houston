@@ -60,6 +60,8 @@ from .email import mail  # NOQA
 
 from . import edm  # NOQA
 
+from . import elasticsearch  # NOQA
+
 from . import acm  # NOQA
 
 from . import gitlab  # NOQA
@@ -340,6 +342,7 @@ def init_app(app):
         cross_origin_resource_sharing,
         marshmallow,
         edm,
+        elasticsearch,
         acm,
         gitlab,
         tus,

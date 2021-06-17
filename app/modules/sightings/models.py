@@ -184,7 +184,9 @@ class Sighting(db.Model, FeatherModel):
             return edm_json
         from app.modules.assets.schemas import DetailedAssetSchema
 
-        asset_schema = DetailedAssetSchema(many=False, only=('guid', 'filename', 'src'))
+        asset_schema = DetailedAssetSchema(
+            many=False, only=('guid', 'filename', 'src', 'annotations')
+        )
         edm_json['assets'] = []
         for asset in self.get_assets():
             json, err = asset_schema.dump(asset)

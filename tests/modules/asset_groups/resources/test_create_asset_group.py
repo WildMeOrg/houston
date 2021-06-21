@@ -162,6 +162,7 @@ def test_create_asset_group_no_assets(
     # pylint: disable=invalid-name
     from tests.modules.asset_groups.resources.utils import TestCreationData
 
+    asset_group_uuid = None
     try:
         data = TestCreationData(None)
         data.remove_field('transactionId')

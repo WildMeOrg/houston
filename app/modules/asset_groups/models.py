@@ -169,12 +169,10 @@ class AssetGroupSighting(db.Model, HoustonModel):
         )
 
         # Add the assets for all of the encounters to the created sighting object
-        # TODO DEX-298 removed until the delete side of it works
-        # for encounter in self.config['encounters']:
-        #     for reference in encounter['assetReferences']:
-        #         asset = asset_group.get_asset_for_file(reference)
-        #         assert asset
-        #         sighting.add_asset(asset)
+        for reference in self.config.get('assetReferences', []):
+            asset = self.asset_group.get_asset_for_file(reference)
+            assert asset
+            sighting.add_asset(asset)
 
         cleanup.add_object(sighting)
 

@@ -122,7 +122,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
 
     def commit(self):
         from app.modules.utils import Cleanup
-        from app.modules.sightings.models import Sighting
+        from app.modules.sightings.models import Sighting, SightingStage
         from app.modules.encounters.models import Encounter
 
         if self.stage != AssetGroupSightingStage.curation:
@@ -164,6 +164,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
 
         sighting = Sighting(
             guid=result_data['id'],
+            stage=SightingStage.identification,
             version=result_data.get('version', 2),
         )
 

@@ -19,6 +19,8 @@ class HoustonException(Exception):
 
         # Allow other params to be passed in exception
         self._kwargs = kwargs
+        if log_message == '' and self.message != '':
+            log_message = self.message
 
         log.warning(f'Failed: {log_message} {self.status_code}')
         # TODO This is where Audit Logging will hook into the system.

@@ -21,7 +21,7 @@ from app.utils import HoustonException
 
 from app.extensions.api import abort
 from . import parameters, schemas
-from .models import Sighting
+from .models import Sighting, SightingStage
 
 from app.modules import utils
 import json
@@ -304,6 +304,7 @@ class Sightings(Resource):
         sighting = Sighting(
             guid=result_data['id'],
             version=result_data.get('version', 2),
+            stage=SightingStage.processed,
         )
 
         assets = None

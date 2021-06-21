@@ -7,10 +7,10 @@ from app.modules.users.models import User
 
 def test_sighting_create_and_add_encounters(db):
 
-    from app.modules.sightings.models import Sighting
+    from app.modules.sightings.models import Sighting, SightingStage
     from app.modules.encounters.models import Encounter
 
-    test_sighting = Sighting()
+    test_sighting = Sighting(stage=SightingStage.processed)
     owner = User.get_public_user()
 
     test_encounter_a = Encounter()
@@ -52,10 +52,10 @@ def test_sighting_create_and_add_encounters(db):
 
 
 def test_sighting_ensure_no_duplicate_encounters(db):
-    from app.modules.sightings.models import Sighting
+    from app.modules.sightings.models import Sighting, SightingStage
     from app.modules.encounters.models import Encounter
 
-    test_sighting = Sighting()
+    test_sighting = Sighting(stage=SightingStage.processed)
     owner = User.get_public_user()
 
     test_encounter = Encounter()

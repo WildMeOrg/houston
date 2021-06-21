@@ -270,7 +270,7 @@ class RestManager(RestManagerUserMixin):
 
         if verbose:
             log.info(f'Sending {method} request to {self.NAME}: {endpoint_encoded}')
-            log.info(f'Contents {passthrough_kwargs}')
+            log.debug(f'Contents {passthrough_kwargs}')
 
         session_ = target_session or self.sessions[target]
 

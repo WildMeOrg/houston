@@ -340,3 +340,87 @@ def test_create_bulk_asset_group(flask_app_client, researcher_1, test_root, db):
                 flask_app_client, researcher_1, asset_group_uuid
             )
         tus_utils.cleanup_tus_dir(transaction_id)
+
+
+def test_create_asset_group_simulate_detection(
+    flask_app_client, researcher_1, contributor_1, internal_user, test_root, db
+):
+    # pylint: disable=invalid-name
+    import uuid
+    from tests.modules.asset_groups.resources.utils import TestCreationData
+
+    try:
+        data = TestCreationData(None)
+        data.remove_field('transactionId')
+
+        resp = asset_group_utils.create_asset_group(
+            flask_app_client, researcher_1, data.get()
+        )
+        asset_group_uuid = resp.json['guid']
+        assert 'sightings' in resp.json
+        asset_group_sighting_uuid = resp.json['sightings'][0]['guid']
+        path = f'sighting/{asset_group_sighting_uuid}/sage_detected/{str(uuid.uuid4())}'
+        data = {
+            'response': {
+                'jobid': 'f3155b31-3170-45de-a6d9-874716cc7e65',
+                'json_result': {
+                    'has_assignments': False,
+                    'image_uuid_list': [
+                        '57d21f3c-69d8-4f1d-7716-9923dcf4b5d8',
+                    ],
+                    'results_list': [
+                        [
+                            {
+                                'class': 'whale_orca+fin_dorsal',
+                                'confidence': 0.7909,
+                                'height': 820,
+                                'id': 947505,
+                                'interest': False,
+                                'left': 140,
+                                'multiple': False,
+                                'quality': None,
+                                'species': 'whale_orca+fin_dorsal',
+                                'theta': 0.0,
+                                'top': 0,
+                                'uuid': '23b9ac5a-9a52-473a-a4dd-6a1f4f255dbc',
+                                'viewpoint': 'left',
+                                'width': 1063,
+                                'xtl': 140,
+                                'ytl': 0,
+                            },
+                        ],
+                    ],
+                    'score_list': [
+                        0.0,
+                    ],
+                },
+                'status': 'completed',
+            },
+            'status': {
+                'cache': -1,
+                'code': 200,
+                'message': '',
+                'success': True,
+            },
+        }
+        response = asset_group_utils.simulate_detection_response(
+            flask_app_client,
+            internal_user,
+            path,
+            data,
+            400,
+        )
+        assert (
+            response.json['message']
+            == f'AssetGroupSighting {asset_group_sighting_uuid} is not detecting'
+        )
+        # TODO should fail as AssetGroupSighting is processed so has no jobs outstanding
+
+    finally:
+        if asset_group_uuid:
+            asset_group_utils.delete_asset_group(
+                flask_app_client, researcher_1, asset_group_uuid
+            )
+        # if sighting_uuid:
+        #     import tests.modules.sightings.resources.utils as sighting_utils
+        #     sighting_utils.delete_sighting(flask_app_client, researcher_1, asset_group_uuid)

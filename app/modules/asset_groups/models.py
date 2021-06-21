@@ -277,6 +277,50 @@ class AssetGroupSighting(db.Model, HoustonModel):
         with db.session.begin(subtransactions=True):
             db.session.merge(self)
 
+    def detected(self, job_id, data):
+        from app.modules.assets.models import Asset
+        from app.modules.annotations.models import Annotation
+
+        if self.stage != AssetGroupSightingStage.detection:
+            raise HoustonException(
+                message=f'AssetGroupSighting {self.guid} is not detecting'
+            )
+
+        if str(job_id) not in self.jobs:
+            raise HoustonException(f'job_id {job_id} not found')
+
+        response = data.get('response', None)
+        if not response:
+            raise HoustonException('No response field in message from Sage')
+        json_result = response.get('json_result', None)
+
+        if not json_result:
+            raise HoustonException('No json_result in message from Sage')
+
+        image_uuids = json_result.get('image_uuid_list', [])
+        results = json_result.get('results_list', [])
+        if len(image_uuids) != len(results):
+            raise HoustonException(
+                f'image list len {len(image_uuids)} does not match results len {len(results)}'
+            )
+
+        for asset_id in range(len(image_uuids)):
+            asset = Asset.find(results[asset_id])
+            if not asset:
+                raise HoustonException(f'Asset Id {results[asset_id]} not found')
+
+            for annot_id in range(len(results[asset_id])):
+                annot_data = results[asset_id][annot_id]
+                new_annot = Annotation(
+                    guid=annot_data['uuid'],
+                    asset=asset,
+                    ia_class=annot_data['class'],
+                    bounds={'Not a scooby doo'},
+                )
+
+                with db.session.begin(subtransactions=True):
+                    db.session.add(new_annot)
+
     def complete(self):
         # TODO check that the jobs are all actually complete
         self.stage = AssetGroupSightingStage.processed

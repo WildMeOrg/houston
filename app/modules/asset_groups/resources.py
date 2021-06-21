@@ -443,6 +443,32 @@ class AssetGroupSightingCommit(Resource):
         return sighting
 
 
+@api.route('/sighting/<uuid:asset_group_sighting_guid>/sage_detected/<uuid:job_guid>')
+@api.login_required(oauth_scopes=['asset_group_sightings:write'])
+@api.response(
+    code=HTTPStatus.NOT_FOUND,
+    description='Asset_group_sighting not found.',
+)
+@api.resolve_object_by_model(AssetGroupSighting, 'asset_group_sighting')
+class AssetGroupSightingDetected(Resource):
+    """
+    Detection of Asset Group Sighting complete
+    """
+
+    @api.permission_required(
+        permissions.ObjectAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'obj': kwargs['asset_group_sighting'],
+            'action': AccessOperation.WRITE_PRIVILEGED,
+        },
+    )
+    def post(self, asset_group_sighting, job_guid):
+        try:
+            asset_group_sighting.detected(job_guid, json.loads(request.data))
+        except HoustonException as ex:
+            abort(ex.status_code, ex.message, errorFields=ex.get_val('error', 'Error'))
+
+
 @api.route('/tus/collect/<uuid:asset_group_guid>')
 @api.login_required(oauth_scopes=['asset_groups:read'])
 @api.response(

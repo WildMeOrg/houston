@@ -349,24 +349,30 @@ def test_create_asset_group_simulate_detection(
     import uuid
     from tests.modules.asset_groups.resources.utils import TestCreationData
 
+    transaction_id, test_filename = tus_utils.prep_tus_dir(test_root)
+    asset_group_uuid = None
     try:
-        data = TestCreationData(None)
-        data.remove_field('transactionId')
-
+        data = TestCreationData(transaction_id)
+        data.add_filename(0, test_filename)
         resp = asset_group_utils.create_asset_group(
             flask_app_client, researcher_1, data.get()
         )
         asset_group_uuid = resp.json['guid']
+        assert 'assets' in resp.json
+        assets = resp.json['assets']
+        assert len(assets) == 1
+        asset_guid = assets[0]['guid']
         assert 'sightings' in resp.json
         asset_group_sighting_uuid = resp.json['sightings'][0]['guid']
-        path = f'sighting/{asset_group_sighting_uuid}/sage_detected/{str(uuid.uuid4())}'
+        job_id = str(uuid.uuid4())
+        path = f'sighting/{asset_group_sighting_uuid}/sage_detected/{job_id}'
         data = {
             'response': {
-                'jobid': 'f3155b31-3170-45de-a6d9-874716cc7e65',
+                'jobid': job_id,
                 'json_result': {
                     'has_assignments': False,
                     'image_uuid_list': [
-                        '57d21f3c-69d8-4f1d-7716-9923dcf4b5d8',
+                        asset_guid,
                     ],
                     'results_list': [
                         [

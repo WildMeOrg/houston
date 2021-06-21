@@ -280,6 +280,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
     def detected(self, job_id, data):
         from app.modules.assets.models import Asset
         from app.modules.annotations.models import Annotation
+        import uuid
 
         if self.stage != AssetGroupSightingStage.detection:
             raise HoustonException(
@@ -289,9 +290,19 @@ class AssetGroupSighting(db.Model, HoustonModel):
         if str(job_id) not in self.jobs:
             raise HoustonException(f'job_id {job_id} not found')
 
-        response = data.get('response', None)
+        response = data.get('response')
         if not response:
             raise HoustonException('No response field in message from Sage')
+
+        job_id_msg = response.get('jobid')
+        if not job_id_msg:
+            raise HoustonException('Must be a job id in the response')
+
+        if job_id_msg != str(job_id):
+            raise HoustonException(
+                f'Job id in message {job_id_msg} must match job id in callback {job_id}'
+            )
+
         json_result = response.get('json_result', None)
 
         if not json_result:
@@ -305,17 +316,26 @@ class AssetGroupSighting(db.Model, HoustonModel):
             )
 
         for asset_id in range(len(image_uuids)):
-            asset = Asset.find(results[asset_id])
+            asset = Asset.find(uuid.UUID(image_uuids[asset_id]))
             if not asset:
                 raise HoustonException(f'Asset Id {results[asset_id]} not found')
 
             for annot_id in range(len(results[asset_id])):
                 annot_data = results[asset_id][annot_id]
+                uuid = annot_data.get('uuid', None)
+                ia_class = annot_data.get('class', None)
+                if not uuid or not ia_class:
+                    raise HoustonException(
+                        'Need a uuid and a class in each of the results'
+                    )
+
+                bounds = Annotation.create_bounds(annot_data)
+
                 new_annot = Annotation(
                     guid=annot_data['uuid'],
                     asset=asset,
                     ia_class=annot_data['class'],
-                    bounds={'Not a scooby doo'},
+                    bounds=bounds,
                 )
 
                 with db.session.begin(subtransactions=True):

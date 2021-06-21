@@ -6,6 +6,7 @@ Annotations database models
 
 from app.extensions import db, HoustonModel
 from app.modules.keywords.models import Keyword, KeywordSource
+from app.utils import HoustonException
 
 import uuid
 import logging
@@ -132,3 +133,20 @@ class Annotation(db.Model, HoustonModel):
         assert 'rect' in bounds
         assert isinstance(bounds['rect'], list)
         assert len(bounds['rect']) == 4
+
+    @classmethod
+    def create_bounds(cls, input_data):
+        xtl = input_data.get('xtl')
+        ytl = input_data.get('ytl')
+        width = input_data.get('width')
+        height = input_data.get('height')
+        theta = input_data.get('theta')
+
+        if xtl is None or ytl is None or width is None or height is None or theta is None:
+            raise HoustonException(
+                log_message=f'{input_data} missing fields',
+                message='input Data needs xtl, ytl, width, height and theta',
+            )
+        resp = {'rect': [xtl, ytl, width, height], 'theta': theta}
+
+        return resp

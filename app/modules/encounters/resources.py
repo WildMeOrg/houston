@@ -223,9 +223,6 @@ class EncounterByID(Resource):
         else:
             encounter.delete()
         # TODO handle failure of feather deletion (when edm successful!)  out-of-sync == bad
-        log.warning(
-            f'HEY !!!!!!!!!!!!!!!!!!!!!!!!!!!! got deleted_individual={deleted_individuals}'
-        )
         if deleted_individuals:
             from app.modules.individuals.models import Individual
 

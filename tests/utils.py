@@ -202,7 +202,7 @@ def generate_asset_instance(asset_group_guid):
 
 
 def validate_dict_response(response, expected_code, expected_fields):
-    assert response.status_code == expected_code
+    assert response.status_code == expected_code, response.json
     # after some discussion, dropping the check of response.content_type
     # turns out response.json is very forgiving and tries to parse response.data
     # even when response.is_json == False ... so this allows for sloppy headers but valid json getting thru

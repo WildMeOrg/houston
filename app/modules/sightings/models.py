@@ -16,7 +16,7 @@ class SightingAssets(db.Model, HoustonModel):
     sighting_guid = db.Column(db.GUID, db.ForeignKey('sighting.guid'), primary_key=True)
     asset_guid = db.Column(db.GUID, db.ForeignKey('asset.guid'), primary_key=True)
     sighting = db.relationship('Sighting', back_populates='assets')
-    asset = db.relationship('Asset')
+    asset = db.relationship('Asset', back_populates='sightings')
 
 
 class SightingStage(str, enum.Enum):

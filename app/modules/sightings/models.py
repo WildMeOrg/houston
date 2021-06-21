@@ -21,7 +21,7 @@ class SightingAssets(db.Model, HoustonModel):
 
 class SightingStage(str, enum.Enum):
     identification = 'identification'
-    un_reviewed = 'un-reviewed'
+    un_reviewed = 'un_reviewed'
     processed = 'processed'
     failed = 'failed'
 

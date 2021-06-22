@@ -12,8 +12,7 @@ log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
 
 class HoustonException(Exception):
-    def __init__(self, **kwargs):
-        log_message = kwargs.get('log_message', '')
+    def __init__(self, log_message, **kwargs):
         self.message = kwargs.get('message', log_message)
         self.status_code = kwargs.get('status_code', 400)
 

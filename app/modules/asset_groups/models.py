@@ -124,15 +124,16 @@ class AssetGroupSighting(db.Model, HoustonModel):
         from app.modules.utils import Cleanup
         from app.modules.sightings.models import Sighting, SightingStage
         from app.modules.encounters.models import Encounter
+        from app.modules.annotations.models import Annotation
 
         if self.stage != AssetGroupSightingStage.curation:
             raise HoustonException(
-                message=f'AssetGroupSighting {self.guid} is currently {self.stage}, not curating cannot commit',
+                f'AssetGroupSighting {self.guid} is currently {self.stage}, not curating cannot commit',
             )
 
         if not self.config:
             raise HoustonException(
-                message=f'AssetGroupSighting {self.guid} has no metadata',
+                f'AssetGroupSighting {self.guid} has no metadata',
             )
 
         # Create sighting in EDM
@@ -187,7 +188,13 @@ class AssetGroupSighting(db.Model, HoustonModel):
                     submitter_guid=self.asset_group.submitter_guid,
                     public=self.asset_group.anonymous,
                 )
-                # TODO, DEX-296 we now have an encounter, add the appropriate annotations to it
+                annotations = req_data.get('annotations', [])
+                for annot_uuid in annotations:
+                    annot = Annotation.query.get(annot_uuid)
+                    # Must be valid, checked in metadata parsing
+                    assert annot
+                    new_encounter.add_annotation(annot)
+
                 sighting.add_encounter(new_encounter)
 
             except Exception as ex:
@@ -283,12 +290,26 @@ class AssetGroupSighting(db.Model, HoustonModel):
         import uuid
 
         if self.stage != AssetGroupSightingStage.detection:
-            raise HoustonException(
-                message=f'AssetGroupSighting {self.guid} is not detecting'
-            )
+            raise HoustonException(f'AssetGroupSighting {self.guid} is not detecting')
 
         if str(job_id) not in self.jobs:
             raise HoustonException(f'job_id {job_id} not found')
+
+        status = data.get('status')
+        if not status:
+            raise HoustonException('No status in response from Sage')
+
+        success = status.get('success', False)
+        if not success:
+            self.stage = AssetGroupSightingStage.failed
+            # This is not an exception as the message from Sage was valid
+            code = status.get('code', 'unset')
+            message = status.get('message', 'unset')
+            # TODO this will be where the audit log fits in too
+            log.warning(
+                f'JobID {str(job_id)} failed with code: {code} message: {message}'
+            )
+            return
 
         response = data.get('response')
         if not response:
@@ -341,6 +362,8 @@ class AssetGroupSighting(db.Model, HoustonModel):
                 with db.session.begin(subtransactions=True):
                     db.session.add(new_annot)
 
+        self.job_complete(job_id)
+
     def complete(self):
         # TODO check that the jobs are all actually complete
         self.stage = AssetGroupSightingStage.processed
@@ -356,6 +379,13 @@ class AssetGroupSighting(db.Model, HoustonModel):
             from app.modules.job_control.models import JobControl
 
             JobControl.delete_job(job_id)
+            outstanding_jobs = []
+            for job in jobs.keys():
+                if jobs[job]['active']:
+                    outstanding_jobs.append(job)
+
+            if len(outstanding_jobs) == 0:
+                self.stage = AssetGroupSightingStage.curation
         else:
             log.warning(f'job_id {job_id} not found in AssetGroupSighting')
 
@@ -708,11 +738,11 @@ class AssetGroup(db.Model, HoustonModel):
 
         if metadata.tus_transaction_id and not metadata.files:
             raise HoustonException(
-                message='Tus transaction AssetGroup must contain files',
+                'Tus transaction AssetGroup must contain files',
             )
         if not metadata.files and not group_owner.is_researcher:
             raise HoustonException(
-                message='Only a Researcher can create an AssetGroup without any Assets',
+                'Only a Researcher can create an AssetGroup without any Assets',
             )
         asset_group = AssetGroup(
             major_type=AssetGroupMajorType.filesystem,

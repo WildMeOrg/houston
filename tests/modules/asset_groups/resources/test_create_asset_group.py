@@ -177,10 +177,8 @@ def test_create_asset_group_no_assets(
         )
         asset_group_uuid = resp.json['guid']
 
-        # Make sure that the user has the sighting and it's in the correct state
+        # Make sure that the user has a single unprocessed sighting
         user_resp = user_utils.read_user(flask_app_client, researcher_1, 'me')
-        # if 'unprocessed_sightings' not in user_resp.json:
-        #     breakpoint()
         assert 'unprocessed_sightings' in user_resp.json
         assert len(user_resp.json['unprocessed_sightings']) == 1
         sighting_uuid = user_resp.json['unprocessed_sightings'][0]

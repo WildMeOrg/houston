@@ -83,6 +83,7 @@ class PersonalUserSchema(DetailedUserSchema):
     class Meta(DetailedUserSchema.Meta):
         fields = DetailedUserSchema.Meta.fields + (
             User.unprocessed_asset_groups.__name__,
+            User.unprocessed_sightings.__name__,
             User.default_identification_catalogue.key,
             User.shares_data.key,
             User.receive_newsletter_emails.key,

@@ -163,6 +163,7 @@ def test_create_asset_group_no_assets(
     from tests.modules.asset_groups.resources.utils import TestCreationData
 
     asset_group_uuid = None
+    sighting_uuid = None
     try:
         data = TestCreationData(None)
         data.remove_field('transactionId')
@@ -175,15 +176,23 @@ def test_create_asset_group_no_assets(
             flask_app_client, researcher_1, data.get()
         )
         asset_group_uuid = resp.json['guid']
-        # sighting_uuid = resp.json['sighting_guid']
+
+        # Make sure that the user has the sighting and it's in the correct state
+        user_resp = user_utils.read_user(flask_app_client, researcher_1, 'me')
+        # if 'unprocessed_sightings' not in user_resp.json:
+        #     breakpoint()
+        assert 'unprocessed_sightings' in user_resp.json
+        assert len(user_resp.json['unprocessed_sightings']) == 1
+        sighting_uuid = user_resp.json['unprocessed_sightings'][0]
     finally:
         if asset_group_uuid:
             asset_group_utils.delete_asset_group(
                 flask_app_client, researcher_1, asset_group_uuid
             )
-        # if sighting_uuid:
-        #     import tests.modules.sightings.resources.utils as sighting_utils
-        #     sighting_utils.delete_sighting(flask_app_client, researcher_1, asset_group_uuid)
+        if sighting_uuid:
+            import tests.modules.sightings.resources.utils as sighting_utils
+
+            sighting_utils.delete_sighting(flask_app_client, researcher_1, sighting_uuid)
 
 
 def test_create_asset_group_anonymous(

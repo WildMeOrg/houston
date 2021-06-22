@@ -8,6 +8,8 @@ from app.extensions import FeatherModel, HoustonModel, db
 import uuid
 import logging
 import enum
+import json
+from flask import current_app
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
@@ -26,6 +28,28 @@ class SightingStage(str, enum.Enum):
     failed = 'failed'
 
 
+# # A sighting may have multiple IaConfigs, each with multiple algorithms, even if only one is supported for MVP
+class IaAlgorithm(db.Model, HoustonModel):
+    guid = db.Column(
+        db.GUID, default=uuid.uuid4, primary_key=True
+    )  # pylint: disable=invalid-name
+
+    ia_config_guid = db.Column(db.GUID, db.ForeignKey('ia_config.guid'))
+    algorithm = db.Column(db.String(length=25), nullable=False)
+    ia_config = db.relationship('IaConfig', back_populates='algorithms')
+
+
+class IaConfig(db.Model, HoustonModel):
+    guid = db.Column(
+        db.GUID, default=uuid.uuid4, primary_key=True
+    )  # pylint: disable=invalid-name
+
+    sighting_guid = db.Column(db.GUID, db.ForeignKey('sighting.guid'))
+    sighting = db.relationship('Sighting', back_populates='ia_configs')
+    matchingSetData = db.Column(db.String(length=25), nullable=True)
+    algorithms = db.relationship('IaAlgorithm')
+
+
 class Sighting(db.Model, FeatherModel):
     """
     Sightings database model.
@@ -42,6 +66,11 @@ class Sighting(db.Model, FeatherModel):
         nullable=False,
     )
     featured_asset_guid = db.Column(db.GUID, default=None, nullable=True)
+
+    # May have multiple jobs outstanding, store as Json obj uuid_str is key, In_progress Bool is value
+    jobs = db.Column(db.JSON, nullable=True)
+
+    ia_configs = db.relationship('IaConfig')
 
     def __repr__(self):
         return (
@@ -257,7 +286,119 @@ class Sighting(db.Model, FeatherModel):
             )
             self.add_encounter(encounter)
 
-    def ia_pipeline(self):
-        # TODO DEX-296 Trigger the sighting to start Identification if annotations present or to go to
-        # un reviewed if not
-        pass
+    def send_identification(self, model):
+        annotation_uuids = []
+        for encounter in self.encounters:
+            for annotation in encounter.annotations:
+                annotation_uuids.append(annotation.guid)
+
+        # Message construction has to be in the task as the jobId must be unique
+        job_id = uuid.uuid4()
+        base_url = current_app.config.get('BASE_URL')
+        callback_url = f'{base_url}api/v1/asset_group/sighting/{str(self.guid)}/sage_identified/{str(job_id)}'
+        # TODO utterly winging this for now, Needs filling in with proper data.
+        # Matching set and model info not even started
+        id_request = {
+            'endpoint': '/api/engine/query/graph/',
+            'function': 'start_identify_annots_query',
+            'jobid': str(job_id),
+            'input': {
+                'callback_url': callback_url,
+                'matching_state_list': [],
+                'query_annot_name_list': ['____'],
+                'query_annot_uuid_list': annotation_uuids,
+                'query_config_dict': {'sv_on': True},
+                'database_annot_name_list': [],
+                'database_annot_uuid_list': [],
+                'callback_detailed': True,
+            },
+        }
+        current_app.acm.request_passthrough_result(
+            'job.identification_request', 'post', {'params': id_request}
+        )
+
+        jobs = self._get_jobs()
+        jobs[str(job_id)] = {'algorithm': model, 'active': True}
+        self._set_jobs(jobs)
+
+    def check_job_status(self, job_id):
+        if str(job_id) not in self.jobs:
+            log.warning(f'check_job_status called for invalid job {job_id}')
+            return False
+
+        # TODO Poll ACM to see what's happening with this job, if it's ready to handle and we missed the
+        # response, process it here
+        return True
+
+    def _get_jobs(self):
+        if self.jobs:
+            return json.loads(self.jobs)
+        else:
+            return dict()
+
+    def _set_jobs(self, jobs):
+        self.jobs = json.dumps(jobs)
+        with db.session.begin(subtransactions=True):
+            db.session.merge(self)
+
+    # TODO These functions will be called on ID completion,
+    # def complete(self):
+    #     # TODO check that the jobs are all actually complete
+    #     self.stage = SightingStage.processed
+    #     with db.session.begin(subtransactions=True):
+    #         db.session.merge(self)
+    #     db.session.refresh(self)
+    #
+    # def job_complete(self, job_id):
+    #     jobs = self._get_jobs()
+    #     if job_id in jobs:
+    #         jobs[job_id]['active'] = False
+    #         self._set_jobs(jobs)
+    #         from app.modules.job_control.models import JobControl
+    #
+    #         JobControl.delete_job(job_id)
+    #     else:
+    #         log.warning(f'job_id {job_id} not found in AssetGroupSighting')
+
+    def ia_pipeline(self, id_configs):
+        from .tasks import send_identification
+
+        assert self.stage == SightingStage.identification
+        num_algorithms = 0
+
+        # convert from json multi level lists to stored DB data
+        num_configs = len(id_configs)
+        if num_configs > 0:
+            # Only one for MVP
+            assert num_configs == 1
+            for config in range(num_configs):
+                assert 'algorithms' in config
+                # Only one for MVP
+                assert len(config['algorithms']) == 1
+                assert 'matchingSetData' in config
+                new_config = IaConfig(sighting_guid=self.guid)
+
+                with db.session.begin(subtransactions=True):
+                    db.session.add(new_config)
+
+                for algorithm in config['algorithms']:
+                    new_algorithm = IaAlgorithm(
+                        ia_config_guid=new_config.guid, algorithm=algorithm
+                    )
+                    with db.session.begin(subtransactions=True):
+                        db.session.add(new_algorithm)
+                    num_algorithms += 1
+
+                # For now, regions are ignored
+
+        encounters_with_annotations = [
+            encounter for encounter in self.encounters if len(encounter.annotations) != 0
+        ]
+
+        # No annotations to identify or no algorithms, go straight to un-reviewed
+        if len(encounters_with_annotations) == 0 or num_algorithms == 0:
+            self.stage = SightingStage.un_reviewed
+        else:
+            # Use task to send ID req with retries,
+            # This will be extended post MVP to support multiple id_configs and algorithms
+            send_identification(self.guid, self.id_configs[0].algorithms[0].algorithm)

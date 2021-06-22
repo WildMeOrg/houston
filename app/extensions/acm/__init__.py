@@ -42,7 +42,7 @@ class ACMManager(RestManager):
         },
         'job': {
             'detect_request': '//engine/detect/%s',
-            'identification_request': '//engine/identify/%s',
+            'identification_request': '//engine/query/graph/',
             'response': '//engine/job/result/?jobid=%s'
         }
     }

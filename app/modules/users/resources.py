@@ -232,7 +232,16 @@ class AdminUserInitialized(Resource):
             admin = User.ensure_user(
                 email,
                 password,
+                is_internal=True,
                 is_admin=True,
+                is_staff=True,
+                is_researcher=True,
+                is_contributor=True,
+                is_user_manager=True,
+                is_exporter=True,
+                is_active=True,
+                in_beta=True,
+                in_alpha=True,
                 update=True,
             )
             log.info(

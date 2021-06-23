@@ -254,9 +254,9 @@ def patch_replace_op(path, value):
 
 # for counts of _specific_ classes.  see: all_count() for handy shortcut
 def multi_count(db, cls_list):
-    cts = []
+    cts = {}
     for cls in cls_list:
-        cts.append(row_count(db, cls))
+        cts[cls.__name__] = row_count(db, cls)
     return cts
 
 

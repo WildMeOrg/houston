@@ -104,8 +104,8 @@ def test_create_and_modify_and_delete_sighting(
 
     # test to see if we grew by 1 sighting and 2 encounters
     ct = test_utils.all_count(db)
-    assert ct[0] == orig_ct[0] + 1
-    assert ct[1] == orig_ct[1] + 2
+    assert ct['Sighting'] == orig_ct['Sighting'] + 1
+    assert ct['Encounter'] == orig_ct['Encounter'] + 2
 
     # test some simple modification (should succeed)
     new_loc_id = 'test_2'
@@ -151,7 +151,7 @@ def test_create_and_modify_and_delete_sighting(
     )
     # test to see if we now are +1 encounter
     ct = test_utils.all_count(db)
-    assert ct[1] == orig_ct[1] + 3  # previously was + 2
+    assert ct['Encounter'] == orig_ct['Encounter'] + 3  # previously was + 2
     assert len(sighting.encounters) == 3
     enc2_id = str(sighting.encounters[2].guid)
 
@@ -167,7 +167,7 @@ def test_create_and_modify_and_delete_sighting(
     assert len(sighting.encounters) == 2
     # test to see if we now are back to where we started
     ct = test_utils.all_count(db)
-    assert ct[1] == orig_ct[1] + 2
+    assert ct['Encounter'] == orig_ct['Encounter'] + 2
 
     # patch op=remove the first encounter; should succeed no problem cuz there is one enc remaining
     response = sighting_utils.patch_sighting(
@@ -180,7 +180,7 @@ def test_create_and_modify_and_delete_sighting(
     )
     # test to see if we now are -1 encounter
     ct = test_utils.all_count(db)
-    assert ct[1] == orig_ct[1] + 1  # previously was + 2
+    assert ct['Encounter'] == orig_ct['Encounter'] + 1  # previously was + 2
 
     # similar to above, but this should fail as this is our final encounter, and thus cascade-deletes the occurrence -- and this
     #   requires confirmation
@@ -196,7 +196,7 @@ def test_create_and_modify_and_delete_sighting(
     assert response.json['edm_status_code'] == 602
     # should still have same number encounters as above here
     ct = test_utils.all_count(db)
-    assert ct[1] == orig_ct[1] + 1
+    assert ct['Encounter'] == orig_ct['Encounter'] + 1
 
     # now we try again, but this time with header to allow for cascade deletion of sighting
     response = sighting_utils.patch_sighting(

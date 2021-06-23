@@ -49,22 +49,24 @@ def test_delete_method(db, flask_app_client, researcher_1, test_root, staff_user
     assert individual_guid is not None
 
     ct = test_utils.all_count(db)
-    assert ct[0] == orig_ct[0] + 1  # one more sighting
-    assert ct[1] == orig_ct[1] + 2  # two more encounters
-    assert ct[4] == orig_ct[4] + 1  # one more individual
+    assert ct['Sighting'] == orig_ct['Sighting'] + 1  # one more sighting
+    assert ct['Encounter'] == orig_ct['Encounter'] + 2  # two more encounters
+    assert ct['Individual'] == orig_ct['Individual'] + 1  # one more individual
 
     # this should be ok, cuz one enc remains (no cascade effects)
     enc_utils.delete_encounter(flask_app_client, staff_user, enc0_id)
     ct = test_utils.all_count(db)
-    assert ct[1] == orig_ct[1] + 1
-    assert ct[4] == orig_ct[4] + 1  # just to confirm indiv is still there
+    assert ct['Encounter'] == orig_ct['Encounter'] + 1
+    assert (
+        ct['Individual'] == orig_ct['Individual'] + 1
+    )  # just to confirm indiv is still there
 
     # but this should then fail, cuz its the last enc and will take the sighting with it
     response = enc_utils.delete_encounter(
         flask_app_client, staff_user, enc1_id, expected_status_code=400
     )
     ct = test_utils.all_count(db)
-    assert ct[1] == orig_ct[1] + 1
+    assert ct['Encounter'] == orig_ct['Encounter'] + 1
     assert response.json['edm_status_code'] == 604
 
     # this will fail cuz it *only* allows sighting-cascade and we need individual also
@@ -86,6 +88,6 @@ def test_delete_method(db, flask_app_client, researcher_1, test_root, staff_user
         response.headers['x-deletedSighting-guid'] == sighting_id
     )  # header tells us sighting cascade-deleted
     ct = test_utils.all_count(db)  # back where we started
-    assert ct[0] == orig_ct[0]
-    assert ct[1] == orig_ct[1]
-    assert ct[4] == orig_ct[4]
+    assert ct['Sighting'] == orig_ct['Sighting']
+    assert ct['Encounter'] == orig_ct['Encounter']
+    assert ct['Individual'] == orig_ct['Individual']

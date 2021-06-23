@@ -197,8 +197,10 @@ class EncounterByID(Resource):
         resp = make_response()
         resp.status_code = 204
         sighting_id = None
+        deleted_individuals = None
         if result is not None:
             sighting_id = result.get('deletedSighting', None)
+            deleted_individuals = result.get('deletedIndividuals', None)
         if sighting_id is not None:
             from app.modules.sightings.models import Sighting
 
@@ -221,5 +223,17 @@ class EncounterByID(Resource):
         else:
             encounter.delete()
         # TODO handle failure of feather deletion (when edm successful!)  out-of-sync == bad
+        if deleted_individuals:
+            from app.modules.individuals.models import Individual
+
+            for indiv_guid in deleted_individuals:
+                goner = Individual.query.get(indiv_guid)
+                if goner is None:
+                    log.error(
+                        f'EDM requested cascade-delete of individual id={indiv_guid}; but was not found in houston!'
+                    )
+                else:
+                    log.info(f'EDM requested cascade-delete of {goner}; deleting')
+                    goner.delete()
 
         return resp

@@ -494,6 +494,15 @@ class User(db.Model, FeatherModel, UserEDMMixin):
             if not asset_group.is_processed()
         ]
 
+    def unprocessed_sightings(self):
+        from app.modules.sightings.models import SightingStage
+
+        return [
+            sighting.guid
+            for sighting in self.get_sightings()
+            if not sighting.stage == SightingStage.processed
+        ]
+
     def get_id(self):
         return self.guid
 
@@ -633,6 +642,9 @@ class User(db.Model, FeatherModel, UserEDMMixin):
     def get_sightings(self):
         sightings = []
         for encounter in self.owned_encounters:
-            sightings.append(encounter.get_sighting())
+            sighting = encounter.get_sighting()
+            if sighting:
+                sightings.append(encounter.get_sighting())
+
         sighting_set = set(sightings)
         return list(sighting_set)

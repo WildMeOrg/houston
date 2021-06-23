@@ -7,6 +7,8 @@ import json
 import shutil
 import os
 import config
+from unittest import mock
+
 from tests import utils as test_utils
 
 PATH = '/api/v1/asset_groups/'
@@ -206,11 +208,21 @@ def read_all_asset_groups(flask_app_client, user, expected_status_code=200):
 def delete_asset_group(
     flask_app_client, user, asset_group_guid, expected_status_code=204
 ):
-    with flask_app_client.login(user, auth_scopes=('asset_groups:write',)):
-        response = flask_app_client.delete('%s%s' % (PATH, asset_group_guid))
+    from app.modules.asset_groups.models import AssetGroup
+    from app.modules.asset_groups.tasks import delete_remote
+
+    with mock.patch('app.modules.asset_groups.tasks') as tasks:
+        # Do delete_remote in the foreground immediately instead of using a
+        # celery worker in the background
+        tasks.delete_remote.delay.side_effect = lambda *args, **kwargs: delete_remote(
+            *args, **kwargs
+        )
+        with flask_app_client.login(user, auth_scopes=('asset_groups:write',)):
+            response = flask_app_client.delete('%s%s' % (PATH, asset_group_guid))
 
     if expected_status_code == 204:
         assert response.status_code == 204
+        assert not AssetGroup.is_on_remote(asset_group_guid)
     else:
         test_utils.validate_dict_response(
             response, expected_status_code, {'status', 'message'}

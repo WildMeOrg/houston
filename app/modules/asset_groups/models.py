@@ -1237,8 +1237,9 @@ class AssetGroup(db.Model, HoustonModel):
             description = metadata.description
         self.git_commit(description)
 
-    # TODO should this blow away remote repo?  by default?
     def delete(self):
+        from .tasks import delete_remote
+
         with db.session.begin(subtransactions=True):
             for asset in self.assets:
                 asset.delete()
@@ -1250,6 +1251,9 @@ class AssetGroup(db.Model, HoustonModel):
         with db.session.begin(subtransactions=True):
             db.session.delete(self)
         self.delete_dirs()
+        # Delete the gitlab project in the background (we won't wait
+        # for its completion)
+        delete_remote.delay(str(self.guid))
 
     # stub of DEX-220 ... to be continued
     def justify_existence(self):

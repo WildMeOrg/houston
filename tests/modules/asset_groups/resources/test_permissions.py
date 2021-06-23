@@ -1,7 +1,5 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=missing-docstring
-from app.extensions.gitlab import GitlabInitializationError
-
 import tests.modules.asset_groups.resources.utils as asset_group_utils
 import tests.modules.assets.resources.utils as asset_utils
 import tests.extensions.tus.utils as tus_utils
@@ -59,8 +57,6 @@ def test_create_patch_asset_group(
     flask_app_client, researcher_1, readonly_user, test_root, db
 ):
     # pylint: disable=invalid-name
-    from app.modules.asset_groups.tasks import delete_remote
-
     asset_group_guid = None
     transaction_id, test_filename = tus_utils.prep_tus_dir(test_root)
     try:
@@ -107,10 +103,8 @@ def test_create_patch_asset_group(
         asset_group_utils.delete_asset_group(
             flask_app_client, researcher_1, asset_group_guid
         )
-        try:
-            delete_remote(str(temp_asset_group.guid))
-        except GitlabInitializationError:
-            pass
+        # temp_asset_group should be already deleted on gitlab
+        assert not AssetGroup.is_on_remote(str(temp_asset_group.guid))
 
         # And if the asset_group is already gone, a re attempt at deletion should get the same response
         asset_group_utils.delete_asset_group(
@@ -122,10 +116,6 @@ def test_create_patch_asset_group(
 
     finally:
         tus_utils.cleanup_tus_dir(transaction_id)
-        try:
-            delete_remote(str(temp_asset_group.guid))
-        except GitlabInitializationError:
-            pass
         # Restore original state
         temp_asset_group = AssetGroup.query.get(asset_group_guid)
         if temp_asset_group is not None:

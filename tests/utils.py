@@ -13,6 +13,7 @@ from flask import Response
 from flask.testing import FlaskClient
 from werkzeug.utils import cached_property
 from app.extensions.auth import security
+import redis
 
 import uuid
 import os
@@ -270,3 +271,14 @@ def all_count(db):
 
 def row_count(db, cls):
     return db.session.query(cls).count()
+
+
+def redis_unavailable(cached_value=[]):
+    if len(cached_value) == 0:
+        try:
+            host = os.getenv('REDIS_HOST') or 'localhost'
+            redis.Redis(host=host).get('test')
+            cached_value.append(False)
+        except redis.exceptions.ConnectionError:
+            cached_value.append(True)
+    return cached_value[0]

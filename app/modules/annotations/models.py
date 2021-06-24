@@ -140,12 +140,12 @@ class Annotation(db.Model, HoustonModel):
         ytl = input_data.get('ytl')
         width = input_data.get('width')
         height = input_data.get('height')
-        theta = input_data.get('theta')
+        theta = input_data.get('theta', 0)
 
-        if xtl is None or ytl is None or width is None or height is None or theta is None:
+        if xtl is None or ytl is None or width is None or height is None:
             raise HoustonException(
                 log_message=f'{input_data} missing fields',
-                message='input Data needs xtl, ytl, width, height and theta',
+                message='input Data needs xtl, ytl, width and height',
             )
         resp = {'rect': [xtl, ytl, width, height], 'theta': theta}
 

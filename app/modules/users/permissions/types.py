@@ -14,4 +14,5 @@ class AccessOperation(enum.Enum):
     # Some information needs to be much more secure
     READ_PRIVILEGED = 2
     WRITE = 3
-    DELETE = 4
+    WRITE_PRIVILEGED = 4
+    DELETE = 5

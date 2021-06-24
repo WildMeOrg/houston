@@ -103,7 +103,7 @@ def delete_sighting(flask_app_client, user, sight_guid, expected_status_code=204
         response = flask_app_client.delete('%s%s' % (PATH, sight_guid))
 
     if expected_status_code == 204:
-        assert response.status_code == 204
+        assert response.status_code == 204, response.json
     else:
         test_utils.validate_dict_response(
             response, expected_status_code, {'status', 'message'}

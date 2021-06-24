@@ -32,6 +32,7 @@ ANY_ROLE_MAP = {
         'is_admin',
         'is_researcher',
     ],
+    ('AssetGroupSighting', AccessOperation.WRITE_PRIVILEGED, 'Object'): ['is_internal'],
 }
 ANY_OBJECT_METHOD_MAP = {
     ('SiteSetting', AccessOperation.READ, 'Object'): ['is_public'],

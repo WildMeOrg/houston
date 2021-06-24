@@ -81,6 +81,11 @@ class Encounter(db.Model, FeatherModel):
     def is_public(self):
         return self.public
 
+    def add_annotation(self, annotation):
+        if annotation not in self.annotations:
+            with db.session.begin(subtransactions=True):
+                self.annotations.append(annotation)
+
     def delete(self):
         with db.session.begin():
             db.session.delete(self)

@@ -100,6 +100,7 @@ class BaseAssetGroupMetadata(object):
                 )
             encounter_fields = [
                 ('ownerEmail', str, False),
+                ('annotations', list, False),
             ]
             self._validate_fields(
                 encounter,
@@ -123,6 +124,25 @@ class BaseAssetGroupMetadata(object):
                     )
                 else:
                     self.owner_assignment = True
+
+            # can assign annotations (in patch only) but they must be valid
+            if 'annotations' in encounter:
+                from app.modules.annotations.models import Annotation
+                from app.modules.asset_groups.models import AssetGroupSightingStage
+
+                for annot_uuid in encounter['annotations']:
+                    annot = Annotation.query.get(annot_uuid)
+                    if not annot:
+                        raise AssetGroupMetadataError(
+                            f'{encounter_debug}{encounter_num} annotation:{str(annot_uuid)} not found'
+                        )
+
+                    if not annot.asset.asset_group.is_partially_in_stage(
+                        AssetGroupSightingStage.curation
+                    ):
+                        raise AssetGroupMetadataError(
+                            f'{encounter_debug}{encounter_num} annotation:{str(annot_uuid)} not in curating group'
+                        )
 
 
 # Class used to process and validate the json data. This json may be received from the frontend or

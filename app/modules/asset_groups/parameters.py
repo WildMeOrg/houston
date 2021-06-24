@@ -69,7 +69,7 @@ class PatchAssetGroupSightingDetailsParameters(PatchJSONParameters):
         if field == 'config':
             # The permissions check of what is allowed to be updated is done in the
             # PatchAssetGroupSightingMetadata, this assumes that the data is valid
-            obj.meta = value
+            obj.config = value
             ret_val = True
         return ret_val
 

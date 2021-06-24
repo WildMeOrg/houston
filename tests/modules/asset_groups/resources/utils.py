@@ -227,6 +227,25 @@ def read_asset_group_sighting(
     return response
 
 
+def simulate_detection_response(
+    flask_app_client, user, path, data, expected_status_code=200
+):
+    with flask_app_client.login(user, auth_scopes=('asset_group_sightings:write',)):
+        response = flask_app_client.post(
+            f'{PATH}{path}',
+            content_type='application/json',
+            data=json.dumps(data),
+        )
+
+    if expected_status_code == 200:
+        test_utils.validate_dict_response(response, 200, {})
+    else:
+        test_utils.validate_dict_response(
+            response, expected_status_code, {'status', 'message'}
+        )
+    return response
+
+
 # multiple tests clone a asset_group, do something with it and clean it up. Make sure this always happens using a
 # class with a cleanup method to be called if any assertions fail
 class CloneAssetGroup(object):

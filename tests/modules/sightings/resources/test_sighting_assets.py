@@ -1,8 +1,5 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=missing-docstring
-from app.extensions.gitlab import GitlabInitializationError
-import sqlalchemy
-
 from tests import utils
 from tests.modules.sightings.resources import utils as sighting_utils
 
@@ -63,25 +60,21 @@ def test_asset_addition(db, flask_app_client, staff_user):
         assert len(new_sighting.assets) == 3
 
     finally:
+        from app.modules.asset_groups.models import AssetGroup
         from app.modules.asset_groups.tasks import delete_remote
+        from app.modules.assets.models import Asset
 
         # staff can do this, no need to revisit encounter based ownership here
         sighting_utils.delete_sighting(
             flask_app_client, staff_user, str(new_sighting.guid)
         )
-        try:
-            delete_remote(str(new_asset_group.guid))
-        except GitlabInitializationError:
-            pass
-        new_asset_1.delete()
-        new_asset_2.delete()
-        new_asset_3.delete()
-        with db.session.begin():
-            db.session.delete(new_asset_group)
-        try:
-            new_asset_group.delete()
-        except sqlalchemy.exc.InvalidRequestError:  # already deleted
-            pass
+        # Check the assets and asset groups have been deleted
+        assert Asset.query.get(new_asset_1.guid) is None
+        assert Asset.query.get(new_asset_2.guid) is None
+        assert Asset.query.get(new_asset_3.guid) is None
+        assert AssetGroup.query.get(new_asset_group.guid) is None
+
+        delete_remote(str(new_asset_group.guid))
         new_researcher.delete()
 
 
@@ -152,14 +145,12 @@ def test_asset_file_addition(db, flask_app_client, staff_user):
         assert len(new_sighting.assets) == 2
 
     finally:
+        from app.modules.asset_groups.models import AssetGroup
         from app.modules.asset_groups.tasks import delete_remote
 
         sighting_utils.delete_sighting(flask_app_client, staff_user, sighting_id)
         new_researcher.delete()
         # assets are only cleaned up once the submissions are cleaned up
         for asset_group in new_researcher.asset_groups:
-            try:
-                delete_remote(str(asset_group.guid))
-            except GitlabInitializationError:
-                pass
-            asset_group.delete()
+            assert AssetGroup.query.get(asset_group.guid) is None
+            delete_remote(str(asset_group.guid))

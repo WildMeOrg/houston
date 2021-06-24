@@ -29,7 +29,20 @@ def test_admin_creation(flask_app_client):
     assert response.status_code == 200
     assert response.json['initialized']  # now we True
 
-    # clean up
+    # Check user has all permissions
     user = User.find(email=valid_email)
+    assert user.is_active
+    assert user.is_admin
+    assert user.is_contributor
+    assert user.is_exporter
+    assert user.is_internal
+    assert user.is_privileged
+    assert user.is_researcher
+    assert user.is_staff
+    assert user.is_user_manager
+    assert user.in_alpha
+    assert user.in_beta
+
+    # clean up
     assert user is not None
     user.delete()

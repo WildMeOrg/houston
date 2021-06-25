@@ -312,7 +312,7 @@ class UserSightings(Resource):
 
             sighting_response = current_app.edm.get_dict('sighting.data', sighting.guid)
 
-            if sighting_response['result'] is not None:
+            if sighting_response.get('result') is not None:
                 response['sightings'].append(sighting_response['result'])
 
         return response

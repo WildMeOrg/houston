@@ -84,6 +84,8 @@ class EncounterByID(Resource):
         response = current_app.edm.get_dict('encounter.data_complete', encounter.guid)
         if not isinstance(response, dict):  # some non-200 thing, incl 404
             return response
+        if not response.get('success', False):
+            return response
 
         return encounter.augment_edm_json(response['result'])
 

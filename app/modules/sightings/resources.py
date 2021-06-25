@@ -387,6 +387,8 @@ class SightingByID(Resource):
         response = current_app.edm.get_dict('sighting.data_complete', sighting.guid)
         if not isinstance(response, dict):  # some non-200 thing, incl 404
             return response
+        if not response.get('success', False):
+            return response
 
         return sighting.augment_edm_json(response['result'])
 

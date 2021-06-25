@@ -25,8 +25,9 @@ def test_job_control_add_remove(flask_app_client, researcher_1, test_root, db):
         )
         asset_group_uuid = resp.json['guid']
 
-        assert 'sightings' in resp.json
-        sighting_guid_str = resp.json['sightings'][0]['guid']
+        assert 'asset_group_sightings' in resp.json
+
+        sighting_guid_str = resp.json['asset_group_sightings'][0]['guid']
         sighting_guid = uuid.UUID(sighting_guid_str)
         asset_group_sighting = AssetGroupSighting.query.get(sighting_guid)
 

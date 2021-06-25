@@ -58,7 +58,7 @@ class Asset(db.Model, HoustonModel):
     )
     asset_group = db.relationship('AssetGroup', backref=db.backref('assets'))
 
-    sightings = db.relationship('SightingAssets', back_populates='asset')
+    asset_sightings = db.relationship('SightingAssets', back_populates='asset')
 
     def __repr__(self):
         return (
@@ -200,7 +200,7 @@ class Asset(db.Model, HoustonModel):
         with db.session.begin(subtransactions=True):
             for annotation in self.annotations:
                 annotation.delete()
-            for sighting in self.sightings:
+            for sighting in self.asset_sightings:
                 db.session.delete(sighting)
             db.session.delete(self)
 

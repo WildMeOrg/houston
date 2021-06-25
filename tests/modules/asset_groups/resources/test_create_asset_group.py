@@ -362,8 +362,8 @@ def test_create_asset_group_simulate_detection(
         assets = resp.json['assets']
         assert len(assets) == 1
         asset_guid = assets[0]['guid']
-        assert 'sightings' in resp.json
-        asset_group_sighting_uuid = resp.json['sightings'][0]['guid']
+        assert 'asset_group_sightings' in resp.json
+        asset_group_sighting_uuid = resp.json['asset_group_sightings'][0]['guid']
         job_id = str(uuid.uuid4())
         path = f'sighting/{asset_group_sighting_uuid}/sage_detected/{job_id}'
         data = {

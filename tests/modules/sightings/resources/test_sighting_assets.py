@@ -47,7 +47,7 @@ def test_asset_addition(db, flask_app_client, staff_user):
         assets = [new_asset_1, new_asset_2]
         new_sighting.add_assets(assets)
 
-        assert len(new_sighting.assets) == 2
+        assert len(new_sighting.sighting_assets) == 2
 
         add_asset = [
             utils.patch_add_op('assetId', '%s' % new_asset_3.guid),
@@ -57,7 +57,7 @@ def test_asset_addition(db, flask_app_client, staff_user):
             flask_app_client, new_researcher, '%s' % new_sighting.guid, add_asset
         )
 
-        assert len(new_sighting.assets) == 3
+        assert len(new_sighting.sighting_assets) == 3
 
     finally:
         from app.modules.asset_groups.models import AssetGroup
@@ -133,7 +133,7 @@ def test_asset_file_addition(db, flask_app_client, staff_user):
             'new_file.csv',
             '1,2,3,4,5',
         )
-        assert len(new_sighting.assets) == 1
+        assert len(new_sighting.sighting_assets) == 1
         add_file_asset_to_sighting(
             flask_app_client,
             new_researcher,
@@ -142,7 +142,7 @@ def test_asset_file_addition(db, flask_app_client, staff_user):
             'next_file.csv',
             '5,4,3,2,1',
         )
-        assert len(new_sighting.assets) == 2
+        assert len(new_sighting.sighting_assets) == 2
 
     finally:
         from app.modules.asset_groups.models import AssetGroup

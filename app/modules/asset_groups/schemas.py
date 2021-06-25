@@ -85,11 +85,11 @@ class DetailedAssetGroupSchema(CreateAssetGroupSchema):
         exclude=Asset.asset_group_guid.key,
         many=True,
     )
-    sightings = base_fields.Nested(
+    asset_group_sightings = base_fields.Nested(
         'BaseAssetGroupSightingSchema',
         many=True,
     )
 
     class Meta(CreateAssetGroupSchema.Meta):
-        fields = CreateAssetGroupSchema.Meta.fields + ('assets', 'sightings')
+        fields = CreateAssetGroupSchema.Meta.fields + ('assets', 'asset_group_sightings')
         dump_only = CreateAssetGroupSchema.Meta.dump_only

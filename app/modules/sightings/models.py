@@ -15,8 +15,8 @@ log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 class SightingAssets(db.Model, HoustonModel):
     sighting_guid = db.Column(db.GUID, db.ForeignKey('sighting.guid'), primary_key=True)
     asset_guid = db.Column(db.GUID, db.ForeignKey('asset.guid'), primary_key=True)
-    sighting = db.relationship('Sighting', back_populates='assets')
-    asset = db.relationship('Asset', back_populates='sightings')
+    sighting = db.relationship('Sighting', back_populates='sighting_assets')
+    asset = db.relationship('Asset', back_populates='asset_sightings')
 
 
 class SightingStage(str, enum.Enum):
@@ -36,7 +36,7 @@ class Sighting(db.Model, FeatherModel):
     )  # pylint: disable=invalid-name
     version = db.Column(db.BigInteger, default=None, nullable=True)
 
-    assets = db.relationship('SightingAssets')
+    sighting_assets = db.relationship('SightingAssets')
     stage = db.Column(
         db.Enum(SightingStage),
         nullable=False,
@@ -89,7 +89,7 @@ class Sighting(db.Model, FeatherModel):
             self.encounters.append(encounter)
 
     def get_assets(self):
-        return [ref.asset for ref in self.assets]
+        return [ref.asset for ref in self.sighting_assets]
 
     def add_asset(self, asset):
         if asset not in self.get_assets():
@@ -104,13 +104,13 @@ class Sighting(db.Model, FeatherModel):
     def add_asset_in_context(self, asset):
         rel = SightingAssets(sighting=self, asset=asset)
         db.session.add(rel)
-        self.assets.append(rel)
+        self.sighting_assets.append(rel)
         if self.featured_asset_guid is None:
             self.featured_asset_guid = asset.guid
 
     def add_asset_no_context(self, asset):
         rel = SightingAssets(sighting_guid=self.guid, asset_guid=asset.guid)
-        self.assets.append(rel)
+        self.sighting_assets.append(rel)
         if self.featured_asset_guid is None:
             self.featured_asset_guid = asset.guid
 
@@ -119,7 +119,9 @@ class Sighting(db.Model, FeatherModel):
             self.add_asset_no_context(asset)
 
     def get_featured_asset_guid(self):
-        asset_guids = [sighting_asset.asset_guid for sighting_asset in self.assets]
+        asset_guids = [
+            sighting_asset.asset_guid for sighting_asset in self.sighting_assets
+        ]
         rtn_val = None
         if self.featured_asset_guid not in asset_guids:
             self.featured_asset_guid = None
@@ -130,7 +132,9 @@ class Sighting(db.Model, FeatherModel):
         return rtn_val
 
     def set_featured_asset_guid(self, guid):
-        asset_guids = [sighting_asset.asset_guid for sighting_asset in self.assets]
+        asset_guids = [
+            sighting_asset.asset_guid for sighting_asset in self.sighting_assets
+        ]
         if guid in asset_guids:
             self.featured_asset_guid = guid
 
@@ -141,9 +145,9 @@ class Sighting(db.Model, FeatherModel):
     def delete_cascade(self):
         assets = self.get_assets()
         with db.session.begin(subtransactions=True):
-            while self.assets:
+            while self.sighting_assets:
                 # this is actually removing the SightingAssets joining object (not the assets)
-                db.session.delete(self.assets.pop())
+                db.session.delete(self.sighting_assets.pop())
             while self.encounters:
                 enc = self.encounters.pop()
                 enc.delete_cascade()
@@ -192,7 +196,7 @@ class Sighting(db.Model, FeatherModel):
                         )
                     self.encounters[i].augment_edm_json(found_edm)
                     i += 1
-        if self.assets is None or len(self.assets) < 1:
+        if self.sighting_assets is None or len(self.sighting_assets) < 1:
             return edm_json
         from app.modules.assets.schemas import DetailedAssetSchema
 

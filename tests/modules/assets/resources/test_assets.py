@@ -133,7 +133,7 @@ def test_find_raw_asset(
         )
         with db.session.begin():
             db.session.add(new_sighting)
-            clone.asset_group.sightings.append(new_sighting)
+            clone.asset_group.asset_group_sightings.append(new_sighting)
 
         raw_src_response = asset_utils.read_raw_src_asset(
             flask_app_client, internal_user, asset_guid

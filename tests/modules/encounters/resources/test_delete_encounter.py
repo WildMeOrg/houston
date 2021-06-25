@@ -61,8 +61,9 @@ def test_delete_method(db, flask_app_client, researcher_1, test_root, staff_user
         ct['Individual'] == orig_ct['Individual'] + 1
     )  # just to confirm indiv is still there
 
-    # TODO this fails
-    # get_resp = sighting_utils.read_sighting(flask_app_client, researcher_1, sighting_id)
+    # test that sighting is correct, with single encounter remaining
+    get_resp = sighting_utils.read_sighting(flask_app_client, researcher_1, sighting_id)
+    assert len(get_resp.json['encounters']) == 1
 
     # but this should then fail, cuz its the last enc and will take the sighting with it
     response = enc_utils.delete_encounter(

@@ -35,8 +35,14 @@ class PatchIndividualDetailsParameters(PatchJSONParameters):
         PatchJSONParameters.OP_REMOVE,
     )
 
-    VALID_FIELDS = ['encounters']
-    PATH_CHOICES = tuple('/%s' % field for field in (VALID_FIELDS))
+    # Is this weird? I need to modify EDM and Houston records
+    PATH_CHOICES_HOUSTON = ['encounters']
+
+    PATH_CHOICES_EDM = ['encounters']
+
+    PATH_CHOICES = tuple(
+        '/%s' % field for field in (PATH_CHOICES_EDM + PATH_CHOICES_HOUSTON)
+    )
 
     @classmethod
     def remove(cls, obj, field, value, state):
@@ -54,12 +60,21 @@ class PatchIndividualDetailsParameters(PatchJSONParameters):
                         if encounter is not None and encounter in obj.encounters:
                             obj.remove_encounter(encounter)
                             ret_val = True
+            else:
+                super(PatchIndividualDetailsParameters, cls).replace(
+                    obj, field, value, state
+                )
         return ret_val
 
     @classmethod
     def add(cls, obj, field, value, state):
-        has_permission = rules.ObjectActionRule(obj, AccessOperation.WRITE).check()
+        return cls.replace(obj, field, value, state)
+
+    @classmethod
+    def replace(cls, obj, field, value, state):
+
         ret_val = False
+        has_permission = rules.ObjectActionRule(obj, AccessOperation.WRITE).check()
         if has_permission:
             if field == 'encounters':
                 for encounter_guid in value:
@@ -71,14 +86,10 @@ class PatchIndividualDetailsParameters(PatchJSONParameters):
                         ).first()
                         if encounter is not None and encounter not in obj.encounters:
                             obj.add_encounter(encounter)
+                            assert encounter in obj.get_encounters()
                             ret_val = True
-        return ret_val
-
-    @classmethod
-    def replace(cls, obj, field, value, state):
-        has_permission = rules.ObjectActionRule(obj, AccessOperation.WRITE).check()
-        ret_val = False
-        if has_permission:
-            super(PatchIndividualDetailsParameters, cls).replace(obj, field, value, state)
-            ret_val = True
+            else:
+                super(PatchIndividualDetailsParameters, cls).replace(
+                    obj, field, value, state
+                )
         return ret_val

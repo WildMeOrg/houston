@@ -217,11 +217,62 @@ class IndividualByID(Resource):
         context = api.commit_or_abort(
             db.session, default_error_message='Failed to update Individual details.'
         )
+
         with context:
             parameters.PatchIndividualDetailsParameters.perform_patch(
                 args, obj=individual
             )
-            db.session.merge(individual)
+
+        # copycat the pattern established in sightings module
+        edm_count = 0
+        for arg in args:
+            if (
+                'path' in arg
+                and arg['path'][1:]
+                in parameters.PatchIndividualDetailsParameters.PATH_CHOICES_EDM
+            ):
+                edm_count += 1
+        if edm_count > 0 and edm_count != len(args):
+            log.error(f'Mixed edm/houston patch called with args {args}')
+            abort(
+                success=False,
+                passed_message='Cannot mix EDM patch paths and houston patch paths',
+                message='Error',
+                code=400,
+            )
+
+        if edm_count > 0:
+            log.debug(f'wanting to do edm patch on args={args}')
+            result = None
+            try:
+                (
+                    response,
+                    response_data,
+                    result,
+                ) = current_app.edm.request_passthrough_parsed(
+                    'individual.data',
+                    'patch',
+                    {'data': args},
+                    individual.guid,
+                    request_headers=request.headers,
+                )
+            except HoustonException as ex:
+                edm_status_code = ex.get_val('edm_status_code', 400)
+                abort(
+                    success=False,
+                    passed_message=ex.message,
+                    code=ex.status_code,
+                    edm_status_code=edm_status_code,
+                )
+
+            # TODO handle individual deletion if last encounter removed
+
+        db.session.merge(individual)
+
+        import utool
+
+        utool.embed()
+
         return individual
 
     @api.permission_required(

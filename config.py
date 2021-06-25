@@ -272,7 +272,7 @@ class ACMConfig(object):
     # the env config.
     ACM_URIS, ACM_AUTHENTICATIONS = get_env_rest_config('ACM')
     if 'default' not in ACM_URIS:
-        ACM_URIS['default'] = 'https://tier2.dyn.wildme.io:5010'
+        ACM_URIS['default'] = 'https://sandbox.tier2.dyn.wildme.io'
 
 
 class EDMConfig(object):

@@ -266,7 +266,7 @@ def test_create_anon_and_delete_sighting(db, flask_app_client, staff_user, test_
     sighting = Sighting.query.get(sighting_id)
     assert sighting is not None
     asset_guids.sort()
-    assert sorted([str(a.asset_guid) for a in sighting.assets]) == asset_guids
+    assert sorted([str(a.asset_guid) for a in sighting.sighting_assets]) == asset_guids
 
     # Check assets are returned in GET sighting
     with flask_app_client.login(staff_user, auth_scopes=('sightings:read',)):

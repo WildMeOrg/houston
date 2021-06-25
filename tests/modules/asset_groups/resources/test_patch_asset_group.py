@@ -19,7 +19,7 @@ def test_patch_asset_group(flask_app_client, researcher_1, regular_user, test_ro
             flask_app_client, regular_user, data.get()
         )
         asset_group_uuid = response.json['guid']
-        asset_group_sighting_guid = response.json['sightings'][0]['guid']
+        asset_group_sighting_guid = response.json['asset_group_sightings'][0]['guid']
 
         # Regular user can create it but not read it??????
         asset_group_utils.read_asset_group_sighting(

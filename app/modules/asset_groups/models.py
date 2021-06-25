@@ -112,7 +112,9 @@ class AssetGroupSighting(db.Model, HoustonModel):
         index=True,
         nullable=False,
     )
-    asset_group = db.relationship('AssetGroup', backref=db.backref('sightings'))
+    asset_group = db.relationship(
+        'AssetGroup', backref=db.backref('asset_group_sightings')
+    )
 
     # configuration metadata from the create request
     config = db.Column(db.JSON, nullable=True)
@@ -635,7 +637,7 @@ class AssetGroup(db.Model, HoustonModel):
         if 'frontend_sightings_data' not in asset_group_metadata and self.config:
             metadata_request = self.config
             metadata_request['sightings'] = []
-            for sighting in self.sightings:
+            for sighting in self.asset_group_sightings:
                 metadata_request['sightings'].append(sighting.config)
 
             asset_group_metadata['frontend_sightings_data'] = metadata_request
@@ -1129,15 +1131,15 @@ class AssetGroup(db.Model, HoustonModel):
             shutil.rmtree(self.get_absolute_path())
 
     def is_partially_in_stage(self, stage):
-        if self.sightings:
-            for sighting in self.sightings:
+        if self.asset_group_sightings:
+            for sighting in self.asset_group_sightings:
                 if sighting.stage == stage:
                     return True
         return False
 
     def is_completely_in_stage(self, stage):
-        if self.sightings:
-            for sighting in self.sightings:
+        if self.asset_group_sightings:
+            for sighting in self.asset_group_sightings:
                 if sighting.stage != stage:
                     return False
         else:
@@ -1199,7 +1201,7 @@ class AssetGroup(db.Model, HoustonModel):
                 db.session.add(new_sighting)
             db.session.refresh(new_sighting)
 
-            self.sightings.append(new_sighting)
+            self.asset_group_sightings.append(new_sighting)
 
         # make sure the repo is created
         self.ensure_repository()
@@ -1218,7 +1220,7 @@ class AssetGroup(db.Model, HoustonModel):
         with db.session.begin(subtransactions=True):
             for asset in self.assets:
                 asset.delete()
-            for sighting in self.sightings:
+            for sighting in self.asset_group_sightings:
                 sighting.delete()
         db.session.refresh(self)
         # TODO: This is potentially dangerous as it decouples the Asset deletion

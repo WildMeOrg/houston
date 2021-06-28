@@ -16,3 +16,4 @@ except RuntimeError:
 
 # register celery tasks
 import app.modules.asset_groups.tasks  # noqa
+import app.modules.job_control.tasks  # noqa

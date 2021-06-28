@@ -120,7 +120,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
     config = db.Column(db.JSON, nullable=True)
 
     # May have multiple jobs outstanding, store as Json obj uuid_str is key, In_progress Bool is value
-    jobs = db.Column(db.JSON, nullable=True)
+    jobs = db.Column(db.JSON, default={}, nullable=True)
 
     def commit(self):
         from app.modules.utils import Cleanup
@@ -220,12 +220,36 @@ class AssetGroupSighting(db.Model, HoustonModel):
         )
         return sighting
 
-    def start_sage_detection(self, model_config, detection):
-        # TODO make this a task so that it's non blocking but handle the response and
-        # inform AssetGroupSighting if it fails
-        current_app.acm.request_passthrough_result(
-            'job.detect_request', 'post', {'params': model_config}, detection
-        )
+    @classmethod
+    def check_jobs(cls):
+        for asset_group_sighting in AssetGroupSighting.query.all():
+            asset_group_sighting.check_all_job_status()
+
+    def check_all_job_status(self):
+        jobs = self.jobs
+        log.warning(f'Checking AssetGroupSighting {self.guid} Jobs')
+        for job_id in jobs.keys():
+            job = jobs[job_id]
+            if job['active']:
+                current_app.acm.request_passthrough_result(
+                    'job.response', 'post', {}, job
+                )
+                # TODO Process response
+                # TODO If UTC Start more than {arbitrary limit} ago.... do something
+
+    @classmethod
+    def print_jobs(cls):
+        for asset_group_sighting in AssetGroupSighting.query.all():
+            asset_group_sighting.print_active_jobs()
+
+    def print_active_jobs(self):
+        jobs = self.jobs
+        for job_id in jobs.keys():
+            job = jobs[job_id]
+            if job['active']:
+                log.warning(
+                    f"AssetGroupSighting:{self.guid} Job:{job_id} Model:{job['model']} UTC Start:{job['Start']}"
+                )
 
     def run_sage_detection(self, model):
         job_id = uuid.uuid4()
@@ -257,14 +281,21 @@ class AssetGroupSighting(db.Model, HoustonModel):
             assert asset
             if asset.guid not in asset_guids:
                 asset_guids.append(asset.guid)
-                model_config['image_uuid_list'].append({'UUID': str(asset.guid)})
+
+        model_config['image_uuid_list'] = asset_guids
 
         # TODO model comes from ia_config and also decide if the "//api/engine/detect/" part lives in the ia_config
         # or the acm/__init__.py.
-        self.start_sage_detection(model_config, 'cnn/lightnet')
-        jobs = self._get_jobs()
-        jobs[str(job_id)] = {'model': model, 'active': True}
-        self._set_jobs(jobs)
+        current_app.acm.request_passthrough_result(
+            'job.detect_request', 'post', {'params': model_config}, 'cnn/lightnet'
+        )
+        jobs = self.jobs
+        from datetime import datetime  # NOQA
+
+        jobs[str(job_id)] = {'model': model, 'active': True, 'Start': datetime.utcnow()}
+        self.jobs = jobs
+        with db.session.begin(subtransactions=True):
+            db.session.merge(self)
 
     def check_job_status(self, job_id):
         if str(job_id) not in self.jobs:
@@ -274,17 +305,6 @@ class AssetGroupSighting(db.Model, HoustonModel):
         # TODO Poll ACM to see what's happening with this job, if it's ready to handle and we missed the
         # response, process it here
         return True
-
-    def _get_jobs(self):
-        if self.jobs:
-            return json.loads(self.jobs)
-        else:
-            return dict()
-
-    def _set_jobs(self, jobs):
-        self.jobs = json.dumps(jobs)
-        with db.session.begin(subtransactions=True):
-            db.session.merge(self)
 
     def detected(self, job_id, data):
         from app.modules.assets.models import Asset
@@ -374,13 +394,11 @@ class AssetGroupSighting(db.Model, HoustonModel):
         db.session.refresh(self)
 
     def job_complete(self, job_id):
-        jobs = self._get_jobs()
+        jobs = self.jobs
         if job_id in jobs:
             jobs[job_id]['active'] = False
-            self._set_jobs(jobs)
-            from app.modules.job_control.models import JobControl
+            self.jobs = jobs
 
-            JobControl.delete_job(job_id)
             outstanding_jobs = []
             for job in jobs.keys():
                 if jobs[job]['active']:
@@ -388,28 +406,14 @@ class AssetGroupSighting(db.Model, HoustonModel):
 
             if len(outstanding_jobs) == 0:
                 self.stage = AssetGroupSightingStage.curation
+
+            with db.session.begin(subtransactions=True):
+                db.session.merge(self)
         else:
             log.warning(f'job_id {job_id} not found in AssetGroupSighting')
 
-    # Noddy test function before the real thing is merged in PR 188
-    def start_job(self, model):
-        from app.modules.job_control.models import JobControl
-
-        job_id = uuid.uuid4()
-        jobs = self._get_jobs()
-        jobs[str(job_id)] = {'model': model, 'active': True}
-        self._set_jobs(jobs)
-
-        JobControl.add_asset_group_sighting_job(job_id, self.guid)
-
     def delete(self):
-        from app.modules.job_control.models import JobControl
-
         with db.session.begin(subtransactions=True):
-            jobs = self._get_jobs()
-            for job in jobs.keys():
-                JobControl.delete_job(uuid.UUID(job))
-            db.session.refresh(self)
             db.session.delete(self)
 
 

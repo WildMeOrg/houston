@@ -1,62 +1,38 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=invalid-name,missing-docstring
-import tests.modules.asset_groups.resources.utils as asset_group_utils
-import tests.extensions.tus.utils as tus_utils
-import uuid
-import json
+import datetime
+from unittest import mock
 
 
-def test_job_control_add_remove(flask_app_client, researcher_1, test_root, db):
+def test_job_control(flask_app, researcher_1, test_root, db):
     # pylint: disable=invalid-name
+    from app.modules.asset_groups.models import AssetGroup, AssetGroupSighting
     from app.modules.job_control.models import JobControl
-    from app.modules.asset_groups.models import AssetGroupSighting
-    from app.modules.asset_groups.models import AssetGroupSightingStage  # NOQA
 
-    transaction_id, test_filename = tus_utils.prep_tus_dir(test_root)
-    asset_group_uuid = None
+    asset_group = AssetGroup(owner_guid=researcher_1.guid)
+    ags = AssetGroupSighting(
+        asset_group_guid=asset_group.guid, config={'assetReferences': []}
+    )
 
-    try:
-        data = asset_group_utils.TestCreationData(transaction_id)
-        data.add_filename(0, test_filename)
-        # TODO restore once Sage Jobs work
-        # data.set_field('speciesDetectionModel', ['ActualModel'])
-        resp = asset_group_utils.create_asset_group(
-            flask_app_client, researcher_1, data.get()
-        )
-        asset_group_uuid = resp.json['guid']
+    db.session.add(asset_group)
+    db.session.add(ags)
 
-        assert 'asset_group_sightings' in resp.json
+    with mock.patch(
+        'app.modules.asset_groups.models.current_app', return_value=flask_app
+    ):
+        utc_now = datetime.datetime(2021, 6, 29, 8, 22, 35)
+        with mock.patch('datetime.datetime') as mock_datetime:
+            mock_datetime.utcnow.return_value = utc_now
+            ags.run_sage_detection('Animal')
+        job_id = list(ags.jobs.keys())[0]
 
-        sighting_guid_str = resp.json['asset_group_sightings'][0]['guid']
-        sighting_guid = uuid.UUID(sighting_guid_str)
-        asset_group_sighting = AssetGroupSighting.query.get(sighting_guid)
+        # TODO asserts
+        JobControl.check_jobs()
 
-        job_control_entries = JobControl.query.all()
-        assert len(job_control_entries) == 0
-        # TODO restore once Sage jobs work
-        # assert asset_group_sighting.stage == AssetGroupSightingStage.detection
-        asset_group_sighting.start_job('ActualModel')
-        job_control_entries = JobControl.query.all()
-        assert len(job_control_entries) == 1
-        assert (
-            job_control_entries[0].asset_group_sighting_uuid == asset_group_sighting.guid
-        )
-        assert job_control_entries[0].annotation_uuid is None
-        jobs = json.loads(asset_group_sighting.jobs)
-
-        assert len(jobs.keys()) == 1
-
-        JobControl.periodic()
-        for job_id in jobs.keys():
-            asset_group_sighting.job_complete(job_id)
-
-        job_control_entries = JobControl.query.all()
-        assert len(job_control_entries) == 0
-        JobControl.periodic()
-
-    finally:
-        if asset_group_uuid:
-            asset_group_utils.delete_asset_group(
-                flask_app_client, researcher_1, asset_group_uuid
-            )
-        tus_utils.cleanup_tus_dir(transaction_id)
+        with mock.patch('app.modules.asset_groups.models.log') as log:
+            JobControl.print_jobs()
+            assert log.warning.call_args_list, [
+                mock.call(
+                    f'AssetGroupSighting:{ags.guid} Job:{job_id} Model:Animal UTC Start:{utc_now}'
+                ),
+            ]

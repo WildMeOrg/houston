@@ -20,6 +20,8 @@ def ensure_remote(asset_group_guid, additional_tags=[]):
     from .models import AssetGroup
 
     asset_group = AssetGroup.query.get(asset_group_guid)
+    if asset_group is None:
+        return  # asset group doesn't exist in the database
     project = current_app.git_backend.get_project(asset_group_guid)
     if not project:
         project = current_app.git_backend.ensure_project(
@@ -61,6 +63,8 @@ def git_push(asset_group_guid):
     from .models import AssetGroup, GitLabPAT
 
     asset_group = AssetGroup.query.get(asset_group_guid)
+    if asset_group is None:
+        return  # asset group doesn't exist in the database
     repo = asset_group.get_repository()
     if 'origin' not in repo.remotes:
         ensure_remote(asset_group_guid)

@@ -78,3 +78,44 @@ def test_commit_asset_group(flask_app_client, researcher_1, regular_user, test_r
         if sighting_uuid:
             sighting_utils.delete_sighting(flask_app_client, regular_user, sighting_uuid)
         tus_utils.cleanup_tus_dir(transaction_id)
+
+
+def test_commit_owner_asset_group(
+    flask_app_client, researcher_1, regular_user, staff_user, test_root, db
+):
+    # pylint: disable=invalid-name
+    from app.modules.sightings.models import Sighting
+
+    transaction_id, test_filename = asset_group_utils.create_bulk_tus_transaction(
+        test_root
+    )
+    asset_group_uuid = None
+    sighting_uuid = None
+    try:
+        data = asset_group_utils.get_bulk_creation_data(transaction_id, test_filename)
+        data.set_encounter_field(0, 0, 'ownerEmail', regular_user.email)
+        resp = asset_group_utils.create_asset_group(
+            flask_app_client, researcher_1, data.get()
+        )
+        asset_group_uuid = resp.json['guid']
+        asset_group_sighting_guid = resp.json['asset_group_sightings'][0]['guid']
+        # commit it
+        response = asset_group_utils.commit_asset_group_sighting(
+            flask_app_client, researcher_1, asset_group_sighting_guid
+        )
+        sighting_uuid = response.json['guid']
+        sighting = Sighting.query.get(sighting_uuid)
+        encounters = sighting.get_encounters()
+        assert len(encounters) == 2
+        assert encounters[0].owner == regular_user
+        assert encounters[1].owner == researcher_1
+
+    finally:
+        # Restore original state
+        if asset_group_uuid:
+            asset_group_utils.delete_asset_group(
+                flask_app_client, researcher_1, asset_group_uuid
+            )
+        if sighting_uuid:
+            sighting_utils.delete_sighting(flask_app_client, staff_user, sighting_uuid)
+        tus_utils.cleanup_tus_dir(transaction_id)

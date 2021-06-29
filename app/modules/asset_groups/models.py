@@ -183,10 +183,20 @@ class AssetGroupSighting(db.Model, HoustonModel):
             req_data = self.config['encounters'][encounter_num]
             res_data = result_data['encounters'][encounter_num]
             try:
+                owner_guid = self.asset_group.owner_guid
+                if 'ownerEmail' in req_data:
+                    from app.modules.users.models import User
+
+                    owner_email = req_data['ownerEmail']
+                    encounter_owner = User.find(email=owner_email)
+                    # Validated in the metadata code so must be correct
+                    assert encounter_owner
+                    owner_guid = encounter_owner.guid
+
                 new_encounter = Encounter(
                     guid=res_data['id'],
                     version=res_data.get('version', 2),
-                    owner_guid=self.asset_group.owner_guid,
+                    owner_guid=owner_guid,
                     submitter_guid=self.asset_group.submitter_guid,
                     public=self.asset_group.anonymous,
                 )

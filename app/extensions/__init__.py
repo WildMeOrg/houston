@@ -8,6 +8,7 @@ Extensions provide access to common resources of the application.
 
 Please, put new extension instantiations and initializations here.
 """
+import re
 import uuid  # NOQA
 import json  # NOQA
 from datetime import datetime  # NOQA
@@ -16,12 +17,14 @@ from .logging import Logging
 logging = Logging()
 
 from flask_cors import CORS  # NOQA
+import flask.json  # NOQA
 
 cross_origin_resource_sharing = CORS()
 
 from .flask_sqlalchemy import SQLAlchemy  # NOQA
 from sqlalchemy.ext import mutable  # NOQA
 from sqlalchemy.types import TypeDecorator, CHAR  # NOQA
+from sqlalchemy.sql import elements  # NOQA
 from sqlalchemy.dialects.postgresql import UUID  # NOQA
 from sqlalchemy_utils import types as column_types, Timestamp  # NOQA
 
@@ -90,6 +93,54 @@ class JsonEncodedDict(db.TypeDecorator):
             return {}
         else:
             return json.loads(value)
+
+
+SA_JSON = db.JSON
+
+
+def custom_json_decoder(obj):
+    for key, value in obj.items():
+        if isinstance(value, str) and re.match(
+            '^[A-Z][a-z][a-z], [0-9][0-9] [A-Z][a-z][a-z]', value
+        ):
+            try:
+                obj[key] = datetime.strptime(value, '%a, %d %b %Y %H:%M:%S %Z')
+            except ValueError:
+                pass
+    return obj
+
+
+class JSON(db.TypeDecorator):
+    impl = SA_JSON
+
+    def process_bind_param(self, value, dialect):
+        # Adapted from sqlalchemy/sql/sqltypes.py JSON.bind_processor
+        def json_serializer(*args, **kwargs):
+            return json.dumps(*args, **kwargs, cls=flask.json.JSONEncoder)
+
+        def process(value):
+            if value is SA_JSON.NULL:
+                value = None
+            elif isinstance(value, elements.Null) or (
+                value is None and self.none_as_null
+            ):
+                return None
+
+            return json_serializer(value)
+
+        return process(value)
+
+    def process_result_value(self, value, dialect):
+        # Adapted from sqlalchemy/sql/sqltypes.py JSON.result_processor
+        def json_deserializer(*args, **kwargs):
+            return json.loads(*args, **kwargs, object_hook=custom_json_decoder)
+
+        def process(value):
+            if value is None:
+                return None
+            return json_deserializer(value)
+
+        return process(value)
 
 
 class GUID(db.TypeDecorator):
@@ -202,6 +253,7 @@ class HoustonModel(FeatherModel):
 mutable.MutableDict.associate_with(JsonEncodedDict)
 
 db.GUID = GUID
+db.JSON = JSON
 
 
 ##########################################################################################

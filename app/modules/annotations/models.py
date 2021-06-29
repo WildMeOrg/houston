@@ -102,6 +102,15 @@ class Annotation(db.Model, HoustonModel):
                 db.session.delete(ref)
                 break
 
+    # Used for building matching set but abstract the annotation to name mapping
+    def get_name(self):
+        name = 'unknown'
+        if self.encounter and self.encounter.individual:
+            name = 'not quite'
+            # TODO when individual has a name
+            # name = self.encounter.individual.name
+        return name
+
     def delete(self):
         with db.session.begin(subtransactions=True):
             while self.keyword_refs:

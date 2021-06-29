@@ -286,11 +286,41 @@ class Sighting(db.Model, FeatherModel):
             )
             self.add_encounter(encounter)
 
-    def send_identification(self, model):
-        annotation_uuids = []
-        for encounter in self.encounters:
-            for annotation in encounter.annotations:
-                annotation_uuids.append(annotation.guid)
+    def get_matching_set_data(self, matching_set_data):
+
+        annots = []
+
+        # Must match the options validated in the metadata.py
+        if matching_set_data == 'mine':
+            data_owner = self.single_encounter_owner()
+            assert data_owner
+            annots = data_owner.get_my_annotations()
+        elif matching_set_data == 'extended':
+            data_owner = self.single_encounter_owner()
+            assert data_owner
+            annots = data_owner.get_all_annotations()
+        elif matching_set_data == 'all':
+            from app.modules.annotations.models import Annotation
+
+            annots = Annotation.query.all()
+        else:
+            # Should have been caught at the metadata validation
+            log.error(f'MatchingDataSet {matching_set_data} not supported')
+
+        unique_annots = set(annots)
+        matching_set_individual_uuids = []
+        matching_set_annot_uuids = []
+        for annot in unique_annots:
+            matching_set_individual_uuids.append(annot.get_name())
+            matching_set_annot_uuids.append(annot.guid)
+
+        return matching_set_individual_uuids, matching_set_annot_uuids
+
+    def send_identification(self, matching_set_data, model, annotation_uuid):
+        (
+            matching_set_individual_uuids,
+            matching_set_annot_uuids,
+        ) = self.get_matching_set_data(matching_set_data)
 
         # Message construction has to be in the task as the jobId must be unique
         job_id = uuid.uuid4()
@@ -306,10 +336,12 @@ class Sighting(db.Model, FeatherModel):
                 'callback_url': callback_url,
                 'matching_state_list': [],
                 'query_annot_name_list': ['____'],
-                'query_annot_uuid_list': annotation_uuids,
+                'query_annot_uuid_list': [
+                    annotation_uuid,
+                ],
                 'query_config_dict': {'sv_on': True},
-                'database_annot_name_list': [],
-                'database_annot_uuid_list': [],
+                'database_annot_name_list': matching_set_individual_uuids,
+                'database_annot_uuid_list': matching_set_annot_uuids,
                 'callback_detailed': True,
             },
         }
@@ -399,6 +431,15 @@ class Sighting(db.Model, FeatherModel):
         if len(encounters_with_annotations) == 0 or num_algorithms == 0:
             self.stage = SightingStage.un_reviewed
         else:
-            # Use task to send ID req with retries,
-            # This will be extended post MVP to support multiple id_configs and algorithms
-            send_identification(self.guid, self.id_configs[0].algorithms[0].algorithm)
+            # Use task to send ID req with retries
+            # Once we support multiple IA configs and algorithms, this is going to grow..... rapidly
+            for id_config in self.id_configs:
+                for algorithm in id_config.algorithms:
+                    for encounter in self.encounters:
+                        for annotation in encounter.annotations:
+                            send_identification(
+                                self.guid,
+                                id_config.matching_data_set,
+                                algorithm,
+                                annotation.guid,
+                            )

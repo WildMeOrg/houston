@@ -619,6 +619,17 @@ class User(db.Model, FeatherModel, UserEDMMixin):
 
         return ret_val
 
+    def get_my_annotations(self):
+        annotations = []
+        for encounter in self.owned_encounters:
+            annotations.extend(encounter.annotations)
+        return annotations
+
+    def get_all_encounters(self):
+        annotations = self.get_my_annotations()
+        # TODO add collaboration annotations
+        return annotations
+
     def delete(self):
         with db.session.begin():
             # TODO: Ensure proper cleanup

@@ -101,7 +101,7 @@ services:
   houston:
     # https://github.com/WildMeOrg/houston
     # image: wildme/houston:latest
-    build:
+    build: &houston-build
       context: ../../
     command: [ "wait-for", "db:5432", "--", "wait-for", "edm:8080", "--", "invoke", "app.run", "--host", "0.0.0.0" ]
     networks:
@@ -110,7 +110,7 @@ services:
     ports:
       # FIXME: exposed for developer verification
       - "83:5000"
-    environment:
+    environment: &houston-environment
       FLASK_CONFIG: local
       FLASK_CONFIG_IMPORT: "docker_local_config.LocalConfig"
       SQLALCHEMY_DATABASE_URI: "${SQLALCHEMY_DATABASE_URI}"
@@ -129,7 +129,7 @@ services:
       GIT_PUBLIC_NAME: "${GIT_PUBLIC_NAME}"
       GIT_EMAIL: "${GIT_EMAIL}"
       GITLAB_NAMESPACE: "${GITLAB_NAMESPACE}"
-    volumes:
+    volumes: &houston-volumes
       - houston-var:/data
       - ./houston/docker-entrypoint-init.d:/docker-entrypoint-init.d
       - ./houston/docker-entrypoint-always-init.d:/docker-entrypoint-always-init.d
@@ -137,6 +137,22 @@ services:
       - ../../:/code
       # FIXME: Can we define a better mountpoint for this file? Maybe /config.py?
       - ./houston/local_config.py:/code/docker_local_config.py
+
+  celery_beat:
+    build: *houston-build
+    command: [ "wait-for", "db:5432", "--", "wait-for", "edm:8080", "--", "celery", "-A", "app.extensions.celery.celery", "beat", "-s", "/data/var/celerybeat-schedule", "-l", "DEBUG"]
+    networks:
+      - intranet
+    environment: *houston-environment
+    volumes: *houston-volumes
+
+  celery_worker:
+    build: *houston-build
+    command: [ "wait-for", "db:5432", "--", "wait-for", "edm:8080", "--", "celery", "-A", "app.extensions.celery.celery", "worker", "-l", "DEBUG"]
+    networks:
+      - intranet
+    environment: *houston-environment
+    volumes: *houston-volumes
 
   dev-frontend:
     # this component is intended to only be used in development

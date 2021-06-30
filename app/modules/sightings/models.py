@@ -138,6 +138,16 @@ class Sighting(db.Model, FeatherModel):
         if guid in asset_guids:
             self.featured_asset_guid = guid
 
+    @classmethod
+    def check_jobs(cls):
+        # TODO DEX-296
+        pass
+
+    @classmethod
+    def print_jobs(cls):
+        # TODO DEX-296
+        pass
+
     def delete(self):
         with db.session.begin():
             db.session.delete(self)

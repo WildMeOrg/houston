@@ -72,3 +72,16 @@ def git_push(asset_group_guid):
         log.info('Pushing to authorized URL')
         repo.git.push('--set-upstream', repo.remotes.origin, repo.head.ref)
         log.info(f'...pushed to {repo.head.ref}')
+
+
+@celery.task(
+    autoretry_for=(requests.exceptions.RequestException,),
+    default_retry_delay=600,
+    max_retries=10,
+)
+def sage_detection(asset_group_sighting_guid, model):
+    from .models import AssetGroupSighting
+
+    asset_group_sighting = AssetGroupSighting.query.find(asset_group_sighting_guid)
+    if asset_group_sighting:
+        asset_group_sighting.run_sage_detection(model)

@@ -122,6 +122,8 @@ class PatchUserDetailsParameters(PatchJSONParameters):
         User.default_identification_catalogue.key,
         User.profile_fileupload_guid.key,
         User.is_active.fget.__name__,
+        User.is_exporter.fget.__name__,
+        User.is_internal.fget.__name__,
         User.is_staff.fget.__name__,
         User.is_admin.fget.__name__,
         User.is_user_manager.fget.__name__,
@@ -138,6 +140,8 @@ class PatchUserDetailsParameters(PatchJSONParameters):
 
     PRIVILEGED_FIELDS = (
         User.is_active.fget.__name__,
+        User.is_exporter.fget.__name__,
+        User.is_internal.fget.__name__,
         User.is_staff.fget.__name__,
         User.is_admin.fget.__name__,
         User.is_user_manager.fget.__name__,

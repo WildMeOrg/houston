@@ -106,6 +106,8 @@ def test_modifying_user_info_by_admin(flask_app_client, admin_user, regular_user
                         {'op': 'replace', 'path': '/is_contributor', 'value': True},
                         {'op': 'replace', 'path': '/is_researcher', 'value': True},
                         {'op': 'replace', 'path': '/is_user_manager', 'value': True},
+                        {'op': 'replace', 'path': '/is_internal', 'value': False},
+                        {'op': 'replace', 'path': '/is_exporter', 'value': True},
                     ]
                 ),
             )
@@ -128,6 +130,8 @@ def test_modifying_user_info_by_admin(flask_app_client, admin_user, regular_user
         assert not temp_user.is_active
         assert not temp_user.is_staff
         assert temp_user.is_admin
+        assert not temp_user.is_internal
+        assert temp_user.is_exporter
     finally:
         # Restore original state
         regular_user.full_name = saved_full_name

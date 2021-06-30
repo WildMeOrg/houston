@@ -73,6 +73,17 @@ class Users(Resource):
         """
         email = args.get('email', None)
         user = User.query.filter_by(email=email).first()
+        roles = args.pop('roles', [])
+        if roles and (
+            current_user.is_anonymous
+            or not (current_user.is_privileged or current_user.is_admin)
+        ):
+            abort(
+                code=HTTPStatus.FORBIDDEN,
+                message='You must be an admin or privileged to set roles for a new user',
+            )
+        for role in roles:
+            args[role] = True
 
         if user is not None:
             abort(

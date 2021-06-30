@@ -178,20 +178,20 @@ class User(db.Model, FeatherModel, UserEDMMixin):
 
     class StaticRoles(enum.Enum):
         # pylint: disable=missing-docstring,unsubscriptable-object
-        USER_MANAGER = (0x80000, 'UserManager', 'UserManager')
-        CONTRIBUTOR = (0x40000, 'Contributor', 'Contributor')
-        RESEARCHER = (0x20000, 'Researcher', 'Researcher')
-        EXPORTER = (0x10000, 'Exporter', 'Exporter')
+        USER_MANAGER = (0x80000, 'UserManager', 'UserManager', 'is_user_manager')
+        CONTRIBUTOR = (0x40000, 'Contributor', 'Contributor', 'is_contributor')
+        RESEARCHER = (0x20000, 'Researcher', 'Researcher', 'is_researcher')
+        EXPORTER = (0x10000, 'Exporter', 'Exporter', 'is_exporter')
 
-        INTERNAL = (0x08000, 'Internal', 'Internal')
-        ADMIN = (0x04000, 'Site Administrator', 'Admin')
-        STAFF = (0x02000, 'Staff Member', 'Staff')
-        ACTIVE = (0x01000, 'Active Account', 'Active')
+        INTERNAL = (0x08000, 'Internal', 'Internal', 'is_internal')
+        ADMIN = (0x04000, 'Site Administrator', 'Admin', 'is_admin')
+        STAFF = (0x02000, 'Staff Member', 'Staff', 'is_staff')
+        ACTIVE = (0x01000, 'Active Account', 'Active', 'is_active')
 
-        SETUP = (0x00800, 'Account in Setup', 'Setup')
-        RESET = (0x00400, 'Account in Password Reset', 'Reset')
-        ALPHA = (0x00200, 'Enrolled in Alpha', 'Alpha')
-        BETA = (0x00100, 'Enrolled in Beta', 'Beta')
+        SETUP = (0x00800, 'Account in Setup', 'Setup', 'in_setup')
+        RESET = (0x00400, 'Account in Password Reset', 'Reset', 'in_reset')
+        ALPHA = (0x00200, 'Enrolled in Alpha', 'Alpha', 'in_alpha')
+        BETA = (0x00100, 'Enrolled in Beta', 'Beta', 'in_beta')
 
         @property
         def mask(self):
@@ -659,3 +659,10 @@ class User(db.Model, FeatherModel, UserEDMMixin):
 
         sighting_set = set(sightings)
         return list(sighting_set)
+
+
+USER_ROLES = [
+    role.value[-1]
+    for role in User.StaticRoles.__members__.values()
+    if role.value[-1] not in ('in_setup', 'in_reset')
+]

@@ -19,7 +19,7 @@ from app.extensions.api.parameters import PaginationParameters
 from app.extensions.api import abort
 
 from . import schemas, permissions
-from .models import User, db
+from .models import User, db, USER_ROLES
 
 
 log = logging.getLogger(__name__)
@@ -40,6 +40,11 @@ class CreateUserParameters(Parameters, schemas.BaseUserSchema):
 
     email = base_fields.Email(description='Example: root@gmail.com', required=True)
     password = base_fields.String(description='No rules yet', required=True)
+    roles = base_fields.List(
+        base_fields.String(),
+        description=f'User roles: {", ".join(USER_ROLES)}',
+        required=False,
+    )
 
     recaptcha_key = base_fields.String(
         description=(
@@ -52,8 +57,19 @@ class CreateUserParameters(Parameters, schemas.BaseUserSchema):
         fields = schemas.BaseUserSchema.Meta.fields + (
             'email',
             'password',
+            'roles',
             'recaptcha_key',
         )
+
+    @validates_schema
+    def validate_roles(self, data):
+        roles = data.get('roles', [])
+        invalid_roles = [role for role in roles if role not in USER_ROLES]
+        if invalid_roles:
+            abort(
+                code=HTTPStatus.UNPROCESSABLE_ENTITY,
+                message=f'invalid roles: {", ".join(invalid_roles)}.  Valid roles are {", ".join(USER_ROLES)}',
+            )
 
     @validates_schema
     def validate_captcha(self, data):

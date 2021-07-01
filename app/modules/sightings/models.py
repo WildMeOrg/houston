@@ -294,6 +294,7 @@ class Sighting(db.Model, FeatherModel):
 
     def get_matching_set_data(self, matching_set_data):
         annots = []
+        from app.extensions.acm import to_acm_uuid
 
         # Must match the options validated in the metadata.py
         if matching_set_data == 'mine':
@@ -318,7 +319,7 @@ class Sighting(db.Model, FeatherModel):
         for annot in unique_annots:
             if annot.encounter.sighting.stage == SightingStage.processed:
                 matching_set_individual_uuids.append(annot.get_name())
-                matching_set_annot_uuids.append({'__UUID__': str(annot.guid)})
+                matching_set_annot_uuids.append(to_acm_uuid(annot.guid))
 
         return matching_set_individual_uuids, matching_set_annot_uuids
 
@@ -327,6 +328,8 @@ class Sighting(db.Model, FeatherModel):
             matching_set_individual_uuids,
             matching_set_annot_uuids,
         ) = self.get_matching_set_data(config_id)
+
+        from app.extensions.acm import to_acm_uuid
 
         base_url = current_app.config.get('BASE_URL')
         callback_url = f'{base_url}api/v1/asset_group/sighting/{str(self.guid)}/sage_identified/{str(job_uuid)}'
@@ -337,7 +340,7 @@ class Sighting(db.Model, FeatherModel):
             'matching_state_list': [],
             'query_annot_name_list': ['____'],
             'query_annot_uuid_list': [
-                {'__UUID__': str(annotation_uuid)},
+                to_acm_uuid(annotation_uuid),
             ],
             'query_config_dict': {'sv_on': True},
             'database_annot_name_list': matching_set_individual_uuids,

@@ -17,7 +17,6 @@ def test_patch_annotation(
 
     sub_utils.clone_asset_group(
         flask_app_client,
-        admin_user,
         researcher_1,
         test_clone_asset_group_data['asset_group_uuid'],
     )

@@ -13,15 +13,12 @@ def test_get_annotation_not_found(flask_app_client):
     assert response.status_code == 404
 
 
-def test_create_failures(
-    flask_app_client, admin_user, researcher_1, test_clone_asset_group_data, db
-):
+def test_create_failures(flask_app_client, researcher_1, test_clone_asset_group_data, db):
     # pylint: disable=invalid-name
     # from app.modules.annotations.models import Annotation
 
     sub_utils.clone_asset_group(
         flask_app_client,
-        admin_user,
         researcher_1,
         test_clone_asset_group_data['asset_group_uuid'],
     )
@@ -48,14 +45,13 @@ def test_create_failures(
 
 
 def test_create_and_delete_annotation(
-    flask_app_client, admin_user, researcher_1, test_clone_asset_group_data
+    flask_app_client, researcher_1, test_clone_asset_group_data
 ):
     # pylint: disable=invalid-name
     from app.modules.annotations.models import Annotation
 
     sub_utils.clone_asset_group(
         flask_app_client,
-        admin_user,
         researcher_1,
         test_clone_asset_group_data['asset_group_uuid'],
     )
@@ -102,7 +98,6 @@ def test_annotation_permission(
     previous_annots = annot_utils.read_all_annotations(flask_app_client, staff_user)
     sub_utils.clone_asset_group(
         flask_app_client,
-        admin_user,
         researcher_1,
         test_clone_asset_group_data['asset_group_uuid'],
     )

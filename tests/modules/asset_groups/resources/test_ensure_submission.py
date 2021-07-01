@@ -5,30 +5,25 @@ import tests.modules.asset_groups.resources.utils as utils
 
 
 def test_ensure_asset_group_by_uuid(
-    flask_app_client, admin_user, researcher_1, db, test_asset_group_uuid
+    flask_app_client, researcher_1, db, test_asset_group_uuid
 ):
-    utils.clone_asset_group(
-        flask_app_client, admin_user, researcher_1, test_asset_group_uuid
-    )
+    utils.clone_asset_group(flask_app_client, researcher_1, test_asset_group_uuid)
 
 
 def test_ensure_empty_asset_group_by_uuid(
-    flask_app_client, admin_user, researcher_1, db, test_empty_asset_group_uuid
+    flask_app_client, researcher_1, db, test_empty_asset_group_uuid
 ):
-    utils.clone_asset_group(
-        flask_app_client, admin_user, researcher_1, test_empty_asset_group_uuid
-    )
+    utils.clone_asset_group(flask_app_client, researcher_1, test_empty_asset_group_uuid)
 
 
 def test_ensure_clone_asset_group_by_uuid(
-    flask_app_client, admin_user, researcher_1, db, test_clone_asset_group_data
+    flask_app_client, researcher_1, db, test_clone_asset_group_data
 ):
     from app.modules.asset_groups.models import AssetGroupMajorType
     from app.modules.assets.models import Asset
 
     clone = utils.clone_asset_group(
         flask_app_client,
-        admin_user,
         researcher_1,
         test_clone_asset_group_data['asset_group_uuid'],
     )

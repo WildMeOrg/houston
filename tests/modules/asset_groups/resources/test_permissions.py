@@ -9,7 +9,6 @@ import uuid
 
 def test_user_read_permissions(
     flask_app_client,
-    admin_user,
     researcher_1,
     readonly_user,
     db,
@@ -20,7 +19,6 @@ def test_user_read_permissions(
 
     asset_group_utils.clone_asset_group(
         flask_app_client,
-        admin_user,
         researcher_1,
         test_clone_asset_group_data['asset_group_uuid'],
     )

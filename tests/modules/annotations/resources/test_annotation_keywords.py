@@ -8,7 +8,7 @@ from tests.modules.keywords.resources import utils as keyword_utils
 
 
 def test_keywords_on_annotation(
-    flask_app_client, admin_user, researcher_1, test_clone_asset_group_data, db
+    flask_app_client, researcher_1, test_clone_asset_group_data, db
 ):
     # pylint: disable=invalid-name
     from app.modules.annotations.models import Annotation
@@ -23,7 +23,6 @@ def test_keywords_on_annotation(
 
     sub_utils.clone_asset_group(
         flask_app_client,
-        admin_user,
         researcher_1,
         test_clone_asset_group_data['asset_group_uuid'],
     )

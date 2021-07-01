@@ -351,7 +351,7 @@ def patch_in_ia_config(
 # multiple tests clone a asset_group, do something with it and clean it up. Make sure this always happens using a
 # class with a cleanup method to be called if any assertions fail
 class CloneAssetGroup(object):
-    def __init__(self, client, admin_user, owner, guid, force_clone):
+    def __init__(self, client, owner, guid, force_clone):
         from app.modules.asset_groups.models import AssetGroup
 
         self.asset_group = None
@@ -378,21 +378,13 @@ class CloneAssetGroup(object):
         elif self.response.status_code in (428, 403):
             # 428 Precondition Required
             # 403 Forbidden
-            with client.login(admin_user, auth_scopes=('asset_groups:write',)):
+            with client.login(owner, auth_scopes=('asset_groups:write',)):
                 self.response = client.post(url)
 
             # only store the asset_group if the clone worked
             if self.response.status_code == 200:
                 self.asset_group = AssetGroup.query.get(self.response.json['guid'])
 
-            # reassign ownership
-            data = [
-                test_utils.patch_add_op('owner', '%s' % owner.guid),
-            ]
-            patch_asset_group(client, admin_user, guid, data)
-            # and read it back as the real user
-            with client.login(owner, auth_scopes=('asset_groups:read',)):
-                self.response = client.get(url)
         else:
             assert (
                 False
@@ -415,13 +407,12 @@ class CloneAssetGroup(object):
 # Clone the asset_group
 def clone_asset_group(
     client,
-    admin_user,
     owner,
     guid,
     force_clone=False,
     expect_failure=False,
 ):
-    clone = CloneAssetGroup(client, admin_user, owner, guid, force_clone)
+    clone = CloneAssetGroup(client, owner, guid, force_clone)
 
     if not expect_failure:
         assert clone.response.status_code == 200, clone.response.data

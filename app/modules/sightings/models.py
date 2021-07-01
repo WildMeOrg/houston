@@ -316,8 +316,9 @@ class Sighting(db.Model, FeatherModel):
         matching_set_individual_uuids = []
         matching_set_annot_uuids = []
         for annot in unique_annots:
-            matching_set_individual_uuids.append(annot.get_name())
-            matching_set_annot_uuids.append(annot.guid)
+            if annot.encounter.sighting.stage == SightingStage.processed:
+                matching_set_individual_uuids.append(annot.get_name())
+                matching_set_annot_uuids.append({'__UUID__': str(annot.guid)})
 
         return matching_set_individual_uuids, matching_set_annot_uuids
 
@@ -331,21 +332,16 @@ class Sighting(db.Model, FeatherModel):
         callback_url = f'{base_url}api/v1/asset_group/sighting/{str(self.guid)}/sage_identified/{str(job_uuid)}'
         # TODO Needs more work, model info not even started, Sage is rejecting this
         id_request = {
-            'endpoint': '/api/engine/query/graph/',
-            'function': 'start_identify_annots_query',
             'jobid': str(job_uuid),
-            'input': {
-                'callback_url': callback_url,
-                'matching_state_list': [],
-                'query_annot_name_list': ['____'],
-                'query_annot_uuid_list': [
-                    annotation_uuid,
-                ],
-                'query_config_dict': {'sv_on': True},
-                'database_annot_name_list': matching_set_individual_uuids,
-                'database_annot_uuid_list': matching_set_annot_uuids,
-                'callback_detailed': True,
-            },
+            'callback_url': callback_url,
+            'matching_state_list': [],
+            'query_annot_name_list': ['____'],
+            'query_annot_uuid_list': [
+                {'__UUID__': str(annotation_uuid)},
+            ],
+            'query_config_dict': {'sv_on': True},
+            'database_annot_name_list': matching_set_individual_uuids,
+            'database_annot_uuid_list': matching_set_annot_uuids,
         }
         return id_request
 

@@ -89,7 +89,7 @@ class ACMManager(RestManager):
         ):
             log_message = status_data.get('message', response.reason)
             #  Don't report internal Sage Errors to the frontend
-            message = 'failed to start detection'
+            message = 'failed to start Sage request'
 
             status_code = response.status_code
             if status_code > 600:

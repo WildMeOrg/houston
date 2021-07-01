@@ -99,7 +99,7 @@ class BaseAssetGroupMetadata(object):
             ]
 
             num_configs = len(sighting['idConfigs'])
-            if num_configs != 0:
+            if num_configs > 1:
                 raise AssetGroupMetadataError(
                     f'found multiple {num_configs} ID configs, only support one'
                 )
@@ -108,7 +108,9 @@ class BaseAssetGroupMetadata(object):
                 id_config = sighting['idConfigs'][config_id]
                 self._validate_fields(id_config, id_config_fields, sighting_debug)
                 owners = id_config['matchingSetDataOwners']
-                supported_owners = ['mine', 'extended', 'all']
+                from app.modules.sightings.models import Sighting
+
+                supported_owners = Sighting.get_matching_set_options()
                 if owners not in supported_owners:
                     raise AssetGroupMetadataError(
                         f'dataOwners {owners} not supported, only support {supported_owners}'

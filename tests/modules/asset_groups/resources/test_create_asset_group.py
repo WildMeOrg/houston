@@ -254,7 +254,7 @@ def test_create_asset_group_detection(
         data.add_filename(0, test_filename)
         data.set_field('speciesDetectionModel', ['someSortOfModel'])
 
-        resp_msg = 'failed to start detection'
+        resp_msg = 'failed to start Sage request'
         asset_group_utils.create_asset_group(
             flask_app_client, None, data.get(), 400, resp_msg
         )

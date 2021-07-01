@@ -137,13 +137,21 @@ class AssetGroupSighting(db.Model, HoustonModel):
             raise HoustonException(
                 f'AssetGroupSighting {self.guid} has no metadata',
             )
+        cleanup = Cleanup('AssetGroup')
 
         # Create sighting in EDM
-        result_data = current_app.edm.request_passthrough_result(
-            'sighting.data', 'post', {'data': self.config}, ''
-        )
+        try:
+            result_data = current_app.edm.request_passthrough_result(
+                'sighting.data', 'post', {'data': self.config}, ''
+            )
+        except HoustonException as ex:
+            cleanup.rollback_and_abort(
+                ex.message,
+                'Sighting.post failed',
+                ex.status_code,
+                ex.get_val('error', 'Error'),
+            )
 
-        cleanup = Cleanup('AssetGroup')
         cleanup.add_guid(result_data['id'], Sighting)
 
         # if we get here, edm has made the sighting.  now we have to consider encounters contained within,

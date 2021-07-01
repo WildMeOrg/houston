@@ -347,10 +347,15 @@ class AssetGroupByID(Resource):
         """
         Delete an Asset_group by ID.
         """
+        _, asset_group_id = asset_group
         asset_group = self._get_asset_group_with_428(asset_group)
 
         if asset_group is not None:
             asset_group.delete()
+        else:
+            from .tasks import delete_remote
+
+            delete_remote.delay(str(asset_group_id))
 
         return None
 

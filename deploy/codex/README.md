@@ -31,6 +31,19 @@ Note, the composition can take several minutes to successfully come up.
 There are a number of operations setting up the services and automating the connections between them.
 All re-ups should be relatively fast.
 
+#### Running the applications without gitlab
+
+The gitlab container uses a lot of resources and can be impractical to
+run on a development machine.  It is possible to run the applications
+without gitlab by doing:
+
+    docker-compose -f docker-compose.yml -f docker-compose.no-gitlab.yml up -d
+
+This tells `docker-compose` to use both `docker-compose.yml` and
+`docker-compose.no-gitlab.yml`.  This is really only necessary for
+`docker-compose up` and `docker-compose run`.  For `docker-compose ps`
+or `docker-compose exec`, there's no need to include
+`-f docker-compose.yml -f docker-compose.no-gitlab.yml`.
 
 #### Cleaning up
 

@@ -274,26 +274,14 @@ def test_create_asset_group_detection(
 
 def test_create_bulk_asset_group(flask_app_client, researcher_1, test_root, db):
     # pylint: disable=invalid-name
-    from tests.modules.asset_groups.resources.utils import TestCreationData
     import uuid
 
-    transaction_id, test_filename = tus_utils.prep_tus_dir(test_root)
-    tus_utils.prep_tus_dir(test_root, filename='coelacanth.png')
-    tus_utils.prep_tus_dir(test_root, filename='fluke.jpg')
-    tus_utils.prep_tus_dir(test_root, filename='phoenix.jpg')
+    transaction_id, test_filename = asset_group_utils.create_bulk_tus_transaction(
+        test_root
+    )
     asset_group_uuid = None
     try:
-        data = TestCreationData(transaction_id)
-        data.add_filename(0, test_filename)
-        data.add_encounter(0)
-        data.add_filename(0, 'fluke.jpg')
-        data.add_sighting('Hogpits Bottom')
-        data.add_encounter(1)
-        data.add_filename(1, 'coelacanth.png')
-        data.add_encounter(1)
-        data.add_filename(1, 'fluke.jpg')
-        data.add_filename(1, 'phoenix.jpg')
-        data.set_field('uploadType', 'bulk')
+        data = asset_group_utils.get_bulk_creation_data(transaction_id, test_filename)
 
         resp = asset_group_utils.create_asset_group(
             flask_app_client, researcher_1, data.get()

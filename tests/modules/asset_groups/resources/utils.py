@@ -105,6 +105,32 @@ def create_asset_group(
     return response
 
 
+# Helper as many bulk uploads use a common set of files
+def create_bulk_tus_transaction(test_root):
+    import tests.extensions.tus.utils as tus_utils
+
+    transaction_id, test_filename = tus_utils.prep_tus_dir(test_root)
+    tus_utils.prep_tus_dir(test_root, filename='coelacanth.png')
+    tus_utils.prep_tus_dir(test_root, filename='fluke.jpg')
+    tus_utils.prep_tus_dir(test_root, filename='phoenix.jpg')
+    return transaction_id, test_filename
+
+
+def get_bulk_creation_data(transaction_id, test_filename):
+    data = TestCreationData(transaction_id)
+    data.add_filename(0, test_filename)
+    data.add_encounter(0)
+    data.add_filename(0, 'fluke.jpg')
+    data.add_sighting('Hogpits Bottom')
+    data.add_encounter(1)
+    data.add_filename(1, 'coelacanth.png')
+    data.add_encounter(1)
+    data.add_filename(1, 'fluke.jpg')
+    data.add_filename(1, 'phoenix.jpg')
+    data.set_field('uploadType', 'bulk')
+    return data
+
+
 def commit_asset_group_sighting(
     flask_app_client,
     user,

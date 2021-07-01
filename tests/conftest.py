@@ -289,14 +289,6 @@ def ensure_asset_group_repo(flask_app, db, asset_group, file_data=[]):
     from app.extensions.gitlab import GitlabInitializationError
     from app.modules.asset_groups.tasks import git_push, ensure_remote
 
-    repo = asset_group.get_repository()
-    if repo:
-        # repo already exists
-        return
-
-    with db.session.begin():
-        db.session.add(asset_group)
-    db.session.refresh(asset_group)
     asset_group.ensure_repository()
     # Call ensure_remote without .delay in tests to do it in the foreground
     try:
@@ -306,33 +298,24 @@ def ensure_asset_group_repo(flask_app, db, asset_group, file_data=[]):
             f'gitlab unavailable, skip ensure_remote for asset group {asset_group.guid}'
         )
     filepath_guid_mapping = {}
-    for uuid_, path in file_data:
-        repo_filepath = asset_group.git_copy_file_add(str(path))
-        filepath_guid_mapping[repo_filepath] = uuid_
-    asset_group.git_commit(
-        'Initial commit for testing',
-        existing_filepath_guid_mapping=filepath_guid_mapping,
-    )
-    # Call git_push without .delay in tests to do it in the foreground
-    try:
-        git_push(str(asset_group.guid))
-    except GitlabInitializationError:
-        print(f'gitlab unavailable, skip git_push for asset group {asset_group.guid}')
+    if len(asset_group.assets) == 0:
+        for uuid_, path in file_data:
+            repo_filepath = asset_group.git_copy_file_add(str(path))
+            filepath_guid_mapping[repo_filepath] = uuid_
+        asset_group.git_commit(
+            'Initial commit for testing',
+            existing_filepath_guid_mapping=filepath_guid_mapping,
+        )
+        # Call git_push without .delay in tests to do it in the foreground
+        try:
+            git_push(str(asset_group.guid))
+        except GitlabInitializationError:
+            print(f'gitlab unavailable, skip git_push for asset group {asset_group.guid}')
 
 
-@pytest.fixture(scope='session')
-def test_asset_group_uuid(flask_app, db, test_root, admin_user):
-    from app.extensions.gitlab import GitlabInitializationError
-    from app.modules.asset_groups.models import AssetGroup, AssetGroupMajorType
-
-    asset_group = AssetGroup(
-        guid='00000000-0000-0000-0000-000000000003',
-        owner_guid=admin_user.guid,
-        major_type=AssetGroupMajorType.test,
-        description='This is a required PyTest submission (do not delete)',
-    )
-
-    file_data = [
+@pytest.fixture
+def test_asset_group_file_data(test_root):
+    return [
         (
             uuid.UUID('00000000-0000-0000-0000-000000000011'),
             test_root / 'zebra.jpg',
@@ -342,35 +325,62 @@ def test_asset_group_uuid(flask_app, db, test_root, admin_user):
             test_root / 'fluke.jpg',
         ),
     ]
+
+
+@pytest.fixture
+def test_asset_group_uuid(flask_app, db, admin_user, test_asset_group_file_data):
+    from app.extensions.gitlab import GitlabInitializationError
+    from app.modules.asset_groups.models import AssetGroup, AssetGroupMajorType
+
+    guid = '00000000-0000-0000-0000-000000000003'
+    asset_group = AssetGroup.query.get(guid)
+    if asset_group is None:
+        asset_group = AssetGroup(
+            guid=guid,
+            owner_guid=admin_user.guid,
+            major_type=AssetGroupMajorType.test,
+            description='This is a required PyTest submission (do not delete)',
+        )
+        with db.session.begin():
+            db.session.add(asset_group)
+    else:
+        asset_group.owner_guid = admin_user.guid
+        asset_group.major_type = AssetGroupMajorType.test
+        asset_group.description = 'This is a required PyTest submission (do not delete)'
+        with db.session.begin():
+            db.session.merge(asset_group)
+
     try:
-        ensure_asset_group_repo(flask_app, db, asset_group, file_data)
+        ensure_asset_group_repo(flask_app, db, asset_group, test_asset_group_file_data)
     except GitlabInitializationError:
         print(f'gitlab unavailable, skip ensure_asset_group_repo for {asset_group.guid}')
     return asset_group.guid
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture
 def test_empty_asset_group_uuid(flask_app, db, admin_user):
     from app.modules.asset_groups.models import AssetGroup, AssetGroupMajorType
 
-    asset_group = AssetGroup(
-        guid='00000000-0000-0000-0000-000000000001',
-        owner_guid=admin_user.guid,
-        major_type=AssetGroupMajorType.test,
-        description='',
-    )
+    guid = '00000000-0000-0000-0000-000000000001'
+    asset_group = AssetGroup.query.get(guid)
+    if asset_group is None:
+        asset_group = AssetGroup(
+            guid=guid,
+            owner_guid=admin_user.guid,
+            major_type=AssetGroupMajorType.test,
+            description='',
+        )
+        with db.session.begin():
+            db.session.add(asset_group)
     ensure_asset_group_repo(flask_app, db, asset_group)
     return asset_group.guid
 
 
-@pytest.fixture(scope='session')
-def test_clone_asset_group_data(test_asset_group_uuid):
+@pytest.fixture
+def test_clone_asset_group_data(test_asset_group_uuid, test_asset_group_file_data):
     return {
         'asset_group_uuid': test_asset_group_uuid,
-        'asset_uuids': [
-            '00000000-0000-0000-0000-000000000011',
-            '00000000-0000-0000-0000-000000000012',
-        ],
+        'asset_uuids': [str(f[0]) for f in test_asset_group_file_data],
     }
 
 

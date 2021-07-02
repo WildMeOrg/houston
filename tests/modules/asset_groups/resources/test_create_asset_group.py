@@ -3,6 +3,7 @@
 import tests.modules.asset_groups.resources.utils as asset_group_utils
 import tests.modules.users.resources.utils as user_utils
 import tests.extensions.tus.utils as tus_utils
+from unittest import mock
 
 
 # Test a bunch of failure scenarios
@@ -242,10 +243,29 @@ def test_create_asset_group_anonymous(
 
 
 def test_create_asset_group_detection(
-    flask_app_client, researcher_1, staff_user, test_root, db
+    flask_app, flask_app_client, researcher_1, staff_user, test_root, db
 ):
     # pylint: disable=invalid-name
     from tests.modules.asset_groups.resources.utils import TestCreationData
+
+    # Simulate a valid response from Sage but don't actually send the request to Sage
+    def detection_started(*args, **kwargs):
+        message = args[2]
+        assert 'params' in message
+        params = message['params']
+        assert set(params.keys()) >= {
+            'endpoint',
+            'function',
+            'jobid',
+            'callback_url',
+            'image_uuid_list',
+            'input',
+        }
+        return {'success': True}
+
+    # Simulate a valid response from Sage but don't actually send the request to Sage
+    def job_response(*args, **kwargs):
+        return {'success': True, 'content': 'something'}
 
     transaction_id, test_filename = tus_utils.prep_tus_dir(test_root)
     asset_group_uuid = None
@@ -254,16 +274,45 @@ def test_create_asset_group_detection(
         data.add_filename(0, test_filename)
         data.set_field('speciesDetectionModel', ['someSortOfModel'])
 
-        resp_msg = 'failed to start Sage request'
-        asset_group_utils.create_asset_group(
-            flask_app_client, None, data.get(), 400, resp_msg
-        )
-        # TODO this is what the response should be
-        # resp_msg = 'Invalid submitter data'
-        # asset_group_utils.create_asset_group(
-        #    flask_app_client, None, data.get(), 403, resp_msg
-        # )
+        with mock.patch.object(
+            flask_app.acm,
+            'request_passthrough_result',
+            side_effect=detection_started,
+        ):
+            resp = asset_group_utils.create_asset_group(
+                flask_app_client, None, data.get()
+            )
 
+        from invoke import MockContext
+        import io
+
+        with mock.patch('app.create_app'):
+            with mock.patch('sys.stdout', new=io.StringIO()) as stdout:
+                from tasks.app import job_control
+
+                job_control.print_all_asset_jobs(
+                    MockContext(), resp.json['assets'][0]['guid']
+                )
+                breakpoint()
+                job_output = stdout.getvalue()
+                assert 'Job ' in job_output
+                assert 'Active:True Started (UTC)' in job_output
+                assert 'model:someSortOfModel' in job_output
+                with mock.patch.object(
+                    flask_app.acm,
+                    'request_passthrough_result',
+                    side_effect=job_response,
+                ):
+                    job_control.print_last_asset_job(
+                        MockContext(), resp.json['assets'][0]['guid'], verbose=True
+                    )
+                    job_output = stdout.getvalue()
+                    assert 'Job ' in job_output
+                    assert 'Active:True Started (UTC)' in job_output
+                    assert 'model:someSortOfModel' in job_output
+                    # These are on separate lines so are not available in stdout...
+                    # assert "Request:{'endpoint': '/api/engine/detect" in job_output
+                    # assert "Response:{'success': True, 'content': 'something'}" in job_output
     finally:
         if asset_group_uuid:
             asset_group_utils.delete_asset_group(

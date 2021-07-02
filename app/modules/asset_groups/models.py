@@ -239,6 +239,9 @@ class AssetGroupSighting(db.Model, HoustonModel):
         )
         return sighting
 
+    def has_filename(self, filename):
+        return filename in self.config.get('assetReferences', [])
+
     @classmethod
     def check_jobs(cls):
         for asset_group_sighting in AssetGroupSighting.query.all():
@@ -250,7 +253,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
             job = jobs[job_id]
             if job['active']:
                 current_app.acm.request_passthrough_result(
-                    'job.response', 'post', {}, job
+                    'job.response', 'post', {}, job_id
                 )
                 # TODO Process response
                 # TODO If UTC Start more than {arbitrary limit} ago.... do something
@@ -266,18 +269,35 @@ class AssetGroupSighting(db.Model, HoustonModel):
             job = jobs[job_id]
             if job['active']:
                 log.warning(
-                    f"AssetGroupSighting:{self.guid} Job:{job_id} Model:{job['model']} UTC Start:{job['Start']}"
+                    f"AssetGroupSighting:{self.guid} Job:{job_id} Model:{job['model']} UTC Start:{job['start']}"
                 )
 
-    def run_sage_detection(self, model):
-        job_id = uuid.uuid4()
+    # Build up dict to print out status (calling function chooses what to collect and print)
+    def get_job_details(self, verbose):
+        from copy import deepcopy
+
+        details = deepcopy(self.jobs)
+        if verbose:
+            for job_id in self.jobs.keys():
+                details[job_id]['request'] = self.build_detection_request(
+                    job_id, self.jobs[job_id]['model']
+                )
+                details[job_id]['response'] = current_app.acm.request_passthrough_result(
+                    'job.response', 'post', {}, job_id
+                )
+
+        return details
+
+    def build_detection_request(self, job_uuid, model):
         base_url = current_app.config.get('BASE_URL')
-        callback_url = f'{base_url}api/v1/asset_group/sighting/{str(self.guid)}/sage_detected/{str(job_id)}'
+        callback_url = f'{base_url}api/v1/asset_group/sighting/{str(self.guid)}/sage_detected/{str(job_uuid)}'
         # TODO use model to build up the input, also not clear on where the endpoint & function come from
+        # TODO model comes from ia_config and also decide if the "//api/engine/detect/" part lives in the ia_config
+        # or the acm/__init__.py.
         model_config = {
             'endpoint': '/api/engine/detect/cnn/lightnet/',
             'function': 'start_detect_image_lightnet',
-            'jobid': str(job_id),
+            'jobid': str(job_uuid),
             'callback_url': callback_url,
             'image_uuid_list': [],
             'input': {
@@ -301,16 +321,19 @@ class AssetGroupSighting(db.Model, HoustonModel):
                 asset_guids.append(asset.guid)
 
         model_config['image_uuid_list'] = asset_guids
+        return model_config
 
-        # TODO model comes from ia_config and also decide if the "//api/engine/detect/" part lives in the ia_config
-        # or the acm/__init__.py.
+    def run_sage_detection(self, model):
+        job_id = uuid.uuid4()
+        detection_request = self.build_detection_request(job_id, model)
+
         current_app.acm.request_passthrough_result(
-            'job.detect_request', 'post', {'params': model_config}, 'cnn/lightnet'
+            'job.detect_request', 'post', {'params': detection_request}, 'cnn/lightnet'
         )
         jobs = self.jobs
         from datetime import datetime  # NOQA
 
-        jobs[str(job_id)] = {'model': model, 'active': True, 'Start': datetime.utcnow()}
+        jobs[str(job_id)] = {'model': model, 'active': True, 'start': datetime.utcnow()}
         self.jobs = jobs
         with db.session.begin(subtransactions=True):
             db.session.merge(self)
@@ -1183,6 +1206,9 @@ class AssetGroup(db.Model, HoustonModel):
             if asset.path == filename:
                 return asset
         return None
+
+    def get_asset_group_sightings_for_asset(self, asset):
+        return [ags for ags in self.asset_group_sightings if ags.has_filename(asset.path)]
 
     def begin_ia_pipeline(self, metadata):
         # Temporary restriction for MVP

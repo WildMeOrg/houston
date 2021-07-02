@@ -41,7 +41,7 @@ def print_last_asset_job(context, asset_guid, verbose=False):
     last_job_id = None
     last_job = {}
     for job_id in jobs.keys():
-        if not last_job_id or jobs[job_id] > last_job['start']:
+        if not last_job_id or jobs[job_id]['start'] > last_job['start']:
             last_job_id = job_id
             last_job = jobs[job_id]
 

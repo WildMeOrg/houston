@@ -247,25 +247,9 @@ def test_create_asset_group_detection(
 ):
     # pylint: disable=invalid-name
     from tests.modules.asset_groups.resources.utils import TestCreationData
+    from tests import utils as test_utils
 
-    # Simulate a valid response from Sage but don't actually send the request to Sage
-    def detection_started(*args, **kwargs):
-        message = args[2]
-        assert 'params' in message
-        params = message['params']
-        assert set(params.keys()) >= {
-            'endpoint',
-            'function',
-            'jobid',
-            'callback_url',
-            'image_uuid_list',
-            'input',
-        }
-        return {'success': True}
-
-    # Simulate a valid response from Sage but don't actually send the request to Sage
-    def job_response(*args, **kwargs):
-        return {'success': True, 'content': 'something'}
+    orig_objs = test_utils.all_count(db)
 
     transaction_id, test_filename = tus_utils.prep_tus_dir(test_root)
     asset_group_uuid = None
@@ -274,51 +258,37 @@ def test_create_asset_group_detection(
         data.add_filename(0, test_filename)
         data.set_field('speciesDetectionModel', ['someSortOfModel'])
 
+        # Simulate a valid response from Sage but don't actually send the request to Sage
         with mock.patch.object(
             flask_app.acm,
             'request_passthrough_result',
-            side_effect=detection_started,
-        ):
+            return_value={'success': True},
+        ) as detection_started:
             resp = asset_group_utils.create_asset_group(
                 flask_app_client, None, data.get()
             )
+            assert detection_started.call_count == 1
+            passed_args = detection_started.call_args[0]
+            assert passed_args[:-2] == ('job.detect_request', 'post')
+            params = passed_args[-2]['params']
+            assert set(params.keys()) >= {
+                'endpoint',
+                'function',
+                'jobid',
+                'callback_url',
+                'image_uuid_list',
+                'input',
+            }
+            assert passed_args[-1] == 'cnn/lightnet'
+            asset_group_uuid = resp.json['guid']
 
-        from invoke import MockContext
-        import io
-
-        with mock.patch('app.create_app'):
-            with mock.patch('sys.stdout', new=io.StringIO()) as stdout:
-                from tasks.app import job_control
-
-                job_control.print_all_asset_jobs(
-                    MockContext(), resp.json['assets'][0]['guid']
-                )
-                breakpoint()
-                job_output = stdout.getvalue()
-                assert 'Job ' in job_output
-                assert 'Active:True Started (UTC)' in job_output
-                assert 'model:someSortOfModel' in job_output
-                with mock.patch.object(
-                    flask_app.acm,
-                    'request_passthrough_result',
-                    side_effect=job_response,
-                ):
-                    job_control.print_last_asset_job(
-                        MockContext(), resp.json['assets'][0]['guid'], verbose=True
-                    )
-                    job_output = stdout.getvalue()
-                    assert 'Job ' in job_output
-                    assert 'Active:True Started (UTC)' in job_output
-                    assert 'model:someSortOfModel' in job_output
-                    # These are on separate lines so are not available in stdout...
-                    # assert "Request:{'endpoint': '/api/engine/detect" in job_output
-                    # assert "Response:{'success': True, 'content': 'something'}" in job_output
     finally:
         if asset_group_uuid:
             asset_group_utils.delete_asset_group(
                 flask_app_client, staff_user, asset_group_uuid
             )
         tus_utils.cleanup_tus_dir(transaction_id)
+        assert orig_objs == test_utils.all_count(db)
 
 
 def test_create_bulk_asset_group(flask_app_client, researcher_1, test_root, db):

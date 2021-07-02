@@ -46,3 +46,9 @@ class Keyword(db.Model, HoustonModel):
     def delete(self):
         with db.session.begin(subtransactions=True):
             db.session.delete(self)
+
+    def number_annotations(self):
+        from app.modules.annotations.models import AnnotationKeywords
+
+        refs = AnnotationKeywords.query.filter_by(keyword_guid=self.guid).all()
+        return len(refs)

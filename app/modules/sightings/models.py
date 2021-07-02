@@ -329,6 +329,12 @@ class Sighting(db.Model, FeatherModel):
             matching_set_annot_uuids,
         ) = self.get_matching_set_data(config_id)
 
+        assert len(matching_set_individual_uuids) == len(matching_set_annot_uuids)
+
+        # Sage doesn't support an empty database set, so if no annotations, don't send the request
+        if len(matching_set_individual_uuids) == 0:
+            return {}
+
         from app.extensions.acm import to_acm_uuid
 
         base_url = current_app.config.get('BASE_URL')
@@ -358,17 +364,19 @@ class Sighting(db.Model, FeatherModel):
         id_request = self.build_identification_request(
             matching_set_data, annotation_uuid, job_uuid
         )
-        current_app.acm.request_passthrough_result(
-            'job.identification_request', 'post', {'params': id_request}
-        )
+        if id_request != {}:
+            current_app.acm.request_passthrough_result(
+                'job.identification_request', 'post', {'params': id_request}
+            )
 
-        self.jobs[str(job_uuid)] = {
-            'matching_set': matching_set_data,
-            'algorithm': algorithm,
-            'annotation': str(annotation_uuid),
-            'active': True,
-            'start': datetime.utcnow(),
-        }
+            self.jobs[str(job_uuid)] = {
+                'matching_set': matching_set_data,
+                'algorithm': algorithm,
+                'annotation': str(annotation_uuid),
+                'active': True,
+                'start': datetime.utcnow(),
+            }
+        # TODO what stage is the Sighting in if no jobs are created?
 
     # Return the contents of the last ID request sent for the annotation Id, status and any response
     def get_last_identification_data(self, annotation_uuid):
@@ -422,7 +430,7 @@ class Sighting(db.Model, FeatherModel):
             # Use task to send ID req with retries
             # Once we support multiple IA configs and algorithms, the number of jobs is going to grow....rapidly
             for config_id in range(len(self.ia_configs)):
-                for algorithm_id in range(len(self.ia_configs[config_id])):
+                for algorithm_id in range(len(self.ia_configs[config_id]['algorithms'])):
                     for encounter in self.encounters:
                         for annotation in encounter.annotations:
                             send_identification(

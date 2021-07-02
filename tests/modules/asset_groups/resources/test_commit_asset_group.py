@@ -135,9 +135,8 @@ def test_commit_asset_group_ia(
             flask_app_client, researcher_1, asset_group_sighting_guid, ia_config, 200
         )
 
-        # TODO, this is wrong but I don't know what the problem is on Sage
         asset_group_utils.commit_asset_group_sighting(
-            flask_app_client, researcher_1, asset_group_sighting_guid, 500
+            flask_app_client, researcher_1, asset_group_sighting_guid
         )
 
         # sighting_uuid = response.json['guid']

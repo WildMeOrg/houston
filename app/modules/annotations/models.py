@@ -114,8 +114,10 @@ class Annotation(db.Model, HoustonModel):
     def delete(self):
         with db.session.begin(subtransactions=True):
             while self.keyword_refs:
+                ref = self.keyword_refs.pop()
                 # this is actually removing the AnnotationKeywords refs (not actual Keywords)
-                db.session.delete(self.keyword_refs.pop())
+                db.session.delete(ref)
+                ref.keyword.delete_if_unreferenced()  # but this *may* remove keyword itself
             db.session.delete(self)
 
     def check_job_status(self, job_id):

@@ -13,10 +13,6 @@ from .models import Annotation
 from app.extensions.api import abort
 from flask_restx_patched._http import HTTPStatus
 
-import logging
-
-log = logging.getLogger(__name__)  # pylint: disable=invalid-name
-
 
 class CreateAnnotationParameters(Parameters, schemas.BaseAnnotationSchema):
     asset_guid = base_fields.UUID(description='The GUID of the asset', required=True)
@@ -119,10 +115,6 @@ class PatchAnnotationDetailsParameters(PatchJSONParameters):
             if keyword is None:
                 return False
             obj.remove_keyword(keyword)
-            if keyword.number_annotations() < 1:
-                log.warn(
-                    f'{keyword} is no longer referenced by any Annotation, deleting.'
-                )
-                keyword.delete()
+            keyword.delete_if_unreferenced()
             return True
         return False

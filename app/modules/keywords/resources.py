@@ -40,7 +40,7 @@ class Keywords(Resource):
         Returns a list of Keyword starting from ``offset`` limited by ``limit``
         parameter.
         """
-        return Keyword.query.offset(args['offset']).limit(args['limit'])
+        return Keyword.query.all()
 
     @api.permission_required(
         permissions.ModuleAccessPermission,

@@ -68,7 +68,9 @@ def test_clone_asset_group_from_gitlab(flask_app, db, test_asset_group_uuid, adm
 
     from app.modules.asset_groups.models import AssetGroup
 
-    AssetGroup.query.get(test_asset_group_uuid).delete()
+    # Patch delete_remote so it doesn't delete the gitlab project
+    with mock.patch('app.modules.asset_groups.tasks.delete_remote'):
+        AssetGroup.query.get(test_asset_group_uuid).delete()
 
     with mock.patch('app.create_app'):
         from tasks.app.asset_groups import clone_asset_group_from_gitlab

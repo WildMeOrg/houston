@@ -1304,12 +1304,13 @@ class AssetGroup(db.Model, HoustonModel):
         repo = self.get_repository()
         if repo:
             if 'origin' in repo.remotes:
-                return self.git_pull()
-            return repo
-        project = AssetGroup.get_remote(self.guid)
-        if project:
-            return self.git_clone(project)
-        repo = git.Repo.init(self.get_absolute_path())
+                repo = self.git_pull()
+        else:
+            project = AssetGroup.get_remote(self.guid)
+            if project:
+                repo = self.git_clone(project)
+            else:
+                repo = git.Repo.init(self.get_absolute_path())
         self._ensure_repository_files()
         return repo
 

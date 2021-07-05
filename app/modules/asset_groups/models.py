@@ -1271,7 +1271,6 @@ class AssetGroup(db.Model, HoustonModel):
                 asset.delete()
             for sighting in self.asset_group_sightings:
                 sighting.delete()
-        db.session.refresh(self)
         # TODO: This is potentially dangerous as it decouples the Asset deletion
         #       transaction with the AssetGroup deletion transaction, bad for rollbacks
         with db.session.begin(subtransactions=True):

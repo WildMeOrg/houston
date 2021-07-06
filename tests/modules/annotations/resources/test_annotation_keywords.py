@@ -89,6 +89,9 @@ def test_keywords_on_annotation(
     )
 
     # patch to remove a keyword (only can happen by id)
+    res = keyword_utils.read_all_keywords(flask_app_client, researcher_1)
+    orig_kwct = len(res.json)
+
     res = annot_utils.patch_annotation(
         flask_app_client,
         annotation.guid,
@@ -101,12 +104,15 @@ def test_keywords_on_annotation(
 
     res = keyword_utils.read_all_keywords(flask_app_client, researcher_1)
     kwct = len(res.json)
+    assert (
+        kwct == orig_kwct - 1
+    )  # [DEX-347] op=remove above caused deletion of unused keyword
 
     # And deleting it
     annot_utils.delete_annotation(flask_app_client, researcher_1, annotation_guid)
     read_annotation = Annotation.query.get(annotation_guid)
     assert read_annotation is None
 
-    # should still be the same... unless we are meant to cascade delete keywords?  FIXME
+    # the delete_annotation above should take the un-reference keyword with it [DEX-347], thus:
     res = keyword_utils.read_all_keywords(flask_app_client, researcher_1)
-    assert len(res.json) == kwct
+    assert len(res.json) == kwct - 1

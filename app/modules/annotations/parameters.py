@@ -115,5 +115,6 @@ class PatchAnnotationDetailsParameters(PatchJSONParameters):
             if keyword is None:
                 return False
             obj.remove_keyword(keyword)
+            keyword.delete_if_unreferenced()
             return True
         return False

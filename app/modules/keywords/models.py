@@ -8,6 +8,9 @@ from app.extensions import db, HoustonModel
 
 import uuid
 import enum
+import logging
+
+log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
 
 class KeywordSource(str, enum.Enum):
@@ -46,3 +49,14 @@ class Keyword(db.Model, HoustonModel):
     def delete(self):
         with db.session.begin(subtransactions=True):
             db.session.delete(self)
+
+    def delete_if_unreferenced(self):
+        if self.number_annotations() < 1:
+            log.warn(f'{self} is no longer referenced by any Annotation, deleting.')
+            self.delete()
+
+    def number_annotations(self):
+        from app.modules.annotations.models import AnnotationKeywords
+
+        refs = AnnotationKeywords.query.filter_by(keyword_guid=self.guid).all()
+        return len(refs)

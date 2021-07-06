@@ -36,3 +36,5 @@ def test_job_control(flask_app, researcher_1, test_root, db):
                     f'AssetGroupSighting:{ags.guid} Job:{job_id} Model:Animal UTC Start:{utc_now}'
                 ),
             ]
+
+    asset_group.delete()

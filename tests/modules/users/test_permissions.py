@@ -296,6 +296,8 @@ def test_ObjectAccessPermission_admin_user(
     validate_cannot_write_object(owned_encounter)
     validate_cannot_delete_object(owned_encounter)
 
+    owned_encounter.delete()
+
 
 def test_ModuleAccessPermission_anonymous_user(anonymous_user_login):
     # pylint: disable=unused-argument
@@ -424,6 +426,9 @@ def test_ObjectAccessPermission_researcher_user(
     validate_can_write_object(my_encounter)
     validate_can_delete_object(my_encounter)
 
+    my_encounter.delete()
+    owned_encounter.delete()
+
 
 def test_ObjectAccessPermission_contributor_user(
     db, contributor_1_login, temp_user, public_encounter, owned_encounter
@@ -489,3 +494,6 @@ def test_ObjectAccessPermission_contributor_user(
     validate_can_read_object(my_encounter)
     validate_can_write_object(my_encounter)
     validate_can_delete_object(my_encounter)
+
+    my_encounter.delete()
+    owned_encounter.delete()

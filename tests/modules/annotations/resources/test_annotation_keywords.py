@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=missing-docstring
-
 from tests import utils
 from tests.modules.annotations.resources import utils as annot_utils
 from tests.modules.asset_groups.resources import utils as sub_utils
@@ -21,7 +20,7 @@ def test_keywords_on_annotation(
         db.session.add(keyword)
     assert keyword is not None
 
-    sub_utils.clone_asset_group(
+    clone = sub_utils.clone_asset_group(
         flask_app_client,
         researcher_1,
         test_clone_asset_group_data['asset_group_uuid'],
@@ -115,3 +114,5 @@ def test_keywords_on_annotation(
     # the delete_annotation above should take the un-reference keyword with it [DEX-347], thus:
     res = keyword_utils.read_all_keywords(flask_app_client, researcher_1)
     assert len(res.json) == kwct - 1
+
+    clone.cleanup()

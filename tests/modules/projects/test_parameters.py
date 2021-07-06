@@ -6,6 +6,7 @@ def test_project_remove_encounters(
     db, researcher_1, researcher_1_login, test_empty_asset_group_uuid
 ):  # pylint: disable=unused-argument
     # pylint: disable=unused-argument
+    from app.modules.asset_groups.models import AssetGroup
     from app.modules.projects.parameters import PatchProjectDetailsParameters
     from app.modules.projects.models import Project
 
@@ -30,3 +31,4 @@ def test_project_remove_encounters(
 
     with db.session.begin():
         db.session.delete(temp_proj)
+        AssetGroup.query.get(test_empty_asset_group_uuid).delete()

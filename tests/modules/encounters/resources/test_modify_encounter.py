@@ -93,8 +93,13 @@ def test_modify_encounter(db, flask_app_client, researcher_1, researcher_2, admi
     assert cfd_id in enc.json['customFields']
     assert enc.json['customFields'][cfd_id] == new_cfd_test_value
 
+    new_encounter_1.sighting.delete()
+    new_encounter_1.delete()
+
 
 def test_modify_encounter_error(flask_app, flask_app_client, researcher_1):
+    from app.modules.encounters.models import Encounter
+
     response = enc_utils.create_encounter(flask_app_client, researcher_1)
     first_enc_guid = response.json['result']['encounters'][0]['id']
 
@@ -117,3 +122,6 @@ def test_modify_encounter_error(flask_app, flask_app_client, researcher_1):
             expected_status_code=500,
         )
     assert res.json['status'] == 500
+
+    Encounter.query.get(first_enc_guid).sighting.delete()
+    Encounter.query.get(first_enc_guid).delete()

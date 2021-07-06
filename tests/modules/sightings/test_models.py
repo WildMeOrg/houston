@@ -53,6 +53,10 @@ def test_sighting_create_and_add_encounters(db):
     logging.info(test_sighting.get_encounters())
     logging.info(test_encounter_a.get_sighting())
 
+    test_encounter_a.delete()
+    test_encounter_b.delete()
+    test_sighting.delete()
+
 
 def test_sighting_ensure_no_duplicate_encounters(db):
     from app.modules.sightings.models import Sighting, SightingStage
@@ -98,6 +102,9 @@ def test_sighting_ensure_no_duplicate_encounters(db):
 
     logging.info(test_sighting.get_encounters())
     logging.info(test_encounter.get_sighting())
+
+    test_sighting.delete()
+    test_encounter.delete()
 
 
 def test_sighting_jobs(db, request):

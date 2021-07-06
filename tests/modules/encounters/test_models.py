@@ -41,6 +41,7 @@ def test_encounter_add_owner(db):
 
     assert test_encounter.get_owner() is not None
     assert test_encounter.get_owner().guid == test_user.guid
+    test_encounter.delete()
 
 
 def test_encounter_set_individual(db, empty_individual, encounter_1):

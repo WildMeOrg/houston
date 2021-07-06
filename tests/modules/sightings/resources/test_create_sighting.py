@@ -221,9 +221,6 @@ def test_create_anon_and_delete_sighting(db, flask_app_client, staff_user, test_
     from app.modules.sightings.models import Sighting
     from app.modules.users.models import User
 
-    # we should end up with these same counts (which _should be_ all zeros!)
-    orig_ct = test_utils.all_count(db)
-
     transaction_id, test_filename = sighting_utils.prep_tus_dir(test_root)
     sighting_utils.prep_tus_dir(test_root, filename='fluke.jpg')
     data_in = {
@@ -324,6 +321,3 @@ def test_create_anon_and_delete_sighting(db, flask_app_client, staff_user, test_
     sighting_utils.cleanup_tus_dir(transaction_id)
     sighting_utils.delete_sighting(flask_app_client, staff_user, sighting_id)
     new_user.delete()
-
-    post_ct = test_utils.all_count(db)
-    assert orig_ct == post_ct

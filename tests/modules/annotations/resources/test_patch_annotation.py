@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=missing-docstring
-
 import uuid
+
 from tests import utils
 from tests.modules.annotations.resources import utils as annot_utils
 from tests.modules.asset_groups.resources import utils as sub_utils
@@ -15,7 +15,7 @@ def test_patch_annotation(
     from app.modules.annotations.models import Annotation
     from app.modules.encounters.models import Encounter
 
-    sub_utils.clone_asset_group(
+    clone = sub_utils.clone_asset_group(
         flask_app_client,
         researcher_1,
         test_clone_asset_group_data['asset_group_uuid'],
@@ -114,3 +114,9 @@ def test_patch_annotation(
 
     read_annotation = Annotation.query.get(annotation_guid)
     assert read_annotation is None
+
+    clone.cleanup()
+    first_encounter.sighting.delete()
+    first_encounter.delete()
+    second_encounter.sighting.delete()
+    second_encounter.delete()

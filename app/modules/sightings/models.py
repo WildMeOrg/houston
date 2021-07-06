@@ -199,7 +199,7 @@ class Sighting(db.Model, FeatherModel):
             db.session.delete(self)
             while assets:
                 asset = assets.pop()
-                asset.delete_cascade()
+                asset.delete()
 
     def delete_from_edm(self, current_app):
         return Sighting.delete_from_edm_by_guid(current_app, self.guid)

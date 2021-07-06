@@ -197,16 +197,12 @@ class Asset(db.Model, HoustonModel):
         return target_path
 
     def delete(self):
+        asset_group = self.asset_group
         with db.session.begin(subtransactions=True):
             for annotation in self.annotations:
                 annotation.delete()
             for sighting in self.asset_sightings:
                 db.session.delete(sighting)
-            db.session.delete(self)
-
-    def delete_cascade(self):
-        asset_group = self.asset_group
-        with db.session.begin(subtransactions=True):
             db.session.delete(self)
         db.session.refresh(asset_group)
         asset_group.justify_existence()

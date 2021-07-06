@@ -208,6 +208,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
                     submitter_guid=self.asset_group.submitter_guid,
                     public=self.asset_group.anonymous,
                 )
+                log.info(f'Created encounter {new_encounter.guid} for owner {owner_guid}')
                 annotations = req_data.get('annotations', [])
                 for annot_uuid in annotations:
                     annot = Annotation.query.get(annot_uuid)

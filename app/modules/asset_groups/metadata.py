@@ -71,6 +71,7 @@ class BaseAssetGroupMetadata(object):
             ('encounters', list, True),
             ('name', str, False),
             ('assetReferences', list, False),
+            ('idConfigs', list, False),
         ]
         self._validate_fields(sighting, sighting_fields, sighting_debug)
 
@@ -89,6 +90,31 @@ class BaseAssetGroupMetadata(object):
                     raise AssetGroupMetadataError(f'found zero-size file for {filename}')
                 # Set ensures no duplicates
                 self.files.add(filename)
+
+        if 'idConfigs' in sighting:
+            id_config_fields = [
+                ('algorithms', list, True),
+                ('matchingSetDataOwners', str, True),
+                ('matchingSetRegions', list, False),
+            ]
+
+            num_configs = len(sighting['idConfigs'])
+            if num_configs > 1:
+                raise AssetGroupMetadataError(
+                    f'found multiple {num_configs} ID configs, only support one'
+                )
+
+            for config_id in range(num_configs):
+                id_config = sighting['idConfigs'][config_id]
+                self._validate_fields(id_config, id_config_fields, sighting_debug)
+                owners = id_config['matchingSetDataOwners']
+                from app.modules.sightings.models import Sighting
+
+                supported_owners = Sighting.get_matching_set_options()
+                if owners not in supported_owners:
+                    raise AssetGroupMetadataError(
+                        f'dataOwners {owners} not supported, only support {supported_owners}'
+                    )
 
         encounter_num = 0
         # Have a sighting with multiple encounters, make sure we have all of the files

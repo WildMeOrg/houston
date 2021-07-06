@@ -230,7 +230,8 @@ class AssetGroupSighting(db.Model, HoustonModel):
 
         # AssetGroupSighting is finished, all subsequent processing is on the Sighting
         self.complete()
-        sighting.ia_pipeline()
+        idConfigs = self.config.get('idConfigs', [])
+        sighting.ia_pipeline(idConfigs)
 
         num_encounters = len(self.config['encounters'])
         log.info(
@@ -245,7 +246,6 @@ class AssetGroupSighting(db.Model, HoustonModel):
 
     def check_all_job_status(self):
         jobs = self.jobs
-        log.warning(f'Checking AssetGroupSighting {self.guid} Jobs')
         for job_id in jobs.keys():
             job = jobs[job_id]
             if job['active']:

@@ -284,6 +284,70 @@ def simulate_detection_response(
     return response
 
 
+# Helper as used across multiple tests
+def patch_in_dummy_annotation(
+    flask_app_client, db, user, asset_group_sighting_uuid, asset_uuid
+):
+    from app.modules.assets.models import Asset
+    from app.modules.annotations.models import Annotation
+    import uuid
+
+    asset = Asset.find(asset_uuid)
+    assert asset
+
+    # Create a dummy annotation for this Sighting
+    new_annot = Annotation(
+        guid=uuid.uuid4(),
+        asset=asset,
+        ia_class='none',
+        bounds={'rect': [45, 5, 78, 3], 'theta': 4.8},
+    )
+    with db.session.begin(subtransactions=True):
+        db.session.add(new_annot)
+
+    # Patch it in
+    group_sighting = read_asset_group_sighting(
+        flask_app_client, user, asset_group_sighting_uuid
+    )
+
+    import copy
+
+    new_annot_data = copy.deepcopy(group_sighting.json['config'])
+    new_annot_data['encounters'][0]['annotations'] = [str(new_annot.guid)]
+    patch_data = [test_utils.patch_replace_op('config', new_annot_data)]
+    patch_asset_group_sighting(
+        flask_app_client, user, asset_group_sighting_uuid, patch_data
+    )
+    return new_annot.guid
+
+
+def patch_in_ia_config(
+    flask_app_client, user, asset_group_sighting_uuid, ia_config, expected_status_code=200
+):
+    group_sighting = read_asset_group_sighting(
+        flask_app_client, user, asset_group_sighting_uuid
+    )
+
+    import copy
+
+    new_ia_config_data = copy.deepcopy(group_sighting.json['config'])
+    if 'idConfigs' in new_ia_config_data:
+        new_ia_config_data.append(ia_config)
+    else:
+        new_ia_config_data['idConfigs'] = [
+            ia_config,
+        ]
+
+    patch_data = [test_utils.patch_replace_op('config', new_ia_config_data)]
+    patch_asset_group_sighting(
+        flask_app_client,
+        user,
+        asset_group_sighting_uuid,
+        patch_data,
+        expected_status_code,
+    )
+
+
 # multiple tests clone a asset_group, do something with it and clean it up. Make sure this always happens using a
 # class with a cleanup method to be called if any assertions fail
 class CloneAssetGroup(object):

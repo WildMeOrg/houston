@@ -18,6 +18,17 @@ KEYWORD_SET = set(keyword.kwlist)
 log = logging.getLogger(__name__)
 
 
+def to_acm_uuid(uuid):
+    return {'__UUID__': str(uuid)}
+
+
+def from_acm_uuid(uuid_str):
+    import uuid
+
+    assert '__UUID__' in uuid_str.keys()
+    return uuid.uuid4(uuid_str['__UUID__'])
+
+
 class ACMManager(RestManager):
     # pylint: disable=abstract-method
     """"""
@@ -42,7 +53,7 @@ class ACMManager(RestManager):
         },
         'job': {
             'detect_request': '//engine/detect/%s',
-            'identification_request': '//engine/identify/%s',
+            'identification_request': '//engine/query/graph/',
             'response': '//engine/job/result/?jobid=%s'
         }
     }
@@ -89,7 +100,7 @@ class ACMManager(RestManager):
         ):
             log_message = status_data.get('message', response.reason)
             #  Don't report internal Sage Errors to the frontend
-            message = 'failed to start detection'
+            message = 'failed to start Sage request'
 
             status_code = response.status_code
             if status_code > 600:

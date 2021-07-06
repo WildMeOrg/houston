@@ -3,6 +3,8 @@ import datetime
 import pathlib
 from unittest import mock
 import uuid
+import tests.extensions.tus.utils as tus_utils
+import tests.modules.asset_groups.resources.utils as asset_group_utils
 
 
 def test_asset_group_sightings_jobs(flask_app, db, admin_user, test_root, request):
@@ -66,3 +68,47 @@ def test_asset_group_sightings_jobs(flask_app, db, admin_user, test_root, reques
             'start': now,
         },
     }
+
+
+def test_asset_group_sightings_bulk(
+    flask_app, flask_app_client, db, admin_user, researcher_1, test_root, request
+):
+    from app.modules.asset_groups.models import AssetGroup, AssetGroupSighting
+
+    transaction_id, test_filename = asset_group_utils.create_bulk_tus_transaction(
+        test_root
+    )
+    asset_group_uuid = None
+    try:
+        data = asset_group_utils.get_bulk_creation_data(transaction_id, test_filename)
+        resp = asset_group_utils.create_asset_group(
+            flask_app_client, researcher_1, data.get()
+        )
+        asset_group_uuid = resp.json['guid']
+        asset_group = AssetGroup.query.get(asset_group_uuid)
+
+        # Make sure that both AGS' are created and have the correct locations
+        ags1 = AssetGroupSighting.query.get(resp.json['asset_group_sightings'][0]['guid'])
+        ags2 = AssetGroupSighting.query.get(resp.json['asset_group_sightings'][1]['guid'])
+        assert ags1
+        assert ags2
+
+        # Due to DB interactions, cannot rely on the order
+        assert sorted(ags.config['locationId'] for ags in (ags1, ags2)) == sorted(
+            cnf['locationId'] for cnf in data.content['sightings']
+        )
+        asset_group = AssetGroup.query.get(asset_group_uuid)
+
+        assert (
+            asset_group.asset_group_sightings[0].config['locationId']
+            == data.content['sightings'][0]['locationId']
+        )
+
+    finally:
+        # Restore original state
+        if asset_group_uuid:
+            asset_group_utils.delete_asset_group(
+                flask_app_client, researcher_1, asset_group_uuid
+            )
+
+        tus_utils.cleanup_tus_dir(transaction_id)

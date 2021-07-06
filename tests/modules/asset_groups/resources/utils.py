@@ -107,6 +107,34 @@ def create_asset_group(
     return response
 
 
+# As for method above but simulate a successful response from Sage and do some minimal validation
+def create_asset_group_sim_sage(
+    flask_app, flask_app_client, user, data, expected_status_code=200, expected_error=''
+):
+    # Simulate a valid response from Sage but don't actually send the request to Sage
+    with mock.patch.object(
+        flask_app.acm,
+        'request_passthrough_result',
+        return_value={'success': True},
+    ) as detection_started:
+
+        resp = create_asset_group(
+            flask_app_client, user, data, expected_status_code, expected_error
+        )
+        passed_args = detection_started.call_args[0]
+        assert passed_args[:-2] == ('job.detect_request', 'post')
+        params = passed_args[-2]['params']
+        assert set(params.keys()) >= {
+            'endpoint',
+            'function',
+            'jobid',
+            'callback_url',
+            'image_uuid_list',
+            'input',
+        }
+        return resp
+
+
 # Helper as many bulk uploads use a common set of files
 def create_bulk_tus_transaction(test_root):
     import tests.extensions.tus.utils as tus_utils
@@ -130,6 +158,89 @@ def get_bulk_creation_data(transaction_id, test_filename):
     data.add_filename(1, 'phoenix.jpg')
     data.set_field('uploadType', 'bulk')
     return data
+
+
+# Create a default valid Sage detection response (to allow for the test to corrupt it accordingly)
+def build_sage_detection_response(asset_group_guid, job_uuid):
+    from app.modules.asset_groups.models import AssetGroup
+    import uuid
+
+    asset_group = AssetGroup.query.get(asset_group_guid)
+
+    # Generate the response back from Sage
+    sage_resp = {
+        'response': {
+            'jobid': f'{str(job_uuid)}',
+            'json_result': {
+                'has_assignments': False,
+                'image_uuid_list': [],
+                'results_list': [],
+                'score_list': [
+                    0.0,
+                ],
+            },
+            'status': 'completed',
+        },
+        'status': {
+            'cache': -1,
+            'code': 200,
+            'message': {},
+            'success': True,
+        },
+    }
+    base_result = [
+        {
+            'class': 'whale_orca+fin_dorsal',
+            'confidence': 0.7909,
+            'height': 820,
+            'id': 947505,
+            'interest': False,
+            'left': 140,
+            'multiple': False,
+            'quality': None,
+            'species': 'whale_orca+fin_dorsal',
+            'theta': 0.0,
+            'top': 0,
+            'uuid': '23b9ac5a-9a52-473a-a4dd-6a1f4f255dbc',
+            'viewpoint': 'left',
+            'width': 1063,
+            'xtl': 140,
+            'ytl': 0,
+        }
+    ]
+
+    import copy
+
+    for asset in asset_group.assets:
+        sage_resp['response']['json_result']['image_uuid_list'].append(str(asset.guid))
+        # Give each annotation a new UUID
+        new_result = copy.deepcopy(base_result)
+        new_result[0]['uuid'] = str(uuid.uuid4())
+        sage_resp['response']['json_result']['results_list'].append(new_result)
+    return sage_resp
+
+
+def send_sage_detection_response(
+    flask_app_client,
+    user,
+    asset_group_sighting_guid,
+    job_guid,
+    data,
+    expected_status_code=200,
+):
+    with flask_app_client.login(user, auth_scopes=('asset_group_sightings:write',)):
+        response = flask_app_client.post(
+            f'{PATH}sighting/{asset_group_sighting_guid}/sage_detected/{job_guid}',
+            content_type='application/json',
+            data=json.dumps(data),
+        )
+    if expected_status_code == 200:
+        assert response.status_code == expected_status_code
+    else:
+        test_utils.validate_dict_response(
+            response, expected_status_code, {'status', 'message'}
+        )
+    return response
 
 
 def commit_asset_group_sighting(

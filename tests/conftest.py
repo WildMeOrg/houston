@@ -333,7 +333,7 @@ def test_asset_group_file_data(test_root):
 
 
 @pytest.fixture
-def test_asset_group_uuid(flask_app, db, admin_user, test_asset_group_file_data):
+def test_asset_group_uuid(flask_app, db, researcher_1, test_asset_group_file_data):
     from app.extensions.gitlab import GitlabInitializationError
     from app.modules.asset_groups.models import AssetGroup, AssetGroupMajorType
 
@@ -342,14 +342,14 @@ def test_asset_group_uuid(flask_app, db, admin_user, test_asset_group_file_data)
     if asset_group is None:
         asset_group = AssetGroup(
             guid=guid,
-            owner_guid=admin_user.guid,
+            owner_guid=researcher_1.guid,
             major_type=AssetGroupMajorType.test,
             description='This is a required PyTest submission (do not delete)',
         )
         with db.session.begin():
             db.session.add(asset_group)
     else:
-        asset_group.owner_guid = admin_user.guid
+        asset_group.owner_guid = researcher_1.guid
         asset_group.major_type = AssetGroupMajorType.test
         asset_group.description = 'This is a required PyTest submission (do not delete)'
         with db.session.begin():
@@ -363,7 +363,7 @@ def test_asset_group_uuid(flask_app, db, admin_user, test_asset_group_file_data)
 
 
 @pytest.fixture
-def test_empty_asset_group_uuid(flask_app, db, admin_user):
+def test_empty_asset_group_uuid(flask_app, db, researcher_1):
     from app.modules.asset_groups.models import AssetGroup, AssetGroupMajorType
 
     guid = '00000000-0000-0000-0000-000000000001'
@@ -371,7 +371,7 @@ def test_empty_asset_group_uuid(flask_app, db, admin_user):
     if asset_group is None:
         asset_group = AssetGroup(
             guid=guid,
-            owner_guid=admin_user.guid,
+            owner_guid=researcher_1.guid,
             major_type=AssetGroupMajorType.test,
             description='',
         )

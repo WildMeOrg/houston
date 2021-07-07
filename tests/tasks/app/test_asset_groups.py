@@ -56,7 +56,9 @@ def test_create_asset_group_from_path(flask_app, test_root, admin_user, request)
     assert asset_group.description == 'AssetGroup creation test'
 
 
-def test_clone_asset_group_from_gitlab(flask_app, db, test_asset_group_uuid, admin_user):
+def test_clone_asset_group_from_gitlab(
+    flask_app, db, test_asset_group_uuid, researcher_1
+):
     from app.extensions.gitlab import GitlabInitializationError
 
     try:
@@ -84,7 +86,7 @@ def test_clone_asset_group_from_gitlab(flask_app, db, test_asset_group_uuid, adm
         with pytest.raises(ValueError) as e:
             random_uuid = uuid.uuid4()
             clone_asset_group_from_gitlab(
-                MockContext(), str(random_uuid), admin_user.email
+                MockContext(), str(random_uuid), researcher_1.email
             )
             assert (
                 str(e)
@@ -94,7 +96,7 @@ def test_clone_asset_group_from_gitlab(flask_app, db, test_asset_group_uuid, adm
         with mock.patch('sys.stdout', new=io.StringIO()) as stdout:
             assert not repo_path.exists()
             clone_asset_group_from_gitlab(
-                MockContext(), str(test_asset_group_uuid), admin_user.email
+                MockContext(), str(test_asset_group_uuid), researcher_1.email
             )
             assert 'Cloned asset_group from GitLab' in stdout.getvalue()
             assert repo_path.exists()
@@ -102,7 +104,7 @@ def test_clone_asset_group_from_gitlab(flask_app, db, test_asset_group_uuid, adm
         with mock.patch('sys.stdout', new=io.StringIO()) as stdout:
             # do it again
             clone_asset_group_from_gitlab(
-                MockContext(), str(test_asset_group_uuid), admin_user.email
+                MockContext(), str(test_asset_group_uuid), researcher_1.email
             )
             assert 'AssetGroup is already cloned locally' in stdout.getvalue()
             assert repo_path.exists()

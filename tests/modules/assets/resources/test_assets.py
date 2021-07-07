@@ -27,14 +27,12 @@ def test_get_asset_not_found(flask_app_client, researcher_1):
 
 def test_find_asset(
     flask_app_client,
-    admin_user,
     researcher_1,
     test_clone_asset_group_data,
 ):
     # Clone the known asset_group so that the asset data is in the database
     asset_group_utils.clone_asset_group(
         flask_app_client,
-        admin_user,
         researcher_1,
         test_clone_asset_group_data['asset_group_uuid'],
     )
@@ -61,7 +59,6 @@ def test_find_asset(
 
 def test_find_deleted_asset(
     flask_app_client,
-    admin_user,
     researcher_1,
     db,
     test_clone_asset_group_data,
@@ -69,7 +66,6 @@ def test_find_deleted_asset(
     # Clone the known asset_group so that the asset data is in the database
     clone = asset_group_utils.clone_asset_group(
         flask_app_client,
-        admin_user,
         researcher_1,
         test_clone_asset_group_data['asset_group_uuid'],
     )
@@ -108,7 +104,6 @@ def test_find_raw_asset(
     # Clone the known asset_group so that the asset data is in the database
     clone = asset_group_utils.clone_asset_group(
         flask_app_client,
-        admin_user,
         researcher_1,
         test_clone_asset_group_data['asset_group_uuid'],
     )
@@ -150,7 +145,6 @@ def test_find_raw_asset(
 
 def test_user_asset_permissions(
     flask_app_client,
-    admin_user,
     researcher_1,
     readonly_user,
     db,
@@ -159,7 +153,6 @@ def test_user_asset_permissions(
     # Clone the known asset_group so that the asset data is in the database
     asset_group_utils.clone_asset_group(
         flask_app_client,
-        admin_user,
         researcher_1,
         test_clone_asset_group_data['asset_group_uuid'],
     )
@@ -178,7 +171,6 @@ def test_read_all_assets(
     # Clone the known asset_group so that the asset data is in the database
     asset_group_utils.clone_asset_group(
         flask_app_client,
-        admin_user,
         researcher_1,
         test_clone_asset_group_data['asset_group_uuid'],
     )

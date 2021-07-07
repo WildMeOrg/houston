@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import os
 import pathlib
 import tempfile
 import uuid
@@ -10,6 +11,10 @@ from flask_login import current_user, login_user, logout_user
 from tests import utils
 
 from app import create_app
+
+
+# Force FLASK_CONFIG to be testing instead of using what's defined in the environment
+os.environ['FLASK_CONFIG'] = 'testing'
 
 
 def pytest_addoption(parser):

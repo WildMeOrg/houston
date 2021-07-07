@@ -194,14 +194,14 @@ The EDM is a compiled Java application, and no volume mapping solution to a runn
 New Houston code must be tested with `pytest`. If dependencies are set up correctly an initial testing run can be done outside the docker container
 with the `pytest` command at the root level of the repository.
 
-To fully test you can `docker-compose exec houston /bin/bash` and set `FLASK_CONFIG= pytest` or
-test files inside the container from outside the container in one line using `docker-compose exec -e FLASK_CONFIG= houston pytest`.
+To fully test you can `docker-compose exec houston /bin/bash` and run `pytest` or
+test files inside the container from outside the container in one line using `docker-compose exec houston pytest`.
 
 They can also be run locally with simply `pytest`.
 
 These methods can target a specific app module by altering the command to something like this:
 
-    pytest tests/modules/[MODULE NAME]` or `FLASK_CONFIG= pytest tests/modules/[MODULE NAME]
+    pytest tests/modules/[MODULE NAME]`
 
 And may also the flags `-s` to print all additional logging or `-x` to stop on the first failed test.
 

@@ -157,8 +157,8 @@ class Asset(db.Model, HoustonModel):
     # will only set .meta values that can be derived automatically from file
     # (will not overwrite any manual/other values); silently fails if unknown type for deriving
     #
-    #  FIXME - this now is a very basic stub -- it is operating on original file and *very* likely fails
-    #  due to exif/orientation info TODO
+    #  TODO - this now is a very basic stub -- it is operating on original file and *very* likely fails
+    #  due to exif/orientation info
     def set_derived_meta(self):
         if not self.is_mime_type_major('image'):
             return None
@@ -184,6 +184,10 @@ class Asset(db.Model, HoustonModel):
             'width': self.meta['derived'].get('width', None),
             'height': self.meta['derived'].get('height', None),
         }
+
+    @property
+    def dimensions(self):
+        return self.get_dimensions()
 
     def get_or_make_format_path(self, format):
         FORMAT = {

@@ -46,7 +46,7 @@ class Sighting(db.Model, FeatherModel):
 
     # May have multiple jobs outstanding, store as Json obj dictionary, uuid_str is key,
     # Content = {'algorithm': model, 'active': Bool}
-    jobs = db.Column(db.JSON, default={}, nullable=True)
+    jobs = db.Column(db.JSON, default=lambda: {}, nullable=True)
 
     # A sighting may have multiple IaConfigs used for IA on Sage, each with multiple algorithms,
     # even if only one is supported for MVP, Store as Json obj List
@@ -376,6 +376,12 @@ class Sighting(db.Model, FeatherModel):
                 'active': True,
                 'start': datetime.utcnow(),
             }
+            # This is necessary because we can only mark self as modified if
+            # we assign to one of the database attributes
+
+            self.jobs = self.jobs
+            with db.session.begin(subtransactions=True):
+                db.session.merge(self)
         # TODO what stage is the Sighting in if no jobs are created?
 
     # Return the contents of the last ID request sent for the annotation Id, status and any response

@@ -142,6 +142,25 @@ class JSON(db.TypeDecorator):
 
         return process(value)
 
+    def compare_values(self, x, y):
+        # This method is used to determine whether a field has changed.
+        #
+        # This is a problem for lists and dicts because if the user edits the
+        # list or dict in place, "x" and "y" are going to be the same and we
+        # can't determine whether the field has changed.
+        #
+        # For example, if self.jobs was {}, then we do:
+        # self.jobs['job_id'] = {'some': 'stuff'}
+        #
+        # compare_values is going to get {'job_id': {'some': 'stuff'}} twice
+        # because sqlalchemy is unable to get back the previous value of
+        # self.jobs which was {}
+        #
+        # So we can't determine whether the field has actually changed.  If we
+        # return True here, the object does not get saved, so we're going to
+        # just always return False
+        return False
+
 
 class GUID(db.TypeDecorator):
     """Platform-independent GUID type.

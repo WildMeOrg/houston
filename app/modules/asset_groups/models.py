@@ -120,7 +120,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
     config = db.Column(db.JSON, nullable=True)
 
     # May have multiple jobs outstanding, store as Json obj uuid_str is key, In_progress Bool is value
-    jobs = db.Column(db.JSON, default={}, nullable=True)
+    jobs = db.Column(db.JSON, default=lambda: {}, nullable=True)
 
     def commit(self):
         from app.modules.utils import Cleanup
@@ -331,11 +331,17 @@ class AssetGroupSighting(db.Model, HoustonModel):
         current_app.acm.request_passthrough_result(
             'job.detect_request', 'post', {'params': detection_request}, 'cnn/lightnet'
         )
-        jobs = self.jobs
         from datetime import datetime  # NOQA
 
-        jobs[str(job_id)] = {'model': model, 'active': True, 'start': datetime.utcnow()}
-        self.jobs = jobs
+        self.jobs[str(job_id)] = {
+            'model': model,
+            'active': True,
+            'start': datetime.utcnow(),
+        }
+        # This is necessary because we can only mark self as modified if
+        # we assign to one of the database attributes
+        self.jobs = self.jobs
+
         with db.session.begin(subtransactions=True):
             db.session.merge(self)
 

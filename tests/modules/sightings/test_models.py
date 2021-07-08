@@ -1,6 +1,9 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=invalid-name,missing-docstring
+import datetime
 import logging
+from unittest import mock
+import uuid
 
 from app.modules.users.models import User
 
@@ -95,3 +98,79 @@ def test_sighting_ensure_no_duplicate_encounters(db):
 
     logging.info(test_sighting.get_encounters())
     logging.info(test_encounter.get_sighting())
+
+
+def test_sighting_jobs(db, request):
+    from app.modules.sightings.models import Sighting, SightingStage
+
+    example_ia_configs = {
+        'config1': {
+            'matchingSetDataOwners': ['user1'],
+            'algorithms': {'algorithm_id': 'algorithm1'},
+        },
+        'config2': {
+            'matchingSetDataOwners': ['user2'],
+            'algorithms': {'algorithm_id': 'algorithm2'},
+        },
+    }
+    sighting1 = Sighting(
+        stage=SightingStage.identification,
+        ia_configs=example_ia_configs,
+    )
+    sighting2 = Sighting(
+        stage=SightingStage.identification,
+        ia_configs=example_ia_configs,
+    )
+    with db.session.begin():
+        db.session.add(sighting1)
+        db.session.add(sighting2)
+    request.addfinalizer(sighting1.delete)
+    request.addfinalizer(sighting2.delete)
+    mock_acm = mock.patch('app.modules.sightings.models.current_app.acm')
+    mock_acm.start()
+    request.addfinalizer(mock_acm.stop)
+
+    job_id1 = uuid.uuid4()
+    job_id2 = uuid.uuid4()
+    job_id3 = uuid.uuid4()
+    job_ids = [job_id3, job_id2, job_id1]
+    mock_uuid = mock.patch(
+        'app.modules.sightings.models.uuid.uuid4', side_effect=job_ids.pop
+    )
+    mock_uuid.start()
+    request.addfinalizer(mock_uuid.stop)
+
+    now = datetime.datetime(2021, 7, 7, 23, 43, 55)
+    with mock.patch('datetime.datetime') as mock_datetime:
+        mock_datetime.utcnow.return_value = now
+        with mock.patch.object(sighting1, 'build_identification_request'):
+            sighting1.send_identification('config1', 'algorithm_id', 'aid1')
+            sighting1.send_identification('config2', 'algorithm_id', 'aid1')
+        with mock.patch.object(sighting2, 'build_identification_request'):
+            sighting2.send_identification('config2', 'algorithm_id', 'aid2')
+
+    assert Sighting.query.get(sighting1.guid).jobs == {
+        str(job_id1): {
+            'matching_set': ['user1'],
+            'algorithm': 'algorithm1',
+            'annotation': 'aid1',
+            'active': True,
+            'start': now,
+        },
+        str(job_id2): {
+            'matching_set': ['user2'],
+            'algorithm': 'algorithm2',
+            'annotation': 'aid1',
+            'active': True,
+            'start': now,
+        },
+    }
+    assert Sighting.query.get(sighting2.guid).jobs == {
+        str(job_id3): {
+            'matching_set': ['user2'],
+            'algorithm': 'algorithm2',
+            'annotation': 'aid2',
+            'active': True,
+            'start': now,
+        },
+    }

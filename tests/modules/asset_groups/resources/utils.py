@@ -127,7 +127,6 @@ def get_bulk_creation_data(transaction_id, test_filename):
     data.add_encounter(1)
     data.add_filename(1, 'coelacanth.png')
     data.add_encounter(1)
-    data.add_filename(1, 'fluke.jpg')
     data.add_filename(1, 'phoenix.jpg')
     data.set_field('uploadType', 'bulk')
     return data

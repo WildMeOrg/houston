@@ -291,6 +291,29 @@ def test_create_asset_group_detection(
         assert orig_objs == test_utils.all_count(db)
 
 
+def test_create_bulk_asset_group_dup_asset(flask_app_client, researcher_1, test_root, db):
+    # pylint: disable=invalid-name
+
+    transaction_id, test_filename = asset_group_utils.create_bulk_tus_transaction(
+        test_root
+    )
+    asset_group_uuid = None
+    try:
+        data = asset_group_utils.get_bulk_creation_data(transaction_id, test_filename)
+        data.add_filename(0, 'fluke.jpg')
+        expected_err = 'found fluke.jpg in multiple sightings'
+        asset_group_utils.create_asset_group(
+            flask_app_client, researcher_1, data.get(), 400, expected_err
+        )
+
+    finally:
+        if asset_group_uuid:
+            asset_group_utils.delete_asset_group(
+                flask_app_client, researcher_1, asset_group_uuid
+            )
+        tus_utils.cleanup_tus_dir(transaction_id)
+
+
 def test_create_bulk_asset_group(flask_app_client, researcher_1, test_root, db):
     # pylint: disable=invalid-name
     import uuid

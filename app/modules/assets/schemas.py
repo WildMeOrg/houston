@@ -36,6 +36,7 @@ class DetailedAssetSchema(BaseAssetSchema):
             Asset.updated.key,
             Asset.asset_group.key,
             'annotations',
+            'dimensions',
         )
         dump_only = BaseAssetSchema.Meta.dump_only + (
             Asset.created.key,

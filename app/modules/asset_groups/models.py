@@ -1096,6 +1096,7 @@ class AssetGroup(db.Model, HoustonModel):
         ):
             db.session.refresh(asset)
             asset.update_symlink(asset_asset_group_filepath)
+            asset.set_derived_meta()
             if verbose:
                 print(filepath)
                 print('\tAsset         : %s' % (asset,))

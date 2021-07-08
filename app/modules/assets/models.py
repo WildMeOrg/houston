@@ -145,6 +145,50 @@ class Asset(db.Model, HoustonModel):
 
         return asset_symlink_filepath
 
+    def mime_type_major(self):
+        if not self.mime_type:
+            return None
+        parts = self.mime_type.split('/')
+        return parts[0]
+
+    def is_mime_type_major(self, major):
+        return self.mime_type_major() == major
+
+    # will only set .meta values that can be derived automatically from file
+    # (will not overwrite any manual/other values); silently fails if unknown type for deriving
+    #
+    #  TODO - this now is a very basic stub -- it is operating on original file and *very* likely fails
+    #  due to exif/orientation info
+    def set_derived_meta(self):
+        if not self.is_mime_type_major('image'):
+            return None
+        dmeta = {}
+        source_path = self.get_symlink()
+        assert os.path.exists(source_path)
+        with Image.open(source_path) as im:
+            size = im.size
+            dmeta['width'] = size[0]
+            dmeta['height'] = size[1]
+        meta = self.meta if self.meta else {}
+        meta['derived'] = dmeta
+        self.meta = meta
+        log.debug(f'setting meta.derived to {dmeta}')
+        return dmeta
+
+    # right now we _only_ use `derived` values, so not much logic here
+    # TODO alter when we allow ways to override derived (or have more complex logic based on orientation)
+    def get_dimensions(self):
+        if not self.meta or not self.meta['derived']:
+            return None
+        return {
+            'width': self.meta['derived'].get('width', None),
+            'height': self.meta['derived'].get('height', None),
+        }
+
+    @property
+    def dimensions(self):
+        return self.get_dimensions()
+
     def get_or_make_format_path(self, format):
         FORMAT = {
             'master': [4096, 4096],

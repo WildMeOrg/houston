@@ -63,7 +63,7 @@ def set_up_assets(flask_app, db, test_root, admin_user, request):
     return asset_group
 
 
-def test_asset_delete(flask_app, db, test_root, admin_user, request):
+def test_asset_meta_and_delete(flask_app, db, test_root, admin_user, request):
     from app.modules.annotations.models import Annotation
     from app.modules.assets.models import Asset
     from app.modules.asset_groups.models import AssetGroup
@@ -74,6 +74,9 @@ def test_asset_delete(flask_app, db, test_root, admin_user, request):
     assert len(asset_group.assets) == 3
     assert len(asset_group.assets[0].annotations) == 1
     assert len(asset_group.assets[0].asset_sightings) == 1
+    dim = asset_group.assets[0].get_dimensions()
+    assert dim['width'] > 1
+    assert dim['height'] > 1
     asset_guids = [a.guid for a in asset_group.assets]
     annotation = asset_group.assets[0].annotations[0]
     sighting = asset_group.assets[0].asset_sightings[0].sighting

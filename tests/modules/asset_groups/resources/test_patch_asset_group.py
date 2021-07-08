@@ -30,7 +30,7 @@ def test_patch_asset_group(flask_app_client, researcher_1, regular_user, test_ro
         group_sighting = asset_group_utils.read_asset_group_sighting(
             flask_app_client, researcher_1, asset_group_sighting_guid
         )
-
+        assert 'assets' in group_sighting.json
         import copy
 
         new_absent_file = copy.deepcopy(group_sighting.json['config'])

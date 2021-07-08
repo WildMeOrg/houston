@@ -434,6 +434,21 @@ class AssetGroupSighting(db.Model, HoustonModel):
 
         self.job_complete(job_id)
 
+    # Used to build the response to AssetGroupSighting GET
+    def assets(self):
+        from app.modules.assets.schemas import DetailedAssetSchema
+
+        asset_schema = DetailedAssetSchema(
+            many=False, only=('guid', 'filename', 'src', 'annotations')
+        )
+        resp = []
+        for filename in self.config.get('assetReferences'):
+            asset = self.asset_group.get_asset_for_file(filename)
+            assert asset
+            json_msg, err = asset_schema.dump(asset)
+            resp.append(json_msg)
+        return resp
+
     def complete(self):
         # TODO check that the jobs are all actually complete
         self.stage = AssetGroupSightingStage.processed

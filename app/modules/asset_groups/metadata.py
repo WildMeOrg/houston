@@ -88,6 +88,11 @@ class BaseAssetGroupMetadata(object):
                     )
                 if file_size < 1:
                     raise AssetGroupMetadataError(f'found zero-size file for {filename}')
+                if filename in self.files:
+                    raise AssetGroupMetadataError(
+                        f'found {filename} in multiple sightings'
+                    )
+
                 # Set ensures no duplicates
                 self.files.add(filename)
 

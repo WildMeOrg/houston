@@ -44,8 +44,20 @@ def test_getting_list_of_users_by_unauthorized_user_must_fail(
     ),
 )
 def test_getting_list_of_users_by_authorized_user(
-    flask_app_client, user_manager_user, auth_scopes
+    flask_app_client, user_manager_user, auth_scopes, db, test_root, request
 ):
+    # Add a profile image to user_manager_user
+    from app.modules.fileuploads.models import FileUpload
+
+    fup = FileUpload.create_fileupload_from_path(test_root / 'zebra.jpg', copy=True)
+    user_manager_user.profile_fileupload = fup
+    with db.session.begin():
+        db.session.add(fup)
+        db.session.merge(user_manager_user)
+    request.addfinalizer(lambda: db.session.delete(fup))
+    request.addfinalizer(lambda: db.session.merge(user_manager_user))
+    request.addfinalizer(lambda: setattr(user_manager_user, 'profile_fileupload', None))
+
     # pylint: disable=invalid-name
     with flask_app_client.login(user_manager_user, auth_scopes=auth_scopes):
         response = flask_app_client.get('/api/v1/users/')
@@ -53,7 +65,30 @@ def test_getting_list_of_users_by_authorized_user(
     assert response.status_code == 200
     assert response.content_type == 'application/json'
     assert isinstance(response.json, list)
-    assert set(response.json[0].keys()) >= {'guid', 'email'}
+    user = [u for u in response.json if u['email'] == user_manager_user.email]
+    assert len(user) == 1
+    assert user[0] == {
+        'guid': str(user_manager_user.guid),
+        'email': user_manager_user.email,
+        'full_name': user_manager_user.full_name,
+        'is_active': True,
+        'is_contributor': True,
+        'is_exporter': False,
+        'is_internal': False,
+        'is_staff': False,
+        'is_researcher': False,
+        'is_user_manager': True,
+        'is_admin': False,
+        'in_alpha': True,
+        'in_beta': False,
+        'profile_fileupload': {
+            'created': f'{fup.created.isoformat()}+00:00',
+            'updated': f'{fup.updated.isoformat()}+00:00',
+            'guid': str(fup.guid),
+            'mime_type': 'image/jpeg',
+            'src': f'/api/v1/fileuploads/src/{fup.guid}',
+        },
+    }
 
 
 def test_getting_user_info_by_unauthorized_user(

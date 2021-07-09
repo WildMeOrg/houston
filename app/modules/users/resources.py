@@ -37,7 +37,7 @@ class Users(Resource):
             'action': AccessOperation.READ,
         },
     )
-    @api.response(schemas.BaseUserSchema(many=True))
+    @api.response(schemas.UserListSchema(many=True))
     @api.paginate(parameters.ListUserParameters())
     def get(self, args):
         """

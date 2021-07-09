@@ -150,3 +150,4 @@ def test_modify_encounters(db, flask_app_client, researcher_1, empty_individual)
     with db.session.begin():
         db.session.delete(mod_enc_1)
         db.session.delete(mod_enc_2)
+        db.session.delete(empty_individual)

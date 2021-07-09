@@ -80,8 +80,12 @@ def test_commit_owner_asset_group(
         sighting = Sighting.query.get(sighting_uuid)
         encounters = sighting.get_encounters()
         assert len(encounters) == 2
-        assert encounters[0].owner == regular_user
-        assert encounters[1].owner == researcher_1
+        # It seems encounters may not be returned in order so we can't assert
+        # encounters[0].owner == regular_user
+        assert sorted([e.owner.email for e in encounters]) == [
+            researcher_1.email,
+            regular_user.email,
+        ]
 
     finally:
         # Restore original state
@@ -100,7 +104,6 @@ def test_commit_asset_group_ia(
 ):
     # pylint: disable=invalid-name
     from tests.modules.asset_groups.resources.utils import TestCreationData
-    from app.modules.sightings.models import Sighting  # noqa
 
     transaction_id, test_filename = tus_utils.prep_tus_dir(test_root)
     asset_group_uuid = None
@@ -135,15 +138,10 @@ def test_commit_asset_group_ia(
             flask_app_client, researcher_1, asset_group_sighting_guid, ia_config, 200
         )
 
-        asset_group_utils.commit_asset_group_sighting(
+        response = asset_group_utils.commit_asset_group_sighting(
             flask_app_client, researcher_1, asset_group_sighting_guid
         )
-
-        # sighting_uuid = response.json['guid']
-        # sighting = Sighting.query.get(sighting_uuid)
-        # assert len(sighting.get_encounters()) == 1
-        # assert len(sighting.get_assets()) == 1
-        # assert sighting.get_owner() == regular_user
+        sighting_uuid = response.json['guid']
 
     finally:
         # Restore original state

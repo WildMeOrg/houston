@@ -3,7 +3,6 @@
 
 from tests.modules.sightings.resources import utils as sighting_utils
 from tests.extensions.edm import utils as edm_utils
-from tests import utils as test_utils
 
 
 def test_custom_fields_on_sighting(
@@ -14,9 +13,6 @@ def test_custom_fields_on_sighting(
 
     cfd_id = edm_utils.custom_field_create(flask_app_client, admin_user, 'test_cfd')
     assert cfd_id is not None
-
-    # we should end up with these same counts (which _should be_ all zeros!)
-    orig_ct = test_utils.all_count(db)
 
     timestamp = datetime.datetime.now().isoformat() + 'Z'
     transaction_id, test_filename = sighting_utils.prep_tus_dir(test_root)
@@ -77,6 +73,3 @@ def test_custom_fields_on_sighting(
 
     # clean up
     sighting_utils.delete_sighting(flask_app_client, researcher_1, sighting_id)
-
-    post_ct = test_utils.all_count(db)
-    assert orig_ct == post_ct

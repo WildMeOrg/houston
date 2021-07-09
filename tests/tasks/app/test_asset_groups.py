@@ -60,6 +60,11 @@ def test_clone_asset_group_from_gitlab(
     flask_app, db, test_asset_group_uuid, researcher_1
 ):
     from app.extensions.gitlab import GitlabInitializationError
+    from app.modules.asset_groups.models import AssetGroup
+
+    # Patch delete_remote so it doesn't delete the gitlab project
+    with mock.patch('app.modules.asset_groups.tasks.delete_remote'):
+        AssetGroup.query.get(test_asset_group_uuid).delete()
 
     try:
         flask_app.git_backend._ensure_initialized()
@@ -67,12 +72,6 @@ def test_clone_asset_group_from_gitlab(
         pytest.skip('gitlab unavailable')
     clone_root = pathlib.Path(flask_app.config['ASSET_GROUP_DATABASE_PATH'])
     repo_path = clone_root / str(test_asset_group_uuid)
-
-    from app.modules.asset_groups.models import AssetGroup
-
-    # Patch delete_remote so it doesn't delete the gitlab project
-    with mock.patch('app.modules.asset_groups.tasks.delete_remote'):
-        AssetGroup.query.get(test_asset_group_uuid).delete()
 
     with mock.patch('app.create_app'):
         from tasks.app.asset_groups import clone_asset_group_from_gitlab
@@ -109,9 +108,13 @@ def test_clone_asset_group_from_gitlab(
             assert 'AssetGroup is already cloned locally' in stdout.getvalue()
             assert repo_path.exists()
 
+    with mock.patch('app.modules.asset_groups.tasks.delete_remote'):
+        AssetGroup.query.get(test_asset_group_uuid).delete()
+
 
 def test_list_all(flask_app, test_asset_group_uuid, test_empty_asset_group_uuid):
     with mock.patch('app.create_app'):
+        from app.modules.asset_groups.models import AssetGroup
         from tasks.app.asset_groups import list_all
 
         with mock.patch('sys.stdout', new=io.StringIO()) as stdout:
@@ -119,3 +122,7 @@ def test_list_all(flask_app, test_asset_group_uuid, test_empty_asset_group_uuid)
             asset_groups = stdout.getvalue()
             assert f'<AssetGroup(guid={test_asset_group_uuid}' in asset_groups
             assert f'<AssetGroup(guid={test_empty_asset_group_uuid}' in asset_groups
+
+        with mock.patch('app.modules.asset_groups.tasks.delete_remote'):
+            AssetGroup.query.get(test_asset_group_uuid).delete()
+            AssetGroup.query.get(test_empty_asset_group_uuid).delete()

@@ -38,6 +38,15 @@ def pytest_generate_tests(metafunc):
         metafunc.parametrize('gitlab_remote_login_pat', value, scope='session')
 
 
+@pytest.fixture(autouse=True)
+def check_cleanup_objects(db):
+    count = utils.all_count(db)
+    yield
+    assert count == utils.all_count(
+        db
+    ), 'Some objects created in the test need to be cleaned up'
+
+
 @pytest.fixture(scope='session')
 def flask_app(gitlab_remote_login_pat):
     with tempfile.TemporaryDirectory() as td:

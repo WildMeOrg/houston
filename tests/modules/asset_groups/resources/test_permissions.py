@@ -1,10 +1,11 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=missing-docstring
+import uuid
+
 import tests.modules.asset_groups.resources.utils as asset_group_utils
 import tests.modules.assets.resources.utils as asset_utils
 import tests.extensions.tus.utils as tus_utils
 from tests import utils as test_utils
-import uuid
 
 
 def test_user_read_permissions(
@@ -17,7 +18,7 @@ def test_user_read_permissions(
     # Clone as the researcher user and then try to reread as both researcher and readonly user,
     # read by researcher user should succeed, read by readonly user should be blocked
 
-    asset_group_utils.clone_asset_group(
+    clone = asset_group_utils.clone_asset_group(
         flask_app_client,
         researcher_1,
         test_clone_asset_group_data['asset_group_uuid'],
@@ -49,6 +50,7 @@ def test_user_read_permissions(
     asset_group_utils.read_asset_group(
         flask_app_client, None, test_clone_asset_group_data['asset_group_uuid'], 401
     )
+    clone.cleanup()
 
 
 def test_create_patch_asset_group(

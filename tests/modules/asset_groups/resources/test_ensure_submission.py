@@ -1,19 +1,26 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=missing-docstring
 import uuid
-import tests.modules.asset_groups.resources.utils as utils
+
+from tests.modules.asset_groups.resources import utils
 
 
 def test_ensure_asset_group_by_uuid(
     flask_app_client, researcher_1, db, test_asset_group_uuid
 ):
-    utils.clone_asset_group(flask_app_client, researcher_1, test_asset_group_uuid)
+    clone = utils.clone_asset_group(
+        flask_app_client, researcher_1, test_asset_group_uuid
+    )
+    clone.cleanup()
 
 
 def test_ensure_empty_asset_group_by_uuid(
     flask_app_client, researcher_1, db, test_empty_asset_group_uuid
 ):
-    utils.clone_asset_group(flask_app_client, researcher_1, test_empty_asset_group_uuid)
+    clone = utils.clone_asset_group(
+        flask_app_client, researcher_1, test_empty_asset_group_uuid
+    )
+    clone.cleanup()
 
 
 def test_ensure_clone_asset_group_by_uuid(
@@ -52,3 +59,5 @@ def test_ensure_clone_asset_group_by_uuid(
         db_asset = Asset.query.get(asset.guid)
         assert asset == db_asset
         assert asset.guid == expected_guid
+
+    clone.cleanup()

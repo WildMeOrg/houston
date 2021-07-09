@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=missing-docstring
 import hashlib
+
 import tests.modules.asset_groups.resources.utils as asset_group_utils
 import tests.modules.assets.resources.utils as asset_utils
 
@@ -31,7 +32,7 @@ def test_find_asset(
     test_clone_asset_group_data,
 ):
     # Clone the known asset_group so that the asset data is in the database
-    asset_group_utils.clone_asset_group(
+    clone = asset_group_utils.clone_asset_group(
         flask_app_client,
         researcher_1,
         test_clone_asset_group_data['asset_group_uuid'],
@@ -55,6 +56,7 @@ def test_find_asset(
     finally:
         # Force the server to release the file handler
         src_response.close()
+        clone.cleanup()
 
 
 def test_find_deleted_asset(
@@ -91,6 +93,7 @@ def test_find_deleted_asset(
     finally:
         # Force the server to release the file handler
         src_response.close()
+        clone.cleanup()
 
 
 def test_find_raw_asset(
@@ -141,6 +144,7 @@ def test_find_raw_asset(
     finally:
         # Force the server to release the file handler
         raw_src_response.close()
+        clone.cleanup()
 
 
 def test_user_asset_permissions(
@@ -151,7 +155,7 @@ def test_user_asset_permissions(
     test_clone_asset_group_data,
 ):
     # Clone the known asset_group so that the asset data is in the database
-    asset_group_utils.clone_asset_group(
+    clone = asset_group_utils.clone_asset_group(
         flask_app_client,
         researcher_1,
         test_clone_asset_group_data['asset_group_uuid'],
@@ -161,6 +165,8 @@ def test_user_asset_permissions(
     asset_guid = test_clone_asset_group_data['asset_uuids'][0]
     asset_utils.read_asset(flask_app_client, readonly_user, asset_guid, 403)
 
+    clone.cleanup()
+
 
 def test_read_all_assets(
     flask_app_client,
@@ -169,7 +175,7 @@ def test_read_all_assets(
     test_clone_asset_group_data,
 ):
     # Clone the known asset_group so that the asset data is in the database
-    asset_group_utils.clone_asset_group(
+    clone = asset_group_utils.clone_asset_group(
         flask_app_client,
         researcher_1,
         test_clone_asset_group_data['asset_group_uuid'],
@@ -182,3 +188,5 @@ def test_read_all_assets(
     # both of these lists should be lexical order
     assert admin_response.json[0]['guid'] == test_clone_asset_group_data['asset_uuids'][0]
     assert admin_response.json[1]['guid'] == test_clone_asset_group_data['asset_uuids'][1]
+
+    clone.cleanup()

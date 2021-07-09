@@ -80,8 +80,12 @@ def test_commit_owner_asset_group(
         sighting = Sighting.query.get(sighting_uuid)
         encounters = sighting.get_encounters()
         assert len(encounters) == 2
-        assert encounters[0].owner == regular_user
-        assert encounters[1].owner == researcher_1
+        # It seems encounters may not be returned in order so we can't assert
+        # encounters[0].owner == regular_user
+        assert sorted([e.owner.email for e in encounters]) == [
+            researcher_1.email,
+            regular_user.email,
+        ]
 
     finally:
         # Restore original state

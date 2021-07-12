@@ -408,18 +408,6 @@ class Sighting(db.Model, FeatherModel):
             # rework when there are multiple
             self.stage = SightingStage.un_reviewed
 
-    # Return the contents of the last ID request sent for the annotation Id, status and any response
-    def get_last_identification_data(self, annotation_uuid):
-        id_data = {}
-        # TODO, DEX-354 iterate through self.jobs looking for annotation_uuid,
-        # for the last one (calculated by looking at the start time)
-        # Use the matching_set, algorithm and job_uuid from the job, to rebuild the request sent
-        # using  build_identification_request
-        # store this as id_data.request
-        # store job active in id_data.active
-        # request response for this job from Sage and store in id_data.response
-        return id_data
-
     def check_job_status(self, job_id):
         if str(job_id) not in self.jobs:
             log.warning(f'check_job_status called for invalid job {job_id}')

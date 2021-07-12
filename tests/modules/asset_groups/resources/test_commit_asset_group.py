@@ -67,7 +67,10 @@ def test_commit_owner_asset_group(
     sighting_uuid = None
     try:
         data = asset_group_utils.get_bulk_creation_data(transaction_id, test_filename)
+        # order of ags not deterministic so to make the test simpler, make the first encounter in all
+        # sightings owned by the regular user
         data.set_encounter_field(0, 0, 'ownerEmail', regular_user.email)
+        data.set_encounter_field(1, 0, 'ownerEmail', regular_user.email)
         resp = asset_group_utils.create_asset_group(
             flask_app_client, researcher_1, data.get()
         )

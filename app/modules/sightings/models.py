@@ -183,6 +183,27 @@ class Sighting(db.Model, FeatherModel):
                     f"Algorithm:{job['algorithm']} Annotation:{job['annotaion']} UTC Start:{job['start']}"
                 )
 
+    # Build up dict to print out status (calling function chooses what to collect and print)
+    def get_job_details(self, annotation_id, verbose):
+
+        details = {}
+        for job_id in self.jobs.keys():
+            if annotation_id == self.jobs[job_id]['annotation']:
+                details[job_id] = self.jobs[job_id]
+                if verbose:
+                    details[job_id]['request'] = self.build_identification_request(
+                        self.jobs[job_id]['matching_set'],
+                        self.jobs[job_id]['annotation'],
+                        job_id,
+                    )
+                    details[job_id][
+                        'response'
+                    ] = current_app.acm.request_passthrough_result(
+                        'job.response', 'post', {}, job_id
+                    )
+
+        return details
+
     def delete(self):
         with db.session.begin():
             db.session.delete(self)
@@ -382,7 +403,8 @@ class Sighting(db.Model, FeatherModel):
             self.jobs = self.jobs
             with db.session.begin(subtransactions=True):
                 db.session.merge(self)
-        # TODO what stage is the Sighting in if no jobs are created?
+        else:
+            self.stage = SightingStage.un_reviewed
 
     # Return the contents of the last ID request sent for the annotation Id, status and any response
     def get_last_identification_data(self, annotation_uuid):

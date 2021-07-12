@@ -404,6 +404,8 @@ class Sighting(db.Model, FeatherModel):
             with db.session.begin(subtransactions=True):
                 db.session.merge(self)
         else:
+            # TODO, this is correct for MVP as there is only one id per Sighting but this will need
+            # rework when there are multiple
             self.stage = SightingStage.un_reviewed
 
     # Return the contents of the last ID request sent for the annotation Id, status and any response

@@ -178,7 +178,8 @@ class AssetGroupSighting(db.Model, HoustonModel):
             stage=SightingStage.identification,
             version=result_data.get('version', 2),
         )
-
+        with db.session.begin(subtransactions=True):
+            db.session.add(sighting)
         # Add the assets for all of the encounters to the created sighting object
         for reference in self.config.get('assetReferences', []):
             asset = self.asset_group.get_asset_for_file(reference)
@@ -217,17 +218,14 @@ class AssetGroupSighting(db.Model, HoustonModel):
                     new_encounter.add_annotation(annot)
 
                 sighting.add_encounter(new_encounter)
+                with db.session.begin(subtransactions=True):
+                    db.session.add(new_encounter)
 
             except Exception as ex:
                 cleanup.rollback_and_houston_exception(
                     'Problem with creating encounter: ',
                     f'{ex} on encounter {encounter_num}: enc={req_data}',
                 )
-
-        with db.session.begin(subtransactions=True):
-            db.session.add(sighting)
-            for encounter in sighting.get_encounters():
-                db.session.add(encounter)
 
         # AssetGroupSighting is finished, all subsequent processing is on the Sighting
         self.complete()
@@ -413,9 +411,9 @@ class AssetGroupSighting(db.Model, HoustonModel):
 
             for annot_id in range(len(results[asset_id])):
                 annot_data = results[asset_id][annot_id]
-                uuid = annot_data.get('uuid', None)
+                annot_uuid = annot_data.get('uuid', None)
                 ia_class = annot_data.get('class', None)
-                if not uuid or not ia_class:
+                if not annot_uuid or not ia_class:
                     raise HoustonException(
                         'Need a uuid and a class in each of the results'
                     )
@@ -423,7 +421,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
                 bounds = Annotation.create_bounds(annot_data)
 
                 new_annot = Annotation(
-                    guid=annot_data['uuid'],
+                    guid=annot_uuid,
                     asset=asset,
                     ia_class=annot_data['class'],
                     bounds=bounds,
@@ -431,8 +429,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
 
                 with db.session.begin(subtransactions=True):
                     db.session.add(new_annot)
-
-        self.job_complete(job_id)
+        self.job_complete(str(job_id))
 
     # Used to build the response to AssetGroupSighting GET
     def assets(self):
@@ -450,21 +447,21 @@ class AssetGroupSighting(db.Model, HoustonModel):
         return resp
 
     def complete(self):
-        # TODO check that the jobs are all actually complete
+        for job_id in self.jobs:
+            assert self.jobs[job_id]['active']
+
         self.stage = AssetGroupSightingStage.processed
         with db.session.begin(subtransactions=True):
             db.session.merge(self)
         db.session.refresh(self)
 
-    def job_complete(self, job_id):
-        jobs = self.jobs
-        if job_id in jobs:
-            jobs[job_id]['active'] = False
-            self.jobs = jobs
+    def job_complete(self, job_id_str):
+        if job_id_str in self.jobs:
+            self.jobs[job_id_str]['active'] = False
 
             outstanding_jobs = []
-            for job in jobs.keys():
-                if jobs[job]['active']:
+            for job in self.jobs.keys():
+                if self.jobs[job]['active']:
                     outstanding_jobs.append(job)
 
             if len(outstanding_jobs) == 0:
@@ -473,7 +470,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
             with db.session.begin(subtransactions=True):
                 db.session.merge(self)
         else:
-            log.warning(f'job_id {job_id} not found in AssetGroupSighting')
+            log.warning(f'job_id {job_id_str} not found in AssetGroupSighting')
 
     def delete(self):
         with db.session.begin(subtransactions=True):
@@ -1263,6 +1260,7 @@ class AssetGroup(db.Model, HoustonModel):
                 new_sighting.stage = AssetGroupSightingStage.detection
                 try:
                     for config in metadata.detection_configs:
+                        log.debug(f'ia pipeline running sage detection {config}')
                         new_sighting.run_sage_detection(config)
                 except HoustonException as ex:
                     new_sighting.delete()
@@ -1271,8 +1269,6 @@ class AssetGroup(db.Model, HoustonModel):
             with db.session.begin(subtransactions=True):
                 db.session.add(new_sighting)
             db.session.refresh(new_sighting)
-
-            self.asset_group_sightings.append(new_sighting)
 
         # make sure the repo is created
         self.ensure_repository()

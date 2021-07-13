@@ -65,3 +65,49 @@ def print_all_asset_jobs(context, asset_guid, verbose=False):
         )
         if verbose:
             print(f"\n\tRequest:{job['request']}\n\tResponse:{job['response']}")
+
+
+def get_jobs_for_annotation(annotation_guid, verbose):
+    from app.modules.annotations.models import Annotation
+
+    annot = Annotation.query.get(annotation_guid)
+    if not annot:
+        print(f'Annotation {annotation_guid} not found')
+        return []
+
+    return annot.encounter.sighting.get_job_details(annotation_guid, verbose)
+
+
+@app_context_task()
+def print_last_annotation_job(context, annotation_guid, verbose=False):
+    """Print out the job status for the last identification job for the annotation"""
+
+    jobs = get_jobs_for_annotation(annotation_guid, verbose)
+
+    last_job_id = None
+    last_job = {}
+    for job_id in jobs.keys():
+        if not last_job_id or jobs[job_id]['start'] > last_job['start']:
+            last_job_id = job_id
+            last_job = jobs[job_id]
+
+    print(
+        f"Last Job {last_job_id} Active:{last_job['active']} "
+        f"Started (UTC):{last_job['start']} algorithm:{last_job['algorithm']}"
+    )
+    if verbose:
+        print(f"\n\tRequest:{last_job['request']}\n\tResponse:{last_job['response']}")
+
+
+@app_context_task()
+def print_all_annotation_jobs(context, annotation_guid, verbose=False):
+    """Print out the job status for all the identification jobs for the annotation"""
+    jobs = get_jobs_for_annotation(annotation_guid, verbose)
+
+    for job_id in jobs.keys():
+        job = jobs[job_id]
+        print(
+            f"Job {job_id} Active:{job['active']} Started (UTC):{job['start']} algorithm:{job['algorithm']}"
+        )
+        if verbose:
+            print(f"\n\tRequest:{job['request']}\n\tResponse:{job['response']}")

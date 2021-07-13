@@ -264,6 +264,28 @@ def commit_asset_group_sighting(
     return response
 
 
+# Many tests require a committed assetgroup with one sighting, use this helper
+def create_and_commit_asset_group(
+    flask_app_client, db, user, transaction_id, test_filename
+):
+    data = TestCreationData(transaction_id)
+    data.add_filename(0, test_filename)
+    response = create_asset_group(flask_app_client, user, data.get())
+    asset_group_uuid = response.json['guid']
+    asset_group_sighting_guid = response.json['asset_group_sightings'][0]['guid']
+    asset_uuid = response.json['assets'][0]['guid']
+    annot_uuid = patch_in_dummy_annotation(
+        flask_app_client, db, user, asset_group_sighting_guid, asset_uuid
+    )
+
+    response = commit_asset_group_sighting(
+        flask_app_client, user, asset_group_sighting_guid
+    )
+
+    sighting_uuid = response.json['guid']
+    return asset_group_uuid, sighting_uuid, annot_uuid
+
+
 def patch_asset_group(
     flask_app_client, user, asset_group_guid, data, expected_status_code=200
 ):

@@ -183,6 +183,27 @@ class Sighting(db.Model, FeatherModel):
                     f"Algorithm:{job['algorithm']} Annotation:{job['annotaion']} UTC Start:{job['start']}"
                 )
 
+    # Build up dict to print out status (calling function chooses what to collect and print)
+    def get_job_details(self, annotation_id, verbose):
+
+        details = {}
+        for job_id in self.jobs.keys():
+            if annotation_id == self.jobs[job_id]['annotation']:
+                details[job_id] = self.jobs[job_id]
+                if verbose:
+                    details[job_id]['request'] = self.build_identification_request(
+                        self.jobs[job_id]['matching_set'],
+                        self.jobs[job_id]['annotation'],
+                        job_id,
+                    )
+                    details[job_id][
+                        'response'
+                    ] = current_app.acm.request_passthrough_result(
+                        'job.response', 'post', {}, job_id
+                    )
+
+        return details
+
     def delete(self):
         with db.session.begin():
             db.session.delete(self)
@@ -382,19 +403,10 @@ class Sighting(db.Model, FeatherModel):
             self.jobs = self.jobs
             with db.session.begin(subtransactions=True):
                 db.session.merge(self)
-        # TODO what stage is the Sighting in if no jobs are created?
-
-    # Return the contents of the last ID request sent for the annotation Id, status and any response
-    def get_last_identification_data(self, annotation_uuid):
-        id_data = {}
-        # TODO, DEX-354 iterate through self.jobs looking for annotation_uuid,
-        # for the last one (calculated by looking at the start time)
-        # Use the matching_set, algorithm and job_uuid from the job, to rebuild the request sent
-        # using  build_identification_request
-        # store this as id_data.request
-        # store job active in id_data.active
-        # request response for this job from Sage and store in id_data.response
-        return id_data
+        else:
+            # TODO, this is correct for MVP as there is only one id per Sighting but this will need
+            # rework when there are multiple
+            self.stage = SightingStage.un_reviewed
 
     def check_job_status(self, job_id):
         if str(job_id) not in self.jobs:

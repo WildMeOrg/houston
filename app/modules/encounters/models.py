@@ -108,6 +108,7 @@ class Encounter(db.Model, FeatherModel):
         edm_json['createdHouston'] = self.created.isoformat()
         edm_json['updatedHouston'] = self.updated.isoformat()
         from app.modules.users.schemas import PublicUserSchema
+        from app.modules.annotations.schemas import BaseAnnotationSchema
 
         user_schema = PublicUserSchema(many=False)
         json, err = user_schema.dump(self.get_owner())
@@ -115,4 +116,12 @@ class Encounter(db.Model, FeatherModel):
         if self.submitter_guid is not None:
             json, err = user_schema.dump(self.submitter)
             edm_json['submitter'] = json
+
+        if self.annotations and len(self.annotations) > 0:
+            ann_schema = BaseAnnotationSchema(many=False, exclude=['encounter_guid'])
+            edm_json['annotations'] = []
+            for ann in self.annotations:
+                json, err = ann_schema.dump(ann)
+                edm_json['annotations'].append(json)
+
         return edm_json

@@ -563,3 +563,29 @@ class FeaturedAssetGuidBySightingID(Resource):
                 db.session.merge(sighting)
             success = True
         return {'success': success}
+
+
+@api.route('/<uuid:sighting_guid>/sage_identified/<uuid:job_guid>')
+@api.login_required(oauth_scopes=['sightings:write'])
+@api.response(
+    code=HTTPStatus.NOT_FOUND,
+    description='Sighting not found.',
+)
+@api.resolve_object_by_model(Sighting, 'sighting')
+class SightingIdentified(Resource):
+    """
+    Detection of Asset Group Sighting complete
+    """
+
+    @api.permission_required(
+        permissions.ObjectAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'obj': kwargs['sighting'],
+            'action': AccessOperation.WRITE_PRIVILEGED,
+        },
+    )
+    def post(self, sighting, job_guid):
+        try:
+            sighting.identifed(job_guid, json.loads(request.data))
+        except HoustonException as ex:
+            abort(ex.status_code, ex.message, errorFields=ex.get_val('error', 'Error'))

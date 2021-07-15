@@ -259,6 +259,25 @@ class Sightings(Resource):
                 'Sighting.post imbalanced encounters in %r or %r'
                 % (request_in, result_data),
             )
+
+        from app.modules.annotations.models import Annotation
+
+        enc_anns = []  # list of lists of annotations for each encounter (if applicable)
+        try:
+            for enc_json in request_in['encounters']:
+                anns = []
+                anns_in = enc_json.get('annotations', [])
+                for ann_in in anns_in:
+                    ann = Annotation.query.get(ann_in.get('guid', None))
+                    assert ann is not None
+                    anns.append(ann)
+                enc_anns.append(anns)
+        except Exception as ex:
+            cleanup.rollback_and_abort(
+                'Invalid encounter.annotations',
+                'loading annotations threw %r on encounters=%r' % (ex, enc_json),
+            )
+
         asset_references = request_in.get('assetReferences')
         try:
             all_arefs, paths_wanted = _validate_asset_references(asset_references)
@@ -327,6 +346,7 @@ class Sightings(Resource):
                         version=result_data['encounters'][i].get('version', 2),
                         asset_group_sighting_encounter_guid=uuid.uuid4(),
                         owner_guid=owner.guid,
+                        annotations=enc_anns.pop(0),
                         submitter_guid=submitter_guid,
                         public=pub,
                     )
@@ -459,6 +479,7 @@ class SightingByID(Resource):
                 sighting.delete_cascade()  # this will get rid of our encounter(s) as well so no need to rectify_edm_encounters()
                 sighting = None
             else:
+                # TODO we must check enc.annotations here (or maybe inside rectify_edm_encounters?)
                 sighting.rectify_edm_encounters(result.get('encounters'), current_user)
                 new_version = result.get('version', None)
                 if new_version is not None:

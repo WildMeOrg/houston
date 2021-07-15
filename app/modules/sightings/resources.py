@@ -132,6 +132,19 @@ def _validate_assets(assets, paths_wanted):
     return matches
 
 
+def _validate_annotations(enc_json):
+    assert enc_json is not None
+    from app.modules.annotations.models import Annotation
+
+    anns = []
+    anns_in = enc_json.get('annotations', [])
+    for ann_in in anns_in:
+        ann = Annotation.query.get(ann_in.get('guid', None))
+        assert ann is not None
+        anns.append(ann)
+    return anns
+
+
 @api.route('/')
 class Sightings(Resource):
     """
@@ -260,17 +273,10 @@ class Sightings(Resource):
                 % (request_in, result_data),
             )
 
-        from app.modules.annotations.models import Annotation
-
         enc_anns = []  # list of lists of annotations for each encounter (if applicable)
         try:
             for enc_json in request_in['encounters']:
-                anns = []
-                anns_in = enc_json.get('annotations', [])
-                for ann_in in anns_in:
-                    ann = Annotation.query.get(ann_in.get('guid', None))
-                    assert ann is not None
-                    anns.append(ann)
+                anns = _validate_annotations(enc_json)
                 enc_anns.append(anns)
         except Exception as ex:
             cleanup.rollback_and_abort(
@@ -336,6 +342,7 @@ class Sightings(Resource):
         from app.modules.encounters.models import Encounter
 
         if isinstance(result_data['encounters'], list):
+            assert len(result_data['encounters']) == len(enc_anns)
             i = 0
             while i < len(result_data['encounters']):
                 try:
@@ -450,7 +457,29 @@ class SightingByID(Resource):
             )
 
         if edm_count > 0:
+            cleanup = SightingCleanup()
             log.debug(f'wanting to do edm patch on args={args}')
+
+            # we pre-check any annotations we will want to attach to new encounters
+            enc_anns = (
+                []
+            )  # list of lists of annotations for each encounter (if applicable)
+            try:
+                for arg in args:
+                    if (
+                        arg.get('path', None) == '/encounters'
+                        and arg.get('op', None) == 'add'
+                    ):
+                        enc_json = arg.get('value', {})
+                        anns = _validate_annotations(enc_json)
+                        enc_anns.append(anns)
+
+            except Exception as ex:
+                cleanup.rollback_and_abort(
+                    'Invalid encounter.annotations',
+                    'loading annotations threw %r on encounters=%r' % (ex, enc_json),
+                )
+
             result = None
             try:
                 (
@@ -481,8 +510,25 @@ class SightingByID(Resource):
                 sighting.delete_cascade()  # this will get rid of our encounter(s) as well so no need to rectify_edm_encounters()
                 sighting = None
             else:
-                # TODO we must check enc.annotations here (or maybe inside rectify_edm_encounters?)
                 sighting.rectify_edm_encounters(result.get('encounters'), current_user)
+                # if we have enc_anns (len=N, N > 0), these should map to the last N encounters in this sighting
+                if len(enc_anns) > 0:
+                    enc_res = result.get('encounters', [])
+                    assert len(enc_res) == len(
+                        sighting.encounters
+                    )  # more just a sanity-check
+                    assert len(enc_anns) <= len(
+                        sighting.encounters
+                    )  # which ones were added, basically
+                    i = 0
+                    offset = len(sighting.encounters) - len(enc_anns)
+                    while i < len(enc_anns):
+                        log.debug(
+                            f'enc_len={len(sighting.encounters)},offset={offset},i={i}: onto encounters[{offset+i}] setting {enc_anns[i]}'
+                        )
+                        sighting.encounters[offset + i].annotations = enc_anns[i]
+                        i += 1
+
                 new_version = result.get('version', None)
                 if new_version is not None:
                     sighting.version = new_version

@@ -468,7 +468,16 @@ class AssetGroupSighting(db.Model, HoustonModel):
         from app.modules.assets.schemas import DetailedAssetSchema
 
         asset_schema = DetailedAssetSchema(
-            many=False, only=('guid', 'filename', 'src', 'annotations')
+            many=False,
+            only=(
+                'guid',
+                'filename',
+                'src',
+                'annotations',
+                'dimensions',
+                'created',
+                'updated',
+            ),
         )
         assets = []
         for filename in self.config.get('assetReferences'):

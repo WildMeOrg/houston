@@ -23,11 +23,7 @@ from app.modules.users.permissions.types import AccessOperation
 from app.utils import HoustonException
 
 from . import parameters, schemas
-from .metadata import (
-    AssetGroupMetadataError,
-    CreateAssetGroupMetadata,
-    PatchAssetGroupSightingMetadata,
-)
+from .metadata import AssetGroupMetadataError, AssetGroupMetadata
 from .models import AssetGroup, AssetGroupSighting
 from app.modules.sightings.schemas import BaseSightingSchema
 
@@ -79,7 +75,7 @@ class AssetGroups(Resource):
         from app.modules.users.models import User
 
         timer = ElapsedTime()
-        metadata = CreateAssetGroupMetadata(json.loads(request.data))
+        metadata = AssetGroupMetadata(json.loads(request.data))
         try:
             metadata.process_request()
         except AssetGroupMetadataError as error:
@@ -397,21 +393,53 @@ class AssetGroupSightingByID(Resource):
     @api.parameters(parameters.PatchAssetGroupSightingDetailsParameters())
     @api.response(schemas.DetailedAssetGroupSightingSchema())
     def patch(self, args, asset_group_sighting):
-        patchData = PatchAssetGroupSightingMetadata(json.loads(request.data))
-        try:
-            patchData.process_request(asset_group_sighting)
-        except AssetGroupMetadataError as error:
-            abort(
-                passed_message=error.message,
-                code=error.status_code,
-            )
         context = api.commit_or_abort(
             db.session,
             default_error_message='Failed to update Asset_group_sighting details.',
         )
         with context:
-            parameters.PatchAssetGroupSightingDetailsParameters.perform_patch(
-                args, obj=asset_group_sighting
+            try:
+                parameters.PatchAssetGroupSightingDetailsParameters.perform_patch(
+                    args, obj=asset_group_sighting
+                )
+            except AssetGroupMetadataError as error:
+                abort(
+                    passed_message=error.message,
+                    code=error.status_code,
+                )
+            db.session.merge(asset_group_sighting)
+        return asset_group_sighting
+
+
+@api.route('/sighting/<uuid:asset_group_sighting_guid>/encounter/<uuid:encounter_guid>')
+@api.response(
+    code=HTTPStatus.NOT_FOUND,
+    description='Asset_group_sighting not found.',
+)
+@api.resolve_object_by_model(AssetGroupSighting, 'asset_group_sighting')
+class AssetGroupSightingEncounterByID(Resource):
+    """
+    The config for the Encounter within the Asset Group Sighting may be patched as part of curation
+    """
+
+    @api.permission_required(
+        permissions.ObjectAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'obj': kwargs['asset_group_sighting'],
+            'action': AccessOperation.WRITE,
+        },
+    )
+    @api.login_required(oauth_scopes=['asset_group_sightings:write'])
+    @api.parameters(parameters.PatchAssetGroupSightingEncounterDetailsParameters())
+    @api.response(schemas.DetailedAssetGroupSightingSchema())
+    def patch(self, args, asset_group_sighting, encounter_guid):
+        context = api.commit_or_abort(
+            db.session,
+            default_error_message='Failed to update Asset_group_sighting details.',
+        )
+        with context:
+            parameters.PatchAssetGroupSightingEncounterDetailsParameters.perform_patch(
+                args, obj=asset_group_sighting, state={'encounter_uuid': encounter_guid}
             )
             db.session.merge(asset_group_sighting)
         return asset_group_sighting

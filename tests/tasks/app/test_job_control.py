@@ -126,7 +126,7 @@ def test_sighting_identification_jobs(
         id_configs = [
             {
                 'algorithms': [
-                    'noddy',
+                    'Pie',
                 ],
                 'matchingSetDataOwners': 'mine',
             }
@@ -147,7 +147,7 @@ def test_sighting_identification_jobs(
                 job_output = stdout.getvalue()
                 assert 'Job ' in job_output
                 assert 'Active:True Started (UTC)' in job_output
-                assert 'algorithm:noddy' in job_output
+                assert 'algorithm:Pie' in job_output
 
                 # Simulate a valid response from Sage but don't actually send the request to Sage
                 with mock.patch.object(
@@ -161,7 +161,7 @@ def test_sighting_identification_jobs(
                     job_output = stdout.getvalue()
                     assert 'Job ' in job_output
                     assert 'Active:True Started (UTC)' in job_output
-                    assert 'algorithm:noddy' in job_output
+                    assert 'algorithm:Pie' in job_output
                     assert "Request:{'jobid': " in job_output
                     assert (
                         "Response:{'success': True, 'content': 'something'}" in job_output

@@ -100,18 +100,18 @@ def test_create_asset_group(flask_app_client, researcher_1, readonly_user, test_
             metadata_dict = json.load(asset_group_metadata_file)
         file_json = metadata_dict.get('frontend_sightings_data')
         request_json = data.get()
-        # Stored data is a superset of what was sent so ony check fields sent
+        # Stored data is a superset of what was sent so only check fields sent
         for key in request_json.keys():
             if key != 'sightings':
                 assert request_json[key] == file_json[key]
             else:
                 for sighting_num in range(len(request_json['sightings'])):
                     for sighting_key in request_json['sightings'][sighting_num].keys():
-                        assert (
-                            request_json[key][sighting_num][sighting_key]
-                            == file_json[key][sighting_num][sighting_key]
-                        )
-
+                        if sighting_key != 'encounters':
+                            assert (
+                                request_json[key][sighting_num][sighting_key]
+                                == file_json[key][sighting_num][sighting_key]
+                            )
     finally:
         if asset_group_uuid:
             asset_group_utils.delete_asset_group(

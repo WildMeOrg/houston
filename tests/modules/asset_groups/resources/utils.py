@@ -362,11 +362,11 @@ def delete_asset_group(
 
 
 def patch_asset_group_sighting(
-    flask_app_client, user, asset_group_sighting_guid, data, expected_status_code=200
+    flask_app_client, user, patch_path, data, expected_status_code=200
 ):
     with flask_app_client.login(user, auth_scopes=('asset_group_sightings:write',)):
         response = flask_app_client.patch(
-            f'{PATH}sighting/{asset_group_sighting_guid}',
+            f'{PATH}sighting/{patch_path}',
             content_type='application/json',
             data=json.dumps(data),
         )
@@ -441,43 +441,17 @@ def patch_in_dummy_annotation(
     group_sighting = read_asset_group_sighting(
         flask_app_client, user, asset_group_sighting_uuid
     )
+    assert len(group_sighting.json['config']['encounters']) == 1
+    encounter_guid = group_sighting.json['config']['encounters'][0]['guid']
 
-    import copy
-
-    new_annot_data = copy.deepcopy(group_sighting.json['config'])
-    new_annot_data['encounters'][0]['annotations'] = [str(new_annot.guid)]
-    patch_data = [test_utils.patch_replace_op('config', new_annot_data)]
-    patch_asset_group_sighting(
-        flask_app_client, user, asset_group_sighting_uuid, patch_data
-    )
-    return new_annot.guid
-
-
-def patch_in_ia_config(
-    flask_app_client, user, asset_group_sighting_uuid, ia_config, expected_status_code=200
-):
-    group_sighting = read_asset_group_sighting(
-        flask_app_client, user, asset_group_sighting_uuid
-    )
-
-    import copy
-
-    new_ia_config_data = copy.deepcopy(group_sighting.json['config'])
-    if 'idConfigs' in new_ia_config_data:
-        new_ia_config_data.append(ia_config)
-    else:
-        new_ia_config_data['idConfigs'] = [
-            ia_config,
-        ]
-
-    patch_data = [test_utils.patch_replace_op('config', new_ia_config_data)]
+    patch_data = [test_utils.patch_replace_op('annotations', [str(new_annot.guid)])]
     patch_asset_group_sighting(
         flask_app_client,
         user,
-        asset_group_sighting_uuid,
+        f'{asset_group_sighting_uuid}/encounter/{encounter_guid}',
         patch_data,
-        expected_status_code,
     )
+    return new_annot.guid
 
 
 # multiple tests clone a asset_group, do something with it and clean it up. Make sure this always happens using a

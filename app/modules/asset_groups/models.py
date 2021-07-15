@@ -25,7 +25,7 @@ import os
 import pathlib
 import shutil
 
-from .metadata import CreateAssetGroupMetadata
+from .metadata import AssetGroupMetadata
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
@@ -215,6 +215,9 @@ class AssetGroupSighting(db.Model, HoustonModel):
                     annot = Annotation.query.get(annot_uuid)
                     # Must be valid, checked in metadata parsing
                     assert annot
+                    log.info(
+                        f'Added annotation {annot_uuid} to encounter {new_encounter.guid}'
+                    )
                     new_encounter.add_annotation(annot)
 
                 sighting.add_encounter(new_encounter)
@@ -1233,10 +1236,14 @@ class AssetGroup(db.Model, HoustonModel):
     def begin_ia_pipeline(self, metadata):
         # Temporary restriction for MVP
         assert len(metadata.detection_configs) == 1
-        assert metadata.data_processed == CreateAssetGroupMetadata.DataProcessed.complete
+        assert metadata.data_processed == AssetGroupMetadata.DataProcessed.complete
         import copy
 
         for sighting_meta in metadata.request['sightings']:
+            # All encounters in the metadata need to be allocated a pseudo ID for later patching
+            for encounter_num in range(len(sighting_meta['encounters'])):
+                sighting_meta['encounters'][encounter_num]['guid'] = str(uuid.uuid4())
+
             new_sighting = AssetGroupSighting(
                 asset_group=self,
                 asset_group_guid=self.guid,

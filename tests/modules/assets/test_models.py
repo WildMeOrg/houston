@@ -8,7 +8,7 @@ import uuid
 def set_up_assets(flask_app, db, test_root, admin_user, request):
     from app.modules.annotations.models import Annotation
     from app.modules.asset_groups.models import AssetGroup
-    from app.modules.asset_groups.metadata import CreateAssetGroupMetadata
+    from app.modules.asset_groups.metadata import AssetGroupMetadata
     from app.modules.sightings.models import Sighting, SightingAssets, SightingStage
 
     from tests.modules.asset_groups.resources.utils import TestCreationData
@@ -38,7 +38,7 @@ def set_up_assets(flask_app, db, test_root, admin_user, request):
     # Create asset group from metadata
     data = TestCreationData(transaction_id)
     data.set_sighting_field(-1, 'assetReferences', [jpg.name for jpg in jpgs])
-    metadata = CreateAssetGroupMetadata(data.get())
+    metadata = AssetGroupMetadata(data.get())
     with mock.patch(
         'app.modules.asset_groups.metadata.current_user', return_value=admin_user
     ):

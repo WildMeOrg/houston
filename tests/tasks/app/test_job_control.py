@@ -103,7 +103,7 @@ def test_sighting_identification_jobs(
         sighting = Sighting.query.get(sighting_uuid)
         sighting.stage = SightingStage.processed
 
-        # Second sighting, the one well use for testing
+        # Second sighting, the one we'll use for testing
         transaction_id, test_filename = tus_utils.prep_tus_dir(
             test_root, str(uuid.uuid4())
         )

@@ -410,7 +410,6 @@ class Sighting(db.Model, FeatherModel):
             # TODO, this is correct for MVP as there is only one id per Sighting but this will need
             # rework when there are multiple
             self.stage = SightingStage.un_reviewed
-        # TODO what stage is the Sighting in if no jobs are created?
 
     def identified(self, job_id, data):
         if self.stage != SightingStage.identification:
@@ -453,16 +452,16 @@ class Sighting(db.Model, FeatherModel):
         if not cm_dict:
             raise HoustonException(f'No cm_dict in the json_result for {job_id_str}')
 
-        query_config_dict = cm_dict.get('query_config_dict')
+        query_config_dict = json_result.get('query_config_dict')
         if not query_config_dict:
             raise HoustonException(
-                f'No query_config_dict in the cm_dict for {job_id_str}'
+                f'No query_config_dict in the json_result for {job_id_str}'
             )
 
-        query_annot_uuids = cm_dict.get('query_annnot_uuid_list', [])
+        query_annot_uuids = json_result.get('query_annot_uuid_list', [])
         if not query_annot_uuids:
             raise HoustonException(
-                f'No query_annot_uuid_list in the cm_dict for {job_id_str}'
+                f'No query_annot_uuid_list in the json_result for {job_id_str}'
             )
 
         # TODO This next block is a fudge to be replaced when DEX-235 is merged
@@ -484,6 +483,10 @@ class Sighting(db.Model, FeatherModel):
             },
             'sv_on': {False: 'HotSpotter pattern-matcher'},
         }
+        if pipeline_root not in id_algorithms['pipeline_root']:
+            raise HoustonException(
+                f'pipeline_root {pipeline_root} not supported for {job_id_str}'
+            )
         log.info(
             f'Received successful {pipeline_root} response from Sage for {job_id_str} '
             f"{id_algorithms['pipeline_root'][pipeline_root]}"

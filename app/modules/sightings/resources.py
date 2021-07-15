@@ -586,6 +586,6 @@ class SightingIdentified(Resource):
     )
     def post(self, sighting, job_guid):
         try:
-            sighting.identifed(job_guid, json.loads(request.data))
+            sighting.identified(job_guid, json.loads(request.data))
         except HoustonException as ex:
             abort(ex.status_code, ex.message, errorFields=ex.get_val('error', 'Error'))

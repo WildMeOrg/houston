@@ -28,6 +28,28 @@ class BaseUserSchema(ModelSchema):
         dump_only = (User.guid.key,)
 
 
+class UserListSchema(BaseUserSchema):
+    profile_fileupload = base_fields.Nested('DetailedFileUploadSchema')
+
+    class Meta(BaseUserSchema.Meta):
+        # pylint: disable=missing-docstring
+        model = User
+        fields = BaseUserSchema.Meta.fields + (
+            User.is_active.fget.__name__,
+            User.is_contributor.fget.__name__,
+            User.is_exporter.fget.__name__,
+            User.is_internal.fget.__name__,
+            User.is_staff.fget.__name__,
+            User.is_researcher.fget.__name__,
+            User.is_user_manager.fget.__name__,
+            User.is_admin.fget.__name__,
+            User.in_alpha.fget.__name__,
+            User.in_beta.fget.__name__,
+            User.profile_fileupload.key,
+        )
+        dump_only = (User.guid.key,)
+
+
 class PublicUserSchema(ModelSchema):
     """ Only fields which are safe for public display (very minimal). """
 
@@ -51,31 +73,18 @@ class DetailedUserPermissionsSchema(ModelSchema):
         dump_only = (User.guid.key,)
 
 
-class DetailedUserSchema(BaseUserSchema):
+class DetailedUserSchema(UserListSchema):
     """ Detailed user schema exposes all fields used to render a normal user profile. """
 
-    profile_fileupload = base_fields.Nested('DetailedFileUploadSchema')
-
-    class Meta(BaseUserSchema.Meta):
-        fields = BaseUserSchema.Meta.fields + (
+    class Meta(UserListSchema.Meta):
+        fields = UserListSchema.Meta.fields + (
             User.created.key,
             User.updated.key,
             User.viewed.key,
-            User.is_active.fget.__name__,
-            User.is_contributor.fget.__name__,
-            User.is_exporter.fget.__name__,
-            User.is_internal.fget.__name__,
-            User.is_staff.fget.__name__,
-            User.is_researcher.fget.__name__,
-            User.is_user_manager.fget.__name__,
-            User.is_admin.fget.__name__,
-            User.in_alpha.fget.__name__,
-            User.in_beta.fget.__name__,
             User.affiliation.key,
             User.location.key,
             User.forum_id.key,
             User.website.key,
-            User.profile_fileupload.key,
         )
 
 

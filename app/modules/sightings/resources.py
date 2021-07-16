@@ -281,7 +281,7 @@ class Sightings(Resource):
         except Exception as ex:
             cleanup.rollback_and_abort(
                 'Invalid encounter.annotations',
-                'loading annotations threw %r on encounters=%r' % (ex, enc_json),
+                '_validate_annotations() threw %r on encounters=%r' % (ex, enc_json),
             )
 
         asset_references = request_in.get('assetReferences')
@@ -477,7 +477,7 @@ class SightingByID(Resource):
             except Exception as ex:
                 cleanup.rollback_and_abort(
                     'Invalid encounter.annotations',
-                    'loading annotations threw %r on encounters=%r' % (ex, enc_json),
+                    '_validate_annotations() threw %r on encounters=%r' % (ex, enc_json),
                 )
 
             result = None

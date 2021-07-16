@@ -153,7 +153,7 @@ def test_create_and_modify_and_delete_sighting(
     ct = test_utils.all_count(db)
     assert ct['Encounter'] == orig_ct['Encounter'] + 3  # previously was + 2
     assert len(sighting.encounters) == 3
-    enc2_id = str(sighting.encounters[2].guid)
+    enc0_id, enc1_id, enc2_id = [str(e.guid) for e in sighting.encounters]
 
     # patch op=remove the one we just added to get us back to where we started
     response = sighting_utils.patch_sighting(
@@ -193,7 +193,7 @@ def test_create_and_modify_and_delete_sighting(
         ],
         expected_status_code=400,
     )
-    assert response.json['edm_status_code'] == 602
+    assert response.json['edm_status_code'] == 602, response.json
     # should still have same number encounters as above here
     ct = test_utils.all_count(db)
     assert ct['Encounter'] == orig_ct['Encounter'] + 1

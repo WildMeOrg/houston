@@ -245,18 +245,12 @@ def test_create_anon_and_delete_sighting(db, flask_app_client, staff_user, test_
     assert response.json['success']
     assets = sorted(response.json['result']['assets'], key=lambda a: a['filename'])
     asset_guids = [a['guid'] for a in assets]
-    assert assets == [
-        {
-            'filename': 'fluke.jpg',
-            'guid': asset_guids[0],
-            'src': f'/api/v1/assets/src/{asset_guids[0]}',
-        },
-        {
-            'filename': 'zebra.jpg',
-            'guid': asset_guids[1],
-            'src': f'/api/v1/assets/src/{asset_guids[1]}',
-        },
-    ]
+    assert assets[0]['filename'] == 'fluke.jpg'
+    assert assets[0]['guid'] == asset_guids[0]
+    assert assets[0]['src'] == f'/api/v1/assets/src/{asset_guids[0]}'
+    assert assets[1]['filename'] == 'zebra.jpg'
+    assert assets[1]['guid'] == asset_guids[1]
+    assert assets[1]['src'] == f'/api/v1/assets/src/{asset_guids[1]}'
 
     # Check sighting and assets are stored in the database
     sighting_id = response.json['result']['id']

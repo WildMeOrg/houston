@@ -514,6 +514,9 @@ class SightingByID(Resource):
                 # if we have enc_anns (len=N, N > 0), these should map to the last N encounters in this sighting
                 if len(enc_anns) > 0:
                     enc_res = result.get('encounters', [])
+                    # enc_res *should* be in order added (e.g. sorted by version)
+                    # note however, i am not 100% sure if sightings.encounters is in same order!  it appears to be in all my testing.
+                    #  in the event it proves not to be, we should trust enc_res order and/or .version on each of sighting.encounters
                     assert len(enc_res) == len(
                         sighting.encounters
                     )  # more just a sanity-check

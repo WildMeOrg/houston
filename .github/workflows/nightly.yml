@@ -12,7 +12,7 @@ on:
       - 'scripts/**'
 
 jobs:
-  devops:
+  image_build:
     name: DevOps nightly image build
     runs-on: ubuntu-latest
 
@@ -51,6 +51,36 @@ jobs:
           SLACK_CHANNEL: dev-houston
           SLACK_COLOR: '#FF0000'
           SLACK_ICON: https://avatars.slack-edge.com/2020-03-02/965719891842_db87aa21ccb61076f236_44.png
-          SLACK_MESSAGE: 'nightly build failed :sob:'
+          SLACK_MESSAGE: 'nightly build of the *container image* failed :sob:'
+          SLACK_USERNAME: "Nightly"
+          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+
+  ensure_frontend_build:
+    # Used to ensure the frontend will continuously build
+    name: Ensure frontend code builds
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+        if: github.event_name == 'schedule'
+        with:
+          ref: main
+
+      - uses: actions/checkout@v2
+        if: github.event_name != 'schedule'
+
+      - name: Build the frontend
+        run: |
+          ./scripts/build.frontend.sh
+
+      # Notify status in Slack
+      - name: Slack Notification
+        if: failure() && github.event_name == 'schedule'
+        uses: rtCamp/action-slack-notify@master
+        env:
+          SLACK_CHANNEL: dev-houston
+          SLACK_COLOR: '#FF0000'
+          SLACK_ICON: https://avatars.slack-edge.com/2020-03-02/965719891842_db87aa21ccb61076f236_44.png
+          SLACK_MESSAGE: 'nightly build to ensure the *frontend* builds failed :astonished:'
           SLACK_USERNAME: "Nightly"
           SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}

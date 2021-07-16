@@ -26,9 +26,9 @@ jobs:
         if: github.event_name != 'schedule'
 
       # Build images
-      - name: Install package and build image
+      - name: Build docker image
         run: |
-          ./scripts/build.sh
+          ./scripts/build.docker.sh
 
       # Log into image registries
       - name: Log into Docker Hub

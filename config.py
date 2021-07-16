@@ -144,7 +144,7 @@ class BaseConfig(object):
         'site_settings',
         'site_info',
         'job_control',
-        'search',
+        'elasticsearch_proxy',
 
         # Front-end
         #   Dependencies: Users, Auth, Assets

@@ -1,3 +1,4 @@
 [submodule "_frontend"]
 	path = _frontend
 	url = https://github.com/WildMeOrg/codex-frontend.git
+	branch = develop

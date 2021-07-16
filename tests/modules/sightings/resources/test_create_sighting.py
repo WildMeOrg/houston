@@ -345,7 +345,7 @@ def test_annotations_within_sightings(
     from tests.modules.asset_groups.resources import utils as sub_utils
     from app.modules.encounters.models import Encounter
 
-    sub_utils.clone_asset_group(
+    clone = sub_utils.clone_asset_group(
         flask_app_client,
         researcher_1,
         test_clone_asset_group_data['asset_group_uuid'],
@@ -404,3 +404,4 @@ def test_annotations_within_sightings(
 
     # cleanup
     sighting_utils.delete_sighting(flask_app_client, staff_user, sighting_id)
+    clone.cleanup()

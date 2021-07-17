@@ -54,18 +54,21 @@ def delete_individual(flask_app_client, user, guid, expected_status_code=204):
 
 
 def patch_individual(
-    flask_app_client, individual_guid, user, data, expected_status_code=200
+    flask_app_client,
+    user,
+    individual_guid,
+    patch_data=[],
+    headers=None,
+    expected_status_code=200,
 ):
     with flask_app_client.login(user, auth_scopes=('individuals:write',)):
         response = flask_app_client.patch(
             '%s%s' % (PATH, individual_guid),
+            data=json.dumps(patch_data),
             content_type='application/json',
-            data=json.dumps(data),
+            headers=headers,
         )
-    if expected_status_code == 200:
-        test_utils.validate_dict_response(response, 200, {'guid'})
-    else:
-        test_utils.validate_dict_response(
-            response, expected_status_code, {'status', 'message'}
-        )
+
+    assert isinstance(response.json, dict)
+    assert response.status_code == expected_status_code
     return response

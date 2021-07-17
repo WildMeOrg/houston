@@ -269,10 +269,6 @@ class IndividualByID(Resource):
 
         db.session.merge(individual)
 
-        import utool
-
-        utool.embed()
-
         return individual
 
     @api.permission_required(

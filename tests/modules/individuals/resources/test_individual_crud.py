@@ -95,20 +95,20 @@ def test_read_encounter_from_edm(db, flask_app_client):
 
 def test_add_remove_encounters(db, flask_app_client, researcher_1):
 
-    enc_1 = utils.generate_encounter_instance(
-        user_email='mod1@user', user_password='mod1user', user_full_name='Test User'
-    )
-    enc_2 = utils.generate_encounter_instance(
-        user_email='mod2@user', user_password='mod2user', user_full_name='Test User'
-    )
-    enc_3 = utils.generate_encounter_instance(
-        user_email='mod3@user', user_password='mod3user', user_full_name='Test User'
-    )
+    # enc_1 = utils.generate_encounter_instance(
+    #     user_email='mod1@user', user_password='mod1user', user_full_name='Test User'
+    # )
+    # enc_2 = utils.generate_encounter_instance(
+    #     user_email='mod2@user', user_password='mod2user', user_full_name='Test User'
+    # )
+    # enc_3 = utils.generate_encounter_instance(
+    #     user_email='mod3@user', user_password='mod3user', user_full_name='Test User'
+    # )
 
-    owner_1 = utils.generate_user_instance(
-        email='owner@localhost',
-        is_researcher=True,
-    )
+    # owner_1 = utils.generate_user_instance(
+    #     email='owner@localhost',
+    #     is_researcher=True,
+    # )
 
     data_in = {
         'startTime': datetime.datetime.now().isoformat() + 'Z',
@@ -121,13 +121,14 @@ def test_add_remove_encounters(db, flask_app_client, researcher_1):
             {'locationId': 'Monster Island'},
         ],
     }
+
     response = sighting_utils.create_sighting(
         flask_app_client, researcher_1, expected_status_code=200, data_in=data_in
     )
 
-    log.warning(
-        '********** test_add_remove_encounters TEST RESPONSE: ' + str(response.json)
-    )
+    # log.warning(
+    #     '********** test_add_remove_encounters TEST RESPONSE ON SIGHTING CREATE: ' + str(response.json)
+    # )
 
     from app.modules.sightings.models import Sighting
 
@@ -139,44 +140,23 @@ def test_add_remove_encounters(db, flask_app_client, researcher_1):
 
     from app.modules.encounters.models import Encounter
 
-    enc_1.guid = result_data['encounters'][0]['id']
-    enc_1.guid = result_data['encounters'][1]['id']
-    enc_1.guid = result_data['encounters'][2]['id']
-    # enc_1 = Encounter(
-    #     guid=result_data['encounters'][0]['id'],
-    #     version=result_data['encounters'][1].get('version', 2),
-    #     owner_guid=researcher_1.guid,
-    # )
-    # enc_2 = Encounter(
-    #     guid=result_data['encounters'][0]['id'],
-    #     version=result_data['encounters'][1].get('version', 2),
-    #     owner_guid=researcher_1.guid,
-    # )
-    # enc_3 = Encounter(
-    #     guid=result_data['encounters'][0]['id'],
-    #     version=result_data['encounters'][1].get('version', 2),
-    #     owner_guid=researcher_1.guid,
-    # )
-    with db.session.begin():
-        # db.session.add(individual_1)
-        db.session.add(owner_1)
-        # db.session.add(enc_1)
-        # db.session.add(enc_2)
-        # db.session.add(enc_3)
+    enc_1 = Encounter(
+        guid=result_data['encounters'][0]['id'],
+        owner_guid=researcher_1.guid,
+    )
 
-    sighting.add_encounter(enc_1)
-    sighting.add_encounter(enc_2)
-    sighting.add_encounter(enc_3)
+    enc_2 = Encounter(
+        guid=result_data['encounters'][1]['id'],
+        owner_guid=researcher_1.guid,
+    )
 
-    # You need to own an individual to modify it, and ownership is determined from it's encounters
-    enc_1.owner = owner_1
-    enc_2.owner = owner_1
-    enc_3.owner = owner_1
-
-    db.session.refresh(owner_1)
+    enc_3 = Encounter(
+        guid=result_data['encounters'][2]['id'],
+        owner_guid=researcher_1.guid,
+    )
 
     response = individual_utils.create_individual(
-        flask_app_client, owner_1, 200, {'encounters': [{'id': str(enc_1.guid)}]}
+        flask_app_client, researcher_1, 200, {'encounters': [{'id': str(enc_1.guid)}]}
     )
     individual_1 = Individual.query.get(response.json['result']['id'])
 
@@ -191,12 +171,15 @@ def test_add_remove_encounters(db, flask_app_client, researcher_1):
         utils.patch_add_op('encounters', [str(enc_2.guid)]),
     ]
 
+    import json
+
     individual_utils.patch_individual(
         flask_app_client,
-        '%s' % individual_1.guid,
         researcher_1,
-        add_encounters,
-        200,
+        '%s' % individual_1.guid,
+        patch_data=json.dumps(add_encounters),
+        headers=None,
+        expected_status_code=200,
     )
 
     assert str(enc_2.guid) in [
@@ -210,9 +193,10 @@ def test_add_remove_encounters(db, flask_app_client, researcher_1):
 
     individual_utils.patch_individual(
         flask_app_client,
-        '%s' % individual_1.guid,
         researcher_1,
-        remove_encounters,
+        '%s' % individual_1.guid,
+        json.dumps(remove_encounters),
+        None,
         200,
     )
 
@@ -227,9 +211,10 @@ def test_add_remove_encounters(db, flask_app_client, researcher_1):
 
     individual_utils.patch_individual(
         flask_app_client,
-        '%s' % individual_1.guid,
         researcher_1,
-        add_encounters,
+        '%s' % individual_1.guid,
+        json.dumps(add_encounters),
+        None,
         200,
     )
 

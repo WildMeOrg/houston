@@ -33,14 +33,29 @@ class AssetGroupMetadataError(HoustonException):
         log.warning(f'Failed: {log_message} {self.status_code}')
 
 
-class BaseAssetGroupMetadata(object):
+# Class used to process and validate the json data. This json may be received from the frontend or
+# read from a file in the case of a restart. This class creates no DB objects, it just validates
+# what is read and raises an AssetGroupMetadataError on failure
+class AssetGroupMetadata(object):
+    # Certain properties only become valid once sufficient processing of data has occurred
+    class DataProcessed(str, enum.Enum):
+        unprocessed = 0
+        first_level = 1
+        sightings = 2
+        complete = 3
+
     def __init__(self, request_json):
         self.request_json = request_json
         self.request = {}
         self.files = set()
+        self.owner = None
+        self.owner_assignment = False
+        self.anonymous_submitter = None
+        self.data_processed = AssetGroupMetadata.DataProcessed.unprocessed
 
     # Helper for validating the required fields in any level dictionary
-    def _validate_fields(self, dictionary, fields, error_str):
+    @classmethod
+    def _validate_fields(cls, dictionary, fields, error_str):
         for field, field_type, mandatory in fields:
             if mandatory:
                 if field not in dictionary or not isinstance(
@@ -62,6 +77,111 @@ class BaseAssetGroupMetadata(object):
                     raise AssetGroupMetadataError(
                         f'{field} incorrect type in {error_str}'
                     )
+
+    @classmethod
+    def validate_id_configs(cls, id_configs, debug):
+        id_config_fields = [
+            ('algorithms', list, True),
+            ('matchingSetDataOwners', str, True),
+            ('matchingSetRegions', list, False),
+        ]
+
+        num_configs = len(id_configs)
+        if num_configs > 1:
+            raise AssetGroupMetadataError(
+                f'found multiple {num_configs} ID configs, only support one'
+            )
+
+        for config_id in range(num_configs):
+            id_config = id_configs[config_id]
+            cls._validate_fields(id_config, id_config_fields, debug)
+            owners = id_config['matchingSetDataOwners']
+            from app.modules.sightings.models import Sighting
+
+            supported_owners = Sighting.get_matching_set_options()
+            if owners not in supported_owners:
+                raise AssetGroupMetadataError(
+                    f'dataOwners {owners} not supported, only support {supported_owners}'
+                )
+
+    @classmethod
+    def validate_owner_email(cls, owner_email, debug):
+        from app.modules.users.models import User
+
+        if not isinstance(owner_email, str):
+            raise AssetGroupMetadataError(f'{debug} ownerEmail must be a string')
+        encounter_owner = User.find(email=owner_email)
+        if encounter_owner is None:
+            raise AssetGroupMetadataError(f'{debug} owner {owner_email} not found')
+
+    @classmethod
+    def validate_annotations(cls, annotations, debug):
+        from app.modules.annotations.models import Annotation
+        from app.modules.asset_groups.models import AssetGroupSightingStage
+
+        for annot_uuid in annotations:
+            annot = Annotation.query.get(annot_uuid)
+            if not annot:
+                raise AssetGroupMetadataError(
+                    f'{debug} annotation:{str(annot_uuid)} not found'
+                )
+
+            if not annot.asset.asset_group.is_partially_in_stage(
+                AssetGroupSightingStage.curation
+            ):
+                raise AssetGroupMetadataError(
+                    f'{debug} annotation:{str(annot_uuid)} not in curating group'
+                )
+
+    @classmethod
+    def validate_encounters(cls, encounters, debug):
+        encounter_num = 0
+        owner_assignment = False
+
+        # Have a sighting with multiple encounters, make sure we have all of the files
+        for encounter in encounters:
+            encounter_num += 1
+            if not isinstance(encounter, dict):
+                raise AssetGroupMetadataError(
+                    f'{debug}{encounter_num} needs to be a dict'
+                )
+            encounter_fields = [
+                ('ownerEmail', str, False),
+                ('annotations', list, False),
+            ]
+            cls._validate_fields(
+                encounter,
+                encounter_fields,
+                f'{debug}{encounter_num}',
+            )
+
+            # Can reassign encounter owner but only to a valid user
+            if 'ownerEmail' in encounter:
+                cls.validate_owner_email(
+                    encounter['ownerEmail'], f'{debug}{encounter_num}'
+                )
+                owner_assignment = True
+
+            # can assign annotations (in patch only) but they must be valid
+            if 'annotations' in encounter:
+                cls.validate_annotations(encounter['annotations'])
+                from app.modules.annotations.models import Annotation
+                from app.modules.asset_groups.models import AssetGroupSightingStage
+
+                for annot_uuid in encounter['annotations']:
+                    annot = Annotation.query.get(annot_uuid)
+                    if not annot:
+                        raise AssetGroupMetadataError(
+                            f'{debug}{encounter_num} annotation:{str(annot_uuid)} not found'
+                        )
+
+                    if not annot.asset.asset_group.is_partially_in_stage(
+                        AssetGroupSightingStage.curation
+                    ):
+                        raise AssetGroupMetadataError(
+                            f'{debug}{encounter_num} annotation:{str(annot_uuid)} not in curating group'
+                        )
+        return owner_assignment
 
     def _validate_sighting(self, sighting, file_dir, sighting_debug, encounter_debug):
 
@@ -121,99 +241,30 @@ class BaseAssetGroupMetadata(object):
                         f'dataOwners {owners} not supported, only support {supported_owners}'
                     )
 
-        encounter_num = 0
-        # Have a sighting with multiple encounters, make sure we have all of the files
-        for encounter in sighting['encounters']:
-            encounter_num += 1
-            if not isinstance(encounter, dict):
-                raise AssetGroupMetadataError(
-                    f'{encounter_debug}{encounter_num} needs to be a dict'
-                )
-            encounter_fields = [
-                ('ownerEmail', str, False),
-                ('annotations', list, False),
-            ]
-            self._validate_fields(
-                encounter,
-                encounter_fields,
-                f'{encounter_debug}{encounter_num}',
-            )
-
-            # Can reassign encounter owner but only to a valid user
-            if 'ownerEmail' in encounter:
-                from app.modules.users.models import User
-
-                if not isinstance(encounter['ownerEmail'], str):
-                    raise AssetGroupMetadataError(
-                        f'{encounter_debug}{encounter_num} ownerEmail must be a string'
-                    )
-                owner_email = encounter['ownerEmail']
-                encounter_owner = User.find(email=owner_email)
-                if encounter_owner is None:
-                    raise AssetGroupMetadataError(
-                        f'{encounter_debug}{encounter_num} owner {owner_email} not found'
-                    )
-                else:
-                    self.owner_assignment = True
-
-            # can assign annotations (in patch only) but they must be valid
-            if 'annotations' in encounter:
-                from app.modules.annotations.models import Annotation
-                from app.modules.asset_groups.models import AssetGroupSightingStage
-
-                for annot_uuid in encounter['annotations']:
-                    annot = Annotation.query.get(annot_uuid)
-                    if not annot:
-                        raise AssetGroupMetadataError(
-                            f'{encounter_debug}{encounter_num} annotation:{str(annot_uuid)} not found'
-                        )
-
-                    if not annot.asset.asset_group.is_partially_in_stage(
-                        AssetGroupSightingStage.curation
-                    ):
-                        raise AssetGroupMetadataError(
-                            f'{encounter_debug}{encounter_num} annotation:{str(annot_uuid)} not in curating group'
-                        )
-
-
-# Class used to process and validate the json data. This json may be received from the frontend or
-# read from a file in the case of a restart. This class creates no DB objects, it just validates
-# what is read and raises an AssetGroupMetadataError on failure
-class CreateAssetGroupMetadata(BaseAssetGroupMetadata):
-    # Certain properties only become valid once sufficient processing of data has occurred
-    class DataProcessed(str, enum.Enum):
-        unprocessed = 0
-        first_level = 1
-        sightings = 2
-        complete = 3
-
-    def __init__(self, request_json):
-        super().__init__(request_json)
-        self.owner = None
-        self.owner_assignment = False
-        self.anonymous_submitter = None
-        self.data_processed = CreateAssetGroupMetadata.DataProcessed.unprocessed
+        self.owner_assignment = self.validate_encounters(
+            sighting['encounters'], f'{encounter_debug}'
+        )
 
     @property
     def bulk_upload(self):
-        assert self.data_processed >= CreateAssetGroupMetadata.DataProcessed.first_level
+        assert self.data_processed >= AssetGroupMetadata.DataProcessed.first_level
         return ('bulkUpload' in self.request and self.request['bulkUpload']) or (
             'uploadType' in self.request and self.request['uploadType'] == 'bulk'
         )
 
     @property
     def location_id(self):
-        assert self.data_processed >= CreateAssetGroupMetadata.DataProcessed.first_level
+        assert self.data_processed >= AssetGroupMetadata.DataProcessed.first_level
         return self.request['locationId']
 
     @property
     def tus_transaction_id(self):
-        assert self.data_processed >= CreateAssetGroupMetadata.DataProcessed.first_level
+        assert self.data_processed >= AssetGroupMetadata.DataProcessed.first_level
         return self.request.get('transactionId', None)
 
     @property
     def detection_configs(self):
-        assert self.data_processed >= CreateAssetGroupMetadata.DataProcessed.first_level
+        assert self.data_processed >= AssetGroupMetadata.DataProcessed.first_level
         return self.request['speciesDetectionModel']
 
     @property
@@ -221,24 +272,24 @@ class CreateAssetGroupMetadata(BaseAssetGroupMetadata):
         return len(self.get_sightings())
 
     def get_sightings(self):
-        assert self.data_processed >= CreateAssetGroupMetadata.DataProcessed.first_level
+        assert self.data_processed >= AssetGroupMetadata.DataProcessed.first_level
         return self.request['sightings']
 
     @property
     def submitter_email(self):
-        assert self.data_processed >= CreateAssetGroupMetadata.DataProcessed.first_level
+        assert self.data_processed >= AssetGroupMetadata.DataProcessed.first_level
         return (
             self.request['submitterEmail'] if 'submitterEmail' in self.request else None
         )
 
     @property
     def description(self):
-        assert self.data_processed >= CreateAssetGroupMetadata.DataProcessed.first_level
+        assert self.data_processed >= AssetGroupMetadata.DataProcessed.first_level
         return self.request['description'] if 'description' in self.request else ''
 
     @property
     def anonymous(self):
-        assert self.data_processed >= CreateAssetGroupMetadata.DataProcessed.first_level
+        assert self.data_processed >= AssetGroupMetadata.DataProcessed.first_level
         from app.modules.users.models import User
 
         return self.owner is User.get_public_user()
@@ -261,7 +312,7 @@ class CreateAssetGroupMetadata(BaseAssetGroupMetadata):
         ]
         self._validate_fields(self.request, top_level_fields, 'request')
 
-        self.data_processed = CreateAssetGroupMetadata.DataProcessed.first_level
+        self.data_processed = AssetGroupMetadata.DataProcessed.first_level
         if len(self.detection_configs) > 1:
             raise AssetGroupMetadataError(
                 'only support a single detection config for now'
@@ -278,7 +329,7 @@ class CreateAssetGroupMetadata(BaseAssetGroupMetadata):
 
         # Ensure that the sighting (and encounters within them) received are valid
         self._validate_sightings()
-        self.data_processed = CreateAssetGroupMetadata.DataProcessed.sightings
+        self.data_processed = AssetGroupMetadata.DataProcessed.sightings
 
         if not self.bulk_upload and len(self.request['sightings'][0]['encounters']) != 1:
             raise AssetGroupMetadataError(
@@ -294,7 +345,7 @@ class CreateAssetGroupMetadata(BaseAssetGroupMetadata):
 
         # individual fields in the message are all valid, now check that it's valid in total
         self._validate_contents()
-        self.data_processed = CreateAssetGroupMetadata.DataProcessed.complete
+        self.data_processed = AssetGroupMetadata.DataProcessed.complete
 
     def _validate_contents(self):
         # Message was valid, is the user allowed to do so
@@ -374,25 +425,3 @@ class CreateAssetGroupMetadata(BaseAssetGroupMetadata):
                 f'Sighting {sighting_num}',
                 f'Encounter {sighting_num}.',
             )
-
-
-class PatchAssetGroupSightingMetadata(BaseAssetGroupMetadata):
-    def process_request(self, asset_group_sighting):
-        # TODO is this a valid test, can we assume that "our" patch is always patch 0
-        if (
-            not isinstance(self.request_json, list)
-            or not len(self.request_json) == 1
-            or not isinstance(self.request_json[0], dict)
-            or 'value' not in self.request_json[0]
-        ):
-            raise AssetGroupMetadataError('patch needs to be a list of 1')
-        self.request = self.request_json[0]['value']
-
-        # all files referenced must exist in the asset_group dir and the same validity checks for the
-        # sighting fields are applied as for the creation
-        self._validate_sighting(
-            self.request,
-            f'{asset_group_sighting.asset_group.get_absolute_path()}/_asset_group/',
-            'AssetGroupSighting ',
-            'Encounter ',
-        )

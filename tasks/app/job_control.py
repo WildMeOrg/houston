@@ -73,9 +73,13 @@ def get_jobs_for_annotation(annotation_guid, verbose):
     annot = Annotation.query.get(annotation_guid)
     if not annot:
         print(f'Annotation {annotation_guid} not found')
-        return []
+        return {}
 
-    return annot.encounter.sighting.get_job_details(annotation_guid, verbose)
+    if annot.encounter:
+        return annot.encounter.sighting.get_job_details(annotation_guid, verbose)
+    else:
+        print(f'Annotation {annotation_guid} not connected to an encounter')
+        return {}
 
 
 @app_context_task()

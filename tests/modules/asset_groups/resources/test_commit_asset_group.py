@@ -3,6 +3,7 @@
 import tests.modules.asset_groups.resources.utils as asset_group_utils
 import tests.modules.sightings.resources.utils as sighting_utils
 import tests.extensions.tus.utils as tus_utils
+from tests import utils as test_utils
 
 
 # Test a bunch of failure scenarios
@@ -127,21 +128,26 @@ def test_commit_asset_group_ia(
             flask_app_client, db, researcher_1, asset_group_sighting_guid, asset_uuid
         )
 
-        ia_config = {
-            'algorithms': [
-                'noddy',
-            ],
-        }
-        asset_group_utils.patch_in_ia_config(
-            flask_app_client, researcher_1, asset_group_sighting_guid, ia_config, 400
+        ia_configs = [
+            {
+                'algorithms': [
+                    'noddy',
+                ],
+            }
+        ]
+        patch_data = [test_utils.patch_replace_op('idConfigs', ia_configs)]
+        asset_group_utils.patch_asset_group_sighting(
+            flask_app_client, researcher_1, asset_group_sighting_guid, patch_data, 400
         )
-        ia_config['matchingSetDataOwners'] = 'someone_elses'
-        asset_group_utils.patch_in_ia_config(
-            flask_app_client, researcher_1, asset_group_sighting_guid, ia_config, 400
+        ia_configs[0]['matchingSetDataOwners'] = 'someone_elses'
+        patch_data = [test_utils.patch_replace_op('idConfigs', ia_configs)]
+        asset_group_utils.patch_asset_group_sighting(
+            flask_app_client, researcher_1, asset_group_sighting_guid, patch_data, 400
         )
-        ia_config['matchingSetDataOwners'] = 'mine'
-        asset_group_utils.patch_in_ia_config(
-            flask_app_client, researcher_1, asset_group_sighting_guid, ia_config, 200
+        ia_configs[0]['matchingSetDataOwners'] = 'mine'
+        patch_data = [test_utils.patch_replace_op('idConfigs', ia_configs)]
+        asset_group_utils.patch_asset_group_sighting(
+            flask_app_client, researcher_1, asset_group_sighting_guid, patch_data, 200
         )
 
         response = asset_group_utils.commit_asset_group_sighting(

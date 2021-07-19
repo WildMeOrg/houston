@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """ Client initialization for Elasticsearch """
-from gumby import Client
+from gumby import Client, initialize_indexes_by_model
 
 
 def init_app(app, **kwargs):
@@ -9,3 +9,6 @@ def init_app(app, **kwargs):
     API extension initialization point.
     """
     app.elasticsearch = Client(app.config['ELASTICSEARCH_HOSTS'])
+
+    # Initialize indexes if they don't already exists
+    initialize_indexes_by_model(using=app.elasticsearch)

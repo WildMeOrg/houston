@@ -42,6 +42,16 @@ def check_gitlab(app):
     return True
 
 
+def check_elasticsearch(app):
+    """Check the elasticsearch connection through the Elasticsearch client"""
+    try:
+        app.elasticsearch.info()
+    except Exception:
+        log.exception('')
+        return False
+    return True
+
+
 @app_context_task()
 def check(context):
     """Check integration connectivity"""
@@ -51,6 +61,7 @@ def check(context):
         f"db ({app.config['SQLALCHEMY_DATABASE_URI']})": check_db_connection,
         'gitlab': check_gitlab,
         'edm': check_edm,
+        'elasticsearch': check_elasticsearch,
         # ...
     }
 

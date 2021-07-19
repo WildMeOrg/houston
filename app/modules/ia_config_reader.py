@@ -7,20 +7,6 @@ import os.path as path
 log = logging.getLogger(__name__)
 
 
-def load_config_to_dict(fname):
-    app_home = ''
-    config_path = path.join(app_home, 'ia-configs', fname)
-    assert path.isfile(config_path), f'Could not find config at path {config_path}'
-    with open(config_path, 'r') as file:
-        config_dict = json.load(file)
-    return config_dict
-
-
-def short_config_name_to_full_filename(config_name):
-    fname = f'IA.{config_name}.json'
-    return fname
-
-
 # detects @-links in values from any level of the ia config
 def _is_link(config_value):
     is_link = type(config_value) is str and config_value.startswith('@')
@@ -36,8 +22,11 @@ def _link_destination(link_str):
 class IaConfig:
     def __init__(self, name='zebra'):
         self.name = name
-        self.fname = short_config_name_to_full_filename(self.name)
-        self.config_dict = load_config_to_dict(self.fname)
+        self.fname = f'IA.{name}.json'
+        config_path = path.join('ia-configs', self.fname)
+        assert path.isfile(config_path), f'Could not find config at path {config_path}'
+        with open(config_path, 'r') as file:
+            self.config_dict = json.load(file)
 
     def get(self, period_separated_keys):
         keys = period_separated_keys.split('.')

@@ -61,29 +61,6 @@ def test_identifier_dict_vs_link(flask_app_client):
     assert all(list_items_in_dict)
 
 
-def test_config_to_filename(flask_app_client):
-    from app.modules.ia_config_reader import short_config_name_to_full_filename
-
-    config_name = 'zebra'
-    filename = short_config_name_to_full_filename(config_name)
-    assert filename == 'IA.zebra.json'
-
-
-def test_loading_config_dict(flask_app_client):
-    from app.modules.ia_config_reader import short_config_name_to_full_filename
-    from app.modules.ia_config_reader import load_config_to_dict
-
-    config_name = 'zebra'
-    filename = short_config_name_to_full_filename(config_name)
-    config_dict = load_config_to_dict(filename)
-
-    assert type(config_dict) is dict
-
-    desired_keys = {'_README', '_detectors', '_identifiers', 'Equus'}
-    for key in desired_keys:
-        assert key in config_dict.keys()
-
-
 def test_get_identifiers_zebras(flask_app_client):
     ia_config_reader = IaConfig(TEST_CONFIG_NAME)
     species = 'Equus quagga'

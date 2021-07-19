@@ -228,7 +228,7 @@ class IndividualByID(Resource):
         for arg in args:
             if (
                 'path' in arg
-                and arg['path'][1:]
+                and arg['path']
                 in parameters.PatchIndividualDetailsParameters.PATH_CHOICES_EDM
             ):
                 edm_count += 1

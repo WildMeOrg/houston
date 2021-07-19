@@ -35,14 +35,9 @@ class PatchIndividualDetailsParameters(PatchJSONParameters):
         PatchJSONParameters.OP_REMOVE,
     )
 
-    # Is this weird? I need to modify EDM and Houston records
-    PATH_CHOICES_HOUSTON = ['encounters']
+    PATH_CHOICES_EDM = ('/encounters',)
 
-    PATH_CHOICES_EDM = ['encounters']
-
-    PATH_CHOICES = tuple(
-        '/%s' % field for field in (PATH_CHOICES_EDM + PATH_CHOICES_HOUSTON)
-    )
+    PATH_CHOICES = PATH_CHOICES_EDM
 
     @classmethod
     def remove(cls, obj, field, value, state):

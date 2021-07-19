@@ -171,13 +171,11 @@ def test_add_remove_encounters(db, flask_app_client, researcher_1):
         utils.patch_add_op('encounters', [str(enc_2.guid)]),
     ]
 
-    import json
-
     individual_utils.patch_individual(
         flask_app_client,
         researcher_1,
         '%s' % individual_1.guid,
-        patch_data=json.dumps(add_encounters),
+        patch_data=add_encounters,
         headers=None,
         expected_status_code=200,
     )
@@ -195,7 +193,7 @@ def test_add_remove_encounters(db, flask_app_client, researcher_1):
         flask_app_client,
         researcher_1,
         '%s' % individual_1.guid,
-        json.dumps(remove_encounters),
+        remove_encounters,
         None,
         200,
     )
@@ -213,7 +211,7 @@ def test_add_remove_encounters(db, flask_app_client, researcher_1):
         flask_app_client,
         researcher_1,
         '%s' % individual_1.guid,
-        json.dumps(add_encounters),
+        add_encounters,
         None,
         200,
     )

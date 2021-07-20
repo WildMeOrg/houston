@@ -4,6 +4,7 @@ Sightings database models
 --------------------
 """
 
+from app.utils import HoustonException
 from app.extensions import FeatherModel, HoustonModel, db
 import uuid
 import logging
@@ -409,6 +410,98 @@ class Sighting(db.Model, FeatherModel):
             # TODO, this is correct for MVP as there is only one id per Sighting but this will need
             # rework when there are multiple
             self.stage = SightingStage.un_reviewed
+
+    def identified(self, job_id, data):
+        if self.stage != SightingStage.identification:
+            raise HoustonException(f'Sighting {self.guid} is not detecting')
+        job_id_str = str(job_id)
+        if job_id_str not in self.jobs:
+            raise HoustonException(f'job_id {job_id} not found')
+
+        status = data.get('status')
+        if not status:
+            raise HoustonException(f'No status in ID response from Sage {job_id_str}')
+
+        success = status.get('success', False)
+        if not success:
+            self.stage = SightingStage.failed
+            # This is not an exception as the message from Sage was valid
+            code = status.get('code', 'unset')
+            message = status.get('message', 'unset')
+            # TODO this will be where the audit log fits in too
+            log.warning(f'JobID {job_id_str} failed with code: {code} message: {message}')
+            return
+
+        response = data.get('response')
+        if not response:
+            raise HoustonException(f'No response field in message from Sage {job_id_str}')
+
+        job_id_msg = response.get('jobid')
+        if not job_id_msg:
+            raise HoustonException(f'Must be a job id in the response {job_id_str}')
+
+        if job_id_msg != job_id_str:
+            raise HoustonException(
+                f'Job id in message {job_id_msg} must match job id in callback {job_id_str}'
+            )
+        json_result = response.get('json_result')
+        if not json_result:
+            raise HoustonException(f'No json_result in the response for {job_id_str}')
+
+        cm_dict = json_result.get('cm_dict')
+        if not cm_dict:
+            raise HoustonException(f'No cm_dict in the json_result for {job_id_str}')
+
+        query_config_dict = json_result.get('query_config_dict')
+        if not query_config_dict:
+            raise HoustonException(
+                f'No query_config_dict in the json_result for {job_id_str}'
+            )
+
+        query_annot_uuids = json_result.get('query_annot_uuid_list', [])
+        if not query_annot_uuids:
+            raise HoustonException(
+                f'No query_annot_uuid_list in the json_result for {job_id_str}'
+            )
+
+        # TODO This next block is a fudge to be replaced when DEX-235 is merged
+        pipeline_root = query_config_dict.get('pipeline_root')
+        if not pipeline_root:
+            raise HoustonException(
+                f'No pipeline_root in query_config_dict for {job_id_str}'
+            )
+        id_algorithms = {
+            'pipeline_root': {
+                'CurvRankTwoFluke': 'trailing edge (CurvRank v2)',
+                'CurvRankTwoDorsal': 'trailing edge (CurvRank v2)',
+                'OC_WDTW': 'trailing edge (OC/WDTW)',
+                'Deepsense': "Deepsense AI's Right Whale Matcher",
+                'CurvRankDorsal': 'CurvRank dorsal fin trailing edge algorithm',
+                'Finfindr': 'finFindR dorsal fin trailing edge algorithm',
+                'Pie': 'PIE (Pose Invariant Embeddings)',
+                'PieTwo': 'PIE v2 (Pose Invariant Embeddings)',
+            },
+            'sv_on': {False: 'HotSpotter pattern-matcher'},
+        }
+        if pipeline_root not in id_algorithms['pipeline_root']:
+            raise HoustonException(
+                f'pipeline_root {pipeline_root} not supported for {job_id_str}'
+            )
+        log.info(
+            f'Received successful {pipeline_root} response from Sage for {job_id_str} '
+            f"{id_algorithms['pipeline_root'][pipeline_root]}"
+        )
+
+        # This is something like the real one will be.
+        # TODO, where does CONFIG_NAME, species and ia_class come from?
+        # from app.modules.ia_config_reader import IaConfig
+        # ia_config_reader = IaConfig(CONFIG_NAME)
+        # identifiers_allowed = ia_config_reader.get_identifiers_dict(species, ia_class)
+        # for id in identifiers_allowed, for query in dict check that the response is valid and note the description
+        # No need to persistently store it, we can regenerate
+        # log.info(f'Received successful {pipeline_root} response from Sage for {job_id_str} ')
+
+        self.stage = SightingStage.un_reviewed
 
     def check_job_status(self, job_id):
         if str(job_id) not in self.jobs:

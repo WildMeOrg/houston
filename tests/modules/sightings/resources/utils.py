@@ -4,6 +4,8 @@ Project resources utils
 -------------
 """
 import json
+import uuid
+
 from tests import utils as test_utils
 from flask import current_app
 import os
@@ -108,3 +110,76 @@ def delete_sighting(flask_app_client, user, sight_guid, expected_status_code=204
         test_utils.validate_dict_response(
             response, expected_status_code, {'status', 'message'}
         )
+
+
+# Create a default valid Sage detection response (to allow for the test to corrupt it accordingly)
+def build_sage_identification_response(job_uuid, annot_uuid, algorithm):
+
+    # Generate the response back from Sage.
+    # 15th July, Do not assume this is correct. This is hacky first try and probably needs
+    # expanding depending on algorithm
+    sage_resp = {
+        'response': {
+            'jobid': f'{str(job_uuid)}',
+            'json_result': {
+                'cm_dict': {annot_uuid: {}},
+                'inference_dict': {},
+                'query_annot_uuid_list': [annot_uuid],
+                'query_config_dict': {
+                    'pipeline_root': algorithm,
+                },
+                'summary_annot': [
+                    {
+                        'daid': 353909,
+                        'dnid': 101124,
+                        'duuid': str(uuid.uuid4()),
+                        'score': 0.49249419758140284,
+                        'species': 'tursiops_truncatus',
+                        'viewpoint': 'left',
+                    },
+                ],
+                'summary_name': [
+                    {
+                        'daid': 354564,
+                        'dnid': 78920,
+                        'duuid': str(uuid.uuid4()),
+                        'score': 4.755731035123042,
+                        'species': 'tursiops_truncatus',
+                        'viewpoint': 'right',
+                    },
+                ],
+            },
+            'status': 'completed',
+        },
+        'status': {
+            'cache': -1,
+            'code': 200,
+            'message': {},
+            'success': True,
+        },
+    }
+
+    return sage_resp
+
+
+def send_sage_identification_response(
+    flask_app_client,
+    user,
+    sighting_guid,
+    job_guid,
+    data,
+    expected_status_code=200,
+):
+    with flask_app_client.login(user, auth_scopes=('sightings:write',)):
+        response = flask_app_client.post(
+            f'{PATH}{sighting_guid}/sage_identified/{job_guid}',
+            content_type='application/json',
+            data=json.dumps(data),
+        )
+    if expected_status_code == 200:
+        assert response.status_code == expected_status_code
+    else:
+        test_utils.validate_dict_response(
+            response, expected_status_code, {'status', 'message'}
+        )
+    return response

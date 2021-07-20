@@ -6,6 +6,9 @@ Input arguments (Parameters) for Asset_groups resources RESTful API
 import logging
 import uuid
 
+from app.modules.sightings.parameters import PatchSightingDetailsParameters
+from app.modules.encounters.parameters import PatchEncounterDetailsParameters
+
 from flask_restx_patched import Parameters, PatchJSONParameters
 from flask_login import current_user  # NOQA
 
@@ -59,24 +62,12 @@ class PatchAssetGroupSightingDetailsParameters(PatchJSONParameters):
     OPERATION_CHOICES = (PatchJSONParameters.OP_REPLACE, PatchJSONParameters.OP_ADD)
     # These don't exist as entities in the AssetGroupSighting, they're just config blobs
     # but we allow patching faking them to be real
-    PATH_CHOICES = (
-        '/bearing',
-        '/behavior',
-        '/comments',
-        '/context',
-        '/customFields',
-        '/decimalLatitude',
-        '/decimalLongitude',
-        '/distance',
-        '/encounters',
-        '/endTime',
-        '/locationId',
-        '/startTime',
-        '/taxonomies',
-        '/verbatimLocality',
+    # This uses the fact that anything that is an EDM sighting path is in the
+    # AssetGroupSighting in the same format
+    PATH_CHOICES = PatchSightingDetailsParameters.PATH_CHOICES_EDM + (
         '/idConfigs',
         '/assetReferences',
-        # TODO name not implemented, should it be?
+        '/name',
     )
 
     @classmethod
@@ -143,22 +134,11 @@ class PatchAssetGroupSightingEncounterDetailsParameters(PatchJSONParameters):
     OPERATION_CHOICES = (PatchJSONParameters.OP_REPLACE, PatchJSONParameters.OP_ADD)
     # These don't exist as entities in the AssetGroupSighting, they're just config blobs
     # but we allow patching faking them to be real
-    PATH_CHOICES = (
-        '/behavior',
-        '/comments',
-        '/customFields',
-        '/decimalLatitude',
-        '/decimalLongitude',
-        '/lifeStage',
-        '/locationId',
-        '/sex',
-        '/taxonomy',
-        '/time',
-        '/timeValues',
-        '/verbatimLocality',
+
+    PATH_CHOICES = PatchEncounterDetailsParameters.PATH_CHOICES_EDM + (
         '/ownerEmail',
         '/annotations',
-        # TODO name and individualUuid are not here, should they be?
+        # TODO name and individualUuid in DEX-369, what if they don't match?
     )
 
     @classmethod

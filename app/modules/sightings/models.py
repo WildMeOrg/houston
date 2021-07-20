@@ -48,6 +48,8 @@ class Sighting(db.Model, FeatherModel):
     # Content = {'algorithm': model, 'active': Bool}
     jobs = db.Column(db.JSON, default=lambda: {}, nullable=True)
 
+    name = db.Column(db.String(length=120), nullable=True)
+
     # A sighting may have multiple IaConfigs used for IA on Sage, each with multiple algorithms,
     # even if only one is supported for MVP, Store as Json obj List
     # Content = ['matching_set': 'mine'|'extended'|'all', algorithms:[algo_1, algo_2]]

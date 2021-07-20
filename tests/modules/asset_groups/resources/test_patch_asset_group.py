@@ -57,6 +57,13 @@ def test_patch_asset_group(flask_app_client, researcher_1, regular_user, test_ro
             flask_app_client, researcher_1, asset_group_sighting_guid, patch_data
         )
 
+        # chosen for reasons of incongruity as the naked mole rat is virtually blind
+        # so has no 'sight'
+        add_name_patch = [utils.patch_add_op('name', 'Naked Mole Rat')]
+        asset_group_utils.patch_asset_group_sighting(
+            flask_app_client, researcher_1, asset_group_sighting_guid, add_name_patch
+        )
+
     finally:
         # Restore original state
         if asset_group_uuid:

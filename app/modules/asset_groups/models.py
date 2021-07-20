@@ -175,6 +175,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
 
         sighting = Sighting(
             guid=result_data['id'],
+            name=self.config.get('name', ''),
             stage=SightingStage.identification,
             version=result_data.get('version', 2),
         )

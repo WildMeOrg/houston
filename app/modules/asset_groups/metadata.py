@@ -120,7 +120,7 @@ class AssetGroupMetadata(object):
 
         try:
             individual = Individual.query.get(individual_uuid)
-        except ValueError:
+        except Exception:
             raise AssetGroupMetadataError(
                 f'{debug} individual {individual_uuid} not valid'
             )

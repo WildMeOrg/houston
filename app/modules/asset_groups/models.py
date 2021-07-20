@@ -552,7 +552,7 @@ class AssetGroup(db.Model, HoustonModel):
 
     @property
     def bulk_upload(self):
-        return 'uploadType' in self.request and self.request['uploadType'] == 'bulk'
+        return 'uploadType' in self.config and self.config['uploadType'] == 'bulk'
 
     @property
     def anonymous(self):

@@ -369,9 +369,17 @@ class AssetGroupSightingEncounterByID(Resource):
             default_error_message='Failed to update Asset_group_sighting details.',
         )
         with context:
-            parameters.PatchAssetGroupSightingEncounterDetailsParameters.perform_patch(
-                args, obj=asset_group_sighting, state={'encounter_uuid': encounter_guid}
-            )
+            try:
+                parameters.PatchAssetGroupSightingEncounterDetailsParameters.perform_patch(
+                    args,
+                    obj=asset_group_sighting,
+                    state={'encounter_uuid': encounter_guid},
+                )
+            except AssetGroupMetadataError as error:
+                abort(
+                    passed_message=error.message,
+                    code=error.status_code,
+                )
             db.session.merge(asset_group_sighting)
         return asset_group_sighting
 

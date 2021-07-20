@@ -86,7 +86,7 @@ class BaseConfig(object):
     )
 
     DEBUG = False
-    ERROR_404_HELP = False
+    RESTX_ERROR_404_HELP = False
 
     PREFERRED_URL_SCHEME = 'http'
     REVERSE_PROXY_SETUP = os.getenv('HOSTON_REVERSE_PROXY_SETUP', False)

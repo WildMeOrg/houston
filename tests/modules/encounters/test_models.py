@@ -1,14 +1,13 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=invalid-name,missing-docstring
 
-
+import tests.utils as test_utils
 import logging
 
 log = logging.getLogger(__name__)
 
 
 def test_encounter_add_owner(db):
-    from app.modules.encounters.models import Encounter
     from app.modules.users.models import User
 
     test_user = User(
@@ -18,8 +17,7 @@ def test_encounter_add_owner(db):
     )
 
     public_owner = User.get_public_user()
-    test_encounter = Encounter()
-    test_encounter.owner_guid = public_owner.guid
+    test_encounter = test_utils.generate_owned_encounter(public_owner)
 
     with db.session.begin():
         db.session.add(test_encounter)

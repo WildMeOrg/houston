@@ -49,8 +49,14 @@ class Sighting(db.Model, FeatherModel):
     # Content = {'algorithm': model, 'active': Bool}
     jobs = db.Column(db.JSON, default=lambda: {}, nullable=True)
 
+    asset_group_sighting_guid = db.Column(
+        db.GUID,
+        db.ForeignKey('asset_group_sighting.guid'),
+        index=True,
+        nullable=True,
+    )
     asset_group_sighting = db.relationship(
-        'AssetGroupSighting', default=None, back_populates='sighting'
+        'AssetGroupSighting', backref=db.backref('asset_group_sightings')
     )
 
     name = db.Column(db.String(length=120), nullable=True)
@@ -314,6 +320,7 @@ class Sighting(db.Model, FeatherModel):
             user_guid = user.guid if user else None
             encounter = Encounter(
                 guid=enc_id,
+                asset_group_sighting_encounter_guid=uuid.uuid4(),
                 version=edm_map[enc_id].get('version', 3),
                 owner_guid=user_guid,
                 submitter_guid=user_guid,
@@ -522,6 +529,7 @@ class Sighting(db.Model, FeatherModel):
         assert self.stage == SightingStage.identification
         num_algorithms = 0
 
+        # TODO remove self.id_configs
         self.ia_configs = id_configs
         num_configs = len(id_configs)
         if num_configs > 0:
@@ -544,10 +552,23 @@ class Sighting(db.Model, FeatherModel):
         if len(encounters_with_annotations) == 0:
             self.stage = SightingStage.un_reviewed
         elif num_algorithms == 0:
-            self.stage = SightingStage.un_reviewed
-            # TODO get the config for the encounter from the AGS and if there's an individual uuid,
-            # set it in the encounter
+            from app.modules.asset_groups.models import AssetGroupSighting
 
+            ags = AssetGroupSighting.query.get(self.asset_group_sighting_guid)
+            assert ags
+            self.stage = SightingStage.un_reviewed
+            for encounter in self.encounters:
+                encounter_metadata = ags.get_encounter_metadata(
+                    encounter.asset_group_sighting_encounter_guid
+                )
+                if 'individualUuid' in encounter_metadata:
+                    from app.modules.individuals.models import Individual
+
+                    individual = Individual.query.get(
+                        uuid.UUID(encounter_metadata['individualUuid'])
+                    )
+                    assert individual
+                    encounter.set_individual(individual)
         else:
             # Use task to send ID req with retries
             # Once we support multiple IA configs and algorithms, the number of jobs is going to grow....rapidly

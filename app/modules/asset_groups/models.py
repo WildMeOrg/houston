@@ -204,12 +204,12 @@ class AssetGroupSighting(db.Model, HoustonModel):
                     assert encounter_owner
                     owner_guid = encounter_owner.guid
 
+                assert 'guid' in req_data
                 new_encounter = Encounter(
                     guid=res_data['id'],
                     version=res_data.get('version', 2),
                     owner_guid=owner_guid,
-                    # TODO real guid depends on PR240
-                    asset_group_sighting_encounter_guid=42,
+                    asset_group_sighting_encounter_guid=req_data['guid'],
                     submitter_guid=self.asset_group.submitter_guid,
                     public=self.asset_group.anonymous,
                 )
@@ -482,6 +482,14 @@ class AssetGroupSighting(db.Model, HoustonModel):
     def delete(self):
         with db.session.begin(subtransactions=True):
             db.session.delete(self)
+
+    def get_encounter_metadata(self, encounter_uuid):
+        encounter_metadata = {}
+        for encounter_num in range(len(self.config['encounters'])):
+            if self.config['encounters'][encounter_num]['guid'] == str(encounter_uuid):
+                encounter_metadata = self.config['encounters'][encounter_num]
+                break
+        return encounter_metadata
 
 
 class AssetGroup(db.Model, HoustonModel):

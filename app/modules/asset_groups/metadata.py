@@ -115,6 +115,22 @@ class AssetGroupMetadata(object):
             raise AssetGroupMetadataError(f'{debug} owner {owner_email} not found')
 
     @classmethod
+    def validate_individual(cls, individual_uuid, debug):
+        from app.modules.individuals.models import Individual
+
+        try:
+            individual = Individual.query.get(individual_uuid)
+        except ValueError:
+            raise AssetGroupMetadataError(
+                f'{debug} individual {individual_uuid} not valid'
+            )
+
+        if individual is None:
+            raise AssetGroupMetadataError(
+                f'{debug} individual {individual_uuid} not found'
+            )
+
+    @classmethod
     def validate_annotations(cls, annotations, debug):
         from app.modules.annotations.models import Annotation
         from app.modules.asset_groups.models import AssetGroupSightingStage
@@ -148,6 +164,7 @@ class AssetGroupMetadata(object):
             encounter_fields = [
                 ('ownerEmail', str, False),
                 ('annotations', list, False),
+                ('individualUuid', str, False),
             ]
             cls._validate_fields(
                 encounter,
@@ -155,6 +172,11 @@ class AssetGroupMetadata(object):
                 f'{debug}{encounter_num}',
             )
 
+            # individual must be valid
+            if 'individualUuid' in encounter:
+                cls.validate_individual(
+                    encounter['individualUuid'], f'{debug}{encounter_num}'
+                )
             # Can reassign encounter owner but only to a valid user
             if 'ownerEmail' in encounter:
                 cls.validate_owner_email(

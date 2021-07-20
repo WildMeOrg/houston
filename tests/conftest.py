@@ -479,11 +479,11 @@ def contributor_1_login(flask_app, contributor_1):
 def public_encounter():
     from app.modules.encounters.models import Encounter
 
-    return Encounter(public=True)
+    return Encounter(public=True, asset_group_sighting_encounter_guid=uuid.uuid4())
 
 
 @pytest.fixture()
 def owned_encounter(temp_user):
-    from app.modules.encounters.models import Encounter
+    import tests.utils as test_utils
 
-    return Encounter(owner_guid=temp_user.guid, owner=temp_user)
+    return test_utils.generate_owned_encounter(temp_user)

@@ -375,7 +375,12 @@ def delete_asset_group(
 
 
 def patch_asset_group_sighting(
-    flask_app_client, user, patch_path, data, expected_status_code=200
+    flask_app_client,
+    user,
+    patch_path,
+    data,
+    expected_status_code=200,
+    expected_resp='',
 ):
     with flask_app_client.login(user, auth_scopes=('asset_group_sightings:write',)):
         response = flask_app_client.patch(
@@ -386,6 +391,11 @@ def patch_asset_group_sighting(
 
     if expected_status_code == 200:
         test_utils.validate_dict_response(response, 200, {'guid', 'stage', 'config'})
+    elif expected_status_code == 400:
+        test_utils.validate_dict_response(
+            response, expected_status_code, {'status', 'message', 'passed_message'}
+        )
+        assert response.json['passed_message'] == expected_resp
     else:
         test_utils.validate_dict_response(
             response, expected_status_code, {'status', 'message'}
@@ -431,7 +441,7 @@ def simulate_detection_response(
 
 # Helper as used across multiple tests
 def patch_in_dummy_annotation(
-    flask_app_client, db, user, asset_group_sighting_uuid, asset_uuid
+    flask_app_client, db, user, asset_group_sighting_uuid, asset_uuid, encounter_num=0
 ):
     from app.modules.assets.models import Asset
     from app.modules.annotations.models import Annotation
@@ -454,8 +464,7 @@ def patch_in_dummy_annotation(
     group_sighting = read_asset_group_sighting(
         flask_app_client, user, asset_group_sighting_uuid
     )
-    assert len(group_sighting.json['config']['encounters']) == 1
-    encounter_guid = group_sighting.json['config']['encounters'][0]['guid']
+    encounter_guid = group_sighting.json['config']['encounters'][encounter_num]['guid']
 
     patch_data = [test_utils.patch_replace_op('annotations', [str(new_annot.guid)])]
     patch_asset_group_sighting(

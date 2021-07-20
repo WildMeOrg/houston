@@ -122,6 +122,10 @@ class PatchAssetGroupSightingDetailsParameters(PatchJSONParameters):
         else:
             obj.config[field] = value
             ret_val = True
+
+        # Force the DB write
+        obj.config = obj.config
+
         return ret_val
 
     @classmethod

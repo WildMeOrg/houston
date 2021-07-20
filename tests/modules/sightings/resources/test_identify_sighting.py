@@ -4,6 +4,7 @@ from unittest import mock
 import tests.extensions.tus.utils as tus_utils
 import tests.modules.asset_groups.resources.utils as asset_group_utils
 import tests.modules.sightings.resources.utils as sighting_utils
+import tests.utils as test_utils
 
 
 def test_sighting_identification(
@@ -55,13 +56,15 @@ def test_sighting_identification(
 
         # Here starts the test for real
         # Create ID config and patch it in
-        id_config = {
-            'algorithms': ['Pie'],
-            'matchingSetDataOwners': 'mine',
-        }
-
-        asset_group_utils.patch_in_ia_config(
-            flask_app_client, researcher_1, asset_group_sighting_uuid, id_config
+        id_configs = [
+            {
+                'algorithms': ['Pie'],
+                'matchingSetDataOwners': 'mine',
+            }
+        ]
+        patch_data = [test_utils.patch_replace_op('idConfigs', id_configs)]
+        asset_group_utils.patch_asset_group_sighting(
+            flask_app_client, researcher_1, asset_group_sighting_uuid, patch_data
         )
 
         # Start ID simulating success response from Sage

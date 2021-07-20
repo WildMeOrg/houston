@@ -175,6 +175,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
 
         sighting = Sighting(
             guid=result_data['id'],
+            asset_group_sighting=self,
             name=self.config.get('name', ''),
             stage=SightingStage.identification,
             version=result_data.get('version', 2),
@@ -207,6 +208,8 @@ class AssetGroupSighting(db.Model, HoustonModel):
                     guid=res_data['id'],
                     version=res_data.get('version', 2),
                     owner_guid=owner_guid,
+                    # TODO real guid depends on PR240
+                    asset_group_sighting_encounter_guid=42,
                     submitter_guid=self.asset_group.submitter_guid,
                     public=self.asset_group.anonymous,
                 )

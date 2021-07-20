@@ -52,6 +52,10 @@ class Encounter(db.Model, FeatherModel):
         'User', backref=db.backref('submitted_encounters'), foreign_keys=[submitter_guid]
     )
 
+    # Asset group sighting stores the configuration for this encounter,
+    # Instead of duplicating the storage of it here, just store a reference into the structure
+    asset_group_sighting_encounter_guid = db.Column(db.GUID, nullable=False)
+
     public = db.Column(db.Boolean, default=False, nullable=False)
 
     projects = db.relationship('ProjectEncounter', back_populates='encounter')

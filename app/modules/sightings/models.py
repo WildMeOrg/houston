@@ -49,6 +49,10 @@ class Sighting(db.Model, FeatherModel):
     # Content = {'algorithm': model, 'active': Bool}
     jobs = db.Column(db.JSON, default=lambda: {}, nullable=True)
 
+    asset_group_sighting = db.relationship(
+        'AssetGroupSighting', default=None, back_populates='sighting'
+    )
+
     name = db.Column(db.String(length=120), nullable=True)
 
     # A sighting may have multiple IaConfigs used for IA on Sage, each with multiple algorithms,
@@ -537,8 +541,13 @@ class Sighting(db.Model, FeatherModel):
         ]
 
         # No annotations to identify or no algorithms, go straight to un-reviewed
-        if len(encounters_with_annotations) == 0 or num_algorithms == 0:
+        if len(encounters_with_annotations) == 0:
             self.stage = SightingStage.un_reviewed
+        elif num_algorithms == 0:
+            self.stage = SightingStage.un_reviewed
+            # TODO get the config for the encounter from the AGS and if there's an individual uuid,
+            # set it in the encounter
+
         else:
             # Use task to send ID req with retries
             # Once we support multiple IA configs and algorithms, the number of jobs is going to grow....rapidly

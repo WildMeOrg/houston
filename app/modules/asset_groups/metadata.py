@@ -248,9 +248,7 @@ class AssetGroupMetadata(object):
     @property
     def bulk_upload(self):
         assert self.data_processed >= AssetGroupMetadata.DataProcessed.first_level
-        return ('bulkUpload' in self.request and self.request['bulkUpload']) or (
-            'uploadType' in self.request and self.request['uploadType'] == 'bulk'
-        )
+        return 'uploadType' in self.request and self.request['uploadType'] == 'bulk'
 
     @property
     def location_id(self):
@@ -302,8 +300,7 @@ class AssetGroupMetadata(object):
 
         # Parse according to docs.google.com/document/d/11TMq1qzaQxva97M3XYwaEYYUawJ5VsrRXnJvTQR_nG0/edit?pli=1#
         top_level_fields = [
-            ('bulkUpload', bool, False),  # Temporary, to be removed
-            ('uploadType', str, False),  # Will become mandatory
+            ('uploadType', str, True),
             ('speciesDetectionModel', list, True),
             ('transactionId', str, False),
             ('sightings', list, True),
@@ -351,7 +348,7 @@ class AssetGroupMetadata(object):
         # Message was valid, is the user allowed to do so
         from app.modules.users.models import User
 
-        if 'bulkUpload' not in self.request and 'uploadType' not in self.request:
+        if 'uploadType' not in self.request:
             raise AssetGroupMetadataError(
                 "Use uploadType to define type 'bulk' or 'form'"
             )

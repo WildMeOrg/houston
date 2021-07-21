@@ -144,6 +144,7 @@ class BaseConfig(object):
         'site_settings',
         'site_info',
         'job_control',
+        'elasticsearch_proxy',
 
         # Front-end
         #   Dependencies: Users, Auth, Assets
@@ -290,6 +291,27 @@ class AssetGroupConfig(object):
     GITLAB_REMOTE_LOGIN_PAT = os.getenv('GITLAB_REMOTE_LOGIN_PAT')
 
 
+def _parse_elasticsearch_hosts(raw_hosts_line):
+    # Ignore None value, allowing the application to fail on usage =/
+    hosts = []
+    if raw_hosts_line is None:
+        raw_hosts_line = ''
+
+    for host in raw_hosts_line.split(','):
+        host = host.strip()
+        if ':' in host:
+            host = dict(zip(['host', 'port'], host.split(':')))
+        hosts.append(host)
+    return hosts
+
+
+class ElasticsearchConfig:
+    # Elasticsearch host configuration
+    # - for multiple hosts use a comma to separate each host
+    # - to specify a port use a colon and port number (e.g. `elasticsearch:9200`)
+    ELASTICSEARCH_HOSTS = _parse_elasticsearch_hosts(os.getenv('ELASTICSEARCH_HOSTS'))
+
+
 class ProductionConfig(
     BaseConfig,
     EDMConfig,
@@ -298,6 +320,7 @@ class ProductionConfig(
     GoogleConfig,
     AssetGroupConfig,
     ReCaptchaConfig,
+    ElasticsearchConfig,
 ):
     TESTING = False
 
@@ -320,6 +343,7 @@ class DevelopmentConfig(
     GoogleConfig,
     AssetGroupConfig,
     ReCaptchaConfig,
+    ElasticsearchConfig,
 ):
     DEBUG = True
 

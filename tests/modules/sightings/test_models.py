@@ -103,7 +103,7 @@ def test_sighting_ensure_no_duplicate_encounters(db):
     test_encounter.delete()
 
 
-def test_sighting_jobs(db, request):
+def test_sighting_jobs(db, request, researcher_1):
     from app.modules.sightings.models import Sighting, SightingStage
 
     example_ia_configs = {
@@ -116,13 +116,20 @@ def test_sighting_jobs(db, request):
             'algorithms': {'algorithm_id': 'algorithm2'},
         },
     }
+
+    from app.modules.asset_groups.models import AssetGroupSighting, AssetGroup
+
+    group = AssetGroup(owner=researcher_1)
+    ags = AssetGroupSighting(asset_group=group)
+    ags.config = {'idConfigs': example_ia_configs}
+
     sighting1 = Sighting(
         stage=SightingStage.identification,
-        ia_configs=example_ia_configs,
+        asset_group_sighting=ags,
     )
     sighting2 = Sighting(
         stage=SightingStage.identification,
-        ia_configs=example_ia_configs,
+        asset_group_sighting=ags,
     )
     with db.session.begin():
         db.session.add(sighting1)
@@ -177,3 +184,4 @@ def test_sighting_jobs(db, request):
             'start': now,
         },
     }
+    group.delete()

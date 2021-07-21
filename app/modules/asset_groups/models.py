@@ -236,8 +236,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
 
         # AssetGroupSighting is finished, all subsequent processing is on the Sighting
         self.complete()
-        idConfigs = self.config.get('idConfigs', [])
-        sighting.ia_pipeline(idConfigs)
+        sighting.ia_pipeline()
 
         num_encounters = len(self.config['encounters'])
         log.info(
@@ -490,6 +489,9 @@ class AssetGroupSighting(db.Model, HoustonModel):
                 encounter_metadata = self.config['encounters'][encounter_num]
                 break
         return encounter_metadata
+
+    def get_id_configs(self):
+        return self.config.get('idConfigs', [])
 
 
 class AssetGroup(db.Model, HoustonModel):

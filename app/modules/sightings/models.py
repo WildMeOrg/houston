@@ -543,9 +543,7 @@ class Sighting(db.Model, FeatherModel):
         ]
 
         # No annotations to identify or no algorithms, go straight to un-reviewed
-        if len(encounters_with_annotations) == 0:
-            self.stage = SightingStage.un_reviewed
-        elif num_algorithms == 0:
+        if len(encounters_with_annotations) == 0 or num_algorithms == 0:
             self.stage = SightingStage.un_reviewed
 
             for encounter in self.encounters:

@@ -11,7 +11,6 @@ import uuid
 import json
 
 from flask import request
-from flask_login import current_user
 from flask_restx_patched import Resource
 from flask_restx_patched._http import HTTPStatus
 
@@ -119,74 +118,6 @@ class AssetGroups(Resource):
         log.info(
             f'AssetGroup {asset_group.guid}:"{metadata.description}" created by {metadata.owner.email} in {timer.elapsed()} seconds'
         )
-        return asset_group
-
-
-@api.route('/streamlined')
-@api.login_required(oauth_scopes=['asset_groups:write'])
-class AssetGroupsStreamlined(Resource):
-    """
-    Manipulations with Asset_groups + File add/commit.
-    """
-
-    @api.permission_required(
-        permissions.ModuleAccessPermission,
-        kwargs_on_request=lambda kwargs: {
-            'module': AssetGroup,
-            'action': AccessOperation.WRITE,
-        },
-    )
-    @api.parameters(parameters.CreateAssetGroupParameters())
-    @api.response(schemas.DetailedAssetGroupSchema())
-    @api.response(code=HTTPStatus.CONFLICT)
-    def post(self, args):
-        r"""
-        Create a new instance of Asset_group.
-
-        CommandLine:
-            EMAIL='test@localhost'
-            PASSWORD='test'
-            TIMESTAMP=$(date '+%Y%m%d-%H%M%S%Z')
-            curl \
-                -X POST \
-                -c cookie.jar \
-                -F email=${EMAIL} \
-                -F password=${PASSWORD} \
-                https://houston.dyn.wildme.io/api/v1/auth/sessions | jq
-            curl \
-                -X GET \
-                -b cookie.jar \
-                https://houston.dyn.wildme.io/api/v1/users/me | jq
-            curl \
-                -X POST \
-                -b cookie.jar \
-                -F description="This is a test asset_group (via CURL), please ignore" \
-                -F files="@tests/asset_groups/test-000/zebra.jpg" \
-                -F files="@tests/asset_groups/test-000/fluke.jpg" \
-                https://houston.dyn.wildme.io/api/v1/asset_groups/streamlined | jq
-        """
-        from .tasks import git_push
-
-        context = api.commit_or_abort(
-            db.session, default_error_message='Failed to create a new Asset_group'
-        )
-        with context:
-            args['owner_guid'] = current_user.guid
-            asset_group = AssetGroup(**args)
-            db.session.add(asset_group)
-
-        # Get the repo to make sure it's configured
-        asset_group.ensure_repository()
-
-        for upload_file in request.files.getlist('files'):
-            asset_group.git_write_upload_file(upload_file)
-
-        asset_group.git_commit('Initial commit via %s' % (request.url_rule,))
-
-        # Do git push to gitlab in the background (we won't wait for its
-        # completion here)
-        git_push.delay(str(asset_group.guid))
-
         return asset_group
 
 

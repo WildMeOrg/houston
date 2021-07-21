@@ -73,7 +73,7 @@ def test_asset_group_sightings_jobs(flask_app, db, admin_user, test_root, reques
 def test_asset_group_sightings_bulk(
     flask_app, flask_app_client, db, admin_user, researcher_1, test_root, request
 ):
-    from app.modules.asset_groups.models import AssetGroup, AssetGroupSighting
+    from app.modules.asset_groups.models import AssetGroupSighting
 
     transaction_id, test_filename = asset_group_utils.create_bulk_tus_transaction(
         test_root
@@ -85,7 +85,6 @@ def test_asset_group_sightings_bulk(
             flask_app_client, researcher_1, data.get()
         )
         asset_group_uuid = resp.json['guid']
-        asset_group = AssetGroup.query.get(asset_group_uuid)
 
         # Make sure that both AGS' are created and have the correct locations
         ags1 = AssetGroupSighting.query.get(resp.json['asset_group_sightings'][0]['guid'])
@@ -96,12 +95,6 @@ def test_asset_group_sightings_bulk(
         # Due to DB interactions, cannot rely on the order
         assert sorted(ags.config['locationId'] for ags in (ags1, ags2)) == sorted(
             cnf['locationId'] for cnf in data.content['sightings']
-        )
-        asset_group = AssetGroup.query.get(asset_group_uuid)
-
-        assert (
-            asset_group.asset_group_sightings[0].config['locationId']
-            == data.content['sightings'][0]['locationId']
         )
 
     finally:

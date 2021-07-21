@@ -16,6 +16,7 @@ def test_create_asset_group(flask_app_client, researcher_1, readonly_user, test_
 
     try:
         data = TestCreationData(transaction_id, False)
+        data.set_field('uploadType', 'form')
         data.set_field('description', 'This is a test asset_group, please ignore')
 
         resp_msg = 'speciesDetectionModel field missing from request'
@@ -75,7 +76,8 @@ def test_create_asset_group(flask_app_client, researcher_1, readonly_user, test_
         )
 
         data.set_sighting_field(0, 'assetReferences', [test_filename])
-        resp_msg = "Use uploadType to define type 'bulk' or 'form'"
+        data.remove_field('uploadType')
+        resp_msg = 'uploadType field missing from request'
         asset_group_utils.create_asset_group(
             flask_app_client, researcher_1, data.get(), 400, resp_msg
         )
@@ -212,12 +214,12 @@ def test_create_asset_group_anonymous(
         )
         data.remove_field('submitterEmail')
 
-        data.set_field('bulkUpload', True)
+        data.set_field('uploadType', 'bulk')
         resp_msg = 'anonymous users not permitted to do bulk upload'
         asset_group_utils.create_asset_group(
             flask_app_client, None, data.get(), 400, resp_msg
         )
-        data.set_field('bulkUpload', False)
+        data.set_field('uploadType', 'form')
 
         data.set_encounter_field(0, 0, 'ownerEmail', researcher_1.email)
         resp_msg = 'anonymous users not permitted to assign owners'

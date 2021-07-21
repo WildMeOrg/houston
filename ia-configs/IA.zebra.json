@@ -1,4 +1,4 @@
-
+{
   "_README": "A value starting with '@' indicates an absolute path from the top of this config file, and parsing that @-link results in the value of that absolute path. The first half of this file (top-level _detectors and _identifiers) defines the various algorithms we use, including the configs we send to SAGE and some metadata about each config. Each algo config is under a name-key, e.g. the african_terrestrial detector.  \n The second half of the file defines the pipeline for each species by referencing the previously-defined algorithms, in the hierachy genus->species->detectors, and genus->species->iaClass->identifiers. The values of these species configurations should be @-links but literals are also supported by the parser.",
   "_detectors": {
     "african_terrestrial": {

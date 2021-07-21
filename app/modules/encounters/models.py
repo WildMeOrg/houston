@@ -54,7 +54,9 @@ class Encounter(db.Model, FeatherModel):
 
     # Asset group sighting stores the configuration for this encounter,
     # Instead of duplicating the storage of it here, just store a reference into the structure
-    asset_group_sighting_encounter_guid = db.Column(db.GUID, nullable=False)
+    # has to be nullable for db upgrade. Providing a default dummy guid would cause more problems
+    # than it would solve
+    asset_group_sighting_encounter_guid = db.Column(db.GUID, nullable=True)
 
     public = db.Column(db.Boolean, default=False, nullable=False)
 

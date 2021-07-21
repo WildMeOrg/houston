@@ -552,14 +552,15 @@ class Sighting(db.Model, FeatherModel):
                 encounter_metadata = self.asset_group_sighting.get_encounter_metadata(
                     encounter.asset_group_sighting_encounter_guid
                 )
-                if 'individualUuid' in encounter_metadata:
-                    from app.modules.individuals.models import Individual
+                if encounter_metadata:
+                    if 'individualUuid' in encounter_metadata:
+                        from app.modules.individuals.models import Individual
 
-                    individual = Individual.query.get(
-                        uuid.UUID(encounter_metadata['individualUuid'])
-                    )
-                    assert individual
-                    encounter.set_individual(individual)
+                        individual = Individual.query.get(
+                            uuid.UUID(encounter_metadata['individualUuid'])
+                        )
+                        assert individual
+                        encounter.set_individual(individual)
         else:
             # Use task to send ID req with retries
             # Once we support multiple IA configs and algorithms, the number of jobs is going to grow....rapidly

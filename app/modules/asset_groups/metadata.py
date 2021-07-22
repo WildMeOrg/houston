@@ -346,7 +346,6 @@ class AssetGroupMetadata(object):
             detectors = ia_config_reader.get_detectors_dict(species)
             for config in self.detection_configs:
                 if config and config != 'None' and config not in detectors.keys():
-                    breakpoint()
                     raise AssetGroupMetadataError(
                         f'detection config {config} not supported'
                     )

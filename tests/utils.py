@@ -123,7 +123,13 @@ def generate_encounter_instance(user_email=None, user_password=None, user_full_n
     )
     from app.modules.encounters.models import Encounter
 
-    return Encounter(owner=user)
+    return Encounter(owner=user, asset_group_sighting_encounter_guid=uuid.uuid4())
+
+
+def generate_owned_encounter(owner):
+    from app.modules.encounters.models import Encounter
+
+    return Encounter(owner=owner, asset_group_sighting_encounter_guid=uuid.uuid4())
 
 
 def generate_user_instance(

@@ -320,9 +320,12 @@ class Sightings(Resource):
             i = 0
             while i < len(result_data['encounters']):
                 try:
+                    import uuid
+
                     encounter = Encounter(
                         guid=result_data['encounters'][i]['id'],
                         version=result_data['encounters'][i].get('version', 2),
+                        asset_group_sighting_encounter_guid=uuid.uuid4(),
                         owner_guid=owner.guid,
                         submitter_guid=submitter_guid,
                         public=pub,

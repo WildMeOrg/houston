@@ -462,3 +462,45 @@ def test_create_asset_group_simulate_detection(
         # if sighting_uuid:
         #     import tests.modules.sightings.resources.utils as sighting_utils
         #     sighting_utils.delete_sighting(flask_app_client, researcher_1, asset_group_uuid)
+
+
+def test_create_asset_group_individual(
+    flask_app_client,
+    researcher_1,
+    staff_user,
+    test_root,
+    db,
+    empty_individual,
+):
+    # pylint: disable=invalid-name
+    from tests.modules.asset_groups.resources.utils import TestCreationData
+    import uuid
+
+    transaction_id, test_filename = tus_utils.prep_tus_dir(test_root)
+    asset_group_uuid = None
+    try:
+        data = TestCreationData(transaction_id)
+        data.add_filename(0, test_filename)
+        dummy_uuid = str(uuid.uuid4())
+        data.set_encounter_field(0, 0, 'individualUuid', dummy_uuid)
+        resp_msg = f'Encounter 1.1 individual {dummy_uuid} not found'
+        asset_group_utils.create_asset_group(
+            flask_app_client, None, data.get(), 400, resp_msg
+        )
+        with db.session.begin():
+            db.session.add(empty_individual)
+        data.set_encounter_field(0, 0, 'individualUuid', str(empty_individual.guid))
+
+        resp = asset_group_utils.create_asset_group(
+            flask_app_client, researcher_1, data.get()
+        )
+        asset_group_uuid = resp.json['guid']
+
+    finally:
+        with db.session.begin():
+            db.session.delete(empty_individual)
+        if asset_group_uuid:
+            asset_group_utils.delete_asset_group(
+                flask_app_client, staff_user, asset_group_uuid
+            )
+        tus_utils.cleanup_tus_dir(transaction_id)

@@ -5,6 +5,7 @@ from unittest import mock
 import tests.extensions.tus.utils as tus_utils
 import tests.modules.asset_groups.resources.utils as asset_group_utils
 import tests.modules.sightings.resources.utils as sighting_utils
+import tests.utils as test_utils
 
 from invoke import MockContext
 
@@ -107,13 +108,24 @@ def test_sighting_identification_jobs(
         transaction_id, test_filename = tus_utils.prep_tus_dir(
             test_root, str(uuid.uuid4())
         )
-        (
-            asset_group_uuid,
-            sighting_uuid,
-            annot_uuid,
-        ) = asset_group_utils.create_and_commit_asset_group(
-            flask_app_client, db, researcher_1, transaction_id, test_filename
+
+        data = asset_group_utils.TestCreationData(transaction_id)
+        data.add_filename(0, test_filename)
+        response = asset_group_utils.create_asset_group(
+            flask_app_client, researcher_1, data.get()
         )
+        asset_group_uuid = response.json['guid']
+        asset_group_sighting_guid = response.json['asset_group_sightings'][0]['guid']
+        asset_uuid = response.json['assets'][0]['guid']
+        annot_uuid = asset_group_utils.patch_in_dummy_annotation(
+            flask_app_client, db, researcher_1, asset_group_sighting_guid, asset_uuid
+        )
+
+        response = asset_group_utils.commit_asset_group_sighting(
+            flask_app_client, researcher_1, asset_group_sighting_guid
+        )
+        sighting_uuid = response.json['guid']
+
         asset_group_uuids.append(asset_group_uuid)
         sighting_uuids.append(sighting_uuid)
         transactions.append(transaction_id)
@@ -123,6 +135,7 @@ def test_sighting_identification_jobs(
         # Push stage back to ID
         sighting.stage = SightingStage.identification
 
+        # Now give it an ID config in the assetGroupSighting
         id_configs = [
             {
                 'algorithms': [
@@ -131,12 +144,19 @@ def test_sighting_identification_jobs(
                 'matchingSetDataOwners': 'mine',
             }
         ]
+        patch_data = [test_utils.patch_replace_op('idConfigs', id_configs)]
+        asset_group_utils.patch_asset_group_sighting(
+            flask_app_client,
+            researcher_1,
+            asset_group_sighting_guid,
+            patch_data,
+        )
         with mock.patch.object(
             flask_app.acm,
             'request_passthrough_result',
             return_value={'success': True},
         ):
-            sighting.ia_pipeline(id_configs)
+            sighting.ia_pipeline()
 
         # Now see that the task gets what we expect
         with mock.patch('app.create_app'):

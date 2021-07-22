@@ -142,7 +142,7 @@ class PatchAssetGroupSightingEncounterDetailsParameters(PatchJSONParameters):
     PATH_CHOICES = PatchEncounterDetailsParameters.PATH_CHOICES_EDM + (
         '/ownerEmail',
         '/annotations',
-        # TODO name and individualUuid in DEX-369, what if they don't match?
+        '/individualUuid',
     )
 
     @classmethod
@@ -155,15 +155,12 @@ class PatchAssetGroupSightingEncounterDetailsParameters(PatchJSONParameters):
         # Reuse metadata methods to validate fields
         from .metadata import AssetGroupMetadata, AssetGroupMetadataError
 
-        ret_val = False
+        ret_val = True
 
         assert 'encounter_uuid' in state
         encounter_uuid = state['encounter_uuid']
-        encounter_metadata = {}
-        for encounter_num in range(len(obj.config['encounters'])):
-            if obj.config['encounters'][encounter_num]['guid'] == str(encounter_uuid):
-                encounter_metadata = obj.config['encounters'][encounter_num]
-                break
+        encounter_metadata = obj.get_encounter_metadata(encounter_uuid)
+
         if not encounter_metadata:
             raise AssetGroupMetadataError(
                 f'Encounter {encounter_uuid} not found in AssetGroupSighting {obj.guid}'
@@ -172,14 +169,14 @@ class PatchAssetGroupSightingEncounterDetailsParameters(PatchJSONParameters):
         if field == 'ownerEmail':
             AssetGroupMetadata.validate_owner_email(value, f'Encounter {encounter_uuid}')
             encounter_metadata[field] = value
-            ret_val = True
         elif field == 'annotations':
             AssetGroupMetadata.validate_annotations(value, f'Encounter {encounter_uuid}')
             encounter_metadata[field] = value
-            ret_val = True
+        elif field == 'individualUuid':
+            AssetGroupMetadata.validate_individual(value, f'Encounter {encounter_uuid}')
+            encounter_metadata[field] = value
         else:
             encounter_metadata[field] = value
-            ret_val = True
         # force the write to the database
         obj.config = obj.config
         return ret_val

@@ -175,6 +175,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
 
         sighting = Sighting(
             guid=result_data['id'],
+            asset_group_sighting=self,
             name=self.config.get('name', ''),
             stage=SightingStage.identification,
             version=result_data.get('version', 2),
@@ -203,10 +204,12 @@ class AssetGroupSighting(db.Model, HoustonModel):
                     assert encounter_owner
                     owner_guid = encounter_owner.guid
 
+                assert 'guid' in req_data
                 new_encounter = Encounter(
                     guid=res_data['id'],
                     version=res_data.get('version', 2),
                     owner_guid=owner_guid,
+                    asset_group_sighting_encounter_guid=req_data['guid'],
                     submitter_guid=self.asset_group.submitter_guid,
                     public=self.asset_group.anonymous,
                 )
@@ -233,8 +236,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
 
         # AssetGroupSighting is finished, all subsequent processing is on the Sighting
         self.complete()
-        idConfigs = self.config.get('idConfigs', [])
-        sighting.ia_pipeline(idConfigs)
+        sighting.ia_pipeline()
 
         num_encounters = len(self.config['encounters'])
         log.info(
@@ -480,6 +482,17 @@ class AssetGroupSighting(db.Model, HoustonModel):
         with db.session.begin(subtransactions=True):
             db.session.delete(self)
 
+    def get_encounter_metadata(self, encounter_uuid):
+        encounter_metadata = {}
+        for encounter_num in range(len(self.config['encounters'])):
+            if self.config['encounters'][encounter_num]['guid'] == str(encounter_uuid):
+                encounter_metadata = self.config['encounters'][encounter_num]
+                break
+        return encounter_metadata
+
+    def get_id_configs(self):
+        return self.config.get('idConfigs', [])
+
 
 class AssetGroup(db.Model, HoustonModel):
     """
@@ -539,7 +552,7 @@ class AssetGroup(db.Model, HoustonModel):
 
     @property
     def bulk_upload(self):
-        return 'uploadType' in self.request and self.request['uploadType'] == 'bulk'
+        return 'uploadType' in self.config and self.config['uploadType'] == 'bulk'
 
     @property
     def anonymous(self):

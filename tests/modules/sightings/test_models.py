@@ -6,21 +6,19 @@ from unittest import mock
 import uuid
 
 from app.modules.users.models import User
+import tests.utils as test_utils
 
 
 def test_sighting_create_and_add_encounters(db):
 
     from app.modules.sightings.models import Sighting, SightingStage
-    from app.modules.encounters.models import Encounter
 
     test_sighting = Sighting(stage=SightingStage.processed)
     owner = User.get_public_user()
 
-    test_encounter_a = Encounter()
-    test_encounter_a.owner_guid = owner.guid
+    test_encounter_a = test_utils.generate_owned_encounter(owner)
 
-    test_encounter_b = Encounter()
-    test_encounter_b.owner_guid = owner.guid
+    test_encounter_b = test_utils.generate_owned_encounter(owner)
 
     with db.session.begin():
         db.session.add(test_encounter_a)
@@ -60,13 +58,11 @@ def test_sighting_create_and_add_encounters(db):
 
 def test_sighting_ensure_no_duplicate_encounters(db):
     from app.modules.sightings.models import Sighting, SightingStage
-    from app.modules.encounters.models import Encounter
 
     test_sighting = Sighting(stage=SightingStage.processed)
     owner = User.get_public_user()
 
-    test_encounter = Encounter()
-    test_encounter.owner_guid = owner.guid
+    test_encounter = test_utils.generate_owned_encounter(owner)
 
     with db.session.begin():
         db.session.add(test_encounter)
@@ -107,7 +103,7 @@ def test_sighting_ensure_no_duplicate_encounters(db):
     test_encounter.delete()
 
 
-def test_sighting_jobs(db, request):
+def test_sighting_jobs(db, request, researcher_1):
     from app.modules.sightings.models import Sighting, SightingStage
 
     example_ia_configs = {
@@ -120,13 +116,20 @@ def test_sighting_jobs(db, request):
             'algorithms': {'algorithm_id': 'algorithm2'},
         },
     }
+
+    from app.modules.asset_groups.models import AssetGroupSighting, AssetGroup
+
+    group = AssetGroup(owner=researcher_1)
+    ags = AssetGroupSighting(asset_group=group)
+    ags.config = {'idConfigs': example_ia_configs}
+
     sighting1 = Sighting(
         stage=SightingStage.identification,
-        ia_configs=example_ia_configs,
+        asset_group_sighting=ags,
     )
     sighting2 = Sighting(
         stage=SightingStage.identification,
-        ia_configs=example_ia_configs,
+        asset_group_sighting=ags,
     )
     with db.session.begin():
         db.session.add(sighting1)
@@ -181,3 +184,4 @@ def test_sighting_jobs(db, request):
             'start': now,
         },
     }
+    group.delete()

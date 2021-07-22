@@ -4,6 +4,7 @@ from mock import Mock, patch
 import pytest
 
 from werkzeug.exceptions import HTTPException
+import tests.utils as test_utils
 
 from app.modules.users import permissions
 from app.modules.users.permissions.types import AccessOperation
@@ -386,7 +387,6 @@ def test_ObjectAccessPermission_researcher_user(
 ):
     # pylint: disable=unused-argument
     from app.modules.users.models import User
-    from app.modules.encounters.models import Encounter
 
     # Can't access other users
     validate_cannot_read_module(User)
@@ -418,7 +418,7 @@ def test_ObjectAccessPermission_researcher_user(
     validate_cannot_write_object(owned_encounter)
     validate_cannot_delete_object(owned_encounter)
 
-    my_encounter = Encounter(owner=researcher_1_login)
+    my_encounter = test_utils.generate_owned_encounter(researcher_1_login)
 
     with db.session.begin():
         db.session.add(my_encounter)
@@ -436,7 +436,6 @@ def test_ObjectAccessPermission_contributor_user(
     # pylint: disable=unused-argument
     from app.modules.assets.models import Asset
     from app.modules.users.models import User
-    from app.modules.encounters.models import Encounter
 
     # Can't access other users
     validate_cannot_read_module(User)
@@ -487,7 +486,7 @@ def test_ObjectAccessPermission_contributor_user(
             # object that is not a project, encounter or asset
             validate_cannot_read_object(mock_other)
 
-    my_encounter = Encounter(owner=contributor_1_login)
+    my_encounter = test_utils.generate_owned_encounter(contributor_1_login)
     with db.session.begin():
         db.session.add(my_encounter)
 

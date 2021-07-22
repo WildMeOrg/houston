@@ -49,12 +49,17 @@ class Sighting(db.Model, FeatherModel):
     # Content = {'algorithm': model, 'active': Bool}
     jobs = db.Column(db.JSON, default=lambda: {}, nullable=True)
 
-    name = db.Column(db.String(length=120), nullable=True)
+    asset_group_sighting_guid = db.Column(
+        db.GUID,
+        db.ForeignKey('asset_group_sighting.guid'),
+        index=True,
+        nullable=True,
+    )
+    asset_group_sighting = db.relationship(
+        'AssetGroupSighting', backref=db.backref('asset_group_sightings')
+    )
 
-    # A sighting may have multiple IaConfigs used for IA on Sage, each with multiple algorithms,
-    # even if only one is supported for MVP, Store as Json obj List
-    # Content = ['matching_set': 'mine'|'extended'|'all', algorithms:[algo_1, algo_2]]
-    ia_configs = db.Column(db.JSON, default={}, nullable=True)
+    name = db.Column(db.String(length=120), nullable=True)
 
     def __repr__(self):
         return (
@@ -310,6 +315,7 @@ class Sighting(db.Model, FeatherModel):
             user_guid = user.guid if user else None
             encounter = Encounter(
                 guid=enc_id,
+                asset_group_sighting_encounter_guid=uuid.uuid4(),
                 version=edm_map[enc_id].get('version', 3),
                 owner_guid=user_guid,
                 submitter_guid=user_guid,
@@ -381,10 +387,11 @@ class Sighting(db.Model, FeatherModel):
     def send_identification(self, config_id, algorithm_id, annotation_uuid):
         from datetime import datetime
 
+        id_configs = self.asset_group_sighting.get_id_configs()
         # Message construction has to be in the task as the jobId must be unique
         job_uuid = uuid.uuid4()
-        matching_set_data = self.ia_configs[config_id].get('matchingSetDataOwners')
-        algorithm = self.ia_configs[config_id]['algorithms'][algorithm_id]
+        matching_set_data = id_configs[config_id].get('matchingSetDataOwners')
+        algorithm = id_configs[config_id]['algorithms'][algorithm_id]
         id_request = self.build_identification_request(
             matching_set_data, annotation_uuid, job_uuid
         )
@@ -512,18 +519,17 @@ class Sighting(db.Model, FeatherModel):
         # response, process it here
         return True
 
-    def ia_pipeline(self, id_configs):
+    def ia_pipeline(self):
         from .tasks import send_identification
 
         assert self.stage == SightingStage.identification
         num_algorithms = 0
-
-        self.ia_configs = id_configs
+        id_configs = self.asset_group_sighting.get_id_configs()
         num_configs = len(id_configs)
         if num_configs > 0:
             # Only one for MVP
             assert num_configs == 1
-            for config in self.ia_configs:
+            for config in id_configs:
                 assert 'algorithms' in config
                 # Only one for MVP
                 assert len(config['algorithms']) == 1
@@ -539,11 +545,25 @@ class Sighting(db.Model, FeatherModel):
         # No annotations to identify or no algorithms, go straight to un-reviewed
         if len(encounters_with_annotations) == 0 or num_algorithms == 0:
             self.stage = SightingStage.un_reviewed
+
+            for encounter in self.encounters:
+                encounter_metadata = self.asset_group_sighting.get_encounter_metadata(
+                    encounter.asset_group_sighting_encounter_guid
+                )
+                if encounter_metadata:
+                    if 'individualUuid' in encounter_metadata:
+                        from app.modules.individuals.models import Individual
+
+                        individual = Individual.query.get(
+                            uuid.UUID(encounter_metadata['individualUuid'])
+                        )
+                        assert individual
+                        encounter.set_individual(individual)
         else:
             # Use task to send ID req with retries
             # Once we support multiple IA configs and algorithms, the number of jobs is going to grow....rapidly
-            for config_id in range(len(self.ia_configs)):
-                for algorithm_id in range(len(self.ia_configs[config_id]['algorithms'])):
+            for config_id in range(len(id_configs)):
+                for algorithm_id in range(len(id_configs[config_id]['algorithms'])):
                     for encounter in self.encounters:
                         for annotation in encounter.annotations:
                             send_identification(

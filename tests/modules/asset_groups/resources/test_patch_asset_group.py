@@ -1,11 +1,15 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=missing-docstring
+import uuid
+
 import tests.modules.asset_groups.resources.utils as asset_group_utils
 import tests.extensions.tus.utils as tus_utils
 
 
 # Test a bunch of failure scenarios
-def test_patch_asset_group(flask_app_client, researcher_1, regular_user, test_root, db):
+def test_patch_asset_group(
+    flask_app_client, researcher_1, regular_user, test_root, db, empty_individual
+):
     # pylint: disable=invalid-name
     from tests.modules.asset_groups.resources.utils import TestCreationData
     from tests import utils
@@ -38,8 +42,14 @@ def test_patch_asset_group(flask_app_client, researcher_1, regular_user, test_ro
         new_absent_file = copy.deepcopy(group_sighting.json['config']['assetReferences'])
         new_absent_file.append('absent_file.jpg')
         patch_data = [utils.patch_replace_op('assetReferences', new_absent_file)]
+        expected_resp = f'absent_file.jpg not in Group for assetGroupSighting {asset_group_sighting_guid}'
         asset_group_utils.patch_asset_group_sighting(
-            flask_app_client, researcher_1, asset_group_sighting_guid, patch_data, 400
+            flask_app_client,
+            researcher_1,
+            asset_group_sighting_guid,
+            patch_data,
+            400,
+            expected_resp,
         )
 
         # Valid patch, adding a new encounter with an existing file
@@ -64,7 +74,40 @@ def test_patch_asset_group(flask_app_client, researcher_1, regular_user, test_ro
             flask_app_client, researcher_1, asset_group_sighting_guid, add_name_patch
         )
 
+        # invalid patch, encounter has individualuuid of nonsense
+        encounter_guid = group_sighting.json['config']['encounters'][0]['guid']
+        patch_data = [utils.patch_add_op('individualUuid', '8037460')]
+        expected_resp = f'Encounter {encounter_guid} individual 8037460 not valid'
+        path = f'{asset_group_sighting_guid}/encounter/{encounter_guid}'
+        asset_group_utils.patch_asset_group_sighting(
+            flask_app_client, researcher_1, path, patch_data, 400, expected_resp
+        )
+
+        # invalid patch, encounter has invalid individualuuid
+        invalid_uuid = str(uuid.uuid4())
+
+        patch_data = [utils.patch_add_op('individualUuid', invalid_uuid)]
+        expected_resp = f'Encounter {encounter_guid} individual {invalid_uuid} not found'
+        path = f'{asset_group_sighting_guid}/encounter/{encounter_guid}'
+        asset_group_utils.patch_asset_group_sighting(
+            flask_app_client, researcher_1, path, patch_data, 400, expected_resp
+        )
+
+        # valid patch, real individual
+        with db.session.begin():
+            db.session.add(empty_individual)
+        patch_data = [utils.patch_add_op('individualUuid', str(empty_individual.guid))]
+        path = f'{asset_group_sighting_guid}/encounter/{encounter_guid}'
+        asset_group_utils.patch_asset_group_sighting(
+            flask_app_client,
+            researcher_1,
+            path,
+            patch_data,
+        )
+
     finally:
+        with db.session.begin():
+            db.session.delete(empty_individual)
         # Restore original state
         if asset_group_uuid:
             asset_group_utils.delete_asset_group(

@@ -21,7 +21,7 @@ def test_asset_group_detection_jobs(
     try:
         data = asset_group_utils.TestCreationData(transaction_id)
         data.add_filename(0, test_filename)
-        data.set_field('speciesDetectionModel', ['someSortOfModel'])
+        data.set_field('speciesDetectionModel', ['_detectors.african_terrestrial'])
 
         # Simulate a valid response from Sage but don't actually send the request to Sage
         with mock.patch.object(
@@ -45,7 +45,7 @@ def test_asset_group_detection_jobs(
                 job_output = stdout.getvalue()
                 assert 'Job ' in job_output
                 assert 'Active:True Started (UTC)' in job_output
-                assert 'model:someSortOfModel' in job_output
+                assert 'model:_detectors.african_terrestrial' in job_output
 
                 # Simulate a valid response from Sage but don't actually send the request to Sage
                 with mock.patch.object(
@@ -59,7 +59,7 @@ def test_asset_group_detection_jobs(
                     job_output = stdout.getvalue()
                     assert 'Job ' in job_output
                     assert 'Active:True Started (UTC)' in job_output
-                    assert 'model:someSortOfModel' in job_output
+                    assert 'model:_detectors.african_terrestrial' in job_output
                     assert "Request:{'endpoint': '/api/engine/detect" in job_output
                     assert (
                         "Response:{'success': True, 'content': 'something'}" in job_output

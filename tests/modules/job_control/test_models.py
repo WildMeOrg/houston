@@ -24,7 +24,7 @@ def test_job_control(flask_app, researcher_1, test_root, db):
         utc_now = datetime.datetime(2021, 6, 29, 8, 22, 35)
         with mock.patch('datetime.datetime') as mock_datetime:
             mock_datetime.utcnow.return_value = utc_now
-            sage_detection(str(ags.guid), 'Animal')
+            sage_detection(str(ags.guid), 'african_terrestrial')
         job_id = list(ags.jobs.keys())[0]
 
         # TODO asserts

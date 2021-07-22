@@ -327,26 +327,41 @@ class AssetGroupSighting(db.Model, HoustonModel):
         return details
 
     def build_detection_request(self, job_uuid, model):
+        from app.modules.ia_config_reader import IaConfig
+
         base_url = current_app.config.get('BASE_URL')
         callback_url = f'{base_url}api/v1/asset_group/sighting/{str(self.guid)}/sage_detected/{str(job_uuid)}'
-        # TODO use model to build up the input, also not clear on where the endpoint & function come from
-        # TODO model comes from ia_config and also decide if the "//api/engine/detect/" part lives in the ia_config
-        # or the acm/__init__.py.
+        # TODO where do these actually come from
+        config_name = 'zebra'
+        species = 'Equus quagga'
+        ia_config_reader = IaConfig(config_name)
+        detectors = ia_config_reader.get_detectors_dict(species)
+        assert model in detectors.keys()
+        detector_config = detectors[model].get('config_dict', {})
+        assert detector_config
+        # TODO are all of these fields to be mandatory in all configs, if not what should be used as a default
+        assert 'start_detect' in detector_config
+        assert 'labeler_algo' in detector_config
+        assert 'sensitivity' in detector_config
+        assert 'labeler_model_tag' in detector_config
+        assert 'model_tag' in detector_config
+        assert 'nms_thresh' in detector_config
+
         model_config = {
-            'endpoint': '/api/engine/detect/cnn/lightnet/',
-            'function': 'start_detect_image_lightnet',
+            'endpoint': detector_config['start_detect'],
+            'function': 'start_detect_image_lightnet',  # TODO where does this come from
             'jobid': str(job_uuid),
             'callback_url': callback_url,
             'image_uuid_list': [],
             'input': {
                 'callback_url': callback_url,
                 'image_url': f'{base_url}api/v1/asset/src-raw/',
-                'labeler_model_tag': 'iot_v0',
-                'model_tag': 'iot_v0',
-                'labeler_algo': 'densenet',
-                'sensitivity': 0.36,
-                'nms_aware': 'ispart',
-                'nms_thresh': 0.5,
+                'labeler_model_tag': detector_config['labeler_model_tag'],
+                'model_tag': detector_config['model_tag'],
+                'labeler_algo': detector_config['labeler_algo'],
+                'sensitivity': detector_config['sensitivity'],
+                'nms_aware': 'ispart',  # TODO where does this come from
+                'nms_thresh': detector_config['nms_thresh'],
                 'callback_detailed': True,
             },
         }

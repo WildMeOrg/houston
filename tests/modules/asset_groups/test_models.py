@@ -53,19 +53,19 @@ def test_asset_group_sightings_jobs(flask_app, db, admin_user, test_root, reques
                 'app.modules.asset_groups.models.uuid.uuid4', side_effect=uuids.pop
             ):
                 mock_datetime.utcnow.return_value = now
-                sage_detection(str(ags1.guid), 'ags1-model')
-                sage_detection(str(ags2.guid), 'ags2-model')
+                sage_detection(str(ags1.guid), 'african_terrestrial')
+                sage_detection(str(ags2.guid), 'african_terrestrial')
 
     assert AssetGroupSighting.query.get(ags1.guid).jobs == {
         str(job_id1): {
-            'model': 'ags1-model',
+            'model': 'african_terrestrial',
             'active': True,
             'start': now,
         },
     }
     assert AssetGroupSighting.query.get(ags2.guid).jobs == {
         str(job_id2): {
-            'model': 'ags2-model',
+            'model': 'african_terrestrial',
             'active': True,
             'start': now,
         },

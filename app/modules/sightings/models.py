@@ -534,15 +534,15 @@ class Sighting(db.Model, FeatherModel):
         # virtually all stages are either all or nothing, these just use the base sizes above.
         # For those that have granularity we need to know the size range available and estimate how much has been done
         if self.stage == SightingStage.identification:
-            size_range = (
-                stage_base_sizes[SightingStage.identification]
-                - stage_base_sizes[self.stage]
-            )
-            complete_jobs = [job for job in self.jobs if not job['active']]
-            completion += size_range * (len(complete_jobs) / len(self.jobs))
+            if len(self.jobs) > 0:
+                size_range = (
+                    stage_base_sizes[SightingStage.identification]
+                    - stage_base_sizes[self.stage]
+                )
+                complete_jobs = [job for job in self.jobs if not job['active']]
+                completion += size_range * (len(complete_jobs) / len(self.jobs))
         return completion
 
-    def ia_pipeline(self, id_configs):
     def ia_pipeline(self):
         from .tasks import send_identification
 

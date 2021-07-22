@@ -262,19 +262,20 @@ class AssetGroupSighting(db.Model, HoustonModel):
         # some stages are either all or nothing, these just use the base sizes above.
         # For those that have granularity we need to know the size range available and estimate how much has been done
         if self.stage == AssetGroupSightingStage.detection:
-            size_range = (
-                stage_base_sizes[AssetGroupSightingStage.curation]
-                - stage_base_sizes[self.stage]
-            )
-            complete_jobs = [job for job in self.jobs if not job['active']]
-            completion += size_range * (len(complete_jobs) / len(self.jobs))
+            if len(self.jobs) > 0:
+                size_range = (
+                    stage_base_sizes[AssetGroupSightingStage.curation]
+                    - stage_base_sizes[self.stage]
+                )
+                complete_jobs = [job for job in self.jobs if not job['active']]
+                completion += size_range * (len(complete_jobs) / len(self.jobs))
         elif self.stage == AssetGroupSightingStage.processed:
-            breakpoint()
+            assert len(self.asset_group_sightings) == 1
             size_range = 100 - stage_base_sizes[self.stage]
-            sighting_completion = self.sighting.get_completion()
+            sighting_completion = self.asset_group_sightings[0].get_completion()
             completion += (sighting_completion / 100) * size_range
 
-        return completion
+        return int(completion)
 
     @classmethod
     def check_jobs(cls):

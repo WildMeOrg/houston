@@ -14,14 +14,6 @@ import uuid
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
 
-def is_valid_uuid(query_id):
-    try:
-        uuid.UUID(str(query_id))
-        return True
-    except ValueError:
-        return False
-
-
 class CreateIndividualParameters(Parameters, schemas.DetailedIndividualSchema):
     class Meta(schemas.DetailedIndividualSchema.Meta):
         pass
@@ -41,24 +33,15 @@ class PatchIndividualDetailsParameters(PatchJSONParameters):
 
     @classmethod
     def remove(cls, obj, field, value, state):
-        has_permission = rules.ObjectActionRule(obj, AccessOperation.WRITE).check()
         ret_val = False
-        if has_permission:
-            if field == 'encounters':
-                for encounter_guid in value:
-                    if is_valid_uuid(encounter_guid):
-                        from app.modules.encounters.models import Encounter
+        if field == 'encounters':
+            for encounter_guid in value:
+                from app.modules.encounters.models import Encounter
 
-                        encounter = Encounter.query.filter(
-                            Encounter.guid == encounter_guid
-                        ).first()
-                        if encounter is not None and encounter in obj.encounters:
-                            obj.remove_encounter(encounter)
-                            ret_val = True
-            else:
-                super(PatchIndividualDetailsParameters, cls).replace(
-                    obj, field, value, state
-                )
+                encounter = Encounter.query.get(encounter_guid)
+                if encounter is not None and encounter in obj.encounters:
+                    obj.remove_encounter(encounter)
+                    ret_val = True
         return ret_val
 
     @classmethod
@@ -67,24 +50,14 @@ class PatchIndividualDetailsParameters(PatchJSONParameters):
 
     @classmethod
     def replace(cls, obj, field, value, state):
-
         ret_val = False
-        has_permission = rules.ObjectActionRule(obj, AccessOperation.WRITE).check()
-        if has_permission:
-            if field == 'encounters':
-                for encounter_guid in value:
-                    if is_valid_uuid(encounter_guid):
-                        from app.modules.encounters.models import Encounter
+        if field == 'encounters':
+            for encounter_guid in value:
+                from app.modules.encounters.models import Encounter
 
-                        encounter = Encounter.query.filter(
-                            Encounter.guid == encounter_guid
-                        ).first()
-                        if encounter is not None and encounter not in obj.encounters:
-                            obj.add_encounter(encounter)
-                            assert encounter in obj.get_encounters()
-                            ret_val = True
-            else:
-                super(PatchIndividualDetailsParameters, cls).replace(
-                    obj, field, value, state
-                )
+                encounter = Encounter.query.get(encounter_guid)
+                if encounter is not None and encounter not in obj.encounters:
+                    obj.add_encounter(encounter)
+                    assert encounter in obj.get_encounters()
+                    ret_val = True
         return ret_val

@@ -223,16 +223,13 @@ class IndividualByID(Resource):
                 args, obj=individual
             )
 
-        # copycat the pattern established in sightings module
-        edm_count = 0
-        for arg in args:
-            if (
-                'path' in arg
-                and arg['path']
-                in parameters.PatchIndividualDetailsParameters.PATH_CHOICES_EDM
-            ):
-                edm_count += 1
-        if edm_count > 0 and edm_count != len(args):
+        edm_args = [
+            arg
+            for arg in args
+            if arg['path'] in parameters.PatchIndividualDetailsParameters.PATH_CHOICES_EDM
+        ]
+
+        if len(edm_args) > 0 and len(edm_args) != len(args):
             log.error(f'Mixed edm/houston patch called with args {args}')
             abort(
                 success=False,
@@ -241,7 +238,7 @@ class IndividualByID(Resource):
                 code=400,
             )
 
-        if edm_count > 0:
+        if len(edm_args) > 0:
             log.debug(f'wanting to do edm patch on args={args}')
             result = None
             try:
@@ -252,7 +249,7 @@ class IndividualByID(Resource):
                 ) = current_app.edm.request_passthrough_parsed(
                     'individual.data',
                     'patch',
-                    {'data': args},
+                    {'data': edm_args},
                     individual.guid,
                     request_headers=request.headers,
                 )

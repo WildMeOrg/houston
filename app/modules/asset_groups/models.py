@@ -248,6 +248,8 @@ class AssetGroupSighting(db.Model, HoustonModel):
         return filename in self.config.get('assetReferences', [])
 
     # Returns a percentage complete value 0-100
+    # function name is also the name of the value returned in the schema so has to be completion rather than the
+    # more intuitive get_completion
     def completion(self):
         # Design allows for these limits to be configured later, potentially this data could be project specific
         stage_base_sizes = {
@@ -275,7 +277,8 @@ class AssetGroupSighting(db.Model, HoustonModel):
             sighting_completion = self.asset_group_sightings[0].get_completion()
             completion += (sighting_completion / 100) * size_range
 
-        return int(completion)
+        # calculation generates a floating point value, reporting that would be claiming precision without accuracy
+        return round(completion)
 
     @classmethod
     def check_jobs(cls):

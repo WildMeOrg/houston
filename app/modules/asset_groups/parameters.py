@@ -142,8 +142,7 @@ class PatchAssetGroupSightingEncounterDetailsParameters(PatchJSONParameters):
     PATH_CHOICES = PatchEncounterDetailsParameters.PATH_CHOICES_EDM + (
         '/ownerEmail',
         '/annotations',
-        '/individualUuid'
-        # TODO name is not here, should it be?
+        '/individualUuid',
     )
 
     @classmethod

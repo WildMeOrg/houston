@@ -31,6 +31,7 @@ class DetailedAssetGroupSightingSchema(BaseAssetGroupSightingSchema):
         fields = BaseAssetGroupSightingSchema.Meta.fields + (
             AssetGroupSighting.stage.key,
             AssetGroupSighting.config.key,
+            AssetGroupSighting.completion.__name__,
             AssetGroupSighting.assets.__name__,
         )
         dump_only = BaseAssetGroupSightingSchema.Meta.dump_only

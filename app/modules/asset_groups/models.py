@@ -247,6 +247,35 @@ class AssetGroupSighting(db.Model, HoustonModel):
     def has_filename(self, filename):
         return filename in self.config.get('assetReferences', [])
 
+    # Returns a percentage complete value 0-100
+    def completion(self):
+        # Design allows for these limits to be configured later, potentially this data could be project specific
+        stage_base_sizes = {
+            AssetGroupSightingStage.unknown: 0,
+            AssetGroupSightingStage.detection: 0,
+            AssetGroupSightingStage.curation: 10,
+            AssetGroupSightingStage.processed: 30,  # 40 for identification 20 for review
+            AssetGroupSightingStage.failed: 100,  # complete, even if failed
+        }
+        completion = stage_base_sizes[self.stage]
+
+        # some stages are either all or nothing, these just use the base sizes above.
+        # For those that have granularity we need to know the size range available and estimate how much has been done
+        if self.stage == AssetGroupSightingStage.detection:
+            size_range = (
+                stage_base_sizes[AssetGroupSightingStage.curation]
+                - stage_base_sizes[self.stage]
+            )
+            complete_jobs = [job for job in self.jobs if not job['active']]
+            completion += size_range * (len(complete_jobs) / len(self.jobs))
+        elif self.stage == AssetGroupSightingStage.processed:
+            breakpoint()
+            size_range = 100 - stage_base_sizes[self.stage]
+            sighting_completion = self.sighting.get_completion()
+            completion += (sighting_completion / 100) * size_range
+
+        return completion
+
     @classmethod
     def check_jobs(cls):
         for asset_group_sighting in AssetGroupSighting.query.all():

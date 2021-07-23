@@ -43,7 +43,11 @@ def test_commit_asset_group(flask_app_client, researcher_1, regular_user, test_r
         assert len(sighting.get_encounters()) == 1
         assert len(sighting.get_assets()) == 1
         assert sighting.get_owner() == regular_user
-
+        group_sighting = asset_group_utils.read_asset_group_sighting(
+            flask_app_client, researcher_1, asset_group_sighting_guid
+        )
+        assert 'completion' in group_sighting.json
+        assert group_sighting.json['completion'] == 76
     finally:
         # Restore original state
         if asset_group_uuid:

@@ -56,7 +56,7 @@ class Sighting(db.Model, FeatherModel):
         nullable=True,
     )
     asset_group_sighting = db.relationship(
-        'AssetGroupSighting', backref=db.backref('asset_group_sightings')
+        'AssetGroupSighting', back_populates='sighting', uselist=False
     )
 
     name = db.Column(db.String(length=120), nullable=True)
@@ -518,6 +518,30 @@ class Sighting(db.Model, FeatherModel):
         # TODO Poll ACM to see what's happening with this job, if it's ready to handle and we missed the
         # response, process it here
         return True
+
+    # Returns a percentage complete value 0-100 for the AssetGroupSighting operations that occur withing
+    # the Sighting object
+    def get_completion(self):
+        # Design allows for these limits to be configured later, potentially this data could be project specific
+        stage_base_sizes = {
+            SightingStage.identification: 0,
+            SightingStage.un_reviewed: 66,  # 2/3 of the time in sighting ia pipeline is in identification
+            SightingStage.processed: 100,  # The rest is spent being reviewed
+            SightingStage.failed: 100,  # complete, even if failed
+        }
+        completion = stage_base_sizes[self.stage]
+
+        # virtually all stages are either all or nothing, these just use the base sizes above.
+        # For those that have granularity we need to know the size range available and estimate how much has been done
+        if self.stage == SightingStage.identification:
+            if len(self.jobs) > 0:
+                size_range = (
+                    stage_base_sizes[SightingStage.identification]
+                    - stage_base_sizes[self.stage]
+                )
+                complete_jobs = [job for job in self.jobs if not job['active']]
+                completion += size_range * (len(complete_jobs) / len(self.jobs))
+        return completion
 
     def ia_pipeline(self):
         from .tasks import send_identification

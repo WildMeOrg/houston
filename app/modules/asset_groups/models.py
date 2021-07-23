@@ -248,9 +248,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
         return filename in self.config.get('assetReferences', [])
 
     # Returns a percentage complete value 0-100
-    # function name is also the name of the value returned in the schema so has to be completion rather than the
-    # more intuitive get_completion
-    def completion(self):
+    def get_completion(self):
         # Design allows for these limits to be configured later, potentially this data could be project specific
         stage_base_sizes = {
             AssetGroupSightingStage.unknown: 0,

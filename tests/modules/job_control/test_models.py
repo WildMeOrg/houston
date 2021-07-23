@@ -8,6 +8,7 @@ def test_job_control(flask_app, researcher_1, test_root, db):
     # pylint: disable=invalid-name
     from app.modules.asset_groups.models import AssetGroup, AssetGroupSighting
     from app.modules.job_control.models import JobControl
+    from app.modules.asset_groups.tasks import sage_detection
 
     asset_group = AssetGroup(owner_guid=researcher_1.guid)
     ags = AssetGroupSighting(
@@ -23,7 +24,7 @@ def test_job_control(flask_app, researcher_1, test_root, db):
         utc_now = datetime.datetime(2021, 6, 29, 8, 22, 35)
         with mock.patch('datetime.datetime') as mock_datetime:
             mock_datetime.utcnow.return_value = utc_now
-            ags.run_sage_detection('Animal')
+            sage_detection(str(ags.guid), 'Animal')
         job_id = list(ags.jobs.keys())[0]
 
         # TODO asserts

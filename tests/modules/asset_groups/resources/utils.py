@@ -77,19 +77,25 @@ class TestCreationData(object):
 def create_asset_group(
     flask_app_client, user, data, expected_status_code=200, expected_error=''
 ):
-    if user:
-        with flask_app_client.login(user, auth_scopes=('asset_groups:write',)):
+    from app.modules.asset_groups.tasks import sage_detection
+
+    # Call sage_detection in the foreground by skipping "delay"
+    with mock.patch(
+        'app.modules.asset_groups.tasks.sage_detection.delay', side_effect=sage_detection
+    ):
+        if user:
+            with flask_app_client.login(user, auth_scopes=('asset_groups:write',)):
+                response = flask_app_client.post(
+                    '%s' % PATH,
+                    content_type='application/json',
+                    data=json.dumps(data),
+                )
+        else:
             response = flask_app_client.post(
                 '%s' % PATH,
                 content_type='application/json',
                 data=json.dumps(data),
             )
-    else:
-        response = flask_app_client.post(
-            '%s' % PATH,
-            content_type='application/json',
-            data=json.dumps(data),
-        )
 
     if expected_status_code == 200:
         test_utils.validate_dict_response(

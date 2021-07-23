@@ -88,27 +88,19 @@ def flask_app(gitlab_remote_login_pat):
                 from app.modules.asset_groups import tasks
 
                 tasks_patch = []
-                tasks_patch.append(
-                    mock.patch.object(
-                        tasks.delete_remote,
-                        'delay',
-                        lambda *args, **kwargs: tasks.delete_remote(*args, **kwargs),
+                for func in (
+                    'delete_remote',
+                    'ensure_remote',
+                    'git_push',
+                    'sage_detection',
+                ):
+                    tasks_patch.append(
+                        mock.patch.object(
+                            getattr(tasks, func),
+                            'delay',
+                            lambda *args, **kwargs: getattr(tasks, func)(*args, **kwargs),
+                        ),
                     )
-                )
-                tasks_patch.append(
-                    mock.patch.object(
-                        tasks.ensure_remote,
-                        'delay',
-                        lambda *args, **kwargs: tasks.ensure_remote(*args, **kwargs),
-                    )
-                )
-                tasks_patch.append(
-                    mock.patch.object(
-                        tasks.git_push,
-                        'delay',
-                        lambda *args, **kwargs: tasks.git_push(*args, **kwargs),
-                    )
-                )
                 for patch in tasks_patch:
                     patch.start()
 

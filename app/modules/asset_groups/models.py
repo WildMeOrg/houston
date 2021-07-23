@@ -1283,6 +1283,8 @@ class AssetGroup(db.Model, HoustonModel):
         assert metadata.data_processed == AssetGroupMetadata.DataProcessed.complete
         import copy
 
+        from app.modules.asset_groups.tasks import sage_detection
+
         for sighting_meta in metadata.request['sightings']:
             # All encounters in the metadata need to be allocated a pseudo ID for later patching
             for encounter_num in range(len(sighting_meta['encounters'])):
@@ -1312,7 +1314,8 @@ class AssetGroup(db.Model, HoustonModel):
                 try:
                     for config in metadata.detection_configs:
                         log.debug(f'ia pipeline running sage detection {config}')
-                        new_sighting.run_sage_detection(config)
+                        # Call sage_detection in the background by doing .delay()
+                        sage_detection.delay(str(new_sighting.guid), config)
                 except HoustonException as ex:
                     new_sighting.delete()
                     raise ex

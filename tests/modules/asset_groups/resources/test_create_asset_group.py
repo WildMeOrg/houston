@@ -258,7 +258,7 @@ def test_create_asset_group_detection(
     try:
         data = TestCreationData(transaction_id)
         data.add_filename(0, test_filename)
-        data.set_field('speciesDetectionModel', ['_detectors.african_terrestrial'])
+        data.set_field('speciesDetectionModel', ['african_terrestrial'])
 
         # Simulate a valid response from Sage but don't actually send the request to Sage
         with mock.patch.object(

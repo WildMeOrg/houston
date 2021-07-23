@@ -56,7 +56,7 @@ class Sighting(db.Model, FeatherModel):
         nullable=True,
     )
     asset_group_sighting = db.relationship(
-        'AssetGroupSighting', backref=db.backref('asset_group_sightings')
+        'AssetGroupSighting', back_populates='sighting', uselist=False
     )
 
     name = db.Column(db.String(length=120), nullable=True)

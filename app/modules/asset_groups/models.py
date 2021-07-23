@@ -119,6 +119,8 @@ class AssetGroupSighting(db.Model, HoustonModel):
     # configuration metadata from the create request
     config = db.Column(db.JSON, nullable=True)
 
+    sighting = db.relationship('Sighting')
+
     # May have multiple jobs outstanding, store as Json obj uuid_str is key, In_progress Bool is value
     jobs = db.Column(db.JSON, default=lambda: {}, nullable=True)
 
@@ -270,9 +272,10 @@ class AssetGroupSighting(db.Model, HoustonModel):
                 complete_jobs = [job for job in self.jobs if not job['active']]
                 completion += size_range * (len(complete_jobs) / len(self.jobs))
         elif self.stage == AssetGroupSightingStage.processed:
-            assert len(self.asset_group_sightings) == 1
+            breakpoint()
+            assert len(self.sighting) == 1
             size_range = 100 - stage_base_sizes[self.stage]
-            sighting_completion = self.asset_group_sightings[0].get_completion()
+            sighting_completion = self.sighting[0].get_completion()
             completion += (sighting_completion / 100) * size_range
 
         # calculation generates a floating point value, reporting that would be claiming precision without accuracy

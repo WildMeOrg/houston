@@ -51,9 +51,15 @@ class Encounter(db.Model, FeatherModel):
 
     public = db.Column(db.Boolean, default=False, nullable=False)
 
-    projects = db.relationship('ProjectEncounter', back_populates='encounter')
+    projects = db.relationship(
+        'ProjectEncounter',
+        back_populates='encounter',
+        order_by='ProjectEncounter.project_guid',
+    )
 
-    annotations = db.relationship('Annotation', back_populates='encounter')
+    annotations = db.relationship(
+        'Annotation', back_populates='encounter', order_by='Annotation.guid'
+    )
 
     def __repr__(self):
         return (

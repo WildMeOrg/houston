@@ -65,7 +65,9 @@ class Sighting(db.Model, FeatherModel):
 
     name = db.Column(db.String(length=120), nullable=True)
 
-    encounters = db.relationship('Encounter', back_populates='sighting')
+    encounters = db.relationship(
+        'Encounter', back_populates='sighting', order_by='Encounter.guid'
+    )
 
     def __repr__(self):
         return (

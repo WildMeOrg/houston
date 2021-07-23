@@ -171,34 +171,42 @@ class User(db.Model, FeatherModel, UserEDMMixin):
         'AssetGroup',
         back_populates='owner',
         primaryjoin='User.guid == AssetGroup.owner_guid',
+        order_by='AssetGroup.guid',
     )
 
     submitted_asset_groups = db.relationship(
         'AssetGroup',
         back_populates='submitter',
         primaryjoin='User.guid == AssetGroup.submitter_guid',
+        order_by='AssetGroup.guid',
     )
 
     owned_encounters = db.relationship(
         'Encounter',
         back_populates='owner',
         primaryjoin='User.guid == Encounter.owner_guid',
+        order_by='Encounter.guid',
     )
 
     submitted_encounters = db.relationship(
         'Encounter',
         back_populates='submitter',
         primaryjoin='User.guid == Encounter.submitter_guid',
+        order_by='Encounter.guid',
     )
 
     owned_organizations = db.relationship(
         'Organization',
         back_populates='owner',
         primaryjoin='User.guid == Organization.owner_guid',
+        order_by='Organization.guid',
     )
 
     owned_projects = db.relationship(
-        'Project', back_populates='owner', primaryjoin='User.guid == Project.owner_guid'
+        'Project',
+        back_populates='owner',
+        primaryjoin='User.guid == Project.owner_guid',
+        order_by='Project.guid',
     )
 
     PUBLIC_USER_EMAIL = 'public@localhost'

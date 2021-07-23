@@ -56,9 +56,13 @@ class Asset(db.Model, HoustonModel):
     )
     asset_group = db.relationship('AssetGroup', back_populates='assets')
 
-    asset_sightings = db.relationship('SightingAssets', back_populates='asset')
+    asset_sightings = db.relationship(
+        'SightingAssets', back_populates='asset', order_by='SightingAssets.sighting_guid'
+    )
 
-    annotations = db.relationship('Annotation', back_populates='asset')
+    annotations = db.relationship(
+        'Annotation', back_populates='asset', order_by='Annotation.guid'
+    )
 
     def __repr__(self):
         return (

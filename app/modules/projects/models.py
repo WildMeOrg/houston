@@ -47,7 +47,11 @@ class Project(db.Model, HoustonModel, Timestamp):
         'ProjectUserMembershipEnrollment', back_populates='project'
     )
 
-    encounter_members = db.relationship('ProjectEncounter', back_populates='project')
+    encounter_members = db.relationship(
+        'ProjectEncounter',
+        back_populates='project',
+        order_by='ProjectEncounter.encounter_guid',
+    )
 
     owner_guid = db.Column(
         db.GUID, db.ForeignKey('user.guid'), index=True, nullable=False

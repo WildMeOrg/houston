@@ -20,7 +20,9 @@ class Individual(db.Model, FeatherModel):
 
     version = db.Column(db.BigInteger, default=None, nullable=True)
 
-    encounters = db.relationship('Encounter', back_populates='individual')
+    encounters = db.relationship(
+        'Encounter', back_populates='individual', order_by='Encounter.guid'
+    )
 
     def __repr__(self):
         return (

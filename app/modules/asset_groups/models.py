@@ -470,10 +470,13 @@ class AssetGroupSighting(db.Model, HoustonModel):
         asset_schema = DetailedAssetSchema(
             many=False, only=('guid', 'filename', 'src', 'annotations')
         )
-        resp = []
+        assets = []
         for filename in self.config.get('assetReferences'):
             asset = self.asset_group.get_asset_for_file(filename)
             assert asset
+            assets.append(asset)
+        resp = []
+        for asset in sorted(assets, key=lambda ast: ast.guid):
             json_msg, err = asset_schema.dump(asset)
             resp.append(json_msg)
         return resp
@@ -570,10 +573,12 @@ class AssetGroup(db.Model, HoustonModel):
     )
 
     asset_group_sightings = db.relationship(
-        'AssetGroupSighting', back_populates='asset_group'
+        'AssetGroupSighting',
+        back_populates='asset_group',
+        order_by='AssetGroupSighting.guid',
     )
 
-    assets = db.relationship('Asset', back_populates='asset_group')
+    assets = db.relationship('Asset', back_populates='asset_group', order_by='Asset.guid')
 
     def __repr__(self):
         return (

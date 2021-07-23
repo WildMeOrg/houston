@@ -31,14 +31,11 @@ class DetailedAssetGroupSightingSchema(BaseAssetGroupSightingSchema):
 
     class Meta(BaseAssetGroupSightingSchema.Meta):
 
-        fields = (
-            BaseAssetGroupSightingSchema.Meta.fields
-            + (
-                AssetGroupSighting.stage.key,
-                AssetGroupSighting.config.key,
-                AssetGroupSighting.assets.__name__,
-            )
-            + ('completion',)
+        fields = BaseAssetGroupSightingSchema.Meta.fields + (
+            AssetGroupSighting.stage.key,
+            AssetGroupSighting.config.key,
+            AssetGroupSighting.assets.__name__,
+            'completion',
         )
         dump_only = BaseAssetGroupSightingSchema.Meta.dump_only
 

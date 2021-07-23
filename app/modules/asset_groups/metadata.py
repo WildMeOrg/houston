@@ -339,11 +339,9 @@ class AssetGroupMetadata(object):
         else:
             from app.modules.ia_config_reader import IaConfig
 
-            # TODO where do these actually come from
-            config_name = 'zebra'
-            species = 'Equus quagga'
-            ia_config_reader = IaConfig(config_name)
-            detectors = ia_config_reader.get_detectors_dict(species)
+            ia_config_reader = IaConfig(current_app.config.get('CONFIG_MODEL'))
+            detectors = ia_config_reader.get('_detectors')
+
             for config in self.detection_configs:
                 if config and config != 'None' and config not in detectors.keys():
                     raise AssetGroupMetadataError(

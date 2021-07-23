@@ -18,6 +18,8 @@ import redis
 import uuid
 import os
 
+from . import TEST_ASSET_GROUP_UUID, TEST_EMPTY_ASSET_GROUP_UUID
+
 
 class AutoAuthFlaskClient(FlaskClient):
     """
@@ -258,14 +260,6 @@ def patch_replace_op(path, value):
     }
 
 
-# for counts of _specific_ classes.  see: all_count() for handy shortcut
-def multi_count(db, cls_list):
-    cts = {}
-    for cls in cls_list:
-        cts[cls.__name__] = row_count(db, cls)
-    return cts
-
-
 def all_count(db):
     from app.modules.sightings.models import Sighting
     from app.modules.encounters.models import Encounter
@@ -273,7 +267,17 @@ def all_count(db):
     from app.modules.asset_groups.models import AssetGroup
     from app.modules.individuals.models import Individual
 
-    return multi_count(db, (Sighting, Encounter, Asset, AssetGroup, Individual))
+    count = {}
+    for cls in (Sighting, Encounter, Individual):
+        count[cls.__name__] = row_count(db, cls)
+    asset_query = Asset.query
+    asset_group_query = AssetGroup.query
+    for guid in (TEST_ASSET_GROUP_UUID, TEST_EMPTY_ASSET_GROUP_UUID):
+        asset_query = asset_query.filter(Asset.asset_group_guid != guid)
+        asset_group_query = asset_group_query.filter(AssetGroup.guid != guid)
+    count['Asset'] = asset_query.count()
+    count['AssetGroup'] = asset_group_query.count()
+    return count
 
 
 def row_count(db, cls):

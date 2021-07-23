@@ -272,7 +272,6 @@ class AssetGroupSighting(db.Model, HoustonModel):
                 complete_jobs = [job for job in self.jobs if not job['active']]
                 completion += size_range * (len(complete_jobs) / len(self.jobs))
         elif self.stage == AssetGroupSightingStage.processed:
-            breakpoint()
             assert len(self.sighting) == 1
             size_range = 100 - stage_base_sizes[self.stage]
             sighting_completion = self.sighting[0].get_completion()

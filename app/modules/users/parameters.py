@@ -7,7 +7,7 @@ Input arguments (Parameters) for User resources RESTful API
 import logging
 from pathlib import Path
 
-from flask import current_app
+# from flask import current_app
 from flask_login import current_user
 from flask_marshmallow import base_fields
 from flask_restx_patched import Parameters, PatchJSONParameters
@@ -18,7 +18,9 @@ import PIL
 from app.extensions.api.parameters import PaginationParameters
 from app.extensions.api import abort
 
-from . import schemas, permissions
+from . import schemas
+
+# from . import permissions
 from .models import User, db, USER_ROLES
 
 
@@ -71,26 +73,26 @@ class CreateUserParameters(Parameters, schemas.BaseUserSchema):
                 message=f'invalid roles: {", ".join(invalid_roles)}.  Valid roles are {", ".join(USER_ROLES)}',
             )
 
-    @validates_schema
-    def validate_captcha(self, data):
-        """ "
-        Check reCAPTCHA if necessary.
+    # @validates_schema
+    # def validate_captcha(self, data):
+    #     """ "
+    #     Check reCAPTCHA if necessary.
 
-        NOTE: we remove 'recaptcha_key' from data once checked because we don't need it
-        in the resource
-        """
-        recaptcha_key = data.pop('recaptcha_key', None)
+    #     NOTE: we remove 'recaptcha_key' from data once checked because we don't need it
+    #     in the resource
+    #     """
+    #     recaptcha_key = data.pop('recaptcha_key', None)
 
-        captcha_is_valid = False
-        if not recaptcha_key:
-            no_captcha_permission = permissions.AdminRolePermission()
-            if no_captcha_permission.check():
-                captcha_is_valid = True
-        elif recaptcha_key == current_app.config.get('RECAPTCHA_BYPASS', None):
-            captcha_is_valid = True
+    #     captcha_is_valid = False
+    #     if not recaptcha_key:
+    #         no_captcha_permission = permissions.AdminRolePermission()
+    #         if no_captcha_permission.check():
+    #             captcha_is_valid = True
+    #     elif recaptcha_key == current_app.config.get('RECAPTCHA_BYPASS', None):
+    #         captcha_is_valid = True
 
-        if not captcha_is_valid:
-            abort(code=HTTPStatus.FORBIDDEN, message='CAPTCHA key is incorrect.')
+    #     if not captcha_is_valid:
+    #         abort(code=HTTPStatus.FORBIDDEN, message='CAPTCHA key is incorrect.')
 
 
 class AdminUserInitializedParameters(Parameters):

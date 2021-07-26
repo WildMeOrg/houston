@@ -47,7 +47,8 @@ def test_asset_group_sightings_jobs(flask_app, db, admin_user, test_root, reques
     from app.modules.asset_groups.tasks import sage_detection
 
     # Don't send anything to acm
-    with mock.patch('app.modules.asset_groups.models.current_app'):
+    with mock.patch('app.modules.asset_groups.models.current_app') as mock_app:
+        mock_app.config.get.return_value = 'zebra'
         with mock.patch('datetime.datetime') as mock_datetime:
             with mock.patch(
                 'app.modules.asset_groups.models.uuid.uuid4', side_effect=uuids.pop

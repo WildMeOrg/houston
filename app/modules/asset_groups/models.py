@@ -555,7 +555,7 @@ class AssetGroup(db.Model, HoustonModel):
 
     description = db.Column(db.String(length=255), nullable=True)
 
-    config = db.Column(db.JSON, nullable=True)
+    config = db.Column(db.JSON, default=lambda: {}, nullable=False)
 
     owner_guid = db.Column(
         db.GUID, db.ForeignKey('user.guid'), index=True, nullable=False

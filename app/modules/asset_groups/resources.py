@@ -79,6 +79,9 @@ class AssetGroups(Resource):
             metadata.process_request()
         except AssetGroupMetadataError as error:
             abort(error.status_code, error.message)
+        except Exception as ex:
+            # Want to handle all other errors gracefully too
+            abort(400, ex)
 
         if (
             metadata.anonymous

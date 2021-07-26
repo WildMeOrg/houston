@@ -129,16 +129,22 @@ def create_asset_group_sim_sage(
             flask_app_client, user, data, expected_status_code, expected_error
         )
         passed_args = detection_started.call_args[0]
-        assert passed_args[:-2] == ('job.detect_request', 'post')
-        params = passed_args[-2]['params']
-        assert set(params.keys()) >= {
-            'endpoint',
-            'function',
-            'jobid',
-            'callback_url',
-            'image_uuid_list',
-            'input',
-        }
+        try:
+            assert passed_args[:-2] == ('job.detect_request', 'post')
+            params = passed_args[-2]['params']
+            assert set(params.keys()) >= {
+                'endpoint',
+                'jobid',
+                'callback_url',
+                'image_uuid_list',
+                'input',
+            }
+        except Exception:
+            # Calling code cannot clear up the asset group as the resp is not passed if any of the assertions fail
+            # meaning that all subsequent tests would fail.
+            if 'guid' in resp.json:
+                delete_asset_group(flask_app_client, user, resp.json['guid'])
+            raise
         return resp
 
 

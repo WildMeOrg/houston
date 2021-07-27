@@ -132,7 +132,7 @@ def _validate_assets(assets, paths_wanted):
     return matches
 
 
-def _validate_annotations(enc_json):
+def _get_annotations(enc_json):
     assert enc_json is not None
     from app.modules.annotations.models import Annotation
 
@@ -276,12 +276,12 @@ class Sightings(Resource):
         enc_anns = []  # list of lists of annotations for each encounter (if applicable)
         try:
             for enc_json in request_in['encounters']:
-                anns = _validate_annotations(enc_json)
+                anns = _get_annotations(enc_json)
                 enc_anns.append(anns)
         except Exception as ex:
             cleanup.rollback_and_abort(
                 'Invalid encounter.annotations',
-                '_validate_annotations() threw %r on encounters=%r' % (ex, enc_json),
+                '_get_annotations() threw %r on encounters=%r' % (ex, enc_json),
             )
 
         asset_references = request_in.get('assetReferences')
@@ -471,13 +471,13 @@ class SightingByID(Resource):
                         and arg.get('op', None) == 'add'
                     ):
                         enc_json = arg.get('value', {})
-                        anns = _validate_annotations(enc_json)
+                        anns = _get_annotations(enc_json)
                         enc_anns.append(anns)
 
             except Exception as ex:
                 cleanup.rollback_and_abort(
                     'Invalid encounter.annotations',
-                    '_validate_annotations() threw %r on encounters=%r' % (ex, enc_json),
+                    '_get_annotations() threw %r on encounters=%r' % (ex, enc_json),
                 )
 
             result = None

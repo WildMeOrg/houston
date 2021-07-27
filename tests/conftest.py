@@ -8,9 +8,9 @@ from unittest import mock
 import sqlalchemy
 import pytest
 from flask_login import current_user, login_user, logout_user
-from tests import utils
-
 from app import create_app
+
+from . import utils, TEST_ASSET_GROUP_UUID, TEST_EMPTY_ASSET_GROUP_UUID
 
 
 # Force FLASK_CONFIG to be testing instead of using what's defined in the environment
@@ -338,7 +338,7 @@ def test_asset_group_uuid(flask_app, db, researcher_1, test_asset_group_file_dat
     from app.extensions.gitlab import GitlabInitializationError
     from app.modules.asset_groups.models import AssetGroup, AssetGroupMajorType
 
-    guid = '00000000-0000-0000-0000-000000000003'
+    guid = TEST_ASSET_GROUP_UUID
     asset_group = AssetGroup.query.get(guid)
     if asset_group is None:
         asset_group = AssetGroup(
@@ -367,7 +367,7 @@ def test_asset_group_uuid(flask_app, db, researcher_1, test_asset_group_file_dat
 def test_empty_asset_group_uuid(flask_app, db, researcher_1):
     from app.modules.asset_groups.models import AssetGroup, AssetGroupMajorType
 
-    guid = '00000000-0000-0000-0000-000000000001'
+    guid = TEST_EMPTY_ASSET_GROUP_UUID
     asset_group = AssetGroup.query.get(guid)
     if asset_group is None:
         asset_group = AssetGroup(

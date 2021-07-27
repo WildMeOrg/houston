@@ -10,6 +10,7 @@ import config
 from unittest import mock
 
 from tests import utils as test_utils
+from tests import TEST_ASSET_GROUP_UUID, TEST_EMPTY_ASSET_GROUP_UUID
 
 PATH = '/api/v1/asset_groups/'
 
@@ -531,18 +532,12 @@ class CloneAssetGroup(object):
             shutil.rmtree(asset_group_path)
 
     def cleanup(self):
-        from app.modules.asset_groups.tasks import delete_remote
-
-        # Restore original state
-        if self.asset_group is not None:
-            # Don't delete the gitlab project by default
-            with mock.patch('app.modules.asset_groups.tasks.delete_remote'):
+        # Restore original state if not one of the asset group fixtures
+        if str(self.guid) not in (TEST_ASSET_GROUP_UUID, TEST_EMPTY_ASSET_GROUP_UUID):
+            if self.asset_group is not None:
                 self.asset_group.delete()
-            # If not one of the asset group fixtures, delete it from gitlab
-            if not str(self.guid).startswith('00000000-0000-0000-0000'):
-                delete_remote(str(self.guid))
-            self.asset_group = None
-        self.remove_files()
+                self.asset_group = None
+            self.remove_files()
 
 
 # Clone the asset_group

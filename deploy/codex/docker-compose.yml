@@ -63,19 +63,6 @@ services:
     networks:
       - intranet
 
-  pgadmin:
-    image: dpage/pgadmin4
-    environment:
-      PGADMIN_DEFAULT_EMAIL: "${PGADMIN_DEFAULT_EMAIL}"
-      PGADMIN_DEFAULT_PASSWORD: "${PGADMIN_DEFAULT_PASSWORD}"
-    volumes:
-      - pgadmin-var:/var/lib/pgadmin
-    ports:
-      - "8000:80"
-    networks:
-      - intranet
-      - frontend
-
   gitlab:
     image: gitlab/gitlab-ce:13.9.3-ce.0
     volumes:
@@ -223,7 +210,6 @@ volumes:
   edm-var:
   # es-var:
   redis-var:
-  pgadmin-var:
   acm-var:
   houston-var:
   gitlab-var-config:

@@ -143,7 +143,6 @@ codex_dev-frontend_1   /docker-entrypoint.sh            Up
 codex_edm_1            /usr/local/tomcat/bin/cata ...   Up                      0.0.0.0:81->8080/tcp
 codex_gitlab_1         /assets/wrapper                  Up (health: starting)   22/tcp, 443/tcp, 0.0.0.0:85->80/tcp
 codex_houston_1        /docker-entrypoint.sh wait ...   Up                      0.0.0.0:83->5000/tcp
-codex_pgadmin_1        /entrypoint.sh                   Up                      443/tcp, 0.0.0.0:8000->80/tcp
 codex_redis_1          docker-entrypoint.sh redis ...   Up                      6379/tcp
 codex_www_1            /docker-entrypoint.sh ngin ...   Up                      0.0.0.0:84->80/tcp
 ```
@@ -155,7 +154,6 @@ This describes the container name, status and ports to access. Access can be int
     http://localhost:81 to access edm,
     http://localhost:85 to access gitlab,
     http://localhost:83 to access houston,
-    http://localhost:8000 to access pgadmin,
     http://localhost:84 to access the frontend.
 ```
 

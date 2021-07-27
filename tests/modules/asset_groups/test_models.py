@@ -44,6 +44,8 @@ def test_asset_group_sightings_jobs(flask_app, db, admin_user, test_root, reques
 
     uuids = [job_id2, job_id1]
 
+    from app.modules.asset_groups.tasks import sage_detection
+
     # Don't send anything to acm
     with mock.patch('app.modules.asset_groups.models.current_app'):
         with mock.patch('datetime.datetime') as mock_datetime:
@@ -51,8 +53,8 @@ def test_asset_group_sightings_jobs(flask_app, db, admin_user, test_root, reques
                 'app.modules.asset_groups.models.uuid.uuid4', side_effect=uuids.pop
             ):
                 mock_datetime.utcnow.return_value = now
-                ags1.run_sage_detection('ags1-model')
-                ags2.run_sage_detection('ags2-model')
+                sage_detection(str(ags1.guid), 'ags1-model')
+                sage_detection(str(ags2.guid), 'ags2-model')
 
     assert AssetGroupSighting.query.get(ags1.guid).jobs == {
         str(job_id1): {

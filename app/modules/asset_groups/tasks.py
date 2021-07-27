@@ -82,7 +82,7 @@ def git_push(asset_group_guid):
 def sage_detection(asset_group_sighting_guid, model):
     from .models import AssetGroupSighting
 
-    asset_group_sighting = AssetGroupSighting.query.find(asset_group_sighting_guid)
+    asset_group_sighting = AssetGroupSighting.query.get(asset_group_sighting_guid)
     if asset_group_sighting:
         log.debug('Celery running sage detection')
         asset_group_sighting.run_sage_detection(model)

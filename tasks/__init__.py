@@ -71,9 +71,12 @@ from tasks import docker_compose as task_docker_compose  # NOQA
 namespaces.append(task_dependencies)
 namespaces.append(task_docker_compose)
 
-from tasks import gumby as gumby_tasks  # NOQA
+try:
+    from tasks import gumby as gumby_tasks  # NOQA
 
-namespaces.append(gumby_tasks)
+    namespaces.append(gumby_tasks)
+except ModuleNotFoundError as e:
+    logger.warning(f'Unable to load tasks.gumby.*\n{str(e)}')
 
 # NOTE: `namespace` or `ns` name is required!
 namespace = Collection(*namespaces)

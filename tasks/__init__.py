@@ -71,6 +71,10 @@ from tasks import docker_compose as task_docker_compose  # NOQA
 namespaces.append(task_dependencies)
 namespaces.append(task_docker_compose)
 
+from tasks import gumby as gumby_tasks  # NOQA
+
+namespaces.append(gumby_tasks)
+
 # NOTE: `namespace` or `ns` name is required!
 namespace = Collection(*namespaces)
 

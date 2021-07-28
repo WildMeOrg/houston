@@ -15,12 +15,7 @@ def unset_FLASK_CONFIG(monkeypatch):
 
 
 def test_create_app():
-    try:
-        create_app(testing=True)
-    except SystemExit:
-        # Clean git repository doesn't have `local_config.py`, so it is fine
-        # if we get SystemExit error.
-        pass
+    create_app(testing=True)
 
 
 @pytest.mark.parametrize('flask_config_name', ['production', 'development', 'testing'])
@@ -44,19 +39,20 @@ def test_create_app_passing_FLASK_CONFIG_env(monkeypatch, flask_config_name):
     create_app(testing=True)
 
 
-def test_create_app_with_conflicting_config(monkeypatch):
+def test_create_app_specific_config(monkeypatch):
     monkeypatch.setenv('FLASK_CONFIG', 'production')
-    with pytest.raises(AssertionError):
-        create_app('development', testing=True)
+    # specificity at the function level is honored
+    app = create_app('development', testing=True)
+    assert app.config.get('DEBUG')  # using 'development'
 
 
 def test_create_app_with_non_existing_config():
-    with pytest.raises(KeyError):
+    with pytest.raises(SystemExit):
         create_app('non-existing-config', testing=True)
 
 
 def test_create_app_with_broken_import_config():
     CONFIG_NAME_MAPPER['broken-import-config'] = 'broken-import-config'
-    with pytest.raises(ImportError):
+    with pytest.raises(SystemExit):
         create_app('broken-import-config', testing=True)
     del CONFIG_NAME_MAPPER['broken-import-config']

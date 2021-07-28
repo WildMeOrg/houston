@@ -132,7 +132,7 @@ services:
       # FIXME: exposed for developer verification
       - "83:5000"
     environment: &houston-environment
-      FLASK_CONFIG: local
+      FLASK_CONFIG: development
       SQLALCHEMY_DATABASE_URI: "${SQLALCHEMY_DATABASE_URI}"
       TEST_DATABASE_URI: "${TEST_DATABASE_URI}"
       EDM_AUTHENTICATIONS_URI__DEFAULT: "${EDM_AUTHENTICATIONS_URI__DEFAULT}"

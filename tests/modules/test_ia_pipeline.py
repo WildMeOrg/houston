@@ -30,7 +30,7 @@ def test_ia_pipeline_sim_detect_response(
     try:
         data = asset_group_utils.get_bulk_creation_data(transaction_id, test_filename)
         # Use a real detection model to trigger a request sent to Sage
-        data.set_field('speciesDetectionModel', ['realDetectionModel'])
+        data.set_field('speciesDetectionModel', ['african_terrestrial'])
         # and the sim_sage util to catch it
         resp = asset_group_utils.create_asset_group_sim_sage(
             flask_app, flask_app_client, researcher_1, data.get()
@@ -44,7 +44,7 @@ def test_ia_pipeline_sim_detect_response(
         job_uuids = [guid for guid in ags1.jobs.keys()]
         assert len(job_uuids) == 1
         job_uuid = job_uuids[0]
-        assert ags1.jobs[job_uuid]['model'] == 'realDetectionModel'
+        assert ags1.jobs[job_uuid]['model'] == 'african_terrestrial'
 
         # Simulate response from Sage
         sage_resp = asset_group_utils.build_sage_detection_response(

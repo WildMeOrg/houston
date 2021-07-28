@@ -50,6 +50,10 @@ class IaConfig:
             value = self.get_recursive(next_keys, current_value)
         return value
 
+    def get_named_detector_config(self, detector_name):
+        detector_config = self.get(f'_detectors.{detector_name}.config_dict')
+        return detector_config
+
     def get_detectors_with_links(self, genus_species):
         species_key = genus_species.replace(' ', '.')
         detectors_key = f'{species_key}._detectors'

@@ -98,3 +98,19 @@ def test_get_detectors_zebras(flask_app_client):
         }
     }
     assert detectors == desired_detectors
+
+
+def test_get_named_detector_config_african_terrestrial(flask_app_client):
+    ia_config_reader = IaConfig(TEST_CONFIG_NAME)
+    detector_name = 'african_terrestrial'
+    detector_config = ia_config_reader.get_named_detector_config(detector_name)
+
+    desired_config = {
+        'start_detect': '/api/engine/detect/cnn/lightnet/',
+        'labeler_algo': 'densenet',
+        'labeler_model_tag': 'zebra_v1',
+        'model_tag': 'ggr2',
+        'nms_thresh': 0.4,
+        'sensitivity': 0.4,
+    }
+    assert detector_config == desired_config

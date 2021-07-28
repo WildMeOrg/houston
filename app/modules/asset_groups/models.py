@@ -327,29 +327,26 @@ class AssetGroupSighting(db.Model, HoustonModel):
         return details
 
     def build_detection_request(self, job_uuid, model):
+        from app.modules.ia_config_reader import IaConfig
+
         base_url = current_app.config.get('BASE_URL')
         callback_url = f'{base_url}api/v1/asset_group/sighting/{str(self.guid)}/sage_detected/{str(job_uuid)}'
-        # TODO use model to build up the input, also not clear on where the endpoint & function come from
-        # TODO model comes from ia_config and also decide if the "//api/engine/detect/" part lives in the ia_config
-        # or the acm/__init__.py.
+
+        ia_config_reader = IaConfig(current_app.config.get('CONFIG_MODEL'))
+        detector_config = ia_config_reader.get(f'_detectors.{model}.config_dict')
+
+        assert 'start_detect' in detector_config
+
         model_config = {
-            'endpoint': '/api/engine/detect/cnn/lightnet/',
-            'function': 'start_detect_image_lightnet',
+            'endpoint': detector_config['start_detect'],
             'jobid': str(job_uuid),
             'callback_url': callback_url,
             'image_uuid_list': [],
-            'input': {
-                'callback_url': callback_url,
-                'image_url': f'{base_url}api/v1/asset/src-raw/',
-                'labeler_model_tag': 'iot_v0',
-                'model_tag': 'iot_v0',
-                'labeler_algo': 'densenet',
-                'sensitivity': 0.36,
-                'nms_aware': 'ispart',
-                'nms_thresh': 0.5,
-                'callback_detailed': True,
-            },
+            'input': detector_config,
         }
+        model_config['input']['callback_url'] = callback_url
+        model_config['input']['image_url'] = f'{base_url}api/v1/asset/src-raw/'
+        model_config['input']['callback_detailed'] = True
 
         asset_guids = []
         for filename in self.config.get('assetReferences'):
@@ -558,7 +555,7 @@ class AssetGroup(db.Model, HoustonModel):
 
     description = db.Column(db.String(length=255), nullable=True)
 
-    config = db.Column(db.JSON, nullable=True)
+    config = db.Column(db.JSON, default=lambda: {}, nullable=False)
 
     owner_guid = db.Column(
         db.GUID, db.ForeignKey('user.guid'), index=True, nullable=False

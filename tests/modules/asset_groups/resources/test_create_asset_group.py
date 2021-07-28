@@ -249,16 +249,13 @@ def test_create_asset_group_detection(
 ):
     # pylint: disable=invalid-name
     from tests.modules.asset_groups.resources.utils import TestCreationData
-    from tests import utils as test_utils
-
-    orig_objs = test_utils.all_count(db)
 
     transaction_id, test_filename = tus_utils.prep_tus_dir(test_root)
     asset_group_uuid = None
     try:
         data = TestCreationData(transaction_id)
         data.add_filename(0, test_filename)
-        data.set_field('speciesDetectionModel', ['someSortOfModel'])
+        data.set_field('speciesDetectionModel', ['african_terrestrial'])
 
         # Simulate a valid response from Sage but don't actually send the request to Sage
         with mock.patch.object(
@@ -275,7 +272,6 @@ def test_create_asset_group_detection(
             params = passed_args[-2]['params']
             assert set(params.keys()) >= {
                 'endpoint',
-                'function',
                 'jobid',
                 'callback_url',
                 'image_uuid_list',
@@ -290,7 +286,6 @@ def test_create_asset_group_detection(
                 flask_app_client, staff_user, asset_group_uuid
             )
         tus_utils.cleanup_tus_dir(transaction_id)
-        assert orig_objs == test_utils.all_count(db)
 
 
 def test_create_bulk_asset_group_dup_asset(flask_app_client, researcher_1, test_root, db):

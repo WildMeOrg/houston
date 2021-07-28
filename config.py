@@ -178,6 +178,7 @@ class BaseConfig(object):
     SQLALCHEMY_TRACK_MODIFICATIONS = True
     CSRF_ENABLED = True
     PREMAILER_CACHE_MAXSIZE = 1024
+    CONFIG_MODEL = 'zebra'
 
     MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # Maximum size of 16MB
 

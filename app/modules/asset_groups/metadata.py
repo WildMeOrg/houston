@@ -337,7 +337,17 @@ class AssetGroupMetadata(object):
                 'only support a single detection config for now'
             )
         else:
-            # TODO when the definition of what a detection config is is finalised, validate it
+            from app.modules.ia_config_reader import IaConfig
+
+            ia_config_reader = IaConfig(current_app.config.get('CONFIG_MODEL'))
+            detectors = ia_config_reader.get('_detectors')
+
+            for config in self.detection_configs:
+                if config and config != 'None' and config not in detectors.keys():
+                    raise AssetGroupMetadataError(
+                        f'detection config {config} not supported'
+                    )
+
             pass
 
         # validate num sightings

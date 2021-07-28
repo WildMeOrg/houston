@@ -95,26 +95,12 @@ def test_read_encounter_from_edm(db, flask_app_client):
 
 def test_add_remove_encounters(db, flask_app_client, researcher_1):
 
-    # enc_1 = utils.generate_encounter_instance(
-    #     user_email='mod1@user', user_password='mod1user', user_full_name='Test User'
-    # )
-    # enc_2 = utils.generate_encounter_instance(
-    #     user_email='mod2@user', user_password='mod2user', user_full_name='Test User'
-    # )
-    # enc_3 = utils.generate_encounter_instance(
-    #     user_email='mod3@user', user_password='mod3user', user_full_name='Test User'
-    # )
-
-    # owner_1 = utils.generate_user_instance(
-    #     email='owner@localhost',
-    #     is_researcher=True,
-    # )
-
     data_in = {
         'startTime': datetime.datetime.now().isoformat() + 'Z',
         'context': 'test',
         'locationId': 'test',
         'encounters': [
+            {},
             {},
             {},
             {},
@@ -125,10 +111,6 @@ def test_add_remove_encounters(db, flask_app_client, researcher_1):
     response = sighting_utils.create_sighting(
         flask_app_client, researcher_1, expected_status_code=200, data_in=data_in
     )
-
-    # log.warning(
-    #     '********** test_add_remove_encounters TEST RESPONSE ON SIGHTING CREATE: ' + str(response.json)
-    # )
 
     from app.modules.sightings.models import Sighting
 
@@ -152,6 +134,11 @@ def test_add_remove_encounters(db, flask_app_client, researcher_1):
 
     enc_3 = Encounter(
         guid=result_data['encounters'][2]['id'],
+        owner_guid=researcher_1.guid,
+    )
+
+    enc_4 = Encounter(
+        guid=result_data['encounters'][3]['id'],
         owner_guid=researcher_1.guid,
     )
 
@@ -204,7 +191,7 @@ def test_add_remove_encounters(db, flask_app_client, researcher_1):
 
     # okay, now with multiple
     add_encounters = [
-        utils.patch_add_op('encounters', [str(enc_1.guid), str(enc_3.guid)]),
+        utils.patch_add_op('encounters', [str(enc_3.guid), str(enc_4.guid)]),
     ]
 
     individual_utils.patch_individual(
@@ -216,8 +203,27 @@ def test_add_remove_encounters(db, flask_app_client, researcher_1):
         200,
     )
 
-    assert str(enc_1.guid), str(enc_3.guid) in [
+    assert str(enc_3.guid), str(enc_4.guid) in [
         str(encounter.guid) for encounter in individual_1.get_encounters()
     ]
 
+    # removing all encounters will trigger delete cascade and clean up EDM
+    # hack because sighting patch only takes one ID for remove. another PR for another day.
+    enc_guids = [str(enc_2.guid), str(enc_3.guid), str(enc_4.guid)]
+
+    for enc_guid in enc_guids:
+        sighting_utils.patch_sighting(
+            flask_app_client,
+            researcher_1,
+            sighting_id,
+            patch_data=[
+                {'op': 'remove', 'path': '/encounters', 'value': enc_guid},
+            ],
+            headers=(
+                ('x-allow-delete-cascade-sighting', True),
+                ('x-allow-delete-cascade-individual', True),
+            ),
+        )
+
+    individual_1.delete()
     sighting.delete_cascade()

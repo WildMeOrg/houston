@@ -5,10 +5,7 @@ Input arguments (Parameters) for Individuals resources RESTful API
 """
 from flask_restx_patched import Parameters, PatchJSONParameters
 from . import schemas
-from app.modules.users.permissions import rules
-from app.modules.users.permissions.types import AccessOperation
 import logging
-import uuid
 
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name

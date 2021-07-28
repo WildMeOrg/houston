@@ -52,7 +52,7 @@ jobs:
       OS: ubuntu-latest
       PYTHON: ${{ matrix.python-version }}
       TEST_DATABASE_URI: ${{ matrix.db-uri }}
-      COMPOSE_FILE: deploy/codex/docker-compose.yml
+      COMPOSE_FILE: docker-compose.yml
     steps:
       # Checkout and env setup
       - uses: actions/checkout@v2
@@ -81,7 +81,6 @@ jobs:
       - name: Run docker-compose
         run: |
           set -ex
-          cd deploy/codex
           docker-compose up -d db redis gitlab edm houston acm elasticsearch
           # Check the state of the containers
           sleep 1m

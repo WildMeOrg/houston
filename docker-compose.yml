@@ -158,6 +158,7 @@ services:
       - .:/code
 
   celery_beat:
+    image: wildme/houston:latest
     build: *houston-build
     command: [ "wait-for", "db:5432", "--", "wait-for", "edm:8080", "--", "celery", "-A", "app.extensions.celery.celery", "beat", "-s", "/data/var/celerybeat-schedule", "-l", "DEBUG"]
     networks:
@@ -166,6 +167,7 @@ services:
     volumes: *houston-volumes
 
   celery_worker:
+    image: wildme/houston:latest
     build: *houston-build
     command: [ "wait-for", "db:5432", "--", "wait-for", "edm:8080", "--", "celery", "-A", "app.extensions.celery.celery", "worker", "-l", "DEBUG"]
     networks:

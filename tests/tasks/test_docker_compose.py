@@ -11,7 +11,7 @@ def test_rebuild_specific_services():
         context = MockContext(
             run={
                 'docker-compose rm --stop -f db houston': True,
-                'docker volume ls -q -f dangling=true -f name=codex_db* -f name=codex_houston* | xargs docker volume rm': True,
+                'docker volume ls -q -f dangling=true -f name=houston_db* -f name=houston_houston* | xargs docker volume rm': True,
                 'docker-compose pull db houston': True,
                 'docker-compose build db houston': True,
             },
@@ -31,7 +31,7 @@ def test_rebuild():
         context = MockContext(
             run={
                 'docker-compose down --remove-orphans': True,
-                'docker volume ls -q -f dangling=true -f name=codex_* | xargs docker volume rm': True,
+                'docker volume ls -q -f dangling=true -f name=houston_* | xargs docker volume rm': True,
                 'docker-compose pull ': True,
                 'docker-compose build ': True,
             },

@@ -3,13 +3,17 @@
 Sightings database models
 --------------------
 """
-
-from app.utils import HoustonException
-from app.extensions import FeatherModel, HoustonModel, db
-import uuid
-import logging
 import enum
+import logging
+import uuid
+
 from flask import current_app
+
+from app.extensions import FeatherModel, HoustonModel, db
+from app.modules.annotations.models import Annotation
+from app.modules.encounters.models import Encounter
+from app.modules.individuals.models import Individual
+from app.utils import HoustonException
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
@@ -60,6 +64,8 @@ class Sighting(db.Model, FeatherModel):
     )
 
     name = db.Column(db.String(length=120), nullable=True)
+
+    encounters = db.relationship('Encounter', back_populates='sighting')
 
     def __repr__(self):
         return (
@@ -308,8 +314,6 @@ class Sighting(db.Model, FeatherModel):
                     del edm_map[str(enc.guid)]
 
         # now any left should be new encounters from edm
-        from app.modules.encounters.models import Encounter
-
         for enc_id in edm_map.keys():
             log.debug(f'adding new houston Encounter guid={enc_id}')
             user_guid = user.guid if user else None
@@ -336,8 +340,6 @@ class Sighting(db.Model, FeatherModel):
             assert data_owner
             annots = data_owner.get_all_annotations()
         elif matching_set_data == 'all':
-            from app.modules.annotations.models import Annotation
-
             annots = Annotation.query.all()
         else:
             # Should have been caught at the metadata validation
@@ -576,8 +578,6 @@ class Sighting(db.Model, FeatherModel):
                 )
                 if encounter_metadata:
                     if 'individualUuid' in encounter_metadata:
-                        from app.modules.individuals.models import Individual
-
                         individual = Individual.query.get(
                             uuid.UUID(encounter_metadata['individualUuid'])
                         )

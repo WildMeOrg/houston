@@ -40,7 +40,7 @@ class Annotation(db.Model, HoustonModel):
         index=True,
         nullable=False,
     )
-    asset = db.relationship('Asset', backref=db.backref('annotations'))
+    asset = db.relationship('Asset', back_populates='annotations')
 
     encounter_guid = db.Column(
         db.GUID,
@@ -48,7 +48,7 @@ class Annotation(db.Model, HoustonModel):
         index=True,
         nullable=True,
     )
-    encounter = db.relationship('Encounter', backref=db.backref('annotations'))
+    encounter = db.relationship('Encounter', back_populates='annotations')
     keyword_refs = db.relationship('AnnotationKeywords')
     ia_class = db.Column(db.String(length=255), nullable=False)
     bounds = db.Column(db.JSON, nullable=False)

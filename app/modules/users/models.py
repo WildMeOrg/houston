@@ -5,6 +5,7 @@ User database models
 """
 import enum
 import logging
+import uuid
 
 from flask import current_app
 from sqlalchemy_utils import types as column_types
@@ -14,14 +15,6 @@ from app.extensions import db, FeatherModel
 from app.extensions.auth import security
 from app.extensions.edm import EDMObjectMixin
 from app.extensions.api.parameters import _get_is_static_role_property
-
-# In order to support OrganizationUserMemberships and OrganizationUserModerators
-# we must import the model definitions for organizations here
-from app.modules.organizations import models as organizations_models  # NOQA
-from app.modules.projects import models as projects_models  # NOQA
-from app.modules.collaborations import models as collaborations_models  # NOQA
-
-import uuid
 
 
 log = logging.getLogger(__name__)
@@ -172,6 +165,40 @@ class User(db.Model, FeatherModel, UserEDMMixin):
 
     user_collaboration_associations = db.relationship(
         'CollaborationUserAssociations', back_populates='user'
+    )
+
+    asset_groups = db.relationship(
+        'AssetGroup',
+        back_populates='owner',
+        primaryjoin='User.guid == AssetGroup.owner_guid',
+    )
+
+    submitted_asset_groups = db.relationship(
+        'AssetGroup',
+        back_populates='submitter',
+        primaryjoin='User.guid == AssetGroup.submitter_guid',
+    )
+
+    owned_encounters = db.relationship(
+        'Encounter',
+        back_populates='owner',
+        primaryjoin='User.guid == Encounter.owner_guid',
+    )
+
+    submitted_encounters = db.relationship(
+        'Encounter',
+        back_populates='submitter',
+        primaryjoin='User.guid == Encounter.submitter_guid',
+    )
+
+    owned_organizations = db.relationship(
+        'Organization',
+        back_populates='owner',
+        primaryjoin='User.guid == Organization.owner_guid',
+    )
+
+    owned_projects = db.relationship(
+        'Project', back_populates='owner', primaryjoin='User.guid == Project.owner_guid'
     )
 
     PUBLIC_USER_EMAIL = 'public@localhost'

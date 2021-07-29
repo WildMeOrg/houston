@@ -3,15 +3,10 @@
 Encounters database models
 --------------------
 """
+import uuid
 
 from app.extensions import db, FeatherModel
 from app.modules.individuals.models import Individual
-
-from app.modules.asset_groups import models as asset_groups_models  # NOQA
-from app.modules.assets import models as assets_models  # NOQA
-
-
-import uuid
 
 
 class Encounter(db.Model, FeatherModel):
@@ -24,32 +19,28 @@ class Encounter(db.Model, FeatherModel):
     )  # pylint: disable=invalid-name
     version = db.Column(db.BigInteger, default=None, nullable=True)
 
-    from app.modules.sightings.models import Sighting
-
     sighting_guid = db.Column(
         db.GUID, db.ForeignKey('sighting.guid'), index=True, nullable=True
     )
-    sighting = db.relationship('Sighting', backref=db.backref('encounters'))
-
-    from app.modules.individuals.models import Individual
+    sighting = db.relationship('Sighting', back_populates='encounters')
 
     individual_guid = db.Column(
         db.GUID, db.ForeignKey('individual.guid'), index=True, nullable=True
     )
-    individual = db.relationship('Individual', backref=db.backref('encounters'))
+    individual = db.relationship('Individual', back_populates='encounters')
 
     owner_guid = db.Column(
         db.GUID, db.ForeignKey('user.guid'), index=True, nullable=False
     )
     owner = db.relationship(
-        'User', backref=db.backref('owned_encounters'), foreign_keys=[owner_guid]
+        'User', back_populates='owned_encounters', foreign_keys=[owner_guid]
     )
 
     submitter_guid = db.Column(
         db.GUID, db.ForeignKey('user.guid'), index=True, nullable=True
     )
     submitter = db.relationship(
-        'User', backref=db.backref('submitted_encounters'), foreign_keys=[submitter_guid]
+        'User', back_populates='submitted_encounters', foreign_keys=[submitter_guid]
     )
 
     # Asset group sighting stores the configuration for this encounter,
@@ -61,6 +52,8 @@ class Encounter(db.Model, FeatherModel):
     public = db.Column(db.Boolean, default=False, nullable=False)
 
     projects = db.relationship('ProjectEncounter', back_populates='encounter')
+
+    annotations = db.relationship('Annotation', back_populates='encounter')
 
     def __repr__(self):
         return (

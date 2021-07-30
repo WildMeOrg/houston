@@ -374,9 +374,7 @@ class Sightings(Resource):
 
         from app.modules.assets.schemas import DetailedAssetSchema
 
-        asset_schema = DetailedAssetSchema(
-            only=('guid', 'filename', 'src', 'dimensions', 'created', 'updated')
-        )
+        asset_schema = DetailedAssetSchema(exclude=('annotations'))
         rtn = {
             'success': True,
             'result': {

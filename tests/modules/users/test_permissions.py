@@ -496,3 +496,28 @@ def test_ObjectAccessPermission_contributor_user(
 
     my_encounter.delete()
     owned_encounter.delete()
+
+
+def test_ObjectAccessPermission_user_manager_user(
+    db,
+    user_manager_user_login,
+    temp_user,
+):
+    # pylint: disable=unused-argument
+    from app.modules.users.models import User
+
+    # Can access other users
+    validate_can_read_module(User)
+    validate_can_write_module(User)
+
+    validate_can_read_object(temp_user)
+    validate_can_write_object(temp_user)
+    validate_can_delete_object(temp_user)
+
+    obj = Mock()
+    obj.is_public = lambda: False
+
+    # user manager user should not be able to access non user stuff
+    validate_cannot_read_object(obj)
+    validate_cannot_write_object(obj)
+    validate_cannot_delete_object(obj)

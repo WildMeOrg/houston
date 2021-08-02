@@ -16,12 +16,17 @@ from app.modules.users.permissions.types import AccessOperation
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
 
+# Map of user permissions. This only applies to real users, anonymous users must be handled separately
 ANY_ROLE_MAP = {
     ('SiteSetting', AccessOperation.READ, 'Module'): ['is_privileged', 'is_admin'],
     ('SiteSetting', AccessOperation.WRITE, 'Module'): ['is_privileged', 'is_admin'],
     ('SiteSetting', AccessOperation.READ, 'Object'): ['is_privileged'],
     ('SiteSetting', AccessOperation.WRITE, 'Object'): ['is_privileged', 'is_admin'],
     ('SiteSetting', AccessOperation.DELETE, 'Object'): ['is_privileged', 'is_admin'],
+    ('HoustonConfig', AccessOperation.WRITE, 'Module'): ['is_privileged', 'is_admin'],
+    ('Asset', AccessOperation.READ, 'Module'): ['is_privileged', 'is_admin'],
+    ('AssetGroup', AccessOperation.READ, 'Module'): ['is_privileged', 'is_admin'],
+    ('AssetGroup', AccessOperation.WRITE, 'Module'): ['is_active'],
     ('AssetGroupSighting', AccessOperation.READ, 'Object'): [
         'is_privileged',
         'is_admin',
@@ -33,9 +38,42 @@ ANY_ROLE_MAP = {
         'is_researcher',
     ],
     ('AssetGroupSighting', AccessOperation.WRITE_PRIVILEGED, 'Object'): ['is_internal'],
+    ('Encounter', AccessOperation.READ, 'Module'): ['is_privileged', 'is_researcher'],
+    ('Encounter', AccessOperation.WRITE, 'Module'): [
+        'is_active'
+    ],  # TODO is this still correct
+    ('Encounter', AccessOperation.READ, 'Object'): ['is_privileged', 'is_researcher'],
+    ('Sighting', AccessOperation.READ, 'Module'): ['is_privileged', 'is_researcher'],
+    ('Sighting', AccessOperation.WRITE, 'Module'): ['is_active'],
+    ('Individual', AccessOperation.READ, 'Module'): ['is_privileged', 'is_researcher'],
+    ('Individual', AccessOperation.WRITE, 'Module'): ['is_privileged', 'is_researcher'],
+    ('Individual', AccessOperation.READ, 'Object'): ['is_privileged', 'is_researcher'],
+    ('Annotation', AccessOperation.READ, 'Module'): ['is_privileged', 'is_researcher'],
+    ('Annotation', AccessOperation.WRITE, 'Module'): ['is_privileged', 'is_researcher'],
+    ('User', AccessOperation.READ, 'Module'): ['is_privileged', 'is_user_manager'],
+    ('User', AccessOperation.WRITE, 'Module'): ['is_active'],  # Creating yourself
+    ('User', AccessOperation.WRITE, 'Object'): [
+        'is_privileged',
+        'is_user_manager',
+        'is_admin',
+    ],
+    ('User', AccessOperation.DELETE, 'Object'): [
+        'is_privileged',
+        'is_user_manager',
+        'is_admin',
+    ],
+    ('User', AccessOperation.READ, 'Object'): [
+        'is_privileged',
+        'is_user_manager',
+        'is_admin',
+    ],
+    ('Keyword', AccessOperation.READ, 'Module'): ['is_active'],
+    ('Keyword', AccessOperation.WRITE, 'Module'): ['is_active'],
+    ('Keyword', AccessOperation.READ, 'Object'): ['is_active'],
 }
 ANY_OBJECT_METHOD_MAP = {
     ('SiteSetting', AccessOperation.READ, 'Object'): ['is_public'],
+    ('Encounter', AccessOperation.READ, 'Object'): ['is_public'],
 }
 
 
@@ -107,28 +145,26 @@ class ModuleActionRule(DenyAbortMixin, Rule):
         from app.modules.encounters.models import Encounter
         from app.modules.sightings.models import Sighting
 
-        roles = ANY_ROLE_MAP.get((self._module.__name__, self._action, 'Module'))
-        if roles:
-            for role in roles:
-                if hasattr(current_user, role):
-                    if getattr(current_user, role):
-                        return True
-            return False
-
         # This Rule is for checking permissions on modules, so there must be one,
         assert self._module is not None
-
-        # Anonymous users can create: a asset_group, encounter, sighting, or themselves
+        has_permission = False
         if not current_user or current_user.is_anonymous:
-            has_permission = False
             if self._action == AccessOperation.WRITE:
                 has_permission = self._is_module((AssetGroup, User, Encounter, Sighting))
         else:
-            has_permission = (
-                # inactive users can do nothing
-                current_user.is_active
-                & self._can_user_perform_action(current_user)
-            )
+            roles = ANY_ROLE_MAP.get((self._module.__name__, self._action, 'Module'))
+            if roles:
+                for role in roles:
+                    if hasattr(current_user, role):
+                        if getattr(current_user, role):
+                            has_permission = True
+
+            if not has_permission:
+                has_permission = (
+                    # inactive users can do nothing
+                    current_user.is_active
+                    & self._can_user_perform_action(current_user)
+                )
         if not has_permission:
             log.debug(
                 'Access permission denied for %r by %r' % (self._module, current_user)
@@ -145,16 +181,7 @@ class ModuleActionRule(DenyAbortMixin, Rule):
     # Permissions control entry point for real users, for all objects and all operations
     def _can_user_perform_action(self, user):
         from app.modules.organizations.models import Organization
-        from app.extensions.config.models import HoustonConfig
-        from app.modules.annotations.models import Annotation
-        from app.modules.individuals.models import Individual
-        from app.modules.asset_groups.models import AssetGroup
-        from app.modules.encounters.models import Encounter
-        from app.modules.sightings.models import Sighting
         from app.modules.projects.models import Project
-        from app.modules.assets.models import Asset
-        from app.modules.users.models import User
-        from app.modules.keywords.models import Keyword
 
         has_permission = False
 
@@ -162,34 +189,6 @@ class ModuleActionRule(DenyAbortMixin, Rule):
             # Organizations and Projects not supported for MVP, no-one can create them
             if not self._is_module((Organization, Project)):
                 has_permission = True
-        elif self._action is AccessOperation.READ:
-            if user.is_admin:
-                # This is where we can control what modules admin users can and cannot read
-                # This could be Client configurable if required by taking the list passed to
-                # _is_module from a config parameter e.g. app.config.get(ADMIN_READ_MODULE_PERMISSION)
-                has_permission = self._is_module((Asset, AssetGroup))
-            if not has_permission and user.is_user_manager:
-                has_permission = self._is_module(User)
-            if not has_permission and user.is_researcher:
-                has_permission = self._is_module(
-                    (Encounter, Sighting, Individual, Annotation)
-                )
-            if self._is_module(Keyword):
-                has_permission = True  # anyone can read keywords
-
-        elif self._action is AccessOperation.WRITE:
-            if self._is_module(HoustonConfig):
-                has_permission = user.is_admin
-            # Any users can write (create) a user, asset_group, sighting and Encounter, TODO, decide on AssetGroup
-            elif self._is_module((AssetGroup, User, Encounter, Sighting, Keyword)):
-                has_permission = True
-            elif self._is_module(Annotation):
-                has_permission = user.is_researcher
-            # Project disabled for MVP
-            # elif self._is_module(Project):
-            #     has_permission = user.is_researcher
-            elif self._is_module(Individual):
-                has_permission = user.is_researcher
 
         return has_permission
 
@@ -217,7 +216,7 @@ class ObjectActionRule(DenyAbortMixin, Rule):
             (self._obj.__class__.__name__, self._action, 'Object')
         )
         if roles is None and object_methods is None:
-            return False, True
+            return False, False
 
         if roles is not None:
             for role in roles:
@@ -234,7 +233,6 @@ class ObjectActionRule(DenyAbortMixin, Rule):
                     )
                 elif getattr(self._obj, method)():
                     return True, True
-
         return True, False
 
     def check(self):
@@ -244,15 +242,11 @@ class ObjectActionRule(DenyAbortMixin, Rule):
 
         was_table_driven, has_permission = self.any_table_driven_permission()
 
-        if was_table_driven:
-            if not has_permission:
-                log.info(
-                    'Access permission denied for %r by %r' % (self._obj, current_user)
-                )
-            return has_permission
-
         # Anyone can read public data, even anonymous users
-        has_permission = self._action == AccessOperation.READ and self._obj.is_public()
+        if not has_permission:
+            has_permission = (
+                self._action == AccessOperation.READ and self._obj.is_public()
+            )
 
         if not has_permission and current_user and not current_user.is_anonymous:
 
@@ -271,13 +265,9 @@ class ObjectActionRule(DenyAbortMixin, Rule):
         return has_permission
 
     def _permitted_via_user(self, user):
-        from app.modules.individuals.models import Individual
         from app.modules.annotations.models import Annotation
-        from app.modules.encounters.models import Encounter
         from app.modules.sightings.models import Sighting
         from app.modules.assets.models import Asset
-        from app.modules.users.models import User
-        from app.modules.keywords.models import Keyword
 
         # The exception to the rule of owners and privileged users can do anything is for access to raw
         # assets as this contains potentially extremely sensitive information and is only required for the
@@ -290,10 +280,6 @@ class ObjectActionRule(DenyAbortMixin, Rule):
             has_permission = user.is_internal and self._obj.is_detection()
         else:
             has_permission = owner_or_privileged(user, self._obj)
-        if not has_permission and user.is_admin:
-            # Admins can access all users
-            if isinstance(self._obj, User):
-                has_permission = True
 
         if not has_permission:
             # Projects and Orgs disabled for MVP
@@ -306,12 +292,7 @@ class ObjectActionRule(DenyAbortMixin, Rule):
             #             and self._action != AccessOperation.DELETE
             #         )
 
-            if isinstance(self._obj, (Encounter, Individual)):
-                # Researchers can read other encounters, only site admins can update and delete
-                # them and those roles are not supported yet
-                if self._action == AccessOperation.READ:
-                    has_permission = user.is_researcher
-            elif isinstance(self._obj, Annotation):
+            if isinstance(self._obj, Annotation):
                 # Annotation has no owner, but it has one asset, that has one asset_group that has an owner
                 # (encounter is no longer required on Annotation, so best route to owner is via Asset/Group)
                 has_permission = user == self._obj.asset.asset_group.owner
@@ -324,11 +305,6 @@ class ObjectActionRule(DenyAbortMixin, Rule):
                 has_permission = self._obj.user_can_edit_all_encounters(user)
             if self._action == AccessOperation.READ:
                 has_permission = user in self._obj.get_owners()
-
-        # Keyword can be read by anyone
-        if not has_permission and isinstance(self._obj, Keyword):
-            if self._action == AccessOperation.READ:
-                has_permission = True
 
         return has_permission
 

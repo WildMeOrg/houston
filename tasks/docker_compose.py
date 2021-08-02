@@ -12,6 +12,8 @@ logger = logging.getLogger(__name__)
 
 @task
 def rebuild(context, service=[]):
+    if 'gitlab' in service and 'houston' not in service:
+        service.append('houston')
     services = service
     services_ = ', '.join(services)
     logger.info(f'Stop and remove codex services {services_}')
@@ -34,8 +36,3 @@ def rebuild(context, service=[]):
     context.run(f'docker-compose build {" ".join(services)}', echo=True)
     command = ['docker-compose', 'up', '-d'] + services
     logger.info(f'You can now do "{" ".join(command)}"')
-
-
-@task
-def rebuild_gitlab(context):
-    rebuild(context, service=['gitlab', 'houston'])

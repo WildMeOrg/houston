@@ -217,11 +217,55 @@ class IndividualByID(Resource):
         context = api.commit_or_abort(
             db.session, default_error_message='Failed to update Individual details.'
         )
+
         with context:
             parameters.PatchIndividualDetailsParameters.perform_patch(
                 args, obj=individual
             )
-            db.session.merge(individual)
+
+        edm_args = [
+            arg
+            for arg in args
+            if arg['path'] in parameters.PatchIndividualDetailsParameters.PATH_CHOICES_EDM
+        ]
+
+        if len(edm_args) > 0 and len(edm_args) != len(args):
+            log.error(f'Mixed edm/houston patch called with args {args}')
+            abort(
+                success=False,
+                passed_message='Cannot mix EDM patch paths and houston patch paths',
+                message='Error',
+                code=400,
+            )
+
+        if len(edm_args) > 0:
+            log.debug(f'wanting to do edm patch on args={args}')
+            result = None
+            try:
+                (
+                    response,
+                    response_data,
+                    result,
+                ) = current_app.edm.request_passthrough_parsed(
+                    'individual.data',
+                    'patch',
+                    {'data': edm_args},
+                    individual.guid,
+                    request_headers=request.headers,
+                )
+            except HoustonException as ex:
+                edm_status_code = ex.get_val('edm_status_code', 400)
+                abort(
+                    success=False,
+                    passed_message=ex.message,
+                    code=ex.status_code,
+                    edm_status_code=edm_status_code,
+                )
+
+            # TODO handle individual deletion if last encounter removed
+
+        db.session.merge(individual)
+
         return individual
 
     @api.permission_required(

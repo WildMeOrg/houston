@@ -4,9 +4,11 @@ import logging
 
 # import json
 import uuid
+import datetime
 from app.modules.individuals.models import Individual
 
 from tests.modules.individuals.resources import utils as individual_utils
+from tests.modules.sightings.resources import utils as sighting_utils
 
 from tests import utils
 
@@ -91,63 +93,137 @@ def test_read_encounter_from_edm(db, flask_app_client):
         db.session.delete(temp_enc)
 
 
-def test_modify_encounters(db, flask_app_client, researcher_1, empty_individual):
+def test_add_remove_encounters(db, flask_app_client, researcher_1):
 
-    mod_enc_1 = utils.generate_encounter_instance(
-        user_email='mod1@user', user_password='mod1user', user_full_name='Test User'
+    data_in = {
+        'startTime': datetime.datetime.now().isoformat() + 'Z',
+        'context': 'test',
+        'locationId': 'test',
+        'encounters': [
+            {},
+            {},
+            {},
+            {},
+            {'locationId': 'Monster Island'},
+        ],
+    }
+
+    response = sighting_utils.create_sighting(
+        flask_app_client, researcher_1, expected_status_code=200, data_in=data_in
     )
-    mod_enc_2 = utils.generate_encounter_instance(
-        user_email='mod2@user', user_password='mod2user', user_full_name='Test User'
+
+    from app.modules.sightings.models import Sighting
+
+    sighting_id = response.json['result']['id']
+    sighting = Sighting.query.get(sighting_id)
+
+    assert response.json['success']
+    result_data = response.json['result']
+
+    from app.modules.encounters.models import Encounter
+
+    enc_1 = Encounter(
+        guid=result_data['encounters'][0]['id'],
+        owner_guid=researcher_1.guid,
     )
 
-    # You need to own an individual to modify it, and ownership is determined from it's encounters
-    mod_enc_1.owner = researcher_1
-    mod_enc_2.owner = researcher_1
-    empty_individual.add_encounter(mod_enc_1)
+    enc_2 = Encounter(
+        guid=result_data['encounters'][1]['id'],
+        owner_guid=researcher_1.guid,
+    )
 
-    with db.session.begin():
-        db.session.add(empty_individual)
-        db.session.add(mod_enc_1)
-        db.session.add(mod_enc_2)
+    enc_3 = Encounter(
+        guid=result_data['encounters'][2]['id'],
+        owner_guid=researcher_1.guid,
+    )
 
-    assert str(mod_enc_1.guid) in [
-        str(encounter.guid) for encounter in empty_individual.get_encounters()
+    enc_4 = Encounter(
+        guid=result_data['encounters'][3]['id'],
+        owner_guid=researcher_1.guid,
+    )
+
+    response = individual_utils.create_individual(
+        flask_app_client, researcher_1, 200, {'encounters': [{'id': str(enc_1.guid)}]}
+    )
+    individual_1 = Individual.query.get(response.json['result']['id'])
+
+    # # let's start with one
+    # individual_1.add_encounter(enc_1)
+
+    assert str(enc_1.guid) in [
+        str(encounter.guid) for encounter in individual_1.get_encounters()
     ]
 
-    replace_encounters = [
-        utils.patch_replace_op('encounters', [str(mod_enc_2.guid)]),
+    add_encounters = [
+        utils.patch_add_op('encounters', [str(enc_2.guid)]),
     ]
 
     individual_utils.patch_individual(
         flask_app_client,
-        '%s' % empty_individual.guid,
         researcher_1,
-        replace_encounters,
-        200,
+        '%s' % individual_1.guid,
+        patch_data=add_encounters,
+        headers=None,
+        expected_status_code=200,
     )
 
-    with db.session.begin():
-        db.session.refresh(empty_individual)
-
-    assert str(mod_enc_2.guid) in [
-        str(encounter.guid) for encounter in empty_individual.get_encounters()
+    assert str(enc_2.guid) in [
+        str(encounter.guid) for encounter in individual_1.get_encounters()
     ]
 
-    # restore to original state with no encounters
-    # (although we need this to fail in the near future when the constraint is added to require >0 encounters!)
-    replace_encounters = [
-        utils.patch_replace_op('encounters', []),
+    # remove the one we just verified was there
+    remove_encounters = [
+        utils.patch_remove_op('encounters', [str(enc_1.guid)]),
     ]
 
     individual_utils.patch_individual(
         flask_app_client,
-        '%s' % empty_individual.guid,
         researcher_1,
-        replace_encounters,
+        '%s' % individual_1.guid,
+        remove_encounters,
+        None,
         200,
     )
 
-    with db.session.begin():
-        db.session.delete(mod_enc_1)
-        db.session.delete(mod_enc_2)
-        db.session.delete(empty_individual)
+    assert str(enc_1.guid) not in [
+        str(encounter.guid) for encounter in individual_1.get_encounters()
+    ]
+
+    # okay, now with multiple
+    add_encounters = [
+        utils.patch_add_op('encounters', [str(enc_3.guid), str(enc_4.guid)]),
+    ]
+
+    individual_utils.patch_individual(
+        flask_app_client,
+        researcher_1,
+        '%s' % individual_1.guid,
+        add_encounters,
+        None,
+        200,
+    )
+
+    assert str(enc_3.guid), str(enc_4.guid) in [
+        str(encounter.guid) for encounter in individual_1.get_encounters()
+    ]
+
+    # removing all encounters will trigger delete cascade and clean up EDM
+    # hack because sighting patch only takes one ID for remove. another PR for another day.
+    enc_guids = [str(enc_2.guid), str(enc_3.guid), str(enc_4.guid)]
+
+    for enc_guid in enc_guids:
+        sighting_utils.patch_sighting(
+            flask_app_client,
+            researcher_1,
+            sighting_id,
+            patch_data=[
+                {'op': 'remove', 'path': '/encounters', 'value': enc_guid},
+            ],
+            headers=(
+                ('x-allow-delete-cascade-sighting', True),
+                ('x-allow-delete-cascade-individual', True),
+            ),
+        )
+
+    individual_1.delete()
+    sighting.delete_cascade()

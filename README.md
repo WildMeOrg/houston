@@ -44,7 +44,6 @@ See [Background and Periodic Tasks](docs/background_tasks.md)
 
 ```bash
 git clone --recurse-submodules https://github.com/WildMeOrg/houston.git
-cd houston/deploy/codex
 docker-compose up
 ```
 
@@ -58,7 +57,7 @@ Surf to http://localhost:84/
 Installation of Houston and the other components of Codex from source is intended to facilitate development leveraging the docker-compose environment.
 
 See **Development Environment** section in [Contributing to Houston](CONTRIBUTING.md)
-for details. Full deployment of Codex outside docker-compose orchestration is not supported, and any 
+for details. Full deployment of Codex outside docker-compose orchestration is not supported, and any
 changes should not be considered finished until they have been tested in the docker-compose environment.
 
 #### Clone the Project

@@ -92,131 +92,117 @@ See `.pre-commit-config.yaml` for a list of configured linters and fixers.
 
 ## Development Environment
 
-### PyInvoke Installation
+It's recommended that you install the Houston application and its dependencies [using the Docker container environment](#container-installation). If you'd like to make things difficult you can also look at the [local installation instructions](#local-installation).
+
+<a href="local-installation"></a>
+### Installing and running on your local system
+
+#### PyInvoke installation
+
+You'll need to install [pyinvoke](pyinvoke.org) in order to complete the installation.
+Run `pip install pyinvoke`, which will install the `invoke` commandline tool.
+
 Several `invoke` commands are referenced in this doc. These are helpful tools using the PyInvoke library, which must
 be installed on your local machine. Install it following instructions in the [PyInvoke docs.](https://docs.pyinvoke.org/en/stable//)
 
 Be sure to list other invoke commands with `invoke -l` and inspect them.
 There are many useful tools here that can save you time.
 
-#### To add Invoke bash-completion
+To add Invoke bash-completion:
 ```
 export SCRIPT="$(pwd)/.invoke-completion.sh"
 invoke --print-completion-script bash > $SCRIPT
 echo "source $SCRIPT" >> virtualenv/houston3.7/bin/activate
 ```
-### Virtual Environment
-If you are running Houston outside the docker-compose setup for any reason you will need to set up a virtual environment.
-Most `invoke` commands assume that you are using the virtual environment provided, and you should activate it if you plan
-to use them outside the Houston the docker container.
 
-```
-#initial setup
-bash
+#### Setting up the environment
+
+If you are running Houston outside the docker setup, it is recommended that you set up a [python virtual environment](https://docs.python.org/dev/library/venv.html).
+Most `invoke` commands assume that you are using the virtual environment provided; and you should activate it in order to use the application's commands.
+
+Initial setup of the virtual environment:
+```bash
 ./scripts/venv.sh
-
-#activation whenever developing or in a new terminal
-source virtualenv/houston3.7/bin/activate
-
 ```
 
-### Install Dependencies
+Activation whenever developing or in a new terminal:
+```bash
+source virtualenv/houston3.7/bin/activate
+```
 
-For locally running Houston. Can be skipped if you develop entirely inside the docker-compose containers.
+#### Install dependencies
 
+To install the application:
 ```bash
 invoke dependencies.install
 ```
 
-### Running Docker Containers
+#### Running the application
 
-When `docker-compose up` is run from the `deploy/codex/` directory, several Docker containers are started. These are the connected components of the Codex application.
-
-You can view them by using the command `docker-compose ps` in the `deploy/codex/` directory and see something like this:
-
-```
-        Name                      Command                       State                          Ports
--------------------------------------------------------------------------------------------------------------------
-codex_acm_1            /docker-entrypoint.sh wait ...   Up                      0.0.0.0:82->5000/tcp
-codex_db_1             docker-entrypoint.sh postgres    Up                      5432/tcp
-codex_dev-frontend_1   /docker-entrypoint.sh            Up
-codex_edm_1            /usr/local/tomcat/bin/cata ...   Up                      0.0.0.0:81->8080/tcp
-codex_gitlab_1         /assets/wrapper                  Up (health: starting)   22/tcp, 443/tcp, 0.0.0.0:85->80/tcp
-codex_houston_1        /docker-entrypoint.sh wait ...   Up                      0.0.0.0:83->5000/tcp
-codex_redis_1          docker-entrypoint.sh redis ...   Up                      6379/tcp
-codex_www_1            /docker-entrypoint.sh ngin ...   Up                      0.0.0.0:84->80/tcp
+```bash
+invoke app.run
 ```
 
-This describes the container name, status and ports to access. Access can be interpreted thus:
 
-```
-    http://localhost:82 to access acm,
-    http://localhost:81 to access edm,
-    http://localhost:85 to access gitlab,
-    http://localhost:83 to access houston,
-    http://localhost:84 to access the frontend.
-```
+<a href="container-installation"></a>
+### Installing and running with Docker
 
-These containers are available to enter on the command line using `docker-compose exec [CONTAINER NAME] /bin/bash`. This command will grant you command line access as a root user for
-whichever Codex application component you choose. These are defined in the `docker-compose.yml` as different services. You will likely want to connect to `dev-frontend` for the react front end, `houston` for Houston or `edm` for the EDM.
+These instructions will install and run the application and dependent application.
 
-Please refer to the Docker documentation for other common container actions.
+The configuration is by environment variable via the `.env` file in this directory.
 
-Development on Houston or other Codex components should be done by testing new code against the full application in these running docker containers. Running tests or migrations outside the docker-compose environment is an extra tool at your disposal but can be unpredictable and is not considered complete.
+For development purposes, this setup exposes each of the services as follows:
 
-### Mounted Directories
+<!-- don't use port 80 when defining any hosts -->
+- EDM - http://localhost:81/
+- Sage (Wildbook-IA) - http://localhost:82/
+- Houston - http://localhost:83/
+- CODEX (frontend) - http://localhost:84/
+- CODEX (api docs) - http://localhost:84/api/v1/
+- GitLab - http://localhost:85
 
-#### Houston
-The docker-compose arrangement will attempt to mount local directories for development purposes. For Houston, this is the root repository directory.
+See also the results of `docker-compose ps -a`, which will list the services and the ports exposed on those services.
 
-If you create or modify a file in the local Houston repository you will be able to see the changes reflected when you `docker exec` inside the Houston container, and
-changes in the container will be reflected outside much like a symlinked directory.
+#### Usage
 
+##### Running the applications
 
-#### Frontend
-The docker-compose.yml file also mounts a `_frontend` directory for the front end application. If you clone the houston repository with the README recommended
-`git clone --recurse-submodules https://github.com/WildMeOrg/houston.git` the `_frontend` directory will contain the front end code, but not necessarily the latest.
+Run the deployment locally with docker-compose:
 
-If you want to rebuild the front end, use the command `invoke dependencies.install-frontend-ui`. This will update the `_frontend` folder in the houston repo. Like houston the files in this folder can be modified, and the changes will be reflected in your running `dev-frontend` container.
+    docker-compose up -d && sleep 5 && docker-compose ps
 
-If you want to change the mountpoint to a different directory for your locally cloned codex-frontend repository to make changes and commits easier, you can change it
-in the `deploy/codex/docker-compose.yml` by altering the `dev-frontend` volume mapping `- ../../_frontend:/code` to a directory outside your Houston repository.
+Note, the composition can take several minutes to successfully come up.
+There are a number of operations setting up the services and automating the connections between them.
+All re-ups should be relatively fast.
 
-More details about Codex front end contribution are outside the scope of this README but can be found here: [**codex-frontend**](https://github.com/WildMeOrg/codex-frontend)
+##### Running the applications without gitlab
 
-#### EDM
-The EDM is a compiled Java application, and no volume mapping solution to a running Docker container is available at this time.
+The gitlab container uses a lot of resources and can be impractical to
+run on a development machine.  It is possible to run the applications
+without gitlab by doing:
 
-### Testing
+    docker-compose -f docker-compose.yml -f docker-compose.no-gitlab.yml up -d
 
-New Houston code must be tested with `pytest`. If dependencies are set up correctly an initial testing run can be done outside the docker container
-with the `pytest` command at the root level of the repository.
-
-To fully test you can `docker-compose exec houston /bin/bash` and run `pytest` or
-test files inside the container from outside the container in one line using `docker-compose exec houston pytest`.
-
-They can also be run locally with simply `pytest`.
-
-These methods can target a specific app module by altering the command to something like this:
-
-    pytest tests/modules/[MODULE NAME]`
-
-And may also the flags `-s` to print all additional logging or `-x` to stop on the first failed test.
-
-### Rebuilding with Invoke
-
-In the process of contributing you will want to sync up with the latest Houston/Codex code. This can result in a database or Docker orchestration
-that is incompatible with the new code. Invoke commands will assist in a clean start.
-
-If there are containers failing, database changes that are not migrating successfully or connections between these containers
-that are not being established try rebuilding all containerized Docker resources:
-`invoke docker-compose.rebuild`
+This tells `docker-compose` to use both `docker-compose.yml` and
+`docker-compose.no-gitlab.yml`.  This is really only necessary for
+`docker-compose up` and `docker-compose run`.  For `docker-compose ps`
+or `docker-compose exec`, there's no need to include
+`-f docker-compose.yml -f docker-compose.no-gitlab.yml`.
 
 
-If there are specifically Gitlab authentication or startup issues, try rebuilding Gitlab:
-`invoke docker-compose.rebuild-gitlab`
+##### Cleaning up
 
-#### Cleaning up with Docker commands
+Cleanup volumes:
+
+    docker volume rm $(docker volume ls -q | grep houston_)
+
+Big red button:
+
+    docker-compose down && docker volume rm $(docker volume ls -q | grep houston_)
+
+Precision nuke example:
+
+    docker-compose stop houston && docker-compose rm -f houston && docker volume rm houston_houston-var
 
 Docker is conservative about cleaning up unused objects. This can cause Docker to run out of disk space or
 other problems. If a new build is experiencing errors try using prune commands.
@@ -249,3 +235,56 @@ Including volumes:
     docker system prune --volumes
 
 You can bypass the confirmation for these actions by adding a -f flag.
+
+### Rebuilding with Invoke
+
+In the process of contributing you will want to sync up with the latest Houston/Codex code. This can result in a database or Docker orchestration
+that is incompatible with the new code. Invoke commands will assist in a clean start.
+
+If there are containers failing, database changes that are not migrating successfully or connections between these containers
+that are not being established try rebuilding all containerized Docker resources:
+`invoke docker-compose.rebuild`
+
+
+If there are specifically Gitlab authentication or startup issues, try rebuilding Gitlab:
+`invoke docker-compose.rebuild-gitlab`
+
+
+#### Mounted Directories
+
+##### Houston
+The docker-compose arrangement will attempt to mount local directories for development purposes. For Houston, this is the root repository directory.
+
+If you create or modify a file in the local Houston repository you will be able to see the changes reflected when you `docker exec` inside the Houston container, and
+changes in the container will be reflected outside much like a symlinked directory.
+
+
+##### Frontend
+The docker-compose.yml file also mounts a `_frontend` directory for the front end application. If you clone the houston repository with the README recommended
+`git clone --recurse-submodules https://github.com/WildMeOrg/houston.git` the `_frontend` directory will contain the front end code, but not necessarily the latest.
+
+If you want to rebuild the front end, use the command `invoke dependencies.install-frontend-ui`. This will update the `_frontend` folder in the houston repo. Like houston the files in this folder can be modified, and the changes will be reflected in your running `dev-frontend` container.
+
+If you want to change the mountpoint to a different directory for your locally cloned codex-frontend repository to make changes and commits easier, you can change it
+in the `docker-compose.yml` by altering the `dev-frontend` volume mapping `- _frontend:/code` to a directory outside your Houston repository.
+
+More details about Codex front end contribution are outside the scope of this README but can be found here: [**codex-frontend**](https://github.com/WildMeOrg/codex-frontend)
+
+##### EDM
+The EDM is a compiled Java application, and no volume mapping solution to a running Docker container is available at this time.
+
+### Testing
+
+New Houston code must be tested with `pytest`. If dependencies are set up correctly an initial testing run can be done outside the docker container
+with the `pytest` command at the root level of the repository.
+
+To fully test you can `docker-compose exec houston /bin/bash` and run `pytest` or
+test files inside the container from outside the container in one line using `docker-compose exec houston pytest`.
+
+They can also be run locally with simply `pytest`.
+
+These methods can target a specific app module by altering the command to something like this:
+
+    pytest tests/modules/[MODULE NAME]`
+
+And may also the flags `-s` to print all additional logging or `-x` to stop on the first failed test.

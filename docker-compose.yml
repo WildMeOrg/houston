@@ -7,7 +7,7 @@ services:
     volumes:
       - db-pgdata-var:/var/lib/postgresql/data
       # DB initialization scripts
-      - ./db/initdb.d/:/docker-entrypoint-initdb.d/
+      - .dockerfiles/db/initdb.d/:/docker-entrypoint-initdb.d/
     environment:
       POSTGRES_PASSWORD: "${POSTGRES_PASSWORD}"
       WBIA_DB_NAME: "${WBIA_DB_NAME}"
@@ -49,9 +49,9 @@ services:
     # command: [ '-f', '/etc/logstash/conf.d', '--log.level', 'debug' ]
     command: [ '-f', '/etc/logstash/conf.d' ]
     volumes:
-      - ./logstash/docker-entrypoint.sh:/usr/local/bin/docker-entrypoint
+      - .dockerfiles/logstash/docker-entrypoint.sh:/usr/local/bin/docker-entrypoint
       # - ./logstash/pipelines.yml:/etc/logstash/pipelines.yml
-      - ./logstash/pipelines:/etc/logstash/conf.d
+      - .dockerfiles/logstash/pipelines:/etc/logstash/conf.d
     environment:
       ELASTICSEARCH_HOST: "elasticsearch"
       WILDBOOK_DB_HOST: "db"
@@ -121,9 +121,9 @@ services:
 
   houston:
     # https://github.com/WildMeOrg/houston
-    # image: wildme/houston:latest
+    image: wildme/houston:latest
     build: &houston-build
-      context: ../../
+      context: .
     command: [ "wait-for", "db:5432", "--", "wait-for", "edm:8080", "--", "invoke", "app.run", "--host", "0.0.0.0" ]
     networks:
       - intranet
@@ -132,8 +132,7 @@ services:
       # FIXME: exposed for developer verification
       - "83:5000"
     environment: &houston-environment
-      FLASK_CONFIG: local
-      FLASK_CONFIG_IMPORT: "docker_local_config.LocalConfig"
+      FLASK_CONFIG: development
       SQLALCHEMY_DATABASE_URI: "${SQLALCHEMY_DATABASE_URI}"
       TEST_DATABASE_URI: "${TEST_DATABASE_URI}"
       EDM_AUTHENTICATIONS_URI__DEFAULT: "${EDM_AUTHENTICATIONS_URI__DEFAULT}"
@@ -153,14 +152,13 @@ services:
       GITLAB_NAMESPACE: "${GITLAB_NAMESPACE}"
     volumes: &houston-volumes
       - houston-var:/data
-      - ./houston/docker-entrypoint-init.d:/docker-entrypoint-init.d
-      - ./houston/docker-entrypoint-always-init.d:/docker-entrypoint-always-init.d
+      - .dockerfiles/docker-entrypoint-init.d:/docker-entrypoint-init.d
+      - .dockerfiles/docker-entrypoint-always-init.d:/docker-entrypoint-always-init.d
       # FIXME: pull in development code while working on bringing up the container
-      - ../../:/code
-      # FIXME: Can we define a better mountpoint for this file? Maybe /config.py?
-      - ./houston/local_config.py:/code/docker_local_config.py
+      - .:/code
 
   celery_beat:
+    image: wildme/houston:latest
     build: *houston-build
     command: [ "wait-for", "db:5432", "--", "wait-for", "edm:8080", "--", "celery", "-A", "app.extensions.celery.celery", "beat", "-s", "/data/var/celerybeat-schedule", "-l", "DEBUG"]
     networks:
@@ -169,6 +167,7 @@ services:
     volumes: *houston-volumes
 
   celery_worker:
+    image: wildme/houston:latest
     build: *houston-build
     command: [ "wait-for", "db:5432", "--", "wait-for", "edm:8080", "--", "celery", "-A", "app.extensions.celery.celery", "worker", "-l", "DEBUG"]
     networks:
@@ -188,8 +187,8 @@ services:
       # See port served by 'www' component (i.e. the reverse proxy)
       PORT: "84"
     volumes:
-      - ./dev-frontend/docker-entrypoint.sh:/docker-entrypoint.sh
-      - ../../_frontend:/code
+      - .dockerfiles/dev-frontend/docker-entrypoint.sh:/docker-entrypoint.sh
+      - ./_frontend:/code
 
   www:
     image: nginx:latest
@@ -199,7 +198,7 @@ services:
     ports:
       - "84:80"
     volumes:
-      - ./www/codex.conf:/etc/nginx/conf.d/default.conf
+      - .dockerfiles/www/codex.conf:/etc/nginx/conf.d/default.conf
 
 networks:
   intranet:

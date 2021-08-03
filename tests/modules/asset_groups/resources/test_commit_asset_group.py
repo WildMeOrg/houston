@@ -194,6 +194,7 @@ def test_commit_individual_asset_group(
 ):
     # pylint: disable=invalid-name
     from app.modules.sightings.models import Sighting, SightingStage
+    from app.modules.asset_groups.models import AssetGroupSighting
 
     transaction_id, test_filename = asset_group_utils.create_bulk_tus_transaction(
         test_root
@@ -211,6 +212,12 @@ def test_commit_individual_asset_group(
         )
         asset_group_uuid = resp.json['guid']
         asset_group_sighting_guid = resp.json['asset_group_sightings'][0]['guid']
+        asset_group_sighting = AssetGroupSighting.query.get(asset_group_sighting_guid)
+
+        # Ensure we have the correct asset_group_sighting guid
+        if 'individualUuid' not in str(asset_group_sighting.config):
+            asset_group_sighting_guid = resp.json['asset_group_sightings'][1]['guid']
+
         asset_uuid = resp.json['assets'][0]['guid']
         asset_group_utils.patch_in_dummy_annotation(
             flask_app_client, db, researcher_1, asset_group_sighting_guid, asset_uuid

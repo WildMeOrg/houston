@@ -464,7 +464,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
         self.job_complete(str(job_id))
 
     # Used to build the response to AssetGroupSighting GET
-    def assets(self):
+    def get_assets(self):
         from app.modules.assets.schemas import DetailedAssetSchema
 
         asset_schema = DetailedAssetSchema(

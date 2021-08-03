@@ -425,7 +425,9 @@ def read_asset_group_sighting(
     else:
         response = flask_app_client.get(f'{PATH}sighting/{asset_group_sighting_guid}')
     if expected_status_code == 200:
-        test_utils.validate_dict_response(response, 200, {'guid', 'stage', 'config'})
+        test_utils.validate_dict_response(
+            response, 200, {'guid', 'stage', 'config', 'completion', 'assets'}
+        )
     else:
         test_utils.validate_dict_response(
             response, expected_status_code, {'status', 'message'}

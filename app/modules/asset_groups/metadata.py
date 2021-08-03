@@ -93,16 +93,25 @@ class AssetGroupMetadata(object):
             )
 
         for config_id in range(num_configs):
+            from app.modules.sightings.models import Sighting
+            from app.modules.ia_config_reader import IaConfig
+
             id_config = id_configs[config_id]
             cls._validate_fields(id_config, id_config_fields, debug)
-            owners = id_config['matchingSetDataOwners']
-            from app.modules.sightings.models import Sighting
 
+            owners = id_config['matchingSetDataOwners']
             supported_owners = Sighting.get_matching_set_options()
             if owners not in supported_owners:
                 raise AssetGroupMetadataError(
                     f'dataOwners {owners} not supported, only support {supported_owners}'
                 )
+
+            ia_config_reader = IaConfig(current_app.config.get('CONFIG_MODEL'))
+            for algorithm in id_config['algorithms']:
+                try:
+                    ia_config_reader.get(f'_identifiers.{algorithm}')
+                except KeyError:
+                    raise AssetGroupMetadataError(f'failed to find {algorithm}')
 
     @classmethod
     def validate_owner_email(cls, owner_email, debug):
@@ -239,29 +248,7 @@ class AssetGroupMetadata(object):
                 self.files.add(filename)
 
         if 'idConfigs' in sighting:
-            id_config_fields = [
-                ('algorithms', list, True),
-                ('matchingSetDataOwners', str, True),
-                ('matchingSetRegions', list, False),
-            ]
-
-            num_configs = len(sighting['idConfigs'])
-            if num_configs > 1:
-                raise AssetGroupMetadataError(
-                    f'found multiple {num_configs} ID configs, only support one'
-                )
-
-            for config_id in range(num_configs):
-                id_config = sighting['idConfigs'][config_id]
-                self._validate_fields(id_config, id_config_fields, sighting_debug)
-                owners = id_config['matchingSetDataOwners']
-                from app.modules.sightings.models import Sighting
-
-                supported_owners = Sighting.get_matching_set_options()
-                if owners not in supported_owners:
-                    raise AssetGroupMetadataError(
-                        f'dataOwners {owners} not supported, only support {supported_owners}'
-                    )
+            self.validate_id_configs(sighting['idConfigs'], sighting_debug)
 
         self.owner_assignment = self.validate_encounters(
             sighting['encounters'], f'{encounter_debug}'

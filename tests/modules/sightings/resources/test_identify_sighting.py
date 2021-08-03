@@ -58,7 +58,7 @@ def test_sighting_identification(
         # Create ID config and patch it in
         id_configs = [
             {
-                'algorithms': ['Pie'],
+                'algorithms': ['hotspotter_nosv'],
                 'matchingSetDataOwners': 'mine',
             }
         ]
@@ -86,7 +86,7 @@ def test_sighting_identification(
         job_uuids = [guid for guid in sighting.jobs.keys()]
         assert len(job_uuids) == 1
         job_uuid = job_uuids[0]
-        assert sighting.jobs[job_uuid]['algorithm'] == 'Pie'
+        assert sighting.jobs[job_uuid]['algorithm'] == 'hotspotter_nosv'
 
         # Simulate response from Sage
         sage_resp = sighting_utils.build_sage_identification_response(

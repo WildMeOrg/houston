@@ -27,6 +27,8 @@ class DetailedAssetGroupSightingSchema(BaseAssetGroupSightingSchema):
     Detailed Asset_group_sighting schema exposes all useful fields.
     """
 
+    assets = base_fields.Function(AssetGroupSighting.get_assets)
+
     completion = base_fields.Function(AssetGroupSighting.get_completion)
 
     class Meta(BaseAssetGroupSightingSchema.Meta):
@@ -34,7 +36,7 @@ class DetailedAssetGroupSightingSchema(BaseAssetGroupSightingSchema):
         fields = BaseAssetGroupSightingSchema.Meta.fields + (
             AssetGroupSighting.stage.key,
             AssetGroupSighting.config.key,
-            AssetGroupSighting.assets.__name__,
+            'assets',
             'completion',
         )
         dump_only = BaseAssetGroupSightingSchema.Meta.dump_only

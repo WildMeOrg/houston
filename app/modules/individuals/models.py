@@ -18,14 +18,18 @@ class Individual(db.Model, FeatherModel):
         db.GUID, default=uuid.uuid4, primary_key=True
     )  # pylint: disable=invalid-name
 
+    version = db.Column(db.BigInteger, default=None, nullable=True)
+
+    encounters = db.relationship(
+        'Encounter', back_populates='individual', order_by='Encounter.guid'
+    )
+
     def __repr__(self):
         return (
             '<{class_name}('
             'guid={self.guid}, '
             ')>'.format(class_name=self.__class__.__name__, self=self)
         )
-
-    version = db.Column(db.BigInteger, default=None, nullable=True)
 
     def get_encounters(self):
         return self.encounters

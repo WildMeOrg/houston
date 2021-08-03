@@ -3,15 +3,16 @@
 Organizations database models
 --------------------
 """
-
-from flask import current_app
-from app.extensions import db, HoustonModel
-from app.extensions.edm import EDMObjectMixin
-
+import datetime
 import logging
 import uuid
-import datetime
+
+from flask import current_app
 import pytz
+
+from app.extensions.edm import EDMObjectMixin
+from app.extensions import db, HoustonModel
+from app.modules.users.models import User
 
 log = logging.getLogger(__name__)
 
@@ -54,7 +55,6 @@ class OrganizationEDMMixin(EDMObjectMixin):
     def ensure_edm_obj(cls, guid, owner=None):
 
         if owner is None:
-            from app.modules.users.models import User
             from flask_login import current_user
 
             candidates = [
@@ -89,8 +89,6 @@ class OrganizationEDMMixin(EDMObjectMixin):
         return utc_time.astimezone(current_app.config.get('TIMEZONE'))
 
     def _process_members(self, members):
-        from app.modules.users.models import User
-
         for member in members:
             log.info('Adding Member ID %s' % (member.id,))
             user, is_new = User.ensure_edm_obj(member.id)
@@ -167,7 +165,7 @@ class Organization(db.Model, HoustonModel, OrganizationEDMMixin):
     )
 
     owner_guid = db.Column(db.GUID, db.ForeignKey('user.guid'), index=True, nullable=True)
-    owner = db.relationship('User', backref=db.backref('owned_organizations'))
+    owner = db.relationship('User', back_populates='owned_organizations')
 
     def __repr__(self):
         return (

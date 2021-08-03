@@ -3,7 +3,6 @@
 Site Settings database models
 --------------------
 """
-
 from sqlalchemy_utils import Timestamp
 
 from app.extensions import db
@@ -16,14 +15,12 @@ class SiteSetting(db.Model, Timestamp):
 
     key = db.Column(db.String, primary_key=True, nullable=False)
 
-    from app.modules.fileuploads.models import FileUpload
-
     # file_upload_guid can be changed to nullable if we have
     # non-fileupload site settings
     file_upload_guid = db.Column(
         db.GUID, db.ForeignKey('file_upload.guid', ondelete='CASCADE'), nullable=False
     )
-    file_upload = db.relationship(FileUpload, cascade='delete')
+    file_upload = db.relationship('FileUpload', cascade='delete')
     public = db.Column(db.Boolean, default=True, nullable=False)
 
     def __repr__(self):

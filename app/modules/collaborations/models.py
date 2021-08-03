@@ -5,7 +5,10 @@ Collaborations database models
 """
 import uuid
 import logging
+
 from app.extensions import db, HoustonModel
+from app.modules.users.models import User
+
 
 log = logging.getLogger(__name__)
 
@@ -78,8 +81,6 @@ class Collaboration(db.Model, HoustonModel):
             )
 
         for guid_index in range(len(user_guids)):
-            from app.modules.users.models import User
-
             user_tup = User.ensure_edm_obj(user_guids[guid_index])
 
             if user_tup is None or user_tup[0] is None:

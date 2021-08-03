@@ -14,8 +14,6 @@ from PIL import Image
 import uuid
 import logging
 
-# In order to support sightings backref we must import the model definitions for sightings here
-from app.modules.sightings import models as sightings_models  # NOQA
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
@@ -56,9 +54,15 @@ class Asset(db.Model, HoustonModel):
         index=True,
         nullable=False,
     )
-    asset_group = db.relationship('AssetGroup', backref=db.backref('assets'))
+    asset_group = db.relationship('AssetGroup', back_populates='assets')
 
-    asset_sightings = db.relationship('SightingAssets', back_populates='asset')
+    asset_sightings = db.relationship(
+        'SightingAssets', back_populates='asset', order_by='SightingAssets.sighting_guid'
+    )
+
+    annotations = db.relationship(
+        'Annotation', back_populates='asset', order_by='Annotation.guid'
+    )
 
     def __repr__(self):
         return (

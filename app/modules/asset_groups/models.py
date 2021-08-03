@@ -11,10 +11,15 @@ from flask_login import current_user  # NOQA
 import requests.exceptions
 import utool as ut
 
-from app.extensions import db, HoustonModel, parallel
 from app.extensions.gitlab import GitlabInitializationError
-from app.version import version
+from app.extensions import db, HoustonModel, parallel
+from app.modules.annotations.models import Annotation
+from app.modules.assets.models import Asset
+from app.modules.encounters.models import Encounter
+from app.modules.sightings.models import Sighting, SightingStage
+from app.modules.users.models import User
 from app.utils import HoustonException
+from app.version import version
 
 import logging
 import tqdm
@@ -112,9 +117,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
         index=True,
         nullable=False,
     )
-    asset_group = db.relationship(
-        'AssetGroup', backref=db.backref('asset_group_sightings')
-    )
+    asset_group = db.relationship('AssetGroup', back_populates='asset_group_sightings')
 
     # configuration metadata from the create request
     config = db.Column(db.JSON, nullable=True)
@@ -126,9 +129,6 @@ class AssetGroupSighting(db.Model, HoustonModel):
 
     def commit(self):
         from app.modules.utils import Cleanup
-        from app.modules.sightings.models import Sighting, SightingStage
-        from app.modules.encounters.models import Encounter
-        from app.modules.annotations.models import Annotation
 
         if self.stage != AssetGroupSightingStage.curation:
             raise HoustonException(
@@ -198,8 +198,6 @@ class AssetGroupSighting(db.Model, HoustonModel):
             try:
                 owner_guid = self.asset_group.owner_guid
                 if 'ownerEmail' in req_data:
-                    from app.modules.users.models import User
-
                     owner_email = req_data['ownerEmail']
                     encounter_owner = User.find(email=owner_email)
                     # Validated in the metadata code so must be correct
@@ -389,8 +387,6 @@ class AssetGroupSighting(db.Model, HoustonModel):
         return True
 
     def detected(self, job_id, data):
-        from app.modules.assets.models import Asset
-        from app.modules.annotations.models import Annotation
         import uuid
 
         if self.stage != AssetGroupSightingStage.detection:
@@ -468,16 +464,19 @@ class AssetGroupSighting(db.Model, HoustonModel):
         self.job_complete(str(job_id))
 
     # Used to build the response to AssetGroupSighting GET
-    def assets(self):
+    def get_assets(self):
         from app.modules.assets.schemas import DetailedAssetSchema
 
         asset_schema = DetailedAssetSchema(
             many=False, only=('guid', 'filename', 'src', 'annotations')
         )
-        resp = []
+        assets = []
         for filename in self.config.get('assetReferences'):
             asset = self.asset_group.get_asset_for_file(filename)
             assert asset
+            assets.append(asset)
+        resp = []
+        for asset in sorted(assets, key=lambda ast: ast.guid):
             json_msg, err = asset_schema.dump(asset)
             resp.append(json_msg)
         return resp
@@ -561,7 +560,7 @@ class AssetGroup(db.Model, HoustonModel):
         db.GUID, db.ForeignKey('user.guid'), index=True, nullable=False
     )
     owner = db.relationship(
-        'User', backref=db.backref('asset_groups'), foreign_keys=[owner_guid]
+        'User', back_populates='asset_groups', foreign_keys=[owner_guid]
     )
 
     submitter_guid = db.Column(
@@ -569,9 +568,17 @@ class AssetGroup(db.Model, HoustonModel):
     )
     submitter = db.relationship(
         'User',
-        backref=db.backref('submitted_asset_groups'),
+        back_populates='submitted_asset_groups',
         foreign_keys=[submitter_guid],
     )
+
+    asset_group_sightings = db.relationship(
+        'AssetGroupSighting',
+        back_populates='asset_group',
+        order_by='AssetGroupSighting.guid',
+    )
+
+    assets = db.relationship('Asset', back_populates='asset_group', order_by='Asset.guid')
 
     def __repr__(self):
         return (
@@ -586,8 +593,6 @@ class AssetGroup(db.Model, HoustonModel):
 
     @property
     def anonymous(self):
-        from app.modules.users.models import User
-
         return self.owner is User.get_public_user()
 
     @property
@@ -842,8 +847,6 @@ class AssetGroup(db.Model, HoustonModel):
         if metadata.owner is not None and not metadata.owner.is_anonymous:
             group_owner = metadata.owner
         else:
-            from app.modules.users.models import User
-
             group_owner = User.get_public_user()
 
         if metadata.tus_transaction_id and not metadata.files:
@@ -892,8 +895,6 @@ class AssetGroup(db.Model, HoustonModel):
         if owner is not None and not owner.is_anonymous:
             group_owner = owner
         else:
-            from app.modules.users.models import User
-
             group_owner = User.get_public_user()
         asset_group = AssetGroup(
             major_type=AssetGroupMajorType.filesystem,
@@ -988,7 +989,6 @@ class AssetGroup(db.Model, HoustonModel):
             https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/MIME_types/Common_types
             http://www.iana.org/assignments/media-types/media-types.xhtml
         """
-        from app.modules.assets.models import Asset
         import utool as ut
         import magic
 

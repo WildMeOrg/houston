@@ -3,11 +3,11 @@
 Projects database models
 --------------------
 """
+import uuid
 
 from sqlalchemy_utils import Timestamp
+
 from app.extensions import db, HoustonModel
-from app.modules.encounters import models as encounters_models  # NOQA
-import uuid
 
 
 # All many:many associations handled as Houston model classes to give control and history
@@ -47,12 +47,16 @@ class Project(db.Model, HoustonModel, Timestamp):
         'ProjectUserMembershipEnrollment', back_populates='project'
     )
 
-    encounter_members = db.relationship('ProjectEncounter', back_populates='project')
+    encounter_members = db.relationship(
+        'ProjectEncounter',
+        back_populates='project',
+        order_by='ProjectEncounter.encounter_guid',
+    )
 
     owner_guid = db.Column(
         db.GUID, db.ForeignKey('user.guid'), index=True, nullable=False
     )
-    owner = db.relationship('User', backref=db.backref('owned_projects'))
+    owner = db.relationship('User', back_populates='owned_projects')
 
     def __repr__(self):
         return (

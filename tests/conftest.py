@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from importlib import import_module
 import os
 import pathlib
 import tempfile
@@ -11,6 +12,21 @@ from flask_login import current_user, login_user, logout_user
 from app import create_app
 
 from . import utils, TEST_ASSET_GROUP_UUID, TEST_EMPTY_ASSET_GROUP_UUID
+
+# Import all models first for db.relationship to avoid model look up
+# error:
+#
+# sqlalchemy.exc.InvalidRequestError: When initializing mapper
+# mapped class AssetGroupSighting->asset_group_sighting, expression
+# 'Sighting' failed to locate a name ('Sighting'). If this is a
+# class name, consider adding this relationship() to the <class
+# 'app.modules.asset_groups.models.AssetGroupSighting'> class after
+# both dependent classes have been defined.
+project_root = pathlib.Path(__file__).parent.parent
+for models in project_root.glob('app/modules/*/models.py'):
+    models_path = models.relative_to(project_root)
+    models_module = str(models_path).replace('.py', '').replace('/', '.')
+    import_module(models_module)
 
 
 # Force FLASK_CONFIG to be testing instead of using what's defined in the environment

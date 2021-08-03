@@ -3,12 +3,11 @@
 Keywords database models
 --------------------
 """
-
-from app.extensions import db, HoustonModel
-
-import uuid
 import enum
 import logging
+import uuid
+
+from app.extensions import db, HoustonModel
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 

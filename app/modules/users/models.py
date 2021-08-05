@@ -213,6 +213,7 @@ class User(db.Model, FeatherModel, UserEDMMixin):
 
     class StaticRoles(enum.Enum):
         # pylint: disable=missing-docstring,unsubscriptable-object
+        DATA_MANAGER = (0x100000, 'DataManager', 'DataManager', 'is_data_manager')
         USER_MANAGER = (0x80000, 'UserManager', 'UserManager', 'is_user_manager')
         CONTRIBUTOR = (0x40000, 'Contributor', 'Contributor', 'is_contributor')
         RESEARCHER = (0x20000, 'Researcher', 'Researcher', 'is_researcher')
@@ -248,6 +249,9 @@ class User(db.Model, FeatherModel, UserEDMMixin):
     is_user_manager = _get_is_static_role_property(
         'is_user_manager', StaticRoles.USER_MANAGER
     )
+    is_data_manager = _get_is_static_role_property(
+        'is_data_manager', StaticRoles.DATA_MANAGER
+    )
     is_researcher = _get_is_static_role_property('is_researcher', StaticRoles.RESEARCHER)
     is_exporter = _get_is_static_role_property('is_exporter', StaticRoles.EXPORTER)
     is_internal = _get_is_static_role_property('is_internal', StaticRoles.INTERNAL)
@@ -276,6 +280,7 @@ class User(db.Model, FeatherModel, UserEDMMixin):
 
     def get_roles(self):
         roles = []
+        roles += [self.StaticRoles.DATA_MANAGER.shorthand] if self.is_data_manager else []
         roles += [self.StaticRoles.USER_MANAGER.shorthand] if self.is_user_manager else []
         roles += [self.StaticRoles.INTERNAL.shorthand] if self.is_internal else []
         roles += [self.StaticRoles.ADMIN.shorthand] if self.is_admin else []

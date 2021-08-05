@@ -6,12 +6,19 @@ Input arguments (Parameters) for Collaborations resources RESTful API
 
 # from flask_marshmallow import base_fields
 from flask_restx_patched import Parameters, PatchJSONParameters
+from flask_marshmallow import base_fields
 
 from . import schemas
 from .models import Collaboration
 
 
 class CreateCollaborationParameters(Parameters, schemas.DetailedCollaborationSchema):
+    user_guid = base_fields.UUID(
+        description='The GUID of the other user',
+        required=True,
+    )
+    title = base_fields.String(required=False)
+
     class Meta(schemas.DetailedCollaborationSchema.Meta):
         pass
 

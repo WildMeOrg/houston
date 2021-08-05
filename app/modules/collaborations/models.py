@@ -14,11 +14,12 @@ log = logging.getLogger(__name__)
 
 
 class CollaborationUserState:
-    ALLOWED_STATES = ['declined', 'approved', 'pending', 'not_initiated']
+    ALLOWED_STATES = ['declined', 'approved', 'pending', 'not_initiated', 'revoked']
     DECLINED = ALLOWED_STATES[0]
     APPROVED = ALLOWED_STATES[1]
     PENDING = ALLOWED_STATES[2]
     NOT_INITIATED = ALLOWED_STATES[3]
+    REVOKED = ALLOWED_STATES[4]
 
 
 class CollaborationUserAssociations(db.Model, HoustonModel):
@@ -112,6 +113,11 @@ class Collaboration(db.Model, HoustonModel):
             users.append(association.user)
         return users
 
+    def get_user_guids(self):
+        return [
+            association.user.guid for association in self.collaboration_user_associations
+        ]
+
     def get_initiators(self):
         users = []
         for association in self.collaboration_user_associations:
@@ -186,6 +192,9 @@ class Collaboration(db.Model, HoustonModel):
                 else:
                     association.edit_approval_state = CollaborationUserState.PENDING
 
+    def user_can_access(self, user):
+        return user in self.get_users()
+
     def __repr__(self):
         return (
             '<{class_name}('
@@ -199,3 +208,9 @@ class Collaboration(db.Model, HoustonModel):
         if len(title) < 3:
             raise ValueError('Title has to be at least 3 characters long.')
         return title
+
+    def delete(self):
+        with db.session.begin(subtransactions=True):
+            for assoc in self.collaboration_user_associations:
+                db.session.delete(assoc)
+            db.session.delete(self)

@@ -6,10 +6,13 @@ RESTful API Collaborations resources
 """
 
 import logging
+import json
 
+from flask import request
 from flask_login import current_user  # NOQA
 from flask_restx_patched import Resource
 from flask_restx_patched._http import HTTPStatus
+from app.extensions.api import abort
 
 from app.extensions import db
 from app.extensions.api import Namespace
@@ -68,11 +71,33 @@ class Collaborations(Resource):
         """
         Create a new instance of Collaboration.
         """
+        from app.modules.users.models import User
+
+        req = json.loads(request.data)
+        user_guid = req.get('user_guid')
+        other_user = User.query.get(user_guid)
+        if not other_user:
+            abort(400, f'User with guid {user_guid} not found')
+
+        if not other_user.is_researcher:
+            abort(400, f'User with guid {user_guid} is not a researcher')
+
         context = api.commit_or_abort(
             db.session, default_error_message='Failed to create a new Collaboration'
         )
+        title = req.get('title', '')
+        states = ['approved', 'pending']
+        if current_user.is_user_manager or current_user.is_data_manager:
+            states = ['approved', 'approved']
+
         with context:
-            collaboration = Collaboration(**args)
+
+            collaboration = Collaboration(
+                title=title,
+                user_guids=[current_user.guid, other_user.guid],
+                approval_states=states,
+                initiator_states=[True, False],
+            )
             db.session.add(collaboration)
         return collaboration
 

@@ -102,6 +102,11 @@ class Annotation(db.Model, HoustonModel):
                 db.session.delete(ref)
                 break
 
+    def user_is_owner(self, user):
+        # Annotation has no owner, but it has one asset, that has one asset_group that has an owner
+        # (encounter is no longer required on Annotation, so best route to owner is via Asset/Group)
+        return user is not None and user == self.asset.asset_group.owner
+
     # Used for building matching set but abstract the annotation to name mapping
     def get_name(self):
         name = 'unknown'

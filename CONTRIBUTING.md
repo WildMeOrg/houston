@@ -247,7 +247,7 @@ that are not being established try rebuilding all containerized Docker resources
 
 
 If there are specifically Gitlab authentication or startup issues, try rebuilding Gitlab:
-`invoke docker-compose.rebuild-gitlab`
+`invoke docker-compose.rebuild -s gitlab`
 
 
 #### Mounted Directories

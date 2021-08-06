@@ -34,7 +34,7 @@ MODULE_USER_MAP = {
     ('Annotation', AccessOperation.WRITE): ['is_researcher'],
     ('User', AccessOperation.READ): ['is_user_manager'],
     ('User', AccessOperation.WRITE): ['is_active'],  # Creating yourself
-    ('Collaboration', AccessOperation.WRITE): ['is_researcher'],
+    ('Collaboration', AccessOperation.WRITE): ['is_researcher', 'is_user_manager'],
     ('Collaboration', AccessOperation.READ): ['is_user_manager'],
     ('Keyword', AccessOperation.READ): ['is_active'],
     ('Keyword', AccessOperation.WRITE): ['is_active'],
@@ -323,18 +323,27 @@ class ObjectActionRule(DenyAbortMixin, Rule):
     #             project_index = project_index + 1
 
     def _permitted_via_collaboration(self, user):
+        from app.modules.collaborations.models import CollaborationUserState
+
         tried_users = [user]
         object_user_methods = OBJECT_USER_METHOD_MAP.get(
             (self._obj.__class__.__name__, self._action)
         )
 
         for collab_assoc in user.user_collaboration_associations:
-            collab_users = collab_assoc.collaboration.get_users()
-            for other_user in collab_users:
-                if other_user not in tried_users:
-                    tried_users.append(other_user)
-                    if other_user.owns_object(self._obj):
-                        return True
+            if collab_assoc.edit_state != CollaborationUserState.CREATOR:
+                collab_users = collab_assoc.collaboration.get_users()
+                for other_user in collab_users:
+                    if other_user not in tried_users:
+                        tried_users.append(other_user)
+                        # Only read collaboration permitted for MVP
+                        # (congratulations brunette, you made this as difficult to read as possible  )
+                        if other_user.owns_object(
+                            self._obj
+                        ) & self._action == AccessOperation.READ & collab_assoc.collaboration.user_has_read_access(
+                            current_user
+                        ):
+                            return True
 
                 if object_user_methods is not None:
                     for method in object_user_methods:

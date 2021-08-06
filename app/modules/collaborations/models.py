@@ -5,6 +5,7 @@ Collaborations database models
 """
 import uuid
 import logging
+from flask_login import current_user
 
 from app.extensions import db, HoustonModel
 from app.modules.users.models import User
@@ -14,12 +15,20 @@ log = logging.getLogger(__name__)
 
 
 class CollaborationUserState:
-    ALLOWED_STATES = ['declined', 'approved', 'pending', 'not_initiated', 'revoked']
+    ALLOWED_STATES = [
+        'declined',
+        'approved',
+        'pending',
+        'not_initiated',
+        'revoked',
+        'creator',
+    ]
     DECLINED = ALLOWED_STATES[0]
     APPROVED = ALLOWED_STATES[1]
     PENDING = ALLOWED_STATES[2]
     NOT_INITIATED = ALLOWED_STATES[3]
     REVOKED = ALLOWED_STATES[4]
+    CREATOR = ALLOWED_STATES[5]
 
 
 class CollaborationUserAssociations(db.Model, HoustonModel):
@@ -107,15 +116,34 @@ class Collaboration(db.Model, HoustonModel):
                 # If you initiate you approve
                 collab_user_assoc.read_approval_state = CollaborationUserState.APPROVED
 
+        if initiator_states is not None and True not in initiator_states:
+            # User manager created collaboration, store who the creator was
+            collab_creator = CollaborationUserAssociations(
+                collaboration=self, user=current_user
+            )
+            collab_creator.initiator = True
+            collab_creator.read_approval_state = CollaborationUserState.CREATOR
+            collab_creator.edit_approval_state = CollaborationUserState.CREATOR
+
+    def _get_association_for_user(self, user_guid):
+        assoc = None
+        for association in self.collaboration_user_associations:
+            if association.user_guid == user_guid:
+                assoc = association
+        return assoc
+
     def get_users(self):
         users = []
         for association in self.collaboration_user_associations:
-            users.append(association.user)
+            if association.read_approval_state != CollaborationUserState.CREATOR:
+                users.append(association.user)
         return users
 
     def get_user_guids(self):
         return [
-            association.user.guid for association in self.collaboration_user_associations
+            association.user.guid
+            for association in self.collaboration_user_associations
+            if association.read_approval_state != CollaborationUserState.CREATOR
         ]
 
     def get_initiators(self):
@@ -168,6 +196,14 @@ class Collaboration(db.Model, HoustonModel):
                 if association.user_guid == user_guid:
                     association.read_approval_state = state
 
+    def user_has_read_access(self, user_guid):
+        state = CollaborationUserState.NOT_INITIATED
+        if user_guid is not None:
+            association = self._get_association_for_user(user_guid)
+            if association:
+                state = association.read_approval_state
+        return state == CollaborationUserState.APPROVED
+
     def set_edit_approval_state_for_user(self, user_guid, state):
         if user_guid is not None and state in CollaborationUserState.ALLOWED_STATES:
             # if one association is edit level NOT_INITIATED, they all are
@@ -192,6 +228,7 @@ class Collaboration(db.Model, HoustonModel):
                 else:
                     association.edit_approval_state = CollaborationUserState.PENDING
 
+    # This relates to if the user can access the collaboration itself, not the data
     def user_can_access(self, user):
         return user in self.get_users()
 

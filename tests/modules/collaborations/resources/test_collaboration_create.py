@@ -47,14 +47,17 @@ def test_create_collaboration(
 
 
 def test_create_approved_collaboration(
-    flask_app_client, researcher_1, user_manager_user, db
+    flask_app_client, researcher_1, researcher_2, user_manager_user, db
 ):
     from app.modules.collaborations.models import Collaboration
 
-    data = {'user_guid': str(researcher_1.guid)}
+    data = {
+        'user_guid': str(researcher_1.guid),
+        'second_user_guid': str(researcher_2.guid),
+    }
+
     collab = None
     try:
-        user_manager_user.set_static_role(user_manager_user.StaticRoles.RESEARCHER)
         resp = collab_utils.create_collaboration(
             flask_app_client, user_manager_user, data
         )
@@ -67,8 +70,7 @@ def test_create_approved_collaboration(
         members = resp.json.get('members', [])
         assert len(members) == 2
         assert str(researcher_1.guid) in members
-        assert str(user_manager_user.guid) in members
+        assert str(researcher_2.guid) in members
     finally:
-        user_manager_user.unset_static_role(user_manager_user.StaticRoles.RESEARCHER)
         if collab:
             collab.delete()

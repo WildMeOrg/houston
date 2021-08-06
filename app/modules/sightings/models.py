@@ -112,6 +112,9 @@ class Sighting(db.Model, FeatherModel):
     def user_can_edit_all_encounters(self, user):
         return self.user_owns_all_encounters(user)
 
+    def user_is_owner(self, user):
+        return user in self.get_owners()
+
     def get_encounters(self):
         return self.encounters
 

@@ -110,7 +110,7 @@ def test_find_raw_asset(
         researcher_1,
         test_clone_asset_group_data['asset_group_uuid'],
     )
-
+    raw_src_response = None
     try:
         asset_guid = test_clone_asset_group_data['asset_uuids'][0]
 
@@ -143,7 +143,8 @@ def test_find_raw_asset(
         raw_src_response.close()
     finally:
         # Force the server to release the file handler
-        raw_src_response.close()
+        if raw_src_response:
+            raw_src_response.close()
         clone.cleanup()
 
 

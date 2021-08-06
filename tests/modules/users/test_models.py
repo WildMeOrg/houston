@@ -17,9 +17,16 @@ def test_User_auth(user_instance):
 
 
 @pytest.mark.parametrize(
-    'init_static_roles,is_internal,is_admin,is_staff,is_active',
+    'init_static_roles,is_internal,is_admin,is_staff,is_active,is_data_manager',
     [
-        (_init_static_roles, _is_internal, _is_admin, _is_staff, _is_active)
+        (
+            _init_static_roles,
+            _is_internal,
+            _is_admin,
+            _is_staff,
+            _is_active,
+            _is_data_manager,
+        )
         for _init_static_roles in (
             0,
             (
@@ -27,16 +34,24 @@ def test_User_auth(user_instance):
                 | models.User.StaticRoles.ADMIN.mask
                 | models.User.StaticRoles.STAFF.mask
                 | models.User.StaticRoles.ACTIVE.mask
+                | models.User.StaticRoles.DATA_MANAGER.mask
             ),
         )
         for _is_internal in (False, True)
         for _is_admin in (False, True)
         for _is_staff in (False, True)
         for _is_active in (False, True)
+        for _is_data_manager in (False, True)
     ],
 )
 def test_User_static_roles_setting(
-    init_static_roles, is_internal, is_admin, is_staff, is_active, user_instance
+    init_static_roles,
+    is_internal,
+    is_admin,
+    is_staff,
+    is_active,
+    is_data_manager,
+    user_instance,
 ):
     """
     Static User Roles are saved as bit flags into one ``static_roles``
@@ -66,18 +81,35 @@ def test_User_static_roles_setting(
     else:
         user_instance.unset_static_role(user_instance.StaticRoles.ACTIVE)
 
+    if is_data_manager:
+        user_instance.set_static_role(user_instance.StaticRoles.DATA_MANAGER)
+    else:
+        user_instance.unset_static_role(user_instance.StaticRoles.DATA_MANAGER)
+
     assert (
         user_instance.has_static_role(user_instance.StaticRoles.INTERNAL) is is_internal
     )
     assert user_instance.has_static_role(user_instance.StaticRoles.ADMIN) is is_admin
     assert user_instance.has_static_role(user_instance.StaticRoles.STAFF) is is_staff
     assert user_instance.has_static_role(user_instance.StaticRoles.ACTIVE) is is_active
+    assert (
+        user_instance.has_static_role(user_instance.StaticRoles.DATA_MANAGER)
+        is is_data_manager
+    )
+
     assert user_instance.is_internal is is_internal
     assert user_instance.is_admin is is_admin
     assert user_instance.is_staff is is_staff
     assert user_instance.is_active is is_active
+    assert user_instance.is_data_manager is is_data_manager
 
-    if not is_active and not is_staff and not is_admin and not is_internal:
+    if (
+        not is_active
+        and not is_staff
+        and not is_admin
+        and not is_internal
+        and not is_data_manager
+    ):
         assert user_instance.static_roles == 0
 
 

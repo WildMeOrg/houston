@@ -158,6 +158,10 @@ class Asset(db.Model, HoustonModel):
     def is_mime_type_major(self, major):
         return self.mime_type_major() == major
 
+    # Special access to the raw file only for internal users
+    def user_raw_read(self, user):
+        return self.is_detection() and user.is_internal
+
     # will only set .meta values that can be derived automatically from file
     # (will not overwrite any manual/other values); silently fails if unknown type for deriving
     #

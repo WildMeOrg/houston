@@ -132,6 +132,20 @@ class Collaboration(db.Model, HoustonModel):
                 assoc = association
         return assoc
 
+    def _get_association_for_other_user(self, user_guid):
+        assoc = None
+        if user_guid is not None:
+            other_user_guids = [
+                association.user_guid
+                for association in self.collaboration_user_associations
+                if association.user_guid != user_guid
+            ]
+
+            assert len(other_user_guids) == 1
+
+            assoc = self._get_association_for_user(other_user_guids[0])
+        return assoc
+
     def get_users(self):
         users = []
         for association in self.collaboration_user_associations:
@@ -191,18 +205,22 @@ class Collaboration(db.Model, HoustonModel):
         return edit_state
 
     def set_read_approval_state_for_user(self, user_guid, state):
+        success = False
         if user_guid is not None and state in CollaborationUserState.ALLOWED_STATES:
             for association in self.collaboration_user_associations:
                 if association.user_guid == user_guid:
                     association.read_approval_state = state
+                    success = True
+        return success
 
     def user_has_read_access(self, user_guid):
-        state = CollaborationUserState.NOT_INITIATED
-        if user_guid is not None:
-            association = self._get_association_for_user(user_guid)
-            if association:
-                state = association.read_approval_state
-        return state == CollaborationUserState.APPROVED
+        ret_val = False
+        other_assoc = self._get_association_for_other_user(user_guid)
+
+        if other_assoc:
+            ret_val = other_assoc.read_approval_state == CollaborationUserState.APPROVED
+
+        return ret_val
 
     def set_edit_approval_state_for_user(self, user_guid, state):
         if user_guid is not None and state in CollaborationUserState.ALLOWED_STATES:

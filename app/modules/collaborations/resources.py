@@ -13,6 +13,7 @@ from flask_login import current_user  # NOQA
 from flask_restx_patched import Resource
 from flask_restx_patched._http import HTTPStatus
 from app.extensions.api import abort
+from marshmallow import ValidationError
 
 from app.extensions import db
 from app.extensions.api import Namespace
@@ -158,10 +159,16 @@ class CollaborationByID(Resource):
             db.session, default_error_message='Failed to update Collaboration details.'
         )
         with context:
-            parameters.PatchCollaborationDetailsParameters.perform_patch(
-                args, obj=collaboration
-            )
-            db.session.merge(collaboration)
+            try:
+                parameters.PatchCollaborationDetailsParameters.perform_patch(
+                    args, obj=collaboration
+                )
+                db.session.merge(collaboration)
+            except ValidationError:
+                abort(
+                    400, message=f"unable to set {args[0]['path']} to {args[0]['value']}"
+                )
+
         return collaboration
 
     @api.permission_required(

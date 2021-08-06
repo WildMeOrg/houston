@@ -43,7 +43,12 @@ def create_collaboration(
 
 
 def patch_collaboration(
-    flask_app_client, collaboration_guid, user, data, expected_status_code=200
+    flask_app_client,
+    collaboration_guid,
+    user,
+    data,
+    expected_status_code=200,
+    expected_error='',
 ):
     with flask_app_client.login(user, auth_scopes=('collaborations:write',)):
         response = flask_app_client.patch(
@@ -58,6 +63,8 @@ def patch_collaboration(
         test_utils.validate_dict_response(
             response, expected_status_code, {'status', 'message'}
         )
+        assert response.json['message'] == expected_error, response.json['message']
+
     return response
 
 

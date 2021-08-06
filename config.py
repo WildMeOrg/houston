@@ -4,6 +4,8 @@ import os
 import logging
 import datetime
 from pathlib import Path
+import random
+import string
 
 import pytz
 from dotenv import load_dotenv
@@ -196,6 +198,19 @@ class BaseConfig(object):
 
     RESTX_JSON = {
         'cls': flask.json.JSONEncoder,
+    }
+
+    OAUTH_USER = {
+        'email': os.getenv('OAUTH_USER_EMAIL', 'oauth-user@wildme.org'),
+        'password': os.getenv(
+            'OAUTH_USER_PASSWORD',
+            ''.join(
+                random.choice(string.ascii_letters + string.digits) for _ in range(20)
+            ),
+        ),
+        'is_internal': True,
+        'client_id': os.getenv('OAUTH_CLIENT_ID'),
+        'client_secret': os.getenv('OAUTH_CLIENT_SECRET'),
     }
 
 

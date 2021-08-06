@@ -2,12 +2,14 @@
 """
 Houston API Server.
 """
+import functools
 import logging
 import os
 import sys
 
 from celery import Celery
 from flask import Flask
+import sqlalchemy
 from werkzeug.contrib.fixers import ProxyFix
 
 from config import (
@@ -59,6 +61,28 @@ def _apply_hotfixes():
     import threading
 
     threading.stack_size(2 * 1024 * 1024)
+
+
+def _ensure_oauth_user(config):
+    oauth_user = config.get('OAUTH_USER', None)
+    if oauth_user:
+        client_id = oauth_user.pop('client_id')
+        client_secret = oauth_user.pop('client_secret')
+
+        from app.modules.auth.utils import create_session_oauth2_client
+        from app.modules.users.models import User
+
+        try:
+            user = User.ensure_user(**oauth_user)
+        except sqlalchemy.exc.OperationalError:
+            # sqlite3.OperationalError no such table
+            # skip oauth user creation if table doesn't exist
+            # (happens in app.swagger.export task)
+            return
+        kwargs = {}
+        if client_id and client_secret:
+            kwargs = {'guid': client_id, 'secret': client_secret}
+        create_session_oauth2_client(user, **kwargs)
 
 
 def configure_from_env_object(app, flask_config_name='production'):
@@ -163,6 +187,10 @@ def create_app(flask_config_name=None, config_override={}, testing=False, **kwar
     # Configure reverse proxy
     if app.config['REVERSE_PROXY_SETUP']:
         app.wsgi_app = ProxyFix(app.wsgi_app)
+
+    # Ensure oauth user after the app is initialized, before the first
+    # request
+    app.before_first_request(functools.partial(_ensure_oauth_user, app.config))
 
     return app
 

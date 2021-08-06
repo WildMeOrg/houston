@@ -47,9 +47,39 @@ def test_create_collaboration(
 
 
 def test_create_approved_collaboration(
-    flask_app_client, researcher_1, researcher_2, user_manager_user, db
+    flask_app_client, researcher_1, researcher_2, user_manager_user, readonly_user, db
 ):
     from app.modules.collaborations.models import Collaboration
+
+    # couple of failure checks
+    data = {
+        'user_guid': str(researcher_2.guid),
+        'second_user_guid': str(readonly_user.guid),
+    }
+    resp_msg = f'User with guid {readonly_user.guid} is not a researcher'
+    collab_utils.create_collaboration(
+        flask_app_client, user_manager_user, data, 400, resp_msg
+    )
+
+    duff_uuid = str(uuid.uuid4())
+    data = {
+        'user_guid': str(researcher_1.guid),
+        'second_user_guid': duff_uuid,
+    }
+    resp_msg = f'User with guid {duff_uuid} not found'
+    collab_utils.create_collaboration(
+        flask_app_client, user_manager_user, data, 400, resp_msg
+    )
+
+    # valid one
+    data = {
+        'user_guid': str(researcher_1.guid),
+        'second_user_guid': str(readonly_user.guid),
+    }
+    resp_msg = f'User with guid {readonly_user.guid} is not a researcher'
+    collab_utils.create_collaboration(
+        flask_app_client, user_manager_user, data, 400, resp_msg
+    )
 
     data = {
         'user_guid': str(researcher_1.guid),

@@ -94,6 +94,9 @@ class Collaborations(Resource):
             second_user = User.query.get(second_user_guid)
             if not second_user:
                 abort(400, f'User with guid {second_user_guid} not found')
+            if not second_user.is_researcher:
+                abort(400, f'User with guid {second_user_guid} is not a researcher')
+
             user_guids = [other_user_guid, second_user_guid]
             states = ['approved', 'approved']
             initiator_states = [False, False]

@@ -3,6 +3,7 @@
 import logging
 import json
 import os.path as path
+from collections import defaultdict
 
 log = logging.getLogger(__name__)
 
@@ -29,6 +30,10 @@ class IaConfig:
             self.config_dict = json.load(file)
 
     def get(self, period_separated_keys):
+        keys = period_separated_keys.split('.')
+        return self.get_recursive(keys, self.config_dict)
+
+    def get_or_default(self, period_separated_keys):
         keys = period_separated_keys.split('.')
         return self.get_recursive(keys, self.config_dict)
 
@@ -100,3 +105,59 @@ class IaConfig:
             for link in link_list
         }
         return resolved_dicts
+
+    def get_configured_species(self):
+        genuses = [key for key in self.config_dict.keys() if not key.startswith('_')]
+        species = []
+        for genus in genuses:
+            spec_epithets = [key for key in self.get(genus) if not key.startswith('_')]
+            genus_species = [f'{genus} {species}' for species in spec_epithets]
+            species += genus_species
+        return species
+
+    def get_supported_ia_classes(self, genus_species):
+        species_key = genus_species.replace(' ', '.')
+        ia_classes = [key for key in self.get(species_key)
+                      if not key.startswith('_')]
+        return ia_classes
+
+    # Do we want this to be resilient to missing fields, like return None or ""
+    # if an itis-id is missing? Current thinking is, if we're using those fields
+    # on the frontend they are required, so this would error if they are missing.
+    def get_frontend_species_summary(self, genus_species):
+        species_key = genus_species.replace(' ', '.')
+        summary_dict = {
+            "scientific_name": genus_species,
+            "common_name": self.get(f'{species_key}._common_name'),
+            "itis_id": self.get(f'{species_key}._itis_id'),
+            "ia_classes": self.get_supported_ia_classes(genus_species)
+        }
+        return summary_dict
+
+    # for populating a frontend list of detector options
+    def get_detect_model_frontend_data(self):
+        detectors = self.get('_detectors')
+        specieses = self.get_configured_species()
+        detector_to_species = {det_key: [] for det_key in detectors.keys()}
+        # build detector_to_species map
+        for species in specieses:
+            _detectors_dict = self.get_detectors_dict(species)
+            _detectors_name_list = [key.replace('_detectors.', '')
+                                    for key in _detectors_dict]
+            for _detector in _detectors_name_list:
+                detector_to_species[_detector].append(species)
+
+        result = {}
+        for key, config in detectors.items():
+            result[key] = {
+                'name': config['name'],
+                'description': config['description'],
+                'supported_species': [
+                    self.get_frontend_species_summary(spec)
+                    for spec in detector_to_species[key]
+                ]
+            }
+        return result
+
+
+

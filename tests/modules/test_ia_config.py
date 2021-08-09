@@ -114,3 +114,36 @@ def test_get_named_detector_config_african_terrestrial(flask_app_client):
         'sensitivity': 0.4,
     }
     assert detector_config == desired_config
+
+
+def test_get_configured_species(flask_app_client):
+    ia_config_reader = IaConfig(TEST_CONFIG_NAME)
+    species = ia_config_reader.get_configured_species()
+    desired_species = ['Equus grevyi', 'Equus quagga']
+    assert species == desired_species
+
+
+def test_get_detect_model_frontend_data(flask_app_client):
+    ia_config_reader = IaConfig(TEST_CONFIG_NAME)
+    desired_frontend_data = {
+        'african_terrestrial': {
+            'name': 'African terrestrial mammal detector',
+            'description': 'Trained on zebras, giraffes, lions, hyenas, leopards, cheetahs, and wild dogs.',
+            'supported_species': [
+                {
+                    'scientific_name': 'Equus grevyi',
+                    'common_name': "Grevy's zebra",
+                    'itis_id': 202400,
+                    'ia_classes': ['zebra_grevys', 'zebra']
+                }, {
+                    'scientific_name': 'Equus quagga',
+                    'common_name': 'plains zebra',
+                    'itis_id': 624996,
+                    'ia_classes': ['zebra_grevys', 'zebra']
+                }
+            ]
+        }
+    }
+    frontend_data = ia_config_reader.get_detect_model_frontend_data()
+    assert frontend_data == desired_frontend_data
+

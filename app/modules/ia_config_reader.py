@@ -32,10 +32,6 @@ class IaConfig:
         keys = period_separated_keys.split('.')
         return self.get_recursive(keys, self.config_dict)
 
-    def get_or_default(self, period_separated_keys):
-        keys = period_separated_keys.split('.')
-        return self.get_recursive(keys, self.config_dict)
-
     def get_recursive(self, keys, config_dict_level):
         current_key = keys[0]
         current_value = config_dict_level[current_key]

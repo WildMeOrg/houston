@@ -403,5 +403,7 @@ def test_annotations_within_sightings(
     assert str(enc.annotations[0].guid) == annot1_guid
 
     # cleanup
+    annot_utils.delete_annotation(flask_app_client, researcher_1, annot0_guid)
+    annot_utils.delete_annotation(flask_app_client, researcher_1, annot1_guid)
     sighting_utils.delete_sighting(flask_app_client, staff_user, sighting_id)
     clone.cleanup()

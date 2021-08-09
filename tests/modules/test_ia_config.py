@@ -125,6 +125,7 @@ def test_get_configured_species(flask_app_client):
 
 def test_get_detect_model_frontend_data(flask_app_client):
     ia_config_reader = IaConfig(TEST_CONFIG_NAME)
+    # just checking linting
     desired_frontend_data = {
         'african_terrestrial': {
             'name': 'African terrestrial mammal detector',
@@ -134,16 +135,16 @@ def test_get_detect_model_frontend_data(flask_app_client):
                     'scientific_name': 'Equus grevyi',
                     'common_name': "Grevy's zebra",
                     'itis_id': 202400,
-                    'ia_classes': ['zebra_grevys', 'zebra']
-                }, {
+                    'ia_classes': ['zebra_grevys', 'zebra'],
+                },
+                {
                     'scientific_name': 'Equus quagga',
                     'common_name': 'plains zebra',
                     'itis_id': 624996,
-                    'ia_classes': ['zebra_grevys', 'zebra']
-                }
-            ]
+                    'ia_classes': ['zebra_grevys', 'zebra'],
+                },
+            ],
         }
     }
     frontend_data = ia_config_reader.get_detect_model_frontend_data()
     assert frontend_data == desired_frontend_data
-

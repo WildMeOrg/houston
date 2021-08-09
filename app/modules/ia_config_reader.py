@@ -3,7 +3,6 @@
 import logging
 import json
 import os.path as path
-from collections import defaultdict
 
 log = logging.getLogger(__name__)
 
@@ -117,8 +116,7 @@ class IaConfig:
 
     def get_supported_ia_classes(self, genus_species):
         species_key = genus_species.replace(' ', '.')
-        ia_classes = [key for key in self.get(species_key)
-                      if not key.startswith('_')]
+        ia_classes = [key for key in self.get(species_key) if not key.startswith('_')]
         return ia_classes
 
     # Do we want this to be resilient to missing fields, like return None or ""
@@ -127,10 +125,10 @@ class IaConfig:
     def get_frontend_species_summary(self, genus_species):
         species_key = genus_species.replace(' ', '.')
         summary_dict = {
-            "scientific_name": genus_species,
-            "common_name": self.get(f'{species_key}._common_name'),
-            "itis_id": self.get(f'{species_key}._itis_id'),
-            "ia_classes": self.get_supported_ia_classes(genus_species)
+            'scientific_name': genus_species,
+            'common_name': self.get(f'{species_key}._common_name'),
+            'itis_id': self.get(f'{species_key}._itis_id'),
+            'ia_classes': self.get_supported_ia_classes(genus_species),
         }
         return summary_dict
 
@@ -142,8 +140,9 @@ class IaConfig:
         # build detector_to_species map
         for species in specieses:
             _detectors_dict = self.get_detectors_dict(species)
-            _detectors_name_list = [key.replace('_detectors.', '')
-                                    for key in _detectors_dict]
+            _detectors_name_list = [
+                key.replace('_detectors.', '') for key in _detectors_dict
+            ]
             for _detector in _detectors_name_list:
                 detector_to_species[_detector].append(species)
 
@@ -155,9 +154,6 @@ class IaConfig:
                 'supported_species': [
                     self.get_frontend_species_summary(spec)
                     for spec in detector_to_species[key]
-                ]
+                ],
             }
         return result
-
-
-

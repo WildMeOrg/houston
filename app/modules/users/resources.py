@@ -76,11 +76,15 @@ class Users(Resource):
         roles = args.pop('roles', [])
         if roles and (
             current_user.is_anonymous
-            or not (current_user.is_privileged or current_user.is_admin)
+            or not (
+                current_user.is_privileged
+                or current_user.is_admin
+                or current_user.is_user_manager
+            )
         ):
             abort(
                 code=HTTPStatus.FORBIDDEN,
-                message='You must be an admin or privileged to set roles for a new user',
+                message='You must be an admin, user manager or privileged to set roles for a new user',
             )
         for role in roles:
             args[role] = True

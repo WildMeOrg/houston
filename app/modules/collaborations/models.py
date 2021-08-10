@@ -137,7 +137,8 @@ class Collaboration(db.Model, HoustonModel):
             other_user_guids = [
                 association.user_guid
                 for association in self.collaboration_user_associations
-                if association.user_guid != user_guid
+                if (association.user_guid != user_guid)
+                & (association.read_approval_state != CollaborationUserState.CREATOR)
             ]
 
             assert len(other_user_guids) == 1
@@ -253,15 +254,8 @@ class Collaboration(db.Model, HoustonModel):
         return (
             '<{class_name}('
             'guid={self.guid}, '
-            "title='{self.title}' "
             ')>'.format(class_name=self.__class__.__name__, self=self)
         )
-
-    @db.validates('title')
-    def validate_title(self, key, title):  # pylint: disable=unused-argument,no-self-use
-        if len(title) < 3:
-            raise ValueError('Title has to be at least 3 characters long.')
-        return title
 
     def delete(self):
         with db.session.begin(subtransactions=True):

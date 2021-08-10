@@ -88,15 +88,15 @@ def test_collaboration_read_state_changes(db, collab_user_a, collab_user_b):
         assert collab.get_read_state() == CollaborationUserState.DECLINED
 
         set_read_approval_state(
-            (collab_user_a.guid, CollaborationUserState.PENDING),
+            (collab_user_a.guid, CollaborationUserState.APPROVED),
             (collab_user_b.guid, CollaborationUserState.DECLINED),
         )
 
         assert collab.get_read_state() == CollaborationUserState.DECLINED
 
         set_read_approval_state(
-            (collab_user_a.guid, CollaborationUserState.DECLINED),
-            (collab_user_b.guid, CollaborationUserState.PENDING),
+            (collab_user_a.guid, CollaborationUserState.REVOKED),
+            (collab_user_b.guid, CollaborationUserState.DECLINED),
         )
 
         assert collab.get_read_state() == CollaborationUserState.DECLINED

@@ -19,17 +19,7 @@ def test_patch_collaboration(
         assert not collab.user_has_read_access(researcher_1.guid)
         assert collab.user_has_read_access(researcher_2.guid)
 
-        # should work
-        patch_data = [utils.patch_replace_op('title', 'Some sort of title')]
-        collab_utils.patch_collaboration(
-            flask_app_client,
-            collab_guid,
-            researcher_2,
-            patch_data,
-        )
-        assert collab.title == 'Some sort of title'
-
-        # should not
+        # should not work
         patch_data = [utils.patch_replace_op('view_permission', 'ambivalence')]
         resp = 'unable to set /view_permission to ambivalence'
         collab_utils.patch_collaboration(

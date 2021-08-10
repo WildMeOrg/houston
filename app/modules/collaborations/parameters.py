@@ -23,7 +23,6 @@ class CreateCollaborationParameters(Parameters, schemas.DetailedCollaborationSch
         description='The GUID of the second user',
         required=False,
     )
-    title = base_fields.String(required=False)
 
     class Meta(schemas.DetailedCollaborationSchema.Meta):
         pass
@@ -36,7 +35,7 @@ class PatchCollaborationDetailsParameters(PatchJSONParameters):
         PatchJSONParameters.OP_ADD,
     )
 
-    PATH_CHOICES = ('/title', '/view_permission')
+    PATH_CHOICES = ('/view_permission',)
 
     @classmethod
     def add(cls, obj, field, value, state):
@@ -50,10 +49,7 @@ class PatchCollaborationDetailsParameters(PatchJSONParameters):
         has_permission = rules.ObjectActionRule(obj, AccessOperation.WRITE).check()
 
         if has_permission:
-            if field == 'title':
-                obj.title = value
-                ret_val = True
-            elif field == 'view_permission':
+            if field == 'view_permission':
                 ret_val = obj.set_read_approval_state_for_user(current_user.guid, value)
 
         return ret_val

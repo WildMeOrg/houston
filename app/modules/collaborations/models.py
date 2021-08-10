@@ -64,7 +64,6 @@ class Collaboration(db.Model, HoustonModel):
     guid = db.Column(
         db.GUID, default=uuid.uuid4, primary_key=True
     )  # pylint: disable=invalid-name
-    title = db.Column(db.String(length=50), nullable=True)
 
     collaboration_user_associations = db.relationship(
         'CollaborationUserAssociations', back_populates='collaboration'

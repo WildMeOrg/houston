@@ -86,7 +86,6 @@ class Collaborations(Resource):
         context = api.commit_or_abort(
             db.session, default_error_message='Failed to create a new Collaboration'
         )
-        title = req.get('title', '')
         user_guids = [current_user.guid, other_user_guid]
         initiator_states = [True, False]
         states = ['approved', 'pending']
@@ -105,7 +104,6 @@ class Collaborations(Resource):
         with context:
 
             collaboration = Collaboration(
-                title=title,
                 user_guids=user_guids,
                 approval_states=states,
                 initiator_states=initiator_states,

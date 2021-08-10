@@ -24,7 +24,6 @@ class BaseCollaborationSchema(ModelSchema):
         model = Collaboration
         fields = (
             Collaboration.guid.key,
-            Collaboration.title.key,
             'members',
             'read_state',
             'edit_state',

@@ -160,7 +160,7 @@ def test_new_user_creation_roles_anonymous(flask_app_client):
     assert response.content_type == 'application/json'
     assert response.json == {
         'status': 403,
-        'message': 'You must be an admin or privileged to set roles for a new user',
+        'message': 'You must be an admin, user manager or privileged to set roles for a new user',
     }
 
 
@@ -179,7 +179,7 @@ def test_new_user_creation_roles_unprivileged(flask_app_client, regular_user):
     assert response.content_type == 'application/json'
     assert response.json == {
         'status': 403,
-        'message': 'You must be an admin or privileged to set roles for a new user',
+        'message': 'You must be an admin, user manager or privileged to set roles for a new user',
     }
 
     with flask_app_client.login(regular_user):
@@ -197,8 +197,20 @@ def test_new_user_creation_roles_unprivileged(flask_app_client, regular_user):
     assert response.content_type == 'application/json'
     assert response.json == {
         'status': 403,
-        'message': 'You must be an admin or privileged to set roles for a new user',
+        'message': 'You must be an admin, user manager or privileged to set roles for a new user',
     }
+
+
+def test_new_user_creation_roles_user_manager(flask_app_client, user_manager_user):
+    with flask_app_client.login(user_manager_user):
+        create_new_user(
+            flask_app_client,
+            data={
+                'email': 'user42@localhost',
+                'password': 'password',
+                'roles': ['in_alpha'],
+            },
+        )
 
 
 def test_new_user_creation_roles_admin(flask_app_client, admin_user, db):

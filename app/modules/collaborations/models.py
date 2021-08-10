@@ -250,6 +250,26 @@ class Collaboration(db.Model, HoustonModel):
 
         return ret_val
 
+    def get_other_user_email(self, user_guid):
+        ret_val = None
+        assert isinstance(user_guid, uuid.UUID)
+        other_assoc = self._get_association_for_other_user(user_guid)
+
+        if other_assoc:
+            ret_val = other_assoc.user.email
+
+        return ret_val
+
+    def get_other_user_read_approval(self, user_guid):
+        ret_val = CollaborationUserState.NOT_INITIATED
+        assert isinstance(user_guid, uuid.UUID)
+        other_assoc = self._get_association_for_other_user(user_guid)
+
+        if other_assoc:
+            ret_val = other_assoc.read_approval_state
+
+        return ret_val
+
     def set_edit_approval_state_for_user(self, user_guid, state):
         if user_guid is not None and state in CollaborationUserState.ALLOWED_STATES:
             assert isinstance(user_guid, uuid.UUID)

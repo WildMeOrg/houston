@@ -527,6 +527,22 @@ class User(db.Model, FeatherModel, UserEDMMixin):
     def get_projects(self):
         return [enrollment.project for enrollment in self.project_membership_enrollments]
 
+    def get_collaboration_as_json(self):
+        json_resp = []
+        for collab_assoc in self.user_collaboration_associations:
+            collab_json = {
+                'guid': collab_assoc.collaboration.guid,
+                'theirUserEmail': collab_assoc.collaboration.get_other_user_email(
+                    self.guid
+                ),
+                'myReadApproval': collab_assoc.read_approval_state,
+                'theirReadApproval': collab_assoc.collaboration.get_other_user_read_approval(
+                    self.guid
+                ),
+            }
+            json_resp.append(collab_json)
+        return json_resp
+
     def unprocessed_asset_groups(self):
         return [
             asset_group.guid

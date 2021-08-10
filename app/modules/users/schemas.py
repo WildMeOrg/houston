@@ -94,10 +94,13 @@ class PersonalUserSchema(DetailedUserSchema):
     that can be edited by the currently logged in user.
     """
 
+    collaborations = base_fields.Function(User.get_collaborations_as_json)
+
     class Meta(DetailedUserSchema.Meta):
         fields = DetailedUserSchema.Meta.fields + (
             User.unprocessed_asset_groups.__name__,
             User.unprocessed_sightings.__name__,
+            'collaborations',
             User.default_identification_catalogue.key,
             User.shares_data.key,
             User.receive_newsletter_emails.key,

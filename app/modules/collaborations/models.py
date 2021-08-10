@@ -64,7 +64,6 @@ class Collaboration(db.Model, HoustonModel):
     guid = db.Column(
         db.GUID, default=uuid.uuid4, primary_key=True
     )  # pylint: disable=invalid-name
-    title = db.Column(db.String(length=50), nullable=True)
 
     collaboration_user_associations = db.relationship(
         'CollaborationUserAssociations', back_populates='collaboration'
@@ -132,6 +131,21 @@ class Collaboration(db.Model, HoustonModel):
                 assoc = association
         return assoc
 
+    def _get_association_for_other_user(self, user_guid):
+        assoc = None
+        if user_guid is not None:
+            other_user_guids = [
+                association.user_guid
+                for association in self.collaboration_user_associations
+                if (association.user_guid != user_guid)
+                & (association.read_approval_state != CollaborationUserState.CREATOR)
+            ]
+
+            assert len(other_user_guids) == 1
+
+            assoc = self._get_association_for_user(other_user_guids[0])
+        return assoc
+
     def get_users(self):
         users = []
         for association in self.collaboration_user_associations:
@@ -191,18 +205,22 @@ class Collaboration(db.Model, HoustonModel):
         return edit_state
 
     def set_read_approval_state_for_user(self, user_guid, state):
+        success = False
         if user_guid is not None and state in CollaborationUserState.ALLOWED_STATES:
             for association in self.collaboration_user_associations:
                 if association.user_guid == user_guid:
                     association.read_approval_state = state
+                    success = True
+        return success
 
     def user_has_read_access(self, user_guid):
-        state = CollaborationUserState.NOT_INITIATED
-        if user_guid is not None:
-            association = self._get_association_for_user(user_guid)
-            if association:
-                state = association.read_approval_state
-        return state == CollaborationUserState.APPROVED
+        ret_val = False
+        other_assoc = self._get_association_for_other_user(user_guid)
+
+        if other_assoc:
+            ret_val = other_assoc.read_approval_state == CollaborationUserState.APPROVED
+
+        return ret_val
 
     def set_edit_approval_state_for_user(self, user_guid, state):
         if user_guid is not None and state in CollaborationUserState.ALLOWED_STATES:
@@ -236,15 +254,8 @@ class Collaboration(db.Model, HoustonModel):
         return (
             '<{class_name}('
             'guid={self.guid}, '
-            "title='{self.title}' "
             ')>'.format(class_name=self.__class__.__name__, self=self)
         )
-
-    @db.validates('title')
-    def validate_title(self, key, title):  # pylint: disable=unused-argument,no-self-use
-        if len(title) < 3:
-            raise ValueError('Title has to be at least 3 characters long.')
-        return title
 
     def delete(self):
         with db.session.begin(subtransactions=True):

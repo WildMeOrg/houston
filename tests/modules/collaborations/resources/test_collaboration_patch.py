@@ -1,0 +1,49 @@
+# -*- coding: utf-8 -*-
+# pylint: disable=missing-docstring
+import tests.modules.collaborations.resources.utils as collab_utils
+from tests import utils
+
+
+def test_patch_collaboration(
+    flask_app_client, researcher_1, readonly_user, researcher_2, db
+):
+    from app.modules.collaborations.models import Collaboration
+
+    collab = None
+    try:
+        data = {'user_guid': str(researcher_2.guid)}
+        collab_utils.create_collaboration(flask_app_client, researcher_1, data)
+        collabs = Collaboration.query.all()
+        collab = collabs[0]
+        collab_guid = collab.guid
+        assert not collab.user_has_read_access(researcher_1.guid)
+        assert collab.user_has_read_access(researcher_2.guid)
+
+        # should not work
+        patch_data = [utils.patch_replace_op('view_permission', 'ambivalence')]
+        resp = 'unable to set /view_permission to ambivalence'
+        collab_utils.patch_collaboration(
+            flask_app_client, collab_guid, researcher_2, patch_data, 400, resp
+        )
+        patch_data = [utils.patch_replace_op('view_permission', 'approved')]
+        collab_utils.patch_collaboration(
+            flask_app_client,
+            collab_guid,
+            researcher_2,
+            patch_data,
+        )
+        assert collab.user_has_read_access(researcher_1.guid)
+        assert collab.user_has_read_access(researcher_2.guid)
+        patch_data = [utils.patch_replace_op('view_permission', 'declined')]
+        collab_utils.patch_collaboration(
+            flask_app_client,
+            collab_guid,
+            researcher_1,
+            patch_data,
+        )
+        assert collab.user_has_read_access(researcher_1.guid)
+        assert not collab.user_has_read_access(researcher_2.guid)
+
+    finally:
+        if collab:
+            collab.delete()

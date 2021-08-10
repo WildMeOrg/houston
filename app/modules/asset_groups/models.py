@@ -465,11 +465,9 @@ class AssetGroupSighting(db.Model, HoustonModel):
 
     # Used to build the response to AssetGroupSighting GET
     def get_assets(self):
-        from app.modules.assets.schemas import DetailedAssetSchema
+        from app.modules.assets.schemas import DetailedAssetGroupAssetSchema
 
-        asset_schema = DetailedAssetSchema(
-            many=False, only=('guid', 'filename', 'src', 'annotations')
-        )
+        asset_schema = DetailedAssetGroupAssetSchema(many=False)
         assets = []
         for filename in self.config.get('assetReferences'):
             asset = self.asset_group.get_asset_for_file(filename)

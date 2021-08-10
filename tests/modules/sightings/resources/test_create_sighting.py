@@ -245,18 +245,12 @@ def test_create_anon_and_delete_sighting(db, flask_app_client, staff_user, test_
     assert response.json['success']
     assets = sorted(response.json['result']['assets'], key=lambda a: a['filename'])
     asset_guids = [a['guid'] for a in assets]
-    assert assets == [
-        {
-            'filename': 'fluke.jpg',
-            'guid': asset_guids[0],
-            'src': f'/api/v1/assets/src/{asset_guids[0]}',
-        },
-        {
-            'filename': 'zebra.jpg',
-            'guid': asset_guids[1],
-            'src': f'/api/v1/assets/src/{asset_guids[1]}',
-        },
-    ]
+    assert assets[0]['filename'] == 'fluke.jpg'
+    assert assets[0]['guid'] == asset_guids[0]
+    assert assets[0]['src'] == f'/api/v1/assets/src/{asset_guids[0]}'
+    assert assets[1]['filename'] == 'zebra.jpg'
+    assert assets[1]['guid'] == asset_guids[1]
+    assert assets[1]['src'] == f'/api/v1/assets/src/{asset_guids[1]}'
 
     # Check sighting and assets are stored in the database
     sighting_id = response.json['result']['id']
@@ -321,3 +315,95 @@ def test_create_anon_and_delete_sighting(db, flask_app_client, staff_user, test_
     sighting_utils.cleanup_tus_dir(transaction_id)
     sighting_utils.delete_sighting(flask_app_client, staff_user, sighting_id)
     new_user.delete()
+
+
+def test_annotations_within_sightings(
+    db, flask_app_client, researcher_1, test_root, staff_user, test_clone_asset_group_data
+):
+    # transaction_id, test_filename = sighting_utils.prep_tus_dir(test_root)
+    # this should fail, as this it contains an invalid annotation
+    data_in = {
+        'startTime': timestamp,
+        'context': 'test',
+        'locationId': 'test',
+        'encounters': [
+            {'locationId': 'enc1'},
+            {
+                'locationId': 'enc2',
+                'annotations': [{'guid': '20000000-1000-7000-0000-000000000000'}],
+            },
+        ],
+    }
+    response = sighting_utils.create_sighting(
+        flask_app_client, researcher_1, expected_status_code=400, data_in=data_in
+    )
+    assert not response.json['success']
+    assert response.json['passed_message'] == 'Invalid encounter.annotations'
+
+    # now lets try a valid annotation
+    from tests.modules.annotations.resources import utils as annot_utils
+    from tests.modules.asset_groups.resources import utils as sub_utils
+    from app.modules.encounters.models import Encounter
+
+    clone = sub_utils.clone_asset_group(
+        flask_app_client,
+        researcher_1,
+        test_clone_asset_group_data['asset_group_uuid'],
+    )
+
+    response = annot_utils.create_annotation_simple(
+        flask_app_client,
+        researcher_1,
+        test_clone_asset_group_data['asset_uuids'][0],
+    )
+    annot0_guid = response.json['guid']
+
+    data_in['encounters'][1]['annotations'][0]['guid'] = annot0_guid
+    response = sighting_utils.create_sighting(
+        flask_app_client, researcher_1, expected_status_code=200, data_in=data_in
+    )
+    assert response.json['success']
+    sighting_id = response.json['result']['id']
+    assert len(response.json['result']['encounters']) == 2
+    enc_guid = response.json['result']['encounters'][1]['id']
+    enc = Encounter.query.get(enc_guid)
+    assert enc is not None
+    assert len(enc.annotations) == 1
+    assert str(enc.annotations[0].guid) == annot0_guid
+
+    # now try patching in an encounter (with annotation) to this sighting
+    response = annot_utils.create_annotation_simple(
+        flask_app_client,
+        researcher_1,
+        test_clone_asset_group_data['asset_uuids'][0],
+        ia_class='test2',  # to keep this annot unique from annot0, in theory
+    )
+    annot1_guid = response.json['guid']
+
+    response = sighting_utils.patch_sighting(
+        flask_app_client,
+        researcher_1,
+        sighting_id,
+        patch_data=[
+            {
+                'op': 'add',
+                'path': '/encounters',
+                'value': {
+                    'locationId': 'encounter_patch_add_with_annotations',
+                    'annotations': [{'guid': annot1_guid}],
+                },
+            }
+        ],
+    )
+    assert len(response.json['result']['encounters']) == 3
+    enc_guid = response.json['result']['encounters'][2]['id']
+    enc = Encounter.query.get(enc_guid)
+    assert enc is not None
+    assert len(enc.annotations) == 1
+    assert str(enc.annotations[0].guid) == annot1_guid
+
+    # cleanup
+    annot_utils.delete_annotation(flask_app_client, researcher_1, annot0_guid)
+    annot_utils.delete_annotation(flask_app_client, researcher_1, annot1_guid)
+    sighting_utils.delete_sighting(flask_app_client, staff_user, sighting_id)
+    clone.cleanup()

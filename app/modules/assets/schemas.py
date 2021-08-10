@@ -42,3 +42,12 @@ class DetailedAssetSchema(BaseAssetSchema):
             Asset.created.key,
             Asset.updated.key,
         )
+
+
+class DetailedAssetGroupAssetSchema(BaseAssetSchema):
+    fields = BaseAssetSchema.Meta.fields + (
+        Asset.created.key,
+        Asset.updated.key,
+        'annotations',
+        'dimensions',
+    )

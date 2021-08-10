@@ -140,7 +140,6 @@ class Collaboration(db.Model, HoustonModel):
                 if (association.user_guid != user_guid)
                 & (association.read_approval_state != CollaborationUserState.CREATOR)
             ]
-
             assert len(other_user_guids) == 1
 
             assoc = self._get_association_for_user(other_user_guids[0])
@@ -204,17 +203,46 @@ class Collaboration(db.Model, HoustonModel):
                 edit_state = CollaborationUserState.APPROVED
         return edit_state
 
+    def _is_new_read_approval_state_valid(self, old_state, new_state):
+        ret_val = False
+        # Only certain transitions are permitted
+        if old_state == CollaborationUserState.NOT_INITIATED:
+            ret_val = new_state != CollaborationUserState.CREATOR
+        elif old_state == CollaborationUserState.PENDING:
+            ret_val = new_state in [
+                CollaborationUserState.APPROVED,
+                CollaborationUserState.DECLINED,
+            ]
+        elif old_state == CollaborationUserState.APPROVED:
+            ret_val = new_state == CollaborationUserState.REVOKED
+        elif old_state == CollaborationUserState.DECLINED:
+            ret_val = new_state == CollaborationUserState.APPROVED
+        elif old_state == CollaborationUserState.REVOKED:
+            ret_val = new_state == CollaborationUserState.APPROVED
+
+        # Permit resetting to same state in all cases rather than handling separately for each
+        if not ret_val:
+            ret_val = old_state == new_state
+
+        return ret_val
+
     def set_read_approval_state_for_user(self, user_guid, state):
         success = False
         if user_guid is not None and state in CollaborationUserState.ALLOWED_STATES:
+            assert isinstance(user_guid, uuid.UUID)
             for association in self.collaboration_user_associations:
                 if association.user_guid == user_guid:
-                    association.read_approval_state = state
-                    success = True
+                    if self._is_new_read_approval_state_valid(
+                        association.read_approval_state, state
+                    ):
+                        association.read_approval_state = state
+                        success = True
         return success
 
     def user_has_read_access(self, user_guid):
         ret_val = False
+        assert isinstance(user_guid, uuid.UUID)
+
         other_assoc = self._get_association_for_other_user(user_guid)
 
         if other_assoc:
@@ -224,6 +252,7 @@ class Collaboration(db.Model, HoustonModel):
 
     def set_edit_approval_state_for_user(self, user_guid, state):
         if user_guid is not None and state in CollaborationUserState.ALLOWED_STATES:
+            assert isinstance(user_guid, uuid.UUID)
             # if one association is edit level NOT_INITIATED, they all are
             if (
                 self.get_edit_state() == CollaborationUserState.NOT_INITIATED
@@ -239,6 +268,7 @@ class Collaboration(db.Model, HoustonModel):
 
     def initate_edit_with_user(self, user_guid):
         if user_guid is not None:
+            assert isinstance(user_guid, uuid.UUID)
             for association in self.collaboration_user_associations:
                 if association.user_guid == user_guid:
                     association.edit_approval_state = CollaborationUserState.APPROVED

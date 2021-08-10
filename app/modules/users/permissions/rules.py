@@ -331,17 +331,18 @@ class ObjectActionRule(DenyAbortMixin, Rule):
         )
 
         for collab_assoc in user.user_collaboration_associations:
-            if collab_assoc.edit_state != CollaborationUserState.CREATOR:
+            if collab_assoc.read_approval_state != CollaborationUserState.CREATOR:
                 collab_users = collab_assoc.collaboration.get_users()
                 for other_user in collab_users:
                     if other_user not in tried_users:
                         tried_users.append(other_user)
                         # Only read collaboration permitted for MVP
-                        # (congratulations brunette, you made this as difficult to read as possible  )
-                        if other_user.owns_object(
-                            self._obj
-                        ) & self._action == AccessOperation.READ & collab_assoc.collaboration.user_has_read_access(
-                            current_user
+                        if (
+                            other_user.owns_object(self._obj)
+                            & (self._action == AccessOperation.READ)
+                            & collab_assoc.collaboration.user_has_read_access(
+                                current_user.guid
+                            )
                         ):
                             return True
 

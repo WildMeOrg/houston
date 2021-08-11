@@ -216,7 +216,7 @@ def validate_dict_response(response, expected_code, expected_fields):
     # turns out response.json is very forgiving and tries to parse response.data
     # even when response.is_json == False ... so this allows for sloppy headers but valid json getting thru
     assert isinstance(response.json, dict)
-    assert set(response.json.keys()) >= expected_fields
+    assert set(response.json.keys()) >= expected_fields, set(response.json.keys())
 
 
 def validate_list_response(response, expected_code):

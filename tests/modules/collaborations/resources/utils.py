@@ -27,9 +27,7 @@ def create_collaboration(
         )
 
     if expected_status_code == 200:
-        test_utils.validate_dict_response(
-            response, 200, {'guid', 'edit_state', 'read_state', 'members'}
-        )
+        test_utils.validate_dict_response(response, 200, {'guid', 'members'})
     elif 400 <= expected_status_code < 500:
         test_utils.validate_dict_response(
             response, expected_status_code, {'status', 'message'}

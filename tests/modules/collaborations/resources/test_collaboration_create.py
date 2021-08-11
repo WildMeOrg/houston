@@ -1,7 +1,17 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=missing-docstring
 import tests.modules.collaborations.resources.utils as collab_utils
+import tests.modules.users.resources.utils as user_utils
 import uuid
+
+
+def validate_collab(resp_json, user_guids, view_approvals):
+    members = resp_json.get('members', {})
+    assert len(members) == len(user_guids)
+    for user_guid in user_guids:
+        user_guid_str = str(user_guid)
+        assert user_guid_str in members.keys()
+        assert members[user_guid_str]['viewState'] == view_approvals[user_guid_str]
 
 
 def test_create_collaboration(
@@ -16,22 +26,21 @@ def test_create_collaboration(
     resp_msg = f'User with guid {readonly_user.guid} is not a researcher'
     collab_utils.create_collaboration(flask_app_client, researcher_1, data, 400, resp_msg)
 
-    from app.modules.collaborations.models import Collaboration
-
     collab = None
     try:
         data = {'user_guid': str(researcher_2.guid)}
         resp = collab_utils.create_collaboration(flask_app_client, researcher_1, data)
-        collabs = Collaboration.query.all()
-        collab = collabs[0]
-        assert len(collabs) == 1
-        assert resp.json['edit_state'] == 'not_initiated'
-        assert resp.json['read_state'] == 'pending'
-        members = resp.json.get('members', [])
-        assert len(members) == 2
-        assert str(researcher_1.guid) in members
-        assert str(researcher_2.guid) in members
-        assert len(collabs) == 1
+        researcher_1_assocs = [
+            assoc for assoc in researcher_1.user_collaboration_associations
+        ]
+        collab = researcher_1_assocs[0].collaboration
+        assert len(researcher_1_assocs) == 1
+        expected_users = [str(researcher_1.guid), str(researcher_2.guid)]
+        expected_states = {
+            str(researcher_1.guid): 'approved',
+            str(researcher_2.guid): 'pending',
+        }
+        validate_collab(resp.json, expected_users, expected_states)
 
         # only user manager should be able to read the list
         collab_utils.read_all_collaborations(flask_app_client, readonly_user, 403)
@@ -39,8 +48,18 @@ def test_create_collaboration(
         all_resp = collab_utils.read_all_collaborations(
             flask_app_client, user_manager_user
         )
+
+        # which should contain the same data
         assert len(all_resp.json) == 1
-        assert all_resp.json[0]['guid'] == resp.json['guid']
+        validate_collab(all_resp.json[0], expected_users, expected_states)
+
+        user_resp = user_utils.read_user(flask_app_client, researcher_1, 'me')
+        assert 'collaborations' in user_resp.json.keys()
+        assert len(user_resp.json['collaborations']) == 1
+        validate_collab(
+            user_resp.json['collaborations'][0], expected_users, expected_states
+        )
+
     finally:
         if collab:
             collab.delete()
@@ -49,8 +68,6 @@ def test_create_collaboration(
 def test_create_approved_collaboration(
     flask_app_client, researcher_1, researcher_2, user_manager_user, readonly_user, db
 ):
-    from app.modules.collaborations.models import Collaboration
-
     # couple of failure checks
     data = {
         'user_guid': str(researcher_2.guid),
@@ -91,16 +108,23 @@ def test_create_approved_collaboration(
         resp = collab_utils.create_collaboration(
             flask_app_client, user_manager_user, data
         )
-        collabs = Collaboration.query.all()
-        collab = collabs[0]
-        assert len(collabs) == 1
+        researcher_1_assocs = [
+            assoc for assoc in researcher_1.user_collaboration_associations
+        ]
+        collab = researcher_1_assocs[0].collaboration
+        assert len(researcher_1_assocs) == 1
+        expected_users = [
+            str(researcher_1.guid),
+            str(researcher_2.guid),
+            str(user_manager_user.guid),
+        ]
+        expected_states = {
+            str(researcher_1.guid): 'approved',
+            str(researcher_2.guid): 'approved',
+            str(user_manager_user.guid): 'creator',
+        }
+        validate_collab(resp.json, expected_users, expected_states)
 
-        assert resp.json['edit_state'] == 'not_initiated'
-        assert resp.json['read_state'] == 'approved'
-        members = resp.json.get('members', [])
-        assert len(members) == 2
-        assert str(researcher_1.guid) in members
-        assert str(researcher_2.guid) in members
     finally:
         if collab:
             collab.delete()

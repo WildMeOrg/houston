@@ -15,19 +15,10 @@ class BaseCollaborationSchema(ModelSchema):
     Base Collaboration schema exposes only the most general fields.
     """
 
-    members = base_fields.Function(Collaboration.get_user_guids)
-    read_state = base_fields.Function(Collaboration.get_read_state)
-    edit_state = base_fields.Function(Collaboration.get_edit_state)
-
     class Meta:
         # pylint: disable=missing-docstring
         model = Collaboration
-        fields = (
-            Collaboration.guid.key,
-            'members',
-            'read_state',
-            'edit_state',
-        )
+        fields = (Collaboration.guid.key,)
         dump_only = (Collaboration.guid.key,)
 
 
@@ -36,10 +27,13 @@ class DetailedCollaborationSchema(BaseCollaborationSchema):
     Detailed Collaboration schema exposes all useful fields.
     """
 
+    members = base_fields.Function(Collaboration.get_user_data_as_json)
+
     class Meta(BaseCollaborationSchema.Meta):
         fields = BaseCollaborationSchema.Meta.fields + (
             Collaboration.created.key,
             Collaboration.updated.key,
+            'members',
         )
         dump_only = BaseCollaborationSchema.Meta.dump_only + (
             Collaboration.created.key,

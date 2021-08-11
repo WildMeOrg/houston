@@ -527,6 +527,16 @@ class User(db.Model, FeatherModel, UserEDMMixin):
     def get_projects(self):
         return [enrollment.project for enrollment in self.project_membership_enrollments]
 
+    def get_collaborations_as_json(self):
+        from app.modules.collaborations.schemas import DetailedCollaborationSchema
+
+        json_resp = []
+        for collab_assoc in self.user_collaboration_associations:
+            json_resp.append(
+                DetailedCollaborationSchema().dump(collab_assoc.collaboration).data
+            )
+        return json_resp
+
     def unprocessed_asset_groups(self):
         return [
             asset_group.guid

@@ -125,7 +125,6 @@ def test_get_configured_species(flask_app_client):
 
 def test_get_detect_model_frontend_data(flask_app_client):
     ia_config_reader = IaConfig(TEST_CONFIG_NAME)
-    # just checking linting
     desired_frontend_data = {
         'african_terrestrial': {
             'name': 'African terrestrial mammal detector',
@@ -136,12 +135,22 @@ def test_get_detect_model_frontend_data(flask_app_client):
                     'common_name': "Grevy's zebra",
                     'itis_id': 202400,
                     'ia_classes': ['zebra_grevys', 'zebra'],
+                    'id_algos': {
+                        '_identifiers.hotspotter_nosv': {
+                            'description': 'HotSpotter pattern-matcher'
+                        }
+                    },
                 },
                 {
                     'scientific_name': 'Equus quagga',
                     'common_name': 'plains zebra',
                     'itis_id': 624996,
                     'ia_classes': ['zebra_grevys', 'zebra'],
+                    'id_algos': {
+                        '_identifiers.hotspotter_nosv': {
+                            'description': 'HotSpotter pattern-matcher'
+                        }
+                    },
                 },
             ],
         }

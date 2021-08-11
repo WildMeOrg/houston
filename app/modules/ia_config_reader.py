@@ -2,6 +2,7 @@
 
 import logging
 import json
+import copy
 import os.path as path
 
 log = logging.getLogger(__name__)
@@ -115,16 +116,32 @@ class IaConfig:
         ia_classes = [key for key in self.get(species_key) if not key.startswith('_')]
         return ia_classes
 
+    def get_supported_id_algos(self, genus_species, ia_classes=None):
+        if ia_classes is None:
+            ia_classes = self.get_supported_ia_classes(genus_species)
+        ia_algos = dict()
+        for ia_class in ia_classes:
+            algo_dict = copy.deepcopy(self.get_identifiers_dict(genus_species, ia_class))
+            # so one can modify the returned dicts without modifying this class's config dict
+            algo_dict = copy.deepcopy(algo_dict)
+            ia_algos.update(algo_dict)
+        return ia_algos
+
     # Do we want this to be resilient to missing fields, like return None or ""
     # if an itis-id is missing? Current thinking is, if we're using those fields
     # on the frontend they are required, so this would error if they are missing.
     def get_frontend_species_summary(self, genus_species):
         species_key = genus_species.replace(' ', '.')
+        id_algos = self.get_supported_id_algos(genus_species)
+        for value_dict in id_algos.values():
+            value_dict.pop('query_config_dict')
+
         summary_dict = {
             'scientific_name': genus_species,
             'common_name': self.get(f'{species_key}._common_name'),
             'itis_id': self.get(f'{species_key}._itis_id'),
             'ia_classes': self.get_supported_ia_classes(genus_species),
+            'id_algos': id_algos,
         }
         return summary_dict
 
@@ -153,3 +170,8 @@ class IaConfig:
                 ],
             }
         return result
+
+
+ic = IaConfig()
+
+ic.get_detect_model_frontend_data()

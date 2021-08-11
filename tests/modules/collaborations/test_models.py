@@ -29,7 +29,6 @@ def test_collaboration_create_with_members(
         assert len(simple_collab.get_users()) == 2
 
         specific_collab = Collaboration(
-            title='Specific Collab',
             user_guids=[collab_user_a.guid, collab_user_b.guid],
             approval_states=['approved', 'approved'],
             initiator_states=[True, False],
@@ -55,7 +54,6 @@ def test_collaboration_read_state_changes(db, collab_user_a, collab_user_b):
     collab = None
     try:
         collab = Collaboration(
-            title='Collab for state change',
             user_guids=[collab_user_a.guid, collab_user_b.guid],
             initiator_states=[True, False],
         )
@@ -85,28 +83,20 @@ def test_collaboration_read_state_changes(db, collab_user_a, collab_user_b):
             (collab_user_b.guid, CollaborationUserState.DECLINED),
         )
 
-        assert collab.get_read_state() == CollaborationUserState.DECLINED
-
         set_read_approval_state(
             (collab_user_a.guid, CollaborationUserState.APPROVED),
             (collab_user_b.guid, CollaborationUserState.DECLINED),
         )
-
-        assert collab.get_read_state() == CollaborationUserState.DECLINED
 
         set_read_approval_state(
             (collab_user_a.guid, CollaborationUserState.REVOKED),
             (collab_user_b.guid, CollaborationUserState.DECLINED),
         )
 
-        assert collab.get_read_state() == CollaborationUserState.DECLINED
-
         set_read_approval_state(
             (collab_user_a.guid, CollaborationUserState.APPROVED),
             (collab_user_b.guid, CollaborationUserState.APPROVED),
         )
-
-        assert collab.get_read_state() == CollaborationUserState.APPROVED
 
     finally:
         if collab:
@@ -117,12 +107,16 @@ def test_collaboration_edit_state_changes(db, collab_user_a, collab_user_b):
     collab = None
     try:
         collab = Collaboration(
-            title='Collab for state change',
             user_guids=[collab_user_a.guid, collab_user_b.guid],
             initiator_states=[True, False],
         )
 
-        assert collab.get_initiators()[0].guid == collab_user_a.guid
+        json_user_data = collab.get_user_data_as_json()
+        assert len(json_user_data.keys()) == 2
+        assert str(collab_user_a.guid) in json_user_data.keys()
+        assert str(collab_user_b.guid) in json_user_data.keys()
+        assert json_user_data[str(collab_user_a.guid)]['initiator']
+        assert not json_user_data[str(collab_user_b.guid)]['initiator']
 
         for association in collab.collaboration_user_associations:
             assert association.edit_approval_state == CollaborationUserState.NOT_INITIATED

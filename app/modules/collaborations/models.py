@@ -152,38 +152,7 @@ class Collaboration(db.Model, HoustonModel):
                 users.append(association.user)
         return users
 
-    def get_user_guids(self):
-        return [
-            association.user.guid
-            for association in self.collaboration_user_associations
-            if association.read_approval_state != CollaborationUserState.CREATOR
-        ]
-
-    def get_initiators(self):
-        users = []
-        for association in self.collaboration_user_associations:
-            if association.initiator is True:
-                users.append(association.user)
-        return users
-
-    def get_read_state(self):
-        read_state = None  # if you return this the collaboration is corrupt
-        for association in self.collaboration_user_associations:
-            if association.read_approval_state == CollaborationUserState.DECLINED:
-                # only one user need decline
-                read_state = CollaborationUserState.DECLINED
-                break
-            elif association.read_approval_state == CollaborationUserState.PENDING:
-                # only one user needs pending, but we should still keep looking for declined
-                read_state = CollaborationUserState.PENDING
-            elif (
-                association.read_approval_state == CollaborationUserState.APPROVED
-                and read_state is None
-            ):
-                # every association must approve to return approved, everything else overrides it
-                read_state = CollaborationUserState.APPROVED
-        return read_state
-
+    # todo remove, there is no overall view or edit state for the collaboration, it depends on the user
     def get_edit_state(self):
         edit_state = None
         for association in self.collaboration_user_associations:
@@ -202,6 +171,18 @@ class Collaboration(db.Model, HoustonModel):
             ):
                 edit_state = CollaborationUserState.APPROVED
         return edit_state
+
+    def get_user_data_as_json(self):
+        from app.modules.users.schemas import BaseUserSchema
+
+        user_data = {}
+        for association in self.collaboration_user_associations:
+            assoc_data = BaseUserSchema().dump(association.user).data
+            assoc_data['viewState'] = association.read_approval_state
+            assoc_data['initiator'] = association.initiator
+            user_data[str(association.user.guid)] = assoc_data
+
+        return user_data
 
     def _is_new_read_approval_state_valid(self, old_state, new_state):
         ret_val = False
@@ -247,26 +228,6 @@ class Collaboration(db.Model, HoustonModel):
 
         if other_assoc:
             ret_val = other_assoc.read_approval_state == CollaborationUserState.APPROVED
-
-        return ret_val
-
-    def get_other_user_email(self, user_guid):
-        ret_val = None
-        assert isinstance(user_guid, uuid.UUID)
-        other_assoc = self._get_association_for_other_user(user_guid)
-
-        if other_assoc:
-            ret_val = other_assoc.user.email
-
-        return ret_val
-
-    def get_other_user_read_approval(self, user_guid):
-        ret_val = CollaborationUserState.NOT_INITIATED
-        assert isinstance(user_guid, uuid.UUID)
-        other_assoc = self._get_association_for_other_user(user_guid)
-
-        if other_assoc:
-            ret_val = other_assoc.read_approval_state
 
         return ret_val
 

@@ -5,7 +5,8 @@ import tests.modules.users.resources.utils as user_utils
 import uuid
 
 
-def validate_collab_members(members, user_guids, view_approvals):
+def validate_collab(resp_json, user_guids, view_approvals):
+    members = resp_json.get('members', {})
     assert len(members) == len(user_guids)
     for user_guid in user_guids:
         user_guid_str = str(user_guid)
@@ -39,9 +40,7 @@ def test_create_collaboration(
             str(researcher_1.guid): 'approved',
             str(researcher_2.guid): 'pending',
         }
-        validate_collab_members(
-            resp.json.get('members', {}), expected_users, expected_states
-        )
+        validate_collab(resp.json, expected_users, expected_states)
 
         # only user manager should be able to read the list
         collab_utils.read_all_collaborations(flask_app_client, readonly_user, 403)
@@ -52,14 +51,12 @@ def test_create_collaboration(
 
         # which should contain the same data
         assert len(all_resp.json) == 1
-        validate_collab_members(
-            all_resp.json[0].get('members', {}), expected_users, expected_states
-        )
+        validate_collab(all_resp.json[0], expected_users, expected_states)
 
         user_resp = user_utils.read_user(flask_app_client, researcher_1, 'me')
         assert 'collaborations' in user_resp.json.keys()
         assert len(user_resp.json['collaborations']) == 1
-        validate_collab_members(
+        validate_collab(
             user_resp.json['collaborations'][0], expected_users, expected_states
         )
 
@@ -126,9 +123,7 @@ def test_create_approved_collaboration(
             str(researcher_2.guid): 'approved',
             str(user_manager_user.guid): 'creator',
         }
-        validate_collab_members(
-            resp.json.get('members', {}), expected_users, expected_states
-        )
+        validate_collab(resp.json, expected_users, expected_states)
 
     finally:
         if collab:

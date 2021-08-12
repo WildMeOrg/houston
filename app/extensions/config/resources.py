@@ -15,6 +15,8 @@ from app.extensions.api import Namespace
 from app.modules.users import permissions
 from app.modules.users.permissions.types import AccessOperation
 
+from app.modules.ia_config_reader import IaConfig
+
 from . import parameters
 from .models import HoustonConfig
 
@@ -44,4 +46,26 @@ class HoustonConfigs(Resource):
         Patch config details by ID.
         """
         response = parameters.PatchHoustonConfigParameters.perform_patch(args, obj=None)
+        return response
+
+
+detection_api = Namespace('config/detection', description='DetectionConfig')
+
+
+@detection_api.route('/')
+class DetectionConfig(Resource):
+    """
+    Detection pipeline configurations
+    """
+
+    def get(self, args):
+        """
+        Returns a json describing the available detectors for the frontend to
+        provide users with options
+        """
+        ia_config_reader = IaConfig()
+        detection_config = ia_config_reader.get_detect_model_frontend_data()
+        success = detection_config is not None
+        response = {'detection_config': detection_config, 'success': success}
+
         return response

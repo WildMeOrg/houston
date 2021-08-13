@@ -2,6 +2,7 @@
 
 import logging
 import json
+import copy
 import os.path as path
 
 log = logging.getLogger(__name__)
@@ -100,3 +101,77 @@ class IaConfig:
             for link in link_list
         }
         return resolved_dicts
+
+    def get_configured_species(self):
+        genuses = [key for key in self.config_dict.keys() if not key.startswith('_')]
+        species = []
+        for genus in genuses:
+            spec_epithets = [key for key in self.get(genus) if not key.startswith('_')]
+            genus_species = [f'{genus} {species}' for species in spec_epithets]
+            species += genus_species
+        return species
+
+    def get_supported_ia_classes(self, genus_species):
+        species_key = genus_species.replace(' ', '.')
+        ia_classes = [key for key in self.get(species_key) if not key.startswith('_')]
+        return ia_classes
+
+    def get_supported_id_algos(self, genus_species, ia_classes=None):
+        if ia_classes is None:
+            ia_classes = self.get_supported_ia_classes(genus_species)
+        ia_algos = dict()
+        for ia_class in ia_classes:
+            algo_dict = copy.deepcopy(self.get_identifiers_dict(genus_species, ia_class))
+            # so one can modify the returned dicts without modifying this class's config dict
+            algo_dict = copy.deepcopy(algo_dict)
+            ia_algos.update(algo_dict)
+        return ia_algos
+
+    # Do we want this to be resilient to missing fields, like return None or ""
+    # if an itis-id is missing? Current thinking is, if we're using those fields
+    # on the frontend they are required, so this would error if they are missing.
+    def get_frontend_species_summary(self, genus_species):
+        species_key = genus_species.replace(' ', '.')
+        id_algos = self.get_supported_id_algos(genus_species)
+        for value_dict in id_algos.values():
+            value_dict.pop('query_config_dict')
+
+        summary_dict = {
+            'scientific_name': genus_species,
+            'common_name': self.get(f'{species_key}._common_name'),
+            'itis_id': self.get(f'{species_key}._itis_id'),
+            'ia_classes': self.get_supported_ia_classes(genus_species),
+            'id_algos': id_algos,
+        }
+        return summary_dict
+
+    # for populating a frontend list of detector options
+    def get_detect_model_frontend_data(self):
+        detectors = self.get('_detectors')
+        specieses = self.get_configured_species()
+        detector_to_species = {det_key: [] for det_key in detectors.keys()}
+        # build detector_to_species map
+        for species in specieses:
+            _detectors_dict = self.get_detectors_dict(species)
+            _detectors_name_list = [
+                key.replace('_detectors.', '') for key in _detectors_dict
+            ]
+            for _detector in _detectors_name_list:
+                detector_to_species[_detector].append(species)
+
+        result = {}
+        for key, config in detectors.items():
+            result[key] = {
+                'name': config['name'],
+                'description': config['description'],
+                'supported_species': [
+                    self.get_frontend_species_summary(spec)
+                    for spec in detector_to_species[key]
+                ],
+            }
+        return result
+
+
+ic = IaConfig()
+
+ic.get_detect_model_frontend_data()

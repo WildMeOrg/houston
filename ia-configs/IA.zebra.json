@@ -25,8 +25,17 @@
 
   "_default": "@Equus.quagga",
   "Equus": {
-    "grevyi": "@Equus.quagga",
+    "grevyi": {
+      "_common_name": "Grevy's zebra",
+      "_itis_id": 202400,
+      "_detectors": "@Equus.quagga._detectors",
+      "_default": "@Equus.grevyi.zebra",
+      "zebra_grevys": "@Equus.grevyi.zebra",
+      "zebra": "@Equus.quagga.zebra"
+    },
     "quagga": {
+      "_common_name": "plains zebra",
+      "_itis_id": 624996,
       "_detectors": [
         "@_detectors.african_terrestrial"
       ],

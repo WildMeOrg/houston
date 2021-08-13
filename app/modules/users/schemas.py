@@ -76,6 +76,8 @@ class DetailedUserPermissionsSchema(ModelSchema):
 class DetailedUserSchema(UserListSchema):
     """ Detailed user schema exposes all fields used to render a normal user profile. """
 
+    collaborations = base_fields.Function(User.get_collaborations_as_json)
+
     class Meta(UserListSchema.Meta):
         fields = UserListSchema.Meta.fields + (
             User.created.key,
@@ -85,6 +87,7 @@ class DetailedUserSchema(UserListSchema):
             User.location.key,
             User.forum_id.key,
             User.website.key,
+            'collaborations',
         )
 
 
@@ -94,13 +97,10 @@ class PersonalUserSchema(DetailedUserSchema):
     that can be edited by the currently logged in user.
     """
 
-    collaborations = base_fields.Function(User.get_collaborations_as_json)
-
     class Meta(DetailedUserSchema.Meta):
         fields = DetailedUserSchema.Meta.fields + (
             User.unprocessed_asset_groups.__name__,
             User.unprocessed_sightings.__name__,
-            'collaborations',
             User.default_identification_catalogue.key,
             User.shares_data.key,
             User.receive_newsletter_emails.key,

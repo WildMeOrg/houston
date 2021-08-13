@@ -53,6 +53,7 @@ def test_DetailedUserSchema_dump_user_instance(user_instance):
         'location',
         'forum_id',
         'website',
+        'collaborations',
     }
 
 

@@ -7,6 +7,7 @@ RESTful API Collaborations resources
 
 import logging
 import json
+import uuid
 
 from flask import request
 from flask_login import current_user  # NOQA
@@ -86,7 +87,7 @@ class Collaborations(Resource):
         context = api.commit_or_abort(
             db.session, default_error_message='Failed to create a new Collaboration'
         )
-        user_guids = [current_user.guid, other_user_guid]
+        user_guids = [current_user.guid, uuid.UUID(other_user_guid)]
         initiator_states = [True, False]
         states = ['approved', 'pending']
         if current_user.is_user_manager:
@@ -109,6 +110,10 @@ class Collaborations(Resource):
                 initiator_states=initiator_states,
             )
             db.session.add(collaboration)
+
+        # Once created notify the pending user to accept
+        collaboration.notify_pending_users()
+
         return collaboration
 
 

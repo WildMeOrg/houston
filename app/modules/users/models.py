@@ -209,6 +209,22 @@ class User(db.Model, FeatherModel, UserEDMMixin):
         order_by='Project.guid',
     )
 
+    # User may have many notifications
+    notifications = db.relationship(
+        'Notification',
+        back_populates='recipient',
+        primaryjoin='User.guid == Notification.recipient_guid',
+        order_by='Notification.guid',
+    )
+
+    # All User specific Notification Preferences will be held in one instance
+    notification_preferences = db.relationship(
+        'UserNotificationPreferences',
+        back_populates='user',
+        primaryjoin='User.guid == UserNotificationPreferences.user_guid',
+        order_by='UserNotificationPreferences.guid',
+    )
+
     PUBLIC_USER_EMAIL = 'public@localhost'
 
     class StaticRoles(enum.Enum):

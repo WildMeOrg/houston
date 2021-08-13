@@ -3,6 +3,7 @@
 import pytest
 from tests import utils
 import datetime
+from . import utils as user_utils
 
 timestamp = datetime.datetime.now().isoformat() + 'Z'
 
@@ -104,15 +105,14 @@ def test_getting_user_info_by_unauthorized_user(
     assert set(response.json.keys()) == {'full_name', 'guid', 'profile_fileupload'}
 
 
-def test_getting_user_info_by_authorized_user(flask_app_client, regular_user, admin_user):
+def test_getting_user_info_by_authorized_user(
+    flask_app_client, regular_user, user_manager_user
+):
     # pylint: disable=invalid-name
-    with flask_app_client.login(admin_user, auth_scopes=('users:read',)):
-        response = flask_app_client.get('/api/v1/users/%s' % regular_user.guid)
+    response = user_utils.read_user(
+        flask_app_client, user_manager_user, regular_user.guid
+    )
 
-    assert response.status_code == 200
-    assert response.content_type == 'application/json'
-    assert isinstance(response.json, dict)
-    assert set(response.json.keys()) >= {'guid', 'email'}
     assert 'password' not in response.json.keys()
 
 

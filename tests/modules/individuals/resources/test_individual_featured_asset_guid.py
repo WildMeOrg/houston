@@ -27,21 +27,11 @@ def test_patch_featured_asset_guid_on_individual(db, flask_app_client, researche
 
     response_json = response.json
 
-    import logging
-
-    log = logging.getLogger(__name__)
-    log.warning('RETURNED ENC JSON: ' + str(response_json))
-
     assert response_json['result']['encounters']
     assert response_json['result']['encounters'][0]
     assert response_json['result']['encounters'][0]['id']
 
     guid = response_json['result']['encounters'][0]['id']
-
-    # enc = Encounter(
-    #     guid=guid,
-    #     owner_guid=researcher_1.guid,
-    # )
 
     enc = Encounter.query.get(guid)
     assert enc is not None
@@ -80,42 +70,21 @@ def test_patch_featured_asset_guid_on_individual(db, flask_app_client, researche
     assert new_asset_1.guid is not None
     assert new_asset_2.guid is not None
 
-    ann_resp_1 = annot_utils.create_annotation(
-        flask_app_client,
-        researcher_1,
-        str(new_asset_1.guid),
-        str(enc.guid),
-    )
-    ann_guid_1 = ann_resp_1.json['guid']
-
-    from app.modules.annotations.models import Annotation
-
-    # with db.session.begin():
-    #     db.session.add(ann_1)
-    #     db.session.add(ann_2)
-
     try:
-        # ann_1 = Annotation.query.get(ann_guid_1)
-        # ann_1.encounter = enc
-        # enc.annotations.append(ann_1)
+        ann_resp_1 = annot_utils.create_annotation(
+            flask_app_client,
+            researcher_1,
+            str(new_asset_1.guid),
+            str(enc.guid),
+        )
+        ann_guid_1 = ann_resp_1.json['guid']
 
-        # with db.session.begin():
-        #     db.session.add(ann_1)
+        from app.modules.annotations.models import Annotation
+
+        ann_1 = Annotation.query.get(ann_guid_1)
 
         assert enc.guid == individual.encounters[0].guid
-
-        log.warning('=======================> GUID IN TEST: ' + str(individual.encounters[0].guid))
-
-        # assert ann_1 is not None
-        # assert ann_1.encounter is not None
         assert len(enc.annotations) == 1
-
-        # db.session.refresh(enc)
-        # db.session.refresh(individual)
-
-        # lets test the methods first
-        # there is only on asset in the whole individual/encounter/sighting/asset chain so it should pass this
-
         assert individual.get_featured_asset_guid() == new_asset_1.guid
 
         ann_resp_2 = annot_utils.create_annotation(
@@ -124,22 +93,12 @@ def test_patch_featured_asset_guid_on_individual(db, flask_app_client, researche
             str(new_asset_2.guid),
             str(enc.guid),
         )
-        # ann_guid_2 = ann_resp_2.json['guid']
-        # ann_2 = Annotation.query.get(ann_guid_2)
-        # assert ann_2 is not None
-        # assert ann_2.encounter is not None
+        ann_guid_2 = ann_resp_2.json['guid']
+        ann_2 = Annotation.query.get(ann_guid_2)
+
         assert len(enc.annotations) == 2
 
         sighting.add_asset(new_asset_2)
-
-        # import utool as ut
-        # ut.embed()
-
-        # ann_2.encounter = enc
-        # enc.annotations.append(ann_2)
-
-        # with db.session.begin():
-        #     db.session.add(ann_2)
 
         individual.set_featured_asset_guid(new_asset_2.guid)
 
@@ -156,17 +115,16 @@ def test_patch_featured_asset_guid_on_individual(db, flask_app_client, researche
 
         assert individual.get_featured_asset_guid() == new_asset_1.guid
 
-        # assert new_asset_2.guid == sighting.get_featured_asset_guid()
     finally:
-
         from app.modules.asset_groups.tasks import delete_remote
 
-        individual_utils.delete_individual(flask_app_client, researcher_1, str(individual.guid))
-        #sighting_utils.delete_sighting(flask_app_client, researcher_1, str(sighting.guid))
+        individual_utils.delete_individual(
+            flask_app_client, researcher_1, str(individual.guid)
+        )
         sighting.delete_cascade()
         enc.delete_cascade()
-        # ann_1.delete()
-        # ann_2.delete()
+        ann_1.delete()
+        ann_2.delete()
         delete_remote(str(new_asset_group.guid))
         asset_group_utils.delete_asset_group(
             flask_app_client, researcher_1, new_asset_group.guid

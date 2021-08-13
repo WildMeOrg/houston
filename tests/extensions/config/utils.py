@@ -39,3 +39,9 @@ def check_outside_db_context(flask_app):
     assert flask_app.config.db_init
     assert not flask_app.config.db_update
     assert flask_app.config.db_app is None
+
+
+def get_and_check_detection_config(flask_app_client):
+    path = '/api/v1/config/detection/'
+    response = flask_app_client.get(path)
+    assert response['success'] is True

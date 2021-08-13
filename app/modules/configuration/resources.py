@@ -12,6 +12,7 @@ from flask_restx_patched import Resource
 from app.extensions.api import Namespace
 
 from app.modules.users.models import User
+from app.modules.site_settings.models import SiteSetting
 
 import json
 
@@ -96,6 +97,11 @@ class EDMConfiguration(Resource):
             data['response']['configuration'][
                 'site.adminUserInitialized'
             ] = User.admin_user_initialized()
+            site_settings = SiteSetting.query.filter_by(public=True).order_by('key')
+            ss_json = {}
+            for ss in site_settings:
+                ss_json[ss.key] = f'/api/v1/fileuploads/src/{str(ss.file_upload.guid)}'
+            data['response']['configuration']['site.images'] = ss_json
         return data
 
     @edm_configuration.login_required(oauth_scopes=['configuration:write'])

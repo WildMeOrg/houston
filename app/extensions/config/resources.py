@@ -24,7 +24,7 @@ log = logging.getLogger(__name__)
 api = Namespace('config/houston', description='HoustonConfig')
 
 
-@api.route('/houston')
+@api.route('/')
 @api.login_required(oauth_scopes=['config.houston:read'])
 class HoustonConfigs(Resource):
     """
@@ -49,8 +49,11 @@ class HoustonConfigs(Resource):
         return response
 
 
-@api.route('/detection')
-class DetectionConfig(Resource):
+detection_api = Namespace('config/detection', description='DetectionConfig')
+
+
+@detection_api.route('/')
+class DetectionConfigs(Resource):
     """
     Detection pipeline configurations
     """

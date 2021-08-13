@@ -42,7 +42,7 @@ def check_outside_db_context(flask_app):
 
 
 def get_and_check_detection_config(flask_app_client):
-    path = '/api/v1/config/houston/detection'
+    path = '/api/v1/config/detection/'
     response = flask_app_client.get(path)
     response_data = response.json
     assert 'success' in response_data and response_data['success'] is True

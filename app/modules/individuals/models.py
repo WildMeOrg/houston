@@ -98,7 +98,7 @@ class Individual(db.Model, FeatherModel):
         asset = Asset.find(asset_guid)
         if asset and asset.annotations:
             for annotation in asset.annotations:
-                if annotation.encounter.individual_guid == self.individual_guid:
+                if annotation.encounter.individual_guid == self.guid:
                     rt_val = True
         return rt_val
 

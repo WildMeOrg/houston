@@ -28,7 +28,7 @@ class PatchIndividualDetailsParameters(PatchJSONParameters):
 
     PATH_CHOICES_EDM = '/encounters'
 
-    PATH_CHOICES_HOUSTON = '/featured_asset_guid'
+    PATH_CHOICES_HOUSTON = '/featuredAssetGuid'
 
     PATH_CHOICES = PATH_CHOICES_EDM + PATH_CHOICES_HOUSTON
 

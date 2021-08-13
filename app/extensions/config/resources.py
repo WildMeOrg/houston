@@ -24,7 +24,7 @@ log = logging.getLogger(__name__)
 api = Namespace('config/houston', description='HoustonConfig')
 
 
-@api.route('/')
+@api.route('/houston')
 @api.login_required(oauth_scopes=['config.houston:read'])
 class HoustonConfigs(Resource):
     """
@@ -49,16 +49,13 @@ class HoustonConfigs(Resource):
         return response
 
 
-detection_api = Namespace('config/detection', description='DetectionConfig')
-
-
-@detection_api.route('/')
+@api.route('/detection')
 class DetectionConfig(Resource):
     """
     Detection pipeline configurations
     """
 
-    def get(self, args):
+    def get(self):
         """
         Returns a json describing the available detectors for the frontend to
         provide users with options

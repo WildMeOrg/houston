@@ -28,3 +28,13 @@ def test_create_header_image(db, flask_app, test_root):
         file_path = Path(fup2.get_absolute_path())
         if file_path.exists():
             file_path.unlink()
+
+
+def test_create_string(db):
+    new_setting = SiteSetting.set(key='site_title', string='Name of the Site')
+    try:
+        read_value = SiteSetting.query.get('site_title')
+        assert read_value.string == 'Name of the Site'
+
+    finally:
+        db.session.delete(new_setting)

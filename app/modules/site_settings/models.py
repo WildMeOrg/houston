@@ -15,13 +15,12 @@ class SiteSetting(db.Model, Timestamp):
 
     key = db.Column(db.String, primary_key=True, nullable=False)
 
-    # file_upload_guid can be changed to nullable if we have
-    # non-fileupload site settings
     file_upload_guid = db.Column(
-        db.GUID, db.ForeignKey('file_upload.guid', ondelete='CASCADE'), nullable=False
+        db.GUID, db.ForeignKey('file_upload.guid', ondelete='CASCADE'), nullable=True
     )
     file_upload = db.relationship('FileUpload', cascade='delete')
     public = db.Column(db.Boolean, default=True, nullable=False)
+    string = db.Column(db.String, default='', nullable=True)
 
     def __repr__(self):
         return (
@@ -34,8 +33,12 @@ class SiteSetting(db.Model, Timestamp):
         return self.public
 
     @classmethod
-    def set(cls, key, file_upload_guid, public=None):
-        kwargs = {'key': key, 'file_upload_guid': file_upload_guid}
+    def set(cls, key, file_upload_guid=None, string=None, public=None):
+        kwargs = {
+            'key': key,
+            'file_upload_guid': file_upload_guid,
+            'string': string,
+        }
         if public is not None:
             kwargs['public'] = public
         setting = cls(**kwargs)

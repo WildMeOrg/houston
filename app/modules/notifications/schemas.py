@@ -20,9 +20,8 @@ class BaseNotificationSchema(ModelSchema):
         model = Notification
         fields = (
             Notification.guid.key,
-            Notification.timestamp.key,
             Notification.status.key,
-            Notification.message_template.key,
+            Notification.message_type.key,
         )
         dump_only = (Notification.guid.key,)
 

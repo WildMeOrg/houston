@@ -152,6 +152,23 @@ class Collaboration(db.Model, HoustonModel):
                 users.append(association.user)
         return users
 
+    def notify_pending_users(self):
+        # Once created notify the pending user to accept
+        for collab_user_assoc in self.collaboration_user_associations:
+            if collab_user_assoc.read_approval_state == CollaborationUserState.PENDING:
+                from app.modules.notifications.models import (
+                    Notification,
+                    NotificationType,
+                )
+
+                other_user_assoc = self._get_association_for_other_user(
+                    collab_user_assoc.user.guid
+                )
+                data = {'requester': other_user_assoc.user_guid}
+                Notification.create(
+                    NotificationType.collab_request, collab_user_assoc.user, data
+                )
+
     # todo remove, there is no overall view or edit state for the collaboration, it depends on the user
     def get_edit_state(self):
         edit_state = None

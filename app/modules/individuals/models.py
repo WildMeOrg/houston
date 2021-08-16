@@ -61,7 +61,7 @@ class Individual(db.Model, FeatherModel):
     def get_featured_asset_guid(self):
         rt_val = None
         if self.featured_asset_guid is not None:
-            if self.validate_presence_in_asset(self.featured_asset_guid):
+            if self._ensure_asset_individual_association(self.featured_asset_guid):
                 rt_val = self.featured_asset_guid
         elif len(self.encounters) > 0 and self.encounters[0].annotations is not None:
             from app.modules.encounters.models import Encounter
@@ -74,10 +74,10 @@ class Individual(db.Model, FeatherModel):
         return rt_val
 
     def set_featured_asset_guid(self, asset_guid):
-        if self.validate_presence_in_asset(asset_guid):
+        if self._ensure_asset_individual_association(asset_guid):
             self.featured_asset_guid = asset_guid
 
-    def validate_presence_in_asset(self, asset_guid):
+    def _ensure_asset_individual_association(self, asset_guid):
 
         rt_val = False
         from app.modules.assets.models import Asset

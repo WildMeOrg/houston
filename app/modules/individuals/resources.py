@@ -198,7 +198,11 @@ class IndividualByID(Resource):
         else:
             log.error('GET passthrough called for nonexistent Individual')
 
-        return current_app.edm.get_dict('individual.data_complete', individual.guid)
+        rtn_json = individual.augment_edm_json(
+            current_app.edm.get_dict('individual.data_complete', individual.guid)
+        )
+
+        return rtn_json
 
     @api.permission_required(
         permissions.ObjectAccessPermission,

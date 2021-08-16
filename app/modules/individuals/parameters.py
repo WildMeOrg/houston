@@ -6,6 +6,8 @@ Input arguments (Parameters) for Individuals resources RESTful API
 from flask_restx_patched import Parameters, PatchJSONParameters
 from . import schemas
 import logging
+import app.modules.utils as util
+from uuid import UUID
 
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
@@ -24,9 +26,11 @@ class PatchIndividualDetailsParameters(PatchJSONParameters):
         PatchJSONParameters.OP_REMOVE,
     )
 
-    PATH_CHOICES_EDM = ('/encounters',)
+    PATH_CHOICES_EDM = '/encounters'
 
-    PATH_CHOICES = PATH_CHOICES_EDM
+    PATH_CHOICES_HOUSTON = '/featuredAssetGuid'
+
+    PATH_CHOICES = PATH_CHOICES_EDM + PATH_CHOICES_HOUSTON
 
     @classmethod
     def remove(cls, obj, field, value, state):
@@ -39,6 +43,10 @@ class PatchIndividualDetailsParameters(PatchJSONParameters):
                 if encounter is not None and encounter in obj.encounters:
                     obj.remove_encounter(encounter)
                     ret_val = True
+        elif field == 'featuredAssetGuid' and util.is_valid_guid(value):
+            obj.set_featured_asset_guid(UUID(value, version=4))
+            ret_val = True
+
         return ret_val
 
     @classmethod
@@ -47,6 +55,7 @@ class PatchIndividualDetailsParameters(PatchJSONParameters):
 
     @classmethod
     def replace(cls, obj, field, value, state):
+
         ret_val = False
         if field == 'encounters':
             for encounter_guid in value:
@@ -57,4 +66,8 @@ class PatchIndividualDetailsParameters(PatchJSONParameters):
                     obj.add_encounter(encounter)
                     assert encounter in obj.get_encounters()
                     ret_val = True
+        elif field == 'featuredAssetGuid' and util.is_valid_guid(value):
+            obj.set_featured_asset_guid(UUID(value, version=4))
+            ret_val = True
+
         return ret_val

@@ -18,6 +18,8 @@ class Individual(db.Model, FeatherModel):
         db.GUID, default=uuid.uuid4, primary_key=True
     )  # pylint: disable=invalid-name
 
+    featured_asset_guid = db.Column(db.GUID, default=None, nullable=True)
+
     version = db.Column(db.BigInteger, default=None, nullable=True)
 
     encounters = db.relationship(
@@ -56,6 +58,37 @@ class Individual(db.Model, FeatherModel):
     def get_members(self):
         return [encounter.owner for encounter in self.encounters]
 
+    def get_featured_asset_guid(self):
+        rt_val = None
+        if self.featured_asset_guid is not None:
+            if self._ensure_asset_individual_association(self.featured_asset_guid):
+                rt_val = self.featured_asset_guid
+        elif len(self.encounters) > 0 and self.encounters[0].annotations is not None:
+            from app.modules.encounters.models import Encounter
+
+            encounter = Encounter.query.get(self.encounters[0].guid)
+
+            if len(encounter.annotations) > 0:
+                assert encounter.annotations[0].asset_guid
+                rt_val = self.encounters[0].annotations[0].asset_guid
+        return rt_val
+
+    def set_featured_asset_guid(self, asset_guid):
+        if self._ensure_asset_individual_association(asset_guid):
+            self.featured_asset_guid = asset_guid
+
+    def _ensure_asset_individual_association(self, asset_guid):
+
+        rt_val = False
+        from app.modules.assets.models import Asset
+
+        asset = Asset.find(asset_guid)
+        if asset and asset.annotations:
+            for annotation in asset.annotations:
+                if annotation.encounter.individual_guid == self.guid:
+                    rt_val = True
+        return rt_val
+
     def delete(self):
         with db.session.begin():
             db.session.delete(self)
@@ -68,3 +101,7 @@ class Individual(db.Model, FeatherModel):
             self.guid,
         )
         return response
+
+    def augment_edm_json(self, edm_json):
+        edm_json['featuredAssetGuid'] = self.get_featured_asset_guid()
+        return edm_json

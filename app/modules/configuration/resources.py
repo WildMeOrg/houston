@@ -100,7 +100,10 @@ class EDMConfiguration(Resource):
             site_settings = SiteSetting.query.filter_by(public=True).order_by('key')
             ss_json = {}
             for ss in site_settings:
-                ss_json[ss.key] = f'/api/v1/fileuploads/src/{str(ss.file_upload.guid)}'
+                if ss.file_upload is not None:
+                    ss_json[
+                        ss.key
+                    ] = f'/api/v1/fileuploads/src/{str(ss.file_upload.guid)}'
             data['response']['configuration']['site.images'] = ss_json
         return data
 

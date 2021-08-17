@@ -49,9 +49,26 @@ NOTIFICATION_DEFAULTS = {
 }
 
 NOTIFICATION_FIELDS = {
-    NotificationType.collab_request: {'sender_name', 'sender_email'},
+    NotificationType.collab_request: {
+        'sender_name',
+        'sender_email',
+        'collaboration_guid',
+    },
     NotificationType.raw: {'sender_name', 'sender_email'},
 }
+
+
+# Simple class to build up the contents of the message so that the caller does not need to know the field names above
+class NotificationBuilder(object):
+    def __init__(self):
+        self.data = {}
+
+    def set_sender(self, user):
+        self.data['sender_name'] = user.full_name
+        self.data['sender_email'] = user.email
+
+    def set_collaboration(self, collab):
+        self.data['collaboration_guid'] = collab.guid
 
 
 class Notification(db.Model, HoustonModel):
@@ -112,12 +129,10 @@ class Notification(db.Model, HoustonModel):
             EmailUtils.send_email(outgoing_message)
 
     @classmethod
-    def create(cls, notification_type, sending_user, receiving_user, data):
+    def create(cls, notification_type, receiving_user, builder):
         assert notification_type in NotificationType
 
-        if sending_user:
-            data['sender_name'] = sending_user.full_name
-            data['sender_email'] = sending_user.email
+        data = builder.data
 
         assert set(data.keys()) >= set(NOTIFICATION_FIELDS[notification_type])
 

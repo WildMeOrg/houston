@@ -6,6 +6,7 @@ import logging
 from app.modules.notifications.models import (
     Notification,
     NotificationType,
+    NotificationBuilder,
     UserNotificationPreferences,
     NOTIFICATION_DEFAULTS,
     SystemNotificationPreferences,
@@ -43,8 +44,13 @@ def test_get_notification_prefs(db, researcher_1):
 
 
 def test_notification_message(db, researcher_1, researcher_2):
+    builder = NotificationBuilder()
+    builder.set_sender(researcher_1)
+    # just needs something with a guid
+    builder.set_collaboration(researcher_1)
+
     notification = Notification.create(
-        NotificationType.collab_request, researcher_1, researcher_2, {}
+        NotificationType.collab_request, researcher_2, builder
     )
     with db.session.begin():
         db.session.add(notification)

@@ -34,6 +34,10 @@ NOTIFICATION_DEFAULTS = {
         NotificationChannel.rest: True,
         NotificationChannel.email: False,
     },
+    NotificationType.raw: {
+        NotificationChannel.rest: True,
+        NotificationChannel.email: True,
+    },
     NotificationType.collab_request: {
         NotificationChannel.rest: True,
         NotificationChannel.email: False,
@@ -44,7 +48,10 @@ NOTIFICATION_DEFAULTS = {
     },
 }
 
-NOTIFICATION_FIELDS = {NotificationType.collab_request: {'requester'}}
+NOTIFICATION_FIELDS = {
+    NotificationType.collab_request: {'sender_name', 'sender_email'},
+    NotificationType.raw: {'sender_name', 'sender_email'},
+}
 
 
 class Notification(db.Model, HoustonModel):
@@ -75,9 +82,16 @@ class Notification(db.Model, HoustonModel):
             ')>'.format(class_name=self.__class__.__name__, self=self)
         )
 
+    def get_sender_name(self):
+        return self.message_values.get('sender_name', 'N/A')
+
+    def get_sender_email(self):
+        return self.message_values.get('sender_email', 'N/A')
+
     # returns dictionary of channel:bool
-    def channels_to_send(self):
+    def channels_to_send(self, digest=False):
         # pylint: disable=invalid-name
+        # In future the channels to send right now will be different for digest generation
         channels = None
         user_prefs = UserNotificationPreferences.get_user_preferences(self.recipient)
         if self.message_type in user_prefs.keys():
@@ -85,19 +99,36 @@ class Notification(db.Model, HoustonModel):
 
         return channels
 
+    def send_if_required(self):
+        from app.modules.emails.utils import EmailUtils
+
+        channels = self.channels_to_send(False)
+        if channels[NotificationChannel.email]:
+            # presumes that each string NotificationType has a matching string EmailType, will be caught by
+            # assert if not
+            outgoing_message = EmailUtils.build_email(
+                self.message_type, self.message_values
+            )
+            EmailUtils.send_email(outgoing_message)
+
     @classmethod
-    def create(cls, notification_type, user, data):
+    def create(cls, notification_type, sending_user, receiving_user, data):
         assert notification_type in NotificationType
-        assert set(data.keys()) >= NOTIFICATION_FIELDS[notification_type]
+
+        if sending_user:
+            data['sender_name'] = sending_user.full_name
+            data['sender_email'] = sending_user.email
+
+        assert set(data.keys()) >= set(NOTIFICATION_FIELDS[notification_type])
 
         new_notification = cls(
-            recipient=user,
+            recipient=receiving_user,
             message_type=notification_type,
             message_values=data,
         )
         with db.session.begin(subtransactions=True):
             db.session.add(new_notification)
-        # TODO Check if notification should be sent right now on any channels
+        new_notification.send_if_required()
         return new_notification
 
 

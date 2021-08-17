@@ -51,7 +51,14 @@ class Notifications(Resource):
         Returns a list of Notification starting from ``offset`` limited by ``limit``
         parameter.
         """
-        return Notification.query.offset(args['offset']).limit(args['limit'])
+        all_notifications = Notification.query.offset(args['offset']).limit(args['limit'])
+        if current_user.is_user_manager:
+            returned_notifications = all_notifications
+        else:
+            returned_notifications = [
+                notif for notif in all_notifications if notif.recipient == current_user
+            ]
+        return returned_notifications
 
     @api.permission_required(
         permissions.ModuleAccessPermission,

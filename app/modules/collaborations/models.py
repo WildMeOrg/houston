@@ -164,9 +164,11 @@ class Collaboration(db.Model, HoustonModel):
                 other_user_assoc = self._get_association_for_other_user(
                     collab_user_assoc.user.guid
                 )
-                data = {'requester': other_user_assoc.user_guid}
                 Notification.create(
-                    NotificationType.collab_request, collab_user_assoc.user, data
+                    NotificationType.collab_request,
+                    other_user_assoc.user,
+                    collab_user_assoc.user,
+                    {},
                 )
 
     # todo remove, there is no overall view or edit state for the collaboration, it depends on the user

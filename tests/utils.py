@@ -267,9 +267,10 @@ def all_count(db):
     from app.modules.asset_groups.models import AssetGroup
     from app.modules.individuals.models import Individual
     from app.modules.collaborations.models import Collaboration
+    from app.modules.notifications.models import Notification
 
     count = {}
-    for cls in (Sighting, Encounter, Individual, Collaboration):
+    for cls in (Sighting, Encounter, Individual, Collaboration, Notification):
         count[cls.__name__] = row_count(db, cls)
     asset_query = Asset.query
     asset_group_query = AssetGroup.query

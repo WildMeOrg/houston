@@ -17,6 +17,16 @@ def test_get_notifications(
     notif_2 = None
 
     try:
+        prev_researcher_1_notifs = notif_utils.read_all_notifications(
+            flask_app_client, researcher_1
+        )
+        prev_researcher_2_notifs = notif_utils.read_all_notifications(
+            flask_app_client, researcher_2
+        )
+        prev_user_manager_notifs = notif_utils.read_all_notifications(
+            flask_app_client, user_manager_user
+        )
+
         # Create a couple of them
         notif_1 = Notification.create(
             NotificationType.collab_request, researcher_1, researcher_2, {}
@@ -35,14 +45,14 @@ def test_get_notifications(
             flask_app_client, user_manager_user
         )
 
-        assert len(researcher_1_notifs.json) == 1
-        assert len(researcher_2_notifs.json) == 1
-        assert len(user_manager_notifs.json) == 2
+        assert len(researcher_1_notifs.json) == len(prev_researcher_1_notifs.json) + 1
+        assert len(researcher_2_notifs.json) == len(prev_researcher_2_notifs.json) + 1
+        assert len(user_manager_notifs.json) == len(prev_user_manager_notifs.json) + 2
 
         assert researcher_1_notifs.json[0]['message_type'] == 'raw'
         assert researcher_1_notifs.json[0]['sender_email'] == researcher_2.email
 
-        assert researcher_2_notifs.json[0]['message_type'] == 'collaboration request'
+        assert researcher_2_notifs.json[0]['message_type'] == 'collaboration_request'
         assert researcher_2_notifs.json[0]['sender_email'] == researcher_1.email
 
     finally:

@@ -17,10 +17,10 @@ class NotificationStatus(str, enum.Enum):
 
 class NotificationType(str, enum.Enum):
     raw = 'raw'
-    new_enc = 'new_enc'  # TODO what's this for?
+    new_enc = 'new_encounter_individual'  # A new encounter on an individual
     all = 'all'  # For use specifically in preferences, catchall for everything
-    collab_request = 'collaboration request'
-    merge_request = 'individual merge request'
+    collab_request = 'collaboration_request'
+    merge_request = 'individual_merge_request'
 
 
 # Can send messages out on multiple channels

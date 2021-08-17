@@ -2,7 +2,6 @@
 
 import logging
 import re
-import enum
 
 log = logging.getLogger(__name__)
 
@@ -10,19 +9,11 @@ EMAIL_PATH = 'app/modules/emails/templates/en/'
 DIGEST_EMAIL_PATH = f'{EMAIL_PATH}digest/'
 
 
-class EmailType(str, enum.Enum):
-    raw = 'raw'
-    collab_request = 'collaboration request'
-    merge_request = 'individual merge request'
-    password_reset = 'password reset'
-
-
 class EmailUtils(object):
     @classmethod
-    def build_email(cls, email_type, replacements, is_digest=False):
-        assert email_type in EmailType.__members__
+    def build_email(cls, template, replacements, is_digest=False):
         path = DIGEST_EMAIL_PATH if is_digest else EMAIL_PATH
-        template_filename = f'{path}{email_type}.html'
+        template_filename = f'{path}{template}.html'
         with open(template_filename) as file:
             text = file.read()
             for key in replacements.keys():

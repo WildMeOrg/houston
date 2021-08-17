@@ -2,23 +2,29 @@
 """
 Houston API Server.
 """
+import logging
 import os
 import sys
 
 from celery import Celery
 from flask import Flask
 from werkzeug.contrib.fixers import ProxyFix
-import logging
-from config import BaseConfig
+
+from config import (
+    BaseConfig,
+    DevelopmentConfig,
+    ProductionConfig,
+    TestingConfig,
+)
 
 
 log = logging.getLogger(__name__)
 
 
 CONFIG_NAME_MAPPER = {
-    'development': 'config.DevelopmentConfig',
-    'testing': 'config.TestingConfig',
-    'production': 'config.ProductionConfig',
+    'development': DevelopmentConfig,
+    'testing': TestingConfig,
+    'production': ProductionConfig,
 }
 
 
@@ -55,12 +61,13 @@ def _apply_hotfixes():
     threading.stack_size(2 * 1024 * 1024)
 
 
-def configure_from_config_file(app, flask_config_name='production'):
+def configure_from_env_object(app, flask_config_name='production'):
+    """Configures the application from an environment specific config object"""
     if not flask_config_name:
         flask_config_name = os.getenv('FLASK_CONFIG', 'production')
 
     try:
-        config_name = CONFIG_NAME_MAPPER[flask_config_name]
+        config_cls = CONFIG_NAME_MAPPER[flask_config_name]
     except KeyError:
         app.logger.exception(  # pylint: disable=no-member
             'You must set the `FLASK_CONFIG` environment variable '
@@ -68,14 +75,9 @@ def configure_from_config_file(app, flask_config_name='production'):
         )
         sys.exit(1)
 
-    log.info(f'Using app.config @ {config_name!r}')
-    try:
-        app.config.from_object(config_name)
-    except ImportError:
-        app.logger.exception(
-            f"Problem loading the application's configuration at '{config_name}'"
-        )
-        sys.exit(1)
+    log.info(f'Using app.config @ {flask_config_name!r} as {config_cls!r}')
+    cfg = config_cls()
+    app.config.from_object(cfg)
 
 
 def configure_from_cli(app, config_override):
@@ -121,7 +123,7 @@ def create_app(flask_config_name=None, config_override={}, testing=False, **kwar
     app = Flask(__name__, **kwargs)
 
     # Initialize app config from config.py
-    configure_from_config_file(app, flask_config_name)
+    configure_from_env_object(app, flask_config_name)
 
     # Update app config from create_app arguments (passed from CLI)
     configure_from_cli(app, config_override)

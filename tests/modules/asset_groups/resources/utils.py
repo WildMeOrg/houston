@@ -3,10 +3,11 @@
 Asset_group resources utils
 -------------
 """
-import json
-import shutil
-import os
 import config
+import json
+import os
+import re
+import shutil
 from unittest import mock
 
 from tests import utils as test_utils
@@ -135,10 +136,31 @@ def create_asset_group_sim_sage(
             assert set(params.keys()) >= {
                 'endpoint',
                 'jobid',
-                'callback_url',
-                'image_uuid_list',
                 'input',
+                'image_uuid_list',
+                'callback_url',
+                'callback_detailed',
             }
+            assert set(params['input'].keys()) >= {
+                'start_detect',
+                'labeler_algo',
+                'labeler_model_tag',
+                'model_tag',
+            }
+            assert params['endpoint'] == '/api/engine/detect/cnn/lightnet/'
+            assert re.match('[a-f0-9-]{36}', params['jobid'])
+            assert re.match(
+                r'houston\+http://houston:5000/api/v1/asset_group/sighting/[a-f0-9-]{36}/sage_detected/'
+                + params['jobid'],
+                params['callback_url'],
+            )
+            assert all(
+                re.match(
+                    r'houston\+http://houston:5000/api/v1/asset/src_raw/[a-f0-9-]{36}',
+                    uri,
+                )
+                for uri in params['image_uuid_list']
+            )
         except Exception:
             # Calling code cannot clear up the asset group as the resp is not passed if any of the assertions fail
             # meaning that all subsequent tests would fail.

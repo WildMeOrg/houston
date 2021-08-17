@@ -29,6 +29,7 @@ import json
 import os
 import pathlib
 import shutil
+from urllib.parse import urljoin
 
 from .metadata import AssetGroupMetadata
 
@@ -322,7 +323,10 @@ class AssetGroupSighting(db.Model, HoustonModel):
         from app.modules.ia_config_reader import IaConfig
 
         base_url = current_app.config.get('BASE_URL')
-        callback_url = f'{base_url}api/v1/asset_group/sighting/{str(self.guid)}/sage_detected/{str(job_uuid)}'
+        callback_url = urljoin(
+            base_url,
+            f'/api/v1/asset_group/sighting/{str(self.guid)}/sage_detected/{str(job_uuid)}',
+        )
 
         ia_config_reader = IaConfig(current_app.config.get('CONFIG_MODEL'))
         detector_config = ia_config_reader.get_named_detector_config(model)
@@ -332,13 +336,11 @@ class AssetGroupSighting(db.Model, HoustonModel):
         model_config = {
             'endpoint': detector_config['start_detect'],
             'jobid': str(job_uuid),
-            'callback_url': callback_url,
-            'image_uuid_list': [],
+            'callback_url': f'houston+{callback_url}',
+            'callback_detailed': True,
             'input': detector_config,
         }
-        model_config['input']['callback_url'] = callback_url
-        model_config['input']['image_url'] = f'{base_url}api/v1/asset/src-raw/'
-        model_config['input']['callback_detailed'] = True
+        asset_url = urljoin(base_url, '/api/v1/asset/src_raw/')
 
         asset_guids = []
         for filename in self.config.get('assetReferences'):
@@ -347,7 +349,9 @@ class AssetGroupSighting(db.Model, HoustonModel):
             if asset.guid not in asset_guids:
                 asset_guids.append(asset.guid)
 
-        model_config['image_uuid_list'] = asset_guids
+        model_config['image_uuid_list'] = [
+            f'houston+{urljoin(asset_url, str(asset_guid))}' for asset_guid in asset_guids
+        ]
         return model_config
 
     def run_sage_detection(self, model):
@@ -363,6 +367,9 @@ class AssetGroupSighting(db.Model, HoustonModel):
             'model': model,
             'active': True,
             'start': datetime.utcnow(),
+            'asset_ids': [
+                uri.rsplit('/', 1)[-1] for uri in detection_request['image_uuid_list']
+            ],
         }
         # This is necessary because we can only mark self as modified if
         # we assign to one of the database attributes

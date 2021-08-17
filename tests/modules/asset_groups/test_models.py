@@ -62,6 +62,7 @@ def test_asset_group_sightings_jobs(flask_app, db, admin_user, test_root, reques
             'model': 'african_terrestrial',
             'active': True,
             'start': now,
+            'asset_ids': [str(asset_group.assets[0].guid)],
         },
     }
     assert AssetGroupSighting.query.get(ags2.guid).jobs == {
@@ -69,6 +70,7 @@ def test_asset_group_sightings_jobs(flask_app, db, admin_user, test_root, reques
             'model': 'african_terrestrial',
             'active': True,
             'start': now,
+            'asset_ids': [],
         },
     }
 

@@ -81,6 +81,7 @@ class Repo(BaseRepo):
     # This class is copied from the original with one minor adjustment
     # to use the class' `GitCommandWrapperType` definition as opposed
     # to the direct reference to the `Git` class.
+    # Fixed in https://github.com/gitpython-developers/GitPython/pull/1322
     @classmethod
     def clone_from(
         cls, url, to_path, progress=None, env=None, multi_options=None, **kwargs

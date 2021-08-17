@@ -75,8 +75,16 @@ def read_notification(
     else:
         response = flask_app_client.get(f'{PATH}{notification_guid}')
 
+    expected_keys = {
+        'guid',
+        'status',
+        'message_type',
+        'sender_name',
+        'sender_email',
+        'message_values',
+    }
     if expected_status_code == 200:
-        test_utils.validate_dict_response(response, 200, {'guid'})
+        test_utils.validate_dict_response(response, 200, expected_keys)
     elif expected_status_code == 404:
         test_utils.validate_dict_response(response, expected_status_code, {'message'})
     else:

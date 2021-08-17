@@ -99,6 +99,10 @@ class Notification(db.Model, HoustonModel):
             ')>'.format(class_name=self.__class__.__name__, self=self)
         )
 
+    @property
+    def owner(self):
+        return self.recipient
+
     def get_sender_name(self):
         return self.message_values.get('sender_name', 'N/A')
 

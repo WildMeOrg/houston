@@ -150,6 +150,11 @@ services:
       GIT_PUBLIC_NAME: "${GIT_PUBLIC_NAME}"
       GIT_EMAIL: "${GIT_EMAIL}"
       GITLAB_NAMESPACE: "${GITLAB_NAMESPACE}"
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:5000/api/v1/site-info/"]
+      timeout: 45s
+      interval: 10s
+      retries: 10
     volumes: &houston-volumes
       - houston-var:/data
       - .dockerfiles/docker-entrypoint-init.d:/docker-entrypoint-init.d
@@ -163,6 +168,9 @@ services:
     command: [ "wait-for", "db:5432", "--", "wait-for", "edm:8080", "--", "celery", "-A", "app.extensions.celery.celery", "beat", "-s", "/data/var/celerybeat-schedule", "-l", "DEBUG"]
     networks:
       - intranet
+    depends_on:
+      houston:
+        condition: service_healthy
     environment: *houston-environment
     volumes: *houston-volumes
 
@@ -172,6 +180,9 @@ services:
     command: [ "wait-for", "db:5432", "--", "wait-for", "edm:8080", "--", "celery", "-A", "app.extensions.celery.celery", "worker", "-l", "DEBUG"]
     networks:
       - intranet
+    depends_on:
+      houston:
+        condition: service_healthy
     environment: *houston-environment
     volumes: *houston-volumes
 

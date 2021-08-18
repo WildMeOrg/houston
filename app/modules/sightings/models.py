@@ -452,6 +452,9 @@ class Sighting(db.Model, FeatherModel):
             raise HoustonException(f'job_id {job_id} not found')
         job = self.jobs[job_id_str]
 
+        if not job['active']:
+            raise HoustonException(f'job_id {job_id} not active')
+
         status = data.get('status')
         if not status:
             raise HoustonException(f'No status in ID response from Sage {job_id_str}')
@@ -514,6 +517,9 @@ class Sighting(db.Model, FeatherModel):
             f"Received successful {algorithm} response '{description}' from Sage for {job_id_str}"
         )
 
+        # All good, mark as complete
+        job['active'] = False
+        self.jobs = self.jobs
         self.stage = SightingStage.un_reviewed
 
     def check_job_status(self, job_id):

@@ -102,6 +102,7 @@ def test_sighting_identification(
             job_uuid,
             sage_resp,
         )
+        assert all(not job['active'] for job in sighting.jobs.values())
         assert sighting.stage == SightingStage.un_reviewed
 
     finally:

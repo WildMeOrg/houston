@@ -157,6 +157,7 @@ services:
       retries: 10
     volumes: &houston-volumes
       - houston-var:/data
+      - .dockerfiles/docker-entrypoint.sh:/docker-entrypoint.sh
       - .dockerfiles/docker-entrypoint-init.d:/docker-entrypoint-init.d
       - .dockerfiles/docker-entrypoint-always-init.d:/docker-entrypoint-always-init.d
       # FIXME: pull in development code while working on bringing up the container

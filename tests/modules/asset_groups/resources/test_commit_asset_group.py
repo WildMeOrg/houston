@@ -135,7 +135,7 @@ def test_commit_asset_group_ia(
         ia_configs = [
             {
                 'algorithms': [
-                    'noddy',
+                    'hotspotter_nosv',
                 ],
             }
         ]

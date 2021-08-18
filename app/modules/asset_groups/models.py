@@ -331,7 +331,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
         callback_url = f'{base_url}api/v1/asset_group/sighting/{str(self.guid)}/sage_detected/{str(job_uuid)}'
 
         ia_config_reader = IaConfig(current_app.config.get('CONFIG_MODEL'))
-        detector_config = ia_config_reader.get(f'_detectors.{model}.config_dict')
+        detector_config = ia_config_reader.get_named_detector_config(model)
 
         assert 'start_detect' in detector_config
 

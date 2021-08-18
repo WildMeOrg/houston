@@ -214,6 +214,7 @@ class Sighting(db.Model, FeatherModel):
                         self.jobs[job_id]['matching_set'],
                         self.jobs[job_id]['annotation'],
                         job_id,
+                        self.jobs[job_id]['algorithm'],
                     )
                     details[job_id][
                         'response'
@@ -369,7 +370,9 @@ class Sighting(db.Model, FeatherModel):
 
         return matching_set_individual_uuids, matching_set_annot_uuids
 
-    def build_identification_request(self, config_id, annotation_uuid, job_uuid):
+    def build_identification_request(
+        self, config_id, annotation_uuid, job_uuid, algorithm
+    ):
         (
             matching_set_individual_uuids,
             matching_set_annot_uuids,
@@ -384,8 +387,15 @@ class Sighting(db.Model, FeatherModel):
         from app.extensions.acm import to_acm_uuid
 
         base_url = current_app.config.get('BASE_URL')
+        from app.modules.ia_config_reader import IaConfig
+
         callback_url = f'{base_url}api/v1/asset_group/sighting/{str(self.guid)}/sage_identified/{str(job_uuid)}'
-        # TODO Needs more work, model info not even started, Sage is rejecting this
+        ia_config_reader = IaConfig(current_app.config.get('CONFIG_MODEL'))
+        try:
+            id_config_dict = ia_config_reader.get(f'_identifiers.{algorithm}')
+        except KeyError:
+            raise HoustonException(f'failed to find {algorithm}')
+
         id_request = {
             'jobid': str(job_uuid),
             'callback_url': callback_url,
@@ -394,10 +404,10 @@ class Sighting(db.Model, FeatherModel):
             'query_annot_uuid_list': [
                 to_acm_uuid(annotation_uuid),
             ],
-            'query_config_dict': {'sv_on': True},
             'database_annot_name_list': matching_set_individual_uuids,
             'database_annot_uuid_list': matching_set_annot_uuids,
         }
+        id_request = id_request | id_config_dict
         return id_request
 
     def send_identification(self, config_id, algorithm_id, annotation_uuid):
@@ -409,7 +419,7 @@ class Sighting(db.Model, FeatherModel):
         matching_set_data = id_configs[config_id].get('matchingSetDataOwners')
         algorithm = id_configs[config_id]['algorithms'][algorithm_id]
         id_request = self.build_identification_request(
-            matching_set_data, annotation_uuid, job_uuid
+            matching_set_data, annotation_uuid, job_uuid, algorithm
         )
         if id_request != {}:
             current_app.acm.request_passthrough_result(
@@ -440,6 +450,10 @@ class Sighting(db.Model, FeatherModel):
         job_id_str = str(job_id)
         if job_id_str not in self.jobs:
             raise HoustonException(f'job_id {job_id} not found')
+        job = self.jobs[job_id_str]
+
+        if not job['active']:
+            raise HoustonException(f'job_id {job_id} not active')
 
         status = data.get('status')
         if not status:
@@ -487,43 +501,25 @@ class Sighting(db.Model, FeatherModel):
                 f'No query_annot_uuid_list in the json_result for {job_id_str}'
             )
 
-        # TODO This next block is a fudge to be replaced when DEX-235 is merged
-        pipeline_root = query_config_dict.get('pipeline_root')
-        if not pipeline_root:
-            raise HoustonException(
-                f'No pipeline_root in query_config_dict for {job_id_str}'
-            )
-        id_algorithms = {
-            'pipeline_root': {
-                'CurvRankTwoFluke': 'trailing edge (CurvRank v2)',
-                'CurvRankTwoDorsal': 'trailing edge (CurvRank v2)',
-                'OC_WDTW': 'trailing edge (OC/WDTW)',
-                'Deepsense': "Deepsense AI's Right Whale Matcher",
-                'CurvRankDorsal': 'CurvRank dorsal fin trailing edge algorithm',
-                'Finfindr': 'finFindR dorsal fin trailing edge algorithm',
-                'Pie': 'PIE (Pose Invariant Embeddings)',
-                'PieTwo': 'PIE v2 (Pose Invariant Embeddings)',
-            },
-            'sv_on': {False: 'HotSpotter pattern-matcher'},
-        }
-        if pipeline_root not in id_algorithms['pipeline_root']:
-            raise HoustonException(
-                f'pipeline_root {pipeline_root} not supported for {job_id_str}'
-            )
+        from app.modules.ia_config_reader import IaConfig
+
+        ia_config_reader = IaConfig(current_app.config.get('CONFIG_MODEL'))
+
+        algorithm = job['algorithm']
+        try:
+            id_config_dict = ia_config_reader.get(f'_identifiers.{algorithm}')
+        except KeyError:
+            raise HoustonException(f'failed to find {algorithm}')
+
+        assert id_config_dict
+        description = id_config_dict.get('description', '')
         log.info(
-            f'Received successful {pipeline_root} response from Sage for {job_id_str} '
-            f"{id_algorithms['pipeline_root'][pipeline_root]}"
+            f"Received successful {algorithm} response '{description}' from Sage for {job_id_str}"
         )
 
-        # This is something like the real one will be.
-        # TODO, where does CONFIG_NAME, species and ia_class come from?
-        # from app.modules.ia_config_reader import IaConfig
-        # ia_config_reader = IaConfig(CONFIG_NAME)
-        # identifiers_allowed = ia_config_reader.get_identifiers_dict(species, ia_class)
-        # for id in identifiers_allowed, for query in dict check that the response is valid and note the description
-        # No need to persistently store it, we can regenerate
-        # log.info(f'Received successful {pipeline_root} response from Sage for {job_id_str} ')
-
+        # All good, mark as complete
+        job['active'] = False
+        self.jobs = self.jobs
         self.stage = SightingStage.un_reviewed
 
     def check_job_status(self, job_id):

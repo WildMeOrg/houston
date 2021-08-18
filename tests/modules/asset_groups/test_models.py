@@ -108,3 +108,65 @@ def test_asset_group_sightings_bulk(
             )
 
         tus_utils.cleanup_tus_dir(transaction_id)
+
+
+def test_asset_group_sighting_get_completion(
+    flask_app, flask_app_client, researcher_1, test_root, request
+):
+    from app.modules.asset_groups.models import (
+        AssetGroupSighting,
+        AssetGroupSightingStage,
+    )
+
+    # Create asset group sighting
+    transaction_id, test_filename = asset_group_utils.create_bulk_tus_transaction(
+        test_root
+    )
+    data = asset_group_utils.get_bulk_creation_data(transaction_id, test_filename)
+    # Use a real detection model to trigger a request sent to Sage
+    data.set_field('speciesDetectionModel', ['african_terrestrial'])
+    # and the sim_sage util to catch it
+    resp = asset_group_utils.create_asset_group_sim_sage(
+        flask_app, flask_app_client, researcher_1, data.get()
+    )
+    asset_group_guid = resp.json['guid']
+    request.addfinalizer(
+        lambda: asset_group_utils.delete_asset_group(
+            flask_app_client, researcher_1, asset_group_guid
+        )
+    )
+
+    # Check get_completion()
+    asset_group_sighting_guid = resp.json['asset_group_sightings'][0]['guid']
+    asset_group_sighting = AssetGroupSighting.query.get(asset_group_sighting_guid)
+    # In "detection" stage
+    assert asset_group_sighting.stage == AssetGroupSightingStage.detection
+    assert asset_group_sighting.get_completion() == 0
+    # Mark job as completed -> "curation" stage
+    asset_group_sighting.job_complete(list(asset_group_sighting.jobs.keys())[0])
+    assert all(not job['active'] for job in asset_group_sighting.jobs.values())
+    assert asset_group_sighting.stage == AssetGroupSightingStage.curation
+    assert asset_group_sighting.get_completion() == 10
+
+    # Call commit to move to "processed" stage
+    with mock.patch(
+        'app.modules.asset_groups.models.current_app.edm.request_passthrough_result',
+        return_value={
+            'id': str(uuid.uuid4()),
+            'encounters': [
+                {'id': str(uuid.uuid4())},
+                {'id': str(uuid.uuid4())},
+            ],
+        },
+    ):
+        sighting = asset_group_sighting.commit()
+    request.addfinalizer(sighting.delete_cascade)
+    assert asset_group_sighting.stage == AssetGroupSightingStage.processed
+    assert asset_group_sighting.get_completion() == 76
+
+    # Check unknown and failed by manually setting them
+    asset_group_sighting.stage = AssetGroupSightingStage.unknown
+    assert asset_group_sighting.get_completion() == 0
+
+    asset_group_sighting.stage = AssetGroupSightingStage.failed
+    assert asset_group_sighting.get_completion() == 100

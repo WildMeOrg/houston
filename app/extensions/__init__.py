@@ -140,6 +140,8 @@ class JSON(db.TypeDecorator):
         def process(value):
             if value is None:
                 return None
+            elif isinstance(value, dict):
+                return value
             return json_deserializer(value)
 
         return process(value)

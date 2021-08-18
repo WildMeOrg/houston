@@ -267,7 +267,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
                     stage_base_sizes[AssetGroupSightingStage.curation]
                     - stage_base_sizes[self.stage]
                 )
-                complete_jobs = [job for job in self.jobs if not job['active']]
+                complete_jobs = [job for job in self.jobs.values() if not job['active']]
                 completion += size_range * (len(complete_jobs) / len(self.jobs))
         elif self.stage == AssetGroupSightingStage.processed:
             assert len(self.sighting) == 1
@@ -481,7 +481,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
 
     def complete(self):
         for job_id in self.jobs:
-            assert self.jobs[job_id]['active']
+            assert not self.jobs[job_id]['active']
 
         self.stage = AssetGroupSightingStage.processed
         with db.session.begin(subtransactions=True):
@@ -499,6 +499,10 @@ class AssetGroupSighting(db.Model, HoustonModel):
 
             if len(outstanding_jobs) == 0:
                 self.stage = AssetGroupSightingStage.curation
+
+            # This is necessary because we can only mark jobs as
+            # modified if we assign to it
+            self.jobs = self.jobs
 
             with db.session.begin(subtransactions=True):
                 db.session.merge(self)

@@ -125,8 +125,6 @@ class Notification(db.Model, HoustonModel):
 
         channels = self.channels_to_send(False)
         if channels[NotificationChannel.email]:
-            # presumes that each string NotificationType has a matching string EmailType, will be caught by
-            # assert if not
             outgoing_message = EmailUtils.build_email(
                 self.message_type, self.message_values
             )

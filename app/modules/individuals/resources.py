@@ -104,11 +104,12 @@ class Individuals(Resource):
         from app.modules.encounters.models import Encounter
 
         for enc_json in request_in['encounters']:
-            encounter = Encounter.query.get(enc_json['id'])
-            if encounter is not None and encounter.individual_guid is not None:
-                cleanup.rollback_and_abort(
-                    message='Individual POST included an encounter that already has an Individual.'
-                )
+            if enc_json['id'] is not None:
+                encounter = Encounter.query.get(enc_json['id'])
+                if encounter is not None and encounter.individual_guid is not None:
+                    cleanup.rollback_and_abort(
+                        message='Individual POST included an encounter that already has an Individual.'
+                    )
         try:
             result_data = current_app.edm.request_passthrough_result(
                 'individual.data', 'post', {'data': request_in}, ''

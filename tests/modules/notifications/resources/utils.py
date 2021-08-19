@@ -77,7 +77,7 @@ def read_notification(
 
     expected_keys = {
         'guid',
-        'status',
+        'is_read',
         'message_type',
         'sender_name',
         'sender_email',

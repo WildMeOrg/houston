@@ -11,11 +11,6 @@ import enum
 import uuid
 
 
-class NotificationStatus(str, enum.Enum):
-    read = 'read'
-    unread = 'unread'
-
-
 class NotificationType(str, enum.Enum):
     raw = 'raw'
     new_enc = 'new_encounter_individual'  # A new encounter on an individual
@@ -91,9 +86,8 @@ class Notification(db.Model, HoustonModel):
         db.GUID, default=uuid.uuid4, primary_key=True
     )  # pylint: disable=invalid-name
 
-    status = db.Column(
-        db.String(length=255), default=NotificationStatus.unread, nullable=False
-    )
+    is_read = db.Column(db.Boolean, default=False, nullable=False)
+
     message_type = db.Column(db.String, default=NotificationType.raw, nullable=False)
     message_values = db.Column(db.JSON, nullable=True)
     recipient_guid = db.Column(

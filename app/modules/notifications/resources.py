@@ -10,6 +10,8 @@ import logging
 from flask_login import current_user  # NOQA
 from flask_restx_patched import Resource
 from flask_restx_patched._http import HTTPStatus
+from marshmallow import ValidationError
+from app.extensions.api import abort
 
 from app.extensions import db
 from app.extensions.api import Namespace
@@ -108,6 +110,37 @@ class NotificationByID(Resource):
         """
         Get Notification details by ID.
         """
+        return notification
+
+    @api.permission_required(
+        permissions.ObjectAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'obj': kwargs['notification'],
+            'action': AccessOperation.WRITE,
+        },
+    )
+    @api.login_required(oauth_scopes=['notifications:write'])
+    @api.parameters(parameters.PatchNotificationDetailsParameters())
+    @api.response(schemas.DetailedNotificationSchema())
+    @api.response(code=HTTPStatus.CONFLICT)
+    def patch(self, args, notification):
+        """
+        Patch Notification details by ID.
+        """
+        context = api.commit_or_abort(
+            db.session, default_error_message='Failed to update Notification details.'
+        )
+        with context:
+            try:
+                parameters.PatchNotificationDetailsParameters.perform_patch(
+                    args, obj=notification
+                )
+                db.session.merge(notification)
+            except ValidationError:
+                abort(
+                    400, message=f"unable to set {args[0]['path']} to {args[0]['value']}"
+                )
+
         return notification
 
     @api.permission_required(

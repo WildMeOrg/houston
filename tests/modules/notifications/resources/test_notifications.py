@@ -2,7 +2,7 @@
 # pylint: disable=invalid-name,missing-docstring
 
 import logging
-
+import tests.utils as test_utils
 from app.modules.notifications.models import (
     Notification,
     NotificationType,
@@ -70,25 +70,36 @@ def test_get_notifications(
     researcher_2_notif = notif_utils.read_notification(
         flask_app_client, researcher_2, researcher_2_notifs.json[-1]['guid']
     )
+    assert not researcher_2_notif.json['is_read']
     values = researcher_2_notif.json['message_values']
     assert set(values.keys()) >= set(
         {'sender_name', 'sender_email', 'collaboration_guid'}
     )
 
 
-# def test_patch_notification(
-#     db, flask_app_client, researcher_1, researcher_2, user_manager_user
-# ):
-#     # Create a dummy one
-#     notif_1_data = NotificationBuilder()
-#     notif_1_data.set_sender(researcher_1)
-#     # Just needs anything with a guid
-#     notif_1_data.set_collaboration(user_manager_user)
-#
-#     Notification.create(
-#         NotificationType.collab_request, researcher_2, notif_1_data
-#     )
-#
-#     researcher_1_notifs = notif_utils.read_all_notifications(
-#         flask_app_client, researcher_1
-#     )
+def test_patch_notification(
+    db, flask_app_client, researcher_1, researcher_2, user_manager_user
+):
+    # Create a dummy one
+    notif_1_data = NotificationBuilder()
+    notif_1_data.set_sender(researcher_1)
+    # Just needs anything with a guid
+    notif_1_data.set_collaboration(user_manager_user)
+
+    Notification.create(NotificationType.collab_request, researcher_2, notif_1_data)
+
+    researcher_2_notifs = notif_utils.read_all_notifications(
+        flask_app_client, researcher_2
+    )
+    notif_guid = researcher_2_notifs.json[-1]['guid']
+    data = [test_utils.patch_replace_op('is_read', True)]
+    notif_utils.patch_notification(flask_app_client, notif_guid, researcher_2, data)
+
+    res_2_notif = notif_utils.read_notification(
+        flask_app_client, researcher_2, researcher_2_notifs.json[-1]['guid']
+    )
+    values = res_2_notif.json['message_values']
+    assert set(values.keys()) >= set(
+        {'sender_name', 'sender_email', 'collaboration_guid'}
+    )
+    assert res_2_notif.json['is_read']

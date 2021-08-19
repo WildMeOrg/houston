@@ -5,6 +5,7 @@ Notifications database models
 """
 
 from app.extensions import db, HoustonModel
+from flask import render_template
 
 import enum
 import uuid
@@ -48,13 +49,23 @@ NOTIFICATION_DEFAULTS = {
     },
 }
 
-NOTIFICATION_FIELDS = {
-    NotificationType.collab_request: {
-        'sender_name',
-        'sender_email',
-        'collaboration_guid',
+NOTIFICATION_CONFIG = {
+    # All messages must have a sender
+    NotificationType.all: {
+        'mandatory_fields': {'sender_name', 'sender_email'},
     },
-    NotificationType.raw: {'sender_name', 'sender_email'},
+    NotificationType.collab_request: {
+        'email_content_template': 'collaboration_request.jinja2',
+        'email_digest_content_template': 'collaboration_request_digest.jinja2',
+        'email_subject_template': 'collaboration_request_subject.jinja2',
+        'mandatory_fields': {'collaboration_guid'},
+    },
+    NotificationType.raw: {
+        'email_content_template': 'raw.jinja2',
+        'email_digest_content_template': 'raw_digest.jinja2',
+        'email_subject_template': 'raw_subject.jinja2',
+        'mandatory_fields': {},
+    },
 }
 
 
@@ -124,19 +135,35 @@ class Notification(db.Model, HoustonModel):
         from app.modules.emails.utils import EmailUtils
 
         channels = self.channels_to_send(False)
+
         if channels[NotificationChannel.email]:
-            outgoing_message = EmailUtils.build_email(
-                self.message_type, self.message_values
+            config = NOTIFICATION_CONFIG[self.message_type]
+            email_message_values = {
+                'context_name': 'context not set',
+            }
+            email_message_values.update(self.message_values)
+            subject_template = f"email/en/{config['email_subject_template']}"
+            content_template = f"email/en/{config['email_content_template']}"
+            subject = render_template(subject_template, **email_message_values)
+            email_content = render_template(content_template, **email_message_values)
+            EmailUtils.send_email(
+                self.message_values['sender_email'],
+                self.recipient.email,
+                subject,
+                email_content,
             )
-            EmailUtils.send_email(outgoing_message)
 
     @classmethod
     def create(cls, notification_type, receiving_user, builder):
         assert notification_type in NotificationType
 
         data = builder.data
-
-        assert set(data.keys()) >= set(NOTIFICATION_FIELDS[notification_type])
+        assert set(data.keys()) >= set(
+            NOTIFICATION_CONFIG[NotificationType.all]['mandatory_fields']
+        )
+        assert set(data.keys()) >= set(
+            NOTIFICATION_CONFIG[notification_type]['mandatory_fields']
+        )
 
         new_notification = cls(
             recipient=receiving_user,

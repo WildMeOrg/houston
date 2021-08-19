@@ -66,12 +66,8 @@ NOTIFICATION_CONFIG = {
 
 # Simple class to build up the contents of the message so that the caller does not need to know the field names above
 class NotificationBuilder(object):
-    def __init__(self):
-        self.data = {}
-
-    def set_sender(self, user):
-        self.data['sender_name'] = user.full_name
-        self.data['sender_email'] = user.email
+    def __init__(self, sender):
+        self.data = {'sender_name': sender.full_name, 'sender_email': sender.email}
 
     def set_collaboration(self, collab):
         self.data['collaboration_guid'] = collab.guid

@@ -28,14 +28,12 @@ def test_get_notifications(
     )
 
     # Create a couple of them
-    notif_1_data = NotificationBuilder()
-    notif_1_data.set_sender(researcher_1)
+    notif_1_data = NotificationBuilder(researcher_1)
     # Just needs anything with a guid
     notif_1_data.set_collaboration(user_manager_user)
 
     Notification.create(NotificationType.collab_request, researcher_2, notif_1_data)
-    notif_2_data = NotificationBuilder()
-    notif_2_data.set_sender(researcher_2)
+    notif_2_data = NotificationBuilder(researcher_2)
     Notification.create(NotificationType.raw, researcher_1, notif_2_data)
 
     researcher_1_notifs = notif_utils.read_all_notifications(
@@ -81,8 +79,7 @@ def test_patch_notification(
     db, flask_app_client, researcher_1, researcher_2, user_manager_user
 ):
     # Create a dummy one
-    notif_1_data = NotificationBuilder()
-    notif_1_data.set_sender(researcher_1)
+    notif_1_data = NotificationBuilder(researcher_1)
     # Just needs anything with a guid
     notif_1_data.set_collaboration(user_manager_user)
 

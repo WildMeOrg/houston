@@ -44,8 +44,8 @@ def test_get_notification_prefs(db, researcher_1):
 
 
 def test_notification_message(db, researcher_1, researcher_2):
-    builder = NotificationBuilder()
-    builder.set_sender(researcher_1)
+    builder = NotificationBuilder(researcher_1)
+
     # just needs something with a guid
     builder.set_collaboration(researcher_1)
 

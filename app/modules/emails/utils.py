@@ -4,9 +4,6 @@ import logging
 
 log = logging.getLogger(__name__)
 
-EMAIL_PATH = 'app/modules/emails/templates/en/'
-DIGEST_EMAIL_PATH = f'{EMAIL_PATH}digest/'
-
 
 class EmailUtils(object):
     @classmethod

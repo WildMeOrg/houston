@@ -196,62 +196,69 @@ def get_bulk_creation_data(transaction_id, test_filename):
 
 
 # Create a default valid Sage detection response (to allow for the test to corrupt it accordingly)
-def build_sage_detection_response(asset_group_guid, job_uuid):
-    from app.modules.asset_groups.models import AssetGroup
+def build_sage_detection_response(asset_group_sighting_guid, job_uuid):
+    from app.modules.asset_groups.models import AssetGroupSighting
     import uuid
 
-    asset_group = AssetGroup.query.get(asset_group_guid)
+    asset_group_sighting = AssetGroupSighting.query.get(asset_group_sighting_guid)
+    asset_ids = list(asset_group_sighting.jobs.values())[0]['asset_ids']
 
     # Generate the response back from Sage
     sage_resp = {
-        'response': {
-            'jobid': f'{str(job_uuid)}',
-            'json_result': {
-                'has_assignments': False,
-                'image_uuid_list': [],
-                'results_list': [],
-                'score_list': [
-                    0.0,
+        'status': 'completed',
+        'jobid': str(job_uuid),
+        'json_result': {
+            'image_uuid_list': [
+                # Image UUID stored in acm (not the same as houston)
+                {'__UUID__': str(uuid.uuid4())}
+                for _ in asset_ids
+            ],
+            'results_list': [
+                [
+                    {
+                        'id': 1,
+                        'uuid': {'__UUID__': '1891ca05-5fa5-4e52-bb30-8ee80941c2fc'},
+                        'xtl': 459,
+                        'ytl': 126,
+                        'left': 459,
+                        'top': 126,
+                        'width': 531,
+                        'height': 539,
+                        'theta': 0.0,
+                        'confidence': 0.8568,
+                        'class': 'zebra_plains',
+                        'species': 'zebra_plains',
+                        'viewpoint': None,
+                        'quality': None,
+                        'multiple': False,
+                        'interest': False,
+                    },
+                    {
+                        'id': 2,
+                        'uuid': {'__UUID__': '0c6f3a16-c3f0-4f8d-a47d-951e49b0dacb'},
+                        'xtl': 26,
+                        'ytl': 145,
+                        'left': 26,
+                        'top': 145,
+                        'width': 471,
+                        'height': 500,
+                        'theta': 0.0,
+                        'confidence': 0.853,
+                        'class': 'zebra_plains',
+                        'species': 'zebra_plains',
+                        'viewpoint': None,
+                        'quality': None,
+                        'multiple': False,
+                        'interest': False,
+                    },
                 ],
-            },
-            'status': 'completed',
-        },
-        'status': {
-            'cache': -1,
-            'code': 200,
-            'message': {},
-            'success': True,
+            ],
         },
     }
-    base_result = [
-        {
-            'class': 'whale_orca+fin_dorsal',
-            'confidence': 0.7909,
-            'height': 820,
-            'id': 947505,
-            'interest': False,
-            'left': 140,
-            'multiple': False,
-            'quality': None,
-            'species': 'whale_orca+fin_dorsal',
-            'theta': 0.0,
-            'top': 0,
-            'uuid': '23b9ac5a-9a52-473a-a4dd-6a1f4f255dbc',
-            'viewpoint': 'left',
-            'width': 1063,
-            'xtl': 140,
-            'ytl': 0,
-        }
-    ]
 
-    import copy
-
-    for asset in asset_group.assets:
-        sage_resp['response']['json_result']['image_uuid_list'].append(str(asset.guid))
-        # Give each annotation a new UUID
-        new_result = copy.deepcopy(base_result)
-        new_result[0]['uuid'] = str(uuid.uuid4())
-        sage_resp['response']['json_result']['results_list'].append(new_result)
+    # Make sure results_list is the same length as the assets (just
+    # empty [])
+    sage_resp['json_result']['results_list'] += [[] for _ in range(len(asset_ids) - 1)]
     return sage_resp
 
 

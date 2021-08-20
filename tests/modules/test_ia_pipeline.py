@@ -48,7 +48,7 @@ def test_ia_pipeline_sim_detect_response(
 
         # Simulate response from Sage
         sage_resp = asset_group_utils.build_sage_detection_response(
-            asset_group_uuid, job_uuid
+            asset_group_sighting1_guid, job_uuid
         )
         asset_group_utils.send_sage_detection_response(
             flask_app_client,

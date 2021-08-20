@@ -5,11 +5,12 @@ AssetGroups database models
 """
 
 import enum
-import re
 from flask import current_app
 from flask_login import current_user  # NOQA
 import requests.exceptions
 import utool as ut
+import git
+from git import Git as BaseGit, Repo as BaseRepo
 
 from app.extensions.gitlab import GitlabInitializationError
 from app.extensions import db, HoustonModel, parallel
@@ -25,7 +26,6 @@ import logging
 import tqdm
 import uuid
 import json
-import git
 import os
 import pathlib
 import shutil
@@ -49,41 +49,6 @@ def compute_xxhash64_digest_filepath(filepath):
     return digest
 
 
-class GitLabPAT(object):
-    def __init__(self, repo=None, url=None):
-        assert repo is not None or url is not None, 'Must specify one of repo or url'
-
-        self.repo = repo
-        if url is None:
-            assert repo is not None, 'both repo and url parameters provided, choose one'
-            url = repo.remotes.origin.url
-        self.original_url = url
-
-        remote_personal_access_token = current_app.config.get(
-            'GITLAB_REMOTE_LOGIN_PAT', None
-        )
-        self.authenticated_url = re.sub(
-            #: match on either http or https
-            r'(https?)://(.*)$',
-            #: replace with basic-auth entities
-            r'\1://oauth2:%s@\2' % (remote_personal_access_token,),
-            self.original_url,
-        )
-
-    def __enter__(self):
-        # Update remote URL with PAT
-        if self.repo is not None:
-            self.repo.remotes.origin.set_url(self.authenticated_url)
-        return self
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        if self.repo is not None:
-            self.repo.remotes.origin.set_url(self.original_url)
-        if exc_type:
-            return False
-        return True
-
-
 class AssetGroupMajorType(str, enum.Enum):
     filesystem = 'filesystem'
     archive = 'archive'
@@ -101,6 +66,35 @@ class AssetGroupSightingStage(str, enum.Enum):
     curation = 'curation'
     processed = 'processed'
     failed = 'failed'
+
+
+class _Git(BaseGit):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Assign the SSH command to include the id key file for authentication
+        self.update_environment(GIT_SSH_COMMAND=current_app.config['GIT_SSH_COMMAND'])
+
+
+class Repo(BaseRepo):
+    GitCommandWrapperType = _Git
+
+    # This class is copied from the original with one minor adjustment
+    # to use the class' `GitCommandWrapperType` definition as opposed
+    # to the direct reference to the `Git` class.
+    # Fixed in https://github.com/gitpython-developers/GitPython/pull/1322
+    @classmethod
+    def clone_from(
+        cls, url, to_path, progress=None, env=None, multi_options=None, **kwargs
+    ):
+        # git = Git(os.getcwd())
+        git = cls.GitCommandWrapperType(os.getcwd())
+        if env is not None:
+            git.update_environment(**env)
+        from git.db import GitCmdObjectDB
+
+        return cls._clone(
+            git, url, to_path, GitCmdObjectDB, progress, multi_options, **kwargs
+        )
 
 
 # AssetGroup can have many sightings, so needs a table
@@ -653,7 +647,7 @@ class AssetGroup(db.Model, HoustonModel):
         # Create the repo
         git_path = os.path.join(group_path, '.git')
         if not os.path.exists(git_path):
-            repo = git.Repo.init(group_path)
+            repo = Repo.init(group_path)
             assert len(repo.remotes) == 0
             git_remote_public_name = current_app.config.get('GIT_PUBLIC_NAME', None)
             git_remote_email = current_app.config.get('GIT_EMAIL', None)
@@ -661,7 +655,7 @@ class AssetGroup(db.Model, HoustonModel):
             repo.git.config('user.name', git_remote_public_name)
             repo.git.config('user.email', git_remote_email)
         else:
-            repo = git.Repo(group_path)
+            repo = Repo(group_path)
 
         asset_group_path = os.path.join(group_path, '_asset_group')
         if not os.path.exists(asset_group_path):
@@ -773,14 +767,13 @@ class AssetGroup(db.Model, HoustonModel):
         repo = self.get_repository()
         assert repo is not None
 
-        with GitLabPAT(repo):
-            log.info('Pulling from authorized URL')
-            try:
-                repo.git.pull(repo.remotes.origin, repo.head.ref)
-            except git.exc.GitCommandError as e:
-                log.info(f'git pull failed for {self.guid}: {str(e)}')
-            else:
-                log.info('...pulled')
+        log.info('Pulling from remote repository')
+        try:
+            repo.git.pull(repo.remotes.origin, repo.head.ref)
+        except git.exc.GitCommandError as e:
+            log.info(f'git pull failed for {self.guid}: {str(e)}')
+        else:
+            log.info('...pulled')
 
         self.update_metadata_from_repo(repo)
 
@@ -791,16 +784,15 @@ class AssetGroup(db.Model, HoustonModel):
         assert repo is None
 
         asset_group_abspath = self.get_absolute_path()
-        gitlab_url = project.web_url
+        remote_url = project.ssh_url_to_repo
 
-        with GitLabPAT(url=gitlab_url) as glpat:
-            args = (
-                gitlab_url,
-                asset_group_abspath,
-            )
-            log.info('Cloning remote asset_group:\n\tremote: %r\n\tlocal:  %r' % args)
-            glpat.repo = git.Repo.clone_from(glpat.authenticated_url, asset_group_abspath)
-            log.info('...cloned')
+        args = (
+            remote_url,
+            asset_group_abspath,
+        )
+        log.info('Cloning remote asset_group:\n\tremote: %r\n\tlocal:  %r' % args)
+        repo = Repo.clone_from(remote_url, asset_group_abspath)
+        log.info('...cloned')
 
         repo = self.get_repository()
         assert repo is not None
@@ -1362,7 +1354,7 @@ class AssetGroup(db.Model, HoustonModel):
     def get_repository(self):
         repo_path = pathlib.Path(self.get_absolute_path())
         if (repo_path / '.git').exists():
-            return git.Repo(repo_path)
+            return Repo(repo_path)
 
     def ensure_repository(self):
         repo = self.get_repository()
@@ -1374,7 +1366,7 @@ class AssetGroup(db.Model, HoustonModel):
             if project:
                 repo = self.git_clone(project)
             else:
-                repo = git.Repo.init(self.get_absolute_path())
+                repo = Repo.init(self.get_absolute_path())
         self._ensure_repository_files()
         return repo
 

@@ -2,7 +2,7 @@
 # pylint: disable=missing-docstring
 import pytest
 
-from app import CONFIG_NAME_MAPPER, create_app
+from app import create_app
 
 
 @pytest.fixture(autouse=True)
@@ -49,10 +49,3 @@ def test_create_app_specific_config(monkeypatch):
 def test_create_app_with_non_existing_config():
     with pytest.raises(SystemExit):
         create_app('non-existing-config', testing=True)
-
-
-def test_create_app_with_broken_import_config():
-    CONFIG_NAME_MAPPER['broken-import-config'] = 'broken-import-config'
-    with pytest.raises(SystemExit):
-        create_app('broken-import-config', testing=True)
-    del CONFIG_NAME_MAPPER['broken-import-config']

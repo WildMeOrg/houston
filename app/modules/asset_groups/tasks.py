@@ -34,7 +34,7 @@ def ensure_remote(asset_group_guid, additional_tags=[]):
 
     repo = asset_group.ensure_repository()
     if 'origin' not in repo.remotes:
-        repo.create_remote('origin', project.web_url)
+        repo.create_remote('origin', project.ssh_url_to_repo)
 
 
 @celery.task(
@@ -60,7 +60,7 @@ def delete_remote(asset_group_guid, ignore_error=True):
     max_retries=10,
 )
 def git_push(asset_group_guid):
-    from .models import AssetGroup, GitLabPAT
+    from .models import AssetGroup
 
     asset_group = AssetGroup.query.get(asset_group_guid)
     if asset_group is None:
@@ -68,10 +68,9 @@ def git_push(asset_group_guid):
     repo = asset_group.get_repository()
     if 'origin' not in repo.remotes:
         ensure_remote(asset_group_guid)
-    with GitLabPAT(repo):
-        log.info('Pushing to authorized URL')
-        repo.git.push('--set-upstream', repo.remotes.origin, repo.head.ref)
-        log.info(f'...pushed to {repo.head.ref}')
+    log.info('Pushing to authorized URL')
+    repo.git.push('--set-upstream', repo.remotes.origin, repo.head.ref)
+    log.info(f'...pushed to {repo.head.ref}')
 
 
 @celery.task(

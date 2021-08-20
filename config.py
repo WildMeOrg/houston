@@ -290,6 +290,27 @@ class AssetGroupConfig(object):
     GIT_EMAIL = os.getenv('GIT_EMAIL', 'dev@wildme.org')
     GITLAB_NAMESPACE = os.getenv('GITLAB_NAMESPACE', 'TEST')
     GITLAB_REMOTE_LOGIN_PAT = os.getenv('GITLAB_REMOTE_LOGIN_PAT')
+    # FIXME: Note, if you change the SSH key, you should also delete the ssh_id file (see GIT_SSH_KEY_FILEPATH)
+    GIT_SSH_KEY = os.getenv('GIT_SSH_KEY')
+
+    @property
+    def GIT_SSH_KEY_FILEPATH(self):
+        # Assuming mixed-in with BaseConfig
+        fp = DATA_ROOT / 'id_ssh_key'
+        if self.GIT_SSH_KEY is None:
+            # Assume the user knows what they are doing and bail out
+            # FIXME: It's possible to get here because parts of the application
+            #        needs loaded before all the configuration is available.
+            return fp
+        # Assume if the file exists, we're all good.
+        if not fp.exists():
+            with fp.open('w') as fb:
+                fb.write(self.GIT_SSH_KEY)
+        return fp
+
+    @property
+    def GIT_SSH_COMMAND(self):
+        return f'ssh -i {self.GIT_SSH_KEY_FILEPATH} -o StrictHostKeyChecking=no'
 
 
 def _parse_elasticsearch_hosts(raw_hosts_line):

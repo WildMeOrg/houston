@@ -17,11 +17,6 @@ def validate_collab(resp_json, user_guids, view_approvals):
 def test_create_collaboration(
     flask_app_client, researcher_1, readonly_user, researcher_2, user_manager_user, db
 ):
-    duff_uuid = str(uuid.uuid4())
-    data = {'user_guid': duff_uuid}
-    resp_msg = f'User with guid {duff_uuid} not found'
-    collab_utils.create_collaboration(flask_app_client, researcher_1, data, 400, resp_msg)
-
     data = {'user_guid': str(readonly_user.guid)}
     resp_msg = f'User with guid {readonly_user.guid} is not a researcher'
     collab_utils.create_collaboration(flask_app_client, researcher_1, data, 400, resp_msg)

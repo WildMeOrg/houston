@@ -6,6 +6,7 @@ Serialization schemas for Notifications resources RESTful API
 
 # from flask_marshmallow import base_fields
 from flask_restx_patched import ModelSchema
+from flask_marshmallow import base_fields
 
 from .models import Notification
 
@@ -15,12 +16,17 @@ class BaseNotificationSchema(ModelSchema):
     Base Notification schema exposes only the most general fields.
     """
 
+    sender_name = base_fields.Function(Notification.get_sender_name)
+    sender_email = base_fields.Function(Notification.get_sender_email)
+
     class Meta:
         # pylint: disable=missing-docstring
         model = Notification
         fields = (
             Notification.guid.key,
-            Notification.status.key,
+            Notification.is_read.key,
+            'sender_name',
+            'sender_email',
             Notification.message_type.key,
         )
         dump_only = (Notification.guid.key,)

@@ -36,6 +36,7 @@ MODULE_USER_MAP = {
     ('User', AccessOperation.WRITE): ['is_active'],  # Creating yourself
     ('Collaboration', AccessOperation.WRITE): ['is_researcher', 'is_user_manager'],
     ('Collaboration', AccessOperation.READ): ['is_user_manager'],
+    ('Notification', AccessOperation.READ): ['is_active'],
     ('Keyword', AccessOperation.READ): ['is_active'],
     ('Keyword', AccessOperation.WRITE): ['is_active'],
 }

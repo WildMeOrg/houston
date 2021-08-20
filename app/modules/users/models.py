@@ -660,13 +660,14 @@ class User(db.Model, FeatherModel, UserEDMMixin):
         from app.modules.sightings.models import Sighting
         from app.modules.projects.models import Project
         from app.modules.individuals.models import Individual
+        from app.modules.notifications.models import Notification
 
         ret_val = False
 
         if isinstance(obj, User):
             ret_val = obj == self
         # AssetGroup, Encounters and Projects all have an owner field, check that
-        elif isinstance(obj, (AssetGroup, Encounter, Project)):
+        elif isinstance(obj, (AssetGroup, Encounter, Project, Notification)):
             ret_val = obj.owner == self
         elif isinstance(obj, Asset):
             # assets are not owned directly by the user but the asset_group they're in is.

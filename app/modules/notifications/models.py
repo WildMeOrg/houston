@@ -5,22 +5,18 @@ Notifications database models
 """
 
 from app.extensions import db, HoustonModel
+from flask import render_template
 
 import enum
 import uuid
 
 
-class NotificationStatus(str, enum.Enum):
-    read = 'read'
-    unread = 'unread'
-
-
 class NotificationType(str, enum.Enum):
     raw = 'raw'
-    new_enc = 'new_enc'  # TODO what's this for?
+    new_enc = 'new_encounter_individual'  # A new encounter on an individual
     all = 'all'  # For use specifically in preferences, catchall for everything
-    collab_request = 'collaboration request'
-    merge_request = 'individual merge request'
+    collab_request = 'collaboration_request'
+    merge_request = 'individual_merge_request'
 
 
 # Can send messages out on multiple channels
@@ -34,6 +30,10 @@ NOTIFICATION_DEFAULTS = {
         NotificationChannel.rest: True,
         NotificationChannel.email: False,
     },
+    NotificationType.raw: {
+        NotificationChannel.rest: True,
+        NotificationChannel.email: True,
+    },
     NotificationType.collab_request: {
         NotificationChannel.rest: True,
         NotificationChannel.email: False,
@@ -44,7 +44,33 @@ NOTIFICATION_DEFAULTS = {
     },
 }
 
-NOTIFICATION_FIELDS = {NotificationType.collab_request: {'requester'}}
+NOTIFICATION_CONFIG = {
+    # All messages must have a sender
+    NotificationType.all: {
+        'mandatory_fields': {'sender_name', 'sender_email'},
+    },
+    NotificationType.collab_request: {
+        'email_content_template': 'collaboration_request.jinja2',
+        'email_digest_content_template': 'collaboration_request_digest.jinja2',
+        'email_subject_template': 'collaboration_request_subject.jinja2',
+        'mandatory_fields': {'collaboration_guid'},
+    },
+    NotificationType.raw: {
+        'email_content_template': 'raw.jinja2',
+        'email_digest_content_template': 'raw_digest.jinja2',
+        'email_subject_template': 'raw_subject.jinja2',
+        'mandatory_fields': {},
+    },
+}
+
+
+# Simple class to build up the contents of the message so that the caller does not need to know the field names above
+class NotificationBuilder(object):
+    def __init__(self, sender):
+        self.data = {'sender_name': sender.full_name, 'sender_email': sender.email}
+
+    def set_collaboration(self, collab):
+        self.data['collaboration_guid'] = collab.guid
 
 
 class Notification(db.Model, HoustonModel):
@@ -56,9 +82,8 @@ class Notification(db.Model, HoustonModel):
         db.GUID, default=uuid.uuid4, primary_key=True
     )  # pylint: disable=invalid-name
 
-    status = db.Column(
-        db.String(length=255), default=NotificationStatus.unread, nullable=False
-    )
+    is_read = db.Column(db.Boolean, default=False, nullable=False)
+
     message_type = db.Column(db.String, default=NotificationType.raw, nullable=False)
     message_values = db.Column(db.JSON, nullable=True)
     recipient_guid = db.Column(
@@ -75,9 +100,20 @@ class Notification(db.Model, HoustonModel):
             ')>'.format(class_name=self.__class__.__name__, self=self)
         )
 
+    @property
+    def owner(self):
+        return self.recipient
+
+    def get_sender_name(self):
+        return self.message_values.get('sender_name', 'N/A')
+
+    def get_sender_email(self):
+        return self.message_values.get('sender_email', 'N/A')
+
     # returns dictionary of channel:bool
-    def channels_to_send(self):
+    def channels_to_send(self, digest=False):
         # pylint: disable=invalid-name
+        # In future the channels to send right now will be different for digest generation
         channels = None
         user_prefs = UserNotificationPreferences.get_user_preferences(self.recipient)
         if self.message_type in user_prefs.keys():
@@ -85,19 +121,48 @@ class Notification(db.Model, HoustonModel):
 
         return channels
 
+    def send_if_required(self):
+        from app.modules.emails.utils import EmailUtils
+
+        channels = self.channels_to_send(False)
+
+        if channels[NotificationChannel.email]:
+            config = NOTIFICATION_CONFIG[self.message_type]
+            email_message_values = {
+                'context_name': 'context not set',
+            }
+            email_message_values.update(self.message_values)
+            subject_template = f"email/en/{config['email_subject_template']}"
+            content_template = f"email/en/{config['email_content_template']}"
+            subject = render_template(subject_template, **email_message_values)
+            email_content = render_template(content_template, **email_message_values)
+            EmailUtils.send_email(
+                self.message_values['sender_email'],
+                self.recipient.email,
+                subject,
+                email_content,
+            )
+
     @classmethod
-    def create(cls, notification_type, user, data):
+    def create(cls, notification_type, receiving_user, builder):
         assert notification_type in NotificationType
-        assert set(data.keys()) >= NOTIFICATION_FIELDS[notification_type]
+
+        data = builder.data
+        assert set(data.keys()) >= set(
+            NOTIFICATION_CONFIG[NotificationType.all]['mandatory_fields']
+        )
+        assert set(data.keys()) >= set(
+            NOTIFICATION_CONFIG[notification_type]['mandatory_fields']
+        )
 
         new_notification = cls(
-            recipient=user,
+            recipient=receiving_user,
             message_type=notification_type,
             message_values=data,
         )
         with db.session.begin(subtransactions=True):
             db.session.add(new_notification)
-        # TODO Check if notification should be sent right now on any channels
+        new_notification.send_if_required()
         return new_notification
 
 

@@ -26,9 +26,16 @@ class PatchIndividualDetailsParameters(PatchJSONParameters):
         PatchJSONParameters.OP_REMOVE,
     )
 
-    PATH_CHOICES_EDM = '/encounters'
+    PATH_CHOICES_EDM = (
+        '/encounters',
+        '/sex',
+        '/timeOfBirth',
+        '/timeOfDeath',
+        '/comments',
+        '/names',
+    )
 
-    PATH_CHOICES_HOUSTON = '/featuredAssetGuid'
+    PATH_CHOICES_HOUSTON = ('/featuredAssetGuid', '/encounters')
 
     PATH_CHOICES = PATH_CHOICES_EDM + PATH_CHOICES_HOUSTON
 

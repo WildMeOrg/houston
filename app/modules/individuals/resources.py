@@ -226,13 +226,21 @@ class IndividualByID(Resource):
         """
         Patch Individual details by ID.
         """
+
         context = api.commit_or_abort(
             db.session, default_error_message='Failed to update Individual details.'
         )
 
+        houston_args = [
+            arg
+            for arg in args
+            if arg['path']
+            in parameters.PatchIndividualDetailsParameters.PATH_CHOICES_HOUSTON
+        ]
+
         with context:
             parameters.PatchIndividualDetailsParameters.perform_patch(
-                args, obj=individual
+                houston_args, obj=individual
             )
 
         edm_args = [

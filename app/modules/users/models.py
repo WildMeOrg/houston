@@ -106,7 +106,9 @@ class User(db.Model, FeatherModel, UserEDMMixin):
     )  # pylint: disable=invalid-name
     version = db.Column(db.BigInteger, default=None, nullable=True)
 
-    email = db.Column(db.String(length=120), index=True, unique=True, nullable=False)
+    email = db.Column(
+        db.String(length=120), index=True, unique=True, default='', nullable=False
+    )
 
     password = db.Column(
         column_types.PasswordType(max_length=128, schemes=('bcrypt',)), nullable=False
@@ -118,11 +120,11 @@ class User(db.Model, FeatherModel, UserEDMMixin):
     website = db.Column(
         db.String(length=120), nullable=True
     )  # can be migrated from EDM field "userURL"
-    location = db.Column(db.String(length=120), nullable=True)
+    location = db.Column(db.String(length=120), default='', nullable=True)
     affiliation = db.Column(
-        db.String(length=120), nullable=True
+        db.String(length=120), default='', nullable=True
     )  # can be migrated from BE field "affiliation"
-    forum_id = db.Column(db.String(length=120), nullable=True)
+    forum_id = db.Column(db.String(length=120), default='', nullable=True)
     locale = db.Column(db.String(length=20), default='EN', nullable=True)
 
     accepted_user_agreement = db.Column(

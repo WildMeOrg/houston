@@ -11,6 +11,7 @@ from flask_login import current_user
 from flask_restx_patched import Resource
 from flask_restx_patched._http import HTTPStatus
 from app.extensions.api import abort
+from app.extensions.api.parameters import PaginationParameters
 from flask import current_app
 from app.extensions.api import Namespace
 
@@ -306,7 +307,10 @@ class UserEDMSync(Resource):
 @api.resolve_object_by_model(User, 'user')
 class UserSightings(Resource):
     """
-    EDM Sightings for a given Houston user
+    EDM Sightings for a given Houston user. Note that we use PaginationParameters,
+    meaning by default this call returns 20 sightings and will never return more
+    than 100. For such scenarios the frontend should call this successively,
+    allowing batches of <= 100 sightings to load while others are fetched.
     """
 
     @api.login_required(oauth_scopes=['users:read'])
@@ -317,13 +321,15 @@ class UserSightings(Resource):
             'action': AccessOperation.READ,
         },
     )
-    def get(self, user):
+    @api.parameters(PaginationParameters())
+    def get(self, args, user):
         """
         Get Sightings for user with EDM metadata
         """
         response = {'sightings': [], 'success': True}
 
-        for sighting in user.get_sightings():
+        start, end = args['offset'], args['offset'] + args['limit']
+        for sighting in user.get_sightings()[start:end]:
 
             sighting_response = current_app.edm.get_dict('sighting.data', sighting.guid)
 

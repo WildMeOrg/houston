@@ -29,6 +29,7 @@ import json
 import os
 import pathlib
 import shutil
+from urllib.parse import urljoin
 
 from .metadata import AssetGroupMetadata
 
@@ -322,7 +323,10 @@ class AssetGroupSighting(db.Model, HoustonModel):
         from app.modules.ia_config_reader import IaConfig
 
         base_url = current_app.config.get('BASE_URL')
-        callback_url = f'{base_url}api/v1/asset_group/sighting/{str(self.guid)}/sage_detected/{str(job_uuid)}'
+        callback_url = urljoin(
+            base_url,
+            f'/api/v1/asset_group/sighting/{str(self.guid)}/sage_detected/{str(job_uuid)}',
+        )
 
         ia_config_reader = IaConfig(current_app.config.get('CONFIG_MODEL'))
         detector_config = ia_config_reader.get_named_detector_config(model)
@@ -332,13 +336,11 @@ class AssetGroupSighting(db.Model, HoustonModel):
         model_config = {
             'endpoint': detector_config['start_detect'],
             'jobid': str(job_uuid),
-            'callback_url': callback_url,
-            'image_uuid_list': [],
+            'callback_url': f'houston+{callback_url}',
+            'callback_detailed': True,
             'input': detector_config,
         }
-        model_config['input']['callback_url'] = callback_url
-        model_config['input']['image_url'] = f'{base_url}api/v1/asset/src-raw/'
-        model_config['input']['callback_detailed'] = True
+        asset_url = urljoin(base_url, '/api/v1/asset/src_raw/')
 
         asset_guids = []
         for filename in self.config.get('assetReferences'):
@@ -347,7 +349,9 @@ class AssetGroupSighting(db.Model, HoustonModel):
             if asset.guid not in asset_guids:
                 asset_guids.append(asset.guid)
 
-        model_config['image_uuid_list'] = asset_guids
+        model_config['image_uuid_list'] = [
+            f'houston+{urljoin(asset_url, str(asset_guid))}' for asset_guid in asset_guids
+        ]
         return model_config
 
     def run_sage_detection(self, model):
@@ -363,6 +367,9 @@ class AssetGroupSighting(db.Model, HoustonModel):
             'model': model,
             'active': True,
             'start': datetime.utcnow(),
+            'asset_ids': [
+                uri.rsplit('/', 1)[-1] for uri in detection_request['image_uuid_list']
+            ],
         }
         # This is necessary because we can only mark self as modified if
         # we assign to one of the database attributes
@@ -380,34 +387,26 @@ class AssetGroupSighting(db.Model, HoustonModel):
         # response, process it here
         return True
 
-    def detected(self, job_id, data):
-        import uuid
-
+    def detected(self, job_id, response):
         if self.stage != AssetGroupSightingStage.detection:
             raise HoustonException(f'AssetGroupSighting {self.guid} is not detecting')
 
-        if str(job_id) not in self.jobs:
+        job = self.jobs.get(str(job_id))
+        if job is None:
             raise HoustonException(f'job_id {job_id} not found')
 
-        status = data.get('status')
+        status = response.get('status')
         if not status:
             raise HoustonException('No status in response from Sage')
 
-        success = status.get('success', False)
-        if not success:
+        if status != 'completed':
             self.stage = AssetGroupSightingStage.failed
             # This is not an exception as the message from Sage was valid
-            code = status.get('code', 'unset')
-            message = status.get('message', 'unset')
             # TODO this will be where the audit log fits in too
             log.warning(
-                f'JobID {str(job_id)} failed with code: {code} message: {message}'
+                f'JobID {str(job_id)} failed with status: {status} exception: {response.get("json_result")}'
             )
             return
-
-        response = data.get('response')
-        if not response:
-            raise HoustonException('No response field in message from Sage')
 
         job_id_msg = response.get('jobid')
         if not job_id_msg:
@@ -423,21 +422,27 @@ class AssetGroupSighting(db.Model, HoustonModel):
         if not json_result:
             raise HoustonException('No json_result in message from Sage')
 
-        image_uuids = json_result.get('image_uuid_list', [])
-        results = json_result.get('results_list', [])
-        if len(image_uuids) != len(results):
+        sage_image_uuids = json_result.get('image_uuid_list', [])
+        results_list = json_result.get('results_list', [])
+        if len(sage_image_uuids) != len(results_list):
             raise HoustonException(
-                f'image list len {len(image_uuids)} does not match results len {len(results)}'
+                f'image list len {len(sage_image_uuids)} does not match results len {len(results_list)}'
+            )
+        if len(sage_image_uuids) != len(job['asset_ids']):
+            raise HoustonException(
+                f'image list from sage {len(sage_image_uuids)} does not match local image list {len(job["asset_ids"])}'
             )
 
-        for asset_id in range(len(image_uuids)):
-            asset = Asset.find(uuid.UUID(image_uuids[asset_id]))
+        for i, asset_id in enumerate(job['asset_ids']):
+            asset = Asset.find(asset_id)
             if not asset:
-                raise HoustonException(f'Asset Id {results[asset_id]} not found')
+                raise HoustonException(f'Asset Id {asset_id} not found')
 
-            for annot_id in range(len(results[asset_id])):
-                annot_data = results[asset_id][annot_id]
-                annot_uuid = annot_data.get('uuid', None)
+            results = results_list[i]
+
+            for annot_id in range(len(results)):
+                annot_data = results[annot_id]
+                annot_uuid = annot_data.get('uuid', {}).get('__UUID__')
                 ia_class = annot_data.get('class', None)
                 if not annot_uuid or not ia_class:
                     raise HoustonException(

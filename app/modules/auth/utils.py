@@ -20,23 +20,16 @@ from flask_login import current_user
 log = logging.getLogger(__name__)
 
 
-def create_session_oauth2_token(
-    cleanup_tokens=False, check_renewal=False, user=None, update_session=True
-):
+def create_session_oauth2_client(user, **kwargs):
     from app.extensions import db
-    from app.modules.auth.models import OAuth2Client, OAuth2Token
     from app.extensions.api import api_v1
-
-    if user is None:
-        user = current_user
-        if not user.is_authenticated:
-            return None
+    from app.modules.auth.models import OAuth2Client
 
     default_scopes = list(api_v1.authorizations['oauth2_password']['scopes'].keys())
 
     # Retrieve Oauth2 client for user and/or clean-up multiple clients
     session_oauth2_clients = OAuth2Client.query.filter_by(
-        user=user, level=OAuth2Client.ClientLevels.session
+        user=user, level=OAuth2Client.ClientLevels.session, **kwargs
     ).all()
     session_oauth2_client = None
     if len(session_oauth2_clients) == 1:
@@ -53,10 +46,29 @@ def create_session_oauth2_token(
             level=OAuth2Client.ClientLevels.session,
             user=user,
             default_scopes=default_scopes,
+            **kwargs,
         )
         with db.session.begin():
             db.session.add(session_oauth2_client)
     log.info('Using session Oauth2 client = %r' % (session_oauth2_client,))
+    return session_oauth2_client
+
+
+def create_session_oauth2_token(
+    cleanup_tokens=False, check_renewal=False, user=None, update_session=True
+):
+    from app.extensions import db
+    from app.extensions.api import api_v1
+    from app.modules.auth.models import OAuth2Token
+
+    default_scopes = list(api_v1.authorizations['oauth2_password']['scopes'].keys())
+
+    if user is None:
+        user = current_user
+        if not user.is_authenticated:
+            return None
+
+    session_oauth2_client = create_session_oauth2_client(user)
 
     # Clean-up all tokens for the confidential client
     session_oauth2_bearer_tokens = OAuth2Token.query.filter_by(

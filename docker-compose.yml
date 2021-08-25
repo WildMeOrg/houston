@@ -92,6 +92,8 @@ services:
     environment:
       # FIXME: Run as root to fix the PermissionError in volumes
       EXEC_PRIVILEGED: 1
+      HOUSTON_CLIENT_ID: "${HOUSTON_CLIENT_ID}"
+      HOUSTON_CLIENT_SECRET: "${HOUSTON_CLIENT_SECRET}"
     ports:
       # FIXME: exposed for developer verification
       - "82:5000"
@@ -150,6 +152,9 @@ services:
       GIT_PUBLIC_NAME: "${GIT_PUBLIC_NAME}"
       GIT_EMAIL: "${GIT_EMAIL}"
       GITLAB_NAMESPACE: "${GITLAB_NAMESPACE}"
+      OAUTH_CLIENT_ID: "${HOUSTON_CLIENT_ID}"
+      OAUTH_CLIENT_SECRET: "${HOUSTON_CLIENT_SECRET}"
+      OAUTH_USER_EMAIL: "${OAUTH_USER_EMAIL}"
     healthcheck:
       test: [ "CMD", "curl", "-f", "http://localhost:5000/api/v1/site-info/"]
       timeout: 45s

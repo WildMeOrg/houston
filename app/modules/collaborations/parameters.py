@@ -35,7 +35,10 @@ class PatchCollaborationDetailsParameters(PatchJSONParameters):
         PatchJSONParameters.OP_ADD,
     )
 
-    PATH_CHOICES = ('/view_permission',)
+    PATH_CHOICES = (
+        '/view_permission',
+        '/edit_permission',
+    )
 
     @classmethod
     def add(cls, obj, field, value, state):
@@ -51,5 +54,6 @@ class PatchCollaborationDetailsParameters(PatchJSONParameters):
         if has_permission:
             if field == 'view_permission':
                 ret_val = obj.set_read_approval_state_for_user(current_user.guid, value)
-
+            if field == 'edit_permission':
+                ret_val = obj.set_edit_approval_state_for_user(current_user.guid, value)
         return ret_val

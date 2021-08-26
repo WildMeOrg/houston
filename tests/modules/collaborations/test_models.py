@@ -121,8 +121,6 @@ def test_collaboration_edit_state_changes(db, collab_user_a, collab_user_b):
         for association in collab.collaboration_user_associations:
             assert association.edit_approval_state == CollaborationUserState.NOT_INITIATED
 
-        assert collab.get_edit_state() == CollaborationUserState.NOT_INITIATED
-
         collab.set_edit_approval_state_for_user(
             collab_user_a.guid, CollaborationUserState.APPROVED
         )
@@ -133,13 +131,9 @@ def test_collaboration_edit_state_changes(db, collab_user_a, collab_user_b):
             if association.user_guid == collab_user_b.guid:
                 assert association.read_approval_state == CollaborationUserState.PENDING
 
-        assert collab.get_edit_state() == CollaborationUserState.PENDING
-
         collab.set_edit_approval_state_for_user(
             collab_user_b.guid, CollaborationUserState.APPROVED
         )
-
-        assert collab.get_edit_state() == CollaborationUserState.APPROVED
 
     finally:
         if collab:

@@ -106,6 +106,7 @@ class Collaboration(db.Model, HoustonModel):
                 and approval_states[guid_index] in CollaborationUserState.ALLOWED_STATES
             ):
                 collab_user_assoc.read_approval_state = approval_states[guid_index]
+                collab_user_assoc.edit_approval_state = approval_states[guid_index]
             if (
                 initiator_states is not None
                 and isinstance(initiator_states[guid_index], bool)
@@ -172,26 +173,6 @@ class Collaboration(db.Model, HoustonModel):
                     NotificationType.collab_request, collab_user_assoc.user, builder
                 )
 
-    # todo remove, there is no overall view or edit state for the collaboration, it depends on the user
-    def get_edit_state(self):
-        edit_state = None
-        for association in self.collaboration_user_associations:
-            # 'not_initiated' should never coexist with other states on a collaboration
-            if association.edit_approval_state == CollaborationUserState.DECLINED:
-                edit_state = CollaborationUserState.DECLINED
-                break
-            elif association.edit_approval_state == CollaborationUserState.NOT_INITIATED:
-                edit_state = CollaborationUserState.NOT_INITIATED
-                break
-            elif association.edit_approval_state == CollaborationUserState.PENDING:
-                edit_state = CollaborationUserState.PENDING
-            elif (
-                association.read_approval_state == CollaborationUserState.APPROVED
-                and edit_state is None
-            ):
-                edit_state = CollaborationUserState.APPROVED
-        return edit_state
-
     def get_user_data_as_json(self):
         from app.modules.users.schemas import BaseUserSchema
 
@@ -199,12 +180,13 @@ class Collaboration(db.Model, HoustonModel):
         for association in self.collaboration_user_associations:
             assoc_data = BaseUserSchema().dump(association.user).data
             assoc_data['viewState'] = association.read_approval_state
+            assoc_data['editState'] = association.edit_approval_state
             assoc_data['initiator'] = association.initiator
             user_data[str(association.user.guid)] = assoc_data
 
         return user_data
 
-    def _is_new_read_approval_state_valid(self, old_state, new_state):
+    def _is_approval_state_transition_valid(self, old_state, new_state):
         ret_val = False
         # Only certain transitions are permitted
         if old_state == CollaborationUserState.NOT_INITIATED:
@@ -233,7 +215,7 @@ class Collaboration(db.Model, HoustonModel):
             assert isinstance(user_guid, uuid.UUID)
             for association in self.collaboration_user_associations:
                 if association.user_guid == user_guid:
-                    if self._is_new_read_approval_state_valid(
+                    if self._is_approval_state_transition_valid(
                         association.read_approval_state, state
                     ):
                         association.read_approval_state = state
@@ -251,21 +233,29 @@ class Collaboration(db.Model, HoustonModel):
 
         return ret_val
 
+    def user_has_edit_access(self, user_guid):
+        ret_val = False
+        assert isinstance(user_guid, uuid.UUID)
+
+        other_assoc = self._get_association_for_other_user(user_guid)
+
+        if other_assoc:
+            ret_val = other_assoc.edit_approval_state == CollaborationUserState.APPROVED
+
+        return ret_val
+
     def set_edit_approval_state_for_user(self, user_guid, state):
+        success = False
         if user_guid is not None and state in CollaborationUserState.ALLOWED_STATES:
             assert isinstance(user_guid, uuid.UUID)
-            # if one association is edit level NOT_INITIATED, they all are
-            if (
-                self.get_edit_state() == CollaborationUserState.NOT_INITIATED
-                and state is not CollaborationUserState.NOT_INITIATED
-            ):
-                self.initate_edit_with_user(user_guid)
             for association in self.collaboration_user_associations:
-                if (
-                    association.user_guid == user_guid
-                    or state == CollaborationUserState.NOT_INITIATED
-                ):
-                    association.edit_approval_state = state
+                if association.user_guid == user_guid:
+                    if self._is_approval_state_transition_valid(
+                        association.edit_approval_state, state
+                    ):
+                        association.edit_approval_state = state
+                        success = True
+        return success
 
     def initate_edit_with_user(self, user_guid):
         if user_guid is not None:

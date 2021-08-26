@@ -185,7 +185,7 @@ def test_read_all_assets(
     admin_response = asset_utils.read_all_assets(flask_app_client, admin_user)
     asset_utils.read_all_assets(flask_app_client, researcher_1, 403)
 
-    assert len(admin_response.json) == 2
+    assert len(admin_response.json) == 4
     # both of these lists should be lexical order
     assert admin_response.json[0]['guid'] == test_clone_asset_group_data['asset_uuids'][0]
     assert admin_response.json[1]['guid'] == test_clone_asset_group_data['asset_uuids'][1]

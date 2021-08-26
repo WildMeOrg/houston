@@ -111,15 +111,6 @@ class Asset(db.Model, HoustonModel):
     def get_original_filename(self):
         return os.path.basename(self.path)
 
-    def get_relative_path(self):
-        relpath = os.path.join(
-            'asset_groups',
-            str(self.asset_group.guid),
-            '_assets',
-            self.get_filename(),
-        )
-        return relpath
-
     def get_symlink(self):
         asset_group_abspath = self.asset_group.get_absolute_path()
         assets_path = os.path.join(asset_group_abspath, '_assets')

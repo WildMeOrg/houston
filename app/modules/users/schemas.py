@@ -87,6 +87,8 @@ class DetailedUserSchema(UserListSchema):
             User.location.key,
             User.forum_id.key,
             User.website.key,
+            # TODO this should be the defaults if the user has none
+            User.notification_preferences.key,
             'collaborations',
         )
 

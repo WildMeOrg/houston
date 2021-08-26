@@ -269,6 +269,7 @@ def test_new_user_creation_roles_admin(flask_app_client, admin_user, db):
         'viewed': response.json['viewed'],
         'website': None,
         'collaborations': [],
+        'notification_preferences': [],
     }
 
     # Cleanup

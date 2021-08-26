@@ -17,6 +17,7 @@ import PIL
 
 from app.extensions.api.parameters import PaginationParameters
 from app.extensions.api import abort
+from app.utils import HoustonException
 
 from . import schemas
 
@@ -139,6 +140,7 @@ class PatchUserDetailsParameters(PatchJSONParameters):
         User.shares_data.key,
         User.default_identification_catalogue.key,
         User.profile_fileupload_guid.key,
+        User.notification_preferences.key,
         User.is_active.fget.__name__,
         User.is_exporter.fget.__name__,
         User.is_internal.fget.__name__,
@@ -238,6 +240,13 @@ class PatchUserDetailsParameters(PatchJSONParameters):
 
         if field == User.profile_fileupload_guid.key:
             value = cls.add_replace_profile_fileupload(value)
+        elif field == User.notification_preferences.key:
+            from app.modules.notifications.models import NotificationPreferences
+
+            try:
+                NotificationPreferences.validate_preferences(value)
+            except HoustonException as ex:
+                abort(ex.status_code, ex.message)
 
         return super(PatchUserDetailsParameters, cls).replace(obj, field, value, state)
 

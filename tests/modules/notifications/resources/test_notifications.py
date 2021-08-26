@@ -100,3 +100,26 @@ def test_patch_notification(
         {'sender_name', 'sender_email', 'collaboration_guid'}
     )
     assert res_2_notif.json['is_read']
+
+
+def test_notification_preferences(
+    db, flask_app_client, researcher_1, researcher_2, user_manager_user
+):
+    notif_1_data = NotificationBuilder(researcher_1)
+    # Just needs anything with a guid
+    notif_1_data.set_collaboration(user_manager_user)
+
+    Notification.create(NotificationType.collab_request, researcher_2, notif_1_data)
+
+    researcher_2_notifs = notif_utils.read_all_notifications(
+        flask_app_client, researcher_2
+    )
+    breakpoint()
+    collab_requests_from_res1 = list(
+        filter(
+            lambda notif: notif['message_type'] == 'collaboration_request'
+            and notif['sender_email'] == researcher_1.email,
+            researcher_2_notifs.json,
+        )
+    )
+    assert len(collab_requests_from_res1) > 1

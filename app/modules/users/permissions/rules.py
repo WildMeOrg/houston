@@ -337,24 +337,30 @@ class ObjectActionRule(DenyAbortMixin, Rule):
                 for other_user in collab_users:
                     if other_user not in tried_users:
                         tried_users.append(other_user)
-                        # Only read collaboration permitted for MVP
-                        if (
-                            other_user.owns_object(self._obj)
-                            & (self._action == AccessOperation.READ)
-                            & collab_assoc.collaboration.user_has_read_access(
-                                current_user.guid
-                            )
-                        ):
-                            return True
 
-                if object_user_methods is not None:
-                    for method in object_user_methods:
-                        if not hasattr(self._obj, method):
-                            log.warning(
-                                f'{self._obj.__class__.__name__} object does not have accessor {method}'
-                            )
-                        elif getattr(self._obj, method)(other_user):
-                            return True
+                        if other_user.owns_object(self._obj):
+                            if (
+                                self._action == AccessOperation.READ
+                            ) & collab_assoc.collaboration.user_has_read_access(
+                                current_user.guid
+                            ):
+                                return True
+                            elif (
+                                self._action == AccessOperation.WRITE
+                            ) & collab_assoc.collaboration.user_has_edit_access(
+                                current_user.guid
+                            ):
+                                return True
+                            break
+
+                    if object_user_methods is not None:
+                        for method in object_user_methods:
+                            if not hasattr(self._obj, method):
+                                log.warning(
+                                    f'{self._obj.__class__.__name__} object does not have accessor {method}'
+                                )
+                            elif getattr(self._obj, method)(other_user):
+                                return True
 
         return False
 

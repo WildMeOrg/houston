@@ -13,12 +13,10 @@ from flask import (
     redirect,
     render_template,
     request,
-    send_file,
     url_for,
 )
 from flask_login import login_user, logout_user, login_required, current_user
 
-from app.modules.assets.models import Asset
 from app.modules.auth.views import (
     _url_for,
     _is_safe_url,
@@ -174,18 +172,6 @@ def user_logout(*args, **kwargs):
     flash('You were successfully logged out.', 'warning')
 
     return flask.redirect(_url_for('backend.home'))
-
-
-@backend_blueprint.route('/asset/<code>', methods=['GET'])
-# @login_required
-@ensure_admin_exists
-def asset(code, *args, **kwargs):
-    # pylint: disable=unused-argument
-    """
-    This endpoint is the account page for the logged-in user
-    """
-    asset = Asset.query.filter_by(code=code).first_or_404()
-    return send_file(asset.absolute_filepath, mimetype='image/jpeg')
 
 
 @backend_blueprint.route('/admin_init', methods=['GET'])

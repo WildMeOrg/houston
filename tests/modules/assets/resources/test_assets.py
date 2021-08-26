@@ -39,20 +39,18 @@ def test_find_asset(
     )
 
     try:
-        asset_guid = test_clone_asset_group_data['asset_uuids'][0]
+        asset_guid = test_clone_asset_group_data['asset_uuids'][3]
         asset_response = asset_utils.read_asset(
             flask_app_client, researcher_1, asset_guid
         )
+        assert asset_response.json['filename'] == 'coelacanth.png'
+        assert asset_response.json['src'] == f'/api/v1/assets/src/{asset_guid}'
+
         src_response = asset_utils.read_src_asset(
             flask_app_client, researcher_1, asset_guid
         )
-
-        assert asset_response.json['filename'] == 'zebra.jpg'
-        assert asset_response.json['src'] == f'/api/v1/assets/src/{asset_guid}'
-        assert hashlib.md5(src_response.data).hexdigest() in derived_md5sum_values
-
-        # Force the server to release the file handler
-        src_response.close()
+        # Derived files are always jpegs
+        assert src_response.content_type == 'image/jpeg'
     finally:
         # Force the server to release the file handler
         src_response.close()
@@ -86,6 +84,7 @@ def test_find_deleted_asset(
 
         assert asset_response.json['filename'] == 'zebra.jpg'
         assert asset_response.json['src'] == f'/api/v1/assets/src/{asset_guid}'
+        assert src_response.content_type == 'image/jpeg'
         assert hashlib.md5(src_response.data).hexdigest() in derived_md5sum_values
 
         # Force the server to release the file handler
@@ -137,10 +136,17 @@ def test_find_raw_asset(
             flask_app_client, internal_user, asset_guid
         )
 
+        assert raw_src_response.content_type == 'image/jpeg'
         assert hashlib.md5(raw_src_response.data).hexdigest() in initial_md5sum_values
 
         # Force the server to release the file handler
         raw_src_response.close()
+
+        raw_src_response = asset_utils.read_raw_src_asset(
+            flask_app_client, internal_user, test_clone_asset_group_data['asset_uuids'][3]
+        )
+
+        assert raw_src_response.content_type == 'image/png'
     finally:
         # Force the server to release the file handler
         if raw_src_response:

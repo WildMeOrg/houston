@@ -36,7 +36,6 @@ def read_src_asset(flask_app_client, user, asset_guid, expected_status_code=200)
 
     if expected_status_code == 200:
         assert response.status_code == expected_status_code
-        assert response.content_type == 'image/jpeg'
     else:
         test_utils.validate_dict_response(
             response, expected_status_code, {'status', 'message'}
@@ -50,7 +49,6 @@ def read_raw_src_asset(flask_app_client, user, asset_guid, expected_status_code=
 
     if expected_status_code == 200:
         assert response.status_code == expected_status_code
-        assert response.content_type == 'image/jpeg'
     else:
         test_utils.validate_dict_response(
             response, expected_status_code, {'status', 'message'}

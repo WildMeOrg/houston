@@ -87,7 +87,12 @@ class EncounterByID(Resource):
         if not response.get('success', False):
             return response
 
-        return encounter.augment_edm_json(response['result'])
+        edm_json = response['result']
+        from app.modules.encounters.schemas import AugmentedEdmEncounterSchema
+
+        schema = AugmentedEdmEncounterSchema()
+        edm_json.update(schema.dump(encounter).data)
+        return edm_json
 
     @api.permission_required(
         permissions.ObjectAccessPermission,

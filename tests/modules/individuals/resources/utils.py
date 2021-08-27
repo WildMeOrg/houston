@@ -23,8 +23,8 @@ def create_individual(flask_app_client, user, expected_status_code=200, data_in=
     assert isinstance(response.json, dict)
     assert response.status_code == expected_status_code
     if response.status_code == 200:
-        assert response.json['success'] is not None
-        assert response.json['result'] is not None
+        test_utils.validate_dict_response(response, 200, {'success', 'result'})
+
     return response
 
 
@@ -36,8 +36,9 @@ def read_individual(
 
     assert response.status_code == expected_status_code
     if response.status_code == 200:
-        assert response.json['success'] is not None
-        assert response.json['result'] is not None
+        test_utils.validate_dict_response(
+            response, 200, {'guid', 'success', 'result', 'hasView', 'hasEdit'}
+        )
     return response
 
 

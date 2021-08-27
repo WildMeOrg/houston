@@ -206,9 +206,11 @@ class IndividualByID(Resource):
         else:
             log.error('GET passthrough called for nonexistent Individual')
 
-        rtn_json = individual.augment_edm_json(
-            current_app.edm.get_dict('individual.data_complete', individual.guid)
-        )
+        from app.modules.individuals.schemas import DetailedIndividualSchema
+
+        rtn_json = current_app.edm.get_dict('individual.data_complete', individual.guid)
+        schema = DetailedIndividualSchema(many=False)
+        rtn_json.update(schema.dump(individual).data)
 
         return rtn_json
 

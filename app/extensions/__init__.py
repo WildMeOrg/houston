@@ -256,6 +256,20 @@ class FeatherModel(GhostModel, TimestampViewed):
     def is_public(self):
         return False
 
+    def current_user_has_view_permission(self):
+        from app.modules.users.permissions.rules import ObjectActionRule
+        from app.modules.users.permissions.types import AccessOperation
+
+        rule = ObjectActionRule(obj=self, action=AccessOperation.READ)
+        return rule.check()
+
+    def current_user_has_edit_permission(self):
+        from app.modules.users.permissions.rules import ObjectActionRule
+        from app.modules.users.permissions.types import AccessOperation
+
+        rule = ObjectActionRule(obj=self, action=AccessOperation.WRITE)
+        return rule.check()
+
 
 class HoustonModel(FeatherModel):
     """

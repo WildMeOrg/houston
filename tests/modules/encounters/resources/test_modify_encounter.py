@@ -88,11 +88,12 @@ def test_modify_encounter(
     assert enc.json == {
         'customFields': {},
         'id': str(new_encounter_1.guid),
+        'guid': str(new_encounter_1.guid),
         'locationId': new_val,
         'timeValues': [None, None, None, 0, 0],
         'version': new_encounter_1.version,
-        'createdHouston': new_encounter_1.created.isoformat(),
-        'updatedHouston': new_encounter_1.updated.isoformat(),
+        'createdHouston': new_encounter_1.created.isoformat() + '+00:00',
+        'updatedHouston': new_encounter_1.updated.isoformat() + '+00:00',
         'owner': {
             'full_name': researcher_2.full_name,
             'guid': str(researcher_2.guid),
@@ -104,6 +105,8 @@ def test_modify_encounter(
             'profile_fileupload': None,
         },
         'annotations': annotations,
+        'hasEdit': True,
+        'hasView': True,
     }
 
     # now we test modifying customFields

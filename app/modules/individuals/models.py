@@ -101,7 +101,3 @@ class Individual(db.Model, FeatherModel):
             self.guid,
         )
         return response
-
-    def augment_edm_json(self, edm_json):
-        edm_json['featuredAssetGuid'] = self.get_featured_asset_guid()
-        return edm_json

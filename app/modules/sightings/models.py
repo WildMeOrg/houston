@@ -259,50 +259,23 @@ class Sighting(db.Model, FeatherModel):
     # given edm_json (verbose json from edm) will populate with houston-specific data from feather object
     # note: this modifies the passed in edm_json, so not sure how legit that is?
     def augment_edm_json(self, edm_json):
-        edm_json['createdHouston'] = self.created.isoformat()
-        edm_json['updatedHouston'] = self.updated.isoformat()
+
         if (self.encounters is not None and edm_json['encounters'] is None) or (
             self.encounters is None and edm_json['encounters'] is not None
         ):
             log.warning('Only one None encounters value between edm/feather objects!')
         if self.encounters is not None and edm_json['encounters'] is not None:
-            if len(self.encounters) != len(edm_json['encounters']):
+            id_to_encounter = {e['id']: e for e in edm_json['encounters']}
+            if set(str(e.guid) for e in self.encounters) != set(id_to_encounter):
                 log.warning('Imbalanced encounters between edm/feather objects!')
                 raise ValueError('imbalanced encounter count between edm/feather')
-            else:
-                i = 0
-                while i < len(self.encounters):  # now we augment each encounter
-                    found_edm = None
-                    for edm_enc in edm_json['encounters']:
-                        if edm_enc['id'] == str(self.encounters[i].guid):
-                            found_edm = edm_enc
-                    if found_edm is None:
-                        raise ValueError(
-                            f'could not find edm encounter matching {self.encounters[i]}'
-                        )
-                    self.encounters[i].augment_edm_json(found_edm)
-                    i += 1
-        if self.sighting_assets is None or len(self.sighting_assets) < 1:
-            return edm_json
-        from app.modules.assets.schemas import DetailedAssetSchema
 
-        asset_schema = DetailedAssetSchema(
-            many=False,
-            only=(
-                'guid',
-                'filename',
-                'src',
-                'annotations',
-                'dimensions',
-                'created',
-                'updated',
-            ),
-        )
-        edm_json['assets'] = []
-        for asset in self.get_assets():
-            json, err = asset_schema.dump(asset)
-            edm_json['assets'].append(json)
-        edm_json['featuredAssetGuid'] = self.get_featured_asset_guid()
+            from app.modules.encounters.schemas import AugmentedEdmEncounterSchema
+
+            for encounter in self.encounters:  # now we augment each encounter
+                found_edm = id_to_encounter[str(encounter.guid)]
+                edm_schema = AugmentedEdmEncounterSchema(exclude=('annotations',))
+                found_edm.update(edm_schema.dump(encounter).data)
 
         return edm_json
 

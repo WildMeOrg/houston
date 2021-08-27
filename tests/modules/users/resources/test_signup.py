@@ -246,6 +246,8 @@ def test_new_user_creation_roles_admin(flask_app_client, admin_user, db):
     assert response.status_code == 200
     assert response.content_type == 'application/json'
     user_guid = response.json['guid']
+    from app.modules.notifications.models import NOTIFICATION_DEFAULTS
+
     assert response.json == {
         'affiliation': '',
         'created': response.json['created'],
@@ -269,7 +271,7 @@ def test_new_user_creation_roles_admin(flask_app_client, admin_user, db):
         'viewed': response.json['viewed'],
         'website': None,
         'collaborations': [],
-        'notification_preferences': [],
+        'notification_preferences': NOTIFICATION_DEFAULTS,
     }
 
     # Cleanup

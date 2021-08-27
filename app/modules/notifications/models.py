@@ -96,7 +96,7 @@ class Notification(db.Model, HoustonModel):
         return (
             '<{class_name}('
             'guid={self.guid}, '
-            'template={self.message_type}, '
+            'message_type={self.message_type}, '
             "recipient='{self.recipient}'"
             ')>'.format(class_name=self.__class__.__name__, self=self)
         )
@@ -199,20 +199,21 @@ class NotificationPreferences(HoustonModel):
 
     @classmethod
     def validate_preferences(cls, new_prefs):
-        valid_types = set([pref.name for pref in NotificationType])
+        valid_types = set([pref.value for pref in NotificationType])
         if isinstance(new_prefs, dict) and set(new_prefs.keys()) <= valid_types:
             for new_pref_type in new_prefs:
-                valid_channels = set([pref.name for pref in NotificationChannel])
+                valid_channels = set([pref.value for pref in NotificationChannel])
+                new_preference = new_prefs[new_pref_type]
                 if not (
-                    isinstance(new_pref_type, dict)
-                    and set(new_pref_type.keys()) <= valid_channels
+                    isinstance(new_preference, dict)
+                    and set(new_preference.keys()) <= valid_channels
                 ):
                     raise HoustonException(
                         log_message=f'Invalid Notification channel, options are {valid_channels}'
                     )
                 else:
-                    for new_chan in new_pref_type:
-                        if not isinstance(new_chan.value, bool):
+                    for new_chan in new_preference:
+                        if not isinstance(new_preference[new_chan], bool):
                             raise HoustonException(
                                 log_message='all values set in NotificationPreferences must be boolean '
                             )

@@ -240,15 +240,35 @@ class PatchUserDetailsParameters(PatchJSONParameters):
 
         if field == User.profile_fileupload_guid.key:
             value = cls.add_replace_profile_fileupload(value)
-        elif field == User.notification_preferences.key:
-            from app.modules.notifications.models import NotificationPreferences
+
+        if field == User.notification_preferences.key:
+            # The current implementation of this code allows the API to set the entire set of preferences or a
+            # subset.
+            from app.modules.notifications.models import (
+                NotificationPreferences,
+                UserNotificationPreferences,
+            )
 
             try:
                 NotificationPreferences.validate_preferences(value)
             except HoustonException as ex:
                 abort(ex.status_code, ex.message)
 
-        return super(PatchUserDetailsParameters, cls).replace(obj, field, value, state)
+            if len(current_user.notification_preferences) != 0:
+                current_user.notification_preferences[0].preferences = value
+            else:
+                # No existing one, create a new one
+                user_prefs = UserNotificationPreferences(
+                    preferences=value, user=current_user
+                )
+                with db.session.begin(subtransactions=True):
+                    db.session.add(user_prefs)
+            return True
+
+        else:
+            return super(PatchUserDetailsParameters, cls).replace(
+                obj, field, value, state
+            )
 
     @classmethod
     def remove(cls, obj, field, value, state):

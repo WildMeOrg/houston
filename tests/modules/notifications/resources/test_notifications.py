@@ -9,8 +9,30 @@ from app.modules.notifications.models import (
     NotificationBuilder,
 )
 import tests.modules.notifications.resources.utils as notif_utils
+import tests.modules.users.resources.utils as user_utils
 
 log = logging.getLogger(__name__)
+
+
+def get_notifications_with_guid(json_data, guid_str, notification_type, sender_email):
+    return list(
+        filter(
+            lambda notif: notif['message_type'] == notification_type
+            and notif['sender_email'] == sender_email
+            and notif['guid'] == guid_str,
+            json_data,
+        )
+    )
+
+
+def get_notifications(json_data, from_user_email, notification_type):
+    return list(
+        filter(
+            lambda notif: notif['message_type'] == notification_type
+            and notif['sender_email'] == from_user_email,
+            json_data,
+        )
+    )
 
 
 def test_get_notifications(
@@ -28,13 +50,17 @@ def test_get_notifications(
     )
 
     # Create a couple of them
-    notif_1_data = NotificationBuilder(researcher_1)
+    notif_to_researcher_2_data = NotificationBuilder(researcher_1)
     # Just needs anything with a guid
-    notif_1_data.set_collaboration(user_manager_user)
+    notif_to_researcher_2_data.set_collaboration(user_manager_user)
 
-    Notification.create(NotificationType.collab_request, researcher_2, notif_1_data)
-    notif_2_data = NotificationBuilder(researcher_2)
-    Notification.create(NotificationType.raw, researcher_1, notif_2_data)
+    notif_to_researcher_2 = Notification.create(
+        NotificationType.collab_request, researcher_2, notif_to_researcher_2_data
+    )
+    notif_to_researcher_1_data = NotificationBuilder(researcher_2)
+    notif_to_researcher_1 = Notification.create(
+        NotificationType.raw, researcher_1, notif_to_researcher_1_data
+    )
 
     researcher_1_notifs = notif_utils.read_all_notifications(
         flask_app_client, researcher_1
@@ -50,23 +76,33 @@ def test_get_notifications(
     assert len(researcher_2_notifs.json) == len(prev_researcher_2_notifs.json) + 1
     assert len(user_manager_notifs.json) == len(prev_user_manager_notifs.json) + 2
 
-    assert researcher_1_notifs.json[-1]['message_type'] == 'raw'
-    assert researcher_1_notifs.json[-1]['sender_email'] == researcher_2.email
+    collab_reqs_from_researcher_1 = get_notifications_with_guid(
+        researcher_2_notifs.json,
+        str(notif_to_researcher_2.guid),
+        'collaboration_request',
+        researcher_1.email,
+    )
+    assert len(collab_reqs_from_researcher_1) == 1
 
-    assert researcher_2_notifs.json[-1]['message_type'] == 'collaboration_request'
-    assert researcher_2_notifs.json[-1]['sender_email'] == researcher_1.email
+    raw_requests_from_researcher_2 = get_notifications_with_guid(
+        researcher_1_notifs.json,
+        str(notif_to_researcher_1.guid),
+        'raw',
+        researcher_2.email,
+    )
+    assert len(raw_requests_from_researcher_2) == 1
 
     notif_utils.read_notification(
-        flask_app_client, researcher_1, researcher_2_notifs.json[-1]['guid'], 403
+        flask_app_client, researcher_1, notif_to_researcher_2.guid, 403
     )
     notif_utils.read_notification(
-        flask_app_client, researcher_2, researcher_1_notifs.json[-1]['guid'], 403
+        flask_app_client, researcher_2, notif_to_researcher_1.guid, 403
     )
     notif_utils.read_notification(
-        flask_app_client, researcher_1, researcher_1_notifs.json[-1]['guid']
+        flask_app_client, researcher_1, notif_to_researcher_1.guid
     )
     researcher_2_notif = notif_utils.read_notification(
-        flask_app_client, researcher_2, researcher_2_notifs.json[-1]['guid']
+        flask_app_client, researcher_2, notif_to_researcher_2.guid
     )
     assert not researcher_2_notif.json['is_read']
     values = researcher_2_notif.json['message_values']
@@ -114,12 +150,57 @@ def test_notification_preferences(
     researcher_2_notifs = notif_utils.read_all_notifications(
         flask_app_client, researcher_2
     )
-    breakpoint()
-    collab_requests_from_res1 = list(
-        filter(
-            lambda notif: notif['message_type'] == 'collaboration_request'
-            and notif['sender_email'] == researcher_1.email,
-            researcher_2_notifs.json,
-        )
+    collab_requests_from_res1 = get_notifications(
+        researcher_2_notifs.json, researcher_1.email, 'collaboration_request'
     )
-    assert len(collab_requests_from_res1) > 1
+
+    assert len(collab_requests_from_res1) >= 1
+
+    # Test patch of collaboration requests alone
+    data = [
+        test_utils.patch_replace_op(
+            'notification_preferences',
+            {'collaboration_request': {'Rest API': False, 'email': False}},
+        )
+    ]
+    user_utils.patch_user(flask_app_client, researcher_2, data)
+    researcher_2_notifs = notif_utils.read_all_notifications(
+        flask_app_client, researcher_2
+    )
+    collab_requests_from_res1 = get_notifications(
+        researcher_2_notifs.json, researcher_1.email, 'collaboration_request'
+    )
+    assert len(collab_requests_from_res1) == 0
+
+    # Test patch of all requests
+    data = [
+        test_utils.patch_replace_op(
+            'notification_preferences', {'all': {'Rest API': False, 'email': False}}
+        )
+    ]
+    user_utils.patch_user(flask_app_client, researcher_2, data)
+    researcher_2_notifs = notif_utils.read_all_notifications(
+        flask_app_client, researcher_2
+    )
+    collab_requests_from_res1 = get_notifications(
+        researcher_2_notifs.json, researcher_1.email, 'collaboration_request'
+    )
+    assert len(collab_requests_from_res1) == 0
+
+    # Restore to previous state as otherwise all subsequent tests fail
+    data = [
+        test_utils.patch_replace_op(
+            'notification_preferences',
+            {'collaboration_request': {'Rest API': True, 'email': False}},
+        )
+    ]
+    user_utils.patch_user(flask_app_client, researcher_2, data)
+    researcher_2_notifs = notif_utils.read_all_notifications(
+        flask_app_client, researcher_2
+    )
+    collab_requests_from_res1 = get_notifications(
+        researcher_2_notifs.json, researcher_1.email, 'collaboration_request'
+    )
+    if len(collab_requests_from_res1) == 0:
+        breakpoint()
+    assert len(collab_requests_from_res1) != 0

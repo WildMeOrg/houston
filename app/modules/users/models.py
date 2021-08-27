@@ -555,6 +555,14 @@ class User(db.Model, FeatherModel, UserEDMMixin):
             )
         return json_resp
 
+    def get_notification_preferences(self):
+        from app.modules.notifications.models import UserNotificationPreferences
+
+        # User preferences are the system ones plus the ones stored in this class
+        # Return the combination to the REST API
+        preferences = UserNotificationPreferences.get_user_preferences(self)
+        return preferences
+
     def unprocessed_asset_groups(self):
         return [
             asset_group.guid

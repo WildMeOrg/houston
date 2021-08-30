@@ -22,5 +22,8 @@ class HoustonException(Exception):
         logger.warning(f'Failed: {log_message} {self.status_code}')
         audit_log(logger, f'Failed: {log_message} {self.status_code}', AuditType.Fault)
 
+    def __str__(self):
+        return self.message
+
     def get_val(self, argval, default):
         return self._kwargs.get(argval, default)

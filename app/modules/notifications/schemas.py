@@ -4,11 +4,22 @@ Serialization schemas for Notifications resources RESTful API
 ----------------------------------------------------
 """
 
-# from flask_marshmallow import base_fields
 from flask_restx_patched import ModelSchema
 from flask_marshmallow import base_fields
 
+from app.extensions import ExtraValidationSchema
 from .models import Notification
+
+
+class NotificationPreferenceSchema(ExtraValidationSchema):
+    class NotificationChannelSchema(ExtraValidationSchema):
+        restAPI = base_fields.Bool()
+        email = base_fields.Bool()
+
+    all = base_fields.Nested(NotificationChannelSchema)
+    raw = base_fields.Nested(NotificationChannelSchema)
+    collaboration_request = base_fields.Nested(NotificationChannelSchema)
+    merge_request = base_fields.Nested(NotificationChannelSchema)
 
 
 class BaseNotificationSchema(ModelSchema):

@@ -47,6 +47,7 @@ login_manager = LoginManager()
 from flask_paranoid import Paranoid  # NOQA
 
 from flask_marshmallow import Marshmallow  # NOQA
+from marshmallow import Schema, validates_schema, ValidationError  # NOQA
 
 marshmallow = Marshmallow()
 
@@ -77,6 +78,76 @@ from . import sentry  # NOQA
 from . import stripe  # NOQA
 
 ##########################################################################################
+
+
+class ExtraValidationSchema(Schema):
+    @validates_schema(pass_original=True)
+    def validates_schema(self, cleaned_data, original_data):
+        """
+        This method is called after the built-in validation is done.
+        cleaned_data is what is left after validation and original_data
+        is the original input.
+
+        Raise validation error if there are extra fields not defined in
+        the schema.
+
+        This is necessary because marshmallow (before 3.0.0) just
+        ignores extra fields without any validation errors.
+        """
+        if cleaned_data is None:  # Wrong type given, nothing to validate
+            return
+        valid_fields = sorted(self.fields.keys())
+        unknown = set(original_data) - set(valid_fields)
+        if unknown:
+            raise ValidationError(
+                f'Unknown field(s): {", ".join(unknown)}, options are {", ".join(valid_fields)}.'
+            )
+
+    def get_error_message(self, errors):
+        """
+        Validation errors are like this:
+
+        {
+            'all': {
+                '_schema': [
+                    'Unknown field(s): random, options are email, restAPI'
+                ],
+                'restAPI': [
+                    'Not a valid boolean.'
+                ]
+            }
+        }
+
+        This method turns this into an error message like:
+
+        "all": Unknown field(s): random, options are email, restAPI.
+        "all.restAPI": Not a valid boolean.
+        """
+        error_keys = list(errors.keys())
+        if error_keys == ['_schema']:
+            return ' '.join(errors['_schema'])
+
+        def get_error(errors, results, _keys=[]):
+            # Traverse down the error structure depth first so we can get the
+            # actual field name.  For example in the example above, we want
+            # "all.restAPI" as the field name.
+            for key in errors:
+                if isinstance(errors[key], dict):
+                    if key == '_schema':
+                        get_error(errors[key], results, _keys)
+                    get_error(errors[key], results, _keys + [key])
+                else:
+                    if key != '_schema':
+                        _keys.append(key)
+                    message = ' '.join(errors[key])
+                    if not _keys:
+                        results.append(message)
+                    else:
+                        results.append(f'"{".".join(_keys)}": {message}')
+
+        results = []
+        get_error(errors, results)
+        return ' '.join(results)
 
 
 class JsonEncodedDict(db.TypeDecorator):

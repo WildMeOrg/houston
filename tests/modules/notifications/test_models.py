@@ -3,6 +3,8 @@
 
 import logging
 
+import pytest
+
 from app.modules.notifications.models import (
     Notification,
     NotificationType,
@@ -11,6 +13,7 @@ from app.modules.notifications.models import (
     NOTIFICATION_DEFAULTS,
     SystemNotificationPreferences,
 )
+from app.utils import HoustonException
 
 log = logging.getLogger(__name__)
 
@@ -56,8 +59,46 @@ def test_notification_message(db, researcher_1, researcher_2):
         db.session.add(notification)
     try:
         chans = notification.channels_to_send()
-        assert set({'Rest API', 'email'}) == set(chans.keys())
+        assert set({'restAPI', 'email'}) == set(chans.keys())
 
     finally:
         with db.session.begin():
             db.session.delete(notification)
+
+
+def test_validate_preferences():
+    from app.modules.notifications.models import NotificationPreferences
+
+    with pytest.raises(HoustonException) as exc:
+        NotificationPreferences.validate_preferences([])
+    assert str(exc.value) == 'Invalid input type.'
+
+    with pytest.raises(HoustonException) as exc:
+        NotificationPreferences.validate_preferences({'random': 'value'})
+    assert (
+        str(exc.value)
+        == 'Unknown field(s): random, options are all, collaboration_request, merge_request, raw.'
+    )
+
+    with pytest.raises(HoustonException) as exc:
+        NotificationPreferences.validate_preferences({'all': {'random': True}})
+    assert (
+        str(exc.value) == '"all": Unknown field(s): random, options are email, restAPI.'
+    )
+
+    with pytest.raises(HoustonException) as exc:
+        NotificationPreferences.validate_preferences({'all': {'restAPI': 'wrong_type'}})
+    assert str(exc.value) == '"all.restAPI": Not a valid boolean.'
+
+    with pytest.raises(HoustonException) as exc:
+        NotificationPreferences.validate_preferences(
+            {'all': {'restAPI': 'wrong_type'}, 'random': 'value'}
+        )
+    assert (
+        str(exc.value)
+        == '"all.restAPI": Not a valid boolean. Unknown field(s): random, options are all, collaboration_request, merge_request, raw.'
+    )
+
+    # Valid examples
+    NotificationPreferences.validate_preferences({})
+    NotificationPreferences.validate_preferences({'all': {'restAPI': True}})

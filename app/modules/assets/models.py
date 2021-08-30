@@ -64,6 +64,9 @@ class Asset(db.Model, HoustonModel):
         'Annotation', back_populates='asset', order_by='Annotation.guid'
     )
 
+    DERIVED_EXTENSION = 'jpg'
+    DERIVED_MIME_TYPE = 'image/jpeg'
+
     def __repr__(self):
         return (
             '<{class_name}('
@@ -111,15 +114,6 @@ class Asset(db.Model, HoustonModel):
     def get_original_filename(self):
         return os.path.basename(self.path)
 
-    def get_relative_path(self):
-        relpath = os.path.join(
-            'asset_groups',
-            str(self.asset_group.guid),
-            '_assets',
-            self.get_filename(),
-        )
-        return relpath
-
     def get_symlink(self):
         asset_group_abspath = self.asset_group.get_absolute_path()
         assets_path = os.path.join(asset_group_abspath, '_assets')
@@ -129,8 +123,7 @@ class Asset(db.Model, HoustonModel):
     def get_derived_path(self):
         asset_group_abspath = self.asset_group.get_absolute_path()
         assets_path = os.path.join(asset_group_abspath, '_assets')
-        asset_symlink_filepath = os.path.join(assets_path, 'derived', self.get_filename())
-        return asset_symlink_filepath
+        return os.path.join(assets_path, 'derived')
 
     def update_symlink(self, asset_asset_group_filepath):
         assert os.path.exists(asset_asset_group_filepath)
@@ -204,8 +197,9 @@ class Asset(db.Model, HoustonModel):
             'thumb': [256, 256],
         }
         assert format in FORMAT
-        target_path = '.'.join(
-            [os.path.splitext(self.get_derived_path())[0], format, 'jpg']
+        target_path = os.path.join(
+            self.get_derived_path(),
+            '.'.join([str(self.guid), format, self.DERIVED_EXTENSION]),
         )
         if os.path.exists(target_path):
             return target_path
@@ -233,10 +227,12 @@ class Asset(db.Model, HoustonModel):
     def get_or_make_master_format_path(self):
         source_path = self.get_symlink()
         assert os.path.exists(source_path)
-        target_path = self.get_derived_path()
-        if not os.path.exists(os.path.dirname(target_path)):
-            os.mkdir(os.path.dirname(target_path))
-        target_path = '.'.join([os.path.splitext(target_path)[0], 'master', 'jpg'])
+        target_dir = self.get_derived_path()
+        if not os.path.exists(target_dir):
+            os.mkdir(target_dir)
+        target_path = os.path.join(
+            target_dir, '.'.join([str(self.guid), 'master', self.DERIVED_EXTENSION])
+        )
         if os.path.exists(target_path):
             return target_path
         log.info('make_master_format() creating master format as %r' % (target_path,))

@@ -130,9 +130,7 @@ class AssetSrcUByID(Resource):
         except Exception:
             logging.exception('Got exception from get_or_make_format_path()')
             raise werkzeug.exceptions.NotImplemented
-        return send_file(
-            asset_format_path, 'image/jpeg'
-        )  # TODO we need to alter mime_type to reflect path, if ever it changes from jpg
+        return send_file(asset_format_path, asset.DERIVED_MIME_TYPE)
 
 
 @api.route('/src_raw/<uuid:asset_guid>', doc=False)
@@ -151,5 +149,4 @@ class AssetSrcRawByID(Resource):
         },
     )
     def get(self, asset):
-        # TODO does WBIA depend on the mime_type being jpg and do we need to change it if it's not
         return send_file(asset.get_symlink())

@@ -8,9 +8,7 @@ from tests.modules.asset_groups.resources import utils
 def test_ensure_asset_group_by_uuid(
     flask_app_client, researcher_1, db, test_asset_group_uuid
 ):
-    clone = utils.clone_asset_group(
-        flask_app_client, researcher_1, test_asset_group_uuid
-    )
+    clone = utils.clone_asset_group(flask_app_client, researcher_1, test_asset_group_uuid)
     clone.cleanup()
 
 
@@ -48,7 +46,7 @@ def test_ensure_clone_asset_group_by_uuid(
     )
 
     # Checks that there are two valid Assets in the database
-    assert len(clone.asset_group.assets) == 2
+    assert len(clone.asset_group.assets) == 4
     temp_assets = sorted(clone.asset_group.assets)
     expected_guid_list = [
         uuid.UUID(test_clone_asset_group_data['asset_uuids'][0]),

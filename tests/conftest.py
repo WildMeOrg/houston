@@ -346,6 +346,14 @@ def test_asset_group_file_data(test_root):
             uuid.UUID('00000000-0000-0000-0000-000000000012'),
             test_root / 'fluke.jpg',
         ),
+        (
+            uuid.UUID('00000000-0000-0000-0000-000000000013'),
+            test_root / 'phoenix.jpg',
+        ),
+        (
+            uuid.UUID('00000000-0000-0000-0000-000000000014'),
+            test_root / 'coelacanth.png',
+        ),
     ]
 
 

@@ -21,7 +21,12 @@ from app.modules.users.permissions.types import AccessOperation
 
 
 from . import parameters, schemas
-from .models import Notification
+from .models import (
+    Notification,
+    NotificationType,
+    NotificationChannel,
+    UserNotificationPreferences,
+)
 
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
@@ -57,9 +62,14 @@ class Notifications(Resource):
         if current_user.is_user_manager:
             returned_notifications = all_notifications
         else:
-            returned_notifications = [
-                notif for notif in all_notifications if notif.recipient == current_user
-            ]
+            returned_notifications = []
+            preferences = UserNotificationPreferences.get_user_preferences(current_user)
+            if preferences[NotificationType.all][NotificationChannel.rest]:
+
+                for notif in current_user.notifications:
+                    if preferences[notif.message_type][NotificationChannel.rest]:
+                        returned_notifications.append(notif)
+
         return returned_notifications
 
     @api.permission_required(

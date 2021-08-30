@@ -6,6 +6,7 @@ Notifications database models
 
 from app.extensions import db, HoustonModel
 from flask import render_template
+from app.utils import HoustonException
 
 import enum
 import uuid
@@ -95,7 +96,7 @@ class Notification(db.Model, HoustonModel):
         return (
             '<{class_name}('
             'guid={self.guid}, '
-            'template={self.message_type}, '
+            'message_type={self.message_type}, '
             "recipient='{self.recipient}'"
             ')>'.format(class_name=self.__class__.__name__, self=self)
         )
@@ -118,6 +119,13 @@ class Notification(db.Model, HoustonModel):
         user_prefs = UserNotificationPreferences.get_user_preferences(self.recipient)
         if self.message_type in user_prefs.keys():
             channels = user_prefs[self.message_type]
+            for name in channels.keys():
+                # Don't blame me, I tried to make this line more readable, brunette insisted that it
+                # was more readable when the params were nowhere near the function name
+                if channels[name] and not user_prefs[NotificationType.all].get(
+                    name, True
+                ):
+                    channels[name] = False
 
         return channels
 
@@ -188,6 +196,31 @@ class NotificationPreferences(HoustonModel):
         assert notification_channel in NotificationChannel
         assert isinstance(status, bool)
         self.preferences[notification_type][notification_channel] = status
+
+    @classmethod
+    def validate_preferences(cls, new_prefs):
+        valid_types = set([pref.value for pref in NotificationType])
+        if isinstance(new_prefs, dict) and set(new_prefs.keys()) <= valid_types:
+            for new_pref_type in new_prefs:
+                valid_channels = set([pref.value for pref in NotificationChannel])
+                new_preference = new_prefs[new_pref_type]
+                if not (
+                    isinstance(new_preference, dict)
+                    and set(new_preference.keys()) <= valid_channels
+                ):
+                    raise HoustonException(
+                        log_message=f'Invalid Notification channel, options are {valid_channels}'
+                    )
+                else:
+                    for new_chan in new_preference:
+                        if not isinstance(new_preference[new_chan], bool):
+                            raise HoustonException(
+                                log_message='all values set in NotificationPreferences must be boolean '
+                            )
+        else:
+            raise HoustonException(
+                log_message=f'Invalid Notification Type, options are {valid_types}'
+            )
 
 
 class SystemNotificationPreferences(db.Model, NotificationPreferences):

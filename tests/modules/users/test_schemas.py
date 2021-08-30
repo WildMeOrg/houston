@@ -54,6 +54,7 @@ def test_DetailedUserSchema_dump_user_instance(user_instance):
         'forum_id',
         'website',
         'collaborations',
+        'notification_preferences',
     }
 
 

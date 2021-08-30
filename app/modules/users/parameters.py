@@ -17,6 +17,7 @@ import PIL
 
 from app.extensions.api.parameters import PaginationParameters
 from app.extensions.api import abort
+from app.utils import HoustonException
 
 from . import schemas
 
@@ -139,6 +140,7 @@ class PatchUserDetailsParameters(PatchJSONParameters):
         User.shares_data.key,
         User.default_identification_catalogue.key,
         User.profile_fileupload_guid.key,
+        User.notification_preferences.key,
         User.is_active.fget.__name__,
         User.is_exporter.fget.__name__,
         User.is_internal.fget.__name__,
@@ -239,7 +241,34 @@ class PatchUserDetailsParameters(PatchJSONParameters):
         if field == User.profile_fileupload_guid.key:
             value = cls.add_replace_profile_fileupload(value)
 
-        return super(PatchUserDetailsParameters, cls).replace(obj, field, value, state)
+        if field == User.notification_preferences.key:
+            # The current implementation of this code allows the API to set the entire set of preferences or a
+            # subset.
+            from app.modules.notifications.models import (
+                NotificationPreferences,
+                UserNotificationPreferences,
+            )
+
+            try:
+                NotificationPreferences.validate_preferences(value)
+            except HoustonException as ex:
+                abort(ex.status_code, ex.message)
+
+            if len(current_user.notification_preferences) != 0:
+                current_user.notification_preferences[0].preferences = value
+            else:
+                # No existing one, create a new one
+                user_prefs = UserNotificationPreferences(
+                    preferences=value, user=current_user
+                )
+                with db.session.begin(subtransactions=True):
+                    db.session.add(user_prefs)
+            return True
+
+        else:
+            return super(PatchUserDetailsParameters, cls).replace(
+                obj, field, value, state
+            )
 
     @classmethod
     def remove(cls, obj, field, value, state):

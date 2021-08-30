@@ -77,6 +77,7 @@ class DetailedUserSchema(UserListSchema):
     """ Detailed user schema exposes all fields used to render a normal user profile. """
 
     collaborations = base_fields.Function(User.get_collaborations_as_json)
+    notification_preferences = base_fields.Function(User.get_notification_preferences)
 
     class Meta(UserListSchema.Meta):
         fields = UserListSchema.Meta.fields + (
@@ -87,6 +88,7 @@ class DetailedUserSchema(UserListSchema):
             User.location.key,
             User.forum_id.key,
             User.website.key,
+            'notification_preferences',
             'collaborations',
         )
 

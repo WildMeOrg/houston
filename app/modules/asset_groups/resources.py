@@ -313,7 +313,9 @@ class AssetGroupSightingByID(Resource):
         """
         Get Asset_group_sighting details by ID.
         """
-        return asset_group_sighting
+        # We need this to be formatted like a sighting for frontend rendering etc
+        sighting_like = self.format_like_sighting(asset_group_sighting)
+        return sighting_like
 
     @api.permission_required(
         permissions.ObjectAccessPermission,
@@ -341,7 +343,16 @@ class AssetGroupSightingByID(Resource):
                     code=error.status_code,
                 )
             db.session.merge(asset_group_sighting)
-        return asset_group_sighting
+        sighting_like = self.format_like_sighting(asset_group_sighting)
+        return sighting_like
+
+    # to format an AGS like a sighting, we just have to move everything in 'config' out a level
+    def format_like_sighting(self, asset_group_sighting):
+        sighting = asset_group_sighting.copy()
+        # move sighting['config']'s entries into sighting itself
+        config = sighting.pop('config')
+        sighting.update(config)
+        return sighting
 
 
 @api.route('/sighting/<uuid:asset_group_sighting_guid>/encounter/<uuid:encounter_guid>')

@@ -23,7 +23,7 @@ def audit_log(logger, msg, *args, **kwargs):
     assert object
 
     # First iteration. Timestamp added by logger so no need to add manually
-    if current_user is not None and not current_user.is_anonymous:
+    if current_user and not current_user.is_anonymous:
         msg = f'{msg} executed by user :{current_user.guid} {current_user.email}'
     else:
         msg = f' {msg} executed by anonymous user'
@@ -38,7 +38,7 @@ def audit_log_object(logger, obj, audit_type, msg, *args, **kwargs):
 
     msg = f'{audit_type} of {obj.__class__.__name__} {obj.guid} {msg}'
     # First iteration. Timestamp added by logger so no need to add manually
-    if current_user is not None and not current_user.is_anonymous:
+    if current_user and not current_user.is_anonymous:
         msg = f'{msg} executed by user :{current_user.guid} {current_user.email}'
     else:
         msg = f' {msg} executed by anonymous user'

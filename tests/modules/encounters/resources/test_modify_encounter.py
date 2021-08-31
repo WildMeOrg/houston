@@ -3,11 +3,14 @@
 from unittest import mock
 
 from tests import utils
+from tests.modules.annotations.resources import utils as annot_utils
 from tests.modules.encounters.resources import utils as enc_utils
 from tests.extensions.edm import utils as edm_utils
 
 
-def test_modify_encounter(db, flask_app_client, researcher_1, researcher_2, admin_user):
+def test_modify_encounter(
+    db, flask_app_client, researcher_1, researcher_2, admin_user, test_asset_group_uuid
+):
     # pylint: disable=invalid-name
     from app.modules.encounters.models import Encounter
 
@@ -62,9 +65,46 @@ def test_modify_encounter(db, flask_app_client, researcher_1, researcher_2, admi
     )
     assert res.json['id'] == str(new_encounter_1.guid)
 
+    # Attach some assets and annotations
+    from app.modules.asset_groups.models import AssetGroup
+
+    assets = AssetGroup.query.get(test_asset_group_uuid).assets
+    new_encounter_1.sighting.add_assets(assets)
+    for asset in assets:
+        annot_utils.create_annotation(
+            flask_app_client, researcher_2, str(asset.guid), str(new_encounter_1.guid)
+        )
+
+    annotations = [
+        {
+            'asset_guid': str(ann.asset.guid),
+            'ia_class': 'test',
+            'guid': str(ann.guid),
+        }
+        for ann in new_encounter_1.annotations
+    ]
+
     enc = enc_utils.read_encounter(flask_app_client, researcher_2, new_encounter_1.guid)
-    assert enc.json['id'] == str(new_encounter_1.guid)
-    assert enc.json['locationId'] == new_val
+    assert enc.json == {
+        'customFields': {},
+        'id': str(new_encounter_1.guid),
+        'locationId': new_val,
+        'timeValues': [None, None, None, 0, 0],
+        'version': new_encounter_1.version,
+        'createdHouston': new_encounter_1.created.isoformat(),
+        'updatedHouston': new_encounter_1.updated.isoformat(),
+        'owner': {
+            'full_name': researcher_2.full_name,
+            'guid': str(researcher_2.guid),
+            'profile_fileupload': None,
+        },
+        'submitter': {
+            'full_name': researcher_1.full_name,
+            'guid': str(researcher_1.guid),
+            'profile_fileupload': None,
+        },
+        'annotations': annotations,
+    }
 
     # now we test modifying customFields
     cfd_id = edm_utils.custom_field_create(
@@ -93,7 +133,7 @@ def test_modify_encounter(db, flask_app_client, researcher_1, researcher_2, admi
     assert cfd_id in enc.json['customFields']
     assert enc.json['customFields'][cfd_id] == new_cfd_test_value
 
-    new_encounter_1.sighting.delete()
+    new_encounter_1.sighting.delete_cascade()
     new_encounter_1.delete()
 
 

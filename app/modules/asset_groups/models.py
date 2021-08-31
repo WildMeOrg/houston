@@ -14,6 +14,7 @@ from git import Git as BaseGit, Repo as BaseRepo
 
 from app.extensions.gitlab import GitlabInitializationError
 from app.extensions import db, HoustonModel, parallel
+from app.extensions.logging import audit_log
 from app.modules.annotations.models import Annotation
 from app.modules.assets.models import Asset
 from app.modules.encounters.models import Encounter
@@ -208,7 +209,10 @@ class AssetGroupSighting(db.Model, HoustonModel):
                     submitter_guid=self.asset_group.submitter_guid,
                     public=self.asset_group.anonymous,
                 )
-                log.info(f'Created encounter {new_encounter.guid} for owner {owner_guid}')
+
+                audit_log(
+                    log, f'Created encounter {new_encounter.guid} for owner {owner_guid}'
+                )
                 annotations = req_data.get('annotations', [])
                 for annot_uuid in annotations:
                     annot = Annotation.query.get(annot_uuid)

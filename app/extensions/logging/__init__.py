@@ -5,6 +5,15 @@ Logging adapter
 """
 import logging
 
+# somewhere between Error and Critical
+AUDIT = 45
+
+
+# logger for calling file needed as a parameter to ensure that the file and line numbers are correct in logs
+def audit_log(logger, msg, *args, **kwargs):
+    # First iteration. Timestamp added by logger so no need to add manually
+    logger.log(AUDIT, msg, *args, **kwargs)
+
 
 class Logging(object):
     """
@@ -40,3 +49,5 @@ class Logging(object):
         for hdlr in list(sqla_logger.handlers):
             sqla_logger.removeHandler(hdlr)
         sqla_logger.addHandler(logging.NullHandler())
+
+        logging.addLevelName(AUDIT, 'AUDIT')

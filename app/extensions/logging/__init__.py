@@ -4,6 +4,15 @@ Logging adapter
 ---------------
 """
 import logging
+import enum
+from flask_login import current_user  # NOQA
+
+
+class AuditType(str, enum.Enum):
+    Create = 'Create'
+    Delete = 'Delete'
+    Update = 'Update'  # Generic Update
+
 
 # somewhere between Error and Critical
 AUDIT = 45
@@ -11,7 +20,28 @@ AUDIT = 45
 
 # logger for calling file needed as a parameter to ensure that the file and line numbers are correct in logs
 def audit_log(logger, msg, *args, **kwargs):
+    assert object
+
     # First iteration. Timestamp added by logger so no need to add manually
+    if current_user is not None and not current_user.is_anonymous:
+        msg = f'{msg} executed by user :{current_user.guid} {current_user.email}'
+    else:
+        msg = f' {msg} executed by anonymous user'
+    logger.log(AUDIT, msg, *args, **kwargs)
+
+
+# As per above but this time an object must be passed that must have a guid member
+def audit_log_object(logger, obj, audit_type, msg, *args, **kwargs):
+    assert obj
+    assert hasattr(obj, 'guid')
+    assert isinstance(audit_type, AuditType)
+
+    msg = f'{audit_type} of {obj.__class__.__name__} {obj.guid} {msg}'
+    # First iteration. Timestamp added by logger so no need to add manually
+    if current_user is not None and not current_user.is_anonymous:
+        msg = f'{msg} executed by user :{current_user.guid} {current_user.email}'
+    else:
+        msg = f' {msg} executed by anonymous user'
     logger.log(AUDIT, msg, *args, **kwargs)
 
 

@@ -14,7 +14,7 @@ from git import Git as BaseGit, Repo as BaseRepo
 
 from app.extensions.gitlab import GitlabInitializationError
 from app.extensions import db, HoustonModel, parallel
-from app.extensions.logging import audit_log
+from app.extensions.logging import audit_log_object, AuditType
 from app.modules.annotations.models import Annotation
 from app.modules.assets.models import Asset
 from app.modules.encounters.models import Encounter
@@ -210,9 +210,10 @@ class AssetGroupSighting(db.Model, HoustonModel):
                     public=self.asset_group.anonymous,
                 )
 
-                audit_log(
-                    log, f'Created encounter {new_encounter.guid} for owner {owner_guid}'
+                audit_log_object(
+                    log, new_encounter, AuditType.Create, f' for owner {owner_guid}'
                 )
+
                 annotations = req_data.get('annotations', [])
                 for annot_uuid in annotations:
                     annot = Annotation.query.get(annot_uuid)
@@ -238,9 +239,10 @@ class AssetGroupSighting(db.Model, HoustonModel):
         sighting.ia_pipeline()
 
         num_encounters = len(self.config['encounters'])
-        log.info(
-            f'Created Sighting guid {sighting.guid} with {num_encounters} encounters'
+        audit_log_object(
+            log, sighting, AuditType.Create, f'with {num_encounters} encounter'
         )
+
         return sighting
 
     def has_filename(self, filename):

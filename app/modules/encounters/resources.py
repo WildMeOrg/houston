@@ -222,7 +222,6 @@ class EncounterByID(Resource):
                     code=400,
                 )
             else:
-
                 log.warning(  # TODO future audit log here
                     f'EDM triggered self-deletion of {sighting} result={result}'
                 )

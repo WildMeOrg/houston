@@ -32,6 +32,7 @@ class DetailedAuditLogSchema(BaseAuditLogSchema):
             AuditLog.updated.key,
             AuditLog.module_name.key,
             AuditLog.item_guid.key,
+            AuditLog.audit_type.key,
             AuditLog.user_email.key,
             AuditLog.message.key,
         )

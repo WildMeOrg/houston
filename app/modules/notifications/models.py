@@ -118,17 +118,13 @@ class Notification(db.Model, HoustonModel):
     def channels_to_send(self, digest=False):
         # pylint: disable=invalid-name
         # In future the channels to send right now will be different for digest generation
-        channels = None
         user_prefs = UserNotificationPreferences.get_user_preferences(self.recipient)
-        if self.message_type in user_prefs.keys():
-            channels = user_prefs[self.message_type]
-            for name in channels.keys():
-                # Don't blame me, I tried to make this line more readable, brunette insisted that it
-                # was more readable when the params were nowhere near the function name
-                if channels[name] and not user_prefs[NotificationType.all].get(
-                    name, True
-                ):
-                    channels[name] = False
+        channels = user_prefs.get(self.message_type, {})
+        for name in channels:
+            # If user set a channel to False in "all", it overrides the
+            # local channel setting
+            if not user_prefs[NotificationType.all].get(name, True):
+                channels[name] = False
 
         return channels
 

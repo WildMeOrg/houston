@@ -10,6 +10,9 @@ from app.utils import HoustonException
 
 import enum
 import uuid
+import logging
+
+log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
 
 class NotificationType(str, enum.Enum):
@@ -209,17 +212,18 @@ class NotificationPreferences(HoustonModel):
                     and set(new_preference.keys()) <= valid_channels
                 ):
                     raise HoustonException(
-                        log_message=f'Invalid Notification channel, options are {valid_channels}'
+                        log, f'Invalid Notification channel, options are {valid_channels}'
                     )
                 else:
                     for new_chan in new_preference:
                         if not isinstance(new_preference[new_chan], bool):
                             raise HoustonException(
-                                log_message='all values set in NotificationPreferences must be boolean '
+                                log,
+                                'all values set in NotificationPreferences must be boolean ',
                             )
         else:
             raise HoustonException(
-                log_message=f'Invalid Notification Type, options are {valid_types}'
+                log, f'Invalid Notification Type, options are {valid_types}'
             )
 
 

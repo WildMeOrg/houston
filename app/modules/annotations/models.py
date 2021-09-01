@@ -160,6 +160,7 @@ class Annotation(db.Model, HoustonModel):
 
         if xtl is None or ytl is None or width is None or height is None:
             raise HoustonException(
+                log,
                 log_message=f'{input_data} missing fields',
                 message='input Data needs xtl, ytl, width and height',
             )

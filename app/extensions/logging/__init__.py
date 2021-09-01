@@ -4,45 +4,58 @@ Logging adapter
 ---------------
 """
 import logging
-import enum
 from flask_login import current_user  # NOQA
+import enum
 
 
 class AuditType(str, enum.Enum):
     Create = 'Create'
     Delete = 'Delete'
     Update = 'Update'  # Generic Update
+    Fault = 'Fault'
+    Other = 'Other'  # None of the above
 
 
-# somewhere between Error and Critical
+# somewhere between Error and Critical to guarantee that it appears in the logs but is not interpreted as a
+# real error by the reader
 AUDIT = 45
 
 
 # logger for calling file needed as a parameter to ensure that the file and line numbers are correct in logs
-def audit_log(logger, msg, *args, **kwargs):
+def audit_log(logger, msg, audit_type=AuditType.Other, *args, **kwargs):
     assert object
 
-    # First iteration. Timestamp added by logger so no need to add manually
+    user_email = 'anonymous user'
     if current_user and not current_user.is_anonymous:
         msg = f'{msg} executed by user :{current_user.guid} {current_user.email}'
+        user_email = current_user.email
     else:
         msg = f' {msg} executed by anonymous user'
     logger.log(AUDIT, msg, *args, **kwargs)
+    from app.modules.audit_logs.models import AuditLog
+
+    AuditLog.create(msg, audit_type, user_email)
 
 
 # As per above but this time an object must be passed that must have a guid member
-def audit_log_object(logger, obj, audit_type, msg, *args, **kwargs):
+def audit_log_object(logger, obj, msg, audit_type, *args, **kwargs):
     assert obj
     assert hasattr(obj, 'guid')
     assert isinstance(audit_type, AuditType)
+    orig_msg = msg
 
-    msg = f'{audit_type} of {obj.__class__.__name__} {obj.guid} {msg}'
-    # First iteration. Timestamp added by logger so no need to add manually
+    module_name = obj.__class__.__name__
+    msg = f'{audit_type} of {module_name} {obj.guid} {msg}'
+    user_email = 'anonymous user'
     if current_user and not current_user.is_anonymous:
         msg = f'{msg} executed by user :{current_user.guid} {current_user.email}'
+        user_email = current_user.email
     else:
         msg = f' {msg} executed by anonymous user'
     logger.log(AUDIT, msg, *args, **kwargs)
+    from app.modules.audit_logs.models import AuditLog
+
+    AuditLog.create(orig_msg, audit_type, user_email, module_name, obj.guid)
 
 
 class Logging(object):

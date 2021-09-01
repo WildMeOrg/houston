@@ -39,6 +39,7 @@ MODULE_USER_MAP = {
     ('Notification', AccessOperation.READ): ['is_active'],
     ('Keyword', AccessOperation.READ): ['is_active'],
     ('Keyword', AccessOperation.WRITE): ['is_active'],
+    ('AuditLog', AccessOperation.READ): ['is_researcher'],
 }
 
 # Map of user permissions on the object. These permissions are not granted by collaboration

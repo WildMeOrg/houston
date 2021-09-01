@@ -367,7 +367,7 @@ class Sighting(db.Model, FeatherModel):
         try:
             id_config_dict = ia_config_reader.get(f'_identifiers.{algorithm}')
         except KeyError:
-            raise HoustonException(f'failed to find {algorithm}')
+            raise HoustonException(log, f'failed to find {algorithm}')
 
         id_request = {
             'jobid': str(job_uuid),
@@ -419,18 +419,20 @@ class Sighting(db.Model, FeatherModel):
 
     def identified(self, job_id, data):
         if self.stage != SightingStage.identification:
-            raise HoustonException(f'Sighting {self.guid} is not detecting')
+            raise HoustonException(log, f'Sighting {self.guid} is not detecting')
         job_id_str = str(job_id)
         if job_id_str not in self.jobs:
-            raise HoustonException(f'job_id {job_id} not found')
+            raise HoustonException(log, f'job_id {job_id} not found')
         job = self.jobs[job_id_str]
 
         if not job['active']:
-            raise HoustonException(f'job_id {job_id} not active')
+            raise HoustonException(log, f'job_id {job_id} not active')
 
         status = data.get('status')
         if not status:
-            raise HoustonException(f'No status in ID response from Sage {job_id_str}')
+            raise HoustonException(
+                log, f'No status in ID response from Sage {job_id_str}'
+            )
 
         success = status.get('success', False)
         if not success:
@@ -444,34 +446,39 @@ class Sighting(db.Model, FeatherModel):
 
         response = data.get('response')
         if not response:
-            raise HoustonException(f'No response field in message from Sage {job_id_str}')
+            raise HoustonException(
+                log, f'No response field in message from Sage {job_id_str}'
+            )
 
         job_id_msg = response.get('jobid')
         if not job_id_msg:
-            raise HoustonException(f'Must be a job id in the response {job_id_str}')
+            raise HoustonException(log, f'Must be a job id in the response {job_id_str}')
 
         if job_id_msg != job_id_str:
             raise HoustonException(
-                f'Job id in message {job_id_msg} must match job id in callback {job_id_str}'
+                log,
+                f'Job id in message {job_id_msg} must match job id in callback {job_id_str}',
             )
         json_result = response.get('json_result')
         if not json_result:
-            raise HoustonException(f'No json_result in the response for {job_id_str}')
+            raise HoustonException(
+                log, f'No json_result in the response for {job_id_str}'
+            )
 
         cm_dict = json_result.get('cm_dict')
         if not cm_dict:
-            raise HoustonException(f'No cm_dict in the json_result for {job_id_str}')
+            raise HoustonException(log, f'No cm_dict in the json_result for {job_id_str}')
 
         query_config_dict = json_result.get('query_config_dict')
         if not query_config_dict:
             raise HoustonException(
-                f'No query_config_dict in the json_result for {job_id_str}'
+                log, f'No query_config_dict in the json_result for {job_id_str}'
             )
 
         query_annot_uuids = json_result.get('query_annot_uuid_list', [])
         if not query_annot_uuids:
             raise HoustonException(
-                f'No query_annot_uuid_list in the json_result for {job_id_str}'
+                log, f'No query_annot_uuid_list in the json_result for {job_id_str}'
             )
 
         from app.modules.ia_config_reader import IaConfig
@@ -482,7 +489,7 @@ class Sighting(db.Model, FeatherModel):
         try:
             id_config_dict = ia_config_reader.get(f'_identifiers.{algorithm}')
         except KeyError:
-            raise HoustonException(f'failed to find {algorithm}')
+            raise HoustonException(log, f'failed to find {algorithm}')
 
         assert id_config_dict
         description = id_config_dict.get('description', '')

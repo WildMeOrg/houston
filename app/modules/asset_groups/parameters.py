@@ -85,7 +85,7 @@ class PatchAssetGroupSightingDetailsParameters(PatchJSONParameters):
             # asset must exist and must be part of the group
             if not obj.asset_group.get_asset_for_file(filename):
                 raise AssetGroupMetadataError(
-                    f'{filename} not in Group for assetGroupSighting {obj.guid}'
+                    log, f'{filename} not in Group for assetGroupSighting {obj.guid}'
                 )
 
     @classmethod
@@ -163,7 +163,8 @@ class PatchAssetGroupSightingEncounterDetailsParameters(PatchJSONParameters):
 
         if not encounter_metadata:
             raise AssetGroupMetadataError(
-                f'Encounter {encounter_uuid} not found in AssetGroupSighting {obj.guid}'
+                log,
+                f'Encounter {encounter_uuid} not found in AssetGroupSighting {obj.guid}',
             )
 
         if field == 'ownerEmail':

@@ -188,6 +188,7 @@ class EDMManager(RestManager):
                 error = response_data['errorFields']
 
             raise HoustonException(
+                log,
                 status_code=status_code,
                 message=message,
                 log_message=f'{tag} {method} failed {message} {response.status_code}',

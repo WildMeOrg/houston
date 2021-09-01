@@ -75,6 +75,7 @@ class ACMManager(RestManager):
         except Exception:
             message = (f'{tag} {method} failed to parse json response from Sage',)
             raise HoustonException(
+                log,
                 status_code=400,
                 message=message,
                 log_message=f'{message} Sage Status:{response.status_code} Sage Reason: {response.reason}',
@@ -85,6 +86,7 @@ class ACMManager(RestManager):
         if not status_data:
             message = (f'{tag} {method} failed to parse json status data from Sage',)
             raise HoustonException(
+                log,
                 status_code=400,
                 message=message,
                 log_message=f'{message} Sage Status:{response.status_code} Sage Reason: {response.reason}',
@@ -106,6 +108,7 @@ class ACMManager(RestManager):
             if status_code > 600:
                 status_code = 400  # flask doesnt like us to use "invalid" codes. :(
             raise HoustonException(
+                log,
                 status_code=status_code,
                 message=message,
                 log_message=f'{tag} {method} failed {log_message} {response.status_code}',

@@ -420,7 +420,13 @@ class SightingByID(Resource):
         if not response.get('success', False):
             return response
 
-        return sighting.augment_edm_json(response['result'])
+        from app.modules.sightings.schemas import AugmentedEdmSightingSchema
+
+        schema = AugmentedEdmSightingSchema()
+        edm_response = response['result']
+        edm_response.update(schema.dump(sighting).data)
+
+        return sighting.augment_edm_json(edm_response)
 
     @api.login_required(oauth_scopes=['sightings:write'])
     @api.permission_required(

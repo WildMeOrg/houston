@@ -39,6 +39,32 @@ class EDMConfigurationDefinition(Resource):
             path,
             target=target,
         )
+        from app.modules.ia_config_reader import IaConfig
+
+        ia_config_reader = IaConfig()
+        species = ia_config_reader.get_configured_species()
+        if not isinstance(
+            data['response']['configuration']['site.species']['suggestedValues'], list
+        ):
+            data['response']['configuration']['site.species']['suggestedValues'] = ()
+        for sn in species:  # only adds a species that is not already in suggestedValues
+            if (
+                next(
+                    (
+                        x
+                        for x in data['response']['configuration']['site.species'][
+                            'suggestedValues'
+                        ]
+                        if x.get('scientificName', None) == sn
+                    ),
+                    None,
+                )
+                is None
+            ):
+                data['response']['configuration']['site.species'][
+                    'suggestedValues'
+                ].insert(0, {'scientificName': sn, 'commonNames': [sn]})
+
         # TODO also traverse private here FIXME
         return data
 

@@ -225,6 +225,13 @@ def validate_list_response(response, expected_code):
     assert isinstance(response.json, list)
 
 
+def validate_list_of_dictionaries_response(response, expected_code, expected_fields):
+    validate_list_response(response, expected_code)
+    for item in response.json:
+        assert isinstance(item, dict)
+        assert set(item.keys()) >= expected_fields, set(item.keys())
+
+
 def patch_test_op(value):
     return {
         'op': 'test',

@@ -4,15 +4,13 @@
 Houston Common utils
 --------------------------
 """
-import logging
 
 from flask_login import current_user  # NOQA
-
-log = logging.getLogger(__name__)  # pylint: disable=invalid-name
+from app.extensions.logging import audit_log, AuditType
 
 
 class HoustonException(Exception):
-    def __init__(self, log_message, **kwargs):
+    def __init__(self, logger, log_message, **kwargs):
         self.message = kwargs.get('message', log_message)
         self.status_code = kwargs.get('status_code', 400)
 
@@ -21,8 +19,8 @@ class HoustonException(Exception):
         if log_message == '' and self.message != '':
             log_message = self.message
 
-        log.warning(f'Failed: {log_message} {self.status_code}')
-        # TODO This is where Audit Logging will hook into the system.
+        logger.warning(f'Failed: {log_message} {self.status_code}')
+        audit_log(logger, f'Failed: {log_message} {self.status_code}', AuditType.Fault)
 
     def get_val(self, argval, default):
         return self._kwargs.get(argval, default)

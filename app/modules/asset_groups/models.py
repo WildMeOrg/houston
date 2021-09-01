@@ -128,11 +128,13 @@ class AssetGroupSighting(db.Model, HoustonModel):
 
         if self.stage != AssetGroupSightingStage.curation:
             raise HoustonException(
+                log,
                 f'AssetGroupSighting {self.guid} is currently {self.stage}, not curating cannot commit',
             )
 
         if not self.config:
             raise HoustonException(
+                log,
                 f'AssetGroupSighting {self.guid} has no metadata',
             )
         cleanup = Cleanup('AssetGroup')
@@ -211,7 +213,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
                 )
 
                 audit_log_object(
-                    log, new_encounter, AuditType.Create, f' for owner {owner_guid}'
+                    log, new_encounter, f' for owner {owner_guid}', AuditType.Create
                 )
 
                 annotations = req_data.get('annotations', [])
@@ -240,7 +242,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
 
         num_encounters = len(self.config['encounters'])
         audit_log_object(
-            log, sighting, AuditType.Create, f'with {num_encounters} encounter'
+            log, sighting, f'with {num_encounters} encounter', AuditType.Create
         )
 
         return sighting
@@ -395,54 +397,58 @@ class AssetGroupSighting(db.Model, HoustonModel):
 
     def detected(self, job_id, response):
         if self.stage != AssetGroupSightingStage.detection:
-            raise HoustonException(f'AssetGroupSighting {self.guid} is not detecting')
+            raise HoustonException(
+                log, f'AssetGroupSighting {self.guid} is not detecting'
+            )
 
         job = self.jobs.get(str(job_id))
         if job is None:
-            raise HoustonException(f'job_id {job_id} not found')
+            raise HoustonException(log, f'job_id {job_id} not found')
 
         status = response.get('status')
         if not status:
-            raise HoustonException('No status in response from Sage')
+            raise HoustonException(log, 'No status in response from Sage')
 
         if status != 'completed':
             self.stage = AssetGroupSightingStage.failed
             # This is not an exception as the message from Sage was valid
-            # TODO this will be where the audit log fits in too
-            log.warning(
-                f'JobID {str(job_id)} failed with status: {status} exception: {response.get("json_result")}'
-            )
+            msg = f'JobID {str(job_id)} failed with status: {status} exception: {response.get("json_result")}'
+            audit_log_object(log, self, msg, AuditType.Fault)
+            log.warning(msg)
             return
 
         job_id_msg = response.get('jobid')
         if not job_id_msg:
-            raise HoustonException('Must be a job id in the response')
+            raise HoustonException(log, 'Must be a job id in the response')
 
         if job_id_msg != str(job_id):
             raise HoustonException(
-                f'Job id in message {job_id_msg} must match job id in callback {job_id}'
+                log,
+                f'Job id in message {job_id_msg} must match job id in callback {job_id}',
             )
 
         json_result = response.get('json_result', None)
 
         if not json_result:
-            raise HoustonException('No json_result in message from Sage')
+            raise HoustonException(log, 'No json_result in message from Sage')
 
         sage_image_uuids = json_result.get('image_uuid_list', [])
         results_list = json_result.get('results_list', [])
         if len(sage_image_uuids) != len(results_list):
             raise HoustonException(
-                f'image list len {len(sage_image_uuids)} does not match results len {len(results_list)}'
+                log,
+                f'image list len {len(sage_image_uuids)} does not match results len {len(results_list)}',
             )
         if len(sage_image_uuids) != len(job['asset_ids']):
             raise HoustonException(
-                f'image list from sage {len(sage_image_uuids)} does not match local image list {len(job["asset_ids"])}'
+                log,
+                f'image list from sage {len(sage_image_uuids)} does not match local image list {len(job["asset_ids"])}',
             )
 
         for i, asset_id in enumerate(job['asset_ids']):
             asset = Asset.find(asset_id)
             if not asset:
-                raise HoustonException(f'Asset Id {asset_id} not found')
+                raise HoustonException(log, f'Asset Id {asset_id} not found')
 
             results = results_list[i]
 
@@ -452,7 +458,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
                 ia_class = annot_data.get('class', None)
                 if not annot_uuid or not ia_class:
                     raise HoustonException(
-                        'Need a uuid and a class in each of the results'
+                        log, 'Need a uuid and a class in each of the results'
                     )
 
                 bounds = Annotation.create_bounds(annot_data)
@@ -856,10 +862,12 @@ class AssetGroup(db.Model, HoustonModel):
 
         if metadata.tus_transaction_id and not metadata.files:
             raise HoustonException(
+                log,
                 'Tus transaction AssetGroup must contain files',
             )
         if not metadata.files and not group_owner.is_researcher:
             raise HoustonException(
+                log,
                 'Only a Researcher can create an AssetGroup without any Assets',
             )
         asset_group = AssetGroup(

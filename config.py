@@ -159,6 +159,7 @@ class BaseConfig(object):
         'api',
         'passthroughs',
         'configuration',
+        'audit_logs',
     )
     # fmt: on
 

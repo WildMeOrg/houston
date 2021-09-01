@@ -17,20 +17,21 @@ log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
 
 class AssetGroupMetadataError(HoustonException):
-    def __init__(self, log_message, message=None, status_code=400):
+    def __init__(self, logger, log_message, message=None, status_code=400):
         if message:
             super(AssetGroupMetadataError, self).__init__(
+                logger,
                 log_message=f'AssetGroupMetadata {log_message}',
                 message=message,
                 status_code=status_code,
             )
         else:
             super(AssetGroupMetadataError, self).__init__(
+                logger,
                 log_message=f'AssetGroupMetadata {log_message}',
                 message=log_message,
                 status_code=status_code,
             )
-        log.warning(f'Failed: {log_message} {self.status_code}')
 
 
 # Class used to process and validate the json data. This json may be received from the frontend or
@@ -62,20 +63,20 @@ class AssetGroupMetadata(object):
                     dictionary[field], field_type
                 ):
                     raise AssetGroupMetadataError(
-                        f'{field} field missing from {error_str}'
+                        log, f'{field} field missing from {error_str}'
                     )
                 elif (
                     field_type == list
                 ):  # All mandatory lists must have at least one entry
                     if len(dictionary[field]) < 1:
                         raise AssetGroupMetadataError(
-                            f'{field} in {error_str} must have at least one entry'
+                            log, f'{field} in {error_str} must have at least one entry'
                         )
 
             elif field in dictionary:
                 if not isinstance(dictionary[field], field_type):
                     raise AssetGroupMetadataError(
-                        f'{field} incorrect type in {error_str}'
+                        log, f'{field} incorrect type in {error_str}'
                     )
 
     @classmethod
@@ -89,7 +90,7 @@ class AssetGroupMetadata(object):
         num_configs = len(id_configs)
         if num_configs > 1:
             raise AssetGroupMetadataError(
-                f'found multiple {num_configs} ID configs, only support one'
+                log, f'found multiple {num_configs} ID configs, only support one'
             )
 
         for config_id in range(num_configs):
@@ -103,7 +104,8 @@ class AssetGroupMetadata(object):
             supported_owners = Sighting.get_matching_set_options()
             if owners not in supported_owners:
                 raise AssetGroupMetadataError(
-                    f'dataOwners {owners} not supported, only support {supported_owners}'
+                    log,
+                    f'dataOwners {owners} not supported, only support {supported_owners}',
                 )
 
             ia_config_reader = IaConfig(current_app.config.get('CONFIG_MODEL'))
@@ -111,17 +113,17 @@ class AssetGroupMetadata(object):
                 try:
                     ia_config_reader.get(f'_identifiers.{algorithm}')
                 except KeyError:
-                    raise AssetGroupMetadataError(f'failed to find {algorithm}')
+                    raise AssetGroupMetadataError(log, f'failed to find {algorithm}')
 
     @classmethod
     def validate_owner_email(cls, owner_email, debug):
         from app.modules.users.models import User
 
         if not isinstance(owner_email, str):
-            raise AssetGroupMetadataError(f'{debug} ownerEmail must be a string')
+            raise AssetGroupMetadataError(log, f'{debug} ownerEmail must be a string')
         encounter_owner = User.find(email=owner_email)
         if encounter_owner is None:
-            raise AssetGroupMetadataError(f'{debug} owner {owner_email} not found')
+            raise AssetGroupMetadataError(log, f'{debug} owner {owner_email} not found')
 
     @classmethod
     def validate_individual(cls, individual_uuid, debug):
@@ -131,12 +133,12 @@ class AssetGroupMetadata(object):
             individual = Individual.query.get(individual_uuid)
         except Exception:
             raise AssetGroupMetadataError(
-                f'{debug} individual {individual_uuid} not valid'
+                log, f'{debug} individual {individual_uuid} not valid'
             )
 
         if individual is None:
             raise AssetGroupMetadataError(
-                f'{debug} individual {individual_uuid} not found'
+                log, f'{debug} individual {individual_uuid} not found'
             )
 
     @classmethod
@@ -148,14 +150,14 @@ class AssetGroupMetadata(object):
             annot = Annotation.query.get(annot_uuid)
             if not annot:
                 raise AssetGroupMetadataError(
-                    f'{debug} annotation:{str(annot_uuid)} not found'
+                    log, f'{debug} annotation:{str(annot_uuid)} not found'
                 )
 
             if not annot.asset.asset_group.is_partially_in_stage(
                 AssetGroupSightingStage.curation
             ):
                 raise AssetGroupMetadataError(
-                    f'{debug} annotation:{str(annot_uuid)} not in curating group'
+                    log, f'{debug} annotation:{str(annot_uuid)} not in curating group'
                 )
 
     @classmethod
@@ -168,7 +170,7 @@ class AssetGroupMetadata(object):
             encounter_num += 1
             if not isinstance(encounter, dict):
                 raise AssetGroupMetadataError(
-                    f'{debug}{encounter_num} needs to be a dict'
+                    log, f'{debug}{encounter_num} needs to be a dict'
                 )
             encounter_fields = [
                 ('ownerEmail', str, False),
@@ -203,14 +205,16 @@ class AssetGroupMetadata(object):
                     annot = Annotation.query.get(annot_uuid)
                     if not annot:
                         raise AssetGroupMetadataError(
-                            f'{debug}{encounter_num} annotation:{str(annot_uuid)} not found'
+                            log,
+                            f'{debug}{encounter_num} annotation:{str(annot_uuid)} not found',
                         )
 
                     if not annot.asset.asset_group.is_partially_in_stage(
                         AssetGroupSightingStage.curation
                     ):
                         raise AssetGroupMetadataError(
-                            f'{debug}{encounter_num} annotation:{str(annot_uuid)} not in curating group'
+                            log,
+                            f'{debug}{encounter_num} annotation:{str(annot_uuid)} not in curating group',
                         )
         return owner_assignment
 
@@ -235,13 +239,13 @@ class AssetGroupMetadata(object):
                     file_size = os.path.getsize(file_path)  # 2for1
                 except OSError as err:
                     raise AssetGroupMetadataError(
-                        f'Failed to find {filename} in transaction {err} '
+                        log, f'Failed to find {filename} in transaction {err} '
                     )
                 if file_size < 1:
                     raise AssetGroupMetadataError(f'found zero-size file for {filename}')
                 if filename in self.files:
                     raise AssetGroupMetadataError(
-                        f'found {filename} in multiple sightings'
+                        log, f'found {filename} in multiple sightings'
                     )
 
                 # Set ensures no duplicates
@@ -332,7 +336,7 @@ class AssetGroupMetadata(object):
             for config in self.detection_configs:
                 if config and config != 'None' and config not in detectors.keys():
                     raise AssetGroupMetadataError(
-                        f'detection config {config} not supported'
+                        log, f'detection config {config} not supported'
                     )
 
             pass
@@ -340,7 +344,8 @@ class AssetGroupMetadata(object):
         # validate num sightings
         if not self.bulk_upload and self.num_sightings != 1:
             raise AssetGroupMetadataError(
-                'Incorrect num sightings in form submission, there must be exactly one'
+                log,
+                'Incorrect num sightings in form submission, there must be exactly one',
             )
 
         # Ensure that the sighting (and encounters within them) received are valid
@@ -349,7 +354,8 @@ class AssetGroupMetadata(object):
 
         if not self.bulk_upload and len(self.request['sightings'][0]['encounters']) != 1:
             raise AssetGroupMetadataError(
-                'Incorrect num encounters in form submission, there must be exactly one'
+                log,
+                'Incorrect num encounters in form submission, there must be exactly one',
             )
 
         from app.modules.users.models import User
@@ -369,17 +375,17 @@ class AssetGroupMetadata(object):
 
         if 'uploadType' not in self.request:
             raise AssetGroupMetadataError(
-                "Use uploadType to define type 'bulk' or 'form'"
+                log, "Use uploadType to define type 'bulk' or 'form'"
             )
 
         if self.anonymous:
             if self.bulk_upload:
                 raise AssetGroupMetadataError(
-                    'anonymous users not permitted to do bulk upload'
+                    log, 'anonymous users not permitted to do bulk upload'
                 )
             if self.owner_assignment:
                 raise AssetGroupMetadataError(
-                    'anonymous users not permitted to assign owners'
+                    log, 'anonymous users not permitted to assign owners'
                 )
 
             log.info(
@@ -396,6 +402,7 @@ class AssetGroupMetadata(object):
                 ):
                     # Active users must log in, no spoofing
                     raise AssetGroupMetadataError(
+                        log,
                         f'Anonymous submitter using active user email {self.submitter_email}; rejecting',
                         'Invalid submitter data',
                         403,
@@ -405,7 +412,8 @@ class AssetGroupMetadata(object):
                 if group.bulk_upload and not group.is_processed():
                     # Only one unprocessed bulk upload allowed at a time
                     raise AssetGroupMetadataError(
-                        f'Bulk Upload {group.guid} not processed, please finish this before creating new bulk upload'
+                        log,
+                        f'Bulk Upload {group.guid} not processed, please finish this before creating new bulk upload',
                     )
 
         else:  # Form upload by logged in user
@@ -416,7 +424,8 @@ class AssetGroupMetadata(object):
             # TODO arbitrary limit chosen for now
             if unprocessed_groups > 10:
                 raise AssetGroupMetadataError(
-                    f'You have {unprocessed_groups} Asset groups outstanding, please finish these first'
+                    log,
+                    f'You have {unprocessed_groups} Asset groups outstanding, please finish these first',
                 )
 
     def _validate_sightings(self):
@@ -431,7 +440,7 @@ class AssetGroupMetadata(object):
             sighting_num += 1
             if not isinstance(sighting, dict):
                 raise AssetGroupMetadataError(
-                    f'Sighting {sighting_num} needs to be a dict'
+                    log, f'Sighting {sighting_num} needs to be a dict'
                 )
 
             # all files referenced must exist in the tus dir

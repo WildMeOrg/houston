@@ -499,3 +499,62 @@ def test_create_asset_group_individual(
                 flask_app_client, staff_user, asset_group_uuid
             )
         tus_utils.cleanup_tus_dir(transaction_id)
+
+
+def test_ben_bulk_upload(flask_app_client, researcher_1):
+    bulk_req = {
+        'description': 'Bulk import from user',
+        'uploadType': 'bulk',
+        'speciesDetectionModel': ['african_terrestrial'],
+        'sightings': [
+            {
+                'assetReferences': [],
+                'decimalLongitude': '73.5622',
+                'decimalLatitude': '4.286',
+                'verbatimLocality': 'North Male Lankan Reef',
+                'startTime': '2014-01-01T09:00:00.000Z',
+                'encounters': [
+                    {
+                        'decimalLatitude': '4.286',
+                        'decimalLongitude': '73.5622',
+                        'verbatimLocality': 'North Male Lankan Reef',
+                        'taxonomy': 'fbee5d2d-7bf5-4884-b757-7337f84f7fe4',
+                        'time': '2014-01-01T09:00:00.000Z',
+                    }
+                ],
+            },
+            {
+                'assetReferences': [],
+                'decimalLongitude': '73.5622',
+                'decimalLatitude': '4.2861',
+                'verbatimLocality': 'North Male Lankan Reef',
+                'startTime': '2014-01-01T09:00:00.000Z',
+                'encounters': [
+                    {
+                        'decimalLatitude': '4.2861',
+                        'decimalLongitude': '73.5622',
+                        'verbatimLocality': 'North Male Lankan Reef',
+                        'taxonomy': 'fbee5d2d-7bf5-4884-b757-7337f84f7fe4',
+                        'time': '2014-01-01T09:00:00.000Z',
+                    }
+                ],
+            },
+            {
+                'assetReferences': [],
+                'decimalLongitude': '73.6421',
+                'decimalLatitude': '4.3638',
+                'verbatimLocality': 'North Male Gasfinolhu Inside Reef',
+                'startTime': '2019-01-01T09:00:00.000Z',
+                'encounters': [
+                    {
+                        'decimalLatitude': '4.3638',
+                        'decimalLongitude': '73.6421',
+                        'verbatimLocality': 'North Male Gasfinolhu Inside Reef',
+                        'taxonomy': 'fbee5d2d-7bf5-4884-b757-7337f84f7fe4',
+                        'time': '2019-01-01T09:00:00.000Z',
+                    }
+                ],
+            },
+        ],
+    }
+    asset_group_utils.create_asset_group(flask_app_client, researcher_1, bulk_req)

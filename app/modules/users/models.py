@@ -101,7 +101,6 @@ class User(db.Model, FeatherModel, UserEDMMixin):
         if 'password' not in kwargs:
             raise ValueError('User must have a password')
         super().__init__(*args, **kwargs)
-        AuditLog.user_create_object(log, self, msg=f'{self.email}')
 
     guid = db.Column(
         db.GUID, default=uuid.uuid4, primary_key=True

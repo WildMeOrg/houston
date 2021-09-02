@@ -108,7 +108,7 @@ class Users(Resource):
             new_user = User(**args)
             db.session.add(new_user)
         db.session.refresh(new_user)
-
+        AuditLog.user_create_object(log, new_user, msg=f'{new_user.email}')
         return new_user
 
 

@@ -25,7 +25,7 @@ class NotificationType(str, enum.Enum):
 
 # Can send messages out on multiple channels
 class NotificationChannel(str, enum.Enum):
-    rest = 'Rest API'
+    rest = 'restAPI'
     email = 'email'
 
 
@@ -118,17 +118,13 @@ class Notification(db.Model, HoustonModel):
     def channels_to_send(self, digest=False):
         # pylint: disable=invalid-name
         # In future the channels to send right now will be different for digest generation
-        channels = None
         user_prefs = UserNotificationPreferences.get_user_preferences(self.recipient)
-        if self.message_type in user_prefs.keys():
-            channels = user_prefs[self.message_type]
-            for name in channels.keys():
-                # Don't blame me, I tried to make this line more readable, brunette insisted that it
-                # was more readable when the params were nowhere near the function name
-                if channels[name] and not user_prefs[NotificationType.all].get(
-                    name, True
-                ):
-                    channels[name] = False
+        channels = user_prefs.get(self.message_type, {})
+        for name in channels:
+            # If user set a channel to False in "all", it overrides the
+            # local channel setting
+            if not user_prefs[NotificationType.all].get(name, True):
+                channels[name] = False
 
         return channels
 
@@ -202,29 +198,12 @@ class NotificationPreferences(HoustonModel):
 
     @classmethod
     def validate_preferences(cls, new_prefs):
-        valid_types = set([pref.value for pref in NotificationType])
-        if isinstance(new_prefs, dict) and set(new_prefs.keys()) <= valid_types:
-            for new_pref_type in new_prefs:
-                valid_channels = set([pref.value for pref in NotificationChannel])
-                new_preference = new_prefs[new_pref_type]
-                if not (
-                    isinstance(new_preference, dict)
-                    and set(new_preference.keys()) <= valid_channels
-                ):
-                    raise HoustonException(
-                        log, f'Invalid Notification channel, options are {valid_channels}'
-                    )
-                else:
-                    for new_chan in new_preference:
-                        if not isinstance(new_preference[new_chan], bool):
-                            raise HoustonException(
-                                log,
-                                'all values set in NotificationPreferences must be boolean ',
-                            )
-        else:
-            raise HoustonException(
-                log, f'Invalid Notification Type, options are {valid_types}'
-            )
+        from .schemas import NotificationPreferenceSchema
+
+        schema = NotificationPreferenceSchema()
+        errors = schema.validate(new_prefs)
+        if errors:
+            raise HoustonException(log, schema.get_error_message(errors))
 
 
 class SystemNotificationPreferences(db.Model, NotificationPreferences):

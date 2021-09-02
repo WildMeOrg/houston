@@ -160,7 +160,7 @@ def test_notification_preferences(
     data = [
         test_utils.patch_replace_op(
             'notification_preferences',
-            {'collaboration_request': {'Rest API': False, 'email': False}},
+            {'collaboration_request': {'restAPI': False, 'email': False}},
         )
     ]
     user_utils.patch_user(flask_app_client, researcher_2, data)
@@ -175,7 +175,7 @@ def test_notification_preferences(
     # Test patch of all requests
     data = [
         test_utils.patch_replace_op(
-            'notification_preferences', {'all': {'Rest API': False, 'email': False}}
+            'notification_preferences', {'all': {'restAPI': False, 'email': False}}
         )
     ]
     user_utils.patch_user(flask_app_client, researcher_2, data)
@@ -191,7 +191,7 @@ def test_notification_preferences(
     data = [
         test_utils.patch_replace_op(
             'notification_preferences',
-            {'collaboration_request': {'Rest API': True, 'email': False}},
+            {'collaboration_request': {'restAPI': True, 'email': False}},
         )
     ]
     user_utils.patch_user(flask_app_client, researcher_2, data)

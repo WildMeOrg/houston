@@ -123,3 +123,32 @@ def test_create_approved_collaboration(
     finally:
         if collab:
             collab.delete()
+
+
+def test_create_repeat_collaboration(
+    flask_app_client,
+    researcher_1,
+    readonly_user,
+    researcher_2,
+    user_manager_user,
+    db,
+    request,
+):
+    data = {'user_guid': str(researcher_2.guid)}
+    resp = collab_utils.create_collaboration(flask_app_client, researcher_1, data)
+    researcher_1_assocs = [
+        assoc for assoc in researcher_1.user_collaboration_associations
+    ]
+    collab = researcher_1_assocs[0].collaboration
+    request.addfinalizer(lambda: collab.delete())
+    assert len(researcher_1_assocs) == 1
+    expected_users = [str(researcher_1.guid), str(researcher_2.guid)]
+    expected_states = {
+        str(researcher_1.guid): 'approved',
+        str(researcher_2.guid): 'pending',
+    }
+    validate_collab(resp.json, expected_users, expected_states)
+
+    # Should return the first one again
+    collab_utils.create_collaboration(flask_app_client, researcher_1, data)
+    assert len(researcher_1_assocs) == 1

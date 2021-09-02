@@ -84,6 +84,13 @@ class Collaborations(Resource):
         if not other_user.is_researcher:
             abort(400, f'User with guid {other_user_guid} is not a researcher')
 
+        for collab_assoc in current_user.user_collaboration_associations:
+            if other_user in collab_assoc.collaboration.get_users():
+                log.warning(
+                    f'User {current_user.email} attempted repeated collaboration with {other_user.email}'
+                )
+                return collab_assoc.collaboration
+
         context = api.commit_or_abort(
             db.session, default_error_message='Failed to create a new Collaboration'
         )

@@ -201,6 +201,5 @@ def test_notification_preferences(
     collab_requests_from_res1 = get_notifications(
         researcher_2_notifs.json, researcher_1.email, 'collaboration_request'
     )
-    if len(collab_requests_from_res1) == 0:
-        breakpoint()
+
     assert len(collab_requests_from_res1) != 0

@@ -7,6 +7,8 @@ import logging
 from flask_login import current_user  # NOQA
 import enum
 
+log = logging.getLogger(__name__)  # pylint: disable=invalid-name
+
 
 class Logging(object):
     """
@@ -70,7 +72,11 @@ class Logging(object):
             user_email = current_user.email
         else:
             msg = f' {msg} executed by anonymous user'
-        logger.log(cls.AUDIT, msg, *args, **kwargs)
+        if logger:
+            logger.log(cls.AUDIT, msg, *args, **kwargs)
+        else:
+            log.log(cls.AUDIT, msg, *args, **kwargs)
+
         from app.modules.audit_logs.models import AuditLog
 
         AuditLog.create(msg, audit_type, user_email)
@@ -112,7 +118,16 @@ class Logging(object):
                 logger, obj, msg, cls.AuditType.BackendFault, *args, **kwargs
             )
         else:
-            cls.audit_log(logger, msg, *args, **kwargs)
+            cls.audit_log(logger, msg, cls.AuditType.BackendFault, *args, **kwargs)
+
+    @classmethod
+    def houston_fault(cls, logger, msg='', obj=None, *args, **kwargs):
+        if obj:
+            cls.audit_log_object(
+                logger, obj, msg, cls.AuditType.HoustonFault, *args, **kwargs
+            )
+        else:
+            cls.audit_log(logger, msg, cls.AuditType.HoustonFault, *args, **kwargs)
 
     @classmethod
     def delete_object(cls, logger, obj, msg='', *args, **kwargs):

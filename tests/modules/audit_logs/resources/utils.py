@@ -32,7 +32,7 @@ def read_all_audit_logs(
     flask_app_client, user, expected_status_code=200, module_name=None
 ):
     with flask_app_client.login(user, auth_scopes=('audit_logs:read',)):
-        query = {'limit': 30}
+        query = {'limit': 40}
         if module_name:
             query['module_name'] = module_name
         response = flask_app_client.get(PATH, query_string=query)

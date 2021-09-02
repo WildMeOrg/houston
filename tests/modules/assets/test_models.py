@@ -103,6 +103,35 @@ def test_asset_meta_and_delete(flask_app, db, test_root, admin_user, request):
     assert AssetGroup.query.get(asset_group.guid) is None
 
 
+def test_update_symlink(test_asset_group_uuid, request):
+    from app.modules.asset_groups.models import AssetGroup
+
+    asset_group = AssetGroup.query.get(test_asset_group_uuid)
+    zebra = [
+        asset
+        for asset in asset_group.assets
+        if asset.get_original_filename() == 'zebra.jpg'
+    ][0]
+
+    symlink = pathlib.Path(zebra.get_symlink())
+    assert symlink.is_symlink()
+    actual = symlink.resolve()
+    assert actual.is_file()
+    assert actual.name == zebra.get_original_filename()
+
+    (actual.parent / 'new.txt').touch()
+    zebra.update_symlink(str(actual.parent / 'new.txt'))
+    # Reset zebra symlink to zebra.jpg
+    request.addfinalizer(lambda: zebra.update_symlink(actual))
+
+    new_symlink = pathlib.Path(zebra.get_symlink())
+    assert new_symlink.is_symlink()
+    assert new_symlink == symlink
+    new_actual = symlink.resolve()
+    assert new_actual.is_file()
+    assert new_actual.name == 'new.txt'
+
+
 def test_derived_images(test_asset_group_uuid):
     from app.modules.asset_groups.models import AssetGroup
 

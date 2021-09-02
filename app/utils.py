@@ -6,11 +6,13 @@ Houston Common utils
 """
 
 from flask_login import current_user  # NOQA
-from app.extensions.logging import audit_log, AuditType
+import app.extensions.logging as AuditLog  # NOQA
 
 
 class HoustonException(Exception):
-    def __init__(self, logger, log_message, **kwargs):
+    def __init__(
+        self, logger, log_message, fault=AuditLog.AuditType.FrontEndFault, **kwargs
+    ):
         self.message = kwargs.get('message', log_message)
         self.status_code = kwargs.get('status_code', 400)
 
@@ -19,8 +21,7 @@ class HoustonException(Exception):
         if log_message == '' and self.message != '':
             log_message = self.message
 
-        logger.warning(f'Failed: {log_message} {self.status_code}')
-        audit_log(logger, f'Failed: {log_message} {self.status_code}', AuditType.Fault)
+        AuditLog.audit_log(logger, f'Failed: {log_message} {self.status_code}', fault)
 
     def __str__(self):
         return self.message

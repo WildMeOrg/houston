@@ -33,12 +33,18 @@ def test_audit_asset_group_creation(
 
         sighting = Sighting.query.get(sighting_uuid)
         audit_utils.read_all_audit_logs(flask_app_client, contributor_1, 403)
-        audit_items = audit_utils.read_all_audit_logs(flask_app_client, researcher_1)
-        assert {'module_name': 'Sighting', 'item_guid': sighting_uuid} in audit_items.json
-        assert {
+
+        expected_sighting = {'module_name': 'Sighting', 'item_guid': sighting_uuid}
+        expected_encounter = {
             'module_name': 'Encounter',
             'item_guid': str(sighting.encounters[0].guid),
-        } in audit_items.json
+        }
+
+        sighting_audit_items = audit_utils.read_all_audit_logs(
+            flask_app_client, researcher_1, module_name='Sighting'
+        )
+        assert expected_sighting in sighting_audit_items.json
+        assert expected_encounter not in sighting_audit_items.json
 
         audit_utils.read_audit_log(flask_app_client, contributor_1, sighting_uuid, 403)
         sighting_audit = audit_utils.read_audit_log(

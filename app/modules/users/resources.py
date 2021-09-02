@@ -18,6 +18,7 @@ from app.extensions.api import Namespace
 from . import permissions, schemas, parameters
 from app.modules.users.permissions.types import AccessOperation
 from .models import db, User
+import app.extensions.logging as AuditLog
 
 
 log = logging.getLogger(__name__)
@@ -161,7 +162,7 @@ class UserByID(Resource):
             parameters.PatchUserDetailsParameters.perform_patch(args, user)
             db.session.merge(user)
         db.session.refresh(user)
-
+        AuditLog.patch_object(log, user, args)
         return user
 
     @api.login_required(oauth_scopes=['users:write'])

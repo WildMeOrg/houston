@@ -14,6 +14,7 @@ from app.modules.annotations.models import Annotation
 from app.modules.encounters.models import Encounter
 from app.modules.individuals.models import Individual
 from app.utils import HoustonException
+import app.extensions.logging as AuditLog
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
@@ -225,6 +226,8 @@ class Sighting(db.Model, FeatherModel):
         return details
 
     def delete(self):
+        AuditLog.delete_object(log, self)
+
         with db.session.begin():
             db.session.delete(self)
 
@@ -237,6 +240,7 @@ class Sighting(db.Model, FeatherModel):
             while self.encounters:
                 enc = self.encounters.pop()
                 enc.delete_cascade()
+            AuditLog.delete_object(log, self)
             db.session.delete(self)
             while assets:
                 asset = assets.pop()
@@ -440,8 +444,8 @@ class Sighting(db.Model, FeatherModel):
             # This is not an exception as the message from Sage was valid
             code = status.get('code', 'unset')
             message = status.get('message', 'unset')
-            # TODO this will be where the audit log fits in too
-            log.warning(f'JobID {job_id_str} failed with code: {code} message: {message}')
+            error_msg = f'JobID {job_id_str} failed with code: {code} message: {message}'
+            AuditLog.backend_fault(log, error_msg, self)
             return
 
         response = data.get('response')

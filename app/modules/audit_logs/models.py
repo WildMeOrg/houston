@@ -10,6 +10,8 @@ from app.extensions import db
 
 import uuid
 
+AuditMaxMessageLength = 240
+
 
 class AuditLog(db.Model, Timestamp):
     """
@@ -26,7 +28,7 @@ class AuditLog(db.Model, Timestamp):
     item_guid = db.Column(db.GUID, nullable=True)
     user_email = db.Column(db.String(length=120), nullable=False)
 
-    message = db.Column(db.String(length=240), nullable=True)
+    message = db.Column(db.String(length=AuditMaxMessageLength), nullable=True)
     # One of AuditType
     audit_type = db.Column(db.String, nullable=False)
 
@@ -42,14 +44,13 @@ class AuditLog(db.Model, Timestamp):
     @classmethod
     def create(cls, msg, audit_type, user_email, module_name=None, item_guid=None):
 
-        # only store max 240 chars
-        if len(msg) > 240:
-            msg = msg[0:240]
+        # only store max
+        if len(msg) > AuditMaxMessageLength:
+            msg = msg[0:AuditMaxMessageLength]
 
         if module_name or item_guid:
             # Must set both of them or neither
-            assert item_guid
-            assert module_name
+            assert item_guid and module_name
             log_entry = AuditLog(
                 module_name=module_name,
                 item_guid=item_guid,

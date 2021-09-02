@@ -15,6 +15,7 @@ from app.extensions.api import Namespace, abort
 from app.extensions.api.parameters import PaginationParameters
 from app.modules.users import permissions
 from app.modules.users.permissions.types import AccessOperation
+import app.extensions.logging as AuditLog
 
 from . import parameters, schemas
 from .models import Annotation
@@ -89,6 +90,7 @@ class Annotations(Resource):
         )
         with context:
             annotation = Annotation(**args)
+            AuditLog.user_create_object(log, annotation)
             db.session.add(annotation)
         return annotation
 
@@ -142,6 +144,8 @@ class AnnotationByID(Resource):
                 args, obj=annotation
             )
             db.session.merge(annotation)
+            AuditLog.patch_object(log, annotation, args)
+
         return annotation
 
     @api.permission_required(
@@ -158,5 +162,6 @@ class AnnotationByID(Resource):
         """
         Delete a Annotation by ID.
         """
+        AuditLog.delete_object(log, annotation)
         annotation.delete()
         return None

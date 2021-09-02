@@ -14,7 +14,7 @@ from git import Git as BaseGit, Repo as BaseRepo
 
 from app.extensions.gitlab import GitlabInitializationError
 from app.extensions import db, HoustonModel, parallel
-from app.extensions.logging import audit_log_object, AuditType
+import app.extensions.logging as AuditLog  # NOQA
 from app.modules.annotations.models import Annotation
 from app.modules.assets.models import Asset
 from app.modules.encounters.models import Encounter
@@ -212,8 +212,8 @@ class AssetGroupSighting(db.Model, HoustonModel):
                     public=self.asset_group.anonymous,
                 )
 
-                audit_log_object(
-                    log, new_encounter, f' for owner {owner_guid}', AuditType.Create
+                AuditLog.user_create_object(
+                    log, new_encounter, f' for owner {owner_guid}'
                 )
 
                 annotations = req_data.get('annotations', [])
@@ -241,9 +241,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
         sighting.ia_pipeline()
 
         num_encounters = len(self.config['encounters'])
-        audit_log_object(
-            log, sighting, f'with {num_encounters} encounter', AuditType.Create
-        )
+        AuditLog.user_create_object(log, sighting, f'with {num_encounters} encounter(s)')
 
         return sighting
 
@@ -413,7 +411,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
             self.stage = AssetGroupSightingStage.failed
             # This is not an exception as the message from Sage was valid
             msg = f'JobID {str(job_id)} failed with status: {status} exception: {response.get("json_result")}'
-            audit_log_object(log, self, msg, AuditType.Fault)
+            AuditLog.audit_log_object(log, self, msg, AuditLog.AuditType.BackEndFault)
             log.warning(msg)
             return
 
@@ -469,7 +467,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
                     ia_class=annot_data['class'],
                     bounds=bounds,
                 )
-
+                AuditLog.system_create_object(log, new_annot)
                 with db.session.begin(subtransactions=True):
                     db.session.add(new_annot)
         self.job_complete(str(job_id))

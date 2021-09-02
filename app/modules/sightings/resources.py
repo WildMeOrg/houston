@@ -27,6 +27,7 @@ from app.modules import utils
 import json
 import os
 from uuid import UUID
+import app.extensions.logging as AuditLog
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 api = Namespace('sightings', description='Sightings')  # pylint: disable=invalid-name
@@ -331,6 +332,7 @@ class Sightings(Resource):
             version=result_data.get('version', 2),
             stage=SightingStage.processed,
         )
+        AuditLog.user_create_object(log, sighting)
 
         assets = None
         if paths_wanted is not None:
@@ -507,9 +509,7 @@ class SightingByID(Resource):
                 )
 
             if 'deletedSighting' in result:
-                log.warning(  # TODO future audit log here
-                    f'EDM triggered self-deletion of {sighting} result={result}'
-                )
+                log.warning(f'EDM triggered self-deletion of {sighting} result={result}')
                 response_data['threatened_sighting_id'] = str(sighting.guid)
                 sighting.delete_cascade()  # this will get rid of our encounter(s) as well so no need to rectify_edm_encounters()
                 sighting = None
@@ -545,6 +545,7 @@ class SightingByID(Resource):
                     )
                     with context:
                         db.session.merge(sighting)
+                AuditLog.patch_object(log, sighting, args)
             return response_data
 
         # no EDM, so fall thru to regular houston-patching
@@ -554,6 +555,8 @@ class SightingByID(Resource):
         with context:
             parameters.PatchSightingDetailsParameters.perform_patch(args, obj=sighting)
             db.session.merge(sighting)
+        AuditLog.patch_object(log, sighting, args)
+
         # this mimics output format of edm-patching
         return {
             'success': True,

@@ -23,6 +23,10 @@ def rebuild(context, service=[]):
             )
     if 'gitlab' in service and 'houston' not in service:
         service.append('houston')
+    if 'houston' in service and 'celery_beat' not in service:
+        service.append('celery_beat')
+    if 'houston' in service and 'celery_worker' not in service:
+        service.append('celery_worker')
     services = service
     services_ = ', '.join(services)
     logger.info(f'Stop and remove codex services {services_}')

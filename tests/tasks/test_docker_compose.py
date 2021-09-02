@@ -18,19 +18,19 @@ def test_rebuild_specific_services():
         context = MockContext(
             run={
                 'docker-compose config': Result(DOCKER_COMPOSE),
-                'docker-compose rm --stop -f db houston': True,
-                'docker volume ls -q -f dangling=true -f name=houston_db* -f name=houston_houston* | xargs docker volume rm': True,
-                'docker-compose pull db': True,
-                'docker-compose build db houston': True,
+                'docker-compose rm --stop -f db acm': True,
+                'docker volume ls -q -f dangling=true -f name=houston_db* -f name=houston_acm* | xargs docker volume rm': True,
+                'docker-compose pull db acm': True,
+                'docker-compose build db acm': True,
             },
         )
-        tasks.docker_compose.rebuild(context, service=['db', 'houston'])
+        tasks.docker_compose.rebuild(context, service=['db', 'acm'])
         assert logger.info.call_args_list == [
-            mock.call('Stop and remove codex services db, houston'),
-            mock.call('Remove codex volumes db, houston'),
-            mock.call('Pull image updates db'),
-            mock.call('Rebuild images db, houston'),
-            mock.call('You can now do "docker-compose up -d db houston"'),
+            mock.call('Stop and remove codex services db, acm'),
+            mock.call('Remove codex volumes db, acm'),
+            mock.call('Pull image updates db, acm'),
+            mock.call('Rebuild images db, acm'),
+            mock.call('You can now do "docker-compose up -d db acm"'),
         ]
 
 
@@ -60,19 +60,23 @@ def test_rebuild_gitlab():
         context = MockContext(
             run={
                 'docker-compose config': Result(DOCKER_COMPOSE),
-                'docker-compose rm --stop -f gitlab houston': True,
-                'docker volume ls -q -f dangling=true -f name=houston_gitlab* -f name=houston_houston* | xargs docker volume rm': True,
+                'docker-compose rm --stop -f gitlab houston celery_beat celery_worker': True,
+                'docker volume ls -q -f dangling=true -f name=houston_gitlab* -f name=houston_houston* -f name=houston_celery_beat* -f name=houston_celery_worker* | xargs docker volume rm': True,
                 'docker-compose pull gitlab': True,
-                'docker-compose build gitlab houston': True,
+                'docker-compose build gitlab houston celery_beat celery_worker': True,
             },
         )
         tasks.docker_compose.rebuild(context, service=['gitlab'])
         assert logger.info.call_args_list == [
-            mock.call('Stop and remove codex services gitlab, houston'),
-            mock.call('Remove codex volumes gitlab, houston'),
+            mock.call(
+                'Stop and remove codex services gitlab, houston, celery_beat, celery_worker'
+            ),
+            mock.call('Remove codex volumes gitlab, houston, celery_beat, celery_worker'),
             mock.call('Pull image updates gitlab'),
-            mock.call('Rebuild images gitlab, houston'),
-            mock.call('You can now do "docker-compose up -d gitlab houston"'),
+            mock.call('Rebuild images gitlab, houston, celery_beat, celery_worker'),
+            mock.call(
+                'You can now do "docker-compose up -d gitlab houston celery_beat celery_worker"'
+            ),
         ]
 
 

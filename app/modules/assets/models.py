@@ -5,7 +5,7 @@ Assets database models
 """
 # from flask import current_app
 from functools import total_ordering
-import os
+import pathlib
 
 from app.extensions import db, HoustonModel
 
@@ -67,6 +67,12 @@ class Asset(db.Model, HoustonModel):
     DERIVED_EXTENSION = 'jpg'
     DERIVED_MIME_TYPE = 'image/jpeg'
 
+    FORMATS = {
+        'master': [4096, 4096],
+        'mid': [1024, 1024],
+        'thumb': [256, 256],
+    }
+
     def __repr__(self):
         return (
             '<{class_name}('
@@ -112,35 +118,34 @@ class Asset(db.Model, HoustonModel):
         return self.get_original_filename()
 
     def get_original_filename(self):
-        return os.path.basename(self.path)
+        return pathlib.Path(self.path).name
 
     def get_symlink(self):
-        asset_group_abspath = self.asset_group.get_absolute_path()
-        assets_path = os.path.join(asset_group_abspath, '_assets')
-        asset_symlink_filepath = os.path.join(assets_path, self.get_filename())
-        return asset_symlink_filepath
+        asset_group_path = pathlib.Path(self.asset_group.get_absolute_path())
+        assets_path = asset_group_path / '_assets'
+        return assets_path / self.get_filename()
 
-    def get_derived_path(self):
-        asset_group_abspath = self.asset_group.get_absolute_path()
-        assets_path = os.path.join(asset_group_abspath, '_assets')
-        return os.path.join(assets_path, 'derived')
+    def get_derived_path(self, format):
+        asset_group_path = pathlib.Path(self.asset_group.get_absolute_path())
+        assets_path = asset_group_path / '_assets'
+        filename = f'{self.guid}.{format}.{self.DERIVED_EXTENSION}'
+        return assets_path / 'derived' / filename
 
     def update_symlink(self, asset_asset_group_filepath):
-        assert os.path.exists(asset_asset_group_filepath)
+        target_path = pathlib.Path(asset_asset_group_filepath)
+        assert target_path.exists()
 
-        asset_symlink_filepath = self.get_symlink()
-        if os.path.exists(asset_symlink_filepath):
-            os.remove(asset_symlink_filepath)
+        asset_symlink = self.get_symlink()
+        asset_symlink.unlink(missing_ok=True)
 
-        asset_group_abspath = self.asset_group.get_absolute_path()
-        asset_asset_group_filepath_relative = asset_asset_group_filepath.replace(
-            asset_group_abspath, '..'
+        asset_group_path = pathlib.Path(self.asset_group.get_absolute_path())
+        asset_symlink.symlink_to(
+            pathlib.Path('..') / target_path.relative_to(asset_group_path)
         )
-        os.symlink(asset_asset_group_filepath_relative, asset_symlink_filepath)
-        assert os.path.exists(asset_symlink_filepath)
-        assert os.path.islink(asset_symlink_filepath)
+        assert asset_symlink.exists()
+        assert asset_symlink.is_symlink()
 
-        return asset_symlink_filepath
+        return asset_symlink
 
     def mime_type_major(self):
         if not self.mime_type:
@@ -165,7 +170,7 @@ class Asset(db.Model, HoustonModel):
             return None
         dmeta = {}
         source_path = self.get_symlink()
-        assert os.path.exists(source_path)
+        assert source_path.exists()
         with Image.open(source_path) as im:
             size = im.size
             dmeta['width'] = size[0]
@@ -191,17 +196,9 @@ class Asset(db.Model, HoustonModel):
         return self.get_dimensions()
 
     def get_or_make_format_path(self, format):
-        FORMAT = {
-            'master': [4096, 4096],
-            'mid': [1024, 1024],
-            'thumb': [256, 256],
-        }
-        assert format in FORMAT
-        target_path = os.path.join(
-            self.get_derived_path(),
-            '.'.join([str(self.guid), format, self.DERIVED_EXTENSION]),
-        )
-        if os.path.exists(target_path):
+        assert format in self.FORMATS
+        target_path = self.get_derived_path(format)
+        if target_path.exists():
             return target_path
         log.info(
             'get_or_make_format_path() attempting to create format %r as %r'
@@ -217,7 +214,7 @@ class Asset(db.Model, HoustonModel):
             return source_path
 
         with Image.open(source_path) as source_image:
-            source_image.thumbnail(FORMAT[format])
+            source_image.thumbnail(self.FORMATS[format])
             source_image.save(target_path)
 
         return target_path
@@ -226,20 +223,14 @@ class Asset(db.Model, HoustonModel):
     # also note: this fails horribly in terms of exif orientation.  wom-womp
     def get_or_make_master_format_path(self):
         source_path = self.get_symlink()
-        assert os.path.exists(source_path)
-        target_dir = self.get_derived_path()
-        if not os.path.exists(target_dir):
-            os.mkdir(target_dir)
-        target_path = os.path.join(
-            target_dir, '.'.join([str(self.guid), 'master', self.DERIVED_EXTENSION])
-        )
-        if os.path.exists(target_path):
+        assert source_path.exists()
+        target_path = self.get_derived_path('master')
+        target_path.parent.mkdir(parents=True, exist_ok=True)
+        if target_path.exists():
             return target_path
         log.info('make_master_format() creating master format as %r' % (target_path,))
         with Image.open(source_path) as source_image:
-            source_image.thumbnail(
-                (4096, 4096)
-            )  # TODO get from more global FORMAT re: above
+            source_image.thumbnail(self.FORMATS['master'])
             rgb = source_image.convert('RGB')
             rgb.save(target_path)
         return target_path

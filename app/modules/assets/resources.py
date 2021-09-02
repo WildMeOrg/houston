@@ -8,8 +8,10 @@ RESTful API Assets resources
 import logging
 
 from flask import send_file
+
 from flask_restx_patched import Resource
 from flask_restx_patched._http import HTTPStatus
+from app.extensions import db
 from app.extensions.api import Namespace
 from app.modules.users import permissions
 from app.modules.users.permissions.types import AccessOperation
@@ -18,7 +20,7 @@ import werkzeug
 
 from .models import Asset
 
-from . import schemas
+from . import schemas, parameters
 
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
@@ -55,7 +57,6 @@ class Assets(Resource):
 
 
 @api.route('/<uuid:asset_guid>')
-@api.login_required(oauth_scopes=['assets:read'])
 @api.response(
     code=HTTPStatus.NOT_FOUND,
     description='Asset not found.',
@@ -66,6 +67,7 @@ class AssetByID(Resource):
     Manipulations with a specific Asset.
     """
 
+    @api.login_required(oauth_scopes=['assets:read'])
     @api.permission_required(
         permissions.ObjectAccessPermission,
         kwargs_on_request=lambda kwargs: {
@@ -78,6 +80,28 @@ class AssetByID(Resource):
         """
         Get Asset details by ID.
         """
+        return asset
+
+    @api.login_required(oauth_scopes=['assets:write'])
+    @api.permission_required(
+        permissions.ObjectAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'obj': kwargs['asset'],
+            'action': AccessOperation.WRITE,
+        },
+    )
+    @api.parameters(parameters.PatchAssetParameters())
+    @api.response(schemas.DetailedAssetSchema())
+    def patch(self, args, asset):
+        """
+        Patch Asset details by ID.
+        """
+        context = api.commit_or_abort(
+            db.session, default_error_message='Failed to update Asset details.'
+        )
+        with context:
+            parameters.PatchAssetParameters.perform_patch(args, obj=asset)
+            db.session.merge(asset)
         return asset
 
     # @api.permission_required(

@@ -16,6 +16,7 @@ import tqdm
 import keyword
 import uuid
 import sqlalchemy
+import app.extensions.logging as AuditLog  # NOQA
 
 KEYWORD_SET = set(keyword.kwlist)
 
@@ -150,6 +151,7 @@ class EDMManager(RestManager):
         target='default',
         request_headers=None,
     ):
+
         # here we handle special headers needed specifically for EDM, which come via incoming request_headers
         if request_headers is not None:
             headers = passthrough_kwargs.get('headers', {})
@@ -189,9 +191,10 @@ class EDMManager(RestManager):
 
             raise HoustonException(
                 log,
+                f'{tag} {method} failed {message} {response.status_code}',
+                AuditLog.AuditType.BackEndFault,
                 status_code=status_code,
                 message=message,
-                log_message=f'{tag} {method} failed {message} {response.status_code}',
                 error=error,
                 edm_status_code=response.status_code,
             )
@@ -314,9 +317,14 @@ class EDMObjectMixin(object):
                     if edm_attribute == self.EDM_VERSION_ATTRIBUTE:
                         found_version = edm_value
             except AttributeError:
-                log.warning('Could not find EDM attribute %r' % (edm_attribute,))
+                AuditLog.backend_fault(
+                    log, f'Could not find EDM attribute {edm_attribute}'
+                )
+
             except KeyError:
-                log.warning('Could not find EDM attribute %r' % (edm_attribute,))
+                AuditLog.backend_fault(
+                    log, f'Could not find EDM attribute {edm_attribute}'
+                )
 
         if found_version is None:
             self.version = claimed_version

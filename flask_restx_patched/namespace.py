@@ -394,7 +394,14 @@ class Namespace(OriginalNamespace):
                         @wraps(func)
                         def wrapper(*args, **kwargs):
                             with permission(**kwargs_on_request(kwargs)):
-                                return func(*args, **kwargs)
+                                try:
+                                    return func(*args, **kwargs)
+                                except Exception as ex:
+                                    import app.extensions.logging as AuditLog  # NOQA
+
+                                    AuditLog.houston_fault(None, str(ex))
+                                    # TODO is there something more sensible to do other than reraising here?
+                                    raise
 
                         return wrapper
 

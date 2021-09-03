@@ -7,6 +7,10 @@ Individuals database models
 from app.extensions import FeatherModel, db
 from flask import current_app
 import uuid
+import logging
+import app.extensions.logging as AuditLog
+
+log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
 
 class Individual(db.Model, FeatherModel):
@@ -90,6 +94,7 @@ class Individual(db.Model, FeatherModel):
         return rt_val
 
     def delete(self):
+        AuditLog.delete_object(log, self)
         with db.session.begin():
             db.session.delete(self)
 

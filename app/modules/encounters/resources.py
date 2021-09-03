@@ -23,6 +23,7 @@ from app.extensions.api import abort
 
 from . import parameters, schemas
 from .models import Encounter
+import app.extensions.logging as AuditLog
 
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
@@ -163,6 +164,7 @@ class EncounterByID(Resource):
             with context:
                 db.session.merge(encounter)
         # rtn['_patchResults'] = rdata.get('patchResults', None)  # FIXME i think this gets lost cuz not part of results_data
+        AuditLog.patch_object(log, encounter, args)
         return result_data
 
     @api.permission_required(

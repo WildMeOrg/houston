@@ -4,9 +4,13 @@ Encounters database models
 --------------------
 """
 import uuid
+import logging
 
 from app.extensions import db, FeatherModel
 from app.modules.individuals.models import Individual
+import app.extensions.logging as AuditLog
+
+log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
 
 class Encounter(db.Model, FeatherModel):
@@ -92,6 +96,7 @@ class Encounter(db.Model, FeatherModel):
                 self.annotations.append(annotation)
 
     def delete(self):
+        AuditLog.delete_object(log, self)
         with db.session.begin():
             db.session.delete(self)
 

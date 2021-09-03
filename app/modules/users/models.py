@@ -15,6 +15,7 @@ from app.extensions import db, FeatherModel
 from app.extensions.auth import security
 from app.extensions.edm import EDMObjectMixin
 from app.extensions.api.parameters import _get_is_static_role_property
+import app.extensions.logging as AuditLog
 
 
 log = logging.getLogger(__name__)
@@ -360,7 +361,7 @@ class User(db.Model, FeatherModel, UserEDMMixin):
         in_beta=False,
         in_alpha=False,
         update=False,
-        **kwargs
+        **kwargs,
     ):
         """
         Create a new user.
@@ -383,7 +384,7 @@ class User(db.Model, FeatherModel, UserEDMMixin):
                 is_exporter=is_exporter,
                 in_beta=in_beta,
                 in_alpha=in_alpha,
-                **kwargs
+                **kwargs,
             )
 
             with db.session.begin():
@@ -712,6 +713,7 @@ class User(db.Model, FeatherModel, UserEDMMixin):
             # TODO: Ensure proper cleanup
             for asset_group in self.asset_groups:
                 asset_group.delete()
+            AuditLog.delete_object(log, self)
             db.session.delete(self)
 
     @classmethod

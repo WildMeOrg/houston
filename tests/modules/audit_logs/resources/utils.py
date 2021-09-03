@@ -28,9 +28,14 @@ def read_audit_log(flask_app_client, user, audit_log_guid, expected_status_code=
     return response
 
 
-def read_all_audit_logs(flask_app_client, user, expected_status_code=200):
+def read_all_audit_logs(
+    flask_app_client, user, expected_status_code=200, module_name=None
+):
     with flask_app_client.login(user, auth_scopes=('audit_logs:read',)):
-        response = flask_app_client.get(PATH, query_string={'limit': 30})
+        query = {'limit': 40}
+        if module_name:
+            query['module_name'] = module_name
+        response = flask_app_client.get(PATH, query_string=query)
     expected_keys = {'item_guid', 'module_name'}
     if expected_status_code == 200:
         test_utils.validate_list_of_dictionaries_response(response, 200, expected_keys)

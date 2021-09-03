@@ -11,12 +11,12 @@ from flask_restx_patched import Resource
 from flask_restx._http import HTTPStatus
 
 from app.extensions.api import Namespace
-from app.extensions.api.parameters import PaginationParameters
 from app.modules.users import permissions
 from app.modules.users.permissions.types import AccessOperation
 
 from . import schemas
 from .models import AuditLog
+from .parameters import GetCollaborationParameters
 
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
@@ -37,7 +37,7 @@ class AuditLogs(Resource):
             'action': AccessOperation.READ,
         },
     )
-    @api.parameters(PaginationParameters())
+    @api.parameters(GetCollaborationParameters())
     def get(self, args):
         """
         List of AuditLog.
@@ -47,6 +47,9 @@ class AuditLogs(Resource):
         unique_logs = []
         all_logs = AuditLog.query.all()
         for log_entry in all_logs:
+            if 'module_name' in args and args['module_name'] != log_entry.module_name:
+                continue
+
             name_and_guid = {
                 'module_name': log_entry.module_name,
                 'item_guid': log_entry.item_guid,
@@ -69,7 +72,7 @@ class AuditLogs(Resource):
 )
 class AuditLogByID(Resource):
     """
-    Manipulations with a specific AuditLog.
+    Manipulations with the AuditLogs for a specific object.
     """
 
     @api.permission_required(

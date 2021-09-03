@@ -67,6 +67,8 @@ class ACMManager(RestManager):
     def request_passthrough_parsed(
         self, tag, method, passthrough_kwargs, args=None, target='default'
     ):
+        import app.extensions.logging as AuditLog  # NOQA
+
         response = self.request_passthrough(tag, method, passthrough_kwargs, args, target)
 
         # Sage sent invalid response
@@ -76,9 +78,9 @@ class ACMManager(RestManager):
             message = (f'{tag} {method} failed to parse json response from Sage',)
             raise HoustonException(
                 log,
-                status_code=400,
+                f'{message} Sage Status:{response.status_code} Sage Reason: {response.reason}',
+                AuditLog.AuditType.BackEndFault,
                 message=message,
-                log_message=f'{message} Sage Status:{response.status_code} Sage Reason: {response.reason}',
             )
 
         # Sage sent invalid response
@@ -87,9 +89,9 @@ class ACMManager(RestManager):
             message = (f'{tag} {method} failed to parse json status data from Sage',)
             raise HoustonException(
                 log,
-                status_code=400,
+                f'{message} Sage Status:{response.status_code} Sage Reason: {response.reason}',
+                AuditLog.AuditType.BackEndFault,
                 message=message,
-                log_message=f'{message} Sage Status:{response.status_code} Sage Reason: {response.reason}',
             )
 
         # status is correctly formatted, see if it failed
@@ -109,9 +111,10 @@ class ACMManager(RestManager):
                 status_code = 400  # flask doesnt like us to use "invalid" codes. :(
             raise HoustonException(
                 log,
+                f'{tag} {method} failed {log_message} {response.status_code}',
+                AuditLog.AuditType.BackEndFault,
                 status_code=status_code,
                 message=message,
-                log_message=f'{tag} {method} failed {log_message} {response.status_code}',
                 acm_status_code=response.status_code,
             )
 

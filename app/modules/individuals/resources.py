@@ -20,6 +20,7 @@ from app.utils import HoustonException
 
 from . import parameters, schemas
 from .models import Individual
+import app.extensions.logging as AuditLog
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 api = Namespace('individuals', description='Individuals')  # pylint: disable=invalid-name
@@ -156,7 +157,7 @@ class Individuals(Resource):
             encounters=encounters,
             version=result_data.get('version'),
         )
-
+        AuditLog.user_create_object(log, individual)
         context = api.commit_or_abort(
             db.session, default_error_message='Failed to create a new Individual'
         )
@@ -287,7 +288,7 @@ class IndividualByID(Resource):
             # TODO handle individual deletion if last encounter removed
 
         db.session.merge(individual)
-
+        AuditLog.patch_object(log, individual, args)
         return individual
 
     @api.permission_required(

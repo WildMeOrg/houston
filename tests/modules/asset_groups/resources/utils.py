@@ -15,6 +15,11 @@ from tests import TEST_ASSET_GROUP_UUID, TEST_EMPTY_ASSET_GROUP_UUID
 
 PATH = '/api/v1/asset_groups/'
 
+ANNOTATION_UUIDS = [
+    '1891ca05-5fa5-4e52-bb30-8ee80941c2fc',
+    '0c6f3a16-c3f0-4f8d-a47d-951e49b0dacb',
+]
+
 
 class TestCreationData(object):
     def __init__(self, transaction_id, populate_default=True):
@@ -217,7 +222,7 @@ def build_sage_detection_response(asset_group_sighting_guid, job_uuid):
                 [
                     {
                         'id': 1,
-                        'uuid': {'__UUID__': '1891ca05-5fa5-4e52-bb30-8ee80941c2fc'},
+                        'uuid': {'__UUID__': ANNOTATION_UUIDS[0]},
                         'xtl': 459,
                         'ytl': 126,
                         'left': 459,
@@ -235,7 +240,7 @@ def build_sage_detection_response(asset_group_sighting_guid, job_uuid):
                     },
                     {
                         'id': 2,
-                        'uuid': {'__UUID__': '0c6f3a16-c3f0-4f8d-a47d-951e49b0dacb'},
+                        'uuid': {'__UUID__': ANNOTATION_UUIDS[1]},
                         'xtl': 26,
                         'ytl': 145,
                         'left': 26,

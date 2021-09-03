@@ -234,6 +234,11 @@ class IndividualByID(Resource):
             db.session, default_error_message='Failed to update Individual details.'
         )
 
+        # If value for /encounters is not a list, make it into a list
+        for arg in args:
+            if arg['path'] == '/encounters' and isinstance(arg['value'], str):
+                arg['value'] = [arg['value']]
+
         houston_args = [
             arg
             for arg in args

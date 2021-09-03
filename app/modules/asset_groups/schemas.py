@@ -42,6 +42,44 @@ class DetailedAssetGroupSightingSchema(BaseAssetGroupSightingSchema):
         dump_only = BaseAssetGroupSightingSchema.Meta.dump_only
 
 
+class DetailedAssetGroupSightingAsSightingSchema(BaseAssetGroupSightingSchema):
+    """
+    In order for the frontend to render an AGS with the same code that renders a
+    sighting, we have to pop out all the fields in AGS.config into the top-level
+    of the schema. This is done with AssetGroupSighting.config_field_getter,
+    which creates a getter for a config field of a given name. We can add more
+    fields using the pattern below.
+    """
+
+    assets = base_fields.Function(AssetGroupSighting.get_assets)
+    completion = base_fields.Function(AssetGroupSighting.get_completion)
+    decimalLatitude = base_fields.Function(
+        AssetGroupSighting.config_field_getter('decimalLatitude')
+    )
+    decimalLongitude = base_fields.Function(
+        AssetGroupSighting.config_field_getter('decimalLongitude')
+    )
+    locationId = base_fields.Function(
+        AssetGroupSighting.config_field_getter('locationId')
+    )
+    startTime = base_fields.Function(AssetGroupSighting.config_field_getter('startTime'))
+    encounters = base_fields.Function(
+        AssetGroupSighting.config_field_getter('encounters')
+    )
+
+    class Meta(BaseAssetGroupSightingSchema.Meta):
+        fields = BaseAssetGroupSightingSchema.Meta.fields + (
+            AssetGroupSighting.stage.key,
+            'assets',
+            'completion',
+            'decimalLatitude',
+            'decimalLongitude',
+            'locationId',
+            'startTime',
+            'encounters',
+        )
+
+
 class BaseAssetGroupSchema(ModelSchema):
     """
     Base Asset_group schema exposes only the most general fields.
@@ -69,11 +107,6 @@ class CreateAssetGroupSchema(BaseAssetGroupSchema):
 
     class Meta(BaseAssetGroupSchema.Meta):
         fields = BaseAssetGroupSchema.Meta.fields + (
-            AssetGroup.owner_guid.key,
-            AssetGroup.created.key,
-            AssetGroup.updated.key,
-        )
-        dump_only = BaseAssetGroupSchema.Meta.dump_only + (
             AssetGroup.owner_guid.key,
             AssetGroup.created.key,
             AssetGroup.updated.key,

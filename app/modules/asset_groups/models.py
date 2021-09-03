@@ -284,6 +284,17 @@ class AssetGroupSighting(db.Model, HoustonModel):
         # calculation generates a floating point value, reporting that would be claiming precision without accuracy
         return round(completion)
 
+    # returns a None-safe getter for a given config field
+    def config_field_getter(field_name):
+        def getter(self):
+            if self.config and field_name in self.config:
+                value = self.config[field_name]
+            else:
+                value = None
+            return value
+
+        return getter
+
     @classmethod
     def check_jobs(cls):
         for asset_group_sighting in AssetGroupSighting.query.all():

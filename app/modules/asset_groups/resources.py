@@ -326,7 +326,7 @@ class AssetGroupSightingByID(Resource):
     )
     @api.login_required(oauth_scopes=['asset_group_sightings:write'])
     @api.parameters(parameters.PatchAssetGroupSightingDetailsParameters())
-    @api.response(schemas.DetailedAssetGroupSightingSchema())
+    @api.response(schemas.DetailedAssetGroupSightingAsSightingSchema())
     def patch(self, args, asset_group_sighting):
         context = api.commit_or_abort(
             db.session,

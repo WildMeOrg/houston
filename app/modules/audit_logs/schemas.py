@@ -29,12 +29,12 @@ class DetailedAuditLogSchema(BaseAuditLogSchema):
     class Meta(BaseAuditLogSchema.Meta):
         fields = BaseAuditLogSchema.Meta.fields + (
             AuditLog.created.key,
-            AuditLog.updated.key,
             AuditLog.module_name.key,
             AuditLog.item_guid.key,
             AuditLog.audit_type.key,
             AuditLog.user_email.key,
             AuditLog.message.key,
+            AuditLog.duration.key,
         )
         dump_only = BaseAuditLogSchema.Meta.dump_only + (
             AuditLog.created.key,

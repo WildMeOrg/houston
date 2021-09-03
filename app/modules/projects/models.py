@@ -5,9 +5,7 @@ Projects database models
 """
 import uuid
 
-from sqlalchemy_utils import Timestamp
-
-from app.extensions import db, HoustonModel
+from app.extensions import db, HoustonModel, Timestamp
 
 
 # All many:many associations handled as Houston model classes to give control and history

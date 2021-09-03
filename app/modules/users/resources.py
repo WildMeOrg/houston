@@ -73,6 +73,10 @@ class Users(Resource):
         """
         Create a new user.
         """
+        from app.extensions.elapsed_time import ElapsedTime
+
+        timer = ElapsedTime()
+
         email = args.get('email', None)
         user = User.query.filter_by(email=email).first()
         roles = args.pop('roles', [])
@@ -108,7 +112,9 @@ class Users(Resource):
             new_user = User(**args)
             db.session.add(new_user)
         db.session.refresh(new_user)
-        AuditLog.user_create_object(log, new_user, msg=f'{new_user.email}')
+        AuditLog.user_create_object(
+            log, new_user, msg=f'{new_user.email}', duration=timer.elapsed()
+        )
         return new_user
 
 
@@ -155,6 +161,10 @@ class UserByID(Resource):
         """
         Patch user details by ID.
         """
+        from app.extensions.elapsed_time import ElapsedTime
+
+        timer = ElapsedTime()
+
         context = api.commit_or_abort(
             db.session, default_error_message='Failed to update user details.'
         )
@@ -162,7 +172,7 @@ class UserByID(Resource):
             parameters.PatchUserDetailsParameters.perform_patch(args, user)
             db.session.merge(user)
         db.session.refresh(user)
-        AuditLog.patch_object(log, user, args)
+        AuditLog.patch_object(log, user, args, duration=timer.elapsed())
         return user
 
     @api.login_required(oauth_scopes=['users:write'])

@@ -26,7 +26,7 @@ from sqlalchemy.ext import mutable  # NOQA
 from sqlalchemy.types import TypeDecorator, CHAR  # NOQA
 from sqlalchemy.sql import elements  # NOQA
 from sqlalchemy.dialects.postgresql import UUID  # NOQA
-from sqlalchemy_utils import types as column_types, Timestamp  # NOQA
+from sqlalchemy_utils import types as column_types  # NOQA
 
 db = SQLAlchemy()
 
@@ -272,6 +272,22 @@ class GUID(db.TypeDecorator):
             if not isinstance(value, uuid.UUID):
                 value = uuid.UUID(value)
             return value
+
+
+class Timestamp(object):
+    """Adds `created` and `updated` columns to a derived declarative model.
+
+    The `created` column is handled through a default and the `updated`
+    column is handled through a `before_update` event that propagates
+    for all derived declarative models.
+
+    Copied from sqlalchemy.utils.Timestamp.py and added the index=True
+    ::
+
+    """
+
+    created = db.Column(db.DateTime, index=True, default=datetime.utcnow, nullable=False)
+    updated = db.Column(db.DateTime, index=True, default=datetime.utcnow, nullable=False)
 
 
 class TimestampViewed(Timestamp):

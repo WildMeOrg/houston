@@ -109,6 +109,9 @@ class EncounterByID(Resource):
         """
         Patch Encounter details by ID.
         """
+        from app.extensions.elapsed_time import ElapsedTime
+
+        timer = ElapsedTime()
 
         edm_args = [
             arg
@@ -164,7 +167,7 @@ class EncounterByID(Resource):
             with context:
                 db.session.merge(encounter)
         # rtn['_patchResults'] = rdata.get('patchResults', None)  # FIXME i think this gets lost cuz not part of results_data
-        AuditLog.patch_object(log, encounter, args)
+        AuditLog.patch_object(log, encounter, args, duration=timer.elapsed())
         return result_data
 
     @api.permission_required(

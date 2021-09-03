@@ -125,6 +125,9 @@ class AssetGroupSighting(db.Model, HoustonModel):
 
     def commit(self):
         from app.modules.utils import Cleanup
+        from app.extensions.elapsed_time import ElapsedTime
+
+        timer = ElapsedTime()
 
         if self.stage != AssetGroupSightingStage.curation:
             raise HoustonException(
@@ -241,7 +244,9 @@ class AssetGroupSighting(db.Model, HoustonModel):
         sighting.ia_pipeline()
 
         num_encounters = len(self.config['encounters'])
-        AuditLog.user_create_object(log, sighting, f'with {num_encounters} encounter(s)')
+        AuditLog.user_create_object(
+            log, sighting, f'with {num_encounters} encounter(s)', duration=timer.elapsed()
+        )
 
         return sighting
 

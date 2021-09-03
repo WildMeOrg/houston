@@ -85,6 +85,9 @@ class Individuals(Resource):
         """
         Create a new instance of Individual.
         """
+        from app.extensions.elapsed_time import ElapsedTime
+
+        timer = ElapsedTime()
 
         cleanup = IndividualCleanup()
 
@@ -157,7 +160,7 @@ class Individuals(Resource):
             encounters=encounters,
             version=result_data.get('version'),
         )
-        AuditLog.user_create_object(log, individual)
+        AuditLog.user_create_object(log, individual, duration=timer.elapsed())
         context = api.commit_or_abort(
             db.session, default_error_message='Failed to create a new Individual'
         )
@@ -229,6 +232,9 @@ class IndividualByID(Resource):
         """
         Patch Individual details by ID.
         """
+        from app.extensions.elapsed_time import ElapsedTime
+
+        timer = ElapsedTime()
 
         context = api.commit_or_abort(
             db.session, default_error_message='Failed to update Individual details.'
@@ -293,7 +299,7 @@ class IndividualByID(Resource):
             # TODO handle individual deletion if last encounter removed
 
         db.session.merge(individual)
-        AuditLog.patch_object(log, individual, args)
+        AuditLog.patch_object(log, individual, args, duration=timer.elapsed())
         return individual
 
     @api.permission_required(

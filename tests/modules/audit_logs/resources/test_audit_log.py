@@ -174,3 +174,22 @@ def test_most_ia_pipeline_audit_log(
     assert expected_sighting in sighting_audit_items.json
     assert expected_encounter in encounter_audit_items.json
     assert expected_annotation in annotation_audit_items.json
+
+
+def test_audit_log_faults(
+    flask_app_client, researcher_1, readonly_user, admin_user, test_root, db
+):
+    # Reuse a different test that generates a truckload of faults
+    from tests.modules.asset_groups.resources.test_create_asset_group import (
+        test_create_asset_group,
+    )
+
+    test_create_asset_group(flask_app_client, researcher_1, readonly_user, test_root, db)
+    audit_utils.read_all_faults(flask_app_client, researcher_1, 403)
+    faults = audit_utils.read_all_faults(flask_app_client, admin_user)
+
+    # arbitrary choice but it must be at least this many from the test
+    expected_faults = 9
+    assert len(faults.json) >= expected_faults
+    for fault_no in range(0, expected_faults - 1):
+        assert faults.json[fault_no]['audit_type'] == 'Front End Fault'

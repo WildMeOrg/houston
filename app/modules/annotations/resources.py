@@ -68,6 +68,9 @@ class Annotations(Resource):
         """
         from app.modules.assets.models import Asset
         from app.modules.encounters.models import Encounter
+        from app.extensions.elapsed_time import ElapsedTime
+
+        timer = ElapsedTime()
 
         if 'asset_guid' not in args:
             abort(code=HTTPStatus.BAD_REQUEST, message='Must provide an asset_guid')
@@ -90,7 +93,7 @@ class Annotations(Resource):
         )
         with context:
             annotation = Annotation(**args)
-            AuditLog.user_create_object(log, annotation)
+            AuditLog.user_create_object(log, annotation, duration=timer.elapsed())
             db.session.add(annotation)
         return annotation
 
@@ -136,6 +139,10 @@ class AnnotationByID(Resource):
         """
         Patch Annotation details by ID.
         """
+        from app.extensions.elapsed_time import ElapsedTime
+
+        timer = ElapsedTime()
+
         context = api.commit_or_abort(
             db.session, default_error_message='Failed to update Annotation details.'
         )
@@ -144,7 +151,7 @@ class AnnotationByID(Resource):
                 args, obj=annotation
             )
             db.session.merge(annotation)
-            AuditLog.patch_object(log, annotation, args)
+            AuditLog.patch_object(log, annotation, args, duration=timer.elapsed())
 
         return annotation
 

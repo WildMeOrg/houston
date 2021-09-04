@@ -14,6 +14,17 @@ from tests import utils as test_utils
 from tests import TEST_ASSET_GROUP_UUID, TEST_EMPTY_ASSET_GROUP_UUID
 
 PATH = '/api/v1/asset_groups/'
+EXPECTED_ASSET_GROUP_SIGHTING_FIELDS = {
+    'guid',
+    'stage',
+    'decimalLatitude',
+    'decimalLongitude',
+    'encounters',
+    'locationId',
+    'startTime',
+    'completion',
+    'assets',
+}
 
 ANNOTATION_UUIDS = [
     '1891ca05-5fa5-4e52-bb30-8ee80941c2fc',
@@ -435,9 +446,13 @@ def patch_asset_group_sighting(
             content_type='application/json',
             data=json.dumps(data),
         )
-
+    # from pprint import pprint
+    # print('patch_asset_group_sighting got response json:')
+    # pprint(response.json)
     if expected_status_code == 200:
-        test_utils.validate_dict_response(response, 200, {'guid', 'stage', 'config'})
+        test_utils.validate_dict_response(
+            response, 200, EXPECTED_ASSET_GROUP_SIGHTING_FIELDS
+        )
     elif expected_status_code == 400:
         test_utils.validate_dict_response(
             response, expected_status_code, {'status', 'message', 'passed_message'}
@@ -458,9 +473,12 @@ def read_asset_group_sighting(
             response = flask_app_client.get(f'{PATH}sighting/{asset_group_sighting_guid}')
     else:
         response = flask_app_client.get(f'{PATH}sighting/{asset_group_sighting_guid}')
+    # from pprint import pprint
+    # print('read_asset_group_sighting got response json:')
+    # pprint(response.json)
     if expected_status_code == 200:
         test_utils.validate_dict_response(
-            response, 200, {'guid', 'stage', 'config', 'completion', 'assets'}
+            response, 200, EXPECTED_ASSET_GROUP_SIGHTING_FIELDS
         )
     else:
         test_utils.validate_dict_response(
@@ -480,7 +498,9 @@ def simulate_detection_response(
         )
 
     if expected_status_code == 200:
-        test_utils.validate_dict_response(response, 200, {})
+        test_utils.validate_dict_response(
+            response, 200, EXPECTED_ASSET_GROUP_SIGHTING_FIELDS
+        )
     else:
         test_utils.validate_dict_response(
             response, expected_status_code, {'status', 'message'}
@@ -513,7 +533,7 @@ def patch_in_dummy_annotation(
     group_sighting = read_asset_group_sighting(
         flask_app_client, user, asset_group_sighting_uuid
     )
-    encounter_guid = group_sighting.json['config']['encounters'][encounter_num]['guid']
+    encounter_guid = group_sighting.json['encounters'][encounter_num]['guid']
 
     patch_data = [test_utils.patch_replace_op('annotations', [str(new_annot.guid)])]
     patch_asset_group_sighting(

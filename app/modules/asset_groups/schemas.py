@@ -42,7 +42,7 @@ class DetailedAssetGroupSightingSchema(BaseAssetGroupSightingSchema):
         dump_only = BaseAssetGroupSightingSchema.Meta.dump_only
 
 
-class DetailedAssetGroupSightingAsSightingSchema(BaseAssetGroupSightingSchema):
+class AssetGroupSightingAsSightingSchema(BaseAssetGroupSightingSchema):
     """
     In order for the frontend to render an AGS with the same code that renders a
     sighting, we have to pop out all the fields in AGS.config into the top-level

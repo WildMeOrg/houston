@@ -307,7 +307,7 @@ class AssetGroupSightingByID(Resource):
             'action': AccessOperation.READ,
         },
     )
-    @api.response(schemas.DetailedAssetGroupSightingAsSightingSchema())
+    @api.response(schemas.AssetGroupSightingAsSightingSchema())
     @api.login_required(oauth_scopes=['asset_group_sightings:read'])
     def get(self, asset_group_sighting):
         """
@@ -326,7 +326,7 @@ class AssetGroupSightingByID(Resource):
     )
     @api.login_required(oauth_scopes=['asset_group_sightings:write'])
     @api.parameters(parameters.PatchAssetGroupSightingDetailsParameters())
-    @api.response(schemas.DetailedAssetGroupSightingAsSightingSchema())
+    @api.response(schemas.AssetGroupSightingAsSightingSchema())
     def patch(self, args, asset_group_sighting):
         context = api.commit_or_abort(
             db.session,
@@ -343,8 +343,7 @@ class AssetGroupSightingByID(Resource):
                     code=error.status_code,
                 )
             db.session.merge(asset_group_sighting)
-        sighting_like = self.format_like_sighting(asset_group_sighting)
-        return sighting_like
+        return asset_group_sighting
 
 
 @api.route('/sighting/<uuid:asset_group_sighting_guid>/encounter/<uuid:encounter_guid>')

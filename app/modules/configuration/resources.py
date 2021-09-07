@@ -41,29 +41,27 @@ class EDMConfigurationDefinition(Resource):
         )
         from app.modules.ia_config_reader import IaConfig
 
-        ia_config_reader = IaConfig()
-        species = ia_config_reader.get_configured_species()
-        if not isinstance(
-            data['response']['configuration']['site.species']['suggestedValues'], list
-        ):
-            data['response']['configuration']['site.species']['suggestedValues'] = ()
-        for sn in species:  # only adds a species that is not already in suggestedValues
-            if (
-                next(
-                    (
-                        x
-                        for x in data['response']['configuration']['site.species'][
-                            'suggestedValues'
-                        ]
-                        if x.get('scientificName', None) == sn
-                    ),
-                    None,
-                )
-                is None
-            ):
-                data['response']['configuration']['site.species'][
-                    'suggestedValues'
-                ].insert(0, {'scientificName': sn, 'commonNames': [sn]})
+        species_json = None
+        if path == '__bundle_setup':
+            species_json = data['response']['configuration']['site.species']
+        elif path == 'site.species':
+            species_json = data['response']
+        if species_json is not None:
+            ia_config_reader = IaConfig()
+            species = ia_config_reader.get_configured_species()
+            if not isinstance(species_json['suggestedValues'], list):
+                species_json['suggestedValues'] = ()
+            for (
+                sn
+            ) in species:  # only adds a species that is not already in suggestedValues
+                needed = True
+                for sv in species_json['suggestedValues']:
+                    if sv.get('scientificName', None) == sn:
+                        needed = True
+                if needed:
+                    species_json['suggestedValues'].insert(
+                        0, {'scientificName': sn, 'commonNames': [sn]}
+                    )
 
         # TODO also traverse private here FIXME
         return data

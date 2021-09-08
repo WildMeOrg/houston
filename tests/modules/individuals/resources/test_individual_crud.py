@@ -173,7 +173,7 @@ def test_add_remove_encounters(db, flask_app_client, researcher_1):
 
     # remove the one we just verified was there
     remove_encounters = [
-        utils.patch_remove_op('encounters', [str(enc_1.guid)]),
+        utils.patch_remove_op('encounters', str(enc_1.guid)),
     ]
 
     individual_utils.patch_individual(

@@ -331,7 +331,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
         base_url = current_app.config.get('BASE_URL')
         callback_url = urljoin(
             base_url,
-            f'/api/v1/asset_group/sighting/{str(self.guid)}/sage_detected/{str(job_uuid)}',
+            f'/api/v1/asset_groups/sighting/{str(self.guid)}/sage_detected/{str(job_uuid)}',
         )
 
         ia_config_reader = IaConfig(current_app.config.get('CONFIG_MODEL'))
@@ -346,7 +346,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
             'callback_detailed': True,
             'input': detector_config,
         }
-        asset_url = urljoin(base_url, '/api/v1/asset/src_raw/')
+        asset_url = urljoin(base_url, '/api/v1/assets/src_raw/')
 
         asset_guids = []
         for filename in self.config.get('assetReferences'):

@@ -1319,6 +1319,12 @@ class AssetGroup(db.Model, HoustonModel):
                 new_sighting.stage = AssetGroupSightingStage.curation
             else:
                 new_sighting.stage = AssetGroupSightingStage.detection
+
+            with db.session.begin(subtransactions=True):
+                db.session.add(new_sighting)
+            db.session.refresh(new_sighting)
+
+            if new_sighting.stage == AssetGroupSightingStage.detection:
                 try:
                     for config in metadata.detection_configs:
                         log.debug(f'ia pipeline running sage detection {config}')
@@ -1327,10 +1333,6 @@ class AssetGroup(db.Model, HoustonModel):
                 except HoustonException as ex:
                     new_sighting.delete()
                     raise ex
-
-            with db.session.begin(subtransactions=True):
-                db.session.add(new_sighting)
-            db.session.refresh(new_sighting)
 
         # make sure the repo is created
         self.ensure_repository()

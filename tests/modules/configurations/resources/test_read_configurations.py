@@ -22,6 +22,39 @@ def test_read_configurations(flask_app_client, researcher_1):
     utils.validate_dict_response(config_response, 400, {'success', 'message'})
     assert not config_response.json['success']  # should be non-success
 
+    from app.modules.ia_config_reader import IaConfig
+
+    ia_config_reader = IaConfig()
+    species = ia_config_reader.get_configured_species()
+    with flask_app_client.login(researcher_1, auth_scopes=('configuration:read',)):
+        config_response = flask_app_client.get('%s/site.species' % CONFIG_PATH)
+        config_def_response = flask_app_client.get('%s/site.species' % CONFIG_DEF_PATH)
+    utils.validate_dict_response(config_def_response, 200, {'success', 'response'})
+    # note: this relies on IaConfig and get_configured_species() not changing too radically
+    assert len(config_def_response.json['response']['suggestedValues']) >= len(species)
+    for i in range(len(species)):
+        assert (
+            config_def_response.json['response']['suggestedValues'][i]['scientificName']
+            == species[len(species) - i - 1]
+        )
+
+    with flask_app_client.login(researcher_1, auth_scopes=('configuration:read',)):
+        config_response = flask_app_client.get('%s/__bundle_setup' % CONFIG_PATH)
+        config_def_response = flask_app_client.get('%s/__bundle_setup' % CONFIG_DEF_PATH)
+    utils.validate_dict_response(config_def_response, 200, {'success', 'response'})
+    assert len(
+        config_def_response.json['response']['configuration']['site.species'][
+            'suggestedValues'
+        ]
+    ) >= len(species)
+    for i in range(len(species)):
+        assert (
+            config_def_response.json['response']['configuration']['site.species'][
+                'suggestedValues'
+            ][i]['scientificName']
+            == species[len(species) - i - 1]
+        )
+
 
 def test_alter_configurations(flask_app_client, researcher_1, admin_user):
     with flask_app_client.login(researcher_1, auth_scopes=('configuration:read',)):

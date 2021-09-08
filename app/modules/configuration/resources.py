@@ -39,6 +39,30 @@ class EDMConfigurationDefinition(Resource):
             path,
             target=target,
         )
+        from app.modules.ia_config_reader import IaConfig
+
+        species_json = None
+        if path == '__bundle_setup':
+            species_json = data['response']['configuration']['site.species']
+        elif path == 'site.species':
+            species_json = data['response']
+        if species_json is not None:
+            ia_config_reader = IaConfig()
+            species = ia_config_reader.get_configured_species()
+            if not isinstance(species_json['suggestedValues'], list):
+                species_json['suggestedValues'] = ()
+            for (
+                sn
+            ) in species:  # only adds a species that is not already in suggestedValues
+                needed = True
+                for sv in species_json['suggestedValues']:
+                    if sv.get('scientificName', None) == sn:
+                        needed = True
+                if needed:
+                    species_json['suggestedValues'].insert(
+                        0, {'scientificName': sn, 'commonNames': [sn]}
+                    )
+
         # TODO also traverse private here FIXME
         return data
 

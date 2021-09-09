@@ -155,13 +155,13 @@ def create_asset_group_sim_sage(
             assert params['endpoint'] == '/api/engine/detect/cnn/lightnet/'
             assert re.match('[a-f0-9-]{36}', params['jobid'])
             assert re.match(
-                r'houston\+http://houston:5000/api/v1/asset_group/sighting/[a-f0-9-]{36}/sage_detected/'
+                r'houston\+http://houston:5000/api/v1/asset_groups/sighting/[a-f0-9-]{36}/sage_detected/'
                 + params['jobid'],
                 params['callback_url'],
             )
             assert all(
                 re.match(
-                    r'houston\+http://houston:5000/api/v1/asset/src_raw/[a-f0-9-]{36}',
+                    r'houston\+http://houston:5000/api/v1/assets/src_raw/[a-f0-9-]{36}',
                     uri,
                 )
                 for uri in params['image_uuid_list']

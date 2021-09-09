@@ -4,6 +4,8 @@ import shutil
 from unittest import mock
 import uuid
 
+from PIL import Image
+
 
 def set_up_assets(flask_app, db, test_root, admin_user, request):
     from app.modules.annotations.models import Annotation
@@ -99,3 +101,54 @@ def test_asset_meta_and_delete(flask_app, db, test_root, admin_user, request):
     # Delete the last asset should delete the asset group
     asset_group.assets[-1].delete()
     assert AssetGroup.query.get(asset_group.guid) is None
+
+
+def test_update_symlink(test_asset_group_uuid, request):
+    from app.modules.asset_groups.models import AssetGroup
+
+    asset_group = AssetGroup.query.get(test_asset_group_uuid)
+    zebra = [
+        asset
+        for asset in asset_group.assets
+        if asset.get_original_filename() == 'zebra.jpg'
+    ][0]
+
+    symlink = pathlib.Path(zebra.get_symlink())
+    assert symlink.is_symlink()
+    actual = symlink.resolve()
+    assert actual.is_file()
+    assert actual.name == zebra.get_original_filename()
+
+    (actual.parent / 'new.txt').touch()
+    zebra.update_symlink(str(actual.parent / 'new.txt'))
+    # Reset zebra symlink to zebra.jpg
+    request.addfinalizer(lambda: zebra.update_symlink(actual))
+
+    new_symlink = pathlib.Path(zebra.get_symlink())
+    assert new_symlink.is_symlink()
+    assert new_symlink == symlink
+    new_actual = symlink.resolve()
+    assert new_actual.is_file()
+    assert new_actual.name == 'new.txt'
+
+
+def test_derived_images(test_asset_group_uuid):
+    from app.modules.asset_groups.models import AssetGroup
+
+    asset_group = AssetGroup.query.get(test_asset_group_uuid)
+    zebra = [
+        asset
+        for asset in asset_group.assets
+        if asset.get_original_filename() == 'zebra.jpg'
+    ][0]
+
+    assert zebra.get_dimensions() == {'width': 1000, 'height': 664}
+    master_path = zebra.get_or_make_format_path('master')
+    with Image.open(master_path) as im:
+        assert im.size == (1000, 664)
+    mid_path = zebra.get_or_make_format_path('mid')
+    with Image.open(mid_path) as im:
+        assert im.size == (1000, 664)
+    thumb_path = zebra.get_or_make_format_path('thumb')
+    with Image.open(thumb_path) as im:
+        assert im.size == (256, 170)

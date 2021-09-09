@@ -365,7 +365,11 @@ class RestManager(RestManagerUserMixin):
         ]
         is_json = False
         for header_key in allowed_header_key_list:
-            header_value = request.headers.get(header_key, None)
+            try:
+                header_value = request.headers.get(header_key, None)
+            except RuntimeError:  # Working outside of request context.
+                # e.g. celery tasks
+                header_value = None
             header_existing = headers.get(header_key, None)
             if header_value is not None and header_existing is None:
                 headers[header_key] = header_value

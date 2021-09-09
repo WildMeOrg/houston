@@ -331,7 +331,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
         base_url = current_app.config.get('BASE_URL')
         callback_url = urljoin(
             base_url,
-            f'/api/v1/asset_group/sighting/{str(self.guid)}/sage_detected/{str(job_uuid)}',
+            f'/api/v1/asset_groups/sighting/{str(self.guid)}/sage_detected/{str(job_uuid)}',
         )
 
         ia_config_reader = IaConfig(current_app.config.get('CONFIG_MODEL'))
@@ -346,7 +346,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
             'callback_detailed': True,
             'input': detector_config,
         }
-        asset_url = urljoin(base_url, '/api/v1/asset/src_raw/')
+        asset_url = urljoin(base_url, '/api/v1/assets/src_raw/')
 
         asset_guids = []
         for filename in self.config.get('assetReferences'):
@@ -1319,6 +1319,12 @@ class AssetGroup(db.Model, HoustonModel):
                 new_sighting.stage = AssetGroupSightingStage.curation
             else:
                 new_sighting.stage = AssetGroupSightingStage.detection
+
+            with db.session.begin(subtransactions=True):
+                db.session.add(new_sighting)
+            db.session.refresh(new_sighting)
+
+            if new_sighting.stage == AssetGroupSightingStage.detection:
                 try:
                     for config in metadata.detection_configs:
                         log.debug(f'ia pipeline running sage detection {config}')
@@ -1327,10 +1333,6 @@ class AssetGroup(db.Model, HoustonModel):
                 except HoustonException as ex:
                     new_sighting.delete()
                     raise ex
-
-            with db.session.begin(subtransactions=True):
-                db.session.add(new_sighting)
-            db.session.refresh(new_sighting)
 
         # make sure the repo is created
         self.ensure_repository()

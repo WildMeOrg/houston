@@ -278,6 +278,22 @@ def temp_user(temp_db_instance_helper):
 
 
 @pytest.fixture(scope='session')
+def collab_user_a(temp_db_instance_helper):
+    for _ in temp_db_instance_helper(
+        utils.generate_user_instance(email='trout@foo.bar', full_name='Mr Trouty')
+    ):
+        yield _
+
+
+@pytest.fixture(scope='session')
+def collab_user_b(temp_db_instance_helper):
+    for _ in temp_db_instance_helper(
+        utils.generate_user_instance(email='salmon@foo.bar', full_name='Mr Salmon')
+    ):
+        yield _
+
+
+@pytest.fixture(scope='session')
 def encounter_1():
     yield utils.generate_encounter_instance(
         user_email='test1@user', user_password='testuser1', user_full_name='Test User 1'

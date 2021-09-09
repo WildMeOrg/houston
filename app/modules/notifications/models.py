@@ -20,6 +20,7 @@ class NotificationType(str, enum.Enum):
     new_enc = 'new_encounter_individual'  # A new encounter on an individual
     all = 'all'  # For use specifically in preferences, catchall for everything
     collab_request = 'collaboration_request'
+    collab_edit = 'collaboration_edit_request'
     merge_request = 'individual_merge_request'
 
 
@@ -42,6 +43,10 @@ NOTIFICATION_DEFAULTS = {
         NotificationChannel.rest: True,
         NotificationChannel.email: False,
     },
+    NotificationType.collab_edit: {
+        NotificationChannel.rest: True,
+        NotificationChannel.email: False,
+    },
     NotificationType.merge_request: {
         NotificationChannel.rest: True,
         NotificationChannel.email: False,
@@ -57,6 +62,12 @@ NOTIFICATION_CONFIG = {
         'email_content_template': 'collaboration_request.jinja2',
         'email_digest_content_template': 'collaboration_request_digest.jinja2',
         'email_subject_template': 'collaboration_request_subject.jinja2',
+        'mandatory_fields': {'collaboration_guid'},
+    },
+    NotificationType.collab_edit: {
+        'email_content_template': 'collaboration_edit_request.jinja2',  # Not yet written
+        'email_digest_content_template': 'collaboration_edit_request_digest.jinja2',
+        'email_subject_template': 'collaboration_edit_request_subject.jinja2',
         'mandatory_fields': {'collaboration_guid'},
     },
     NotificationType.raw: {

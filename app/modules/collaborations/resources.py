@@ -7,7 +7,6 @@ RESTful API Collaborations resources
 
 import logging
 import json
-import uuid
 
 from flask import request
 from flask_login import current_user  # NOQA
@@ -81,8 +80,8 @@ class Collaborations(Resource):
         if not other_user:
             abort(400, f'User with guid {other_user_guid} not found')
 
-        if not other_user.is_researcher:
-            abort(400, f'User with guid {other_user_guid} is not a researcher')
+        if not other_user.is_active:
+            abort(400, f'User with guid {other_user_guid} is not active')
 
         for collab_assoc in current_user.user_collaboration_associations:
             if other_user in collab_assoc.collaboration.get_users():
@@ -94,28 +93,21 @@ class Collaborations(Resource):
         context = api.commit_or_abort(
             db.session, default_error_message='Failed to create a new Collaboration'
         )
-        user_guids = [current_user.guid, uuid.UUID(other_user_guid)]
-        initiator_states = [True, False]
-        states = ['approved', 'pending']
+        users = [current_user, other_user]
+
         if current_user.is_user_manager:
             second_user_guid = req.get('second_user_guid')
             second_user = User.query.get(second_user_guid)
             if not second_user:
                 abort(400, f'User with guid {second_user_guid} not found')
-            if not second_user.is_researcher:
-                abort(400, f'User with guid {second_user_guid} is not a researcher')
+            if not second_user.is_active:
+                abort(400, f'User with guid {second_user_guid} is not active')
 
-            user_guids = [other_user_guid, second_user_guid]
-            states = ['approved', 'approved']
-            initiator_states = [False, False]
+            users = [other_user, second_user]
 
         with context:
 
-            collaboration = Collaboration(
-                user_guids=user_guids,
-                approval_states=states,
-                initiator_states=initiator_states,
-            )
+            collaboration = Collaboration(users, current_user)
             db.session.add(collaboration)
 
         # Once created notify the pending user to accept
@@ -201,3 +193,25 @@ class CollaborationByID(Resource):
         with context:
             db.session.delete(collaboration)
         return None
+
+
+@api.route('/edit_request/<uuid:collaboration_guid>')
+@api.login_required(oauth_scopes=['collaborations:write'])
+@api.response(
+    code=HTTPStatus.NOT_FOUND,
+    description='Collaboration not found.',
+)
+@api.resolve_object_by_model(Collaboration, 'collaboration')
+class CollaborationEditRequest(Resource):
+    """
+    Request that a specific collaboration is escalated to edit
+    """
+
+    @api.response(schemas.DetailedCollaborationSchema())
+    @api.response(code=HTTPStatus.CONFLICT)
+    def post(self, collaboration):
+        collaboration.initiate_edit_with_other_user()
+
+        collaboration.notify_pending_users()
+
+        return collaboration

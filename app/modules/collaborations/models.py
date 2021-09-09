@@ -8,7 +8,6 @@ import logging
 from flask_login import current_user
 
 from app.extensions import db, HoustonModel
-from app.modules.users.models import User
 
 
 log = logging.getLogger(__name__)
@@ -48,6 +47,8 @@ class CollaborationUserAssociations(db.Model, HoustonModel):
     user_guid = db.Column(db.GUID, db.ForeignKey('user.guid'), primary_key=True)
 
     initiator = db.Column(db.Boolean, default=False, nullable=False)
+    edit_initiator = db.Column(db.Boolean, default=False, nullable=False)
+
     read_approval_state = db.Column(
         db.String(length=32), default=CollaborationUserState.PENDING, nullable=False
     )
@@ -69,58 +70,45 @@ class Collaboration(db.Model, HoustonModel):
         'CollaborationUserAssociations', back_populates='collaboration'
     )
 
-    def __init__(
-        self, user_guids=None, approval_states=None, initiator_states=None, **kwargs
-    ):
-        # I think this can be adapted to allow >2 User collabs, opening the door for Org-level.
-        if user_guids is None or len(user_guids) != 2:
+    def __init__(self, members, initiator_user, **kwargs):
+
+        num_users = len(members)
+        if num_users != 2:
+            raise ValueError('Creating a collaboration requires 2 members.')
+        if not hasattr(initiator_user, 'is_user_manager'):
+            # current user is not actually a User although it quacks like one so can't use isinstance
+            raise ValueError(f'initiator_user {initiator_user} is not a user')
+
+        # user manager created are handled differently
+        manager_created = initiator_user not in members
+        if manager_created and not initiator_user.is_user_manager:
             raise ValueError(
-                '__init__ Collaboration: Creating a collaboration requires a user_guids list.'
+                f'Attempted creation of a collaboration by a non manager {initiator_user.email}.'
             )
 
-        # You can create a collaboration where both users 'approved'
-        if approval_states is not None and len(approval_states) != len(user_guids):
-            raise ValueError(
-                '__init__ Collaboration: Length of approval_states was not equal to provided user list.'
-            )
-
-        if initiator_states is not None and len(initiator_states) != len(user_guids):
-            raise ValueError(
-                '__init__ Collaboration: Length of initiator_states states was not equal to provided user list.'
-            )
-
-        for guid_index in range(len(user_guids)):
-            user_tup = User.ensure_edm_obj(user_guids[guid_index])
-
-            if user_tup is None or user_tup[0] is None:
-                raise ValueError(
-                    '__init__ Collaboration: One of the user_guids provided had no associated user.'
-                )
+        for user in members:
+            if not hasattr(user, 'is_user_manager'):
+                raise ValueError(f'User {user} is not a user')
 
             collab_user_assoc = CollaborationUserAssociations(
-                collaboration=self, user=user_tup[0]
+                collaboration=self, user=user
             )
+            collab_user_assoc.initiator = user == initiator_user
+            # Edit not enabled on creation
+            collab_user_assoc.edit_approval_state = CollaborationUserState.NOT_INITIATED
 
-            if (
-                approval_states is not None
-                and approval_states[guid_index] in CollaborationUserState.ALLOWED_STATES
-            ):
-                collab_user_assoc.read_approval_state = approval_states[guid_index]
-                collab_user_assoc.edit_approval_state = approval_states[guid_index]
-            if (
-                initiator_states is not None
-                and isinstance(initiator_states[guid_index], bool)
-                and initiator_states[guid_index] is True
-            ):
-                collab_user_assoc.initiator = initiator_states[guid_index]
-                # If you initiate you approve
+            # If you initiate, then you approve read. Manager created are also read approved (TODO are they edit approved)
+            if user == initiator_user or manager_created:
                 collab_user_assoc.read_approval_state = CollaborationUserState.APPROVED
+            else:
+                collab_user_assoc.read_approval_state = CollaborationUserState.PENDING
 
-        if initiator_states is not None and True not in initiator_states:
+        if manager_created:
             # User manager created collaboration, store who the creator was
             collab_creator = CollaborationUserAssociations(
-                collaboration=self, user=current_user
+                collaboration=self, user=initiator_user
             )
+
             collab_creator.initiator = True
             collab_creator.read_approval_state = CollaborationUserState.CREATOR
             collab_creator.edit_approval_state = CollaborationUserState.CREATOR
@@ -156,7 +144,11 @@ class Collaboration(db.Model, HoustonModel):
     def notify_pending_users(self):
         # Once created notify the pending user to accept
         for collab_user_assoc in self.collaboration_user_associations:
-            if collab_user_assoc.read_approval_state == CollaborationUserState.PENDING:
+
+            if (
+                collab_user_assoc.read_approval_state == CollaborationUserState.PENDING
+                or collab_user_assoc.edit_approval_state == CollaborationUserState.PENDING
+            ):
                 from app.modules.notifications.models import (
                     Notification,
                     NotificationType,
@@ -169,9 +161,20 @@ class Collaboration(db.Model, HoustonModel):
                 builder = NotificationBuilder(other_user_assoc.user)
                 builder.set_collaboration(self)
 
-                Notification.create(
-                    NotificationType.collab_request, collab_user_assoc.user, builder
-                )
+                if (
+                    collab_user_assoc.read_approval_state
+                    == CollaborationUserState.PENDING
+                ):
+                    Notification.create(
+                        NotificationType.collab_request, collab_user_assoc.user, builder
+                    )
+                if (
+                    collab_user_assoc.edit_approval_state
+                    == CollaborationUserState.PENDING
+                ):
+                    Notification.create(
+                        NotificationType.collab_edit, collab_user_assoc.user, builder
+                    )
 
     def get_user_data_as_json(self):
         from app.modules.users.schemas import BaseUserSchema
@@ -226,10 +229,14 @@ class Collaboration(db.Model, HoustonModel):
         ret_val = False
         assert isinstance(user_guid, uuid.UUID)
 
+        my_assoc = self._get_association_for_user(user_guid)
         other_assoc = self._get_association_for_other_user(user_guid)
 
-        if other_assoc:
-            ret_val = other_assoc.read_approval_state == CollaborationUserState.APPROVED
+        if my_assoc and other_assoc:
+            ret_val = (
+                my_assoc.read_approval_state == CollaborationUserState.APPROVED
+                and other_assoc.read_approval_state == CollaborationUserState.APPROVED
+            )
 
         return ret_val
 
@@ -237,11 +244,14 @@ class Collaboration(db.Model, HoustonModel):
         ret_val = False
         assert isinstance(user_guid, uuid.UUID)
 
+        my_assoc = self._get_association_for_user(user_guid)
         other_assoc = self._get_association_for_other_user(user_guid)
 
-        if other_assoc:
-            ret_val = other_assoc.edit_approval_state == CollaborationUserState.APPROVED
-
+        if my_assoc and other_assoc:
+            ret_val = (
+                my_assoc.edit_approval_state == CollaborationUserState.APPROVED
+                and other_assoc.edit_approval_state == CollaborationUserState.APPROVED
+            )
         return ret_val
 
     def set_edit_approval_state_for_user(self, user_guid, state):
@@ -257,15 +267,12 @@ class Collaboration(db.Model, HoustonModel):
                         success = True
         return success
 
-    def initate_edit_with_user(self, user_guid):
-        if user_guid is not None:
-            assert isinstance(user_guid, uuid.UUID)
-            for association in self.collaboration_user_associations:
-                if association.user_guid == user_guid:
-                    association.edit_approval_state = CollaborationUserState.APPROVED
-                    association.initiator = True
-                else:
-                    association.edit_approval_state = CollaborationUserState.PENDING
+    def initiate_edit_with_other_user(self):
+        my_assoc = self._get_association_for_user(current_user.guid)
+        other_assoc = self._get_association_for_other_user(current_user.guid)
+        my_assoc.edit_initiator = True
+        my_assoc.edit_approval_state = CollaborationUserState.APPROVED
+        other_assoc.edit_approval_state = CollaborationUserState.PENDING
 
     # This relates to if the user can access the collaboration itself, not the data
     def user_can_access(self, user):

@@ -20,7 +20,7 @@ class BaseCollaborationSchema(ModelSchema):
         model = Collaboration
         fields = (
             Collaboration.guid.key,
-            Collaboration.user_guids.key,
+            Collaboration.user_guids.__name__,
         )
         dump_only = (Collaboration.guid.key,)
 

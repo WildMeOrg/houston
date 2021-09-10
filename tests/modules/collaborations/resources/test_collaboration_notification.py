@@ -38,6 +38,10 @@ def test_edit_collaboration(flask_app_client, researcher_1, researcher_2, db, re
     )
     assert len(collab_requests_from_res2) >= 1
 
+    # Researcher 1 tries to upgrade to Edit without approving, should fail
+    resp_msg = 'Unable to start edit on unapproved collaboration'
+    collab_utils.request_edit(flask_app_client, collab.guid, researcher_1, 400, resp_msg)
+
     # patch to approve collaboration by researcher1
     patch_data = [test_utils.patch_replace_op('view_permission', 'approved')]
 

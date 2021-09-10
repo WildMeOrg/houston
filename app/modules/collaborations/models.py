@@ -279,8 +279,8 @@ class Collaboration(db.Model, HoustonModel):
         my_assoc = self._get_association_for_user(current_user.guid)
         other_assoc = self._get_association_for_other_user(current_user.guid)
         if (
-            my_assoc.edit_approval_state == CollaborationUserState.APPROVED
-            and other_assoc.edit_approval_state == CollaborationUserState.APPROVED
+            my_assoc.read_approval_state == CollaborationUserState.APPROVED
+            and other_assoc.read_approval_state == CollaborationUserState.APPROVED
         ):
             my_assoc.edit_initiator = True
             my_assoc.edit_approval_state = CollaborationUserState.APPROVED

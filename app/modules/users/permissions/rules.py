@@ -34,7 +34,8 @@ MODULE_USER_MAP = {
     ('Annotation', AccessOperation.WRITE): ['is_researcher'],
     ('User', AccessOperation.READ): ['is_user_manager'],
     ('User', AccessOperation.WRITE): ['is_active'],  # Creating yourself
-    ('Collaboration', AccessOperation.WRITE): ['is_researcher', 'is_user_manager'],
+    # Any user can request to collaborate with anyone
+    ('Collaboration', AccessOperation.WRITE): ['is_active'],
     ('Collaboration', AccessOperation.READ): ['is_user_manager'],
     ('Notification', AccessOperation.READ): ['is_active'],
     ('Keyword', AccessOperation.READ): ['is_active'],

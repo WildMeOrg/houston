@@ -105,3 +105,13 @@ def read_all_notifications(flask_app_client, user, expected_status_code=200):
             response, expected_status_code, {'status', 'message'}
         )
     return response
+
+
+def get_notifications(json_data, from_user_email, notification_type):
+    return list(
+        filter(
+            lambda notif: notif['message_type'] == notification_type
+            and notif['sender_email'] == from_user_email,
+            json_data,
+        )
+    )

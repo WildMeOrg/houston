@@ -15,11 +15,22 @@ def validate_collab(resp_json, user_guids, view_approvals):
 
 
 def test_create_collaboration(
-    flask_app_client, researcher_1, readonly_user, researcher_2, user_manager_user, db
+    flask_app_client,
+    researcher_1,
+    readonly_user,
+    researcher_2,
+    user_manager_user,
+    db,
+    request,
 ):
     data = {'user_guid': str(readonly_user.guid)}
-    resp_msg = f'User with guid {readonly_user.guid} is not a researcher'
-    collab_utils.create_collaboration(flask_app_client, researcher_1, data, 400, resp_msg)
+    collab_utils.create_collaboration(flask_app_client, researcher_2, data)
+    readonly_user_assocs = [
+        assoc for assoc in readonly_user.user_collaboration_associations
+    ]
+    collab = readonly_user_assocs[0].collaboration
+
+    request.addfinalizer(collab.delete)
 
     collab = None
     try:
@@ -45,8 +56,8 @@ def test_create_collaboration(
         )
 
         # which should contain the same data
-        assert len(all_resp.json) == 1
-        validate_collab(all_resp.json[0], expected_users, expected_states)
+        assert len(all_resp.json) == 2
+        validate_collab(all_resp.json[1], expected_users, expected_states)
 
         user_resp = user_utils.read_user(flask_app_client, researcher_1, 'me')
         assert 'collaborations' in user_resp.json.keys()
@@ -63,15 +74,6 @@ def test_create_collaboration(
 def test_create_approved_collaboration(
     flask_app_client, researcher_1, researcher_2, user_manager_user, readonly_user, db
 ):
-    # couple of failure checks
-    data = {
-        'user_guid': str(researcher_2.guid),
-        'second_user_guid': str(readonly_user.guid),
-    }
-    resp_msg = f'User with guid {readonly_user.guid} is not a researcher'
-    collab_utils.create_collaboration(
-        flask_app_client, user_manager_user, data, 400, resp_msg
-    )
 
     duff_uuid = str(uuid.uuid4())
     data = {
@@ -79,16 +81,6 @@ def test_create_approved_collaboration(
         'second_user_guid': duff_uuid,
     }
     resp_msg = f'User with guid {duff_uuid} not found'
-    collab_utils.create_collaboration(
-        flask_app_client, user_manager_user, data, 400, resp_msg
-    )
-
-    # valid one
-    data = {
-        'user_guid': str(researcher_1.guid),
-        'second_user_guid': str(readonly_user.guid),
-    }
-    resp_msg = f'User with guid {readonly_user.guid} is not a researcher'
     collab_utils.create_collaboration(
         flask_app_client, user_manager_user, data, 400, resp_msg
     )

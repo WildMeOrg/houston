@@ -97,3 +97,27 @@ def read_all_collaborations(flask_app_client, user, expected_status_code=200):
             response, expected_status_code, {'status', 'message'}
         )
     return response
+
+
+def request_edit(
+    flask_app_client,
+    collaboration_guid,
+    user,
+    expected_status_code=200,
+    expected_error='',
+):
+    with flask_app_client.login(user, auth_scopes=('collaborations:write',)):
+        response = flask_app_client.post(
+            f'{PATH}edit_request/{collaboration_guid}',
+            content_type='application/json',
+        )
+
+    if expected_status_code == 200:
+        test_utils.validate_dict_response(response, 200, {'guid'})
+    else:
+        test_utils.validate_dict_response(
+            response, expected_status_code, {'status', 'message'}
+        )
+        assert response.json['message'] == expected_error, response.json['message']
+
+    return response

@@ -25,16 +25,6 @@ def get_notifications_with_guid(json_data, guid_str, notification_type, sender_e
     )
 
 
-def get_notifications(json_data, from_user_email, notification_type):
-    return list(
-        filter(
-            lambda notif: notif['message_type'] == notification_type
-            and notif['sender_email'] == from_user_email,
-            json_data,
-        )
-    )
-
-
 def test_get_notifications(
     db, flask_app_client, researcher_1, researcher_2, user_manager_user
 ):
@@ -150,7 +140,7 @@ def test_notification_preferences(
     researcher_2_notifs = notif_utils.read_all_notifications(
         flask_app_client, researcher_2
     )
-    collab_requests_from_res1 = get_notifications(
+    collab_requests_from_res1 = notif_utils.get_notifications(
         researcher_2_notifs.json, researcher_1.email, 'collaboration_request'
     )
 
@@ -167,7 +157,7 @@ def test_notification_preferences(
     researcher_2_notifs = notif_utils.read_all_notifications(
         flask_app_client, researcher_2
     )
-    collab_requests_from_res1 = get_notifications(
+    collab_requests_from_res1 = notif_utils.get_notifications(
         researcher_2_notifs.json, researcher_1.email, 'collaboration_request'
     )
     assert len(collab_requests_from_res1) == 0
@@ -182,7 +172,7 @@ def test_notification_preferences(
     researcher_2_notifs = notif_utils.read_all_notifications(
         flask_app_client, researcher_2
     )
-    collab_requests_from_res1 = get_notifications(
+    collab_requests_from_res1 = notif_utils.get_notifications(
         researcher_2_notifs.json, researcher_1.email, 'collaboration_request'
     )
     assert len(collab_requests_from_res1) == 0
@@ -198,7 +188,7 @@ def test_notification_preferences(
     researcher_2_notifs = notif_utils.read_all_notifications(
         flask_app_client, researcher_2
     )
-    collab_requests_from_res1 = get_notifications(
+    collab_requests_from_res1 = notif_utils.get_notifications(
         researcher_2_notifs.json, researcher_1.email, 'collaboration_request'
     )
 

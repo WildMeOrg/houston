@@ -53,7 +53,6 @@ def run_migrations_offline():
     context.configure(
         url=url,
         render_as_batch=True,
-        compare_type=True,
     )
 
     with context.begin_transaction():

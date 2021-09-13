@@ -47,6 +47,10 @@ def upgrade():
 
     with op.batch_alter_table('audit_log', schema=None) as batch_op:
         batch_op.add_column(sa.Column('duration', sa.Float(), nullable=True))
+        batch_op.drop_column('user_email')
+        batch_op.drop_column('message')
+        batch_op.add_column(sa.Column('user_email', sa.String(), nullable=False))
+        batch_op.add_column(sa.Column('message', sa.String(), nullable=False))
         batch_op.create_index(batch_op.f('ix_audit_log_audit_type'), ['audit_type'], unique=False)
         batch_op.create_index(batch_op.f('ix_audit_log_created'), ['created'], unique=False)
         batch_op.create_index(batch_op.f('ix_audit_log_item_guid'), ['item_guid'], unique=False)
@@ -239,6 +243,10 @@ def downgrade():
         batch_op.drop_index(batch_op.f('ix_audit_log_created'))
         batch_op.drop_index(batch_op.f('ix_audit_log_audit_type'))
         batch_op.drop_column('duration')
+        batch_op.drop_column('user_email')
+        batch_op.drop_column('message')
+        batch_op.add_column(sa.Column('user_email', sa.String(), nullable=False))
+        batch_op.add_column(sa.Column('message', sa.String(), nullable=False))
 
     with op.batch_alter_table('asset_group_sighting', schema=None) as batch_op:
         batch_op.drop_index(batch_op.f('ix_asset_group_sighting_updated'))

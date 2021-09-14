@@ -1,5 +1,10 @@
 # -*- coding: utf-8 -*-
+import logging
+
 from invoke import task
+
+
+log = logging.getLogger(__name__)
 
 
 @task(default=True)
@@ -11,5 +16,6 @@ def shell(context):
     app = create_app()
     del create_app
 
+    log.info("The 'app' variable is the Flask app object")
     with app.app_context():
         IPython.embed()

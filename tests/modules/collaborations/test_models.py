@@ -7,6 +7,7 @@ import logging
 
 from app.modules.collaborations.models import Collaboration
 from app.modules.collaborations.models import CollaborationUserState
+from unittest import mock
 
 log = logging.getLogger(__name__)
 
@@ -93,22 +94,39 @@ def test_collaboration_edit_state_changes(db, collab_user_a, collab_user_b, requ
     assert json_user_data[str(collab_user_a.guid)]['initiator']
     assert not json_user_data[str(collab_user_b.guid)]['initiator']
 
-    for association in collab.collaboration_user_associations:
-        assert association.edit_approval_state == CollaborationUserState.NOT_INITIATED
-
-    collab.set_edit_approval_state_for_user(
-        collab_user_a.guid, CollaborationUserState.APPROVED
+    collab.set_read_approval_state_for_user(
+        collab_user_b.guid, CollaborationUserState.APPROVED
     )
 
     for association in collab.collaboration_user_associations:
+        assert association.read_approval_state == CollaborationUserState.APPROVED
+        assert association.edit_approval_state == CollaborationUserState.NOT_INITIATED
+
+    with mock.patch('app.modules.collaborations.models.current_user', new=collab_user_a):
+        collab.initiate_edit_with_other_user()
+
+    # TODO test that edit_initiator is set correctly
+
+    for association in collab.collaboration_user_associations:
         if association.user_guid == collab_user_a.guid:
-            assert association.read_approval_state == CollaborationUserState.APPROVED
+            assert association.edit_approval_state == CollaborationUserState.APPROVED
         if association.user_guid == collab_user_b.guid:
-            assert association.read_approval_state == CollaborationUserState.PENDING
+            assert association.edit_approval_state == CollaborationUserState.PENDING
 
     collab.set_edit_approval_state_for_user(
         collab_user_b.guid, CollaborationUserState.APPROVED
     )
+    for association in collab.collaboration_user_associations:
+        assert association.edit_approval_state == CollaborationUserState.APPROVED
+
+    # Check that revoking read also revokes edit
+    collab.set_read_approval_state_for_user(
+        collab_user_b.guid, CollaborationUserState.REVOKED
+    )
+    for association in collab.collaboration_user_associations:
+        if association.user_guid == collab_user_b.guid:
+            assert association.edit_approval_state == CollaborationUserState.REVOKED
+            assert association.read_approval_state == CollaborationUserState.REVOKED
 
 
 def test_fail_create_collaboration(collab_user_a, collab_user_b):

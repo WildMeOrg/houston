@@ -158,7 +158,7 @@ services:
       OAUTH_CLIENT_SECRET: "${HOUSTON_CLIENT_SECRET}"
       OAUTH_USER_EMAIL: "${OAUTH_USER_EMAIL}"
     healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:5000/api/v1/site-info/"]
+      test: [ "CMD", "curl", "-f", "http://localhost:5000/api/v1/site-info/heartbeat"]
       timeout: 45s
       interval: 10s
       retries: 10

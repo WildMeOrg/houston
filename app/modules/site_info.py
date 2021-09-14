@@ -16,6 +16,7 @@ def init_app(app, **kwargs):
 @site_info_api.route('/')
 class SiteInfo(Resource):
     def get(self):
+
         acm_version = current_app.acm.get_dict('version.dict', None)
         if isinstance(acm_version, dict):
             acm_version = acm_version['response']
@@ -33,4 +34,13 @@ class SiteInfo(Resource):
             },
             'acm': acm_version,
             'edm': edm_version,
+        }
+
+
+@site_info_api.route('/heartbeat')
+class SiteHeartbeat(Resource):
+    def get(self):
+        return {
+            'version': app.version.version,
+            'git_version': app.version.git_revision,
         }

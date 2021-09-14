@@ -8,6 +8,7 @@ import logging
 from flask_login import current_user
 
 from app.extensions import db, HoustonModel
+from app.utils import HoustonException
 
 
 log = logging.getLogger(__name__)
@@ -141,6 +142,13 @@ class Collaboration(db.Model, HoustonModel):
                 users.append(association.user)
         return users
 
+    def user_guids(self):
+        user_guids = []
+        for association in self.collaboration_user_associations:
+            if association.read_approval_state != CollaborationUserState.CREATOR:
+                user_guids.append(association.user_guid)
+        return user_guids
+
     def notify_pending_users(self):
         # Once created notify the pending user to accept
         for collab_user_assoc in self.collaboration_user_associations:
@@ -270,9 +278,17 @@ class Collaboration(db.Model, HoustonModel):
     def initiate_edit_with_other_user(self):
         my_assoc = self._get_association_for_user(current_user.guid)
         other_assoc = self._get_association_for_other_user(current_user.guid)
-        my_assoc.edit_initiator = True
-        my_assoc.edit_approval_state = CollaborationUserState.APPROVED
-        other_assoc.edit_approval_state = CollaborationUserState.PENDING
+        if (
+            my_assoc.read_approval_state == CollaborationUserState.APPROVED
+            and other_assoc.read_approval_state == CollaborationUserState.APPROVED
+        ):
+            my_assoc.edit_initiator = True
+            my_assoc.edit_approval_state = CollaborationUserState.APPROVED
+            other_assoc.edit_approval_state = CollaborationUserState.PENDING
+        else:
+            raise HoustonException(
+                log, 'Unable to start edit on unapproved collaboration'
+            )
 
     # This relates to if the user can access the collaboration itself, not the data
     def user_can_access(self, user):

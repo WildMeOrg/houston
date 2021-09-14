@@ -19,6 +19,7 @@ from app.extensions import db
 from app.extensions.api import Namespace
 from app.extensions.api.parameters import PaginationParameters
 from app.modules.users.permissions.types import AccessOperation
+from app.utils import HoustonException
 from app.modules.users import permissions
 
 
@@ -47,7 +48,7 @@ class Collaborations(Resource):
         },
     )
     @api.parameters(PaginationParameters())
-    @api.response(schemas.DetailedCollaborationSchema(many=True))
+    @api.response(schemas.BaseCollaborationSchema(many=True))
     def get(self, args):
         """
         List of Collaboration.
@@ -210,8 +211,11 @@ class CollaborationEditRequest(Resource):
     @api.response(schemas.DetailedCollaborationSchema())
     @api.response(code=HTTPStatus.CONFLICT)
     def post(self, collaboration):
-        collaboration.initiate_edit_with_other_user()
 
+        try:
+            collaboration.initiate_edit_with_other_user()
+        except HoustonException as ex:
+            abort(ex.status_code, ex.message)
         collaboration.notify_pending_users()
 
         return collaboration

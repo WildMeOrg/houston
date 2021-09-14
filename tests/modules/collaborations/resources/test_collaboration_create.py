@@ -7,11 +7,15 @@ import uuid
 
 def validate_collab(resp_json, user_guids, view_approvals):
     members = resp_json.get('members', {})
-    assert len(members) == len(user_guids)
-    for user_guid in user_guids:
-        user_guid_str = str(user_guid)
-        assert user_guid_str in members.keys()
-        assert members[user_guid_str]['viewState'] == view_approvals[user_guid_str]
+
+    user_guids_received = resp_json.get('user_guids', {})
+    assert set(user_guids_received) <= set(user_guids)
+    assert len(user_guids_received) == 2
+    if members:
+        for user_guid in user_guids:
+            user_guid_str = str(user_guid)
+            assert user_guid_str in members.keys()
+            assert members[user_guid_str]['viewState'] == view_approvals[user_guid_str]
 
 
 def test_create_collaboration(

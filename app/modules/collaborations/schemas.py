@@ -18,7 +18,10 @@ class BaseCollaborationSchema(ModelSchema):
     class Meta:
         # pylint: disable=missing-docstring
         model = Collaboration
-        fields = (Collaboration.guid.key,)
+        fields = (
+            Collaboration.guid.key,
+            Collaboration.user_guids.__name__,
+        )
         dump_only = (Collaboration.guid.key,)
 
 

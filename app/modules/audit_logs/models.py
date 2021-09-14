@@ -4,13 +4,10 @@ Audit Logs database models
 --------------------
 """
 
-from sqlalchemy_utils import Timestamp
-
-from app.extensions import db
+from flask_login import current_user  # NOQA
+from app.extensions import db, Timestamp
 
 import uuid
-
-AuditMaxMessageLength = 240
 
 
 class AuditLog(db.Model, Timestamp):
@@ -21,16 +18,20 @@ class AuditLog(db.Model, Timestamp):
     guid = db.Column(
         db.GUID, default=uuid.uuid4, primary_key=True
     )  # pylint: disable=invalid-name
-    module_name = db.Column(db.String(length=50), nullable=True)
+    module_name = db.Column(db.String(length=50), index=True, nullable=True)
 
     # Item and user guids intentionally not backrefs to other models as we want to maintain the log even after
     # the item has been removed
-    item_guid = db.Column(db.GUID, nullable=True)
-    user_email = db.Column(db.String(length=120), nullable=False)
+    item_guid = db.Column(db.GUID, index=True, nullable=True)
+    user_email = db.Column(db.String(), nullable=False)
 
-    message = db.Column(db.String(length=AuditMaxMessageLength), nullable=True)
+    message = db.Column(db.String(), index=True, nullable=True)
+
     # One of AuditType
-    audit_type = db.Column(db.String, nullable=False)
+    audit_type = db.Column(db.String, index=True, nullable=False)
+
+    # How long did the operation take
+    duration = db.Column(db.Float, nullable=True)
 
     def __repr__(self):
         return (
@@ -42,11 +43,19 @@ class AuditLog(db.Model, Timestamp):
         )
 
     @classmethod
-    def create(cls, msg, audit_type, user_email, module_name=None, item_guid=None):
+    def create(
+        cls, msg, audit_type, module_name=None, item_guid=None, user=None, *args, **kwargs
+    ):
 
-        # only store max
-        if len(msg) > AuditMaxMessageLength:
-            msg = msg[0:AuditMaxMessageLength]
+        user_email = 'anonymous user'
+        if user and not user.is_anonymous:
+            user_email = user.email
+        elif current_user and not current_user.is_anonymous:
+            user_email = current_user.email
+
+        duration = None
+        if 'duration' in kwargs:
+            duration = kwargs['duration']
 
         if module_name or item_guid:
             # Must set both of them or neither
@@ -57,10 +66,14 @@ class AuditLog(db.Model, Timestamp):
                 user_email=user_email,
                 message=msg,
                 audit_type=audit_type,
+                duration=duration,
             )
         else:
             log_entry = AuditLog(
-                user_email=user_email, message=msg, audit_type=audit_type
+                user_email=user_email,
+                message=msg,
+                audit_type=audit_type,
+                duration=duration,
             )
 
         with db.session.begin(subtransactions=True):

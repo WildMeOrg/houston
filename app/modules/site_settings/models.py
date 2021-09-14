@@ -3,9 +3,7 @@
 Site Settings database models
 --------------------
 """
-from sqlalchemy_utils import Timestamp
-
-from app.extensions import db
+from app.extensions import db, Timestamp
 
 
 class SiteSetting(db.Model, Timestamp):

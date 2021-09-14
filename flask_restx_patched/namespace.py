@@ -399,7 +399,8 @@ class Namespace(OriginalNamespace):
                                 except Exception as ex:
                                     import app.extensions.logging as AuditLog  # NOQA
 
-                                    AuditLog.houston_fault(None, str(ex))
+                                    if 400 > ex.code > 409:
+                                        AuditLog.houston_fault(None, str(ex))
                                     # TODO is there something more sensible to do other than reraising here?
                                     raise
 

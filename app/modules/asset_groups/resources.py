@@ -71,6 +71,7 @@ class AssetGroups(Resource):
         Create a new instance of Asset_group.
         """
         from app.extensions.elapsed_time import ElapsedTime
+        import app.extensions.logging as AuditLog  # NOQA
         from app.modules.users.models import User
 
         timer = ElapsedTime()
@@ -118,9 +119,7 @@ class AssetGroups(Resource):
             asset_group.delete()
             abort(400, f'IA pipeline failed {ex}')
 
-        log.info(
-            f'AssetGroup {asset_group.guid}:"{metadata.description}" created by {metadata.owner.email} in {timer.elapsed()} seconds'
-        )
+        AuditLog.user_create_object(log, asset_group, duration=timer.elapsed())
         return asset_group
 
 

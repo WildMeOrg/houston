@@ -184,6 +184,9 @@ class Sightings(Resource):
         """
         Create a new instance of Sighting.
         """
+        from app.extensions.elapsed_time import ElapsedTime
+
+        timer = ElapsedTime()
 
         cleanup = SightingCleanup()
         request_in = {}
@@ -332,7 +335,7 @@ class Sightings(Resource):
             version=result_data.get('version', 2),
             stage=SightingStage.processed,
         )
-        AuditLog.user_create_object(log, sighting)
+        AuditLog.user_create_object(log, sighting, duration=timer.elapsed())
 
         assets = None
         if paths_wanted is not None:
@@ -444,6 +447,9 @@ class SightingByID(Resource):
         """
         Patch Sighting details by ID.
         """
+        from app.extensions.elapsed_time import ElapsedTime
+
+        timer = ElapsedTime()
 
         edm_count = 0
         for arg in args:
@@ -545,7 +551,7 @@ class SightingByID(Resource):
                     )
                     with context:
                         db.session.merge(sighting)
-                AuditLog.patch_object(log, sighting, args)
+                AuditLog.patch_object(log, sighting, args, duration=timer.elapsed())
             return response_data
 
         # no EDM, so fall thru to regular houston-patching
@@ -555,7 +561,7 @@ class SightingByID(Resource):
         with context:
             parameters.PatchSightingDetailsParameters.perform_patch(args, obj=sighting)
             db.session.merge(sighting)
-        AuditLog.patch_object(log, sighting, args)
+        AuditLog.patch_object(log, sighting, args, duration=timer.elapsed())
 
         # this mimics output format of edm-patching
         return {

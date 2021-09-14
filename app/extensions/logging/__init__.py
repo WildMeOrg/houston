@@ -61,25 +61,32 @@ class Logging(object):
 
         logging.addLevelName(self.AUDIT, 'AUDIT')
 
+    @classmethod
+    def _log_message(cls, logger, msg, *args, **kwargs):
+        if current_user and not current_user.is_anonymous:
+            msg = f'{msg} executed by user :{current_user.guid} {current_user.email}'
+        else:
+            msg += ' executed by anonymous user'
+        log_kwargs = kwargs
+        if 'duration' in kwargs:
+            msg += "in {kwargs['duration']} seconds"
+            log_kwargs.pop('duration')
+
+        if logger:
+            logger.log(cls.AUDIT, msg, *args, **log_kwargs)
+        else:
+            log.log(cls.AUDIT, msg, *args, **log_kwargs)
+
     # logger for calling file needed as a parameter to ensure that the file and line numbers are correct in logs
     @classmethod
     def audit_log(cls, logger, msg, audit_type=AuditType.Other, *args, **kwargs):
         assert object
 
-        user_email = 'anonymous user'
-        if current_user and not current_user.is_anonymous:
-            msg = f'{msg} executed by user :{current_user.guid} {current_user.email}'
-            user_email = current_user.email
-        else:
-            msg = f' {msg} executed by anonymous user'
-        if logger:
-            logger.log(cls.AUDIT, msg, *args, **kwargs)
-        else:
-            log.log(cls.AUDIT, msg, *args, **kwargs)
+        cls._log_message(logger, msg, *args, **kwargs)
 
         from app.modules.audit_logs.models import AuditLog
 
-        AuditLog.create(msg, audit_type, user_email)
+        AuditLog.create(msg, audit_type, *args, **kwargs)
 
     @classmethod
     def audit_log_object(
@@ -88,20 +95,14 @@ class Logging(object):
         assert obj
         assert hasattr(obj, 'guid')
         assert isinstance(audit_type, cls.AuditType)
-        orig_msg = msg
 
         module_name = obj.__class__.__name__
-        msg = f'{audit_type} of {module_name} {obj.guid} {msg}'
-        user_email = 'anonymous user'
-        if current_user and not current_user.is_anonymous:
-            msg = f'{msg} executed by user :{current_user.guid} {current_user.email}'
-            user_email = current_user.email
-        else:
-            msg = f' {msg} executed by anonymous user'
-        logger.log(cls.AUDIT, msg, *args, **kwargs)
+        log_msg = f'{audit_type} of {module_name} {obj.guid} {msg}'
+        cls._log_message(logger, log_msg, *args, **kwargs)
+
         from app.modules.audit_logs.models import AuditLog
 
-        AuditLog.create(orig_msg, audit_type, user_email, module_name, obj.guid)
+        AuditLog.create(msg, audit_type, module_name, obj.guid, *args, **kwargs)
 
     @classmethod
     def user_create_object(cls, logger, obj, msg='', *args, **kwargs):
@@ -115,10 +116,10 @@ class Logging(object):
     def backend_fault(cls, logger, msg='', obj=None, *args, **kwargs):
         if obj:
             cls.audit_log_object(
-                logger, obj, msg, cls.AuditType.BackendFault, *args, **kwargs
+                logger, obj, msg, cls.AuditType.BackEndFault, *args, **kwargs
             )
         else:
-            cls.audit_log(logger, msg, cls.AuditType.BackendFault, *args, **kwargs)
+            cls.audit_log(logger, msg, cls.AuditType.BackEndFault, *args, **kwargs)
 
     @classmethod
     def houston_fault(cls, logger, msg='', obj=None, *args, **kwargs):
@@ -135,7 +136,6 @@ class Logging(object):
 
     @classmethod
     def patch_object(cls, logger, obj, patch_args, *args, **kwargs):
-        from app.modules.audit_logs.models import AuditMaxMessageLength
 
         msg = ''
         for patch in patch_args:
@@ -145,13 +145,5 @@ class Logging(object):
                 new_msg += f", {patch['value']} "
             else:
                 new_msg += ' '
-            # If the message gets too long, spread it across multiple audit entries
-            if len(new_msg) + len(msg) >= AuditMaxMessageLength:
-                cls.audit_log_object(
-                    logger, obj, msg, cls.AuditType.Update, *args, **kwargs
-                )
-                msg = new_msg
-            else:
-                msg += new_msg
 
         cls.audit_log_object(logger, obj, msg, cls.AuditType.Update, *args, **kwargs)

@@ -50,7 +50,7 @@ def upgrade():
         batch_op.drop_column('user_email')
         batch_op.drop_column('message')
         batch_op.add_column(sa.Column('user_email', sa.String(), nullable=False))
-        batch_op.add_column(sa.Column('message', sa.String(), nullable=False))
+        batch_op.add_column(sa.Column('message', sa.String(), nullable=True))
         batch_op.create_index(batch_op.f('ix_audit_log_audit_type'), ['audit_type'], unique=False)
         batch_op.create_index(batch_op.f('ix_audit_log_created'), ['created'], unique=False)
         batch_op.create_index(batch_op.f('ix_audit_log_item_guid'), ['item_guid'], unique=False)

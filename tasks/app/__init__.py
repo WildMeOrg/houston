@@ -25,6 +25,7 @@ from tasks.app import (
     run,
     site_settings,
     asset_groups,
+    shell,
     swagger,
     users,
 )
@@ -51,6 +52,7 @@ namespace = Collection(
     run,
     site_settings,
     asset_groups,
+    shell,
     swagger,
     users,
 )

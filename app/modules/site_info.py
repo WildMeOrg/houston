@@ -37,7 +37,7 @@ class SiteInfo(Resource):
         }
 
 
-@site_info_api.route('/heartbeat/')
+@site_info_api.route('/heartbeat')
 class SiteHeartbeat(Resource):
     def get(self):
         return {

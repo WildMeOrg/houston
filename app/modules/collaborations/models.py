@@ -67,8 +67,12 @@ class Collaboration(db.Model, HoustonModel):
     collaboration_user_associations = db.relationship(
         'CollaborationUserAssociations', back_populates='collaboration'
     )
-    initiator_guid = db.Column(db.GUID, nullable=False)
-    edit_initiator_guid = db.Column(db.GUID, nullable=True)
+    initiator_guid = db.Column(
+        db.GUID, db.ForeignKey('user.guid'), index=True, nullable=False
+    )
+    edit_initiator_guid = db.Column(
+        db.GUID, db.ForeignKey('user.guid'), index=True, nullable=True
+    )
 
     def __init__(self, members, initiator_user, **kwargs):
 

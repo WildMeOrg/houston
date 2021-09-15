@@ -446,9 +446,10 @@ def patch_asset_group_sighting(
             content_type='application/json',
             data=json.dumps(data),
         )
-    # from pprint import pprint
-    # print('patch_asset_group_sighting got response json:')
-    # pprint(response.json)
+    from pprint import pprint
+
+    print('patch_asset_group_sighting got response json:')
+    pprint(response.json)
     if expected_status_code == 200:
         test_utils.validate_dict_response(
             response, 200, EXPECTED_ASSET_GROUP_SIGHTING_FIELDS

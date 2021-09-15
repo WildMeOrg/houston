@@ -35,13 +35,12 @@ def test_collaboration_create_with_members(
     request.addfinalizer(manager_collab.delete)
 
     request.addfinalizer(manager_collab.delete)
+    assert manager_collab.initiator_guid == user_manager_user.guid
     for association in manager_collab.collaboration_user_associations:
 
         if association.user == user_manager_user:
-            assert association.initiator is True
             assert association.read_approval_state == 'creator'
         else:
-            assert association.initiator is False
             assert association.read_approval_state == 'approved'
 
 
@@ -91,8 +90,6 @@ def test_collaboration_edit_state_changes(db, collab_user_a, collab_user_b, requ
     assert len(json_user_data.keys()) == 2
     assert str(collab_user_a.guid) in json_user_data.keys()
     assert str(collab_user_b.guid) in json_user_data.keys()
-    assert json_user_data[str(collab_user_a.guid)]['initiator']
-    assert not json_user_data[str(collab_user_b.guid)]['initiator']
 
     collab.set_read_approval_state_for_user(
         collab_user_b.guid, CollaborationUserState.APPROVED

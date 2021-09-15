@@ -47,9 +47,6 @@ class CollaborationUserAssociations(db.Model, HoustonModel):
     user = db.relationship('User', back_populates='user_collaboration_associations')
     user_guid = db.Column(db.GUID, db.ForeignKey('user.guid'), primary_key=True)
 
-    initiator = db.Column(db.Boolean, default=False, nullable=False)
-    edit_initiator = db.Column(db.Boolean, default=False, nullable=False)
-
     read_approval_state = db.Column(
         db.String(length=32), default=CollaborationUserState.PENDING, nullable=False
     )
@@ -70,6 +67,12 @@ class Collaboration(db.Model, HoustonModel):
     collaboration_user_associations = db.relationship(
         'CollaborationUserAssociations', back_populates='collaboration'
     )
+    initiator_guid = db.Column(
+        db.GUID, db.ForeignKey('user.guid'), index=True, nullable=False
+    )
+    edit_initiator_guid = db.Column(
+        db.GUID, db.ForeignKey('user.guid'), index=True, nullable=True
+    )
 
     def __init__(self, members, initiator_user, **kwargs):
 
@@ -87,6 +90,9 @@ class Collaboration(db.Model, HoustonModel):
                 f'Attempted creation of a collaboration by a non manager {initiator_user.email}.'
             )
 
+        self.initiator_guid = initiator_user.guid
+        self.edit_initiator_guid = None
+
         for user in members:
             if not hasattr(user, 'is_user_manager'):
                 raise ValueError(f'User {user} is not a user')
@@ -98,7 +104,7 @@ class Collaboration(db.Model, HoustonModel):
             # Edit not enabled on creation
             collab_user_assoc.edit_approval_state = CollaborationUserState.NOT_INITIATED
 
-            # If you initiate, then you approve read. Manager created are also read approved (TODO are they edit approved)
+            # If you initiate, then you approve read. Manager created are also read approved
             if user == initiator_user or manager_created:
                 collab_user_assoc.read_approval_state = CollaborationUserState.APPROVED
             else:
@@ -110,7 +116,6 @@ class Collaboration(db.Model, HoustonModel):
                 collaboration=self, user=initiator_user
             )
 
-            collab_creator.initiator = True
             collab_creator.read_approval_state = CollaborationUserState.CREATOR
             collab_creator.edit_approval_state = CollaborationUserState.CREATOR
 
@@ -192,7 +197,6 @@ class Collaboration(db.Model, HoustonModel):
             assoc_data = BaseUserSchema().dump(association.user).data
             assoc_data['viewState'] = association.read_approval_state
             assoc_data['editState'] = association.edit_approval_state
-            assoc_data['initiator'] = association.initiator
             user_data[str(association.user.guid)] = assoc_data
 
         return user_data
@@ -285,13 +289,13 @@ class Collaboration(db.Model, HoustonModel):
         return success
 
     def initiate_edit_with_other_user(self):
+        self.edit_initiator_guid = current_user.guid
         my_assoc = self._get_association_for_user(current_user.guid)
         other_assoc = self._get_association_for_other_user(current_user.guid)
         if (
             my_assoc.read_approval_state == CollaborationUserState.APPROVED
             and other_assoc.read_approval_state == CollaborationUserState.APPROVED
         ):
-            my_assoc.edit_initiator = True
             my_assoc.edit_approval_state = CollaborationUserState.APPROVED
             other_assoc.edit_approval_state = CollaborationUserState.PENDING
         else:

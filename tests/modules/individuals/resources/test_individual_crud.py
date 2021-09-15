@@ -6,6 +6,8 @@ import logging
 import uuid
 import datetime
 from app.modules.individuals.models import Individual
+from app.modules.encounters.models import Encounter
+from app.modules.sightings.models import Sighting
 
 from tests.modules.individuals.resources import utils as individual_utils
 from tests.modules.sightings.resources import utils as sighting_utils
@@ -227,3 +229,75 @@ def test_add_remove_encounters(db, flask_app_client, researcher_1):
 
     individual_1.delete()
     sighting.delete_cascade()
+
+
+def test_individual_has_detailed_encounter_from_edm(db, flask_app_client, researcher_1):
+
+    data_in = {
+        'encounters': [
+            {
+                'decimalLatitude': 25.9999,
+                'decimalLongitude': 25.9999,
+                'verbatimLocality': 'Antarctica',
+                'locationId': 'Antarctica',
+                'time': '2010-01-01T01:01:01Z',
+            }
+        ],
+        'startTime': '2000-01-01T01:01:01Z',
+        'locationId': 'test',
+    }
+
+    individual_id = None
+
+    try:
+        response = sighting_utils.create_sighting(
+            flask_app_client, researcher_1, data_in=data_in
+        )
+
+        response_json = response.json
+
+        assert response_json['result']['encounters']
+        assert response_json['result']['encounters'][0]['id']
+
+        guid = response_json['result']['encounters'][0]['id']
+        enc = Encounter.query.get(guid)
+        assert enc is not None
+
+        with db.session.begin():
+            db.session.add(enc)
+
+        sighting_id = response_json['result']['id']
+        sighting = Sighting.query.get(sighting_id)
+        assert sighting is not None
+
+        individual_data_in = {
+            'names': {'primaryName': 'Wilbur'},
+            'encounters': [{'id': str(enc.guid)}],
+        }
+
+        individual_response = individual_utils.create_individual(
+            flask_app_client, researcher_1, 200, individual_data_in
+        )
+
+        assert individual_response.json['result']['id'] is not None
+
+        individual_id = individual_response.json['result']['id']
+
+        individual_json = individual_utils.read_individual(
+            flask_app_client, researcher_1, individual_id
+        ).json
+
+        assert individual_json['result']['encounters'][0]['decimalLatitude'] == '25.9999'
+        assert individual_json['result']['encounters'][0]['decimalLongitude'] == '25.9999'
+        assert (
+            individual_json['result']['encounters'][0]['verbatimLocality'] == 'Antarctica'
+        )
+        assert individual_json['result']['encounters'][0]['locationId'] == 'Antarctica'
+        assert (
+            individual_json['result']['encounters'][0]['time'] == '2010-01-01T01:01:01Z'
+        )
+
+    finally:
+        individual_utils.delete_individual(flask_app_client, researcher_1, individual_id)
+        sighting.delete_cascade()
+        enc.delete_cascade()

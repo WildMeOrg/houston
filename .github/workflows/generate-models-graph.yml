@@ -1,0 +1,37 @@
+name: Generate Models Grpah
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'app/modules/**/models.py'
+
+jobs:
+  generate-models-graph:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          token: ${{ secrets.PAT_TOKEN }}
+      - uses: actions/setup-python@v2
+        with:
+          python-version: 3.9
+      - name: Install dependencies
+        run: |
+          pip install -r app/requirements.txt
+          pip install -e .
+          pip install pydot
+          sudo apt-get install -y graphviz
+      - name: Generate models graph
+        run: ./scripts/generate_models_graph.py
+      - name: Commit and push to docs
+        run: |
+          bash -xe <<EOF
+          git add docs/models-graph.png
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git commit -am 'Update docs/models-graph.png'
+          git push origin HEAD
+          EOF

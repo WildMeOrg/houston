@@ -307,6 +307,63 @@ class AssetGroupSightingByID(Resource):
             'action': AccessOperation.READ,
         },
     )
+    @api.response(schemas.DetailedAssetGroupSightingSchema())
+    @api.login_required(oauth_scopes=['asset_group_sightings:read'])
+    def get(self, asset_group_sighting):
+        """
+        Get Asset_group_sighting details by ID. Note this uses a schema that
+        formats the AGS like a standard sighting, which is done by pulling out
+        config fields to the top-level json
+        """
+        return asset_group_sighting
+
+    @api.permission_required(
+        permissions.ObjectAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'obj': kwargs['asset_group_sighting'],
+            'action': AccessOperation.WRITE,
+        },
+    )
+    @api.login_required(oauth_scopes=['asset_group_sightings:write'])
+    @api.parameters(parameters.PatchAssetGroupSightingDetailsParameters())
+    @api.response(schemas.DetailedAssetGroupSightingSchema())
+    def patch(self, args, asset_group_sighting):
+        context = api.commit_or_abort(
+            db.session,
+            default_error_message='Failed to update Asset_group_sighting details.',
+        )
+        with context:
+            try:
+                parameters.PatchAssetGroupSightingDetailsParameters.perform_patch(
+                    args, obj=asset_group_sighting
+                )
+            except AssetGroupMetadataError as error:
+                abort(
+                    passed_message=error.message,
+                    code=error.status_code,
+                )
+            db.session.merge(asset_group_sighting)
+        return asset_group_sighting
+
+
+@api.route('/sighting/as_sighting/<uuid:asset_group_sighting_guid>')
+@api.response(
+    code=HTTPStatus.NOT_FOUND,
+    description='Asset_group_sighting not found.',
+)
+@api.resolve_object_by_model(AssetGroupSighting, 'asset_group_sighting')
+class AssetGroupSightingAsSighting(Resource):
+    """
+    The Asset Group Sighting may be read or patched as part of curation
+    """
+
+    @api.permission_required(
+        permissions.ObjectAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'obj': kwargs['asset_group_sighting'],
+            'action': AccessOperation.READ,
+        },
+    )
     @api.response(schemas.AssetGroupSightingAsSightingSchema())
     @api.login_required(oauth_scopes=['asset_group_sightings:read'])
     def get(self, asset_group_sighting):

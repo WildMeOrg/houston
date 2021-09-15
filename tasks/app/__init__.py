@@ -15,7 +15,6 @@ from tasks.app import (
     dev,
     edm,
     endpoints,
-    env,
     encounters,
     initialize,
     integrations,
@@ -25,6 +24,7 @@ from tasks.app import (
     run,
     site_settings,
     asset_groups,
+    shell,
     swagger,
     users,
 )
@@ -42,7 +42,6 @@ namespace = Collection(
     edm,
     encounters,
     endpoints,
-    env,
     initialize,
     integrations,
     job_control,
@@ -51,6 +50,7 @@ namespace = Collection(
     run,
     site_settings,
     asset_groups,
+    shell,
     swagger,
     users,
 )

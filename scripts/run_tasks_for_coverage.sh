@@ -46,17 +46,10 @@ coverage run --append `which invoke` app.config.list
 coverage run --append `which invoke` app.config.forget --key=BASE_URL
 coverage run --append `which invoke` app.config.show
 
-# test app.env.enter
-if [ "$SQLALCHEMY_DATABASE_URI" == "" ]
-then
-    echo | coverage run --append `which invoke` app.env.enter --no-install-dependencies
-    echo | coverage run --append `which invoke` app.env.enter
-else
-    echo | coverage run --append `which invoke` app.env.enter --no-install-dependencies --no-upgrade-db
-    echo | coverage run --append `which invoke` app.env.enter --no-upgrade-db
-fi
-
+# test interpreter shells
+echo | coverage run --append `which invoke` app.shell
 echo | coverage run --append `which invoke` app.dev.embed
+
 coverage run --append `which invoke` app.run.warmup --print-routes
 coverage run --append `which invoke` app.projects.list-all
 

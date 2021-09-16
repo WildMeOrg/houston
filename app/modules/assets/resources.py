@@ -173,4 +173,7 @@ class AssetSrcRawByID(Resource):
         },
     )
     def get(self, asset):
+        import app.extensions.logging as AuditLog  # NOQA
+
+        AuditLog.audit_log_object(log, self, 'Received Sage raw src read')
         return send_file(asset.get_symlink())

@@ -221,60 +221,56 @@ def build_sage_detection_response(asset_group_sighting_guid, job_uuid):
 
     # Generate the response back from Sage
     sage_resp = {
-        'status': 'completed',
-        'jobid': str(job_uuid),
-        'json_result': {
-            'image_uuid_list': [
-                # Image UUID stored in acm (not the same as houston)
-                {'__UUID__': str(uuid.uuid4())}
-                for _ in asset_ids
-            ],
-            'results_list': [
-                [
-                    {
-                        'id': 1,
-                        'uuid': {'__UUID__': ANNOTATION_UUIDS[0]},
-                        'xtl': 459,
-                        'ytl': 126,
-                        'left': 459,
-                        'top': 126,
-                        'width': 531,
-                        'height': 539,
-                        'theta': 0.0,
-                        'confidence': 0.8568,
-                        'class': 'zebra_plains',
-                        'species': 'zebra_plains',
-                        'viewpoint': None,
-                        'quality': None,
-                        'multiple': False,
-                        'interest': False,
-                    },
-                    {
-                        'id': 2,
-                        'uuid': {'__UUID__': ANNOTATION_UUIDS[1]},
-                        'xtl': 26,
-                        'ytl': 145,
-                        'left': 26,
-                        'top': 145,
-                        'width': 471,
-                        'height': 500,
-                        'theta': 0.0,
-                        'confidence': 0.853,
-                        'class': 'zebra_plains',
-                        'species': 'zebra_plains',
-                        'viewpoint': None,
-                        'quality': None,
-                        'multiple': False,
-                        'interest': False,
-                    },
+        'response': {
+            'jobid': job_uuid,
+            'json_result': {
+                'has_assignments': False,
+                'image_uuid_list': [
+                    # Image UUID stored in acm (not the same as houston)
+                    {'__UUID__': str(uuid.uuid4())}
+                    for _ in asset_ids
                 ],
-            ],
+                'results_list': [
+                    [
+                        {
+                            'class': 'whale_orca+fin_dorsal',
+                            'confidence': 0.7909,
+                            'height': 820,
+                            'id': 947505,
+                            'interest': False,
+                            'left': 140,
+                            'multiple': False,
+                            'quality': None,
+                            'species': 'whale_orca+fin_dorsal',
+                            'theta': 0.0,
+                            'top': 0,
+                            'uuid': ANNOTATION_UUIDS[0],
+                            'viewpoint': 'left',
+                            'width': 1063,
+                            'xtl': 140,
+                            'ytl': 0,
+                        },
+                    ],
+                ],
+                'score_list': [
+                    0.0,
+                ],
+            },
+            'status': 'completed',
+        },
+        'status': {
+            'cache': -1,
+            'code': 200,
+            'message': '',
+            'success': True,
         },
     }
 
     # Make sure results_list is the same length as the assets (just
     # empty [])
-    sage_resp['json_result']['results_list'] += [[] for _ in range(len(asset_ids) - 1)]
+    sage_resp['response']['json_result']['results_list'] += [
+        [] for _ in range(len(asset_ids) - 1)
+    ]
     return sage_resp
 
 
@@ -427,7 +423,6 @@ def delete_asset_group(
         assert response.status_code == 204
         assert not AssetGroup.is_on_remote(asset_group_guid)
     else:
-
         test_utils.validate_dict_response(
             response, expected_status_code, {'status', 'message'}
         )
@@ -538,6 +533,26 @@ def read_asset_group_sighting_as_sighting(
             response, expected_status_code, {'status', 'message'}
         )
     return response
+
+
+def simulate_job_detection_response(
+    flask_app_client,
+    user,
+    asset_group_sighting_uuid,
+    asset_guid,
+    job_id,
+    expected_status_code=200,
+):
+    path = f'sighting/{asset_group_sighting_uuid}/sage_detected/{job_id}'
+    data = build_sage_detection_response(asset_group_sighting_uuid, job_id)
+
+    return simulate_detection_response(
+        flask_app_client,
+        user,
+        path,
+        data,
+        expected_status_code,
+    )
 
 
 def simulate_detection_response(

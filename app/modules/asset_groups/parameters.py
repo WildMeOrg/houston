@@ -133,6 +133,81 @@ class PatchAssetGroupSightingDetailsParameters(PatchJSONParameters):
         raise NotImplementedError()
 
 
+class PatchAssetGroupSightingAsSightingParameters(PatchJSONParameters):
+    # pylint: disable=abstract-method,missing-docstring
+    OPERATION_CHOICES = (PatchJSONParameters.OP_REPLACE, PatchJSONParameters.OP_ADD)
+    # These don't exist as entities in the AssetGroupSighting, they're just config blobs
+    # but we allow patching faking them to be real
+    # This uses the fact that anything that is an EDM sighting path is in the
+    # AssetGroupSighting in the same format
+    PATH_CHOICES = PatchSightingDetailsParameters.PATH_CHOICES_EDM + (
+        '/idConfigs',
+        '/assetReferences',
+        '/name',
+    )
+
+    @classmethod
+    def add(cls, obj, field, value, state):
+        # Add and replace are the same operation so reuse the one method
+        return cls.replace(obj, field, value, state)
+
+    # Asset ref patching is different enough from asset ref creation to not to be able to reuse the
+    # metadata functionality
+    @classmethod
+    def validate_asset_references(cls, obj, asset_refs):
+        from .metadata import AssetGroupMetadataError
+
+        for filename in asset_refs:
+            # asset must exist and must be part of the group
+            if not obj.asset_group.get_asset_for_file(filename):
+                raise AssetGroupMetadataError(
+                    f'{filename} not in Group for assetGroupSighting {obj.guid}'
+                )
+
+    @classmethod
+    def replace(cls, obj, field, value, state):
+        # Reuse metadata methods to validate ID Config
+        from .metadata import AssetGroupMetadata
+
+        ret_val = False
+
+        # this is the only part with differing logic vs. PatchAssetGroupSightingDetailsParameters.
+        # We will not get the 'config' field here bc it is not on Sightings. Any fields
+        # in app.modules.asset_groups.schemas.SIGHTING_FIELDS_IN_AGS_CONFIG will be handled
+        # by the final else case
+        if field == 'idConfigs':
+            # Raises AssetGroupMetadataError on error which is intentionally unnhandled
+            AssetGroupMetadata.validate_id_configs(value, f'Sighting {obj.guid}')
+            obj.config[field] = value
+            ret_val = True
+        elif field == 'encounters':
+            AssetGroupMetadata.validate_encounters(value, f'Sighting {obj.guid}')
+            obj.config[field] = value
+            # All encounters in the metadata need to be allocated a pseudo ID for later patching
+            for encounter_num in range(len(obj.config['encounters'])):
+                if 'guid' not in obj.config['encounters'][encounter_num]:
+                    obj.config['encounters'][encounter_num]['guid'] = str(uuid.uuid4())
+            ret_val = True
+        elif field == 'assetReferences':
+            # Only supports patch of all refs as one operation
+            # Raises AssetGroupMetadataError on error which is intentionally unnhandled
+            cls.validate_asset_references(obj, value)
+            obj.config[field] = value
+            ret_val = True
+        else:
+            obj.config[field] = value
+            ret_val = True
+
+        # Force the DB write
+        obj.config = obj.config
+
+        return ret_val
+
+    @classmethod
+    def remove(cls, obj, field, value, state):
+        raise NotImplementedError()
+
+
 class PatchAssetGroupSightingEncounterDetailsParameters(PatchJSONParameters):
     # pylint: disable=abstract-method,missing-docstring
     OPERATION_CHOICES = (PatchJSONParameters.OP_REPLACE, PatchJSONParameters.OP_ADD)

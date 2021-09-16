@@ -9,6 +9,17 @@ from flask_restx_patched import ModelSchema
 
 from .models import AssetGroup, AssetGroupSighting
 
+# We need api endpoints for AssetGroupSightings which behave just like the
+# Sighting endpoints to standardize frontend interactions. For that reason we need
+# to know which sighting fields to expect in an AssetGroupSighting.config dict
+SIGHTING_FIELDS_IN_AGS_CONFIG = {
+    'decimalLatitude',
+    'decimalLongitude',
+    'encounters',
+    'locationId',
+    'startTime',
+}
+
 
 class BaseAssetGroupSightingSchema(ModelSchema):
     """
@@ -53,6 +64,9 @@ class AssetGroupSightingAsSightingSchema(BaseAssetGroupSightingSchema):
 
     assets = base_fields.Function(AssetGroupSighting.get_assets)
     completion = base_fields.Function(AssetGroupSighting.get_completion)
+
+    # Note: these config_field_getter vars should conform to SIGHTING_FIELDS_IN_AGS_CONFIG
+    # at the top of this file
     decimalLatitude = base_fields.Function(
         AssetGroupSighting.config_field_getter('decimalLatitude')
     )

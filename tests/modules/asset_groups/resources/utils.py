@@ -446,11 +446,42 @@ def patch_asset_group_sighting(
             content_type='application/json',
             data=json.dumps(data),
         )
-    from pprint import pprint
-    pprint(response.json)
 
     if expected_status_code == 200:
         test_utils.validate_dict_response(response, 200, {'guid', 'stage', 'config'})
+    elif expected_status_code == 400:
+        test_utils.validate_dict_response(
+            response, expected_status_code, {'status', 'message', 'passed_message'}
+        )
+    else:
+        test_utils.validate_dict_response(
+            response, expected_status_code, {'status', 'message'}
+        )
+    return response
+
+
+def patch_asset_group_sighting_as_sighting(
+    flask_app_client,
+    user,
+    patch_path,
+    data,
+    expected_status_code=200,
+    expected_resp='',
+):
+    with flask_app_client.login(user, auth_scopes=('asset_group_sightings:write',)):
+        response = flask_app_client.patch(
+            f'{PATH}sighting/as_sighting/{patch_path}',
+            content_type='application/json',
+            data=json.dumps(data),
+        )
+
+    if expected_status_code == 200:
+        from app.modules.asset_groups.schemas import SIGHTING_FIELDS_IN_AGS_CONFIG
+
+        expected_fields = {'guid', 'stage', 'completion', 'assets'}
+        expected_fields.update(SIGHTING_FIELDS_IN_AGS_CONFIG)
+
+        test_utils.validate_dict_response(response, 200, expected_fields)
     elif expected_status_code == 400:
         test_utils.validate_dict_response(
             response, expected_status_code, {'status', 'message', 'passed_message'}
@@ -490,17 +521,11 @@ def read_asset_group_sighting_as_sighting(
         response = flask_app_client.get(get_path)
 
     if expected_status_code == 200:
-        expected_fields = {
-            'guid',
-            'stage',
-            'decimalLatitude',
-            'decimalLongitude',
-            'encounters',
-            'locationId',
-            'startTime',
-            'completion',
-            'assets',
-        }
+        from app.modules.asset_groups.schemas import SIGHTING_FIELDS_IN_AGS_CONFIG
+
+        expected_fields = {'guid', 'stage', 'completion', 'assets'}
+        expected_fields.update(SIGHTING_FIELDS_IN_AGS_CONFIG)
+
         test_utils.validate_dict_response(response, 200, expected_fields)
     else:
         test_utils.validate_dict_response(

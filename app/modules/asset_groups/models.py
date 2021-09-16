@@ -358,11 +358,14 @@ class AssetGroupSighting(db.Model, HoustonModel):
         asset_url = urljoin(base_url, '/api/v1/assets/src_raw/')
 
         asset_guids = []
-        for filename in self.config.get('assetReferences'):
-            asset = self.asset_group.get_asset_for_file(filename)
-            assert asset
-            if asset.guid not in asset_guids:
-                asset_guids.append(asset.guid)
+        if 'updatedAssets' in self.config:
+            asset_guids = self.config['updatedAssets']
+        else:
+            for filename in self.config.get('assetReferences'):
+                asset = self.asset_group.get_asset_for_file(filename)
+                assert asset
+                if asset.guid not in asset_guids:
+                    asset_guids.append(asset.guid)
 
         model_config['image_uuid_list'] = [
             f'houston+{urljoin(asset_url, str(asset_guid))}' for asset_guid in asset_guids
@@ -490,6 +493,40 @@ class AssetGroupSighting(db.Model, HoustonModel):
                     db.session.add(new_annot)
         self.job_complete(str(job_id))
 
+    # Record that the asset has been updated for future re detection
+    def asset_updated(self, asset):
+        if self.config['updatedAssets']:
+            if asset.guid not in self.config['updatedAssets']:
+                self.config['updatedAssets'].append(asset.guid)
+        else:
+            self.config['updatedAssets'] = [asset.guid]
+
+        # Ensure it's written to DB
+        self.config = self.config
+
+    def rerun_detection(self):
+        if self.stage == AssetGroupSightingStage.curation:
+            self.stage = AssetGroupSightingStage.detection
+            self.start_detection()
+        else:
+            raise HoustonException(
+                log, f'Cannot rerun detection on AssetGroupSighting in {self.stage} stage'
+            )
+
+    def start_detection(self):
+        from app.modules.asset_groups.tasks import sage_detection
+
+        asset_group_config = self.asset_group.config
+        assert 'speciesDetectionModel' in asset_group_config
+        assert self.stage == AssetGroupSightingStage.detection
+
+        # Temporary restriction for MVP
+        assert len(asset_group_config['speciesDetectionModel']) == 1
+        for config in asset_group_config['speciesDetectionModel']:
+            log.debug(f'ia pipeline running sage detection {config}')
+            # Call sage_detection in the background by doing .delay()
+            sage_detection.delay(str(self.guid), config)
+
     # Used to build the response to AssetGroupSighting GET
     def get_assets(self):
         from app.modules.assets.schemas import DetailedAssetGroupAssetSchema
@@ -525,6 +562,10 @@ class AssetGroupSighting(db.Model, HoustonModel):
                     outstanding_jobs.append(job)
 
             if len(outstanding_jobs) == 0:
+                # All complete, updatedAssets now in same sate as other assets so no need to store anymore
+                if 'updatedAssets' in self.config:
+                    del self.config['updatedAssets']
+                self.config = self.config
                 self.stage = AssetGroupSightingStage.curation
 
             # This is necessary because we can only mark jobs as
@@ -1309,7 +1350,9 @@ class AssetGroup(db.Model, HoustonModel):
         assert metadata.data_processed == AssetGroupMetadata.DataProcessed.complete
         import copy
 
-        from app.modules.asset_groups.tasks import sage_detection
+        # Store the metadata in the AssetGroup but not the sightings, that is stored on the AssetGroupSightings
+        self.config = dict(metadata.request)
+        del self.config['sightings']
 
         for sighting_meta in metadata.request['sightings']:
             # All encounters in the metadata need to be allocated a pseudo ID for later patching
@@ -1344,10 +1387,8 @@ class AssetGroup(db.Model, HoustonModel):
 
             if new_sighting.stage == AssetGroupSightingStage.detection:
                 try:
-                    for config in metadata.detection_configs:
-                        log.debug(f'ia pipeline running sage detection {config}')
-                        # Call sage_detection in the background by doing .delay()
-                        sage_detection.delay(str(new_sighting.guid), config)
+                    new_sighting.start_detection()
+
                 except HoustonException as ex:
                     new_sighting.delete()
                     raise ex
@@ -1363,6 +1404,10 @@ class AssetGroup(db.Model, HoustonModel):
         if metadata.description != '':
             description = metadata.description
         self.git_commit(description)
+
+    def asset_updated(self, asset):
+        for ags in self.get_asset_group_sightings_for_asset(asset):
+            ags.asset_updated(asset)
 
     def delete(self):
         from .tasks import delete_remote

@@ -20,16 +20,7 @@ def setup_periodic_tasks(sender, **kwargs):
 
 def create_wildbook_engine() -> Engine:
     """Creates a SQLAlchemy Engine for connecting to the Wildbook database"""
-    config = current_app.config
-
-    user = config['WILDBOOK_DB_USER']
-    password = config['WILDBOOK_DB_PASSWORD']
-    host = config['WILDBOOK_DB_HOST']
-    port = config['WILDBOOK_DB_PORT']
-    database = config['WILDBOOK_DB_NAME']
-    wildbook_uri = f'postgresql://{user}:{password}@{host}:{port}/{database}'
-
-    return create_engine(wildbook_uri)
+    return create_engine(current_app.config['WILDBOOK_DB_URI'])
 
 
 @celery.task

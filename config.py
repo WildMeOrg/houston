@@ -358,6 +358,15 @@ class WildbookDatabaseConfig:
     WILDBOOK_DB_PORT = os.getenv('WILDBOOK_DB_PORT', '5432')
     WILDBOOK_DB_NAME = os.getenv('WILDBOOK_DB_NAME')
 
+    @property
+    def WILDBOOK_DB_URI(self):
+        user = self.WILDBOOK_DB_USER
+        password = self.WILDBOOK_DB_PASSWORD
+        host = self.WILDBOOK_DB_HOST
+        port = self.WILDBOOK_DB_PORT
+        database = self.WILDBOOK_DB_NAME
+        return f'postgresql://{user}:{password}@{host}:{port}/{database}'
+
 
 class ProductionConfig(
     BaseConfig,

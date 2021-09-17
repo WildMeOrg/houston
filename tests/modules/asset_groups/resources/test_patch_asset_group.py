@@ -147,12 +147,10 @@ def test_patch_asset_group_sighting_as_sighting(
         group_sighting = asset_group_utils.read_asset_group_sighting_as_sighting(
             flask_app_client, researcher_1, asset_group_sighting_guid
         )
-        from app.modules.asset_groups.schemas import SIGHTING_FIELDS_IN_AGS_CONFIG
 
-        expected_fields = {'guid', 'stage', 'completion', 'assets'}
-        expected_fields.update(SIGHTING_FIELDS_IN_AGS_CONFIG)
-
-        for field in expected_fields:
+        # startTime and locationId are only present in the _as_sighting endpoints,
+        # since they are in the config of a standard AGS
+        for field in {'guid', 'stage', 'completion', 'assets', 'startTime', 'locationId'}:
             assert field in group_sighting.json
 
         # Valid patch, adding a new encounter with an existing file

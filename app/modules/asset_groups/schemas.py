@@ -6,6 +6,7 @@ Serialization schemas for Asset_groups resources RESTful API
 
 from flask_marshmallow import base_fields
 from flask_restx_patched import ModelSchema
+from marshmallow import post_dump
 
 from .models import AssetGroup, AssetGroupSighting
 
@@ -93,6 +94,14 @@ class AssetGroupSightingAsSightingSchema(BaseAssetGroupSightingSchema):
             'encounters',
         )
         dump_only = BaseAssetGroupSightingSchema.Meta.dump_only
+
+    # Ensures we don't return fields with None values
+    @post_dump
+    def remove_none_fields(self, data):
+        for field in SIGHTING_FIELDS_IN_AGS_CONFIG:
+            if data[field] is None:
+                del data[field]
+        return data
 
 
 class BaseAssetGroupSchema(ModelSchema):

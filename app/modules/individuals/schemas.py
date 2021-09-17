@@ -44,4 +44,5 @@ class DetailedIndividualSchema(BaseIndividualSchema):
         dump_only = BaseIndividualSchema.Meta.dump_only + (
             Individual.created.key,
             Individual.updated.key,
+            'encounters',
         )

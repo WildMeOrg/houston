@@ -427,6 +427,7 @@ def delete_asset_group(
         assert response.status_code == 204
         assert not AssetGroup.is_on_remote(asset_group_guid)
     else:
+
         test_utils.validate_dict_response(
             response, expected_status_code, {'status', 'message'}
         )
@@ -477,12 +478,13 @@ def patch_asset_group_sighting_as_sighting(
         )
 
     if expected_status_code == 200:
-        from app.modules.asset_groups.schemas import SIGHTING_FIELDS_IN_AGS_CONFIG
-
-        expected_fields = {'guid', 'stage', 'completion', 'assets'}
-        expected_fields.update(SIGHTING_FIELDS_IN_AGS_CONFIG)
-
-        test_utils.validate_dict_response(response, 200, expected_fields)
+        # startTime and locationId are only present in the _as_sighting endpoints,
+        # since they are in the config of a standard AGS
+        test_utils.validate_dict_response(
+            response,
+            200,
+            {'guid', 'stage', 'completion', 'assets', 'startTime', 'locationId'},
+        )
     elif expected_status_code == 400:
         test_utils.validate_dict_response(
             response, expected_status_code, {'status', 'message', 'passed_message'}
@@ -524,12 +526,13 @@ def read_asset_group_sighting_as_sighting(
         response = flask_app_client.get(get_path)
 
     if expected_status_code == 200:
-        from app.modules.asset_groups.schemas import SIGHTING_FIELDS_IN_AGS_CONFIG
-
-        expected_fields = {'guid', 'stage', 'completion', 'assets'}
-        expected_fields.update(SIGHTING_FIELDS_IN_AGS_CONFIG)
-
-        test_utils.validate_dict_response(response, 200, expected_fields)
+        # startTime and locationId are only present in the _as_sighting endpoints,
+        # since they are in the config of a standard AGS
+        test_utils.validate_dict_response(
+            response,
+            200,
+            {'guid', 'stage', 'completion', 'assets', 'startTime', 'locationId'},
+        )
     else:
         test_utils.validate_dict_response(
             response, expected_status_code, {'status', 'message'}

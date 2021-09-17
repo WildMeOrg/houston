@@ -71,8 +71,10 @@ class AugmentedEdmEncounterSchema(BaseEncounterSchema):
 
 class AugmentedIndividualApiEncounterSchema(BaseEncounterSchema):
 
-    submitter = base_fields.Nested('BaseUserSchema', many=False, exclude='email')
-    owner = base_fields.Nested('BaseUserSchema', many=False, exclude='email')
+    submitter = base_fields.Nested(
+        'BaseUserSchema', many=False, only=('full_name', 'guid')
+    )
+    owner = base_fields.Nested('BaseUserSchema', many=False, only=('full_name', 'guid'))
 
     class Meta(BaseEncounterSchema.Meta):
         fields = BaseEncounterSchema.Meta.fields + (
@@ -81,6 +83,5 @@ class AugmentedIndividualApiEncounterSchema(BaseEncounterSchema):
             'owner',
             'hasView',
             'hasEdit',
-            'asset_group_sighting_encounter_guid'
+            'asset_group_sighting_encounter_guid',
         )
-

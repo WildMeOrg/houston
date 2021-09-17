@@ -52,10 +52,6 @@ class PatchAssetGroupDetailsParameters(PatchJSONParameters):
                     ret_val = True
         return ret_val
 
-    @classmethod
-    def remove(cls, obj, field, value, state):
-        raise NotImplementedError()
-
 
 class PatchAssetGroupSightingDetailsParameters(PatchJSONParameters):
     # pylint: disable=abstract-method,missing-docstring
@@ -128,10 +124,6 @@ class PatchAssetGroupSightingDetailsParameters(PatchJSONParameters):
 
         return ret_val
 
-    @classmethod
-    def remove(cls, obj, field, value, state):
-        raise NotImplementedError()
-
 
 class PatchAssetGroupSightingAsSightingParameters(PatchJSONParameters):
     # pylint: disable=abstract-method,missing-docstring
@@ -203,10 +195,6 @@ class PatchAssetGroupSightingAsSightingParameters(PatchJSONParameters):
 
         return ret_val
 
-    @classmethod
-    def remove(cls, obj, field, value, state):
-        raise NotImplementedError()
-
 
 class PatchAssetGroupSightingEncounterDetailsParameters(PatchJSONParameters):
     # pylint: disable=abstract-method,missing-docstring
@@ -256,7 +244,3 @@ class PatchAssetGroupSightingEncounterDetailsParameters(PatchJSONParameters):
         # force the write to the database
         obj.config = obj.config
         return ret_val
-
-    @classmethod
-    def remove(cls, obj, field, value, state):
-        raise NotImplementedError()

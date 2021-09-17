@@ -83,16 +83,8 @@ class AssetGroupSightingAsSightingSchema(BaseAssetGroupSightingSchema):
     )
 
     class Meta(BaseAssetGroupSightingSchema.Meta):
-        fields = BaseAssetGroupSightingSchema.Meta.fields + (
-            AssetGroupSighting.stage.key,
-            'assets',
-            'completion',
-            'decimalLatitude',
-            'decimalLongitude',
-            'locationId',
-            'startTime',
-            'encounters',
-        )
+        # adds 'stage' to the fields already defined above
+        additional = ('stage',)
         dump_only = BaseAssetGroupSightingSchema.Meta.dump_only
 
     # Ensures we don't return fields with None values

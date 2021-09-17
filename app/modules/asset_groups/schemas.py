@@ -126,6 +126,11 @@ class CreateAssetGroupSchema(BaseAssetGroupSchema):
             AssetGroup.created.key,
             AssetGroup.updated.key,
         )
+        dump_only = BaseAssetGroupSchema.Meta.dump_only + (
+            AssetGroup.owner_guid.key,
+            AssetGroup.created.key,
+            AssetGroup.updated.key,
+        )
 
 
 class DetailedAssetGroupSchema(CreateAssetGroupSchema):

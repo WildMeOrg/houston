@@ -92,6 +92,7 @@ class AssetGroupSightingAsSightingSchema(BaseAssetGroupSightingSchema):
             'startTime',
             'encounters',
         )
+        dump_only = BaseAssetGroupSightingSchema.Meta.dump_only
 
 
 class BaseAssetGroupSchema(ModelSchema):

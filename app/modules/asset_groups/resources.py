@@ -311,9 +311,7 @@ class AssetGroupSightingByID(Resource):
     @api.login_required(oauth_scopes=['asset_group_sightings:read'])
     def get(self, asset_group_sighting):
         """
-        Get Asset_group_sighting details by ID. Note this uses a schema that
-        formats the AGS like a standard sighting, which is done by pulling out
-        config fields to the top-level json
+        Get Asset_group_sighting details by ID.
         """
         return asset_group_sighting
 

@@ -286,14 +286,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
 
     # returns a None-safe getter for a given config field
     def config_field_getter(field_name):
-        def getter(self):
-            if self.config and field_name in self.config:
-                value = self.config[field_name]
-            else:
-                value = None
-            return value
-
-        return getter
+        return lambda self: self.config and self.config.get(field_name)
 
     @classmethod
     def check_jobs(cls):

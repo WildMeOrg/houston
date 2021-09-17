@@ -268,8 +268,11 @@ def test_individual_has_detailed_encounter_from_edm(db, flask_app_client, resear
         sighting = Sighting.query.get(sighting_id)
         assert sighting is not None
 
+        encounter = Encounter.query.get(enc.guid)
+        encounter.asset_group_sighting_encounter_guid = uuid.uuid4()
+
         individual_data_in = {
-            'names': {'primaryName': 'Wilbur'},
+            'names': {'defaultName': 'Wilbur'},
             'encounters': [{'id': str(enc.guid)}],
         }
 

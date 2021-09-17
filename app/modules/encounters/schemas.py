@@ -67,3 +67,20 @@ class AugmentedEdmEncounterSchema(BaseEncounterSchema):
             'hasEdit',
             'annotations',
         )
+
+
+class AugmentedIndividualApiEncounterSchema(BaseEncounterSchema):
+
+    submitter = base_fields.Nested('BaseUserSchema', many=False, exclude='email')
+    owner = base_fields.Nested('BaseUserSchema', many=False, exclude='email')
+
+    class Meta(BaseEncounterSchema.Meta):
+        fields = BaseEncounterSchema.Meta.fields + (
+            Encounter.sighting.key,
+            'submitter',
+            'owner',
+            'hasView',
+            'hasEdit',
+            'asset_group_sighting_encounter_guid'
+        )
+

@@ -121,7 +121,7 @@ def test_patch_asset_group(
 
 # similar to the above but against the AGS-as-sighting endpoint
 def test_patch_asset_group_sighting_as_sighting(
-    flask_app_client, researcher_1, regular_user, test_root, db, empty_individual
+    flask_app_client, researcher_1, regular_user, test_root
 ):
     # pylint: disable=invalid-name
     from tests.modules.asset_groups.resources.utils import TestCreationData
@@ -176,9 +176,6 @@ def test_patch_asset_group_sighting_as_sighting(
         )
 
     finally:
-        # with db.session.begin():
-        #     db.session.delete(empty_individual)
-        # Restore original state
         if asset_group_uuid:
             asset_group_utils.delete_asset_group(
                 flask_app_client, regular_user, asset_group_uuid

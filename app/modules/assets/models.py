@@ -219,6 +219,47 @@ class Asset(db.Model, HoustonModel):
 
         return target_path
 
+    def rotate(self, angle, **kwargs):
+        if angle % 360 == 0:
+            # Nothing to do
+            return
+        with Image.open(self.get_symlink()) as im:
+            if (angle % 360) in (90, 180, 270):
+                method = getattr(Image, f'ROTATE_{angle}')
+                im_rotated = im.transpose(method=method)
+            else:
+                im_rotated = im.rotate(angle, **kwargs)
+        self.original_changed(im_rotated)
+
+    def get_backup_path(self):
+        symlink = self.get_symlink()
+        return symlink.parent / f'.{symlink.name}'
+
+    def get_original_path(self):
+        symlink = self.get_symlink()
+        backup = self.get_backup_path()
+        if backup.exists():
+            return backup
+        return symlink
+
+    def reset_derived_images(self):
+        # Reset metadata
+        self.set_derived_meta()
+        # Delete derived images (generated next time they're fetched)
+        for format in self.FORMATS:
+            self.get_derived_path(format).unlink(missing_ok=True)
+
+    def original_changed(self, image_object):
+        # Creates a copy of the original image
+        symlink = self.get_symlink()
+        # Store backup in _assets/.{guid}.{ext}
+        backup = self.get_backup_path()
+        if not backup.exists():
+            symlink.resolve().rename(backup)
+        # Save the new image
+        image_object.save(symlink.resolve())
+        self.reset_derived_images()
+
     # note: Image seems to *strip exif* sufficiently here (tested with gps, comments, etc) so this may be enough!
     # also note: this fails horribly in terms of exif orientation.  wom-womp
     def get_or_make_master_format_path(self):

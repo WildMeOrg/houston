@@ -131,7 +131,7 @@ def test_update_symlink(test_asset_group_uuid, request):
     assert new_actual.name == 'new.txt'
 
 
-def test_derived_images(test_asset_group_uuid):
+def test_derived_images_and_rotation(test_asset_group_uuid, request):
     from app.modules.asset_groups.models import AssetGroup
 
     asset_group = AssetGroup.query.get(test_asset_group_uuid)
@@ -141,13 +141,56 @@ def test_derived_images(test_asset_group_uuid):
         if asset.get_original_filename() == 'zebra.jpg'
     ][0]
 
+    def get_format_sizes(asset):
+        sizes = {}
+        for format in asset.FORMATS:
+            path = asset.get_or_make_format_path(format)
+            with Image.open(path) as im:
+                sizes[format] = im.size
+        return sizes
+
+    # Image hasn't been rotated, get_original_path() returns the symlink
+    assert zebra.get_original_path() == zebra.get_symlink()
     assert zebra.get_dimensions() == {'width': 1000, 'height': 664}
-    master_path = zebra.get_or_make_format_path('master')
-    with Image.open(master_path) as im:
+    assert get_format_sizes(zebra) == {
+        'master': (1000, 664),
+        'mid': (1000, 664),
+        'thumb': (256, 170),
+    }
+
+    def zebra_cleanup():
+        original = zebra.get_original_path()
+        original.rename(zebra.get_symlink().resolve())
+        zebra.reset_derived_images()
+
+    # Rotate 90 degrees
+    zebra.rotate(90)
+    request.addfinalizer(zebra_cleanup)
+    assert zebra.get_dimensions() == {'width': 664, 'height': 1000}
+    assert get_format_sizes(zebra) == {
+        'master': (664, 1000),
+        'mid': (664, 1000),
+        'thumb': (170, 256),
+    }
+
+    # Image has been rotated, get_original_path() returns the original
+    # image
+    assert zebra.get_original_path() != zebra.get_symlink()
+    assert zebra.get_original_path().is_file()
+    # The original should be still the same
+    with Image.open(zebra.get_original_path()) as im:
         assert im.size == (1000, 664)
-    mid_path = zebra.get_or_make_format_path('mid')
-    with Image.open(mid_path) as im:
+
+    # Rotate another 30 degrees (rotating non-90 degree increments
+    # doesn't change the image dimensions)
+    zebra.rotate(30)
+    assert zebra.get_dimensions() == {'width': 664, 'height': 1000}
+    assert get_format_sizes(zebra) == {
+        'master': (664, 1000),
+        'mid': (664, 1000),
+        'thumb': (170, 256),
+    }
+
+    # The original should be still the same
+    with Image.open(zebra.get_original_path()) as im:
         assert im.size == (1000, 664)
-    thumb_path = zebra.get_or_make_format_path('thumb')
-    with Image.open(thumb_path) as im:
-        assert im.size == (256, 170)

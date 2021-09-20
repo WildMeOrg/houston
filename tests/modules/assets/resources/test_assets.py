@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=missing-docstring
 import hashlib
+import json
 
 import tests.modules.asset_groups.resources.utils as asset_group_utils
 import tests.modules.assets.resources.utils as asset_utils
@@ -19,10 +20,9 @@ derived_md5sum_values = [
 def test_get_asset_not_found(flask_app_client, researcher_1):
     import uuid
 
-    asset_utils.read_asset(flask_app_client, None, str(uuid.uuid4()), 401)
+    asset_utils.read_asset(flask_app_client, None, str(uuid.uuid4()), 404)
     asset_utils.read_asset(flask_app_client, researcher_1, str(uuid.uuid4()), 404)
-    # TODO, this is what the test did previously, does this make sense?
-    response = flask_app_client.get('/api/v1/assets/wrong-uuid')
+    response = flask_app_client.get('/api/v1/assets/invalid-uuid')
     assert response.status_code == 404
 
 
@@ -197,3 +197,55 @@ def test_read_all_assets(
     assert admin_response.json[1]['guid'] == test_clone_asset_group_data['asset_uuids'][1]
 
     clone.cleanup()
+
+
+def test_patch_image_rotate(
+    flask_app_client, researcher_1, test_clone_asset_group_data, request
+):
+    clone = asset_group_utils.clone_asset_group(
+        flask_app_client,
+        researcher_1,
+        test_clone_asset_group_data['asset_group_uuid'],
+    )
+    request.addfinalizer(clone.cleanup)
+    asset = clone.asset_group.assets[0]
+
+    def asset_cleanup():
+        original = asset.get_original_path()
+        original.rename(asset.get_symlink().resolve())
+        asset.reset_derived_images()
+
+    with flask_app_client.login(researcher_1, auth_scopes=('assets:write',)):
+        response = flask_app_client.patch(
+            f'/api/v1/assets/{asset.guid}',
+            content_type='application/json',
+            data=json.dumps(
+                [
+                    {
+                        'op': 'replace',
+                        'path': '/image',
+                        'value': {'rotate': {'angle': -90}},
+                    },
+                ],
+            ),
+        )
+        assert response.status_code == 422
+        assert response.json['message'] == '"rotate.angle": Value must be greater than 0.'
+
+        response = flask_app_client.patch(
+            f'/api/v1/assets/{asset.guid}',
+            content_type='application/json',
+            data=json.dumps(
+                [
+                    {
+                        'op': 'replace',
+                        'path': '/image',
+                        'value': {'rotate': {'angle': 90}},
+                    },
+                ],
+            ),
+        )
+        request.addfinalizer(asset_cleanup)
+        assert response.status_code == 200
+        assert response.json['filename'] == 'zebra.jpg'
+        assert response.json['dimensions'] == {'width': 664, 'height': 1000}

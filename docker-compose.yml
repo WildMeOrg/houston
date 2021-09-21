@@ -43,26 +43,6 @@ services:
     networks:
       - intranet
 
-  logstash:
-    # https://www.elastic.co/guide/en/logstash/current/docker.html
-    image: docker.elastic.co/logstash/logstash-oss:7.10.1
-    # command: [ '-f', '/etc/logstash/conf.d', '--log.level', 'debug' ]
-    command: [ '-f', '/etc/logstash/conf.d' ]
-    volumes:
-      - .dockerfiles/logstash/docker-entrypoint.sh:/usr/local/bin/docker-entrypoint
-      # - ./logstash/pipelines.yml:/etc/logstash/pipelines.yml
-      - .dockerfiles/logstash/pipelines:/etc/logstash/conf.d
-    environment:
-      ELASTICSEARCH_HOST: "elasticsearch"
-      WILDBOOK_DB_HOST: "db"
-      WILDBOOK_DB_NAME: "${WILDBOOK_DB_NAME}"
-      WILDBOOK_DB_USER: "${WILDBOOK_DB_USER}"
-      WILDBOOK_DB_PASSWORD: "${WILDBOOK_DB_PASSWORD}"
-      # https://www.elastic.co/guide/en/logstash/current/configuration-file-structure.html#_escape_sequences
-      "config.support_escapes": "true"
-    networks:
-      - intranet
-
   gitlab:
     image: gitlab/gitlab-ce:13.9.3-ce.0
     volumes:
@@ -157,6 +137,10 @@ services:
       OAUTH_CLIENT_ID: "${HOUSTON_CLIENT_ID}"
       OAUTH_CLIENT_SECRET: "${HOUSTON_CLIENT_SECRET}"
       OAUTH_USER_EMAIL: "${OAUTH_USER_EMAIL}"
+      WILDBOOK_DB_HOST: "${WILDBOOK_DB_HOST}"
+      WILDBOOK_DB_NAME: "${WILDBOOK_DB_NAME}"
+      WILDBOOK_DB_USER: "${WILDBOOK_DB_USER}"
+      WILDBOOK_DB_PASSWORD: "${WILDBOOK_DB_PASSWORD}"
     healthcheck:
       test: [ "CMD", "curl", "-f", "http://localhost:5000/api/v1/site-info/heartbeat"]
       timeout: 45s

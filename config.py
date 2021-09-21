@@ -147,6 +147,7 @@ class BaseConfig(object):
         'site_info',
         'job_control',
         'elasticsearch_proxy',
+        'elasticsearch',
 
         # Front-end
         #   Dependencies: Users, Auth, Assets
@@ -350,6 +351,23 @@ class ElasticsearchConfig:
     ELASTICSEARCH_HOSTS = _parse_elasticsearch_hosts(os.getenv('ELASTICSEARCH_HOSTS'))
 
 
+class WildbookDatabaseConfig:
+    WILDBOOK_DB_USER = os.getenv('WILDBOOK_DB_USER')
+    WILDBOOK_DB_PASSWORD = os.getenv('WILDBOOK_DB_PASSWORD')
+    WILDBOOK_DB_HOST = os.getenv('WILDBOOK_DB_HOST')
+    WILDBOOK_DB_PORT = os.getenv('WILDBOOK_DB_PORT', '5432')
+    WILDBOOK_DB_NAME = os.getenv('WILDBOOK_DB_NAME')
+
+    @property
+    def WILDBOOK_DB_URI(self):
+        user = self.WILDBOOK_DB_USER
+        password = self.WILDBOOK_DB_PASSWORD
+        host = self.WILDBOOK_DB_HOST
+        port = self.WILDBOOK_DB_PORT
+        database = self.WILDBOOK_DB_NAME
+        return f'postgresql://{user}:{password}@{host}:{port}/{database}'
+
+
 class ProductionConfig(
     BaseConfig,
     EDMConfig,
@@ -359,6 +377,7 @@ class ProductionConfig(
     AssetGroupConfig,
     ReCaptchaConfig,
     ElasticsearchConfig,
+    WildbookDatabaseConfig,
 ):
     TESTING = False
 
@@ -382,6 +401,7 @@ class DevelopmentConfig(
     AssetGroupConfig,
     ReCaptchaConfig,
     ElasticsearchConfig,
+    WildbookDatabaseConfig,
 ):
     DEBUG = True
 

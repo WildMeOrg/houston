@@ -18,3 +18,4 @@ except RuntimeError:
 import app.modules.asset_groups.tasks  # noqa
 import app.modules.job_control.tasks  # noqa
 import app.modules.sightings.tasks  # noqa
+import app.modules.elasticsearch.tasks  # noqa

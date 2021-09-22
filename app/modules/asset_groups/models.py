@@ -470,7 +470,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
 
             for annot_id in range(len(results)):
                 annot_data = results[annot_id]
-                annot_uuid = annot_data.get('uuid', {})
+                annot_uuid = annot_data.get('uuid', {}).get('__UUID__')
                 ia_class = annot_data.get('class', None)
                 if not annot_uuid or not ia_class:
                     raise HoustonException(

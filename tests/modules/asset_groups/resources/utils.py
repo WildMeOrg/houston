@@ -244,7 +244,7 @@ def build_sage_detection_response(asset_group_sighting_guid, job_uuid):
                             'species': 'whale_orca+fin_dorsal',
                             'theta': 0.0,
                             'top': 0,
-                            'uuid': ANNOTATION_UUIDS[0],
+                            'uuid': {'__UUID__': ANNOTATION_UUIDS[0]},
                             'viewpoint': 'left',
                             'width': 1063,
                             'xtl': 140,

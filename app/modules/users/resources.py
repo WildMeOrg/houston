@@ -341,9 +341,7 @@ class UserSightings(Resource):
 
         start, end = args['offset'], args['offset'] + args['limit']
         for sighting in user.get_sightings()[start:end]:
-
-            sighting_response = current_app.edm.get_dict('sighting.data', sighting.guid)
-
+            sighting_response = current_app.edm.get_dict('sighting.data_complete', sighting.guid)
             if sighting_response.get('result') is not None:
                 response['sightings'].append(sighting_response['result'])
 

@@ -1,0 +1,69 @@
+{% extends "layout.jinja2" %}
+
+{% block title %}Home{% endblock %}
+
+{% block head %}
+  {{ super() }}
+{% endblock %}
+
+{% block style %}
+  {{ super() }}
+{% endblock %}
+
+{% block content %}
+
+  <div class="container">
+    <div class="row">
+      <div class="col-1 col-sm-1 col-md-1 col-lg-1 col-xl-3"></div>
+
+      <div class="col-10 col-sm-10 col-md-10 col-lg-10 col-xl-6">
+        <img class="mx-auto d-block" alt="Wild Me Houston" src="{{ url_for('backend.static', filename='images/icon.png', version=cachebuster) }}" style="width: 30%; margin-bottom: 25px;">
+
+        <div class="card">
+          <div class="card-header">
+            <b>Internal Test 1 - CHANGE MY NAME</b>
+            <br/>
+            <i>Running as user: {{ user.guid }}</i>
+          </div>
+
+          <div class="card-body">
+            <form class="needs-validation" novalidate>
+              <div class="form-group">
+                <label for="test1-value">Test Value</label>
+                <input name="test1-value" type="text" class="form-control" id="test1-value" aria-describedby="test1-value-help" placeholder="Enter value" autofocus="autofocus" autocomplete="username" onfocus="this.select()" required>
+              </div>
+              <div class="form-check">
+                <input type="checkbox" class="form-check-input" id="test1-flag">
+                <label name="test1-flag" class="form-check-label" for="test1-flag">Test Flag</label>
+              </div>
+              <button id="test1-submit" type="button" class="btn btn-success btn-sm float-right" onclick="test1_submit()" >
+                <span class="glyphicon glyphicon-play-circle" aria-hidden="true"></span> Run Test
+              </button>
+              <br/>
+              <label for="test-output">Output</label>
+              <pre id="test1-output" class="test-output"></pre>
+            </form>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-1 col-sm-1 col-md-1 col-lg-1 col-xl-3"></div>
+    </div>
+  </div>
+
+{% endblock %}
+
+{% block foot %}
+  {{ super() }}
+{% endblock %}
+
+{% block script %}
+  {{ super() }}
+
+  <script type="text/javascript">
+    function test1_submit() {
+      var test1_output = document.getElementById("test1-output");
+      test1_output.innerHTML = 'Test 1 complete';
+    };
+  </script>
+{% endblock %}

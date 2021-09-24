@@ -65,6 +65,16 @@ def ensure_admin_exists(func):
     return decorated_function
 
 
+def admin_required(func):
+    @wraps(func)
+    def decorated_function(*args, **kwargs):
+        if not current_user and not current_user.is_admin:
+            return redirect(url_for('backend.user_login'))
+        return func(*args, **kwargs)
+
+    return decorated_function
+
+
 # @backend_blueprint.before_app_request
 # def before_app_request():
 #     import utool as ut
@@ -223,3 +233,16 @@ def create_admin_user(email=None, password=None, repeat_password=None, *args, **
 
     if message is not None:
         flash(message)
+
+
+@backend_blueprint.route('/internal/testing', methods=['GET'])
+@login_required
+@admin_required
+def internal_testing(*args, **kwargs):
+    """
+    This endpoint is for internal testing
+    """
+    return _render_template(
+        'internal.testing.jinja2',
+        user=current_user,
+    )

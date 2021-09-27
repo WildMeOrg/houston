@@ -97,17 +97,20 @@ class Collaborations(Resource):
         users = [current_user, other_user]
 
         if current_user.is_user_manager:
-            second_user_guid = req.get('second_user_guid')
-            second_user = User.query.get(second_user_guid)
-            if not second_user:
-                abort(400, f'User with guid {second_user_guid} not found')
-            if not second_user.is_active:
-                abort(400, f'User with guid {second_user_guid} is not active')
 
-            users = [other_user, second_user]
+            second_user_guid = req.get('second_user_guid')
+            if second_user_guid:
+                second_user = User.query.get(second_user_guid)
+                if second_user:
+                    if not second_user.is_active:
+                        abort(
+                            400, f'Second user with guid {second_user_guid} is not active'
+                        )
+                    users = [other_user, second_user]
+                else:
+                    abort(400, f'Second user with guid {second_user_guid} not found')
 
         with context:
-
             collaboration = Collaboration(users, current_user)
             db.session.add(collaboration)
 

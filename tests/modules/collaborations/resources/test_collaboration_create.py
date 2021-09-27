@@ -84,7 +84,7 @@ def test_create_approved_collaboration(
         'user_guid': str(researcher_1.guid),
         'second_user_guid': duff_uuid,
     }
-    resp_msg = f'User with guid {duff_uuid} not found'
+    resp_msg = f'Second user with guid {duff_uuid} not found'
     collab_utils.create_collaboration(
         flask_app_client, user_manager_user, data, 400, resp_msg
     )

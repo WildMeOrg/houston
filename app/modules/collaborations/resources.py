@@ -103,10 +103,12 @@ class Collaborations(Resource):
                 second_user = User.query.get(second_user_guid)
                 if second_user:
                     if not second_user.is_active:
-                        abort(400, f'User with guid {second_user_guid} is not active')
+                        abort(
+                            400, f'Second user with guid {second_user_guid} is not active'
+                        )
                     users = [other_user, second_user]
                 else:
-                    abort(400, f'User with guid {second_user_guid} not found')
+                    abort(400, f'Second user with guid {second_user_guid} not found')
 
         with context:
             collaboration = Collaboration(users, current_user)

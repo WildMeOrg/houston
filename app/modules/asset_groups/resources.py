@@ -499,6 +499,7 @@ class AssetGroupSightingDetect(Resource):
             asset_group_sighting.rerun_detection()
         except HoustonException as ex:
             abort(ex.status_code, ex.message, errorFields=ex.get_val('error', 'Error'))
+        return asset_group_sighting
 
 
 @api.route('/sighting/<uuid:asset_group_sighting_guid>/sage_detected/<uuid:job_guid>')

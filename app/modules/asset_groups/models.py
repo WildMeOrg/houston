@@ -495,7 +495,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
 
     # Record that the asset has been updated for future re detection
     def asset_updated(self, asset):
-        if self.config['updatedAssets']:
+        if 'updatedAssets' in self.config:
             if asset.guid not in self.config['updatedAssets']:
                 self.config['updatedAssets'].append(asset.guid)
         else:
@@ -505,6 +505,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
         self.config = self.config
 
     def rerun_detection(self):
+        log.info('Rerunning Sage detection')
         if self.stage == AssetGroupSightingStage.curation:
             self.stage = AssetGroupSightingStage.detection
             self.start_detection()
@@ -516,6 +517,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
     def start_detection(self):
         from app.modules.asset_groups.tasks import sage_detection
 
+        log.info('Starting Sage detection')
         asset_group_config = self.asset_group.config
         assert 'speciesDetectionModel' in asset_group_config
         assert self.stage == AssetGroupSightingStage.detection

@@ -259,6 +259,7 @@ class Asset(db.Model, HoustonModel):
         # Save the new image
         image_object.save(symlink.resolve())
         self.reset_derived_images()
+        self.asset_group.asset_updated(self)
 
     # note: Image seems to *strip exif* sufficiently here (tested with gps, comments, etc) so this may be enough!
     # also note: this fails horribly in terms of exif orientation.  wom-womp

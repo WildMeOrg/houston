@@ -9,6 +9,7 @@ import os
 import re
 import shutil
 from unittest import mock
+import tests.extensions.tus.utils as tus_utils
 
 from tests import utils as test_utils
 from tests import TEST_ASSET_GROUP_UUID, TEST_EMPTY_ASSET_GROUP_UUID
@@ -297,6 +298,57 @@ def send_sage_detection_response(
     return response
 
 
+# Does all up to the curation stage
+def create_asset_group_to_curation(
+    flask_app, flask_app_client, user, internal_user, test_root
+):
+    # pylint: disable=invalid-name
+    from app.modules.asset_groups.models import (
+        AssetGroupSighting,
+        AssetGroupSightingStage,
+    )
+
+    transaction_id, test_filename = create_bulk_tus_transaction(test_root)
+    asset_group_uuid = None
+    try:
+        data = get_bulk_creation_data(transaction_id, test_filename)
+        # Use a real detection model to trigger a request sent to Sage
+        data.set_field('speciesDetectionModel', ['african_terrestrial'])
+        # and the sim_sage util to catch it
+        resp = create_asset_group_sim_sage(flask_app, flask_app_client, user, data.get())
+        asset_group_uuid = resp.json['guid']
+
+        asset_group_sighting1_guid = resp.json['asset_group_sightings'][0]['guid']
+
+        ags1 = AssetGroupSighting.query.get(asset_group_sighting1_guid)
+        assert ags1
+
+        job_uuids = [guid for guid in ags1.jobs.keys()]
+        assert len(job_uuids) == 1
+        job_uuid = job_uuids[0]
+        assert ags1.jobs[job_uuid]['model'] == 'african_terrestrial'
+
+        # Simulate response from Sage
+        sage_resp = build_sage_detection_response(asset_group_sighting1_guid, job_uuid)
+        send_sage_detection_response(
+            flask_app_client,
+            internal_user,
+            asset_group_sighting1_guid,
+            job_uuid,
+            sage_resp,
+        )
+        assert ags1.stage == AssetGroupSightingStage.curation
+    except Exception:
+        # Calling code cannot clear up the asset group as the resp is not passed if any of the assertions fail
+        # meaning that all subsequent tests would fail.
+        tus_utils.cleanup_tus_dir(transaction_id)
+        if asset_group_uuid:
+            delete_asset_group(flask_app_client, user, asset_group_uuid)
+        raise
+
+    return transaction_id, asset_group_uuid, asset_group_sighting1_guid
+
+
 def commit_asset_group_sighting(
     flask_app_client,
     user,
@@ -573,6 +625,24 @@ def patch_in_dummy_annotation(
         patch_data,
     )
     return new_annot.guid
+
+
+def detect_asset_group_sighting(
+    flask_app_client, user, asset_group_sighting_uuid, expected_status_code=200
+):
+
+    with flask_app_client.login(user, auth_scopes=('asset_group_sightings:write',)):
+        response = flask_app_client.post(
+            f'{PATH}sighting/{asset_group_sighting_uuid}/detect',
+            content_type='application/json',
+        )
+    if expected_status_code == 200:
+        test_utils.validate_dict_response(response, 200, {'guid', 'stage', 'config'})
+    else:
+        test_utils.validate_dict_response(
+            response, expected_status_code, {'status', 'message'}
+        )
+    return response
 
 
 # multiple tests clone a asset_group, do something with it and clean it up. Make sure this always happens using a

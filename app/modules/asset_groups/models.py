@@ -466,19 +466,22 @@ class AssetGroupSighting(db.Model, HoustonModel):
 
             for annot_id in range(len(results)):
                 annot_data = results[annot_id]
-                annot_uuid = annot_data.get('uuid', {}).get('__UUID__')
+                content_guid = annot_data.get('uuid', {}).get('__UUID__')
                 ia_class = annot_data.get('class', None)
-                if not annot_uuid or not ia_class:
+                viewpoint = annot_data.get('viewpoint', None)
+                if not viewpoint or not ia_class:
                     raise HoustonException(
-                        log, 'Need a uuid and a class in each of the results'
+                        log, 'Need a viewpoint and a class in each of the results'
                     )
 
                 bounds = Annotation.create_bounds(annot_data)
 
                 new_annot = Annotation(
-                    guid=annot_uuid,
+                    guid=uuid.uuid4(),
+                    content_guid=content_guid,
                     asset=asset,
-                    ia_class=annot_data['class'],
+                    ia_class=ia_class,
+                    viewpoint=viewpoint,
                     bounds=bounds,
                 )
                 AuditLog.system_create_object(log, new_annot)

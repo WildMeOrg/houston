@@ -15,6 +15,7 @@ def create_annotation_simple(
     user,
     asset_uuid,
     ia_class='test',
+    viewpoint='test',
     bounds={'rect': [0, 1, 2, 3]},
     expected_status_code=200,
 ):
@@ -23,7 +24,12 @@ def create_annotation_simple(
             PATH,
             content_type='application/json',
             data=json.dumps(
-                {'asset_guid': asset_uuid, 'ia_class': ia_class, 'bounds': bounds}
+                {
+                    'asset_guid': asset_uuid,
+                    'ia_class': ia_class,
+                    'viewpoint': viewpoint,
+                    'bounds': bounds,
+                }
             ),
         )
 
@@ -44,6 +50,7 @@ def create_annotation(
     asset_uuid,
     encounter_guid,
     ia_class='test',
+    viewpoint='test',
     bounds={'rect': [0, 1, 2, 3]},
     expected_status_code=200,
 ):
@@ -56,6 +63,7 @@ def create_annotation(
                     'asset_guid': asset_uuid,
                     'encounter_guid': encounter_guid,
                     'ia_class': ia_class,
+                    'viewpoint': viewpoint,
                     'bounds': bounds,
                 }
             ),

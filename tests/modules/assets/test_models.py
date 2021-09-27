@@ -48,7 +48,9 @@ def set_up_assets(flask_app, db, test_root, admin_user, request):
     cleanup(lambda: db.session.delete(asset_group))
 
     # Create annotation and sighting and sighting assets for the first asset
-    annotation = Annotation(asset_guid=asset_group.assets[0].guid, ia_class='test')
+    annotation = Annotation(
+        asset_guid=asset_group.assets[0].guid, ia_class='test', viewpoint='test'
+    )
     sighting = Sighting(stage=SightingStage.identification)
     sighting_assets = SightingAssets(
         sighting_guid=sighting.guid, asset_guid=asset_group.assets[0].guid

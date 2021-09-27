@@ -618,6 +618,7 @@ def patch_in_dummy_annotation(
         guid=uuid.uuid4(),
         asset=asset,
         ia_class='none',
+        viewpoint='test',
         bounds={'rect': [45, 5, 78, 3], 'theta': 4.8},
     )
     with db.session.begin(subtransactions=True):

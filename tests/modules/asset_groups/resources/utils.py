@@ -565,9 +565,7 @@ def simulate_detection_response(
             data=json.dumps(data),
         )
 
-    if expected_status_code == 200:
-        test_utils.validate_dict_response(response, 200, {'guid', 'stage', 'config'})
-    else:
+    if expected_status_code != 200:
         test_utils.validate_dict_response(
             response, expected_status_code, {'status', 'message'}
         )

@@ -232,6 +232,121 @@ def validate_list_of_dictionaries_response(response, expected_code, expected_fie
         assert set(item.keys()) >= expected_fields, set(item.keys())
 
 
+def get_dict_via_flask(
+    flask_app_client,
+    user,
+    scopes,
+    path,
+    expected_status_code,
+    response_200,
+    expected_error=None,
+):
+    if user:
+        with flask_app_client.login(user, auth_scopes=(scopes,)):
+            response = flask_app_client.get(path)
+    else:
+        response = flask_app_client.get(path)
+    if expected_status_code == 200:
+        validate_dict_response(response, 200, response_200)
+    elif expected_status_code == 404:
+        validate_dict_response(response, expected_status_code, {'message'})
+    elif expected_status_code:
+        # If expected status code is None, caller handles the validation
+        validate_dict_response(response, expected_status_code, {'status', 'message'})
+        if expected_error:
+            assert response.json['message'] == expected_error, response.json['message']
+    return response
+
+
+def get_list_via_flask(
+    flask_app_client, user, scopes, path, expected_status_code, expected_error=None
+):
+    if user:
+        with flask_app_client.login(user, auth_scopes=(scopes,)):
+            response = flask_app_client.get(path)
+    else:
+        response = flask_app_client.get(path)
+    if expected_status_code == 200:
+        validate_list_response(response, 200)
+    elif expected_status_code == 404:
+        validate_dict_response(response, expected_status_code, {'message'})
+    elif expected_status_code:
+        # If expected status code is None, caller handles the validation
+        validate_dict_response(response, expected_status_code, {'status', 'message'})
+        if expected_error:
+            assert response.json['message'] == expected_error, response.json['message']
+    return response
+
+
+def post_via_flask(
+    flask_app_client,
+    user,
+    scopes,
+    path,
+    data,
+    expected_status_code,
+    response_200,
+    expected_error=None,
+):
+
+    if user:
+        with flask_app_client.login(user, auth_scopes=(scopes,)):
+            response = flask_app_client.post(
+                path,
+                content_type='application/json',
+                data=json.dumps(data),
+            )
+    else:
+        response = flask_app_client.post(
+            path,
+            content_type='application/json',
+            data=json.dumps(data),
+        )
+
+    if expected_status_code == 200:
+        validate_dict_response(response, 200, response_200)
+    elif expected_status_code:
+        validate_dict_response(response, expected_status_code, {'status', 'message'})
+        if expected_error:
+            assert response.json['message'] == expected_error, response.json['message']
+    return response
+
+
+def patch_via_flask(
+    flask_app_client,
+    user,
+    scopes,
+    path,
+    data,
+    expected_status_code,
+    response_200,
+    expected_error=None,
+):
+
+    if user:
+        with flask_app_client.login(user, auth_scopes=(scopes,)):
+            response = flask_app_client.patch(
+                path,
+                content_type='application/json',
+                data=json.dumps(data),
+            )
+    else:
+        response = flask_app_client.patch(
+            path,
+            content_type='application/json',
+            data=json.dumps(data),
+        )
+
+    if expected_status_code == 200:
+        validate_dict_response(response, 200, response_200)
+    elif expected_status_code:
+        # If no expected status code, leave the caller to handle it
+        validate_dict_response(response, expected_status_code, {'status', 'message'})
+        if expected_error:
+            assert response.json['message'] == expected_error, response.json['message']
+    return response
+
+
 def patch_test_op(value):
     return {
         'op': 'test',

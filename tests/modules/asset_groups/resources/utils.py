@@ -522,15 +522,20 @@ def simulate_job_detection_response(
 def simulate_detection_response(
     flask_app_client, user, path, data, expected_status_code=200
 ):
-    return test_utils.post_via_flask(
-        flask_app_client,
-        user,
-        scopes='asset_group_sightings:write',
-        path=f'{PATH}{path}',
-        data=data,
-        expected_status_code=expected_status_code,
-        response_200={'guid', 'stage', 'config'},
-    )
+    with flask_app_client.login(user, auth_scopes=('asset_group_sightings:write',)):
+        response = flask_app_client.post(
+            f'{PATH}{path}',
+            content_type='application/json',
+            data=json.dumps(data),
+        )
+
+    if expected_status_code == 200:
+        assert expected_status_code == response.status_code
+    else:
+        test_utils.validate_dict_response(
+            response, expected_status_code, {'status', 'message'}
+        )
+    return response
 
 
 # Helper as used across multiple tests

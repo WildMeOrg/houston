@@ -356,6 +356,7 @@ def test_create_asset_group_repeat_detection(
     db,
     request,
 ):
+    import tests.modules.assets.resources.utils as asset_utils
 
     (
         transaction_id,
@@ -371,25 +372,42 @@ def test_create_asset_group_repeat_detection(
         )
     )
 
-    # Rotate one of the assets, No API for this apparently?
     from app.modules.asset_groups.models import (
         AssetGroup,
         AssetGroupSighting,
         AssetGroupSightingStage,
     )
 
+    # Rotate one of the assets
     asset_group = AssetGroup.query.get(asset_group_uuid)
-    asset_group.assets[0].rotate(45)
+    assets_in_first_ags = asset_group.asset_group_sightings[0].get_assets()
+    asset_guid = assets_in_first_ags[0]['guid']
+    patch_data = [
+        {
+            'op': 'replace',
+            'path': '/image',
+            'value': {'rotate': {'angle': 45}},
+        },
+    ]
+    asset_utils.patch_asset(flask_app_client, asset_guid, researcher_1, patch_data)
 
     # Simulate a valid response from Sage but don't actually send the request to Sage
+    from app.modules.asset_groups import tasks
+
     with mock.patch.object(
         flask_app.acm,
         'request_passthrough_result',
         return_value={'success': True},
     ) as detection_reran:
-        asset_group_utils.detect_asset_group_sighting(
-            flask_app_client, researcher_1, asset_group_sighting_uuid
-        )
+
+        with mock.patch.object(
+            tasks.sage_detection,
+            'delay',
+            side_effect=lambda *args, **kwargs: tasks.sage_detection(*args, **kwargs),
+        ):
+            asset_group_utils.detect_asset_group_sighting(
+                flask_app_client, researcher_1, asset_group_sighting_uuid
+            )
         assert detection_reran.call_count == 1
         passed_args = detection_reran.call_args[0]
         assert passed_args[:-2] == ('job.detect_request', 'post')
@@ -401,6 +419,9 @@ def test_create_asset_group_repeat_detection(
             'image_uuid_list',
             'input',
         }
+        assert params['image_uuid_list'] == [
+            f'houston+http://houston:5000/api/v1/assets/src_raw/{asset_guid}'
+        ]
         job_uuid = params['jobid']
         ags1 = AssetGroupSighting.query.get(asset_group_sighting_uuid)
         assert ags1.stage == AssetGroupSightingStage.detection

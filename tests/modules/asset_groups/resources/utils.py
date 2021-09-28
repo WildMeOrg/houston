@@ -132,8 +132,8 @@ def create_asset_group(
     return response
 
 
-# As for method above but simulate a successful response from Sage and do some minimal validation
-def create_asset_group_sim_sage(
+# As for method above but simulate a successful initial response from Sage and do some minimal validation
+def create_asset_group_sim_sage_init_resp(
     flask_app, flask_app_client, user, data, expected_status_code=200, expected_error=''
 ):
     # Simulate a valid response from Sage but don't actually send the request to Sage
@@ -142,10 +142,16 @@ def create_asset_group_sim_sage(
         'request_passthrough_result',
         return_value={'success': True},
     ) as detection_started:
+        from app.modules.asset_groups import tasks
 
-        resp = create_asset_group(
-            flask_app_client, user, data, expected_status_code, expected_error
-        )
+        with mock.patch.object(
+            tasks.sage_detection,
+            'delay',
+            side_effect=lambda *args, **kwargs: tasks.sage_detection(*args, **kwargs),
+        ):
+            resp = create_asset_group(
+                flask_app_client, user, data, expected_status_code, expected_error
+            )
         passed_args = detection_started.call_args[0]
         try:
             assert passed_args[:-2] == ('job.detect_request', 'post')
@@ -218,7 +224,7 @@ def build_sage_detection_response(asset_group_sighting_guid, job_uuid):
     import uuid
 
     asset_group_sighting = AssetGroupSighting.query.get(asset_group_sighting_guid)
-    asset_ids = list(asset_group_sighting.jobs.values())[0]['asset_ids']
+    asset_ids = list(asset_group_sighting.jobs.values())[-1]['asset_ids']
 
     # Generate the response back from Sage
     sage_resp = {
@@ -290,7 +296,7 @@ def send_sage_detection_response(
             data=json.dumps(data),
         )
     if expected_status_code == 200:
-        assert response.status_code == expected_status_code
+        assert response.status_code == expected_status_code, response.status_code
     else:
         test_utils.validate_dict_response(
             response, expected_status_code, {'status', 'message'}
@@ -315,7 +321,9 @@ def create_asset_group_to_curation(
         # Use a real detection model to trigger a request sent to Sage
         data.set_field('speciesDetectionModel', ['african_terrestrial'])
         # and the sim_sage util to catch it
-        resp = create_asset_group_sim_sage(flask_app, flask_app_client, user, data.get())
+        resp = create_asset_group_sim_sage_init_resp(
+            flask_app, flask_app_client, user, data.get()
+        )
         asset_group_uuid = resp.json['guid']
 
         asset_group_sighting1_guid = resp.json['asset_group_sightings'][0]['guid']

@@ -83,5 +83,5 @@ def sage_detection(asset_group_sighting_guid, model):
 
     asset_group_sighting = AssetGroupSighting.query.get(asset_group_sighting_guid)
     if asset_group_sighting:
-        log.debug('Celery running sage detection')
-        asset_group_sighting.run_sage_detection(model)
+        log.debug(f'Celery running sage detection for {asset_group_sighting_guid}')
+        asset_group_sighting.send_detection_to_sage(model)

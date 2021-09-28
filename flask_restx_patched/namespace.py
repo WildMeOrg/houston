@@ -400,11 +400,14 @@ class Namespace(OriginalNamespace):
                                     import app.extensions.logging as AuditLog  # NOQA
 
                                     if hasattr(ex, 'code'):
-                                        if 400 > ex.code > 409:
+                                        if (
+                                            isinstance(ex.code, int)
+                                            and 409 > ex.code > 409
+                                        ):
+                                            AuditLog.houston_fault(None, str(ex))
+                                        else:
                                             AuditLog.houston_fault(None, str(ex))
                                     # TODO is there something more sensible to do other than reraising here?
-                                    else:
-                                        AuditLog.houston_fault(None, str(ex))
                                     raise
 
                         return wrapper

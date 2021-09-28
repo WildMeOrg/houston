@@ -32,7 +32,7 @@ def test_ia_pipeline_sim_detect_response(
         # Use a real detection model to trigger a request sent to Sage
         data.set_field('speciesDetectionModel', ['african_terrestrial'])
         # and the sim_sage util to catch it
-        resp = asset_group_utils.create_asset_group_sim_sage(
+        resp = asset_group_utils.create_asset_group_sim_sage_init_resp(
             flask_app, flask_app_client, researcher_1, data.get()
         )
         asset_group_uuid = resp.json['guid']

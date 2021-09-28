@@ -259,6 +259,10 @@ class Asset(db.Model, HoustonModel):
         # Save the new image
         image_object.save(symlink.resolve())
         self.reset_derived_images()
+        log.info(f'Rerunning detection, deleting annotations {self.annotations}')
+        for annotation in self.annotations:
+            annotation.delete()
+        self.annotations = []
         self.asset_group.asset_updated(self)
 
     # note: Image seems to *strip exif* sufficiently here (tested with gps, comments, etc) so this may be enough!
@@ -293,3 +297,7 @@ class Asset(db.Model, HoustonModel):
         if not guid:
             return None
         return cls.query.get(guid)
+
+    def user_is_owner(self, user):
+        # Asset has no owner, but it has one asset_group that has an owner
+        return user is not None and user == self.asset_group.owner

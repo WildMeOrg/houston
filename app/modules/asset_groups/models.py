@@ -372,7 +372,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
         ]
         return model_config
 
-    def run_sage_detection(self, model):
+    def send_detection_to_sage(self, model):
         job_id = uuid.uuid4()
         detection_request = self.build_detection_request(job_id, model)
 
@@ -495,11 +495,9 @@ class AssetGroupSighting(db.Model, HoustonModel):
 
     # Record that the asset has been updated for future re detection
     def asset_updated(self, asset):
-        if 'updatedAssets' in self.config:
-            if asset.guid not in self.config['updatedAssets']:
-                self.config['updatedAssets'].append(asset.guid)
-        else:
-            self.config['updatedAssets'] = [asset.guid]
+        updated_assets = self.config.setdefault('updatedAssets', [])
+        if asset.guid not in updated_assets:
+            updated_assets.append(asset.guid)
 
         # Ensure it's written to DB
         self.config = self.config

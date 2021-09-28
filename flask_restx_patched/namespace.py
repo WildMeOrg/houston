@@ -399,14 +399,14 @@ class Namespace(OriginalNamespace):
                                 except Exception as ex:
                                     import app.extensions.logging as AuditLog  # NOQA
 
-                                    if hasattr(ex, 'code'):
-                                        if (
-                                            isinstance(ex.code, int)
-                                            and 409 > ex.code > 409
-                                        ):
-                                            AuditLog.houston_fault(None, str(ex))
-                                        else:
-                                            AuditLog.houston_fault(None, str(ex))
+                                    # User errors are not audited, everything else is
+                                    if not (
+                                        hasattr(ex, 'code')
+                                        and isinstance(ex.code, int)
+                                        and 400 > ex.code > 409
+                                    ):
+                                        AuditLog.houston_fault(None, str(ex))
+
                                     # TODO is there something more sensible to do other than reraising here?
                                     raise
 

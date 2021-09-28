@@ -251,7 +251,9 @@ class AssetGroupSighting(db.Model, HoustonModel):
         return sighting
 
     def has_filename(self, filename):
-        return filename in self.config.get('assetReferences', [])
+        return (
+            filename in self.config.get('assetReferences', []) if self.config else False
+        )
 
     # Returns a percentage complete value 0-100
     def get_completion(self):

@@ -46,57 +46,41 @@ def patch_collaboration(
     user,
     data,
     expected_status_code=200,
-    expected_error='',
+    expected_error=None,
 ):
-    with flask_app_client.login(user, auth_scopes=('collaborations:write',)):
-        response = flask_app_client.patch(
-            '%s%s' % (PATH, collaboration_guid),
-            content_type='application/json',
-            data=json.dumps(data),
-        )
-
-    if expected_status_code == 200:
-        test_utils.validate_dict_response(response, 200, {'guid'})
-    else:
-        test_utils.validate_dict_response(
-            response, expected_status_code, {'status', 'message'}
-        )
-        assert response.json['message'] == expected_error, response.json['message']
-
-    return response
+    return test_utils.patch_via_flask(
+        flask_app_client,
+        user,
+        scopes='collaborations:write',
+        path=f'{PATH}{collaboration_guid}',
+        data=data,
+        response_200={'guid'},
+        expected_status_code=expected_status_code,
+        expected_error=expected_error,
+    )
 
 
 def read_collaboration(
     flask_app_client, user, collaboration_guid, expected_status_code=200
 ):
-    if user:
-        with flask_app_client.login(user, auth_scopes=('collaborations:read',)):
-            response = flask_app_client.get(f'{PATH}{collaboration_guid}')
-    else:
-        response = flask_app_client.get(f'{PATH}{collaboration_guid}')
-
-    if expected_status_code == 200:
-        test_utils.validate_dict_response(response, 200, {'guid'})
-    elif expected_status_code == 404:
-        test_utils.validate_dict_response(response, expected_status_code, {'message'})
-    else:
-        test_utils.validate_dict_response(
-            response, expected_status_code, {'status', 'message'}
-        )
-    return response
+    return test_utils.get_dict_via_flask(
+        flask_app_client,
+        user,
+        scopes='collaborations:read',
+        path=f'{PATH}{collaboration_guid}',
+        expected_status_code=expected_status_code,
+        response_200={'guid'},
+    )
 
 
 def read_all_collaborations(flask_app_client, user, expected_status_code=200):
-    with flask_app_client.login(user, auth_scopes=('collaborations:read',)):
-        response = flask_app_client.get(PATH)
-
-    if expected_status_code == 200:
-        test_utils.validate_list_response(response, 200)
-    else:
-        test_utils.validate_dict_response(
-            response, expected_status_code, {'status', 'message'}
-        )
-    return response
+    return test_utils.get_list_via_flask(
+        flask_app_client,
+        user,
+        scopes='collaborations:read',
+        path=PATH,
+        expected_status_code=expected_status_code,
+    )
 
 
 def request_edit(
@@ -104,20 +88,15 @@ def request_edit(
     collaboration_guid,
     user,
     expected_status_code=200,
-    expected_error='',
+    expected_error=None,
 ):
-    with flask_app_client.login(user, auth_scopes=('collaborations:write',)):
-        response = flask_app_client.post(
-            f'{PATH}edit_request/{collaboration_guid}',
-            content_type='application/json',
-        )
-
-    if expected_status_code == 200:
-        test_utils.validate_dict_response(response, 200, {'guid'})
-    else:
-        test_utils.validate_dict_response(
-            response, expected_status_code, {'status', 'message'}
-        )
-        assert response.json['message'] == expected_error, response.json['message']
-
-    return response
+    return test_utils.post_via_flask(
+        flask_app_client,
+        user,
+        scopes='collaborations:write',
+        path=f'{PATH}edit_request/{collaboration_guid}',
+        data={},
+        expected_status_code=expected_status_code,
+        response_200={'guid'},
+        expected_error=expected_error,
+    )

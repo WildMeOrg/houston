@@ -303,19 +303,15 @@ def commit_asset_group_sighting(
     asset_group_sighting_guid,
     expected_status_code=200,
 ):
-    with flask_app_client.login(user, auth_scopes=('asset_group_sightings:write',)):
-        response = flask_app_client.post(
-            f'{PATH}sighting/{asset_group_sighting_guid}/commit',
-            content_type='application/json',
-        )
-
-    if expected_status_code == 200:
-        test_utils.validate_dict_response(response, 200, {'guid'})
-    else:
-        test_utils.validate_dict_response(
-            response, expected_status_code, {'status', 'message'}
-        )
-    return response
+    return test_utils.post_via_flask(
+        flask_app_client,
+        user,
+        scopes='asset_group_sightings:write',
+        path=f'{PATH}sighting/{asset_group_sighting_guid}/commit',
+        data={},
+        expected_status_code=expected_status_code,
+        response_200={'guid'},
+    )
 
 
 def create_asset_group_with_annotation(
@@ -356,52 +352,37 @@ def create_and_commit_asset_group(
 def patch_asset_group(
     flask_app_client, user, asset_group_guid, data, expected_status_code=200
 ):
-    with flask_app_client.login(user, auth_scopes=('asset_groups:write',)):
-        response = flask_app_client.patch(
-            '%s%s' % (PATH, asset_group_guid),
-            content_type='application/json',
-            data=json.dumps(data),
-        )
-
-    if expected_status_code == 200:
-        test_utils.validate_dict_response(
-            response, 200, {'guid', 'description', 'major_type'}
-        )
-    else:
-        test_utils.validate_dict_response(
-            response, expected_status_code, {'status', 'message'}
-        )
-    return response
+    return test_utils.patch_via_flask(
+        flask_app_client,
+        user,
+        scopes='asset_groups:write',
+        path=f'{PATH}{asset_group_guid}',
+        data=data,
+        expected_status_code=expected_status_code,
+        response_200={'guid', 'description', 'major_type'},
+    )
 
 
 def read_asset_group(flask_app_client, user, asset_group_guid, expected_status_code=200):
-    if user:
-        with flask_app_client.login(user, auth_scopes=('asset_groups:read',)):
-            response = flask_app_client.get('%s%s' % (PATH, asset_group_guid))
-    else:
-        response = flask_app_client.get('%s%s' % (PATH, asset_group_guid))
-    if expected_status_code == 200:
-        test_utils.validate_dict_response(
-            response, 200, {'guid', 'description', 'major_type'}
-        )
-    else:
-        test_utils.validate_dict_response(
-            response, expected_status_code, {'status', 'message'}
-        )
-    return response
+
+    return test_utils.get_dict_via_flask(
+        flask_app_client,
+        user,
+        scopes='asset_groups:read',
+        path=f'{PATH}{asset_group_guid}',
+        expected_status_code=expected_status_code,
+        response_200={'guid', 'description', 'major_type'},
+    )
 
 
 def read_all_asset_groups(flask_app_client, user, expected_status_code=200):
-    with flask_app_client.login(user, auth_scopes=('asset_groups:read',)):
-        response = flask_app_client.get(PATH)
-
-    if expected_status_code == 200:
-        test_utils.validate_list_response(response, 200)
-    else:
-        test_utils.validate_dict_response(
-            response, expected_status_code, {'status', 'message'}
-        )
-    return response
+    return test_utils.get_list_via_flask(
+        flask_app_client,
+        user,
+        scopes='asset_groups:read',
+        path=PATH,
+        expected_status_code=expected_status_code,
+    )
 
 
 def delete_asset_group(
@@ -463,7 +444,6 @@ def patch_asset_group_sighting_as_sighting(
     patch_path,
     data,
     expected_status_code=200,
-    expected_resp='',
 ):
     with flask_app_client.login(user, auth_scopes=('asset_group_sightings:write',)):
         response = flask_app_client.patch(
@@ -494,45 +474,29 @@ def patch_asset_group_sighting_as_sighting(
 def read_asset_group_sighting(
     flask_app_client, user, asset_group_sighting_guid, expected_status_code=200
 ):
-    if user:
-        with flask_app_client.login(user, auth_scopes=('asset_group_sightings:read',)):
-            response = flask_app_client.get(f'{PATH}sighting/{asset_group_sighting_guid}')
-    else:
-        response = flask_app_client.get(f'{PATH}sighting/{asset_group_sighting_guid}')
-    if expected_status_code == 200:
-        test_utils.validate_dict_response(
-            response, 200, {'guid', 'stage', 'config', 'completion', 'assets'}
-        )
-    else:
-        test_utils.validate_dict_response(
-            response, expected_status_code, {'status', 'message'}
-        )
-    return response
+    return test_utils.get_dict_via_flask(
+        flask_app_client,
+        user,
+        scopes='asset_group_sightings:read',
+        path=f'{PATH}sighting/{asset_group_sighting_guid}',
+        expected_status_code=expected_status_code,
+        response_200={'guid', 'stage', 'config', 'completion', 'assets'},
+    )
 
 
 def read_asset_group_sighting_as_sighting(
     flask_app_client, user, asset_group_sighting_guid, expected_status_code=200
 ):
-    get_path = f'{PATH}sighting/as_sighting/{asset_group_sighting_guid}'
-    if user:
-        with flask_app_client.login(user, auth_scopes=('asset_group_sightings:read',)):
-            response = flask_app_client.get(get_path)
-    else:
-        response = flask_app_client.get(get_path)
-
-    if expected_status_code == 200:
+    return test_utils.get_dict_via_flask(
+        flask_app_client,
+        user,
+        scopes='asset_group_sightings:read',
+        path=f'{PATH}sighting/as_sighting/{asset_group_sighting_guid}',
+        expected_status_code=expected_status_code,
         # startTime and locationId are only present in the _as_sighting endpoints,
         # since they are in the config of a standard AGS
-        test_utils.validate_dict_response(
-            response,
-            200,
-            {'guid', 'stage', 'completion', 'assets', 'startTime', 'locationId'},
-        )
-    else:
-        test_utils.validate_dict_response(
-            response, expected_status_code, {'status', 'message'}
-        )
-    return response
+        response_200={'guid', 'stage', 'completion', 'assets', 'startTime', 'locationId'},
+    )
 
 
 def simulate_job_detection_response(
@@ -565,7 +529,9 @@ def simulate_detection_response(
             data=json.dumps(data),
         )
 
-    if expected_status_code != 200:
+    if expected_status_code == 200:
+        assert expected_status_code == response.status_code
+    else:
         test_utils.validate_dict_response(
             response, expected_status_code, {'status', 'message'}
         )

@@ -402,7 +402,8 @@ class AssetGroupSighting(db.Model, HoustonModel):
         # response, process it here
         return True
 
-    def detected(self, job_id, response):
+    def detected(self, job_id, message):
+        AuditLog.audit_log_object(log, self, 'Received Sage detection response')
         if self.stage != AssetGroupSightingStage.detection:
             raise HoustonException(
                 log, f'AssetGroupSighting {self.guid} is not detecting'
@@ -412,16 +413,24 @@ class AssetGroupSighting(db.Model, HoustonModel):
         if job is None:
             raise HoustonException(log, f'job_id {job_id} not found')
 
-        status = response.get('status')
+        status = message.get('status')
         if not status:
             raise HoustonException(log, 'No status in response from Sage')
 
-        if status != 'completed':
+        success = status.get('success')
+
+        if not success:
             self.stage = AssetGroupSightingStage.failed
             # This is not an exception as the message from Sage was valid
+            msg = f'JobID {str(job_id)} failed with status: {status}'
+            AuditLog.backend_fault(log, msg, self)
+            return
+
+        response = message.get('response')
+        if response.get('status') != 'completed':
+            # This is not an exception as the message from Sage was valid
             msg = f'JobID {str(job_id)} failed with status: {status} exception: {response.get("json_result")}'
-            AuditLog.audit_log_object(log, self, msg, AuditLog.AuditType.BackEndFault)
-            log.warning(msg)
+            AuditLog.backend_fault(log, msg, self)
             return
 
         job_id_msg = response.get('jobid')

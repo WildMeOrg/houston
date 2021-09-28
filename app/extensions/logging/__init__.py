@@ -69,7 +69,7 @@ class Logging(object):
             msg += ' executed by anonymous user'
         log_kwargs = kwargs
         if 'duration' in kwargs:
-            msg += "in {kwargs['duration']} seconds"
+            msg += f" in {kwargs['duration']} seconds"
             log_kwargs.pop('duration')
 
         if logger:

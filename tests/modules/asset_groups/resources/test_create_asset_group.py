@@ -373,15 +373,17 @@ def test_create_asset_group_repeat_detection(
     )
 
     from app.modules.asset_groups.models import (
-        AssetGroup,
         AssetGroupSighting,
         AssetGroupSightingStage,
     )
 
-    # Rotate one of the assets
-    asset_group = AssetGroup.query.get(asset_group_uuid)
-    assets_in_first_ags = asset_group.asset_group_sightings[0].get_assets()
-    asset_guid = assets_in_first_ags[0]['guid']
+    # Rotate one of the assets, Must be sure that it is always the one with the ANNOTATION_UUIDS in it
+    from app.modules.annotations.models import Annotation
+
+    annot = Annotation.query.get(asset_group_utils.ANNOTATION_UUIDS[0])
+    asset_guid = annot.asset.guid
+    asset_group_uuid = annot.asset.asset_group_guid
+
     patch_data = [
         {
             'op': 'replace',

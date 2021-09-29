@@ -381,7 +381,7 @@ def test_create_asset_group_repeat_detection(
     from app.modules.asset_groups.models import AssetGroup
 
     asset_group = AssetGroup.query.get(asset_group_uuid)
-    asset_guid = asset_group.get_assets()[0].guid
+    asset_guid = asset_group.assets[0].guid
 
     patch_data = [
         {

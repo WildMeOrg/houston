@@ -346,6 +346,101 @@ def test_create_asset_group_sim_detection(
         tus_utils.cleanup_tus_dir(transaction_id)
 
 
+def test_create_asset_group_repeat_detection(
+    flask_app,
+    flask_app_client,
+    researcher_1,
+    internal_user,
+    staff_user,
+    test_root,
+    db,
+    request,
+):
+    import tests.modules.assets.resources.utils as asset_utils
+
+    (
+        transaction_id,
+        asset_group_uuid,
+        asset_group_sighting_uuid,
+    ) = asset_group_utils.create_asset_group_to_curation(
+        flask_app, flask_app_client, researcher_1, internal_user, test_root
+    )
+    request.addfinalizer(lambda: tus_utils.cleanup_tus_dir(transaction_id))
+    request.addfinalizer(
+        lambda: asset_group_utils.delete_asset_group(
+            flask_app_client, researcher_1, asset_group_uuid
+        )
+    )
+
+    from app.modules.asset_groups.models import (
+        AssetGroupSighting,
+        AssetGroupSightingStage,
+    )
+
+    # Rotate one of the assets, Must be sure that it is always the one with the ANNOTATION_UUIDS in it
+    from app.modules.annotations.models import Annotation
+
+    annot = Annotation.query.get(asset_group_utils.ANNOTATION_UUIDS[0])
+    asset_guid = annot.asset.guid
+    asset_group_uuid = annot.asset.asset_group_guid
+
+    patch_data = [
+        {
+            'op': 'replace',
+            'path': '/image',
+            'value': {'rotate': {'angle': 45}},
+        },
+    ]
+    asset_utils.patch_asset(flask_app_client, asset_guid, researcher_1, patch_data)
+
+    # Simulate a valid response from Sage but don't actually send the request to Sage
+    from app.modules.asset_groups import tasks
+
+    with mock.patch.object(
+        flask_app.acm,
+        'request_passthrough_result',
+        return_value={'success': True},
+    ) as detection_reran:
+
+        with mock.patch.object(
+            tasks.sage_detection,
+            'delay',
+            side_effect=lambda *args, **kwargs: tasks.sage_detection(*args, **kwargs),
+        ):
+            asset_group_utils.detect_asset_group_sighting(
+                flask_app_client, researcher_1, asset_group_sighting_uuid
+            )
+        assert detection_reran.call_count == 1
+        passed_args = detection_reran.call_args[0]
+        assert passed_args[:-2] == ('job.detect_request', 'post')
+        params = passed_args[-2]['params']
+        assert set(params.keys()) >= {
+            'endpoint',
+            'jobid',
+            'callback_url',
+            'image_uuid_list',
+            'input',
+        }
+        assert params['image_uuid_list'] == [
+            f'houston+http://houston:5000/api/v1/assets/src_raw/{asset_guid}'
+        ]
+        job_uuid = params['jobid']
+        ags1 = AssetGroupSighting.query.get(asset_group_sighting_uuid)
+        assert ags1.stage == AssetGroupSightingStage.detection
+        # Simulate response from Sage
+        sage_resp = asset_group_utils.build_sage_detection_response(
+            asset_group_sighting_uuid, job_uuid
+        )
+        asset_group_utils.send_sage_detection_response(
+            flask_app_client,
+            internal_user,
+            asset_group_sighting_uuid,
+            job_uuid,
+            sage_resp,
+        )
+        assert ags1.stage == AssetGroupSightingStage.curation
+
+
 def test_create_bulk_asset_group_dup_asset(flask_app_client, researcher_1, test_root, db):
     # pylint: disable=invalid-name
 

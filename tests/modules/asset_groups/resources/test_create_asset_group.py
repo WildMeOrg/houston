@@ -380,9 +380,8 @@ def test_create_asset_group_repeat_detection(
     # Rotate one of the assets
     from app.modules.asset_groups.models import AssetGroup
 
-    asset_group = AssetGroup.query.first()
+    asset_group = AssetGroup.query.get(asset_group_uuid)
     asset_guid = asset_group.get_assets()[0].guid
-    asset_group_uuid = asset_group.guid
 
     patch_data = [
         {

@@ -347,6 +347,25 @@ def patch_via_flask(
     return response
 
 
+def delete_via_flask(
+    flask_app_client,
+    user,
+    scopes,
+    path,
+    expected_status_code,
+    expected_error=None,
+):
+    with flask_app_client.login(user, auth_scopes=(scopes,)):
+        response = flask_app_client.delete(path)
+
+    if expected_status_code == 204:
+        assert response.status_code == 204
+    else:
+        validate_dict_response(response, expected_status_code, {'status', 'message'})
+        if expected_error:
+            assert response.json['message'] == expected_error, response.json['message']
+
+
 def patch_test_op(value):
     return {
         'op': 'test',

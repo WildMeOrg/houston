@@ -108,13 +108,30 @@ class Users(Resource):
         context = api.commit_or_abort(
             db.session, default_error_message='Failed to create a new user.'
         )
-        with context:
-            new_user = User(**args)
-            db.session.add(new_user)
-        db.session.refresh(new_user)
-        AuditLog.user_create_object(
-            log, new_user, msg=f'{new_user.email}', duration=timer.elapsed()
-        )
+
+        deactivated_user = User.get_deactivated_account(email)
+        if deactivated_user:
+            if current_user.is_anonymous:
+                # Need privileged user to restore
+                abort(
+                    code=HTTPStatus.CONFLICT,
+                    message='The email address is already in use in an inactivated user.',
+                )
+            else:
+                kwargs = {'email': email, 'password': args['password'], 'is_active': True}
+                for role in roles:
+                    kwargs[role] = True
+                deactivated_user.email = email
+                new_user = User.ensure_user(**kwargs, update=True)
+        else:
+
+            with context:
+                new_user = User(**args)
+                db.session.add(new_user)
+            db.session.refresh(new_user)
+            AuditLog.user_create_object(
+                log, new_user, msg=f'{new_user.email}', duration=timer.elapsed()
+            )
         return new_user
 
 
@@ -187,9 +204,9 @@ class UserByID(Resource):
     @api.response(code=HTTPStatus.NO_CONTENT)
     def delete(self, user):
         """
-        Delete a Project by ID.
+        User is never deleted, only ever deactivated
         """
-        user.delete()
+        user.deactivate()
         return None
 
 
@@ -341,7 +358,9 @@ class UserSightings(Resource):
 
         start, end = args['offset'], args['offset'] + args['limit']
         for sighting in user.get_sightings()[start:end]:
-            sighting_response = current_app.edm.get_dict('sighting.data_complete', sighting.guid)
+            sighting_response = current_app.edm.get_dict(
+                'sighting.data_complete', sighting.guid
+            )
             if sighting_response.get('result') is not None:
                 response['sightings'].append(sighting_response['result'])
 

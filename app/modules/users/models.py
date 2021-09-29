@@ -111,6 +111,9 @@ class User(db.Model, FeatherModel, UserEDMMixin):
         db.String(length=120), index=True, unique=True, default='', nullable=False
     )
 
+    # Only used for inactivated users.
+    email_hash = db.Column(db.BigInteger, default=0, nullable=True)
+
     password = db.Column(
         column_types.PasswordType(max_length=128, schemes=('bcrypt',)), nullable=False
     )  # can me migrated from EDM field "password"
@@ -708,13 +711,30 @@ class User(db.Model, FeatherModel, UserEDMMixin):
         # TODO add collaboration annotations
         return annotations
 
-    def delete(self):
-        with db.session.begin():
-            # TODO: Ensure proper cleanup
-            for asset_group in self.asset_groups:
-                asset_group.delete()
-            AuditLog.delete_object(log, self)
-            db.session.delete(self)
+    def deactivate(self):
+        AuditLog.audit_log_object(log, self, 'Deactivating')
+        # Store email hash for potential later restoration
+        self.email_hash = self._get_hashed_email(self.email)
+        # But zap all of the personal information
+        self.email = 'Inactivated User'
+        self.full_name = 'Inactivated User'
+        self.is_active = False
+        self.password = security.generate_random(128)
+
+    @classmethod
+    def _get_hashed_email(cls, email):
+        assert isinstance(email, str)
+        return hash(email.lower())
+
+    @classmethod
+    def get_deactivated_account(cls, email):
+        hashed_email = cls._get_hashed_email(email)
+        found_users = [
+            user for user in User.query.all() if user.email_hash == hashed_email
+        ]
+        if found_users:
+            return found_users[0]
+        return None
 
     @classmethod
     def initial_random_password(cls):

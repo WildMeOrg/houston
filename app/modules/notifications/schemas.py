@@ -28,7 +28,6 @@ class BaseNotificationSchema(ModelSchema):
     """
 
     sender_name = base_fields.Function(Notification.get_sender_name)
-    sender_email = base_fields.Function(Notification.get_sender_email)
 
     class Meta:
         # pylint: disable=missing-docstring
@@ -37,7 +36,7 @@ class BaseNotificationSchema(ModelSchema):
             Notification.guid.key,
             Notification.is_read.key,
             'sender_name',
-            'sender_email',
+            Notification.sender_guid.key,
             Notification.message_type.key,
         )
         dump_only = (Notification.guid.key,)

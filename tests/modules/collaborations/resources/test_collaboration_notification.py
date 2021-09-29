@@ -34,7 +34,7 @@ def test_edit_collaboration(flask_app_client, researcher_1, researcher_2, db, re
         flask_app_client, researcher_1
     )
     collab_requests_from_res2 = notif_utils.get_notifications(
-        researcher_1_notifs.json, researcher_2.email, 'collaboration_request'
+        researcher_1_notifs.json, str(researcher_2.guid), 'collaboration_request'
     )
     assert len(collab_requests_from_res2) >= 1
 
@@ -75,11 +75,11 @@ def test_edit_collaboration(flask_app_client, researcher_1, researcher_2, db, re
     assert members[str(researcher_2.guid)]['editState'] == 'pending'
 
     # Researcher 2 should now receive a notification
-    researcher_2_notifs = notif_utils.read_all_notifications(
+    researcher_2_notifs = notif_utils.read_all_unread_notifications(
         flask_app_client, researcher_2
     )
     collab_edit_requests_from_res1 = notif_utils.get_notifications(
-        researcher_2_notifs.json, researcher_1.email, 'collaboration_edit_request'
+        researcher_2_notifs.json, str(researcher_1.guid), 'collaboration_edit_request'
     )
     assert len(collab_edit_requests_from_res1) == 1
 

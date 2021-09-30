@@ -22,6 +22,7 @@ class BaseAnnotationSchema(ModelSchema):
             Annotation.asset_guid.key,
             Annotation.encounter_guid.key,
             Annotation.ia_class.key,
+            Annotation.viewpoint.key,
         )
         dump_only = (Annotation.guid.key,)
 

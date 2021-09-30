@@ -156,10 +156,6 @@ def test_most_ia_pipeline_audit_log(
         'module_name': 'Encounter',
         'item_guid': str(encounters[0].guid),
     }
-    expected_annotation = {
-        'module_name': 'Annotation',
-        'item_guid': asset_group_utils.ANNOTATION_UUIDS[0],
-    }
 
     sighting_audit_items = audit_utils.read_all_audit_logs(
         flask_app_client, researcher_1, module_name='Sighting'
@@ -167,13 +163,9 @@ def test_most_ia_pipeline_audit_log(
     encounter_audit_items = audit_utils.read_all_audit_logs(
         flask_app_client, researcher_1, module_name='Encounter'
     )
-    annotation_audit_items = audit_utils.read_all_audit_logs(
-        flask_app_client, researcher_1, module_name='Annotation'
-    )
 
     assert expected_sighting in sighting_audit_items.json
     assert expected_encounter in encounter_audit_items.json
-    assert expected_annotation in annotation_audit_items.json
 
 
 def test_audit_log_faults(

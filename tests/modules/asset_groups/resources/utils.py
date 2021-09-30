@@ -251,7 +251,7 @@ def build_sage_detection_response(asset_group_sighting_guid, job_uuid):
                         'confidence': 0.8568,
                         'class': 'zebra_plains',
                         'species': 'zebra_plains',
-                        'viewpoint': None,
+                        'viewpoint': 'test',
                         'quality': None,
                         'multiple': False,
                         'interest': False,
@@ -269,7 +269,7 @@ def build_sage_detection_response(asset_group_sighting_guid, job_uuid):
                         'confidence': 0.853,
                         'class': 'zebra_plains',
                         'species': 'zebra_plains',
-                        'viewpoint': None,
+                        'viewpoint': 'test',
                         'quality': None,
                         'multiple': False,
                         'interest': False,
@@ -618,6 +618,7 @@ def patch_in_dummy_annotation(
         guid=uuid.uuid4(),
         asset=asset,
         ia_class='none',
+        viewpoint='test',
         bounds={'rect': [45, 5, 78, 3], 'theta': 4.8},
     )
     with db.session.begin(subtransactions=True):

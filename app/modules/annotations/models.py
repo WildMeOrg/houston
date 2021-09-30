@@ -33,6 +33,7 @@ class Annotation(db.Model, HoustonModel):
         db.GUID, default=uuid.uuid4, primary_key=True
     )  # pylint: disable=invalid-name
     version = db.Column(db.BigInteger, default=None, nullable=True)
+    content_guid = db.Column(db.GUID, nullable=True)
 
     asset_guid = db.Column(
         db.GUID,
@@ -51,6 +52,7 @@ class Annotation(db.Model, HoustonModel):
     encounter = db.relationship('Encounter', back_populates='annotations')
     keyword_refs = db.relationship('AnnotationKeywords')
     ia_class = db.Column(db.String(length=255), nullable=False)
+    viewpoint = db.Column(db.String(length=255), nullable=False)
     bounds = db.Column(db.JSON, nullable=False)
 
     # May have multiple jobs outstanding, store as Json obj uuid_str is key, In_progress Bool is value

@@ -378,10 +378,13 @@ def test_create_asset_group_repeat_detection(
     )
 
     # Rotate one of the assets
-    from app.modules.asset_groups.models import AssetGroup
+    from app.modules.annotations.models import Annotation
 
-    asset_group = AssetGroup.query.get(asset_group_uuid)
-    asset_guid = asset_group.assets[0].guid
+    annot = Annotation.query.filter_by(
+        content_guid=asset_group_utils.ANNOTATION_UUIDS[0]
+    ).first()
+    asset_guid = annot.asset.guid
+    asset_group_uuid = annot.asset.asset_group_guid
 
     patch_data = [
         {

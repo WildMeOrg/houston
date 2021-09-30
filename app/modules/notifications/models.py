@@ -82,7 +82,8 @@ NOTIFICATION_CONFIG = {
 # Simple class to build up the contents of the message so that the caller does not need to know the field names above
 class NotificationBuilder(object):
     def __init__(self, sender):
-        self.data = {'sender_name': sender.full_name, 'sender_email': sender.email}
+        self.sender = sender
+        self.data = {}
 
     def set_collaboration(self, collab):
         self.data['collaboration_guid'] = collab.guid
@@ -105,13 +106,15 @@ class Notification(db.Model, HoustonModel):
         db.GUID, db.ForeignKey('user.guid'), index=True, nullable=True
     )
     recipient = db.relationship('User', back_populates='notifications')
+    sender_guid = db.Column(db.GUID, nullable=True)
 
     def __repr__(self):
         return (
             '<{class_name}('
             'guid={self.guid}, '
             'message_type={self.message_type}, '
-            "recipient='{self.recipient}'"
+            "recipient='{self.recipient}, '"
+            "sender_guid='{self.sender_guid}'"
             ')>'.format(class_name=self.__class__.__name__, self=self)
         )
 
@@ -120,10 +123,22 @@ class Notification(db.Model, HoustonModel):
         return self.recipient
 
     def get_sender_name(self):
-        return self.message_values.get('sender_name', 'N/A')
+        from app.modules.users.models import User
+
+        user = User.query.get(self.sender_guid)
+        if user:
+            return user.full_name
+        else:
+            return 'N/A'
 
     def get_sender_email(self):
-        return self.message_values.get('sender_email', 'N/A')
+        from app.modules.users.models import User
+
+        user = User.query.get(self.sender_guid)
+        if user:
+            return user.email
+        else:
+            return 'N/A'
 
     # returns dictionary of channel:bool
     def channels_to_send(self, digest=False):
@@ -155,7 +170,7 @@ class Notification(db.Model, HoustonModel):
             subject = render_template(subject_template, **email_message_values)
             email_content = render_template(content_template, **email_message_values)
             EmailUtils.send_email(
-                self.message_values['sender_email'],
+                self.get_sender_email(),
                 self.recipient.email,
                 subject,
                 email_content,
@@ -166,17 +181,22 @@ class Notification(db.Model, HoustonModel):
         assert notification_type in NotificationType
 
         data = builder.data
-        assert set(data.keys()) >= set(
-            NOTIFICATION_CONFIG[NotificationType.all]['mandatory_fields']
-        )
+
         assert set(data.keys()) >= set(
             NOTIFICATION_CONFIG[notification_type]['mandatory_fields']
         )
+
+        from app.modules.users.models import User
+
+        sender_guid = None
+        if isinstance(builder.sender, User):
+            sender_guid = builder.sender.guid
 
         new_notification = cls(
             recipient=receiving_user,
             message_type=notification_type,
             message_values=data,
+            sender_guid=sender_guid,
         )
         with db.session.begin(subtransactions=True):
             db.session.add(new_notification)

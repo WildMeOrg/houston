@@ -68,7 +68,7 @@ def read_notification(
         'is_read',
         'message_type',
         'sender_name',
-        'sender_email',
+        'sender_guid',
         'message_values',
     }
     return test_utils.get_dict_via_flask(
@@ -91,11 +91,21 @@ def read_all_notifications(flask_app_client, user, expected_status_code=200):
     )
 
 
-def get_notifications(json_data, from_user_email, notification_type):
+def read_all_unread_notifications(flask_app_client, user, expected_status_code=200):
+    return test_utils.get_list_via_flask(
+        flask_app_client,
+        user,
+        scopes='notifications:read',
+        path=f'{PATH}unread',
+        expected_status_code=expected_status_code,
+    )
+
+
+def get_notifications(json_data, from_user_guid, notification_type):
     return list(
         filter(
             lambda notif: notif['message_type'] == notification_type
-            and notif['sender_email'] == from_user_email,
+            and notif['sender_guid'] == from_user_guid,
             json_data,
         )
     )

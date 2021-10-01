@@ -53,6 +53,39 @@ def status(message, app):
 email_dispatched.connect(status)
 
 
+def _validate_settings():
+    from app.modules.site_settings.models import SiteSetting
+
+    email_service = SiteSetting.get_string('email_service')
+    valid = False
+    current_app.config['MAIL_SERVER'] = None
+
+    if email_service == 'mailchimp':
+        # https://mailchimp.com/developer/transactional/docs/smtp-integration/
+        username = SiteSetting.query.get('email_service_username')
+        password = SiteSetting.query.get('email_service_password')
+        if not username or not password:
+            log.error(
+                'email_service=mailchimp needs both email_service_username and email_service_password set'
+            )
+        else:
+            current_app.config['MAIL_SERVER'] = 'smtp.mandrillapp.com'
+            current_app.config['MAIL_PORT'] = 587
+            current_app.config['MAIL_USERNAME'] = username
+            current_app.config['MAIL_PASSWORD'] = password
+            valid = True
+
+    elif email_service == 'twilio':
+        # https://www.twilio.com/sendgrid/email-api
+        # https://sendgrid.com/blog/create-an-smtp-server/
+        log.error('email_service=twilio not yet supported')
+        valid = False
+
+    else:
+        log.warning(f'SiteSetting email_service={email_service} not supported')
+    return valid
+
+
 def _format_datetime(dt, verbose=False):
     """
     REF: https://stackoverflow.com/a/5891598
@@ -165,8 +198,15 @@ class Email(Message):
         return self
 
     def go(self, *args, **kwargs):
-        mail.send(self)
-        response = {
-            'status': self.status,
-        }
+        if _validate_settings():
+            mail.send(self)
+            response = {
+                'status': self.status,
+                'success': True,
+            }
+        else:
+            response = {
+                'status': 'Codex email not properly configured',
+                'success': False,
+            }
         return response

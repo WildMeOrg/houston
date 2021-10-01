@@ -76,6 +76,10 @@ class Email(Message):
     """
 
     def __init__(self, *args, **kwargs):
+        if current_app.config['TESTING']:
+            log.info(
+                'Email is currently running with TESTING=True, so mail will not actually send.'
+            )
         now = datetime.datetime.now(tz=current_app.config.get('TIMEZONE'))
 
         self.template_name = None
@@ -83,6 +87,7 @@ class Email(Message):
             'year': now.year,
         }
         self.status = None
+        self.mail = mail
 
         # Debugging, override all email destinations
         override_recipients = current_app.config.get('MAIL_OVERRIDE_RECIPIENTS', None)

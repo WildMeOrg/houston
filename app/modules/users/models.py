@@ -711,6 +711,13 @@ class User(db.Model, FeatherModel, UserEDMMixin):
         # TODO add collaboration annotations
         return annotations
 
+    def remove_profile_file(self):
+        if self.profile_fileupload_guid:
+            fup = self.profile_fileupload
+            self.profile_fileupload_guid = None
+            if fup:
+                fup.delete()
+
     def deactivate(self):
         AuditLog.audit_log_object(log, self, 'Deactivating')
         # Store email hash for potential later restoration
@@ -719,7 +726,19 @@ class User(db.Model, FeatherModel, UserEDMMixin):
         self.email = 'Inactivated User'
         self.full_name = 'Inactivated User'
         self.is_active = False
+        self.remove_profile_file()
+        self.website = None
+        self.forum_id = None
+
         self.password = security.generate_random(128)
+
+    def delete(self):
+        with db.session.begin():
+            # TODO: Ensure proper cleanup
+            for asset_group in self.asset_groups:
+                asset_group.delete()
+            AuditLog.delete_object(log, self)
+            db.session.delete(self)
 
     @classmethod
     def _get_hashed_email(cls, email):

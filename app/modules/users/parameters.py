@@ -272,13 +272,11 @@ class PatchUserDetailsParameters(PatchJSONParameters):
 
     @classmethod
     def remove(cls, obj, field, value, state):
+
         if field == User.profile_fileupload_guid.key:
-            if obj.profile_fileupload_guid:
-                fup = obj.profile_fileupload
-                obj.profile_fileupload_guid = None
-                db.session.add(obj)
-                if fup:
-                    fup.delete()
+            obj.remove_profile_file()
+            db.session.add(obj)
+
         return True
 
     @classmethod

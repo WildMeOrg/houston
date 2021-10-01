@@ -85,29 +85,31 @@ def test_modify_encounter(
     ]
 
     enc = enc_utils.read_encounter(flask_app_client, researcher_2, new_encounter_1.guid)
-    assert enc.json == {
-        'customFields': {},
-        'id': str(new_encounter_1.guid),
-        'guid': str(new_encounter_1.guid),
-        'locationId': new_val,
-        'timeValues': [None, None, None, 0, 0],
-        'version': new_encounter_1.version,
-        'createdHouston': new_encounter_1.created.isoformat() + '+00:00',
-        'updatedHouston': new_encounter_1.updated.isoformat() + '+00:00',
-        'owner': {
-            'full_name': researcher_2.full_name,
-            'guid': str(researcher_2.guid),
-            'profile_fileupload': None,
-        },
-        'submitter': {
-            'full_name': researcher_1.full_name,
-            'guid': str(researcher_1.guid),
-            'profile_fileupload': None,
-        },
-        'annotations': annotations,
-        'hasEdit': True,
-        'hasView': True,
-    }
+    assert set(enc.json) >= set(
+        {
+            'customFields': {},
+            'id': str(new_encounter_1.guid),
+            'guid': str(new_encounter_1.guid),
+            'locationId': new_val,
+            'timeValues': [None, None, None, 0, 0],
+            'version': new_encounter_1.version,
+            'createdHouston': new_encounter_1.created.isoformat() + '+00:00',
+            'updatedHouston': new_encounter_1.updated.isoformat() + '+00:00',
+            'owner': {
+                'full_name': researcher_2.full_name,
+                'guid': str(researcher_2.guid),
+                'profile_fileupload': None,
+            },
+            'submitter': {
+                'full_name': researcher_1.full_name,
+                'guid': str(researcher_1.guid),
+                'profile_fileupload': None,
+            },
+            'annotations': annotations,
+            'hasEdit': True,
+            'hasView': True,
+        }
+    )
 
     # now we test modifying customFields
     cfd_id = edm_utils.custom_field_create(

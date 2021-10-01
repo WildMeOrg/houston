@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=missing-docstring
 import uuid
+import tests.modules.users.resources.utils as user_utils
 
 # import config
 
@@ -280,3 +281,37 @@ def test_new_user_creation_roles_admin(flask_app_client, admin_user, db):
     user1_instance = User.query.get(user_guid)
     with db.session.begin():
         db.session.delete(user1_instance)
+
+
+def test_user_creation_deactivation_reactivation_user_manager(
+    flask_app_client, user_manager_user, request, db
+):
+    data = {
+        'email': 'user1@localhost',
+        'password': 'user1_password',
+        'full_name': 'My name',
+    }
+    create_resp = user_utils.create_user(flask_app_client, None, data)
+
+    from app.modules.users.models import User
+
+    user_instance = User.query.get(create_resp.json['guid'])
+    request.addfinalizer(lambda: db.session.delete(user_instance))
+
+    # Delete (deactivate) user
+    user_utils.delete_user(flask_app_client, user_instance)
+
+    assert '@deactivated' in user_instance.email
+    assert user_instance.full_name == 'Inactivated User'
+
+    user_utils.create_user(
+        flask_app_client,
+        None,
+        data,
+        409,
+        'The email address is already in use in an inactivated user.',
+    )
+
+    recreate_resp = user_utils.create_user(flask_app_client, user_manager_user, data)
+
+    assert create_resp.json['guid'] == recreate_resp.json['guid']

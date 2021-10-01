@@ -10,6 +10,21 @@ import json
 PATH = '/api/v1/users/'
 
 
+def create_user(
+    flask_app_client, user, data, expected_status_code=200, expected_error=None
+):
+    return test_utils.post_via_flask(
+        flask_app_client,
+        user,
+        scopes='',
+        path=PATH,
+        data=data,
+        response_200={'guid', 'email'},
+        expected_status_code=expected_status_code,
+        expected_error=expected_error,
+    )
+
+
 def read_user(flask_app_client, user, sub_path, expected_status_code=200):
     if user:
         with flask_app_client.login(user, auth_scopes=('users:read',)):
@@ -50,3 +65,13 @@ def patch_user(
         assert response.json['message'] == expected_error, response.json['message']
 
     return response
+
+
+def delete_user(flask_app_client, user, expected_status_code=204):
+    test_utils.delete_via_flask(
+        flask_app_client,
+        user,
+        scopes='users:write',
+        path=f'{PATH}{user.guid}',
+        expected_status_code=expected_status_code,
+    )

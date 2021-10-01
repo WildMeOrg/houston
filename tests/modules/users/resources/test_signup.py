@@ -301,7 +301,7 @@ def test_user_creation_deactivation_reactivation_user_manager(
     # Delete (deactivate) user
     user_utils.delete_user(flask_app_client, user_instance)
 
-    assert user_instance.email == 'Inactivated User'
+    assert '@deactivated' in user_instance.email
     assert user_instance.full_name == 'Inactivated User'
 
     user_utils.create_user(

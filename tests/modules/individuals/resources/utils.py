@@ -37,7 +37,24 @@ def read_individual(
     assert response.status_code == expected_status_code
     if response.status_code == 200:
         test_utils.validate_dict_response(
-            response, 200, {'guid', 'success', 'result', 'hasView', 'hasEdit'}
+            response,
+            200,
+            {
+                'encounters',
+                'guid',
+                'id',
+                'featuredAssetGuid',
+                'hasEdit',
+                'hasView',
+                'names',
+                'timeOfBirth',
+                'sex',
+                'created',
+                'comments',
+                'updated',
+                'timeOfDeath',
+                'customFields',
+            },
         )
     return response
 

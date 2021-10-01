@@ -8,6 +8,7 @@ from flask_restx_patched import ModelSchema
 from flask_marshmallow import base_fields
 
 from app.modules.assets.schemas import DetailedAssetSchema
+from app.modules.individuals.schemas import BaseIndividualSchema
 
 from .models import Sighting
 
@@ -59,6 +60,10 @@ class FeaturedAssetOnlySchema(BaseSightingSchema):
 
 
 class AugmentedEdmSightingSchema(BaseSightingSchema):
+    """
+    Sighting schema with EDM and Houston data.
+    """
+
     createdHouston = base_fields.DateTime(attribute='created')
     updatedHouston = base_fields.DateTime(attribute='updated')
     assets = base_fields.Nested(
@@ -78,6 +83,10 @@ class AugmentedEdmSightingSchema(BaseSightingSchema):
     featuredAssetGuid = base_fields.UUID(attribute='featured_asset_guid')
 
     class Meta(BaseSightingSchema.Meta):
+        """
+        Desired Sighting fields.
+        """
+
         fields = BaseSightingSchema.Meta.fields + (
             'createdHouston',
             'updatedHouston',

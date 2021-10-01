@@ -78,7 +78,7 @@ def test_read_encounter_from_edm(db, flask_app_client):
         flask_app_client, temp_owner, individual_guid, expected_status_code=200
     )
 
-    read_guid = read_response.json['result']['id']
+    read_guid = read_response.json['id']
     assert read_guid is not None
 
     read_individual = Individual.query.get(read_guid)
@@ -252,19 +252,19 @@ def test_individual_has_detailed_encounter_from_edm(db, flask_app_client, resear
             flask_app_client, researcher_1, data_in=data_in
         )
 
-        response_json = response.json
+        response_json = response.json['result']
 
-        assert response_json['result']['encounters']
-        assert response_json['result']['encounters'][0]['id']
+        assert response_json['encounters']
+        assert response_json['encounters'][0]['id']
 
-        guid = response_json['result']['encounters'][0]['id']
+        guid = response_json['encounters'][0]['id']
         enc = Encounter.query.get(guid)
         assert enc is not None
 
         with db.session.begin():
             db.session.add(enc)
 
-        sighting_id = response_json['result']['id']
+        sighting_id = response_json['id']
         sighting = Sighting.query.get(sighting_id)
         assert sighting is not None
 
@@ -288,15 +288,11 @@ def test_individual_has_detailed_encounter_from_edm(db, flask_app_client, resear
             flask_app_client, researcher_1, individual_id
         ).json
 
-        assert individual_json['result']['encounters'][0]['decimalLatitude'] == '25.9999'
-        assert individual_json['result']['encounters'][0]['decimalLongitude'] == '25.9999'
-        assert (
-            individual_json['result']['encounters'][0]['verbatimLocality'] == 'Antarctica'
-        )
-        assert individual_json['result']['encounters'][0]['locationId'] == 'Antarctica'
-        assert (
-            individual_json['result']['encounters'][0]['time'] == '2010-01-01T01:01:01Z'
-        )
+        assert individual_json['encounters'][0]['decimalLatitude'] == '25.9999'
+        assert individual_json['encounters'][0]['decimalLongitude'] == '25.9999'
+        assert individual_json['encounters'][0]['verbatimLocality'] == 'Antarctica'
+        assert individual_json['encounters'][0]['locationId'] == 'Antarctica'
+        assert individual_json['encounters'][0]['time'] == '2010-01-01T01:01:01Z'
 
     finally:
         individual_utils.delete_individual(flask_app_client, researcher_1, individual_id)

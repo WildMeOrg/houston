@@ -75,7 +75,7 @@ def test_create_and_modify_and_delete_sighting(
                         'transactionId': transaction_id,
                         'path': test_filename,
                     }
-                ]
+                ],
             },
             {'locationId': 'test2'},
         ],
@@ -385,3 +385,48 @@ def test_annotations_within_sightings(
     annot_utils.delete_annotation(flask_app_client, researcher_1, annot1_guid)
     sighting_utils.delete_sighting(flask_app_client, staff_user, sighting_id)
     clone.cleanup()
+
+
+def test_edm_and_houston_encounter_data_within_sightings(
+    db, flask_app_client, researcher_1, test_root, staff_user, test_clone_asset_group_data
+):
+    data_in = {
+        'startTime': timestamp,
+        'context': 'test',
+        'locationId': 'test',
+        'encounters': [
+            {
+                'locationId': 'Saturn',
+                'decimalLatitude': 25.9999,
+                'decimalLongitude': 25.9999,
+                'verbatimLocality': 'Saturn',
+                'time': '2010-01-01T01:01:01Z',
+            },
+        ],
+    }
+
+    response = sighting_utils.create_sighting(
+        flask_app_client, researcher_1, expected_status_code=200, data_in=data_in
+    )
+    assert response.json['success'] is not None
+
+    response = sighting_utils.read_sighting(
+        flask_app_client,
+        researcher_1,
+        response.json['result']['id'],
+        expected_status_code=200,
+    )
+    json = response.json
+
+    # EDM stuff
+    assert json['encounters'][0]['verbatimLocality'] == 'Saturn'
+    assert json['encounters'][0]['locationId'] == 'Saturn'
+    assert json['encounters'][0]['time'] == '2010-01-01T01:01:01Z'
+    assert json['encounters'][0]['decimalLatitude'] == '25.9999'
+    assert json['encounters'][0]['decimalLongitude'] == '25.9999'
+
+    # houston stuff
+    assert json['encounters'][0]['hasView'] is True
+    assert json['encounters'][0]['hasEdit'] is True
+
+    sighting_utils.delete_sighting(flask_app_client, staff_user, json['id'])

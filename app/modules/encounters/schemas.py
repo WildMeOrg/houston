@@ -75,6 +75,7 @@ class AugmentedIndividualApiEncounterSchema(BaseEncounterSchema):
         'BaseUserSchema', many=False, only=('full_name', 'guid')
     )
     owner = base_fields.Nested('BaseUserSchema', many=False, only=('full_name', 'guid'))
+    encounters = base_fields.Nested('AugmentedSightingApiEncounterSchema', many=True)
 
     class Meta(BaseEncounterSchema.Meta):
         fields = BaseEncounterSchema.Meta.fields + (
@@ -84,4 +85,19 @@ class AugmentedIndividualApiEncounterSchema(BaseEncounterSchema):
             'hasView',
             'hasEdit',
             'asset_group_sighting_encounter_guid',
+            'encounters',
+        )
+        dump_only = BaseEncounterSchema.Meta.dump_only + ('encounters',)
+
+
+class AugmentedSightingApiEncounterSchema(BaseEncounterSchema):
+
+    individual = base_fields.Nested('SightingApiIndividualSchema', many=False)
+
+    class Meta(BaseEncounterSchema.Meta):
+        fields = BaseEncounterSchema.Meta.fields + (
+            Encounter.sighting.key,
+            'hasView',
+            'hasEdit',
+            'individual',
         )

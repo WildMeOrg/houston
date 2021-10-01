@@ -30,7 +30,6 @@ class DetailedIndividualSchema(BaseIndividualSchema):
     hasView = base_fields.Function(Individual.current_user_has_view_permission)
     hasEdit = base_fields.Function(Individual.current_user_has_edit_permission)
     featuredAssetGuid = base_fields.Function(Individual.get_featured_asset_guid)
-    encounters = base_fields.Nested('AugmentedIndividualApiEncounterSchema', many=True)
 
     class Meta(BaseIndividualSchema.Meta):
         fields = BaseIndividualSchema.Meta.fields + (
@@ -39,10 +38,19 @@ class DetailedIndividualSchema(BaseIndividualSchema):
             'featuredAssetGuid',
             'hasView',
             'hasEdit',
-            'encounters'
         )
         dump_only = BaseIndividualSchema.Meta.dump_only + (
             Individual.created.key,
             Individual.updated.key,
-            'encounters',
+        )
+
+
+class SightingApiIndividualSchema(BaseIndividualSchema):
+    hasView = base_fields.Function(Individual.current_user_has_view_permission)
+    hasEdit = base_fields.Function(Individual.current_user_has_edit_permission)
+
+    class Meta(BaseIndividualSchema.Meta):
+        fields = BaseIndividualSchema.Meta.fields + (
+            'hasView',
+            'hasEdit',
         )

@@ -275,7 +275,6 @@ class PatchUserDetailsParameters(PatchJSONParameters):
 
         if field == User.profile_fileupload_guid.key:
             obj.remove_profile_file()
-            db.session.add(obj)
 
         return True
 

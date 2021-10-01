@@ -93,25 +93,27 @@ def test_custom_fields_on_sighting(
     ]
 
     # make sure customFields value is actually set
-    assert full_sighting.json == {
-        'id': str(sighting.guid),
-        'guid': str(sighting.guid),
-        'hasEdit': True,
-        'hasView': True,
-        'locationId': 'test',
-        'comments': 'None',
-        'encounters': encounters,
-        'encounterCounts': {'lifeStage': {}, 'sex': {}, 'individuals': 0},
-        'version': sighting.version,
-        'createdHouston': sighting.created.isoformat() + '+00:00',
-        'updatedHouston': sighting.updated.isoformat() + '+00:00',
-        'assets': assets,
-        'featuredAssetGuid': str(sighting.featured_asset_guid),
-        'customFields': {cfd_id: cfd_test_value},
-        # Only asserting that these fields exist
-        'startTime': full_sighting.json['startTime'],
-        'createdEDM': full_sighting.json['createdEDM'],
-    }
+    assert set(full_sighting.json) >= set(
+        {
+            'id': str(sighting.guid),
+            'guid': str(sighting.guid),
+            'hasEdit': True,
+            'hasView': True,
+            'locationId': 'test',
+            'comments': 'None',
+            'encounters': encounters,
+            'encounterCounts': {'lifeStage': {}, 'sex': {}, 'individuals': 0},
+            'version': sighting.version,
+            'createdHouston': sighting.created.isoformat() + '+00:00',
+            'updatedHouston': sighting.updated.isoformat() + '+00:00',
+            'assets': assets,
+            'featuredAssetGuid': str(sighting.featured_asset_guid),
+            'customFields': {cfd_id: cfd_test_value},
+            # Only asserting that these fields exist
+            'startTime': full_sighting.json['startTime'],
+            'createdEDM': full_sighting.json['createdEDM'],
+        }
+    )
 
     # test patch on customFields
     new_cfd_test_value = 'NEW_CFD_TEST_VALUE'

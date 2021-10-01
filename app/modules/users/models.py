@@ -715,6 +715,8 @@ class User(db.Model, FeatherModel, UserEDMMixin):
         if self.profile_fileupload_guid:
             fup = self.profile_fileupload
             self.profile_fileupload_guid = None
+            db.session.add(self)
+
             if fup:
                 fup.delete()
 

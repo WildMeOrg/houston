@@ -202,6 +202,7 @@ class Email(Message):
             mail.init_app(
                 current_app
             )  # this initializes based on new MAIL_ values from _validate_settings
+            log.debug(f'Attempting to send email to {self.recipients}: {self.subject}')
             mail.send(self)
             response = {
                 'status': self.status,

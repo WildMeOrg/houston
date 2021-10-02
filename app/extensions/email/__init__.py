@@ -62,8 +62,8 @@ def _validate_settings():
 
     if email_service == 'mailchimp':
         # https://mailchimp.com/developer/transactional/docs/smtp-integration/
-        username = SiteSetting.query.get('email_service_username')
-        password = SiteSetting.query.get('email_service_password')
+        username = SiteSetting.get_string('email_service_username')
+        password = SiteSetting.get_string('email_service_password')
         if not username or not password:
             log.error(
                 'email_service=mailchimp needs both email_service_username and email_service_password set'
@@ -199,6 +199,9 @@ class Email(Message):
 
     def go(self, *args, **kwargs):
         if _validate_settings():
+            mail.init_app(
+                current_app
+            )  # this initializes based on new MAIL_ values from _validate_settings
             mail.send(self)
             response = {
                 'status': self.status,

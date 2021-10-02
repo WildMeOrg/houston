@@ -1,13 +1,14 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=missing-docstring
+from app.modules.emails.models import RecordedEmail, EmailTypes, EmailRecord
+from app.modules.site_settings.models import SiteSetting
+import uuid
+
+
 def test_basic_send(flask_app):
-    from app.modules.emails.models import RecordedEmail, EmailTypes, EmailRecord
-    from app.modules.site_settings.models import SiteSetting
-    import uuid
-
-    # this should only run in TESTING (non-sending) mode
-    assert flask_app.config['TESTING']
-
+    assert flask_app.config[
+        'TESTING'
+    ]  # this should only run in TESTING (non-sending) mode
     flask_app.config['MAIL_OVERRIDE_RECIPIENTS'] = None
 
     # this mocks using mailchimp, but wont send since we are in TESTING

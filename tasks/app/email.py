@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 
 from ._utils import app_context_task
-from app.modules.emails.models import RecordedEmail, EmailTypes
+from app.modules.emails.models import EmailTypes
+from app.extensions.email import Email
 from app.modules.site_settings.models import SiteSetting
 
 
@@ -29,7 +30,7 @@ def send(
     if password:
         SiteSetting.set('email_service_password', string=password)
 
-    msg = RecordedEmail(subject)
+    msg = Email(subject)
     msg.recipients = [recipient]
     msg.body = body
     msg.email_type = EmailTypes.invite

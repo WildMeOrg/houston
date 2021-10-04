@@ -209,6 +209,9 @@ class Email(Message):
                 'success': True,
             }
         else:
+            log.debug(
+                f'Codex not configured for email; failed to send to {self.recipients}: {self.subject}'
+            )
             response = {
                 'status': 'Codex email not properly configured',
                 'success': False,

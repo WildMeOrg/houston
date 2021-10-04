@@ -52,7 +52,6 @@ jobs:
       OS: ubuntu-latest
       PYTHON: ${{ matrix.python-version }}
       TEST_DATABASE_URI: ${{ matrix.db-uri }}
-      COMPOSE_FILE: docker-compose.yml
     steps:
       # Checkout and env setup
       - uses: actions/checkout@v2
@@ -95,10 +94,6 @@ jobs:
             fi
             wget --tries=1 -O - http://localhost:83/ && break
           done
-        env:
-          # docker-compose.yml mounts ../.. so we need to be in the
-          # deploy/codex directory
-          COMPOSE_FILE: 'docker-compose.yml'
 
       # Install and test - Test order is randomized, run three times to ensure correctness
       - name: Run tests (random x3)

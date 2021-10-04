@@ -20,6 +20,7 @@ precision = 1
 ignore_errors = True
 omit =
     tests/*
+    integration_tests/*
 
 [html]
 directory = ./_coverage/html/

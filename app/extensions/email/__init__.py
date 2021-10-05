@@ -135,6 +135,7 @@ class Email(Message):
 
         super(Email, self).__init__(*args, **kwargs)
 
+    # note: in order to be able to use set_language(), recipients must be set first on the Email
     def template(self, template, **kwargs):
         self.set_language()
         global pmail
@@ -256,7 +257,7 @@ class Email(Message):
     # note: in order to not get complex and have to break one Email up into multiple, we just use the first language
     #   we find on a recipient; TODO develop a potential MultiLanguageEmail which is acually a (potential) list of Emails
     def set_language(self):
-        if self.language:
+        if self.language or not self.recipients:
             return
 
         from app.modules.site_settings.models import SiteSetting

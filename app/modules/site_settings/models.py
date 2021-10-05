@@ -44,6 +44,6 @@ class SiteSetting(db.Model, Timestamp):
             return db.session.merge(setting)
 
     @classmethod
-    def get_string(cls, key):
+    def get_string(cls, key, default=None):
         ss = cls.query.get(key)
-        return ss.string if ss else None
+        return ss.string if ss else default

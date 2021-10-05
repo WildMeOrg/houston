@@ -14,7 +14,6 @@ import logging
 
 from flask import current_app, request, session, render_template  # NOQA
 from flask_login import current_user  # NOQA
-
 from flask_mail import Mail, Message, email_dispatched  # NOQA
 from premailer import Premailer
 import cssutils
@@ -115,6 +114,8 @@ class Email(Message):
             )
         now = datetime.datetime.now(tz=current_app.config.get('TIMEZONE'))
 
+        # will attempt to discover via set_language() unless specifically set
+        self.language = None
         self.template_name = None
         self.template_kwargs = {
             'year': now.year,
@@ -197,8 +198,39 @@ class Email(Message):
 
         return self
 
+    # note: in order to not get complex and have to break one Email up into multiple, we just use the first language
+    #   we find on a recipient; TODO develop a potential MultiLanguageEmail which is acually a (potential) list of Emails
+    def set_langauge(self):
+        if self.language:
+            return
+
+        from app.modules.site_settings.models import SiteSetting
+        from app.modules.users.models import User
+
+        for recip in self.recipients:
+            if isinstance(recip, User):
+                self.language = recip.get_preferred_langauge()
+                if self.language:
+                    return
+        self.language = SiteSetting.get_string('preferred_language', 'en_us')
+
+    def resolve_recipients(self):
+        from app.modules.users.models import User
+
+        self._original_recipients = []
+        addresses = []
+        for recip in self.recipients:
+            self._original_recipients.append(recip)
+            if isinstance(recip, User):
+                addresses.append(recip.email)
+            else:
+                addresses.append(recip)
+        self.recipients = addresses
+
     def go(self, *args, **kwargs):
         if _validate_settings():
+            self.set_language()
+            self.resolve_recipients()
             mail.init_app(
                 current_app
             )  # this initializes based on new MAIL_ values from _validate_settings

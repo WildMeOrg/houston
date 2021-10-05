@@ -152,7 +152,7 @@ class Email(Message):
         self._render_html()
         self._render_txt()
         if not self._template_found:
-            log.warn(f'Template {template} not used; possibly invalid name')
+            log.warning(f'Template {template} not used; possibly invalid name')
         return self
 
     # this attempts to find all the possible templates to look for, considering language etc

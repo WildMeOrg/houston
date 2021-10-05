@@ -38,10 +38,18 @@ def test_basic_send(flask_app):
 
 
 def test_template():
-    from jinja2 import TemplateNotFound
+    msg = RecordedEmail()
+    args = {
+        'subject': 'TEST_SUBJECT',
+        'body': 'TEST_BODY',
+    }
+    msg.template('misc/blank', **args)
+    assert msg._template_found
 
-    msg = RecordedEmail('subject')
-    try:
-        msg.template('fubar_' + str(uuid.uuid4()))
-    except TemplateNotFound:
-        pass
+    # note: these assume the misc/blank templates do not change
+    assert msg.subject == args['subject']
+    assert msg.body == args['body']
+
+    # now we just test a bad template to make sure it fails
+    msg.template('fubar_' + str(uuid.uuid4()))
+    assert not msg._template_found

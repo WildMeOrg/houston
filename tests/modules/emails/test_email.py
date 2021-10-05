@@ -35,3 +35,13 @@ def test_basic_send(flask_app):
     assert rec is not None
     assert rec.recipient == test_recipient
     assert rec.email_type == EmailTypes.invite
+
+
+def test_template():
+    from jinja2 import TemplateNotFound
+
+    msg = RecordedEmail('subject')
+    try:
+        msg.template('fubar_' + str(uuid.uuid4()))
+    except TemplateNotFound:
+        pass

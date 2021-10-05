@@ -59,8 +59,16 @@ class EDMConfigurationDefinition(Resource):
                     if sv.get('scientificName', None) == sn:
                         needed = True
                 if needed:
+                    details = ia_config_reader.get_frontend_species_summary(sn)
+                    if details is None:
+                        details = {}
                     species_json['suggestedValues'].insert(
-                        0, {'scientificName': sn, 'commonNames': [sn]}
+                        0,
+                        {
+                            'scientificName': sn,
+                            'commonNames': [details.get('common_name', sn)],
+                            'itisTsn': details.get('itis_id'),
+                        },
                     )
 
         # TODO also traverse private here FIXME

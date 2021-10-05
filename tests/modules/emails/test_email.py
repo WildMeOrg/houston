@@ -1,11 +1,12 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=missing-docstring
 from app.modules.emails.models import RecordedEmail, EmailTypes, EmailRecord
+from app.extensions.email import Email
 from app.modules.site_settings.models import SiteSetting
 import uuid
 
 
-def test_basic_send(flask_app):
+def _prep_sending(flask_app):
     assert flask_app.config[
         'TESTING'
     ]  # this should only run in TESTING (non-sending) mode
@@ -16,11 +17,15 @@ def test_basic_send(flask_app):
     SiteSetting.set('email_service_username', string='testing_' + str(uuid.uuid4()))
     SiteSetting.set('email_service_password', string='testing_' + str(uuid.uuid4()))
 
+
+def test_basic_send(flask_app):
+    _prep_sending(flask_app)
     test_subject = 'test subject'
     test_recipient = str(uuid.uuid4()) + '-test@example.com'
     msg = RecordedEmail(test_subject)
     msg.recipients = [test_recipient]
     msg.email_type = EmailTypes.invite
+    msg.body = 'body'
 
     # outbox will track sent messages so we can verify this worked
     with msg.mail.record_messages() as outbox:
@@ -35,6 +40,20 @@ def test_basic_send(flask_app):
     assert rec is not None
     assert rec.recipient == test_recipient
     assert rec.email_type == EmailTypes.invite
+
+
+def test_validity(flask_app):
+    _prep_sending(flask_app)
+    msg = Email('test subject')
+    try:
+        msg.go()
+    except ValueError as ve:
+        assert 'body' in str(ve)
+    msg.body = 'test content'
+    try:
+        msg.go()
+    except ValueError as ve:
+        assert 'recipients' in str(ve)
 
 
 def test_template():

@@ -288,6 +288,12 @@ class Email(Message):
 
     def go(self, *args, **kwargs):
         if _validate_settings():
+            if not self.body and not self.html:
+                raise ValueError(
+                    f'No txt/html body content; not sending email ({self.subject}, {self.recipients})'
+                )
+            if not self.recipients:
+                raise ValueError(f'No recipients; not sending email ({self.subject})')
             self.resolve_recipients()
             mail.init_app(
                 current_app

@@ -2,6 +2,7 @@
 # pylint: disable=missing-docstring
 
 from tests.modules.sightings.resources import utils as sighting_utils
+from tests.modules.individuals.resources import utils as individual_utils
 from tests import utils as test_utils
 import datetime
 
@@ -388,7 +389,7 @@ def test_annotations_within_sightings(
 
 
 def test_edm_and_houston_encounter_data_within_sightings(
-    db, flask_app_client, researcher_1, test_root, staff_user, test_clone_asset_group_data
+    db, flask_app_client, researcher_1, staff_user
 ):
     data_in = {
         'startTime': timestamp,
@@ -426,7 +427,52 @@ def test_edm_and_houston_encounter_data_within_sightings(
     assert json['encounters'][0]['decimalLongitude'] == '25.9999'
 
     # houston stuff
+    assert json['encounters'][0]['id'] is not None
+
+    enc_id = json['encounters'][0]['id']
+
     assert json['encounters'][0]['hasView'] is True
     assert json['encounters'][0]['hasEdit'] is True
 
+    individual_data_in = {
+        'names': {
+            'defaultName': 'Micheal Aday',
+            'nickname': 'Meatloaf',
+        },
+        'encounters': [{'id': str(enc_id)}],
+    }
+
+    individual_response = individual_utils.create_individual(
+        flask_app_client, researcher_1, 200, individual_data_in
+    )
+
+    assert individual_response.json['result']['id'] is not None
+
+    individual_id = individual_response.json['result']['id']
+
+    individual_json = individual_utils.read_individual(
+        flask_app_client, researcher_1, individual_id
+    ).json
+
+    assert individual_json['names']['defaultName'] == 'Micheal Aday'
+    assert individual_json['names']['nickname'] == 'Meatloaf'
+
+    # some duplication, but I wanted to check the sighting/encounter data first before complexifying it
+    response = sighting_utils.read_sighting(
+        flask_app_client,
+        researcher_1,
+        response.json['id'],
+        expected_status_code=200,
+    )
+    json = response.json
+
+    assert json['encounters'][0]['individual'] is not None
+    assert json['encounters'][0]['individual']['id'] == individual_id
+    assert json['encounters'][0]['individual']['names'] is not None
+    assert json['encounters'][0]['individual']['names']['defaultName'] == 'Micheal Aday'
+    assert json['encounters'][0]['individual']['names']['nickname'] == 'Meatloaf'
+
+    individual_utils.delete_individual(
+        flask_app_client, staff_user, individual_json['id']
+    )
     sighting_utils.delete_sighting(flask_app_client, staff_user, json['id'])

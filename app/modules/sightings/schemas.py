@@ -8,7 +8,6 @@ from flask_restx_patched import ModelSchema
 from flask_marshmallow import base_fields
 
 from app.modules.assets.schemas import DetailedAssetSchema
-from app.modules.individuals.schemas import BaseIndividualSchema
 
 from .models import Sighting
 

@@ -778,6 +778,10 @@ class User(db.Model, FeatherModel, UserEDMMixin):
         sighting_set = set(sightings)
         return list(sighting_set)
 
+    # FIXME just stubbing out for email
+    def get_preferred_langauge(self):
+        return None
+
 
 USER_ROLES = [
     role.value[-1]

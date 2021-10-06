@@ -47,7 +47,7 @@ def test_get_notification_prefs(db, researcher_1):
 
 
 def test_notification_message(db, researcher_1, researcher_2, flask_app):
-    from tests.modules.emails.test_email import _prep_sending
+    from tests.modules.emails.test_email import _prep_sending, _cleanup_sending
 
     builder = NotificationBuilder(researcher_1)
 
@@ -72,6 +72,7 @@ def test_notification_message(db, researcher_1, researcher_2, flask_app):
     assert 'email' in notification._channels_sent
     assert 'collaboration request' in notification._channels_sent['email'].subject
     assert researcher_2.email in notification._channels_sent['email'].recipients
+    _cleanup_sending()
 
     try:
         chans = notification.channels_to_send()

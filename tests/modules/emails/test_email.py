@@ -18,6 +18,10 @@ def _prep_sending(flask_app):
     SiteSetting.set('email_service_password', string='testing_' + str(uuid.uuid4()))
 
 
+def _cleanup_sending():
+    SiteSetting.query.delete()
+
+
 def test_basic_send(flask_app):
     _prep_sending(flask_app)
     test_subject = 'test subject'
@@ -40,6 +44,7 @@ def test_basic_send(flask_app):
     assert rec is not None
     assert rec.recipient == test_recipient
     assert rec.email_type == EmailTypes.invite
+    _cleanup_sending()
 
 
 def test_validity(flask_app):
@@ -54,6 +59,7 @@ def test_validity(flask_app):
         msg.go()
     except ValueError as ve:
         assert 'recipients' in str(ve)
+    _cleanup_sending()
 
 
 def test_template():

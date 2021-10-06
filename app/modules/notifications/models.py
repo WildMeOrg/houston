@@ -156,10 +156,13 @@ class Notification(db.Model, HoustonModel):
 
         channels = self.channels_to_send(False)
 
+        self._channels_sent = {}  # store what was sent out, if anything
         if channels[NotificationChannel.email]:
             config = NOTIFICATION_CONFIG[self.message_type]
             email_message_values = {
                 'context_name': 'context not set',
+                'sender_name': self.recipient.full_name,
+                'sender_link': '(sender link)',
             }
             email_message_values.update(self.message_values)
             email = Email()
@@ -168,6 +171,7 @@ class Notification(db.Model, HoustonModel):
                 f"notifications/{config['email_template_name']}", **email_message_values
             )
             email.go()
+            self._channels_sent[NotificationChannel.email.value] = email
 
     @classmethod
     def create(cls, notification_type, receiving_user, builder):

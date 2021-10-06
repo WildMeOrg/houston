@@ -114,7 +114,7 @@ def flask_app(gitlab_remote_login_pat):
                         mock.patch.object(
                             getattr(tasks, func),
                             'delay',
-                            lambda *args, **kwargs: getattr(tasks, func)(*args, **kwargs),
+                            getattr(tasks, func),
                         ),
                     )
                 for patch in tasks_patch:

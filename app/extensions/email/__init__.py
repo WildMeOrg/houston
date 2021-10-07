@@ -56,6 +56,15 @@ email_dispatched.connect(status)
 def _validate_settings():
     from app.modules.site_settings.models import SiteSetting
 
+    default_sender = current_app.config.get(
+        'MAIL_DEFAULT_SENDER', ('Wild Me', 'dev@wildme.org')
+    )
+    sender_name = SiteSetting.get_string('email_default_sender_name', default_sender[0])
+    sender_email = SiteSetting.get_string('email_default_sender_email', default_sender[1])
+    current_app.config['MAIL_DEFAULT_SENDER_EMAIL'] = sender_email
+    current_app.config['MAIL_DEFAULT_SENDER_NAME'] = sender_name
+    current_app.config['MAIL_DEFAULT_SENDER'] = (sender_name, sender_email)
+
     email_service = SiteSetting.get_string('email_service')
     valid = False
     current_app.config['MAIL_SERVER'] = None
@@ -298,7 +307,12 @@ class Email(Message):
             mail.init_app(
                 current_app
             )  # this initializes based on new MAIL_ values from _validate_settings
-            log.debug(f'Attempting to send email to {self.recipients}: {self.subject}')
+            # no matter what, it seems MAIL_DEFAULT_SENDER being reset by us is not be respected/used as sender here!
+            #   so we forcibly override.  this may cause trouble in the future where we *want to* set .sender explicitely.  :(
+            self.sender = current_app.config['MAIL_DEFAULT_SENDER']
+            log.debug(
+                f'Attempting to send email from {self.sender} to {self.recipients}: {self.subject}'
+            )
             mail.send(self)
             response = {
                 'status': self.status,

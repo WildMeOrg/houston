@@ -55,10 +55,11 @@ def test_notification_message(db, researcher_1, researcher_2, flask_app):
     builder.set_collaboration(researcher_1)
 
     # we make user want emails in NotificationPreferences to test email-send-upon-creation
+    researcher_2.notification_preferences = []
     notification_preferences = UserNotificationPreferences(user=researcher_2)
     notification_preferences.preferences = {
-        NotificationType.collab_request: {'email': True, 'restAPI': True},
-        NotificationType.all: {'email': True},
+        NotificationType.collab_request.value: {'email': True, 'restAPI': True},
+        NotificationType.all.value: {'email': True},
     }
     _prep_sending(flask_app)  # allows us to fake-send emails (enough for testing)
 
@@ -72,6 +73,8 @@ def test_notification_message(db, researcher_1, researcher_2, flask_app):
     assert 'email' in notification._channels_sent
     assert 'collaboration request' in notification._channels_sent['email'].subject
     assert researcher_2.email in notification._channels_sent['email'].recipients
+    with db.session.begin():
+        db.session.delete(notification_preferences)
     _cleanup_sending()
 
     try:

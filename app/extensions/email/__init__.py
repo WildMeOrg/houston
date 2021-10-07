@@ -57,7 +57,7 @@ def _validate_settings():
     from app.modules.site_settings.models import SiteSetting
 
     default_sender = current_app.config.get(
-        'MAIL_DEFAULT_SENDER', ('Wild Me', 'dev@wildme.org')
+        'MAIL_DEFAULT_SENDER', ('Codex Mailbot', 'changeme@example.com')
     )
     sender_name = SiteSetting.get_string('email_default_sender_name', default_sender[0])
     sender_email = SiteSetting.get_string('email_default_sender_email', default_sender[1])

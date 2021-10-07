@@ -56,4 +56,8 @@ def downgrade():
         batch_op.drop_index(batch_op.f('ix_email_record_created'))
 
     op.drop_table('email_record')
+
+    # drop Enum created above
+    sa.Enum(name='emailtypes').drop(op.get_bind(), checkfirst=False)
+
     # ### end Alembic commands ###

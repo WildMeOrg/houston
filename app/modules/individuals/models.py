@@ -94,6 +94,10 @@ class Individual(db.Model, FeatherModel):
         order_by='SocialGroupIndividualMembership.individual_guid',
     )
 
+    relationships = db.relationship(
+        'RelationshipIndividualMember', back_populates='individual'
+    )
+
     def __repr__(self):
         return (
             '<{class_name}('

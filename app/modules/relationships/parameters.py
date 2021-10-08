@@ -25,6 +25,7 @@ class PatchRelationshipDetailsParameters(PatchJSONParameters):
 
     PATH_CHOICES = tuple(
         '/%s' % field for field in (
-            Relationship.title.key,
+            Relationship.start_date.key,
+            Relationship.end_date.key
         )
     )

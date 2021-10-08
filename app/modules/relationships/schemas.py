@@ -20,7 +20,6 @@ class BaseRelationshipSchema(ModelSchema):
         model = Relationship
         fields = (
             Relationship.guid.key,
-            Relationship.title.key,
         )
         dump_only = (
             Relationship.guid.key,

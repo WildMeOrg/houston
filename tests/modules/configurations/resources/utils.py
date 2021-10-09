@@ -4,6 +4,7 @@ Configuration resources utils
 -------------
 """
 from tests import utils as test_utils
+import json
 
 EXPECTED_KEYS = {'response', 'success'}
 CONFIG_PATH = '/api/v1/configuration/default'
@@ -57,13 +58,15 @@ def modify_configuration(
     data,
     expected_status_code=200,
 ):
-    with flask_app_client.login(user, auth_scopes=('annotations:write',)):
+    with flask_app_client.login(user, auth_scopes=('configuration:write',)):
         response = flask_app_client.post(
-            CONFIG_PATH, content_type='application/json', data=data
+            f'{CONFIG_PATH}/{conf_key}',
+            content_type='application/json',
+            data=json.dumps(data),
         )
 
     if expected_status_code == 200:
-        test_utils.validate_dict_response(response, 200, EXPECTED_KEYS)
+        test_utils.validate_dict_response(response, 200, {'success'})
     else:
         test_utils.validate_dict_response(
             response, expected_status_code, {'status', 'message'}

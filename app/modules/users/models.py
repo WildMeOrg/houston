@@ -730,6 +730,8 @@ class User(db.Model, FeatherModel, UserEDMMixin):
         self.forum_id = None
 
         self.password = security.generate_random(128)
+        with db.session.begin():
+            db.session.merge(self)
 
     def delete(self):
         with db.session.begin():

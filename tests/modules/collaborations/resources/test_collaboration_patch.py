@@ -5,19 +5,13 @@ from tests import utils
 
 
 def test_patch_collaboration(flask_app_client, researcher_1, researcher_2, db):
-    from app.modules.collaborations.models import Collaboration
 
     collab = None
     try:
-        data = {'user_guid': str(researcher_2.guid)}
-        collab_utils.create_collaboration(flask_app_client, researcher_1, data)
-        collabs = Collaboration.query.all()
-        collab = collabs[0]
-        collab_guid = collab.guid
-        assert not collab.user_has_read_access(researcher_1.guid)
-        assert not collab.user_has_edit_access(researcher_1.guid)
-        assert not collab.user_has_read_access(researcher_2.guid)
-        assert not collab.user_has_edit_access(researcher_2.guid)
+        create_resp = collab_utils.create_simple_collaboration(
+            flask_app_client, researcher_1, researcher_2
+        )
+        collab_guid = create_resp.json['guid']
 
         # should not work
         patch_data = [utils.patch_replace_op('view_permission', 'ambivalence')]
@@ -25,31 +19,18 @@ def test_patch_collaboration(flask_app_client, researcher_1, researcher_2, db):
         collab_utils.patch_collaboration(
             flask_app_client, collab_guid, researcher_2, patch_data, 400, resp
         )
-        patch_data = [utils.patch_replace_op('view_permission', 'approved')]
 
-        collab_utils.patch_collaboration(
-            flask_app_client,
-            collab_guid,
-            researcher_2,
-            patch_data,
+        # Should work
+        collab_utils.approve_view_on_collaboration(
+            flask_app_client, collab_guid, researcher_2, researcher_1
         )
-        assert collab.user_has_read_access(researcher_1.guid)
-        assert collab.user_has_read_access(researcher_2.guid)
-        assert not collab.user_has_edit_access(researcher_1.guid)
-        assert not collab.user_has_edit_access(researcher_2.guid)
-        patch_data = [utils.patch_replace_op('edit_permission', 'approved')]
 
-        collab_utils.patch_collaboration(
-            flask_app_client,
-            collab_guid,
-            researcher_2,
-            patch_data,
+        # Researcher 1 requests that this is escalated to an edit collaboration
+        collab_utils.request_edit_simple_collaboration(
+            flask_app_client, researcher_1, researcher_2
         )
-        assert collab.user_has_read_access(researcher_1.guid)
-        assert collab.user_has_read_access(researcher_2.guid)
-        assert not collab.user_has_edit_access(researcher_1.guid)
-        assert not collab.user_has_edit_access(researcher_2.guid)
 
+        # TBD approve it, then revoke it, then revoke view
         patch_data = [utils.patch_replace_op('edit_permission', 'revoked')]
         collab_utils.patch_collaboration(
             flask_app_client,
@@ -85,6 +66,7 @@ def test_patch_collaboration_states(flask_app_client, researcher_1, researcher_2
 
     collab = None
     try:
+        # TBD refactor w new utils
         data = {'user_guid': str(researcher_2.guid)}
         collab_utils.create_collaboration(flask_app_client, researcher_1, data)
         collabs = Collaboration.query.all()

@@ -260,7 +260,13 @@ def get_dict_via_flask(
 
 
 def get_list_via_flask(
-    flask_app_client, user, scopes, path, expected_status_code, expected_error=None
+    flask_app_client,
+    user,
+    scopes,
+    path,
+    expected_status_code,
+    expected_error=None,
+    expected_fields=None,
 ):
     if user:
         with flask_app_client.login(user, auth_scopes=(scopes,)):
@@ -268,7 +274,11 @@ def get_list_via_flask(
     else:
         response = flask_app_client.get(path)
     if expected_status_code == 200:
-        validate_list_response(response, 200)
+        if expected_fields:
+            validate_list_of_dictionaries_response(
+                response, expected_status_code, expected_fields
+            )
+            validate_list_response(response, 200)
     elif expected_status_code == 404:
         validate_dict_response(response, expected_status_code, {'message'})
     elif expected_status_code:

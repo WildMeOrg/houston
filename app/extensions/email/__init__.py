@@ -169,11 +169,13 @@ class Email(Message):
     # this assumes template_name is a base of filenames like: NAME_html.jinja2 and NAME_txt.jinja2
     # and that NAME.jinja2 will be assumed to be html
     # valid flavor = html, txt, subject
-    def _templates_to_try(self, flavor):
+    def _templates_to_try(self, flavor, template_name=None):
         from app.modules.site_settings.models import SiteSetting
 
         temps = []
-        if self.template_name is None:
+        if template_name is None:
+            template_name = self.template_name
+        if template_name is None:
             return temps
         langs = []
         if self.language:
@@ -182,14 +184,14 @@ class Email(Message):
         if not self.language == site_lang:
             langs.append(site_lang)
         for lang in langs:
-            temps.append(f'email/{lang}/{self.template_name}_{flavor}.jinja2')
+            temps.append(f'email/{lang}/{template_name}_{flavor}.jinja2')
             if flavor == 'html':  # also try flavorless if html
-                temps.append(f'email/{lang}/{self.template_name}.jinja2')
+                temps.append(f'email/{lang}/{template_name}.jinja2')
         return temps
 
     # this tries to find the best-fitting template
-    def _try_templates(self, flavor):
-        for temp in self._templates_to_try(flavor):
+    def _try_templates(self, flavor, template_name=None):
+        for temp in self._templates_to_try(flavor, template_name=template_name):
             try:
                 rt = render_template(temp, **self.template_kwargs)
                 log.debug(f'Template flavor={flavor} matched {temp}')
@@ -204,7 +206,14 @@ class Email(Message):
             return
         self.subject = self._try_templates('subject')
         if not self.subject:
-            self.subject = 'A message from Codex'
+            self.subject = self._find_default_subject()
+
+    def _find_default_subject(self):
+        subj = self._try_templates('subject', template_name='misc/DEFAULT')
+        if subj:
+            return subj
+        # we need to have *something* as a subject
+        return 'A message from Codex'
 
     def _render_txt(self):
         if self.body:

@@ -48,32 +48,39 @@ def create_sighting(
     user,
     data_in={'locationId': 'PYTEST', 'startTime': '2000-01-01T01:01:01Z'},
     expected_status_code=200,
+    expected_error=None,
 ):
-    if user is not None:
-        with flask_app_client.login(user):
-            response = flask_app_client.post(
-                PATH,
-                data=json.dumps(data_in),
-                content_type='application/json',
-            )
-    else:
-        response = flask_app_client.post(
-            PATH,
-            data=json.dumps(data_in),
-            content_type='application/json',
-        )
+    response = test_utils.post_via_flask(
+        flask_app_client,
+        user,
+        scopes='',
+        path=PATH,
+        data=data_in,
+        expected_status_code=expected_status_code,
+        response_200={'success'},
+    )
 
-    assert isinstance(response.json, dict)
-    assert response.status_code == expected_status_code
+    if expected_status_code == 200:
+        assert response.json['success']
+    else:
+        assert not response.json['success']
+        assert response.json['message'] == 'Error'
+        if expected_error:
+            assert response.json['passed_message'] == expected_error
+
     return response
 
 
 def read_sighting(flask_app_client, user, sight_guid, expected_status_code=200):
-    with flask_app_client.login(user, auth_scopes=('sightings:read',)):
-        response = flask_app_client.get('%s%s' % (PATH, sight_guid))
+    response = test_utils.get_dict_via_flask(
+        flask_app_client,
+        user,
+        'sightings:read',
+        f'{PATH}{sight_guid}',
+        expected_status_code,
+        response_200={'id'},
+    )
 
-    assert isinstance(response.json, dict)
-    assert response.status_code == expected_status_code
     if expected_status_code == 200:
         assert response.json['id'] == str(sight_guid)
     return response
@@ -87,16 +94,21 @@ def patch_sighting(
     headers=None,
     expected_status_code=200,
 ):
-    with flask_app_client.login(user, auth_scopes=('sightings:write',)):
-        response = flask_app_client.patch(
-            '%s%s' % (PATH, sighting_guid),
-            data=json.dumps(patch_data),
-            content_type='application/json',
-            headers=headers,
-        )
+    response = test_utils.patch_via_flask(
+        flask_app_client,
+        user,
+        'sightings:write',
+        '%s%s' % (PATH, sighting_guid),
+        patch_data,
+        expected_status_code,
+        {'result', 'success'},
+        headers=headers,
+    )
+    if expected_status_code == 200:
+        assert response.json['success']
+    elif expected_status_code != 401:
+        assert not response.json['success']
 
-    assert isinstance(response.json, dict)
-    assert response.status_code == expected_status_code
     return response
 
 

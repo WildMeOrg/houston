@@ -322,6 +322,7 @@ def patch_via_flask(
     expected_status_code,
     response_200,
     expected_error=None,
+    headers=None,
 ):
 
     if user:
@@ -330,12 +331,11 @@ def patch_via_flask(
                 path,
                 content_type='application/json',
                 data=json.dumps(data),
+                headers=headers,
             )
     else:
         response = flask_app_client.patch(
-            path,
-            content_type='application/json',
-            data=json.dumps(data),
+            path, content_type='application/json', data=json.dumps(data), headers=headers
         )
 
     if expected_status_code == 200:

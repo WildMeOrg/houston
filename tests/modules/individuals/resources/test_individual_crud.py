@@ -108,9 +108,7 @@ def test_add_remove_encounters(db, flask_app_client, researcher_1):
         ],
     }
 
-    response = sighting_utils.create_sighting(
-        flask_app_client, researcher_1, expected_status_code=200, data_in=data_in
-    )
+    response = sighting_utils.create_sighting(flask_app_client, researcher_1, data_in)
 
     from app.modules.sightings.models import Sighting
 

@@ -19,9 +19,7 @@ def test_modify_individual_edm_fields(db, flask_app_client, researcher_1):
 
     try:
 
-        response = sighting_utils.create_sighting(
-            flask_app_client, researcher_1, data_in=data_in
-        )
+        response = sighting_utils.create_sighting(flask_app_client, researcher_1, data_in)
 
         response_json = response.json
 

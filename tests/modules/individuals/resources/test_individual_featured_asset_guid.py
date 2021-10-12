@@ -19,9 +19,7 @@ def test_patch_featured_asset_guid_on_individual(db, flask_app_client, researche
         'locationId': 'test',
     }
 
-    response = sighting_utils.create_sighting(
-        flask_app_client, researcher_1, data_in=data_in
-    )
+    response = sighting_utils.create_sighting(flask_app_client, researcher_1, data_in)
 
     from app.modules.encounters.models import Encounter
 

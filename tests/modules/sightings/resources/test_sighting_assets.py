@@ -23,7 +23,7 @@ def test_asset_addition(db, flask_app_client, staff_user):
             'encounters': [{}],
         }
         response = sighting_utils.create_sighting(
-            flask_app_client, new_researcher, expected_status_code=200, data_in=data_in
+            flask_app_client, new_researcher, data_in
         )
         sighting_id = response.json['result']['id']
         new_sighting = Sighting.query.get(sighting_id)
@@ -118,9 +118,7 @@ def test_asset_file_addition(db, flask_app_client, staff_user):
         'startTime': '2000-01-01T00:00Z',
         'encounters': [{}],
     }
-    response = sighting_utils.create_sighting(
-        flask_app_client, new_researcher, expected_status_code=200, data_in=data_in
-    )
+    response = sighting_utils.create_sighting(flask_app_client, new_researcher, data_in)
     sighting_id = response.json['result']['id']
     new_sighting = Sighting.query.get(sighting_id)
 

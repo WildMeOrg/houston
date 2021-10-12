@@ -21,7 +21,7 @@ def test_create_collaboration(
         readonly_user, create_resp.json['guid']
     )
 
-    request.addfinalizer(lambda: readonly_user_collab.delete())
+    request.addfinalizer(readonly_user_collab.delete)
 
     collab = None
     try:
@@ -115,7 +115,7 @@ def test_create_repeat_collaboration(
     )
     collab_guid = create_resp.json['guid']
     collab = collab_utils.get_collab_object_for_user(researcher_1, collab_guid)
-    request.addfinalizer(lambda: collab.delete())
+    request.addfinalizer(collab.delete)
 
     # Should return the first one again
     create_resp = collab_utils.create_simple_collaboration(

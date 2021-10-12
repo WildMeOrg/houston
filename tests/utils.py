@@ -240,6 +240,7 @@ def get_dict_via_flask(
     expected_status_code,
     response_200,
     expected_error=None,
+    response_error={'status', 'message'},
 ):
     if user:
         with flask_app_client.login(user, auth_scopes=(scopes,)):
@@ -252,7 +253,7 @@ def get_dict_via_flask(
         validate_dict_response(response, expected_status_code, {'message'})
     elif expected_status_code:
         # If expected status code is None, caller handles the validation
-        validate_dict_response(response, expected_status_code, {'status', 'message'})
+        validate_dict_response(response, expected_status_code, response_error)
         if expected_error:
             assert response.json['message'] == expected_error, response.json['message']
     return response

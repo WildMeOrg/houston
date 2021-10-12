@@ -68,7 +68,7 @@ NOTIFICATION_CONFIG = {
         'mandatory_fields': {'collaboration_guid'},
     },
     NotificationType.raw: {
-        'email_template_name': 'raw.jinja2',
+        'email_template_name': 'raw',
         'email_digest_content_template': 'raw_digest.jinja2',
         'mandatory_fields': {},
     },

@@ -129,6 +129,7 @@ class Email(Message):
         self._original_recipients = None
         self.template_name = None
         self.template_kwargs = {
+            # TODO add some site_FOO (or other global) values, like site_name
             'year': now.year,
         }
         self.status = None

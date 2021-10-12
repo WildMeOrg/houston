@@ -13,7 +13,7 @@ def get_collab_object_for_user(user, collab_guid):
     user_assocs = [
         assoc
         for assoc in user.user_collaboration_associations
-        if assoc.collaboration_guid == collab_guid
+        if str(assoc.collaboration_guid) == collab_guid
     ]
     assert len(user_assocs) == 1
     return user_assocs[0].collaboration
@@ -131,6 +131,37 @@ def validate_expected_states(json_data, expected_states):
             )
 
 
+def validate_user_access(requesting_user, collab_guid, user_access):
+    collab = get_collab_object_for_user(requesting_user, collab_guid)
+    for user_guid in user_access:
+        assert collab.user_has_read_access(user_guid) == user_access[user_guid]['view']
+        assert collab.user_has_edit_access(user_guid) == user_access[user_guid]['edit']
+
+
+def validate_no_access(collab_guid, user_1, user_2):
+    expected_access = {
+        user_1.guid: {'view': False, 'edit': False},
+        user_2.guid: {'view': False, 'edit': False},
+    }
+    validate_user_access(user_1, collab_guid, expected_access)
+
+
+def validate_read_only(collab_guid, user_1, user_2):
+    expected_access = {
+        user_1.guid: {'view': True, 'edit': False},
+        user_2.guid: {'view': True, 'edit': False},
+    }
+    validate_user_access(user_1, collab_guid, expected_access)
+
+
+def validate_full_access(collab_guid, user_1, user_2):
+    expected_access = {
+        user_1.guid: {'view': True, 'edit': True},
+        user_2.guid: {'view': True, 'edit': True},
+    }
+    validate_user_access(user_1, collab_guid, expected_access)
+
+
 def create_simple_collaboration(flask_app_client, requesting_user, other_user):
     data = {'user_guid': str(other_user.guid)}
     create_resp = create_collaboration(flask_app_client, requesting_user, data)
@@ -139,11 +170,8 @@ def create_simple_collaboration(flask_app_client, requesting_user, other_user):
         other_user.guid: {'viewState': 'pending', 'editState': 'not_initiated'},
     }
     validate_expected_states(create_resp.json, expected_states)
-    collab = get_collab_object_for_user(requesting_user, create_resp.json['guid'])
-    assert not collab.user_has_read_access(requesting_user.guid)
-    assert not collab.user_has_read_access(other_user.guid)
-    assert not collab.user_has_edit_access(requesting_user.guid)
-    assert not collab.user_has_edit_access(other_user.guid)
+    validate_no_access(create_resp.json['guid'], requesting_user, other_user)
+
     return create_resp
 
 
@@ -163,11 +191,8 @@ def approve_view_on_collaboration(
         other_user.guid: {'viewState': 'approved', 'editState': 'not_initiated'},
     }
     validate_expected_states(patch_resp.json, expected_states)
-    collab = get_collab_object_for_user(approving_user, collab_guid)
-    assert collab.user_has_read_access(approving_user.guid)
-    assert collab.user_has_read_access(other_user.guid)
-    assert not collab.user_has_edit_access(approving_user.guid)
-    assert not collab.user_has_edit_access(other_user.guid)
+    validate_read_only(collab_guid, approving_user, other_user)
+
     return patch_resp
 
 
@@ -180,11 +205,9 @@ def request_edit_simple_collaboration(
         other_user.guid: {'viewState': 'approved', 'editState': 'pending'},
     }
     validate_expected_states(edit_resp.json, expected_states)
-    collab = get_collab_object_for_user(requesting_user, collab_guid)
-    assert collab.user_has_read_access(requesting_user.guid)
-    assert collab.user_has_read_access(other_user.guid)
-    assert not collab.user_has_edit_access(requesting_user.guid)
-    assert not collab.user_has_edit_access(other_user.guid)
+    validate_read_only(collab_guid, requesting_user, other_user)
+
+    return edit_resp
 
 
 def approve_edit_on_collaboration(
@@ -203,9 +226,54 @@ def approve_edit_on_collaboration(
         other_user.guid: {'viewState': 'approved', 'editState': 'approved'},
     }
     validate_expected_states(patch_resp.json, expected_states)
-    collab = get_collab_object_for_user(approving_user, collab_guid)
-    assert collab.user_has_read_access(approving_user.guid)
-    assert collab.user_has_read_access(other_user.guid)
-    assert collab.user_has_edit_access(approving_user.guid)
-    assert collab.user_has_edit_access(other_user.guid)
+    validate_full_access(collab_guid, approving_user, other_user)
+
+    return patch_resp
+
+
+def revoke_edit_on_collaboration(
+    flask_app_client, collab_guid, revoking_user, other_user
+):
+    patch_data = [test_utils.patch_replace_op('edit_permission', 'revoked')]
+
+    patch_resp = patch_collaboration(
+        flask_app_client,
+        collab_guid,
+        revoking_user,
+        patch_data,
+    )
+    expected_states = {
+        revoking_user.guid: {'viewState': 'approved', 'editState': 'revoked'},
+        other_user.guid: {'viewState': 'approved', 'editState': 'approved'},
+    }
+    validate_expected_states(patch_resp.json, expected_states)
+    validate_read_only(collab_guid, revoking_user, other_user)
+
+    return patch_resp
+
+
+def revoke_view_on_collaboration(
+    flask_app_client, collab_guid, revoking_user, other_user, was_edit=False
+):
+    patch_data = [test_utils.patch_replace_op('view_permission', 'revoked')]
+
+    patch_resp = patch_collaboration(
+        flask_app_client,
+        collab_guid,
+        revoking_user,
+        patch_data,
+    )
+    if was_edit:
+        expected_states = {
+            revoking_user.guid: {'viewState': 'revoked', 'editState': 'revoked'},
+            other_user.guid: {'viewState': 'approved', 'editState': 'approved'},
+        }
+    else:
+        expected_states = {
+            revoking_user.guid: {'viewState': 'revoked', 'editState': 'not_initiated'},
+            other_user.guid: {'viewState': 'approved', 'editState': 'not_initiated'},
+        }
+    validate_expected_states(patch_resp.json, expected_states)
+    validate_no_access(collab_guid, revoking_user, other_user)
+
     return patch_resp

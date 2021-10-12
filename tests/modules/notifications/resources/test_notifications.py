@@ -28,6 +28,10 @@ def get_notifications_with_guid(json_data, guid_str, notification_type, sender_g
 def test_get_notifications(
     db, flask_app_client, researcher_1, researcher_2, user_manager_user
 ):
+    # Start with no unread notifications to ensure that they are always created here
+    notif_utils.mark_all_notifications_as_read(flask_app_client, researcher_1)
+    notif_utils.mark_all_notifications_as_read(flask_app_client, researcher_2)
+    notif_utils.mark_all_notifications_as_read(flask_app_client, user_manager_user)
 
     prev_researcher_1_notifs = notif_utils.read_all_notifications(
         flask_app_client, researcher_1
@@ -94,9 +98,7 @@ def test_get_notifications(
     researcher_2_notif = notif_utils.read_notification(
         flask_app_client, researcher_2, notif_to_researcher_2.guid
     )
-    assert set(researcher_2_notif.json.keys()) >= set(
-        {'sender_name', 'sender_guid', 'is_read', 'message_values'}
-    )
+
     assert not researcher_2_notif.json['is_read']
     values = researcher_2_notif.json['message_values']
     assert set(values.keys()) >= set({'collaboration_guid'})
@@ -105,6 +107,11 @@ def test_get_notifications(
 def test_patch_notification(
     db, flask_app_client, researcher_1, researcher_2, user_manager_user
 ):
+    # Start with no unread notifications to ensure that they are always created here
+    notif_utils.mark_all_notifications_as_read(flask_app_client, researcher_1)
+    notif_utils.mark_all_notifications_as_read(flask_app_client, researcher_2)
+    notif_utils.mark_all_notifications_as_read(flask_app_client, user_manager_user)
+
     # Create a dummy one
     notif_1_data = NotificationBuilder(researcher_1)
     # Just needs anything with a guid
@@ -112,31 +119,24 @@ def test_patch_notification(
 
     Notification.create(NotificationType.collab_request, researcher_2, notif_1_data)
 
-    researcher_2_notifs = notif_utils.read_all_notifications(
-        flask_app_client, researcher_2
-    )
     researcher_2_unread_notifs = notif_utils.read_all_unread_notifications(
         flask_app_client, researcher_2
     )
-    assert len(researcher_2_unread_notifs.json) == len(researcher_2_notifs.json)
 
-    assert set(researcher_2_unread_notifs.json[0].keys()) >= set(
-        {'message_type', 'message_values', 'sender_guid', 'sender_name'}
-    )
-    notif_guid = researcher_2_notifs.json[-1]['guid']
-    data = [test_utils.patch_replace_op('is_read', True)]
-    notif_utils.patch_notification(flask_app_client, notif_guid, researcher_2, data)
+    notif_guid = researcher_2_unread_notifs.json[-1]['guid']
+    notif_utils.mark_notification_as_read(flask_app_client, researcher_2, notif_guid)
 
     res_2_notif = notif_utils.read_notification(
-        flask_app_client, researcher_2, researcher_2_notifs.json[-1]['guid']
+        flask_app_client, researcher_2, notif_guid
     )
-    assert set(res_2_notif.json.keys()) >= set(
-        {'sender_name', 'sender_guid', 'message_values'}
-    )
+
     values = res_2_notif.json['message_values']
     assert set(values.keys()) >= set({'collaboration_guid'})
     assert res_2_notif.json['is_read']
     researcher_2_unread_notifs = notif_utils.read_all_unread_notifications(
+        flask_app_client, researcher_2
+    )
+    researcher_2_notifs = notif_utils.read_all_notifications(
         flask_app_client, researcher_2
     )
     assert len(researcher_2_unread_notifs.json) <= len(researcher_2_notifs.json)
@@ -154,7 +154,7 @@ def test_notification_preferences(
     researcher_2_notifs = notif_utils.read_all_notifications(
         flask_app_client, researcher_2
     )
-    collab_requests_from_res1 = notif_utils.get_notifications(
+    collab_requests_from_res1 = notif_utils.get_unread_notifications(
         researcher_2_notifs.json, str(researcher_1.guid), 'collaboration_request'
     )
 
@@ -171,7 +171,7 @@ def test_notification_preferences(
     researcher_2_notifs = notif_utils.read_all_notifications(
         flask_app_client, researcher_2
     )
-    collab_requests_from_res1 = notif_utils.get_notifications(
+    collab_requests_from_res1 = notif_utils.get_unread_notifications(
         researcher_2_notifs.json, researcher_1.email, 'collaboration_request'
     )
     assert len(collab_requests_from_res1) == 0
@@ -186,7 +186,7 @@ def test_notification_preferences(
     researcher_2_notifs = notif_utils.read_all_notifications(
         flask_app_client, researcher_2
     )
-    collab_requests_from_res1 = notif_utils.get_notifications(
+    collab_requests_from_res1 = notif_utils.get_unread_notifications(
         researcher_2_notifs.json, researcher_1.email, 'collaboration_request'
     )
     assert len(collab_requests_from_res1) == 0
@@ -202,7 +202,7 @@ def test_notification_preferences(
     researcher_2_notifs = notif_utils.read_all_notifications(
         flask_app_client, researcher_2
     )
-    collab_requests_from_res1 = notif_utils.get_notifications(
+    collab_requests_from_res1 = notif_utils.get_unread_notifications(
         researcher_2_notifs.json, str(researcher_1.guid), 'collaboration_request'
     )
 

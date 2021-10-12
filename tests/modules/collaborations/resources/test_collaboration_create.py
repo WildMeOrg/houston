@@ -5,20 +5,6 @@ import tests.modules.users.resources.utils as user_utils
 import uuid
 
 
-# TBD this should go
-def validate_collab(resp_json, user_guids, view_approvals):
-    members = resp_json.get('members', {})
-
-    user_guids_received = resp_json.get('user_guids', {})
-    assert set(user_guids_received) <= set(user_guids)
-    assert len(user_guids_received) == 2
-    if members:
-        for user_guid in user_guids:
-            user_guid_str = str(user_guid)
-            assert user_guid_str in members.keys()
-            assert members[user_guid_str]['viewState'] == view_approvals[user_guid_str]
-
-
 def test_create_collaboration(
     flask_app_client,
     researcher_1,
@@ -28,7 +14,9 @@ def test_create_collaboration(
     db,
     request,
 ):
-    create_resp = collab_utils.create_simple_collaboration(researcher_2, readonly_user)
+    create_resp = collab_utils.create_simple_collaboration(
+        flask_app_client, researcher_2, readonly_user
+    )
     readonly_user_collab = collab_utils.get_collab_object_for_user(
         readonly_user, create_resp.json['guid']
     )
@@ -37,7 +25,9 @@ def test_create_collaboration(
 
     collab = None
     try:
-        create_resp = collab_utils.create_simple_collaboration(researcher_1, researcher_2)
+        create_resp = collab_utils.create_simple_collaboration(
+            flask_app_client, researcher_1, researcher_2
+        )
         collab = collab_utils.get_collab_object_for_user(
             researcher_1, create_resp.json['guid']
         )
@@ -71,7 +61,6 @@ def test_create_collaboration(
             collab.delete()
 
 
-# TBD not sure if this is ripe for refactoring
 def test_create_approved_collaboration(
     flask_app_client, researcher_1, researcher_2, user_manager_user, readonly_user, db
 ):
@@ -101,18 +90,12 @@ def test_create_approved_collaboration(
         ]
         collab = researcher_1_assocs[0].collaboration
         assert len(researcher_1_assocs) == 1
-        expected_users = [
-            str(researcher_1.guid),
-            str(researcher_2.guid),
-            str(user_manager_user.guid),
-        ]
-        expected_states = {
-            str(researcher_1.guid): 'approved',
-            str(researcher_2.guid): 'approved',
-            str(user_manager_user.guid): 'creator',
-        }
-        validate_collab(resp.json, expected_users, expected_states)
 
+        expected_states = {
+            researcher_1.guid: {'viewState': 'approved', 'editState': 'not_initiated'},
+            researcher_2.guid: {'viewState': 'approved', 'editState': 'not_initiated'},
+        }
+        collab_utils.validate_expected_states(resp.json, expected_states)
     finally:
         if collab:
             collab.delete()

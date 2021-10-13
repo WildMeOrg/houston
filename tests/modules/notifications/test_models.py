@@ -63,6 +63,7 @@ def test_notification_message(db, researcher_1, researcher_2, flask_app):
     }
     _prep_sending(flask_app)  # allows us to fake-send emails (enough for testing)
 
+    Notification.query.delete()  # make sure no existing notifications (cuz multiple=false)
     notification = Notification.create(
         NotificationType.collab_request, researcher_2, builder
     )

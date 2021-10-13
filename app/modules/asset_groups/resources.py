@@ -525,6 +525,7 @@ class AssetGroupSightingDetected(Resource):
         try:
             asset_group_sighting.detected(job_guid, json.loads(request.data))
         except HoustonException as ex:
+            log.exception(f'sage_detected error: {request.data}')
             abort(ex.status_code, ex.message, errorFields=ex.get_val('error', 'Error'))
 
 

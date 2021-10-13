@@ -471,7 +471,8 @@ class AssetGroupSighting(db.Model, HoustonModel):
                 viewpoint = annot_data.get('viewpoint', None)
                 if not viewpoint or not ia_class:
                     raise HoustonException(
-                        log, 'Need a viewpoint and a class in each of the results'
+                        log,
+                        f'Need a viewpoint "{viewpoint}" and a class "{ia_class}" in each of the results',
                     )
 
                 bounds = Annotation.create_bounds(annot_data)

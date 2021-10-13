@@ -50,18 +50,18 @@ def warmup(
     app = create_app()
 
     if upgrade_db:
-        # After the installed dependencies the app.db.* tasks might need to be
+        # After the installed dependencies the codex.db.* tasks might need to be
         # reloaded to import all necessary dependencies.
         from tasks.app import db as db_tasks
 
         reload(db_tasks)
 
-        context.invoke_execute(context, 'app.db.upgrade', app=app, backup=False)
+        context.invoke_execute(context, 'codex.db.upgrade', app=app, backup=False)
 
         # if app.debug:
         #     context.invoke_execute(
         #         context,
-        #         'app.db.init_development_data',
+        #         'codex.db.init_development_data',
         #         app=app,
         #         upgrade_db=False,
         #         skip_on_failure=True,

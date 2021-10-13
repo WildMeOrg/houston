@@ -5,7 +5,7 @@ Application related tasks for Invoke.
 
 from invoke import Collection
 
-from tasks.app import (
+from tasks.codex import (
     assets,
     fileuploads,
     boilerplates,

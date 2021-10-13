@@ -25,7 +25,7 @@ def crud_module(context, module_name='', module_name_singular=''):
     Create CRUD (Create-Read-Update-Delete) empty module.
 
     Usage:
-    $ invoke app.boilerplates.crud-module --module-name=articles --module-name-singular=article
+    $ invoke codex.boilerplates.crud-module --module-name=articles --module-name-singular=article
     """
     try:
         import jinja2

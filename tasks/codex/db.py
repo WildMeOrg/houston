@@ -24,7 +24,7 @@ try:
     from alembic.config import Config as AlembicConfig
     from alembic import command
 except ImportError:  # pragma: no cover
-    log.warning("Alembic cannot be imported, so some app.db.* tasks won't be available!")
+    log.warning("Alembic cannot be imported, so some codex.db.* tasks won't be available!")
 else:
 
     alembic_version = tuple([int(v) for v in __alembic_version__.split('.')[0:3]])
@@ -365,7 +365,7 @@ def init_development_data(context, upgrade_db=True, skip_on_failure=False):
     Fill a database with development data like default users.
     """
     if upgrade_db:
-        context.invoke_execute(context, 'app.db.upgrade')
+        context.invoke_execute(context, 'codex.db.upgrade')
 
     log.info('Initializing development data...')
 
@@ -414,8 +414,8 @@ def _reset(context, edm_authentication=None):
                 os.remove(delete_filepath)
             assert not os.path.exists(delete_filepath)
 
-    context.invoke_execute(context, 'app.run.warmup')
+    context.invoke_execute(context, 'codex.run.warmup')
 
     context.invoke_execute(
-        context, 'app.initialize.all', edm_authentication=edm_authentication
+        context, 'codex.initialize.all', edm_authentication=edm_authentication
     )

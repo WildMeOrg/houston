@@ -24,7 +24,7 @@ def create_asset_group_from_path(
     Create a new asset_group via a local file or folder path.
 
     Command Line:
-    > invoke app.asset_groups.create-asset_group-from-path --path tests/asset_groups/test-000/ --email jason@wildme.org
+    > invoke codex.asset_groups.create-asset_group-from-path --path tests/asset_groups/test-000/ --email jason@wildme.org
     """
     from app.modules.users.models import User
     from app.modules.asset_groups.models import AssetGroup, AssetGroupMajorType
@@ -83,7 +83,7 @@ def clone_asset_group_from_gitlab(
     Clone an existing asset_group from the external GitLab asset_group archive
 
     Command Line:
-    > invoke app.asset_groups.clone-asset_group-from-gitlab --guid 00000000-0000-0000-0000-000000000002 --email jason@wildme.org
+    > invoke codex.asset_groups.clone-asset_group-from-gitlab --guid 00000000-0000-0000-0000-000000000002 --email jason@wildme.org
     """
     from app.modules.users.models import User
     from app.modules.asset_groups.models import AssetGroup

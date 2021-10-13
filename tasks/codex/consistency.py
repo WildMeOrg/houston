@@ -3,7 +3,7 @@
 """
 This file contains initialization data for development usage only.
 
-You can execute this code via ``invoke app.consistency``
+You can execute this code via ``invoke codex.consistency``
 """
 import logging
 import tqdm

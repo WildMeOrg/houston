@@ -59,11 +59,11 @@ from invoke.executor import Executor  # NOQA
 
 namespaces = []
 try:
-    from tasks import app as tasks_app  # NOQA
+    from tasks import codex as codex_tasks  # NOQA
 
-    namespaces.append(tasks_app)
+    namespaces.append(codex_tasks)
 except ModuleNotFoundError as e:
-    logger.warning(f'Unable to load tasks.app.*\n{str(e)}')
+    logger.warning(f'Unable to load tasks.codex.*\n{str(e)}')
 
 from tasks import dependencies as task_dependencies  # NOQA
 from tasks import docker_compose as task_docker_compose  # NOQA

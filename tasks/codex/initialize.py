@@ -3,7 +3,7 @@
 """
 This file contains initialization tasks to synchronize data from the EDM
 
-You can execute this code via ``invoke app.initialize``
+You can execute this code via ``invoke codex.initialize``
 """
 import logging
 
@@ -32,7 +32,7 @@ def initialize_users_from_edm(context, edm_authentication=None):
 
     User.edm_sync_all()
 
-    context.invoke_execute(context, 'app.consistency.user-staff-permissions')
+    context.invoke_execute(context, 'codex.consistency.user-staff-permissions')
 
 
 @app_context_task

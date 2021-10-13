@@ -60,7 +60,7 @@ services:
 
   acm:
     # https://github.com/WildMeOrg/wildbook-ia
-    image: wildme/wildbook-ia:nightly
+    image: wildme/wbia:develop
     # FIXME: Adjust entrypoint to allow for additive command arguments
     command: [ "wait-for", "db:5432", "--", "python3.7", "-m", "wbia.dev", "--dbdir", "${WBIA_DB_DIR}", "--logdir", "/data/logs/", "--web", "--port", "5000", "--web-deterministic-ports", "--containerized", "--cpudark", "--production", "--db-uri", "${WBIA_DB_URI}" ]
     volumes:
@@ -180,7 +180,7 @@ services:
       PORT: "84"
     volumes:
       - .dockerfiles/dev-frontend/docker-entrypoint.sh:/docker-entrypoint.sh
-      - ./_frontend:/code
+      - ./_frontend.codex:/code
 
   www:
     image: nginx:latest

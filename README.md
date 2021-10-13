@@ -44,7 +44,7 @@ See [Background and Periodic Tasks](docs/background_tasks.md)
 
 ```bash
 git clone --recurse-submodules https://github.com/WildMeOrg/houston.git
-docker-compose up
+docker-compose -f docker-compose.codex.yml --env-file .env.codex up
 ```
 
 Surf to http://localhost:84/
@@ -67,14 +67,14 @@ git clone --recurse-submodules https://github.com/WildMeOrg/houston.git
 cd houston/
 ```
 
-#### Setup Environment
+#### Setup Codex Environment
 
 It is recommended to use virtualenv or Anaconda/Miniconda to manage Python
 dependencies. Please, learn details yourself.
 For quickstart purposes the following will set up a virtualenv for you:
 
 ```bash
-./scripts/venv.sh
+./scripts/codex/venv.sh
 source virtualenv/houston3.7/bin/activate
 
 # To add bash-completion

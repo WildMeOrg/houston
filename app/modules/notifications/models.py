@@ -81,9 +81,10 @@ NOTIFICATION_CONFIG = {
 
 # Simple class to build up the contents of the message so that the caller does not need to know the field names above
 class NotificationBuilder(object):
-    def __init__(self, sender):
+    def __init__(self, sender, multiple=False):
         self.sender = sender
         self.data = {}
+        self.allow_multiple = multiple
 
     def set_collaboration(self, collab):
         self.data['collaboration_guid'] = collab.guid
@@ -192,16 +193,26 @@ class Notification(db.Model, HoustonModel):
         if isinstance(builder.sender, User):
             sender_guid = builder.sender.guid
 
-        new_notification = cls(
+        # prevent creation of a new notification if there is already an unread one
+        existing_notifications = cls.query.filter_by(
             recipient=receiving_user,
             message_type=notification_type,
-            message_values=data,
             sender_guid=sender_guid,
-        )
-        with db.session.begin(subtransactions=True):
-            db.session.add(new_notification)
-        new_notification.send_if_required()
-        return new_notification
+            is_read=False,
+        ).all()
+        if not builder.allow_multiple and len(existing_notifications):
+            return existing_notifications[0]
+        else:
+            new_notification = cls(
+                recipient=receiving_user,
+                message_type=notification_type,
+                message_values=data,
+                sender_guid=sender_guid,
+            )
+            with db.session.begin(subtransactions=True):
+                db.session.add(new_notification)
+            new_notification.send_if_required()
+            return new_notification
 
 
 class NotificationPreferences(HoustonModel):

@@ -7,6 +7,21 @@ import json
 from tests import utils as test_utils
 
 PATH = '/api/v1/notifications/'
+EXPECTED_NOTIFICATION_KEYS = {
+    'guid',
+    'is_read',
+    'message_type',
+    'sender_name',
+    'sender_guid',
+    'message_values',
+}
+EXPECTED_LIST_KEYS = {
+    'guid',
+    'is_read',
+    'message_type',
+    'sender_name',
+    'sender_guid',
+}
 
 
 def create_notification(
@@ -63,21 +78,13 @@ def patch_notification(
 def read_notification(
     flask_app_client, user, notification_guid, expected_status_code=200
 ):
-    expected_keys = {
-        'guid',
-        'is_read',
-        'message_type',
-        'sender_name',
-        'sender_guid',
-        'message_values',
-    }
     return test_utils.get_dict_via_flask(
         flask_app_client,
         user,
         scopes='notifications:read',
         path=f'{PATH}{notification_guid}',
         expected_status_code=expected_status_code,
-        response_200=expected_keys,
+        response_200=EXPECTED_NOTIFICATION_KEYS,
     )
 
 
@@ -88,6 +95,7 @@ def read_all_notifications(flask_app_client, user, expected_status_code=200):
         scopes='notifications:read',
         path=PATH,
         expected_status_code=expected_status_code,
+        expected_fields=EXPECTED_LIST_KEYS,
     )
 
 
@@ -98,14 +106,29 @@ def read_all_unread_notifications(flask_app_client, user, expected_status_code=2
         scopes='notifications:read',
         path=f'{PATH}unread',
         expected_status_code=expected_status_code,
+        expected_fields=EXPECTED_LIST_KEYS,
     )
 
 
-def get_notifications(json_data, from_user_guid, notification_type):
+def get_unread_notifications(json_data, from_user_guid, notification_type):
     return list(
         filter(
             lambda notif: notif['message_type'] == notification_type
-            and notif['sender_guid'] == from_user_guid,
+            and notif['sender_guid'] == from_user_guid
+            and notif['is_read'] is False,
             json_data,
         )
     )
+
+
+def mark_notification_as_read(
+    flask_app_client, user, notif_guid, expected_status_code=200
+):
+    data = [test_utils.patch_replace_op('is_read', True)]
+    patch_notification(flask_app_client, notif_guid, user, data, expected_status_code)
+
+
+def mark_all_notifications_as_read(flask_app_client, user):
+    unread_notifs = read_all_unread_notifications(flask_app_client, user)
+    for notif in unread_notifs.json:
+        mark_notification_as_read(flask_app_client, user, notif['guid'])

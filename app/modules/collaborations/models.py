@@ -194,6 +194,8 @@ class Collaboration(db.Model, HoustonModel):
 
         user_data = {}
         for association in self.collaboration_user_associations:
+            if association.read_approval_state == CollaborationUserState.CREATOR:
+                continue
             assoc_data = BaseUserSchema().dump(association.user).data
             assoc_data['viewState'] = association.read_approval_state
             assoc_data['editState'] = association.edit_approval_state
@@ -205,7 +207,11 @@ class Collaboration(db.Model, HoustonModel):
         ret_val = False
         # Only certain transitions are permitted
         if old_state == CollaborationUserState.NOT_INITIATED:
-            ret_val = new_state != CollaborationUserState.CREATOR
+            ret_val = new_state in [
+                CollaborationUserState.CREATOR,
+                CollaborationUserState.APPROVED,
+                CollaborationUserState.PENDING,
+            ]
         elif old_state == CollaborationUserState.PENDING:
             ret_val = new_state in [
                 CollaborationUserState.APPROVED,
@@ -296,8 +302,14 @@ class Collaboration(db.Model, HoustonModel):
             my_assoc.read_approval_state == CollaborationUserState.APPROVED
             and other_assoc.read_approval_state == CollaborationUserState.APPROVED
         ):
-            my_assoc.edit_approval_state = CollaborationUserState.APPROVED
-            other_assoc.edit_approval_state = CollaborationUserState.PENDING
+            if self._is_approval_state_transition_valid(
+                my_assoc.read_approval_state, CollaborationUserState.APPROVED
+            ):
+                my_assoc.edit_approval_state = CollaborationUserState.APPROVED
+            if self._is_approval_state_transition_valid(
+                other_assoc.edit_approval_state, CollaborationUserState.PENDING
+            ):
+                other_assoc.edit_approval_state = CollaborationUserState.PENDING
         else:
             raise HoustonException(
                 log, 'Unable to start edit on unapproved collaboration'

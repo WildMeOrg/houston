@@ -42,7 +42,7 @@ jobs:
           dotenv -f ${HOUSTON_DOTENV} set GITLAB_REMOTE_LOGIN_PAT -- "${{ secrets.GITLAB_REMOTE_LOGIN_PAT }}"
           dotenv -f ${HOUSTON_DOTENV} set SECRET_KEY -- "secret"
           # Install application
-          ./scripts/install.sh
+          ./scripts/codex/install.sh
 
       - name: Create frontend static directory (tests complains if static directory does not exist)
         run: |

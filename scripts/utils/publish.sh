@@ -19,15 +19,15 @@ shift $((OPTIND - 1))
 # Assign variables
 TAG=${TAG:-latest}
 REGISTRY=${REGISTRY:-}
-IMAGES=${@:-houston}
+IMAGES=${@:-codex}
 # Set the image prefix
 if [ -n "$REGISTRY" ]; then
-    IMG_PREFIX="${REGISTRY}/wildmeorg/houston/"
+    IMG_PREFIX="${REGISTRY}/wildmeorg/codex/"
 else
     IMG_PREFIX="wildme/"
 fi
 
-# Tag built images from `build.sh`, which tags as `latest`
+# Tag built images as `latest`
 for IMG in $IMAGES; do
     echo "Tagging wildme/${IMG}:latest --> ${IMG_PREFIX}${IMG}:${TAG}"
     docker tag wildme/${IMG}:latest ${IMG_PREFIX}${IMG}:${TAG}

@@ -24,15 +24,15 @@ function trap_error_help() {
 }
 
 function parse_git_hash() {
-    if [ -d _frontend ]; then
-        GIT_DIR='_frontend/.git'
+    if [ -d _frontend.codex ]; then
+        GIT_DIR='_frontend.codex/.git'
     fi
     GIT_DIR=$GIT_DIR git rev-parse --short HEAD 2> /dev/null | sed "s/\(.*\)/\1/"
 }
 
 # Get last commit hash prepended with @ (i.e. @8a323d0)
 GIT_BRANCH=$(parse_git_hash)
-# Copy dist packages out of _frontend repo and deploy
+# Copy dist packages out of Codex _frontend repo and deploy
 BASE_INSTALL_PATH="app/static/"
 
 
@@ -43,17 +43,17 @@ function get_install_path() {
 
 function checkout() {
     # Look for a previous submodule checkout prior to initializing
-    if [ ! -f _frontend/package.json ]; then
+    if [ ! -f _frontend.codex/package.json ]; then
         echo "Checking out  submodules..."
         git submodule update --init --recursive
     fi
 }
 
 function build_in_docker() {
-    echo "Running the frontend build within Docker..."
+    echo "Running the Codex frontend build within Docker..."
     # Ensure the node image is up-to-date
     docker pull node:latest
-    docker run --rm -v $(pwd)/:/code -w /code node:latest /bin/bash -c "./scripts/build.frontend.sh --exec"
+    docker run --rm -v $(pwd)/:/code -w /code node:latest /bin/bash -c "./scripts/codex/build.frontend.sh --exec"
     echo "Finished running the build within Docker"
 }
 
@@ -61,7 +61,7 @@ function build() {
     set -ex
 
     # Update code
-    pushd _frontend/
+    pushd _frontend.codex/
 
     echo "Building with Git hash = ${GIT_BRANCH}"
 
@@ -78,11 +78,11 @@ function build() {
     if [[ ! -f src/constants/apiKeys.js ]]
     then
         echo "Copying apiKeysTemplate.js to apiKeys.js..."
-        echo "You will need to edit _frontend/src/constants/apiKeys.js file to get the frontend to run properly."
+        echo "You will need to edit _frontend.codex/src/constants/apiKeys.js file to get the Codex frontend to run properly."
         cp src/constants/apiKeysTemplate.js src/constants/apiKeys.js
     fi
 
-    # Build dist of the frontend UI
+    # Build dist of the Codex frontend UI
     #  you can alter houston url here if desired
     npm run build -- --env=houston=relative
 
@@ -98,7 +98,7 @@ function install() {
     dist_install=$(get_install_path)
     rm -rf ${BASE_INSTALL_PATH}/dist-latest
     mkdir -p ${dist_install}
-    tar -zxvf _frontend/dist.latest.tar.gz -C ${dist_install} --strip-components=1
+    tar -zxvf _frontend.codex/dist.latest.tar.gz -C ${dist_install} --strip-components=1
     # Assume dist_install is also in $BASE_INSTALL_PATH
     ln -s $(basename ${dist_install}) ${BASE_INSTALL_PATH}/dist-latest
     echo "Finished Installing"

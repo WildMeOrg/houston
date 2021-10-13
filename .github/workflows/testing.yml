@@ -141,7 +141,7 @@ jobs:
 
       - name: Run other invoke tasks for coverage and errors
         run: |
-          docker-compose exec -T -e SQLALCHEMY_DATABASE_URI=$TEST_DATABASE_URI houston ./scripts/run_tasks_for_coverage.sh
+          docker-compose exec -T -e SQLALCHEMY_DATABASE_URI=$TEST_DATABASE_URI houston ./scripts/tests/run_tasks_for_coverage.sh
           docker-compose exec -T -e SQLALCHEMY_DATABASE_URI=$TEST_DATABASE_URI houston coverage xml
 
       - name: Upload coverage to Codecov

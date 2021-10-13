@@ -25,7 +25,7 @@ jobs:
           pip install pydot
           sudo apt-get install -y graphviz
       - name: Generate models graph
-        run: ./scripts/generate_models_graph.py
+        run: ./scripts/docs/generate_models_graph.py
       - name: Commit and push to docs
         run: |
           bash -xe <<EOF

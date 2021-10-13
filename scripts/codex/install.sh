@@ -1,8 +1,8 @@
 #!/bin/bash
 
-./scripts/venv.sh
+./scripts/codex/venv.sh
 
-source virtualenv/houston3.7/bin/activate
+source virtualenv/codex/bin/activate
 
 pip install -e ".[testing]"
 

@@ -1,0 +1,193 @@
+version: "3.8"
+
+services:
+
+  db:
+    image: postgres:10
+    volumes:
+      - db-pgdata-var:/var/lib/postgresql/data
+      # DB initialization scripts
+      - .dockerfiles/db/initdb.d/:/docker-entrypoint-initdb.d/
+    environment:
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD}"
+      WBIA_DB_NAME: "${WBIA_DB_NAME}"
+      WBIA_DB_USER: "${WBIA_DB_USER}"
+      WBIA_DB_PASSWORD: "${WBIA_DB_PASSWORD}"
+      WILDBOOK_DB_NAME: "${WILDBOOK_DB_NAME}"
+      WILDBOOK_DB_USER: "${WILDBOOK_DB_USER}"
+      WILDBOOK_DB_PASSWORD: "${WILDBOOK_DB_PASSWORD}"
+      HOUSTON_DB_NAME: "${HOUSTON_DB_NAME}"
+      HOUSTON_DB_USER: "${HOUSTON_DB_USER}"
+      HOUSTON_DB_PASSWORD: "${HOUSTON_DB_PASSWORD}"
+    networks:
+      - intranet
+
+  redis:
+    image: redis:latest
+    volumes:
+      - redis-var:/data
+    networks:
+      - intranet
+
+  elasticsearch:
+    # https://www.elastic.co/guide/en/elasticsearch/reference/current/docker.html
+    image: docker.elastic.co/elasticsearch/elasticsearch-oss:7.10.1
+    environment:
+      "discovery.type": single-node
+    ports:
+      # development exposure, not exposed in production
+      - 9200:9200
+      - 9300:9300
+    # volumes:
+    #   - es-var:/usr/share/elasticsearch/data
+    networks:
+      - intranet
+
+  acm:
+    # https://github.com/WildMeOrg/wildbook-ia
+    image: wildme/wildbook-ia:nightly
+    # FIXME: Adjust entrypoint to allow for additive command arguments
+    command: [ "wait-for", "db:5432", "--", "python3.7", "-m", "wbia.dev", "--dbdir", "${WBIA_DB_DIR}", "--logdir", "/data/logs/", "--web", "--port", "5000", "--web-deterministic-ports", "--containerized", "--cpudark", "--production", "--db-uri", "${WBIA_DB_URI}" ]
+    volumes:
+      # FIXME: `PermissionError: [Errno 13] Permission denied: '/data/db/_ibsdb'`
+      #        https://github.com/WildMeOrg/wildbook-ia/pull/184
+      - acm-var:/data/db
+    networks:
+      - intranet
+    environment:
+      # FIXME: Run as root to fix the PermissionError in volumes
+      EXEC_PRIVILEGED: 1
+      HOUSTON_CLIENT_ID: "${HOUSTON_CLIENT_ID}"
+      HOUSTON_CLIENT_SECRET: "${HOUSTON_CLIENT_SECRET}"
+    ports:
+      # FIXME: exposed for developer verification
+      - "82:5000"
+
+  edm:
+    # See: https://github.com/WildMeOrg/Wildbook/tree/next-gen
+    #  - git clone -b next-gen git@github.com:WildMeOrg/Wildbook.git && cd Wildbook
+    #  - ./scripts/build.docker.sh
+    image: wildme/edm:latest
+    volumes:
+      - edm-var:/data/wildbook_data_dir
+    # depends_on:
+    #   - db
+    networks:
+      - intranet
+    ports:
+      # FIXME: exposed for developer verification
+      - "81:8080"
+    environment:
+      DB_USER: "${WILDBOOK_DB_USER}"
+      DB_PASSWORD: "${WILDBOOK_DB_PASSWORD}"
+      DB_CONNECTION_URL: "${WILDBOOK_DB_CONNECTION_URL}"
+      # Admin user created on startup,
+      # https://github.com/WildMeOrg/Wildbook/commit/6d65e70e43691f1b281bb76edf151e5c7cdb7403
+      ADMIN_EMAIL: "${EDM_AUTHENTICATIONS_USERNAME__DEFAULT}"
+      ADMIN_PASSWORD: "${EDM_AUTHENTICATIONS_PASSWORD__DEFAULT}"
+      # JAVA_OPTS from old-world wildbook, which gives us 4G heap memory
+      JAVA_OPTS: "-Djava.awt.headless=true -XX:+UseConcMarkSweepGC -Xms4096m -Xmx4096m"
+
+  houston:
+    # https://github.com/WildMeOrg/houston
+    image: wildme/houston:latest
+    build: &houston-build
+      context: .
+    command: [ "wait-for", "db:5432", "--", "wait-for", "edm:8080", "--", "invoke", "app.run", "--host", "0.0.0.0" ]
+    networks:
+      - intranet
+      - frontend
+    ports:
+      # FIXME: exposed for developer verification
+      - "83:5000"
+    environment: &houston-environment
+      FLASK_CONFIG: development
+      SQLALCHEMY_DATABASE_URI: "${SQLALCHEMY_DATABASE_URI}"
+      TEST_DATABASE_URI: "${TEST_DATABASE_URI}"
+      EDM_AUTHENTICATIONS_URI__DEFAULT: "${EDM_AUTHENTICATIONS_URI__DEFAULT}"
+      EDM_AUTHENTICATIONS_USERNAME__DEFAULT: "${EDM_AUTHENTICATIONS_USERNAME__DEFAULT}"
+      EDM_AUTHENTICATIONS_PASSWORD__DEFAULT: "${EDM_AUTHENTICATIONS_PASSWORD__DEFAULT}"
+      ACM_AUTHENTICATIONS_URI__DEFAULT: "${ACM_AUTHENTICATIONS_URI__DEFAULT}"
+      ELASTICSEARCH_HOSTS: "${ELASTICSEARCH_HOSTS}"
+      HOUSTON_URL: "${HOUSTON_URL}"
+      REDIS_HOST: redis
+      OAUTH_CLIENT_ID: "${HOUSTON_CLIENT_ID}"
+      OAUTH_CLIENT_SECRET: "${HOUSTON_CLIENT_SECRET}"
+      OAUTH_USER_EMAIL: "${OAUTH_USER_EMAIL}"
+      WILDBOOK_DB_HOST: "${WILDBOOK_DB_HOST}"
+      WILDBOOK_DB_NAME: "${WILDBOOK_DB_NAME}"
+      WILDBOOK_DB_USER: "${WILDBOOK_DB_USER}"
+      WILDBOOK_DB_PASSWORD: "${WILDBOOK_DB_PASSWORD}"
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:5000/api/v1/site-info/heartbeat"]
+      timeout: 45s
+      interval: 10s
+      retries: 10
+    volumes: &houston-volumes
+      - houston-var:/data
+      - .dockerfiles/docker-entrypoint.sh:/docker-entrypoint.sh
+      - .dockerfiles/docker-entrypoint-init.d:/docker-entrypoint-init.d
+      - .dockerfiles/docker-entrypoint-always-init.d:/docker-entrypoint-always-init.d
+      # FIXME: pull in development code while working on bringing up the container
+      - .:/code
+
+  celery_beat:
+    image: wildme/houston:latest
+    build: *houston-build
+    command: [ "wait-for", "db:5432", "--", "wait-for", "edm:8080", "--", "celery", "-A", "app.extensions.celery.celery", "beat", "-s", "/data/var/celerybeat-schedule", "-l", "DEBUG"]
+    networks:
+      - intranet
+    depends_on:
+      houston:
+        condition: service_healthy
+    environment: *houston-environment
+    volumes: *houston-volumes
+
+  celery_worker:
+    image: wildme/houston:latest
+    build: *houston-build
+    command: [ "wait-for", "db:5432", "--", "wait-for", "edm:8080", "--", "celery", "-A", "app.extensions.celery.celery", "worker", "-l", "DEBUG"]
+    networks:
+      - intranet
+    depends_on:
+      houston:
+        condition: service_healthy
+    environment: *houston-environment
+    volumes: *houston-volumes
+
+  dev-frontend:
+    # this component is intended to only be used in development
+    image: node:latest
+    working_dir: /code
+    entrypoint: "/docker-entrypoint.sh"
+    networks:
+      - intranet
+    environment:
+      HOST: "0.0.0.0"
+      # See port served by 'www' component (i.e. the reverse proxy)
+      PORT: "84"
+    volumes:
+      - .dockerfiles/dev-frontend/docker-entrypoint.sh:/docker-entrypoint.sh
+      - ./_frontend:/code
+
+  www:
+    image: nginx:latest
+    networks:
+      - intranet
+      - frontend
+    ports:
+      - "84:80"
+    volumes:
+      - .dockerfiles/www/codex.conf:/etc/nginx/conf.d/default.conf
+
+networks:
+  intranet:
+  frontend:
+
+volumes:
+  db-pgdata-var:
+  edm-var:
+  # es-var:
+  redis-var:
+  acm-var:
+  houston-var:

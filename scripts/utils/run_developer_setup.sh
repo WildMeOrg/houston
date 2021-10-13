@@ -1,5 +1,5 @@
 #!/bin/bash
 
-./scripts/clean.sh
+./scripts/utils/clean.sh
 
 pip install -e ".[testing]"

@@ -53,7 +53,7 @@ class Relationship(db.Model, Timestamp):
     )
     end_date = db.Column(db.DateTime, index=True, default=datetime.utcnow, nullable=True)
 
-    type = db.Column(db.String, nullable=False)
+    type = db.Column(db.String, nullable=True)
 
     def __init__(
         self, individual_1, individual_2, individual_1_role, individual_2_role, **kwargs

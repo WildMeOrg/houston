@@ -19,9 +19,7 @@ def test_get_set_individual_names(db, flask_app_client, researcher_1):
 
     try:
 
-        response = sighting_utils.create_sighting(
-            flask_app_client, researcher_1, data_in=data_in
-        )
+        response = sighting_utils.create_sighting(flask_app_client, researcher_1, data_in)
 
         response_json = response.json
 
@@ -132,9 +130,7 @@ def test_ensure_default_name_on_individual_creation(db, flask_app_client, resear
     }
 
     try:
-        response = sighting_utils.create_sighting(
-            flask_app_client, researcher_1, data_in=data_in
-        )
+        response = sighting_utils.create_sighting(flask_app_client, researcher_1, data_in)
 
         response_json = response.json
 

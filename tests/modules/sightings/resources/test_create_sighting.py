@@ -18,18 +18,18 @@ def test_create_failures(flask_app_client, test_root, researcher_1):
 
     # default data_in will fail (no encounters)
     response = sighting_utils.create_sighting(
-        flask_app_client, researcher_1, expected_status_code=400
+        flask_app_client,
+        researcher_1,
+        expected_status_code=400,
+        expected_error='Must have at least one encounter',
     )
-    assert response.json['passed_message'] == 'Must have at least one encounter'
-    assert not response.json['success']
 
     # has encounters, zero assetReferences, but fails on bad (missing) locationId value
     data_in = {'startTime': timestamp, 'encounters': [{}]}
     response = sighting_utils.create_sighting(
-        flask_app_client, researcher_1, expected_status_code=400, data_in=data_in
+        flask_app_client, researcher_1, data_in, 400
     )
     assert response.json['errorFields'][0] == 'locationId'
-    assert not response.json['success']
 
     # has encounters, but bunk assetReferences
     data_in = {
@@ -39,22 +39,19 @@ def test_create_failures(flask_app_client, test_root, researcher_1):
         'context': 'test',
         'locationId': 'test',
     }
-    response = sighting_utils.create_sighting(
-        flask_app_client, researcher_1, expected_status_code=400, data_in=data_in
+    sighting_utils.create_sighting(
+        flask_app_client, researcher_1, data_in, 400, 'Invalid assetReference data'
     )
-    assert response.json['passed_message'] == 'Invalid assetReference data'
-    assert not response.json['success']
 
     # assetReferences, but no files for them
     data_in['assetReferences'][0] = {
         'transactionId': transaction_id,
         'path': 'i-dont-exist.jpg',
     }
-    response = sighting_utils.create_sighting(
-        flask_app_client, researcher_1, expected_status_code=400, data_in=data_in
+    sighting_utils.create_sighting(
+        flask_app_client, researcher_1, data_in, 400, 'Invalid assetReference data'
     )
-    assert response.json['passed_message'] == 'Invalid assetReference data'
-    assert not response.json['success']
+
     sighting_utils.cleanup_tus_dir(transaction_id)
 
 
@@ -83,10 +80,7 @@ def test_create_and_modify_and_delete_sighting(
             {'locationId': 'test2'},
         ],
     }
-    response = sighting_utils.create_sighting(
-        flask_app_client, researcher_1, expected_status_code=200, data_in=data_in
-    )
-    assert response.json['success']
+    response = sighting_utils.create_sighting(flask_app_client, researcher_1, data_in)
 
     sighting_id = response.json['result']['id']
     sighting = Sighting.query.get(sighting_id)
@@ -97,10 +91,7 @@ def test_create_and_modify_and_delete_sighting(
     assert enc0_id is not None
     assert enc1_id is not None
 
-    response = sighting_utils.read_sighting(
-        flask_app_client, researcher_1, sighting_id, expected_status_code=200
-    )
-    assert response.json['id'] == sighting_id
+    sighting_utils.read_sighting(flask_app_client, researcher_1, sighting_id)
 
     # test to see if we grew by 1 sighting and 2 encounters
     ct = test_utils.all_count(db)
@@ -109,7 +100,7 @@ def test_create_and_modify_and_delete_sighting(
 
     # test some simple modification (should succeed)
     new_loc_id = 'test_2'
-    response = sighting_utils.patch_sighting(
+    sighting_utils.patch_sighting(
         flask_app_client,
         researcher_1,
         sighting_id,
@@ -117,16 +108,12 @@ def test_create_and_modify_and_delete_sighting(
             {'op': 'replace', 'path': '/locationId', 'value': new_loc_id},
         ],
     )
-    assert response.json['success']
     # check that change was made
-    response = sighting_utils.read_sighting(
-        flask_app_client, researcher_1, sighting_id, expected_status_code=200
-    )
-    assert response.json['id'] == sighting_id
+    response = sighting_utils.read_sighting(flask_app_client, researcher_1, sighting_id)
     assert response.json['locationId'] == new_loc_id
 
     # test some modification (should fail due to invalid data)
-    response = sighting_utils.patch_sighting(
+    sighting_utils.patch_sighting(
         flask_app_client,
         researcher_1,
         sighting_id,
@@ -137,7 +124,7 @@ def test_create_and_modify_and_delete_sighting(
     )
 
     # patch op=add will create a new (3rd) encounter
-    response = sighting_utils.patch_sighting(
+    sighting_utils.patch_sighting(
         flask_app_client,
         researcher_1,
         sighting_id,
@@ -156,7 +143,7 @@ def test_create_and_modify_and_delete_sighting(
     enc0_id, enc1_id, enc2_id = [str(e.guid) for e in sighting.encounters]
 
     # patch op=remove the one we just added to get us back to where we started
-    response = sighting_utils.patch_sighting(
+    sighting_utils.patch_sighting(
         flask_app_client,
         researcher_1,
         sighting_id,
@@ -170,7 +157,7 @@ def test_create_and_modify_and_delete_sighting(
     assert ct['Encounter'] == orig_ct['Encounter'] + 2
 
     # patch op=remove the first encounter; should succeed no problem cuz there is one enc remaining
-    response = sighting_utils.patch_sighting(
+    sighting_utils.patch_sighting(
         flask_app_client,
         researcher_1,
         sighting_id,
@@ -199,7 +186,7 @@ def test_create_and_modify_and_delete_sighting(
     assert ct['Encounter'] == orig_ct['Encounter'] + 1
 
     # now we try again, but this time with header to allow for cascade deletion of sighting
-    response = sighting_utils.patch_sighting(
+    sighting_utils.patch_sighting(
         flask_app_client,
         researcher_1,
         sighting_id,
@@ -239,10 +226,7 @@ def test_create_anon_and_delete_sighting(db, flask_app_client, staff_user, test_
             },
         ],
     }
-    response = sighting_utils.create_sighting(
-        flask_app_client, None, expected_status_code=200, data_in=data_in
-    )
-    assert response.json['success']
+    response = sighting_utils.create_sighting(flask_app_client, None, data_in)
     assets = sorted(response.json['result']['assets'], key=lambda a: a['filename'])
     asset_guids = [a['guid'] for a in assets]
     assert assets[0]['filename'] == 'fluke.jpg'
@@ -266,7 +250,7 @@ def test_create_anon_and_delete_sighting(db, flask_app_client, staff_user, test_
 
     # test some modification; this should fail (401) cuz anon should not be allowed
     new_loc_id = 'test_2_fail'
-    response = sighting_utils.patch_sighting(
+    sighting_utils.patch_sighting(
         flask_app_client,
         None,
         sighting_id,
@@ -288,8 +272,8 @@ def test_create_anon_and_delete_sighting(db, flask_app_client, staff_user, test_
         'submitterEmail': 'public@localhost',
         'encounters': [{}],
     }
-    response = sighting_utils.create_sighting(
-        flask_app_client, None, expected_status_code=403, data_in=data_in
+    sighting_utils.create_sighting(
+        flask_app_client, None, data_in, 403, 'Invalid submitter data'
     )
 
     # anonymous, but using acceptable email address (should create new inactive user)
@@ -301,9 +285,7 @@ def test_create_anon_and_delete_sighting(db, flask_app_client, staff_user, test_
         'submitterEmail': test_email,
         'encounters': [{}],
     }
-    response = sighting_utils.create_sighting(
-        flask_app_client, None, expected_status_code=200, data_in=data_in
-    )
+    response = sighting_utils.create_sighting(flask_app_client, None, data_in)
     sighting_id = response.json['result']['id']
     sighting = Sighting.query.get(sighting_id)
     assert sighting is not None
@@ -334,11 +316,9 @@ def test_annotations_within_sightings(
             },
         ],
     }
-    response = sighting_utils.create_sighting(
-        flask_app_client, researcher_1, expected_status_code=400, data_in=data_in
+    sighting_utils.create_sighting(
+        flask_app_client, researcher_1, data_in, 400, 'Invalid encounter.annotations'
     )
-    assert not response.json['success']
-    assert response.json['passed_message'] == 'Invalid encounter.annotations'
 
     # now lets try a valid annotation
     from tests.modules.annotations.resources import utils as annot_utils
@@ -359,10 +339,8 @@ def test_annotations_within_sightings(
     annot0_guid = response.json['guid']
 
     data_in['encounters'][1]['annotations'][0]['guid'] = annot0_guid
-    response = sighting_utils.create_sighting(
-        flask_app_client, researcher_1, expected_status_code=200, data_in=data_in
-    )
-    assert response.json['success']
+    response = sighting_utils.create_sighting(flask_app_client, researcher_1, data_in)
+
     sighting_id = response.json['result']['id']
     assert len(response.json['result']['encounters']) == 2
     enc_guid = response.json['result']['encounters'][1]['id']

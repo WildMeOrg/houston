@@ -24,12 +24,13 @@ def test_modify_encounter(
         utils.patch_replace_op('owner', str(researcher_1.guid)),
         utils.patch_replace_op('locationId', 'FAIL'),
     ]
-    res = enc_utils.patch_encounter(
+    enc_utils.patch_encounter(
         flask_app_client,
         new_encounter_1.guid,
         researcher_1,
         patch_data,
         400,
+        'Cannot mix EDM patch paths and houston patch paths',
     )
 
     # non Owner cannot make themselves the owner
@@ -44,6 +45,7 @@ def test_modify_encounter(
         researcher_2,
         new_owner_as_res_2,
         403,
+        "You don't have the permission to access the requested resource.",
     )
     assert new_encounter_1.owner == researcher_1
 
@@ -60,10 +62,9 @@ def test_modify_encounter(
     # test changing locationId via patch
     new_val = 'LOCATION_TEST_VALUE'
     patch_data = [utils.patch_replace_op('locationId', new_val)]
-    res = enc_utils.patch_encounter(
+    enc_utils.patch_encounter(
         flask_app_client, new_encounter_1.guid, researcher_2, patch_data
     )
-    assert res.json['id'] == str(new_encounter_1.guid)
 
     # Attach some assets and annotations
     from app.modules.asset_groups.models import AssetGroup
@@ -124,15 +125,12 @@ def test_modify_encounter(
             'customFields', {'id': cfd_id, 'value': new_cfd_test_value}
         )
     ]
-    response = enc_utils.patch_encounter(
+    enc_utils.patch_encounter(
         flask_app_client, new_encounter_1.guid, researcher_2, patch_data
     )
 
-    assert response.status_code == 200
-    assert response.json['id'] == str(new_encounter_1.guid)
     # check that change was made
     enc = enc_utils.read_encounter(flask_app_client, researcher_2, new_encounter_1.guid)
-    assert enc.json['id'] == str(new_encounter_1.guid)
     # make sure customFields value has been altered
     assert 'customFields' in enc.json
     assert cfd_id in enc.json['customFields']
@@ -159,14 +157,13 @@ def test_modify_encounter_error(flask_app, flask_app_client, researcher_1):
     with mock.patch.object(
         flask_app.edm, 'request_passthrough', side_effect=edm_return_500
     ):
-        res = enc_utils.patch_encounter(
+        enc_utils.patch_encounter(
             flask_app_client,
             first_enc_guid,
             researcher_1,
             patch_data,
             expected_status_code=500,
         )
-    assert res.json['status'] == 500
 
     Encounter.query.get(first_enc_guid).sighting.delete()
     Encounter.query.get(first_enc_guid).delete()

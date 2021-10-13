@@ -24,10 +24,7 @@ def test_delete_method(db, flask_app_client, researcher_1, test_root, staff_user
             {'locationId': 'test2'},
         ],
     }
-    response = sighting_utils.create_sighting(
-        flask_app_client, researcher_1, expected_status_code=200, data_in=data_in
-    )
-    assert response.json['success']
+    response = sighting_utils.create_sighting(flask_app_client, researcher_1, data_in)
 
     sighting_id = response.json['result']['id']
     sighting = Sighting.query.get(sighting_id)

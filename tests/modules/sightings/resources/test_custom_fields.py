@@ -36,7 +36,6 @@ def test_custom_fields_on_sighting(
         researcher_1,
         data_in,
     )
-    assert response.json['success']
 
     sighting_id = response.json['result']['id']
     sighting = Sighting.query.get(sighting_id)
@@ -117,7 +116,7 @@ def test_custom_fields_on_sighting(
 
     # test patch on customFields
     new_cfd_test_value = 'NEW_CFD_TEST_VALUE'
-    response = sighting_utils.patch_sighting(
+    sighting_utils.patch_sighting(
         flask_app_client,
         researcher_1,
         sighting_id,
@@ -129,7 +128,7 @@ def test_custom_fields_on_sighting(
             }
         ],
     )
-    assert response.json['success']
+
     # check that change was made
     full_sighting = sighting_utils.read_sighting(
         flask_app_client,

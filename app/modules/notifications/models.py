@@ -161,7 +161,7 @@ class Notification(db.Model, HoustonModel):
             config = NOTIFICATION_CONFIG[self.message_type]
             email_message_values = {
                 'context_name': 'context not set',
-                'sender_name': self.recipient.full_name,
+                'sender_name': self.get_sender_name(),
                 'sender_link': '(sender link)',
             }
             email_message_values.update(self.message_values)

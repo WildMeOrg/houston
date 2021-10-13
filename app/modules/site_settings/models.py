@@ -45,5 +45,5 @@ class SiteSetting(db.Model, Timestamp):
 
     @classmethod
     def get_string(cls, key, default=None):
-        ss = cls.query.get(key)
-        return ss.string if ss else default
+        setting = cls.query.get(key)
+        return setting.string if setting else default

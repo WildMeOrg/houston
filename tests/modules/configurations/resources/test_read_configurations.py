@@ -18,7 +18,6 @@ def test_read_configurations(flask_app_client, researcher_1):
     response = conf_utils.read_configuration(
         flask_app_client, researcher_1, '__INVALID_KEY__', expected_status_code=400
     )
-    assert not response.json['success']
 
     from app.modules.ia_config_reader import IaConfig
 
@@ -63,9 +62,7 @@ def test_alter_configurations(flask_app_client, admin_user):
         'site.species',
         {'_value': vals},
     )
-    assert response.json['success']
     response = conf_utils.read_configuration(flask_app_client, admin_user, 'site.species')
-    assert response.json['success']
     assert 'value' in response.json['response']
     assert response.json['response']['value'][-1]['scientificName'] == 'Testus datum'
     # restore original list

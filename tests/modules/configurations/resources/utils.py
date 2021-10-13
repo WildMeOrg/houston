@@ -16,7 +16,7 @@ def read_configuration(
     conf_key,
     expected_status_code=200,
 ):
-    return test_utils.get_dict_via_flask(
+    res = test_utils.get_dict_via_flask(
         flask_app_client,
         user,
         scopes='configuration:read',
@@ -25,6 +25,11 @@ def read_configuration(
         response_200=EXPECTED_KEYS,
         response_error={'success', 'message'},
     )
+    if expected_status_code == 200:
+        assert res.json['success']
+    else:
+        assert not res.json['success']
+    return res
 
 
 def read_configuration_definition(
@@ -33,7 +38,7 @@ def read_configuration_definition(
     conf_key,
     expected_status_code=200,
 ):
-    return test_utils.get_dict_via_flask(
+    res = test_utils.get_dict_via_flask(
         flask_app_client,
         user,
         scopes='configuration:read',
@@ -41,6 +46,11 @@ def read_configuration_definition(
         expected_status_code=expected_status_code,
         response_200=EXPECTED_KEYS,
     )
+    if expected_status_code == 200:
+        assert res.json['success']
+    else:
+        assert not res.json['success']
+    return res
 
 
 def modify_configuration(
@@ -50,7 +60,7 @@ def modify_configuration(
     data,
     expected_status_code=200,
 ):
-    return test_utils.post_via_flask(
+    res = test_utils.post_via_flask(
         flask_app_client,
         user,
         scopes='configuration:write',
@@ -59,3 +69,8 @@ def modify_configuration(
         expected_status_code=expected_status_code,
         response_200={'success'},
     )
+    if expected_status_code == 200:
+        assert res.json['success']
+    else:
+        assert not res.json['success']
+    return res

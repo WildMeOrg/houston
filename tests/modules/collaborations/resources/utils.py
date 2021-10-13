@@ -122,6 +122,8 @@ def validate_expected_states(json_data, expected_states):
     members = json_data.get('members')
     users = json_data.get('user_guids', {})
     assert members
+    assert len(members) == len(expected_states)
+    assert len(members) == len(users)
     for expected_user_guid in expected_states.keys():
         assert str(expected_user_guid) in users
         for expected_state in expected_states[expected_user_guid].keys():

@@ -194,6 +194,8 @@ class Collaboration(db.Model, HoustonModel):
 
         user_data = {}
         for association in self.collaboration_user_associations:
+            if association.read_approval_state == CollaborationUserState.CREATOR:
+                continue
             assoc_data = BaseUserSchema().dump(association.user).data
             assoc_data['viewState'] = association.read_approval_state
             assoc_data['editState'] = association.edit_approval_state

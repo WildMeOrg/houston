@@ -457,6 +457,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
                 f'image list from sage {len(sage_image_uuids)} does not match local image list {len(job["asset_ids"])}',
             )
 
+        annotations = []
         for i, asset_id in enumerate(job['asset_ids']):
             asset = Asset.find(asset_id)
             if not asset:
@@ -477,17 +478,20 @@ class AssetGroupSighting(db.Model, HoustonModel):
 
                 bounds = Annotation.create_bounds(annot_data)
 
-                new_annot = Annotation(
-                    guid=uuid.uuid4(),
-                    content_guid=content_guid,
-                    asset=asset,
-                    ia_class=ia_class,
-                    viewpoint=viewpoint,
-                    bounds=bounds,
+                annotations.append(
+                    Annotation(
+                        guid=uuid.uuid4(),
+                        content_guid=content_guid,
+                        asset=asset,
+                        ia_class=ia_class,
+                        viewpoint=viewpoint,
+                        bounds=bounds,
+                    )
                 )
-                AuditLog.system_create_object(log, new_annot)
-                with db.session.begin(subtransactions=True):
-                    db.session.add(new_annot)
+        for new_annot in annotations:
+            AuditLog.system_create_object(log, new_annot)
+            with db.session.begin(subtransactions=True):
+                db.session.add(new_annot)
         self.job_complete(str(job_id))
 
     # Record that the asset has been updated for future re detection

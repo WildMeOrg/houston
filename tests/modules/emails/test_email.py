@@ -6,6 +6,9 @@ from app.modules.site_settings.models import SiteSetting
 import uuid
 
 
+test_recipient = str(uuid.uuid4()) + '-test@example.com'
+
+
 def _prep_sending(flask_app):
     assert flask_app.config[
         'TESTING'
@@ -25,9 +28,7 @@ def _cleanup_sending():
 def test_basic_send(flask_app):
     _prep_sending(flask_app)
     test_subject = 'test subject'
-    test_recipient = str(uuid.uuid4()) + '-test@example.com'
-    msg = RecordedEmail(test_subject)
-    msg.recipients = [test_recipient]
+    msg = RecordedEmail(test_subject, recipients=[test_recipient])
     msg.email_type = EmailTypes.invite
     msg.body = 'body'
 
@@ -49,13 +50,14 @@ def test_basic_send(flask_app):
 
 def test_validity(flask_app):
     _prep_sending(flask_app)
-    msg = Email('test subject')
+    msg = Email('test subject', recipients=[test_recipient])
     try:
         msg.go()
     except ValueError as ve:
         assert 'body' in str(ve)
     msg.body = 'test content'
     try:
+        msg.recipients = None
         msg.go()
     except ValueError as ve:
         assert 'recipients' in str(ve)
@@ -63,7 +65,7 @@ def test_validity(flask_app):
 
 
 def test_template():
-    msg = RecordedEmail()
+    msg = RecordedEmail(recipients=[test_recipient])
     args = {
         'subject': 'TEST_SUBJECT',
         'body': 'TEST_BODY',

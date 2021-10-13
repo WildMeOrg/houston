@@ -118,6 +118,8 @@ class Email(Message):
     """
 
     def __init__(self, *args, **kwargs):
+        if 'recipients' not in kwargs:
+            raise AttributeError('Email() must have recipients= argument')
         if current_app.config['TESTING']:
             log.info(
                 'Email is currently running with TESTING=True, so mail will not actually send.'
@@ -126,7 +128,8 @@ class Email(Message):
 
         # will attempt to discover via set_language() unless specifically set
         self.language = None
-        self._original_recipients = None
+        self._original_recipients = None  # should only be set by resolve_recipients
+        self.recipients = kwargs['recipients']
         self.template_name = None
         self.template_kwargs = {
             # TODO add some site_FOO (or other global) values, like site_name

@@ -165,8 +165,7 @@ class Notification(db.Model, HoustonModel):
                 'sender_link': '(sender link)',
             }
             email_message_values.update(self.message_values)
-            email = Email()
-            email.recipients = [self.recipient]
+            email = Email(recipients=[self.recipient])
             email.template(
                 f"notifications/{config['email_template_name']}", **email_message_values
             )

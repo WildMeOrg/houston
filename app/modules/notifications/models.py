@@ -162,7 +162,7 @@ class Notification(db.Model, HoustonModel):
             email_message_values = {
                 'context_name': 'context not set',
                 'sender_name': self.get_sender_name(),
-                'sender_link': '(sender link)',
+                'sender_link': 'TBD',  # TODO will be fixed after some SiteSetting hackery
             }
             email_message_values.update(self.message_values)
             email = Email(recipients=[self.recipient])

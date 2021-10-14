@@ -224,8 +224,8 @@ class EmailConfig(object):
     MAIL_USERNAME = os.getenv('MAIL_USERNAME', 'dev@wildme.org')
     MAIL_PASSWORD = os.getenv('MAIL_PASSWORD', 'XXX')
     MAIL_DEFAULT_SENDER = (
-        os.getenv('MAIL_DEFAULT_SENDER_NAME', 'Wild Me'),
-        os.getenv('MAIL_DEFAULT_SENDER_EMAIL', 'dev@wildme.org'),
+        os.getenv('MAIL_DEFAULT_SENDER_NAME', 'Codex Mailbot'),
+        os.getenv('MAIL_DEFAULT_SENDER_EMAIL', 'changeme@example.com'),
     )
 
 

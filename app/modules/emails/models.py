@@ -59,8 +59,8 @@ class RecordedEmail(Email):
         self.email_type = None
         super(RecordedEmail, self).__init__(*args, **kwargs)
 
-    def go(self, *args, **kwargs):
-        response = super(RecordedEmail, self).go(*args, **kwargs)
+    def send_message(self, *args, **kwargs):
+        response = super(RecordedEmail, self).send_message(*args, **kwargs)
         try:
             if self.email_type is not None:
                 status = response.get('status', None)

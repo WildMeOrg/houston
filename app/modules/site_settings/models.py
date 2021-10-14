@@ -42,3 +42,8 @@ class SiteSetting(db.Model, Timestamp):
         setting = cls(**kwargs)
         with db.session.begin(subtransactions=True):
             return db.session.merge(setting)
+
+    @classmethod
+    def get_string(cls, key, default=None):
+        setting = cls.query.get(key)
+        return setting.string if setting else default

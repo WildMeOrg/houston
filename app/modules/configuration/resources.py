@@ -82,6 +82,9 @@ class EDMConfigurationDefinition(Resource):
                         },
                     )
 
+        if path == '__bundle_setup':
+            data = _site_setting_get_definition_inject(data)
+
         # TODO also traverse private here FIXME
         return data
 
@@ -137,10 +140,6 @@ class EDMConfiguration(Resource):
             and not current_user.is_anonymous
             and current_user.is_admin
         )
-
-        # TODO make private private - traverse bundles too
-        # private means cannot be read other than admin
-        # abort(code=HTTPStatus.FORBIDDEN, message='unavailable')
 
         if path == '__bundle_setup':
             data['response']['configuration'][
@@ -224,6 +223,28 @@ def _site_setting_get_inject(data):
             }
         if sskey == 'email_service_password':
             data['response']['configuration'][sskey]['private'] = True
+    return data
+
+
+def _site_setting_get_definition_inject(data):
+    assert 'response' in data and 'configuration' in data['response']
+    for sskey in SITESETTINGS_TO_APPEND:
+        data['response']['configuration'][sskey] = {
+            'defaultValue': '',
+            'isPrivate': False,
+            'settable': True,
+            'fieldType': 'string',
+            'displayType': 'string',
+        }
+        val = SiteSetting.get_string(sskey)
+        if val is not None:
+            data['response']['configuration'][sskey]['currentValue'] = val
+        if sskey == 'email_service_password':
+            data['response']['configuration'][sskey]['isPrivate'] = True
+            del data['response']['configuration'][sskey]['currentValue']
+        if sskey == 'email_service':
+            data['response']['configuration'][sskey]['defaultValue'] = None
+            data['response']['configuration'][sskey]['options'] = [None, 'mailchimp']
     return data
 
 

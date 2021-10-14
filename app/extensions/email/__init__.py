@@ -19,6 +19,7 @@ from jinja2 import TemplateNotFound
 from premailer import Premailer
 import cssutils
 import htmlmin
+import app.version
 
 from io import StringIO
 import re
@@ -129,7 +130,6 @@ class Email(Message):
         # will attempt to discover via set_language() unless specifically set
         self.language = None
         self._original_recipients = None  # should only be set by resolve_recipients
-        self.recipients = kwargs['recipients']
         self.template_name = None
         self.template_kwargs = {
             # TODO add some site_FOO (or other global) values, like site_name
@@ -147,6 +147,9 @@ class Email(Message):
             kwargs['recipients'] = override_recipients
 
         super(Email, self).__init__(*args, **kwargs)
+        self.extra_headers = kwargs.get('extra_headers', {})
+        self.extra_headers['X-Houston-Version'] = app.version.version
+        self.extra_headers['X-Houston-Git-Revision'] = app.version.git_revision
 
     # note: in order to be able to use set_language(), recipients must be set first on the Email
     def template(self, template, **kwargs):
@@ -308,7 +311,7 @@ class Email(Message):
                 addresses.append(recip)
         self.recipients = addresses
 
-    def go(self, *args, **kwargs):
+    def send_message(self, *args, **kwargs):
         if _validate_settings():
             if not self.body and not self.html:
                 raise ValueError(

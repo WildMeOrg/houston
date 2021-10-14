@@ -169,7 +169,7 @@ class Notification(db.Model, HoustonModel):
             email.template(
                 f"notifications/{config['email_template_name']}", **email_message_values
             )
-            email.go()
+            email.send_message()
             self._channels_sent[NotificationChannel.email.value] = email
 
     @classmethod

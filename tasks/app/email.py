@@ -33,5 +33,5 @@ def send(
     msg = Email(subject, recipients=[recipient])
     msg.body = body
     msg.email_type = EmailTypes.invite
-    resp = msg.go()
+    resp = msg.send_message()
     return resp['success']

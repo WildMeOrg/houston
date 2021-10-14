@@ -34,7 +34,7 @@ def test_basic_send(flask_app):
 
     # outbox will track sent messages so we can verify this worked
     with msg.mail.record_messages() as outbox:
-        resp = msg.go()
+        resp = msg.send_message()
         assert resp['success']
         assert len(outbox) == 1
         assert outbox[0].subject == test_subject
@@ -52,13 +52,13 @@ def test_validity(flask_app):
     _prep_sending(flask_app)
     msg = Email('test subject', recipients=[test_recipient])
     try:
-        msg.go()
+        msg.send_message()
     except ValueError as ve:
         assert 'body' in str(ve)
     msg.body = 'test content'
     try:
         msg.recipients = None
-        msg.go()
+        msg.send_message()
     except ValueError as ve:
         assert 'recipients' in str(ve)
     _cleanup_sending()

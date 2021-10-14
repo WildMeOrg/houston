@@ -184,3 +184,36 @@ def test_asset_group_sighting_get_completion(
 
     asset_group_sighting.stage = AssetGroupSightingStage.failed
     assert asset_group_sighting.get_completion() == 100
+
+
+def test_asset_group_sighting_config_field_getter(researcher_1, request):
+    from app.modules.asset_groups.models import AssetGroupSighting, AssetGroup
+
+    asset_group = AssetGroup(owner=researcher_1)
+    request.addfinalizer(asset_group.delete)
+    ags = AssetGroupSighting(asset_group=asset_group)
+    request.addfinalizer(ags.delete)
+
+    config_field_getter = AssetGroupSighting.config_field_getter
+
+    ags.config = None
+    assert config_field_getter('name')(ags) is None
+    assert config_field_getter('name', default='value')(ags) == 'value'
+    assert config_field_getter('name', default=1, cast=int)(ags) == 1
+    assert config_field_getter('name', cast=int)(ags) is None
+
+    ags.config = {'id': '10', 'decimalLatitude': None}
+    assert config_field_getter('id')(ags) == '10'
+    assert config_field_getter('id', default=1)(ags) == '10'
+    assert config_field_getter('id', default=1, cast=int)(ags) == 10
+    assert config_field_getter('id', cast=int)(ags) == 10
+
+    assert config_field_getter('decimalLatitude')(ags) is None
+    assert config_field_getter('decimalLatitude', default=1.0)(ags) == 1.0
+    assert config_field_getter('decimalLatitude', default=1.0, cast=float)(ags) == 1.0
+    assert config_field_getter('decimalLatitude', cast=float)(ags) is None
+
+    assert config_field_getter('name')(ags) is None
+    assert config_field_getter('name', default='value')(ags) == 'value'
+    assert config_field_getter('name', default=1, cast=int)(ags) == 1
+    assert config_field_getter('name', cast=int)(ags) is None

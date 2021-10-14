@@ -6,7 +6,6 @@ Serialization schemas for Asset_groups resources RESTful API
 
 from flask_marshmallow import base_fields
 from flask_restx_patched import ModelSchema
-from marshmallow import post_dump
 
 from .models import AssetGroup, AssetGroupSighting
 
@@ -14,11 +13,15 @@ from .models import AssetGroup, AssetGroupSighting
 # Sighting endpoints to standardize frontend interactions. For that reason we need
 # to know which sighting fields to expect in an AssetGroupSighting.config dict
 SIGHTING_FIELDS_IN_AGS_CONFIG = {
+    'startTime',
     'decimalLatitude',
     'decimalLongitude',
     'encounters',
     'locationId',
-    'startTime',
+    'verbatimLocality',
+    'encounterCounts',
+    'id',
+    'featuredAssetGuid',
 }
 
 
@@ -71,32 +74,34 @@ class AssetGroupSightingAsSightingSchema(BaseAssetGroupSightingSchema):
 
     # Note: these config_field_getter vars should conform to SIGHTING_FIELDS_IN_AGS_CONFIG
     # at the top of this file
-    decimalLatitude = base_fields.Function(
-        AssetGroupSighting.config_field_getter('decimalLatitude')
-    )
-    decimalLongitude = base_fields.Function(
-        AssetGroupSighting.config_field_getter('decimalLongitude')
-    )
-    locationId = base_fields.Function(
-        AssetGroupSighting.config_field_getter('locationId')
-    )
     startTime = base_fields.Function(AssetGroupSighting.config_field_getter('startTime'))
     encounters = base_fields.Function(
-        AssetGroupSighting.config_field_getter('encounters')
+        AssetGroupSighting.config_field_getter('encounters', default=[])
+    )
+    decimalLatitude = base_fields.Function(
+        AssetGroupSighting.config_field_getter('decimalLatitude', cast=float)
+    )
+    decimalLongitude = base_fields.Function(
+        AssetGroupSighting.config_field_getter('decimalLongitude', cast=float)
+    )
+    locationId = base_fields.Function(
+        AssetGroupSighting.config_field_getter('locationId', default='')
+    )
+    verbatimLocality = base_fields.Function(
+        AssetGroupSighting.config_field_getter('verbatimLocality', default='')
+    )
+    id = base_fields.Function(AssetGroupSighting.config_field_getter('id', cast=int))
+    encounterCounts = base_fields.Function(
+        AssetGroupSighting.config_field_getter('encounterCounts', default={})
+    )
+    featured_asset_guid = base_fields.Function(
+        AssetGroupSighting.config_field_getter('featuredAssetGuid')
     )
 
     class Meta:
         # adds 'stage' to the fields already defined above
         additional = ('stage',)
         dump_only = BaseAssetGroupSightingSchema.Meta.dump_only
-
-    # Ensures we don't return fields with None values
-    @post_dump
-    def remove_none_fields(self, data):
-        for field in SIGHTING_FIELDS_IN_AGS_CONFIG:
-            if data[field] is None:
-                del data[field]
-        return data
 
 
 class BaseAssetGroupSchema(ModelSchema):

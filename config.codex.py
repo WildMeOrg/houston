@@ -106,6 +106,19 @@ class BaseConfig(object):
     }
 
     # fmt: off
+    ENABLED_EXTENSIONS = (
+        'acm',
+        'edm',
+        'cors',
+        'elasticsearch',
+        'gitlab',
+        'tus',
+        'mail',
+        'stripe',
+    )
+    # fmt: on
+
+    # fmt: off
     # THIS ORDERING IS VERY SPECIFIC AND INFLUENCES WHICH MODULES CAN DEPEND ON EACH OTHER
     ENABLED_MODULES = (
         # Users

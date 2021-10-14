@@ -296,9 +296,13 @@ class AdminUserInitialized(Resource):
             # now we attempt to create on edm as well
             from flask import current_app
 
-            rtn['edmInitialized'] = current_app.edm.initialize_edm_admin_user(
-                email, password
-            )
+            try:
+                rtn['edmInitialized'] = current_app.edm.initialize_edm_admin_user(
+                    email, password
+                )
+            except AttributeError:
+                rtn['edmInitialized'] = False
+
             if not rtn['edmInitialized']:
                 log.warning('EDM admin user not created; previous may have existed.')
             return rtn
@@ -358,10 +362,14 @@ class UserSightings(Resource):
 
         start, end = args['offset'], args['offset'] + args['limit']
         for sighting in user.get_sightings()[start:end]:
-            sighting_response = current_app.edm.get_dict(
-                'sighting.data_complete', sighting.guid
-            )
-            if sighting_response.get('result') is not None:
+            try:
+                sighting_response = current_app.edm.get_dict(
+                    'sighting.data_complete', sighting.guid
+                )
+            except AttributeError:
+                response['success'] = False
+
+            if sighting_response is not None and sighting_response.get('result') is not None:
                 response['sightings'].append(sighting_response['result'])
 
         return response

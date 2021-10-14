@@ -3,6 +3,7 @@
 set -e
 
 ./scripts/utils/deactivate.sh
+./scripts/utils/clean.sh
 
 ln -s .env.mws .env
 ln -s config.mws.py config.py

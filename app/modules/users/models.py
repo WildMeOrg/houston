@@ -154,63 +154,63 @@ class User(db.Model, FeatherModel, UserEDMMixin):
 
     profile_fileupload = db.relationship(FileUpload)
 
-    organization_membership_enrollments = db.relationship(
-        'OrganizationUserMembershipEnrollment', back_populates='user'
-    )
+    # organization_membership_enrollments = db.relationship(
+    #     'OrganizationUserMembershipEnrollment', back_populates='user'
+    # )
 
-    organization_moderator_enrollments = db.relationship(
-        'OrganizationUserModeratorEnrollment', back_populates='user'
-    )
+    # organization_moderator_enrollments = db.relationship(
+    #     'OrganizationUserModeratorEnrollment', back_populates='user'
+    # )
 
-    project_membership_enrollments = db.relationship(
-        'ProjectUserMembershipEnrollment', back_populates='user'
-    )
+    # project_membership_enrollments = db.relationship(
+    #     'ProjectUserMembershipEnrollment', back_populates='user'
+    # )
 
-    user_collaboration_associations = db.relationship(
-        'CollaborationUserAssociations', back_populates='user'
-    )
+    # user_collaboration_associations = db.relationship(
+    #     'CollaborationUserAssociations', back_populates='user'
+    # )
 
-    asset_groups = db.relationship(
-        'AssetGroup',
-        back_populates='owner',
-        primaryjoin='User.guid == AssetGroup.owner_guid',
-        order_by='AssetGroup.guid',
-    )
+    # asset_groups = db.relationship(
+    #     'AssetGroup',
+    #     back_populates='owner',
+    #     primaryjoin='User.guid == AssetGroup.owner_guid',
+    #     order_by='AssetGroup.guid',
+    # )
 
-    submitted_asset_groups = db.relationship(
-        'AssetGroup',
-        back_populates='submitter',
-        primaryjoin='User.guid == AssetGroup.submitter_guid',
-        order_by='AssetGroup.guid',
-    )
+    # submitted_asset_groups = db.relationship(
+    #     'AssetGroup',
+    #     back_populates='submitter',
+    #     primaryjoin='User.guid == AssetGroup.submitter_guid',
+    #     order_by='AssetGroup.guid',
+    # )
 
-    owned_encounters = db.relationship(
-        'Encounter',
-        back_populates='owner',
-        primaryjoin='User.guid == Encounter.owner_guid',
-        order_by='Encounter.guid',
-    )
+    # owned_encounters = db.relationship(
+    #     'Encounter',
+    #     back_populates='owner',
+    #     primaryjoin='User.guid == Encounter.owner_guid',
+    #     order_by='Encounter.guid',
+    # )
 
-    submitted_encounters = db.relationship(
-        'Encounter',
-        back_populates='submitter',
-        primaryjoin='User.guid == Encounter.submitter_guid',
-        order_by='Encounter.guid',
-    )
+    # submitted_encounters = db.relationship(
+    #     'Encounter',
+    #     back_populates='submitter',
+    #     primaryjoin='User.guid == Encounter.submitter_guid',
+    #     order_by='Encounter.guid',
+    # )
 
-    owned_organizations = db.relationship(
-        'Organization',
-        back_populates='owner',
-        primaryjoin='User.guid == Organization.owner_guid',
-        order_by='Organization.guid',
-    )
+    # owned_organizations = db.relationship(
+    #     'Organization',
+    #     back_populates='owner',
+    #     primaryjoin='User.guid == Organization.owner_guid',
+    #     order_by='Organization.guid',
+    # )
 
-    owned_projects = db.relationship(
-        'Project',
-        back_populates='owner',
-        primaryjoin='User.guid == Project.owner_guid',
-        order_by='Project.guid',
-    )
+    # owned_projects = db.relationship(
+    #     'Project',
+    #     back_populates='owner',
+    #     primaryjoin='User.guid == Project.owner_guid',
+    #     order_by='Project.guid',
+    # )
 
     # User may have many notifications
     notifications = db.relationship(
@@ -441,28 +441,31 @@ class User(db.Model, FeatherModel, UserEDMMixin):
 
                 # As a fallback, check all EDMs if the user can login
                 if edm_login_fallback:
-                    # We want to check the EDM even if we don't have a local user record
-                    if current_app.edm.check_user_login(email_candidate, password):
-                        log.info('User authenticated via EDM: %r' % (email_candidate,))
+                    try:
+                        # We want to check the EDM even if we don't have a local user record
+                        if current_app.edm.check_user_login(email_candidate, password):
+                            log.info('User authenticated via EDM: %r' % (email_candidate,))
 
-                        if user is not None:
-                            # We authenticated a local user against an EDM (but the local password failed)
-                            if user.password != password:
-                                # The user passed the login with an EDM, update local password
-                                log.warning(
-                                    "Updating user's local password: %r" % (user,)
+                            if user is not None:
+                                # We authenticated a local user against an EDM (but the local password failed)
+                                if user.password != password:
+                                    # The user passed the login with an EDM, update local password
+                                    log.warning(
+                                        "Updating user's local password: %r" % (user,)
+                                    )
+                                    user = user.set_password(password)
+                                return user
+                            else:
+                                log.critical(
+                                    'The user authenticated via EDM but has no local user record'
                                 )
-                                user = user.set_password(password)
-                            return user
-                        else:
-                            log.critical(
-                                'The user authenticated via EDM but has no local user record'
-                            )
-                            # Try syncing all users from EDM
-                            cls.edm_sync_all()
-                            # If the user was just synced, go grab it (recursively) and return
-                            user = cls.find(email=email, edm_login_fallback=False)
-                            return user
+                                # Try syncing all users from EDM
+                                cls.edm_sync_all()
+                                # If the user was just synced, go grab it (recursively) and return
+                                user = cls.find(email=email, edm_login_fallback=False)
+                                return user
+                    except AttributeError:
+                        return None
 
         # If we have gotten here, one of these things happened:
         #    1) the user wasn't found

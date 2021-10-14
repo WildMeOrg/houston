@@ -36,15 +36,29 @@ class Encounter(db.Model, FeatherModel):
     owner_guid = db.Column(
         db.GUID, db.ForeignKey('user.guid'), index=True, nullable=False
     )
+    # owner = db.relationship(
+    #     'User', back_populates='owned_encounters', foreign_keys=[owner_guid]
+    # )
     owner = db.relationship(
-        'User', back_populates='owned_encounters', foreign_keys=[owner_guid]
+        'User', 
+        backref=db.backref('owned_encounters'),
+        foreign_keys=[owner_guid],
+        primaryjoin='User.guid == Encounter.owner_guid',
+        order_by='Encounter.guid',
     )
 
     submitter_guid = db.Column(
         db.GUID, db.ForeignKey('user.guid'), index=True, nullable=True
     )
+    # submitter = db.relationship(
+    #     'User', back_populates='submitted_encounters', foreign_keys=[submitter_guid]
+    # )
     submitter = db.relationship(
-        'User', back_populates='submitted_encounters', foreign_keys=[submitter_guid]
+        'User', 
+        backref=db.backref('submitted_encounters'),
+        foreign_keys=[submitter_guid],
+        primaryjoin='User.guid == Encounter.submitter_guid',
+        order_by='Encounter.guid',
     )
 
     # Asset group sighting stores the configuration for this encounter,
@@ -55,11 +69,13 @@ class Encounter(db.Model, FeatherModel):
 
     public = db.Column(db.Boolean, default=False, nullable=False)
 
-    projects = db.relationship(
-        'ProjectEncounter',
-        back_populates='encounter',
-        order_by='ProjectEncounter.project_guid',
-    )
+    # <TODO - MWS>
+    # projects = db.relationship(
+    #     'ProjectEncounter',
+    #     back_populates='encounter',
+    #     order_by='ProjectEncounter.project_guid',
+    # )
+    # </TODO>
 
     annotations = db.relationship(
         'Annotation', back_populates='encounter', order_by='Annotation.guid'

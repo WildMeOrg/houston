@@ -28,7 +28,8 @@ class ProjectUserMembershipEnrollment(db.Model, HoustonModel):
 
     project = db.relationship('Project', back_populates='user_membership_enrollments')
 
-    user = db.relationship('User', back_populates='project_membership_enrollments')
+    # user = db.relationship('User', back_populates='project_membership_enrollments')
+    user = db.relationship('User', backref=db.backref('project_membership_enrollments'))
 
 
 class Project(db.Model, HoustonModel, Timestamp):
@@ -54,7 +55,13 @@ class Project(db.Model, HoustonModel, Timestamp):
     owner_guid = db.Column(
         db.GUID, db.ForeignKey('user.guid'), index=True, nullable=False
     )
-    owner = db.relationship('User', back_populates='owned_projects')
+    # owner = db.relationship('User', back_populates='owned_projects')
+    owner = db.relationship(
+        'User', 
+        backref=db.backref('owned_projects'), 
+        primaryjoin='User.guid == Project.owner_guid',
+        order_by='Project.guid',
+    )
 
     def __repr__(self):
         return (

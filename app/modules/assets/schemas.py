@@ -30,14 +30,18 @@ class DetailedAssetSchema(BaseAssetSchema):
     Detailed Asset schema exposes all useful fields.
     """
 
-    asset_group = base_fields.Nested('BaseAssetGroupSchema')
+    # <TODO - MWS>
+    # asset_group = base_fields.Nested('BaseAssetGroupSchema')
+    # </TODO>
     annotations = base_fields.Nested('DetailedAnnotationSchema', many=True)
 
     class Meta(BaseAssetSchema.Meta):
         fields = BaseAssetSchema.Meta.fields + (
             Asset.created.key,
             Asset.updated.key,
-            Asset.asset_group.key,
+            # <TODO - MWS>
+            # Asset.asset_group.key,
+            # </TODO>
             'annotations',
             'dimensions',
         )

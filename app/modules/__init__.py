@@ -31,5 +31,5 @@ def init_app(app, **kwargs):
             pass
 
     for module_name in app.config['ENABLED_MODULES']:
-        logging.debug('Init module %r' % (module_name,))
+        logging.info('Init module %r' % (module_name,))
         import_module('.%s' % module_name, package=__name__).init_app(app, **kwargs)

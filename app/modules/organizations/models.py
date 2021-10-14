@@ -124,7 +124,9 @@ class OrganizationUserMembershipEnrollment(db.Model, HoustonModel):
         'Organization', back_populates='user_membership_enrollments'
     )
 
-    user = db.relationship('User', back_populates='organization_membership_enrollments')
+    # user = db.relationship('User', back_populates='organization_membership_enrollments')
+    user = db.relationship('User', backref=db.backref('organization_membership_enrollments'))
+
 
 
 class OrganizationUserModeratorEnrollment(db.Model, HoustonModel):
@@ -137,7 +139,8 @@ class OrganizationUserModeratorEnrollment(db.Model, HoustonModel):
 
     organization = db.relationship('Organization', back_populates='moderator_enrollments')
 
-    user = db.relationship('User', back_populates='organization_moderator_enrollments')
+    # user = db.relationship('User', back_populates='organization_moderator_enrollments')
+    user = db.relationship('User', backref=db.backref('organization_moderator_enrollments'))
 
 
 class Organization(db.Model, HoustonModel, OrganizationEDMMixin):
@@ -165,7 +168,13 @@ class Organization(db.Model, HoustonModel, OrganizationEDMMixin):
     )
 
     owner_guid = db.Column(db.GUID, db.ForeignKey('user.guid'), index=True, nullable=True)
-    owner = db.relationship('User', back_populates='owned_organizations')
+    # owner = db.relationship('User', back_populates='owned_organizations')
+    owner = db.relationship(
+        'User', 
+        backref=db.backref('owned_organizations'), 
+        primaryjoin='User.guid == Organization.owner_guid',
+        order_by='Organization.guid',
+    )
 
     def __repr__(self):
         return (

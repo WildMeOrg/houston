@@ -106,29 +106,25 @@ class BaseConfig(object):
     }
 
     # fmt: off
+    ENABLED_EXTENSIONS = (
+        'acm',
+        'cors',
+        # 'elasticsearch',
+        'tus',
+        'mail',
+    )
+    # fmt: on
+
+    # fmt: off
     # THIS ORDERING IS VERY SPECIFIC AND INFLUENCES WHICH MODULES CAN DEPEND ON EACH OTHER
     ENABLED_MODULES = (
         # Users
         #   Dependencies: [NONE]
         'users',
 
-        # Organizations
-        #   Dependencies: Users
-        #
-        #   Note: Organization defines a many-to-many relationship with User
-        #         and will import app.modules.organizations.models when the
-        #         User module and object are imported.  Disabling the
-        #         'organizations' modules will currently break the implementation
-        #         of the User model because it creates a broken backref
-        'organizations',
-
         # Authentication
         #   Dependencies: Users
         'auth',
-
-        # Asset_groups
-        #   Dependencies: Users
-        'asset_groups',
 
         # Assets
         #   Dependencies: Asset_groups
@@ -137,18 +133,14 @@ class BaseConfig(object):
         # Miscellaneous
         'keywords',
         'fileuploads',
-        'collaborations',
         'notifications',
-        'encounters',
-        'projects',
-        'sightings',
-        'individuals',
         'annotations',
-        'site_settings',
         'site_info',
         'job_control',
-        'elasticsearch_proxy',
-        'elasticsearch',
+
+        # Elastic Search
+        # 'elasticsearch_proxy',
+        # 'elasticsearch',
 
         # Front-end
         #   Dependencies: Users, Auth, Assets
@@ -159,8 +151,6 @@ class BaseConfig(object):
         # REST APIs = API, Passthroughs, Configuration
         #   Dependencies: Users, Auth
         'api',
-        'passthroughs',
-        'configuration',
         'audit_logs',
     )
     # fmt: on
@@ -180,7 +170,7 @@ class BaseConfig(object):
     SWAGGER_UI_OAUTH_REALM = 'Authentication for Houston server documentation'
     SWAGGER_UI_OAUTH_APP_NAME = 'Houston server documentation'
 
-    SQLALCHEMY_TRACK_MODIFICATIONS = True
+    SQLALCHEMY_TRACK_MODIFICATIONS = False
     CSRF_ENABLED = True
     PREMAILER_CACHE_MAXSIZE = 1024
     CONFIG_MODEL = 'zebra'
@@ -295,42 +285,6 @@ class ACMConfig(object):
         ACM_URIS['default'] = 'https://sandbox.tier2.dyn.wildme.io'
 
 
-class EDMConfig(object):
-    # Read the config from the environment but ensure that there is always a default URI
-    EDM_URIS, EDM_AUTHENTICATIONS = get_env_rest_config('EDM')
-    if 'default' not in EDM_URIS:
-        EDM_URIS['default'] = 'https://nextgen.dev-wildbook.org/'
-
-
-class AssetGroupConfig(object):
-    GITLAB_REMOTE_URI = os.getenv('GITLAB_REMOTE_URI', 'https://sub.dyn.wildme.io/')
-    GIT_PUBLIC_NAME = os.getenv('GIT_PUBLIC_NAME', 'Houston')
-    GIT_EMAIL = os.getenv('GIT_EMAIL', 'dev@wildme.org')
-    GITLAB_NAMESPACE = os.getenv('GITLAB_NAMESPACE', 'TEST')
-    GITLAB_REMOTE_LOGIN_PAT = os.getenv('GITLAB_REMOTE_LOGIN_PAT')
-    # FIXME: Note, if you change the SSH key, you should also delete the ssh_id file (see GIT_SSH_KEY_FILEPATH)
-    GIT_SSH_KEY = os.getenv('GIT_SSH_KEY')
-
-    @property
-    def GIT_SSH_KEY_FILEPATH(self):
-        # Assuming mixed-in with BaseConfig
-        fp = DATA_ROOT / 'id_ssh_key'
-        if self.GIT_SSH_KEY is None:
-            # Assume the user knows what they are doing and bail out
-            # FIXME: It's possible to get here because parts of the application
-            #        needs loaded before all the configuration is available.
-            return fp
-        # Assume if the file exists, we're all good.
-        if not fp.exists():
-            with fp.open('w') as fb:
-                fb.write(self.GIT_SSH_KEY)
-        return fp
-
-    @property
-    def GIT_SSH_COMMAND(self):
-        return f'ssh -i {self.GIT_SSH_KEY_FILEPATH} -o StrictHostKeyChecking=no'
-
-
 def _parse_elasticsearch_hosts(raw_hosts_line):
     # Ignore None value, allowing the application to fail on usage =/
     hosts = []
@@ -352,33 +306,13 @@ class ElasticsearchConfig:
     ELASTICSEARCH_HOSTS = _parse_elasticsearch_hosts(os.getenv('ELASTICSEARCH_HOSTS'))
 
 
-class WildbookDatabaseConfig:
-    WILDBOOK_DB_USER = os.getenv('WILDBOOK_DB_USER')
-    WILDBOOK_DB_PASSWORD = os.getenv('WILDBOOK_DB_PASSWORD')
-    WILDBOOK_DB_HOST = os.getenv('WILDBOOK_DB_HOST')
-    WILDBOOK_DB_PORT = os.getenv('WILDBOOK_DB_PORT', '5432')
-    WILDBOOK_DB_NAME = os.getenv('WILDBOOK_DB_NAME')
-
-    @property
-    def WILDBOOK_DB_URI(self):
-        user = self.WILDBOOK_DB_USER
-        password = self.WILDBOOK_DB_PASSWORD
-        host = self.WILDBOOK_DB_HOST
-        port = self.WILDBOOK_DB_PORT
-        database = self.WILDBOOK_DB_NAME
-        return f'postgresql://{user}:{password}@{host}:{port}/{database}'
-
-
 class ProductionConfig(
     BaseConfig,
-    EDMConfig,
     ACMConfig,
     EmailConfig,
     GoogleConfig,
-    AssetGroupConfig,
     ReCaptchaConfig,
     ElasticsearchConfig,
-    WildbookDatabaseConfig,
 ):
     TESTING = False
 
@@ -395,14 +329,11 @@ class ProductionConfig(
 
 class DevelopmentConfig(
     BaseConfig,
-    EDMConfig,
     ACMConfig,
     EmailConfig,
     GoogleConfig,
-    AssetGroupConfig,
     ReCaptchaConfig,
     ElasticsearchConfig,
-    WildbookDatabaseConfig,
 ):
     DEBUG = True
 

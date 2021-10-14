@@ -65,6 +65,13 @@ try:
 except ModuleNotFoundError as e:
     logger.warning(f'Unable to load tasks.codex.*\n{str(e)}')
 
+try:
+    from tasks import mws as mws_tasks  # NOQA
+
+    namespaces.append(mws_tasks)
+except ModuleNotFoundError as e:
+    logger.warning(f'Unable to load tasks.mws.*\n{str(e)}')
+
 from tasks import dependencies as task_dependencies  # NOQA
 from tasks import docker_compose as task_docker_compose  # NOQA
 

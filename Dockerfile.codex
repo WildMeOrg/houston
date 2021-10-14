@@ -5,10 +5,10 @@ COPY ./scripts /code/scripts
 # Build the frontend
 RUN set -x \
     && cd /code \
-    && git clone https://github.com/WildMeOrg/codex-frontend.git _frontend \
+    && git clone https://github.com/WildMeOrg/codex-frontend.git _frontend.codex \
     && export DEBUG=1 \
     && /bin/bash -c "source ./scripts/codex/build.frontend.sh && build" \
-    && /bin/bash -c "source ./scripts/codex.build.frontend.sh && install"
+    && /bin/bash -c "source ./scripts/codex/build.frontend.sh && install"
 
 
 FROM node:latest as swagger-ui

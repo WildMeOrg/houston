@@ -1,1 +1,1 @@
-config.codex.py
+config.mws.py

@@ -369,7 +369,7 @@ def init_development_data(context, upgrade_db=True, skip_on_failure=False):
 
     log.info('Initializing development data...')
 
-    from tasks.app import initial_development_data
+    from tasks.codex import initial_development_data
 
     try:
         initial_development_data.init()

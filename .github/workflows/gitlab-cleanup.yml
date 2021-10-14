@@ -55,4 +55,4 @@ jobs:
       - name: Cleanup
         run: |
           source virtualenv/houston3.7/bin/activate
-          invoke app.consistency.cleanup-gitlab
+          invoke codex.consistency.cleanup-gitlab

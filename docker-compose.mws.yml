@@ -47,7 +47,8 @@ services:
     # https://github.com/WildMeOrg/wildbook-ia
     image: wildme/wildbook-ia:nightly
     # FIXME: Adjust entrypoint to allow for additive command arguments
-    command: [ "wait-for", "db:5432", "--", "python3.7", "-m", "wbia.dev", "--dbdir", "${WBIA_DB_DIR}", "--logdir", "/data/logs/", "--web", "--port", "5000", "--web-deterministic-ports", "--containerized", "--cpudark", "--production", "--db-uri", "${WBIA_DB_URI}" ]
+    # , "--db-uri", "${WBIA_DB_URI}" 
+    command: [ "wait-for", "db:5432", "--", "python3.7", "-m", "wbia.dev", "--dbdir", "${WBIA_DB_DIR}", "--logdir", "/data/logs/", "--web", "--port", "5000", "--web-deterministic-ports", "--containerized", "--cpudark", "--production"]
     volumes:
       # FIXME: `PermissionError: [Errno 13] Permission denied: '/data/db/_ibsdb'`
       #        https://github.com/WildMeOrg/wildbook-ia/pull/184
@@ -63,37 +64,13 @@ services:
       # FIXME: exposed for developer verification
       - "82:5000"
 
-  edm:
-    # See: https://github.com/WildMeOrg/Wildbook/tree/next-gen
-    #  - git clone -b next-gen git@github.com:WildMeOrg/Wildbook.git && cd Wildbook
-    #  - ./scripts/build.docker.sh
-    image: wildme/edm:latest
-    volumes:
-      - edm-var:/data/wildbook_data_dir
-    # depends_on:
-    #   - db
-    networks:
-      - intranet
-    ports:
-      # FIXME: exposed for developer verification
-      - "81:8080"
-    environment:
-      DB_USER: "${WILDBOOK_DB_USER}"
-      DB_PASSWORD: "${WILDBOOK_DB_PASSWORD}"
-      DB_CONNECTION_URL: "${WILDBOOK_DB_CONNECTION_URL}"
-      # Admin user created on startup,
-      # https://github.com/WildMeOrg/Wildbook/commit/6d65e70e43691f1b281bb76edf151e5c7cdb7403
-      ADMIN_EMAIL: "${EDM_AUTHENTICATIONS_USERNAME__DEFAULT}"
-      ADMIN_PASSWORD: "${EDM_AUTHENTICATIONS_PASSWORD__DEFAULT}"
-      # JAVA_OPTS from old-world wildbook, which gives us 4G heap memory
-      JAVA_OPTS: "-Djava.awt.headless=true -XX:+UseConcMarkSweepGC -Xms4096m -Xmx4096m"
-
   houston:
     # https://github.com/WildMeOrg/houston
-    image: wildme/houston:latest
+    image: wildme/mws:latest
     build: &houston-build
       context: .
-    command: [ "wait-for", "db:5432", "--", "wait-for", "edm:8080", "--", "invoke", "app.run", "--host", "0.0.0.0" ]
+      dockerfile: Dockerfile.mws
+    command: [ "wait-for", "db:5432", "--", "invoke", "mws.run", "--host", "0.0.0.0" ]
     networks:
       - intranet
       - frontend
@@ -104,9 +81,6 @@ services:
       FLASK_CONFIG: development
       SQLALCHEMY_DATABASE_URI: "${SQLALCHEMY_DATABASE_URI}"
       TEST_DATABASE_URI: "${TEST_DATABASE_URI}"
-      EDM_AUTHENTICATIONS_URI__DEFAULT: "${EDM_AUTHENTICATIONS_URI__DEFAULT}"
-      EDM_AUTHENTICATIONS_USERNAME__DEFAULT: "${EDM_AUTHENTICATIONS_USERNAME__DEFAULT}"
-      EDM_AUTHENTICATIONS_PASSWORD__DEFAULT: "${EDM_AUTHENTICATIONS_PASSWORD__DEFAULT}"
       ACM_AUTHENTICATIONS_URI__DEFAULT: "${ACM_AUTHENTICATIONS_URI__DEFAULT}"
       ELASTICSEARCH_HOSTS: "${ELASTICSEARCH_HOSTS}"
       HOUSTON_URL: "${HOUSTON_URL}"
@@ -126,15 +100,15 @@ services:
     volumes: &houston-volumes
       - houston-var:/data
       - .dockerfiles/docker-entrypoint.sh:/docker-entrypoint.sh
-      - .dockerfiles/docker-entrypoint-init.d:/docker-entrypoint-init.d
+      - .dockerfiles/docker-entrypoint-init.d.mws:/docker-entrypoint-init.d
       - .dockerfiles/docker-entrypoint-always-init.d:/docker-entrypoint-always-init.d
       # FIXME: pull in development code while working on bringing up the container
       - .:/code
 
   celery_beat:
-    image: wildme/houston:latest
+    image: wildme/mws:latest
     build: *houston-build
-    command: [ "wait-for", "db:5432", "--", "wait-for", "edm:8080", "--", "celery", "-A", "app.extensions.celery.celery", "beat", "-s", "/data/var/celerybeat-schedule", "-l", "DEBUG"]
+    command: [ "wait-for", "db:5432", "--", "celery", "-A", "app.extensions.celery.celery", "beat", "-s", "/data/var/celerybeat-schedule", "-l", "DEBUG"]
     networks:
       - intranet
     depends_on:
@@ -144,9 +118,9 @@ services:
     volumes: *houston-volumes
 
   celery_worker:
-    image: wildme/houston:latest
+    image: wildme/mws:latest
     build: *houston-build
-    command: [ "wait-for", "db:5432", "--", "wait-for", "edm:8080", "--", "celery", "-A", "app.extensions.celery.celery", "worker", "-l", "DEBUG"]
+    command: [ "wait-for", "db:5432", "--", "celery", "-A", "app.extensions.celery.celery", "worker", "-l", "DEBUG"]
     networks:
       - intranet
     depends_on:
@@ -168,7 +142,7 @@ services:
       PORT: "84"
     volumes:
       - .dockerfiles/dev-frontend/docker-entrypoint.sh:/docker-entrypoint.sh
-      - ./_frontend:/code
+      - ./_frontend.mws:/code
 
   www:
     image: nginx:latest
@@ -186,7 +160,6 @@ networks:
 
 volumes:
   db-pgdata-var:
-  edm-var:
   # es-var:
   redis-var:
   acm-var:

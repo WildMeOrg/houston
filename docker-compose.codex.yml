@@ -60,7 +60,7 @@ services:
 
   acm:
     # https://github.com/WildMeOrg/wildbook-ia
-    image: wildme/wbia:develop
+    image: wildme/wildbook-ia:nightly
     # FIXME: Adjust entrypoint to allow for additive command arguments
     # , "--db-uri", "${WBIA_DB_URI}" 
     command: [ "wait-for", "db:5432", "--", "python3.7", "-m", "wbia.dev", "--dbdir", "${WBIA_DB_DIR}", "--logdir", "/data/logs/", "--web", "--port", "5000", "--web-deterministic-ports", "--containerized", "--cpudark", "--production"]
@@ -106,9 +106,10 @@ services:
 
   houston:
     # https://github.com/WildMeOrg/houston
-    image: wildme/houston:latest
+    image: wildme/codex:latest
     build: &houston-build
       context: .
+      dockerfile: Dockerfile.codex
     command: [ "wait-for", "db:5432", "--", "wait-for", "edm:8080", "--", "wait-for", "elasticsearch:9200", "--", "invoke", "app.run", "--host", "0.0.0.0" ]
     networks:
       - intranet
@@ -145,13 +146,13 @@ services:
     volumes: &houston-volumes
       - houston-var:/data
       - .dockerfiles/docker-entrypoint.sh:/docker-entrypoint.sh
-      - .dockerfiles/docker-entrypoint-init.d:/docker-entrypoint-init.d
+      - .dockerfiles/docker-entrypoint-init.d.codex:/docker-entrypoint-init.d
       - .dockerfiles/docker-entrypoint-always-init.d:/docker-entrypoint-always-init.d
       # FIXME: pull in development code while working on bringing up the container
       - .:/code
 
   celery_beat:
-    image: wildme/houston:latest
+    image: wildme/codex:latest
     build: *houston-build
     command: [ "wait-for", "--timeout=600", "houston:5000", "--", "celery", "-A", "app.extensions.celery.celery", "beat", "-s", "/data/var/celerybeat-schedule", "-l", "DEBUG"]
     networks:
@@ -160,7 +161,7 @@ services:
     volumes: *houston-volumes
 
   celery_worker:
-    image: wildme/houston:latest
+    image: wildme/codex:latest
     build: *houston-build
     command: [ "wait-for", "--timeout=600", "houston:5000", "--", "celery", "-A", "app.extensions.celery.celery", "worker", "-l", "DEBUG"]
     networks:

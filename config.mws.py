@@ -16,8 +16,8 @@ log = logging.getLogger(__name__)
 
 HERE = Path(__file__).parent
 
-# Load .env into environment variables (then available under os.environ)
-_DEFAULT_DOTENV = HERE / '.env'
+# Load .env.mws into environment variables (then available under os.environ)
+_DEFAULT_DOTENV = HERE / '.env.mws'
 _dotenv = os.getenv('HOUSTON_DOTENV', _DEFAULT_DOTENV)
 load_dotenv(_dotenv, override=False)  # gracefully fails if file doesn't exist
 
@@ -27,6 +27,7 @@ DATA_ROOT = Path(os.getenv('DATA_ROOT', HERE / '_db'))
 
 class BaseConfig(object):
     # SQLITE
+    PROJECT_NAME = 'MWS'
     PROJECT_ROOT = PROJECT_ROOT
     PROJECT_DATABASE_PATH = str(DATA_ROOT)
 

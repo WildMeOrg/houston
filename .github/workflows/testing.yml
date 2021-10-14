@@ -110,11 +110,11 @@ jobs:
         if: matrix.db-uri == 'sqlite://'
         run: |
           # initialize the database
-          docker-compose exec -T -e SQLALCHEMY_DATABASE_URI=$SQLALCHEMY_DATABASE_URI houston invoke app.db.upgrade --no-backup
+          docker-compose exec -T -e SQLALCHEMY_DATABASE_URI=$SQLALCHEMY_DATABASE_URI houston invoke codex.db.upgrade --no-backup
           # downgrade to the previous migration step
-          docker-compose exec -T -e SQLALCHEMY_DATABASE_URI=$SQLALCHEMY_DATABASE_URI houston invoke app.db.downgrade
+          docker-compose exec -T -e SQLALCHEMY_DATABASE_URI=$SQLALCHEMY_DATABASE_URI houston invoke codex.db.downgrade
           # upgrade to the latest version
-          docker-compose exec -T -e SQLALCHEMY_DATABASE_URI=$SQLALCHEMY_DATABASE_URI houston invoke app.db.upgrade
+          docker-compose exec -T -e SQLALCHEMY_DATABASE_URI=$SQLALCHEMY_DATABASE_URI houston invoke codex.db.upgrade
         env:
           # Don't use in memory sqlite database for database migration
           SQLALCHEMY_DATABASE_URI: ''
@@ -123,10 +123,10 @@ jobs:
         if: matrix.db-uri != 'sqlite://'
         run: |
           set -ex
-          docker-compose exec -T -e SQLALCHEMY_DATABASE_URI=$TEST_DATABASE_URI houston coverage run /usr/local/bin/invoke app.db.upgrade --no-backup
-          docker-compose exec -T -e SQLALCHEMY_DATABASE_URI=$TEST_DATABASE_URI houston coverage run --append /usr/local/bin/invoke app.db.downgrade
-          docker-compose exec -T -e SQLALCHEMY_DATABASE_URI=$TEST_DATABASE_URI houston coverage run --append /usr/local/bin/invoke app.db.upgrade --no-backup
-          docker-compose exec -T -e SQLALCHEMY_DATABASE_URI=$TEST_DATABASE_URI houston /bin/bash -c 'if [ -n "$(coverage run --append /usr/local/bin/invoke app.db.migrate)" ]; then echo Missing database migration; exit 1; fi'
+          docker-compose exec -T -e SQLALCHEMY_DATABASE_URI=$TEST_DATABASE_URI houston coverage run /usr/local/bin/invoke codex.db.upgrade --no-backup
+          docker-compose exec -T -e SQLALCHEMY_DATABASE_URI=$TEST_DATABASE_URI houston coverage run --append /usr/local/bin/invoke codex.db.downgrade
+          docker-compose exec -T -e SQLALCHEMY_DATABASE_URI=$TEST_DATABASE_URI houston coverage run --append /usr/local/bin/invoke codex.db.upgrade --no-backup
+          docker-compose exec -T -e SQLALCHEMY_DATABASE_URI=$TEST_DATABASE_URI houston /bin/bash -c 'if [ -n "$(coverage run --append /usr/local/bin/invoke codex.db.migrate)" ]; then echo Missing database migration; exit 1; fi'
 
       - name: Run tests after DB checks
         run: |

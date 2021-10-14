@@ -95,7 +95,7 @@ set_up_development_mode() {
 _main() {
 	# if first arg looks like a flag, assume we want to run postgres server
 	if [ "${1:0:1}" = '-' ]; then
-		set -- invoke app.run "$@"
+		set -- invoke codex.run "$@"
 	fi
 
 	app_run=''
@@ -124,7 +124,7 @@ _main() {
 			# Have the application initialize the data location and database
 			# FIXME: `--no-backup` is necessary because this apparently has the side-effect
 			#        of doing doing a backup for a database it may not know how to backup.
-			gosu nobody invoke app.db.upgrade --no-backup
+			gosu nobody invoke codex.db.upgrade --no-backup
 
 			if [ -d /docker-entrypoint-init.d ]; then
 				docker_process_init_files /docker-entrypoint-init.d/*

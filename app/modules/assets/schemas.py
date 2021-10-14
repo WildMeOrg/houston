@@ -31,7 +31,7 @@ class DetailedAssetSchema(BaseAssetSchema):
     """
 
     # <TODO - MWS>
-    # asset_group = base_fields.Nested('BaseAssetGroupSchema')
+    asset_group = base_fields.Nested('BaseAssetGroupSchema')
     # </TODO>
     annotations = base_fields.Nested('DetailedAnnotationSchema', many=True)
 
@@ -40,7 +40,7 @@ class DetailedAssetSchema(BaseAssetSchema):
             Asset.created.key,
             Asset.updated.key,
             # <TODO - MWS>
-            # Asset.asset_group.key,
+            Asset.asset_group.key,
             # </TODO>
             'annotations',
             'dimensions',

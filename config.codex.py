@@ -154,6 +154,7 @@ class BaseConfig(object):
         'notifications',
         'encounters',
         'projects',
+        'missions',
         'sightings',
         'individuals',
         'annotations',

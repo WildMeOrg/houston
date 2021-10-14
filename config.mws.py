@@ -135,6 +135,7 @@ class BaseConfig(object):
         'fileuploads',
         'notifications',
         'annotations',
+        'missions',
         'site_info',
         'job_control',
 

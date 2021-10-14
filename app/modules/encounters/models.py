@@ -70,11 +70,11 @@ class Encounter(db.Model, FeatherModel):
     public = db.Column(db.Boolean, default=False, nullable=False)
 
     # <TODO - MWS>
-    # projects = db.relationship(
-    #     'ProjectEncounter',
-    #     back_populates='encounter',
-    #     order_by='ProjectEncounter.project_guid',
-    # )
+    projects = db.relationship(
+        'ProjectEncounter',
+        back_populates='encounter',
+        order_by='ProjectEncounter.project_guid',
+    )
     # </TODO>
 
     annotations = db.relationship(

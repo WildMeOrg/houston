@@ -3,6 +3,7 @@ from pathlib import Path
 
 from app.modules.fileuploads.models import FileUpload
 from app.modules.site_settings.models import SiteSetting
+import uuid
 
 
 def test_create_header_image(db, flask_app, test_root):
@@ -38,3 +39,26 @@ def test_create_string(db):
 
     finally:
         db.session.delete(new_setting)
+
+
+def test_get_value():
+    # this should grab from edm and return a string
+    val = SiteSetting.get_value('site.name')
+    assert isinstance(val, str)
+
+    guid = SiteSetting.get_system_guid()
+    uuid.UUID(guid, version=4)  # will throw ValueError if not a uuid
+    assert guid == SiteSetting.get_value('system_guid')
+    # just for kicks lets test this too
+    assert guid == SiteSetting.get_string('system_guid')
+
+
+def test_read_edm_configuration():
+    val = SiteSetting.get_edm_configuration('site.name')
+    assert isinstance(val, str)
+    val = SiteSetting.get_edm_configuration('site.species')
+    assert isinstance(val, list)
+    try:
+        val = SiteSetting.get_edm_configuration('_fu_bar_')
+    except ValueError:
+        pass

@@ -22,7 +22,7 @@ def test_site_settings(flask_app, db, request, test_root):
 
     with mock.patch('app.create_app'):
         with mock.patch('sys.stdout', new=io.StringIO()) as stdout:
-            from tasks.app import site_settings
+            from tasks.codex import site_settings
 
             site_settings.set(MockContext(), 'header_image', str(test_image))
             set_output = stdout.getvalue()

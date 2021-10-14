@@ -29,7 +29,7 @@ def set(context, key, filepath, public=True):
 )
 def get(context, key):
     from app.modules.site_settings.models import SiteSetting
-    
+
     print(repr(SiteSetting.query.get(key)))
 
 

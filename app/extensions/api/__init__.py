@@ -18,8 +18,7 @@ import logging
 
 log = logging.getLogger(__name__)
 
-
-from config import BaseConfig
+from config import BaseConfig  # NOQA
 
 
 api_v1_blueprint = Blueprint('api', __name__, url_prefix='/api/v1')

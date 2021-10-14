@@ -24,7 +24,9 @@ try:
     from alembic.config import Config as AlembicConfig
     from alembic import command
 except ImportError:  # pragma: no cover
-    log.warning("Alembic cannot be imported, so some codex.db.* tasks won't be available!")
+    log.warning(
+        "Alembic cannot be imported, so some codex.db.* tasks won't be available!"
+    )
 else:
 
     alembic_version = tuple([int(v) for v in __alembic_version__.split('.')[0:3]])

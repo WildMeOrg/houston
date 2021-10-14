@@ -39,8 +39,8 @@ class Mission(db.Model, HoustonModel, Timestamp):
     )
     # owner = db.relationship('User', back_populates='owned_missions')
     owner = db.relationship(
-        'User', 
-        backref=db.backref('owned_missions'), 
+        'User',
+        backref=db.backref('owned_missions'),
         primaryjoin='User.guid == Mission.owner_guid',
         order_by='Mission.guid',
     )

@@ -47,7 +47,7 @@ class CollaborationUserAssociations(db.Model, HoustonModel):
     user_guid = db.Column(db.GUID, db.ForeignKey('user.guid'), primary_key=True)
     # user = db.relationship('User', back_populates='user_collaboration_associations')
     user = db.relationship('User', backref=db.backref('user_collaboration_associations'))
-    
+
     read_approval_state = db.Column(
         db.String(length=32), default=CollaborationUserState.PENDING, nullable=False
     )

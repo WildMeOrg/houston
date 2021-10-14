@@ -62,7 +62,7 @@ def crud_module(context, module_name='', module_name_singular=''):
     os.makedirs(module_path)
 
     env = jinja2.Environment(
-        loader=jinja2.FileSystemLoader('tasks/app/boilerplates_templates/crud_module')
+        loader=jinja2.FileSystemLoader('tasks/codex/boilerplates_templates/crud_module')
     )
     for template_file in (
         '__init__',

@@ -646,7 +646,7 @@ class AssetGroup(db.Model, HoustonModel):
     #     'User', backref='asset_groups', foreign_keys=[owner_guid]
     # )
     owner = db.relationship(
-        'User', 
+        'User',
         backref=db.backref('asset_groups'),
         foreign_keys=[owner_guid],
         primaryjoin='User.guid == AssetGroup.owner_guid',
@@ -662,7 +662,7 @@ class AssetGroup(db.Model, HoustonModel):
         foreign_keys=[submitter_guid],
     )
     submitter = db.relationship(
-        'User', 
+        'User',
         backref=db.backref('submitted_asset_groups'),
         foreign_keys=[submitter_guid],
         primaryjoin='User.guid == AssetGroup.submitter_guid',

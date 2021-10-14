@@ -444,13 +444,13 @@ def init_app(app):
     # The extensions in this block need to remain in this order for proper setup
     essential_extensions = {
         'logging': logging,
-        'sentry':  sentry,
-        'db':      db,
-        'api':     api,
-        'config':  config,
-        'oauth2':  oauth2,
-        'login':   login_manager,
-        'marshmallow':   marshmallow,
+        'sentry': sentry,
+        'db': db,
+        'api': api,
+        'config': config,
+        'oauth2': oauth2,
+        'login': login_manager,
+        'marshmallow': marshmallow,
     }
 
     for extension_name in essential_extensions.keys():
@@ -460,14 +460,14 @@ def init_app(app):
 
     # The remaining extensions
     optional_extensions = {
-        'cors':          cross_origin_resource_sharing,
-        'tus':           tus,
-        'acm':           acm,
-        'edm':           edm,
-        'gitlab':        gitlab,
+        'cors': cross_origin_resource_sharing,
+        'tus': tus,
+        'acm': acm,
+        'edm': edm,
+        'gitlab': gitlab,
         'elasticsearch': elasticsearch,
-        'mail':          mail,
-        'stripe':        stripe,
+        'mail': mail,
+        'stripe': stripe,
     }
 
     for extension_name in optional_extensions.keys():

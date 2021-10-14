@@ -321,7 +321,7 @@ class Code(db.Model, HoustonModel):
         replace_ttl=12 * 60,
         create_force=False,
     ):
-        """ Replace will automatically invalidate any codes previously issued (above the replace_ttl value, in minutes)"""
+        """Replace will automatically invalidate any codes previously issued (above the replace_ttl value, in minutes)"""
         code_settings = CODE_SETTINGS.get(code_type, None)
         assert code_settings is not None, 'Code type was unrecognized: %r' % (code_type,)
 

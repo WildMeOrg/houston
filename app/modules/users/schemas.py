@@ -51,7 +51,7 @@ class UserListSchema(BaseUserSchema):
 
 
 class PublicUserSchema(ModelSchema):
-    """ Only fields which are safe for public display (very minimal). """
+    """Only fields which are safe for public display (very minimal)."""
 
     profile_fileupload = base_fields.Nested('DetailedFileUploadSchema')
 
@@ -74,7 +74,7 @@ class DetailedUserPermissionsSchema(ModelSchema):
 
 
 class DetailedUserSchema(UserListSchema):
-    """ Detailed user schema exposes all fields used to render a normal user profile. """
+    """Detailed user schema exposes all fields used to render a normal user profile."""
 
     collaborations = base_fields.Function(User.get_collaborations_as_json)
     notification_preferences = base_fields.Function(User.get_notification_preferences)

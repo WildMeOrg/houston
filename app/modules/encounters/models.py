@@ -40,7 +40,7 @@ class Encounter(db.Model, FeatherModel):
     #     'User', back_populates='owned_encounters', foreign_keys=[owner_guid]
     # )
     owner = db.relationship(
-        'User', 
+        'User',
         backref=db.backref('owned_encounters'),
         foreign_keys=[owner_guid],
         primaryjoin='User.guid == Encounter.owner_guid',
@@ -54,7 +54,7 @@ class Encounter(db.Model, FeatherModel):
     #     'User', back_populates='submitted_encounters', foreign_keys=[submitter_guid]
     # )
     submitter = db.relationship(
-        'User', 
+        'User',
         backref=db.backref('submitted_encounters'),
         foreign_keys=[submitter_guid],
         primaryjoin='User.guid == Encounter.submitter_guid',

@@ -5,7 +5,7 @@ Application execution related tasks for Invoke.
 """
 
 try:
-    from importlib import reload
+    from importlib import reload  # NOQA
 except ImportError:  # pragma: no cover
     pass  # Python 2 has built-in reload() function
 import os
@@ -17,7 +17,7 @@ try:
 except ImportError:  # Invoke 0.13 renamed ctask to task
     from invoke import task
 
-from ._utils import app_context_task
+from ._utils import app_context_task  # NOQA
 
 
 log = logging.getLogger(__name__)

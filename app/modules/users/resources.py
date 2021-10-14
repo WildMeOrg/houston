@@ -369,7 +369,10 @@ class UserSightings(Resource):
             except AttributeError:
                 response['success'] = False
 
-            if sighting_response is not None and sighting_response.get('result') is not None:
+            if (
+                sighting_response is not None
+                and sighting_response.get('result') is not None
+            ):
                 response['sightings'].append(sighting_response['result'])
 
         return response

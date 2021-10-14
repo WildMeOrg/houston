@@ -57,8 +57,8 @@ class Project(db.Model, HoustonModel, Timestamp):
     )
     # owner = db.relationship('User', back_populates='owned_projects')
     owner = db.relationship(
-        'User', 
-        backref=db.backref('owned_projects'), 
+        'User',
+        backref=db.backref('owned_projects'),
         primaryjoin='User.guid == Project.owner_guid',
         order_by='Project.guid',
     )

@@ -444,7 +444,9 @@ class User(db.Model, FeatherModel, UserEDMMixin):
                     try:
                         # We want to check the EDM even if we don't have a local user record
                         if current_app.edm.check_user_login(email_candidate, password):
-                            log.info('User authenticated via EDM: %r' % (email_candidate,))
+                            log.info(
+                                'User authenticated via EDM: %r' % (email_candidate,)
+                            )
 
                             if user is not None:
                                 # We authenticated a local user against an EDM (but the local password failed)

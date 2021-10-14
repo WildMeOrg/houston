@@ -7,9 +7,11 @@ RESTful API Configuration resources
 
 import logging
 
+from flask_login import current_user  # NOQA
 from flask import current_app, request
 from flask_restx_patched import Resource
-from app.extensions.api import Namespace
+from flask_restx_patched._http import HTTPStatus
+from app.extensions.api import Namespace, abort
 
 from app.modules.users.models import User
 from app.modules.site_settings.models import SiteSetting
@@ -24,6 +26,15 @@ edm_configuration = Namespace(
 edm_configurationDefinition = Namespace(
     'configurationDefinition', description='(EDM) Configuration Definition'
 )  # pylint: disable=invalid-name
+
+
+SITESETTINGS_TO_APPEND = (
+    'email_service',
+    'email_service_username',
+    'email_service_password',
+    'email_default_sender_email',
+    'email_default_sender_name',
+)
 
 
 @edm_configurationDefinition.route('/<string:target>/<path:path>')
@@ -121,6 +132,12 @@ class EDMConfiguration(Resource):
             target=target,
         )
 
+        user_is_admin = (
+            current_user is not None
+            and not current_user.is_anonymous
+            and current_user.is_admin
+        )
+
         # TODO make private private - traverse bundles too
         # private means cannot be read other than admin
         # abort(code=HTTPStatus.FORBIDDEN, message='unavailable')
@@ -137,6 +154,15 @@ class EDMConfiguration(Resource):
                         ss.key
                     ] = f'/api/v1/fileuploads/src/{str(ss.file_upload.guid)}'
             data['response']['configuration']['site.images'] = ss_json
+            data = _site_setting_get_inject(data)
+        elif (
+            'response' in data
+            and data['response'].get('private', False)
+            and not user_is_admin
+        ):
+            log.warn(f'blocked configuration {path} private=true for unauthorized user')
+            abort(code=HTTPStatus.FORBIDDEN, message='unavailable')
+
         return data
 
     @edm_configuration.login_required(oauth_scopes=['configuration:write'])
@@ -176,3 +202,25 @@ class EDMConfiguration(Resource):
         )
 
         return response
+
+
+def _site_setting_get_inject(data):
+    assert 'response' in data and 'configuration' in data['response']
+    for sskey in SITESETTINGS_TO_APPEND:
+        val = SiteSetting.get_string(sskey)
+        if val is None:
+            data['response']['configuration'][sskey] = {
+                'id': sskey,
+                'isSiteSetting': True,
+                'value': '',
+                'valueNotSet': True,
+            }
+        else:
+            data['response']['configuration'][sskey] = {
+                'id': sskey,
+                'isSiteSetting': True,
+                'value': val,
+            }
+        if sskey == 'email_service_password':
+            data['response']['configuration'][sskey]['private'] = True
+    return data

@@ -155,6 +155,7 @@ class EDMConfiguration(Resource):
                     ] = f'/api/v1/fileuploads/src/{str(ss.file_upload.guid)}'
             data['response']['configuration']['site.images'] = ss_json
             data = _site_setting_get_inject(data)
+            data = _security_scrub_bundle(data, user_is_admin)
         elif (
             'response' in data
             and data['response'].get('private', False)
@@ -223,4 +224,21 @@ def _site_setting_get_inject(data):
             }
         if sskey == 'email_service_password':
             data['response']['configuration'][sskey]['private'] = True
+    return data
+
+
+def _security_scrub_bundle(data, has_admin):
+    assert 'response' in data and 'configuration' in data['response']
+    delete_keys = []
+    for key in data['response']['configuration'].keys():
+        if not isinstance(data['response']['configuration'][key], dict):
+            continue
+        if not data['response']['configuration'][key].get('private', False):
+            continue
+        if has_admin:
+            log.debug(f'admin access given to private key={key} in bundle')
+        else:
+            delete_keys.append(key)
+    for key in delete_keys:
+        del data['response']['configuration'][key]
     return data

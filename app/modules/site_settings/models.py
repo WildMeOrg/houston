@@ -9,6 +9,7 @@ from flask import current_app
 
 # these will be disallowed to be set via api (must be done elsewhere in code by using override_readonly)
 READ_ONLY = 'system_guid'
+EDM_PREFIX = 'site.'
 
 
 class SiteSetting(db.Model, Timestamp):
@@ -39,6 +40,10 @@ class SiteSetting(db.Model, Timestamp):
     def set(
         cls, key, file_upload_guid=None, string=None, public=None, override_readonly=False
     ):
+        if key.startswith(EDM_PREFIX):
+            raise ValueError(
+                f'forbidden to directly set key with prefix "{EDM_PREFIX}" via SiteSetting (key={key})'
+            )
         if key in READ_ONLY and not override_readonly:
             raise ValueError(f'read-only key {key}')
         kwargs = {
@@ -57,7 +62,6 @@ class SiteSetting(db.Model, Timestamp):
         setting = cls.query.get(key)
         return setting.string if setting else default
 
-
     # a bit of hackery.  right now *all* keys in edm-configuration are of the form `site.foo` so we use
     #   as a way branch on _where_ to get the value to return here.  but as we ween ourselves off edm config,
     #   this can hopefully be backwards compatible
@@ -65,7 +69,7 @@ class SiteSetting(db.Model, Timestamp):
     def get_value(cls, key, **kwargs):
         if not key:
             raise ValueError('key must not be None')
-        if key.startswith('site.'):
+        if key.startswith(EDM_PREFIX):
             return cls.get_edm_configuration(key, **kwargs)
         setting = cls.query.get(key)
         if not setting:

@@ -3,7 +3,7 @@ from unittest import mock
 
 
 # To produce the value for SQL_QUERY_RESULTS,
-# use something like the following run within `invoke app.shell`:
+# use something like the following run within `invoke codex.shell`:
 #     from app.modules.elasticsearch.tasks import create_wildbook_engine, WILDBOOK_MARKEDINDIVIDUAL_SQL_QUERY
 #     engine = create_wildbook_engine()
 #     print(dict(engine.execute(WILDBOOK_MARKEDINDIVIDUAL_SQL_QUERY).fetchone()))

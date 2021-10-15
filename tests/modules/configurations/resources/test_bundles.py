@@ -18,7 +18,7 @@ def test_bundle_read(flask_app_client, admin_user):
     assert response.json['response']['configuration']['site.name'] is not None
 
 
-def test_bundle_modify(flask_app_client, admin_user):
+def test_bundle_modify(flask_app_client, admin_user, db):
     response = conf_utils.read_configuration(flask_app_client, admin_user, BUNDLE_PATH)
     orig_name = response.json['response']['configuration']['site.name']['value']
     key = 'site.name'
@@ -36,7 +36,7 @@ def test_bundle_modify(flask_app_client, admin_user):
     assert response.json['updated']
     assert isinstance(response.json['updated'], list)
     assert key in response.json['updated']
-    # bonus test of SiteSetting read
+    # bonus test of SiteSetting read (of edm conf)
     assert SiteSetting.get_value(key) == test_value
 
     # test SiteSetting modification via bundle
@@ -77,3 +77,8 @@ def test_bundle_modify(flask_app_client, admin_user):
     assert SiteSetting.get_string(key) == test_value
     # get_value since this is edm conf value
     assert SiteSetting.get_value(key2) == orig_name
+
+    # cleanup
+    setting = SiteSetting.query.get(key)
+    assert setting is not None
+    db.session.delete(setting)

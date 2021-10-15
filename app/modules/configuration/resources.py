@@ -176,6 +176,7 @@ class EDMConfiguration(Resource):
         except Exception:
             pass
 
+        success_ss_keys = _process_site_settings(data)
         passthrough_kwargs = {'data': data}
 
         files = request.files
@@ -185,8 +186,12 @@ class EDMConfiguration(Resource):
         response = current_app.edm.request_passthrough(
             'configuration.data', 'post', passthrough_kwargs, path, target
         )
-
-        return response
+        if not response.ok:
+            return response
+        res = response.json()
+        if 'updated' in res:
+            res['updated'].extend(success_ss_keys)
+        return res
 
     @edm_configuration.login_required(oauth_scopes=['configuration:write'])
     def patch(self, target, path):
@@ -263,3 +268,32 @@ def _security_scrub_bundle(data, has_admin):
     for key in delete_keys:
         del data['response']['configuration'][key]
     return data
+
+
+def _process_site_settings(data):
+    assert isinstance(data, dict)
+    from app.modules.site_settings.models import EDM_PREFIX
+
+    delete_keys = []
+    success_keys = []
+    for key in data.keys():
+        if key.startswith(EDM_PREFIX):
+            continue
+        delete_keys.append(key)
+        if key not in SITESETTINGS_TO_APPEND:
+            log.info(f'skipping unrecognized SiteSetting key={key}')
+            continue
+        if not isinstance(data[key], str):
+            log.warning(
+                f'skipping unrecognized SiteSetting key={key}, value is not string; value={data[key]}'
+            )
+            abort(
+                code=HTTPStatus.BAD_REQUEST,
+                message=f'key={key} currently can only be passed a string',
+            )
+        log.debug(f'bundle updating SiteSetting key={key}')
+        SiteSetting.set(key, string=data[key], public=True)
+        success_keys.append(key)
+    for key in delete_keys:
+        del data[key]
+    return success_keys

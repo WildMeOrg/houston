@@ -57,9 +57,11 @@ email_dispatched.connect(status)
 def _validate_settings():
     from app.modules.site_settings.models import SiteSetting
 
-    default_sender = current_app.config.get(
-        'MAIL_DEFAULT_SENDER', ('Codex Mailbot', 'changeme@example.com')
-    )
+    host_name = SiteSetting.get_string('site_host_name', 'example.com')
+    default_sender = ('Do Not Reply', f'do-not-reply@{host_name}')
+    # default_sender = current_app.config.get(
+    #    'MAIL_DEFAULT_SENDER', ('Do Not Reply', f'do-not-reply@{host_name}')
+    # )
     sender_name = SiteSetting.get_string('email_default_sender_name', default_sender[0])
     sender_email = SiteSetting.get_string('email_default_sender_email', default_sender[1])
     current_app.config['MAIL_DEFAULT_SENDER_EMAIL'] = sender_email
@@ -119,6 +121,9 @@ class Email(Message):
     """
 
     def __init__(self, *args, **kwargs):
+        from app.modules.site_settings.models import SiteSetting
+        import uuid
+
         if 'recipients' not in kwargs:
             raise AttributeError('Email() must have recipients= argument')
         if current_app.config['TESTING']:
@@ -132,11 +137,12 @@ class Email(Message):
         self._original_recipients = None  # should only be set by resolve_recipients
         self.template_name = None
         self.template_kwargs = {
-            # TODO add some site_FOO (or other global) values, like site_name
+            'site_name': SiteSetting.get_value('site.name', default='Codex'),
             'year': now.year,
         }
         self.status = None
         self.mail = mail
+        self._transaction_id = str(uuid.uuid4())
 
         # Debugging, override all email destinations
         override_recipients = current_app.config.get('MAIL_OVERRIDE_RECIPIENTS', None)
@@ -148,6 +154,11 @@ class Email(Message):
 
         super(Email, self).__init__(*args, **kwargs)
         self.extra_headers = kwargs.get('extra_headers', {})
+        self.extra_headers['X-Houston-Site-Name'] = SiteSetting.get_value(
+            'site.name', default='[UNKNOWN]'
+        )
+        self.extra_headers['X-Houston-GUID'] = SiteSetting.get_system_guid()
+        self.extra_headers['X-Houston-Transaction-ID'] = self._transaction_id
         self.extra_headers['X-Houston-Version'] = app.version.version
         self.extra_headers['X-Houston-Git-Revision'] = app.version.git_revision
 
@@ -327,7 +338,7 @@ class Email(Message):
             #   so we forcibly override.  this may cause trouble in the future where we *want to* set .sender explicitely.  :(
             self.sender = current_app.config['MAIL_DEFAULT_SENDER']
             log.debug(
-                f'Attempting to send email from {self.sender} to {self.recipients}: {self.subject}'
+                f'Attempting to send email from {self.sender} to {self.recipients}: {self.subject} [{self._transaction_id}]'
             )
             mail.send(self)
             response = {

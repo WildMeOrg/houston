@@ -292,7 +292,8 @@ def _process_site_settings(data):
                 message=f'key={key} currently can only be passed a string',
             )
         log.debug(f'bundle updating SiteSetting key={key}')
-        SiteSetting.set(key, string=data[key], public=True)
+        public = not key.startswith('email_service')
+        SiteSetting.set(key, string=data[key], public=public)
         success_keys.append(key)
     for key in delete_keys:
         del data[key]

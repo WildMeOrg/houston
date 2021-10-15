@@ -20,6 +20,7 @@ from premailer import Premailer
 import cssutils
 import htmlmin
 import app.version
+from app.utils import to_ascii
 
 from io import StringIO
 import re
@@ -154,8 +155,8 @@ class Email(Message):
 
         super(Email, self).__init__(*args, **kwargs)
         self.extra_headers = kwargs.get('extra_headers', {})
-        self.extra_headers['X-Houston-Site-Name'] = SiteSetting.get_value(
-            'site.name', default='[UNKNOWN]'
+        self.extra_headers['X-Houston-Site-Name'] = to_ascii(
+            SiteSetting.get_value('site.name', default='[UNKNOWN]')
         )
         self.extra_headers['X-Houston-GUID'] = SiteSetting.get_system_guid()
         self.extra_headers['X-Houston-Transaction-ID'] = self._transaction_id

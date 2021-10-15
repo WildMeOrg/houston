@@ -60,11 +60,14 @@ def modify_configuration(
     data,
     expected_status_code=200,
 ):
+    path = f'{CONFIG_PATH}/{conf_key}'
+    if not conf_key:
+        path = CONFIG_PATH  # no trailing / is important here
     res = test_utils.post_via_flask(
         flask_app_client,
         user,
         scopes='configuration:write',
-        path=f'{CONFIG_PATH}/{conf_key}',
+        path=path,
         data=data,
         expected_status_code=expected_status_code,
         response_200={'success'},

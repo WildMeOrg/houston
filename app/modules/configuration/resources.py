@@ -176,7 +176,9 @@ class EDMConfiguration(Resource):
         except Exception:
             pass
 
-        success_ss_keys = _process_site_settings(data)
+        success_ss_keys = []
+        if path == '':  # only do if posting a bundle (no path)
+            success_ss_keys = _process_site_settings(data)
         passthrough_kwargs = {'data': data}
 
         files = request.files
@@ -291,6 +293,7 @@ def _process_site_settings(data):
             abort(
                 code=HTTPStatus.BAD_REQUEST,
                 message=f'key={key} currently can only be passed a string',
+                success=False,
             )
         log.debug(f'bundle updating SiteSetting key={key}')
         public = not key.startswith('email_service')

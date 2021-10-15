@@ -246,7 +246,8 @@ def _site_setting_get_definition_inject(data):
             data['response']['configuration'][sskey]['currentValue'] = val
         if sskey == 'email_service_password':
             data['response']['configuration'][sskey]['isPrivate'] = True
-            del data['response']['configuration'][sskey]['currentValue']
+            if 'currentValue' in data['response']['configuration'][sskey]:
+                del data['response']['configuration'][sskey]['currentValue']
         if sskey == 'email_service':
             data['response']['configuration'][sskey]['defaultValue'] = None
             data['response']['configuration'][sskey]['options'] = [None, 'mailchimp']

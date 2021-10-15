@@ -22,6 +22,7 @@ def _prep_sending(flask_app):
 
 
 def _cleanup_sending():
+    # gets rid of system_guid as well (important for other tests)
     SiteSetting.query.delete()
 
 
@@ -80,3 +81,4 @@ def test_template():
     # now we just test a bad template to make sure it fails
     msg.template('fubar_' + str(uuid.uuid4()))
     assert not msg._template_found
+    _cleanup_sending()

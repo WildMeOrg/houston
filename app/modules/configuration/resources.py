@@ -237,9 +237,12 @@ def _site_setting_get_definition_inject(data):
     assert 'response' in data and 'configuration' in data['response']
     for sskey in SITESETTINGS_TO_APPEND:
         data['response']['configuration'][sskey] = {
+            'descriptionId': f'CONFIGURATION_{sskey.upper()}_DESCRIPTION',
+            'labelId': f'CONFIGURATION_{sskey.upper()}_LABEL',
             'defaultValue': '',
             'isPrivate': False,
             'settable': True,
+            'required': True,
             'fieldType': 'string',
             'displayType': 'string',
         }
@@ -252,7 +255,13 @@ def _site_setting_get_definition_inject(data):
                 del data['response']['configuration'][sskey]['currentValue']
         if sskey == 'email_service':
             data['response']['configuration'][sskey]['defaultValue'] = None
-            data['response']['configuration'][sskey]['options'] = [None, 'mailchimp']
+            data['response']['configuration'][sskey]['fieldType'] = 'select'
+            data['response']['configuration'][sskey]['schema'] = {
+                'choices': [
+                    {'label': 'Do not send mail', 'value': None},
+                    {'label': 'Mailchimp/Mandrill', 'value': 'mailchimp'},
+                ]
+            }
     return data
 
 

@@ -647,10 +647,12 @@ class AssetGroup(db.Model, HoustonModel):
     # )
     owner = db.relationship(
         'User',
-        backref=db.backref('asset_groups'),
+        backref=db.backref(
+            'asset_groups',
+            primaryjoin='User.guid == AssetGroup.owner_guid',
+            order_by='AssetGroup.guid',
+        ),
         foreign_keys=[owner_guid],
-        primaryjoin='User.guid == AssetGroup.owner_guid',
-        order_by='AssetGroup.guid',
     )
 
     submitter_guid = db.Column(
@@ -663,10 +665,12 @@ class AssetGroup(db.Model, HoustonModel):
     )
     submitter = db.relationship(
         'User',
-        backref=db.backref('submitted_asset_groups'),
+        backref=db.backref(
+            'submitted_asset_groups',
+            primaryjoin='User.guid == AssetGroup.submitter_guid',
+            order_by='AssetGroup.guid',
+        ),
         foreign_keys=[submitter_guid],
-        primaryjoin='User.guid == AssetGroup.submitter_guid',
-        order_by='AssetGroup.guid',
     )
 
     asset_group_sightings = db.relationship(

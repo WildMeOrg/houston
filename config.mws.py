@@ -109,7 +109,7 @@ class BaseConfig(object):
     ENABLED_EXTENSIONS = (
         'acm',
         'cors',
-        # 'elasticsearch',
+        'elasticsearch',
         'tus',
         'mail',
     )
@@ -140,8 +140,8 @@ class BaseConfig(object):
         'job_control',
 
         # Elastic Search
-        # 'elasticsearch_proxy',
-        # 'elasticsearch',
+        'elasticsearch_proxy',
+        'elasticsearch',
 
         # Front-end
         #   Dependencies: Users, Auth, Assets

@@ -48,3 +48,23 @@ def test_encounter_set_individual(db, empty_individual, encounter_1):
     encounter_1.set_individual(empty_individual)
     assert encounter_1.individual is not None
     assert encounter_1.individual.guid == empty_individual.guid
+
+
+def test_owned_encounters_ordering(db, request):
+    from app.modules.encounters.models import Encounter
+    from app.modules.users.models import User
+
+    public_owner = User.get_public_user()
+    encounters = []
+    for i in range(10):
+        encounters.append(Encounter(owner=public_owner))
+
+    encounters.sort(key=lambda e: e.guid)
+
+    def cleanup():
+        for encounter in encounters:
+            db.session.delete(encounter)
+
+    request.addfinalizer(cleanup)
+
+    assert public_owner.owned_encounters == encounters

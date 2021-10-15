@@ -62,7 +62,7 @@ SQL_QUERY_RESULTS = [
 ]
 
 
-def test_load_indexes(monkeypatch, flask_app):
+def test_load_codex_indexes(monkeypatch, flask_app):
     from app.modules.elasticsearch import tasks
 
     # Mock the response from the wildbook database query
@@ -79,7 +79,7 @@ def test_load_indexes(monkeypatch, flask_app):
     monkeypatch.setattr(Individual, 'save', capture_save)
 
     # Call the target function
-    tasks.load_indexes()
+    tasks.load_codex_indexes()
 
     # Check for the expected documents within the index
     assert len(captures) == len(SQL_QUERY_RESULTS)

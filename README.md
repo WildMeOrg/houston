@@ -44,6 +44,12 @@ See [Background and Periodic Tasks](docs/background_tasks.md)
 
 ```bash
 git clone --recurse-submodules https://github.com/WildMeOrg/houston.git
+
+# Option 1 - Activate Codex App
+./scripts/codex/activate.sh
+docker-compose up
+
+# Option 2 - Use Codex Config Explicitly
 docker-compose -f docker-compose.codex.yml --env-file .env.codex up
 ```
 

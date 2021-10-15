@@ -174,9 +174,11 @@ class Organization(db.Model, HoustonModel, OrganizationEDMMixin):
     # owner = db.relationship('User', back_populates='owned_organizations')
     owner = db.relationship(
         'User',
-        backref=db.backref('owned_organizations'),
-        primaryjoin='User.guid == Organization.owner_guid',
-        order_by='Organization.guid',
+        backref=db.backref(
+            'owned_organizations',
+            primaryjoin='User.guid == Organization.owner_guid',
+            order_by='Organization.guid',
+        ),
     )
 
     def __repr__(self):

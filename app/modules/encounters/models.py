@@ -10,6 +10,8 @@ from app.extensions import db, FeatherModel
 from app.modules.individuals.models import Individual
 import app.extensions.logging as AuditLog
 
+from config import BaseConfig  # NOQA
+
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
 
@@ -41,10 +43,12 @@ class Encounter(db.Model, FeatherModel):
     # )
     owner = db.relationship(
         'User',
-        backref=db.backref('owned_encounters'),
+        backref=db.backref(
+            'owned_encounters',
+            primaryjoin='User.guid == Encounter.owner_guid',
+            order_by='Encounter.guid',
+        ),
         foreign_keys=[owner_guid],
-        primaryjoin='User.guid == Encounter.owner_guid',
-        order_by='Encounter.guid',
     )
 
     submitter_guid = db.Column(
@@ -55,10 +59,12 @@ class Encounter(db.Model, FeatherModel):
     # )
     submitter = db.relationship(
         'User',
-        backref=db.backref('submitted_encounters'),
+        backref=db.backref(
+            'submitted_encounters',
+            primaryjoin='User.guid == Encounter.submitter_guid',
+            order_by='Encounter.guid',
+        ),
         foreign_keys=[submitter_guid],
-        primaryjoin='User.guid == Encounter.submitter_guid',
-        order_by='Encounter.guid',
     )
 
     # Asset group sighting stores the configuration for this encounter,
@@ -69,13 +75,14 @@ class Encounter(db.Model, FeatherModel):
 
     public = db.Column(db.Boolean, default=False, nullable=False)
 
-    # <TODO - MWS>
-    projects = db.relationship(
-        'ProjectEncounter',
-        back_populates='encounter',
-        order_by='ProjectEncounter.project_guid',
-    )
-    # </TODO>
+    if BaseConfig.PROJECT_NAME not in ['MWS']:
+        # <HOTFIX: MWS>
+        projects = db.relationship(
+            'ProjectEncounter',
+            back_populates='encounter',
+            order_by='ProjectEncounter.project_guid',
+        )
+        # </HOTFIX>
 
     annotations = db.relationship(
         'Annotation', back_populates='encounter', order_by='Annotation.guid'

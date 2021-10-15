@@ -12,6 +12,8 @@ from app.extensions import ExtraValidationSchema
 
 from .models import Asset
 
+from config import BaseConfig  # NOQA
+
 
 class BaseAssetSchema(ModelSchema):
     """
@@ -30,21 +32,26 @@ class DetailedAssetSchema(BaseAssetSchema):
     Detailed Asset schema exposes all useful fields.
     """
 
-    # <TODO - MWS>
-    asset_group = base_fields.Nested('BaseAssetGroupSchema')
-    # </TODO>
+    if BaseConfig.PROJECT_NAME not in ['MWS']:
+        # <HOTFIX: MWS>
+        asset_group = base_fields.Nested('BaseAssetGroupSchema')
+        # </HOTFIX>
+
     annotations = base_fields.Nested('DetailedAnnotationSchema', many=True)
 
     class Meta(BaseAssetSchema.Meta):
         fields = BaseAssetSchema.Meta.fields + (
             Asset.created.key,
             Asset.updated.key,
-            # <TODO - MWS>
-            Asset.asset_group.key,
-            # </TODO>
             'annotations',
             'dimensions',
         )
+
+        if BaseConfig.PROJECT_NAME not in ['MWS']:
+            # <HOTFIX: MWS>
+            fields = fields + (Asset.asset_group.key,)
+            # </HOTFIX>
+
         dump_only = BaseAssetSchema.Meta.dump_only + (
             Asset.created.key,
             Asset.updated.key,

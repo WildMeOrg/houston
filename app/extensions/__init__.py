@@ -357,6 +357,12 @@ class FeatherModel(GhostModel, TimestampViewed):
         rule = ObjectActionRule(obj=self, action=AccessOperation.WRITE)
         return rule.check()
 
+    @classmethod
+    def get_multiple(cls, guids):
+        if not guids or not isinstance(guids, list) or len(guids) < 1:
+            return []
+        return cls.query.filter(cls.guid.in_(guids)).all()
+
 
 class HoustonModel(FeatherModel):
     """

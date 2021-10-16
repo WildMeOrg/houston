@@ -160,8 +160,10 @@ class EDMConfiguration(Resource):
             and data['response'].get('private', False)
             and not user_is_admin
         ):
-            log.warn(f'blocked configuration {path} private=true for unauthorized user')
-            abort(code=HTTPStatus.FORBIDDEN, message='unavailable')
+            log.warning(
+                f'blocked configuration {path} private=true for unauthorized user'
+            )
+            abort(code=HTTPStatus.FORBIDDEN, message='unavailable', success=False)
 
         return data
 

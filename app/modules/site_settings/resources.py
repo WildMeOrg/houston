@@ -18,6 +18,7 @@ from app.extensions.api.parameters import PaginationParameters
 from app.modules.fileuploads.models import FileUpload
 from app.modules.users import permissions
 from app.modules.users.permissions.types import AccessOperation
+from app.utils import HoustonException
 
 from . import schemas, parameters
 from .models import SiteSetting
@@ -71,6 +72,8 @@ class SiteSettings(Resource):
         """
         Create or update a SiteSetting.
         """
+        from app.modules.social_groups.models import SocialGroup
+
         if args.get('transactionId'):
             transaction_id = args.pop('transactionId')
             if args.get('transactionPath'):
@@ -95,7 +98,16 @@ class SiteSettings(Resource):
             with db.session.begin():
                 db.session.add(fups[0])
             args['file_upload_guid'] = fups[0].guid
+
+        if args.get('key') == 'social_group_roles':
+            try:
+                SocialGroup.validate_roles(args.get('string'))
+            except HoustonException as ex:
+                abort(ex.status_code, ex.message)
         site_setting = SiteSetting.set(**args)
+
+        if args.get('key') == 'social_group_roles':
+            SocialGroup.site_settings_updated()
         return site_setting
 
 
@@ -142,10 +154,16 @@ class SiteSettingByKey(Resource):
         """
         Delete a SiteSetting by ID.
         """
+        setting_key = site_setting.key
         context = api.commit_or_abort(
             db.session,
             default_error_message=f'Failed to delete the SiteSetting "{site_setting.key}".',
         )
         with context:
             db.session.delete(site_setting)
+
+        if setting_key == 'social_group_roles':
+            from app.modules.social_groups.models import SocialGroup
+
+            SocialGroup.site_settings_updated()
         return None

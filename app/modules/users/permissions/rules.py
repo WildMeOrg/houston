@@ -42,6 +42,8 @@ MODULE_USER_MAP = {
     ('Keyword', AccessOperation.WRITE): ['is_active'],
     ('AuditLog', AccessOperation.READ): ['is_researcher'],
     ('AuditLog', AccessOperation.READ_PRIVILEGED): ['is_admin'],
+    ('SocialGroup', AccessOperation.READ): ['is_researcher'],
+    ('SocialGroup', AccessOperation.WRITE): ['is_researcher'],
 }
 
 # Map of user permissions on the object. These permissions are not granted by collaboration
@@ -73,6 +75,9 @@ OBJECT_USER_MAP = {
     ],
     ('Keyword', AccessOperation.READ): ['is_active'],
     ('Sighting', AccessOperation.WRITE_PRIVILEGED): ['is_internal'],
+    ('SocialGroup', AccessOperation.READ): ['is_researcher'],
+    ('SocialGroup', AccessOperation.WRITE): ['is_researcher'],
+    ('SocialGroup', AccessOperation.DELETE): ['is_researcher'],
 }
 
 # Map of methods (that are passed he current user as a param) on the object.
@@ -181,7 +186,8 @@ class ModuleActionRule(DenyAbortMixin, Rule):
                 )
         if not has_permission:
             log.debug(
-                'Access permission denied for %r by %r' % (self._module, current_user)
+                'Access permission denied for %r on %r by %r'
+                % (self._action, self._module, current_user)
             )
         return has_permission
 
@@ -280,6 +286,7 @@ class ObjectActionRule(DenyAbortMixin, Rule):
                 )
 
         if not has_permission:
+            breakpoint()
             log.info(
                 'Access permission denied for %r, %r by %r'
                 % (self._action, self._obj, current_user)

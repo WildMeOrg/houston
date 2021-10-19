@@ -30,6 +30,12 @@ class Individual(db.Model, FeatherModel):
         'Encounter', back_populates='individual', order_by='Encounter.guid'
     )
 
+    social_groups = db.relationship(
+        'SocialGroupIndividualMembership',
+        back_populates='individual',
+        order_by='SocialGroupIndividualMembership.individual_guid',
+    )
+
     def __repr__(self):
         return (
             '<{class_name}('

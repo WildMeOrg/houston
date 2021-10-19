@@ -34,6 +34,7 @@ class DetailedSiteSettingSchema(BaseSiteSettingSchema):
         fields = BaseSiteSettingSchema.Meta.fields + (
             SiteSetting.created.key,
             SiteSetting.updated.key,
+            SiteSetting.string.key,
         )
         dump_only = BaseSiteSettingSchema.Meta.dump_only + (
             SiteSetting.created.key,

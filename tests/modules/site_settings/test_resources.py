@@ -5,6 +5,7 @@ from app.modules.fileuploads.models import FileUpload
 from app.modules.site_settings.models import SiteSetting
 
 from tests.utils import TemporaryDirectoryGraceful
+import json
 
 
 def test_site_settings(admin_user, flask_app_client, flask_app, db, request, test_root):
@@ -122,10 +123,26 @@ def test_site_settings(admin_user, flask_app_client, flask_app, db, request, tes
             assert resp.status_code == 200
             assert resp.json['key'] == 'header_image'
 
+        # Create json site setting
+        data = {
+            'key': 'social_group_roles',
+            'string': json.dumps(
+                [
+                    {'role': 'Matriarch', 'multipleInGroup': False},
+                    {'role': 'IrritatingGit', 'multipleInGroup': True},
+                ]
+            ),
+        }
+        resp = flask_app_client.post('/api/v1/site-settings/', data=data)
+        assert resp.status_code == 200
+        assert resp.json['key'] == 'social_group_roles'
+
         # Delete site setting
         resp = flask_app_client.delete('/api/v1/site-settings/header_image')
         assert resp.status_code == 204
         resp = flask_app_client.delete('/api/v1/site-settings/footer_image')
+        assert resp.status_code == 204
+        resp = flask_app_client.delete('/api/v1/site-settings/socialGroupRoles')
         assert resp.status_code == 204
 
         # List site settings

@@ -157,6 +157,7 @@ class BaseConfig(object):
         'sightings',
         'individuals',
         'annotations',
+        'social_groups',
         'site_settings',
         'site_info',
         'job_control',

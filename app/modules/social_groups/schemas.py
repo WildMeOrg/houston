@@ -7,7 +7,17 @@ Serialization schemas for Social Groups resources RESTful API
 from flask_marshmallow import base_fields
 from flask_restx_patched import ModelSchema
 
-from .models import SocialGroup
+from .models import SocialGroup, SocialGroupIndividualMembership
+
+
+class SocialGroupMemberSchema(ModelSchema):
+    """
+    Data for members in the the SocialGroup
+    """
+
+    class Meta:
+        model = SocialGroupIndividualMembership
+        fields = (SocialGroupIndividualMembership.role.key,)
 
 
 class BaseSocialGroupSchema(ModelSchema):

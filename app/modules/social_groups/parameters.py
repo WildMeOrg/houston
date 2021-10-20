@@ -11,9 +11,14 @@ from . import schemas
 from .models import SocialGroup
 
 
+class SocialGroupMembers(Parameters, schemas.SocialGroupMemberSchema):
+    class Meta(schemas.SocialGroupMemberSchema.Meta):
+        pass
+
+
 class CreateSocialGroupParameters(Parameters, schemas.DetailedSocialGroupSchema):
     name = base_fields.String(description='The name of the social group', required=True)
-    members = base_fields.List(base_fields.Dict, required=True)
+    members = base_fields.Nested(SocialGroupMembers, required=True)
 
     class Meta(schemas.DetailedSocialGroupSchema.Meta):
         pass

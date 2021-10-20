@@ -286,7 +286,6 @@ class ObjectActionRule(DenyAbortMixin, Rule):
                 )
 
         if not has_permission:
-            breakpoint()
             log.info(
                 'Access permission denied for %r, %r by %r'
                 % (self._action, self._obj, current_user)

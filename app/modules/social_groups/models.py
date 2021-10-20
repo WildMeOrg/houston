@@ -76,7 +76,9 @@ class SocialGroup(db.Model, HoustonModel):
     def site_settings_updated(cls):
         from app.modules.site_settings.models import SiteSetting
 
-        permitted_role_data = json.loads(SiteSetting.get_string('social_group_roles'))
+        role_string = SiteSetting.get_string('social_group_roles')
+
+        permitted_role_data = json.loads(role_string) if role_string else {}
         all_groups = SocialGroup.query.all()
         for group in all_groups:
             current_roles_singular = []
@@ -119,10 +121,8 @@ class SocialGroup(db.Model, HoustonModel):
                 )
 
     def get_member_data_as_json(self):
-
         individual_data = {}
         for member in self.members:
-
             individual_data[str(member.individual_guid)] = {'role': member.role}
 
         return individual_data

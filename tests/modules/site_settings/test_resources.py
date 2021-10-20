@@ -127,10 +127,10 @@ def test_site_settings(admin_user, flask_app_client, flask_app, db, request, tes
         data = {
             'key': 'social_group_roles',
             'string': json.dumps(
-                [
-                    {'role': 'Matriarch', 'multipleInGroup': False},
-                    {'role': 'IrritatingGit', 'multipleInGroup': True},
-                ]
+                {
+                    'Matriarch': {'multipleInGroup': False},
+                    'IrritatingGit': {'multipleInGroup': True},
+                }
             ),
         }
         resp = flask_app_client.post('/api/v1/site-settings/', data=data)
@@ -142,7 +142,7 @@ def test_site_settings(admin_user, flask_app_client, flask_app, db, request, tes
         assert resp.status_code == 204
         resp = flask_app_client.delete('/api/v1/site-settings/footer_image')
         assert resp.status_code == 204
-        resp = flask_app_client.delete('/api/v1/site-settings/socialGroupRoles')
+        resp = flask_app_client.delete('/api/v1/site-settings/social_group_roles')
         assert resp.status_code == 204
 
         # List site settings

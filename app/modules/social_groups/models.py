@@ -114,10 +114,10 @@ class SocialGroup(db.Model, HoustonModel):
                     log, 'Role data needs to be a dictionary of dictionaries'
                 )
 
-            if set(json_data[item].keys()) > expected_fields:
+            if set(json_data[item].keys()) != set(expected_fields):
                 raise HoustonException(
                     log,
-                    f'Role dictionary may only have the following keys {expected_fields}',
+                    f'Role dictionary must have the following keys : {expected_fields}',
                 )
 
     def get_member_data_as_json(self):

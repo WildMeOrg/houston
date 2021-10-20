@@ -44,6 +44,11 @@ def validate_members(input_data):
             raise HoustonException(
                 log, f'Social Group member {member_guid} not accessible by user'
             )
+        if not set(input_data[member_guid].keys()) <= set({'role'}):
+            raise HoustonException(
+                log,
+                f'Social Group member {member_guid} fields not supported {set(input_data[member_guid].keys())}',
+            )
         role = input_data[member_guid].get('role')
         if not role:
             # individuals permitted to have no role

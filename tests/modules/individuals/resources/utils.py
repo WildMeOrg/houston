@@ -93,6 +93,7 @@ def patch_individual(
     return response
 
 
+# Helper to avoid duplication
 def generate_individual_encounter_data(owner, db, request):
     from app.modules.encounters.models import Encounter
 
@@ -101,3 +102,15 @@ def generate_individual_encounter_data(owner, db, request):
     encounter_json = {'encounters': [{'id': str(temp_enc.guid)}]}
     request.addfinalizer(lambda: db.session.delete(temp_enc))
     return encounter_json
+
+
+def create_individual_with_encounter(db, flask_app_client, user, request):
+    resp = create_individual(
+        flask_app_client,
+        user,
+        data_in=generate_individual_encounter_data(user, db, request),
+    )
+    request.addfinalizer(
+        lambda: delete_individual(flask_app_client, user, resp.json['result']['id'])
+    )
+    return resp.json['result']

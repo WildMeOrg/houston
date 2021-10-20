@@ -2,10 +2,12 @@
 # pylint: disable=invalid-name,missing-docstring
 
 import logging
+import uuid
 
 import tests.modules.social_groups.resources.utils as soc_group_utils
 import tests.modules.individuals.resources.utils as individual_utils
 import tests.modules.audit_logs.resources.utils as audit_utils
+import json
 
 log = logging.getLogger(__name__)
 
@@ -16,50 +18,24 @@ def test_basic_operation(
     # Set the basic roles we want
     soc_group_utils.set_basic_roles(flask_app_client, admin_user)
 
-    # Create a few individuals to use
-    matriarch = individual_utils.create_individual(
-        flask_app_client,
-        researcher_1,
-        data_in=individual_utils.generate_individual_encounter_data(
-            researcher_1, db, request
-        ),
+    # Create some individuals to use in testing
+    matriarch = individual_utils.create_individual_with_encounter(
+        db, flask_app_client, researcher_1, request
     )
-    request.addfinalizer(
-        lambda: individual_utils.delete_individual(
-            flask_app_client, researcher_1, matriarch.json['result']['id']
-        )
+    other_member_1 = individual_utils.create_individual_with_encounter(
+        db, flask_app_client, researcher_1, request
     )
-    other_member_1 = individual_utils.create_individual(
-        flask_app_client,
-        researcher_1,
-        data_in=individual_utils.generate_individual_encounter_data(
-            researcher_1, db, request
-        ),
+    other_member_2 = individual_utils.create_individual_with_encounter(
+        db, flask_app_client, researcher_1, request
     )
-    request.addfinalizer(
-        lambda: individual_utils.delete_individual(
-            flask_app_client, researcher_1, other_member_1.json['result']['id']
-        )
-    )
-    other_member_2 = individual_utils.create_individual(
-        flask_app_client,
-        researcher_1,
-        data_in=individual_utils.generate_individual_encounter_data(
-            researcher_1, db, request
-        ),
-    )
-    request.addfinalizer(
-        lambda: individual_utils.delete_individual(
-            flask_app_client, researcher_1, other_member_2.json['result']['id']
-        )
-    )
+
     # Create a social group for them
     data = {
         'name': 'Disreputable bunch of hooligans',
         'members': {
-            matriarch.json['result']['id']: {'role': 'Matriarch'},
-            other_member_1.json['result']['id']: {},
-            other_member_2.json['result']['id']: {'role': 'IrritatingGit'},
+            matriarch['id']: {'role': 'Matriarch'},
+            other_member_1['id']: {},
+            other_member_2['id']: {'role': 'IrritatingGit'},
         },
     }
     group_resp = soc_group_utils.create_social_group(flask_app_client, researcher_1, data)
@@ -99,9 +75,129 @@ def test_basic_operation(
     assert create_log['user_email'] == researcher_1.email
 
 
-def test_error_creation(
-    db, flask_app_client, researcher_1, researcher_2, admin_user, request
-):
-    # TODO bunch of failure legs
+# Test invalid configuration options. The API is via site settings but the validation is in SocialGroup so
+# this is a social group test
+def test_error_config(flask_app_client, researcher_1, admin_user):
+    valid_data = {
+        'key': 'social_group_roles',
+        'string': json.dumps(
+            {
+                'Matriarch': {'multipleInGroup': False},
+                'IrritatingGit': {'multipleInGroup': True},
+            }
+        ),
+    }
 
-    pass
+    # Valid data but non admin user so should fail
+    error = "You don't have the permission to access the requested resource."
+    soc_group_utils.set_roles(flask_app_client, researcher_1, valid_data, 403, error)
+
+    missing_field = {
+        'key': 'social_group_roles',
+        'string': json.dumps(
+            {
+                'Matriarch': {},
+                'IrritatingGit': {'multipleInGroup': True},
+            }
+        ),
+    }
+    error = "Role dictionary must have the following keys : {'multipleInGroup'}"
+    soc_group_utils.set_roles(flask_app_client, admin_user, missing_field, 400, error)
+
+    extra_field = {
+        'key': 'social_group_roles',
+        'string': json.dumps(
+            {
+                'Matriarch': {'multipleInGroup': False, 'attitude': True},
+                'IrritatingGit': {'multipleInGroup': True},
+            }
+        ),
+    }
+    soc_group_utils.set_roles(flask_app_client, admin_user, extra_field, 400, error)
+
+
+def test_invalid_creation(
+    db, flask_app_client, researcher_1, researcher_2, admin_user, collab_user_a, request
+):
+    # Set the basic roles we want
+    soc_group_utils.set_basic_roles(flask_app_client, admin_user)
+
+    # Create some individuals to use in testing
+    matriarch = individual_utils.create_individual_with_encounter(
+        db, flask_app_client, researcher_1, request
+    )
+    other_member_1 = individual_utils.create_individual_with_encounter(
+        db, flask_app_client, researcher_1, request
+    )
+    other_member_2 = individual_utils.create_individual_with_encounter(
+        db, flask_app_client, researcher_1, request
+    )
+
+    valid_data = {
+        'name': 'Disreputable bunch of hooligans',
+        'members': {
+            matriarch['id']: {'role': 'Matriarch'},
+            other_member_1['id']: {},
+            other_member_2['id']: {'role': 'IrritatingGit'},
+        },
+    }
+    # Shouldn't work with anon user
+    error = (
+        'The server could not verify that you are authorized to access the URL requested. You either supplied '
+        "the wrong credentials (e.g. a bad password), or your browser doesn't understand how to supply the "
+        'credentials required.'
+    )
+    soc_group_utils.create_social_group(flask_app_client, None, valid_data, 401, error)
+
+    # or collaborator
+    error = "You don't have the permission to access the requested resource."
+    soc_group_utils.create_social_group(
+        flask_app_client, collab_user_a, valid_data, 403, error
+    )
+
+    # or researcher without read permission
+    error = f"Social Group member { matriarch['id']} not accessible by user"
+    soc_group_utils.create_social_group(
+        flask_app_client, researcher_2, valid_data, 400, error
+    )
+
+    missing_name = {
+        'members': {
+            matriarch['id']: {'role': 'Matriarch'},
+            other_member_1['id']: {},
+            other_member_2['id']: {'role': 'IrritatingGit'},
+        },
+    }
+    error = 'The request was well-formed but was unable to be followed due to semantic errors.'
+    soc_group_utils.create_social_group(
+        flask_app_client, researcher_1, missing_name, 422, error
+    )
+
+    invalid_fields = {
+        'name': 'Disreputable bunch of hooligans',
+        'members': {
+            matriarch['id']: {'role': 'Matriarch'},
+            other_member_1['id']: {'attitude': 'Stubborn'},
+            other_member_2['id']: {'role': 'IrritatingGit'},
+        },
+    }
+    error = (
+        f"Social Group member {other_member_1['id']} fields not supported {{'attitude'}}"
+    )
+    soc_group_utils.create_social_group(
+        flask_app_client, researcher_1, invalid_fields, 400, error
+    )
+
+    random_guid = str(uuid.uuid4())
+    invalid_guid = {
+        'name': 'Disreputable bunch of hooligans',
+        'members': {
+            random_guid: {'role': 'Matriarch'},
+            other_member_1['id']: {},
+            other_member_2['id']: {'role': 'IrritatingGit'},
+        },
+    }
+    error = f'Social Group member {random_guid} does not match an individual'
+    soc_group_utils.create_social_group(
+        flask_app_client, researcher_1, invalid_guid, 400, error
+    )

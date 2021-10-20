@@ -136,7 +136,7 @@ class Individual(db.Model, FeatherModel):
         alias = []
         res = db.session.query(Sighting.guid)
         for i in range(len(individual_guids)):
-            alias[i] = aliased(Encounter, name=f'enc{i}')
+            alias.append(aliased(Encounter, name=f'enc{i}'))
             res = res.join(alias[i])
         for i in range(len(individual_guids)):
             res = res.filter(alias[i].individual_guid == individual_guids[i])

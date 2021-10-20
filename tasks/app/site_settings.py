@@ -28,3 +28,16 @@ def set(context, key, filepath, public=True):
 )
 def get(context, key):
     print(repr(SiteSetting.query.get(key)))
+
+
+@app_context_task(
+    help={
+        'key': 'Setting name, e.g. header_image (note also supports edm configuration keys like site.name)',
+    }
+)
+def get_value(context, key, default=None):
+    if not default:
+        val = SiteSetting.get_value(key)
+    else:
+        val = SiteSetting.get_value(key, default=default)
+    print(repr(val))

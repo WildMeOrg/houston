@@ -50,6 +50,11 @@ def test_read_configurations(flask_app_client, researcher_1):
             == species[len(species) - i - 1]
         )
 
+    # test private (will give 403 to non-admin)
+    response = conf_utils.read_configuration(
+        flask_app_client, researcher_1, 'site.testSecret', expected_status_code=403
+    )
+
 
 def test_alter_configurations(flask_app_client, admin_user):
     response = conf_utils.read_configuration(flask_app_client, admin_user, 'site.species')

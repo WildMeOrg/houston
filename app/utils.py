@@ -28,3 +28,12 @@ class HoustonException(Exception):
 
     def get_val(self, argval, default):
         return self._kwargs.get(argval, default)
+
+
+# h/t https://www.delftstack.com/howto/python/python-unicode-to-string/
+def to_ascii(val):
+    if val is None or not isinstance(val, str):
+        return None
+    import unicodedata
+
+    return unicodedata.normalize('NFKD', val).encode('ascii', 'ignore').decode()

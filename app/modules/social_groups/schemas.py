@@ -51,4 +51,5 @@ class DetailedSocialGroupSchema(BaseSocialGroupSchema):
         dump_only = BaseSocialGroupSchema.Meta.dump_only + (
             SocialGroup.created.key,
             SocialGroup.updated.key,
+            'members',
         )

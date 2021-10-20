@@ -133,12 +133,16 @@ class SiteSettingByKey(Resource):
         """
         Get SiteSetting details by ID.
         """
-        return redirect(
-            url_for(
-                'api.fileuploads_file_upload_src_u_by_id_2',
-                fileupload_guid=site_setting.file_upload_guid,
+        if site_setting.file_upload_guid:
+            return redirect(
+                url_for(
+                    'api.fileuploads_file_upload_src_u_by_id_2',
+                    fileupload_guid=site_setting.file_upload_guid,
+                )
             )
-        )
+        schema = schemas.DetailedSiteSettingSchema()
+        json_msg, err = schema.dump(site_setting)
+        return json_msg
 
     @api.permission_required(
         permissions.ObjectAccessPermission,

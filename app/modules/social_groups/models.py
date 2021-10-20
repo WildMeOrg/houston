@@ -90,6 +90,7 @@ class SocialGroup(db.Model, HoustonModel):
                     msg = f"member {member.individual_guid} lost role {member.role} as it's no longer supported"
                     AuditLog.audit_log_object(log, group, msg)
                     member.role = None
+                    continue
 
                 # if a role is now only singular in the group and we have multiple, all we can do is audit it
                 if permitted_role_data[member.role]['multipleInGroup']:

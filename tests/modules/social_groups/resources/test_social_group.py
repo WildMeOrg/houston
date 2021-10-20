@@ -17,6 +17,9 @@ def test_basic_operation(
 ):
     # Set the basic roles we want
     soc_group_utils.set_basic_roles(flask_app_client, admin_user)
+    request.addfinalizer(
+        lambda: soc_group_utils.delete_roles(flask_app_client, admin_user)
+    )
 
     # Create some individuals to use in testing
     matriarch = individual_utils.create_individual_with_encounter(
@@ -121,6 +124,9 @@ def test_invalid_creation(
 ):
     # Set the basic roles we want
     soc_group_utils.set_basic_roles(flask_app_client, admin_user)
+    request.addfinalizer(
+        lambda: soc_group_utils.delete_roles(flask_app_client, admin_user)
+    )
 
     # Create some individuals to use in testing
     matriarch = individual_utils.create_individual_with_encounter(
@@ -201,3 +207,106 @@ def test_invalid_creation(
     soc_group_utils.create_social_group(
         flask_app_client, researcher_1, invalid_guid, 400, error
     )
+
+    # Can have multiple gits
+    many_gits = {
+        'name': 'Disreputable bunch of hooligans',
+        'members': {
+            matriarch['id']: {'role': 'Matriarch'},
+            other_member_1['id']: {'role': 'IrritatingGit'},
+            other_member_2['id']: {'role': 'IrritatingGit'},
+        },
+    }
+
+    group_resp = soc_group_utils.create_social_group(
+        flask_app_client, researcher_1, many_gits
+    )
+    group_guid = group_resp.json['guid']
+    request.addfinalizer(
+        lambda: soc_group_utils.delete_social_group(
+            flask_app_client, researcher_1, group_guid
+        )
+    )
+
+    # But only one matriarch
+    many_matriarchs = {
+        'name': 'Disreputable bunch of hooligans',
+        'members': {
+            matriarch['id']: {'role': 'Matriarch'},
+            other_member_1['id']: {'role': 'Matriarch'},
+            other_member_2['id']: {'role': 'IrritatingGit'},
+        },
+    }
+    error = 'Can only have one Matriarch in a group'
+    soc_group_utils.create_social_group(
+        flask_app_client, researcher_1, many_matriarchs, 400, error
+    )
+
+
+def test_role_changes(
+    db, flask_app_client, researcher_1, researcher_2, admin_user, collab_user_a, request
+):
+    # Set the basic roles we want
+    soc_group_utils.set_basic_roles(flask_app_client, admin_user)
+    request.addfinalizer(
+        lambda: soc_group_utils.delete_roles(flask_app_client, admin_user)
+    )
+
+    current_roles = soc_group_utils.get_roles(flask_app_client, admin_user)
+    assert 'string' in current_roles.json
+    # convert string to json
+    roles_as_json = json.loads(current_roles.json['string'])
+    assert set({'Matriarch', 'IrritatingGit'}) == set(roles_as_json.keys())
+
+    # Create some individuals to use in testing
+    matriarch = individual_utils.create_individual_with_encounter(
+        db, flask_app_client, researcher_1, request
+    )
+    other_member_1 = individual_utils.create_individual_with_encounter(
+        db, flask_app_client, researcher_1, request
+    )
+    other_member_2 = individual_utils.create_individual_with_encounter(
+        db, flask_app_client, researcher_1, request
+    )
+
+    valid_group = {
+        'name': 'Disreputable bunch of hooligans',
+        'members': {
+            matriarch['id']: {'role': 'Matriarch'},
+            other_member_1['id']: {'role': 'IrritatingGit'},
+            other_member_2['id']: {'role': 'IrritatingGit'},
+        },
+    }
+
+    group_resp = soc_group_utils.create_social_group(
+        flask_app_client, researcher_1, valid_group
+    )
+    group_guid = group_resp.json['guid']
+    request.addfinalizer(
+        lambda: soc_group_utils.delete_social_group(
+            flask_app_client, researcher_1, group_guid
+        )
+    )
+
+    # Social group was created, now change the config and see what changes
+    changed_config = {
+        'key': 'social_group_roles',
+        'string': json.dumps(
+            {
+                'IrritatingGit': {'multipleInGroup': False},
+            }
+        ),
+    }
+
+    soc_group_utils.set_roles(flask_app_client, admin_user, changed_config)
+
+    group_as_res_2 = soc_group_utils.read_social_group(
+        flask_app_client, researcher_2, group_guid
+    )
+
+    for member_guid in valid_group['members']:
+        assert member_guid in group_as_res_2.json['members']
+        if valid_group['members'][member_guid]['role'] == 'Matriarch':
+            assert group_as_res_2.json['members'][member_guid]['role'] is None
+        elif valid_group['members'][member_guid]['role'] == 'IrritatingGit':
+            assert group_as_res_2.json['members'][member_guid]['role'] == 'IrritatingGit'

@@ -56,7 +56,7 @@ def validate_members(input_data):
 
         if role not in permitted_role_data.keys():
             raise HoustonException(log, f'Social Group role {role} not supported')
-        elif permitted_role_data[role]['multipleInGroup']:
+        elif not permitted_role_data[role]['multipleInGroup']:
             if current_roles.get(role):
                 raise HoustonException(log, f'Can only have one {role} in a group')
             current_roles[role] = True

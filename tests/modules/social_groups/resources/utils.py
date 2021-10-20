@@ -107,32 +107,16 @@ def set_roles(
     expected_status_code=200,
     expected_error=None,
 ):
-    if user:
-        with flask_app_client.login(user, auth_scopes=('site-settings:write',)):
-            response = flask_app_client.post(
-                SETTING_PATH,
-                content_type='application/json',
-                data=json.dumps(data),
-            )
-    else:
-        response = flask_app_client.post(
-            SETTING_PATH,
-            content_type='application/json',
-            data=json.dumps(data),
-        )
-
-    if expected_status_code == 200:
-        test_utils.validate_dict_response(response, 200, EXPECTED_SETTING_KEYS)
-    elif 400 <= expected_status_code < 500:
-        test_utils.validate_dict_response(
-            response, expected_status_code, {'status', 'message'}
-        )
-        assert response.json['message'] == expected_error, response.json['message']
-    else:
-        test_utils.validate_dict_response(
-            response, expected_status_code, {'status', 'message'}
-        )
-    return response
+    return test_utils.post_via_flask(
+        flask_app_client,
+        user,
+        'site-settings:write',
+        SETTING_PATH,
+        data,
+        expected_status_code,
+        EXPECTED_SETTING_KEYS,
+        expected_error,
+    )
 
 
 # expected to work so just have a simple util
@@ -147,3 +131,26 @@ def set_basic_roles(flask_app_client, user):
         ),
     }
     return set_roles(flask_app_client, user, data)
+
+
+def get_roles(flask_app_client, user, expected_status_code=200, expected_error=None):
+    return test_utils.get_dict_via_flask(
+        flask_app_client,
+        user,
+        'site-settings:read',
+        f'{SETTING_PATH}social_group_roles',
+        expected_status_code,
+        EXPECTED_SETTING_KEYS,
+        expected_error,
+    )
+
+
+def delete_roles(flask_app_client, user, expected_status_code=204, expected_error=None):
+    return test_utils.delete_via_flask(
+        flask_app_client,
+        user,
+        'site-settings:write',
+        f'{SETTING_PATH}social_group_roles',
+        expected_status_code,
+        expected_error,
+    )

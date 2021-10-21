@@ -331,3 +331,28 @@ class IndividualByID(Resource):
             )
 
         return None
+
+
+@api.route('/<uuid:individual_guid>/cooccurrence')
+@api.response(
+    code=HTTPStatus.NOT_FOUND,
+    description='Individual not found.',
+)
+@api.resolve_object_by_model(Individual, 'individual')
+@api.response(schemas.BaseIndividualSchema(many=True))
+class IndividualByIDCoOccurence(Resource):
+    """
+    List co-occurring individuals
+    """
+
+    @api.permission_required(
+        permissions.ObjectAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'obj': kwargs['individual'],
+            'action': AccessOperation.READ,
+        },
+    )
+    def get(self, individual):
+        if individual is not None:
+            others = individual.get_cooccurring_individuals()
+            return others

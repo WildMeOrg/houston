@@ -5,7 +5,7 @@ from app.modules.users.models import User
 import tests.utils as test_utils
 
 
-def test_cooccurrence(db):
+def test_cooccurrence(db, flask_app_client, researcher_1):
     from app.modules.sightings.models import Sighting, SightingStage
     from app.modules.individuals.models import Individual
 
@@ -40,6 +40,15 @@ def test_cooccurrence(db):
 
     pals = individual_1.get_cooccurring_individuals()
     assert pals == [individual_2, individual_3]
+
+    # since its all set up, lets test api as well
+    with flask_app_client.login(researcher_1, auth_scopes=('individuals:read',)):
+        response = flask_app_client.get(
+            f'/api/v1/individuals/{str(individual_1.guid)}/cooccurrence'
+        )
+    assert len(response.json) == 2
+    assert response.json[0]['guid'] == str(individual_2.guid)
+    assert response.json[1]['guid'] == str(individual_3.guid)
 
     # tests indiv.get_shared_sightings(list_individual_guids)
     individual_4 = Individual()

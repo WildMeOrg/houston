@@ -50,7 +50,7 @@ class Notifications(Resource):
         },
     )
     @api.parameters(PaginationParameters())
-    @api.response(schemas.BaseNotificationSchema(many=True))
+    @api.response(schemas.DetailedNotificationSchema(many=True))
     def get(self, args):
         """
         List of Notification.

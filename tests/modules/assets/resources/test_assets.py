@@ -6,6 +6,11 @@ import json
 import tests.modules.asset_groups.resources.utils as asset_group_utils
 import tests.modules.assets.resources.utils as asset_utils
 
+import pytest
+
+from tests.utils import module_unavailable
+
+
 # md5sum values of the initial and derived files
 initial_md5sum_values = [
     '6b383b9feb55b14ec7f8d469402aff01',
@@ -24,8 +29,12 @@ def test_get_asset_not_found(flask_app_client, researcher_1):
     asset_utils.read_asset(flask_app_client, researcher_1, str(uuid.uuid4()), 404)
     response = flask_app_client.get('/api/v1/assets/invalid-uuid')
     assert response.status_code == 404
+    response.close()
 
 
+@pytest.mark.skipif(
+    module_unavailable('asset_groups'), reason='AssetGroups module disabled'
+)
 def test_find_asset(
     flask_app_client,
     researcher_1,
@@ -57,6 +66,9 @@ def test_find_asset(
         clone.cleanup()
 
 
+@pytest.mark.skipif(
+    module_unavailable('asset_groups'), reason='AssetGroups module disabled'
+)
 def test_find_deleted_asset(
     flask_app_client,
     researcher_1,
@@ -95,6 +107,9 @@ def test_find_deleted_asset(
         clone.cleanup()
 
 
+@pytest.mark.skipif(
+    module_unavailable('asset_groups'), reason='AssetGroups module disabled'
+)
 def test_find_raw_asset(
     flask_app_client,
     admin_user,
@@ -154,6 +169,9 @@ def test_find_raw_asset(
         clone.cleanup()
 
 
+@pytest.mark.skipif(
+    module_unavailable('asset_groups'), reason='AssetGroups module disabled'
+)
 def test_user_asset_permissions(
     flask_app_client,
     researcher_1,
@@ -175,6 +193,9 @@ def test_user_asset_permissions(
     clone.cleanup()
 
 
+@pytest.mark.skipif(
+    module_unavailable('asset_groups'), reason='AssetGroups module disabled'
+)
 def test_read_all_assets(
     flask_app_client,
     admin_user,
@@ -199,6 +220,9 @@ def test_read_all_assets(
     clone.cleanup()
 
 
+@pytest.mark.skipif(
+    module_unavailable('asset_groups'), reason='AssetGroups module disabled'
+)
 def test_patch_image_rotate(
     flask_app_client, researcher_1, test_clone_asset_group_data, request
 ):

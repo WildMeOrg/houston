@@ -3,8 +3,14 @@
 import tests.modules.collaborations.resources.utils as collab_utils
 import tests.modules.users.resources.utils as user_utils
 import uuid
+import pytest
+
+from tests.utils import module_unavailable
 
 
+@pytest.mark.skipif(
+    module_unavailable('collaborations'), reason='Collaborations module disabled'
+)
 def test_create_collaboration(
     flask_app_client,
     researcher_1,
@@ -61,6 +67,9 @@ def test_create_collaboration(
             collab.delete()
 
 
+@pytest.mark.skipif(
+    module_unavailable('collaborations'), reason='Collaborations module disabled'
+)
 def test_create_approved_collaboration(
     flask_app_client, researcher_1, researcher_2, user_manager_user, readonly_user, db
 ):
@@ -101,6 +110,9 @@ def test_create_approved_collaboration(
             collab.delete()
 
 
+@pytest.mark.skipif(
+    module_unavailable('collaborations'), reason='Collaborations module disabled'
+)
 def test_create_repeat_collaboration(
     flask_app_client,
     researcher_1,

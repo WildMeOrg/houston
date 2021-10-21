@@ -2,8 +2,12 @@
 # pylint: disable=missing-docstring
 
 from tests.modules.projects.resources import utils as proj_utils
+import pytest
+
+from tests.utils import module_unavailable
 
 
+@pytest.mark.skipif(module_unavailable('projects'), reason='Projects module disabled')
 def test_create_and_delete_project(flask_app_client, researcher_1):
     # pylint: disable=invalid-name
     from app.modules.projects.models import Project
@@ -27,6 +31,7 @@ def test_create_and_delete_project(flask_app_client, researcher_1):
     assert read_project is None
 
 
+@pytest.mark.skipif(module_unavailable('projects'), reason='Projects module disabled')
 def test_project_permission(
     flask_app_client, admin_user, staff_user, researcher_1, researcher_2
 ):

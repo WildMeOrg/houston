@@ -4,8 +4,15 @@
 from tests import utils
 from tests.modules.individuals.resources import utils as individual_utils
 from tests.modules.sightings.resources import utils as sighting_utils
+import pytest
+
+from tests.utils import module_unavailable
 
 
+@pytest.mark.skipif(
+    module_unavailable('individuals', 'encounters', 'sightings'),
+    reason='Individuals module disabled',
+)
 def test_modify_individual_edm_fields(db, flask_app_client, researcher_1):
 
     from app.modules.encounters.models import Encounter

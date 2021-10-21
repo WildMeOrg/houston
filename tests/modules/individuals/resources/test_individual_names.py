@@ -7,8 +7,14 @@ from tests.modules.sightings.resources import utils as sighting_utils
 
 from app.modules.encounters.models import Encounter
 from app.modules.sightings.models import Sighting
+import pytest
+
+from tests.utils import module_unavailable
 
 
+@pytest.mark.skipif(
+    module_unavailable('individuals'), reason='Individuals module disabled'
+)
 def test_get_set_individual_names(db, flask_app_client, researcher_1):
 
     data_in = {
@@ -121,6 +127,9 @@ def test_get_set_individual_names(db, flask_app_client, researcher_1):
         enc.delete_cascade()
 
 
+@pytest.mark.skipif(
+    module_unavailable('individuals'), reason='Individuals module disabled'
+)
 def test_ensure_default_name_on_individual_creation(db, flask_app_client, researcher_1):
 
     data_in = {

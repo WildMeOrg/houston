@@ -8,7 +8,12 @@ import uuid
 from invoke import MockContext
 import pytest
 
+from tests.utils import module_unavailable
 
+
+@pytest.mark.skipif(
+    module_unavailable('asset_groups'), reason='AssetGroups module disabled'
+)
 def test_create_asset_group_from_path(flask_app, test_root, admin_user, request):
     from app.modules.asset_groups.models import AssetGroup
 
@@ -56,6 +61,9 @@ def test_create_asset_group_from_path(flask_app, test_root, admin_user, request)
     assert asset_group.description == 'AssetGroup creation test'
 
 
+@pytest.mark.skipif(
+    module_unavailable('asset_groups'), reason='AssetGroups module disabled'
+)
 def test_clone_asset_group_from_gitlab(
     flask_app, db, test_asset_group_uuid, researcher_1
 ):
@@ -112,6 +120,9 @@ def test_clone_asset_group_from_gitlab(
         AssetGroup.query.get(test_asset_group_uuid).delete()
 
 
+@pytest.mark.skipif(
+    module_unavailable('asset_groups'), reason='AssetGroups module disabled'
+)
 def test_list_all(flask_app, test_asset_group_uuid, test_empty_asset_group_uuid):
     with mock.patch('app.create_app'):
         from app.modules.asset_groups.models import AssetGroup

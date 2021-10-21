@@ -7,6 +7,7 @@ from invoke import MockContext, Result
 import pytest
 
 import tasks.docker_compose
+from tests.utils import extension_unavailable
 
 
 with (pathlib.Path(__file__).parent.parent.parent / 'docker-compose.yml').open() as f:
@@ -55,6 +56,7 @@ def test_rebuild():
         ]
 
 
+@pytest.mark.skipif(extension_unavailable('gitlab'), reason='GitLab extension disabled')
 def test_rebuild_gitlab():
     with mock.patch('tasks.docker_compose.logger') as logger:
         context = MockContext(

@@ -4,8 +4,14 @@ from tests import utils
 from tests.modules.annotations.resources import utils as annot_utils
 from tests.modules.asset_groups.resources import utils as sub_utils
 from tests.modules.keywords.resources import utils as keyword_utils
+import pytest
+
+from tests.utils import module_unavailable
 
 
+@pytest.mark.skipif(
+    module_unavailable('asset_groups'), reason='AssetGroups module disabled'
+)
 def test_keywords_on_annotation(
     flask_app_client, researcher_1, test_clone_asset_group_data, db
 ):

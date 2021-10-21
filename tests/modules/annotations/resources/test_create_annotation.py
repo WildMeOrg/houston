@@ -6,13 +6,20 @@ from tests.modules.annotations.resources import utils as annot_utils
 from tests.modules.asset_groups.resources import utils as sub_utils
 from tests.modules.encounters.resources import utils as enc_utils
 from tests.modules.assets.resources import utils as asset_utils
+import pytest
+
+from tests.utils import module_unavailable
 
 
 def test_get_annotation_not_found(flask_app_client):
     response = flask_app_client.get('/api/v1/annotations/wrong-uuid')
     assert response.status_code == 404
+    response.close()
 
 
+@pytest.mark.skipif(
+    module_unavailable('asset_groups'), reason='AssetGroups module disabled'
+)
 def test_create_failures(flask_app_client, researcher_1, test_clone_asset_group_data, db):
     # pylint: disable=invalid-name
     clone = sub_utils.clone_asset_group(
@@ -44,6 +51,9 @@ def test_create_failures(flask_app_client, researcher_1, test_clone_asset_group_
     clone.cleanup()
 
 
+@pytest.mark.skipif(
+    module_unavailable('asset_groups'), reason='AssetGroups module disabled'
+)
 def test_create_and_delete_annotation(
     flask_app_client, researcher_1, test_clone_asset_group_data
 ):
@@ -91,6 +101,9 @@ def test_create_and_delete_annotation(
     Encounter.query.get(enc_guid).delete()
 
 
+@pytest.mark.skipif(
+    module_unavailable('asset_groups'), reason='AssetGroups module disabled'
+)
 def test_annotation_permission(
     flask_app_client,
     admin_user,

@@ -6,8 +6,14 @@ import tests.modules.asset_groups.resources.utils as asset_group_utils
 import tests.modules.assets.resources.utils as asset_utils
 import tests.extensions.tus.utils as tus_utils
 from tests import utils as test_utils
+import pytest
+
+from tests.utils import module_unavailable
 
 
+@pytest.mark.skipif(
+    module_unavailable('asset_groups'), reason='AssetGroups module disabled'
+)
 def test_user_read_permissions(
     flask_app_client,
     researcher_1,
@@ -53,6 +59,9 @@ def test_user_read_permissions(
     clone.cleanup()
 
 
+@pytest.mark.skipif(
+    module_unavailable('asset_groups'), reason='AssetGroups module disabled'
+)
 def test_create_patch_asset_group(
     flask_app_client, researcher_1, readonly_user, test_root, db
 ):
@@ -62,7 +71,7 @@ def test_create_patch_asset_group(
     try:
         from app.modules.asset_groups.models import AssetGroup
 
-        data = asset_group_utils.TestCreationData(transaction_id)
+        data = asset_group_utils.AssetGroupCreationData(transaction_id)
         data.add_filename(0, test_filename)
 
         create_response = asset_group_utils.create_asset_group(

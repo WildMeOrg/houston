@@ -3,8 +3,12 @@
 
 from tests import utils
 from tests.modules.missions.resources import utils as proj_utils
+import pytest
+
+from tests.utils import module_unavailable
 
 
+@pytest.mark.skipif(module_unavailable('missions'), reason='Missions module disabled')
 def test_modify_mission(db, flask_app_client, admin_user, researcher_1, researcher_2):
 
     # pylint: disable=invalid-name
@@ -42,6 +46,7 @@ def test_modify_mission(db, flask_app_client, admin_user, researcher_1, research
     proj_utils.delete_mission(flask_app_client, researcher_1, mission_guid)
 
 
+@pytest.mark.skipif(module_unavailable('missions'), reason='Missions module disabled')
 def test_owner_permission(flask_app_client, researcher_1, researcher_2):
     response = proj_utils.create_mission(
         flask_app_client, researcher_1, 'This is a test mission, please ignore'

@@ -2,8 +2,14 @@
 # pylint: disable=missing-docstring
 import tests.modules.collaborations.resources.utils as collab_utils
 from tests import utils
+import pytest
+
+from tests.utils import module_unavailable
 
 
+@pytest.mark.skipif(
+    module_unavailable('collaborations'), reason='Collaborations module disabled'
+)
 def test_patch_collaboration(flask_app_client, researcher_1, researcher_2, request):
 
     create_resp = collab_utils.create_simple_collaboration(
@@ -47,6 +53,9 @@ def test_patch_collaboration(flask_app_client, researcher_1, researcher_2, reque
 
 
 # As for above but validate that revoking view also revokes edit
+@pytest.mark.skipif(
+    module_unavailable('collaborations'), reason='Collaborations module disabled'
+)
 def test_view_revoke(flask_app_client, researcher_1, researcher_2, request):
     create_resp = collab_utils.create_simple_collaboration(
         flask_app_client, researcher_1, researcher_2
@@ -77,6 +86,9 @@ def test_view_revoke(flask_app_client, researcher_1, researcher_2, request):
 
 # Tests the approved and not approved state transitions for the collaboration.
 # Only on the view as the edit uses exactly the same function
+@pytest.mark.skipif(
+    module_unavailable('collaborations'), reason='Collaborations module disabled'
+)
 def test_patch_collaboration_states(
     flask_app_client, researcher_1, researcher_2, db, request
 ):

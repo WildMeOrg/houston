@@ -5,8 +5,14 @@ from tests.modules.asset_groups.resources import utils as asset_group_utils
 from tests.modules.individuals.resources import utils as individual_utils
 from tests.modules.annotations.resources import utils as annot_utils
 from tests import utils
+import pytest
+
+from tests.utils import module_unavailable
 
 
+@pytest.mark.skipif(
+    module_unavailable('individuals', 'sightings'), reason='Individuals module disabled'
+)
 def test_patch_featured_asset_guid_on_individual(db, flask_app_client, researcher_1):
 
     # this test is a monster because it involves almost all of the major modules

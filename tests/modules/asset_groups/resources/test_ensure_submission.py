@@ -3,8 +3,14 @@
 import uuid
 
 from tests.modules.asset_groups.resources import utils
+import pytest
+
+from tests.utils import module_unavailable
 
 
+@pytest.mark.skipif(
+    module_unavailable('asset_groups'), reason='AssetGroups module disabled'
+)
 def test_ensure_asset_group_by_uuid(
     flask_app_client, researcher_1, db, test_asset_group_uuid
 ):
@@ -12,6 +18,9 @@ def test_ensure_asset_group_by_uuid(
     clone.cleanup()
 
 
+@pytest.mark.skipif(
+    module_unavailable('asset_groups'), reason='AssetGroups module disabled'
+)
 def test_ensure_empty_asset_group_by_uuid(
     flask_app_client, researcher_1, db, test_empty_asset_group_uuid
 ):
@@ -21,6 +30,9 @@ def test_ensure_empty_asset_group_by_uuid(
     clone.cleanup()
 
 
+@pytest.mark.skipif(
+    module_unavailable('asset_groups'), reason='AssetGroups module disabled'
+)
 def test_ensure_clone_asset_group_by_uuid(
     flask_app_client, researcher_1, db, test_clone_asset_group_data
 ):

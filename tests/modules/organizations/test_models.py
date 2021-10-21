@@ -4,8 +4,13 @@
 import sqlalchemy
 
 import logging
+import pytest
+from tests.utils import module_unavailable
 
 
+@pytest.mark.skipif(
+    module_unavailable('organizations'), reason='Organization module disabled'
+)
 def test_Organization_add_members(db, temp_user):  # pylint: disable=unused-argument
     from app.modules.organizations.models import (
         Organization,

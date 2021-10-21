@@ -5,8 +5,14 @@ from app.modules.fileuploads.models import FileUpload
 from app.modules.site_settings.models import SiteSetting
 
 from tests.utils import TemporaryDirectoryGraceful
+import pytest
+
+from tests.utils import module_unavailable
 
 
+@pytest.mark.skipif(
+    module_unavailable('site_settings'), reason='Site-settings module disabled'
+)
 def test_site_settings(admin_user, flask_app_client, flask_app, db, request, test_root):
     zebra_path = test_root / 'zebra.jpg'
     fup = FileUpload.create_fileupload_from_path(str(zebra_path), copy=True)
@@ -134,6 +140,9 @@ def test_site_settings(admin_user, flask_app_client, flask_app, db, request, tes
         assert resp.json == []
 
 
+@pytest.mark.skipif(
+    module_unavailable('site_settings'), reason='Site-settings module disabled'
+)
 def test_site_settings_permissions(
     regular_user, flask_app_client, flask_app, db, request, test_root
 ):

@@ -2,10 +2,16 @@
 # pylint: disable=missing-docstring
 import tests.modules.collaborations.resources.utils as collab_utils
 import tests.modules.notifications.resources.utils as notif_utils
+import pytest
+
+from tests.utils import module_unavailable
 
 
 # Full sequence, create the collaboration, validate that the notification is received, approve the view aspect
 # Request edit, validate that notification is received, approve edit.
+@pytest.mark.skipif(
+    module_unavailable('collaborations'), reason='Collaborations module disabled'
+)
 def test_edit_collaboration(flask_app_client, researcher_1, researcher_2, db, request):
 
     # Start with nothing outstanding

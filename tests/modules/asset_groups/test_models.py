@@ -5,8 +5,14 @@ from unittest import mock
 import uuid
 import tests.extensions.tus.utils as tus_utils
 import tests.modules.asset_groups.resources.utils as asset_group_utils
+import pytest
+
+from tests.utils import module_unavailable
 
 
+@pytest.mark.skipif(
+    module_unavailable('asset_groups'), reason='AssetGroups module disabled'
+)
 def test_asset_group_sightings_jobs(flask_app, db, admin_user, test_root, request):
     from app.modules.asset_groups.models import AssetGroup, AssetGroupSighting
 
@@ -75,6 +81,9 @@ def test_asset_group_sightings_jobs(flask_app, db, admin_user, test_root, reques
     }
 
 
+@pytest.mark.skipif(
+    module_unavailable('asset_groups'), reason='AssetGroups module disabled'
+)
 def test_asset_group_sightings_bulk(
     flask_app, flask_app_client, db, admin_user, researcher_1, test_root, request
 ):
@@ -112,6 +121,9 @@ def test_asset_group_sightings_bulk(
         tus_utils.cleanup_tus_dir(transaction_id)
 
 
+@pytest.mark.skipif(
+    module_unavailable('asset_groups'), reason='AssetGroups module disabled'
+)
 def test_asset_group_sighting_get_completion(
     flask_app, flask_app_client, researcher_1, test_root, request
 ):

@@ -36,6 +36,7 @@ def test_user_id_not_found(flask_app_client, regular_user):
             ),
         )
         assert response.status_code == 404
+        response.close()
 
 
 def test_modifying_user_info_by_owner(flask_app_client, regular_user, db):
@@ -285,13 +286,14 @@ def test_user_profile_fileupload(
                     child.rmdir()
 
     def cleanup():
-        regular_user.profile_fileupload_guid = None
-        db.session.merge(regular_user)
-        for obj in clean_up_objects:
-            if hasattr(obj, 'delete'):
-                obj.delete()
-            else:
-                db.session.delete(obj)
+        with db.session.begin():
+            regular_user.profile_fileupload_guid = None
+            db.session.merge(regular_user)
+            for obj in clean_up_objects:
+                if hasattr(obj, 'delete'):
+                    obj.delete()
+                else:
+                    db.session.delete(obj)
         for path in clean_up_paths:
             if path.exists():
                 shutil.rmtree(path, ignore_errors=True)
@@ -583,6 +585,7 @@ def test_user_profile_fileupload(
         assert response.headers['Content-Type'] == 'image/jpeg'
         with Image.open(io.BytesIO(response.data)) as image:
             assert image.size == (150, 150)
+        response.close()
 
         # Create non image fileupload
         with TemporaryDirectoryGraceful() as td:

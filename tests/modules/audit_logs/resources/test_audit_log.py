@@ -5,18 +5,24 @@ import tests.modules.users.resources.utils as user_utils
 import tests.modules.audit_logs.resources.utils as audit_utils
 import tests.modules.sightings.resources.utils as sighting_utils
 import tests.extensions.tus.utils as tus_utils
+import pytest
+
+from tests.utils import module_unavailable
 
 
+@pytest.mark.skipif(
+    module_unavailable('asset_groups'), reason='AssetGroups module disabled'
+)
 def test_audit_asset_group_creation(
     flask_app_client, researcher_1, contributor_1, test_root, db
 ):
     # pylint: disable=invalid-name
-    from tests.modules.asset_groups.resources.utils import TestCreationData
+    from tests.modules.asset_groups.resources.utils import AssetGroupCreationData
 
     asset_group_uuid = None
     sighting_uuid = None
     try:
-        data = TestCreationData(None)
+        data = AssetGroupCreationData(None)
         data.remove_field('transactionId')
 
         # Create an asset group without any assets as we don't need them, we want it to commit straight away and
@@ -76,6 +82,9 @@ def test_audit_asset_group_creation(
 
 # Basically a duplication of the ia pipeline up to Sighting creation and making sure that the required audit
 # logs are present
+@pytest.mark.skipif(
+    module_unavailable('asset_groups'), reason='AssetGroups module disabled'
+)
 def test_most_ia_pipeline_audit_log(
     flask_app,
     flask_app_client,
@@ -168,6 +177,9 @@ def test_most_ia_pipeline_audit_log(
     assert expected_encounter in encounter_audit_items.json
 
 
+@pytest.mark.skipif(
+    module_unavailable('asset_groups'), reason='AssetGroups module disabled'
+)
 def test_audit_log_faults(
     flask_app_client, researcher_1, readonly_user, admin_user, test_root, db
 ):

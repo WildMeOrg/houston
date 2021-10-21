@@ -1,7 +1,11 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=invalid-name,missing-docstring
+import pytest
+
+from tests.utils import module_unavailable
 
 
+@pytest.mark.skipif(module_unavailable('projects'), reason='Projects module disabled')
 def test_project_remove_encounters(
     db, researcher_1, researcher_1_login, test_empty_asset_group_uuid
 ):  # pylint: disable=unused-argument

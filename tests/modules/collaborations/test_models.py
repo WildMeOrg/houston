@@ -9,9 +9,14 @@ from app.modules.collaborations.models import Collaboration
 from app.modules.collaborations.models import CollaborationUserState
 from unittest import mock
 
+from tests.utils import module_unavailable
+
 log = logging.getLogger(__name__)
 
 
+@pytest.mark.skipif(
+    module_unavailable('collaborations'), reason='Collaborations module disabled'
+)
 def test_collaboration_create_with_members(
     db, collab_user_a, collab_user_b, user_manager_user, request
 ):  # pylint: disable=unused-argument
@@ -44,6 +49,9 @@ def test_collaboration_create_with_members(
             assert association.read_approval_state == 'approved'
 
 
+@pytest.mark.skipif(
+    module_unavailable('collaborations'), reason='Collaborations module disabled'
+)
 def test_collaboration_read_state_changes(db, collab_user_a, collab_user_b, request):
 
     collab = Collaboration([collab_user_a, collab_user_b], collab_user_a)
@@ -80,6 +88,9 @@ def test_collaboration_read_state_changes(db, collab_user_a, collab_user_b, requ
     )
 
 
+@pytest.mark.skipif(
+    module_unavailable('collaborations'), reason='Collaborations module disabled'
+)
 def test_collaboration_edit_state_changes(db, collab_user_a, collab_user_b, request):
     collab = Collaboration([collab_user_a, collab_user_b], collab_user_a)
     with db.session.begin():
@@ -126,6 +137,9 @@ def test_collaboration_edit_state_changes(db, collab_user_a, collab_user_b, requ
             assert association.read_approval_state == CollaborationUserState.REVOKED
 
 
+@pytest.mark.skipif(
+    module_unavailable('collaborations'), reason='Collaborations module disabled'
+)
 def test_fail_create_collaboration(collab_user_a, collab_user_b):
     def validate_failure(users, initiator):
 

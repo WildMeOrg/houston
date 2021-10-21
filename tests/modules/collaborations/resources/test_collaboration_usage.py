@@ -3,8 +3,14 @@
 import tests.modules.collaborations.resources.utils as collab_utils
 import tests.modules.asset_groups.resources.utils as asset_group_utils
 import tests.extensions.tus.utils as tus_utils
+import pytest
+
+from tests.utils import module_unavailable
 
 
+@pytest.mark.skipif(
+    module_unavailable('collaborations'), reason='Collaborations module disabled'
+)
 def test_use_collaboration(flask_app_client, researcher_1, researcher_2, test_root, db):
     from app.modules.collaborations.models import Collaboration
 

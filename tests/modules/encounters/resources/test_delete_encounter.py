@@ -6,10 +6,15 @@ from tests.modules.encounters.resources import utils as enc_utils
 from tests.modules.individuals.resources import utils as indiv_utils
 from tests import utils as test_utils
 import datetime
+import pytest
+
+from tests.utils import module_unavailable
+
 
 timestamp = datetime.datetime.now().isoformat() + 'Z'
 
 
+@pytest.mark.skipif(module_unavailable('encounters'), reason='Encounters module disabled')
 def test_delete_method(db, flask_app_client, researcher_1, test_root, staff_user):
     from app.modules.sightings.models import Sighting
 

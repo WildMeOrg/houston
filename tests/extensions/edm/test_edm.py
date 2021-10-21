@@ -2,11 +2,15 @@
 # pylint: disable=invalid-name,missing-docstring
 
 import uuid
+import pytest
 from unittest import mock
+
+from tests.utils import extension_unavailable
 
 # this tests edm hostname & credentials configs
 
 
+@pytest.mark.skipif(extension_unavailable('edm'), reason='EDM extension disabled')
 def test_edm_initializes(flask_app):
     flask_app.edm._ensure_initialized()
     # if we get this far, we may be a valid user but not one with sufficient privs on edm, so lets find out:
@@ -17,6 +21,7 @@ def test_edm_initializes(flask_app):
     assert response.status_code == 404
 
 
+@pytest.mark.skipif(extension_unavailable('edm'), reason='EDM extension disabled')
 def test_initialize_admin_user(flask_app):
     # this should fail as admin_user should exist and/or email address is invalid
     email = None
@@ -26,11 +31,13 @@ def test_initialize_admin_user(flask_app):
 
 
 # test that we are running against minimal needed version
+@pytest.mark.skipif(extension_unavailable('edm'), reason='EDM extension disabled')
 def test_edm_version(flask_app):
     version_ok = flask_app.edm.version_check()
     assert version_ok
 
 
+@pytest.mark.skipif(extension_unavailable('edm'), reason='EDM extension disabled')
 def test_reauthentication(flask_app):
     flask_app.edm._ensure_initialized()
     original_get = flask_app.edm.sessions['default'].get

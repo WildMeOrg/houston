@@ -2,8 +2,12 @@
 # pylint: disable=missing-docstring
 
 from tests.modules.missions.resources import utils as proj_utils
+import pytest
+
+from tests.utils import module_unavailable
 
 
+@pytest.mark.skipif(module_unavailable('missions'), reason='Missions module disabled')
 def test_create_and_delete_mission(flask_app_client, researcher_1):
     # pylint: disable=invalid-name
     from app.modules.missions.models import Mission
@@ -27,6 +31,7 @@ def test_create_and_delete_mission(flask_app_client, researcher_1):
     assert read_mission is None
 
 
+@pytest.mark.skipif(module_unavailable('missions'), reason='Missions module disabled')
 def test_mission_permission(
     flask_app_client, admin_user, staff_user, researcher_1, researcher_2
 ):

@@ -20,6 +20,8 @@ import os
 
 from . import TEST_ASSET_GROUP_UUID, TEST_EMPTY_ASSET_GROUP_UUID
 
+from flask_restx_patched import is_extension_enabled, is_module_enabled
+
 
 class AutoAuthFlaskClient(FlaskClient):
     """
@@ -446,3 +448,11 @@ def redis_unavailable(cached_value=[]):
         except redis.exceptions.ConnectionError:
             cached_value.append(True)
     return cached_value[0]
+
+
+def extension_unavailable(*args, **kwargs):
+    return not is_extension_enabled(*args, **kwargs)
+
+
+def module_unavailable(*args, **kwargs):
+    return not is_module_enabled(*args, **kwargs)

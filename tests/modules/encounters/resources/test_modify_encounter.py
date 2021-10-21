@@ -6,8 +6,12 @@ from tests import utils
 from tests.modules.annotations.resources import utils as annot_utils
 from tests.modules.encounters.resources import utils as enc_utils
 from tests.extensions.edm import utils as edm_utils
+import pytest
+
+from tests.utils import module_unavailable
 
 
+@pytest.mark.skipif(module_unavailable('encounters'), reason='Encounters module disabled')
 def test_modify_encounter(
     db, flask_app_client, researcher_1, researcher_2, admin_user, test_asset_group_uuid
 ):
@@ -140,6 +144,7 @@ def test_modify_encounter(
     new_encounter_1.delete()
 
 
+@pytest.mark.skipif(module_unavailable('encounters'), reason='Encounters module disabled')
 def test_modify_encounter_error(flask_app, flask_app_client, researcher_1):
     from app.modules.encounters.models import Encounter
 

@@ -4,19 +4,25 @@ import tests.modules.asset_groups.resources.utils as asset_group_utils
 import tests.modules.sightings.resources.utils as sighting_utils
 import tests.extensions.tus.utils as tus_utils
 from tests import utils as test_utils
+import pytest
+
+from tests.utils import module_unavailable
 
 
 # Test a bunch of failure scenarios
+@pytest.mark.skipif(
+    module_unavailable('asset_groups'), reason='AssetGroups module disabled'
+)
 def test_commit_asset_group(flask_app_client, researcher_1, regular_user, test_root, db):
     # pylint: disable=invalid-name
-    from tests.modules.asset_groups.resources.utils import TestCreationData
+    from tests.modules.asset_groups.resources.utils import AssetGroupCreationData
     from app.modules.sightings.models import Sighting, SightingStage
 
     transaction_id, test_filename = tus_utils.prep_tus_dir(test_root)
     asset_group_uuid = None
     sighting_uuid = None
     try:
-        data = TestCreationData(transaction_id)
+        data = AssetGroupCreationData(transaction_id)
         data.add_filename(0, test_filename)
         response = asset_group_utils.create_asset_group(
             flask_app_client, regular_user, data.get()
@@ -59,6 +65,9 @@ def test_commit_asset_group(flask_app_client, researcher_1, regular_user, test_r
         tus_utils.cleanup_tus_dir(transaction_id)
 
 
+@pytest.mark.skipif(
+    module_unavailable('asset_groups'), reason='AssetGroups module disabled'
+)
 def test_commit_owner_asset_group(
     flask_app_client, researcher_1, regular_user, staff_user, test_root, db
 ):
@@ -109,18 +118,21 @@ def test_commit_owner_asset_group(
 
 
 # Create an asset group with an annotation and an ia_config and expect it to start IA
+@pytest.mark.skipif(
+    module_unavailable('asset_groups'), reason='AssetGroups module disabled'
+)
 def test_commit_asset_group_ia(
     flask_app_client, researcher_1, regular_user, test_root, db
 ):
     # pylint: disable=invalid-name
-    from tests.modules.asset_groups.resources.utils import TestCreationData
+    from tests.modules.asset_groups.resources.utils import AssetGroupCreationData
     from app.modules.sightings.models import Sighting, SightingStage
 
     transaction_id, test_filename = tus_utils.prep_tus_dir(test_root)
     asset_group_uuid = None
     sighting_uuid = None
     try:
-        data = TestCreationData(transaction_id)
+        data = AssetGroupCreationData(transaction_id)
         data.add_filename(0, test_filename)
         response = asset_group_utils.create_asset_group(
             flask_app_client, regular_user, data.get()
@@ -183,6 +195,9 @@ def test_commit_asset_group_ia(
         tus_utils.cleanup_tus_dir(transaction_id)
 
 
+@pytest.mark.skipif(
+    module_unavailable('asset_groups'), reason='AssetGroups module disabled'
+)
 def test_commit_individual_asset_group(
     flask_app_client,
     researcher_1,

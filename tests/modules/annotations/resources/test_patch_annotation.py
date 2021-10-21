@@ -6,8 +6,14 @@ from tests import utils
 from tests.modules.annotations.resources import utils as annot_utils
 from tests.modules.asset_groups.resources import utils as sub_utils
 from tests.modules.encounters.resources import utils as enc_utils
+import pytest
+
+from tests.utils import module_unavailable
 
 
+@pytest.mark.skipif(
+    module_unavailable('asset_groups'), reason='AssetGroups module disabled'
+)
 def test_patch_annotation(
     flask_app_client, admin_user, researcher_1, test_clone_asset_group_data
 ):

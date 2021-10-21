@@ -5,6 +5,9 @@ from tests import utils
 import datetime
 from . import utils as user_utils
 
+from tests.utils import module_unavailable
+
+
 timestamp = datetime.datetime.now().isoformat() + 'Z'
 
 
@@ -150,8 +153,10 @@ def test_getting_user_id_not_found(flask_app_client, regular_user):
     ):
         response = flask_app_client.get('/api/v1/users/wrong-uuid')
         assert response.status_code == 404
+        response.close()
 
 
+@pytest.mark.skipif(module_unavailable('sightings'), reason='Sightings module disabled')
 def test_getting_sightings_for_user(flask_app_client, db, staff_user):
 
     from tests.modules.sightings.resources import utils as sighting_utils

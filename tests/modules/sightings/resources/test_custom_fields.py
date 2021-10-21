@@ -3,8 +3,12 @@
 
 from tests.modules.sightings.resources import utils as sighting_utils
 from tests.extensions.edm import utils as edm_utils
+import pytest
+
+from tests.utils import module_unavailable
 
 
+@pytest.mark.skipif(module_unavailable('sightings'), reason='Sightings module disabled')
 def test_custom_fields_on_sighting(
     db,
     flask_app_client,

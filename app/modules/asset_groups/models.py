@@ -479,7 +479,9 @@ class AssetGroupSighting(db.Model, HoustonModel):
                 annot_data = results[annot_id]
                 content_guid = annot_data.get('uuid', {}).get('__UUID__')
                 ia_class = annot_data.get('class', None)
-                viewpoint = annot_data.get('viewpoint', None)
+                # TODO sage returns "null" as the viewpoint, when it always
+                # returns a viewpoint, we can remove the "or 'unknown'" part
+                viewpoint = annot_data.get('viewpoint', None) or 'unknown'
                 if not viewpoint or not ia_class:
                     raise HoustonException(
                         log,

@@ -37,7 +37,6 @@ def test_modify_individual_edm_fields(db, flask_app_client, researcher_1):
 
         guid = response_json['encounters'][0]['id']
         enc = Encounter.query.get(guid)
-        assert enc is not None
 
         with db.session.begin():
             db.session.add(enc)

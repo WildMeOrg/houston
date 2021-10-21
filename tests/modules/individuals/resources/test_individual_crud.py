@@ -259,7 +259,6 @@ def test_individual_has_detailed_encounter_from_edm(db, flask_app_client, resear
 
         guid = response_json['encounters'][0]['id']
         enc = Encounter.query.get(guid)
-        assert enc is not None
 
         with db.session.begin():
             db.session.add(enc)

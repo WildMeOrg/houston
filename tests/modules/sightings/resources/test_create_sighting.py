@@ -391,88 +391,95 @@ def test_annotations_within_sightings(
 def test_edm_and_houston_encounter_data_within_sightings(
     db, flask_app_client, researcher_1, staff_user
 ):
-    data_in = {
-        'startTime': timestamp,
-        'context': 'test',
-        'locationId': 'test',
-        'encounters': [
-            {
-                'locationId': 'Saturn',
-                'decimalLatitude': 25.9999,
-                'decimalLongitude': 25.9999,
-                'verbatimLocality': 'Saturn',
-                'time': '2010-01-01T01:01:01Z',
+
+    json = None
+    individual_json = None
+    try:
+        data_in = {
+            'startTime': timestamp,
+            'context': 'test',
+            'locationId': 'test',
+            'encounters': [
+                {
+                    'locationId': 'Saturn',
+                    'decimalLatitude': 25.9999,
+                    'decimalLongitude': 25.9999,
+                    'verbatimLocality': 'Saturn',
+                    'time': '2010-01-01T01:01:01Z',
+                },
+            ],
+        }
+
+        response = sighting_utils.create_sighting(
+            flask_app_client, researcher_1, expected_status_code=200, data_in=data_in
+        )
+        assert response.json['success'] is not None
+
+        response = sighting_utils.read_sighting(
+            flask_app_client,
+            researcher_1,
+            response.json['result']['id'],
+            expected_status_code=200,
+        )
+        json = response.json
+
+        # EDM stuff
+        assert json['encounters'][0]['verbatimLocality'] == 'Saturn'
+        assert json['encounters'][0]['locationId'] == 'Saturn'
+        assert json['encounters'][0]['time'] == '2010-01-01T01:01:01Z'
+        assert json['encounters'][0]['decimalLatitude'] == '25.9999'
+        assert json['encounters'][0]['decimalLongitude'] == '25.9999'
+
+        # houston stuff
+        assert json['encounters'][0]['id'] is not None
+
+        enc_id = json['encounters'][0]['id']
+
+        assert json['encounters'][0]['hasView'] is True
+        assert json['encounters'][0]['hasEdit'] is True
+
+        individual_data_in = {
+            'names': {
+                'defaultName': 'Micheal Aday',
+                'nickname': 'Meatloaf',
             },
-        ],
-    }
+            'encounters': [{'id': str(enc_id)}],
+        }
 
-    response = sighting_utils.create_sighting(
-        flask_app_client, researcher_1, expected_status_code=200, data_in=data_in
-    )
-    assert response.json['success'] is not None
+        individual_response = individual_utils.create_individual(
+            flask_app_client, researcher_1, 200, individual_data_in
+        )
 
-    response = sighting_utils.read_sighting(
-        flask_app_client,
-        researcher_1,
-        response.json['result']['id'],
-        expected_status_code=200,
-    )
-    json = response.json
+        assert individual_response.json['result']['id'] is not None
 
-    # EDM stuff
-    assert json['encounters'][0]['verbatimLocality'] == 'Saturn'
-    assert json['encounters'][0]['locationId'] == 'Saturn'
-    assert json['encounters'][0]['time'] == '2010-01-01T01:01:01Z'
-    assert json['encounters'][0]['decimalLatitude'] == '25.9999'
-    assert json['encounters'][0]['decimalLongitude'] == '25.9999'
+        individual_id = individual_response.json['result']['id']
 
-    # houston stuff
-    assert json['encounters'][0]['id'] is not None
+        individual_json = individual_utils.read_individual(
+            flask_app_client, researcher_1, individual_id
+        ).json
 
-    enc_id = json['encounters'][0]['id']
+        assert individual_json['names']['defaultName'] == 'Micheal Aday'
+        assert individual_json['names']['nickname'] == 'Meatloaf'
 
-    assert json['encounters'][0]['hasView'] is True
-    assert json['encounters'][0]['hasEdit'] is True
+        # some duplication, but I wanted to check the sighting/encounter data first before complexifying it
+        response = sighting_utils.read_sighting(
+            flask_app_client,
+            researcher_1,
+            response.json['id'],
+            expected_status_code=200,
+        )
+        json = response.json
 
-    individual_data_in = {
-        'names': {
-            'defaultName': 'Micheal Aday',
-            'nickname': 'Meatloaf',
-        },
-        'encounters': [{'id': str(enc_id)}],
-    }
+        assert json['encounters'][0]['individual'] is not None
+        assert json['encounters'][0]['individual']['id'] == individual_id
+        assert json['encounters'][0]['individual']['names'] is not None
+        assert (
+            json['encounters'][0]['individual']['names']['defaultName'] == 'Micheal Aday'
+        )
+        assert json['encounters'][0]['individual']['names']['nickname'] == 'Meatloaf'
 
-    individual_response = individual_utils.create_individual(
-        flask_app_client, researcher_1, 200, individual_data_in
-    )
-
-    assert individual_response.json['result']['id'] is not None
-
-    individual_id = individual_response.json['result']['id']
-
-    individual_json = individual_utils.read_individual(
-        flask_app_client, researcher_1, individual_id
-    ).json
-
-    assert individual_json['names']['defaultName'] == 'Micheal Aday'
-    assert individual_json['names']['nickname'] == 'Meatloaf'
-
-    # some duplication, but I wanted to check the sighting/encounter data first before complexifying it
-    response = sighting_utils.read_sighting(
-        flask_app_client,
-        researcher_1,
-        response.json['id'],
-        expected_status_code=200,
-    )
-    json = response.json
-
-    assert json['encounters'][0]['individual'] is not None
-    assert json['encounters'][0]['individual']['id'] == individual_id
-    assert json['encounters'][0]['individual']['names'] is not None
-    assert json['encounters'][0]['individual']['names']['defaultName'] == 'Micheal Aday'
-    assert json['encounters'][0]['individual']['names']['nickname'] == 'Meatloaf'
-
-    individual_utils.delete_individual(
-        flask_app_client, staff_user, individual_json['id']
-    )
-    sighting_utils.delete_sighting(flask_app_client, staff_user, json['id'])
+    finally:
+        individual_utils.delete_individual(
+            flask_app_client, staff_user, individual_json['id']
+        )
+        sighting_utils.delete_sighting(flask_app_client, staff_user, json['id'])

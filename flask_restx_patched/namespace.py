@@ -12,6 +12,71 @@ from werkzeug import exceptions as http_exceptions
 
 from .model import Model, DefaultHTTPErrorSchema
 
+from config import BaseConfig  # NOQA
+
+
+def is_x_enabled(names, name_args, enabled_names):
+    if isinstance(names, str):
+        names = (names, )
+    names = names + name_args
+    for name in names:
+        if name not in enabled_names:
+            return False
+    return True
+
+
+def is_extension_enabled(extension_names, *args):
+    return is_x_enabled(extension_names, args, BaseConfig.ENABLED_EXTENSIONS)
+
+
+def is_module_enabled(module_names, *args):
+    return is_x_enabled(module_names, args, BaseConfig.ENABLED_MODULES)
+
+
+def x_required(names, name_args, resolve, default, is_x_enabled_func, tag, func, args, kwargs):
+    import logging 
+
+    if isinstance(names, str):
+        names = (names, )
+    names = names + name_args
+
+    missing_names = []
+    for name in names:
+        if not is_x_enabled_func(name):
+            missing_names.append(name)
+
+    if len(missing_names) > 0:
+        if resolve in ['error']:
+            logging.error('Function %r has missing %s %r' % (func, tag, missing_names,))
+            raise NotImplementedError('Missing %s: %r' % (tag, missing_names, ))
+        else:
+            logging.warning('Function %r has missing %s %r, returning default value %r' % (func, tag, missing_names, default))
+            if callable(default):
+                retval = default(*args, **kwargs)
+            else:
+                retval = default
+            return retval
+    else:
+        return func(*args, **kwargs)
+
+
+def extension_required(extensions, *extension_args, resolve='error', default=None):
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            return x_required(extensions, extension_args, resolve, default, is_extension_enabled, 'extensions', func, args, kwargs)
+        return wrapper
+    return decorator
+
+
+def module_required(modules, *module_args, resolve='error', default=None):
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            return x_required(modules, module_args, resolve, default, is_module_enabled, 'modules', func, args, kwargs)
+        return wrapper
+    return decorator
+
 
 class Namespace(OriginalNamespace):
 
@@ -454,3 +519,104 @@ class Namespace(OriginalNamespace):
         func._access_restriction_decorators.append(
             decorator_to_register
         )  # pylint: disable=protected-access
+
+    def extension_required(self, extensions, *extension_args, resolve='error', default=None):
+        """
+        A decorator which restricts access to a resource if the specified
+        extension is enabled
+
+        Arguments:
+            extension (str or list of strings) - name of the required extension
+            resolve (str) - a string of either `error' or `warn'
+            default (func or object) - a default return value or function that is 
+                used when the resolve is `warn` and the extension is disabled 
+
+        Example:
+        >>> @namespace.extension_required(
+        ...     'gitlab',
+        ...     resolve='warn',
+        ...     deault='unknown',
+        ... )
+        ... def get_gitlab_version():
+        ...     # This line will be reached only if the `gitlab` extension is enabled
+        ...     return app.gitlab.version
+        """
+        def decorator(func_or_class):
+            """
+            A helper wrapper.
+            """
+            if isinstance(func_or_class, type):
+                # Handle Resource classes decoration
+                # pylint: disable=protected-access
+                func_or_class._apply_decorator_to_methods(decorator)
+                return func_or_class
+            func = func_or_class
+
+            _required_decorator = extension_required(extensions, *extension_args, resolve=resolve, default=default)
+
+            protected_func = _required_decorator(func)
+            self._register_access_restriction_decorator(
+                protected_func, _required_decorator
+            )
+
+            return self.doc(
+                description='**REQUIRED EXTENSIONS: %s**\n\n' % (extensions, )
+            )(
+                self.response(
+                    code=HTTPStatus.NOT_IMPLEMENTED.value,
+                    description='Some required server-side extensions are disabled',
+                )(protected_func)
+            )
+
+        return decorator
+
+    def module_required(self, modules, *module_args, resolve='error', default=None):
+        """
+        A decorator which restricts access to a resource if the specified
+        module is enabled
+
+        Arguments:
+            module (str or list of strings) - name of the required module
+            resolve (str) - a string of either `error' or `warn'
+            default (func or object) - a default return value or function that is 
+                used when the resolve is `warn` and the module is disabled 
+
+        Example:
+        >>> @namespace.module_required(
+        ...     'organization',
+        ...     resolve='warn',
+        ...     deault=[],
+        ... )
+        ... def get_user_organizations():
+        ...     # This line will be reached only if the `organizations` module is enabled
+        ...     return user.organizations
+        """
+
+        def decorator(func_or_class):
+            """
+            A helper wrapper.
+            """
+            if isinstance(func_or_class, type):
+                # Handle Resource classes decoration
+                # pylint: disable=protected-access
+                func_or_class._apply_decorator_to_methods(decorator)
+                return func_or_class
+            func = func_or_class
+
+            _required_decorator = module_required(modules, *module_args, resolve=resolve, default=default)
+
+            protected_func = _required_decorator(func)
+            self._register_access_restriction_decorator(
+                protected_func, _required_decorator
+            )
+
+            return self.doc(
+                description='**REQUIRED MODULES: %s**\n\n' % (modules, )
+            )(
+                self.response(
+                    code=HTTPStatus.NOT_IMPLEMENTED.value,
+                    description='Some required server-side modules are disabled',
+                )(protected_func)
+            )
+
+        return decorator

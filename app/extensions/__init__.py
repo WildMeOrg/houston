@@ -8,12 +8,12 @@ Extensions provide access to common resources of the application.
 
 Please, put new extension instantiations and initializations here.
 """
-import re
+import re  # NOQA
 import uuid  # NOQA
 import json  # NOQA
 from datetime import datetime  # NOQA
-import logging as logging_native
-from .logging import Logging
+import logging as logging_native  # NOQA
+from .logging import Logging  # NOQA
 
 logging = Logging()
 
@@ -77,6 +77,9 @@ from . import config  # NOQA
 from . import sentry  # NOQA
 
 from . import stripe  # NOQA
+
+from flask_restx_patched import is_extension_enabled, extension_required  # NOQA
+
 
 ##########################################################################################
 

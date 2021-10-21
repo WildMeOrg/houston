@@ -10,6 +10,8 @@ variable.
 """
 import logging
 
+from flask_restx_patched import is_module_enabled, module_required  # NOQA
+
 
 def init_app(app, **kwargs):
     from importlib import import_module

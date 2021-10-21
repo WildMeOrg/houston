@@ -105,34 +105,33 @@ class Individual(db.Model, FeatherModel):
         return [row.individual_guid for row in res]
 
     # returns Sightings
-    def get_shared_sightings(self, individual_guids):
+    def get_shared_sightings(self, *individuals):
         from app.modules.sightings.models import Sighting
 
-        return Sighting.get_multiple(self.get_shared_sighting_guids(individual_guids))
+        return Sighting.get_multiple(self.get_shared_sighting_guids(*individuals))
 
     # returns guids
-    def get_shared_sighting_guids(self, individual_guids):
-        if (
-            not individual_guids
-            or not isinstance(individual_guids, list)
-            or len(individual_guids) < 1
-        ):
-            raise ValueError('must be passed a list of at least 1 individual guid')
-        individual_guids.append(self.guid)
-        return Individual.get_shared_sighting_guids_for_individual_guids(individual_guids)
+    def get_shared_sighting_guids(self, *individuals):
+        if not individuals or not isinstance(individuals, tuple) or len(individuals) < 1:
+            raise ValueError('must be passed a tuple of at least 1 individual')
+        include_me = (self,) + individuals
+        return Individual.get_shared_sighting_guids_for_individual_guids(*include_me)
 
     @classmethod
-    def get_shared_sighting_guids_for_individual_guids(self, individual_guids):
-        if (
-            not individual_guids
-            or not isinstance(individual_guids, list)
-            or len(individual_guids) < 2
-        ):
-            raise ValueError('must be passed a list of at least 2 individual guids')
+    def get_shared_sighting_guids_for_individual_guids(self, *individuals):
+        if not individuals or not isinstance(individuals, tuple) or len(individuals) < 2:
+            raise ValueError('must be passed a tuple of at least 2 individuals')
         from app.modules.sightings.models import Sighting
         from app.modules.encounters.models import Encounter
         from sqlalchemy.orm import aliased
 
+        # we want guids strings here
+        individual_guids = []
+        for indiv in individuals:
+            if isinstance(indiv, Individual):
+                individual_guids.append(str(indiv.guid))
+            else:
+                individual_guids.append(str(indiv))
         alias = []
         res = db.session.query(Sighting.guid)
         for i in range(len(individual_guids)):

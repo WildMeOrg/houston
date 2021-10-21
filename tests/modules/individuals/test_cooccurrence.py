@@ -70,13 +70,13 @@ def test_cooccurrence(db, flask_app_client, researcher_1):
         db.session.add(encounter_d)
         db.session.add(encounter_e)
 
-    with_2 = individual_1.get_shared_sightings([individual_2.guid])
+    with_2 = individual_1.get_shared_sightings(individual_2)
     assert set(with_2) == set([sighting, sighting_two])
-    with_3 = individual_1.get_shared_sightings([individual_3.guid])
+    with_3 = individual_1.get_shared_sightings(individual_3)
     assert with_3 == [sighting]
-    empty = individual_4.get_shared_sightings([individual_3.guid])
+    empty = individual_4.get_shared_sightings(individual_3)
     assert len(empty) == 0
-    with_2_3 = individual_1.get_shared_sightings([individual_2.guid, individual_3.guid])
+    with_2_3 = individual_1.get_shared_sightings(individual_2, individual_3)
     assert with_2_3 == [sighting]
 
     db.session.delete(individual_1)

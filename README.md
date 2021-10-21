@@ -101,7 +101,7 @@ NOTE: All dependencies and database migrations will be automatically handled,
 so go ahead and turn the server ON! (Read more details on this in Tips section)
 
 ```bash
-$ invoke app.run
+$ invoke codex.run
 ```
 
 #### Deploy Server
@@ -139,8 +139,8 @@ $ invoke --help <task>
 For example:
 
 ```bash
-$ invoke --help app.run
-Usage: inv[oke] [--core-opts] app.run [--options] [other tasks here ...]
+$ invoke --help codex.run
+Usage: inv[oke] [--core-opts] codex.run [--options] [other tasks here ...]
 
 Docstring:
   Run DDOTS RESTful API Server.
@@ -159,12 +159,12 @@ Use the following command to enter ipython shell (`ipython` must be installed):
 $ invoke app.env.enter
 ```
 
-`app.run` and `app.env.enter` tasks automatically prepare all dependencies
+`codex.run` and `app.env.enter` tasks automatically prepare all dependencies
 (using `pip install`) and migrate database schema to the latest version.
 
 Database schema migration is handled via `app.db.*` tasks group. The most
 common migration commands are `app.db.upgrade` (it is automatically run on
-`app.run`), and `app.db.migrate` (creates a new migration).
+`codex.run`), and `app.db.migrate` (creates a new migration).
 
 You can use [`better_exceptions`](https://github.com/Qix-/better-exceptions)
 package to enable detailed tracebacks. Just add `better_exceptions` to the

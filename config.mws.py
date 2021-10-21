@@ -136,6 +136,7 @@ class BaseConfig(object):
         'notifications',
         'annotations',
         'missions',
+        'site_settings',
         'site_info',
         'job_control',
 
@@ -171,7 +172,7 @@ class BaseConfig(object):
     SWAGGER_UI_OAUTH_REALM = 'Authentication for Houston server documentation'
     SWAGGER_UI_OAUTH_APP_NAME = 'Houston server documentation'
 
-    SQLALCHEMY_TRACK_MODIFICATIONS = False
+    SQLALCHEMY_TRACK_MODIFICATIONS = True
     CSRF_ENABLED = True
     PREMAILER_CACHE_MAXSIZE = 1024
     CONFIG_MODEL = 'zebra'

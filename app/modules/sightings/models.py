@@ -20,6 +20,10 @@ log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
 
 class SightingAssets(db.Model, HoustonModel):
+    __mapper_args__ = {
+        'confirm_deleted_rows': False,
+    }
+
     sighting_guid = db.Column(db.GUID, db.ForeignKey('sighting.guid'), primary_key=True)
     asset_guid = db.Column(db.GUID, db.ForeignKey('asset.guid'), primary_key=True)
     sighting = db.relationship('Sighting', back_populates='sighting_assets')

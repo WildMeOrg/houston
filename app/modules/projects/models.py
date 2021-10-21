@@ -6,6 +6,7 @@ Projects database models
 import uuid
 
 from app.extensions import db, HoustonModel, Timestamp
+from app.modules import is_module_enabled
 
 
 # All many:many associations handled as Houston model classes to give control and history
@@ -17,7 +18,10 @@ class ProjectEncounter(db.Model, HoustonModel):
 
     project = db.relationship('Project', back_populates='encounter_members')
 
-    encounter = db.relationship('Encounter', back_populates='projects')
+    if is_module_enabled('encounters', 'projects'):
+        # <HOTFIX: MWS>
+        encounter = db.relationship('Encounter', back_populates='projects')
+        # </HOTFIX>
 
 
 class ProjectUserMembershipEnrollment(db.Model, HoustonModel):

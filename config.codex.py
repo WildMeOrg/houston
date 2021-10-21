@@ -154,7 +154,6 @@ class BaseConfig(object):
         'notifications',
         'encounters',
         'projects',
-        'missions',
         'sightings',
         'individuals',
         'annotations',
@@ -176,6 +175,9 @@ class BaseConfig(object):
         'passthroughs',
         'configuration',
         'audit_logs',
+
+        # MWS
+        'missions',
     )
     # fmt: on
 

@@ -3,10 +3,15 @@
 
 import tests.utils as test_utils
 import logging
+import pytest
+
+from tests.utils import module_unavailable
+
 
 log = logging.getLogger(__name__)
 
 
+@pytest.mark.skipif(module_unavailable('encounters'), reason='Encounters module disabled')
 def test_encounter_add_owner(db):
     from app.modules.users.models import User
 
@@ -42,6 +47,7 @@ def test_encounter_add_owner(db):
     test_encounter.delete()
 
 
+@pytest.mark.skipif(module_unavailable('encounters'), reason='Encounters module disabled')
 def test_encounter_set_individual(db, empty_individual, encounter_1):
 
     assert empty_individual is not None
@@ -50,6 +56,7 @@ def test_encounter_set_individual(db, empty_individual, encounter_1):
     assert encounter_1.individual.guid == empty_individual.guid
 
 
+@pytest.mark.skipif(module_unavailable('encounters'), reason='Encounters module disabled')
 def test_owned_encounters_ordering(db, request):
     from app.modules.encounters.models import Encounter
     from app.modules.users.models import User

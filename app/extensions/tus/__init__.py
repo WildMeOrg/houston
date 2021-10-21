@@ -68,7 +68,7 @@ def tus_upload_dir(app, asset_group_guid=None, transaction_id=None, session_id=N
     import hashlib
 
     base_path = app.config.get('UPLOADS_DATABASE_PATH', None)
-    # log.warn('tus_upload_dir got base_path=%r %r %r %r' % (base_path, asset_group_guid, transaction_id, session_id))
+    # log.warning('tus_upload_dir got base_path=%r %r %r %r' % (base_path, asset_group_guid, transaction_id, session_id))
     if asset_group_guid is None and transaction_id is None and session_id is None:
         return base_path
     if asset_group_guid is not None:

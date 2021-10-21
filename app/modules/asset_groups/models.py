@@ -101,6 +101,11 @@ class Repo(BaseRepo):
 
 # AssetGroup can have many sightings, so needs a table
 class AssetGroupSighting(db.Model, HoustonModel):
+
+    __mapper_args__ = {
+        'confirm_deleted_rows': False,
+    }
+
     guid = db.Column(db.GUID, default=uuid.uuid4, primary_key=True)
     stage = db.Column(
         db.Enum(AssetGroupSightingStage),
@@ -620,6 +625,10 @@ class AssetGroup(db.Model, HoustonModel):
             - metadata.json
     """
 
+    __mapper_args__ = {
+        'confirm_deleted_rows': False,
+    }
+
     guid = db.Column(
         db.GUID, default=uuid.uuid4, primary_key=True
     )  # pylint: disable=invalid-name
@@ -677,6 +686,7 @@ class AssetGroup(db.Model, HoustonModel):
         'AssetGroupSighting',
         back_populates='asset_group',
         order_by='AssetGroupSighting.guid',
+        cascade='all, delete',
     )
 
     assets = db.relationship('Asset', back_populates='asset_group', order_by='Asset.guid')

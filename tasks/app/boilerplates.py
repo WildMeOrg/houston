@@ -25,7 +25,7 @@ def crud_module(context, module_name='', module_name_singular=''):
     Create CRUD (Create-Read-Update-Delete) empty module.
 
     Usage:
-    $ invoke codex.boilerplates.crud-module --module-name=articles --module-name-singular=article
+    $ invoke app.boilerplates.crud-module --module-name=articles --module-name-singular=article
     """
     try:
         import jinja2
@@ -62,7 +62,7 @@ def crud_module(context, module_name='', module_name_singular=''):
     os.makedirs(module_path)
 
     env = jinja2.Environment(
-        loader=jinja2.FileSystemLoader('tasks/codex/boilerplates_templates/crud_module')
+        loader=jinja2.FileSystemLoader('tasks/app/boilerplates_templates/crud_module')
     )
     for template_file in (
         '__init__',

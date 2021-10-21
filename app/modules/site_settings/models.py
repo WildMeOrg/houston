@@ -3,7 +3,7 @@
 Site Settings database models
 --------------------
 """
-from app.extensions import db, Timestamp
+from app.extensions import db, Timestamp, extension_required, is_extension_enabled
 from flask import current_app
 
 
@@ -16,6 +16,10 @@ class SiteSetting(db.Model, Timestamp):
     """
     Site Settings database model.
     """
+
+    __mapper_args__ = {
+        'confirm_deleted_rows': False,
+    }
 
     key = db.Column(db.String, primary_key=True, nullable=False)
 
@@ -40,7 +44,7 @@ class SiteSetting(db.Model, Timestamp):
     def set(
         cls, key, file_upload_guid=None, string=None, public=None, override_readonly=False
     ):
-        if key.startswith(EDM_PREFIX):
+        if is_extension_enabled('edm') and key.startswith(EDM_PREFIX):
             raise ValueError(
                 f'forbidden to directly set key with prefix "{EDM_PREFIX}" via SiteSetting (key={key})'
             )
@@ -69,7 +73,7 @@ class SiteSetting(db.Model, Timestamp):
     def get_value(cls, key, **kwargs):
         if not key:
             raise ValueError('key must not be None')
-        if key.startswith(EDM_PREFIX):
+        if is_extension_enabled('edm') and key.startswith(EDM_PREFIX):
             return cls.get_edm_configuration(key, **kwargs)
         setting = cls.query.get(key)
         if not setting:
@@ -79,6 +83,7 @@ class SiteSetting(db.Model, Timestamp):
         return setting.string
 
     @classmethod
+    @extension_required('edm')
     def get_edm_configuration(cls, key, **kwargs):
         res = current_app.edm.get_dict('configuration.data', key)
         if (

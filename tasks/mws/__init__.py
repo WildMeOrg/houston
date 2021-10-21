@@ -5,13 +5,19 @@ Application related tasks for Invoke.
 
 from invoke import Collection
 
-from tasks.codex import (
+from tasks.mws import (
+    consistency,
+    initialize,
+    integrations,
     run,
 )
 
 from config import BaseConfig
 
 namespace = Collection(
+    consistency,
+    initialize,
+    integrations,
     run,
 )
 

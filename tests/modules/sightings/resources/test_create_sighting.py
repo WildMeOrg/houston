@@ -16,6 +16,7 @@ timestamp = datetime.datetime.now().isoformat() + 'Z'
 def test_get_sighting_not_found(flask_app_client):
     response = flask_app_client.get('/api/v1/sightings/wrong-uuid')
     assert response.status_code == 404
+    response.close()
 
 
 @pytest.mark.skipif(
@@ -398,6 +399,9 @@ def test_annotations_within_sightings(
     clone.cleanup()
 
 
+@pytest.mark.skipif(
+    module_unavailable('sightings', 'encounters'), reason='Sightings module disabled'
+)
 def test_edm_and_houston_encounter_data_within_sightings(
     db, flask_app_client, researcher_1, staff_user
 ):

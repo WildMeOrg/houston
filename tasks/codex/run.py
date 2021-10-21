@@ -17,7 +17,7 @@ try:
 except ImportError:  # Invoke 0.13 renamed ctask to task
     from invoke import task
 
-from ._utils import app_context_task
+from tasks.utils import app_context_task
 
 
 log = logging.getLogger(__name__)
@@ -50,22 +50,13 @@ def warmup(
     app = create_app()
 
     if upgrade_db:
-        # After the installed dependencies the codex.db.* tasks might need to be
+        # After the installed dependencies the app.db.* tasks might need to be
         # reloaded to import all necessary dependencies.
-        from tasks.codex import db as db_tasks
+        from tasks.app import db as db_tasks
 
         reload(db_tasks)
 
-        context.invoke_execute(context, 'codex.db.upgrade', app=app, backup=False)
-
-        # if app.debug:
-        #     context.invoke_execute(
-        #         context,
-        #         'codex.db.init_development_data',
-        #         app=app,
-        #         upgrade_db=False,
-        #         skip_on_failure=True,
-        #     )
+        context.invoke_execute(context, 'app.db.upgrade', app=app, backup=False)
 
     if print_routes or app.debug:
         log.info('Using route rules:')

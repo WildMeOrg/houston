@@ -3,8 +3,15 @@
 
 from app.modules.users.models import User
 import tests.utils as test_utils
+import pytest
+
+from tests.utils import module_unavailable
 
 
+@pytest.mark.skipif(
+    module_unavailable('individuals', 'encounters', 'sightings'),
+    reason='Individuals module disabled',
+)
 def test_cooccurrence(db, flask_app_client, researcher_1):
     from app.modules.sightings.models import Sighting, SightingStage
     from app.modules.individuals.models import Individual

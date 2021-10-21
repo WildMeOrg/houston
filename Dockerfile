@@ -1,14 +1,16 @@
 FROM node:latest as frontend
+# "mws" or "codex"
+ARG PROJECT
 # Copy the necessary source items
 RUN mkdir /code
 COPY ./scripts /code/scripts
 # Build the frontend
 RUN set -x \
     && cd /code \
-    && git clone https://github.com/WildMeOrg/codex-frontend.git _frontend.codex \
+    && git clone https://github.com/WildMeOrg/${PROJECT}-frontend.git _frontend.${PROJECT} \
     && export DEBUG=1 \
-    && /bin/bash -c "source ./scripts/codex/build.frontend.sh && build" \
-    && /bin/bash -c "source ./scripts/codex/build.frontend.sh && install"
+    && /bin/bash -c "source ./scripts/${PROJECT}/build.frontend.sh && build" \
+    && /bin/bash -c "source ./scripts/${PROJECT}/build.frontend.sh && install"
 
 
 FROM node:latest as swagger-ui
@@ -26,6 +28,9 @@ RUN set -x \
 
 
 FROM python:3.9 as main
+
+# "mws" or "codex"
+ARG PROJECT
 
 RUN apt update \
  # && curl -sL https://deb.nodesource.com/setup_14.x | bash - \
@@ -91,7 +96,7 @@ VOLUME [ "${DATA_VOLUME}" ]
 # Location to source additional environment variables
 ENV HOUSTON_DOTENV ${DATA_ROOT}/.env
 
-COPY ./.dockerfiles/docker-entrypoint.sh /docker-entrypoint.sh
+COPY ./.dockerfiles/docker-entrypoint.${PROJECT}.sh /docker-entrypoint.sh
 
 ENTRYPOINT [ "/docker-entrypoint.sh" ]
 #: default command within the entrypoint

@@ -37,6 +37,10 @@ class CollaborationUserAssociations(db.Model, HoustonModel):
     Current maximum of two users per Collaboration.
     """
 
+    __mapper_args__ = {
+        'confirm_deleted_rows': False,
+    }
+
     collaboration_guid = db.Column(
         db.GUID, db.ForeignKey('collaboration.guid'), default=uuid.uuid4, primary_key=True
     )
@@ -60,6 +64,10 @@ class Collaboration(db.Model, HoustonModel):
     """
     Collaborations database model.
     """
+
+    __mapper_args__ = {
+        'confirm_deleted_rows': False,
+    }
 
     guid = db.Column(
         db.GUID, default=uuid.uuid4, primary_key=True

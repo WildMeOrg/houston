@@ -96,25 +96,36 @@ jobs:
           done
 
       # Install and test - Test order is randomized, run three times to ensure correctness
-      - name: Run tests (random x3)
+      - name: Run Codex tests (random x3)
         run: |
+          docker-compose exec -T -e TEST_DATABASE_URI=$TEST_DATABASE_URI houston ./scripts/codex/activate.sh
           docker-compose exec -T -e TEST_DATABASE_URI=$TEST_DATABASE_URI houston pytest -s -v
           docker-compose exec -T -e TEST_DATABASE_URI=$TEST_DATABASE_URI houston pytest -s -v
           docker-compose exec -T -e TEST_DATABASE_URI=$TEST_DATABASE_URI houston pytest -s -v
 
-      - name: Run tests without gitlab
+      - name: Run Codex tests without gitlab
         run: |
+          docker-compose exec -T -e TEST_DATABASE_URI=$TEST_DATABASE_URI -e GITLAB_REMOTE_URI=http://connection-error/ houston ./scripts/codex/activate.sh
           docker-compose exec -T -e TEST_DATABASE_URI=$TEST_DATABASE_URI -e GITLAB_REMOTE_URI=http://connection-error/ houston pytest -s -v
+
+      # Install and test - Test order is randomized, run three times to ensure correctness
+      - name: Run MWS tests (random x3)
+        run: |
+          docker-compose exec -T -e TEST_DATABASE_URI=$TEST_DATABASE_URI houston ./scripts/mws/activate.sh
+          docker-compose exec -T -e TEST_DATABASE_URI=$TEST_DATABASE_URI houston pytest -s -v
+          docker-compose exec -T -e TEST_DATABASE_URI=$TEST_DATABASE_URI houston pytest -s -v
+          docker-compose exec -T -e TEST_DATABASE_URI=$TEST_DATABASE_URI houston pytest -s -v
 
       - name: Check DB migrations (sqlite)
         if: matrix.db-uri == 'sqlite://'
         run: |
+          docker-compose exec -T -e SQLALCHEMY_DATABASE_URI=$SQLALCHEMY_DATABASE_URI houston ./scripts/codex/activate.sh
           # initialize the database
-          docker-compose exec -T -e SQLALCHEMY_DATABASE_URI=$SQLALCHEMY_DATABASE_URI houston invoke codex.db.upgrade --no-backup
+          docker-compose exec -T -e SQLALCHEMY_DATABASE_URI=$SQLALCHEMY_DATABASE_URI houston invoke app.db.upgrade --no-backup
           # downgrade to the previous migration step
-          docker-compose exec -T -e SQLALCHEMY_DATABASE_URI=$SQLALCHEMY_DATABASE_URI houston invoke codex.db.downgrade
+          docker-compose exec -T -e SQLALCHEMY_DATABASE_URI=$SQLALCHEMY_DATABASE_URI houston invoke app.db.downgrade
           # upgrade to the latest version
-          docker-compose exec -T -e SQLALCHEMY_DATABASE_URI=$SQLALCHEMY_DATABASE_URI houston invoke codex.db.upgrade
+          docker-compose exec -T -e SQLALCHEMY_DATABASE_URI=$SQLALCHEMY_DATABASE_URI houston invoke app.db.upgrade
         env:
           # Don't use in memory sqlite database for database migration
           SQLALCHEMY_DATABASE_URI: ''
@@ -123,24 +134,33 @@ jobs:
         if: matrix.db-uri != 'sqlite://'
         run: |
           set -ex
-          docker-compose exec -T -e SQLALCHEMY_DATABASE_URI=$TEST_DATABASE_URI houston coverage run /usr/local/bin/invoke codex.db.upgrade --no-backup
-          docker-compose exec -T -e SQLALCHEMY_DATABASE_URI=$TEST_DATABASE_URI houston coverage run --append /usr/local/bin/invoke codex.db.downgrade
-          docker-compose exec -T -e SQLALCHEMY_DATABASE_URI=$TEST_DATABASE_URI houston coverage run --append /usr/local/bin/invoke codex.db.upgrade --no-backup
-          docker-compose exec -T -e SQLALCHEMY_DATABASE_URI=$TEST_DATABASE_URI houston /bin/bash -c 'if [ -n "$(coverage run --append /usr/local/bin/invoke codex.db.migrate)" ]; then echo Missing database migration; exit 1; fi'
+          docker-compose exec -T -e SQLALCHEMY_DATABASE_URI=$TEST_DATABASE_URI houston ./scripts/codex/activate.sh
+          docker-compose exec -T -e SQLALCHEMY_DATABASE_URI=$TEST_DATABASE_URI houston coverage run /usr/local/bin/invoke app.db.upgrade --no-backup
+          docker-compose exec -T -e SQLALCHEMY_DATABASE_URI=$TEST_DATABASE_URI houston coverage run --append /usr/local/bin/invoke app.db.downgrade
+          docker-compose exec -T -e SQLALCHEMY_DATABASE_URI=$TEST_DATABASE_URI houston coverage run --append /usr/local/bin/invoke app.db.upgrade --no-backup
+          docker-compose exec -T -e SQLALCHEMY_DATABASE_URI=$TEST_DATABASE_URI houston /bin/bash -c 'if [ -n "$(coverage run --append /usr/local/bin/invoke app.db.migrate)" ]; then echo Missing database migration; exit 1; fi'
 
-      - name: Run tests after DB checks
+      - name: Run Codex tests after DB checks
         run: |
+          docker-compose exec -T -e TEST_DATABASE_URI=$TEST_DATABASE_URI houston ./scripts/codex/activate.sh
+          docker-compose exec -T -e TEST_DATABASE_URI=$TEST_DATABASE_URI houston pytest --no-cov -s -v
+
+      - name: Run MWS tests after DB checks
+        run: |
+          docker-compose exec -T -e TEST_DATABASE_URI=$TEST_DATABASE_URI houston ./scripts/mws/activate.sh
           docker-compose exec -T -e TEST_DATABASE_URI=$TEST_DATABASE_URI houston pytest --no-cov -s -v
 
       - name: Run Codecov
         continue-on-error: true
         run: |
+          docker-compose exec -T -e TEST_DATABASE_URI=$TEST_DATABASE_URI houston ./scripts/codex/activate.sh
           docker-compose exec -T -e TEST_DATABASE_URI=$TEST_DATABASE_URI houston pytest -s -v --cov=./ --cov-append
           docker-compose exec -T -e TEST_DATABASE_URI=$TEST_DATABASE_URI houston pytest -s -v -m separate tests/test_transactions.py::test_transactions[None-request_transaction] --cov-append
           docker-compose exec -T -e TEST_DATABASE_URI=$TEST_DATABASE_URI houston pytest -s -v -m separate tests/test_transactions.py::test_transactions[None-commit_or_abort] --cov-append
 
       - name: Run other invoke tasks for coverage and errors
         run: |
+          docker-compose exec -T -e SQLALCHEMY_DATABASE_URI=$TEST_DATABASE_URI houston ./scripts/codex/activate.sh
           docker-compose exec -T -e SQLALCHEMY_DATABASE_URI=$TEST_DATABASE_URI houston ./scripts/tests/run_tasks_for_coverage.sh
           docker-compose exec -T -e SQLALCHEMY_DATABASE_URI=$TEST_DATABASE_URI houston coverage xml
 

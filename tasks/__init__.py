@@ -59,6 +59,13 @@ from invoke.executor import Executor  # NOQA
 
 namespaces = []
 try:
+    from tasks import app as app_tasks  # NOQA
+
+    namespaces.append(app_tasks)
+except ModuleNotFoundError as e:
+    logger.warning(f'Unable to load tasks.app.*\n{str(e)}')
+
+try:
     from tasks import codex as codex_tasks  # NOQA
 
     namespaces.append(codex_tasks)

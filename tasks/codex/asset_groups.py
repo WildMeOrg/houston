@@ -3,7 +3,7 @@
 Application AssetGroup management related tasks for Invoke.
 """
 
-from ._utils import app_context_task
+from tasks.utils import app_context_task
 import os
 
 

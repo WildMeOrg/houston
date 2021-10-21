@@ -51,7 +51,7 @@ class Keyword(db.Model, HoustonModel):
 
     def delete_if_unreferenced(self):
         if self.number_annotations() < 1:
-            log.warn(f'{self} is no longer referenced by any Annotation, deleting.')
+            log.warning(f'{self} is no longer referenced by any Annotation, deleting.')
             self.delete()
 
     def number_annotations(self):

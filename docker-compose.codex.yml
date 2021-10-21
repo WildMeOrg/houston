@@ -109,8 +109,9 @@ services:
     image: wildme/codex:latest
     build: &houston-build
       context: .
-      dockerfile: Dockerfile.codex
-    command: [ "wait-for", "db:5432", "--", "wait-for", "edm:8080", "--", "wait-for", "elasticsearch:9200", "--", "invoke", "app.run", "--host", "0.0.0.0" ]
+      args:
+        - PROJECT=codex
+    command: [ "wait-for", "db:5432", "--", "wait-for", "edm:8080", "--", "wait-for", "--timeout=60", "elasticsearch:9200", "--", "invoke", "codex.run", "--host", "0.0.0.0" ]
     networks:
       - intranet
       - frontend
@@ -145,7 +146,7 @@ services:
       WILDBOOK_DB_PASSWORD: "${WILDBOOK_DB_PASSWORD}"
     volumes: &houston-volumes
       - houston-var:/data
-      - .dockerfiles/docker-entrypoint.sh:/docker-entrypoint.sh
+      - .dockerfiles/docker-entrypoint.codex.sh:/docker-entrypoint.sh
       - .dockerfiles/docker-entrypoint-init.d.codex:/docker-entrypoint-init.d
       - .dockerfiles/docker-entrypoint-always-init.d:/docker-entrypoint-always-init.d
       # FIXME: pull in development code while working on bringing up the container

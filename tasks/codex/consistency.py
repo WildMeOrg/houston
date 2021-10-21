@@ -11,7 +11,7 @@ import tqdm
 from app.extensions import db
 from flask import current_app
 
-from ._utils import app_context_task
+from tasks.utils import app_context_task
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
@@ -105,10 +105,10 @@ def cleanup_gitlab(context, dryrun=False, clean=False):
                 )
 
                 if len(projects_page) == 0:
-                    log.warn('Reached maximum page: %d' % (page,))
+                    log.warning('Reached maximum page: %d' % (page,))
                     break
                 elif page == MAX_PAGES + 1:
-                    log.warn('More pages exist that were not processed')
+                    log.warning('More pages exist that were not processed')
                     break
                 projects += projects_page
     log.info('Fetched %d projects' % (len(projects),))

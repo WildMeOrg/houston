@@ -7,6 +7,7 @@ import uuid
 import logging
 
 from app.extensions import db, FeatherModel
+from app.modules import is_module_enabled
 from app.modules.individuals.models import Individual
 import app.extensions.logging as AuditLog
 
@@ -19,6 +20,10 @@ class Encounter(db.Model, FeatherModel):
     """
     Encounters database model.
     """
+
+    __mapper_args__ = {
+        'confirm_deleted_rows': False,
+    }
 
     guid = db.Column(
         db.GUID, default=uuid.uuid4, primary_key=True
@@ -75,7 +80,7 @@ class Encounter(db.Model, FeatherModel):
 
     public = db.Column(db.Boolean, default=False, nullable=False)
 
-    if BaseConfig.PROJECT_NAME not in ['MWS']:
+    if is_module_enabled('encounters', 'projects'):
         # <HOTFIX: MWS>
         projects = db.relationship(
             'ProjectEncounter',

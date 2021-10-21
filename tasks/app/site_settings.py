@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
 from app.extensions import db
 
-from ._utils import app_context_task
+from tasks.utils import app_context_task
+from app.modules.fileuploads.models import FileUpload  # NOQA
+from app.modules.site_settings.models import SiteSetting  # NOQA
 
 
 @app_context_task(
@@ -11,9 +13,6 @@ from ._utils import app_context_task
     }
 )
 def set(context, key, filepath, public=True):
-    from app.modules.fileuploads.models import FileUpload
-    from app.modules.site_settings.models import SiteSetting
-
     fup = FileUpload.create_fileupload_from_path(filepath, copy=True)
 
     with db.session.begin():
@@ -28,8 +27,6 @@ def set(context, key, filepath, public=True):
     }
 )
 def get(context, key):
-    from app.modules.site_settings.models import SiteSetting
-
     print(repr(SiteSetting.query.get(key)))
 
 
@@ -39,6 +36,7 @@ def get(context, key):
     }
 )
 def get_value(context, key, default=None):
+
     if not default:
         val = SiteSetting.get_value(key)
     else:

@@ -9,6 +9,7 @@ from marshmallow import ValidationError
 
 from flask_restx_patched import ModelSchema
 from app.extensions import ExtraValidationSchema
+from app.modules import is_module_enabled
 
 from .models import Asset
 
@@ -32,10 +33,8 @@ class DetailedAssetSchema(BaseAssetSchema):
     Detailed Asset schema exposes all useful fields.
     """
 
-    if BaseConfig.PROJECT_NAME not in ['MWS']:
-        # <HOTFIX: MWS>
+    if is_module_enabled('asset_groups'):
         asset_group = base_fields.Nested('BaseAssetGroupSchema')
-        # </HOTFIX>
 
     annotations = base_fields.Nested('DetailedAnnotationSchema', many=True)
 
@@ -47,10 +46,8 @@ class DetailedAssetSchema(BaseAssetSchema):
             'dimensions',
         )
 
-        if BaseConfig.PROJECT_NAME not in ['MWS']:
-            # <HOTFIX: MWS>
+        if is_module_enabled('asset_groups'):
             fields = fields + (Asset.asset_group.key,)
-            # </HOTFIX>
 
         dump_only = BaseAssetSchema.Meta.dump_only + (
             Asset.created.key,

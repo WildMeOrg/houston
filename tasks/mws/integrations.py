@@ -21,27 +21,6 @@ def check_db_connection(_app):
         return list(results) == [(1,)]
 
 
-def check_edm(app):
-    """Check for connectivity to EDM"""
-    try:
-        app.edm._ensure_initialized()
-    except Exception:
-        log.exception('')
-        return False
-    return True
-
-
-def check_gitlab(app):
-    """Check the gitlab connection indirectly through the GitlabManager"""
-    try:
-        app.git_backend._ensure_initialized()
-        app.git_backend.gl.projects.list()
-    except Exception:
-        log.exception('')
-        return False
-    return True
-
-
 def check_elasticsearch(app):
     """Check the elasticsearch connection through the Elasticsearch client"""
     try:
@@ -59,8 +38,6 @@ def check(context):
 
     service_checks = {
         f"db ({app.config['SQLALCHEMY_DATABASE_URI']})": check_db_connection,
-        'gitlab': check_gitlab,
-        'edm': check_edm,
         'elasticsearch': check_elasticsearch,
         # ...
     }

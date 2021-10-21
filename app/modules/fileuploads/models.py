@@ -34,6 +34,10 @@ class FileUpload(db.Model, HoustonModel):
     FileUploads database model.
     """
 
+    __mapper_args__ = {
+        'confirm_deleted_rows': False,
+    }
+
     guid = db.Column(
         db.GUID, default=uuid.uuid4, primary_key=True
     )  # pylint: disable=invalid-name

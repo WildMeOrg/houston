@@ -51,7 +51,7 @@ def test_create_asset_group_detection(session, codex_url, test_root, login):
         'guid': asset_group['guid'],
     }
 
-    timeout = 1200  # timeout after 10 minutes
+    timeout = 2400  # timeout after 20 minutes
     ags_url = codex_url(f'/api/v1/asset_groups/sighting/{ags_guids[0]}')
 
     try:
@@ -63,7 +63,9 @@ def test_create_asset_group_detection(session, codex_url, test_root, login):
             time.sleep(15)
             timeout -= 15
         if response.json()['stage'] != 'curation':
-            assert False, f'{timeout <= 0 and "Timed out: " or ""}stage={response.json()["stage"]}\n{response.json()}'
+            assert (
+                False
+            ), f'{timeout <= 0 and "Timed out: " or ""}stage={response.json()["stage"]}\n{response.json()}'
     except KeyboardInterrupt:
         print(f'The last response from {ags_url}:\n{response.json()}')
         raise

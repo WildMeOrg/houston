@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=missing-docstring
-from tests.modules.configurations.resources import utils as conf_utils
+from tests.modules.configuration.resources import utils as conf_utils
 import pytest
 
 from tests.utils import module_unavailable
 
 
 @pytest.mark.skipif(
-    module_unavailable('configurations'), reason='Configurations module disabled'
+    module_unavailable('configuration'), reason='Configurations module disabled'
 )
 def test_read_configurations(flask_app_client, researcher_1):
     # pylint: disable=invalid-name
@@ -63,7 +63,7 @@ def test_read_configurations(flask_app_client, researcher_1):
 
 
 @pytest.mark.skipif(
-    module_unavailable('configurations'), reason='Configurations module disabled'
+    module_unavailable('configuration'), reason='Configurations module disabled'
 )
 def test_alter_configurations(flask_app_client, admin_user):
     response = conf_utils.read_configuration(flask_app_client, admin_user, 'site.species')

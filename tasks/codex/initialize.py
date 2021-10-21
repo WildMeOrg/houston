@@ -7,7 +7,7 @@ You can execute this code via ``invoke codex.initialize``
 """
 import logging
 
-from ._utils import app_context_task
+from tasks.utils import app_context_task
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 

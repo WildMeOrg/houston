@@ -1,4 +1,4 @@
-name: Generate Models Grpah
+name: Generate Models Graph
 
 on:
   push:

@@ -13,9 +13,16 @@ on:
 jobs:
   cleanup:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # Use the same Python version used the Dockerfile
+        python-version: [3.9]
     env:
+      OS: ubuntu-latest
+      PYTHON: ${{ matrix.python-version }}
       GITLAB_REMOTE_LOGIN_PAT: ${{ secrets.GITLAB_REMOTE_LOGIN_PAT }}
-      HOUSTON_DOTENV: ./.env
+      GITLAB_REMOTE_URI: "https://sub.dyn.wildme.io/"
     steps:
       # Checkout and env setup
       - uses: actions/checkout@v2
@@ -35,24 +42,32 @@ jobs:
         run: |
           sudo apt install libmagic1
 
-      - name: Install & Configure Houston
+      - name: Build frontend and swagger ui
         run: |
-          pip install "python-dotenv[cli]"
-          # Set secrets
-          dotenv -f ${HOUSTON_DOTENV} set GITLAB_REMOTE_LOGIN_PAT -- "${{ secrets.GITLAB_REMOTE_LOGIN_PAT }}"
-          dotenv -f ${HOUSTON_DOTENV} set SECRET_KEY -- "secret"
-          # Install application
-          ./scripts/codex/install.sh
+          ./scripts/codex/build.frontend.sh
+          ./scripts/swagger/build.frontend.sh
 
-      - name: Create frontend static directory (tests complains if static directory does not exist)
+      - name: Run docker-compose
         run: |
-          mkdir -p app/static/dist-latest
-          touch app/static/dist-latest/404.html
-          touch app/static/dist-latest/index.html
-          mkdir -p app/static/swagger-ui
-          touch app/static/swagger-ui/swagger-ui.js
+          set -ex
+          docker-compose up -d
+
+      - name: Check the state of the containers
+        run: |
+          set -ex
+          # Wait until houston is up
+          while sleep 15
+          do
+            docker-compose logs houston | tail
+            docker-compose ps
+            if [ -n "$(docker-compose ps | grep Exit)" ]
+            then
+              exit 1
+            fi
+            # Wait for houston to be ready
+            wget --tries=1 -O - http://localhost:83/api/v1/users/admin_user_initialized && break
+          done
 
       - name: Cleanup
         run: |
-          source virtualenv/codex/bin/activate
-          invoke codex.consistency.cleanup-gitlab
+          docker-compose exec -T -e GITLAB_REMOTE_LOGIN_PAT="${GITLAB_REMOTE_LOGIN_PAT}" -e GITLAB_REMOTE_URI="${GITLAB_REMOTE_URI}" houston invoke codex.consistency.cleanup-gitlab

@@ -29,6 +29,7 @@ def test_get_individual_not_found(flask_app_client, researcher_1):
         flask_app_client, researcher_1, uuid.uuid4, expected_status_code=404
     )
     assert response.status_code == 404
+    response.close()
 
 
 @pytest.mark.skipif(
@@ -245,6 +246,9 @@ def test_add_remove_encounters(db, flask_app_client, researcher_1):
     sighting.delete_cascade()
 
 
+@pytest.mark.skipif(
+    module_unavailable('individuals'), reason='Individuals module disabled'
+)
 def test_individual_has_detailed_encounter_from_edm(db, flask_app_client, researcher_1):
 
     data_in = {

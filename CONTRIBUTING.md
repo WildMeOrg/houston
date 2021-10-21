@@ -140,7 +140,7 @@ invoke dependencies.install
 #### Running the application
 
 ```bash
-invoke app.run
+invoke codex.run
 ```
 
 

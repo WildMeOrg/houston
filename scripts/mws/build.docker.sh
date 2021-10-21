@@ -1,3 +1,3 @@
 #!/bin/bash
 
-docker build --file Dockerfile.mws --tag wildme/mws:latest .
+docker build --build-arg PROJECT="mws" --tag wildme/mws:latest .

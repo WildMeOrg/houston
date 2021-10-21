@@ -43,7 +43,7 @@ def test_asset_group_detection_jobs(
         # Now see that the task gets what we expect
         with mock.patch('app.create_app'):
             with mock.patch('sys.stdout', new=io.StringIO()) as stdout:
-                from tasks.codex import job_control
+                from tasks.app import job_control
 
                 job_control.print_all_asset_jobs(
                     MockContext(), resp.json['assets'][0]['guid']
@@ -168,7 +168,7 @@ def test_sighting_identification_jobs(
         # Now see that the task gets what we expect
         with mock.patch('app.create_app'):
             with mock.patch('sys.stdout', new=io.StringIO()) as stdout:
-                from tasks.codex import job_control
+                from tasks.app import job_control
 
                 job_control.print_all_annotation_jobs(MockContext(), str(annot_uuid))
                 job_output = stdout.getvalue()

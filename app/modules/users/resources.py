@@ -15,6 +15,8 @@ from app.extensions.api.parameters import PaginationParameters
 from flask import current_app
 from app.extensions.api import Namespace
 
+from app.extensions import is_extension_enabled
+
 from . import permissions, schemas, parameters
 from app.modules.users.permissions.types import AccessOperation
 from .models import db, User
@@ -291,17 +293,18 @@ class AdminUserInitialized(Resource):
             log.info(
                 'Success creating startup (houston) admin user via API: %r.' % (admin,)
             )
-            rtn = {'initialized': True}
+            rtn = {
+                'initialized': True,
+                'edmInitialized': False,  # Default value, over-written next if True
+            }
 
             # now we attempt to create on edm as well
-            from flask import current_app
+            if is_extension_enabled('edm'):
+                from flask import current_app
 
-            try:
                 rtn['edmInitialized'] = current_app.edm.initialize_edm_admin_user(
                     email, password
                 )
-            except AttributeError:
-                rtn['edmInitialized'] = False
 
             if not rtn['edmInitialized']:
                 log.warning('EDM admin user not created; previous may have existed.')
@@ -309,7 +312,7 @@ class AdminUserInitialized(Resource):
 
 
 @api.route('/edm/sync')
-# @api.login_required(oauth_scopes=['users:read'])
+@api.extension_required('edm')
 class UserEDMSync(Resource):
     """
     Useful reference to the authenticated user itself.
@@ -336,6 +339,7 @@ class UserEDMSync(Resource):
 
 
 @api.route('/<uuid:user_guid>/sightings')
+@api.module_required('sightings')
 @api.resolve_object_by_model(User, 'user')
 class UserSightings(Resource):
     """
@@ -362,12 +366,12 @@ class UserSightings(Resource):
 
         start, end = args['offset'], args['offset'] + args['limit']
         for sighting in user.get_sightings()[start:end]:
-            try:
+            if is_extension_enabled('edm'):
                 sighting_response = current_app.edm.get_dict(
                     'sighting.data_complete', sighting.guid
                 )
-            except AttributeError:
-                response['success'] = False
+            else:
+                sighting_response = None
 
             if (
                 sighting_response is not None

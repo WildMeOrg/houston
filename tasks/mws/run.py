@@ -17,13 +17,53 @@ try:
 except ImportError:  # Invoke 0.13 renamed ctask to task
     from invoke import task
 
-from ._utils import app_context_task  # NOQA
+from tasks.utils import app_context_task
 
 
 log = logging.getLogger(__name__)
 
 
 DEFAULT_HOST = '0.0.0.0'
+
+
+@app_context_task()
+def warmup(
+    context,
+    host=DEFAULT_HOST,
+    flask_config=None,
+    install_dependencies=False,
+    build_frontend=True,
+    upgrade_db=True,
+    print_routes=False,
+):
+    """
+    Pre-configure the Houston API Server before running
+    """
+    if flask_config is not None:
+        os.environ['FLASK_CONFIG'] = flask_config
+
+    if install_dependencies:
+        context.invoke_execute(context, 'dependencies.install-python-dependencies')
+
+    from app import create_app
+
+    app = create_app()
+
+    if upgrade_db:
+        # After the installed dependencies the app.db.* tasks might need to be
+        # reloaded to import all necessary dependencies.
+        from tasks.app import db as db_tasks
+
+        reload(db_tasks)
+
+        context.invoke_execute(context, 'app.db.upgrade', app=app, backup=False)
+
+    if print_routes or app.debug:
+        log.info('Using route rules:')
+        for rule in app.url_map.iter_rules():
+            log.info('\t%r' % (rule,))
+
+    return app
 
 
 @task(default=True)
@@ -42,8 +82,6 @@ def run(
     """
     Run Houston API Server.
     """
-    from tasks.codex.run import warmup
-
     app = warmup(
         context,
         host,

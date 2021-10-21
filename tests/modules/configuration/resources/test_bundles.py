@@ -1,12 +1,19 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=missing-docstring
-from tests.modules.configurations.resources import utils as conf_utils
+from tests.modules.configuration.resources import utils as conf_utils
 from app.modules.site_settings.models import SiteSetting
 import uuid
+import pytest
+
+from tests.utils import module_unavailable
+
 
 BUNDLE_PATH = '__bundle_setup'
 
 
+@pytest.mark.skipif(
+    module_unavailable('configuration'), reason='Configurations module disabled'
+)
 def test_bundle_read(flask_app_client, admin_user):
     response = conf_utils.read_configuration(flask_app_client, admin_user, BUNDLE_PATH)
     assert response.json['success']
@@ -18,6 +25,9 @@ def test_bundle_read(flask_app_client, admin_user):
     assert response.json['response']['configuration']['site.name'] is not None
 
 
+@pytest.mark.skipif(
+    module_unavailable('configuration'), reason='Configurations module disabled'
+)
 def test_bundle_modify(flask_app_client, admin_user, db):
     response = conf_utils.read_configuration(flask_app_client, admin_user, BUNDLE_PATH)
     orig_name = response.json['response']['configuration']['site.name']['value']

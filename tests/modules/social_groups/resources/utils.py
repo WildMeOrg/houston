@@ -3,7 +3,6 @@
 social_group resources utils
 -------------
 """
-import json
 from tests import utils as test_utils
 
 PATH = '/api/v1/social-groups/'
@@ -14,40 +13,35 @@ EXPECTED_SETTING_KEYS = {'key', 'string'}
 
 
 def create_social_group(
-    flask_app_client, user, data, expected_status_code=200, expected_error=''
+    flask_app_client,
+    user,
+    data,
+    expected_status_code=200,
+    expected_error='',
+    request=None,
 ):
-    if user:
-        with flask_app_client.login(user, auth_scopes=('social-groups:write',)):
-            response = flask_app_client.post(
-                PATH,
-                content_type='application/json',
-                data=json.dumps(data),
-            )
-    else:
-        response = flask_app_client.post(
-            PATH,
-            content_type='application/json',
-            data=json.dumps(data),
+    resp = test_utils.post_via_flask(
+        flask_app_client,
+        user,
+        'social-groups:write',
+        PATH,
+        data,
+        expected_status_code,
+        EXPECTED_KEYS,
+        expected_error,
+    )
+    if request:
+        group_guid = resp.json['guid']
+        request.addfinalizer(
+            lambda: delete_social_group(flask_app_client, user, group_guid)
         )
-
-    if expected_status_code == 200:
-        test_utils.validate_dict_response(response, 200, EXPECTED_KEYS)
-    elif 400 <= expected_status_code < 500:
-        test_utils.validate_dict_response(
-            response, expected_status_code, {'status', 'message'}
-        )
-        assert response.json['message'] == expected_error, response.json['message']
-    else:
-        test_utils.validate_dict_response(
-            response, expected_status_code, {'status', 'message'}
-        )
-    return response
+    return resp
 
 
 def patch_social_group(
     flask_app_client,
-    social_group_guid,
     user,
+    social_group_guid,
     data,
     expected_status_code=200,
     expected_error=None,
@@ -120,17 +114,17 @@ def set_roles(
 
 
 # expected to work so just have a simple util
-def set_basic_roles(flask_app_client, user):
+def set_basic_roles(flask_app_client, user, request):
     data = {
         'key': 'social_group_roles',
-        'string': json.dumps(
-            {
-                'Matriarch': {'multipleInGroup': False},
-                'IrritatingGit': {'multipleInGroup': True},
-            }
-        ),
+        'data': {
+            'Matriarch': {'multipleInGroup': False},
+            'IrritatingGit': {'multipleInGroup': True},
+        },
     }
-    return set_roles(flask_app_client, user, data)
+    resp = set_roles(flask_app_client, user, data)
+    request.addfinalizer(lambda: delete_roles(flask_app_client, user))
+    return resp
 
 
 def get_roles(flask_app_client, user, expected_status_code=200, expected_error=None):
@@ -154,3 +148,21 @@ def delete_roles(flask_app_client, user, expected_status_code=204, expected_erro
         expected_status_code,
         expected_error,
     )
+
+
+def validate_members(requested_members, response_members):
+
+    for member_guid in requested_members:
+        assert member_guid in response_members
+        if 'roles' in requested_members[member_guid]:
+            assert (
+                response_members[member_guid]['roles']
+                == requested_members[member_guid]['roles']
+            )
+        else:
+            assert response_members[member_guid]['roles'] is None
+
+
+def validate_response(request, response_json):
+    assert response_json['name'] == request['name']
+    validate_members(request['members'], response_json['members'])

@@ -49,7 +49,7 @@ def test_cooccurrence(db, flask_app_client, researcher_1):
     assert set(pals) == set([individual_2, individual_3])
 
     # since its all set up, lets test api as well
-    with flask_app_client.login(researcher_1, auth_scopes=('individuals:read',)):
+    with flask_app_client.login(owner, auth_scopes=('individuals:read',)):
         response = flask_app_client.get(
             f'/api/v1/individuals/{str(individual_1.guid)}/cooccurrence'
         )

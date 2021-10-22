@@ -29,6 +29,7 @@ class SiteSetting(db.Model, Timestamp):
     file_upload = db.relationship('FileUpload', cascade='delete')
     public = db.Column(db.Boolean, default=True, nullable=False)
     string = db.Column(db.String, default='', nullable=True)
+    data = db.Column(db.JSON, nullable=True)
 
     def __repr__(self):
         return (
@@ -42,7 +43,13 @@ class SiteSetting(db.Model, Timestamp):
 
     @classmethod
     def set(
-        cls, key, file_upload_guid=None, string=None, public=None, override_readonly=False
+        cls,
+        key,
+        file_upload_guid=None,
+        string=None,
+        public=None,
+        data=None,
+        override_readonly=False,
     ):
         if is_extension_enabled('edm') and key.startswith(EDM_PREFIX):
             raise ValueError(
@@ -54,6 +61,7 @@ class SiteSetting(db.Model, Timestamp):
             'key': key,
             'file_upload_guid': file_upload_guid,
             'string': string,
+            'data': data,
         }
         if public is not None:
             kwargs['public'] = public
@@ -65,6 +73,11 @@ class SiteSetting(db.Model, Timestamp):
     def get_string(cls, key, default=None):
         setting = cls.query.get(key)
         return setting.string if setting else default
+
+    @classmethod
+    def get_json(cls, key, default=None):
+        setting = cls.query.get(key)
+        return setting.data if setting else default
 
     # a bit of hackery.  right now *all* keys in edm-configuration are of the form `site.foo` so we use
     #   as a way branch on _where_ to get the value to return here.  but as we ween ourselves off edm config,

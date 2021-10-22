@@ -27,39 +27,50 @@ api = Namespace(
 )  # pylint: disable=invalid-name
 
 
-def validate_members(input_data):
+def validate_member(member_guid, data, current_roles):
     from app.modules.individuals.models import Individual
     from app.modules.site_settings.models import SiteSetting
 
-    current_roles = {}
-    permitted_role_data = json.loads(SiteSetting.get_string('social_group_roles'))
-    for member_guid in input_data:
+    permitted_role_data = SiteSetting.get_json('social_group_roles')
+    individual = Individual.query.get(member_guid)
+    if not individual:
+        raise HoustonException(
+            log, f'Social Group member {member_guid} does not match an individual'
+        )
+    if not individual.current_user_has_view_permission():
+        raise HoustonException(
+            log, f'Social Group member {member_guid} not accessible by user'
+        )
+    # Use same validation for members (in create and patch) and member(in patch)
+    # roles is the only valid key for members but guid is valid for member patch
+    if not data.keys() <= set({'guid', 'roles'}):
+        raise HoustonException(
+            log,
+            f'Social Group member {member_guid} fields not supported {set(data.keys())}',
+        )
+    roles = data.get('roles')
+    if not roles:
+        # individuals permitted to have no role
+        return
 
-        individual = Individual.query.get(member_guid)
-        if not individual:
-            raise HoustonException(
-                log, f'Social Group member {member_guid} does not match an individual'
-            )
-        if not individual.current_user_has_view_permission():
-            raise HoustonException(
-                log, f'Social Group member {member_guid} not accessible by user'
-            )
-        if not set(input_data[member_guid].keys()) <= set({'role'}):
-            raise HoustonException(
-                log,
-                f'Social Group member {member_guid} fields not supported {set(input_data[member_guid].keys())}',
-            )
-        role = input_data[member_guid].get('role')
-        if not role:
-            # individuals permitted to have no role
-            continue
-
+    for role in roles:
         if role not in permitted_role_data.keys():
             raise HoustonException(log, f'Social Group role {role} not supported')
         elif not permitted_role_data[role]['multipleInGroup']:
             if current_roles.get(role):
                 raise HoustonException(log, f'Can only have one {role} in a group')
-            current_roles[role] = True
+        current_roles[role] = True
+    return individual
+
+
+def validate_members(input_data):
+
+    if not isinstance(input_data, dict):
+        raise HoustonException(log, 'Social Group must be passed a dictionary')
+
+    current_roles_singular = {}
+    for member_guid in input_data:
+        validate_member(member_guid, input_data[member_guid], current_roles_singular)
 
 
 @api.route('/')
@@ -168,10 +179,14 @@ class SocialGroupByID(Resource):
             db.session, default_error_message='Failed to update SocialGroup details.'
         )
         with context:
-            parameters.PatchSocialGroupDetailsParameters.perform_patch(
-                args, obj=social_group
-            )
+            try:
+                parameters.PatchSocialGroupDetailsParameters.perform_patch(
+                    args, obj=social_group
+                )
+            except HoustonException as ex:
+                abort(ex.status_code, ex.message)
             db.session.merge(social_group)
+        AuditLog.patch_object(log, social_group, args)
         return social_group
 
     @api.permission_required(

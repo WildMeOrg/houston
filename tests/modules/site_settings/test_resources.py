@@ -126,14 +126,17 @@ def test_site_settings(admin_user, flask_app_client, flask_app, db, request, tes
         # Create json site setting
         data = {
             'key': 'social_group_roles',
-            'string': json.dumps(
-                {
-                    'Matriarch': {'multipleInGroup': False},
-                    'IrritatingGit': {'multipleInGroup': True},
-                }
-            ),
+            'data': {
+                'Matriarch': {'multipleInGroup': False},
+                'IrritatingGit': {'multipleInGroup': True},
+            },
         }
-        resp = flask_app_client.post('/api/v1/site-settings/', data=data)
+
+        resp = flask_app_client.post(
+            '/api/v1/site-settings/',
+            content_type='application/json',
+            data=json.dumps(data),
+        )
         assert resp.status_code == 200
         assert resp.json['key'] == 'social_group_roles'
 

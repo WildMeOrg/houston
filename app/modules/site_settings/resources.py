@@ -100,8 +100,13 @@ class SiteSettings(Resource):
             args['file_upload_guid'] = fups[0].guid
 
         if args.get('key') == 'social_group_roles':
+            if 'data' not in args.keys():
+                abort(
+                    code=HTTPStatus.UNPROCESSABLE_ENTITY,
+                    message='social_group_roles must have a data field populated',
+                )
             try:
-                SocialGroup.validate_roles(args.get('string'))
+                SocialGroup.validate_roles(args.get('data'))
             except HoustonException as ex:
                 abort(ex.status_code, ex.message)
         site_setting = SiteSetting.set(**args)

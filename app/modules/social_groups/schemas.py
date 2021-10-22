@@ -17,7 +17,7 @@ class SocialGroupMemberSchema(ModelSchema):
 
     class Meta:
         model = SocialGroupIndividualMembership
-        fields = (SocialGroupIndividualMembership.role.key,)
+        fields = (SocialGroupIndividualMembership.roles.key,)
 
 
 class BaseSocialGroupSchema(ModelSchema):

@@ -108,7 +108,7 @@ services:
     image: wildme/houston:latest
     build: &houston-build
       context: .
-    command: [ "wait-for", "db:5432", "--", "wait-for", "edm:8080", "--", "invoke", "app.run", "--host", "0.0.0.0" ]
+    command: [ "wait-for", "db:5432", "--", "wait-for", "edm:8080", "--", "wait-for", "elasticsearch:9200", "--", "invoke", "app.run", "--host", "0.0.0.0" ]
     networks:
       - intranet
       - frontend
@@ -141,11 +141,6 @@ services:
       WILDBOOK_DB_NAME: "${WILDBOOK_DB_NAME}"
       WILDBOOK_DB_USER: "${WILDBOOK_DB_USER}"
       WILDBOOK_DB_PASSWORD: "${WILDBOOK_DB_PASSWORD}"
-    healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:5000/api/v1/site-info/heartbeat"]
-      timeout: 45s
-      interval: 10s
-      retries: 10
     volumes: &houston-volumes
       - houston-var:/data
       - .dockerfiles/docker-entrypoint.sh:/docker-entrypoint.sh
@@ -157,24 +152,18 @@ services:
   celery_beat:
     image: wildme/houston:latest
     build: *houston-build
-    command: [ "wait-for", "db:5432", "--", "wait-for", "edm:8080", "--", "celery", "-A", "app.extensions.celery.celery", "beat", "-s", "/data/var/celerybeat-schedule", "-l", "DEBUG"]
+    command: [ "wait-for", "--timeout=600", "houston:5000", "--", "celery", "-A", "app.extensions.celery.celery", "beat", "-s", "/data/var/celerybeat-schedule", "-l", "DEBUG"]
     networks:
       - intranet
-    depends_on:
-      houston:
-        condition: service_healthy
     environment: *houston-environment
     volumes: *houston-volumes
 
   celery_worker:
     image: wildme/houston:latest
     build: *houston-build
-    command: [ "wait-for", "db:5432", "--", "wait-for", "edm:8080", "--", "celery", "-A", "app.extensions.celery.celery", "worker", "-l", "DEBUG"]
+    command: [ "wait-for", "--timeout=600", "houston:5000", "--", "celery", "-A", "app.extensions.celery.celery", "worker", "-l", "DEBUG"]
     networks:
       - intranet
-    depends_on:
-      houston:
-        condition: service_healthy
     environment: *houston-environment
     volumes: *houston-volumes
 

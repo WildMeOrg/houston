@@ -127,16 +127,10 @@ def test_invalid_creation(
     )
     soc_group_utils.create_social_group(flask_app_client, None, valid_data, 401, error)
 
-    # or collaborator
+    # or contributor
     error = "You don't have the permission to access the requested resource."
     soc_group_utils.create_social_group(
         flask_app_client, regular_user, valid_data, 403, error
-    )
-
-    # or researcher without read permission
-    error = f"Social Group member { individuals[0]['id']} not accessible by user"
-    soc_group_utils.create_social_group(
-        flask_app_client, researcher_2, valid_data, 400, error
     )
 
     missing_name = {
@@ -274,7 +268,9 @@ def test_role_changes(
             assert 'IrritatingGit' in group_as_res_2.json['members'][member_guid]['roles']
 
 
-def test_patch(db, flask_app_client, researcher_1, researcher_2, admin_user, request):
+def test_patch(
+    db, flask_app_client, researcher_1, researcher_2, regular_user, admin_user, request
+):
     # Set the basic roles we want
     soc_group_utils.set_basic_roles(flask_app_client, admin_user, request)
 
@@ -315,10 +311,10 @@ def test_patch(db, flask_app_client, researcher_1, researcher_2, admin_user, req
     }
     patch_all_members = [test_utils.patch_replace_op('members', different_members)]
 
-    # should not be allowed by researcher 2
-    error = f"Social Group member {individuals[1]['id']} not accessible by user"
+    # should not be allowed by regular user
+    access_error = "You don't have the permission to access the requested resource."
     soc_group_utils.patch_social_group(
-        flask_app_client, researcher_2, group_guid, patch_all_members, 400, error
+        flask_app_client, regular_user, group_guid, patch_all_members, 403, access_error
     )
     # but should for researcher 1
     soc_group_utils.patch_social_group(
@@ -329,15 +325,14 @@ def test_patch(db, flask_app_client, researcher_1, researcher_2, admin_user, req
     )
     soc_group_utils.validate_members(different_members, group_data.json['members'])
 
-    # can't patch in member as researcher 2
+    # can't patch in member as regular_user
     patch_add_matriarch = [
         test_utils.patch_add_op(
             'member', {'guid': individuals[2]['id'], 'roles': ['Matriarch']}
         )
     ]
-    error = f"Social Group member {individuals[2]['id']} not accessible by user"
     soc_group_utils.patch_social_group(
-        flask_app_client, researcher_2, group_guid, patch_add_matriarch, 400, error
+        flask_app_client, regular_user, group_guid, patch_add_matriarch, 403, access_error
     )
     # but can as researcher_1, should still fail as breaks the one Matriach rule
     error = 'Can only have one Matriarch in a group'

@@ -68,9 +68,6 @@ class Individual(db.Model, FeatherModel):
     def get_members(self):
         return [encounter.owner for encounter in self.encounters]
 
-    def user_can_access(self, user):
-        return user in self.get_members()
-
     def get_featured_asset_guid(self):
         rt_val = None
         if self.featured_asset_guid is not None:

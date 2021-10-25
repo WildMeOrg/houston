@@ -1,0 +1,91 @@
+name: Integration tests
+
+on: push
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # Use the same Python version used the Dockerfile
+        python-version: [3.9]
+    env:
+      OS: ubuntu-latest
+      PYTHON: ${{ matrix.python-version }}
+    steps:
+      # Checkout and env setup
+      - uses: actions/checkout@v2
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - uses: actions/cache@v2
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt', 'requirements/*.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install libmagic on Ubuntu
+        run: |
+          sudo apt install libmagic1
+
+      - name: Build frontend and swagger ui
+        run: |
+          ./scripts/build.frontend.sh
+          ./scripts/build.swagger-ui.sh
+
+      - name: Run docker-compose
+        run: |
+          set -ex
+          docker-compose up -d
+
+      - name: Install dependencies
+        run: |
+          set -ex
+          # Display versions of geckodriver / chromedriver
+          geckodriver --version || echo 'no geckodriver'
+          chromedriver --version || echo 'no chromedriver'
+          chromium --version || echo 'no chromium'
+          google-chrome --version || echo 'no google-chrome'
+
+          pip install -r integration_tests/requirements.txt
+
+      - name: Check the state of the containers
+        run: |
+          set -ex
+          # Wait until houston is up
+          while sleep 15
+          do
+            docker-compose logs houston | tail
+            docker-compose ps
+            if [ -n "$(docker-compose ps | grep Exit)" ]
+            then
+              exit 1
+            fi
+            # Wait for houston to be ready
+            wget --tries=1 -O - http://localhost:83/api/v1/users/admin_user_initialized && break
+          done
+
+      - name: Run tests
+        run: |
+          set -ex
+          # Need -c integration_tests/conftest.py otherwise it tries to use tests/conftest.py
+          pytest -s -x -c integration_tests/conftest.py integration_tests/
+
+      - name: Show docker-compose logs if failed
+        if: failure()
+        run: |
+          docker-compose logs --tail=250
+          docker-compose ps
+
+      - name: Upload codex.html and codex.png if failed
+        if: failure()
+        uses: actions/upload-artifact@v2
+        with:
+          path: |
+            codex.html
+            codex.png
+          retention-days: 3

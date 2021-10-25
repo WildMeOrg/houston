@@ -98,9 +98,17 @@ _main() {
 		set -- invoke app.run "$@"
 	fi
 
+	app_run=''
+	for arg in "$@"; do
+		if [ "$arg" = 'app.run' ]; then
+			app_run='1'
+			break
+		fi
+	done
+
 	# Assume if invoke or wait-for is the first argument,
 	# then the service is set to run
-	if [ "$1" = 'invoke' ] || [ "$1" = 'wait-for' ]; then
+	if [ -n "$app_run" ]; then
 		docker_setup_env
 		if [ _is_development_env ]; then
 			set_up_development_mode

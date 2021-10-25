@@ -407,6 +407,11 @@ class AssetGroupSighting(db.Model, HoustonModel):
         # response, process it here
         return True
 
+    def set_stage(self, stage):
+        self.stage = stage
+        with db.session.begin(subtransactions=True):
+            db.session.merge(self)
+
     def detected(self, job_id, response):
         AuditLog.audit_log_object(log, self, 'Received Sage detection response')
         if self.stage != AssetGroupSightingStage.detection:
@@ -423,7 +428,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
             raise HoustonException(log, 'No status in response from Sage')
 
         if status != 'completed':
-            self.stage = AssetGroupSightingStage.failed
+            self.set_stage(AssetGroupSightingStage.failed)
             # This is not an exception as the message from Sage was valid
             msg = f'JobID {str(job_id)} failed with status: {status} exception: {response.get("json_result")}'
             AuditLog.backend_fault(log, msg, self)
@@ -444,6 +449,11 @@ class AssetGroupSighting(db.Model, HoustonModel):
         if not json_result:
             raise HoustonException(log, 'No json_result in message from Sage')
 
+        job['json_result'] = json_result
+        self.jobs = self.jobs
+        with db.session.begin(subtransactions=True):
+            db.session.merge(self)
+
         sage_image_uuids = json_result.get('image_uuid_list', [])
         results_list = json_result.get('results_list', [])
         if len(sage_image_uuids) != len(results_list):
@@ -457,6 +467,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
                 f'image list from sage {len(sage_image_uuids)} does not match local image list {len(job["asset_ids"])}',
             )
 
+        annotations = []
         for i, asset_id in enumerate(job['asset_ids']):
             asset = Asset.find(asset_id)
             if not asset:
@@ -468,25 +479,31 @@ class AssetGroupSighting(db.Model, HoustonModel):
                 annot_data = results[annot_id]
                 content_guid = annot_data.get('uuid', {}).get('__UUID__')
                 ia_class = annot_data.get('class', None)
-                viewpoint = annot_data.get('viewpoint', None)
+                # TODO sage returns "null" as the viewpoint, when it always
+                # returns a viewpoint, we can remove the "or 'unknown'" part
+                viewpoint = annot_data.get('viewpoint', None) or 'unknown'
                 if not viewpoint or not ia_class:
                     raise HoustonException(
-                        log, 'Need a viewpoint and a class in each of the results'
+                        log,
+                        f'Need a viewpoint "{viewpoint}" and a class "{ia_class}" in each of the results',
                     )
 
                 bounds = Annotation.create_bounds(annot_data)
 
-                new_annot = Annotation(
-                    guid=uuid.uuid4(),
-                    content_guid=content_guid,
-                    asset=asset,
-                    ia_class=ia_class,
-                    viewpoint=viewpoint,
-                    bounds=bounds,
+                annotations.append(
+                    Annotation(
+                        guid=uuid.uuid4(),
+                        content_guid=content_guid,
+                        asset=asset,
+                        ia_class=ia_class,
+                        viewpoint=viewpoint,
+                        bounds=bounds,
+                    )
                 )
-                AuditLog.system_create_object(log, new_annot)
-                with db.session.begin(subtransactions=True):
-                    db.session.add(new_annot)
+        for new_annot in annotations:
+            AuditLog.system_create_object(log, new_annot)
+            with db.session.begin(subtransactions=True):
+                db.session.add(new_annot)
         self.job_complete(str(job_id))
 
     # Record that the asset has been updated for future re detection

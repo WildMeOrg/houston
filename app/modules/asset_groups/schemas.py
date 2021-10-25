@@ -50,8 +50,11 @@ class DetailedAssetGroupSightingSchema(BaseAssetGroupSightingSchema):
             AssetGroupSighting.config.key,
             'assets',
             'completion',
+            AssetGroupSighting.jobs.key,
         )
-        dump_only = BaseAssetGroupSightingSchema.Meta.dump_only
+        dump_only = BaseAssetGroupSightingSchema.Meta.dump_only + (
+            AssetGroupSighting.jobs.key,
+        )
 
 
 class AssetGroupSightingAsSightingSchema(BaseAssetGroupSightingSchema):

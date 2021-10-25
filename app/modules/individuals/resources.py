@@ -213,10 +213,17 @@ class IndividualByID(Resource):
         from app.modules.individuals.schemas import DetailedIndividualSchema
 
         rtn_json = current_app.edm.get_dict('individual.data_complete', individual.guid)
-        schema = DetailedIndividualSchema(many=False)
-        rtn_json.update(schema.dump(individual).data)
 
-        return rtn_json
+        if not isinstance(rtn_json, dict) or not rtn_json.get('success', False):
+            return rtn_json
+
+        schema = DetailedIndividualSchema()
+        result_json = rtn_json['result']
+        result_json.update(schema.dump(individual).data)
+
+        augmented_json = individual.augment_edm_json(result_json)
+
+        return augmented_json
 
     @api.permission_required(
         permissions.ObjectAccessPermission,

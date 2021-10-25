@@ -271,7 +271,11 @@ class Sighting(db.Model, FeatherModel):
         if self.encounters is not None and edm_json['encounters'] is not None:
             id_to_encounter = {e['id']: e for e in edm_json['encounters']}
             if set(str(e.guid) for e in self.encounters) != set(id_to_encounter):
-                log.warning('Imbalanced encounters between edm/feather objects!')
+                log.warning(
+                    'Imbalanced encounters between edm/feather objects on sighting '
+                    + str(self.guid)
+                    + '!'
+                )
                 raise ValueError('imbalanced encounter count between edm/feather')
 
             from app.modules.encounters.schemas import AugmentedEdmEncounterSchema

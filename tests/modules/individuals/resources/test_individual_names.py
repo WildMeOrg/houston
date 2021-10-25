@@ -58,9 +58,9 @@ def test_get_set_individual_names(db, flask_app_client, researcher_1):
             flask_app_client, researcher_1, individual_id
         ).json
 
-        assert individual_json['result']['names']['defaultName'] == 'Godzilla'
-        assert individual_json['result']['names']['nickname'] == 'Doctor Atomic'
-        assert individual_json['result']['names']['oldName'] == 'critter-271'
+        assert individual_json['names']['defaultName'] == 'Godzilla'
+        assert individual_json['names']['nickname'] == 'Doctor Atomic'
+        assert individual_json['names']['oldName'] == 'critter-271'
 
         # change one
         patch_data = [
@@ -76,8 +76,8 @@ def test_get_set_individual_names(db, flask_app_client, researcher_1):
             flask_app_client, researcher_1, patch_individual_response.json['guid']
         ).json
 
-        assert individual_json['result']['id'] is not None
-        assert individual_json['result']['names']['nickname'] == 'Todd'
+        assert individual_json['id'] is not None
+        assert individual_json['names']['nickname'] == 'Todd'
 
         # add one
         patch_data = [
@@ -93,8 +93,8 @@ def test_get_set_individual_names(db, flask_app_client, researcher_1):
             flask_app_client, researcher_1, patch_individual_response.json['guid']
         ).json
 
-        assert individual_json['result']['id'] is not None
-        assert individual_json['result']['names']['nickname'] == 'Todd'
+        assert individual_json['id'] is not None
+        assert individual_json['names']['nickname'] == 'Todd'
 
         # remove one
         patch_data = [
@@ -110,12 +110,12 @@ def test_get_set_individual_names(db, flask_app_client, researcher_1):
             flask_app_client, researcher_1, patch_individual_response.json['guid']
         ).json
 
-        assert individual_json['result']['id'] is not None
-        assert 'oldName' not in individual_json['result']['names']
+        assert individual_json['id'] is not None
+        assert 'oldName' not in individual_json['names']
 
     finally:
         individual_utils.delete_individual(
-            flask_app_client, researcher_1, individual_response.json['result']['id']
+            flask_app_client, researcher_1, individual_json['id']
         )
         sighting.delete_cascade()
         enc.delete_cascade()
@@ -168,12 +168,12 @@ def test_ensure_default_name_on_individual_creation(db, flask_app_client, resear
             flask_app_client, researcher_1, individual_id
         ).json
 
-        assert individual_json['result']['names']['defaultName'] == only_name
-        assert individual_json['result']['names']['nickname'] == only_name
+        assert individual_json['names']['defaultName'] == only_name
+        assert individual_json['names']['nickname'] == only_name
 
     finally:
         individual_utils.delete_individual(
-            flask_app_client, researcher_1, individual_response.json['result']['id']
+            flask_app_client, researcher_1, individual_json['id']
         )
         sighting.delete_cascade()
         enc.delete_cascade()

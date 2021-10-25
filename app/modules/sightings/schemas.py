@@ -59,6 +59,10 @@ class FeaturedAssetOnlySchema(BaseSightingSchema):
 
 
 class AugmentedEdmSightingSchema(BaseSightingSchema):
+    """
+    Sighting schema with EDM and Houston data.
+    """
+
     createdHouston = base_fields.DateTime(attribute='created')
     updatedHouston = base_fields.DateTime(attribute='updated')
     assets = base_fields.Nested(
@@ -78,6 +82,10 @@ class AugmentedEdmSightingSchema(BaseSightingSchema):
     featuredAssetGuid = base_fields.UUID(attribute='featured_asset_guid')
 
     class Meta(BaseSightingSchema.Meta):
+        """
+        Desired Sighting fields.
+        """
+
         fields = BaseSightingSchema.Meta.fields + (
             'createdHouston',
             'updatedHouston',

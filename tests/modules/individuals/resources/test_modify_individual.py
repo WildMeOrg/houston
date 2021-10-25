@@ -12,34 +12,46 @@ def test_modify_individual_edm_fields(db, flask_app_client, researcher_1):
     from app.modules.sightings.models import Sighting
 
     data_in = {
-        'encounters': [{}],
+        'encounters': [
+            {
+                'decimalLatitude': 45.999,
+                'decimalLongitude': 45.999,
+                'verbatimLocality': 'Tokyo',
+                'locationId': 'Tokyo',
+            }
+        ],
         'startTime': '2000-01-01T01:01:01Z',
         'locationId': 'test',
     }
+
+    individual_json = None
 
     try:
 
         response = sighting_utils.create_sighting(flask_app_client, researcher_1, data_in)
 
-        response_json = response.json
+        response_json = response.json['result']
 
-        assert response_json['result']['encounters']
-        assert response_json['result']['encounters'][0]['id']
+        assert response_json['encounters']
+        assert response_json['encounters'][0]['id']
 
-        guid = response_json['result']['encounters'][0]['id']
+        guid = response_json['encounters'][0]['id']
         enc = Encounter.query.get(guid)
-        assert enc is not None
 
         with db.session.begin():
             db.session.add(enc)
 
-        sighting_id = response_json['result']['id']
+        sighting_id = response_json['id']
         sighting = Sighting.query.get(sighting_id)
         assert sighting is not None
 
         individual_data_in = {
             'names': {'defaultName': 'Godzilla'},
-            'encounters': [{'id': str(enc.guid)}],
+            'encounters': [
+                {
+                    'id': str(enc.guid),
+                }
+            ],
             'sex': 'female',
             'comments': 'Test Individual',
             'timeOfBirth': '872846040000',
@@ -57,12 +69,12 @@ def test_modify_individual_edm_fields(db, flask_app_client, researcher_1):
             flask_app_client, researcher_1, individual_id
         ).json
 
-        assert individual_json['result']['sex'] == 'female'
-        assert individual_json['result']['names']['defaultName'] == 'Godzilla'
-        assert individual_json['result']['comments'] == 'Test Individual'
+        assert individual_json['sex'] == 'female'
+        assert individual_json['names']['defaultName'] == 'Godzilla'
+        assert individual_json['comments'] == 'Test Individual'
 
         # when skynet went online
-        assert individual_json['result']['timeOfBirth'] == '872846040000'
+        assert individual_json['timeOfBirth'] == '872846040000'
 
         patch_op_sex = [
             utils.patch_replace_op('sex', 'male'),
@@ -87,13 +99,13 @@ def test_modify_individual_edm_fields(db, flask_app_client, researcher_1):
             flask_app_client, researcher_1, patch_individual_response.json['guid']
         ).json
 
-        assert individual_json['result']['id'] is not None
-        assert individual_json['result']['sex'] == 'male'
-        assert individual_json['result']['timeOfBirth'] == '1445410800000'
+        assert individual_json['id'] is not None
+        assert individual_json['sex'] == 'male'
+        assert individual_json['timeOfBirth'] == '1445410800000'
 
     finally:
         individual_utils.delete_individual(
-            flask_app_client, researcher_1, individual_response.json['result']['id']
+            flask_app_client, researcher_1, individual_json['id']
         )
         sighting.delete_cascade()
         enc.delete_cascade()

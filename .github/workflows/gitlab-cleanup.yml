@@ -50,7 +50,7 @@ jobs:
       - name: Run docker-compose
         run: |
           set -ex
-          docker-compose up -d
+          docker-compose up -d db redis edm houston acm elasticsearch
 
       - name: Check the state of the containers
         run: |

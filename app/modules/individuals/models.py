@@ -124,7 +124,7 @@ class Individual(db.Model, FeatherModel):
         return Individual.get_shared_sighting_guids_for_individual_guids(*include_me)
 
     @classmethod
-    def get_shared_sighting_guids_for_individual_guids(self, *individuals):
+    def get_shared_sighting_guids_for_individual_guids(cls, *individuals):
         if not individuals or not isinstance(individuals, tuple) or len(individuals) < 2:
             raise ValueError('must be passed a tuple of at least 2 individuals')
         from app.modules.sightings.models import Sighting
@@ -162,6 +162,33 @@ class Individual(db.Model, FeatherModel):
                 if annotation.encounter.individual_guid == self.guid:
                     rt_val = True
         return rt_val
+
+    # 0th individual will be the resultant/remaining individual
+    @classmethod
+    def merge(cls, *individuals, sex=None, primary_name=None):
+        if not individuals or not isinstance(individuals, tuple) or len(individuals) < 2:
+            raise ValueError('must be passed a tuple of at least 2 individuals')
+        target_individual = individuals.pop(0)
+        data = {
+            'targetIndividualId': str(target_individual.guid),
+            'sourceIndividualIds': [],
+            'sex': sex,
+            'primaryName': primary_name,
+        }
+        for indiv in individuals:
+            data['sourceIndividualIds'].append(str(indiv.guid))
+        # result_data = current_app.edm.request_passthrough_result(
+        response = current_app.edm.request_passthrough(
+            'individual.merge',
+            'post',
+            data,
+            '',
+        )
+        return response
+
+    def merge_from(self, *individuals):
+        all_indiv = individuals + (self,)
+        Individual.merge(*all_indiv)
 
     def delete(self):
         AuditLog.delete_object(log, self)

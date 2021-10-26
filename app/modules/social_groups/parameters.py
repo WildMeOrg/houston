@@ -7,6 +7,7 @@ import logging
 from flask_marshmallow import base_fields
 from flask_restx_patched import Parameters, PatchJSONParameters
 from app.utils import HoustonException
+import app.extensions.logging as AuditLog
 
 from . import schemas
 
@@ -74,9 +75,9 @@ class PatchSocialGroupDetailsParameters(PatchJSONParameters):
             from . import resources
 
             resources.validate_members(value)
+
             # remove all that were there
-            for current_member in obj.members:
-                obj.remove_member(str(current_member.individual_guid))
+            obj.remove_all_members()
 
             for member_guid in value:
                 obj.add_member(member_guid, value[member_guid])
@@ -85,9 +86,10 @@ class PatchSocialGroupDetailsParameters(PatchJSONParameters):
 
     @classmethod
     def remove(cls, obj, field, value, state):
-        # TODO any researcher can remove a member in the group, they don't need view permission as they do for an add
-        # Do we care about this?
+        # Any researcher can remove a member in the group
         ret_val = False
         if field == 'member':
             ret_val = obj.remove_member(value)
+            msg = f'Removing member {value}'
+            AuditLog.audit_log_object(log, obj, msg)
         return ret_val

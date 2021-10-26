@@ -147,11 +147,17 @@ class SocialGroup(db.Model, HoustonModel):
         ]
         return found_members[0] if len(found_members) else None
 
+    def remove_all_members(self):
+        with db.session.begin(subtransactions=True):
+            while self.members:
+                db.session.delete(self.members.pop())
+
     def remove_member(self, individual_guid):
         ret_val = False
         # make sure it's a valid request
         member = self.get_member(individual_guid)
         if member:
+            self.members.remove(member)
             with db.session.begin(subtransactions=True):
                 db.session.delete(member)
             ret_val = True
@@ -159,6 +165,10 @@ class SocialGroup(db.Model, HoustonModel):
 
     def add_member(self, individual_guid, data):
         from app.modules.individuals.models import Individual
+
+        # Caller must ensure that the member is not present already
+        member = self.get_member(individual_guid)
+        assert member is None
 
         individual = Individual.query.get(individual_guid)
         assert individual

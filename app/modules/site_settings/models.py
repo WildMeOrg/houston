@@ -93,6 +93,8 @@ class SiteSetting(db.Model, Timestamp):
             return kwargs['default'] if 'default' in kwargs else None
         if setting.file_upload_guid:
             return setting.file_upload
+        elif setting.data:
+            return setting.data
         return setting.string
 
     @classmethod

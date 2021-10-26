@@ -3,6 +3,8 @@
 
 import logging
 import uuid
+import pytest
+from tests.utils import module_unavailable
 
 import tests.modules.social_groups.resources.utils as soc_group_utils
 import tests.modules.individuals.resources.utils as individual_utils
@@ -24,6 +26,9 @@ def create_individuals(db, flask_app_client, user, request, num_individuals=3):
     return individuals
 
 
+@pytest.mark.skipif(
+    module_unavailable('social_groups'), reason='SocialGroup module disabled'
+)
 def test_basic_operation(
     db, flask_app_client, researcher_1, researcher_2, admin_user, request
 ):
@@ -69,6 +74,9 @@ def test_basic_operation(
 
 # Test invalid configuration options. The API is via site settings but the validation is in SocialGroup so
 # this is a social group test
+@pytest.mark.skipif(
+    module_unavailable('social_groups'), reason='SocialGroup module disabled'
+)
 def test_error_config(flask_app_client, researcher_1, admin_user):
     valid_data = {
         'key': 'social_group_roles',
@@ -102,6 +110,9 @@ def test_error_config(flask_app_client, researcher_1, admin_user):
     soc_group_utils.set_roles(flask_app_client, admin_user, extra_field, 400, error)
 
 
+@pytest.mark.skipif(
+    module_unavailable('social_groups'), reason='SocialGroup module disabled'
+)
 def test_invalid_creation(
     db, flask_app_client, researcher_1, researcher_2, admin_user, regular_user, request
 ):
@@ -218,6 +229,9 @@ def test_invalid_creation(
     soc_group_utils.validate_response(many_roles, group_resp.json)
 
 
+@pytest.mark.skipif(
+    module_unavailable('social_groups'), reason='SocialGroup module disabled'
+)
 def test_role_changes(
     db, flask_app_client, researcher_1, researcher_2, admin_user, request
 ):
@@ -268,6 +282,9 @@ def test_role_changes(
             assert 'IrritatingGit' in group_as_res_2.json['members'][member_guid]['roles']
 
 
+@pytest.mark.skipif(
+    module_unavailable('social_groups'), reason='SocialGroup module disabled'
+)
 def test_patch(
     db, flask_app_client, researcher_1, researcher_2, regular_user, admin_user, request
 ):

@@ -137,7 +137,6 @@ class BaseConfig(object):
         'annotations',
         'missions',
         'site_settings',
-        'social_groups',
         'site_info',
         'job_control',
 

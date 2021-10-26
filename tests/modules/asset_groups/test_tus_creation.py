@@ -5,7 +5,12 @@ import pathlib
 import pytest
 import shutil
 
+from tests.utils import module_unavailable
 
+
+@pytest.mark.skipif(
+    module_unavailable('asset_groups'), reason='AssetGroups module disabled'
+)
 def test_create_submission_from_tus(flask_app, db, researcher_1, test_root):
 
     from app.extensions.tus import tus_upload_dir

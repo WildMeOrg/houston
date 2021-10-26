@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 from app.extensions import db
-from app.modules.fileuploads.models import FileUpload
-from app.modules.site_settings.models import SiteSetting
 
-from ._utils import app_context_task
+from tasks.utils import app_context_task
+from app.modules.fileuploads.models import FileUpload  # NOQA
+from app.modules.site_settings.models import SiteSetting  # NOQA
 
 
 @app_context_task(
@@ -36,6 +36,7 @@ def get(context, key):
     }
 )
 def get_value(context, key, default=None):
+
     if not default:
         val = SiteSetting.get_value(key)
     else:

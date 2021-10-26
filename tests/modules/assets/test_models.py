@@ -5,15 +5,21 @@ from unittest import mock
 import uuid
 
 from PIL import Image
+import pytest
+
+from tests.utils import module_unavailable
 
 
+@pytest.mark.skipif(
+    module_unavailable('asset_groups', 'sightings'), reason='AssetGroups module disabled'
+)
 def set_up_assets(flask_app, db, test_root, admin_user, request):
     from app.modules.annotations.models import Annotation
     from app.modules.asset_groups.models import AssetGroup
     from app.modules.asset_groups.metadata import AssetGroupMetadata
     from app.modules.sightings.models import Sighting, SightingAssets, SightingStage
 
-    from tests.modules.asset_groups.resources.utils import TestCreationData
+    from tests.modules.asset_groups.resources.utils import AssetGroupCreationData
 
     def cleanup(func):
         def inner():
@@ -38,7 +44,7 @@ def set_up_assets(flask_app, db, test_root, admin_user, request):
     cleanup(lambda: shutil.rmtree(trans_dir))
 
     # Create asset group from metadata
-    data = TestCreationData(transaction_id)
+    data = AssetGroupCreationData(transaction_id)
     data.set_sighting_field(-1, 'assetReferences', [jpg.name for jpg in jpgs])
     metadata = AssetGroupMetadata(data.get())
     with mock.patch('app.modules.asset_groups.metadata.current_user', new=admin_user):
@@ -66,6 +72,9 @@ def set_up_assets(flask_app, db, test_root, admin_user, request):
     return asset_group
 
 
+@pytest.mark.skipif(
+    module_unavailable('asset_groups', 'sightings'), reason='AssetGroups module disabled'
+)
 def test_asset_meta_and_delete(flask_app, db, test_root, admin_user, request):
     from app.modules.annotations.models import Annotation
     from app.modules.assets.models import Asset
@@ -104,6 +113,9 @@ def test_asset_meta_and_delete(flask_app, db, test_root, admin_user, request):
     assert AssetGroup.query.get(asset_group.guid) is None
 
 
+@pytest.mark.skipif(
+    module_unavailable('asset_groups'), reason='AssetGroups module disabled'
+)
 def test_update_symlink(test_asset_group_uuid, request):
     from app.modules.asset_groups.models import AssetGroup
 
@@ -133,6 +145,9 @@ def test_update_symlink(test_asset_group_uuid, request):
     assert new_actual.name == 'new.txt'
 
 
+@pytest.mark.skipif(
+    module_unavailable('asset_groups'), reason='AssetGroups module disabled'
+)
 def test_derived_images_and_rotation(test_asset_group_uuid, request):
     from app.modules.asset_groups.models import AssetGroup
 

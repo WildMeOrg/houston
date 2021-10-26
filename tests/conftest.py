@@ -324,6 +324,10 @@ def test_root(flask_app):
 
 
 def ensure_asset_group_repo(flask_app, db, asset_group, file_data=[]):
+    if not utils.is_extension_enabled('gitlab'):
+        print('gitlab unavailable, skip git_push')
+        return
+
     from app.extensions.gitlab import GitlabInitializationError
     from app.modules.asset_groups.tasks import git_push, ensure_remote
 
@@ -375,6 +379,10 @@ def test_asset_group_file_data(test_root):
 
 @pytest.fixture
 def test_asset_group_uuid(flask_app, db, researcher_1, test_asset_group_file_data):
+    if not utils.is_extension_enabled('gitlab'):
+        print('gitlab unavailable, skip ensure_asset_group_repo')
+        return
+
     from app.extensions.gitlab import GitlabInitializationError
     from app.modules.asset_groups.models import AssetGroup, AssetGroupMajorType
 

@@ -4,8 +4,12 @@
 import sqlalchemy
 
 import logging
+import pytest
+
+from tests.utils import module_unavailable
 
 
+@pytest.mark.skipif(module_unavailable('projects'), reason='Projects module disabled')
 def test_project_add_members(
     db, temp_user, researcher_1, researcher_2
 ):  # pylint: disable=unused-argument

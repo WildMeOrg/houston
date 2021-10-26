@@ -6,6 +6,7 @@ Projects database models
 import uuid
 
 from app.extensions import db, HoustonModel, Timestamp
+from app.modules import is_module_enabled
 
 
 # All many:many associations handled as Houston model classes to give control and history
@@ -17,7 +18,10 @@ class ProjectEncounter(db.Model, HoustonModel):
 
     project = db.relationship('Project', back_populates='encounter_members')
 
-    encounter = db.relationship('Encounter', back_populates='projects')
+    if is_module_enabled('encounters', 'projects'):
+        # <HOTFIX: MWS>
+        encounter = db.relationship('Encounter', back_populates='projects')
+        # </HOTFIX>
 
 
 class ProjectUserMembershipEnrollment(db.Model, HoustonModel):
@@ -28,7 +32,8 @@ class ProjectUserMembershipEnrollment(db.Model, HoustonModel):
 
     project = db.relationship('Project', back_populates='user_membership_enrollments')
 
-    user = db.relationship('User', back_populates='project_membership_enrollments')
+    # user = db.relationship('User', back_populates='project_membership_enrollments')
+    user = db.relationship('User', backref=db.backref('project_membership_enrollments'))
 
 
 class Project(db.Model, HoustonModel, Timestamp):
@@ -54,7 +59,15 @@ class Project(db.Model, HoustonModel, Timestamp):
     owner_guid = db.Column(
         db.GUID, db.ForeignKey('user.guid'), index=True, nullable=False
     )
-    owner = db.relationship('User', back_populates='owned_projects')
+    # owner = db.relationship('User', back_populates='owned_projects')
+    owner = db.relationship(
+        'User',
+        backref=db.backref(
+            'owned_projects',
+            primaryjoin='User.guid == Project.owner_guid',
+            order_by='Project.guid',
+        ),
+    )
 
     def __repr__(self):
         return (

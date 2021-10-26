@@ -3,8 +3,12 @@
 
 from tests import utils
 from tests.modules.projects.resources import utils as proj_utils
+import pytest
+
+from tests.utils import module_unavailable
 
 
+@pytest.mark.skipif(module_unavailable('projects'), reason='Projects module disabled')
 def test_modify_project(db, flask_app_client, admin_user, researcher_1, researcher_2):
 
     # pylint: disable=invalid-name
@@ -73,6 +77,7 @@ def test_modify_project(db, flask_app_client, admin_user, researcher_1, research
     proj_utils.delete_project(flask_app_client, researcher_1, project_guid)
 
 
+@pytest.mark.skipif(module_unavailable('projects'), reason='Projects module disabled')
 def test_invalid_encounters(
     db,
     flask_app_client,
@@ -141,6 +146,7 @@ def test_invalid_encounters(
     proj_utils.delete_project(flask_app_client, researcher_1, project_guid)
 
 
+@pytest.mark.skipif(module_unavailable('projects'), reason='Projects module disabled')
 def test_owner_permission(flask_app_client, researcher_1, researcher_2):
     response = proj_utils.create_project(
         flask_app_client, researcher_1, 'This is a test project, please ignore'
@@ -200,6 +206,7 @@ def test_owner_permission(flask_app_client, researcher_1, researcher_2):
     # assert response.json['title'] == 'This is an admin modified test project, please ignore'
 
 
+@pytest.mark.skipif(module_unavailable('projects'), reason='Projects module disabled')
 def test_member_permission(db, flask_app_client, researcher_1, researcher_2):
     from app.modules.projects.models import Project
     from app.modules.encounters.models import Encounter
@@ -255,6 +262,7 @@ def test_member_permission(db, flask_app_client, researcher_1, researcher_2):
     proj_utils.delete_project(flask_app_client, researcher_1, project_guid)
 
 
+@pytest.mark.skipif(module_unavailable('projects'), reason='Projects module disabled')
 def test_non_member_permission(db, flask_app_client, researcher_1, researcher_2):
     from app.modules.projects.models import Project
     from app.modules.encounters.models import Encounter

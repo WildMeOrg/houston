@@ -1,7 +1,13 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=invalid-name,missing-docstring
+import pytest
+
+from tests.utils import module_unavailable
 
 
+@pytest.mark.skipif(
+    module_unavailable('individuals'), reason='Individuals module disabled'
+)
 def test_individual_add_remove_encounters(encounter_1, encounter_2, empty_individual):
 
     assert len(empty_individual.encounters) == 0
@@ -31,6 +37,9 @@ def test_individual_add_remove_encounters(encounter_1, encounter_2, empty_indivi
     assert len(empty_individual.encounters) == 0
 
 
+@pytest.mark.skipif(
+    module_unavailable('individuals'), reason='Individuals module disabled'
+)
 def test_individual_ownership(encounter_1, encounter_2, empty_individual):
     empty_individual.encounters.append(encounter_1)
 

@@ -7,7 +7,14 @@ try:
     from .model import ModelSchema  # NOQA
 except ImportError:  # pragma: no cover
     pass
-from .namespace import Namespace  # NOQA
+
+from .namespace import (  # NOQA
+    Namespace,  # NOQA
+    is_extension_enabled,  # NOQA
+    is_module_enabled,  # NOQA
+    extension_required,  # NOQA
+    module_required,  # NOQA
+)  # NOQA
 from .parameters import Parameters, PostFormParameters  # NOQA
 from .parameters import PatchJSONParameters, PatchJSONParametersWithPassword  # NOQA
 from .swagger import Swagger  # NOQA

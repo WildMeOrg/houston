@@ -83,3 +83,8 @@ cookie.jar
 
 # Docker / Container specific files
 docker_local_config.py
+
+# Symlinks (default to Codex in GitHub)
+.env
+config.py
+docker-compose.yml

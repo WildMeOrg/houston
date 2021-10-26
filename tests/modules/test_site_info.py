@@ -4,8 +4,14 @@ from unittest import mock
 from requests import Response
 
 import app.version
+import pytest
+
+from tests.utils import extension_unavailable
 
 
+@pytest.mark.skipif(
+    extension_unavailable('acm', 'edm'), reason='ACM or EDM extension disabled'
+)
 def test_site_info(flask_app_client):
     with mock.patch('flask.current_app.acm.get_dict') as acm_get_dict:
         with mock.patch('flask.current_app.edm.get_dict') as edm_get_dict:
@@ -46,6 +52,9 @@ def test_site_info(flask_app_client):
     }
 
 
+@pytest.mark.skipif(
+    extension_unavailable('acm', 'edm'), reason='ACM or EDM extension disabled'
+)
 def test_site_info_api_error(flask_app_client):
     with mock.patch('flask.current_app.acm.get_dict') as acm_get_dict:
         with mock.patch('flask.current_app.edm.get_dict') as edm_get_dict:

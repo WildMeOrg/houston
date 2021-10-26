@@ -14,7 +14,7 @@ import os
 
 from flask import current_app
 
-from ._utils import app_context_task
+from tasks.utils import app_context_task
 
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
@@ -395,6 +395,8 @@ def _reset(context, edm_authentication=None):
     """
     Delete the database and initialize it with data from the EDM
     """
+    from config import BaseConfig  # NOQA
+
     _db_filepath = current_app.config.get('SQLALCHEMY_DATABASE_PATH', None)
     _asset_groups_filepath = current_app.config.get('ASSET_GROUP_DATABASE_PATH', None)
     _asset_filepath = current_app.config.get('ASSET_DATABASE_PATH', None)
@@ -414,8 +416,15 @@ def _reset(context, edm_authentication=None):
                 os.remove(delete_filepath)
             assert not os.path.exists(delete_filepath)
 
-    context.invoke_execute(context, 'app.run.warmup')
+    if BaseConfig.PROJECT_NAME in ['Codex']:
+        context.invoke_execute(context, 'codex.run.warmup')
 
-    context.invoke_execute(
-        context, 'app.initialize.all', edm_authentication=edm_authentication
-    )
+        context.invoke_execute(
+            context, 'codex.initialize.all', edm_authentication=edm_authentication
+        )
+    elif BaseConfig.PROJECT_NAME in ['MWS']:
+        context.invoke_execute(context, 'mws.run.warmup')
+
+        context.invoke_execute(
+            context, 'mws.initialize.all', edm_authentication=edm_authentication
+        )

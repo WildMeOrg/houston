@@ -2,8 +2,12 @@
 # pylint: disable=missing-docstring
 from tests import utils
 from tests.modules.sightings.resources import utils as sighting_utils
+import pytest
+
+from tests.utils import module_unavailable
 
 
+@pytest.mark.skipif(module_unavailable('sightings'), reason='Sightings module disabled')
 def test_asset_addition(db, flask_app_client, staff_user):
     # pylint: disable=invalid-name
     from app.modules.sightings.models import Sighting
@@ -78,6 +82,9 @@ def test_asset_addition(db, flask_app_client, staff_user):
         new_researcher.delete()
 
 
+@pytest.mark.skipif(
+    module_unavailable('sightings', 'asset_group'), reason='Sightings module disabled'
+)
 def add_file_asset_to_sighting(
     flask_app_client, user, sighting, transaction_id, filename, content
 ):
@@ -101,6 +108,7 @@ def add_file_asset_to_sighting(
     assert os.path.exists(dir_path) is False
 
 
+@pytest.mark.skipif(module_unavailable('sightings'), reason='Sightings module disabled')
 def test_asset_file_addition(db, flask_app_client, staff_user):
     # pylint: disable=invalid-name
     from app.modules.sightings.models import Sighting

@@ -15,7 +15,7 @@ jobs:
       # Build images
       - name: Install package and build image
         run: |
-          ./scripts/build.sh
+          ./scripts/codex/build.sh
 
       # Log into container registries
       - name: Log into Docker Hub
@@ -30,20 +30,20 @@ jobs:
         if: ${{ github.event_name == 'push' && startsWith(github.event.ref, 'refs/tags/v') }}
         run: |
           VERSION=$(echo ${GITHUB_REF} | sed 's#.*/v##')
-          ./scripts/publish.sh -t ${VERSION} -r docker.pkg.github.com houston
+          ./scripts/utils/publish.sh -t ${VERSION} -r docker.pkg.github.com codex
       - name: Push to Docker Hub
         if: ${{ github.event_name == 'push' && startsWith(github.event.ref, 'refs/tags/v') }}
         run: |
           VERSION=$(echo ${GITHUB_REF} | sed 's#.*/v##')
-          ./scripts/publish.sh -t ${VERSION} houston
+          ./scripts/utils/publish.sh -t ${VERSION} codex
 
       # ############################################################
       # Push latest image to registries
       - name: Push to GitHub Packages
         if: github.ref == 'refs/heads/main'
         run: |
-          ./scripts/publish.sh -t latest -r docker.pkg.github.com houston
+          ./scripts/utils/publish.sh -t latest -r docker.pkg.github.com codex
       - name: Push to Docker Hub
         if: github.ref == 'refs/heads/main'
         run: |
-          ./scripts/publish.sh -t latest houston
+          ./scripts/utils/publish.sh -t latest codex

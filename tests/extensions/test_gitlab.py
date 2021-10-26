@@ -6,10 +6,13 @@ import uuid
 import gitlab.exceptions
 import pytest
 
-from app.extensions.gitlab import GitlabInitializationError
+from tests.utils import extension_unavailable
 
 
+@pytest.mark.skipif(extension_unavailable('gitlab'), reason='GitLab extension disabled')
 def test_ensure_project_name_taken(flask_app):
+    from app.extensions.gitlab import GitlabInitializationError
+
     try:
         flask_app.git_backend._ensure_initialized()
     except GitlabInitializationError:

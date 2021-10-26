@@ -4,6 +4,9 @@ from pathlib import Path
 from app.modules.fileuploads.models import FileUpload
 from app.modules.site_settings.models import SiteSetting
 import uuid
+import pytest
+
+from tests.utils import extension_unavailable, is_extension_enabled
 
 
 def test_create_header_image(db, flask_app, test_root):
@@ -44,7 +47,10 @@ def test_create_string(db):
 def test_get_value(db):
     # this should grab from edm and return a string
     val = SiteSetting.get_value('site.name')
-    assert isinstance(val, str)
+    if is_extension_enabled('edm'):
+        assert isinstance(val, str)
+    else:
+        assert val is None
 
     # test the default when no value
     rnd = 'test_' + str(uuid.uuid4())
@@ -61,6 +67,7 @@ def test_get_value(db):
     db.session.delete(guid_setting)
 
 
+@pytest.mark.skipif(extension_unavailable('edm'), reason='EDM extension disabled')
 def test_read_edm_configuration():
     val = SiteSetting.get_edm_configuration('site.name')
     assert isinstance(val, str)

@@ -6,11 +6,17 @@ import copy
 import tests.modules.asset_groups.resources.utils as asset_group_utils
 import tests.extensions.tus.utils as tus_utils
 
-from tests.modules.asset_groups.resources.utils import TestCreationData
+from tests.modules.asset_groups.resources.utils import AssetGroupCreationData
 from tests import utils
+import pytest
+
+from tests.utils import module_unavailable
 
 
 # Test a bunch of failure scenarios
+@pytest.mark.skipif(
+    module_unavailable('asset_groups'), reason='AssetGroups module disabled'
+)
 def test_patch_asset_group(
     flask_app_client, researcher_1, regular_user, test_root, db, empty_individual
 ):
@@ -19,7 +25,7 @@ def test_patch_asset_group(
     transaction_id, test_filename = tus_utils.prep_tus_dir(test_root)
     asset_group_uuid = None
     try:
-        data = TestCreationData(transaction_id)
+        data = AssetGroupCreationData(transaction_id)
         data.add_filename(0, test_filename)
         response = asset_group_utils.create_asset_group(
             flask_app_client, regular_user, data.get()
@@ -120,17 +126,20 @@ def test_patch_asset_group(
 
 
 # similar to the above but against the AGS-as-sighting endpoint
+@pytest.mark.skipif(
+    module_unavailable('asset_groups'), reason='AssetGroups module disabled'
+)
 def test_patch_asset_group_sighting_as_sighting(
     flask_app_client, researcher_1, regular_user, test_root
 ):
     # pylint: disable=invalid-name
-    from tests.modules.asset_groups.resources.utils import TestCreationData
+    from tests.modules.asset_groups.resources.utils import AssetGroupCreationData
     from tests import utils
 
     transaction_id, test_filename = tus_utils.prep_tus_dir(test_root)
     asset_group_uuid = None
     try:
-        data = TestCreationData(transaction_id)
+        data = AssetGroupCreationData(transaction_id)
         data.add_filename(0, test_filename)
         response = asset_group_utils.create_asset_group(
             flask_app_client, regular_user, data.get()

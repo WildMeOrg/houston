@@ -5,8 +5,12 @@ import tests.extensions.tus.utils as tus_utils
 import tests.modules.asset_groups.resources.utils as asset_group_utils
 import tests.modules.sightings.resources.utils as sighting_utils
 import tests.utils as test_utils
+import pytest
+
+from tests.utils import module_unavailable
 
 
+@pytest.mark.skipif(module_unavailable('sightings'), reason='Sightings module disabled')
 def test_sighting_identification(
     flask_app,
     flask_app_client,

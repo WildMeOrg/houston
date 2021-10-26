@@ -4,7 +4,8 @@ exclude: |
   (?x)(
       ^_assets/ |
       ^_db/ |
-      ^_frontend/ |
+      ^_frontend.codex/ |
+      ^_frontend.mws/ |
       ^app/static/ |
       ^app/templates/ |
       ^clients/ |

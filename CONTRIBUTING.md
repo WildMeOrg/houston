@@ -115,14 +115,14 @@ invoke --print-completion-script bash > $SCRIPT
 echo "source $SCRIPT" >> virtualenv/houston3.7/bin/activate
 ```
 
-#### Setting up the environment
+#### Setting up the Codex environment
 
 If you are running Houston outside the docker setup, it is recommended that you set up a [python virtual environment](https://docs.python.org/dev/library/venv.html).
 Most `invoke` commands assume that you are using the virtual environment provided; and you should activate it in order to use the application's commands.
 
 Initial setup of the virtual environment:
 ```bash
-./scripts/venv.sh
+./scripts/codex/venv.sh
 ```
 
 Activation whenever developing or in a new terminal:
@@ -140,7 +140,7 @@ invoke dependencies.install
 #### Running the application
 
 ```bash
-invoke app.run
+invoke codex.run
 ```
 
 

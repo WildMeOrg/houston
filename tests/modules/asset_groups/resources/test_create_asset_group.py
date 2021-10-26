@@ -4,18 +4,24 @@ import tests.modules.asset_groups.resources.utils as asset_group_utils
 import tests.modules.users.resources.utils as user_utils
 import tests.extensions.tus.utils as tus_utils
 from unittest import mock
+import pytest
+
+from tests.utils import module_unavailable
 
 
 # Test a bunch of failure scenarios
+@pytest.mark.skipif(
+    module_unavailable('asset_groups'), reason='AssetGroups module disabled'
+)
 def test_create_asset_group(flask_app_client, researcher_1, readonly_user, test_root, db):
     # pylint: disable=invalid-name
-    from tests.modules.asset_groups.resources.utils import TestCreationData
+    from tests.modules.asset_groups.resources.utils import AssetGroupCreationData
 
     transaction_id, test_filename = tus_utils.prep_tus_dir(test_root)
     asset_group_uuid = None
 
     try:
-        data = TestCreationData(transaction_id, False)
+        data = AssetGroupCreationData(transaction_id, False)
         data.set_field('uploadType', 'form')
         data.set_field('description', 'This is a test asset_group, please ignore')
 
@@ -122,15 +128,18 @@ def test_create_asset_group(flask_app_client, researcher_1, readonly_user, test_
         tus_utils.cleanup_tus_dir(transaction_id)
 
 
+@pytest.mark.skipif(
+    module_unavailable('asset_groups'), reason='AssetGroups module disabled'
+)
 def test_create_asset_group_2_assets(flask_app_client, researcher_1, test_root, db):
     # pylint: disable=invalid-name
-    from tests.modules.asset_groups.resources.utils import TestCreationData
+    from tests.modules.asset_groups.resources.utils import AssetGroupCreationData
 
     transaction_id, test_filename = tus_utils.prep_tus_dir(test_root)
     tus_utils.prep_tus_dir(test_root, filename='coelacanth.png')
     asset_group_uuid = None
     try:
-        data = TestCreationData(transaction_id)
+        data = AssetGroupCreationData(transaction_id)
         data.add_filename(0, test_filename)
         data.add_filename(0, 'coelacanth.png')
         resp = asset_group_utils.create_asset_group(
@@ -159,16 +168,19 @@ def test_create_asset_group_2_assets(flask_app_client, researcher_1, test_root, 
         tus_utils.cleanup_tus_dir(transaction_id)
 
 
+@pytest.mark.skipif(
+    module_unavailable('asset_groups'), reason='AssetGroups module disabled'
+)
 def test_create_asset_group_no_assets(
     flask_app_client, researcher_1, contributor_1, test_root, db
 ):
     # pylint: disable=invalid-name
-    from tests.modules.asset_groups.resources.utils import TestCreationData
+    from tests.modules.asset_groups.resources.utils import AssetGroupCreationData
 
     asset_group_uuid = None
     sighting_uuid = None
     try:
-        data = TestCreationData(None)
+        data = AssetGroupCreationData(None)
         data.remove_field('transactionId')
         # Should fail as not permitted for contributor
         expected_resp = 'Only a Researcher can create an AssetGroup without any Assets'
@@ -196,16 +208,19 @@ def test_create_asset_group_no_assets(
             sighting_utils.delete_sighting(flask_app_client, researcher_1, sighting_uuid)
 
 
+@pytest.mark.skipif(
+    module_unavailable('asset_groups'), reason='AssetGroups module disabled'
+)
 def test_create_asset_group_anonymous(
     flask_app_client, researcher_1, staff_user, test_root, db
 ):
     # pylint: disable=invalid-name
-    from tests.modules.asset_groups.resources.utils import TestCreationData
+    from tests.modules.asset_groups.resources.utils import AssetGroupCreationData
 
     transaction_id, test_filename = tus_utils.prep_tus_dir(test_root)
     asset_group_uuid = None
     try:
-        data = TestCreationData(transaction_id)
+        data = AssetGroupCreationData(transaction_id)
         data.add_filename(0, test_filename)
         data.set_field('submitterEmail', researcher_1.email)
         resp_msg = 'Invalid submitter data'
@@ -244,16 +259,19 @@ def test_create_asset_group_anonymous(
         tus_utils.cleanup_tus_dir(transaction_id)
 
 
+@pytest.mark.skipif(
+    module_unavailable('asset_groups'), reason='AssetGroups module disabled'
+)
 def no_test_create_asset_group_detection(
     flask_app, flask_app_client, researcher_1, staff_user, test_root, db, request
 ):
     # pylint: disable=invalid-name
-    from tests.modules.asset_groups.resources.utils import TestCreationData
+    from tests.modules.asset_groups.resources.utils import AssetGroupCreationData
     from time import sleep
 
     transaction_id, test_filename = tus_utils.prep_tus_dir(test_root)
 
-    data = TestCreationData(transaction_id)
+    data = AssetGroupCreationData(transaction_id)
     data.add_filename(0, test_filename)
     data.set_field('speciesDetectionModel', ['african_terrestrial'])
     resp = asset_group_utils.create_asset_group(
@@ -284,16 +302,19 @@ def no_test_create_asset_group_detection(
         )
 
 
+@pytest.mark.skipif(
+    module_unavailable('asset_groups'), reason='AssetGroups module disabled'
+)
 def test_create_asset_group_sim_detection(
     flask_app, flask_app_client, researcher_1, staff_user, internal_user, test_root, db
 ):
     # pylint: disable=invalid-name
-    from tests.modules.asset_groups.resources.utils import TestCreationData
+    from tests.modules.asset_groups.resources.utils import AssetGroupCreationData
 
     transaction_id, test_filename = tus_utils.prep_tus_dir(test_root)
     asset_group_uuid = None
     try:
-        data = TestCreationData(transaction_id)
+        data = AssetGroupCreationData(transaction_id)
         data.add_filename(0, test_filename)
         data.set_field('speciesDetectionModel', ['african_terrestrial'])
 
@@ -346,6 +367,9 @@ def test_create_asset_group_sim_detection(
         tus_utils.cleanup_tus_dir(transaction_id)
 
 
+@pytest.mark.skipif(
+    module_unavailable('asset_groups'), reason='AssetGroups module disabled'
+)
 def test_create_asset_group_repeat_detection(
     flask_app,
     flask_app_client,
@@ -443,6 +467,9 @@ def test_create_asset_group_repeat_detection(
         assert ags1.stage == AssetGroupSightingStage.curation
 
 
+@pytest.mark.skipif(
+    module_unavailable('asset_groups'), reason='AssetGroups module disabled'
+)
 def test_create_bulk_asset_group_dup_asset(flask_app_client, researcher_1, test_root, db):
     # pylint: disable=invalid-name
 
@@ -466,6 +493,9 @@ def test_create_bulk_asset_group_dup_asset(flask_app_client, researcher_1, test_
         tus_utils.cleanup_tus_dir(transaction_id)
 
 
+@pytest.mark.skipif(
+    module_unavailable('asset_groups'), reason='AssetGroups module disabled'
+)
 def test_create_bulk_asset_group(flask_app_client, researcher_1, test_root, db):
     # pylint: disable=invalid-name
     import uuid
@@ -524,6 +554,9 @@ def test_create_bulk_asset_group(flask_app_client, researcher_1, test_root, db):
         tus_utils.cleanup_tus_dir(transaction_id)
 
 
+@pytest.mark.skipif(
+    module_unavailable('asset_groups'), reason='AssetGroups module disabled'
+)
 def test_create_asset_group_individual(
     flask_app_client,
     researcher_1,
@@ -533,13 +566,13 @@ def test_create_asset_group_individual(
     empty_individual,
 ):
     # pylint: disable=invalid-name
-    from tests.modules.asset_groups.resources.utils import TestCreationData
+    from tests.modules.asset_groups.resources.utils import AssetGroupCreationData
     import uuid
 
     transaction_id, test_filename = tus_utils.prep_tus_dir(test_root)
     asset_group_uuid = None
     try:
-        data = TestCreationData(transaction_id)
+        data = AssetGroupCreationData(transaction_id)
         data.add_filename(0, test_filename)
         dummy_uuid = str(uuid.uuid4())
         data.set_encounter_field(0, 0, 'individualUuid', dummy_uuid)

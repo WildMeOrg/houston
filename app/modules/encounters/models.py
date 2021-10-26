@@ -7,8 +7,11 @@ import uuid
 import logging
 
 from app.extensions import db, FeatherModel
+from app.modules import is_module_enabled
 from app.modules.individuals.models import Individual
 import app.extensions.logging as AuditLog
+
+from config import BaseConfig  # NOQA
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
@@ -17,6 +20,10 @@ class Encounter(db.Model, FeatherModel):
     """
     Encounters database model.
     """
+
+    __mapper_args__ = {
+        'confirm_deleted_rows': False,
+    }
 
     guid = db.Column(
         db.GUID, default=uuid.uuid4, primary_key=True
@@ -36,15 +43,33 @@ class Encounter(db.Model, FeatherModel):
     owner_guid = db.Column(
         db.GUID, db.ForeignKey('user.guid'), index=True, nullable=False
     )
+    # owner = db.relationship(
+    #     'User', back_populates='owned_encounters', foreign_keys=[owner_guid]
+    # )
     owner = db.relationship(
-        'User', back_populates='owned_encounters', foreign_keys=[owner_guid]
+        'User',
+        backref=db.backref(
+            'owned_encounters',
+            primaryjoin='User.guid == Encounter.owner_guid',
+            order_by='Encounter.guid',
+        ),
+        foreign_keys=[owner_guid],
     )
 
     submitter_guid = db.Column(
         db.GUID, db.ForeignKey('user.guid'), index=True, nullable=True
     )
+    # submitter = db.relationship(
+    #     'User', back_populates='submitted_encounters', foreign_keys=[submitter_guid]
+    # )
     submitter = db.relationship(
-        'User', back_populates='submitted_encounters', foreign_keys=[submitter_guid]
+        'User',
+        backref=db.backref(
+            'submitted_encounters',
+            primaryjoin='User.guid == Encounter.submitter_guid',
+            order_by='Encounter.guid',
+        ),
+        foreign_keys=[submitter_guid],
     )
 
     # Asset group sighting stores the configuration for this encounter,
@@ -55,11 +80,14 @@ class Encounter(db.Model, FeatherModel):
 
     public = db.Column(db.Boolean, default=False, nullable=False)
 
-    projects = db.relationship(
-        'ProjectEncounter',
-        back_populates='encounter',
-        order_by='ProjectEncounter.project_guid',
-    )
+    if is_module_enabled('encounters', 'projects'):
+        # <HOTFIX: MWS>
+        projects = db.relationship(
+            'ProjectEncounter',
+            back_populates='encounter',
+            order_by='ProjectEncounter.project_guid',
+        )
+        # </HOTFIX>
 
     annotations = db.relationship(
         'Annotation', back_populates='encounter', order_by='Annotation.guid'

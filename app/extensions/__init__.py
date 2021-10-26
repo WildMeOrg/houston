@@ -8,11 +8,12 @@ Extensions provide access to common resources of the application.
 
 Please, put new extension instantiations and initializations here.
 """
-import re
+import re  # NOQA
 import uuid  # NOQA
 import json  # NOQA
 from datetime import datetime  # NOQA
-from .logging import Logging
+import logging as logging_native  # NOQA
+from .logging import Logging  # NOQA
 
 logging = Logging()
 
@@ -76,6 +77,9 @@ from . import config  # NOQA
 from . import sentry  # NOQA
 
 from . import stripe  # NOQA
+
+from flask_restx_patched import is_extension_enabled, extension_required  # NOQA
+
 
 ##########################################################################################
 
@@ -438,28 +442,44 @@ def init_app(app):
     global _CONFIG_PATH_CHOICES
     _CONFIG_PATH_CHOICES = sorted(app.config.keys())
 
-    extensions = (
-        # The extensions in this block need to remain in this order for proper setup
-        logging,
-        sentry,
-        db,
-        api,
-        config,
-        oauth2,
-        login_manager,
-        # The remaining extensions
-        cross_origin_resource_sharing,
-        marshmallow,
-        edm,
-        elasticsearch,
-        acm,
-        gitlab,
-        tus,
-        mail,
-        stripe,
-    )
-    for extension in extensions:
+    log = logging_native.getLogger(__name__)
+
+    # The extensions in this block need to remain in this order for proper setup
+    essential_extensions = {
+        'logging': logging,
+        'sentry': sentry,
+        'db': db,
+        'api': api,
+        'config': config,
+        'oauth2': oauth2,
+        'login': login_manager,
+        'marshmallow': marshmallow,
+    }
+
+    for extension_name in essential_extensions.keys():
+        log.info('Init extension %r' % (extension_name,))
+        extension = essential_extensions.get(extension_name)
         extension.init_app(app)
+
+    # The remaining extensions
+    optional_extensions = {
+        'cors': cross_origin_resource_sharing,
+        'tus': tus,
+        'acm': acm,
+        'edm': edm,
+        'gitlab': gitlab,
+        'elasticsearch': elasticsearch,
+        'mail': mail,
+        'stripe': stripe,
+    }
+
+    for extension_name in optional_extensions.keys():
+        if extension_name in app.config['ENABLED_EXTENSIONS']:
+            log.info('Init extension %r' % (extension_name,))
+            extension = optional_extensions.get(extension_name)
+            extension.init_app(app)
+        else:
+            log.info('Skipped extension %r (disabled)' % (extension_name,))
 
     # minify(app=app)
 

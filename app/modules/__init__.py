@@ -10,6 +10,8 @@ variable.
 """
 import logging
 
+from flask_restx_patched import is_module_enabled, module_required  # NOQA
+
 
 def init_app(app, **kwargs):
     from importlib import import_module
@@ -31,5 +33,5 @@ def init_app(app, **kwargs):
             pass
 
     for module_name in app.config['ENABLED_MODULES']:
-        logging.debug('Init module %r' % (module_name,))
+        logging.info('Init module %r' % (module_name,))
         import_module('.%s' % module_name, package=__name__).init_app(app, **kwargs)

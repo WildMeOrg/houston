@@ -37,6 +37,10 @@ class CollaborationUserAssociations(db.Model, HoustonModel):
     Current maximum of two users per Collaboration.
     """
 
+    __mapper_args__ = {
+        'confirm_deleted_rows': False,
+    }
+
     collaboration_guid = db.Column(
         db.GUID, db.ForeignKey('collaboration.guid'), default=uuid.uuid4, primary_key=True
     )
@@ -44,8 +48,9 @@ class CollaborationUserAssociations(db.Model, HoustonModel):
         'Collaboration', back_populates='collaboration_user_associations'
     )
 
-    user = db.relationship('User', back_populates='user_collaboration_associations')
     user_guid = db.Column(db.GUID, db.ForeignKey('user.guid'), primary_key=True)
+    # user = db.relationship('User', back_populates='user_collaboration_associations')
+    user = db.relationship('User', backref=db.backref('user_collaboration_associations'))
 
     read_approval_state = db.Column(
         db.String(length=32), default=CollaborationUserState.PENDING, nullable=False
@@ -59,6 +64,10 @@ class Collaboration(db.Model, HoustonModel):
     """
     Collaborations database model.
     """
+
+    __mapper_args__ = {
+        'confirm_deleted_rows': False,
+    }
 
     guid = db.Column(
         db.GUID, default=uuid.uuid4, primary_key=True

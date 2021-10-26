@@ -8,9 +8,15 @@ import tests.modules.sightings.resources.utils as sighting_utils
 import tests.utils as test_utils
 
 from invoke import MockContext
+import pytest
+
+from tests.utils import module_unavailable
 
 
 # Check that the task methods for the asset control job tasks print the correct output
+@pytest.mark.skipif(
+    module_unavailable('asset_groups'), reason='AssetGroups module disabled'
+)
 def test_asset_group_detection_jobs(
     flask_app, flask_app_client, researcher_1, staff_user, test_root, db
 ):
@@ -19,7 +25,7 @@ def test_asset_group_detection_jobs(
     transaction_id, test_filename = tus_utils.prep_tus_dir(test_root)
     asset_group_uuid = None
     try:
-        data = asset_group_utils.TestCreationData(transaction_id)
+        data = asset_group_utils.AssetGroupCreationData(transaction_id)
         data.add_filename(0, test_filename)
         data.set_field('speciesDetectionModel', ['african_terrestrial'])
 
@@ -73,6 +79,7 @@ def test_asset_group_detection_jobs(
 
 
 # Check that the task methods for the sighting job tasks print the correct output
+@pytest.mark.skipif(module_unavailable('sightings'), reason='Sightings module disabled')
 def test_sighting_identification_jobs(
     flask_app,
     flask_app_client,
@@ -109,7 +116,7 @@ def test_sighting_identification_jobs(
             test_root, str(uuid.uuid4())
         )
 
-        data = asset_group_utils.TestCreationData(transaction_id)
+        data = asset_group_utils.AssetGroupCreationData(transaction_id)
         data.add_filename(0, test_filename)
         response = asset_group_utils.create_asset_group(
             flask_app_client, researcher_1, data.get()

@@ -5,15 +5,23 @@ from tests.modules.sightings.resources import utils as sighting_utils
 from tests.modules.individuals.resources import utils as individual_utils
 from tests import utils as test_utils
 import datetime
+import pytest
+
+from tests.utils import module_unavailable
 
 timestamp = datetime.datetime.now().isoformat() + 'Z'
 
 
+@pytest.mark.skipif(module_unavailable('sightings'), reason='Sightings module disabled')
 def test_get_sighting_not_found(flask_app_client):
     response = flask_app_client.get('/api/v1/sightings/wrong-uuid')
     assert response.status_code == 404
+    response.close()
 
 
+@pytest.mark.skipif(
+    module_unavailable('sightings', 'encounters'), reason='Sightings module disabled'
+)
 def test_create_failures(flask_app_client, test_root, researcher_1):
     transaction_id, test_filename = sighting_utils.prep_tus_dir(test_root)
 
@@ -56,6 +64,7 @@ def test_create_failures(flask_app_client, test_root, researcher_1):
     sighting_utils.cleanup_tus_dir(transaction_id)
 
 
+@pytest.mark.skipif(module_unavailable('sightings'), reason='Sightings module disabled')
 def test_create_and_modify_and_delete_sighting(
     db, flask_app_client, researcher_1, test_root, staff_user
 ):
@@ -205,6 +214,7 @@ def test_create_and_modify_and_delete_sighting(
     # no longer need to utils.delete_sighting() cuz cascade killed it above
 
 
+@pytest.mark.skipif(module_unavailable('sightings'), reason='Sightings module disabled')
 def test_create_anon_and_delete_sighting(db, flask_app_client, staff_user, test_root):
     from app.modules.sightings.models import Sighting
     from app.modules.users.models import User
@@ -300,6 +310,7 @@ def test_create_anon_and_delete_sighting(db, flask_app_client, staff_user, test_
     new_user.delete()
 
 
+@pytest.mark.skipif(module_unavailable('sightings'), reason='Sightings module disabled')
 def test_annotations_within_sightings(
     db, flask_app_client, researcher_1, test_root, staff_user, test_clone_asset_group_data
 ):
@@ -388,6 +399,9 @@ def test_annotations_within_sightings(
     clone.cleanup()
 
 
+@pytest.mark.skipif(
+    module_unavailable('sightings', 'encounters'), reason='Sightings module disabled'
+)
 def test_edm_and_houston_encounter_data_within_sightings(
     db, flask_app_client, researcher_1, staff_user
 ):

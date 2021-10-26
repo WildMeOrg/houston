@@ -28,12 +28,12 @@ def install_frontend_ui(context, on_error='raise'):
     """
     log.info('Installing Front-end UI assets...')
     try:
-        context.run('bash scripts/build.frontend.sh')
+        context.run('bash scripts/codex/build.frontend.sh')
         log.info('Front-end UI is installed.')
     except Exception as ex:
         if on_error in ['raise']:
             raise ex
-        log.warn('Front-end UI failed to install. (on_error = %r)' % (on_error,))
+        log.warning('Front-end UI failed to install. (on_error = %r)' % (on_error,))
 
 
 @task
@@ -44,12 +44,12 @@ def install_swagger_ui(context, on_error='raise'):
     """
     log.info('Installing Swagger UI assets...')
     try:
-        context.run('bash scripts/build.swagger-ui.sh')
+        context.run('bash scripts/swagger/build.frontend.sh')
         log.info('Swagger UI is installed.')
     except Exception as ex:
         if on_error in ['raise']:
             raise ex
-        log.warn('Swagger UI failed to install. (on_error = %r)' % (on_error,))
+        log.warning('Swagger UI failed to install. (on_error = %r)' % (on_error,))
 
 
 @task

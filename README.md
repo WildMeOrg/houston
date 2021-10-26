@@ -44,7 +44,13 @@ See [Background and Periodic Tasks](docs/background_tasks.md)
 
 ```bash
 git clone --recurse-submodules https://github.com/WildMeOrg/houston.git
+
+# Option 1 - Activate Codex App
+./scripts/codex/activate.sh
 docker-compose up
+
+# Option 2 - Use Codex Config Explicitly
+docker-compose -f docker-compose.codex.yml --env-file .env.codex up
 ```
 
 Surf to http://localhost:84/
@@ -67,14 +73,14 @@ git clone --recurse-submodules https://github.com/WildMeOrg/houston.git
 cd houston/
 ```
 
-#### Setup Environment
+#### Setup Codex Environment
 
 It is recommended to use virtualenv or Anaconda/Miniconda to manage Python
 dependencies. Please, learn details yourself.
 For quickstart purposes the following will set up a virtualenv for you:
 
 ```bash
-./scripts/venv.sh
+./scripts/codex/venv.sh
 source virtualenv/houston3.7/bin/activate
 
 # To add bash-completion
@@ -95,7 +101,7 @@ NOTE: All dependencies and database migrations will be automatically handled,
 so go ahead and turn the server ON! (Read more details on this in Tips section)
 
 ```bash
-$ invoke app.run
+$ invoke codex.run
 ```
 
 #### Deploy Server
@@ -133,8 +139,8 @@ $ invoke --help <task>
 For example:
 
 ```bash
-$ invoke --help app.run
-Usage: inv[oke] [--core-opts] app.run [--options] [other tasks here ...]
+$ invoke --help codex.run
+Usage: inv[oke] [--core-opts] codex.run [--options] [other tasks here ...]
 
 Docstring:
   Run DDOTS RESTful API Server.
@@ -153,12 +159,12 @@ Use the following command to enter ipython shell (`ipython` must be installed):
 $ invoke app.env.enter
 ```
 
-`app.run` and `app.env.enter` tasks automatically prepare all dependencies
+`codex.run` and `app.env.enter` tasks automatically prepare all dependencies
 (using `pip install`) and migrate database schema to the latest version.
 
 Database schema migration is handled via `app.db.*` tasks group. The most
 common migration commands are `app.db.upgrade` (it is automatically run on
-`app.run`), and `app.db.migrate` (creates a new migration).
+`codex.run`), and `app.db.migrate` (creates a new migration).
 
 You can use [`better_exceptions`](https://github.com/Qix-/better-exceptions)
 package to enable detailed tracebacks. Just add `better_exceptions` to the

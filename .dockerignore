@@ -15,13 +15,17 @@ _assets/
 *.egg-info/
 
 Dockerfile
+Dockerfile.codex
+Dockerfile.mws
 Procfile
 
 example.db
 dist.*.tar.gz
 
 _db/
-_frontend/
+_frontend
+_frontend.codex/
+_frontend.mws/
 clients/
 docs/
 tests/

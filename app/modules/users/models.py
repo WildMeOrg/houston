@@ -11,7 +11,8 @@ from flask import current_app
 from sqlalchemy_utils import types as column_types
 
 from flask_login import current_user  # NOQA
-from app.extensions import db, FeatherModel
+from app.extensions import db, FeatherModel, is_extension_enabled
+from app.modules import module_required, is_module_enabled
 from app.extensions.auth import security
 from app.extensions.edm import EDMObjectMixin
 from app.extensions.api.parameters import _get_is_static_role_property
@@ -154,63 +155,63 @@ class User(db.Model, FeatherModel, UserEDMMixin):
 
     profile_fileupload = db.relationship(FileUpload)
 
-    organization_membership_enrollments = db.relationship(
-        'OrganizationUserMembershipEnrollment', back_populates='user'
-    )
+    # organization_membership_enrollments = db.relationship(
+    #     'OrganizationUserMembershipEnrollment', back_populates='user'
+    # )
 
-    organization_moderator_enrollments = db.relationship(
-        'OrganizationUserModeratorEnrollment', back_populates='user'
-    )
+    # organization_moderator_enrollments = db.relationship(
+    #     'OrganizationUserModeratorEnrollment', back_populates='user'
+    # )
 
-    project_membership_enrollments = db.relationship(
-        'ProjectUserMembershipEnrollment', back_populates='user'
-    )
+    # project_membership_enrollments = db.relationship(
+    #     'ProjectUserMembershipEnrollment', back_populates='user'
+    # )
 
-    user_collaboration_associations = db.relationship(
-        'CollaborationUserAssociations', back_populates='user'
-    )
+    # user_collaboration_associations = db.relationship(
+    #     'CollaborationUserAssociations', back_populates='user'
+    # )
 
-    asset_groups = db.relationship(
-        'AssetGroup',
-        back_populates='owner',
-        primaryjoin='User.guid == AssetGroup.owner_guid',
-        order_by='AssetGroup.guid',
-    )
+    # asset_groups = db.relationship(
+    #     'AssetGroup',
+    #     back_populates='owner',
+    #     primaryjoin='User.guid == AssetGroup.owner_guid',
+    #     order_by='AssetGroup.guid',
+    # )
 
-    submitted_asset_groups = db.relationship(
-        'AssetGroup',
-        back_populates='submitter',
-        primaryjoin='User.guid == AssetGroup.submitter_guid',
-        order_by='AssetGroup.guid',
-    )
+    # submitted_asset_groups = db.relationship(
+    #     'AssetGroup',
+    #     back_populates='submitter',
+    #     primaryjoin='User.guid == AssetGroup.submitter_guid',
+    #     order_by='AssetGroup.guid',
+    # )
 
-    owned_encounters = db.relationship(
-        'Encounter',
-        back_populates='owner',
-        primaryjoin='User.guid == Encounter.owner_guid',
-        order_by='Encounter.guid',
-    )
+    # owned_encounters = db.relationship(
+    #     'Encounter',
+    #     back_populates='owner',
+    #     primaryjoin='User.guid == Encounter.owner_guid',
+    #     order_by='Encounter.guid',
+    # )
 
-    submitted_encounters = db.relationship(
-        'Encounter',
-        back_populates='submitter',
-        primaryjoin='User.guid == Encounter.submitter_guid',
-        order_by='Encounter.guid',
-    )
+    # submitted_encounters = db.relationship(
+    #     'Encounter',
+    #     back_populates='submitter',
+    #     primaryjoin='User.guid == Encounter.submitter_guid',
+    #     order_by='Encounter.guid',
+    # )
 
-    owned_organizations = db.relationship(
-        'Organization',
-        back_populates='owner',
-        primaryjoin='User.guid == Organization.owner_guid',
-        order_by='Organization.guid',
-    )
+    # owned_organizations = db.relationship(
+    #     'Organization',
+    #     back_populates='owner',
+    #     primaryjoin='User.guid == Organization.owner_guid',
+    #     order_by='Organization.guid',
+    # )
 
-    owned_projects = db.relationship(
-        'Project',
-        back_populates='owner',
-        primaryjoin='User.guid == Project.owner_guid',
-        order_by='Project.guid',
-    )
+    # owned_projects = db.relationship(
+    #     'Project',
+    #     back_populates='owner',
+    #     primaryjoin='User.guid == Project.owner_guid',
+    #     order_by='Project.guid',
+    # )
 
     # User may have many notifications
     notifications = db.relationship(
@@ -440,7 +441,7 @@ class User(db.Model, FeatherModel, UserEDMMixin):
                         return user
 
                 # As a fallback, check all EDMs if the user can login
-                if edm_login_fallback:
+                if edm_login_fallback and is_extension_enabled('edm'):
                     # We want to check the EDM even if we don't have a local user record
                     if current_app.edm.check_user_login(email_candidate, password):
                         log.info('User authenticated via EDM: %r' % (email_candidate,))
@@ -531,21 +532,29 @@ class User(db.Model, FeatherModel, UserEDMMixin):
             return False
         return code.is_resolved
 
+    @module_required('organizations', resolve='warn', default=[])
     def get_org_memberships(self):
         return [
             enrollment.organization
             for enrollment in self.organization_membership_enrollments
         ]
 
+    @module_required('organizations', resolve='warn', default=[])
     def get_org_moderatorships(self):
         return [
             enrollment.organization
             for enrollment in self.organization_moderator_enrollments
         ]
 
+    @module_required('projects', resolve='warn', default=[])
     def get_projects(self):
         return [enrollment.project for enrollment in self.project_membership_enrollments]
 
+    @module_required('missions', resolve='warn', default=[])
+    def get_missions(self):
+        return [enrollment.mission for enrollment in self.mission_membership_enrollments]
+
+    @module_required('collaborations', resolve='warn', default=[])
     def get_collaborations_as_json(self):
         from app.modules.collaborations.schemas import DetailedCollaborationSchema
 
@@ -571,6 +580,7 @@ class User(db.Model, FeatherModel, UserEDMMixin):
             if not asset_group.is_processed()
         ]
 
+    @module_required('sightings', resolve='warn', default=[])
     def unprocessed_sightings(self):
         from app.modules.sightings.models import SightingStage
 
@@ -665,44 +675,72 @@ class User(db.Model, FeatherModel, UserEDMMixin):
         return self
 
     def owns_object(self, obj):
-        from app.modules.assets.models import Asset
-        from app.modules.asset_groups.models import AssetGroup
-        from app.modules.encounters.models import Encounter
-        from app.modules.sightings.models import Sighting
-        from app.modules.projects.models import Project
-        from app.modules.individuals.models import Individual
-        from app.modules.notifications.models import Notification
-
         ret_val = False
 
         if isinstance(obj, User):
             ret_val = obj == self
-        # AssetGroup, Encounters and Projects all have an owner field, check that
-        elif isinstance(obj, (AssetGroup, Encounter, Project, Notification)):
-            ret_val = obj.owner == self
-        elif isinstance(obj, Asset):
-            # assets are not owned directly by the user but the asset_group they're in is.
-            # TODO: need to understand once assets become part of an encounter, do they still have a asset_group
-            if obj.asset_group is not None:
-                ret_val = obj.asset_group.owner is self
-        elif isinstance(obj, Sighting):
-            # decided (2021-03-12) that "owner" of a Sighting is not applicable therefore always False
-            #   permissions must be handled in ways not dependent on ownership
-            ret_val = False
-        elif isinstance(obj, Individual):
-            for encounter in obj.get_encounters():
-                if encounter.get_owner() is self:
-                    ret_val = True
-                    break
+
+        # AssetGroup, Encounter, Project, Notification all have an owner field, check that
+        if is_module_enabled('asset_groups'):
+            from app.modules.asset_groups.models import AssetGroup
+
+            if isinstance(obj, AssetGroup):
+                ret_val = obj.owner == self
+
+        if is_module_enabled('encounters'):
+            from app.modules.encounters.models import Encounter
+
+            if isinstance(obj, Encounter):
+                ret_val = obj.owner == self
+
+        if is_module_enabled('projects'):
+            from app.modules.projects.models import Project
+
+            if isinstance(obj, Project):
+                ret_val = obj.owner == self
+
+        if is_module_enabled('notifications'):
+            from app.modules.notifications.models import Notification
+
+            if isinstance(obj, Notification):
+                ret_val = obj.owner == self
+
+        if is_module_enabled('assets'):
+            from app.modules.assets.models import Asset
+
+            if isinstance(obj, Asset):
+                # assets are not owned directly by the user but the asset_group they're in is.
+                # TODO: need to understand once assets become part of an encounter, do they still have a asset_group
+                if obj.asset_group is not None:
+                    ret_val = obj.asset_group.owner is self
+
+        if is_module_enabled('sightings'):
+            from app.modules.sightings.models import Sighting
+
+            if isinstance(obj, Sighting):
+                # decided (2021-03-12) that "owner" of a Sighting is not applicable therefore always False
+                #   permissions must be handled in ways not dependent on ownership
+                ret_val = False
+
+        if is_module_enabled('individuals'):
+            from app.modules.individuals.models import Individual
+
+            if isinstance(obj, Individual):
+                for encounter in obj.get_encounters():
+                    if encounter.get_owner() is self:
+                        ret_val = True
+                        break
 
         return ret_val
 
+    @module_required('encounters', 'annotations', resolve='warn', default=[])
     def get_my_annotations(self):
         annotations = []
         for encounter in self.owned_encounters:
             annotations.extend(encounter.annotations)
         return annotations
 
+    @module_required('encounters', 'annotations', resolve='warn', default=[])
     def get_all_encounters(self):
         annotations = self.get_my_annotations()
         # TODO add collaboration annotations
@@ -768,6 +806,7 @@ class User(db.Model, FeatherModel, UserEDMMixin):
             is_internal=True,
         )
 
+    @module_required('sightings', resolve='warn', default=[])
     def get_sightings(self):
         sightings = []
         for encounter in self.owned_encounters:

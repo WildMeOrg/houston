@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from ._utils import app_context_task
+from tasks.utils import app_context_task
 from app.modules.emails.models import EmailTypes
 from app.extensions.email import Email
 from app.modules.site_settings.models import SiteSetting

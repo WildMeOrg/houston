@@ -228,7 +228,9 @@ def browser():
             options.headless = True
         browser = webdriver.Firefox(options=options)
     else:
-        raise ValueError(f'Unrecognized browser "{BROWSER}". Valid choices are: chrome, firefox')
+        raise ValueError(
+            f'Unrecognized browser "{BROWSER}". Valid choices are: chrome, firefox'
+        )
     browser.set_window_size(1920, 1080)
     try:
         initialize(browser)

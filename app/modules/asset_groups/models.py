@@ -101,6 +101,11 @@ class Repo(BaseRepo):
 
 # AssetGroup can have many sightings, so needs a table
 class AssetGroupSighting(db.Model, HoustonModel):
+
+    __mapper_args__ = {
+        'confirm_deleted_rows': False,
+    }
+
     guid = db.Column(db.GUID, default=uuid.uuid4, primary_key=True)
     stage = db.Column(
         db.Enum(AssetGroupSightingStage),
@@ -620,6 +625,10 @@ class AssetGroup(db.Model, HoustonModel):
             - metadata.json
     """
 
+    __mapper_args__ = {
+        'confirm_deleted_rows': False,
+    }
+
     guid = db.Column(
         db.GUID, default=uuid.uuid4, primary_key=True
     )  # pylint: disable=invalid-name
@@ -642,8 +651,17 @@ class AssetGroup(db.Model, HoustonModel):
     owner_guid = db.Column(
         db.GUID, db.ForeignKey('user.guid'), index=True, nullable=False
     )
+    # owner = db.relationship(
+    #     'User', backref='asset_groups', foreign_keys=[owner_guid]
+    # )
     owner = db.relationship(
-        'User', back_populates='asset_groups', foreign_keys=[owner_guid]
+        'User',
+        backref=db.backref(
+            'asset_groups',
+            primaryjoin='User.guid == AssetGroup.owner_guid',
+            order_by='AssetGroup.guid',
+        ),
+        foreign_keys=[owner_guid],
     )
 
     submitter_guid = db.Column(
@@ -654,11 +672,21 @@ class AssetGroup(db.Model, HoustonModel):
         back_populates='submitted_asset_groups',
         foreign_keys=[submitter_guid],
     )
+    submitter = db.relationship(
+        'User',
+        backref=db.backref(
+            'submitted_asset_groups',
+            primaryjoin='User.guid == AssetGroup.submitter_guid',
+            order_by='AssetGroup.guid',
+        ),
+        foreign_keys=[submitter_guid],
+    )
 
     asset_group_sightings = db.relationship(
         'AssetGroupSighting',
         back_populates='asset_group',
         order_by='AssetGroupSighting.guid',
+        cascade='all, delete',
     )
 
     assets = db.relationship('Asset', back_populates='asset_group', order_by='Asset.guid')

@@ -13,17 +13,28 @@ from tests.modules.individuals.resources import utils as individual_utils
 from tests.modules.sightings.resources import utils as sighting_utils
 
 from tests import utils
+import pytest
+
+from tests.utils import module_unavailable
+
 
 log = logging.getLogger(__name__)
 
 
+@pytest.mark.skipif(
+    module_unavailable('individuals'), reason='Individuals module disabled'
+)
 def test_get_individual_not_found(flask_app_client, researcher_1):
     response = individual_utils.read_individual(
         flask_app_client, researcher_1, uuid.uuid4, expected_status_code=404
     )
     assert response.status_code == 404
+    response.close()
 
 
+@pytest.mark.skipif(
+    module_unavailable('individuals'), reason='Individuals module disabled'
+)
 def test_create_read_delete_individual(db, flask_app_client):
     temp_owner = utils.generate_user_instance(
         email='owner@localhost',
@@ -58,6 +69,9 @@ def test_create_read_delete_individual(db, flask_app_client):
         db.session.delete(temp_enc)
 
 
+@pytest.mark.skipif(
+    module_unavailable('individuals'), reason='Individuals module disabled'
+)
 def test_read_encounter_from_edm(db, flask_app_client):
     temp_owner = utils.generate_user_instance(
         email='owner@localhost',
@@ -95,6 +109,9 @@ def test_read_encounter_from_edm(db, flask_app_client):
         db.session.delete(temp_enc)
 
 
+@pytest.mark.skipif(
+    module_unavailable('individuals'), reason='Individuals module disabled'
+)
 def test_add_remove_encounters(db, flask_app_client, researcher_1):
 
     data_in = {
@@ -229,6 +246,9 @@ def test_add_remove_encounters(db, flask_app_client, researcher_1):
     sighting.delete_cascade()
 
 
+@pytest.mark.skipif(
+    module_unavailable('individuals'), reason='Individuals module disabled'
+)
 def test_individual_has_detailed_encounter_from_edm(db, flask_app_client, researcher_1):
 
     data_in = {

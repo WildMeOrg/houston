@@ -4,8 +4,12 @@ import json
 from tests.modules.sightings.resources import utils as sighting_utils
 from tests.modules.asset_groups.resources import utils as asset_group_utils
 from tests import utils
+import pytest
+
+from tests.utils import module_unavailable
 
 
+@pytest.mark.skipif(module_unavailable('sightings'), reason='Sightings module disabled')
 def test_featured_asset_guid_endpoint(db, flask_app_client, researcher_1):
     from app.modules.sightings.models import Sighting
 
@@ -89,6 +93,7 @@ def test_featured_asset_guid_endpoint(db, flask_app_client, researcher_1):
     )
 
 
+@pytest.mark.skipif(module_unavailable('sightings'), reason='Sightings module disabled')
 def test_patch_featured_asset_guid_on_sighting(db, flask_app_client, researcher_1):
     from app.modules.sightings.models import Sighting
 

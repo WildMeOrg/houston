@@ -33,7 +33,7 @@ ANNOTATION_UUIDS = [
 ]
 
 
-class TestCreationData(object):
+class AssetGroupCreationData(object):
     def __init__(self, transaction_id, populate_default=True):
 
         if not populate_default:
@@ -205,7 +205,7 @@ def create_bulk_tus_transaction(test_root):
 
 
 def get_bulk_creation_data(transaction_id, test_filename):
-    data = TestCreationData(transaction_id)
+    data = AssetGroupCreationData(transaction_id)
     data.add_filename(0, test_filename)
     data.add_encounter(0)
     data.add_filename(0, 'fluke.jpg')
@@ -381,7 +381,7 @@ def commit_asset_group_sighting(
 def create_asset_group_with_annotation(
     flask_app_client, db, user, transaction_id, test_filename
 ):
-    data = TestCreationData(transaction_id)
+    data = AssetGroupCreationData(transaction_id)
     data.add_filename(0, test_filename)
     response = create_asset_group(flask_app_client, user, data.get())
     asset_group_uuid = response.json['guid']

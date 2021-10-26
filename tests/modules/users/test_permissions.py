@@ -382,6 +382,9 @@ def test_ModuleAccessPermission_user_manager_user(user_manager_user_login):
     validate_cannot_delete_module(AssetGroup)
 
 
+@pytest.mark.skipif(
+    test_utils.module_unavailable('encounters'), reason='Encounters module disabled'
+)
 def test_ObjectAccessPermission_researcher_user(
     db, researcher_1_login, temp_user, public_encounter, owned_encounter
 ):
@@ -430,6 +433,9 @@ def test_ObjectAccessPermission_researcher_user(
     owned_encounter.delete()
 
 
+@pytest.mark.skipif(
+    test_utils.module_unavailable('encounters'), reason='Encounters module disabled'
+)
 def test_ObjectAccessPermission_contributor_user(
     db, contributor_1_login, temp_user, public_encounter, owned_encounter
 ):

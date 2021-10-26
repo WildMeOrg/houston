@@ -8,12 +8,17 @@ import uuid
 from invoke import MockContext
 import pytest
 
+from tests.utils import module_unavailable
 
+
+@pytest.mark.skipif(
+    module_unavailable('asset_groups'), reason='AssetGroups module disabled'
+)
 def test_create_asset_group_from_path(flask_app, test_root, admin_user, request):
     from app.modules.asset_groups.models import AssetGroup
 
     with mock.patch('app.create_app'):
-        from tasks.app.asset_groups import create_asset_group_from_path
+        from tasks.codex.asset_groups import create_asset_group_from_path
 
         with pytest.raises(Exception) as e:
             create_asset_group_from_path(
@@ -56,6 +61,9 @@ def test_create_asset_group_from_path(flask_app, test_root, admin_user, request)
     assert asset_group.description == 'AssetGroup creation test'
 
 
+@pytest.mark.skipif(
+    module_unavailable('asset_groups'), reason='AssetGroups module disabled'
+)
 def test_clone_asset_group_from_gitlab(
     flask_app, db, test_asset_group_uuid, researcher_1
 ):
@@ -74,7 +82,7 @@ def test_clone_asset_group_from_gitlab(
     repo_path = clone_root / str(test_asset_group_uuid)
 
     with mock.patch('app.create_app'):
-        from tasks.app.asset_groups import clone_asset_group_from_gitlab
+        from tasks.codex.asset_groups import clone_asset_group_from_gitlab
 
         with pytest.raises(Exception) as e:
             clone_asset_group_from_gitlab(
@@ -112,10 +120,13 @@ def test_clone_asset_group_from_gitlab(
         AssetGroup.query.get(test_asset_group_uuid).delete()
 
 
+@pytest.mark.skipif(
+    module_unavailable('asset_groups'), reason='AssetGroups module disabled'
+)
 def test_list_all(flask_app, test_asset_group_uuid, test_empty_asset_group_uuid):
     with mock.patch('app.create_app'):
         from app.modules.asset_groups.models import AssetGroup
-        from tasks.app.asset_groups import list_all
+        from tasks.codex.asset_groups import list_all
 
         with mock.patch('sys.stdout', new=io.StringIO()) as stdout:
             list_all(MockContext())

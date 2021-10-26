@@ -6,6 +6,7 @@ Individual resources utils
 import logging
 import json
 from tests import utils as test_utils
+import uuid
 
 PATH = '/api/v1/individuals/'
 
@@ -90,3 +91,26 @@ def patch_individual(
     assert isinstance(response.json, dict)
     assert response.status_code == expected_status_code
     return response
+
+
+# Helper to avoid duplication
+def generate_individual_encounter_data(owner, db, request):
+    from app.modules.encounters.models import Encounter
+
+    temp_enc = Encounter(owner=owner, asset_group_sighting_encounter_guid=uuid.uuid4())
+
+    encounter_json = {'encounters': [{'id': str(temp_enc.guid)}]}
+    request.addfinalizer(lambda: db.session.delete(temp_enc))
+    return encounter_json
+
+
+def create_individual_with_encounter(db, flask_app_client, user, request):
+    resp = create_individual(
+        flask_app_client,
+        user,
+        data_in=generate_individual_encounter_data(user, db, request),
+    )
+    request.addfinalizer(
+        lambda: delete_individual(flask_app_client, user, resp.json['result']['id'])
+    )
+    return resp.json['result']

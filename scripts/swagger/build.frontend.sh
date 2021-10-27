@@ -21,8 +21,8 @@ SOURCE_PATH="_swagger-ui"
 
 function build_in_docker() {
     echo "Running the Swagger build within Docker..."
-    docker pull node:latest
-    docker run --rm -v $(pwd)/:/code -w /code node:latest /bin/bash -c "./scripts/swagger/build.frontend.sh --exec"
+    docker pull node:lts
+    docker run --rm -v $(pwd)/:/code -w /code node:lts /bin/bash -c "./scripts/swagger/build.frontend.sh --exec"
     echo "Finished running the build within Docker"
 }
 

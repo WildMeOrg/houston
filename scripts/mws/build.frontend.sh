@@ -52,8 +52,8 @@ function checkout() {
 function build_in_docker() {
     echo "Running the MWS frontend build within Docker..."
     # Ensure the node image is up-to-date
-    docker pull node:latest
-    docker run --rm -v $(pwd)/:/code -w /code node:latest /bin/bash -c "./scripts/mws/build.frontend.sh --exec"
+    docker pull node:lts
+    docker run --rm -v $(pwd)/:/code -w /code node:lts /bin/bash -c "./scripts/mws/build.frontend.sh --exec"
     echo "Finished running the build within Docker"
 }
 

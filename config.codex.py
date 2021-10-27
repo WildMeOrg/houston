@@ -404,7 +404,7 @@ class ProductionConfig(
     MAIL_BASE_URL = BASE_URL
     MAIL_OVERRIDE_RECIPIENTS = None
     MAIL_ERROR_RECIPIENTS = [
-        'parham@wildme.org',
+        'mail-errors@wildme.org',
     ]
 
     SENTRY_DSN = 'https://140fc4d010bb43b28417ab57b0e41b44@sentry.dyn.wildme.io/3'
@@ -427,10 +427,10 @@ class DevelopmentConfig(
 
     MAIL_BASE_URL = BASE_URL
     MAIL_OVERRIDE_RECIPIENTS = [
-        'parham@wildme.org',
+        'testing@wildme.org',
     ]
     MAIL_ERROR_RECIPIENTS = [
-        'parham@wildme.org',
+        'mail-errors@wildme.org',
     ]
 
     SECRET_KEY = 'DEVELOPMENT_SECRET_KEY'

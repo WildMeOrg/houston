@@ -256,11 +256,11 @@ def _site_setting_get_definition_inject(data):
             if 'currentValue' in data['response']['configuration'][sskey]:
                 del data['response']['configuration'][sskey]['currentValue']
         if sskey == 'email_service':
-            data['response']['configuration'][sskey]['defaultValue'] = None
-            data['response']['configuration'][sskey]['fieldType'] = 'select'
+            data['response']['configuration'][sskey]['defaultValue'] = ''
+            data['response']['configuration'][sskey]['displayType'] = 'select'
             data['response']['configuration'][sskey]['schema'] = {
                 'choices': [
-                    {'label': 'Do not send mail', 'value': None},
+                    {'label': 'Do not send mail', 'value': ''},
                     {'label': 'Mailchimp/Mandrill', 'value': 'mailchimp'},
                 ]
             }

@@ -8,18 +8,23 @@ from flask_restx_patched import ModelSchema
 from flask_marshmallow import base_fields
 
 from app.extensions import ExtraValidationSchema
-from .models import Notification
+from .models import Notification, NotificationType, NotificationChannel
+
+
+class NotificationChannelSchema(ExtraValidationSchema):
+    def __new__(cls, *args, **kwargs):
+        for notification_channel in NotificationChannel.__members__.values():
+            cls._declared_fields[notification_channel] = base_fields.Bool()
+        return super().__new__(cls)
 
 
 class NotificationPreferenceSchema(ExtraValidationSchema):
-    class NotificationChannelSchema(ExtraValidationSchema):
-        restAPI = base_fields.Bool()
-        email = base_fields.Bool()
-
-    all = base_fields.Nested(NotificationChannelSchema)
-    raw = base_fields.Nested(NotificationChannelSchema)
-    collaboration_request = base_fields.Nested(NotificationChannelSchema)
-    merge_request = base_fields.Nested(NotificationChannelSchema)
+    def __new__(cls, *args, **kwargs):
+        for notification_type in NotificationType.__members__.values():
+            cls._declared_fields[notification_type] = base_fields.Nested(
+                NotificationChannelSchema
+            )
+        return super().__new__(cls)
 
 
 class BaseNotificationSchema(ModelSchema):

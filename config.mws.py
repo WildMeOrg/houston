@@ -26,6 +26,24 @@ DATA_ROOT = Path(os.getenv('DATA_ROOT', HERE / '_db'))
 
 
 class BaseConfig(object):
+    # Override Flask's SERVER_NAME (default: None)
+    SERVER_NAME = os.getenv('SERVER_NAME')
+
+    # Override Flask's PREFERRED_URL_SCHEME
+    @property
+    def PREFERRED_URL_SCHEME(self):
+        # Flask default behavior is to set it to 'http'
+        scheme = os.getenv('PREFERRED_URL_SCHEME', 'http')
+        if scheme not in (
+            'http',
+            'https',
+        ):
+            raise RuntimeError(
+                f"Invalid scheme, '{scheme}' set for "
+                "'PREFERRED_URL_SCHEME', please use a valid scheme"
+            )
+        return scheme
+
     # SQLITE
     PROJECT_NAME = 'MWS'
     PROJECT_ROOT = PROJECT_ROOT
@@ -91,7 +109,6 @@ class BaseConfig(object):
     DEBUG = False
     RESTX_ERROR_404_HELP = False
 
-    PREFERRED_URL_SCHEME = 'http'
     REVERSE_PROXY_SETUP = os.getenv('HOSTON_REVERSE_PROXY_SETUP', False)
 
     SECRET_KEY = os.getenv('SECRET_KEY')

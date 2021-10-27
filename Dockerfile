@@ -1,4 +1,4 @@
-FROM node:latest as frontend
+FROM node:lts as frontend
 # "mws" or "codex"
 ARG PROJECT
 # Copy the necessary source items
@@ -13,7 +13,7 @@ RUN set -x \
     && /bin/bash -c "source ./scripts/${PROJECT}/build.frontend.sh && install"
 
 
-FROM node:latest as swagger-ui
+FROM node:lts as swagger-ui
 # Copy the necessary source items
 RUN mkdir /code
 COPY ./_swagger-ui /code/_swagger-ui

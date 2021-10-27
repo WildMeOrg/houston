@@ -132,7 +132,7 @@ services:
 
   dev-frontend:
     # this component is intended to only be used in development
-    image: node:latest
+    image: node:lts
     working_dir: /code
     entrypoint: "/docker-entrypoint.sh"
     networks:

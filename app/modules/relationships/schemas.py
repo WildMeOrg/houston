@@ -32,12 +32,10 @@ class BaseRelationshipIndividualMemberSchema(ModelSchema):
         # pylint: disable=missing-docstring
         model = RelationshipIndividualMember
         fields = (
-            RelationshipIndividualMember.guid.key,
             RelationshipIndividualMember.individual_role.key,
             RelationshipIndividualMember.individual_guid.key,
         )
         dump_only = (
-            RelationshipIndividualMember.guid.key,
             RelationshipIndividualMember.individual_role.key,
             RelationshipIndividualMember.individual_guid.key,
         )

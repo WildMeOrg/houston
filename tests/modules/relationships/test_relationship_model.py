@@ -8,9 +8,16 @@ import logging
 from app.modules.individuals.models import Individual
 from app.modules.relationships.models import Relationship
 
-from tests.modules.individuals.resources import utils as individual_utils
+from tests.utils import module_unavailable
+import pytest
 
 
+@pytest.mark.skipif(
+    module_unavailable('individuals'), reason='Individuals module disabled'
+)
+@pytest.mark.skipif(
+    module_unavailable('relationships'), reason='Relationships module disabled'
+)
 def test_relationship_instantiation():
 
     individual_1 = Individual()

@@ -20,12 +20,14 @@ class RelationshipIndividualMember(db.Model, HoustonModel):
     relationship_guid = db.Column(
         db.GUID, db.ForeignKey('relationship.guid'), primary_key=True
     )
-    relationship = db.relationship('Relationship', back_populates='individual_members')
+    relationship = db.relationship(
+        'Relationship', backref=db.backref('individual_members')
+    )
 
     individual_guid = db.Column(
         db.GUID, db.ForeignKey('individual.guid'), primary_key=True
     )
-    individual = db.relationship('Individual', back_populates='relationships')
+    individual = db.relationship('Individual', backref=db.backref('relationships'))
 
     individual_role = db.Column(db.String, nullable=False)
 
@@ -44,10 +46,6 @@ class Relationship(db.Model, Timestamp):
         db.GUID, default=uuid.uuid4, primary_key=True
     )  # pylint: disable=invalid-name
 
-    individual_members = db.relationship(
-        'RelationshipIndividualMember', back_populates='relationship'
-    )
-
     start_date = db.Column(
         db.DateTime, index=True, default=datetime.utcnow, nullable=True
     )
@@ -56,9 +54,24 @@ class Relationship(db.Model, Timestamp):
     type = db.Column(db.String, nullable=True)
 
     def __init__(
-        self, individual_1, individual_2, individual_1_role, individual_2_role, **kwargs
+        self,
+        individual_1_guid,
+        individual_2_guid,
+        individual_1_role,
+        individual_2_role,
+        **kwargs
     ):
-        if individual_1 and individual_2 and individual_1_role and individual_2_role:
+        if (
+            individual_1_guid
+            and individual_2_guid
+            and individual_1_role
+            and individual_2_role
+        ):
+
+            from app.modules.individuals.models import Individual
+
+            individual_1 = Individual.query.get(individual_1_guid)
+            individual_2 = Individual.query.get(individual_2_guid)
 
             member_1 = RelationshipIndividualMember(individual_1, individual_1_role)
             member_2 = RelationshipIndividualMember(individual_2, individual_2_role)

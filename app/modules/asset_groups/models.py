@@ -291,9 +291,16 @@ class AssetGroupSighting(db.Model, HoustonModel):
         # calculation generates a floating point value, reporting that would be claiming precision without accuracy
         return round(completion)
 
-    # returns a None-safe getter for a given config field
-    def config_field_getter(field_name):
-        return lambda self: self.config and self.config.get(field_name)
+    # returns a getter for a given config field, allowing for casting and default vals
+    @staticmethod
+    def config_field_getter(field_name, default=None, cast=None):
+        def getter(self):
+            value = self.config and self.config.get(field_name)
+            if cast is not None and value:
+                value = cast(value)
+            return value or default
+
+        return getter
 
     @classmethod
     def check_jobs(cls):

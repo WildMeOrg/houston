@@ -168,27 +168,54 @@ class Individual(db.Model, FeatherModel):
     def merge(cls, *individuals, sex=None, primary_name=None):
         if not individuals or not isinstance(individuals, tuple) or len(individuals) < 2:
             raise ValueError('must be passed a tuple of at least 2 individuals')
-        target_individual = individuals.pop(0)
+        target_individual = individuals[0]
+        source_individuals = individuals[1:]
         data = {
             'targetIndividualId': str(target_individual.guid),
             'sourceIndividualIds': [],
             'sex': sex,
             'primaryName': primary_name,
         }
-        for indiv in individuals:
+        for indiv in source_individuals:
             data['sourceIndividualIds'].append(str(indiv.guid))
-        # result_data = current_app.edm.request_passthrough_result(
+        # response = current_app.edm.request_passthrough_result(
         response = current_app.edm.request_passthrough(
             'individual.merge',
             'post',
-            data,
-            '',
+            {
+                'data': data,
+                'headers': {'Content-Type': 'application/json'},
+            },
+            None,
         )
-        return response
+        if not response.ok:
+            return response
+
+        result = response.json()['result']
+        assert 'targetId' in result and result['targetId'] == str(target_individual.guid)
+        assert 'merged' in result
+        assert isinstance(result['merged'], dict)
+        assert len(result['merged'].keys()) == len(source_individuals)
+        # first we sanity-check the reported removed individuals vs what was requested
+        for merged_id in result['merged'].keys():
+            assert merged_id in data['sourceIndividualIds']
+            log.info(
+                f"edm reports successful merge of indiv {merged_id} into {result['targetId']} for encounters {result['merged'][merged_id]}; adjusting locally"
+            )
+        # now we steal their encounters and delete them
+        # NOTE:  technically we could iterate over the enc ids in merged.merged_id array, but we run (tiny) risk of this user
+        #   getting assigned to additional encounters in the interim, so instead we just steal all the encounters directly
+        for indiv in source_individuals:
+            for enc in indiv.encounters:
+                log.debug(f'from {indiv}, assigning {enc} to {target_individual}')
+                enc.individual_guid = target_individual.guid
+            # TODO also consolidate SocialGroups
+            indiv.delete()
+        return result
 
     def merge_from(self, *individuals):
-        all_indiv = individuals + (self,)
-        Individual.merge(*all_indiv)
+        all_indiv = (self,) + individuals
+        return Individual.merge(*all_indiv)
 
     def delete(self):
         AuditLog.delete_object(log, self)

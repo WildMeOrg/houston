@@ -57,8 +57,9 @@ email_dispatched.connect(status)
 
 def _validate_settings():
     from app.modules.site_settings.models import SiteSetting
+    from app.utils import site_email_hostname
 
-    host_name = SiteSetting.get_string('site_host_name', 'example.com')
+    host_name = site_email_hostname()
     default_sender = ('Do Not Reply', f'do-not-reply@{host_name}')
     # default_sender = current_app.config.get(
     #    'MAIL_DEFAULT_SENDER', ('Do Not Reply', f'do-not-reply@{host_name}')
@@ -123,6 +124,7 @@ class Email(Message):
 
     def __init__(self, *args, **kwargs):
         from app.modules.site_settings.models import SiteSetting
+        from app.utils import site_url_prefix
         import uuid
 
         if 'recipients' not in kwargs:
@@ -135,15 +137,17 @@ class Email(Message):
 
         # will attempt to discover via set_language() unless specifically set
         self.language = None
+        self._transaction_id = str(uuid.uuid4())
         self._original_recipients = None  # should only be set by resolve_recipients
         self.template_name = None
         self.template_kwargs = {
             'site_name': SiteSetting.get_value('site.name', default='Codex'),
+            'site_url_prefix': site_url_prefix(),
             'year': now.year,
+            'transaction_id': self._transaction_id,
         }
         self.status = None
         self.mail = mail
-        self._transaction_id = str(uuid.uuid4())
 
         # Debugging, override all email destinations
         override_recipients = current_app.config.get('MAIL_OVERRIDE_RECIPIENTS', None)

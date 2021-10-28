@@ -37,3 +37,28 @@ def to_ascii(val):
     import unicodedata
 
     return unicodedata.normalize('NFKD', val).encode('ascii', 'ignore').decode()
+
+
+# generally speaking, we should use flask url_for() method to construct urls, i guess.  but this seems handy to have?
+#   see:   https://flask.palletsprojects.com/en/2.0.x/quickstart/#url-building
+#   and:   https://flask.palletsprojects.com/en/2.0.x/api/#flask.url_for
+def site_url_prefix():
+    from flask import current_app
+
+    scheme = current_app.config.get('PREFERRED_URL_SCHEME', 'https')
+    host = current_app.config.get('SERVER_NAME', 'codex.example.com')
+    if not scheme or not host:
+        scheme = 'http'
+        host = 'localhost'
+    return f'{scheme}://{host}'.lower()
+
+
+def site_email_hostname():
+    from flask import current_app
+
+    dom = current_app.config.get('SERVER_NAME', None)
+    if not dom:
+        dom = 'mail.example.com'
+    if dom.startswith('www.'):
+        dom = dom[4:]
+    return dom.lower()

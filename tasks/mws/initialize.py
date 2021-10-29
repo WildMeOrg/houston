@@ -20,7 +20,7 @@ def all(context, edm_authentication=None, skip_on_failure=False):
         pass
     except AssertionError as exception:
         if not skip_on_failure:
-            log.error('%s', exception)
+            log.exception('Initialize tasks failed.')
         else:
             log.debug(
                 'The following error was ignored due to the `skip_on_failure` flag: %s',

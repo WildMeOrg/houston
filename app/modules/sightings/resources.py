@@ -104,7 +104,7 @@ def _validate_asset_references(asset_references):
             try:
                 sz = os.path.getsize(file_path)  # 2for1
             except OSError as err:
-                log.error(
+                log.exception(
                     'Sighting.post OSError %r assetReferences data: %r / %r'
                     % (err, tid, path)
                 )

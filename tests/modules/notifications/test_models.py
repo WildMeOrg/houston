@@ -88,7 +88,11 @@ def test_notification_message(db, researcher_1, researcher_2, flask_app):
 
 
 def test_validate_preferences():
-    from app.modules.notifications.models import NotificationPreferences
+    from app.modules.notifications.models import (
+        NotificationPreferences,
+        NotificationType,
+        NotificationChannel,
+    )
 
     with pytest.raises(HoustonException) as exc:
         NotificationPreferences.validate_preferences([])
@@ -96,15 +100,19 @@ def test_validate_preferences():
 
     with pytest.raises(HoustonException) as exc:
         NotificationPreferences.validate_preferences({'random': 'value'})
+
+    valid_options = sorted([i.value for i in NotificationType.__members__.values()])
     assert (
         str(exc.value)
-        == 'Unknown field(s): random, options are all, collaboration_request, merge_request, raw.'
+        == f'Unknown field(s): random, options are {", ".join(valid_options)}.'
     )
 
     with pytest.raises(HoustonException) as exc:
         NotificationPreferences.validate_preferences({'all': {'random': True}})
+    valid_channels = sorted([i.value for i in NotificationChannel.__members__.values()])
     assert (
-        str(exc.value) == '"all": Unknown field(s): random, options are email, restAPI.'
+        str(exc.value)
+        == f'"all": Unknown field(s): random, options are {", ".join(valid_channels)}.'
     )
 
     with pytest.raises(HoustonException) as exc:
@@ -117,7 +125,7 @@ def test_validate_preferences():
         )
     assert (
         str(exc.value)
-        == '"all.restAPI": Not a valid boolean. Unknown field(s): random, options are all, collaboration_request, merge_request, raw.'
+        == f'"all.restAPI": Not a valid boolean. Unknown field(s): random, options are {", ".join(valid_options)}.'
     )
 
     # Valid examples

@@ -5,7 +5,9 @@ RESTful API Social Groups resources
 --------------------------
 """
 
+import json
 import logging
+import uuid
 
 from flask import request
 from flask_restx_patched import Resource
@@ -20,7 +22,6 @@ import app.extensions.logging as AuditLog
 
 from . import parameters, schemas
 from .models import SocialGroup
-import json
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 api = Namespace(
@@ -39,6 +40,13 @@ def validate_members(input_data):
 
     current_roles = {}
     for member_guid, data in input_data.items():
+        try:
+            uuid.UUID(member_guid)
+        except (AttributeError, ValueError):
+            # AttributeError for int, ValueError for string
+            raise HoustonException(
+                log, f'Social Group member {member_guid} needs to be a valid uuid'
+            )
         individual = Individual.query.get(member_guid)
         if not individual:
             raise HoustonException(

@@ -357,6 +357,23 @@ def test_patch(
         flask_app_client, researcher_1, group_guid, patch_add_matriarch, 400, error
     )
 
+    # Patch with a non-uuid individual guid
+    patch_add_error = [
+        test_utils.patch_add_op(
+            'members',
+            {'4037': {'roles': ['Matriarch']}},
+        ),
+    ]
+    invalid_uuid_error = 'Social Group member 4037 needs to be a valid uuid'
+    soc_group_utils.patch_social_group(
+        flask_app_client,
+        researcher_2,
+        group_guid,
+        patch_add_error,
+        400,
+        invalid_uuid_error,
+    )
+
     # remove the existing matriarch, any researcher can do that
     patch_remove_matriarch = [test_utils.patch_remove_op('members', individuals[1]['id'])]
     soc_group_utils.patch_social_group(

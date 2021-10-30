@@ -124,8 +124,8 @@ def test_social_groups(session, login, codex_url):
     data = [
         {
             'op': 'remove',
-            'path': '/member',
-            'value': individual_ids[1],
+            'path': '/members',
+            'value': [individual_ids[1]],
         },
     ]
     response = session.patch(
@@ -148,10 +148,9 @@ def test_social_groups(session, login, codex_url):
     data = [
         {
             'op': 'add',
-            'path': '/member',
+            'path': '/members',
             'value': {
-                'guid': individual_ids[1],
-                'roles': None,
+                individual_ids[1]: {'roles': None},
             },
         },
     ]

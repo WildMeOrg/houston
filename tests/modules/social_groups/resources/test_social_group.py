@@ -345,7 +345,7 @@ def test_patch(
     # can't patch in member as regular_user
     patch_add_matriarch = [
         test_utils.patch_add_op(
-            'member', {'guid': individuals[2]['id'], 'roles': ['Matriarch']}
+            'members', {individuals[2]['id']: {'roles': ['Matriarch']}}
         )
     ]
     soc_group_utils.patch_social_group(
@@ -358,7 +358,7 @@ def test_patch(
     )
 
     # remove the existing matriarch, any researcher can do that
-    patch_remove_matriarch = [test_utils.patch_remove_op('member', individuals[1]['id'])]
+    patch_remove_matriarch = [test_utils.patch_remove_op('members', individuals[1]['id'])]
     soc_group_utils.patch_social_group(
         flask_app_client, researcher_2, group_guid, patch_remove_matriarch
     )
@@ -382,8 +382,8 @@ def test_patch(
 
     patch_make_irritating = [
         test_utils.patch_replace_op(
-            'member',
-            {'guid': individuals[2]['id'], 'roles': ['Matriarch', 'IrritatingGit']},
+            'members',
+            {individuals[2]['id']: {'roles': ['Matriarch', 'IrritatingGit']}},
         )
     ]
     soc_group_utils.patch_social_group(

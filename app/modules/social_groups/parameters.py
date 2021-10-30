@@ -6,7 +6,6 @@ Input arguments (Parameters) for Social Groups resources RESTful API
 import logging
 from flask_marshmallow import base_fields
 from flask_restx_patched import Parameters, PatchJSONParameters
-from app.utils import HoustonException
 import app.extensions.logging as AuditLog
 
 from . import schemas
@@ -35,11 +34,26 @@ class PatchSocialGroupDetailsParameters(PatchJSONParameters):
         PatchJSONParameters.OP_REMOVE,
     )
 
-    PATH_CHOICES = ('/name', '/members', '/member')
+    PATH_CHOICES = ('/name', '/members')
 
     @classmethod
     def add(cls, obj, field, value, state):
-        # For all fields, Add and replace are the same operation so reuse the one method
+        if field == 'members':
+            from . import resources
+
+            members = {
+                str(member.individual_guid): {'roles': member.roles}
+                for member in obj.members
+            }
+            for member_guid, roles in value.items():
+                members[member_guid] = roles
+
+            resources.validate_members(members)
+
+            for member_guid, roles in value.items():
+                obj.remove_member(member_guid)
+                obj.add_member(member_guid, roles)
+            return True
         return cls.replace(obj, field, value, state)
 
     @classmethod
@@ -47,28 +61,6 @@ class PatchSocialGroupDetailsParameters(PatchJSONParameters):
         ret_val = False
         if field == 'name':
             obj.name = value
-            ret_val = True
-        # replacement of individual member, this is how roles are updated
-        elif field == 'member':
-            if not isinstance(value, dict):
-                raise HoustonException(log, 'value for a member must be a dictionary')
-            if not (set(value.keys()) == set({'guid', 'roles'})):
-                raise HoustonException(
-                    log, 'value for a member must contain guid and roles as keys'
-                )
-            current_roles = {}
-            for member in obj.members:
-                if str(member.individual_guid) != value['guid']:
-                    for role in member.roles:
-                        current_roles[role] = True
-            from . import resources
-
-            resources.validate_member(value['guid'], value, current_roles)
-
-            # Just remove and replace, allows add and replace to be virtually identical
-            if obj.get_member(value['guid']):
-                obj.remove_member(value['guid'])
-            obj.add_member(value['guid'], value)
             ret_val = True
         # Complete replacement of all members
         elif field == 'members':
@@ -88,8 +80,13 @@ class PatchSocialGroupDetailsParameters(PatchJSONParameters):
     def remove(cls, obj, field, value, state):
         # Any researcher can remove a member in the group
         ret_val = False
-        if field == 'member':
-            ret_val = obj.remove_member(value)
-            msg = f'Removing member {value}'
+        if field == 'members':
+            if isinstance(value, list):
+                members = value
+            else:
+                members = [value]
+            for member in members:
+                ret_val = obj.remove_member(member)
+            msg = f'Removing members {members}'
             AuditLog.audit_log_object(log, obj, msg)
         return ret_val

@@ -995,7 +995,7 @@ class AssetGroup(db.Model, HoustonModel):
                     transaction_id=metadata.tus_transaction_id, paths=metadata.files
                 )
             except Exception:
-                log.error(
+                log.exception(
                     'create_from_tus() had problems with import_tus_files(); deleting from db and fs %r'
                     % asset_group
                 )
@@ -1033,7 +1033,7 @@ class AssetGroup(db.Model, HoustonModel):
                 transaction_id=transaction_id, paths=paths
             )
         except Exception:
-            log.error(
+            log.exception(
                 'create_from_tus() had problems with import_tus_files(); deleting from db and fs %r'
                 % asset_group
             )
@@ -1505,12 +1505,12 @@ class AssetGroup(db.Model, HoustonModel):
         try:
             return current_app.git_backend.get_project(str(guid))
         except (GitlabInitializationError, requests.exceptions.RequestException):
-            log.error(f'Error when calling AssetGroup.get_remote({guid})')
+            log.exception(f'Error when calling AssetGroup.get_remote({guid})')
 
     @classmethod
     def is_on_remote(cls, guid):
         try:
             return current_app.git_backend.is_project_on_remote(str(guid))
         except (GitlabInitializationError, requests.exceptions.RequestException):
-            log.error(f'Error when calling AssetGroup.is_on_remote({guid})')
+            log.exception(f'Error when calling AssetGroup.is_on_remote({guid})')
             return False

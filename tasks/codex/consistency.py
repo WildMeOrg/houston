@@ -168,7 +168,7 @@ def all(context, skip_on_failure=False):
         user_staff_permissions(context)
     except AssertionError as exception:
         if not skip_on_failure:
-            log.error('%s', exception)
+            log.exception('Consistency checks failed.')
         else:
             log.debug(
                 'The following error was ignored due to the `skip_on_failure` flag: %s',

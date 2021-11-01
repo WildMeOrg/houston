@@ -251,7 +251,7 @@ class EDMObjectMixin(object):
                 model_obj._sync_item(model_obj.guid, version)
                 updated_items.append(model_obj)
             except sqlalchemy.exc.IntegrityError:
-                log.error(f'Error updating {cls.EDM_NAME} {model_obj}')
+                log.exception(f'Error updating {cls.EDM_NAME} {model_obj}')
 
                 failed_items.append(model_obj)
 

@@ -166,6 +166,8 @@ class Individual(db.Model, FeatherModel):
     def delete(self):
         AuditLog.delete_object(log, self)
         with db.session.begin():
+            for group in self.social_groups:
+                db.session.delete(group)
             db.session.delete(self)
 
     def delete_from_edm(self):

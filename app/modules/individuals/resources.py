@@ -323,6 +323,7 @@ class IndividualByID(Resource):
         Delete an Individual by ID.
         """
         response = individual.delete_from_edm()
+        response_data = None
         if response.ok:
             response_data = response.json()
         if not response.ok or not response_data.get('success', False):

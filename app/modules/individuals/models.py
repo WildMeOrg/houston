@@ -192,22 +192,39 @@ class Individual(db.Model, FeatherModel):
             return response
 
         result = response.json()['result']
-        assert 'targetId' in result and result['targetId'] == str(target_individual.guid)
-        assert 'merged' in result
-        assert isinstance(result['merged'], dict)
-        assert len(result['merged'].keys()) == len(source_individuals)
+        error_msg = None
+        if 'targetId' not in result or result['targetId'] != str(target_individual.guid):
+            error_msg = 'edm merge-results targetId does not match target_individual.guid'
+        elif (
+            'merged' not in result
+            or not isinstance(result['merged'], dict)
+            or len(result['merged'].keys()) != len(source_individuals)
+        ):
+            error_msg = 'edm merge-results merged dict invalid'
+        if error_msg:
+            AuditLog.backend_fault(log, error_msg, target_individual)
+            return
+
         # first we sanity-check the reported removed individuals vs what was requested
         for merged_id in result['merged'].keys():
-            assert merged_id in data['sourceIndividualIds']
+            if merged_id not in data['sourceIndividualIds']:
+                AuditLog.backend_fault(
+                    log,
+                    f'merge mismatch against sourceIndividualIds with {merged_id}',
+                    target_individual,
+                )
+                return
             log.info(
                 f"edm reports successful merge of indiv {merged_id} into {result['targetId']} for encounters {result['merged'][merged_id]}; adjusting locally"
             )
         # now we steal their encounters and delete them
-        # NOTE:  technically we could iterate over the enc ids in merged.merged_id array, but we run (tiny) risk of this user
+        # NOTE:  technically we could iterate over the enc ids in merged.merged_id array, but we run (tiny) risk of this individual
         #   getting assigned to additional encounters in the interim, so instead we just steal all the encounters directly
         for indiv in source_individuals:
             for enc in indiv.encounters:
-                log.debug(f'from {indiv}, assigning {enc} to {target_individual}')
+                AuditLog.audit_log_object(
+                    log, indiv, f'assigning our {enc} to {target_individual}'
+                )
                 enc.individual_guid = target_individual.guid
             # TODO also consolidate SocialGroups
             indiv.delete()

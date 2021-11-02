@@ -2,6 +2,8 @@
 # pylint: disable=missing-docstring
 import tests.modules.collaborations.resources.utils as collab_utils
 import tests.modules.users.resources.utils as user_utils
+import tests.utils as test_utils
+
 import uuid
 import pytest
 
@@ -134,3 +136,30 @@ def test_create_repeat_collaboration(
         flask_app_client, researcher_1, researcher_2
     )
     assert create_resp.json['guid'] == collab_guid
+
+
+@pytest.mark.skipif(
+    module_unavailable('collaborations'), reason='Collaborations module disabled'
+)
+def test_collaboration_user_delete(
+    flask_app_client,
+    researcher_1,
+    db,
+    request,
+):
+    # Create a collaboration with a temporary user
+    temp_user = test_utils.generate_user_instance(
+        email='user_4_sightings@localhost',
+        is_researcher=True,
+    )
+    with db.session.begin():
+        db.session.add(temp_user)
+
+    create_resp = collab_utils.create_simple_collaboration(
+        flask_app_client, researcher_1, temp_user
+    )
+
+    # Now delete the user
+    temp_user.delete()
+
+    collab_utils.get_collab_object_for_user(temp_user, create_resp.json['guid'], 0)

@@ -772,10 +772,13 @@ class User(db.Model, FeatherModel, UserEDMMixin):
             db.session.merge(self)
 
     def delete(self):
-        with db.session.begin():
+        for collab_assoc in self.user_collaboration_associations:
+            collab_assoc.delete()
+        for asset_group in self.asset_groups:
+            asset_group.delete()
+
+        with db.session.begin(subtransactions=True):
             # TODO: Ensure proper cleanup
-            for asset_group in self.asset_groups:
-                asset_group.delete()
             AuditLog.delete_object(log, self)
             db.session.delete(self)
 

@@ -9,14 +9,15 @@ from tests import utils as test_utils
 PATH = '/api/v1/collaborations/'
 
 
-def get_collab_object_for_user(user, collab_guid):
+def get_collab_object_for_user(user, collab_guid, expected_len=1):
     user_assocs = [
         assoc
         for assoc in user.user_collaboration_associations
         if str(assoc.collaboration_guid) == collab_guid
     ]
-    assert len(user_assocs) == 1
-    return user_assocs[0].collaboration
+    assert len(user_assocs) == expected_len
+
+    return user_assocs[0].collaboration if expected_len > 0 else None
 
 
 def create_collaboration(

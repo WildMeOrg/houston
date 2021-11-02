@@ -370,9 +370,8 @@ class Collaboration(db.Model, HoustonModel):
             message = (
                 f'Initiator user removed, assigning {new_creator.user_guid} as initiator'
             )
-            AuditLog.audit_log_obj(log, self.collaboration, message)
+            AuditLog.audit_log_object(log, self, message)
             self.initiator_guid = new_creator.user_guid
-            self.collaboration_user_associations.remove(user_association)
             with db.session.begin(subtransactions=True):
                 db.session.merge(self)
                 db.session.delete(user_association)

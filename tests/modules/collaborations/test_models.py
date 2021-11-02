@@ -27,13 +27,13 @@ def test_collaboration_create_with_members(
     request.addfinalizer(basic_collab.delete)
 
     assert len(basic_collab.get_users()) == 2
+    assert basic_collab.initiator_guid == collab_user_a.guid
+
     for association in basic_collab.collaboration_user_associations:
         assert association.edit_approval_state == 'not_initiated'
         if association.user == collab_user_a:
-            assert association.initiator is True
             assert association.read_approval_state == 'approved'
         else:
-            assert association.initiator is False
             assert association.read_approval_state == 'pending'
 
     manager_collab = Collaboration(members, user_manager_user)

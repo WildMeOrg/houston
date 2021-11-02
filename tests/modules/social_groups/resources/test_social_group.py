@@ -397,3 +397,51 @@ def test_patch(
         'Matriarch',
         'IrritatingGit',
     ]
+
+
+@pytest.mark.skipif(
+    module_unavailable('social_groups'), reason='SocialGroup module disabled'
+)
+def test_individual_delete(db, flask_app_client, researcher_1, admin_user, request):
+    # Set the basic roles we want
+    soc_group_utils.set_basic_roles(flask_app_client, admin_user, request)
+
+    # Create some individuals to use in testing
+    individuals = create_individuals(db, flask_app_client, researcher_1, request)
+
+    # Create an extra one that is not automatically deleted
+    ind_resp = individual_utils.create_individual(
+        flask_app_client,
+        researcher_1,
+        data_in=individual_utils.generate_individual_encounter_data(
+            researcher_1, db, request
+        ),
+    )
+    individuals.append(ind_resp.json['result'])
+
+    # Create a social group for them
+    data = {
+        'name': 'Disreputable bunch of hooligans',
+        'members': {
+            individuals[0]['id']: {'roles': ['Matriarch']},
+            individuals[1]['id']: {},
+            individuals[2]['id']: {'roles': ['IrritatingGit']},
+            individuals[3]['id']: {},
+        },
+    }
+    group_resp = soc_group_utils.create_social_group(
+        flask_app_client, researcher_1, data, request=request
+    )
+    group_guid = group_resp.json['guid']
+
+    # delete individual and make sure they go away from the group
+    individual_utils.delete_individual(
+        flask_app_client, researcher_1, individuals[3]['id']
+    )
+    new_data = data
+    del new_data['members'][individuals[3]['id']]
+    # read it
+    later_group = soc_group_utils.read_social_group(
+        flask_app_client, researcher_1, group_guid
+    )
+    soc_group_utils.validate_response(new_data, later_group.json)

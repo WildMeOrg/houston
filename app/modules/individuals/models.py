@@ -223,7 +223,10 @@ class Individual(db.Model, FeatherModel):
         for indiv in source_individuals:
             for enc in indiv.encounters:
                 AuditLog.audit_log_object(
-                    log, indiv, f'assigning our {enc} to {target_individual}'
+                    log, indiv, f'merge assigning our {enc} to {target_individual}'
+                )
+                AuditLog.audit_log_object(
+                    log, target_individual, f'assigned {enc} from merged {indiv}'
                 )
                 enc.individual_guid = target_individual.guid
             # TODO also consolidate SocialGroups

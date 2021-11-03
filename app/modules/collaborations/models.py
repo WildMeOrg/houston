@@ -104,7 +104,7 @@ class Collaboration(db.Model, HoustonModel):
 
         for user in members:
             if not hasattr(user, 'is_user_manager'):
-                raise ValueError(f'User {user} is not a user')
+                raise ValueError(f'User {user} is not a user manager')
 
             collab_user_assoc = CollaborationUserAssociations(
                 collaboration=self, user=user
@@ -245,7 +245,11 @@ class Collaboration(db.Model, HoustonModel):
 
     def set_read_approval_state_for_user(self, user_guid, state):
         success = False
-        if user_guid is not None and state in CollaborationUserState.ALLOWED_STATES:
+        if state not in CollaborationUserState.ALLOWED_STATES:
+            raise ValueError(
+                f'State "{state}" not in allowed states: {", ".join(CollaborationUserState.ALLOWED_STATES)}'
+            )
+        if user_guid is not None:
             assert isinstance(user_guid, uuid.UUID)
             for association in self.collaboration_user_associations:
                 if association.user_guid == user_guid:
@@ -298,7 +302,11 @@ class Collaboration(db.Model, HoustonModel):
 
     def set_edit_approval_state_for_user(self, user_guid, state):
         success = False
-        if user_guid is not None and state in CollaborationUserState.ALLOWED_STATES:
+        if state not in CollaborationUserState.ALLOWED_STATES:
+            raise ValueError(
+                f'State "{state}" not in allowed states: {", ".join(CollaborationUserState.ALLOWED_STATES)}'
+            )
+        if user_guid is not None:
             assert isinstance(user_guid, uuid.UUID)
             for association in self.collaboration_user_associations:
                 if association.user_guid == user_guid:

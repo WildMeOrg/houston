@@ -1,21 +1,14 @@
 # -*- coding: utf-8 -*-
 import uuid
 
+from .utils import create_new_user
+
 
 def test_notification_preferences(session, login, logout, codex_url):
     # Create new user
     login(session)
     new_email = f'{uuid.uuid4()}@localhost'
-    new_user = {
-        'email': new_email,
-        'password': 'password',
-        'full_name': 'My name',
-    }
-    response = session.post(
-        codex_url('/api/v1/users/'),
-        json=new_user,
-    )
-    user_guid = response.json()['guid']
+    user_guid = create_new_user(session, codex_url, new_email, full_name='My name')
     logout(session)
 
     login(session, email=new_email)

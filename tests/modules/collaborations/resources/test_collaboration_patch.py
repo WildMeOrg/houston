@@ -21,9 +21,9 @@ def test_patch_collaboration(flask_app_client, researcher_1, researcher_2, reque
 
     # should not work
     patch_data = [utils.patch_replace_op('view_permission', 'ambivalence')]
-    resp = 'unable to set /view_permission to ambivalence'
+    resp = 'State "ambivalence" not in allowed states: declined, approved, pending, not_initiated, revoked, creator'
     collab_utils.patch_collaboration(
-        flask_app_client, collab_guid, researcher_2, patch_data, 400, resp
+        flask_app_client, collab_guid, researcher_2, patch_data, 409, resp
     )
 
     # Should work
@@ -110,9 +110,9 @@ def test_patch_collaboration_states(
 
     # also should not
     patch_data = [utils.patch_replace_op('view_permission', 'ambivalence')]
-    resp = 'unable to set /view_permission to ambivalence'
+    resp = 'State "ambivalence" not in allowed states: declined, approved, pending, not_initiated, revoked, creator'
     collab_utils.patch_collaboration(
-        flask_app_client, collab_guid, researcher_2, patch_data, 400, resp
+        flask_app_client, collab_guid, researcher_2, patch_data, 409, resp
     )
     collab_utils.validate_no_access(collab_guid, researcher_1, researcher_2)
 

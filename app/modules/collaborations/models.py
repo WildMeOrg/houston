@@ -104,7 +104,7 @@ class Collaboration(db.Model, HoustonModel):
 
         for user in members:
             if not hasattr(user, 'is_user_manager'):
-                raise ValueError(f'User {user} is not a user')
+                raise ValueError(f'User {user} is not a user manager')
 
             collab_user_assoc = CollaborationUserAssociations(
                 collaboration=self, user=user

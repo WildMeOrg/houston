@@ -84,31 +84,34 @@ class Collaborations(Resource):
         if not other_user.is_active:
             abort(400, f'User with guid {other_user_guid} is not active')
 
-        for collab_assoc in current_user.user_collaboration_associations:
-            if other_user in collab_assoc.collaboration.get_users():
+        users = [current_user, other_user]
+        second_user_guid = req.get('second_user_guid')
+        if second_user_guid:
+            if not current_user.is_user_manager:
+                abort(
+                    400,
+                    'Logged in user is not a user manager, "second_user_guid" not allowed',
+                )
+
+            second_user = User.query.get(second_user_guid)
+            if not second_user:
+                abort(400, f'Second user with guid {second_user_guid} not found')
+
+            if not second_user.is_active:
+                abort(400, f'Second user with guid {second_user_guid} is not active')
+
+            users = [other_user, second_user]
+
+        for collab_assoc in users[0].user_collaboration_associations:
+            if users[1] in collab_assoc.collaboration.get_users():
                 log.warning(
-                    f'User {current_user.email} attempted repeated collaboration with {other_user.email}'
+                    f'Collaboration between {users[0].email} and {users[1].email} already exists (attempted by {current_user.email})'
                 )
                 return collab_assoc.collaboration
 
         context = api.commit_or_abort(
             db.session, default_error_message='Failed to create a new Collaboration'
         )
-        users = [current_user, other_user]
-
-        if current_user.is_user_manager:
-
-            second_user_guid = req.get('second_user_guid')
-            if second_user_guid:
-                second_user = User.query.get(second_user_guid)
-                if second_user:
-                    if not second_user.is_active:
-                        abort(
-                            400, f'Second user with guid {second_user_guid} is not active'
-                        )
-                    users = [other_user, second_user]
-                else:
-                    abort(400, f'Second user with guid {second_user_guid} not found')
 
         with context:
             collaboration = Collaboration(users, current_user)

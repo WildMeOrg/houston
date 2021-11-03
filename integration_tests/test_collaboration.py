@@ -15,6 +15,10 @@ def test_collaboration(session, codex_url, login, logout, admin_email):
     new_email = f'{uuid.uuid4()}@localhost'
     new_user_guid = create_new_user(session, codex_url, new_email)
 
+    # Create another new user
+    new_email_2 = f'{uuid.uuid4()}@localhost'
+    new_user_guid_2 = create_new_user(session, codex_url, new_email_2)
+
     # Create a collaboration with the new user
     response = session.post(
         codex_url('/api/v1/collaborations/'),
@@ -33,6 +37,26 @@ def test_collaboration(session, codex_url, login, logout, admin_email):
     response = session.get(codex_url('/api/v1/users/me'))
     assert response.status_code == 200
     assert collaboration_guid in [c['guid'] for c in response.json()['collaborations']]
+
+    # Create a collaboration between new users
+    response = session.post(
+        codex_url('/api/v1/collaborations/'),
+        json={'user_guid': new_user_guid, 'second_user_guid': new_user_guid_2},
+    )
+    assert response.status_code == 200
+    assert sorted(response.json()['user_guids']) == sorted(
+        [new_user_guid, new_user_guid_2]
+    )
+    assert response.json()['members'][new_user_guid]['viewState'] == 'approved'
+    assert response.json()['members'][new_user_guid]['editState'] == 'not_initiated'
+    assert response.json()['members'][new_user_guid_2]['viewState'] == 'approved'
+    assert response.json()['members'][new_user_guid_2]['editState'] == 'not_initiated'
+    collaboration_guid_2 = response.json()['guid']
+
+    # Check collaboration is in /users/me
+    response = session.get(codex_url('/api/v1/users/me'))
+    assert response.status_code == 200
+    assert collaboration_guid_2 in [c['guid'] for c in response.json()['collaborations']]
     logout(session)
 
     # Log in as new user and check collaboration request

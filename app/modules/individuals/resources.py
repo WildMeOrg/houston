@@ -364,3 +364,57 @@ class IndividualByIDCoOccurence(Resource):
         if individual is not None:
             others = individual.get_cooccurring_individuals()
             return others
+
+
+@api.route('/<uuid:individual_guid>/merge')
+@api.response(
+    code=HTTPStatus.NOT_FOUND,
+    description='Individual not found.',
+)
+@api.resolve_object_by_model(Individual, 'individual')
+# @api.response(schemas.BaseIndividualSchema(many=True))
+class IndividualByIDMerge(Resource):
+    """
+    Merge from a list other Individual(s)
+    """
+
+    @api.permission_required(
+        permissions.ObjectAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'obj': kwargs['individual'],
+            'action': AccessOperation.WRITE,
+        },
+    )
+    def post(self, individual):
+        req = json.loads(request.data)
+        log.warning(f'indiv={individual}  args=>{req}')
+        from_individual_ids = req  # assume passed just list, check for otherwise
+        if isinstance(req, dict):
+            from_individual_ids = req.get('fromIndividualIds', None)
+        if not isinstance(from_individual_ids, list):
+            abort(
+                success=False,
+                message='must pass a list of individuals IDs to merge from',
+                code=500,
+            )
+        if len(from_individual_ids) < 1:
+            abort(
+                success=False,
+                message='list of individuals IDs to merge from cannot be empty',
+                code=500,
+            )
+
+        from_individuals = []
+        for from_id in from_individual_ids:
+            from_indiv = Individual.query.get(from_id)
+            if not from_indiv:
+                abort(
+                    success=False,
+                    message=f'passed from individual id={from_id} is invalid',
+                    code=500,
+                )
+            from_individuals.append(from_indiv)
+
+        log.warning(f'indiv={individual} #########################')
+        log.warning(f'indiv={from_individuals} #########################')
+        return {'success': True}

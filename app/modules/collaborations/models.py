@@ -109,7 +109,7 @@ class Collaboration(db.Model, HoustonModel):
             collab_user_assoc = CollaborationUserAssociations(
                 collaboration=self, user=user
             )
-            collab_user_assoc.initiator = user == initiator_user
+
             # Edit not enabled on creation
             collab_user_assoc.edit_approval_state = CollaborationUserState.NOT_INITIATED
             with db.session.begin(subtransactions=True):

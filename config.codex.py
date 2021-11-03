@@ -19,6 +19,9 @@ HERE = Path(__file__).parent
 # Load .env.codex into environment variables (then available under os.environ)
 _DEFAULT_DOTENV = HERE / '.env.codex'
 _dotenv = os.getenv('HOUSTON_DOTENV', _DEFAULT_DOTENV)
+# unset GITLAB_REMOTE_LOGIN_PAT if empty
+if 'GITLAB_REMOTE_LOGIN_PAT' in os.environ and not os.environ['GITLAB_REMOTE_LOGIN_PAT']:
+    del os.environ['GITLAB_REMOTE_LOGIN_PAT']
 load_dotenv(_dotenv, override=False)  # gracefully fails if file doesn't exist
 
 PROJECT_ROOT = str(HERE)

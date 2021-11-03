@@ -1,11 +1,6 @@
 #!/bin/bash
 
 set -xe
-# Set up GITLAB_REMOTE_LOGIN_PAT in config.py
-if [ "$GITLAB_REMOTE_LOGIN_PAT" != "" ]
-then
-    sed -i "s/GITLAB_REMOTE_LOGIN_PAT.*/GITLAB_REMOTE_LOGIN_PAT = '$GITLAB_REMOTE_LOGIN_PAT'/" _db/secrets.py
-fi
 # We need to have a persistent sqlite database to run these tasks
 if [ "$SQLALCHEMY_DATABASE_URI" == "sqlite://" ]
 then

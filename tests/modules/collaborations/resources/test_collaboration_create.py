@@ -199,5 +199,5 @@ def test_create_approved_collaboration_remove_creator(
     # Now delete the user
     temp_user_manager.delete()
 
-    assert collab.initiator_guid == researcher_1.guid
+    assert collab.initiator_guid in {researcher_1.guid, researcher_2.guid}
     assert len(collab.collaboration_user_associations) == 2

@@ -141,7 +141,6 @@ def test_modify_encounter(
     assert enc.json['customFields'][cfd_id] == new_cfd_test_value
 
     new_encounter_1.sighting.delete_cascade()
-    new_encounter_1.delete()
 
 
 @pytest.mark.skipif(module_unavailable('encounters'), reason='Encounters module disabled')

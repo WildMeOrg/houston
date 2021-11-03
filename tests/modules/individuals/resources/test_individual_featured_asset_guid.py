@@ -126,7 +126,6 @@ def test_patch_featured_asset_guid_on_individual(db, flask_app_client, researche
             flask_app_client, researcher_1, str(individual.guid)
         )
         sighting.delete_cascade()
-        enc.delete_cascade()
         ann_1.delete()
         ann_2.delete()
         delete_remote(str(new_asset_group.guid))

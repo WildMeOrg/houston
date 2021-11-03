@@ -68,6 +68,17 @@ class Individual(db.Model, FeatherModel):
     def get_members(self):
         return [encounter.owner for encounter in self.encounters]
 
+    # this overrides the one defined in extensions
+    def current_user_has_edit_permission(self):
+        if (
+            not self.encounters
+        ):  # we "should never have" an individual without encounters, but....
+            return False
+        for enc in self.encounters:
+            if enc.current_user_has_edit_permission():  # one is good enough
+                return True
+        return False
+
     def get_featured_asset_guid(self):
         rt_val = None
         if self.featured_asset_guid is not None:
@@ -236,6 +247,17 @@ class Individual(db.Model, FeatherModel):
     def merge_from(self, *individuals):
         all_indiv = (self,) + individuals
         return Individual.merge(*all_indiv)
+
+    # mimics Individual.merge() in args, but does not immediately executes; rather waits for approval
+    #   and initiates a request including time-out etc
+    @classmethod
+    def merge_request(cls, *individuals, sex=None, primary_name=None):
+        log.warning('merge_request() NOT YET IMPLEMENTED')
+        return False
+
+    def merge_request_from(self, *individuals):
+        all_indiv = (self,) + individuals
+        return Individual.merge_request(*all_indiv)
 
     def delete(self):
         AuditLog.delete_object(log, self)

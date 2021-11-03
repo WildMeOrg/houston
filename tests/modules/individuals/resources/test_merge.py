@@ -121,5 +121,3 @@ def test_merge(db, flask_app_client, researcher_1):
         )
         sighting1.delete_cascade()
         sighting2.delete_cascade()
-        # encounter1.delete_cascade()
-        # encounter2.delete_cascade()

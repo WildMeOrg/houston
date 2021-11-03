@@ -382,10 +382,15 @@ class IndividualByIDMerge(Resource):
         permissions.ObjectAccessPermission,
         kwargs_on_request=lambda kwargs: {
             'obj': kwargs['individual'],
-            'action': AccessOperation.WRITE,
+            'action': AccessOperation.READ,  # only requiring READ here as non-writers basically "request" a merge
         },
     )
     def post(self, individual):
+        from flask_login import current_user
+
+        if not current_user or current_user.is_anonymous:
+            abort(code=401)  # anonymous cannot even request a merge
+
         req = json.loads(request.data)
         log.warning(f'indiv={individual}  args=>{req}')
         from_individual_ids = req  # assume passed just list, check for otherwise
@@ -417,4 +422,10 @@ class IndividualByIDMerge(Resource):
 
         log.warning(f'indiv={individual} #########################')
         log.warning(f'indiv={from_individuals} #########################')
+
+        # all is in order for merge; is it immediate or just a request?
+        if not individual.current_user_has_edit_permission():
+            merge_request = individual.merge_request(from_individuals)
+            return {'queued': merge_request}
+
         return {'success': True}

@@ -38,3 +38,12 @@ def upload_to_tus(session, codex_url, file_path, transaction_id=None):
     )
     assert response.status_code == 204
     return transaction_id
+
+
+def create_new_user(session, codex_url, email, password='password', **kwargs):
+    data = {'email': email, 'password': password}
+    data.update(kwargs)
+    response = session.post(codex_url('/api/v1/users/'), json=data)
+    assert response.status_code == 200
+    assert response.json()['email'] == email
+    return response.json()['guid']

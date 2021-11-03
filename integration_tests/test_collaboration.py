@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 import uuid
 
+from .utils import create_new_user
+
 
 def test_collaboration(session, codex_url, login, admin_email):
     login(session)
@@ -11,13 +13,7 @@ def test_collaboration(session, codex_url, login, admin_email):
 
     # Create a new user
     new_email = f'{uuid.uuid4()}@localhost'
-    response = session.post(
-        codex_url('/api/v1/users/'),
-        json={'email': new_email, 'password': 'password'},
-    )
-    assert response.status_code == 200
-    assert response.json()['email'] == new_email
-    new_user_guid = response.json()['guid']
+    new_user_guid = create_new_user(session, codex_url, new_email)
 
     # Create a collaboration with the new user
     response = session.post(

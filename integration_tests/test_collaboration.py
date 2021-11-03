@@ -43,6 +43,17 @@ def test_collaboration(session, codex_url, login, logout, admin_email):
     response = session.get(codex_url(f'/api/v1/collaborations/{collaboration_guid}'))
     assert response.status_code == 200
 
+    # Invalid view_permission
+    response = session.patch(
+        codex_url(f'/api/v1/collaborations/{collaboration_guid}'),
+        json=[{'op': 'replace', 'path': '/view_permission', 'value': True}],
+    )
+    assert response.status_code == 409
+    assert (
+        response.json()['message']
+        == 'State "True" not in allowed states: declined, approved, pending, not_initiated, revoked, creator'
+    )
+
     # Approve collaboration
     response = session.patch(
         codex_url(f'/api/v1/collaborations/{collaboration_guid}'),
@@ -65,8 +76,19 @@ def test_collaboration(session, codex_url, login, logout, admin_email):
     assert response.json()['members'][new_user_guid]['editState'] == 'approved'
     logout(session)
 
-    # Reject collaboration for edit
+    # Invalid edit_permission
     login(session)
+    response = session.patch(
+        codex_url(f'/api/v1/collaborations/{collaboration_guid}'),
+        json=[{'op': 'replace', 'path': '/edit_permission', 'value': False}],
+    )
+    assert response.status_code == 409
+    assert (
+        response.json()['message']
+        == 'State "False" not in allowed states: declined, approved, pending, not_initiated, revoked, creator'
+    )
+
+    # Reject collaboration for edit
     response = session.patch(
         codex_url(f'/api/v1/collaborations/{collaboration_guid}'),
         json=[{'op': 'replace', 'path': '/edit_permission', 'value': 'declined'}],

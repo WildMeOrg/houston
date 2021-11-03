@@ -109,9 +109,11 @@ class Collaboration(db.Model, HoustonModel):
             collab_user_assoc = CollaborationUserAssociations(
                 collaboration=self, user=user
             )
-            collab_user_assoc.initiator = user == initiator_user
+
             # Edit not enabled on creation
             collab_user_assoc.edit_approval_state = CollaborationUserState.NOT_INITIATED
+            with db.session.begin(subtransactions=True):
+                db.session.add(collab_user_assoc)
 
             # If you initiate, then you approve read. Manager created are also read approved
             if user == initiator_user or manager_created:
@@ -127,6 +129,8 @@ class Collaboration(db.Model, HoustonModel):
 
             collab_creator.read_approval_state = CollaborationUserState.CREATOR
             collab_creator.edit_approval_state = CollaborationUserState.CREATOR
+            with db.session.begin(subtransactions=True):
+                db.session.add(collab_creator)
 
     def _get_association_for_user(self, user_guid):
         assoc = None
@@ -258,6 +262,8 @@ class Collaboration(db.Model, HoustonModel):
                         ):
 
                             association.edit_approval_state = state
+                        with db.session.begin(subtransactions=True):
+                            db.session.merge(association)
                         success = True
         return success
 
@@ -300,6 +306,8 @@ class Collaboration(db.Model, HoustonModel):
                         association.edit_approval_state, state
                     ):
                         association.edit_approval_state = state
+                        with db.session.begin(subtransactions=True):
+                            db.session.merge(association)
                         success = True
         return success
 
@@ -315,10 +323,14 @@ class Collaboration(db.Model, HoustonModel):
                 my_assoc.read_approval_state, CollaborationUserState.APPROVED
             ):
                 my_assoc.edit_approval_state = CollaborationUserState.APPROVED
+                with db.session.begin(subtransactions=True):
+                    db.session.merge(my_assoc)
             if self._is_approval_state_transition_valid(
                 other_assoc.edit_approval_state, CollaborationUserState.PENDING
             ):
                 other_assoc.edit_approval_state = CollaborationUserState.PENDING
+                with db.session.begin(subtransactions=True):
+                    db.session.merge(other_assoc)
         else:
             raise HoustonException(
                 log, 'Unable to start edit on unapproved collaboration'

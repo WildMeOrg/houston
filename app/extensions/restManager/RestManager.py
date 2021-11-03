@@ -373,6 +373,9 @@ class RestManager(RestManagerUserMixin):
             header_existing = headers.get(header_key, None)
             if header_value is not None and header_existing is None:
                 headers[header_key] = header_value
+            elif header_existing is not None:
+                header_value = header_existing
+                headers[header_key] = header_existing
 
             if header_key == 'Content-Type':
                 if header_value is not None:

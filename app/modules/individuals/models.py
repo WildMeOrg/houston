@@ -124,7 +124,7 @@ class Individual(db.Model, FeatherModel):
         return Individual.get_shared_sighting_guids_for_individual_guids(*include_me)
 
     @classmethod
-    def get_shared_sighting_guids_for_individual_guids(self, *individuals):
+    def get_shared_sighting_guids_for_individual_guids(cls, *individuals):
         if not individuals or not isinstance(individuals, tuple) or len(individuals) < 2:
             raise ValueError('must be passed a tuple of at least 2 individuals')
         from app.modules.sightings.models import Sighting
@@ -162,6 +162,80 @@ class Individual(db.Model, FeatherModel):
                 if annotation.encounter.individual_guid == self.guid:
                     rt_val = True
         return rt_val
+
+    # 0th individual will be the resultant/remaining individual
+    @classmethod
+    def merge(cls, *individuals, sex=None, primary_name=None):
+        if not individuals or not isinstance(individuals, tuple) or len(individuals) < 2:
+            raise ValueError('must be passed a tuple of at least 2 individuals')
+        target_individual = individuals[0]
+        source_individuals = individuals[1:]
+        data = {
+            'targetIndividualId': str(target_individual.guid),
+            'sourceIndividualIds': [],
+            'sex': sex,
+            'primaryName': primary_name,
+        }
+        for indiv in source_individuals:
+            data['sourceIndividualIds'].append(str(indiv.guid))
+        # response = current_app.edm.request_passthrough_result(
+        response = current_app.edm.request_passthrough(
+            'individual.merge',
+            'post',
+            {
+                'data': data,
+                'headers': {'Content-Type': 'application/json'},
+            },
+            None,
+        )
+        if not response.ok:
+            return response
+
+        result = response.json()['result']
+        error_msg = None
+        if 'targetId' not in result or result['targetId'] != str(target_individual.guid):
+            error_msg = 'edm merge-results targetId does not match target_individual.guid'
+        elif (
+            'merged' not in result
+            or not isinstance(result['merged'], dict)
+            or len(result['merged'].keys()) != len(source_individuals)
+        ):
+            error_msg = 'edm merge-results merged dict invalid'
+        if error_msg:
+            AuditLog.backend_fault(log, error_msg, target_individual)
+            return
+
+        # first we sanity-check the reported removed individuals vs what was requested
+        for merged_id in result['merged'].keys():
+            if merged_id not in data['sourceIndividualIds']:
+                AuditLog.backend_fault(
+                    log,
+                    f'merge mismatch against sourceIndividualIds with {merged_id}',
+                    target_individual,
+                )
+                return
+            log.info(
+                f"edm reports successful merge of indiv {merged_id} into {result['targetId']} for encounters {result['merged'][merged_id]}; adjusting locally"
+            )
+        # now we steal their encounters and delete them
+        # NOTE:  technically we could iterate over the enc ids in merged.merged_id array, but we run (tiny) risk of this individual
+        #   getting assigned to additional encounters in the interim, so instead we just steal all the encounters directly
+        for indiv in source_individuals:
+            for enc in indiv.encounters:
+                AuditLog.audit_log_object(
+                    log, indiv, f'merge assigning our {enc} to {target_individual}'
+                )
+                AuditLog.audit_log_object(
+                    log, target_individual, f'assigned {enc} from merged {indiv}'
+                )
+                enc.individual_guid = target_individual.guid
+            # TODO also consolidate SocialGroups
+            indiv.delete()
+        return result
+
+    def merge_from(self, *individuals):
+        all_indiv = (self,) + individuals
+        return Individual.merge(*all_indiv)
 
     def delete(self):
         AuditLog.delete_object(log, self)

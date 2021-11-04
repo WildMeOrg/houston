@@ -411,6 +411,8 @@ class IndividualByIDMerge(Resource):
 
         # NOTE when merge conflict (DEX-514) is addressed, more potential args will be passed in
 
+        # for which user does not have edit permissions
+        blocking_encounters = []
         from_individuals = []
         for from_id in from_individual_ids:
             from_indiv = Individual.query.get(from_id)
@@ -420,22 +422,34 @@ class IndividualByIDMerge(Resource):
                     message=f'passed from individual id={from_id} is invalid',
                     code=500,
                 )
+            for enc in from_indiv.encounters:
+                if not enc.current_user_has_edit_permission():
+                    blocking_encounters.append(enc)
             from_individuals.append(from_indiv)
+        for enc in individual.encounters:
+            if not enc.current_user_has_edit_permission():
+                blocking_encounters.append(enc)
 
-        log.warning(f'************************ {individual} from: {from_individuals}')
         # all is in order for merge; is it immediate or just a request?
-        if not individual.current_user_has_edit_permission():
+        log.info(
+            f'merge wants {individual} from {from_individuals} (blocking: {blocking_encounters})'
+        )
+
+        if len(blocking_encounters) > 0:
+            block_ids = [str(enc.guid) for enc in blocking_encounters]
             merge_request = None
             try:
                 merge_request = individual.merge_request_from(*from_individuals)
             except Exception as ex:
                 abort(
+                    blocking_encounters=block_ids,
                     merge_request=True,
                     message=str(ex),
                     code=500,
                 )
             if not merge_request:
                 abort(
+                    blocking_encounters=block_ids,
                     merge_request=True,
                     message='Merge failed',
                     code=500,

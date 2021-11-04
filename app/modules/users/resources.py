@@ -6,21 +6,18 @@ RESTful API User resources
 """
 
 import logging
-
+from flask import current_app, send_file
 from flask_login import current_user
 from flask_restx_patched import Resource
 from flask_restx_patched._http import HTTPStatus
-from app.extensions.api import abort
 from app.extensions.api.parameters import PaginationParameters
-from flask import current_app
-from app.extensions.api import Namespace
-
+from app.extensions.api import Namespace, abort
+import app.extensions.logging as AuditLog
 from app.extensions import is_extension_enabled
 
 from . import permissions, schemas, parameters
 from app.modules.users.permissions.types import AccessOperation
 from .models import db, User
-import app.extensions.logging as AuditLog
 
 
 log = logging.getLogger(__name__)
@@ -380,3 +377,21 @@ class UserSightings(Resource):
                 response['sightings'].append(sighting_response['result'])
 
         return response
+
+
+@api.route('/<uuid:user_guid>/profile_image', doc=False)
+@api.response(
+    code=HTTPStatus.NOT_FOUND,
+    description='User not found.',
+)
+@api.resolve_object_by_model(User, 'user')
+class UserProfileByID(Resource):
+    def get(self, user):
+        if not user.profile_fileupload_guid:
+            from io import StringIO
+
+            empty_file = StringIO()
+            return send_file(empty_file, attachment_filename='profile_image.jpg')
+        else:
+            profile_path = user.profile_fileupload.get_absolute_path()
+            return send_file(profile_path, attachment_filename='profile_image.jpg')

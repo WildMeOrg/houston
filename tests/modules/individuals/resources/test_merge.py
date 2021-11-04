@@ -99,6 +99,7 @@ def test_merge_basics(db, flask_app_client, researcher_1):
             'fromIndividualIds': [individual2_id],
         }
         # data_in = [individual2_id]  # would also be valid
+        # note: this tests positive permission case as well (user owns everything)
         with flask_app_client.login(researcher_1, auth_scopes=('individuals:write',)):
             response = flask_app_client.post(
                 f'/api/v1/individuals/{individual1_id}/merge',
@@ -113,3 +114,58 @@ def test_merge_basics(db, flask_app_client, researcher_1):
         individual_utils.delete_individual(flask_app_client, researcher_1, individual2_id)
         sighting1.delete_cascade()
         sighting2.delete_cascade()
+
+
+@pytest.mark.skipif(
+    module_unavailable('individuals', 'encounters', 'sightings'),
+    reason='Individuals module disabled',
+)
+def test_merge_permissions(db, flask_app_client, researcher_1, researcher_2):
+
+    individual1_id = None
+    sighting1 = None
+    encounter1 = None
+    individual2_id = None
+    sighting2 = None
+    encounter2 = None
+    try:
+        sighting1, encounter1 = prep_data(db, flask_app_client, researcher_1)
+        individual1_id = str(encounter1.individual_guid)
+        sighting2, encounter2 = prep_data(db, flask_app_client, researcher_1)
+        individual2_id = str(encounter2.individual_guid)
+
+        # this tests as researcher_2, which should trigger a merge-request
+        # NOTE: merge_request not yet implmented, so fails accordingly
+        data_in = [individual2_id]
+        with flask_app_client.login(researcher_2, auth_scopes=('individuals:write',)):
+            response = flask_app_client.post(
+                f'/api/v1/individuals/{individual1_id}/merge',
+                data=json.dumps(data_in),
+                content_type='application/json',
+            )
+        assert response.status_code == 500
+        assert response.json['merge_request']
+        assert response.json['message'] == 'Merge failed'
+
+        # permission where user owns just one encounter
+        sighting3, encounter3 = prep_data(db, flask_app_client, researcher_2)
+        individual3_id = str(encounter3.individual_guid)
+
+        data_in = [individual3_id]
+        with flask_app_client.login(researcher_2, auth_scopes=('individuals:write',)):
+            response = flask_app_client.post(
+                f'/api/v1/individuals/{individual1_id}/merge',
+                data=json.dumps(data_in),
+                content_type='application/json',
+            )
+        assert response.status_code == 500
+        assert response.json['merge_request']
+        assert response.json['message'] == 'Merge failed'
+
+    finally:
+        individual_utils.delete_individual(flask_app_client, researcher_1, individual1_id)
+        individual_utils.delete_individual(flask_app_client, researcher_1, individual2_id)
+        individual_utils.delete_individual(flask_app_client, researcher_2, individual3_id)
+        sighting1.delete_cascade()
+        sighting2.delete_cascade()
+        sighting3.delete_cascade()

@@ -430,11 +430,13 @@ class IndividualByIDMerge(Resource):
                 merge_request = individual.merge_request_from(*from_individuals)
             except Exception as ex:
                 abort(
+                    merge_request=True,
                     message=str(ex),
                     code=500,
                 )
             if not merge_request:
                 abort(
+                    merge_request=True,
                     message='Merge failed',
                     code=500,
                 )

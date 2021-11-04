@@ -146,6 +146,9 @@ def test_merge_permissions(db, flask_app_client, researcher_1, researcher_2):
         assert response.status_code == 500
         assert response.json['merge_request']
         assert response.json['message'] == 'Merge failed'
+        assert set(response.json['blocking_encounters']) == set(
+            [str(encounter1.guid), str(encounter2.guid)]
+        )
 
         # permission where user owns just one encounter
         sighting3, encounter3 = prep_data(db, flask_app_client, researcher_2)
@@ -161,6 +164,7 @@ def test_merge_permissions(db, flask_app_client, researcher_1, researcher_2):
         assert response.status_code == 500
         assert response.json['merge_request']
         assert response.json['message'] == 'Merge failed'
+        assert response.json['blocking_encounters'] == [str(encounter1.guid)]
 
     finally:
         individual_utils.delete_individual(flask_app_client, researcher_1, individual1_id)

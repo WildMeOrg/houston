@@ -304,6 +304,14 @@ def test_user_profile_fileupload(
     with flask_app_client.login(regular_user, auth_scopes=('users:write',)):
         args = (f'/api/v1/users/{regular_user.guid}',)
 
+        # Read the profile image, check that it's a valid image but empty
+        profile_response = flask_app_client.get(
+            f'/api/v1/users/{regular_user.guid}/profile_image'
+        )
+        assert profile_response.status_code == 200, profile_response.data
+        assert profile_response.content_type == 'image/jpeg'
+        assert profile_response.calculate_content_length() == 0
+
         # PATCH remove /profile_upload_guid when it's not set
         kwargs = {
             'content_type': 'application/json',
@@ -320,10 +328,11 @@ def test_user_profile_fileupload(
         assert response.status_code == 200, response.data
 
         # Create file upload
+        file_contents = 'abcd\n'
         with TemporaryDirectoryGraceful() as td:
             testfile = Path(td) / 'a.txt'
             with testfile.open('w') as f:
-                f.write('abcd\n')
+                f.write(file_contents)
             fup = FileUpload.create_fileupload_from_path(str(testfile))
         with db.session.begin():
             db.session.add(fup)
@@ -368,6 +377,14 @@ def test_user_profile_fileupload(
         assert response.json['profile_fileupload']['guid'] == str(fup.guid)
         updated_user = User.query.get(regular_user.guid)
         assert updated_user.profile_fileupload_guid == fup.guid
+
+        # Reread profile image, should be valid now
+        profile_response = flask_app_client.get(
+            f'/api/v1/users/{regular_user.guid}/profile_image'
+        )
+        assert profile_response.status_code == 200, profile_response.data
+        assert profile_response.content_type == 'image/jpeg'
+        assert profile_response.get_data() == bytes(file_contents, 'ascii')
 
         # Test transactionId is required when not using asset guid
         kwargs = {

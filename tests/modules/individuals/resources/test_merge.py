@@ -8,72 +8,68 @@ import json
 
 from tests.utils import module_unavailable
 
+increment = 0
 
-@pytest.mark.skipif(
-    module_unavailable('individuals', 'encounters', 'sightings'),
-    reason='Individuals module disabled',
-)
-def test_merge(db, flask_app_client, researcher_1):
 
+def prep_data(db, flask_app_client, user, individual_sex='female'):
     from app.modules.encounters.models import Encounter
     from app.modules.sightings.models import Sighting
 
+    global increment
     sighting_data_in = {
         'encounters': [
             {
                 'decimalLatitude': 45.999,
                 'decimalLongitude': 45.999,
-                'verbatimLocality': 'Town Square',
-                'locationId': 'Legoland',
+                'verbatimLocality': 'Legoland Town Square',
+                'locationId': f'Location {increment}',
             }
         ],
         'startTime': '2000-01-01T01:01:01Z',
-        'locationId': 'test',
+        'locationId': f'test-{increment}',
     }
     individual_data_in = {
-        'names': {'defaultName': 'Godzilla'},
-        'sex': 'female',
+        'names': {'defaultName': f'NAME {increment}'},
+        'sex': individual_sex,
         'comments': 'Test Individual',
         'timeOfBirth': '872846040000',
     }
+    increment += 1
+    res_sighting, res_individual = sighting_utils.create_sighting_and_individual(
+        flask_app_client, user, sighting_data_in, individual_data_in
+    )
+    json_sighting = res_sighting.json['result']
+    json_individual = res_individual.json['result']
+    assert json_sighting['encounters'][0]['id'] == json_individual['encounters'][0]['id']
+    encounter = Encounter.query.get(json_sighting['encounters'][0]['id'])
+    assert encounter is not None
+    sighting = Sighting.query.get(json_sighting['id'])
+    assert sighting is not None
+    return sighting, encounter
 
+
+@pytest.mark.skipif(
+    module_unavailable('individuals', 'encounters', 'sightings'),
+    reason='Individuals module disabled',
+)
+def test_merge_basics(db, flask_app_client, researcher_1):
+
+    individual1_id = None
+    sighting1 = None
+    encounter1 = None
+    individual2_id = None
+    sighting2 = None
+    encounter2 = None
     try:
-
-        res_sighting, res_individual = sighting_utils.create_sighting_and_individual(
-            flask_app_client, researcher_1, sighting_data_in, individual_data_in
-        )
-        json_sighting1 = res_sighting.json['result']
-        json_individual1 = res_individual.json['result']
-        assert (
-            json_sighting1['encounters'][0]['id']
-            == json_individual1['encounters'][0]['id']
-        )
-
-        individual_data_in['names']['defaultName'] = 'Mothra'
-        sighting_data_in['locationId'] = 'test2'
-        res_sighting, res_individual = sighting_utils.create_sighting_and_individual(
-            flask_app_client, researcher_1, sighting_data_in, individual_data_in
-        )
-        json_sighting2 = res_sighting.json['result']
-        json_individual2 = res_individual.json['result']
-        assert (
-            json_sighting2['encounters'][0]['id']
-            == json_individual2['encounters'][0]['id']
-        )
-
-        sighting1 = Sighting.query.get(json_sighting1['id'])
-        assert sighting1 is not None
-        sighting2 = Sighting.query.get(json_sighting2['id'])
-        assert sighting2 is not None
-        encounter1 = Encounter.query.get(json_sighting1['encounters'][0]['id'])
-        assert encounter1 is not None
-        encounter2 = Encounter.query.get(json_sighting2['encounters'][0]['id'])
-        assert encounter2 is not None
+        sighting1, encounter1 = prep_data(db, flask_app_client, researcher_1)
+        individual1_id = str(encounter1.individual_guid)
+        sighting2, encounter2 = prep_data(db, flask_app_client, researcher_1)
+        individual2_id = str(encounter2.individual_guid)
 
         data_in = {}  # first try with bunk data
         with flask_app_client.login(researcher_1, auth_scopes=('individuals:write',)):
             response = flask_app_client.post(
-                f"/api/v1/individuals/{json_individual1['id']}/merge",
+                f'/api/v1/individuals/{individual1_id}/merge',
                 data=json.dumps(data_in),
                 content_type='application/json',
             )
@@ -88,7 +84,7 @@ def test_merge(db, flask_app_client, researcher_1):
         data_in = [bad_id]
         with flask_app_client.login(researcher_1, auth_scopes=('individuals:write',)):
             response = flask_app_client.post(
-                f"/api/v1/individuals/{json_individual1['id']}/merge",
+                f'/api/v1/individuals/{individual1_id}/merge',
                 data=json.dumps(data_in),
                 content_type='application/json',
             )
@@ -100,12 +96,12 @@ def test_merge(db, flask_app_client, researcher_1):
 
         # now with valid list of from-individuals
         data_in = {
-            'fromIndividualIds': [json_individual2['id']],
+            'fromIndividualIds': [individual2_id],
         }
-        # data_in = [json_individual2['id']]  # would also be valid
+        # data_in = [individual2_id]  # would also be valid
         with flask_app_client.login(researcher_1, auth_scopes=('individuals:write',)):
             response = flask_app_client.post(
-                f"/api/v1/individuals/{json_individual1['id']}/merge",
+                f'/api/v1/individuals/{individual1_id}/merge',
                 data=json.dumps(data_in),
                 content_type='application/json',
             )
@@ -113,11 +109,7 @@ def test_merge(db, flask_app_client, researcher_1):
         assert False
 
     finally:
-        individual_utils.delete_individual(
-            flask_app_client, researcher_1, json_individual1['id']
-        )
-        individual_utils.delete_individual(
-            flask_app_client, researcher_1, json_individual2['id']
-        )
+        individual_utils.delete_individual(flask_app_client, researcher_1, individual1_id)
+        individual_utils.delete_individual(flask_app_client, researcher_1, individual2_id)
         sighting1.delete_cascade()
         sighting2.delete_cascade()

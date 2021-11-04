@@ -70,9 +70,8 @@ class Individual(db.Model, FeatherModel):
 
     # this overrides the one defined in extensions
     def current_user_has_edit_permission(self):
-        if (
-            not self.encounters
-        ):  # we "should never have" an individual without encounters, but....
+        if not self.encounters:
+            # we "should never have" an individual without encounters, but....
             return False
         for enc in self.encounters:
             if enc.current_user_has_edit_permission():  # one is good enough
@@ -252,7 +251,13 @@ class Individual(db.Model, FeatherModel):
     #   and initiates a request including time-out etc
     @classmethod
     def merge_request(cls, *individuals, sex=None, primary_name=None):
-        log.warning('merge_request() NOT YET IMPLEMENTED')
+        if not individuals or not isinstance(individuals, tuple) or len(individuals) < 2:
+            raise ValueError('must be passed a tuple of at least 2 individuals')
+        target_individual = individuals[0]
+        source_individuals = individuals[1:]
+        log.warning(
+            f'merge_request() on {target_individual} from {source_individuals} -- NOT YET IMPLEMENTED'
+        )
         return False
 
     def merge_request_from(self, *individuals):

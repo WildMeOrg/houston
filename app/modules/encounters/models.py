@@ -99,6 +99,8 @@ class Encounter(db.Model, FeatherModel):
             'guid={self.guid}, '
             'version={self.version}, '
             'owner={self.owner},'
+            'individual={self.individual_guid},'
+            'sighting={self.sighting_guid},'
             ')>'.format(class_name=self.__class__.__name__, self=self)
         )
 

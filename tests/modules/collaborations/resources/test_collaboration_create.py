@@ -2,6 +2,8 @@
 # pylint: disable=missing-docstring
 import tests.modules.collaborations.resources.utils as collab_utils
 import tests.modules.users.resources.utils as user_utils
+import tests.utils as test_utils
+
 import uuid
 import pytest
 
@@ -134,3 +136,68 @@ def test_create_repeat_collaboration(
         flask_app_client, researcher_1, researcher_2
     )
     assert create_resp.json['guid'] == collab_guid
+
+
+@pytest.mark.skipif(
+    module_unavailable('collaborations'), reason='Collaborations module disabled'
+)
+def test_collaboration_user_delete(flask_app_client, researcher_1, db):
+    # Create a collaboration with a temporary user
+    temp_user = test_utils.generate_user_instance(
+        email='user_4_sightings@localhost',
+        is_researcher=True,
+    )
+    with db.session.begin():
+        db.session.add(temp_user)
+
+    create_resp = collab_utils.create_simple_collaboration(
+        flask_app_client, researcher_1, temp_user
+    )
+
+    # Now delete the user
+    temp_user.delete()
+
+    collab_utils.get_collab_object_for_user(temp_user, create_resp.json['guid'], 0)
+
+
+@pytest.mark.skipif(
+    module_unavailable('collaborations'), reason='Collaborations module disabled'
+)
+def test_create_approved_collaboration_remove_creator(
+    flask_app_client, researcher_1, researcher_2, db, request
+):
+    # Create a collaboration with a temporary user_manager
+    temp_user_manager = test_utils.generate_user_instance(
+        email='user_manager_temp@localhost',
+        is_researcher=True,
+        is_user_manager=True,
+    )
+    with db.session.begin():
+        db.session.add(temp_user_manager)
+
+    data = {
+        'user_guid': str(researcher_1.guid),
+        'second_user_guid': str(researcher_2.guid),
+    }
+
+    create_resp = collab_utils.create_collaboration(
+        flask_app_client, temp_user_manager, data
+    )
+    collab_guid = create_resp.json['guid']
+    collab = collab_utils.get_collab_object_for_user(researcher_1, collab_guid)
+    request.addfinalizer(collab.delete)
+
+    researcher_1_assocs = [
+        assoc for assoc in researcher_1.user_collaboration_associations
+    ]
+    collab = researcher_1_assocs[0].collaboration
+
+    assert collab.initiator_guid == temp_user_manager.guid
+    assert len(researcher_1_assocs) == 1
+    assert len(collab.collaboration_user_associations) == 3
+
+    # Now delete the user
+    temp_user_manager.delete()
+
+    assert collab.initiator_guid in {researcher_1.guid, researcher_2.guid}
+    assert len(collab.collaboration_user_associations) == 2

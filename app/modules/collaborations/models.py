@@ -8,6 +8,7 @@ import logging
 from flask_login import current_user
 
 from app.extensions import db, HoustonModel
+import app.extensions.logging as AuditLog
 from app.utils import HoustonException
 
 
@@ -49,7 +50,7 @@ class CollaborationUserAssociations(db.Model, HoustonModel):
     )
 
     user_guid = db.Column(db.GUID, db.ForeignKey('user.guid'), primary_key=True)
-    # user = db.relationship('User', back_populates='user_collaboration_associations')
+
     user = db.relationship('User', backref=db.backref('user_collaboration_associations'))
 
     read_approval_state = db.Column(
@@ -58,6 +59,9 @@ class CollaborationUserAssociations(db.Model, HoustonModel):
     edit_approval_state = db.Column(
         db.String(length=32), default=CollaborationUserState.NOT_INITIATED, nullable=False
     )
+
+    def delete(self):
+        self.collaboration.user_deleted(self)
 
 
 class Collaboration(db.Model, HoustonModel):
@@ -355,7 +359,28 @@ class Collaboration(db.Model, HoustonModel):
             ')>'.format(class_name=self.__class__.__name__, self=self)
         )
 
+    def user_deleted(self, user_association):
+        if user_association.read_approval_state == CollaborationUserState.CREATOR:
+            # Collaboration creator removal is an odd case, we have to have an initiator so chose an arbitrary member
+            new_creator = (
+                self.collaboration_user_associations[0]
+                if self.collaboration_user_associations[0] != user_association
+                else self.collaboration_user_associations[1]
+            )
+            message = (
+                f'Initiator user removed, assigning {new_creator.user_guid} as initiator'
+            )
+            AuditLog.audit_log_object(log, self, message)
+            self.initiator_guid = new_creator.user_guid
+            with db.session.begin(subtransactions=True):
+                db.session.merge(self)
+                db.session.delete(user_association)
+        else:
+            # If the user is a member and are removed then the collaboration is removed entirely
+            self.delete()
+
     def delete(self):
+        AuditLog.delete_object(log, self)
         with db.session.begin(subtransactions=True):
             for assoc in self.collaboration_user_associations:
                 db.session.delete(assoc)

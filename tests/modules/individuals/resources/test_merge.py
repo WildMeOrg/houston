@@ -5,7 +5,6 @@ from tests.modules.individuals.resources import utils as individual_utils
 from tests.modules.sightings.resources import utils as sighting_utils
 from app.modules.individuals.models import Individual
 import pytest
-import json
 from tests import utils as test_utils
 
 increment = 0
@@ -240,29 +239,32 @@ def test_merge_social_groups(db, flask_app_client, researcher_1):
         social_groupC = SocialGroup(members, groupC_name)
         db.session.add(social_groupC)
 
-        db.session.merge(individual1)
-        db.session.merge(individual2)
-        import utool as ut
-
-        ut.embed()
+        # pre-merge sanity check
+        assert len(social_groupA.members) == 1
+        assert str(social_groupA.members[0].individual_guid) == individual2_id
+        assert len(social_groupB.members) == 2
+        assert social_groupB.get_member(individual1_id).roles == [groupB_role_from_1]
+        assert len(social_groupC.members) == 2
+        assert social_groupC.get_member(individual1_id).roles == [groupC_shared_role]
 
         # now do the merge
-        data_in = [individual2_id]
-        with flask_app_client.login(researcher_1, auth_scopes=('individuals:write',)):
-            response = flask_app_client.post(
-                f'/api/v1/individuals/{individual1_id}/merge',
-                data=json.dumps(data_in),
-                content_type='application/json',
-            )
-        assert response.status_code == 200
+        merge_from = [individual2]
+        individual1.merge_from(*merge_from)
+        individual2 = Individual.query.get(individual2_id)
 
-        import utool as ut
-
-        ut.embed()
-        assert False
+        # post-merge changes
+        assert len(social_groupA.members) == 1
+        assert str(social_groupA.members[0].individual_guid) == individual1_id
+        assert len(social_groupB.members) == 1
+        assert set(social_groupB.get_member(individual1_id).roles) == set(
+            [groupB_role_from_1, groupB_role_from_2]
+        )
+        assert len(social_groupC.members) == 1
+        assert set(social_groupC.get_member(individual1_id).roles) == set(
+            [groupC_shared_role, groupC_role_from_2]
+        )
 
     finally:
         individual_utils.delete_individual(flask_app_client, researcher_1, individual1_id)
-        individual_utils.delete_individual(flask_app_client, researcher_1, individual2_id)
         sighting1.delete_cascade()
         sighting2.delete_cascade()

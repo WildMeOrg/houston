@@ -265,30 +265,29 @@ class Individual(db.Model, FeatherModel):
         return Individual.merge_request(*all_indiv)
 
     def _consolidate_social_groups(self, source_individual):
-        return
         if not source_individual.social_groups:
             return
         for source_member in source_individual.social_groups:
             socgrp = source_member.social_group
-            already_member = socgrp.get_member(self.guid)
+            already_member = socgrp.get_member(str(self.guid))
             # source_member = socgrp.get_member(source_individual.guid)
             log.warning(
                 f'*************  {self.guid}/{socgrp} => already=({already_member}) source=({source_member})'
             )
             data = {'roles': source_member.roles}  # roles may be empty, this is fine
             # must remove member first in case roles are singular
-            socgrp.remove_member(source_individual.guid)
+            #########socgrp.remove_member(str(source_individual.guid))
             if already_member:
                 if data.get('roles'):
                     for role in data['roles']:
                         if role not in already_member.roles:
-                            already_member.roles.add(role)
+                            already_member.roles.append(role)
                     # ensure gets in db
                     already_member.roles = already_member.roles
                     with db.session.begin(subtransactions=True):
                         db.session.merge(already_member)
             else:
-                socgrp.add_member(self.guid, data)
+                socgrp.add_member(str(self.guid), data)
             AuditLog.audit_log_object(
                 log,
                 self,

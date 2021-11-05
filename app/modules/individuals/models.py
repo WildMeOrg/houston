@@ -268,14 +268,14 @@ class Individual(db.Model, FeatherModel):
                 f"merge passing membership to {socgrp} from {source_individual} [roles {data.get('roles')}]",
             )
 
-    def _merge_request_init(self):
+    def _merge_request_init(self, individuals, parameters=None):
         from app.modules.individuals.tasks import init_merge_request
         from datetime import datetime, timedelta
 
         # DEADLINE_DELTA = 14  # days
         # deadline = datetime.utcnow() + timedelta(days=DEADLINE_DELTA)
-        deadline = datetime.utcnow() + timedelta(minutes=30)
-        args = (str(self.guid),)
+        deadline = datetime.utcnow() + timedelta(minutes=2)
+        args = (str(self.guid), individuals, parameters)
         async_res = init_merge_request.apply_async(args, eta=deadline)
         log.info(f'merge request on {self} queued up job {async_res} due {deadline}')
         return {

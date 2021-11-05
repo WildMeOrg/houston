@@ -178,7 +178,6 @@ class Individual(db.Model, FeatherModel):
         }
         for indiv in source_individuals:
             data['sourceIndividualIds'].append(str(indiv.guid))
-        # response = current_app.edm.request_passthrough_result(
         response = current_app.edm.request_passthrough(
             'individual.merge',
             'post',
@@ -268,6 +267,22 @@ class Individual(db.Model, FeatherModel):
                 self,
                 f"merge passing membership to {socgrp} from {source_individual} [roles {data.get('roles')}]",
             )
+
+    def _merge_request_init(self):
+        from app.modules.individuals.tasks import init_merge_request
+        from datetime import datetime, timedelta
+
+        # DEADLINE_DELTA = 14  # days
+        # deadline = datetime.utcnow() + timedelta(days=DEADLINE_DELTA)
+        deadline = datetime.utcnow() + timedelta(seconds=10)
+        args = (str(self.guid),)
+        async_res = init_merge_request.apply_async(args, eta=deadline)
+        log.info(f'merge request on {self} queued up job {async_res} due {deadline}')
+        return {
+            'individual': self,
+            'deadline': deadline,
+            'async': async_res,
+        }
 
     def delete(self):
         AuditLog.delete_object(log, self)

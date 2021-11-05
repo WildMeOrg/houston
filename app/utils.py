@@ -62,3 +62,21 @@ def site_email_hostname():
     if dom.startswith('www.'):
         dom = dom[4:]
     return dom.lower()
+
+
+def get_celery_data(task_id):
+    from flask import current_app
+    from celery.result import AsyncResult
+
+    inspect = current_app.celery.control.inspect()
+    # first we check to see if task is marked as revoked; and ignore if so
+    for tids in inspect.revoked().values():
+        for tid in tids:
+            if tid == task_id:
+                return None, {'revoked': True}
+    # note: scheduled() does seem to empty when tasks are run, but revoked() stick around even after their eta
+    for queue, items in inspect.scheduled().items():
+        for item in items:
+            if 'request' in item and item['request'].get('id') == task_id:
+                return AsyncResult(task_id), item
+    return None, None

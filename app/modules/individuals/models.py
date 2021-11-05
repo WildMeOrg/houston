@@ -274,7 +274,7 @@ class Individual(db.Model, FeatherModel):
 
         # DEADLINE_DELTA = 14  # days
         # deadline = datetime.utcnow() + timedelta(days=DEADLINE_DELTA)
-        deadline = datetime.utcnow() + timedelta(seconds=10)
+        deadline = datetime.utcnow() + timedelta(minutes=30)
         args = (str(self.guid),)
         async_res = init_merge_request.apply_async(args, eta=deadline)
         log.info(f'merge request on {self} queued up job {async_res} due {deadline}')
@@ -283,6 +283,21 @@ class Individual(db.Model, FeatherModel):
             'deadline': deadline,
             'async': async_res,
         }
+
+    @classmethod
+    def get_merge_request_data(cls, task_id):
+        from app.utils import get_celery_data
+
+        async_res, data = get_celery_data(task_id)
+        if data and 'revoked' in data:
+            log.info(
+                f'get_merge_request_data(): merge request id={task_id} has been revoked'
+            )
+            return None
+        if not async_res or not data:
+            log.debug(f'get_merge_request_data(): merge request id={task_id} unknown')
+            return None
+        return data
 
     def delete(self):
         AuditLog.delete_object(log, self)

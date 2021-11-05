@@ -239,7 +239,7 @@ class Individual(db.Model, FeatherModel):
                     log, target_individual, f'assigned {enc} from merged {indiv}'
                 )
                 enc.individual_guid = target_individual.guid
-            # TODO also consolidate SocialGroups
+            target_individual._consolidate_social_groups(indiv)
             indiv.delete()
         return result
 
@@ -263,6 +263,37 @@ class Individual(db.Model, FeatherModel):
     def merge_request_from(self, *individuals):
         all_indiv = (self,) + individuals
         return Individual.merge_request(*all_indiv)
+
+    def _consolidate_social_groups(self, source_individual):
+        return
+        if not source_individual.social_groups:
+            return
+        for source_member in source_individual.social_groups:
+            socgrp = source_member.social_group
+            already_member = socgrp.get_member(self.guid)
+            # source_member = socgrp.get_member(source_individual.guid)
+            log.warning(
+                f'*************  {self.guid}/{socgrp} => already=({already_member}) source=({source_member})'
+            )
+            data = {'roles': source_member.roles}  # roles may be empty, this is fine
+            # must remove member first in case roles are singular
+            socgrp.remove_member(source_individual.guid)
+            if already_member:
+                if data.get('roles'):
+                    for role in data['roles']:
+                        if role not in already_member.roles:
+                            already_member.roles.add(role)
+                    # ensure gets in db
+                    already_member.roles = already_member.roles
+                    with db.session.begin(subtransactions=True):
+                        db.session.merge(already_member)
+            else:
+                socgrp.add_member(self.guid, data)
+            AuditLog.audit_log_object(
+                log,
+                self,
+                f"merge passing membership to {socgrp} from {source_individual} [roles {data.get('roles')}]",
+            )
 
     def delete(self):
         AuditLog.delete_object(log, self)

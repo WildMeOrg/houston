@@ -372,19 +372,19 @@ class IndividualByIDCoOccurence(Resource):
     description='Individual not found.',
 )
 @api.resolve_object_by_model(Individual, 'individual')
-# @api.response(schemas.BaseIndividualSchema(many=True))
 class IndividualByIDMerge(Resource):
     """
     Merge from a list other Individual(s)
     """
 
-    @api.permission_required(
-        permissions.ObjectAccessPermission,
-        kwargs_on_request=lambda kwargs: {
-            'obj': kwargs['individual'],
-            'action': AccessOperation.READ,  # only requiring READ here as non-writers basically "request" a merge
-        },
-    )
+    # permission on target individual is not needed, as user may only have access to other from_individuals
+    # @api.permission_required(
+    #     permissions.ObjectAccessPermission,
+    #     kwargs_on_request=lambda kwargs: {
+    #         'obj': kwargs['individual'],
+    #         'action': AccessOperation.READ,  # only requiring READ here as non-writers basically "request" a merge
+    #     },
+    # )
     def post(self, individual):
         from flask_login import current_user
 
@@ -392,7 +392,6 @@ class IndividualByIDMerge(Resource):
             abort(code=401)  # anonymous cannot even request a merge
 
         req = json.loads(request.data)
-        log.warning(f'indiv={individual}  args=>{req}')
         from_individual_ids = req  # assume passed just list, check for otherwise
         if isinstance(req, dict):
             from_individual_ids = req.get('fromIndividualIds', None)
@@ -411,6 +410,7 @@ class IndividualByIDMerge(Resource):
 
         # NOTE when merge conflict (DEX-514) is addressed, more potential args will be passed in
 
+        meets_minimum = False
         # for which user does not have edit permissions
         blocking_encounters = []
         from_individuals = []
@@ -423,12 +423,24 @@ class IndividualByIDMerge(Resource):
                     code=500,
                 )
             for enc in from_indiv.encounters:
-                if not enc.current_user_has_edit_permission():
+                if enc.current_user_has_edit_permission():
+                    meets_minimum = True
+                else:
                     blocking_encounters.append(enc)
             from_individuals.append(from_indiv)
         for enc in individual.encounters:
-            if not enc.current_user_has_edit_permission():
+            if enc.current_user_has_edit_permission():
+                meets_minimum = True
+            else:
                 blocking_encounters.append(enc)
+
+        if not meets_minimum:
+            AuditLog.security_alert(
+                log,
+                f'requested unauthorized merge from {from_individuals}',
+                individual,
+            )
+            abort(code=403)
 
         # all is in order for merge; is it immediate or just a request?
         log.info(

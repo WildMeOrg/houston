@@ -86,7 +86,6 @@ OBJECT_USER_METHOD_MAP = {
     ('Sighting', AccessOperation.READ): ['user_is_owner'],
     ('Sighting', AccessOperation.WRITE): ['user_owns_all_encounters'],
     ('Sighting', AccessOperation.DELETE): ['user_can_edit_all_encounters'],
-    ('Individual', AccessOperation.WRITE): ['current_user_has_edit_permission'],
     ('Asset', AccessOperation.READ_PRIVILEGED): ['user_raw_read'],
     ('Asset', AccessOperation.WRITE): ['user_is_owner'],
     ('Annotation', AccessOperation.READ): ['user_is_owner'],

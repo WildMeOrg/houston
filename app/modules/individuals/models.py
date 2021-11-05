@@ -68,16 +68,6 @@ class Individual(db.Model, FeatherModel):
     def get_members(self):
         return [encounter.owner for encounter in self.encounters]
 
-    # this overrides the one defined in extensions
-    def current_user_has_edit_permission(self):
-        if not self.encounters:
-            # we "should never have" an individual without encounters, but....
-            return False
-        for enc in self.encounters:
-            if enc.current_user_has_edit_permission():  # one is good enough
-                return True
-        return False
-
     def get_featured_asset_guid(self):
         rt_val = None
         if self.featured_asset_guid is not None:

@@ -270,13 +270,11 @@ class Individual(db.Model, FeatherModel):
         for source_member in source_individual.social_groups:
             socgrp = source_member.social_group
             already_member = socgrp.get_member(str(self.guid))
-            # source_member = socgrp.get_member(source_individual.guid)
-            log.warning(
-                f'*************  {self.guid}/{socgrp} => already=({already_member}) source=({source_member})'
-            )
             data = {'roles': source_member.roles}  # roles may be empty, this is fine
-            # must remove member first in case roles are singular
-            #########socgrp.remove_member(str(source_individual.guid))
+            # must blow away source_member roles in case one is singular (as it will get passed to target)
+            source_member.roles = None
+            with db.session.begin(subtransactions=True):
+                db.session.merge(source_member)
             if already_member:
                 if data.get('roles'):
                     for role in data['roles']:

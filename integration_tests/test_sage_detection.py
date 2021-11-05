@@ -51,7 +51,7 @@ def test_create_asset_group_detection(session, codex_url, test_root, login):
         'guid': asset_group['guid'],
     }
 
-    timeout = 2400  # timeout after 20 minutes
+    timeout = 4 * 60  # timeout after 4 minutes
     ags_url = codex_url(f'/api/v1/asset_groups/sighting/{ags_guids[0]}')
 
     try:

@@ -269,14 +269,14 @@ class Individual(db.Model, FeatherModel):
             )
 
     def _merge_request_init(self, individuals, parameters=None):
-        from app.modules.individuals.tasks import init_merge_request
+        from app.modules.individuals.tasks import execute_merge_request
         from datetime import datetime, timedelta
 
         # DEADLINE_DELTA = 14  # days
         # deadline = datetime.utcnow() + timedelta(days=DEADLINE_DELTA)
-        deadline = datetime.utcnow() + timedelta(minutes=2)
+        deadline = datetime.utcnow() + timedelta(minutes=1)
         args = (str(self.guid), individuals, parameters)
-        async_res = init_merge_request.apply_async(args, eta=deadline)
+        async_res = execute_merge_request.apply_async(args, eta=deadline)
         log.info(f'merge request on {self} queued up job {async_res} due {deadline}')
         return {
             'individual': self,
@@ -298,13 +298,32 @@ class Individual(db.Model, FeatherModel):
         if (
             'request' not in data
             or data['request'].get('name')
-            != 'app.modules.individuals.tasks.init_merge_request'
+            != 'app.modules.individuals.tasks.execute_merge_request'
         ):
             log.warning(
                 f'get_merge_request_data(): id={task_id} invalid name/data: {data}'
             )
             return None
         return data
+
+    # likely will evolve to include other reasons to not be allowed to merge (changes since request etc)
+    @classmethod
+    def validate_merge_request(
+        cls, target_individual_guid, from_individual_ids, parameters=None
+    ):
+        all_individuals = []
+        target_individual = Individual.query.get(target_individual_guid)
+        if not target_individual:
+            return False
+        all_individuals.append(target_individual)
+        for fid in from_individual_ids:
+            findiv = Individual.query.get(fid)
+            if not findiv:
+                return False
+            all_individuals.append(findiv)
+        if len(all_individuals) < 2:
+            return False
+        return all_individuals
 
     def delete(self):
         AuditLog.delete_object(log, self)

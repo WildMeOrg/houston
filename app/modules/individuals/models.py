@@ -290,12 +290,19 @@ class Individual(db.Model, FeatherModel):
 
         async_res, data = get_celery_data(task_id)
         if data and 'revoked' in data:
-            log.info(
-                f'get_merge_request_data(): merge request id={task_id} has been revoked'
-            )
+            log.info(f'get_merge_request_data(): id={task_id} has been revoked')
             return None
         if not async_res or not data:
-            log.debug(f'get_merge_request_data(): merge request id={task_id} unknown')
+            log.debug(f'get_merge_request_data(): id={task_id} unknown')
+            return None
+        if (
+            'request' not in data
+            or data['request'].get('name')
+            != 'app.modules.individuals.tasks.init_merge_request'
+        ):
+            log.warning(
+                f'get_merge_request_data(): id={task_id} invalid name/data: {data}'
+            )
             return None
         return data
 

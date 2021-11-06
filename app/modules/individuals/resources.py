@@ -25,6 +25,17 @@ log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 api = Namespace('individuals', description='Individuals')  # pylint: disable=invalid-name
 
 
+def current_user_has_merge_request_access(individuals):
+    if not isinstance(individuals, list) or len(individuals) < 2:
+        return False
+    for indiv in individuals:
+        for enc in indiv.encounters:
+            if enc.current_user_has_edit_permission():
+                # just needs edit on a single encounter
+                return True
+    return False
+
+
 class IndividualCleanup(object):
     def __init__(self):
         self.individual_guid = None
@@ -515,3 +526,59 @@ class IndividualImageByID(Resource):
             except HoustonException as ex:
                 abort(ex.status_code, ex.message)
             return send_file(image_path, attachment_filename='individual_image.jpg')
+
+
+# TESTING ONLY
+@api.route('/merge_request/test')
+class IndividualMergeRequestCreate(Resource):
+    def get(self):
+        individual = Individual()
+        from_individuals = ['a', 'b', 'c']
+        res = individual._merge_request_init(from_individuals)
+        log.warning(f'TEST CREATE {individual}, {res}')
+        return {'job': str(res), 'individual': str(individual)}
+
+
+@api.route('/merge_request/<uuid:task_id>', defaults={'vote': None}, doc=False)
+@api.route('/merge_request/<uuid:task_id>/<string:vote>')
+class IndividualMergeRequestByTaskId(Resource):
+    """
+    Details of merge request, or register a vote on it
+    """
+
+    def get(self, task_id, vote):
+        from flask_login import current_user
+
+        if not current_user or current_user.is_anonymous:
+            abort(code=HTTPStatus.UNAUTHORIZED)
+
+        task_data = Individual.get_merge_request_data(str(task_id))
+        if not task_data:
+            abort(code=HTTPStatus.NOT_FOUND)
+
+        if (
+            'request' not in task_data
+            or 'args' not in task_data['request']
+            or len(task_data['request']['args']) != 3
+        ):
+            abort(code=HTTPStatus.INTERNAL_SERVER_ERROR, description='Invalid task data')
+        all_individuals = Individual.validate_merge_request(
+            task_data['request']['args'][0],
+            task_data['request']['args'][1],
+            task_data['request']['args'][2],
+        )
+        if not all_individuals:
+            log.debug(f"merge request validation failed: {task_data['request']['args']}")
+            abort(
+                code=HTTPStatus.UNPROCESSABLE_ENTITY,
+                description='Merge request content not valid',
+            )
+        if not current_user_has_merge_request_access(all_individuals):
+            abort(code=HTTPStatus.FORBIDDEN)
+
+        # if we get here, we have access to this merge request
+        task_data['_individuals'] = str(all_individuals)
+        if not vote:
+            return task_data
+        # do some vote thing, i guess?
+        return task_data

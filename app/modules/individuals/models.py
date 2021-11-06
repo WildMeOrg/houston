@@ -274,7 +274,7 @@ class Individual(db.Model, FeatherModel):
 
         # DEADLINE_DELTA = 14  # days
         # deadline = datetime.utcnow() + timedelta(days=DEADLINE_DELTA)
-        deadline = datetime.utcnow() + timedelta(minutes=1)
+        deadline = datetime.utcnow() + timedelta(minutes=8)
         args = (str(self.guid), individuals, parameters)
         async_res = execute_merge_request.apply_async(args, eta=deadline)
         log.info(f'merge request on {self} queued up job {async_res} due {deadline}')

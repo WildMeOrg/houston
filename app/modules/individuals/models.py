@@ -260,14 +260,7 @@ class Individual(db.Model, FeatherModel):
             with db.session.begin(subtransactions=True):
                 db.session.merge(source_member)
             if already_member:
-                if data.get('roles'):
-                    for role in data['roles']:
-                        if role not in already_member.roles:
-                            already_member.roles.append(role)
-                    # ensure gets in db
-                    already_member.roles = already_member.roles
-                    with db.session.begin(subtransactions=True):
-                        db.session.merge(already_member)
+                socgrp.add_roles(str(self.guid), data.get('roles'))
             else:
                 socgrp.add_member(str(self.guid), data)
             AuditLog.audit_log_object(

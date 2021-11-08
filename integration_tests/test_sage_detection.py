@@ -8,7 +8,7 @@ def test_create_asset_group_detection(session, codex_url, test_root, login):
     login(session)
     me = session.get(codex_url('/api/v1/users/me')).json()
     zebra = test_root / 'zebra.jpg'
-    transaction_id = upload_to_tus(session, codex_url, zebra)
+    transaction_id = upload_to_tus(session, codex_url, [zebra])
     data = {
         'description': 'This is a test asset_group, please ignore',
         'uploadType': 'form',

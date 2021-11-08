@@ -150,7 +150,10 @@ class AssetGroupSighting(db.Model, HoustonModel):
         # Create sighting in EDM
         try:
             result_data = current_app.edm.request_passthrough_result(
-                'sighting.data', 'post', {'data': self.config}, ''
+                'sighting.data',
+                'post',
+                {'data': self.config, 'headers': {'Content-Type': 'application/json'}},
+                '',
             )
         except HoustonException as ex:
             cleanup.rollback_and_abort(

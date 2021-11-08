@@ -75,7 +75,7 @@ def test_merge(db, flask_app_client, researcher_1):
     try:
         indiv1.merge_from()  # fail cuz no source-individuals
     except ValueError as ve:
-        assert 'at least 2' in str(ve)
+        assert 'at least 1' in str(ve)
 
     indiv1.merge_from(indiv2)
 

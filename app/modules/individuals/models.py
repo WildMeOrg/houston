@@ -163,15 +163,15 @@ class Individual(db.Model, FeatherModel):
                     rt_val = True
         return rt_val
 
-    # 0th individual will be the resultant/remaining individual
-    @classmethod
-    def merge(cls, *individuals, sex=None, primary_name=None):
-        if not individuals or not isinstance(individuals, tuple) or len(individuals) < 2:
-            raise ValueError('must be passed a tuple of at least 2 individuals')
-        target_individual = individuals[0]
-        source_individuals = individuals[1:]
+    def merge_from(self, *source_individuals, sex=None, primary_name=None):
+        if (
+            not source_individuals
+            or not isinstance(source_individuals, tuple)
+            or len(source_individuals) < 1
+        ):
+            raise ValueError('must be passed a tuple of at least 1 individual')
         data = {
-            'targetIndividualId': str(target_individual.guid),
+            'targetIndividualId': str(self.guid),
             'sourceIndividualIds': [],
             'sex': sex,
             'primaryName': primary_name,
@@ -193,8 +193,8 @@ class Individual(db.Model, FeatherModel):
 
         result = response.json()['result']
         error_msg = None
-        if 'targetId' not in result or result['targetId'] != str(target_individual.guid):
-            error_msg = 'edm merge-results targetId does not match target_individual.guid'
+        if 'targetId' not in result or result['targetId'] != str(self.guid):
+            error_msg = 'edm merge-results targetId does not match self.guid'
         elif (
             'merged' not in result
             or not isinstance(result['merged'], dict)
@@ -202,7 +202,7 @@ class Individual(db.Model, FeatherModel):
         ):
             error_msg = 'edm merge-results merged dict invalid'
         if error_msg:
-            AuditLog.backend_fault(log, error_msg, target_individual)
+            AuditLog.backend_fault(log, error_msg, self)
             return
 
         # first we sanity-check the reported removed individuals vs what was requested
@@ -211,7 +211,7 @@ class Individual(db.Model, FeatherModel):
                 AuditLog.backend_fault(
                     log,
                     f'merge mismatch against sourceIndividualIds with {merged_id}',
-                    target_individual,
+                    self,
                 )
                 return
             log.info(
@@ -223,36 +223,23 @@ class Individual(db.Model, FeatherModel):
         for indiv in source_individuals:
             for enc in indiv.encounters:
                 AuditLog.audit_log_object(
-                    log, indiv, f'merge assigning our {enc} to {target_individual}'
+                    log, indiv, f'merge assigning our {enc} to {self}'
                 )
                 AuditLog.audit_log_object(
-                    log, target_individual, f'assigned {enc} from merged {indiv}'
+                    log, self, f'assigned {enc} from merged {indiv}'
                 )
-                enc.individual_guid = target_individual.guid
-            target_individual._consolidate_social_groups(indiv)
+                enc.individual_guid = self.guid
+            self._consolidate_social_groups(indiv)
             indiv.delete()
         return result
 
-    def merge_from(self, *individuals):
-        all_indiv = (self,) + individuals
-        return Individual.merge(*all_indiv)
-
-    # mimics Individual.merge() in args, but does not immediately executes; rather waits for approval
+    # mimics individual.merge_from(), but does not immediately executes; rather waits for approval
     #   and initiates a request including time-out etc
-    @classmethod
-    def merge_request(cls, *individuals, sex=None, primary_name=None):
-        if not individuals or not isinstance(individuals, tuple) or len(individuals) < 2:
-            raise ValueError('must be passed a tuple of at least 2 individuals')
-        target_individual = individuals[0]
-        source_individuals = individuals[1:]
+    def merge_request_from(self, *source_individuals):
         log.warning(
-            f'merge_request() on {target_individual} from {source_individuals} -- NOT YET IMPLEMENTED'
+            f'merge_request() on {self} from {source_individuals} -- NOT YET IMPLEMENTED'
         )
         return False
-
-    def merge_request_from(self, *individuals):
-        all_indiv = (self,) + individuals
-        return Individual.merge_request(*all_indiv)
 
     def _consolidate_social_groups(self, source_individual):
         if not source_individual.social_groups:

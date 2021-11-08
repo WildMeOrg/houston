@@ -241,6 +241,13 @@ class Individual(db.Model, FeatherModel):
         )
         return False
 
+    def get_blocking_encounters(self):
+        blocking = []
+        for enc in self.encounters:
+            if not enc.current_user_has_edit_permission():
+                blocking.append(enc)
+        return blocking
+
     def _consolidate_social_groups(self, source_individual):
         if not source_individual.social_groups:
             return

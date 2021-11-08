@@ -422,17 +422,17 @@ class IndividualByIDMerge(Resource):
                     message=f'passed from individual id={from_id} is invalid',
                     code=500,
                 )
-            for enc in from_indiv.encounters:
-                if enc.current_user_has_edit_permission():
-                    meets_minimum = True
-                else:
-                    blocking_encounters.append(enc)
-            from_individuals.append(from_indiv)
-        for enc in individual.encounters:
-            if enc.current_user_has_edit_permission():
+            blocking = from_indiv.get_blocking_encounters()
+            if len(blocking) < len(from_indiv.encounters):
+                # means user has edit permission on *at least one* encounter
                 meets_minimum = True
-            else:
-                blocking_encounters.append(enc)
+            blocking_encounters.extend(blocking)
+            from_individuals.append(from_indiv)
+        # now do same for target (passed) individual
+        blocking = individual.get_blocking_encounters()
+        if len(blocking) < len(individual.encounters):
+            meets_minimum = True
+        blocking_encounters.extend(blocking)
 
         if not meets_minimum:
             AuditLog.security_alert(

@@ -60,6 +60,16 @@ def read_individual(
     return response
 
 
+# As above but does not assume any format output, can be used for sub paths
+def read_individual_path(
+    flask_app_client, regular_user, individual_path, expected_status_code=200
+):
+    with flask_app_client.login(regular_user, auth_scopes=('individuals:read',)):
+        response = flask_app_client.get(f'{PATH}{individual_path}')
+    assert response.status_code == expected_status_code
+    return response
+
+
 def delete_individual(flask_app_client, user, guid, expected_status_code=204):
     with flask_app_client.login(user, auth_scopes=('individuals:write',)):
         response = flask_app_client.delete('%s%s' % (PATH, guid))

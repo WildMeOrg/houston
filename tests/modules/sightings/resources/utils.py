@@ -86,6 +86,30 @@ def read_sighting(flask_app_client, user, sight_guid, expected_status_code=200):
     return response
 
 
+# As above but does not assume any format output, can be used for sub paths
+def read_sighting_path(
+    flask_app_client, regular_user, sighting_path, expected_status_code=200
+):
+    with flask_app_client.login(regular_user, auth_scopes=('sightings:read',)):
+        response = flask_app_client.get(f'{PATH}{sighting_path}')
+    assert response.status_code == expected_status_code
+    return response
+
+
+# as above but post to the path rather than read from it
+def write_sighting_path(
+    flask_app_client, regular_user, sighting_path, data, expected_status_code=200
+):
+    with flask_app_client.login(regular_user, auth_scopes=('sightings:write',)):
+        response = flask_app_client.post(
+            f'{PATH}{sighting_path}',
+            content_type='application/json',
+            data=json.dumps(data),
+        )
+    assert response.status_code == expected_status_code
+    return response
+
+
 def patch_sighting(
     flask_app_client,
     user,

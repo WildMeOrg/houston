@@ -10,7 +10,7 @@ import logging
 from flask_restx_patched import Resource
 from flask_restx_patched._http import HTTPStatus
 from flask_login import current_user  # NOQA
-from flask import request, current_app
+from flask import request, current_app, send_file
 
 from app.extensions import db
 from app.extensions.api import Namespace
@@ -677,3 +677,34 @@ class SightingIdentified(Resource):
             sighting.identified(job_guid, json.loads(request.data))
         except HoustonException as ex:
             abort(ex.status_code, ex.message, errorFields=ex.get_val('error', 'Error'))
+
+
+@api.route('/<uuid:sighting_guid>/featured_image', doc=False)
+@api.login_required(oauth_scopes=['sightings:read'])
+@api.response(
+    code=HTTPStatus.NOT_FOUND,
+    description='Sighting not found.',
+)
+@api.resolve_object_by_model(Sighting, 'sighting')
+class SightingImageByID(Resource):
+    @api.permission_required(
+        permissions.ObjectAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'obj': kwargs['sighting'],
+            'action': AccessOperation.READ,
+        },
+    )
+    def get(self, sighting):
+        from io import StringIO
+
+        asset_guid = sighting.get_featured_asset_guid()
+        if not asset_guid:
+            return send_file(StringIO(), attachment_filename='sighting_image.jpg')
+        else:
+            from app.modules.assets.models import Asset
+
+            asset = Asset.query.get(asset_guid)
+            if not asset:
+                return send_file(StringIO(), attachment_filename='sighting_image.jpg')
+            image_path = asset.get_or_make_master_format_path()
+            return send_file(image_path, attachment_filename='sighting_image.jpg')

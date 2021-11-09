@@ -19,8 +19,6 @@ jobs:
         # Use the same Python version used the Dockerfile
         python-version: [3.9]
     env:
-      OS: ubuntu-latest
-      PYTHON: ${{ matrix.python-version }}
       GITLAB_REMOTE_LOGIN_PAT: ${{ secrets.GITLAB_REMOTE_LOGIN_PAT }}
       GITLAB_REMOTE_URI: "https://sub.dyn.wildme.io/"
     steps:
@@ -47,6 +45,18 @@ jobs:
           ./scripts/codex/build.frontend.sh
           ./scripts/swagger/build.frontend.sh
 
+      - name: Configure gitlab remote login pat
+        run: |
+          set -ex
+          pip install "python-dotenv[cli]"
+          # Set secrets
+          dotenv -f .env set GITLAB_REMOTE_LOGIN_PAT -- "${GITLAB_REMOTE_LOGIN_PAT}"
+          dotenv -f .env set GITLAB_REMOTE_URI -- "${GITLAB_REMOTE_URI}"
+          # After using dotenv, file is only readable by owner, need to
+          # give everyone (e.g. docker) read access to avoid permission
+          # error
+          chmod +r .env
+
       - name: Run docker-compose
         run: |
           set -ex
@@ -70,4 +80,4 @@ jobs:
 
       - name: Cleanup
         run: |
-          docker-compose exec -T -e GITLAB_REMOTE_LOGIN_PAT="${GITLAB_REMOTE_LOGIN_PAT}" -e GITLAB_REMOTE_URI="${GITLAB_REMOTE_URI}" houston invoke codex.consistency.cleanup-gitlab
+          docker-compose exec -T houston invoke codex.consistency.cleanup-gitlab

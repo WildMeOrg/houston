@@ -461,5 +461,6 @@ def module_unavailable(*args, **kwargs):
 def random_decimal_latitude():
     return random.uniform(-90, 90)
 
+
 def random_decimal_longitude():
     return random.uniform(-180, 80)

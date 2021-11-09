@@ -4,6 +4,7 @@
 from tests.modules.individuals.resources import utils as individual_res_utils
 from tests.modules.individuals import utils as individual_utils
 from tests.modules.sightings.resources import utils as sighting_utils
+from tests.modules.social_groups.resources import utils as socgrp_utils
 import pytest
 from tests import utils as test_utils
 
@@ -128,7 +129,7 @@ def test_merge(db, flask_app_client, researcher_1, request):
     ),
     reason='Individuals module disabled',
 )
-def test_merge_social_groups(db, flask_app_client, researcher_1, request):
+def test_merge_social_groups(db, flask_app_client, researcher_1, admin_user, request):
     from app.modules.social_groups.models import SocialGroup
     from app.modules.individuals.models import Individual
 
@@ -157,35 +158,59 @@ def test_merge_social_groups(db, flask_app_client, researcher_1, request):
     individual1 = Individual.query.get(individual1_id)
     individual2 = Individual.query.get(individual2_id)
 
+    # set up roles
+    role_data = {'key': 'social_group_roles', 'data': {}}
+    groupA_role_from_2 = 'doomed-to-be-merged'
+    role_data['data'][groupA_role_from_2] = {'multipleInGroup': False}
+    groupB_role_from_1 = 'roleB1'
+    role_data['data'][groupB_role_from_1] = {'multipleInGroup': True}
+    groupB_role_from_2 = 'roleB2'
+    role_data['data'][groupB_role_from_2] = {'multipleInGroup': True}
+    groupC_shared_role = 'sharedC'
+    role_data['data'][groupC_shared_role] = {'multipleInGroup': True}
+    groupC_role_from_2 = 'roleC2'
+    role_data['data'][groupC_role_from_2] = {'multipleInGroup': True}
+    socgrp_utils.set_roles(flask_app_client, admin_user, role_data)
+    request.addfinalizer(lambda: socgrp_utils.delete_roles(flask_app_client, admin_user))
+
     # this tests target individual is not in social group
     groupA_name = 'groupA'
-    groupA_role_from_2 = 'doomed-to-be-merged'
-    members = {individual2_id: {'roles': [groupA_role_from_2]}}
-    social_groupA = SocialGroup(members, groupA_name)
-    with db.session.begin(subtransactions=True):
-        db.session.add(social_groupA)
+    group_data = {
+        'name': groupA_name,
+        'members': {individual2_id: {'roles': [groupA_role_from_2]}},
+    }
+    group_res = socgrp_utils.create_social_group(
+        flask_app_client, researcher_1, group_data
+    )
+    social_groupA = SocialGroup.query.get(group_res.json['guid'])
 
     # this tests target is in group, but gains new role
     groupB_name = 'groupB'
-    groupB_role_from_1 = 'roleB1'
-    groupB_role_from_2 = 'roleB2'
-    members = {
-        individual1_id: {'roles': [groupB_role_from_1]},
-        individual2_id: {'roles': [groupB_role_from_2]},
+    group_data = {
+        'name': groupB_name,
+        'members': {
+            individual1_id: {'roles': [groupB_role_from_1]},
+            individual2_id: {'roles': [groupB_role_from_2]},
+        },
     }
-    social_groupB = SocialGroup(members, groupB_name)
-    db.session.add(social_groupB)
+    group_res = socgrp_utils.create_social_group(
+        flask_app_client, researcher_1, group_data
+    )
+    social_groupB = SocialGroup.query.get(group_res.json['guid'])
 
     # this tests target is in group, but shares a role (and will gain a new one)
     groupC_name = 'groupC'
-    groupC_shared_role = 'sharedC'
-    groupC_role_from_2 = 'roleC2'
-    members = {
-        individual1_id: {'roles': [groupC_shared_role]},
-        individual2_id: {'roles': [groupC_shared_role, groupC_role_from_2]},
+    group_data = {
+        'name': groupC_name,
+        'members': {
+            individual1_id: {'roles': [groupC_shared_role]},
+            individual2_id: {'roles': [groupC_shared_role, groupC_role_from_2]},
+        },
     }
-    social_groupC = SocialGroup(members, groupC_name)
-    db.session.add(social_groupC)
+    group_res = socgrp_utils.create_social_group(
+        flask_app_client, researcher_1, group_data
+    )
+    social_groupC = SocialGroup.query.get(group_res.json['guid'])
 
     # pre-merge sanity check
     assert len(social_groupA.members) == 1

@@ -119,6 +119,12 @@ def test_patch_featured_asset_guid_on_individual(db, flask_app_client, researche
 
         assert individual.get_featured_asset_guid() == new_asset_1.guid
 
+        # The Asset was created by a hanging sighting, not part of an asset group, this will fail as that's not
+        # how assets should be created
+        individual_utils.read_individual_path(
+            flask_app_client, researcher_1, f'{individual.guid}/featured_image', 400
+        )
+
     finally:
         from app.modules.asset_groups.tasks import delete_remote
 

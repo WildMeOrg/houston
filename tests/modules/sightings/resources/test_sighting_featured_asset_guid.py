@@ -55,6 +55,11 @@ def test_featured_asset_guid_endpoint(db, flask_app_client, researcher_1):
     assert response.json['guid'] == str(sighting.guid)
     assert response.json['featured_asset_guid'] == str(new_asset_1.guid)
 
+    # The Asset was created by a hanging sighting, not part of an asset group, this will fail as that's not
+    # how assets should be created
+    sighting_utils.read_sighting_path(
+        flask_app_client, researcher_1, f'{sighting.guid}/featured_image', 400
+    )
     sighting.add_asset(new_asset_2)
 
     asset_guid_data = {'featured_asset_guid': str(new_asset_2.guid)}

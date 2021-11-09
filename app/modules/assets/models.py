@@ -8,6 +8,7 @@ from functools import total_ordering
 import pathlib
 
 from app.extensions import db, HoustonModel
+from app.utils import HoustonException
 
 from PIL import Image
 
@@ -269,7 +270,10 @@ class Asset(db.Model, HoustonModel):
     # also note: this fails horribly in terms of exif orientation.  wom-womp
     def get_or_make_master_format_path(self):
         source_path = self.get_symlink()
-        assert source_path.exists()
+        if not source_path.exists():
+            raise HoustonException(
+                log, 'Asset does not have a valid path, needs to be within an AssetGroup'
+            )
         target_path = self.get_derived_path('master')
         target_path.parent.mkdir(parents=True, exist_ok=True)
         if target_path.exists():

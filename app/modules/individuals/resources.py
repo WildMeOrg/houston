@@ -510,5 +510,8 @@ class IndividualImageByID(Resource):
             asset = Asset.query.get(asset_guid)
             if not asset:
                 return send_file(StringIO(), attachment_filename='individual_image.jpg')
-            image_path = asset.get_or_make_master_format_path()
+            try:
+                image_path = asset.get_or_make_master_format_path()
+            except HoustonException as ex:
+                abort(ex.status_code, ex.message)
             return send_file(image_path, attachment_filename='individual_image.jpg')

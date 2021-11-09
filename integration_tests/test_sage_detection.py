@@ -1,14 +1,12 @@
 # -*- coding: utf-8 -*-
-import time
-
-from .utils import upload_to_tus
+from . import utils
 
 
 def test_create_asset_group_detection(session, codex_url, test_root, login):
     login(session)
     me = session.get(codex_url('/api/v1/users/me')).json()
     zebra = test_root / 'zebra.jpg'
-    transaction_id = upload_to_tus(session, codex_url, [zebra])
+    transaction_id = utils.upload_to_tus(session, codex_url, [zebra])
     data = {
         'description': 'This is a test asset_group, please ignore',
         'uploadType': 'form',
@@ -51,24 +49,10 @@ def test_create_asset_group_detection(session, codex_url, test_root, login):
         'guid': asset_group['guid'],
     }
 
-    timeout = 4 * 60  # timeout after 4 minutes
     ags_url = codex_url(f'/api/v1/asset_groups/sighting/{ags_guids[0]}')
-
-    try:
-        while timeout >= 0:
-            response = session.get(ags_url)
-            assert response.status_code == 200
-            if response.json()['stage'] != 'detection':
-                break
-            time.sleep(15)
-            timeout -= 15
-        if response.json()['stage'] != 'curation':
-            assert (
-                False
-            ), f'{timeout <= 0 and "Timed out: " or ""}stage={response.json()["stage"]}\n{response.json()}'
-    except KeyboardInterrupt:
-        print(f'The last response from {ags_url}:\n{response.json()}')
-        raise
+    response = utils.wait_for(
+        session.get, ags_url, lambda response: response.json()['stage'] == 'curation'
+    )
 
     response_json = response.json()
     job_id = list(response_json['jobs'].keys())[0]

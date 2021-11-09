@@ -288,3 +288,47 @@ These methods can target a specific app module by altering the command to someth
     pytest tests/modules/[MODULE NAME]`
 
 And may also the flags `-s` to print all additional logging or `-x` to stop on the first failed test.
+
+#### Running Integration Tests
+
+Integration tests can be run within the houston container or outside.  If you use `--delete-site`, you must run it on the host.
+
+To install the integration requirements:
+
+```
+pip install -r integration_tests/requirements.txt
+```
+
+You also need to download the chrome driver for selenium [here](https://chromedriver.chromium.org/downloads) or the gecko (firefox) driver [here](https://github.com/mozilla/geckodriver/releases).
+
+To run the tests:
+
+```
+pytest -s -c integration_tests/conftest.py integration_tests/
+```
+
+**WARNING!! Running the integration tests create real data and users on the site.**
+
+If you want to delete the houston / edm / acm data on your site before the tests, you can do:
+
+```
+pytest --delete-site -s -c integration_tests/conftest.py integration_tests/
+```
+
+There are some environment variables you can set for the integration tests:
+
+| Variable           | Default value          |                           |
+|--------------------|------------------------|---------------------------|
+| `CODEX_URL`        | `http://localhost:83/` | The url of the site to test |
+| `ADMIN_EMAIL`      | `root@example.org`     | The email of the first admin user |
+| `ADMIN_PASSWORD`   | `password`             | The password of the first admin user |
+| `ADMIN_NAME`       | `Test admin`           | The name of the first admin user |
+| `SITE_NAME`        | `My test site`         | The name of the site |
+| `BROWSER`          | `chrome`               | chrome or firefox |
+| `BROWSER_HEADLESS` | `true`                 | True for headless, otherwise pops up browser for the tests |
+
+For example if you have set up your admin user using a different email address, you can do:
+
+```
+export ADMIN_EMAIL=myname@mydomain.org
+```

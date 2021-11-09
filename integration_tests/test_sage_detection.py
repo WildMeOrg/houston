@@ -5,6 +5,8 @@ from . import utils
 def test_create_asset_group_detection(session, codex_url, test_root, login):
     login(session)
     me = session.get(codex_url('/api/v1/users/me')).json()
+
+    # Create asset group
     zebra = test_root / 'zebra.jpg'
     transaction_id = utils.upload_to_tus(session, codex_url, [zebra])
     data = {
@@ -49,6 +51,7 @@ def test_create_asset_group_detection(session, codex_url, test_root, login):
         'guid': asset_group['guid'],
     }
 
+    # Wait for sage detection and GET asset group sighting
     ags_url = codex_url(f'/api/v1/asset_groups/sighting/{ags_guids[0]}')
     response = utils.wait_for(
         session.get, ags_url, lambda response: response.json()['stage'] == 'curation'
@@ -118,3 +121,7 @@ def test_create_asset_group_detection(session, codex_url, test_root, login):
         },
         'guid': ags_guids[0],
     }
+
+    # DELETE asset group
+    response = session.delete(codex_url(f'/api/v1/asset_groups/{asset_group["guid"]}'))
+    assert response.status_code == 204

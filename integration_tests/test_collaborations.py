@@ -122,3 +122,9 @@ def test_collaboration(session, codex_url, login, logout, admin_email):
     assert response.json()['members'][my_guid]['editState'] == 'declined'
     assert response.json()['members'][new_user_guid]['viewState'] == 'approved'
     assert response.json()['members'][new_user_guid]['editState'] == 'approved'
+
+    # DELETE new users
+    response = session.delete(codex_url(f'/api/v1/users/{new_user_guid}'))
+    assert response.status_code == 204
+    response = session.delete(codex_url(f'/api/v1/users/{new_user_guid_2}'))
+    assert response.status_code == 204

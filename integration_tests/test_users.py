@@ -49,3 +49,7 @@ def test_user_deactivation(session, codex_url, login, logout, admin_email):
     assert response.status_code == 200
     assert response.json()['guid'] == new_user_guid
     assert response.json()['email'] == new_email
+
+    # DELETE user
+    response = session.delete(codex_url(f'/api/v1/users/{new_user_guid}'))
+    assert response.status_code == 204

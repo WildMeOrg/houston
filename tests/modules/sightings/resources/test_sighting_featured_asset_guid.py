@@ -2,6 +2,7 @@
 # pylint: disable=missing-docstring
 from tests.modules.sightings.resources import utils as sighting_utils
 from tests.modules.asset_groups.resources import utils as asset_group_utils
+from tests.extensions.tus import utils as tus_utils
 from tests import utils
 import pytest
 import uuid
@@ -154,6 +155,8 @@ def test_featured_sighting_read(db, flask_app_client, researcher_1, test_root, r
     transaction_id, test_filename = asset_group_utils.create_bulk_tus_transaction(
         test_root
     )
+    request.addfinalizer(lambda: tus_utils.cleanup_tus_dir(transaction_id))
+
     data = asset_group_utils.get_bulk_creation_data_one_sighting(
         transaction_id, test_filename
     )

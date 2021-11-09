@@ -4,6 +4,7 @@ from tests.modules.sightings.resources import utils as sighting_utils
 from tests.modules.asset_groups.resources import utils as asset_group_utils
 from tests.modules.individuals.resources import utils as individual_utils
 from tests.modules.annotations.resources import utils as annot_utils
+import tests.extensions.tus.utils as tus_utils
 from tests import utils
 import pytest
 
@@ -152,6 +153,7 @@ def test_featured_individual_read(db, flask_app_client, researcher_1, test_root,
     transaction_id, test_filename = asset_group_utils.create_bulk_tus_transaction(
         test_root
     )
+    request.addfinalizer(lambda: tus_utils.cleanup_tus_dir(transaction_id))
     data = asset_group_utils.get_bulk_creation_data_one_sighting(
         transaction_id, test_filename
     )

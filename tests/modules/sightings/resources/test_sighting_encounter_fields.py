@@ -8,15 +8,7 @@ import pytest
 import random
 import json
 
-from tests.utils import module_unavailable
-
-
-def _rnd_lat():
-    return random.uniform(-90, 90)
-
-
-def _rnd_lon():
-    return random.uniform(-180, 80)
+from tests.utils import module_unavailable, random_decimal_latitude, random_decimal_longitude
 
 
 @pytest.mark.skipif(
@@ -68,8 +60,8 @@ def test_mega_data(
         'time': encounter_timestamp,
         'locationId': 'enc-test',
         'taxonomy': {'id': tx_guid},
-        'decimalLatitude': _rnd_lat(),
-        'decimalLongitude': _rnd_lon(),
+        'decimalLatitude': random_decimal_latitude(),
+        'decimalLongitude': random_decimal_longitude(),
         'country': 'TEST',
         'sex': 'male',
         'customFields': {
@@ -81,8 +73,8 @@ def test_mega_data(
         'startTime': sighting_timestamp_start,
         'endTime': sighting_timestamp_end,
         'locationId': 'sig-test',
-        'decimalLatitude': _rnd_lat(),
-        'decimalLongitude': _rnd_lon(),
+        'decimalLatitude': random_decimal_latitude(),
+        'decimalLongitude': random_decimal_longitude(),
         'bearing': random.uniform(0, 180),
         'distance': random.uniform(1, 100),
         'customFields': {

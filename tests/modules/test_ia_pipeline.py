@@ -2,7 +2,6 @@
 # pylint: disable=missing-docstring
 import tests.modules.asset_groups.resources.utils as asset_group_utils
 import tests.modules.sightings.resources.utils as sighting_utils
-import tests.extensions.tus.utils as tus_utils
 import pytest
 from tests.utils import module_unavailable
 
@@ -19,6 +18,7 @@ def test_ia_pipeline_sim_detect_response(
     internal_user,
     test_root,
     db,
+    request,
 ):
     # pylint: disable=invalid-name
     from app.modules.asset_groups.models import (
@@ -27,18 +27,18 @@ def test_ia_pipeline_sim_detect_response(
     )
     from app.modules.sightings.models import Sighting
 
-    transaction_id, test_filename = asset_group_utils.create_bulk_tus_transaction(
-        test_root
+    # Use a standard bulk creation data
+    creation_data = asset_group_utils.get_bulk_creation_data(
+        test_root, request, 'african_terrestrial'
     )
+
     asset_group_uuid = None
     sighting_uuid = None
     try:
-        data = asset_group_utils.get_bulk_creation_data(transaction_id, test_filename)
-        # Use a real detection model to trigger a request sent to Sage
-        data.set_field('speciesDetectionModel', ['african_terrestrial'])
+
         # and the sim_sage util to catch it
         resp = asset_group_utils.create_asset_group_sim_sage_init_resp(
-            flask_app, flask_app_client, researcher_1, data.get()
+            flask_app, flask_app_client, researcher_1, creation_data.get()
         )
         asset_group_uuid = resp.json['guid']
         asset_group_sighting1_guid = resp.json['asset_group_sightings'][0]['guid']
@@ -81,7 +81,6 @@ def test_ia_pipeline_sim_detect_response(
             )
         if sighting_uuid:
             sighting_utils.delete_sighting(flask_app_client, staff_user, sighting_uuid)
-        tus_utils.cleanup_tus_dir(transaction_id)
 
 
 # TODO DEX-335 A test that has sage simulated detection and identification

@@ -383,17 +383,10 @@ def test_create_asset_group_repeat_detection(
     import tests.modules.assets.resources.utils as asset_utils
 
     (
-        transaction_id,
         asset_group_uuid,
         asset_group_sighting_uuid,
     ) = asset_group_utils.create_asset_group_to_curation(
-        flask_app, flask_app_client, researcher_1, internal_user, test_root
-    )
-    request.addfinalizer(lambda: tus_utils.cleanup_tus_dir(transaction_id))
-    request.addfinalizer(
-        lambda: asset_group_utils.delete_asset_group(
-            flask_app_client, researcher_1, asset_group_uuid
-        )
+        flask_app, flask_app_client, researcher_1, internal_user, test_root, request
     )
 
     from app.modules.asset_groups.models import (
@@ -408,7 +401,6 @@ def test_create_asset_group_repeat_detection(
         content_guid=asset_group_utils.ANNOTATION_UUIDS[0]
     ).first()
     asset_guid = annot.asset.guid
-    asset_group_uuid = annot.asset.asset_group_guid
 
     patch_data = [
         {
@@ -470,15 +462,14 @@ def test_create_asset_group_repeat_detection(
 @pytest.mark.skipif(
     module_unavailable('asset_groups'), reason='AssetGroups module disabled'
 )
-def test_create_bulk_asset_group_dup_asset(flask_app_client, researcher_1, test_root, db):
+def test_create_bulk_asset_group_dup_asset(
+    flask_app_client, researcher_1, test_root, db, request
+):
     # pylint: disable=invalid-name
 
-    transaction_id, test_filename = asset_group_utils.create_bulk_tus_transaction(
-        test_root
-    )
     asset_group_uuid = None
     try:
-        data = asset_group_utils.get_bulk_creation_data(transaction_id, test_filename)
+        data = asset_group_utils.get_bulk_creation_data(test_root, request)
         data.add_filename(0, 'fluke.jpg')
         expected_err = 'found fluke.jpg in multiple sightings'
         asset_group_utils.create_asset_group(
@@ -490,22 +481,18 @@ def test_create_bulk_asset_group_dup_asset(flask_app_client, researcher_1, test_
             asset_group_utils.delete_asset_group(
                 flask_app_client, researcher_1, asset_group_uuid
             )
-        tus_utils.cleanup_tus_dir(transaction_id)
 
 
 @pytest.mark.skipif(
     module_unavailable('asset_groups'), reason='AssetGroups module disabled'
 )
-def test_create_bulk_asset_group(flask_app_client, researcher_1, test_root, db):
+def test_create_bulk_asset_group(flask_app_client, researcher_1, test_root, db, request):
     # pylint: disable=invalid-name
     import uuid
 
-    transaction_id, test_filename = asset_group_utils.create_bulk_tus_transaction(
-        test_root
-    )
     asset_group_uuid = None
     try:
-        data = asset_group_utils.get_bulk_creation_data(transaction_id, test_filename)
+        data = asset_group_utils.get_bulk_creation_data(test_root, request)
 
         resp = asset_group_utils.create_asset_group(
             flask_app_client, researcher_1, data.get()
@@ -551,7 +538,6 @@ def test_create_bulk_asset_group(flask_app_client, researcher_1, test_root, db):
             asset_group_utils.delete_asset_group(
                 flask_app_client, researcher_1, asset_group_uuid
             )
-        tus_utils.cleanup_tus_dir(transaction_id)
 
 
 @pytest.mark.skipif(

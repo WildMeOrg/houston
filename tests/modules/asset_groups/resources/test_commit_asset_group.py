@@ -69,18 +69,15 @@ def test_commit_asset_group(flask_app_client, researcher_1, regular_user, test_r
     module_unavailable('asset_groups'), reason='AssetGroups module disabled'
 )
 def test_commit_owner_asset_group(
-    flask_app_client, researcher_1, regular_user, staff_user, test_root, db
+    flask_app_client, researcher_1, regular_user, staff_user, test_root, db, request
 ):
     # pylint: disable=invalid-name
     from app.modules.sightings.models import Sighting, SightingStage
 
-    transaction_id, test_filename = asset_group_utils.create_bulk_tus_transaction(
-        test_root
-    )
     asset_group_uuid = None
     sighting_uuid = None
     try:
-        data = asset_group_utils.get_bulk_creation_data(transaction_id, test_filename)
+        data = asset_group_utils.get_bulk_creation_data(test_root, request)
         # order of ags not deterministic so to make the test simpler, make the first encounter in all
         # sightings owned by the regular user
         data.set_encounter_field(0, 0, 'ownerEmail', regular_user.email)
@@ -114,7 +111,6 @@ def test_commit_owner_asset_group(
             )
         if sighting_uuid:
             sighting_utils.delete_sighting(flask_app_client, staff_user, sighting_uuid)
-        tus_utils.cleanup_tus_dir(transaction_id)
 
 
 # Create an asset group with an annotation and an ia_config and expect it to start IA
@@ -206,18 +202,16 @@ def test_commit_individual_asset_group(
     test_root,
     db,
     empty_individual,
+    request,
 ):
     # pylint: disable=invalid-name
     from app.modules.sightings.models import Sighting, SightingStage
     from app.modules.asset_groups.models import AssetGroupSighting
 
-    transaction_id, test_filename = asset_group_utils.create_bulk_tus_transaction(
-        test_root
-    )
     asset_group_uuid = None
     sighting_uuid = None
     try:
-        data = asset_group_utils.get_bulk_creation_data(transaction_id, test_filename)
+        data = asset_group_utils.get_bulk_creation_data(test_root, request)
         with db.session.begin():
             db.session.add(empty_individual)
         data.set_encounter_field(0, 0, 'individualUuid', str(empty_individual.guid))
@@ -264,4 +258,3 @@ def test_commit_individual_asset_group(
             )
         if sighting_uuid:
             sighting_utils.delete_sighting(flask_app_client, staff_user, sighting_uuid)
-        tus_utils.cleanup_tus_dir(transaction_id)

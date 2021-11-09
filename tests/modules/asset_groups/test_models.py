@@ -3,7 +3,6 @@ import datetime
 import pathlib
 from unittest import mock
 import uuid
-import tests.extensions.tus.utils as tus_utils
 import tests.modules.asset_groups.resources.utils as asset_group_utils
 import pytest
 
@@ -89,12 +88,9 @@ def test_asset_group_sightings_bulk(
 ):
     from app.modules.asset_groups.models import AssetGroupSighting
 
-    transaction_id, test_filename = asset_group_utils.create_bulk_tus_transaction(
-        test_root
-    )
     asset_group_uuid = None
     try:
-        data = asset_group_utils.get_bulk_creation_data(transaction_id, test_filename)
+        data = asset_group_utils.get_bulk_creation_data(test_root, request)
         resp = asset_group_utils.create_asset_group(
             flask_app_client, researcher_1, data.get()
         )
@@ -118,8 +114,6 @@ def test_asset_group_sightings_bulk(
                 flask_app_client, researcher_1, asset_group_uuid
             )
 
-        tus_utils.cleanup_tus_dir(transaction_id)
-
 
 @pytest.mark.skipif(
     module_unavailable('asset_groups'), reason='AssetGroups module disabled'
@@ -132,13 +126,11 @@ def test_asset_group_sighting_get_completion(
         AssetGroupSightingStage,
     )
 
-    # Create asset group sighting
-    transaction_id, test_filename = asset_group_utils.create_bulk_tus_transaction(
-        test_root
-    )
-    data = asset_group_utils.get_bulk_creation_data(transaction_id, test_filename)
     # Use a real detection model to trigger a request sent to Sage
-    data.set_field('speciesDetectionModel', ['african_terrestrial'])
+    data = asset_group_utils.get_bulk_creation_data(
+        test_root, request, 'african_terrestrial'
+    )
+
     # and the sim_sage util to catch it
     resp = asset_group_utils.create_asset_group_sim_sage_init_resp(
         flask_app, flask_app_client, researcher_1, data.get()

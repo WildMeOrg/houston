@@ -442,16 +442,16 @@ def create_asset_group_and_sighting(
                     'locationId': f'Location {locationId}',
                     'encounters': [
                         {
-                            'decimalLatitude': 45.999,
-                            'decimalLongitude': 45.999,
+                            'decimalLatitude': test_utils.random_decimal_latitude(),
+                            'decimalLongitude': test_utils.random_decimal_longitude(),
                             # Yes, that really is a location, it's a village in Wiltshire
                             # https://en.wikipedia.org/wiki/Tiddleywink
                             'verbatimLocality': 'Tiddleywink',
                             'locationId': f'Location {locationId}',
                         },
                         {
-                            'decimalLatitude': 45.999,
-                            'decimalLongitude': 45.999,
+                            'decimalLatitude': test_utils.random_decimal_latitude(),
+                            'decimalLongitude': test_utils.random_decimal_longitude(),
                             'verbatimLocality': 'Tiddleywink',
                             'locationId': f'Location {locationId}',
                         },

@@ -2,10 +2,8 @@
 # pylint: disable=missing-docstring
 from tests.modules.sightings.resources import utils as sighting_utils
 from tests.modules.asset_groups.resources import utils as asset_group_utils
-from tests.extensions.tus import utils as tus_utils
 from tests import utils
 import pytest
-import uuid
 
 from tests.utils import module_unavailable
 
@@ -149,65 +147,38 @@ def test_patch_featured_asset_guid_on_sighting(db, flask_app_client, researcher_
 
 @pytest.mark.skipif(module_unavailable('sightings'), reason='Sightings module disabled')
 def test_featured_sighting_read(db, flask_app_client, researcher_1, test_root, request):
-    from app.modules.sightings.models import Sighting
 
-    # Create an asset group with a bunch of data to play around with
-    transaction_id, test_filename = asset_group_utils.create_bulk_tus_transaction(
-        test_root
+    asset_group, sightings = asset_group_utils.create_asset_group_and_sighting(
+        flask_app_client, researcher_1, request, test_root
     )
-    request.addfinalizer(lambda: tus_utils.cleanup_tus_dir(transaction_id))
 
-    data = asset_group_utils.get_bulk_creation_data_one_sighting(
-        transaction_id, test_filename
-    )
-    ag_create_response = asset_group_utils.create_asset_group(
-        flask_app_client, researcher_1, data.get()
-    )
-    asset_group_uuid = ag_create_response.json['guid']
-    request.addfinalizer(
-        lambda: asset_group_utils.delete_asset_group(
-            flask_app_client, researcher_1, asset_group_uuid
-        )
-    )
-    asset_group_sighting_guid = ag_create_response.json['asset_group_sightings'][0][
-        'guid'
-    ]
+    assert len(sightings) > 0
+    sighting = sightings[0]
+    assert len(sighting.encounters) > 0
 
-    # Commit it and get the sighting to know what we created
-    commit_response = asset_group_utils.commit_asset_group_sighting(
-        flask_app_client, researcher_1, asset_group_sighting_guid
+    image_response = sighting_utils.read_sighting_path(
+        flask_app_client, researcher_1, f'{sighting.guid}/featured_image'
     )
-    sighting_guid = commit_response.json['guid']
-    sighting = Sighting.query.get(sighting_guid)
-    request.addfinalizer(lambda: sighting.delete_cascade())
+    assert image_response.content_type == 'image/jpeg'
 
     featured_asset = [
         asset
-        for asset in ag_create_response.json['assets']
-        if asset['guid'] == str(sighting.featured_asset_guid)
+        for asset in asset_group.assets
+        if asset.guid == sighting.featured_asset_guid
     ]
     assert len(featured_asset) == 1
-
-    image_response = sighting_utils.read_sighting_path(
-        flask_app_client, researcher_1, f'{sighting_guid}/featured_image'
-    )
-    assert image_response.content_type == 'image/jpeg'
-    asset_group_utils.validate_file_data(
-        image_response.data, featured_asset[0]['filename']
-    )
+    asset_group_utils.validate_file_data(image_response.data, featured_asset[0].filename)
 
     # make fluke the featured asset, It may have been anyway but if the code fails this will catch it
     fluke_assets = [
-        asset
-        for asset in ag_create_response.json['assets']
-        if asset['filename'] == 'fluke.jpg'
+        asset for asset in asset_group.assets if asset.filename == 'fluke.jpg'
     ]
     assert len(fluke_assets) == 1
-    sighting.set_featured_asset_guid(uuid.UUID(fluke_assets[0]['guid']))
+    sighting.set_featured_asset_guid(fluke_assets[0].guid)
 
     # Reread the path, should now be the other asset
     image_response = sighting_utils.read_sighting_path(
-        flask_app_client, researcher_1, f'{sighting_guid}/featured_image'
+        flask_app_client, researcher_1, f'{sighting.guid}/featured_image'
     )
     assert image_response.content_type == 'image/jpeg'
     asset_group_utils.validate_file_data(image_response.data, 'fluke.jpg')

@@ -4,7 +4,6 @@ from tests.modules.sightings.resources import utils as sighting_utils
 from tests.modules.asset_groups.resources import utils as asset_group_utils
 from tests.modules.individuals.resources import utils as individual_utils
 from tests.modules.annotations.resources import utils as annot_utils
-import tests.extensions.tus.utils as tus_utils
 from tests import utils
 import pytest
 
@@ -145,61 +144,25 @@ def test_patch_featured_asset_guid_on_individual(db, flask_app_client, researche
     module_unavailable('individuals', 'sightings'), reason='Individuals module disabled'
 )
 def test_featured_individual_read(db, flask_app_client, researcher_1, test_root, request):
-    from app.modules.sightings.models import Sighting
     from app.modules.annotations.models import Annotation
-    from app.modules.individuals.models import Individual
 
-    # Create an asset group with a bunch of data to play around with
-    transaction_id, test_filename = asset_group_utils.create_bulk_tus_transaction(
-        test_root
+    (
+        asset_group,
+        sightings,
+        individual,
+    ) = asset_group_utils.create_asset_group_with_sighting_and_individual(
+        flask_app_client, researcher_1, request, test_root
     )
-    request.addfinalizer(lambda: tus_utils.cleanup_tus_dir(transaction_id))
-    data = asset_group_utils.get_bulk_creation_data_one_sighting(
-        transaction_id, test_filename
-    )
-    ag_create_response = asset_group_utils.create_asset_group(
-        flask_app_client, researcher_1, data.get()
-    )
-    asset_group_uuid = ag_create_response.json['guid']
-    request.addfinalizer(
-        lambda: asset_group_utils.delete_asset_group(
-            flask_app_client, researcher_1, asset_group_uuid
-        )
-    )
-    asset_group_sighting_guid = ag_create_response.json['asset_group_sightings'][0][
-        'guid'
-    ]
-    asset0_data = ag_create_response.json['assets'][0]
-    asset1_data = ag_create_response.json['assets'][1]
-
-    # Commit it and get the sighting to know what we created
-    commit_response = asset_group_utils.commit_asset_group_sighting(
-        flask_app_client, researcher_1, asset_group_sighting_guid
-    )
-    sighting_uuid = commit_response.json['guid']
-    sighting = Sighting.query.get(sighting_uuid)
-    request.addfinalizer(lambda: sighting.delete_cascade())
-
-    # Extract the encounters to use to create an individual
+    assert len(sightings) > 0
+    sighting = sightings[0]
+    assert len(sighting.encounters) > 0
     encounters = sighting.encounters
-    assert len(encounters) == 4
-    individual_response = individual_utils.create_individual(
-        flask_app_client,
-        researcher_1,
-        200,
-        {'encounters': [{'id': str(encounters[0].guid)}]},
-    )
+    assert len(asset_group.assets) > 1
+    assets = asset_group.assets
 
-    individual_guid = individual_response.json['result']['id']
-    request.addfinalizer(
-        lambda: individual_utils.delete_individual(
-            flask_app_client, researcher_1, individual_guid
-        )
-    )
-    individual = Individual.query.get(individual_guid)
     # Before individual has any annotations, no assets are available
     image_response = individual_utils.read_individual_path(
-        flask_app_client, researcher_1, f'{individual_guid}/featured_image'
+        flask_app_client, researcher_1, f'{individual.guid}/featured_image'
     )
     assert image_response.content_type == 'image/jpeg'
     assert image_response.calculate_content_length() == 0
@@ -207,7 +170,7 @@ def test_featured_individual_read(db, flask_app_client, researcher_1, test_root,
     ann0_resp = annot_utils.create_annotation(
         flask_app_client,
         researcher_1,
-        asset0_data['guid'],
+        str(assets[0].guid),
         str(encounters[0].guid),
     )
     ann0_guid = ann0_resp.json['guid']
@@ -216,16 +179,16 @@ def test_featured_individual_read(db, flask_app_client, researcher_1, test_root,
 
     # Now the featured asset guid should be the only one
     image_response = individual_utils.read_individual_path(
-        flask_app_client, researcher_1, f'{individual_guid}/featured_image'
+        flask_app_client, researcher_1, f'{individual.guid}/featured_image'
     )
     assert image_response.content_type == 'image/jpeg'
-    asset_group_utils.validate_file_data(image_response.data, asset0_data['filename'])
+    asset_group_utils.validate_file_data(image_response.data, assets[0].filename)
 
     # Add a second annotation
     ann1_resp = annot_utils.create_annotation(
         flask_app_client,
         researcher_1,
-        asset1_data['guid'],
+        str(assets[1].guid),
         str(encounters[0].guid),
     )
     ann1_guid = ann1_resp.json['guid']
@@ -233,11 +196,11 @@ def test_featured_individual_read(db, flask_app_client, researcher_1, test_root,
     request.addfinalizer(lambda: ann1.delete())
 
     # Make that asset the featured one
-    individual.set_featured_asset_guid(asset1_data['guid'])
+    individual.set_featured_asset_guid(assets[1].guid)
 
     # Reread the path, should now be asset 1
     image_response = individual_utils.read_individual_path(
-        flask_app_client, researcher_1, f'{individual_guid}/featured_image'
+        flask_app_client, researcher_1, f'{individual.guid}/featured_image'
     )
     assert image_response.content_type == 'image/jpeg'
-    asset_group_utils.validate_file_data(image_response.data, asset1_data['filename'])
+    asset_group_utils.validate_file_data(image_response.data, assets[1].filename)

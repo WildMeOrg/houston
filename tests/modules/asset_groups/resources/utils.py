@@ -532,7 +532,11 @@ def create_asset_group_with_sighting_and_individual(
     # Extract the encounters to use to create an individual
     encounters = sightings[0].encounters
     assert len(encounters) >= 1
-    individual_data['encounters'] = [{'id': str(encounters[0].guid)}]
+    if individual_data:
+        individual_data['encounters'] = [{'id': str(encounters[0].guid)}]
+    else:
+        individual_data = {'encounters': [{'id': str(encounters[0].guid)}]}
+
     individual_response = individual_utils.create_individual(
         flask_app_client, user, 200, individual_data
     )

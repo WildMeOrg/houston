@@ -3,10 +3,8 @@
 
 from tests import utils
 from tests.modules.individuals.resources import utils as individual_utils
-from tests.modules.sightings.resources import utils as sighting_utils
+from tests.modules.asset_groups.resources import utils as asset_group_utils
 
-from app.modules.encounters.models import Encounter
-from app.modules.sightings.models import Sighting
 import pytest
 
 from tests.utils import module_unavailable
@@ -15,33 +13,17 @@ from tests.utils import module_unavailable
 @pytest.mark.skipif(
     module_unavailable('individuals'), reason='Individuals module disabled'
 )
-def test_get_set_individual_names(db, flask_app_client, researcher_1):
+def test_get_set_individual_names(db, flask_app_client, researcher_1, request, test_root):
 
-    data_in = {
-        'encounters': [{}],
-        'startTime': '2000-01-01T01:01:01Z',
-        'locationId': 'test',
-    }
+    asset_group, sightings = asset_group_utils.create_asset_group_and_sighting(
+        flask_app_client, researcher_1, request, test_root
+    )
+    assert len(sightings) > 0
+    sighting = sightings[0]
+    assert len(sighting.encounters) > 0
+    enc = sighting.encounters[0]
 
     try:
-
-        response = sighting_utils.create_sighting(flask_app_client, researcher_1, data_in)
-
-        response_json = response.json
-
-        assert response_json['result']['encounters']
-        assert response_json['result']['encounters'][0]['id']
-
-        guid = response_json['result']['encounters'][0]['id']
-        enc = Encounter.query.get(guid)
-        assert enc is not None
-
-        with db.session.begin():
-            db.session.add(enc)
-
-        sighting_id = response_json['result']['id']
-        sighting = Sighting.query.get(sighting_id)
-        assert sighting is not None
 
         individual_data_in = {
             'names': {
@@ -123,39 +105,24 @@ def test_get_set_individual_names(db, flask_app_client, researcher_1):
         individual_utils.delete_individual(
             flask_app_client, researcher_1, individual_json['id']
         )
-        sighting.delete_cascade()
-        enc.delete_cascade()
 
 
 @pytest.mark.skipif(
     module_unavailable('individuals'), reason='Individuals module disabled'
 )
-def test_ensure_default_name_on_individual_creation(db, flask_app_client, researcher_1):
+def test_ensure_default_name_on_individual_creation(
+    db, flask_app_client, researcher_1, test_root, request
+):
 
-    data_in = {
-        'encounters': [{}],
-        'startTime': '2000-01-01T01:01:01Z',
-        'locationId': 'test',
-    }
+    asset_group, sightings = asset_group_utils.create_asset_group_and_sighting(
+        flask_app_client, researcher_1, request, test_root
+    )
+    assert len(sightings) > 0
+    sighting = sightings[0]
+    assert len(sighting.encounters) > 0
+    enc = sighting.encounters[0]
 
     try:
-        response = sighting_utils.create_sighting(flask_app_client, researcher_1, data_in)
-
-        response_json = response.json
-
-        assert response_json['result']['encounters']
-        assert response_json['result']['encounters'][0]['id']
-
-        guid = response_json['result']['encounters'][0]['id']
-        enc = Encounter.query.get(guid)
-        assert enc is not None
-
-        with db.session.begin():
-            db.session.add(enc)
-
-        sighting_id = response_json['result']['id']
-        sighting = Sighting.query.get(sighting_id)
-        assert sighting is not None
 
         # without an explicit default name defined, the name provided should also become the default
         only_name = 'Uncle Pumpkin'

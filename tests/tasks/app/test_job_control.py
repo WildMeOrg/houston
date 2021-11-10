@@ -86,6 +86,7 @@ def test_sighting_identification_jobs(
     researcher_1,
     test_root,
     db,
+    request,
 ):
     # pylint: disable=invalid-name
     from app.modules.sightings.models import Sighting, SightingStage

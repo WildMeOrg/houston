@@ -10,6 +10,7 @@ import re
 import shutil
 from unittest import mock
 import tests.extensions.tus.utils as tus_utils
+import tests.modules.individuals.resources.utils as individual_utils
 
 from tests import utils as test_utils
 from tests import TEST_ASSET_GROUP_UUID, TEST_EMPTY_ASSET_GROUP_UUID
@@ -201,20 +202,29 @@ def create_bulk_tus_transaction(test_root):
     tus_utils.prep_tus_dir(test_root, filename='coelacanth.png')
     tus_utils.prep_tus_dir(test_root, filename='fluke.jpg')
     tus_utils.prep_tus_dir(test_root, filename='phoenix.jpg')
-    return transaction_id, test_filename
+    return transaction_id, [test_filename, 'coelacanth.png', 'fluke.jpg', 'phoenix.jpg']
 
 
-def get_bulk_creation_data(transaction_id, test_filename):
+def get_bulk_creation_data(test_root, request, species_detection_model=None):
+    transaction_id, first_filename = tus_utils.prep_tus_dir(test_root)
+    tus_utils.prep_tus_dir(test_root, filename='coelacanth.png')
+    tus_utils.prep_tus_dir(test_root, filename='fluke.jpg')
+    tus_utils.prep_tus_dir(test_root, filename='phoenix.jpg')
+    request.addfinalizer(lambda: tus_utils.cleanup_tus_dir(transaction_id))
+
     data = AssetGroupCreationData(transaction_id)
-    data.add_filename(0, test_filename)
+    data.add_filename(0, first_filename)
     data.add_encounter(0)
-    data.add_filename(0, 'fluke.jpg')
+    data.add_filename(0, 'coelacanth.png')
     data.add_sighting('Hogpits Bottom')
     data.add_encounter(1)
-    data.add_filename(1, 'coelacanth.png')
+    data.add_filename(1, 'fluke.jpg')
     data.add_encounter(1)
     data.add_filename(1, 'phoenix.jpg')
     data.set_field('uploadType', 'bulk')
+    if species_detection_model:
+        data.set_field('speciesDetectionModel', [species_detection_model])
+
     return data
 
 
@@ -308,9 +318,9 @@ def send_sage_detection_response(
     return response
 
 
-# Does all up to the curation stage
+# Does all up to the curation stage using simulated Sage Interactions
 def create_asset_group_to_curation(
-    flask_app, flask_app_client, user, internal_user, test_root
+    flask_app, flask_app_client, user, internal_user, test_root, request
 ):
     # pylint: disable=invalid-name
     from app.modules.asset_groups.models import (
@@ -318,47 +328,41 @@ def create_asset_group_to_curation(
         AssetGroupSightingStage,
     )
 
-    transaction_id, test_filename = create_bulk_tus_transaction(test_root)
     asset_group_uuid = None
-    try:
-        data = get_bulk_creation_data(transaction_id, test_filename)
-        # Use a real detection model to trigger a request sent to Sage
-        data.set_field('speciesDetectionModel', ['african_terrestrial'])
-        # and the sim_sage util to catch it
-        resp = create_asset_group_sim_sage_init_resp(
-            flask_app, flask_app_client, user, data.get()
-        )
-        asset_group_uuid = resp.json['guid']
+    data = get_bulk_creation_data(test_root, request)
+    # Use a real detection model to trigger a request sent to Sage
+    data.set_field('speciesDetectionModel', ['african_terrestrial'])
 
-        asset_group_sighting1_guid = resp.json['asset_group_sightings'][0]['guid']
+    # and the sim_sage util to catch it
+    resp = create_asset_group_sim_sage_init_resp(
+        flask_app, flask_app_client, user, data.get()
+    )
+    asset_group_uuid = resp.json['guid']
+    request.addfinalizer(
+        lambda: delete_asset_group(flask_app_client, user, asset_group_uuid)
+    )
+    asset_group_sighting1_guid = resp.json['asset_group_sightings'][0]['guid']
 
-        ags1 = AssetGroupSighting.query.get(asset_group_sighting1_guid)
-        assert ags1
+    ags1 = AssetGroupSighting.query.get(asset_group_sighting1_guid)
+    assert ags1
 
-        job_uuids = [guid for guid in ags1.jobs.keys()]
-        assert len(job_uuids) == 1
-        job_uuid = job_uuids[0]
-        assert ags1.jobs[job_uuid]['model'] == 'african_terrestrial'
+    job_uuids = [guid for guid in ags1.jobs.keys()]
+    assert len(job_uuids) == 1
+    job_uuid = job_uuids[0]
+    assert ags1.jobs[job_uuid]['model'] == 'african_terrestrial'
 
-        # Simulate response from Sage
-        sage_resp = build_sage_detection_response(asset_group_sighting1_guid, job_uuid)
-        send_sage_detection_response(
-            flask_app_client,
-            internal_user,
-            asset_group_sighting1_guid,
-            job_uuid,
-            sage_resp,
-        )
-        assert ags1.stage == AssetGroupSightingStage.curation
-    except Exception:
-        # Calling code cannot clear up the asset group as the resp is not passed if any of the assertions fail
-        # meaning that all subsequent tests would fail.
-        tus_utils.cleanup_tus_dir(transaction_id)
-        if asset_group_uuid:
-            delete_asset_group(flask_app_client, user, asset_group_uuid)
-        raise
+    # Simulate response from Sage
+    sage_resp = build_sage_detection_response(asset_group_sighting1_guid, job_uuid)
+    send_sage_detection_response(
+        flask_app_client,
+        internal_user,
+        asset_group_sighting1_guid,
+        job_uuid,
+        sage_resp,
+    )
+    assert ags1.stage == AssetGroupSightingStage.curation
 
-    return transaction_id, asset_group_uuid, asset_group_sighting1_guid
+    return asset_group_uuid, asset_group_sighting1_guid
 
 
 def commit_asset_group_sighting(
@@ -411,6 +415,110 @@ def create_and_commit_asset_group(
 
     sighting_uuid = response.json['guid']
     return asset_group_uuid, sighting_uuid, annot_uuid
+
+
+def create_asset_group_and_sighting(
+    flask_app_client, user, request, test_root=None, data=None
+):
+    from app.modules.sightings.models import Sighting
+    from app.modules.asset_groups.models import AssetGroup
+
+    if not data:
+        # Need at least one of them set
+        assert test_root is not None
+        transaction_id, filenames = create_bulk_tus_transaction(test_root)
+        request.addfinalizer(lambda: tus_utils.cleanup_tus_dir(transaction_id))
+        import random
+
+        locationId = random.randrange(10000)
+        data = {
+            'description': 'This is a test asset_group, please ignore',
+            'uploadType': 'bulk',
+            'speciesDetectionModel': ['None'],
+            'transactionId': transaction_id,
+            'sightings': [
+                {
+                    'startTime': '2000-01-01T01:01:01Z',
+                    'locationId': f'Location {locationId}',
+                    'encounters': [
+                        {
+                            'decimalLatitude': test_utils.random_decimal_latitude(),
+                            'decimalLongitude': test_utils.random_decimal_longitude(),
+                            # Yes, that really is a location, it's a village in Wiltshire
+                            # https://en.wikipedia.org/wiki/Tiddleywink
+                            'verbatimLocality': 'Tiddleywink',
+                            'locationId': f'Location {locationId}',
+                        },
+                        {
+                            'decimalLatitude': test_utils.random_decimal_latitude(),
+                            'decimalLongitude': test_utils.random_decimal_longitude(),
+                            'verbatimLocality': 'Tiddleywink',
+                            'locationId': f'Location {locationId}',
+                        },
+                    ],
+                    'assetReferences': [
+                        filenames[0],
+                        filenames[1],
+                        filenames[2],
+                        filenames[3],
+                    ],
+                },
+            ],
+        }
+
+    create_response = create_asset_group(flask_app_client, user, data)
+    asset_group_uuid = create_response.json['guid']
+    request.addfinalizer(
+        lambda: delete_asset_group(flask_app_client, user, asset_group_uuid)
+    )
+    asset_group = AssetGroup.query.get(asset_group_uuid)
+    assert create_response.json['description'] == data['description']
+    assert create_response.json['owner_guid'] == str(user.guid)
+
+    # Commit them all
+    sightings = []
+    for asset_group_sighting in create_response.json['asset_group_sightings']:
+        commit_response = commit_asset_group_sighting(
+            flask_app_client, user, asset_group_sighting['guid']
+        )
+        sighting_uuid = commit_response.json['guid']
+        sighting = Sighting.query.get(sighting_uuid)
+        sightings.append(sighting)
+        request.addfinalizer(lambda: sighting.delete_cascade())
+
+    return asset_group, sightings
+
+
+def create_asset_group_with_sighting_and_individual(
+    flask_app_client,
+    user,
+    request,
+    test_root=None,
+    asset_group_data=None,
+    individual_data=None,
+):
+    from app.modules.individuals.models import Individual
+
+    asset_group, sightings = create_asset_group_and_sighting(
+        flask_app_client, user, request, test_root, asset_group_data
+    )
+
+    # Extract the encounters to use to create an individual
+    encounters = sightings[0].encounters
+    assert len(encounters) >= 1
+    individual_data['encounters'] = [{'id': str(encounters[0].guid)}]
+    individual_response = individual_utils.create_individual(
+        flask_app_client, user, 200, individual_data
+    )
+
+    individual_guid = individual_response.json['result']['id']
+    request.addfinalizer(
+        lambda: individual_utils.delete_individual(
+            flask_app_client, user, individual_guid
+        )
+    )
+    individual = Individual.query.get(individual_guid)
+    return asset_group, sightings, individual
 
 
 def patch_asset_group(

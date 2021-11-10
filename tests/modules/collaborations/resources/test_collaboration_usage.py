@@ -2,7 +2,6 @@
 # pylint: disable=missing-docstring
 import tests.modules.collaborations.resources.utils as collab_utils
 import tests.modules.asset_groups.resources.utils as asset_group_utils
-import tests.extensions.tus.utils as tus_utils
 import pytest
 
 from tests.utils import module_unavailable
@@ -11,16 +10,15 @@ from tests.utils import module_unavailable
 @pytest.mark.skipif(
     module_unavailable('collaborations'), reason='Collaborations module disabled'
 )
-def test_use_collaboration(flask_app_client, researcher_1, researcher_2, test_root, db):
+def test_use_collaboration(
+    flask_app_client, researcher_1, researcher_2, test_root, db, request
+):
     from app.modules.collaborations.models import Collaboration
 
-    transaction_id, test_filename = asset_group_utils.create_bulk_tus_transaction(
-        test_root
-    )
     asset_group_uuid = None
     collab = None
     try:
-        data = asset_group_utils.get_bulk_creation_data(transaction_id, test_filename)
+        data = asset_group_utils.get_bulk_creation_data(test_root, request)
 
         asset_group_resp = asset_group_utils.create_asset_group(
             flask_app_client, researcher_1, data.get()
@@ -50,4 +48,3 @@ def test_use_collaboration(flask_app_client, researcher_1, researcher_2, test_ro
             asset_group_utils.delete_asset_group(
                 flask_app_client, researcher_1, asset_group_uuid
             )
-        tus_utils.cleanup_tus_dir(transaction_id)

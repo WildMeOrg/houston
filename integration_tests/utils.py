@@ -74,3 +74,36 @@ def wait_for(
     except KeyboardInterrupt:
         print(f'The last response from {url}:\n{response.json()}')
         raise
+
+
+def add_site_species(session, codex_url, data):
+    site_species_url = codex_url('/api/v1/configuration/default/site.species')
+    response = session.get(site_species_url)
+    values = response.json()['response']['value']
+    if not [v for v in values if v == data]:
+        values.append(data)
+        response = session.post(site_species_url, json={'_value': values})
+        assert response.status_code == 200
+        response = session.get(site_species_url)
+    return response
+
+
+def create_custom_field(session, codex_url, cls, name, type='string', multiple=False):
+    config_url = codex_url('/api/v1/configuration/default')
+    response = session.post(
+        config_url,
+        json={
+            f'site.custom.customFields.{cls}': {
+                'definitions': [
+                    {
+                        'name': name,
+                        'type': type,
+                        'multiple': multiple,
+                    },
+                ],
+            },
+        },
+    )
+    assert response.status_code == 200
+    cfd_list = response.json()['updatedCustomFieldDefinitionIds']
+    return cfd_list[0]

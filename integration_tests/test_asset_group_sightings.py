@@ -1,4 +1,7 @@
 # -*- coding: utf-8 -*-
+import datetime
+import random
+
 from . import utils
 
 
@@ -8,28 +11,64 @@ def test_asset_group_sightings(session, login, codex_url, test_root):
     response = session.get(codex_url('/api/v1/users/me'))
     my_guid = response.json()['guid']
 
+    # Add an example species and custom fields in edm
+    response = utils.add_site_species(
+        session,
+        codex_url,
+        {'commonNames': ['Example'], 'scientificName': 'Exempli gratia'},
+    )
+    tx_id = response.json()['response']['value'][-1]['id']
+    occ_test_cfd = utils.create_custom_field(
+        session, codex_url, 'Occurrence', 'occ_test_cfd'
+    )
+    enc_test_cfd = utils.create_custom_field(
+        session, codex_url, 'Encounter', 'enc_test_cfd'
+    )
+
     # Create asset group sighting
     transaction_id = utils.upload_to_tus(
         session,
         codex_url,
         [test_root / 'zebra.jpg'],
     )
+    # 2021-11-09T11:40:53.802Z
+    encounter_timestamp = datetime.datetime.now().isoformat()[:-3] + 'Z'
+    bearing = random.uniform(0, 180)
+    distance = random.uniform(1, 100)
     response = session.post(
         codex_url('/api/v1/asset_groups/'),
         json={
+            'bearing': bearing,
+            'customFields': {occ_test_cfd: 'OCC_TEST_CFD'},
             'description': 'This is a test asset group, please ignore',
-            'uploadType': 'form',
-            'speciesDetectionModel': ['african_terrestrial'],
-            'transactionId': transaction_id,
+            'decimalLatitude': -39.063228,
+            'decimalLongitude': 21.832598,
+            'distance': distance,
             'sightings': [
                 {
-                    'startTime': '2000-01-01T01:01:01Z',
-                    'locationId': 'PYTEST',
-                    # There can only be one encounter
-                    'encounters': [{}],
                     'assetReferences': ['zebra.jpg'],
+                    'encounters': [
+                        {
+                            'country': 'TEST',
+                            'customFields': {
+                                enc_test_cfd: 'CFD_TEST_VALUE',
+                            },
+                            'decimalLatitude': 63.142385,
+                            'decimalLongitude': -21.596914,
+                            'locationId': 'enc-test',
+                            'sex': 'male',
+                            'taxonomy': {'id': tx_id},
+                            'time': encounter_timestamp,
+                        },
+                    ],
+                    'locationId': 'PYTEST',
+                    'startTime': '2000-01-01T01:01:01Z',
                 },
             ],
+            'speciesDetectionModel': ['african_terrestrial'],
+            'taxonomies': [{'id': tx_id}],
+            'transactionId': transaction_id,
+            'uploadType': 'form',
         },
     )
     assert response.status_code == 200
@@ -84,7 +123,21 @@ def test_asset_group_sightings(session, login, codex_url, test_root):
         'decimalLatitude': None,
         'decimalLongitude': None,
         'encounterCounts': {},
-        'encounters': [{'guid': encounter_guids[0]}],
+        'encounters': [
+            {
+                'country': 'TEST',
+                'customFields': {
+                    enc_test_cfd: 'CFD_TEST_VALUE',
+                },
+                'decimalLatitude': 63.142385,
+                'decimalLongitude': -21.596914,
+                'guid': encounter_guids[0],
+                'locationId': 'enc-test',
+                'sex': 'male',
+                'taxonomy': {'id': tx_id},
+                'time': encounter_timestamp,
+            },
+        ],
         'featured_asset_guid': None,
         'guid': ags_guids[0],
         'id': None,
@@ -122,7 +175,21 @@ def test_asset_group_sightings(session, login, codex_url, test_root):
         'completion': 10,
         'decimalLatitude': 52.152029,
         'decimalLongitude': 2.318116,
-        'encounters': [{'guid': encounter_guids[0]}],
+        'encounters': [
+            {
+                'country': 'TEST',
+                'customFields': {
+                    enc_test_cfd: 'CFD_TEST_VALUE',
+                },
+                'decimalLatitude': 63.142385,
+                'decimalLongitude': -21.596914,
+                'guid': encounter_guids[0],
+                'locationId': 'enc-test',
+                'sex': 'male',
+                'taxonomy': {'id': tx_id},
+                'time': encounter_timestamp,
+            },
+        ],
         'encounterCounts': {},
         'featured_asset_guid': None,
         'guid': ags_guids[0],

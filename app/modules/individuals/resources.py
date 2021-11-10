@@ -435,7 +435,7 @@ class IndividualByIDMerge(Resource):
         blocking_encounters.extend(blocking)
 
         if not meets_minimum:
-            AuditLog.houston_fault(
+            AuditLog.frontend_fault(
                 log,
                 f'requested unauthorized merge from {from_individuals}',
                 individual,

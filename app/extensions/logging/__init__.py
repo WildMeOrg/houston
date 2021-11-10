@@ -122,6 +122,15 @@ class Logging(object):
             cls.audit_log(logger, msg, cls.AuditType.BackEndFault, *args, **kwargs)
 
     @classmethod
+    def frontend_fault(cls, logger, msg='', obj=None, *args, **kwargs):
+        if obj:
+            cls.audit_log_object(
+                logger, obj, msg, cls.AuditType.FrontEndFault, *args, **kwargs
+            )
+        else:
+            cls.audit_log(logger, msg, cls.AuditType.FrontEndFault, *args, **kwargs)
+
+    @classmethod
     def houston_fault(cls, logger, msg='', obj=None, *args, **kwargs):
         if obj:
             cls.audit_log_object(

@@ -26,6 +26,7 @@ api = Namespace('individuals', description='Individuals')  # pylint: disable=inv
 
 
 def current_user_has_merge_request_access(individuals):
+    return True  # TESTING ONLY FIXME
     if not isinstance(individuals, list) or len(individuals) < 2:
         return False
     for indiv in individuals:
@@ -533,10 +534,15 @@ class IndividualImageByID(Resource):
 class IndividualMergeRequestCreate(Resource):
     def get(self):
         individual = Individual()
-        from_individuals = ['a', 'b', 'c']
-        res = individual._merge_request_init(from_individuals)
+        findiv = Individual()
+        with db.session.begin():
+            db.session.add(individual)
+            db.session.add(findiv)
+        from_individuals = [str(findiv.guid)]
+        params = {'fubar': True}
+        res = individual._merge_request_init(from_individuals, parameters=params)
         log.warning(f'TEST CREATE {individual}, {res}')
-        return {'job': str(res), 'individual': str(individual)}
+        return {'id': res['async'].id, 'job': str(res), 'individual': str(individual)}
 
 
 @api.route('/merge_request/<uuid:task_id>', defaults={'vote': None}, doc=False)
@@ -580,5 +586,31 @@ class IndividualMergeRequestByTaskId(Resource):
         task_data['_individuals'] = str(all_individuals)
         if not vote:
             return task_data
-        # do some vote thing, i guess?
-        return task_data
+
+        if vote not in ('allow', 'block'):
+            AuditLog.backend_fault(
+                log,
+                f'invalid vote={vote} for merge_request id={task_id}',
+                all_individuals[0],
+            )
+            abort(
+                code=HTTPStatus.UNPROCESSABLE_ENTITY,
+                description=f'invalid vote value "{vote}", must be "allow" or "block"',
+            )
+        if vote == 'allow':
+            # no real action, but lets just log it
+            AuditLog.audit_log_object(
+                log,
+                all_individuals[0],
+                f'ALLOW vote for merge_request id={task_id}',
+            )
+            return {'vote': vote}
+
+        # a block vote kills the celery task so merge will not happen
+        AuditLog.audit_log_object(
+            log,
+            all_individuals[0],
+            f'BLOCK vote for merge_request id={task_id} (celery task revoked)',
+        )
+        current_app.celery.control.revoke(task_id)
+        return {'vote': vote}

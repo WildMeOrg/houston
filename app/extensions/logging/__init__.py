@@ -28,7 +28,6 @@ class Logging(object):
         FrontEndFault = 'Front End Fault'  # Bad message received on API
         BackEndFault = 'Back End Fault'  # Faulty message received from ACM/EDM etc
         HoustonFault = 'Houston Fault'  # Internal Error within Houston
-        SecurityAlert = 'Security Alert'  # Maybe trouble
         Other = 'Other'  # None of the above
 
     def __init__(self, app=None):
@@ -130,15 +129,6 @@ class Logging(object):
             )
         else:
             cls.audit_log(logger, msg, cls.AuditType.HoustonFault, *args, **kwargs)
-
-    @classmethod
-    def security_alert(cls, logger, msg='', obj=None, *args, **kwargs):
-        if obj:
-            cls.audit_log_object(
-                logger, obj, msg, cls.AuditType.SecurityAlert, *args, **kwargs
-            )
-        else:
-            cls.audit_log(logger, msg, cls.AuditType.SecurityAlert, *args, **kwargs)
 
     @classmethod
     def delete_object(cls, logger, obj, msg='', *args, **kwargs):

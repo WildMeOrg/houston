@@ -14,7 +14,7 @@ from flask.testing import FlaskClient
 from werkzeug.utils import cached_property
 from app.extensions.auth import security
 import redis
-
+import random
 import uuid
 import os
 
@@ -456,3 +456,11 @@ def extension_unavailable(*args, **kwargs):
 
 def module_unavailable(*args, **kwargs):
     return not is_module_enabled(*args, **kwargs)
+
+
+def random_decimal_latitude():
+    return random.uniform(-90, 90)
+
+
+def random_decimal_longitude():
+    return random.uniform(-180, 80)

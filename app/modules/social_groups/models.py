@@ -180,6 +180,20 @@ class SocialGroup(db.Model, HoustonModel):
         with db.session.begin(subtransactions=True):
             db.session.add(membership)
 
+    def add_roles(self, individual_guid, roles):
+        member = self.get_member(individual_guid)
+        if not member:
+            return
+        if not roles or not isinstance(roles, list):
+            return
+        for role in roles:
+            if role not in member.roles:
+                member.roles.append(role)
+        # ensure gets in db
+        member.roles = member.roles
+        with db.session.begin(subtransactions=True):
+            db.session.merge(member)
+
     def delete(self):
         AuditLog.delete_object(log, self)
 

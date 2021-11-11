@@ -80,7 +80,7 @@ OBJECT_USER_MAP = {
     ('SocialGroup', AccessOperation.DELETE): ['is_researcher'],
 }
 
-# Map of methods (that are passed he current user as a param) on the object.
+# Map of methods (that are passed the current user as a param) on the object.
 # These permissions also granted by collaboration/project/etc so must not be privileged/admin
 OBJECT_USER_METHOD_MAP = {
     ('Sighting', AccessOperation.READ): ['user_is_owner'],

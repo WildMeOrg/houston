@@ -163,15 +163,15 @@ class Individual(db.Model, FeatherModel):
                     rt_val = True
         return rt_val
 
-    # 0th individual will be the resultant/remaining individual
-    @classmethod
-    def merge(cls, *individuals, sex=None, primary_name=None):
-        if not individuals or not isinstance(individuals, tuple) or len(individuals) < 2:
-            raise ValueError('must be passed a tuple of at least 2 individuals')
-        target_individual = individuals[0]
-        source_individuals = individuals[1:]
+    def merge_from(self, *source_individuals, sex=None, primary_name=None):
+        if (
+            not source_individuals
+            or not isinstance(source_individuals, tuple)
+            or len(source_individuals) < 1
+        ):
+            raise ValueError('must be passed a tuple of at least 1 individual')
         data = {
-            'targetIndividualId': str(target_individual.guid),
+            'targetIndividualId': str(self.guid),
             'sourceIndividualIds': [],
             'sex': sex,
             'primaryName': primary_name,
@@ -193,8 +193,8 @@ class Individual(db.Model, FeatherModel):
 
         result = response.json()['result']
         error_msg = None
-        if 'targetId' not in result or result['targetId'] != str(target_individual.guid):
-            error_msg = 'edm merge-results targetId does not match target_individual.guid'
+        if 'targetId' not in result or result['targetId'] != str(self.guid):
+            error_msg = 'edm merge-results targetId does not match self.guid'
         elif (
             'merged' not in result
             or not isinstance(result['merged'], dict)
@@ -202,7 +202,7 @@ class Individual(db.Model, FeatherModel):
         ):
             error_msg = 'edm merge-results merged dict invalid'
         if error_msg:
-            AuditLog.backend_fault(log, error_msg, target_individual)
+            AuditLog.backend_fault(log, error_msg, self)
             return
 
         # first we sanity-check the reported removed individuals vs what was requested
@@ -211,7 +211,7 @@ class Individual(db.Model, FeatherModel):
                 AuditLog.backend_fault(
                     log,
                     f'merge mismatch against sourceIndividualIds with {merged_id}',
-                    target_individual,
+                    self,
                 )
                 return
             log.info(
@@ -223,19 +223,51 @@ class Individual(db.Model, FeatherModel):
         for indiv in source_individuals:
             for enc in indiv.encounters:
                 AuditLog.audit_log_object(
-                    log, indiv, f'merge assigning our {enc} to {target_individual}'
+                    log, indiv, f'merge assigning our {enc} to {self}'
                 )
                 AuditLog.audit_log_object(
-                    log, target_individual, f'assigned {enc} from merged {indiv}'
+                    log, self, f'assigned {enc} from merged {indiv}'
                 )
-                enc.individual_guid = target_individual.guid
-            # TODO also consolidate SocialGroups
+                enc.individual_guid = self.guid
+            self._consolidate_social_groups(indiv)
             indiv.delete()
         return result
 
-    def merge_from(self, *individuals):
-        all_indiv = (self,) + individuals
-        return Individual.merge(*all_indiv)
+    # mimics individual.merge_from(), but does not immediately executes; rather waits for approval
+    #   and initiates a request including time-out etc
+    def merge_request_from(self, *source_individuals):
+        log.warning(
+            f'merge_request() on {self} from {source_individuals} -- NOT YET IMPLEMENTED'
+        )
+        return False
+
+    def get_blocking_encounters(self):
+        blocking = []
+        for enc in self.encounters:
+            if not enc.current_user_has_edit_permission():
+                blocking.append(enc)
+        return blocking
+
+    def _consolidate_social_groups(self, source_individual):
+        if not source_individual.social_groups:
+            return
+        for source_member in source_individual.social_groups:
+            socgrp = source_member.social_group
+            already_member = socgrp.get_member(str(self.guid))
+            data = {'roles': source_member.roles}  # roles may be empty, this is fine
+            # must blow away source_member roles in case one is singular (as it will get passed to target)
+            source_member.roles = None
+            with db.session.begin(subtransactions=True):
+                db.session.merge(source_member)
+            if already_member:
+                socgrp.add_roles(str(self.guid), data.get('roles'))
+            else:
+                socgrp.add_member(str(self.guid), data)
+            AuditLog.audit_log_object(
+                log,
+                self,
+                f"merge passing membership to {socgrp} from {source_individual} [roles {data.get('roles')}]",
+            )
 
     def delete(self):
         AuditLog.delete_object(log, self)

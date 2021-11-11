@@ -364,3 +364,121 @@ class IndividualByIDCoOccurence(Resource):
         if individual is not None:
             others = individual.get_cooccurring_individuals()
             return others
+
+
+@api.route('/<uuid:individual_guid>/merge')
+@api.response(
+    code=HTTPStatus.NOT_FOUND,
+    description='Individual not found.',
+)
+@api.resolve_object_by_model(Individual, 'individual')
+class IndividualByIDMerge(Resource):
+    """
+    Merge from a list other Individual(s)
+    """
+
+    # permission on target individual is not needed, as user may only have access to other from_individuals
+    # @api.permission_required(
+    #     permissions.ObjectAccessPermission,
+    #     kwargs_on_request=lambda kwargs: {
+    #         'obj': kwargs['individual'],
+    #         'action': AccessOperation.READ,  # only requiring READ here as non-writers basically "request" a merge
+    #     },
+    # )
+    def post(self, individual):
+        from flask_login import current_user
+
+        if not current_user or current_user.is_anonymous:
+            abort(code=401)  # anonymous cannot even request a merge
+
+        req = json.loads(request.data)
+        from_individual_ids = req  # assume passed just list, check for otherwise
+        if isinstance(req, dict):
+            from_individual_ids = req.get('fromIndividualIds', None)
+        if not isinstance(from_individual_ids, list):
+            abort(
+                success=False,
+                message='must pass a list of individuals IDs to merge from',
+                code=500,
+            )
+        if len(from_individual_ids) < 1:
+            abort(
+                success=False,
+                message='list of individuals IDs to merge from cannot be empty',
+                code=500,
+            )
+
+        # NOTE when merge conflict (DEX-514) is addressed, more potential args will be passed in
+
+        meets_minimum = False
+        # for which user does not have edit permissions
+        blocking_encounters = []
+        from_individuals = []
+        for from_id in from_individual_ids:
+            from_indiv = Individual.query.get(from_id)
+            if not from_indiv:
+                abort(
+                    success=False,
+                    message=f'passed from individual id={from_id} is invalid',
+                    code=500,
+                )
+            blocking = from_indiv.get_blocking_encounters()
+            if len(blocking) < len(from_indiv.encounters):
+                # means user has edit permission on *at least one* encounter
+                meets_minimum = True
+            blocking_encounters.extend(blocking)
+            from_individuals.append(from_indiv)
+        # now do same for target (passed) individual
+        blocking = individual.get_blocking_encounters()
+        if len(blocking) < len(individual.encounters):
+            meets_minimum = True
+        blocking_encounters.extend(blocking)
+
+        if not meets_minimum:
+            AuditLog.frontend_fault(
+                log,
+                f'requested unauthorized merge from {from_individuals}',
+                individual,
+            )
+            abort(code=403)
+
+        # all is in order for merge; is it immediate or just a request?
+        log.info(
+            f'merge wants {individual} from {from_individuals} (blocking: {blocking_encounters})'
+        )
+
+        if len(blocking_encounters) > 0:
+            block_ids = [str(enc.guid) for enc in blocking_encounters]
+            merge_request = None
+            try:
+                merge_request = individual.merge_request_from(*from_individuals)
+            except Exception as ex:
+                abort(
+                    blocking_encounters=block_ids,
+                    merge_request=True,
+                    message=str(ex),
+                    code=500,
+                )
+            if not merge_request:
+                abort(
+                    blocking_encounters=block_ids,
+                    merge_request=True,
+                    message='Merge failed',
+                    code=500,
+                )
+            return merge_request
+
+        merge = None
+        try:
+            merge = individual.merge_from(*from_individuals)
+        except ValueError as ex:
+            abort(
+                message=str(ex),
+                code=500,
+            )
+        if not merge:
+            abort(
+                message='Merge failed',
+                code=500,
+            )
+        return merge

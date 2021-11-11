@@ -272,16 +272,29 @@ class Individual(db.Model, FeatherModel):
         from app.modules.individuals.tasks import execute_merge_request
         from datetime import datetime, timedelta
 
-        # DEADLINE_DELTA = 14  # days
-        # deadline = datetime.utcnow() + timedelta(days=DEADLINE_DELTA)
-        deadline = datetime.utcnow() + timedelta(minutes=8)
-        args = (str(self.guid), individuals, parameters)
+        DEADLINE_DELTA = 14  # days
+        delta = timedelta(days=DEADLINE_DELTA)
+        # allow us to override deadline delta; mostly good for testing
+        if (
+            parameters
+            and 'deadline_delta_seconds' in parameters
+            and isinstance(parameters['deadline_delta_seconds'], int)
+        ):
+            delta = timedelta(seconds=parameters['deadline_delta_seconds'])
+        deadline = datetime.utcnow() + delta
+        individual_guids = [str(indiv.guid) for indiv in individuals]
+        args = (str(self.guid), individual_guids, parameters)
         async_res = execute_merge_request.apply_async(args, eta=deadline)
-        log.info(f'merge request on {self} queued up job {async_res} due {deadline}')
+        AuditLog.audit_log_object(
+            log,
+            self,
+            f'merge request from=[{individuals}] queued up job {async_res} due {deadline}',
+        )
         return {
             'individual': self,
             'deadline': deadline,
             'async': async_res,
+            'id': async_res.id,
         }
 
     @classmethod

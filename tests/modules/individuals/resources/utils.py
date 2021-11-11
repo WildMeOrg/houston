@@ -124,3 +124,23 @@ def create_individual_with_encounter(db, flask_app_client, user, request):
         lambda: delete_individual(flask_app_client, user, resp.json['result']['id'])
     )
     return resp.json['result']
+
+
+def merge_individuals(
+    flask_app_client,
+    user,
+    individual_id,
+    data_in,
+    auth_scopes=('individuals:write',),
+    expected_status_code=200,
+):
+    resp = test_utils.post_via_flask(
+        flask_app_client,
+        user,
+        scopes=auth_scopes,
+        path=f'/api/v1/individuals/{individual_id}/merge',
+        data=data_in,
+        expected_status_code=expected_status_code,
+        response_200={'merged'},
+    )
+    return resp.json

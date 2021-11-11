@@ -229,7 +229,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
 
                 annotations = req_data.get('annotations', [])
                 for annot_uuid in annotations:
-                    annot = Annotation.query.get(annot_uuid)
+                    annot = Annotation.query.filter_by(content_guid=annot_uuid).first()
                     # Must be valid, checked in metadata parsing
                     assert annot
                     log.info(
@@ -407,7 +407,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
     def send_detection_to_sage(self, model):
         job_id = uuid.uuid4()
         detection_request = self.build_detection_request(job_id, model)
-
+        log.info(f'Sending detection message to Sage for {model}')
         current_app.acm.request_passthrough_result(
             'job.detect_request', 'post', {'params': detection_request}, 'cnn/lightnet'
         )
@@ -558,7 +558,6 @@ class AssetGroupSighting(db.Model, HoustonModel):
     def start_detection(self):
         from app.modules.asset_groups.tasks import sage_detection
 
-        log.info('Starting Sage detection')
         asset_group_config = self.asset_group.config
         assert 'speciesDetectionModel' in asset_group_config
         assert self.stage == AssetGroupSightingStage.detection
@@ -566,7 +565,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
         # Temporary restriction for MVP
         assert len(asset_group_config['speciesDetectionModel']) == 1
         for config in asset_group_config['speciesDetectionModel']:
-            log.debug(f'ia pipeline running sage detection {config}')
+            log.info(f'ia pipeline starting detection {config}')
             # Call sage_detection in the background by doing .delay()
             sage_detection.delay(str(self.guid), config)
 

@@ -147,7 +147,7 @@ class AssetGroupMetadata(object):
         from app.modules.asset_groups.models import AssetGroupSightingStage
 
         for annot_uuid in annotations:
-            annot = Annotation.query.get(annot_uuid)
+            annot = Annotation.query.filter_by(content_guid=annot_uuid).first()
             if not annot:
                 raise AssetGroupMetadataError(
                     log, f'{debug} annotation:{str(annot_uuid)} not found'

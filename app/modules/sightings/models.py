@@ -349,9 +349,10 @@ class Sighting(db.Model, FeatherModel):
         matching_set_individual_uuids = []
         matching_set_annot_uuids = []
         for annot in unique_annots:
-            if annot.encounter.sighting.stage == SightingStage.processed:
-                matching_set_individual_uuids.append(annot.get_name())
-                matching_set_annot_uuids.append(to_acm_uuid(annot.guid))
+            if annot.encounter:
+                if annot.encounter.sighting.stage == SightingStage.processed:
+                    matching_set_individual_uuids.append(annot.get_name())
+                    matching_set_annot_uuids.append(to_acm_uuid(annot.guid))
 
         return matching_set_individual_uuids, matching_set_annot_uuids
 

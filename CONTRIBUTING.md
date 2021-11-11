@@ -332,3 +332,45 @@ For example if you have set up your admin user using a different email address, 
 ```
 export ADMIN_EMAIL=myname@mydomain.org
 ```
+
+### Using the python debugger (pdb)
+
+If you want to use the debugger to step through some code, you can add this to the code (new in python 3.7):
+
+```python
+breakpoint()
+```
+
+or
+
+```python
+import pdb; pdb.set_trace()
+```
+
+See the debugger commands here: https://docs.python.org/3/library/pdb.html#debugger-commands
+
+If you want to debug the running houston service, you need to change `tasks/codex/run.py`:
+
+```diff
+diff --git a/tasks/codex/run.py b/tasks/codex/run.py
+index 8f773f77..49155705 100644
+--- a/tasks/codex/run.py
++++ b/tasks/codex/run.py
+@@ -117,4 +117,4 @@ def run(
+             # )
+             use_reloader = False
+
+-        return app.run(host=host, port=port, use_reloader=use_reloader)
++        return app.run(host=host, port=port, use_reloader=use_reloader, debug=True)
+```
+
+Stop the running houston service and start it in foreground:
+
+```bash
+docker-compose stop houston
+docker-compose run --rm -p 83:5000 --name=houston houston
+```
+
+The debugger doesn't work for celery tasks but you can try to run the task in
+the foreground by removing the `.delay()` part.  Or add logs in the celery task
+which should show in `docker-compose logs -f celery_worker`.

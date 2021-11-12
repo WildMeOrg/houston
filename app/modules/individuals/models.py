@@ -234,11 +234,38 @@ class Individual(db.Model, FeatherModel):
 
     # mimics individual.merge_from(), but does not immediately executes; rather waits for approval
     #   and initiates a request including time-out etc
-    def merge_request_from(self, *source_individuals):
-        log.warning(
-            f'merge_request() on {self} from {source_individuals} -- NOT YET IMPLEMENTED'
-        )
-        return False
+    # - really likely only useful via api endpoint (based on permissions); not direct call
+    # - just a light wrapper to _merge_request_init()
+    def merge_request_from(self, source_individuals, parameters=None):
+        res = self._merge_request_init(source_individuals, parameters)
+        Individual.merge_request_notify(source_individuals + [self], res)
+        return res
+
+    @classmethod
+    def merge_request_notify(cls, individuals, request_data):
+        owners = {}
+        for indiv in individuals:
+            for enc in indiv.encounters:
+                if not enc.owner:
+                    continue
+                if enc.owner not in owners:
+                    owners[enc.owner] = {'individuals': set(), 'encounters': set()}
+                owners[enc.owner]['individuals'].add(indiv)
+                owners[enc.owner]['encounters'].add(enc)
+        log.debug(f'merge_request_notify() created owners structure {owners}')
+        for owner in owners:
+            Individual._merge_request_notify_user(
+                owner,
+                owners[owner]['individuals'],
+                owners[owner]['encounters'],
+                request_data,
+            )
+
+    @classmethod
+    def _merge_request_notify_user(cls, user, individuals, encounters, request_data):
+        # TODO real notification
+        log_msg = f'merge request notification re: {individuals}; {encounters}'
+        AuditLog.audit_log_object(log, user, log_msg)
 
     def get_blocking_encounters(self):
         blocking = []
@@ -268,6 +295,8 @@ class Individual(db.Model, FeatherModel):
                 f"merge passing membership to {socgrp} from {source_individual} [roles {data.get('roles')}]",
             )
 
+    # does the actual work of setting up celery task to execute this merge
+    # NOTE: this does not do any notification of users; see merge_request_from()
     def _merge_request_init(self, individuals, parameters=None):
         from app.modules.individuals.tasks import execute_merge_request
         from datetime import datetime, timedelta

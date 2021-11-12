@@ -242,20 +242,31 @@ def test_merge_social_groups(db, flask_app_client, researcher_1, admin_user, req
     module_unavailable('individuals', 'encounters', 'sightings'),
     reason='Individuals module disabled',
 )
-def test_merge_request_init(db, flask_app_client, researcher_1):
+def test_merge_request_init(db, flask_app_client, researcher_1, researcher_2, request):
     from app.modules.individuals.models import Individual
+    from app.modules.encounters.models import Encounter
 
-    # since this is just a simple init-only test, we can use incomplete data
+    # since this is just a simple init-only test, we can use incomplete data (not going to edm etc)
     #   we just want to see that the task starts (it should be ignored and die when triggered in celery)
     individual = Individual()
-    from_individuals = []
-    from_individuals.append(Individual())
+    enc = Encounter()
+    enc.owner = researcher_1
+    individual.add_encounter(enc)
+    request.addfinalizer(enc.delete_cascade)
+    request.addfinalizer(individual.delete)
+    individual2 = Individual()
+    enc = Encounter()
+    enc.owner = researcher_2
+    individual2.add_encounter(enc)
+    request.addfinalizer(enc.delete_cascade)
+    request.addfinalizer(individual2.delete)
     params = {
         'deadline_delta_seconds': 3,
         'test': True,
     }
-    res = individual._merge_request_init(from_individuals, params)
+    res = individual.merge_request_from([individual2], params)
     print(f'>>> {individual} queued via {res}')
     assert res
     assert 'async' in res
     assert res['async'].id
+    # TODO check that both users have notifications

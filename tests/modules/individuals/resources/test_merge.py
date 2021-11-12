@@ -97,6 +97,7 @@ def test_merge_permissions(
 
     # this tests as researcher_2, which should trigger a merge-request (owns just 1 encounter)
     # NOTE: merge_request not yet implmented, so fails accordingly (code 500)
+    #   ******************** FIXME now merge_request IS implemented ********************
     data_in = [individual2_id]
     response = individual_res_utils.merge_individuals(
         flask_app_client,

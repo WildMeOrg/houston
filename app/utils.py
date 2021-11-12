@@ -77,8 +77,10 @@ def get_celery_data(task_id):
                 if tid == task_id:
                     return None, {'revoked': True}
     # note: scheduled() does seem to empty when tasks are run, but revoked() stick around even after their eta
-    for queue, items in inspect.scheduled().items():
-        for item in items:
-            if 'request' in item and item['request'].get('id') == task_id:
-                return AsyncResult(task_id), item
+    scheduled = inspect.scheduled()
+    if scheduled:
+        for queue, items in scheduled.items():
+            for item in items:
+                if 'request' in item and item['request'].get('id') == task_id:
+                    return AsyncResult(task_id), item
     return None, None

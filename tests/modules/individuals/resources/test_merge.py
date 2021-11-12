@@ -112,6 +112,7 @@ def test_merge_permissions(
     assert response['merge_request']
     assert response['blocking_encounters'] == [str(encounter1.guid)]
     # check that the celery task is there and contains what it should
+    assert response['request_id']
     req_data = Individual.get_merge_request_data(response['request_id'])
     assert req_data
     assert req_data['request']['args'][0] == individual1_id

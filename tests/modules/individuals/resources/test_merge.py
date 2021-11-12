@@ -96,19 +96,25 @@ def test_merge_permissions(
     )
 
     # this tests as researcher_2, which should trigger a merge-request (owns just 1 encounter)
-    # NOTE: merge_request not yet implmented, so fails accordingly (code 500)
-    #   ******************** FIXME now merge_request IS implemented ********************
     data_in = [individual2_id]
     response = individual_res_utils.merge_individuals(
         flask_app_client,
         researcher_2,
         individual1_id,
         data_in,
-        expected_status_code=500,
+        expected_fields={
+            'merge_request',
+            'request_id',
+            'deadline',
+            'blocking_encounters',
+        },
     )
-    assert 'merge_request' in response
-    assert response['message'] == 'Merge failed'
+    assert response['merge_request']
     assert response['blocking_encounters'] == [str(encounter1.guid)]
+    # check that the celery task is there and contains what it should
+    req_data = Individual.get_merge_request_data(response['request_id'])
+    assert req_data
+    assert req_data['request']['args'][0] == individual1_id
 
     # a user who owns none (403 fail, no go)
     response = individual_res_utils.merge_individuals(

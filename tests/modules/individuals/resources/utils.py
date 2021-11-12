@@ -133,6 +133,7 @@ def merge_individuals(
     data_in,
     auth_scopes=('individuals:write',),
     expected_status_code=200,
+    expected_fields={'merged'},
 ):
     resp = test_utils.post_via_flask(
         flask_app_client,
@@ -141,6 +142,6 @@ def merge_individuals(
         path=f'/api/v1/individuals/{individual_id}/merge',
         data=data_in,
         expected_status_code=expected_status_code,
-        response_200={'merged'},
+        response_200=expected_fields,
     )
     return resp.json

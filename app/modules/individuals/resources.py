@@ -462,7 +462,7 @@ class IndividualByIDMerge(Resource):
             block_ids = [str(enc.guid) for enc in blocking_encounters]
             merge_request = None
             try:
-                merge_request = individual.merge_request_from(*from_individuals)
+                merge_request = individual.merge_request_from(from_individuals)
             except Exception as ex:
                 abort(
                     blocking_encounters=block_ids,
@@ -477,7 +477,12 @@ class IndividualByIDMerge(Resource):
                     message='Merge failed',
                     code=500,
                 )
-            return merge_request
+            return {
+                'blocking_encounters': block_ids,
+                'request_id': merge_request['id'],
+                'deadline': merge_request['deadline'].isoformat() + 'Z',
+                'merge_request': True,
+            }
 
         merge = None
         try:

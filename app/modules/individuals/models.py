@@ -321,12 +321,17 @@ class Individual(db.Model, FeatherModel):
         from app.modules.individuals.tasks import execute_merge_request
         from datetime import datetime, timedelta
 
+        if not individuals or not isinstance(individuals, list) or len(individuals) < 1:
+            msg = f'merge request passed invalid individuals: {individuals}'
+            AuditLog.backend_fault(log, msg, self)
+            raise ValueError(msg)
+        if not parameters:
+            parameters = {}
+        parameters['checksum'] = Individual.merge_request_hash([self] + individuals)
         delta = timedelta(days=Individual.get_merge_request_deadline_days())
         # allow us to override deadline delta; mostly good for testing
-        if (
-            parameters
-            and 'deadline_delta_seconds' in parameters
-            and isinstance(parameters['deadline_delta_seconds'], int)
+        if 'deadline_delta_seconds' in parameters and isinstance(
+            parameters['deadline_delta_seconds'], int
         ):
             delta = timedelta(seconds=parameters['deadline_delta_seconds'])
         deadline = datetime.utcnow() + delta
@@ -375,16 +380,47 @@ class Individual(db.Model, FeatherModel):
         all_individuals = []
         target_individual = Individual.query.get(target_individual_guid)
         if not target_individual:
+            log.warning(
+                f'validate_merge_request failed target individual {target_individual_guid}'
+            )
             return False
         all_individuals.append(target_individual)
         for fid in from_individual_ids:
             findiv = Individual.query.get(fid)
             if not findiv:
+                log.warning(f'validate_merge_request failed individual {fid}')
                 return False
             all_individuals.append(findiv)
         if len(all_individuals) < 2:
+            log.warning(
+                f'validate_merge_request not enough individuals: {all_individuals}'
+            )
             return False
+        hash_start = None
+        if parameters:
+            hash_start = parameters.get('checksum')
+        if not hash_start:
+            log.warning('validate_merge_request does NOT have hash_start; oops!')
+        else:
+            hash_now = Individual.merge_request_hash(all_individuals)
+            if hash_now != hash_start:
+                log.warning(
+                    f'validate_merge_request hash mismatch {hash_start} != {hash_now}'
+                )
+                return False
         return all_individuals
+
+    def _merge_request_hash(self):
+        parts = [enc._merge_request_hash() for enc in self.encounters]
+        parts.append(hash(self.guid))
+        parts.sort()
+        return hash(tuple(parts))
+
+    @classmethod
+    def merge_request_hash(cls, individuals):
+        parts = [indiv._merge_request_hash() for indiv in individuals]
+        parts.sort()
+        return hash(tuple(parts))
 
     def delete(self):
         AuditLog.delete_object(log, self)

@@ -133,12 +133,6 @@ def test_merge_social_groups(db, flask_app_client, researcher_1, admin_user, req
     from app.modules.social_groups.models import SocialGroup
     from app.modules.individuals.models import Individual
 
-    individual1_id = None
-    sighting1 = None
-    encounter1 = None
-    individual2_id = None
-    sighting2 = None
-    encounter2 = None
     sighting1, encounter1 = individual_utils.simple_sighting_encounter(
         db, flask_app_client, researcher_1
     )
@@ -292,3 +286,45 @@ def test_merge_request_init(db, flask_app_client, researcher_1, researcher_2, re
         'request_id' in notif.message_values
         and notif.message_values['request_id'] == res['async'].id
     )
+
+
+@pytest.mark.skipif(
+    module_unavailable('individuals', 'encounters', 'sightings'),
+    reason='Individuals module disabled',
+)
+def test_merge_hash(db, flask_app_client, researcher_1, researcher_2, request):
+    from app.modules.individuals.models import Individual
+    from app.modules.encounters.models import Encounter
+
+    individual1 = Individual()
+    enc1 = Encounter()
+    enc1.owner = researcher_1
+    individual1.add_encounter(enc1)
+    request.addfinalizer(enc1.delete_cascade)
+    request.addfinalizer(individual1.delete)
+    individual2 = Individual()
+    enc2 = Encounter()
+    enc2.owner = researcher_2
+    individual2.add_encounter(enc2)
+    request.addfinalizer(enc2.delete_cascade)
+    request.addfinalizer(individual2.delete)
+    hash_start = Individual.merge_request_hash([individual1, individual2])
+
+    enc1.owner = researcher_2
+    hash1 = Individual.merge_request_hash([individual1, individual2])
+    assert hash_start != hash1
+
+    enc2.individual = None
+    hash2 = Individual.merge_request_hash([individual1, individual2])
+    assert hash_start != hash2
+    assert hash1 != hash2
+
+    enc3 = Encounter()
+    enc3.owner = researcher_2
+    individual2.add_encounter(enc3)
+    request.addfinalizer(enc3.delete_cascade)
+    hash3 = Individual.merge_request_hash([individual1, individual2])
+    assert hash_start != hash3
+    assert hash1 != hash2
+    assert hash1 != hash3
+    assert hash2 != hash3

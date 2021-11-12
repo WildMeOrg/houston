@@ -248,7 +248,7 @@ class Individual(db.Model, FeatherModel):
         owners = {}
         for indiv in individuals:
             for enc in indiv.encounters:
-                if not enc.owner:
+                if not enc.owner or enc.owner == current_user:
                     continue
                 if enc.owner not in owners:
                     owners[enc.owner] = {'individuals': set(), 'encounters': set()}

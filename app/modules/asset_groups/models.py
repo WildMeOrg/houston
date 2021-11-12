@@ -229,9 +229,16 @@ class AssetGroupSighting(db.Model, HoustonModel):
 
                 annotations = req_data.get('annotations', [])
                 for annot_uuid in annotations:
-                    annot = Annotation.query.filter_by(content_guid=annot_uuid).first()
+                    annots = [
+                        annot
+                        for annot in Annotation.query.filter_by(
+                            content_guid=annot_uuid
+                        ).all()
+                        if annot.asset.asset_group_guid == self.asset_group_guid
+                    ]
                     # Must be valid, checked in metadata parsing
-                    assert annot
+                    assert len(annots) == 1
+                    annot = annots[0]
                     log.info(
                         f'Added annotation {annot_uuid} to encounter {new_encounter.guid}'
                     )
@@ -252,6 +259,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
         sighting.ia_pipeline()
 
         num_encounters = len(self.config['encounters'])
+        breakpoint()
         AuditLog.user_create_object(
             log, sighting, f'with {num_encounters} encounter(s)', duration=timer.elapsed()
         )

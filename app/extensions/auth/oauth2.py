@@ -155,7 +155,7 @@ class OAuth2Provider(provider.OAuth2Provider):
 
                 access_token = None
 
-                log.debug('Using locations = %r' % (locations,))
+                # log.debug('Using locations = %r' % (locations,))
 
                 if 'headers' not in locations:
                     # Invalidate authorization if developer specifically
@@ -164,17 +164,17 @@ class OAuth2Provider(provider.OAuth2Provider):
 
                 if access_token is None and 'headers' in locations:
                     if 'Authorization' in request.headers:
-                        log.debug('Found HEADER access_token')
+                        # log.debug('Found HEADER access_token')
                         access_token = request.headers['Authorization']
 
                 if access_token is None and 'session' in locations:
                     if 'access_token' in session:
-                        log.debug('Found SESSION access_token')
+                        # log.debug('Found SESSION access_token')
                         access_token = session['access_token']
 
                 if access_token is None and 'form' in locations:
                     if 'access_token' in request.form:
-                        log.debug('Found FORM access_token')
+                        # log.debug('Found FORM access_token')
                         access_token = request.form['access_token']
 
                     # if 'username' in request.form and 'password' in request.form:

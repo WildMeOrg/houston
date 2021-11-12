@@ -21,6 +21,7 @@ def test_notification_preferences(session, login, logout, codex_url):
         'collaboration_request': {'restAPI': True, 'email': False},
         'collaboration_edit_request': {'restAPI': True, 'email': False},
         'individual_merge_request': {'restAPI': True, 'email': False},
+        'individual_merge_complete': {'restAPI': True, 'email': False},
     }
     user_guid = response.json()['guid']
 

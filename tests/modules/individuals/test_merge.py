@@ -245,6 +245,7 @@ def test_merge_social_groups(db, flask_app_client, researcher_1, admin_user, req
 def test_merge_request_init(db, flask_app_client, researcher_1, researcher_2, request):
     from app.modules.individuals.models import Individual
     from app.modules.encounters.models import Encounter
+    from app.modules.notifications.models import Notification, NotificationType
 
     # since this is just a simple init-only test, we can use incomplete data (not going to edm etc)
     #   we just want to see that the task starts (it should be ignored and die when triggered in celery)
@@ -269,4 +270,23 @@ def test_merge_request_init(db, flask_app_client, researcher_1, researcher_2, re
     assert res
     assert 'async' in res
     assert res['async'].id
-    # TODO check that both users have notifications
+
+    notif = Notification.query.filter_by(
+        recipient=researcher_1,
+        message_type=NotificationType.merge_request,
+    ).first()
+    assert notif
+    request.addfinalizer(individual.delete)
+    assert (
+        'request_id' in notif.message_values
+        and notif.message_values['request_id'] == res['async'].id
+    )
+    notif = Notification.query.filter_by(
+        recipient=researcher_2,
+        message_type=NotificationType.merge_request,
+    ).first()
+    assert notif
+    assert (
+        'request_id' in notif.message_values
+        and notif.message_values['request_id'] == res['async'].id
+    )

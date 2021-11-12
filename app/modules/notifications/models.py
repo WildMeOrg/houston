@@ -21,6 +21,7 @@ class NotificationType(str, enum.Enum):
     collab_request = 'collaboration_request'
     collab_edit = 'collaboration_edit_request'
     merge_request = 'individual_merge_request'
+    merge_complete = 'individual_merge_complete'
 
 
 # Can send messages out on multiple channels
@@ -50,6 +51,10 @@ NOTIFICATION_DEFAULTS = {
         NotificationChannel.rest: True,
         NotificationChannel.email: False,
     },
+    NotificationType.merge_complete: {
+        NotificationChannel.rest: True,
+        NotificationChannel.email: False,
+    },
 }
 
 NOTIFICATION_CONFIG = {
@@ -66,6 +71,15 @@ NOTIFICATION_CONFIG = {
         'email_template_name': 'collaboration_edit_request',  # Not yet written
         'email_digest_content_template': 'collaboration_edit_request_digest.jinja2',
         'mandatory_fields': {'collaboration_guid'},
+    },
+    NotificationType.merge_request: {
+        'email_template_name': 'individual_merge_request',
+        'email_digest_content_template': 'individual_merge_request_digest.jinja2',
+        'mandatory_fields': {
+            'request_id',
+            'individual_list',
+            'encounter_list',
+        },
     },
     NotificationType.raw: {
         'email_template_name': 'raw',
@@ -84,6 +98,16 @@ class NotificationBuilder(object):
 
     def set_collaboration(self, collab):
         self.data['collaboration_guid'] = collab.guid
+
+    def set_merge_request(self, individuals, encounters, request_data):
+        self.data['individual_list'] = []
+        for indiv in individuals:
+            self.data['individual_list'].append(indiv.guid)
+        self.data['encounter_list'] = []
+        for enc in encounters:
+            self.data['encounter_list'].append(enc.guid)
+        self.data['request_id'] = request_data['id']
+        # TODO other goodies in request_data
 
 
 class Notification(db.Model, HoustonModel):

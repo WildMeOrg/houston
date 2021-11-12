@@ -243,6 +243,8 @@ class Individual(db.Model, FeatherModel):
 
     @classmethod
     def merge_request_notify(cls, individuals, request_data):
+        from flask_login import current_user
+
         owners = {}
         for indiv in individuals:
             for enc in indiv.encounters:
@@ -255,6 +257,7 @@ class Individual(db.Model, FeatherModel):
         log.debug(f'merge_request_notify() created owners structure {owners}')
         for owner in owners:
             Individual._merge_request_notify_user(
+                current_user,
                 owner,
                 owners[owner]['individuals'],
                 owners[owner]['encounters'],
@@ -262,9 +265,21 @@ class Individual(db.Model, FeatherModel):
             )
 
     @classmethod
-    def _merge_request_notify_user(cls, user, individuals, encounters, request_data):
-        # TODO real notification
-        log_msg = f'merge request notification re: {individuals}; {encounters}'
+    def _merge_request_notify_user(
+        cls, sender, user, individuals, encounters, request_data
+    ):
+        from app.modules.notifications.models import (
+            Notification,
+            NotificationType,
+            NotificationBuilder,
+        )
+
+        builder = NotificationBuilder(sender)
+        builder.set_merge_request(individuals, encounters, request_data)
+        notification = Notification.create(NotificationType.merge_request, user, builder)
+        log_msg = (
+            f'merge request notification {notification} from {sender} re: {individuals}'
+        )
         AuditLog.audit_log_object(log, user, log_msg)
 
     def get_blocking_encounters(self):

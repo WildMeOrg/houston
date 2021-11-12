@@ -11,6 +11,7 @@ def test_notification_preferences(session, login, logout, codex_url):
     user_guid = create_new_user(session, codex_url, new_email, full_name='My name')
     logout(session)
 
+    # GET user
     login(session, email=new_email)
     response = session.get(codex_url('/api/v1/users/me'))
     assert response.status_code == 200
@@ -23,6 +24,7 @@ def test_notification_preferences(session, login, logout, codex_url):
     }
     user_guid = response.json()['guid']
 
+    # PATCH user notification preferences
     response = session.patch(
         codex_url(f'/api/v1/users/{user_guid}'),
         json=[
@@ -65,3 +67,7 @@ def test_notification_preferences(session, login, logout, codex_url):
             'email': False,
         },
     }
+
+    # DELETE user
+    response = session.delete(codex_url(f'/api/v1/users/{user_guid}'))
+    assert response.status_code == 204

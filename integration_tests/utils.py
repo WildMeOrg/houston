@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import base64
+import time
 import uuid
 
 
@@ -49,3 +50,27 @@ def create_new_user(session, codex_url, email, password='password', **kwargs):
     assert response.status_code == 200
     assert response.json()['email'] == email
     return response.json()['guid']
+
+
+def wait_for(
+    session_method,
+    url,
+    response_checker,
+    status_code=200,
+    timeout=4 * 60,
+    *args,
+    **kwargs,
+):
+    try:
+        while timeout >= 0:
+            response = session_method(url, *args, **kwargs)
+            assert response.status_code == status_code
+            if response_checker(response):
+                return response
+            time.sleep(15)
+            timeout -= 15
+        if not response_checker(response):
+            assert False, f'Timed out:\n{response.json()}'
+    except KeyboardInterrupt:
+        print(f'The last response from {url}:\n{response.json()}')
+        raise

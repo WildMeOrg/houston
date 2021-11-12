@@ -1,6 +1,4 @@
 # -*- coding: utf-8 -*-
-import time
-
 from . import utils
 
 
@@ -63,24 +61,10 @@ def test_asset_group_sightings(session, login, codex_url, test_root):
     assert set(a['filename'] for a in assets) == {'zebra.jpg'}
 
     # Wait for detection
-    timeout = 4 * 60  # timeout after 4 minutes
     ags_url = codex_url(f'/api/v1/asset_groups/sighting/{ags_guids[0]}')
-
-    try:
-        while timeout >= 0:
-            response = session.get(ags_url)
-            assert response.status_code == 200
-            if response.json()['stage'] != 'detection':
-                break
-            time.sleep(15)
-            timeout -= 15
-        if response.json()['stage'] != 'curation':
-            assert (
-                False
-            ), f'{timeout <= 0 and "Timed out: " or ""}stage={response.json()["stage"]}\n{response.json()}'
-    except KeyboardInterrupt:
-        print(f'The last response from {ags_url}:\n{response.json()}')
-        raise
+    utils.wait_for(
+        session.get, ags_url, lambda response: response.json()['stage'] == 'curation'
+    )
 
     # GET asset group sighting as sighting
     response = session.get(
@@ -160,3 +144,11 @@ def test_asset_group_sightings(session, login, codex_url, test_root):
     # GET sighting
     response = session.get(codex_url(f'/api/v1/sightings/{sighting_guid}'))
     assert response.status_code == 200
+
+    # DELETE asset group
+    response = session.delete(codex_url(f'/api/v1/asset_groups/{asset_group_guid}'))
+    assert response.status_code == 204
+
+    # DELETE sighting
+    response = session.delete(codex_url(f'/api/v1/sightings/{sighting_guid}'))
+    assert response.status_code == 204

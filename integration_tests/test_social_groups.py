@@ -36,6 +36,7 @@ def test_social_groups(session, login, codex_url):
     }
     response = session.post(codex_url('/api/v1/sightings/'), json=data)
     assert response.status_code == 200
+    sighting_id = response.json()['result']['id']
     result = response.json()['result']
     encounter_ids = [e['id'] for e in result['encounters']]
     encounter_versions = [e['version'] for e in result['encounters']]
@@ -197,3 +198,16 @@ def test_social_groups(session, login, codex_url):
         },
         'guid': social_group_id,
     }
+
+    # DELETE social group
+    response = session.delete(codex_url(f'/api/v1/social-groups/{social_group_id}'))
+    assert response.status_code == 204
+
+    # DELETE individuals
+    for individual_id in individual_ids:
+        response = session.delete(codex_url(f'/api/v1/individuals/{individual_id}'))
+        assert response.status_code == 204
+
+    # DELETE sighting
+    response = session.delete(codex_url(f'/api/v1/sightings/{sighting_id}'))
+    assert response.status_code == 204

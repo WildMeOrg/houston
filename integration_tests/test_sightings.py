@@ -250,3 +250,7 @@ def test_sightings(session, login, codex_url, test_root, admin_name):
         # 6c152f7e-4613-4acc-b44f-2fe278bee9dd
         'transactionId': response.json()['transactionId'],
     }
+
+    # DELETE sighting
+    response = session.delete(codex_url(f'/api/v1/sightings/{sighting_id}'))
+    assert response.status_code == 204

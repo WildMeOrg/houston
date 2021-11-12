@@ -543,9 +543,8 @@ class IndividualMergeRequestCreate(Resource):
         with db.session.begin():
             db.session.add(individual)
             db.session.add(findiv)
-        from_individuals = [str(findiv.guid)]
         params = {'fubar': True}
-        res = individual._merge_request_init(from_individuals, parameters=params)
+        res = individual.merge_request_from([findiv], params)
         log.warning(f'TEST CREATE {individual}, {res}')
         return {'id': res['async'].id, 'job': str(res), 'individual': str(individual)}
 
@@ -559,6 +558,7 @@ class IndividualMergeRequestByTaskId(Resource):
 
     def get(self, task_id, vote):
         from flask_login import current_user
+        import datetime
 
         if not current_user or current_user.is_anonymous:
             abort(code=HTTPStatus.UNAUTHORIZED)
@@ -588,8 +588,17 @@ class IndividualMergeRequestByTaskId(Resource):
             abort(code=HTTPStatus.FORBIDDEN)
 
         # if we get here, we have access to this merge request
-        task_data['_individuals'] = str(all_individuals)
         if not vote:
+            task_data['_individuals'] = str(all_individuals)
+            deadline = datetime.datetime.fromisoformat(task_data['eta'])
+            diff = deadline - datetime.datetime.now().astimezone(deadline.tzinfo)
+            task_data['_secondsToDeadline'] = diff.total_seconds()
+            task_data['_serverTime'] = (
+                datetime.datetime.now().astimezone(deadline.tzinfo).isoformat()
+            )
+            task_data[
+                '_deadlinePolicyDays'
+            ] = Individual.get_merge_request_deadline_days()
             return task_data
 
         if vote not in ('allow', 'block'):

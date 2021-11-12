@@ -310,14 +310,18 @@ class Individual(db.Model, FeatherModel):
                 f"merge passing membership to {socgrp} from {source_individual} [roles {data.get('roles')}]",
             )
 
+    # this might end up being a SiteSetting etc
+    @classmethod
+    def get_merge_request_deadline_days(cls):
+        return 14
+
     # does the actual work of setting up celery task to execute this merge
     # NOTE: this does not do any notification of users; see merge_request_from()
     def _merge_request_init(self, individuals, parameters=None):
         from app.modules.individuals.tasks import execute_merge_request
         from datetime import datetime, timedelta
 
-        DEADLINE_DELTA = 14  # days
-        delta = timedelta(days=DEADLINE_DELTA)
+        delta = timedelta(days=Individual.get_merge_request_deadline_days())
         # allow us to override deadline delta; mostly good for testing
         if (
             parameters

@@ -81,6 +81,15 @@ NOTIFICATION_CONFIG = {
             'encounter_list',
         },
     },
+    NotificationType.merge_complete: {
+        'email_template_name': 'individual_merge_complete',
+        'email_digest_content_template': 'individual_merge_complete_digest.jinja2',
+        'mandatory_fields': {
+            'request_id',
+            'individual_list',
+            'encounter_list',
+        },
+    },
     NotificationType.raw: {
         'email_template_name': 'raw',
         'email_digest_content_template': 'raw_digest.jinja2',

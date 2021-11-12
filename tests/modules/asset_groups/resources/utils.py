@@ -33,6 +33,13 @@ ANNOTATION_UUIDS = [
     '0c6f3a16-c3f0-4f8d-a47d-951e49b0dacb',
 ]
 
+DERIVED_MD5SUM_VALUES = {
+    'phoenix.jpg': 'da06dc2f5ad273b058217d26f5aa1858',
+    'coelacanth.png': 'b6ba153ff160ad4d21ab7b42fbe51892',
+    'zebra.jpg': '9c2e4476488534c05b7c557a0e663ccd',
+    'fluke.jpg': '0b546f813ec9631ce5c9b1dd579c623b',
+}
+
 
 class AssetGroupCreationData(object):
     def __init__(self, transaction_id, populate_default=True):
@@ -228,6 +235,19 @@ def get_bulk_creation_data(test_root, request, species_detection_model=None):
     return data
 
 
+def get_bulk_creation_data_one_sighting(transaction_id, test_filename):
+    data = AssetGroupCreationData(transaction_id)
+    data.add_filename(0, test_filename)
+    data.add_encounter(0)
+    data.add_filename(0, 'fluke.jpg')
+    data.add_encounter(0)
+    data.add_filename(0, 'coelacanth.png')
+    data.add_encounter(0)
+    data.add_filename(0, 'phoenix.jpg')
+    data.set_field('uploadType', 'bulk')
+    return data
+
+
 # Create a default valid Sage detection response (to allow for the test to corrupt it accordingly)
 def build_sage_detection_response(asset_group_sighting_guid, job_uuid):
     from app.modules.asset_groups.models import AssetGroupSighting
@@ -293,6 +313,12 @@ def build_sage_detection_response(asset_group_sighting_guid, job_uuid):
     # empty [])
     sage_resp['json_result']['results_list'] += [[] for _ in range(len(asset_ids) - 1)]
     return sage_resp
+
+
+def validate_file_data(data, filename):
+    import hashlib
+
+    assert hashlib.md5(data).hexdigest() == DERIVED_MD5SUM_VALUES[filename]
 
 
 def send_sage_detection_response(
@@ -506,7 +532,11 @@ def create_asset_group_with_sighting_and_individual(
     # Extract the encounters to use to create an individual
     encounters = sightings[0].encounters
     assert len(encounters) >= 1
-    individual_data['encounters'] = [{'id': str(encounters[0].guid)}]
+    if individual_data:
+        individual_data['encounters'] = [{'id': str(encounters[0].guid)}]
+    else:
+        individual_data = {'encounters': [{'id': str(encounters[0].guid)}]}
+
     individual_response = individual_utils.create_individual(
         flask_app_client, user, 200, individual_data
     )

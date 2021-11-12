@@ -8,11 +8,10 @@ RESTful API Individuals resources
 import logging
 import json
 from flask_restx_patched import Resource
-from app.extensions.api import abort
 from flask_restx._http import HTTPStatus
-from flask import request, current_app
+from flask import request, current_app, send_file
 from app.extensions import db
-from app.extensions.api import Namespace
+from app.extensions.api import Namespace, abort
 from app.extensions.api.parameters import PaginationParameters
 from app.modules.users import permissions
 from app.modules.users.permissions.types import AccessOperation
@@ -482,3 +481,37 @@ class IndividualByIDMerge(Resource):
                 code=500,
             )
         return merge
+
+
+@api.route('/<uuid:individual_guid>/featured_image', doc=False)
+@api.login_required(oauth_scopes=['individuals:read'])
+@api.response(
+    code=HTTPStatus.NOT_FOUND,
+    description='Individual not found.',
+)
+@api.resolve_object_by_model(Individual, 'individual')
+class IndividualImageByID(Resource):
+    @api.permission_required(
+        permissions.ObjectAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'obj': kwargs['individual'],
+            'action': AccessOperation.READ,
+        },
+    )
+    def get(self, individual):
+        from io import StringIO
+
+        asset_guid = individual.get_featured_asset_guid()
+        if not asset_guid:
+            return send_file(StringIO(), attachment_filename='individual_image.jpg')
+        else:
+            from app.modules.assets.models import Asset
+
+            asset = Asset.query.get(asset_guid)
+            if not asset:
+                return send_file(StringIO(), attachment_filename='individual_image.jpg')
+            try:
+                image_path = asset.get_or_make_master_format_path()
+            except HoustonException as ex:
+                abort(ex.status_code, ex.message)
+            return send_file(image_path, attachment_filename='individual_image.jpg')

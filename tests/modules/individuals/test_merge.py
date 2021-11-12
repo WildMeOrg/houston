@@ -249,6 +249,7 @@ def test_merge_request_init(db, flask_app_client, researcher_1, researcher_2, re
 
     # since this is just a simple init-only test, we can use incomplete data (not going to edm etc)
     #   we just want to see that the task starts (it should be ignored and die when triggered in celery)
+    Notification.query.delete()
     individual = Individual()
     enc = Encounter()
     enc.owner = researcher_1
@@ -271,6 +272,7 @@ def test_merge_request_init(db, flask_app_client, researcher_1, researcher_2, re
     assert 'async' in res
     assert res['async'].id
 
+    request.addfinalizer(Notification.query.delete)
     notif = Notification.query.filter_by(
         recipient=researcher_1,
         message_type=NotificationType.merge_request,

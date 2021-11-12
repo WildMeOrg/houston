@@ -259,6 +259,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
         sighting.ia_pipeline()
 
         num_encounters = len(self.config['encounters'])
+        breakpoint()
         AuditLog.user_create_object(
             log, sighting, f'with {num_encounters} encounter(s)', duration=timer.elapsed()
         )

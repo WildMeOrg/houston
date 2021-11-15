@@ -1,4 +1,7 @@
 # -*- coding: utf-8 -*-
+import datetime
+import random
+
 from . import utils
 
 
@@ -6,185 +9,170 @@ def test_sightings(session, login, codex_url, test_root, admin_name):
     login(session)
 
     response = session.get(codex_url('/api/v1/users/me'))
+    my_name = response.json()['full_name']
     my_guid = response.json()['guid']
 
-    # Create sighting
+    # Add an example species and custom fields in edm
+    response = utils.add_site_species(
+        session,
+        codex_url,
+        {'commonNames': ['Example'], 'scientificName': 'Exempli gratia'},
+    )
+    tx_id = response.json()['response']['value'][-1]['id']
+    occ_test_cfd = utils.create_custom_field(
+        session, codex_url, 'Occurrence', 'occ_test_cfd'
+    )
+    enc_test_cfd = utils.create_custom_field(
+        session, codex_url, 'Encounter', 'enc_test_cfd'
+    )
+
+    # Create sighting by committing asset group sighting
     transaction_id = utils.upload_to_tus(
         session,
         codex_url,
-        [test_root / 'zebra.jpg', test_root / 'fluke.jpg'],
+        [test_root / 'zebra.jpg'],
     )
+    # 2021-11-09T11:40:53.802Z
+    encounter_timestamp = datetime.datetime.now().isoformat()[:-3] + 'Z'
+    bearing = random.uniform(0, 180)
+    distance = random.uniform(1, 100)
     response = session.post(
-        codex_url('/api/v1/sightings/'),
+        codex_url('/api/v1/asset_groups/'),
         json={
-            'locationId': 'PYTEST',
-            'startTime': '2000-01-01T01:01:01Z',
-            'encounters': [{}, {}],
-            'assetReferences': [
+            'bearing': bearing,
+            'customFields': {occ_test_cfd: 'OCC_TEST_CFD'},
+            'description': 'This is a test asset group, please ignore',
+            'decimalLatitude': -39.063228,
+            'decimalLongitude': 21.832598,
+            'distance': distance,
+            'sightings': [
                 {
-                    'transactionId': transaction_id,
-                    'path': 'zebra.jpg',
-                },
-                {
-                    'transactionId': transaction_id,
-                    'path': 'fluke.jpg',
+                    'assetReferences': ['zebra.jpg'],
+                    'encounters': [
+                        {
+                            'country': 'TEST',
+                            'customFields': {
+                                enc_test_cfd: 'CFD_TEST_VALUE',
+                            },
+                            'decimalLatitude': 63.142385,
+                            'decimalLongitude': -21.596914,
+                            'locationId': 'enc-test',
+                            'sex': 'male',
+                            'taxonomy': {'id': tx_id},
+                            'time': encounter_timestamp,
+                        },
+                    ],
+                    'locationId': 'PYTEST',
+                    'startTime': '2000-01-01T01:01:01Z',
                 },
             ],
+            'speciesDetectionModel': ['african_terrestrial'],
+            'taxonomies': [{'id': tx_id}],
+            'transactionId': transaction_id,
+            'uploadType': 'form',
         },
     )
     assert response.status_code == 200
-    sighting_id = response.json()['result']['id']
-    sighting_version = response.json()['result']['version']
-    asset_group_guid = response.json()['result']['assets'][0]['asset_group']['guid']
-    commit = response.json()['result']['assets'][0]['asset_group']['commit']
-    assets = response.json()['result']['assets']
-    encounters = response.json()['result']['encounters']
-    assert response.json() == {
-        'success': True,
-        'result': {
-            'assets': [
-                {
-                    'annotations': [],
-                    'asset_group': {
-                        # b85e93fbc513b37e07225e3fa4566b8d259e9f68
-                        'commit': commit,
-                        'description': f'Sighting.post {sighting_id}',
-                        'guid': asset_group_guid,
-                        'major_type': 'filesystem',
-                    },
-                    # 2021-11-08T11:30:40.106173+00:00
-                    'created': assets[0]['created'],
-                    # {'height': 667, 'width': 1000}
-                    'dimensions': assets[0]['dimensions'],
-                    'filename': assets[0]['filename'],  # fluke.jpg
-                    'guid': assets[0]['guid'],
-                    'src': f'/api/v1/assets/src/{assets[0]["guid"]}',
-                    # 2021-11-08T11:30:40.106173+00:00
-                    'updated': assets[0]['updated'],
-                },
-                {
-                    'annotations': [],
-                    'asset_group': {
-                        'commit': commit,
-                        'description': f'Sighting.post {sighting_id}',
-                        'guid': asset_group_guid,
-                        'major_type': 'filesystem',
-                    },
-                    # 2021-11-08T11:30:40.106173+00:00
-                    'created': assets[1]['created'],
-                    # {'height': 664, 'width': 1000}
-                    'dimensions': assets[1]['dimensions'],  # zebra.jpg
-                    'filename': assets[1]['filename'],
-                    'guid': assets[1]['guid'],
-                    'src': f'/api/v1/assets/src/{assets[1]["guid"]}',
-                    # 2021-11-08T11:30:40.106173+00:00
-                    'updated': assets[1]['updated'],
-                },
-            ],
-            'encounters': [
-                {
-                    'id': encounters[0]['id'],  # 12816b99-d934-4e64-aa68-ace3ad83bc62
-                    'version': encounters[0]['version'],  # 1636148722833
-                },
-                {
-                    'id': encounters[1]['id'],
-                    'version': encounters[1]['version'],
-                },
-            ],
-            'id': sighting_id,
-            'version': sighting_version,
-        },
-    }
-    assert set(a['filename'] for a in assets) == {'fluke.jpg', 'zebra.jpg'}
+    asset_group_guid = response.json()['guid']
+    ags_guids = [s['guid'] for s in response.json()['asset_group_sightings']]
+
+    # Wait for detection
+    ags_url = codex_url(f'/api/v1/asset_groups/sighting/{ags_guids[0]}')
+    utils.wait_for(
+        session.get, ags_url, lambda response: response.json()['stage'] == 'curation'
+    )
+
+    # Commit asset group sighting which returns a sighting
+    response = session.post(
+        codex_url(f'/api/v1/asset_groups/sighting/{ags_guids[0]}/commit')
+    )
+    assert response.status_code == 200
+    sighting_id = response.json()['guid']
+    assert response.json() == {'guid': sighting_id}
 
     # GET sighting
     response = session.get(codex_url(f'/api/v1/sightings/{sighting_id}'))
-    detailed_encounters = response.json()['encounters']
     assert response.status_code == 200
+    sighting_version = response.json()['version']
+    assets = response.json()['assets']
+    annots_0 = response.json()['assets'][0]['annotations']
+    encounters = response.json()['encounters']
     assert response.json() == {
         'assets': [
             {
-                'annotations': [],
-                # 2021-11-08T11:30:40.106173+00:00
+                'annotations': [
+                    {
+                        # 2021-11-09T11:15:09.910872+00:00
+                        'created': annots_0[0]['created'],
+                        'keywords': [],
+                        'ia_class': 'zebra_plains',
+                        'asset_guid': assets[0]['guid'],
+                        'viewpoint': 'unknown',
+                        'updated': annots_0[0]['updated'],
+                        'encounter_guid': None,
+                        'bounds': {
+                            'rect': [178, 72, 604, 534],
+                            'theta': 0.0,
+                        },
+                        'guid': annots_0[0]['guid'],
+                    },
+                ],
+                # 2021-11-09T11:15:08.923895+00:00
                 'created': assets[0]['created'],
-                # {'height': 667, 'width': 1000}
-                'dimensions': assets[0]['dimensions'],
-                'filename': assets[0]['filename'],  # fluke.jpg
+                'dimensions': {'width': 1000, 'height': 664},
+                'filename': 'zebra.jpg',
                 'guid': assets[0]['guid'],
                 'src': f'/api/v1/assets/src/{assets[0]["guid"]}',
-                # 2021-11-08T11:30:40.106173+00:00
                 'updated': assets[0]['updated'],
             },
-            {
-                'annotations': [],
-                # 2021-11-08T11:30:40.106173+00:00
-                'created': assets[1]['created'],
-                # {'height': 664, 'width': 1000}
-                'dimensions': assets[1]['dimensions'],
-                'filename': assets[1]['filename'],  # zebra.jpg
-                'guid': assets[1]['guid'],
-                'src': f'/api/v1/assets/src/{assets[1]["guid"]}',
-                # 2021-11-08T11:30:40.106173+00:00
-                'updated': assets[1]['updated'],
-            },
         ],
+        # FIXME missing 'bearing': bearing,
         'comments': 'None',
-        # 2021-11-05T21:50:19.963476+00:00
-        'createdEDM': response.json()['createdEDM'],
-        # 2021-11-05T21:50:19.963497+00:00
+        'createdEDM': response.json()['createdEDM'],  # 2021-11-09 11:15:24
+        # 2021-11-09T11:15:24.316645+00:00
         'createdHouston': response.json()['createdHouston'],
+        # FIXME should be 'customFields': {occ_test_cfd: 'OCC_TEST_CFD'},
         'customFields': {},
+        'decimalLatitude': 63.142385,
+        'decimalLongitude': -21.596914,
+        # FIXME missing 'distance': distance,
         'encounters': [
             {
-                # 2021-11-05T21:50:19.973753+00:00
-                'createdHouston': detailed_encounters[0]['createdHouston'],
-                'customFields': {},
-                'guid': encounters[0]['id'],
+                'country': 'TEST',
+                # 2021-11-09T11:15:24.343018+00:00
+                'createdHouston': encounters[0]['createdHouston'],
+                'customFields': {
+                    enc_test_cfd: 'CFD_TEST_VALUE',
+                },
+                'decimalLatitude': '63.142385',
+                'decimalLongitude': '-21.596914',
+                'guid': encounters[0]['guid'],
                 'hasEdit': True,
                 'hasView': True,
-                'id': encounters[0]['id'],
+                'id': encounters[0]['guid'],
                 'individual': {},
+                'locationId': 'enc-test',
                 'owner': {
+                    'full_name': my_name,
                     'guid': my_guid,
-                    'full_name': admin_name,
                     'profile_fileupload': None,
                 },
-                'submitter': {
-                    'guid': my_guid,
-                    'full_name': admin_name,
-                    'profile_fileupload': None,
+                'sex': 'male',
+                'submitter': None,
+                'taxonomy': {
+                    'commonNames': ['Example'],
+                    'scientificName': 'Exempli gratia',
+                    'id': tx_id,
                 },
-                'timeValues': [None, None, None, 0, 0],
-                'updatedHouston': detailed_encounters[0]['updatedHouston'],
-                'version': encounters[0]['version'],
-            },
-            {
-                'createdHouston': detailed_encounters[1]['createdHouston'],
-                'customFields': {},
-                'guid': encounters[1]['id'],
-                'hasEdit': True,
-                'hasView': True,
-                'id': encounters[1]['id'],
-                'individual': {},
-                'owner': {
-                    'guid': my_guid,
-                    'full_name': admin_name,
-                    'profile_fileupload': None,
-                },
-                'submitter': {
-                    'guid': my_guid,
-                    'full_name': admin_name,
-                    'profile_fileupload': None,
-                },
-                'timeValues': [None, None, None, 0, 0],
-                'updatedHouston': detailed_encounters[1]['updatedHouston'],
-                'version': encounters[1]['version'],
+                'time': encounter_timestamp,
+                'updatedHouston': encounters[0]['updatedHouston'],
+                'version': encounters[0]['version'],  # 1636456524261
             },
         ],
         'encounterCounts': {
-            'individuals': 0,
             'lifeStage': {},
-            'sex': {},
+            'sex': {'male': 1},
+            'individuals': 0,
         },
         'featuredAssetGuid': assets[0]['guid'],
         'guid': sighting_id,
@@ -193,8 +181,9 @@ def test_sightings(session, login, codex_url, test_root, admin_name):
         'id': sighting_id,
         'locationId': 'PYTEST',
         'startTime': '2000-01-01T01:01:01Z',
+        # FIXME missing taxonomies: [{'id': tx_id}],
         'updatedHouston': response.json()['updatedHouston'],
-        'version': sighting_version,
+        'version': response.json()['version'],  # 1636456524261
     }
 
     # PATCH sighting
@@ -225,10 +214,6 @@ def test_sightings(session, login, codex_url, test_root, admin_name):
                     'id': encounters[0]['id'],
                     'version': encounters[0]['version'],
                 },
-                {
-                    'id': encounters[1]['id'],
-                    'version': encounters[1]['version'],
-                },
             ],
             'id': sighting_id,
             'startTime': '2000-01-01T01:01:01Z',
@@ -250,6 +235,10 @@ def test_sightings(session, login, codex_url, test_root, admin_name):
         # 6c152f7e-4613-4acc-b44f-2fe278bee9dd
         'transactionId': response.json()['transactionId'],
     }
+
+    # DELETE asset group
+    response = session.delete(codex_url(f'/api/v1/asset_groups/{asset_group_guid}'))
+    assert response.status_code == 204
 
     # DELETE sighting
     response = session.delete(codex_url(f'/api/v1/sightings/{sighting_id}'))

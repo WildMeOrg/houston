@@ -338,11 +338,6 @@ class Individual(db.Model, FeatherModel):
         individual_guids = [str(indiv.guid) for indiv in individuals]
         args = (str(self.guid), individual_guids, parameters)
         async_res = execute_merge_request.apply_async(args, eta=deadline)
-        log.warning(f'>>>> as_list={async_res.as_list()}')
-        log.warning(f'>>>> failed={async_res.failed()}')
-        log.warning(f'>>>> ready={async_res.ready()}')
-        log.warning(f'>>>> state={async_res.state}')
-        log.warning(f'>>>> backend={async_res.backend}')
         AuditLog.audit_log_object(
             log,
             self,

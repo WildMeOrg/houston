@@ -6,6 +6,9 @@ from tests.modules.individuals import utils as individual_utils
 from app.modules.individuals.models import Individual
 import pytest
 from tests import utils as test_utils
+import logging
+
+log = logging.getLogger(__name__)
 
 
 @pytest.mark.skipif(
@@ -113,9 +116,12 @@ def test_merge_permissions(
     assert response['blocking_encounters'] == [str(encounter1.guid)]
     # check that the celery task is there and contains what it should
     assert response['request_id']
-    req_data = Individual.get_merge_request_data(response['request_id'])
-    assert req_data
-    assert req_data['request']['args'][0] == individual1_id
+    try:
+        req_data = Individual.get_merge_request_data(response['request_id'])
+        assert req_data
+        assert req_data['request']['args'][0] == individual1_id
+    except NotImplementedError:
+        log.info('Merge-request test skipped; no celery workers available')
 
     # a user who owns none (403 fail, no go)
     response = individual_res_utils.merge_individuals(

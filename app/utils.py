@@ -67,14 +67,13 @@ def site_email_hostname():
 def get_celery_data(task_id):
     from flask import current_app
     from celery.result import AsyncResult
-    import logging
-
-    log = logging.getLogger(__name__)
 
     inspect = current_app.celery.control.inspect()
+    workers = inspect.ping()
+    if not workers:
+        raise NotImplementedError('there are no celery workers to get data from')
     # first we check to see if task is marked as revoked; and ignore if so
     revoked = inspect.revoked()
-    log.warning(f'>>> revoked {revoked}')
     if revoked:
         for tids in revoked.values():
             for tid in tids:
@@ -82,7 +81,6 @@ def get_celery_data(task_id):
                     return None, {'revoked': True}
     # note: scheduled() does seem to empty when tasks are run, but revoked() stick around even after their eta
     scheduled = inspect.scheduled()
-    log.warning(f'>>> scheduled {scheduled}')
     if scheduled:
         for queue, items in scheduled.items():
             for item in items:

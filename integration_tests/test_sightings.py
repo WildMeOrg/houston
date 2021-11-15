@@ -102,19 +102,19 @@ def test_sightings(session, login, codex_url, test_root, admin_name):
             {
                 'annotations': [
                     {
-                        # 2021-11-09T11:15:09.910872+00:00
-                        'created': annots_0[0]['created'],
-                        'keywords': [],
-                        'ia_class': 'zebra_plains',
                         'asset_guid': assets[0]['guid'],
-                        'viewpoint': 'unknown',
-                        'updated': annots_0[0]['updated'],
-                        'encounter_guid': None,
                         'bounds': {
                             'rect': [178, 72, 604, 534],
                             'theta': 0.0,
                         },
+                        # 2021-11-09T11:15:09.910872+00:00
+                        'created': annots_0[0]['created'],
+                        'encounter_guid': None,
                         'guid': annots_0[0]['guid'],
+                        'ia_class': 'zebra_plains',
+                        'keywords': [],
+                        'viewpoint': 'unknown',
+                        'updated': annots_0[0]['updated'],
                     },
                 ],
                 # 2021-11-09T11:15:08.923895+00:00
@@ -144,8 +144,8 @@ def test_sightings(session, login, codex_url, test_root, admin_name):
                 'customFields': {
                     enc_test_cfd: 'CFD_TEST_VALUE',
                 },
-                'decimalLatitude': '63.142385',
-                'decimalLongitude': '-21.596914',
+                'decimalLatitude': 63.142385,
+                'decimalLongitude': -21.596914,
                 'guid': encounters[0]['guid'],
                 'hasEdit': True,
                 'hasView': True,

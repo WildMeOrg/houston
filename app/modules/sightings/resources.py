@@ -429,6 +429,12 @@ class SightingByID(Resource):
 
         schema = AugmentedEdmSightingSchema()
         edm_response = response['result']
+        for encounter in edm_response.get('encounters') or []:
+            # EDM returns strings for decimalLatitude and decimalLongitude
+            if encounter.get('decimalLongitude'):
+                encounter['decimalLongitude'] = float(encounter['decimalLongitude'])
+            if encounter.get('decimalLatitude'):
+                encounter['decimalLatitude'] = float(encounter['decimalLatitude'])
         edm_response.update(schema.dump(sighting).data)
 
         return sighting.augment_edm_json(edm_response)

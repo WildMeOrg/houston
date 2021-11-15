@@ -258,6 +258,20 @@ class SystemNotificationPreferences(db.Model, NotificationPreferences):
                 db.session.add(system_prefs)
         else:
             system_prefs = prefs[0]
+            changed = False
+            for type_, defaults in NOTIFICATION_DEFAULTS.items():
+                if type_ in system_prefs.preferences:
+                    for key, value in defaults.items():
+                        if key not in system_prefs.preferences[type_]:
+                            system_prefs.preferences[type_][key] = value
+                            changed = True
+                else:
+                    system_prefs.preferences[type_] = defaults
+                    changed = True
+            if changed:
+                system_prefs.preferences = system_prefs.preferences
+                with db.session.begin(subtransactions=True):
+                    db.session.merge(system_prefs)
         return system_prefs
 
 

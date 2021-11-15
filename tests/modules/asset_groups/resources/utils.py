@@ -754,6 +754,7 @@ def patch_in_dummy_annotation(
     # Create a dummy annotation for this Sighting
     new_annot = Annotation(
         guid=uuid.uuid4(),
+        content_guid=uuid.uuid4(),
         asset=asset,
         ia_class='none',
         viewpoint='test',
@@ -768,7 +769,9 @@ def patch_in_dummy_annotation(
     )
     encounter_guid = group_sighting.json['config']['encounters'][encounter_num]['guid']
 
-    patch_data = [test_utils.patch_replace_op('annotations', [str(new_annot.guid)])]
+    patch_data = [
+        test_utils.patch_replace_op('annotations', [str(new_annot.content_guid)])
+    ]
     patch_asset_group_sighting(
         flask_app_client,
         user,

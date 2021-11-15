@@ -543,7 +543,7 @@ class IndividualMergeRequestCreate(Resource):
         with db.session.begin():
             db.session.add(individual)
             db.session.add(findiv)
-        params = {'fubar': True}
+        params = {'deadline_delta_seconds': 60}  # speed it up
         res = individual.merge_request_from([findiv], params)
         log.warning(f'TEST CREATE {individual}, {res}')
         return {'id': res['async'].id, 'job': str(res), 'individual': str(individual)}

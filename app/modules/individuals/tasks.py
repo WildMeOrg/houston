@@ -1,11 +1,7 @@
 # -*- coding: utf-8 -*-
 import app.extensions.logging as AuditLog
 import logging
-
-# import requests.exceptions
 from app.extensions.celery import celery
-from datetime import datetime
-
 
 log = logging.getLogger(__name__)
 
@@ -31,8 +27,8 @@ def execute_merge_request(self, target_individual_guid, from_individual_ids, par
         AuditLog.backend_fault(log, msg)
         return
 
-    msg = f'******** MERGE_REQUEST_TIMER on {target_individual_guid}/{from_individual_ids}/{parameters}:  {datetime.utcnow()} ********'
-    log.warning(msg)
-    f = open('/tmp/init_merge_request.log', 'a')
-    f.write(msg + '\n')
-    f.close()
+    # validate_merge_request should check hashes etc and means we are good to merge
+    target_individual = all_individuals.pop(0)
+    # TODO additional work TBD regarding conflict args/parameters (DEX-514)
+    res = target_individual.merge_from(*all_individuals)
+    log.info(f'{log_id} merge completed, results={res}')

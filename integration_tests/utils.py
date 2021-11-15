@@ -74,37 +74,6 @@ def create_asset_group(session, codex_url, data):
     return asset_guid, ags_guids, asset_guids
 
 
-def wait_for_sighting_detection_complete(session, codex_url, ags_guid):
-    timeout = 4 * 60  # timeout after 4 minutes
-    ags_url = codex_url(f'/api/v1/asset_groups/sighting/{ags_guid}')
-
-    try:
-        while timeout >= 0:
-            response = session.get(ags_url)
-            assert response.status_code == 200
-            if response.json()['stage'] != 'detection':
-                break
-            time.sleep(15)
-            timeout -= 15
-        if response.json()['stage'] != 'curation':
-            assert (
-                False
-            ), f'{timeout <= 0 and "Timed out: " or ""}stage={response.json()["stage"]}\n{response.json()}'
-    except KeyboardInterrupt:
-        print(f'The last response from {ags_url}:\n{response.json()}')
-        raise
-
-    response_json = response.json()
-    job_id = list(response_json['jobs'].keys())[0]
-    first_job = response_json['jobs'][job_id]
-    annotation_guids = [
-        annot['uuid']['__UUID__'] for annot in first_job['json_result']['results_list'][0]
-    ]
-    encounter_guids = [enc['guid'] for enc in response_json['config']['encounters']]
-
-    return annotation_guids, encounter_guids
-
-
 def wait_for(
     session_method,
     url,

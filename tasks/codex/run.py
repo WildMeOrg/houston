@@ -117,4 +117,4 @@ def run(
             # )
             use_reloader = False
 
-        return app.run(host=host, port=port, use_reloader=use_reloader)
+        return app.run(host=host, port=port, use_reloader=use_reloader, debug=True)

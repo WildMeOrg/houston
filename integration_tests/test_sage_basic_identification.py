@@ -33,9 +33,19 @@ def create_sighting(session, codex_url, test_root, filename):
     ags_guid = asset_group_sighting_guids[0]
     assert len(asset_guids) == 1
 
-    annotation_guids, encounter_guids = utils.wait_for_sighting_detection_complete(
-        session, codex_url, ags_guid
+    # Wait for detection
+    ags_url = codex_url(f'/api/v1/asset_groups/sighting/{ags_guid}')
+    response = utils.wait_for(
+        session.get, ags_url, lambda response: response.json()['stage'] == 'curation'
     )
+    response_json = response.json()
+    job_id = list(response_json['jobs'].keys())[0]
+    first_job = response_json['jobs'][job_id]
+    annotation_guids = [
+        annot['uuid']['__UUID__'] for annot in first_job['json_result']['results_list'][0]
+    ]
+    encounter_guids = [enc['guid'] for enc in response_json['config']['encounters']]
+
     assert len(annotation_guids) == 1
     annot_guid = annotation_guids[0]
     assert len(encounter_guids) == 1

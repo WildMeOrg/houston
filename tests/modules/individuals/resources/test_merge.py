@@ -158,6 +158,13 @@ def test_get_data_and_voting(
         expected_status_code=401,
     )
 
+    # first lets see if we have celery running, cuz things go south if we do not
+    try:
+        data = Individual.get_merge_request_data(bad_id)
+        assert not data
+    except NotImplementedError:
+        pytest.skip('celery not running')
+
     # invalid id (404)
     response = individual_res_utils.get_or_vote_individuals(
         flask_app_client,

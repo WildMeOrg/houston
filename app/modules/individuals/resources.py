@@ -26,7 +26,6 @@ api = Namespace('individuals', description='Individuals')  # pylint: disable=inv
 
 
 def current_user_has_merge_request_access(individuals):
-    return True  # TESTING ONLY FIXME
     if not isinstance(individuals, list) or len(individuals) < 2:
         return False
     for indiv in individuals:

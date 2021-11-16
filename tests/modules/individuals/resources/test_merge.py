@@ -140,3 +140,107 @@ def test_merge_permissions(
         data_in,
         expected_status_code=401,
     )
+
+
+@pytest.mark.skipif(
+    test_utils.module_unavailable('individuals', 'encounters', 'sightings'),
+    reason='Individuals module disabled',
+)
+def test_get_data_and_voting(
+    db, flask_app_client, researcher_1, researcher_2, contributor_1, request
+):
+    bad_id = '00000000-0000-0000-0000-000000002170'
+    # first anon permission check (401)
+    response = individual_res_utils.get_or_vote_individuals(
+        flask_app_client,
+        None,
+        bad_id,
+        expected_status_code=401,
+    )
+
+    # invalid id (404)
+    response = individual_res_utils.get_or_vote_individuals(
+        flask_app_client,
+        contributor_1,  # just needs to not be anon
+        bad_id,
+        expected_status_code=404,
+    )
+
+    # now we need real data
+    sighting1, encounter1 = individual_utils.simple_sighting_encounter(
+        db, flask_app_client, researcher_1
+    )
+    request.addfinalizer(sighting1.delete_cascade)
+    individual1_id = str(encounter1.individual_guid)
+    request.addfinalizer(
+        lambda: individual_res_utils.delete_individual(
+            flask_app_client, researcher_1, individual1_id
+        )
+    )
+    sighting2, encounter2 = individual_utils.simple_sighting_encounter(
+        db, flask_app_client, researcher_2
+    )
+    request.addfinalizer(sighting2.delete_cascade)
+    individual2_id = str(encounter2.individual_guid)
+    request.addfinalizer(
+        lambda: individual_res_utils.delete_individual(
+            flask_app_client, researcher_2, individual2_id
+        )
+    )
+
+    # this tests as researcher_2, which should trigger a merge-request (owns just 1 encounter)
+    data_in = [individual2_id]
+    response = individual_res_utils.merge_individuals(
+        flask_app_client,
+        researcher_2,
+        individual1_id,
+        data_in,
+        expected_fields={
+            'merge_request',
+            'request_id',
+            'deadline',
+            'blocking_encounters',
+        },
+    )
+    assert response['merge_request']
+    assert response['blocking_encounters'] == [str(encounter1.guid)]
+    request_id = response.get('request_id')
+    assert request_id
+    # we should have a valid merge request now to test against
+
+    # so now we test unauthorized user (403)
+    response = individual_res_utils.get_or_vote_individuals(
+        flask_app_client,
+        contributor_1,
+        request_id,
+        expected_status_code=403,
+    )
+
+    # now this get-data should work
+    response = individual_res_utils.get_or_vote_individuals(
+        flask_app_client,
+        researcher_1,
+        request_id,
+    )
+    assert response.json
+    assert 'request' in response.json
+    assert response.json['request'].get('id') == request_id
+
+    # invalid vote (422)
+    response = individual_res_utils.get_or_vote_individuals(
+        flask_app_client,
+        researcher_1,
+        request_id,
+        'fubar',
+        expected_status_code=422,
+    )
+
+    # valid vote
+    response = individual_res_utils.get_or_vote_individuals(
+        flask_app_client,
+        researcher_1,
+        request_id,
+        'allow',
+    )
+    assert response.json
+    assert response.json.get('vote') == 'allow'

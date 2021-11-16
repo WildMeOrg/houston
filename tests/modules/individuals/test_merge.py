@@ -328,3 +328,65 @@ def test_merge_hash(db, flask_app_client, researcher_1, researcher_2, request):
     assert hash1 != hash2
     assert hash1 != hash3
     assert hash2 != hash3
+
+
+@pytest.mark.skipif(
+    module_unavailable('individuals', 'encounters', 'sightings'),
+    reason='Individuals module disabled',
+)
+def test_failure_cases(db, flask_app_client, researcher_1, request):
+    from app.modules.individuals.models import Individual
+    from app.modules.individuals.tasks import execute_merge_request
+    from datetime import datetime, timedelta
+
+    fake_guid = '00000000-0000-0000-0000-ffffffffffff'
+
+    individual1 = Individual()
+    try:
+        # empty from individuals
+        individual1._merge_request_init([])
+    except ValueError as ve:
+        assert 'invalid individuals' in str(ve)
+
+    # just gets us a (mostly bunk) celery task, so we can test revoked
+    deadline = datetime.utcnow() + timedelta(minutes=5)
+    async_res = execute_merge_request.apply_async(
+        (str(individual1.guid), [], {}), eta=deadline
+    )
+    data = Individual.get_merge_request_data(async_res.id)
+    assert data
+    assert 'request' in data
+    assert data['request'].get('id') == async_res.id
+
+    # now data should be empty
+    async_res.revoke()
+    data = Individual.get_merge_request_data(async_res.id)
+    assert not data
+    data = Individual.get_merge_request_data(fake_guid)
+    assert not data
+    rtn = Individual.validate_merge_request(fake_guid, [])
+    assert not rtn
+    rtn = Individual.validate_merge_request(str(individual1.guid), [fake_guid])
+    assert not rtn
+
+    # check invalid due to hash
+    individual2 = Individual()
+    with db.session.begin():
+        db.session.add(individual1)
+        db.session.add(individual2)
+    request.addfinalizer(individual1.delete)
+    request.addfinalizer(individual2.delete)
+    real_hash = Individual.merge_request_hash([individual1, individual2])
+    params = {'checksum': 1}
+    rtn = Individual.validate_merge_request(
+        str(individual1.guid), [str(individual2.guid)], params
+    )
+    assert not rtn
+    # ok, not truly a failure case
+    params = {'checksum': real_hash}
+    rtn = Individual.validate_merge_request(
+        str(individual1.guid), [str(individual2.guid)], params
+    )
+    assert rtn
+    assert len(rtn) == 2
+    assert set([individual1, individual2]) == set(rtn)

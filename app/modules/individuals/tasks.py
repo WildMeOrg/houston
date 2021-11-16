@@ -31,7 +31,15 @@ def execute_merge_request(self, target_individual_guid, from_individual_ids, par
     # validate_merge_request should check hashes etc and means we are good to merge
     target_individual = all_individuals.pop(0)
     # TODO additional work TBD regarding conflict args/parameters (DEX-514)
-    res = target_individual.merge_from(*all_individuals)
+    try:
+        res = target_individual.merge_from(*all_individuals)
+    except Exception as ex:
+        res = f'Exception caught: {str(ex)}'
+    if not isinstance(res, dict):
+        msg = f'{log_id} merge_from failed: {res}'
+        AuditLog.backend_fault(log, msg)
+        return
+
     log.info(f'{log_id} merge completed, results={res}')
 
     # notify users that merge has happened

@@ -537,10 +537,17 @@ class IndividualImageByID(Resource):
 @api.route('/merge_request/test')
 class IndividualMergeRequestCreate(Resource):
     def get(self):
+        from app.modules.encounters.models import Encounter
+        from flask_login import current_user
+
         individual = Individual()
+        enc = Encounter()
+        enc.owner = current_user
+        individual.add_encounter(enc)
         findiv = Individual()
         with db.session.begin():
             db.session.add(individual)
+            db.session.add(enc)
             db.session.add(findiv)
         params = {'deadline_delta_seconds': 60}  # speed it up
         res = individual.merge_request_from([findiv], params)

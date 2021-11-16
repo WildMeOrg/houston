@@ -188,6 +188,11 @@ class Individual(db.Model, FeatherModel):
             None,
         )
         if not response.ok:
+            AuditLog.backend_fault(
+                log,
+                f'non-OK ({response.status_code}) response from edm: {response.json()}',
+                self,
+            )
             return response
 
         result = response.json()['result']
@@ -202,17 +207,14 @@ class Individual(db.Model, FeatherModel):
             error_msg = 'edm merge-results merged dict invalid'
         if error_msg:
             AuditLog.backend_fault(log, error_msg, self)
-            return
+            raise ValueError(error_msg)
 
         # first we sanity-check the reported removed individuals vs what was requested
         for merged_id in result['merged'].keys():
             if merged_id not in data['sourceIndividualIds']:
-                AuditLog.backend_fault(
-                    log,
-                    f'merge mismatch against sourceIndividualIds with {merged_id}',
-                    self,
-                )
-                return
+                error_msg = f'merge mismatch against sourceIndividualIds with {merged_id}'
+                AuditLog.backend_fault(log, error_msg, self)
+                raise ValueError(error_msg)
             log.info(
                 f"edm reports successful merge of indiv {merged_id} into {result['targetId']} for encounters {result['merged'][merged_id]}; adjusting locally"
             )
@@ -246,6 +248,8 @@ class Individual(db.Model, FeatherModel):
         from flask_login import current_user
         from app.modules.notifications.models import NotificationType
 
+        if not notif_type:
+            notif_type = NotificationType.merge_request
         owners = {}
         for indiv in individuals:
             for enc in indiv.encounters:
@@ -259,7 +263,9 @@ class Individual(db.Model, FeatherModel):
                     owners[enc.owner] = {'individuals': set(), 'encounters': set()}
                 owners[enc.owner]['individuals'].add(indiv)
                 owners[enc.owner]['encounters'].add(enc)
-        log.debug(f'merge_request_notify() created owners structure {owners}')
+        log.debug(
+            f'merge_request_notify() type={notif_type} created owners structure {owners}'
+        )
         for owner in owners:
             Individual._merge_request_notify_user(
                 current_user,
@@ -276,12 +282,9 @@ class Individual(db.Model, FeatherModel):
     ):
         from app.modules.notifications.models import (
             Notification,
-            NotificationType,
             NotificationBuilder,
         )
 
-        if not notif_type:
-            notif_type = NotificationType.merge_request
         builder = NotificationBuilder(sender)
         builder.set_merge_request(individuals, encounters, request_data)
         notification = Notification.create(notif_type, user, builder)

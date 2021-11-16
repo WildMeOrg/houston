@@ -127,10 +127,10 @@ class Encounter(db.Model, FeatherModel):
 
     def _merge_request_hash(self):
         parts = [
-            str(self.guid),
+            self.guid.int,
             # this covers weird cases where things arent persisted to db yet
-            str(self.owner and self.owner.guid or self.owner_guid),
-            str(self.individual and self.individual.guid or self.individual_guid),
+            (self.owner and self.owner.guid or self.owner_guid).int,
+            (self.individual and self.individual.guid or self.individual_guid).int,
         ]
         parts.sort()
         return hash(tuple(parts))

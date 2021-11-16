@@ -305,6 +305,21 @@ class AssetGroupSighting(db.Model, HoustonModel):
 
         return getter
 
+    def get_custom_fields(self):
+        return self.__class__.config_field_getter('customFields', default={})(self)
+
+    def get_encounters(self):
+        encounters = self.config and self.config.get('encounters') or []
+        for encounter in encounters:
+            encounter['owner'] = {
+                'full_name': current_user.full_name,
+                'guid': current_user.guid,
+                'profile_fileupload': None,
+            }
+            encounter['createdHouston'] = self.created
+            encounter['updatedHouston'] = self.updated
+        return encounters
+
     @classmethod
     def check_jobs(cls):
         for asset_group_sighting in AssetGroupSighting.query.all():
@@ -557,19 +572,13 @@ class AssetGroupSighting(db.Model, HoustonModel):
 
     # Used to build the response to AssetGroupSighting GET
     def get_assets(self):
-        from app.modules.assets.schemas import DetailedAssetGroupAssetSchema
-
-        asset_schema = DetailedAssetGroupAssetSchema(many=False)
         assets = []
         for filename in self.config.get('assetReferences'):
             asset = self.asset_group.get_asset_for_file(filename)
             assert asset
             assets.append(asset)
-        resp = []
-        for asset in sorted(assets, key=lambda ast: ast.guid):
-            json_msg, err = asset_schema.dump(asset)
-            resp.append(json_msg)
-        return resp
+        assets.sort(key=lambda ast: ast.guid)
+        return assets
 
     def complete(self):
         for job_id in self.jobs:

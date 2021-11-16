@@ -262,7 +262,11 @@ def browser_failure_handler(browser):
 
 
 def pytest_exception_interact(node, call, report):
-    if 'browser' in node.funcargs and 'session' not in node.funcargs:
+    if (
+        hasattr(node, 'funcargs')
+        and 'browser' in node.funcargs
+        and 'session' not in node.funcargs
+    ):
         # Save screenshot and page source when there's an exception
         browser = node.funcargs['browser']
         browser_failure_handler(browser)

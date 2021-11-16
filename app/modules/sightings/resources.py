@@ -403,6 +403,27 @@ class SightingByID(Resource):
     Manipulations with a specific Sighting.
     """
 
+    def _get_sighting(self, sighting):
+        response = current_app.edm.get_dict('sighting.data_complete', sighting.guid)
+        if not isinstance(response, dict):  # some non-200 thing, incl 404
+            return response
+        if not response.get('success', False):
+            return response
+
+        from app.modules.sightings.schemas import AugmentedEdmSightingSchema
+
+        schema = AugmentedEdmSightingSchema()
+        edm_response = response['result']
+        for encounter in edm_response.get('encounters') or []:
+            # EDM returns strings for decimalLatitude and decimalLongitude
+            if encounter.get('decimalLongitude'):
+                encounter['decimalLongitude'] = float(encounter['decimalLongitude'])
+            if encounter.get('decimalLatitude'):
+                encounter['decimalLatitude'] = float(encounter['decimalLatitude'])
+        edm_response.update(schema.dump(sighting).data)
+
+        return sighting.augment_edm_json(edm_response)
+
     @api.login_required(oauth_scopes=['sightings:read'])
     @api.permission_required(
         permissions.ObjectAccessPermission,
@@ -418,20 +439,7 @@ class SightingByID(Resource):
 
         # note: should probably _still_ check edm for: stale cache, deletion!
         #      user.edm_sync(version)
-
-        response = current_app.edm.get_dict('sighting.data_complete', sighting.guid)
-        if not isinstance(response, dict):  # some non-200 thing, incl 404
-            return response
-        if not response.get('success', False):
-            return response
-
-        from app.modules.sightings.schemas import AugmentedEdmSightingSchema
-
-        schema = AugmentedEdmSightingSchema()
-        edm_response = response['result']
-        edm_response.update(schema.dump(sighting).data)
-
-        return sighting.augment_edm_json(edm_response)
+        return self._get_sighting(sighting)
 
     @api.login_required(oauth_scopes=['sightings:write'])
     @api.permission_required(
@@ -519,40 +527,47 @@ class SightingByID(Resource):
                 response_data['threatened_sighting_id'] = str(sighting.guid)
                 sighting.delete_cascade()  # this will get rid of our encounter(s) as well so no need to rectify_edm_encounters()
                 sighting = None
-            else:
-                sighting.rectify_edm_encounters(result.get('encounters'), current_user)
-                # if we have enc_anns (len=N, N > 0), these should map to the last N encounters in this sighting
-                if len(enc_anns) > 0:
-                    enc_res = result.get('encounters', [])
-                    # enc_res *should* be in order added (e.g. sorted by version)
-                    # note however, i am not 100% sure if sightings.encounters is in same order!  it appears to be in all my testing.
-                    #  in the event it proves not to be, we should trust enc_res order and/or .version on each of sighting.encounters
-                    assert len(enc_res) == len(
-                        sighting.encounters
-                    )  # more just a sanity-check
-                    assert len(enc_anns) <= len(
-                        sighting.encounters
-                    )  # which ones were added, basically
-                    i = 0
-                    offset = len(sighting.encounters) - len(enc_anns)
-                    while i < len(enc_anns):
-                        log.debug(
-                            f'enc_len={len(sighting.encounters)},offset={offset},i={i}: onto encounters[{offset+i}] setting {enc_anns[i]}'
-                        )
-                        sighting.encounters[offset + i].annotations = enc_anns[i]
-                        i += 1
+                return response_data
 
-                new_version = result.get('version', None)
-                if new_version is not None:
-                    sighting.version = new_version
-                    context = api.commit_or_abort(
-                        db.session,
-                        default_error_message='Failed to update Sighting version.',
+            sighting.rectify_edm_encounters(result.get('encounters'), current_user)
+            # if we have enc_anns (len=N, N > 0), these should map to the last N encounters in this sighting
+            if len(enc_anns) > 0:
+                enc_res = result.get('encounters', [])
+                # enc_res *should* be in order added (e.g. sorted by version)
+                # note however, i am not 100% sure if sightings.encounters is in same order!  it appears to be in all my testing.
+                #  in the event it proves not to be, we should trust enc_res order and/or .version on each of sighting.encounters
+                assert len(enc_res) == len(
+                    sighting.encounters
+                )  # more just a sanity-check
+                assert len(enc_anns) <= len(
+                    sighting.encounters
+                )  # which ones were added, basically
+                i = 0
+                offset = len(sighting.encounters) - len(enc_anns)
+                while i < len(enc_anns):
+                    log.debug(
+                        f'enc_len={len(sighting.encounters)},offset={offset},i={i}: onto encounters[{offset+i}] setting {enc_anns[i]}'
                     )
-                    with context:
-                        db.session.merge(sighting)
-                AuditLog.patch_object(log, sighting, args, duration=timer.elapsed())
-            return response_data
+                    sighting.encounters[offset + i].annotations = enc_anns[i]
+                    i += 1
+
+            new_version = result.get('version', None)
+            if new_version is not None:
+                sighting.version = new_version
+                context = api.commit_or_abort(
+                    db.session,
+                    default_error_message='Failed to update Sighting version.',
+                )
+                with context:
+                    db.session.merge(sighting)
+            AuditLog.patch_object(log, sighting, args, duration=timer.elapsed())
+
+            sighting_response = self._get_sighting(sighting)
+            if isinstance(sighting_response, dict):
+                return sighting_response
+            else:
+                # sighting might be deleted, return the original patch response_data
+                return response_data
 
         # no EDM, so fall thru to regular houston-patching
         context = api.commit_or_abort(

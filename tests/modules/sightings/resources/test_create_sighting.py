@@ -385,8 +385,8 @@ def test_annotations_within_sightings(
             }
         ],
     )
-    assert len(response.json['result']['encounters']) == 3
-    enc_guid = response.json['result']['encounters'][2]['id']
+    assert len(response.json['encounters']) == 3
+    enc_guid = response.json['encounters'][2]['id']
     enc = Encounter.query.get(enc_guid)
     assert enc is not None
     assert len(enc.annotations) == 1
@@ -441,8 +441,8 @@ def test_edm_and_houston_encounter_data_within_sightings(
         assert json['encounters'][0]['verbatimLocality'] == 'Saturn'
         assert json['encounters'][0]['locationId'] == 'Saturn'
         assert json['encounters'][0]['time'] == '2010-01-01T01:01:01Z'
-        assert json['encounters'][0]['decimalLatitude'] == '25.9999'
-        assert json['encounters'][0]['decimalLongitude'] == '25.9999'
+        assert json['encounters'][0]['decimalLatitude'] == 25.9999
+        assert json['encounters'][0]['decimalLongitude'] == 25.9999
 
         # houston stuff
         assert json['encounters'][0]['id'] is not None

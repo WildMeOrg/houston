@@ -80,7 +80,10 @@ def add_site_species(session, codex_url, data):
     site_species_url = codex_url('/api/v1/configuration/default/site.species')
     response = session.get(site_species_url)
     values = response.json()['response']['value']
-    if not [v for v in values if v == data]:
+    for v in values:
+        if all(v.get(k) == data[k] for k in data):
+            break
+    else:
         values.append(data)
         response = session.post(site_species_url, json={'_value': values})
         assert response.status_code == 200

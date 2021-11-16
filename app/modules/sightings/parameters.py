@@ -49,7 +49,13 @@ class PatchSightingDetailsParameters(PatchJSONParameters):
         '/verbatimLocality',
     )
 
-    PATH_CHOICES_HOUSTON = ('/assetId', '/newAssetGroup', '/featuredAssetGuid', '/name')
+    PATH_CHOICES_HOUSTON = (
+        '/assetId',
+        '/newAssetGroup',
+        '/featuredAssetGuid',
+        '/name',
+        '/stage',
+    )
 
     PATH_CHOICES = PATH_CHOICES_EDM + PATH_CHOICES_HOUSTON
 
@@ -100,4 +106,14 @@ class PatchSightingDetailsParameters(PatchJSONParameters):
                 obj.name = value
                 ret_val = True
 
+            # TODO is this correct, do we know yet how a sighting should be marked as being done?
+            elif field == 'stage':
+                from app.modules.sightings.models import SightingStage
+
+                # TODO this is definitely wrong as it should be one or the other
+                if value == 'processed' and obj.stage in set(
+                    {SightingStage.un_reviewed, SightingStage.identification}
+                ):
+                    obj.stage = SightingStage.processed
+                    ret_val = True
         return ret_val

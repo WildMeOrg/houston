@@ -354,6 +354,10 @@ class Sighting(db.Model, FeatherModel):
                     matching_set_individual_uuids.append(annot.get_name())
                     matching_set_annot_uuids.append(to_acm_uuid(annot.guid))
 
+        log.debug(
+            f'Built matching set individuals {matching_set_individual_uuids}, '
+            f'annots {matching_set_annot_uuids}'
+        )
         return matching_set_individual_uuids, matching_set_annot_uuids
 
     def build_identification_request(
@@ -399,6 +403,9 @@ class Sighting(db.Model, FeatherModel):
     def send_identification(self, config_id, algorithm_id, annotation_uuid):
         from datetime import datetime
 
+        log.debug(
+            f'In send_identification for cnf:{config_id}  algo:{algorithm_id}  Ann UUID:{annotation_uuid}'
+        )
         id_configs = self.asset_group_sighting.get_id_configs()
         # Message construction has to be in the task as the jobId must be unique
         job_uuid = uuid.uuid4()
@@ -563,7 +570,17 @@ class Sighting(db.Model, FeatherModel):
                 # Only one for MVP
                 assert len(config['algorithms']) == 1
                 assert 'matchingSetDataOwners' in config
-                num_algorithms += len(config['algorithms'])
+
+                # Only use the algorithm if there is a matching data set to ID against
+                (
+                    matching_set_individual_uuids,
+                    matching_set_annot_uuids,
+                ) = self.get_matching_set_data(config['matchingSetDataOwners'])
+                if (
+                    len(matching_set_individual_uuids) > 0
+                    and len(matching_set_annot_uuids) > 0
+                ):
+                    num_algorithms += len(config['algorithms'])
 
                 # For now, regions are ignored
 
@@ -593,7 +610,7 @@ class Sighting(db.Model, FeatherModel):
                 for algorithm_id in range(len(id_configs[config_id]['algorithms'])):
                     for encounter in self.encounters:
                         for annotation in encounter.annotations:
-                            send_identification(
+                            send_identification.delay(
                                 self.guid,
                                 config_id,
                                 algorithm_id,

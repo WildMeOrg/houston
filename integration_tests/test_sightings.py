@@ -136,6 +136,7 @@ def test_sightings(session, login, codex_url, test_root, admin_name):
         'decimalLatitude': 63.142385,
         'decimalLongitude': -21.596914,
         # FIXME missing 'distance': distance,
+        'stage': 'processed',
         'encounters': [
             {
                 'country': 'TEST',

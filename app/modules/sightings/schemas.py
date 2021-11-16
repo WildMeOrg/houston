@@ -93,4 +93,5 @@ class AugmentedEdmSightingSchema(BaseSightingSchema):
             'hasEdit',
             'assets',
             'featuredAssetGuid',
+            'stage',
         )

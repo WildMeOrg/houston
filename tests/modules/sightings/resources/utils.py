@@ -125,11 +125,15 @@ def patch_sighting(
         '%s%s' % (PATH, sighting_guid),
         patch_data,
         expected_status_code,
-        {'result', 'success'},
+        set(),
         headers=headers,
     )
     if expected_status_code == 200:
-        assert response.json['success']
+        if 'version' in response.json.keys():
+            assert response.json.keys() >= {'version', 'guid', 'id'}
+        else:
+            assert response.json.keys() >= {'result', 'success'}
+            assert response.json['success']
     elif expected_status_code != 401:
         assert not response.json['success']
 

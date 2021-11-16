@@ -203,37 +203,89 @@ def test_sightings(session, login, codex_url, test_root, admin_name):
         ],
     )
     assert response.status_code == 200
-    assert response.json()['result']['version'] > sighting_version
-    sighting_version = response.json()['result']['version']
+    assert response.json()['version'] > sighting_version
+    sighting_version = response.json()['version']
     assert response.json() == {
-        'result': {
-            'comments': 'None',
-            'createdEDM': response.json()['result']['createdEDM'],
-            'encounters': [
-                {
-                    'id': encounters[0]['id'],
-                    'version': encounters[0]['version'],
-                },
-            ],
-            'id': sighting_id,
-            'startTime': '2000-01-01T01:01:01Z',
-            'version': sighting_version,
-        },
-        'patchResults': [
+        'assets': [
             {
-                'op': 'add',
-                'path': 'decimalLatitude',
-                'value': 52.152029,
-            },
-            {
-                'op': 'add',
-                'path': 'decimalLongitude',
-                'value': 2.318116,
+                'annotations': [
+                    {
+                        'asset_guid': assets[0]['guid'],
+                        'bounds': {
+                            'rect': [178, 72, 604, 534],
+                            'theta': 0.0,
+                        },
+                        'created': annots_0[0]['created'],
+                        'encounter_guid': None,
+                        'guid': annots_0[0]['guid'],
+                        'ia_class': 'zebra_plains',
+                        'keywords': [],
+                        'updated': annots_0[0]['updated'],
+                        'viewpoint': 'unknown',
+                    },
+                ],
+                'created': assets[0]['created'],
+                'dimensions': {'width': 1000, 'height': 664},
+                'filename': 'zebra.jpg',
+                'guid': assets[0]['guid'],
+                'src': f'/api/v1/assets/src/{assets[0]["guid"]}',
+                'updated': assets[0]['updated'],
             },
         ],
-        'success': True,
-        # 6c152f7e-4613-4acc-b44f-2fe278bee9dd
-        'transactionId': response.json()['transactionId'],
+        'comments': 'None',
+        'createdEDM': response.json()['createdEDM'],  # 2021-11-16 09:45:26
+        # 2021-11-16T09:45:26.717326+00:00
+        'createdHouston': response.json()['createdHouston'],
+        'customFields': {},
+        'decimalLatitude': 52.152029,
+        'decimalLongitude': 2.318116,
+        'encounters': [
+            {
+                'country': 'TEST',
+                'createdHouston': encounters[0]['createdHouston'],
+                'customFields': {
+                    enc_test_cfd: 'CFD_TEST_VALUE',
+                },
+                'decimalLatitude': 63.142385,
+                'decimalLongitude': -21.596914,
+                'guid': encounters[0]['guid'],
+                'hasEdit': True,
+                'hasView': True,
+                'id': encounters[0]['guid'],
+                'individual': {},
+                'locationId': 'enc-test',
+                'owner': {
+                    'full_name': my_name,
+                    'guid': my_guid,
+                    'profile_fileupload': None,
+                },
+                'sex': 'male',
+                'submitter': None,
+                'taxonomy': {
+                    'commonNames': ['Example'],
+                    'scientificName': 'Exempli gratia',
+                    'id': tx_id,
+                },
+                'time': encounter_timestamp,
+                'updatedHouston': encounters[0]['updatedHouston'],
+                'version': encounters[0]['version'],
+            },
+        ],
+        'encounterCounts': {
+            'lifeStage': {},
+            'sex': {'male': 1},
+            'individuals': 0,
+        },
+        'featuredAssetGuid': assets[0]['guid'],
+        'guid': sighting_id,
+        'hasEdit': True,
+        'hasView': True,
+        'id': sighting_id,
+        'locationId': 'PYTEST',
+        'startTime': '2000-01-01T01:01:01Z',
+        # 2021-11-16T09:45:26.717432+00:00
+        'updatedHouston': response.json()['updatedHouston'],
+        'version': sighting_version,
     }
 
     # DELETE asset group

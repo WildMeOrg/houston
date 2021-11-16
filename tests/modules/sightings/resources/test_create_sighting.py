@@ -385,8 +385,8 @@ def test_annotations_within_sightings(
             }
         ],
     )
-    assert len(response.json['result']['encounters']) == 3
-    enc_guid = response.json['result']['encounters'][2]['id']
+    assert len(response.json['encounters']) == 3
+    enc_guid = response.json['encounters'][2]['id']
     enc = Encounter.query.get(enc_guid)
     assert enc is not None
     assert len(enc.annotations) == 1

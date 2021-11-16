@@ -14,6 +14,7 @@ log = logging.getLogger(__name__)
 )
 def execute_merge_request(self, target_individual_guid, from_individual_ids, parameters):
     from .models import Individual
+    from app.modules.notifications.models import NotificationType
 
     log_id = f'<execute_merge_request {self.request.id}>'
     log.info(
@@ -32,3 +33,13 @@ def execute_merge_request(self, target_individual_guid, from_individual_ids, par
     # TODO additional work TBD regarding conflict args/parameters (DEX-514)
     res = target_individual.merge_from(*all_individuals)
     log.info(f'{log_id} merge completed, results={res}')
+
+    # notify users that merge has happened
+    #   NOTE request_data here may need some altering depending on what final templates look like
+    #   also unclear who *sender* will be, so that may need to be passed
+    request_data = {
+        'id': self.request.id,
+    }
+    Individual.merge_request_notify(
+        all_individuals, request_data, NotificationType.merge_complete
+    )

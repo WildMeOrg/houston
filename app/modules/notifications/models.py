@@ -115,7 +115,7 @@ class NotificationBuilder(object):
         self.data['encounter_list'] = []
         for enc in encounters:
             self.data['encounter_list'].append(enc.guid)
-        self.data['request_id'] = request_data['id']
+        self.data['request_id'] = request_data.get('id')
         # TODO other goodies in request_data
 
 

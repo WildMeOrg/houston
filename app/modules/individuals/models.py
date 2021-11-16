@@ -242,13 +242,18 @@ class Individual(db.Model, FeatherModel):
         return res
 
     @classmethod
-    def merge_request_notify(cls, individuals, request_data):
+    def merge_request_notify(cls, individuals, request_data, notif_type=None):
         from flask_login import current_user
+        from app.modules.notifications.models import NotificationType
 
         owners = {}
         for indiv in individuals:
             for enc in indiv.encounters:
-                if not enc.owner or enc.owner == current_user:
+                # we only skip current_user when it is merge_request (merge_complete goes to all users)
+                if not enc.owner or (
+                    notif_type == NotificationType.merge_request
+                    and enc.owner == current_user
+                ):
                     continue
                 if enc.owner not in owners:
                     owners[enc.owner] = {'individuals': set(), 'encounters': set()}
@@ -262,11 +267,12 @@ class Individual(db.Model, FeatherModel):
                 owners[owner]['individuals'],
                 owners[owner]['encounters'],
                 request_data,
+                notif_type,
             )
 
     @classmethod
     def _merge_request_notify_user(
-        cls, sender, user, individuals, encounters, request_data
+        cls, sender, user, individuals, encounters, request_data, notif_type
     ):
         from app.modules.notifications.models import (
             Notification,
@@ -274,11 +280,13 @@ class Individual(db.Model, FeatherModel):
             NotificationBuilder,
         )
 
+        if not notif_type:
+            notif_type = NotificationType.merge_request
         builder = NotificationBuilder(sender)
         builder.set_merge_request(individuals, encounters, request_data)
-        notification = Notification.create(NotificationType.merge_request, user, builder)
+        notification = Notification.create(notif_type, user, builder)
         log_msg = (
-            f'merge request notification {notification} from {sender} re: {individuals}'
+            f'merge request: notification {notification} from {sender} re: {individuals}'
         )
         AuditLog.audit_log_object(log, user, log_msg)
 

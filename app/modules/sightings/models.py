@@ -382,10 +382,12 @@ class Sighting(db.Model, FeatherModel):
         callback_url = f'{base_url}api/v1/asset_group/sighting/{str(self.guid)}/sage_identified/{str(job_uuid)}'
         ia_config_reader = IaConfig(current_app.config.get('CONFIG_MODEL'))
         try:
-            id_config_dict = ia_config_reader.get(f'_identifiers.{algorithm}')
+            id_config_dict = ia_config_reader.get(f'_identifiers.{algorithm}').copy()
         except KeyError:
             raise HoustonException(log, f'failed to find {algorithm}')
 
+        # description is used for populating the frontend but Sage complains if it's there so remove it
+        id_config_dict.pop('description', None)
         id_request = {
             'jobid': str(job_uuid),
             'callback_url': callback_url,
@@ -398,6 +400,8 @@ class Sighting(db.Model, FeatherModel):
             'database_annot_uuid_list': matching_set_annot_uuids,
         }
         id_request = id_request | id_config_dict
+
+        log.debug('sending message to sage :{id_request}')
         return id_request
 
     def send_identification(self, config_id, algorithm_id, annotation_uuid):

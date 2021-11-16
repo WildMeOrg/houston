@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import base64
-import uuid
 import time
+import uuid
 
 
 def upload_to_tus(session, codex_url, file_paths, transaction_id=None):

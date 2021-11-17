@@ -50,5 +50,5 @@ def execute_merge_request(self, target_individual_guid, from_individual_ids, par
         'from_individual_ids': from_individual_ids,
     }
     Individual.merge_request_notify(
-        [target_individual], request_data, NotificationType.merge_complete
+        [target_individual], request_data, NotificationType.individual_merge_complete
     )

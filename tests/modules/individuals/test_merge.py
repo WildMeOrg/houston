@@ -269,7 +269,7 @@ def test_merge_request_init(db, flask_app_client, researcher_1, researcher_2, re
     request.addfinalizer(Notification.query.delete)
     notif = Notification.query.filter_by(
         recipient=researcher_1,
-        message_type=NotificationType.merge_request,
+        message_type=NotificationType.individual_merge_request,
     ).first()
     assert notif
     request.addfinalizer(individual.delete)
@@ -279,7 +279,7 @@ def test_merge_request_init(db, flask_app_client, researcher_1, researcher_2, re
     )
     notif = Notification.query.filter_by(
         recipient=researcher_2,
-        message_type=NotificationType.merge_request,
+        message_type=NotificationType.individual_merge_request,
     ).first()
     assert notif
     assert (

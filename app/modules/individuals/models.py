@@ -311,13 +311,13 @@ class Individual(db.Model, FeatherModel):
         from app.modules.notifications.models import NotificationType
 
         if not notif_type:
-            notif_type = NotificationType.merge_request
+            notif_type = NotificationType.individual_merge_request
         owners = {}
         for indiv in individuals:
             for enc in indiv.encounters:
                 # we only skip current_user when it is merge_request (merge_complete goes to all users)
                 if not enc.owner or (
-                    notif_type == NotificationType.merge_request
+                    notif_type == NotificationType.individual_merge_request
                     and enc.owner == current_user
                 ):
                     continue
@@ -348,7 +348,7 @@ class Individual(db.Model, FeatherModel):
         )
 
         builder = NotificationBuilder(sender)
-        builder.set_merge_request(individuals, encounters, request_data)
+        builder.set_individual_merge_request(individuals, encounters, request_data)
         notification = Notification.create(notif_type, user, builder)
         log_msg = (
             f'merge request: notification {notification} from {sender} re: {individuals}'
@@ -408,7 +408,7 @@ class Individual(db.Model, FeatherModel):
 
         if not individuals or not isinstance(individuals, list) or len(individuals) < 1:
             msg = f'merge request passed invalid individuals: {individuals}'
-            AuditLog.backend_fault(log, msg, self)
+            AuditLog.frontend_fault(log, msg, self)
             raise ValueError(msg)
         if not parameters:
             parameters = {}
@@ -505,7 +505,7 @@ class Individual(db.Model, FeatherModel):
         return all_individuals
 
     def _merge_request_hash(self):
-        parts = [enc._merge_request_hash() for enc in self.encounters]
+        parts = [enc.merge_request_hash() for enc in self.encounters]
         parts.append(hash(self.guid))
         parts.sort()
         return hash(tuple(parts))

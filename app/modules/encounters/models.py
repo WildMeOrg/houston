@@ -125,7 +125,7 @@ class Encounter(db.Model, FeatherModel):
             with db.session.begin(subtransactions=True):
                 self.annotations.append(annotation)
 
-    def _merge_request_hash(self):
+    def merge_request_hash(self):
         parts = [
             self.guid.int,
             # this covers weird cases where things arent persisted to db yet

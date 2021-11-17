@@ -463,7 +463,7 @@ class IndividualByIDMerge(Resource):
             try:
                 merge_request = individual.merge_request_from(from_individuals)
             except Exception as ex:
-                AuditLog.backend_fault(log, str(ex), individual)
+                AuditLog.houston_fault(log, str(ex), individual)
                 abort(
                     blocking_encounters=block_ids,
                     merge_request=True,
@@ -471,7 +471,7 @@ class IndividualByIDMerge(Resource):
                     code=500,
                 )
             if not merge_request:
-                AuditLog.backend_fault(log, 'merge_request fail', individual)
+                AuditLog.houston_fault(log, 'merge_request fail', individual)
                 abort(
                     blocking_encounters=block_ids,
                     merge_request=True,
@@ -493,13 +493,13 @@ class IndividualByIDMerge(Resource):
         try:
             merge = individual.merge_from(*from_individuals)
         except ValueError as ex:
-            AuditLog.backend_fault(log, str(ex), individual)
+            AuditLog.houston_fault(log, str(ex), individual)
             abort(
                 message=str(ex),
                 code=500,
             )
         if not merge:
-            AuditLog.backend_fault(log, 'merge fail', individual)
+            AuditLog.houston_fault(log, 'merge fail', individual)
             abort(
                 message='Merge failed',
                 code=500,
@@ -617,7 +617,7 @@ class IndividualMergeRequestByTaskId(Resource):
             return task_data
 
         if vote not in ('allow', 'block'):
-            AuditLog.backend_fault(
+            AuditLog.frontend_fault(
                 log,
                 f'invalid vote={vote} for merge_request id={task_id}',
                 all_individuals[0],
@@ -667,7 +667,7 @@ class IndividualMergeRequestByTaskId(Resource):
             res = f'Exception caught: {str(ex)}'
         if not isinstance(res, dict):
             msg = f'{task_id} (via unanimous vote) merge_from failed: {res}'
-            AuditLog.backend_fault(log, msg, target_individual)
+            AuditLog.houston_fault(log, msg, target_individual)
             abort(success=False, message=msg, code=500)
 
         Individual.merge_request_cleanup(task_id)
@@ -679,6 +679,6 @@ class IndividualMergeRequestByTaskId(Resource):
             'from_individual_ids': task_data['request']['args'][1],
         }
         Individual.merge_request_notify(
-            [target_individual], request_data, NotificationType.merge_complete
+            [target_individual], request_data, NotificationType.individual_merge_complete
         )
         return {'vote': vote, 'merge_completed': True}

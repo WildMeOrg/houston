@@ -382,7 +382,7 @@ class Sighting(db.Model, FeatherModel):
         from app.modules.ia_config_reader import IaConfig
 
         callback_url = (
-            f'{base_url}api/v1/sighting/{str(self.guid)}/sage_identified/{str(job_uuid)}'
+            f'{base_url}api/v1/sightings/{str(self.guid)}/sage_identified/{str(job_uuid)}'
         )
         ia_config_reader = IaConfig(current_app.config.get('CONFIG_MODEL'))
         try:

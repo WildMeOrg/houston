@@ -351,7 +351,7 @@ class AssetGroupConfig(object):
     @property
     def GIT_SSH_KEY_FILEPATH(self):
         # Assuming mixed-in with BaseConfig
-        fp = DATA_ROOT / 'id_ssh_key'
+        fp = Path(os.getenv('GIT_SSH_KEY_FILEPATH', DATA_ROOT / 'id_ssh_key'))
         if self.GIT_SSH_KEY is None:
             # Assume the user knows what they are doing and bail out
             # FIXME: It's possible to get here because parts of the application

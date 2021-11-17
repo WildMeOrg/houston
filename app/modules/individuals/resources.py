@@ -18,7 +18,7 @@ from app.modules.users.permissions.types import AccessOperation
 from app.utils import HoustonException
 
 from . import parameters, schemas
-from .models import Individual
+from .models import Individual, IndividualMergeRequestVote
 import app.extensions.logging as AuditLog
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
@@ -463,6 +463,7 @@ class IndividualByIDMerge(Resource):
             try:
                 merge_request = individual.merge_request_from(from_individuals)
             except Exception as ex:
+                AuditLog.backend_fault(log, str(ex), individual)
                 abort(
                     blocking_encounters=block_ids,
                     merge_request=True,
@@ -470,12 +471,17 @@ class IndividualByIDMerge(Resource):
                     code=500,
                 )
             if not merge_request:
+                AuditLog.backend_fault(log, 'merge_request fail', individual)
                 abort(
                     blocking_encounters=block_ids,
                     merge_request=True,
                     message='Merge failed',
                     code=500,
                 )
+            # as a stakeholder, this automatically counts as a vote for this user
+            IndividualMergeRequestVote.record_vote(
+                merge_request['id'], current_user, 'allow'
+            )
             return {
                 'blocking_encounters': block_ids,
                 'request_id': merge_request['id'],
@@ -487,11 +493,13 @@ class IndividualByIDMerge(Resource):
         try:
             merge = individual.merge_from(*from_individuals)
         except ValueError as ex:
+            AuditLog.backend_fault(log, str(ex), individual)
             abort(
                 message=str(ex),
                 code=500,
             )
         if not merge:
+            AuditLog.backend_fault(log, 'merge fail', individual)
             abort(
                 message='Merge failed',
                 code=500,
@@ -564,6 +572,7 @@ class IndividualMergeRequestByTaskId(Resource):
 
     def get(self, task_id, vote):
         from flask_login import current_user
+        from app.modules.notifications.models import NotificationType
         import datetime
 
         if not current_user or current_user.is_anonymous:
@@ -617,20 +626,58 @@ class IndividualMergeRequestByTaskId(Resource):
                 code=HTTPStatus.UNPROCESSABLE_ENTITY,
                 description=f'invalid vote value "{vote}", must be "allow" or "block"',
             )
-        if vote == 'allow':
-            # no real action, but lets just log it
+
+        # we take a valid vote, and record it.  now we have 3 cases:
+        # 1. block vote kills the task outright
+        # 2. allow vote that is final one needed, which triggers merge *now* ("unanimous")
+        # 3. allow vote, but not unanimous - no-op and we keep waiting (task is still valid)
+        IndividualMergeRequestVote.record_vote(task_id, current_user, vote)
+
+        if vote == 'block':
             AuditLog.audit_log_object(
                 log,
                 all_individuals[0],
-                f'ALLOW vote for merge_request id={task_id}',
+                f'BLOCK vote for merge_request id={task_id} (celery task revoked)',
             )
-            return {'vote': vote}
+            Individual.merge_request_cancel_task(task_id)
+            return {'vote': vote, 'merge_request_cancelled': True}
 
-        # a block vote kills the celery task so merge will not happen
+        # we only care about *number of votes* here really, cuz they all must be "allow" if we got this far
+        voters = IndividualMergeRequestVote.get_voters(task_id)
+        stakeholders = Individual.get_merge_request_stakeholders(all_individuals)
+        needed = len(stakeholders) - len(voters)
+        if needed > 0:
+            AuditLog.audit_log_object(
+                log,
+                all_individuals[0],
+                f'ALLOW vote for merge_request id={task_id} ({needed} more votes needed)',
+            )
+            return {'vote': vote, 'votes_needed': needed}
+
+        # unanimous!  lets make merge happen
         AuditLog.audit_log_object(
             log,
             all_individuals[0],
-            f'BLOCK vote for merge_request id={task_id} (celery task revoked)',
+            f'ALLOW vote for merge_request id={task_id}; unanimous, triggering merge',
         )
-        current_app.celery.control.revoke(task_id)
-        return {'vote': vote}
+        target_individual = all_individuals.pop(0)
+        try:
+            res = target_individual.merge_from(*all_individuals)
+        except Exception as ex:
+            res = f'Exception caught: {str(ex)}'
+        if not isinstance(res, dict):
+            msg = f'{task_id} (via unanimous vote) merge_from failed: {res}'
+            AuditLog.backend_fault(log, msg, target_individual)
+            abort(success=False, message=msg, code=500)
+
+        Individual.merge_request_cleanup(task_id)
+        # notify users that merge has happened
+        #   NOTE request_data here may need some altering depending on what final templates look like
+        #   also unclear who *sender* will be, so that may need to be passed
+        request_data = {
+            'id': task_id,
+        }
+        Individual.merge_request_notify(
+            all_individuals, request_data, NotificationType.merge_complete
+        )
+        return {'vote': vote, 'merge_completed': True}

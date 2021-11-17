@@ -3,7 +3,7 @@
 
 from tests.modules.individuals.resources import utils as individual_res_utils
 from tests.modules.individuals import utils as individual_utils
-from app.modules.individuals.models import Individual
+from app.modules.individuals.models import Individual, IndividualMergeRequestVote
 import pytest
 from tests import utils as test_utils
 import logging
@@ -189,11 +189,12 @@ def test_get_data_and_voting(
     )
     request.addfinalizer(sighting2.delete_cascade)
     individual2_id = str(encounter2.individual_guid)
-    request.addfinalizer(
-        lambda: individual_res_utils.delete_individual(
-            flask_app_client, researcher_2, individual2_id
-        )
-    )
+    # do not need to delete individual2, as merge succeeds with vote below
+    # request.addfinalizer(
+    #    lambda: individual_res_utils.delete_individual(
+    #        flask_app_client, researcher_2, individual2_id
+    #    )
+    # )
 
     # this tests as researcher_2, which should trigger a merge-request (owns just 1 encounter)
     data_in = [individual2_id]
@@ -214,6 +215,10 @@ def test_get_data_and_voting(
     request_id = response.get('request_id')
     assert request_id
     # we should have a valid merge request now to test against
+    #   also should have 1 auto-vote by researcher_2
+    voters = IndividualMergeRequestVote.get_voters(request_id)
+    assert len(voters) == 1
+    assert voters[0] == researcher_2
 
     # so now we test unauthorized user (403)
     response = individual_res_utils.get_or_vote_individuals(
@@ -242,7 +247,7 @@ def test_get_data_and_voting(
         expected_status_code=422,
     )
 
-    # valid vote
+    # valid vote (will incidentally also do merge!)
     response = individual_res_utils.get_or_vote_individuals(
         flask_app_client,
         researcher_1,
@@ -251,3 +256,7 @@ def test_get_data_and_voting(
     )
     assert response.json
     assert response.json.get('vote') == 'allow'
+    voters = IndividualMergeRequestVote.get_voters(request_id)
+    assert len(voters) == 2
+    assert set(voters) == set([researcher_1, researcher_2])
+    IndividualMergeRequestVote.query.delete()

@@ -9,8 +9,63 @@ from flask import current_app
 import uuid
 import logging
 import app.extensions.logging as AuditLog
+from datetime import datetime
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
+
+
+class IndividualMergeRequestVote(db.Model):
+    """
+    Records a vote on a Merge Request
+    """
+
+    # we dont really need a primary key on this table, but sqlalchemy pretty much requires one; so we
+    #   get ours with (request_id + user_guid + created) which should be unique enough thanks to timestamp
+    request_id = db.Column(db.GUID, index=True, nullable=True, primary_key=True)
+    user_guid = db.Column(
+        db.GUID,
+        db.ForeignKey('user.guid'),
+        index=True,
+        nullable=False,
+        primary_key=True,
+    )
+    user = db.relationship('User', foreign_keys=[user_guid])
+    vote = db.Column(db.String(length=10), index=True, nullable=False)
+    created = db.Column(
+        db.DateTime, index=True, default=datetime.utcnow, nullable=False, primary_key=True
+    )
+
+    def __repr__(self):
+        return (
+            '<{class_name}('
+            'req={self.request_id}, '
+            "user='{self.user_guid}', "
+            'vote={self.vote}, '
+            'date={self.created}, '
+            ')>'.format(class_name=self.__class__.__name__, self=self)
+        )
+
+    @classmethod
+    def record_vote(cls, request_id, user, vote):
+        req_vote = IndividualMergeRequestVote(
+            request_id=request_id,
+            user_guid=user.guid,
+            vote=vote,
+        )
+        with db.session.begin(subtransactions=True):
+            db.session.add(req_vote)
+        return req_vote
+
+    @classmethod
+    def get_voters(cls, request_id):
+        from app.modules.users.models import User
+
+        res = (
+            db.session.query(IndividualMergeRequestVote.user_guid)
+            .filter(IndividualMergeRequestVote.request_id == request_id)
+            .group_by(IndividualMergeRequestVote.user_guid)
+        )
+        return [User.query.get(uid) for uid in res]
 
 
 class Individual(db.Model, FeatherModel):
@@ -232,6 +287,11 @@ class Individual(db.Model, FeatherModel):
                 enc.individual_guid = self.guid
             self._consolidate_social_groups(indiv)
             indiv.delete()
+        AuditLog.audit_log_object(
+            log,
+            self,
+            f"merge SUCCESS from {data['sourceIndividualIds']}",
+        )
         return result
 
     # mimics individual.merge_from(), but does not immediately executes; rather waits for approval
@@ -292,6 +352,18 @@ class Individual(db.Model, FeatherModel):
             f'merge request: notification {notification} from {sender} re: {individuals}'
         )
         AuditLog.audit_log_object(log, user, log_msg)
+
+    @classmethod
+    def merge_request_cancel_task(cls, req_id):
+        current_app.celery.control.revoke(req_id)
+        Individual.merge_request_cleanup(req_id)
+
+    # scrubs notifications etc, once a merge has completed
+    @classmethod
+    def merge_request_cleanup(cls, req_id):
+        log.debug(
+            f'[{req_id}] merge_request_cleanup (notifications, etc) not yet implemented'
+        )
 
     def get_blocking_encounters(self):
         blocking = []
@@ -382,6 +454,15 @@ class Individual(db.Model, FeatherModel):
             )
             return None
         return data
+
+    @classmethod
+    def get_merge_request_stakeholders(cls, individuals):
+        users = set()
+        for indiv in individuals:
+            for enc in indiv.encounters:
+                if enc.get_owner():
+                    users.add(enc.get_owner())
+        return users
 
     # likely will evolve to include other reasons to not be allowed to merge (changes since request etc)
     @classmethod

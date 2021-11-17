@@ -36,7 +36,7 @@ def execute_merge_request(self, target_individual_guid, from_individual_ids, par
     except Exception as ex:
         res = f'Exception caught: {str(ex)}'
     if not isinstance(res, dict):
-        msg = f'{log_id} merge_from failed: {res}'
+        msg = f'{log_id} (via celery task) merge_from failed: {res}'
         AuditLog.backend_fault(log, msg)
         return
 

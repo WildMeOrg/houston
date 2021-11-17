@@ -676,8 +676,9 @@ class IndividualMergeRequestByTaskId(Resource):
         #   also unclear who *sender* will be, so that may need to be passed
         request_data = {
             'id': task_id,
+            'from_individual_ids': task_data['request']['args'][1],
         }
         Individual.merge_request_notify(
-            all_individuals, request_data, NotificationType.merge_complete
+            [target_individual], request_data, NotificationType.merge_complete
         )
         return {'vote': vote, 'merge_completed': True}

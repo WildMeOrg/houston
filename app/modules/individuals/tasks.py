@@ -47,7 +47,8 @@ def execute_merge_request(self, target_individual_guid, from_individual_ids, par
     #   also unclear who *sender* will be, so that may need to be passed
     request_data = {
         'id': self.request.id,
+        'from_individual_ids': from_individual_ids,
     }
     Individual.merge_request_notify(
-        all_individuals, request_data, NotificationType.merge_complete
+        [target_individual], request_data, NotificationType.merge_complete
     )

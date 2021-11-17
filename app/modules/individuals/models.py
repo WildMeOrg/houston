@@ -21,7 +21,7 @@ class IndividualMergeRequestVote(db.Model):
 
     # we dont really need a primary key on this table, but sqlalchemy pretty much requires one; so we
     #   get ours with (request_id + user_guid + created) which should be unique enough thanks to timestamp
-    request_id = db.Column(db.GUID, index=True, nullable=True, primary_key=True)
+    request_id = db.Column(db.GUID, index=True, nullable=False, primary_key=True)
     user_guid = db.Column(
         db.GUID,
         db.ForeignKey('user.guid'),
@@ -300,9 +300,11 @@ class Individual(db.Model, FeatherModel):
     # - just a light wrapper to _merge_request_init()
     def merge_request_from(self, source_individuals, parameters=None):
         res = self._merge_request_init(source_individuals, parameters)
-        Individual.merge_request_notify(source_individuals + [self], res)
+        Individual.merge_request_notify([self] + source_individuals, res)
         return res
 
+    # note: for merge_complete individuals will only contain target individual, but
+    #   request_data should contain key from_individual_ids
     @classmethod
     def merge_request_notify(cls, individuals, request_data, notif_type=None):
         from flask_login import current_user
@@ -424,7 +426,7 @@ class Individual(db.Model, FeatherModel):
         AuditLog.audit_log_object(
             log,
             self,
-            f'merge request from=[{individuals}] queued up job {async_res} due {deadline}',
+            f'merge request from={individuals} queued up job {async_res} due {deadline}',
         )
         return {
             'individual': self,

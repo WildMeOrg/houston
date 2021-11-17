@@ -421,8 +421,11 @@ class Sighting(db.Model, FeatherModel):
             matching_set_data, annotation_uuid, job_uuid, algorithm
         )
         if id_request != {}:
+            encoded_request = {}
+            for key in id_request:
+                encoded_request[key] = json.dumps(id_request[key])
             current_app.acm.request_passthrough_result(
-                'job.identification_request', 'post', {'params': json.dumps(id_request)}
+                'job.identification_request', 'post', {'params': encoded_request}
             )
 
             self.jobs[str(job_uuid)] = {

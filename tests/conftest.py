@@ -102,6 +102,7 @@ def flask_app(gitlab_remote_login_pat):
             if utils.redis_unavailable():
                 # Run code in foreground if redis not available
                 from app.modules.asset_groups import tasks
+                from app.modules.sightings import tasks as sighting_tasks
 
                 tasks_patch = []
                 for func in (
@@ -117,6 +118,13 @@ def flask_app(gitlab_remote_login_pat):
                             getattr(tasks, func),
                         ),
                     )
+                tasks_patch.append(
+                    mock.patch.object(
+                        getattr(sighting_tasks, 'send_identification'),
+                        'delay',
+                        getattr(sighting_tasks, 'send_identification'),
+                    ),
+                )
                 for patch in tasks_patch:
                     patch.start()
 

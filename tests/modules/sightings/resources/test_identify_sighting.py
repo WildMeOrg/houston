@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 import uuid
-from unittest import mock
 import tests.extensions.tus.utils as tus_utils
 import tests.modules.asset_groups.resources.utils as asset_group_utils
 import tests.modules.sightings.resources.utils as sighting_utils
@@ -72,17 +71,12 @@ def test_sighting_identification(
         )
 
         # Start ID simulating success response from Sage
-        with mock.patch.object(
-            flask_app.acm,
-            'request_passthrough_result',
-            return_value={'success': True},
-        ):
-            response = asset_group_utils.commit_asset_group_sighting(
-                flask_app_client, researcher_1, asset_group_sighting_uuid
-            )
-            sighting_uuid = response.json['guid']
-            sighting_uuids.append(sighting_uuid)
-            sighting = Sighting.query.get(sighting_uuid)
+        response = asset_group_utils.commit_asset_group_sighting_sage_identification(
+            flask_app, flask_app_client, researcher_1, asset_group_sighting_uuid
+        )
+        sighting_uuid = response.json['guid']
+        sighting_uuids.append(sighting_uuid)
+        sighting = Sighting.query.get(sighting_uuid)
 
         assert sighting.stage == SightingStage.identification
 

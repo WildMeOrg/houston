@@ -78,6 +78,7 @@ class Sighting(db.Model, FeatherModel):
         return (
             '<{class_name}('
             'guid={self.guid}, '
+            'stage={self.stage}, '
             ')>'.format(class_name=self.__class__.__name__, self=self)
         )
 
@@ -401,7 +402,7 @@ class Sighting(db.Model, FeatherModel):
         }
         id_request = id_request | id_config_dict
 
-        log.debug('sending message to sage :{id_request}')
+        log.debug(f'sending message to sage :{id_request}')
         return id_request
 
     def send_identification(self, config_id, algorithm_id, annotation_uuid):
@@ -615,7 +616,7 @@ class Sighting(db.Model, FeatherModel):
                     for encounter in self.encounters:
                         for annotation in encounter.annotations:
                             send_identification.delay(
-                                self.guid,
+                                str(self.guid),
                                 config_id,
                                 algorithm_id,
                                 annotation.guid,

@@ -20,3 +20,5 @@ def send_identification(sighting_guid, config_id, algorithm_id, annotation_uuid)
 
     if sighting:
         sighting.send_identification(config_id, algorithm_id, annotation_uuid)
+    else:
+        log.warning('Failed to find the sighting to perform Identification on')

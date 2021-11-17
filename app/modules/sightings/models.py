@@ -6,6 +6,7 @@ Sightings database models
 import enum
 import logging
 import uuid
+import json
 
 from flask import current_app
 
@@ -421,7 +422,7 @@ class Sighting(db.Model, FeatherModel):
         )
         if id_request != {}:
             current_app.acm.request_passthrough_result(
-                'job.identification_request', 'post', {'params': id_request}
+                'job.identification_request', 'post', {'params': json.dumps(id_request)}
             )
 
             self.jobs[str(job_uuid)] = {

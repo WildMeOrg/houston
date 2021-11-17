@@ -39,15 +39,15 @@ def test_sightings(session, login, codex_url, test_root, admin_name):
     response = session.post(
         codex_url('/api/v1/asset_groups/'),
         json={
-            'bearing': bearing,
-            'customFields': {occ_test_cfd: 'OCC_TEST_CFD'},
             'description': 'This is a test asset group, please ignore',
-            'decimalLatitude': -39.063228,
-            'decimalLongitude': 21.832598,
-            'distance': distance,
             'sightings': [
                 {
                     'assetReferences': ['zebra.jpg'],
+                    'bearing': bearing,
+                    'customFields': {occ_test_cfd: 'OCC_TEST_CFD'},
+                    'decimalLatitude': -39.063228,
+                    'decimalLongitude': 21.832598,
+                    'distance': distance,
                     'encounters': [
                         {
                             'country': 'TEST',
@@ -126,20 +126,18 @@ def test_sightings(session, login, codex_url, test_root, admin_name):
                 'updated': assets[0]['updated'],
             },
         ],
-        # FIXME missing 'bearing': bearing,
+        # REMOVED 'bearing': bearing,
         'comments': 'None',
         'createdEDM': response.json()['createdEDM'],  # 2021-11-09 11:15:24
         # 2021-11-09T11:15:24.316645+00:00
         'createdHouston': response.json()['createdHouston'],
-        # FIXME should be 'customFields': {occ_test_cfd: 'OCC_TEST_CFD'},
-        'customFields': {},
-        'decimalLatitude': 63.142385,
-        'decimalLongitude': -21.596914,
-        # FIXME missing 'distance': distance,
-        'stage': 'un_reviewed',
+        'customFields': {occ_test_cfd: 'OCC_TEST_CFD'},
+        'decimalLatitude': -39.063228,
+        'decimalLongitude': 21.832598,
+        # REMOVED 'distance': distance,
         'encounters': [
             {
-                'country': 'TEST',
+                # REMOVED 'country': 'TEST',
                 # 2021-11-09T11:15:24.343018+00:00
                 'createdHouston': encounters[0]['createdHouston'],
                 'customFields': {
@@ -171,7 +169,7 @@ def test_sightings(session, login, codex_url, test_root, admin_name):
             },
         ],
         'encounterCounts': {
-            'lifeStage': {},
+            # REMOVED 'lifeStage': {},
             'sex': {'male': 1},
             'individuals': 0,
         },
@@ -182,6 +180,7 @@ def test_sightings(session, login, codex_url, test_root, admin_name):
         'id': sighting_id,
         'locationId': 'PYTEST',
         'startTime': '2000-01-01T01:01:01Z',
+        'stage': 'un_reviewed',
         # FIXME missing taxonomies: [{'id': tx_id}],
         'updatedHouston': response.json()['updatedHouston'],
         'version': response.json()['version'],  # 1636456524261
@@ -233,16 +232,18 @@ def test_sightings(session, login, codex_url, test_root, admin_name):
                 'updated': assets[0]['updated'],
             },
         ],
+        # REMOVED 'bearing': bearing,
         'comments': 'None',
         'createdEDM': response.json()['createdEDM'],  # 2021-11-16 09:45:26
         # 2021-11-16T09:45:26.717326+00:00
         'createdHouston': response.json()['createdHouston'],
-        'customFields': {},
+        'customFields': {occ_test_cfd: 'OCC_TEST_CFD'},
         'decimalLatitude': 52.152029,
         'decimalLongitude': 2.318116,
+        # REMOVED 'distance': distance,
         'encounters': [
             {
-                'country': 'TEST',
+                # REMOVED 'country': 'TEST',
                 'createdHouston': encounters[0]['createdHouston'],
                 'customFields': {
                     enc_test_cfd: 'CFD_TEST_VALUE',
@@ -273,7 +274,7 @@ def test_sightings(session, login, codex_url, test_root, admin_name):
             },
         ],
         'encounterCounts': {
-            'lifeStage': {},
+            # REMOVED 'lifeStage': {},
             'sex': {'male': 1},
             'individuals': 0,
         },

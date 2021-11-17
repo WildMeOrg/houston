@@ -354,7 +354,7 @@ class Sighting(db.Model, FeatherModel):
             if annot.encounter:
                 if annot.encounter.sighting.stage == SightingStage.processed:
                     matching_set_individual_uuids.append(annot.get_name())
-                    matching_set_annot_uuids.append(to_acm_uuid(annot.guid))
+                    matching_set_annot_uuids.append(to_acm_uuid(annot.content_guid))
 
         log.debug(
             f'Built matching set individuals {matching_set_individual_uuids}, '
@@ -381,7 +381,9 @@ class Sighting(db.Model, FeatherModel):
         base_url = current_app.config.get('BASE_URL')
         from app.modules.ia_config_reader import IaConfig
 
-        callback_url = f'{base_url}api/v1/asset_group/sighting/{str(self.guid)}/sage_identified/{str(job_uuid)}'
+        callback_url = (
+            f'{base_url}api/v1/sighting/{str(self.guid)}/sage_identified/{str(job_uuid)}'
+        )
         ia_config_reader = IaConfig(current_app.config.get('CONFIG_MODEL'))
         try:
             id_config_dict = ia_config_reader.get(f'_identifiers.{algorithm}').copy()
@@ -623,5 +625,5 @@ class Sighting(db.Model, FeatherModel):
                                 str(self.guid),
                                 config_id,
                                 algorithm_id,
-                                annotation.guid,
+                                annotation.content_guid,
                             )

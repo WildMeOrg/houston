@@ -7,6 +7,7 @@ import pytest
 
 from app.modules.notifications.models import (
     Notification,
+    NotificationChannel,
     NotificationType,
     NotificationBuilder,
     UserNotificationPreferences,
@@ -131,3 +132,20 @@ def test_validate_preferences():
     # Valid examples
     NotificationPreferences.validate_preferences({})
     NotificationPreferences.validate_preferences({'all': {'restAPI': True}})
+
+
+def test_system_notification_preferences_outdated(db):
+    system_prefs = SystemNotificationPreferences.get()
+    # Let's say "all" is newly added in the code and isn't in the
+    # database object
+    del system_prefs.preferences[NotificationType.all]
+    # and the database object doesn't have "email" for "raw"
+    del system_prefs.preferences[NotificationType.raw][NotificationChannel.email]
+    system_prefs.preferences = system_prefs.preferences
+    with db.session.begin():
+        db.session.merge(system_prefs)
+
+    # Should be missing "all"
+    assert system_prefs != NOTIFICATION_DEFAULTS
+    # But doing SystemNotificationPreferences.get() again should add "all"
+    assert SystemNotificationPreferences.get().preferences == NOTIFICATION_DEFAULTS

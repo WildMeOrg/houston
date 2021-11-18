@@ -39,7 +39,6 @@ virtualenv/
 # ###
 # Files not required for a production deployment
 # ###
-clients/
 docs/
 tests/
 deploy/

@@ -111,6 +111,7 @@ services:
       context: .
       args:
         - PROJECT=codex
+      target: development
     command: [ "wait-for", "db:5432", "--", "wait-for", "edm:8080", "--", "wait-for", "--timeout=60", "elasticsearch:9200", "--", "invoke", "codex.run", "--host", "0.0.0.0" ]
     networks:
       - intranet

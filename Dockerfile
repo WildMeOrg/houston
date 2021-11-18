@@ -101,3 +101,12 @@ COPY ./.dockerfiles/docker-entrypoint.${PROJECT}.sh /docker-entrypoint.sh
 ENTRYPOINT [ "/docker-entrypoint.sh" ]
 #: default command within the entrypoint
 # CMD [ "invoke", "app.run" ]
+
+
+FROM main as development
+
+COPY ./tests /code/tests
+RUN set -ex \
+  && pip install -e ".[testing]" \
+  # stamp the version.py file in the code
+  && python setup.py --version

@@ -71,6 +71,7 @@ services:
       context: .
       args:
         - PROJECT=mws
+      target: development
     command: [ "wait-for", "db:5432", "--", "wait-for", "--timeout=60", "elasticsearch:9200", "--", "invoke", "mws.run", "--host", "0.0.0.0" ]
     networks:
       - intranet

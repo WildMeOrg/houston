@@ -5,11 +5,11 @@ Application related tasks for Invoke.
 
 from invoke import Collection
 
+from tasks.app import run
 from tasks.mws import (
     consistency,
     initialize,
     integrations,
-    run,
 )
 
 from config import BaseConfig

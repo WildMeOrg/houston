@@ -95,12 +95,12 @@ set_up_development_mode() {
 _main() {
 	# if first arg looks like a flag, assume we want to run postgres server
 	if [ "${1:0:1}" = '-' ]; then
-		set -- invoke mws.run "$@"
+		set -- invoke app.run "$@"
 	fi
 
 	app_run=''
 	for arg in "$@"; do
-		if [ "$arg" = 'mws.run' ]; then
+		if [ "$arg" = 'app.run' ]; then
 			app_run='1'
 			break
 		fi

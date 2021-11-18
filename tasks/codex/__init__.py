@@ -5,6 +5,7 @@ Application related tasks for Invoke.
 
 from invoke import Collection
 
+from tasks.app import run
 from tasks.codex import (
     asset_groups,
     consistency,
@@ -15,7 +16,6 @@ from tasks.codex import (
     organizations,
     collaborations,
     projects,
-    run,
 )
 
 from config import BaseConfig

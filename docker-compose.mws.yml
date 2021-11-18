@@ -71,7 +71,7 @@ services:
       context: .
       args:
         - PROJECT=mws
-    command: [ "wait-for", "db:5432", "--", "wait-for", "--timeout=60", "elasticsearch:9200", "--", "invoke", "mws.run", "--host", "0.0.0.0" ]
+    command: [ "wait-for", "db:5432", "--", "wait-for", "--timeout=60", "elasticsearch:9200", "--", "invoke", "app.run", "--host", "0.0.0.0" ]
     networks:
       - intranet
       - frontend
@@ -100,7 +100,8 @@ services:
       retries: 10
     volumes: &houston-volumes
       - houston-var:/data
-      - .dockerfiles/docker-entrypoint.mws.sh:/docker-entrypoint.sh
+      # These are added for development. Do not mount these in production.
+      - .dockerfiles/docker-entrypoint.sh:/docker-entrypoint.sh
       - .dockerfiles/docker-entrypoint-init.d.mws:/docker-entrypoint-init.d
       - .dockerfiles/docker-entrypoint-always-init.d:/docker-entrypoint-always-init.d
       # FIXME: pull in development code while working on bringing up the container

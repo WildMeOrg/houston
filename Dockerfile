@@ -29,9 +29,6 @@ RUN set -x \
 
 FROM python:3.9 as main
 
-# "mws" or "codex"
-ARG PROJECT
-
 RUN apt update \
  # && curl -sL https://deb.nodesource.com/setup_14.x | bash - \
  && apt update \
@@ -96,7 +93,7 @@ VOLUME [ "${DATA_VOLUME}" ]
 # Location to source additional environment variables
 ENV HOUSTON_DOTENV ${DATA_ROOT}/.env
 
-COPY ./.dockerfiles/docker-entrypoint.${PROJECT}.sh /docker-entrypoint.sh
+COPY ./.dockerfiles/docker-entrypoint.sh /docker-entrypoint.sh
 
 ENTRYPOINT [ "/docker-entrypoint.sh" ]
 #: default command within the entrypoint

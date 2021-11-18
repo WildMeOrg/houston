@@ -15,9 +15,13 @@ log = logging.getLogger(__name__)
     test_utils.module_unavailable('individuals', 'encounters', 'sightings'),
     reason='Individuals module disabled',
 )
-def test_merge_basics(db, flask_app_client, researcher_1, request):
+def test_merge_basics(db, flask_app_client, researcher_1, request, test_root):
     sighting1, encounter1 = individual_utils.simple_sighting_encounter(
-        db, flask_app_client, researcher_1
+        db,
+        flask_app_client,
+        researcher_1,
+        request,
+        test_root,
     )
     request.addfinalizer(sighting1.delete_cascade)
     individual1_id = str(encounter1.individual_guid)
@@ -27,7 +31,11 @@ def test_merge_basics(db, flask_app_client, researcher_1, request):
         )
     )
     sighting2, encounter2 = individual_utils.simple_sighting_encounter(
-        db, flask_app_client, researcher_1
+        db,
+        flask_app_client,
+        researcher_1,
+        request,
+        test_root,
     )
     request.addfinalizer(sighting2.delete_cascade)
     individual2_id = str(encounter2.individual_guid)
@@ -75,10 +83,20 @@ def test_merge_basics(db, flask_app_client, researcher_1, request):
     reason='Individuals module disabled',
 )
 def test_merge_permissions(
-    db, flask_app_client, researcher_1, researcher_2, contributor_1, request
+    db,
+    flask_app_client,
+    researcher_1,
+    researcher_2,
+    contributor_1,
+    request,
+    test_root,
 ):
     sighting1, encounter1 = individual_utils.simple_sighting_encounter(
-        db, flask_app_client, researcher_1
+        db,
+        flask_app_client,
+        researcher_1,
+        request,
+        test_root,
     )
     request.addfinalizer(sighting1.delete_cascade)
     individual1_id = str(encounter1.individual_guid)
@@ -88,7 +106,11 @@ def test_merge_permissions(
         )
     )
     sighting2, encounter2 = individual_utils.simple_sighting_encounter(
-        db, flask_app_client, researcher_2
+        db,
+        flask_app_client,
+        researcher_2,
+        request,
+        test_root,
     )
     request.addfinalizer(sighting2.delete_cascade)
     individual2_id = str(encounter2.individual_guid)
@@ -147,7 +169,13 @@ def test_merge_permissions(
     reason='Individuals module disabled',
 )
 def test_get_data_and_voting(
-    db, flask_app_client, researcher_1, researcher_2, contributor_1, request
+    db,
+    flask_app_client,
+    researcher_1,
+    researcher_2,
+    contributor_1,
+    request,
+    test_root,
 ):
     bad_id = '00000000-0000-0000-0000-000000002170'
     # first anon permission check (401)
@@ -175,7 +203,11 @@ def test_get_data_and_voting(
 
     # now we need real data
     sighting1, encounter1 = individual_utils.simple_sighting_encounter(
-        db, flask_app_client, researcher_1
+        db,
+        flask_app_client,
+        researcher_1,
+        request,
+        test_root,
     )
     request.addfinalizer(sighting1.delete_cascade)
     individual1_id = str(encounter1.individual_guid)
@@ -185,7 +217,11 @@ def test_get_data_and_voting(
         )
     )
     sighting2, encounter2 = individual_utils.simple_sighting_encounter(
-        db, flask_app_client, researcher_2
+        db,
+        flask_app_client,
+        researcher_2,
+        request,
+        test_root,
     )
     request.addfinalizer(sighting2.delete_cascade)
     individual2_id = str(encounter2.individual_guid)

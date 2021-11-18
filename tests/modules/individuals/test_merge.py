@@ -129,17 +129,27 @@ def test_merge(db, flask_app_client, researcher_1, request):
     ),
     reason='Individuals module disabled',
 )
-def test_merge_social_groups(db, flask_app_client, researcher_1, admin_user, request):
+def test_merge_social_groups(
+    db, flask_app_client, researcher_1, admin_user, request, test_root
+):
     from app.modules.social_groups.models import SocialGroup
     from app.modules.individuals.models import Individual
 
     sighting1, encounter1 = individual_utils.simple_sighting_encounter(
-        db, flask_app_client, researcher_1
+        db,
+        flask_app_client,
+        researcher_1,
+        request,
+        test_root,
     )
     request.addfinalizer(sighting1.delete_cascade)
     individual1_id = str(encounter1.individual_guid)
     sighting2, encounter2 = individual_utils.simple_sighting_encounter(
-        db, flask_app_client, researcher_1
+        db,
+        flask_app_client,
+        researcher_1,
+        request,
+        test_root,
     )
     request.addfinalizer(sighting2.delete_cascade)
     request.addfinalizer(

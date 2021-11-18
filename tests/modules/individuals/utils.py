@@ -1,43 +1,26 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=missing-docstring
 
-from tests.modules.sightings.resources import utils as sighting_utils
-
-increment = 0
+from tests.modules.asset_groups.resources import utils as ags_utils
 
 
-def simple_sighting_encounter(db, flask_app_client, user, individual_sex='female'):
-    from app.modules.encounters.models import Encounter
-    from app.modules.sightings.models import Sighting
+# this is just a flimsy wrapper now; do not use.  use create_asset_group_with_sighting_and_individual() instead
 
-    global increment
-    sighting_data_in = {
-        'encounters': [
-            {
-                'decimalLatitude': 45.999,
-                'decimalLongitude': 45.999,
-                'verbatimLocality': 'Legoland Town Square',
-                'locationId': f'Location {increment}',
-            }
-        ],
-        'startTime': '2000-01-01T01:01:01Z',
-        'locationId': f'test-{increment}',
-    }
-    individual_data_in = {
-        'names': {'defaultName': f'NAME {increment}'},
-        'sex': individual_sex,
-        'comments': 'Test Individual',
-        'timeOfBirth': '872846040000',
-    }
-    increment += 1
-    res_sighting, res_individual = sighting_utils.create_sighting_and_individual(
-        flask_app_client, user, sighting_data_in, individual_data_in
+
+def simple_sighting_encounter(
+    db, flask_app_client, user, request, test_root=None, individual_sex='female'
+):
+    (
+        asset_group,
+        sightings,
+        individual,
+    ) = ags_utils.create_asset_group_with_sighting_and_individual(
+        flask_app_client,
+        user,
+        request,
+        test_root=test_root,
     )
-    json_sighting = res_sighting.json['result']
-    json_individual = res_individual.json['result']
-    assert json_sighting['encounters'][0]['id'] == json_individual['encounters'][0]['id']
-    encounter = Encounter.query.get(json_sighting['encounters'][0]['id'])
-    assert encounter is not None
-    sighting = Sighting.query.get(json_sighting['id'])
-    assert sighting is not None
-    return sighting, encounter
+    # munge to fit previous expected return values
+    assert len(sightings) > 0
+    assert len(sightings[0].encounters) > 0
+    return sightings[0], sightings[0].encounters[0]

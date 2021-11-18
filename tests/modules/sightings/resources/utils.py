@@ -223,26 +223,3 @@ def send_sage_identification_response(
             response, expected_status_code, {'status', 'message'}
         )
     return response
-
-
-def create_sighting_and_individual(
-    flask_app_client,
-    user,
-    sighting_data_in={'locationId': 'PYTEST', 'startTime': '2000-01-01T01:01:01Z'},
-    individual_data_in={'sex': 'unknown'},
-):
-    from tests.modules.individuals.resources import utils as individual_utils
-
-    assert 'encounters' in sighting_data_in
-    assert isinstance(sighting_data_in['encounters'], list)
-    assert len(sighting_data_in['encounters']) > 0
-    sighting_response = create_sighting(flask_app_client, user, sighting_data_in)
-    res = sighting_response.json['result']
-    assert 'encounters' in res
-    assert len(res['encounters']) == 1
-
-    individual_data_in['encounters'] = [{'id': res['encounters'][0]['id']}]
-    individual_response = individual_utils.create_individual(
-        flask_app_client, user, data_in=individual_data_in
-    )
-    return sighting_response, individual_response

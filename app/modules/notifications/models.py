@@ -108,7 +108,7 @@ class NotificationBuilder(object):
     def set_collaboration(self, collab):
         self.data['collaboration_guid'] = collab.guid
 
-    def set_individual_merge_request(self, individuals, encounters, request_data):
+    def set_individual_merge(self, individuals, encounters, request_data):
         self.data['individual_list'] = []
         for indiv in individuals:
             self.data['individual_list'].append(indiv.guid)

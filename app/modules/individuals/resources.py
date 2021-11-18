@@ -631,7 +631,7 @@ class IndividualMergeRequestByTaskId(Resource):
                 'from_individual_ids': task_data['request']['args'][1],
                 'merge_outcome': 'blocked',
             }
-            Individual.merge_request_notify(
+            Individual.merge_notify(
                 all_individuals, request_data, NotificationType.individual_merge_complete
             )
             return {'vote': vote, 'merge_request_cancelled': True}
@@ -673,7 +673,7 @@ class IndividualMergeRequestByTaskId(Resource):
             'from_individual_ids': task_data['request']['args'][1],
             'merge_outcome': 'unanimous',
         }
-        Individual.merge_request_notify(
+        Individual.merge_notify(
             [target_individual], request_data, NotificationType.individual_merge_complete
         )
         return {'vote': vote, 'merge_completed': True}

@@ -300,13 +300,13 @@ class Individual(db.Model, FeatherModel):
     # - just a light wrapper to _merge_request_init()
     def merge_request_from(self, source_individuals, parameters=None):
         res = self._merge_request_init(source_individuals, parameters)
-        Individual.merge_request_notify([self] + source_individuals, res)
+        Individual.merge_notify([self] + source_individuals, res)
         return res
 
     # note: for merge_complete individuals will only contain target individual, but
     #   request_data should contain key from_individual_ids
     @classmethod
-    def merge_request_notify(cls, individuals, request_data, notif_type=None):
+    def merge_notify(cls, individuals, request_data, notif_type=None):
         from flask_login import current_user
         from app.modules.notifications.models import NotificationType
 
@@ -325,11 +325,9 @@ class Individual(db.Model, FeatherModel):
                     owners[enc.owner] = {'individuals': set(), 'encounters': set()}
                 owners[enc.owner]['individuals'].add(indiv)
                 owners[enc.owner]['encounters'].add(enc)
-        log.debug(
-            f'merge_request_notify() type={notif_type} created owners structure {owners}'
-        )
+        log.debug(f'merge_notify() type={notif_type} created owners structure {owners}')
         for owner in owners:
-            Individual._merge_request_notify_user(
+            Individual._merge_notify_user(
                 current_user,
                 owner,
                 owners[owner]['individuals'],
@@ -339,7 +337,7 @@ class Individual(db.Model, FeatherModel):
             )
 
     @classmethod
-    def _merge_request_notify_user(
+    def _merge_notify_user(
         cls, sender, user, individuals, encounters, request_data, notif_type
     ):
         from app.modules.notifications.models import (
@@ -348,7 +346,7 @@ class Individual(db.Model, FeatherModel):
         )
 
         builder = NotificationBuilder(sender)
-        builder.set_individual_merge_request(individuals, encounters, request_data)
+        builder.set_individual_merge(individuals, encounters, request_data)
         notification = Notification.create(notif_type, user, builder)
         log_msg = (
             f'merge request: notification {notification} from {sender} re: {individuals}'
@@ -382,7 +380,7 @@ class Individual(db.Model, FeatherModel):
         )
         if not all_individuals:
             msg = f'{log_id} failed validation'
-            AuditLog.backend_fault(log, msg)
+            AuditLog.houston_fault(log, msg)
             return
 
         # validate_merge_request should check hashes etc and means we are good to merge
@@ -394,7 +392,7 @@ class Individual(db.Model, FeatherModel):
             res = f'Exception caught: {str(ex)}'
         if not isinstance(res, dict):
             msg = f'{log_id} (via celery task) merge_from failed: {res}'
-            AuditLog.backend_fault(log, msg)
+            AuditLog.houston_fault(log, msg)
             return
 
         log.info(f'{log_id} merge completed, results={res}')
@@ -407,7 +405,7 @@ class Individual(db.Model, FeatherModel):
             'from_individual_ids': from_individual_ids,
             'merge_outcome': 'deadline',
         }
-        Individual.merge_request_notify(
+        Individual.merge_notify(
             [target_individual], request_data, NotificationType.individual_merge_complete
         )
 

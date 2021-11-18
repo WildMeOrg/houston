@@ -3,6 +3,7 @@
 import tests.modules.asset_groups.resources.utils as asset_group_utils
 import tests.modules.users.resources.utils as user_utils
 import tests.extensions.tus.utils as tus_utils
+import json
 from unittest import mock
 import pytest
 
@@ -439,9 +440,9 @@ def test_create_asset_group_repeat_detection(
             'image_uuid_list',
             'input',
         }
-        assert params['image_uuid_list'] == [
-            f'houston+http://houston:5000/api/v1/assets/src_raw/{asset_guid}'
-        ]
+        assert params['image_uuid_list'] == json.dumps(
+            [f'houston+http://houston:5000/api/v1/assets/src_raw/{asset_guid}']
+        )
         job_uuid = params['jobid']
         ags1 = AssetGroupSighting.query.get(asset_group_sighting_uuid)
         assert ags1.stage == AssetGroupSightingStage.detection

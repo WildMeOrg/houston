@@ -190,7 +190,7 @@ def create_asset_group_sim_sage_init_resp(
                     r'houston\+http://houston:5000/api/v1/assets/src_raw/[a-f0-9-]{36}',
                     uri,
                 )
-                for uri in params['image_uuid_list']
+                for uri in json.loads(params['image_uuid_list'])
             )
         except Exception:
             # Calling code cannot clear up the asset group as the resp is not passed if any of the assertions fail

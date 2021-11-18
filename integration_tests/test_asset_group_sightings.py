@@ -307,3 +307,103 @@ def test_asset_group_sightings(session, login, codex_url, test_root):
     # DELETE sighting
     response = session.delete(codex_url(f'/api/v1/sightings/{sighting_guid}'))
     assert response.status_code == 204
+
+
+def test_bulk_upload(session, login, codex_url, test_root, request):
+    login(session)
+
+    # Create asset group sighting
+    transaction_id = utils.upload_to_tus(
+        session,
+        codex_url,
+        list(test_root.glob('turtle*.jpg')),
+    )
+    response = session.post(
+        codex_url('/api/v1/asset_groups/'),
+        json={
+            'description': 'Bulk import from user',
+            'uploadType': 'bulk',
+            'speciesDetectionModel': ['african_terrestrial'],
+            'transactionId': transaction_id,
+            'sightings': [
+                {
+                    'assetReferences': ['turtle1.jpg'],
+                    'decimalLongitude': '73.5622',
+                    'decimalLatitude': '4.286',
+                    'verbatimLocality': 'North Male Lankan Reef',
+                    'startTime': '2014-01-01T09:00:00.000Z',
+                    'encounters': [
+                        {
+                            'decimalLatitude': '4.286',
+                            'decimalLongitude': '73.5622',
+                            'verbatimLocality': 'North Male Lankan Reef',
+                            'taxonomy': 'ace5e17c-e74a-423f-8bd2-ecc3d7a78f4c',
+                            'time': '2014-01-01T09:00:00.000Z',
+                        }
+                    ],
+                },
+                {
+                    'assetReferences': ['turtle2.jpg', 'turtle3.jpg'],
+                    'decimalLongitude': '73.5622',
+                    'decimalLatitude': '4.2861',
+                    'verbatimLocality': 'North Male Lankan Reef',
+                    'startTime': '2014-01-01T09:00:00.000Z',
+                    'encounters': [
+                        {
+                            'decimalLatitude': '4.2861',
+                            'decimalLongitude': '73.5622',
+                            'verbatimLocality': 'North Male Lankan Reef',
+                            'taxonomy': 'ace5e17c-e74a-423f-8bd2-ecc3d7a78f4c',
+                            'time': '2014-01-01T09:00:00.000Z',
+                        }
+                    ],
+                },
+                {
+                    'assetReferences': ['turtle4.jpg', 'turtle5.jpg'],
+                    'decimalLongitude': '73.6421',
+                    'decimalLatitude': '4.3638',
+                    'verbatimLocality': 'North Male Gasfinolhu Inside Reef',
+                    'startTime': '2019-01-01T09:00:00.000Z',
+                    'encounters': [
+                        {
+                            'decimalLatitude': '4.3638',
+                            'decimalLongitude': '73.6421',
+                            'verbatimLocality': 'North Male Gasfinolhu Inside Reef',
+                            'taxonomy': 'ace5e17c-e74a-423f-8bd2-ecc3d7a78f4c',
+                            'time': '2019-01-01T09:00:00.000Z',
+                        }
+                    ],
+                },
+            ],
+        },
+    )
+    asset_group_guid = response.json()['guid']
+    # Delete asset group after test
+    request.addfinalizer(
+        lambda: session.delete(codex_url(f'/api/v1/asset_groups/{asset_group_guid}'))
+    )
+    ags_guids = [a['guid'] for a in response.json()['asset_group_sightings']]
+
+    # Wait for detection
+    for ags_guid in reversed(ags_guids):
+        utils.wait_for(
+            session.get,
+            codex_url(f'/api/v1/asset_groups/sighting/{ags_guid}'),
+            lambda response: response.json()['stage'] == 'curation',
+        )
+
+    # Commit asset group sightings
+    sighting_guids = []
+    for ags_guid in ags_guids:
+        response = session.post(
+            codex_url(f'/api/v1/asset_groups/sighting/{ags_guid}/commit')
+        )
+        assert response.status_code == 200
+        sighting_guids.append(response.json()['guid'])
+
+    request.addfinalizer(
+        lambda: [
+            session.delete(codex_url(f'/api/v1/sightings/{guid}'))
+            for guid in sighting_guids
+        ]
+    )

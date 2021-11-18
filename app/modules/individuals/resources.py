@@ -541,39 +541,10 @@ class IndividualImageByID(Resource):
             return send_file(image_path, attachment_filename='individual_image.jpg')
 
 
-# TESTING ONLY
-@api.route('/merge_request/test')
-class IndividualMergeRequestCreate(Resource):
-    def get(self):
-        from app.modules.encounters.models import Encounter
-        from flask_login import current_user
-
-        individual = Individual()
-        enc = Encounter()
-        enc.owner = current_user
-        individual.add_encounter(enc)
-        findiv = Individual()
-        with db.session.begin():
-            db.session.add(individual)
-            db.session.add(enc)
-            db.session.add(findiv)
-        params = {'deadline_delta_seconds': 60}  # speed it up
-        res = individual.merge_request_from([findiv], params)
-        log.warning(f'TEST CREATE {individual}, {res}')
-        return {'id': res['async'].id, 'job': str(res), 'individual': str(individual)}
-
-
-@api.route('/merge_request/<uuid:task_id>', defaults={'vote': None}, doc=False)
-@api.route('/merge_request/<uuid:task_id>/<string:vote>')
+@api.route('/merge_request/<uuid:task_id>')
 class IndividualMergeRequestByTaskId(Resource):
-    """
-    Details of merge request, or register a vote on it
-    """
-
-    def get(self, task_id, vote):
+    def _validate_request(self, task_id):
         from flask_login import current_user
-        from app.modules.notifications.models import NotificationType
-        import datetime
 
         if not current_user or current_user.is_anonymous:
             abort(code=HTTPStatus.UNAUTHORIZED)
@@ -601,21 +572,36 @@ class IndividualMergeRequestByTaskId(Resource):
             )
         if not current_user_has_merge_request_access(all_individuals):
             abort(code=HTTPStatus.FORBIDDEN)
+        return all_individuals, task_data
 
-        # if we get here, we have access to this merge request
-        if not vote:
-            task_data['_individuals'] = str(all_individuals)
-            deadline = datetime.datetime.fromisoformat(task_data['eta'])
-            diff = deadline - datetime.datetime.now().astimezone(deadline.tzinfo)
-            task_data['_secondsToDeadline'] = diff.total_seconds()
-            task_data['_serverTime'] = (
-                datetime.datetime.now().astimezone(deadline.tzinfo).isoformat()
-            )
-            task_data[
-                '_deadlinePolicyDays'
-            ] = Individual.get_merge_request_deadline_days()
-            return task_data
+    """
+    Details of merge request
+    """
 
+    def get(self, task_id):
+        import datetime
+
+        all_individuals, task_data = self._validate_request(task_id)
+        task_data['_individuals'] = str(all_individuals)
+        deadline = datetime.datetime.fromisoformat(task_data['eta'])
+        diff = deadline - datetime.datetime.now().astimezone(deadline.tzinfo)
+        task_data['_secondsToDeadline'] = diff.total_seconds()
+        task_data['_serverTime'] = (
+            datetime.datetime.now().astimezone(deadline.tzinfo).isoformat()
+        )
+        task_data['_deadlinePolicyDays'] = Individual.get_merge_request_deadline_days()
+        return task_data
+
+    """
+    Vote on a merge request
+    """
+
+    def post(self, task_id):
+        from flask_login import current_user
+        from app.modules.notifications.models import NotificationType
+
+        vote = request.json.get('vote')
+        all_individuals, task_data = self._validate_request(task_id)
         if vote not in ('allow', 'block'):
             AuditLog.frontend_fault(
                 log,

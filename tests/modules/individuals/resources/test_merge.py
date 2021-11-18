@@ -151,7 +151,7 @@ def test_get_data_and_voting(
 ):
     bad_id = '00000000-0000-0000-0000-000000002170'
     # first anon permission check (401)
-    response = individual_res_utils.get_or_vote_individuals(
+    response = individual_res_utils.get_merge_request(
         flask_app_client,
         None,
         bad_id,
@@ -166,7 +166,7 @@ def test_get_data_and_voting(
         pytest.skip('celery not running')
 
     # invalid id (404)
-    response = individual_res_utils.get_or_vote_individuals(
+    response = individual_res_utils.get_merge_request(
         flask_app_client,
         contributor_1,  # just needs to not be anon
         bad_id,
@@ -221,7 +221,7 @@ def test_get_data_and_voting(
     assert voters[0] == researcher_2
 
     # so now we test unauthorized user (403)
-    response = individual_res_utils.get_or_vote_individuals(
+    response = individual_res_utils.get_merge_request(
         flask_app_client,
         contributor_1,
         request_id,
@@ -229,7 +229,7 @@ def test_get_data_and_voting(
     )
 
     # now this get-data should work
-    response = individual_res_utils.get_or_vote_individuals(
+    response = individual_res_utils.get_merge_request(
         flask_app_client,
         researcher_1,
         request_id,
@@ -239,7 +239,7 @@ def test_get_data_and_voting(
     assert response.json['request'].get('id') == request_id
 
     # invalid vote (422)
-    response = individual_res_utils.get_or_vote_individuals(
+    response = individual_res_utils.vote_merge_request(
         flask_app_client,
         researcher_1,
         request_id,
@@ -248,7 +248,7 @@ def test_get_data_and_voting(
     )
 
     # valid vote (will incidentally also do merge!)
-    response = individual_res_utils.get_or_vote_individuals(
+    response = individual_res_utils.vote_merge_request(
         flask_app_client,
         researcher_1,
         request_id,

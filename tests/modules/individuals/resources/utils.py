@@ -147,22 +147,38 @@ def merge_individuals(
     return resp.json
 
 
-def get_or_vote_individuals(
+def get_merge_request(
     flask_app_client,
     user,
     request_id,
-    vote=None,
     auth_scopes=('individuals:write',),
     expected_status_code=200,
 ):
-    path = f'/api/v1/individuals/merge_request/{request_id}/{vote}'
-    if not vote:
-        path = f'/api/v1/individuals/merge_request/{request_id}'
     resp = test_utils.get_dict_via_flask(
         flask_app_client,
         user,
         scopes=auth_scopes,
-        path=path,
+        path=f'/api/v1/individuals/merge_request/{request_id}',
+        expected_status_code=expected_status_code,
+        response_200=set(),
+    )
+    return resp
+
+
+def vote_merge_request(
+    flask_app_client,
+    user,
+    request_id,
+    vote,
+    auth_scopes=('individuals:write',),
+    expected_status_code=200,
+):
+    resp = test_utils.post_via_flask(
+        flask_app_client,
+        user,
+        scopes=auth_scopes,
+        path=f'/api/v1/individuals/merge_request/{request_id}',
+        data={'vote': vote},
         expected_status_code=expected_status_code,
         response_200=set(),
     )

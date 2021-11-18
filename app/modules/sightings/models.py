@@ -408,7 +408,9 @@ class Sighting(db.Model, FeatherModel):
         log.debug(f'sending message to sage :{id_request}')
         return id_request
 
-    def send_identification(self, config_id, algorithm_id, annotation_uuid):
+    def send_identification(
+        self, config_id, algorithm_id, annotation_uuid, annotation_sage_uuid
+    ):
         from datetime import datetime
 
         log.debug(
@@ -420,7 +422,7 @@ class Sighting(db.Model, FeatherModel):
         matching_set_data = id_configs[config_id].get('matchingSetDataOwners')
         algorithm = id_configs[config_id]['algorithms'][algorithm_id]
         id_request = self.build_identification_request(
-            matching_set_data, annotation_uuid, job_uuid, algorithm
+            matching_set_data, annotation_sage_uuid, job_uuid, algorithm
         )
         if id_request != {}:
             encoded_request = {}
@@ -429,7 +431,7 @@ class Sighting(db.Model, FeatherModel):
             current_app.acm.request_passthrough_result(
                 'job.identification_request', 'post', {'params': encoded_request}
             )
-
+            log.info(f'Sent ID Request, creating job {job_uuid}')
             self.jobs[str(job_uuid)] = {
                 'matching_set': matching_set_data,
                 'algorithm': algorithm,
@@ -625,5 +627,6 @@ class Sighting(db.Model, FeatherModel):
                                 str(self.guid),
                                 config_id,
                                 algorithm_id,
+                                annotation.guid,
                                 annotation.content_guid,
                             )

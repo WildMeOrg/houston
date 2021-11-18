@@ -1,7 +1,25 @@
+# ###
+# Please don't add your personal files to this ignore list.
+# Only add ignore exceptions for files that are unnecessary for the build,
+# have been added by a script in this application,
+# or could potentially contain sensative data.
+# ###
+
+
+# ###
+# Development files
+# ###
 .git*
 .dockerignore
 .DS_Store
+*.egg-info/
+__pycache__
+*.pyc
 
+
+# ###
+# Build oriented files
+# ###
 .github/
 .coveragerc
 .editorconfig
@@ -9,35 +27,37 @@
 .pylintrc
 .pytest_cache
 .travis.yml
-
-_assets/
-
-*.egg-info/
-
-Dockerfile
-Dockerfile.codex
-Dockerfile.mws
-Procfile
-
-example.db
-dist.*.tar.gz
-
-_db/
 _frontend
 _frontend.codex/
 _frontend.mws/
+dist.*.tar.gz
+Dockerfile*
+pip-wheel-metadata/
+virtualenv/
+
+
+# ###
+# Files not required for a production deployment
+# ###
 clients/
 docs/
 tests/
-# Maintains the requirements file for setup.py logic
-!tests/requirements.txt
-devops/
-virtualenv/
 deploy/
 
-__pycache__
-*.pyc
 
+# ###
+# Data files that may be around in the developer's environment
+# ###
+Procfile
+_assets/
+_db/
+
+
+# ###
+# Exceptions to the rule...
+# Please place an explanation above the exception.
+# ###
+#: Maintains the requirements file for setup.py logic
+!tests/requirements.txt
+#: Because the usage exists in documentation (grep for it)
 cookie.jar
-pip-wheel-metadata/
-local_config.py.template

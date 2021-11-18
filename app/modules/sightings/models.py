@@ -6,6 +6,7 @@ Sightings database models
 import enum
 import logging
 import uuid
+import json
 
 from flask import current_app
 
@@ -78,6 +79,7 @@ class Sighting(db.Model, FeatherModel):
         return (
             '<{class_name}('
             'guid={self.guid}, '
+            'stage={self.stage}, '
             ')>'.format(class_name=self.__class__.__name__, self=self)
         )
 
@@ -349,10 +351,15 @@ class Sighting(db.Model, FeatherModel):
         matching_set_individual_uuids = []
         matching_set_annot_uuids = []
         for annot in unique_annots:
-            if annot.encounter.sighting.stage == SightingStage.processed:
-                matching_set_individual_uuids.append(annot.get_name())
-                matching_set_annot_uuids.append(to_acm_uuid(annot.guid))
+            if annot.encounter:
+                if annot.encounter.sighting.stage == SightingStage.processed:
+                    matching_set_individual_uuids.append(annot.get_name())
+                    matching_set_annot_uuids.append(to_acm_uuid(annot.content_guid))
 
+        log.debug(
+            f'Built matching set individuals {matching_set_individual_uuids}, '
+            f'annots {matching_set_annot_uuids}'
+        )
         return matching_set_individual_uuids, matching_set_annot_uuids
 
     def build_identification_request(
@@ -374,16 +381,21 @@ class Sighting(db.Model, FeatherModel):
         base_url = current_app.config.get('BASE_URL')
         from app.modules.ia_config_reader import IaConfig
 
-        callback_url = f'{base_url}api/v1/asset_group/sighting/{str(self.guid)}/sage_identified/{str(job_uuid)}'
+        callback_url = (
+            f'{base_url}api/v1/sightings/{str(self.guid)}/sage_identified/{str(job_uuid)}'
+        )
         ia_config_reader = IaConfig(current_app.config.get('CONFIG_MODEL'))
         try:
-            id_config_dict = ia_config_reader.get(f'_identifiers.{algorithm}')
+            id_config_dict = ia_config_reader.get(f'_identifiers.{algorithm}').copy()
         except KeyError:
             raise HoustonException(log, f'failed to find {algorithm}')
 
+        # description is used for populating the frontend but Sage complains if it's there so remove it
+        id_config_dict.pop('description', None)
         id_request = {
             'jobid': str(job_uuid),
-            'callback_url': callback_url,
+            'callback_url': f'houston+{callback_url}',
+            'callback_detailed': True,
             'matching_state_list': [],
             'query_annot_name_list': ['____'],
             'query_annot_uuid_list': [
@@ -393,24 +405,34 @@ class Sighting(db.Model, FeatherModel):
             'database_annot_uuid_list': matching_set_annot_uuids,
         }
         id_request = id_request | id_config_dict
+
+        log.debug(f'sending message to sage :{id_request}')
         return id_request
 
-    def send_identification(self, config_id, algorithm_id, annotation_uuid):
+    def send_identification(
+        self, config_id, algorithm_id, annotation_uuid, annotation_sage_uuid
+    ):
         from datetime import datetime
 
+        log.debug(
+            f'In send_identification for cnf:{config_id}  algo:{algorithm_id}  Ann UUID:{annotation_uuid}'
+        )
         id_configs = self.asset_group_sighting.get_id_configs()
         # Message construction has to be in the task as the jobId must be unique
         job_uuid = uuid.uuid4()
         matching_set_data = id_configs[config_id].get('matchingSetDataOwners')
         algorithm = id_configs[config_id]['algorithms'][algorithm_id]
         id_request = self.build_identification_request(
-            matching_set_data, annotation_uuid, job_uuid, algorithm
+            matching_set_data, annotation_sage_uuid, job_uuid, algorithm
         )
         if id_request != {}:
+            encoded_request = {}
+            for key in id_request:
+                encoded_request[key] = json.dumps(id_request[key])
             current_app.acm.request_passthrough_result(
-                'job.identification_request', 'post', {'params': id_request}
+                'job.identification_request', 'post', {'params': encoded_request}
             )
-
+            log.info(f'Sent ID Request, creating job {job_uuid}')
             self.jobs[str(job_uuid)] = {
                 'matching_set': matching_set_data,
                 'algorithm': algorithm,
@@ -562,7 +584,17 @@ class Sighting(db.Model, FeatherModel):
                 # Only one for MVP
                 assert len(config['algorithms']) == 1
                 assert 'matchingSetDataOwners' in config
-                num_algorithms += len(config['algorithms'])
+
+                # Only use the algorithm if there is a matching data set to ID against
+                (
+                    matching_set_individual_uuids,
+                    matching_set_annot_uuids,
+                ) = self.get_matching_set_data(config['matchingSetDataOwners'])
+                if (
+                    len(matching_set_individual_uuids) > 0
+                    and len(matching_set_annot_uuids) > 0
+                ):
+                    num_algorithms += len(config['algorithms'])
 
                 # For now, regions are ignored
 
@@ -592,9 +624,10 @@ class Sighting(db.Model, FeatherModel):
                 for algorithm_id in range(len(id_configs[config_id]['algorithms'])):
                     for encounter in self.encounters:
                         for annotation in encounter.annotations:
-                            send_identification(
-                                self.guid,
+                            send_identification.delay(
+                                str(self.guid),
                                 config_id,
                                 algorithm_id,
                                 annotation.guid,
+                                annotation.content_guid,
                             )

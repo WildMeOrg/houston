@@ -136,6 +136,7 @@ def test_sightings(session, login, codex_url, test_root, admin_name):
         'decimalLatitude': 63.142385,
         'decimalLongitude': -21.596914,
         # FIXME missing 'distance': distance,
+        'stage': 'un_reviewed',
         'encounters': [
             {
                 'country': 'TEST',
@@ -283,6 +284,7 @@ def test_sightings(session, login, codex_url, test_root, admin_name):
         'id': sighting_id,
         'locationId': 'PYTEST',
         'startTime': '2000-01-01T01:01:01Z',
+        'stage': 'un_reviewed',
         # 2021-11-16T09:45:26.717432+00:00
         'updatedHouston': response.json()['updatedHouston'],
         'version': sighting_version,

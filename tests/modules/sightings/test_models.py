@@ -154,10 +154,10 @@ def test_sighting_jobs(db, request, researcher_1):
     with mock.patch('datetime.datetime') as mock_datetime:
         mock_datetime.utcnow.return_value = now
         with mock.patch.object(sighting1, 'build_identification_request'):
-            sighting1.send_identification('config1', 'algorithm_id', 'aid1')
-            sighting1.send_identification('config2', 'algorithm_id', 'aid1')
+            sighting1.send_identification('config1', 'algorithm_id', 'aid1', 'sage_aid1')
+            sighting1.send_identification('config2', 'algorithm_id', 'aid1', 'sage_aid1')
         with mock.patch.object(sighting2, 'build_identification_request'):
-            sighting2.send_identification('config2', 'algorithm_id', 'aid2')
+            sighting2.send_identification('config2', 'algorithm_id', 'aid2', 'sage_aid2')
 
     assert Sighting.query.get(sighting1.guid).jobs == {
         str(job_id1): {

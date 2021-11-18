@@ -52,6 +52,28 @@ def create_new_user(session, codex_url, email, password='password', **kwargs):
     return response.json()['guid']
 
 
+def create_asset_group(session, codex_url, data):
+
+    response = session.post(
+        codex_url('/api/v1/asset_groups/'),
+        json=data,
+    )
+    assert response.status_code == 200
+
+    json_resp = response.json()
+    assert set(json_resp.keys()) >= set(
+        {'guid', 'assets', 'asset_group_sightings', 'major_type', 'description'}
+    )
+    asset_guid = json_resp['guid']
+    asset_guids = [asset['guid'] for asset in json_resp['assets']]
+    ags_guids = [ags['guid'] for ags in json_resp['asset_group_sightings']]
+    assert len(ags_guids) == len(data['sightings'])
+
+    assert json_resp['major_type'] == 'filesystem'
+    assert json_resp['description'] == data['description']
+    return asset_guid, ags_guids, asset_guids
+
+
 def wait_for(
     session_method,
     url,

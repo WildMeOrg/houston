@@ -408,6 +408,34 @@ def commit_asset_group_sighting(
     )
 
 
+def commit_asset_group_sighting_sage_identification(
+    flask_app,
+    flask_app_client,
+    user,
+    asset_group_sighting_guid,
+    expected_status_code=200,
+):
+    from app.modules.sightings import tasks
+
+    # Start ID simulating success response from Sage
+    with mock.patch.object(
+        flask_app.acm,
+        'request_passthrough_result',
+        return_value={'success': True},
+    ):
+        with mock.patch.object(
+            tasks.send_identification,
+            'delay',
+            side_effect=lambda *args, **kwargs: tasks.send_identification(
+                *args, **kwargs
+            ),
+        ):
+            response = commit_asset_group_sighting(
+                flask_app_client, user, asset_group_sighting_guid, expected_status_code
+            )
+    return response
+
+
 def create_asset_group_with_annotation(
     flask_app_client, db, user, transaction_id, test_filename
 ):
@@ -754,6 +782,7 @@ def patch_in_dummy_annotation(
     # Create a dummy annotation for this Sighting
     new_annot = Annotation(
         guid=uuid.uuid4(),
+        content_guid=uuid.uuid4(),
         asset=asset,
         ia_class='none',
         viewpoint='test',
@@ -768,7 +797,9 @@ def patch_in_dummy_annotation(
     )
     encounter_guid = group_sighting.json['config']['encounters'][encounter_num]['guid']
 
-    patch_data = [test_utils.patch_replace_op('annotations', [str(new_annot.guid)])]
+    patch_data = [
+        test_utils.patch_replace_op('annotations', [str(new_annot.content_guid)])
+    ]
     patch_asset_group_sighting(
         flask_app_client,
         user,

@@ -142,22 +142,26 @@ class AssetGroupMetadata(object):
             )
 
     @classmethod
-    def validate_annotations(cls, annotations, debug):
+    def validate_annotations(cls, asset_group_sighting, annotations, debug):
         from app.modules.annotations.models import Annotation
         from app.modules.asset_groups.models import AssetGroupSightingStage
 
+        if not asset_group_sighting.stage == AssetGroupSightingStage.curation:
+            raise AssetGroupMetadataError(
+                log, f'{debug} annotations:{str(annotations)} not in curating group'
+            )
+
         for annot_uuid in annotations:
-            annot = Annotation.query.get(annot_uuid)
-            if not annot:
+            # Need to find the annotation for which the asset is part of the current asset group
+            annots = [
+                annot
+                for annot in Annotation.query.filter_by(content_guid=annot_uuid).all()
+                if annot.asset.asset_group_guid == asset_group_sighting.asset_group_guid
+            ]
+
+            if len(annots) != 1:
                 raise AssetGroupMetadataError(
                     log, f'{debug} annotation:{str(annot_uuid)} not found'
-                )
-
-            if not annot.asset.asset_group.is_partially_in_stage(
-                AssetGroupSightingStage.curation
-            ):
-                raise AssetGroupMetadataError(
-                    log, f'{debug} annotation:{str(annot_uuid)} not in curating group'
                 )
 
     @classmethod
@@ -195,27 +199,6 @@ class AssetGroupMetadata(object):
                 )
                 owner_assignment = True
 
-            # can assign annotations (in patch only) but they must be valid
-            if 'annotations' in encounter:
-                cls.validate_annotations(encounter['annotations'])
-                from app.modules.annotations.models import Annotation
-                from app.modules.asset_groups.models import AssetGroupSightingStage
-
-                for annot_uuid in encounter['annotations']:
-                    annot = Annotation.query.get(annot_uuid)
-                    if not annot:
-                        raise AssetGroupMetadataError(
-                            log,
-                            f'{debug}{encounter_num} annotation:{str(annot_uuid)} not found',
-                        )
-
-                    if not annot.asset.asset_group.is_partially_in_stage(
-                        AssetGroupSightingStage.curation
-                    ):
-                        raise AssetGroupMetadataError(
-                            log,
-                            f'{debug}{encounter_num} annotation:{str(annot_uuid)} not in curating group',
-                        )
         return owner_assignment
 
     def _validate_sighting(self, sighting, file_dir, sighting_debug, encounter_debug):

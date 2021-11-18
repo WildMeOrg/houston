@@ -103,6 +103,11 @@ class PatchAssetGroupSightingDetailsParameters(PatchJSONParameters):
             ret_val = True
         elif field == 'encounters':
             AssetGroupMetadata.validate_encounters(value, f'Sighting {obj.guid}')
+            # can assign annotations (in patch only) but they must be valid
+            if 'annotations' in value:
+                AssetGroupMetadata.validate_annotations(
+                    obj, value['annotations'], f'Sighting {obj.guid}'
+                )
             obj.config[field] = value
             # All encounters in the metadata need to be allocated a pseudo ID for later patching
             for encounter_num in range(len(obj.config['encounters'])):
@@ -174,6 +179,11 @@ class PatchAssetGroupSightingAsSightingParameters(PatchJSONParameters):
             ret_val = True
         elif field == 'encounters':
             AssetGroupMetadata.validate_encounters(value, f'Sighting {obj.guid}')
+            # can assign annotations (in patch only) but they must be valid
+            if 'annotations' in value:
+                AssetGroupMetadata.validate_annotations(
+                    obj, value['annotations'], f'Sighting {obj.guid}'
+                )
             obj.config[field] = value
             # All encounters in the metadata need to be allocated a pseudo ID for later patching
             for encounter_num in range(len(obj.config['encounters'])):
@@ -234,7 +244,9 @@ class PatchAssetGroupSightingEncounterDetailsParameters(PatchJSONParameters):
             AssetGroupMetadata.validate_owner_email(value, f'Encounter {encounter_uuid}')
             encounter_metadata[field] = value
         elif field == 'annotations':
-            AssetGroupMetadata.validate_annotations(value, f'Encounter {encounter_uuid}')
+            AssetGroupMetadata.validate_annotations(
+                obj, value, f'Encounter {encounter_uuid}'
+            )
             encounter_metadata[field] = value
         elif field == 'individualUuid':
             AssetGroupMetadata.validate_individual(value, f'Encounter {encounter_uuid}')

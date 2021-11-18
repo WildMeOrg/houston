@@ -129,8 +129,8 @@ def test_sighting_identification_jobs(
             flask_app_client, db, researcher_1, asset_group_sighting_guid, asset_uuid
         )
 
-        response = asset_group_utils.commit_asset_group_sighting(
-            flask_app_client, researcher_1, asset_group_sighting_guid
+        response = asset_group_utils.commit_asset_group_sighting_sage_identification(
+            flask_app, flask_app_client, researcher_1, asset_group_sighting_guid
         )
         sighting_uuid = response.json['guid']
 
@@ -164,7 +164,16 @@ def test_sighting_identification_jobs(
             'request_passthrough_result',
             return_value={'success': True},
         ):
-            sighting.ia_pipeline()
+            from app.modules.sightings import tasks
+
+            with mock.patch.object(
+                tasks.send_identification,
+                'delay',
+                side_effect=lambda *args, **kwargs: tasks.send_identification(
+                    *args, **kwargs
+                ),
+            ):
+                sighting.ia_pipeline()
 
         # Now see that the task gets what we expect
         with mock.patch('app.create_app'):

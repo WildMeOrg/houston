@@ -626,6 +626,14 @@ class IndividualMergeRequestByTaskId(Resource):
                 f'BLOCK vote for merge_request id={task_id} (celery task revoked)',
             )
             Individual.merge_request_cancel_task(task_id)
+            request_data = {
+                'id': task_id,
+                'from_individual_ids': task_data['request']['args'][1],
+                'merge_outcome': 'blocked',
+            }
+            Individual.merge_request_notify(
+                all_individuals, request_data, NotificationType.individual_merge_complete
+            )
             return {'vote': vote, 'merge_request_cancelled': True}
 
         # we only care about *number of votes* here really, cuz they all must be "allow" if we got this far
@@ -663,6 +671,7 @@ class IndividualMergeRequestByTaskId(Resource):
         request_data = {
             'id': task_id,
             'from_individual_ids': task_data['request']['args'][1],
+            'merge_outcome': 'unanimous',
         }
         Individual.merge_request_notify(
             [target_individual], request_data, NotificationType.individual_merge_complete

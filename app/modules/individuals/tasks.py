@@ -48,6 +48,7 @@ def execute_merge_request(self, target_individual_guid, from_individual_ids, par
     request_data = {
         'id': self.request.id,
         'from_individual_ids': from_individual_ids,
+        'merge_outcome': 'deadline',
     }
     Individual.merge_request_notify(
         [target_individual], request_data, NotificationType.individual_merge_complete

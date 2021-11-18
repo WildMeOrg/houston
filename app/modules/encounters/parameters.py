@@ -21,17 +21,14 @@ class PatchEncounterDetailsParameters(PatchJSONParametersWithPassword):
     # pylint: disable=abstract-method,missing-docstring
 
     PATH_CHOICES_EDM = (
-        '/behavior',
         '/comments',
         '/customFields',
         '/decimalLatitude',
         '/decimalLongitude',
-        '/lifeStage',
         '/locationId',
         '/sex',
         '/taxonomy',
         '/time',
-        '/timeValues',
         '/verbatimLocality',
     )
 

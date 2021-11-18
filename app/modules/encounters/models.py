@@ -125,6 +125,16 @@ class Encounter(db.Model, FeatherModel):
             with db.session.begin(subtransactions=True):
                 self.annotations.append(annotation)
 
+    def merge_request_hash(self):
+        parts = [
+            self.guid.int,
+            # this covers weird cases where things arent persisted to db yet
+            (self.owner and self.owner.guid or self.owner_guid).int,
+            (self.individual and self.individual.guid or self.individual_guid).int,
+        ]
+        parts.sort()
+        return hash(tuple(parts))
+
     def delete(self):
         AuditLog.delete_object(log, self)
         with db.session.begin():

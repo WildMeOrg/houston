@@ -75,7 +75,9 @@ def delete_individual(flask_app_client, user, guid, expected_status_code=204):
         response = flask_app_client.delete('%s%s' % (PATH, guid))
 
     if expected_status_code == 204:
-        assert response.status_code == 204
+        # we allow 404 here in the event that it is being called as a finalizer on an
+        #   individual which was deleted by the test (e.g. during merges)
+        assert response.status_code == 204 or response.status_code == 404
     else:
         test_utils.validate_dict_response(
             response, expected_status_code, {'status', 'message'}
@@ -124,3 +126,62 @@ def create_individual_with_encounter(db, flask_app_client, user, request):
         lambda: delete_individual(flask_app_client, user, resp.json['result']['id'])
     )
     return resp.json['result']
+
+
+def merge_individuals(
+    flask_app_client,
+    user,
+    individual_id,
+    data_in,
+    auth_scopes=('individuals:write',),
+    expected_status_code=200,
+    expected_fields={'merged'},
+):
+    resp = test_utils.post_via_flask(
+        flask_app_client,
+        user,
+        scopes=auth_scopes,
+        path=f'/api/v1/individuals/{individual_id}/merge',
+        data=data_in,
+        expected_status_code=expected_status_code,
+        response_200=expected_fields,
+    )
+    return resp.json
+
+
+def get_merge_request(
+    flask_app_client,
+    user,
+    request_id,
+    auth_scopes=('individuals:write',),
+    expected_status_code=200,
+):
+    resp = test_utils.get_dict_via_flask(
+        flask_app_client,
+        user,
+        scopes=auth_scopes,
+        path=f'/api/v1/individuals/merge_request/{request_id}',
+        expected_status_code=expected_status_code,
+        response_200=set(),
+    )
+    return resp
+
+
+def vote_merge_request(
+    flask_app_client,
+    user,
+    request_id,
+    vote,
+    auth_scopes=('individuals:write',),
+    expected_status_code=200,
+):
+    resp = test_utils.post_via_flask(
+        flask_app_client,
+        user,
+        scopes=auth_scopes,
+        path=f'/api/v1/individuals/merge_request/{request_id}',
+        data={'vote': vote},
+        expected_status_code=expected_status_code,
+        response_200=set(),
+    )
+    return resp

@@ -18,11 +18,22 @@ from app.modules.users.permissions.types import AccessOperation
 from app.utils import HoustonException
 
 from . import parameters, schemas
-from .models import Individual
+from .models import Individual, IndividualMergeRequestVote
 import app.extensions.logging as AuditLog
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 api = Namespace('individuals', description='Individuals')  # pylint: disable=invalid-name
+
+
+def current_user_has_merge_request_access(individuals):
+    if not isinstance(individuals, list) or len(individuals) < 2:
+        return False
+    for indiv in individuals:
+        for enc in indiv.encounters:
+            if enc.current_user_has_edit_permission():
+                # just needs edit on a single encounter
+                return True
+    return False
 
 
 class IndividualCleanup(object):
@@ -450,8 +461,9 @@ class IndividualByIDMerge(Resource):
             block_ids = [str(enc.guid) for enc in blocking_encounters]
             merge_request = None
             try:
-                merge_request = individual.merge_request_from(*from_individuals)
+                merge_request = individual.merge_request_from(from_individuals)
             except Exception as ex:
+                AuditLog.houston_fault(log, str(ex), individual)
                 abort(
                     blocking_encounters=block_ids,
                     merge_request=True,
@@ -459,23 +471,35 @@ class IndividualByIDMerge(Resource):
                     code=500,
                 )
             if not merge_request:
+                AuditLog.houston_fault(log, 'merge_request fail', individual)
                 abort(
                     blocking_encounters=block_ids,
                     merge_request=True,
                     message='Merge failed',
                     code=500,
                 )
-            return merge_request
+            # as a stakeholder, this automatically counts as a vote for this user
+            IndividualMergeRequestVote.record_vote(
+                merge_request['id'], current_user, 'allow'
+            )
+            return {
+                'blocking_encounters': block_ids,
+                'request_id': merge_request['id'],
+                'deadline': merge_request['deadline'].isoformat() + 'Z',
+                'merge_request': True,
+            }
 
         merge = None
         try:
             merge = individual.merge_from(*from_individuals)
         except ValueError as ex:
+            AuditLog.houston_fault(log, str(ex), individual)
             abort(
                 message=str(ex),
                 code=500,
             )
         if not merge:
+            AuditLog.houston_fault(log, 'merge fail', individual)
             abort(
                 message='Merge failed',
                 code=500,
@@ -515,3 +539,141 @@ class IndividualImageByID(Resource):
             except HoustonException as ex:
                 abort(ex.status_code, ex.message)
             return send_file(image_path, attachment_filename='individual_image.jpg')
+
+
+@api.route('/merge_request/<uuid:task_id>')
+class IndividualMergeRequestByTaskId(Resource):
+    def _validate_request(self, task_id):
+        from flask_login import current_user
+
+        if not current_user or current_user.is_anonymous:
+            abort(code=HTTPStatus.UNAUTHORIZED)
+
+        task_data = Individual.get_merge_request_data(str(task_id))
+        if not task_data:
+            abort(code=HTTPStatus.NOT_FOUND)
+
+        if (
+            'request' not in task_data
+            or 'args' not in task_data['request']
+            or len(task_data['request']['args']) != 3
+        ):
+            abort(code=HTTPStatus.INTERNAL_SERVER_ERROR, description='Invalid task data')
+        all_individuals = Individual.validate_merge_request(
+            task_data['request']['args'][0],
+            task_data['request']['args'][1],
+            task_data['request']['args'][2],
+        )
+        if not all_individuals:
+            log.debug(f"merge request validation failed: {task_data['request']['args']}")
+            abort(
+                code=HTTPStatus.UNPROCESSABLE_ENTITY,
+                description='Merge request content not valid',
+            )
+        if not current_user_has_merge_request_access(all_individuals):
+            abort(code=HTTPStatus.FORBIDDEN)
+        return all_individuals, task_data
+
+    """
+    Details of merge request
+    """
+
+    def get(self, task_id):
+        import datetime
+
+        all_individuals, task_data = self._validate_request(task_id)
+        task_data['_individuals'] = str(all_individuals)
+        deadline = datetime.datetime.fromisoformat(task_data['eta'])
+        diff = deadline - datetime.datetime.now().astimezone(deadline.tzinfo)
+        task_data['_secondsToDeadline'] = diff.total_seconds()
+        task_data['_serverTime'] = (
+            datetime.datetime.now().astimezone(deadline.tzinfo).isoformat()
+        )
+        task_data['_deadlinePolicyDays'] = Individual.get_merge_request_deadline_days()
+        return task_data
+
+    """
+    Vote on a merge request
+    """
+
+    def post(self, task_id):
+        from flask_login import current_user
+        from app.modules.notifications.models import NotificationType
+
+        vote = request.json.get('vote')
+        all_individuals, task_data = self._validate_request(task_id)
+        if vote not in ('allow', 'block'):
+            AuditLog.frontend_fault(
+                log,
+                f'invalid vote={vote} for merge_request id={task_id}',
+                all_individuals[0],
+            )
+            abort(
+                code=HTTPStatus.UNPROCESSABLE_ENTITY,
+                description=f'invalid vote value "{vote}", must be "allow" or "block"',
+            )
+
+        # we take a valid vote, and record it.  now we have 3 cases:
+        # 1. block vote kills the task outright
+        # 2. allow vote that is final one needed, which triggers merge *now* ("unanimous")
+        # 3. allow vote, but not unanimous - no-op and we keep waiting (task is still valid)
+        IndividualMergeRequestVote.record_vote(task_id, current_user, vote)
+
+        if vote == 'block':
+            AuditLog.audit_log_object(
+                log,
+                all_individuals[0],
+                f'BLOCK vote for merge_request id={task_id} (celery task revoked)',
+            )
+            Individual.merge_request_cancel_task(task_id)
+            request_data = {
+                'id': task_id,
+                'from_individual_ids': task_data['request']['args'][1],
+                'merge_outcome': 'blocked',
+            }
+            Individual.merge_notify(
+                all_individuals, request_data, NotificationType.individual_merge_complete
+            )
+            return {'vote': vote, 'merge_request_cancelled': True}
+
+        # we only care about *number of votes* here really, cuz they all must be "allow" if we got this far
+        voters = IndividualMergeRequestVote.get_voters(task_id)
+        stakeholders = Individual.get_merge_request_stakeholders(all_individuals)
+        needed = len(stakeholders) - len(voters)
+        if needed > 0:
+            AuditLog.audit_log_object(
+                log,
+                all_individuals[0],
+                f'ALLOW vote for merge_request id={task_id} ({needed} more votes needed)',
+            )
+            return {'vote': vote, 'votes_needed': needed}
+
+        # unanimous!  lets make merge happen
+        AuditLog.audit_log_object(
+            log,
+            all_individuals[0],
+            f'ALLOW vote for merge_request id={task_id}; unanimous, triggering merge',
+        )
+        target_individual = all_individuals.pop(0)
+        try:
+            res = target_individual.merge_from(*all_individuals)
+        except Exception as ex:
+            res = f'Exception caught: {str(ex)}'
+        if not isinstance(res, dict):
+            msg = f'{task_id} (via unanimous vote) merge_from failed: {res}'
+            AuditLog.houston_fault(log, msg, target_individual)
+            abort(success=False, message=msg, code=500)
+
+        Individual.merge_request_cleanup(task_id)
+        # notify users that merge has happened
+        #   NOTE request_data here may need some altering depending on what final templates look like
+        #   also unclear who *sender* will be, so that may need to be passed
+        request_data = {
+            'id': task_id,
+            'from_individual_ids': task_data['request']['args'][1],
+            'merge_outcome': 'unanimous',
+        }
+        Individual.merge_notify(
+            [target_individual], request_data, NotificationType.individual_merge_complete
+        )
+        return {'vote': vote, 'merge_completed': True}

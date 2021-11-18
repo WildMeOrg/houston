@@ -9,8 +9,63 @@ from flask import current_app
 import uuid
 import logging
 import app.extensions.logging as AuditLog
+from datetime import datetime
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
+
+
+class IndividualMergeRequestVote(db.Model):
+    """
+    Records a vote on a Merge Request
+    """
+
+    # we dont really need a primary key on this table, but sqlalchemy pretty much requires one; so we
+    #   get ours with (request_id + user_guid + created) which should be unique enough thanks to timestamp
+    request_id = db.Column(db.GUID, index=True, nullable=False, primary_key=True)
+    user_guid = db.Column(
+        db.GUID,
+        db.ForeignKey('user.guid'),
+        index=True,
+        nullable=False,
+        primary_key=True,
+    )
+    user = db.relationship('User', foreign_keys=[user_guid])
+    vote = db.Column(db.String(length=10), index=True, nullable=False)
+    created = db.Column(
+        db.DateTime, index=True, default=datetime.utcnow, nullable=False, primary_key=True
+    )
+
+    def __repr__(self):
+        return (
+            '<{class_name}('
+            'req={self.request_id}, '
+            "user='{self.user_guid}', "
+            'vote={self.vote}, '
+            'date={self.created}, '
+            ')>'.format(class_name=self.__class__.__name__, self=self)
+        )
+
+    @classmethod
+    def record_vote(cls, request_id, user, vote):
+        req_vote = IndividualMergeRequestVote(
+            request_id=request_id,
+            user_guid=user.guid,
+            vote=vote,
+        )
+        with db.session.begin(subtransactions=True):
+            db.session.add(req_vote)
+        return req_vote
+
+    @classmethod
+    def get_voters(cls, request_id):
+        from app.modules.users.models import User
+
+        res = (
+            db.session.query(IndividualMergeRequestVote.user_guid)
+            .filter(IndividualMergeRequestVote.request_id == request_id)
+            .group_by(IndividualMergeRequestVote.user_guid)
+        )
+        return [User.query.get(uid) for uid in res]
 
 
 class Individual(db.Model, FeatherModel):
@@ -178,7 +233,6 @@ class Individual(db.Model, FeatherModel):
         }
         for indiv in source_individuals:
             data['sourceIndividualIds'].append(str(indiv.guid))
-        # response = current_app.edm.request_passthrough_result(
         response = current_app.edm.request_passthrough(
             'individual.merge',
             'post',
@@ -189,6 +243,11 @@ class Individual(db.Model, FeatherModel):
             None,
         )
         if not response.ok:
+            AuditLog.backend_fault(
+                log,
+                f'non-OK ({response.status_code}) response from edm: {response.json()}',
+                self,
+            )
             return response
 
         result = response.json()['result']
@@ -203,17 +262,14 @@ class Individual(db.Model, FeatherModel):
             error_msg = 'edm merge-results merged dict invalid'
         if error_msg:
             AuditLog.backend_fault(log, error_msg, self)
-            return
+            raise ValueError(error_msg)
 
         # first we sanity-check the reported removed individuals vs what was requested
         for merged_id in result['merged'].keys():
             if merged_id not in data['sourceIndividualIds']:
-                AuditLog.backend_fault(
-                    log,
-                    f'merge mismatch against sourceIndividualIds with {merged_id}',
-                    self,
-                )
-                return
+                error_msg = f'merge mismatch against sourceIndividualIds with {merged_id}'
+                AuditLog.backend_fault(log, error_msg, self)
+                raise ValueError(error_msg)
             log.info(
                 f"edm reports successful merge of indiv {merged_id} into {result['targetId']} for encounters {result['merged'][merged_id]}; adjusting locally"
             )
@@ -231,15 +287,127 @@ class Individual(db.Model, FeatherModel):
                 enc.individual_guid = self.guid
             self._consolidate_social_groups(indiv)
             indiv.delete()
+        AuditLog.audit_log_object(
+            log,
+            self,
+            f"merge SUCCESS from {data['sourceIndividualIds']}",
+        )
         return result
 
     # mimics individual.merge_from(), but does not immediately executes; rather waits for approval
     #   and initiates a request including time-out etc
-    def merge_request_from(self, *source_individuals):
-        log.warning(
-            f'merge_request() on {self} from {source_individuals} -- NOT YET IMPLEMENTED'
+    # - really likely only useful via api endpoint (based on permissions); not direct call
+    # - just a light wrapper to _merge_request_init()
+    def merge_request_from(self, source_individuals, parameters=None):
+        res = self._merge_request_init(source_individuals, parameters)
+        Individual.merge_notify([self] + source_individuals, res)
+        return res
+
+    # note: for merge_complete individuals will only contain target individual, but
+    #   request_data should contain key from_individual_ids
+    @classmethod
+    def merge_notify(cls, individuals, request_data, notif_type=None):
+        from flask_login import current_user
+        from app.modules.notifications.models import NotificationType
+
+        if not notif_type:
+            notif_type = NotificationType.individual_merge_request
+        owners = {}
+        for indiv in individuals:
+            for enc in indiv.encounters:
+                # we only skip current_user when it is merge_request (merge_complete goes to all users)
+                if not enc.owner or (
+                    notif_type == NotificationType.individual_merge_request
+                    and enc.owner == current_user
+                ):
+                    continue
+                if enc.owner not in owners:
+                    owners[enc.owner] = {'individuals': set(), 'encounters': set()}
+                owners[enc.owner]['individuals'].add(indiv)
+                owners[enc.owner]['encounters'].add(enc)
+        log.debug(f'merge_notify() type={notif_type} created owners structure {owners}')
+        for owner in owners:
+            Individual._merge_notify_user(
+                current_user,
+                owner,
+                owners[owner]['individuals'],
+                owners[owner]['encounters'],
+                request_data,
+                notif_type,
+            )
+
+    @classmethod
+    def _merge_notify_user(
+        cls, sender, user, individuals, encounters, request_data, notif_type
+    ):
+        from app.modules.notifications.models import (
+            Notification,
+            NotificationBuilder,
         )
-        return False
+
+        builder = NotificationBuilder(sender)
+        builder.set_individual_merge(individuals, encounters, request_data)
+        notification = Notification.create(notif_type, user, builder)
+        log_msg = (
+            f'merge request: notification {notification} from {sender} re: {individuals}'
+        )
+        AuditLog.audit_log_object(log, user, log_msg)
+
+    @classmethod
+    def merge_request_cancel_task(cls, req_id):
+        current_app.celery.control.revoke(req_id)
+        Individual.merge_request_cleanup(req_id)
+
+    # scrubs notifications etc, once a merge has completed
+    @classmethod
+    def merge_request_cleanup(cls, req_id):
+        log.debug(
+            f'[{req_id}] merge_request_cleanup (notifications, etc) not yet implemented'
+        )
+
+    @classmethod
+    def merge_request_celery_task(
+        cls, cel_task, target_individual_guid, from_individual_ids, parameters
+    ):
+        from app.modules.notifications.models import NotificationType
+
+        log_id = f'<execute_merge_request {cel_task.request.id}>'
+        log.info(
+            f'{log_id} initiated for Individual {target_individual_guid} (from {from_individual_ids}; {parameters})'
+        )
+        all_individuals = Individual.validate_merge_request(
+            target_individual_guid, from_individual_ids, parameters
+        )
+        if not all_individuals:
+            msg = f'{log_id} failed validation'
+            AuditLog.houston_fault(log, msg)
+            return
+
+        # validate_merge_request should check hashes etc and means we are good to merge
+        target_individual = all_individuals.pop(0)
+        # TODO additional work TBD regarding conflict args/parameters (DEX-514)
+        try:
+            res = target_individual.merge_from(*all_individuals)
+        except Exception as ex:
+            res = f'Exception caught: {str(ex)}'
+        if not isinstance(res, dict):
+            msg = f'{log_id} (via celery task) merge_from failed: {res}'
+            AuditLog.houston_fault(log, msg)
+            return
+
+        log.info(f'{log_id} merge completed, results={res}')
+
+        # notify users that merge has happened
+        #   NOTE request_data here may need some altering depending on what final templates look like
+        #   also unclear who *sender* will be, so that may need to be passed
+        request_data = {
+            'id': cel_task.request.id,
+            'from_individual_ids': from_individual_ids,
+            'merge_outcome': 'deadline',
+        }
+        Individual.merge_notify(
+            [target_individual], request_data, NotificationType.individual_merge_complete
+        )
 
     def get_blocking_encounters(self):
         blocking = []
@@ -268,6 +436,127 @@ class Individual(db.Model, FeatherModel):
                 self,
                 f"merge passing membership to {socgrp} from {source_individual} [roles {data.get('roles')}]",
             )
+
+    # this might end up being a SiteSetting etc
+    @classmethod
+    def get_merge_request_deadline_days(cls):
+        return 14
+
+    # does the actual work of setting up celery task to execute this merge
+    # NOTE: this does not do any notification of users; see merge_request_from()
+    def _merge_request_init(self, individuals, parameters=None):
+        from app.modules.individuals.tasks import execute_merge_request
+        from datetime import datetime, timedelta
+
+        if not individuals or not isinstance(individuals, list) or len(individuals) < 1:
+            msg = f'merge request passed invalid individuals: {individuals}'
+            AuditLog.frontend_fault(log, msg, self)
+            raise ValueError(msg)
+        if not parameters:
+            parameters = {}
+        parameters['checksum'] = Individual.merge_request_hash([self] + individuals)
+        delta = timedelta(days=Individual.get_merge_request_deadline_days())
+        # allow us to override deadline delta; mostly good for testing
+        if 'deadline_delta_seconds' in parameters and isinstance(
+            parameters['deadline_delta_seconds'], int
+        ):
+            delta = timedelta(seconds=parameters['deadline_delta_seconds'])
+        deadline = datetime.utcnow() + delta
+        individual_guids = [str(indiv.guid) for indiv in individuals]
+        args = (str(self.guid), individual_guids, parameters)
+        async_res = execute_merge_request.apply_async(args, eta=deadline)
+        AuditLog.audit_log_object(
+            log,
+            self,
+            f'merge request from={individuals} queued up job {async_res} due {deadline}',
+        )
+        return {
+            'individual': self,
+            'deadline': deadline,
+            'async': async_res,
+            'id': async_res.id,
+        }
+
+    @classmethod
+    def get_merge_request_data(cls, task_id):
+        from app.utils import get_celery_data
+
+        async_res, data = get_celery_data(task_id)
+        if data and 'revoked' in data:
+            log.info(f'get_merge_request_data(): id={task_id} has been revoked')
+            return None
+        if not async_res or not data:
+            log.debug(f'get_merge_request_data(): id={task_id} unknown')
+            return None
+        if (
+            'request' not in data
+            or data['request'].get('name')
+            != 'app.modules.individuals.tasks.execute_merge_request'
+        ):
+            log.warning(
+                f'get_merge_request_data(): id={task_id} invalid name/data: {data}'
+            )
+            return None
+        return data
+
+    @classmethod
+    def get_merge_request_stakeholders(cls, individuals):
+        users = set()
+        for indiv in individuals:
+            for enc in indiv.encounters:
+                if enc.get_owner():
+                    users.add(enc.get_owner())
+        return users
+
+    # likely will evolve to include other reasons to not be allowed to merge (changes since request etc)
+    @classmethod
+    def validate_merge_request(
+        cls, target_individual_guid, from_individual_ids, parameters=None
+    ):
+        all_individuals = []
+        target_individual = Individual.query.get(target_individual_guid)
+        if not target_individual:
+            log.warning(
+                f'validate_merge_request failed target individual {target_individual_guid}'
+            )
+            return False
+        all_individuals.append(target_individual)
+        for fid in from_individual_ids:
+            findiv = Individual.query.get(fid)
+            if not findiv:
+                log.warning(f'validate_merge_request failed individual {fid}')
+                return False
+            all_individuals.append(findiv)
+        if len(all_individuals) < 2:
+            log.warning(
+                f'validate_merge_request not enough individuals: {all_individuals}'
+            )
+            return False
+        hash_start = None
+        if parameters:
+            hash_start = parameters.get('checksum')
+        if not hash_start:
+            log.warning('validate_merge_request does NOT have hash_start; oops!')
+        else:
+            hash_now = Individual.merge_request_hash(all_individuals)
+            if hash_now != hash_start:
+                log.warning(
+                    f'validate_merge_request hash mismatch {hash_start} != {hash_now}'
+                )
+                return False
+        return all_individuals
+
+    def _merge_request_hash(self):
+        parts = [enc.merge_request_hash() for enc in self.encounters]
+        parts.append(hash(self.guid))
+        parts.sort()
+        return hash(tuple(parts))
+
+    @classmethod
+    def merge_request_hash(cls, individuals):
+        parts = [indiv._merge_request_hash() for indiv in individuals]
+        parts.sort()
+        return hash(tuple(parts))
 
     def delete(self):
         AuditLog.delete_object(log, self)

@@ -395,6 +395,7 @@ class Sighting(db.Model, FeatherModel):
         id_request = {
             'jobid': str(job_uuid),
             'callback_url': f'houston+{callback_url}',
+            'callback_detailed': True,
             'matching_state_list': [],
             'query_annot_name_list': ['____'],
             'query_annot_uuid_list': [

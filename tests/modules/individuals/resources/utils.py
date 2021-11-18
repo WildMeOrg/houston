@@ -75,7 +75,9 @@ def delete_individual(flask_app_client, user, guid, expected_status_code=204):
         response = flask_app_client.delete('%s%s' % (PATH, guid))
 
     if expected_status_code == 204:
-        assert response.status_code == 204
+        # we allow 404 here in the event that it is being called as a finalizer on an
+        #   individual which was deleted by the test (e.g. during merges)
+        assert response.status_code == 204 or response.status_code == 404
     else:
         test_utils.validate_dict_response(
             response, expected_status_code, {'status', 'message'}

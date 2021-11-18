@@ -67,7 +67,6 @@ class DetailedAssetGroupSightingSchema(BaseAssetGroupSightingSchema):
 
 
 class AssetGroupSightingEncounterSchema(ModelSchema):
-    country = base_fields.String(default=None)
     createdHouston = base_fields.DateTime()
     customFields = base_fields.Dict(default={})
     decimalLatitude = base_fields.Float(default=None)

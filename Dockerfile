@@ -23,8 +23,8 @@ RUN set -x \
     && cd /code \
     && ls -lah \
     && export DEBUG=1 \
-    && /bin/bash -c "source ./scripts/swagger/build.frontend.sh && build" \
-    && /bin/bash -c "source ./scripts/swagger/build.frontend.sh && install"
+    && /bin/bash -c "source ./scripts/swagger/build.sh && build" \
+    && /bin/bash -c "source ./scripts/swagger/build.sh && install"
 
 
 FROM python:3.9 as main

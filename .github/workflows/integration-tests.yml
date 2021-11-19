@@ -35,7 +35,7 @@ jobs:
       - name: Build frontend and swagger ui
         run: |
           ./scripts/codex/build.frontend.sh
-          ./scripts/swagger/build.frontend.sh
+          ./scripts/swagger/build.sh
 
       - name: Run docker-compose
         run: |

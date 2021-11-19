@@ -101,7 +101,7 @@ jobs:
 
       - name: Build the swagger UI
         run: |
-          ./scripts/swagger/build.frontend.sh
+          ./scripts/swagger/build.sh
 
       # Notify status in Slack
       - name: Slack Notification

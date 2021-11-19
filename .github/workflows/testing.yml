@@ -52,6 +52,7 @@ jobs:
       OS: ubuntu-latest
       PYTHON: ${{ matrix.python-version }}
       TEST_DATABASE_URI: ${{ matrix.db-uri }}
+      DOCKER_BUILDKIT: 1
     steps:
       # Checkout and env setup
       - uses: actions/checkout@v2

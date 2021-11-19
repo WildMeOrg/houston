@@ -13,6 +13,7 @@ jobs:
     env:
       OS: ubuntu-latest
       PYTHON: ${{ matrix.python-version }}
+      DOCKER_BUILDKIT: 1
     steps:
       # Checkout and env setup
       - uses: actions/checkout@v2

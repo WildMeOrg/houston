@@ -26,8 +26,6 @@ from app.modules.auth.utils import (
 )
 from app.modules.users.models import User
 
-from .utils import fail_on_missing_static_folder
-
 
 log = logging.getLogger(__name__)
 
@@ -39,7 +37,6 @@ frontend_blueprint = Blueprint(
 
 def init_app(app):
     frontend_blueprint.static_folder = app.config['FRONTEND_DIST']
-    fail_on_missing_static_folder(frontend_blueprint, specific_file='index.html')
     app.register_blueprint(frontend_blueprint)
 
 

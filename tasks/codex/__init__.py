@@ -13,6 +13,7 @@ from tasks.codex import (
     initialize,
     integrations,
     organizations,
+    collaborations,
     projects,
     run,
 )
@@ -27,6 +28,7 @@ namespace = Collection(
     initialize,
     integrations,
     organizations,
+    collaborations,
     projects,
     run,
 )

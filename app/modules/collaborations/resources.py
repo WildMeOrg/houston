@@ -21,10 +21,10 @@ from app.extensions.api.parameters import PaginationParameters
 from app.modules.users.permissions.types import AccessOperation
 from app.utils import HoustonException
 from app.modules.users import permissions
-
+import app.extensions.logging as AuditLog
 
 from . import parameters, schemas
-from .models import Collaboration
+from .models import Collaboration, CollaborationUserState
 
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
@@ -73,6 +73,9 @@ class Collaborations(Resource):
         """
         Create a new instance of Collaboration.
         """
+        from app.extensions.elapsed_time import ElapsedTime
+
+        timer = ElapsedTime()
         from app.modules.users.models import User
 
         req = json.loads(request.data)
@@ -103,9 +106,13 @@ class Collaborations(Resource):
             users = [other_user, second_user]
 
         for collab_assoc in users[0].user_collaboration_associations:
+            if collab_assoc.read_approval_state == CollaborationUserState.CREATOR:
+                # Dont check associations where the current user is the creator
+                continue
             if users[1] in collab_assoc.collaboration.get_users():
                 log.warning(
-                    f'Collaboration between {users[0].email} and {users[1].email} already exists (attempted by {current_user.email})'
+                    f'Collaboration between {users[0].email} and {users[1].email} already exists '
+                    f'Collab {collab_assoc.collaboration}(attempted by {current_user.email})'
                 )
                 return collab_assoc.collaboration
 
@@ -119,6 +126,10 @@ class Collaborations(Resource):
 
         # Once created notify the pending user to accept
         collaboration.notify_pending_users()
+        message = f'POST collaborations create collaboration between {users}'
+        AuditLog.user_create_object(
+            log, collaboration, msg=message, duration=timer.elapsed()
+        )
 
         return collaboration
 
@@ -164,6 +175,10 @@ class CollaborationByID(Resource):
         """
         Patch Collaboration details by ID.
         """
+        from app.extensions.elapsed_time import ElapsedTime
+
+        timer = ElapsedTime()
+
         context = api.commit_or_abort(
             db.session, default_error_message='Failed to update Collaboration details.'
         )
@@ -178,6 +193,7 @@ class CollaborationByID(Resource):
                     400, message=f"unable to set {args[0]['path']} to {args[0]['value']}"
                 )
 
+        AuditLog.patch_object(log, collaboration, args, duration=timer.elapsed())
         return collaboration
 
     @api.permission_required(

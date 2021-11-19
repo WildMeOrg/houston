@@ -61,9 +61,8 @@ def test_create_asset_group_detection(session, codex_url, test_root, login):
     job_id = list(response_json['jobs'].keys())[0]
     first_job = response_json['jobs'][job_id]
     job_start = first_job['start']
-    annotation_uuids = [
-        annot['uuid']['__UUID__'] for annot in first_job['json_result']['results_list'][0]
-    ]
+    annotations = first_job['json_result']['results_list'][0]
+    annotation_uuids = [annot['uuid']['__UUID__'] for annot in annotations]
     assert response_json == {
         'assets': [
             {
@@ -89,7 +88,7 @@ def test_create_asset_group_detection(session, codex_url, test_root, login):
                     'results_list': [
                         [
                             {
-                                'id': 1,
+                                'id': annotations[0]['id'],
                                 'uuid': {'__UUID__': annotation_uuids[0]},
                                 'xtl': 178,
                                 'ytl': 72,

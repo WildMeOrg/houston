@@ -15,11 +15,24 @@ log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
 
 class NotificationType(str, enum.Enum):
-    raw = 'raw'
+    raw = 'raw'  # Dummy value used as a default
     new_enc = 'new_encounter_individual'  # A new encounter on an individual
     all = 'all'  # For use specifically in preferences, catchall for everything
-    collab_request = 'collaboration_request'
-    collab_edit = 'collaboration_edit_request'
+    collab_request = 'collaboration_request'  # a user requests collaboration with you
+    # other user approved collaboration request
+    collab_approved = 'collaboration_approved'
+    # other user requests edit collaboration with you
+    collab_edit_request = 'collaboration_edit_request'
+    # other user approved edit request
+    collab_edit_approved = 'collaboration_edit_approved'
+    # other user revokes the existing edit part of your collaboration
+    collab_edit_revoke = 'collaboration_edit_revoke'
+    collab_revoke = 'collaboration_revoke'  # other user revokes the collaboration
+    # A user manager has created a collaboration for you with another user
+    collab_manager_create = 'collaboration_manager_create'
+    # A user manager has revoked a collaboration for you with another user
+    collab_manager_revoke = 'collaboration_manager_revoke'
+    merge_request = 'individual_merge_request'
     individual_merge_request = 'individual_merge_request'
     individual_merge_complete = 'individual_merge_complete'
 
@@ -35,15 +48,35 @@ NOTIFICATION_DEFAULTS = {
         NotificationChannel.rest: True,
         NotificationChannel.email: False,
     },
-    NotificationType.raw: {
-        NotificationChannel.rest: True,
-        NotificationChannel.email: True,
-    },
     NotificationType.collab_request: {
         NotificationChannel.rest: True,
         NotificationChannel.email: False,
     },
-    NotificationType.collab_edit: {
+    NotificationType.collab_approved: {
+        NotificationChannel.rest: True,
+        NotificationChannel.email: False,
+    },
+    NotificationType.collab_edit_request: {
+        NotificationChannel.rest: True,
+        NotificationChannel.email: False,
+    },
+    NotificationType.collab_edit_approved: {
+        NotificationChannel.rest: True,
+        NotificationChannel.email: False,
+    },
+    NotificationType.collab_edit_revoke: {
+        NotificationChannel.rest: True,
+        NotificationChannel.email: False,
+    },
+    NotificationType.collab_revoke: {
+        NotificationChannel.rest: True,
+        NotificationChannel.email: False,
+    },
+    NotificationType.collab_manager_create: {
+        NotificationChannel.rest: True,
+        NotificationChannel.email: False,
+    },
+    NotificationType.collab_manager_revoke: {
         NotificationChannel.rest: True,
         NotificationChannel.email: False,
     },
@@ -67,10 +100,40 @@ NOTIFICATION_CONFIG = {
         'email_digest_content_template': 'collaboration_request_digest.jinja2',
         'mandatory_fields': {'collaboration_guid'},
     },
-    NotificationType.collab_edit: {
-        'email_template_name': 'collaboration_edit_request',  # Not yet written
-        'email_digest_content_template': 'collaboration_edit_request_digest.jinja2',
+    NotificationType.collab_approved: {
+        'email_template_name': 'collaboration_approved',
+        'email_digest_content_template': 'collaboration_approved_digest.jinja2',
         'mandatory_fields': {'collaboration_guid'},
+    },
+    NotificationType.collab_edit_request: {
+        'email_template_name': 'collaboration_edit_request',
+        'email_digest_content_template': 'collaboration_edit_request_digest',
+        'mandatory_fields': {'collaboration_guid'},
+    },
+    NotificationType.collab_edit_approved: {
+        'email_template_name': 'collaboration_edit_approved',
+        'email_digest_content_template': 'collaboration_edit_approved_digest',
+        'mandatory_fields': {'collaboration_guid'},
+    },
+    NotificationType.collab_edit_revoke: {
+        'email_template_name': 'collaboration_edit_revoke',
+        'email_digest_content_template': 'collaboration_edit_revoke_digest',
+        'mandatory_fields': {'collaboration_guid'},
+    },
+    NotificationType.collab_revoke: {
+        'email_template_name': 'collaboration_revoke',
+        'email_digest_content_template': 'collaboration_revoke_digest',
+        'mandatory_fields': {'collaboration_guid'},
+    },
+    NotificationType.collab_manager_create: {
+        'email_template_name': 'collaboration_manager_create',  # Not yet written
+        'email_digest_content_template': 'collaboration_manager_create_digest',
+        'mandatory_fields': {'collaboration_guid', 'user1_name', 'user2_name'},
+    },
+    NotificationType.collab_manager_revoke: {
+        'email_template_name': 'collaboration_manger_revoke',  # Not yet written
+        'email_digest_content_template': 'collaboration_manager_revoke_digest',
+        'mandatory_fields': {'collaboration_guid', 'user1_name', 'user2_name'},
     },
     NotificationType.individual_merge_request: {
         'email_template_name': 'individual_merge_request',
@@ -107,6 +170,10 @@ class NotificationBuilder(object):
 
     def set_collaboration(self, collab):
         self.data['collaboration_guid'] = collab.guid
+        users = collab.get_users()
+        assert len(users) == 2
+        self.data['user1_name'] = users[0].full_name
+        self.data['user2_name'] = users[1].full_name
 
     def set_individual_merge(self, individuals, encounters, request_data):
         self.data['individual_list'] = []
@@ -229,6 +296,7 @@ class Notification(db.Model, HoustonModel):
             is_read=False,
         ).all()
         if not builder.allow_multiple and len(existing_notifications):
+            log.debug(f'reusing existing notification {existing_notifications[0]}')
             return existing_notifications[0]
         else:
             new_notification = cls(
@@ -237,6 +305,7 @@ class Notification(db.Model, HoustonModel):
                 message_values=data,
                 sender_guid=sender_guid,
             )
+            log.debug(f'Created new notification {new_notification}')
             with db.session.begin(subtransactions=True):
                 db.session.add(new_notification)
             new_notification.send_if_required()

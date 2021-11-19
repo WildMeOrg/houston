@@ -4,7 +4,7 @@
 import logging
 
 import pytest
-
+from app.modules.collaborations.models import Collaboration
 from app.modules.notifications.models import (
     Notification,
     NotificationChannel,
@@ -47,13 +47,16 @@ def test_get_notification_prefs(db, researcher_1):
             db.session.delete(notification_preferences)
 
 
-def test_notification_message(db, researcher_1, researcher_2, flask_app):
+def test_notification_message(db, researcher_1, researcher_2, flask_app, request):
     from tests.modules.emails.test_email import _prep_sending, _cleanup_sending
 
     builder = NotificationBuilder(researcher_1)
 
-    # just needs something with a guid
-    builder.set_collaboration(researcher_1)
+    members = [researcher_1, researcher_2]
+    basic_collab = Collaboration(members, researcher_2)
+    request.addfinalizer(basic_collab.delete)
+
+    builder.set_collaboration(basic_collab)
 
     # we make user want emails in NotificationPreferences to test email-send-upon-creation
     researcher_2.notification_preferences = []
@@ -70,6 +73,7 @@ def test_notification_message(db, researcher_1, researcher_2, flask_app):
     )
     with db.session.begin():
         db.session.add(notification)
+    request.addfinalizer(lambda: db.session.delete(notification))
 
     # check the email we (hopefully) (did not really) sent out
     assert 'email' in notification._channels_sent
@@ -139,8 +143,10 @@ def test_system_notification_preferences_outdated(db):
     # Let's say "all" is newly added in the code and isn't in the
     # database object
     del system_prefs.preferences[NotificationType.all]
-    # and the database object doesn't have "email" for "raw"
-    del system_prefs.preferences[NotificationType.raw][NotificationChannel.email]
+    # and the database object doesn't have "email" for "collab_request"
+    del system_prefs.preferences[NotificationType.collab_request][
+        NotificationChannel.email
+    ]
     system_prefs.preferences = system_prefs.preferences
     with db.session.begin():
         db.session.merge(system_prefs)

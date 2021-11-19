@@ -300,6 +300,7 @@ def post_via_flask(
     expected_status_code,
     response_200,
     expected_error=None,
+    returns_list=False,
 ):
 
     if user:
@@ -316,7 +317,12 @@ def post_via_flask(
             data=json.dumps(data),
         )
 
-    if expected_status_code == 200:
+    if returns_list:
+        if response.status_code == 200:
+            validate_list_response(response, expected_status_code)
+        else:  # this assumes non-200 does *not* return a list
+            assert response.status_code == expected_status_code
+    elif expected_status_code == 200:
         validate_dict_response(response, 200, response_200)
     elif expected_status_code:
         validate_dict_response(response, expected_status_code, {'status', 'message'})

@@ -406,9 +406,12 @@ class AssetGroupSighting(db.Model, HoustonModel):
                 if asset.guid not in asset_guids:
                     asset_guids.append(asset.guid)
 
-        model_config['image_uuid_list'] = [
-            f'houston+{urljoin(asset_url, str(asset_guid))}' for asset_guid in asset_guids
-        ]
+        model_config['image_uuid_list'] = json.dumps(
+            [
+                f'houston+{urljoin(asset_url, str(asset_guid))}'
+                for asset_guid in asset_guids
+            ]
+        )
         return model_config
 
     def send_detection_to_sage(self, model):
@@ -425,7 +428,8 @@ class AssetGroupSighting(db.Model, HoustonModel):
             'active': True,
             'start': datetime.utcnow(),
             'asset_ids': [
-                uri.rsplit('/', 1)[-1] for uri in detection_request['image_uuid_list']
+                uri.rsplit('/', 1)[-1]
+                for uri in json.loads(detection_request['image_uuid_list'])
             ],
         }
         # This is necessary because we can only mark self as modified if

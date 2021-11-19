@@ -66,7 +66,7 @@ services:
 
   houston:
     # https://github.com/WildMeOrg/houston
-    image: wildme/mws:latest
+    image: wildme/houston:latest
     build: &houston-build
       context: .
       target: main
@@ -107,7 +107,7 @@ services:
       - .:/code
 
   celery_beat:
-    image: wildme/mws:latest
+    image: wildme/houston:latest
     build: *houston-build
     command: [ "wait-for", "db:5432", "--", "celery", "-A", "app.extensions.celery.celery", "beat", "-s", "/data/var/celerybeat-schedule", "-l", "DEBUG"]
     networks:
@@ -119,7 +119,7 @@ services:
     volumes: *houston-volumes
 
   celery_worker:
-    image: wildme/mws:latest
+    image: wildme/houston:latest
     build: *houston-build
     command: [ "wait-for", "db:5432", "--", "celery", "-A", "app.extensions.celery.celery", "worker", "-l", "DEBUG"]
     networks:

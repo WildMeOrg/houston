@@ -106,7 +106,7 @@ services:
 
   houston:
     # https://github.com/WildMeOrg/houston
-    image: wildme/codex:latest
+    image: wildme/houston:latest
     build: &houston-build
       context: .
       target: main
@@ -154,7 +154,7 @@ services:
       - .:/code
 
   celery_beat:
-    image: wildme/codex:latest
+    image: wildme/houston:latest
     build: *houston-build
     command: [ "wait-for", "--timeout=600", "houston:5000", "--", "celery", "-A", "app.extensions.celery.celery", "beat", "-s", "/data/var/celerybeat-schedule", "-l", "DEBUG"]
     networks:
@@ -163,7 +163,7 @@ services:
     volumes: *houston-volumes
 
   celery_worker:
-    image: wildme/codex:latest
+    image: wildme/houston:latest
     build: *houston-build
     command: [ "wait-for", "--timeout=600", "houston:5000", "--", "celery", "-A", "app.extensions.celery.celery", "worker", "-l", "DEBUG"]
     networks:

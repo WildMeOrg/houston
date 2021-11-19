@@ -3,7 +3,6 @@
 Input arguments (Parameters) for Collaborations resources RESTful API
 -----------------------------------------------------------
 """
-
 from flask_restx_patched import Parameters, PatchJSONParameters
 from flask_marshmallow import base_fields
 

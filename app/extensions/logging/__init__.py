@@ -149,10 +149,10 @@ class Logging(object):
         msg = ''
         for patch in patch_args:
 
-            new_msg = f"{patch['op']} {patch['field_name']}"
+            msg = f"{patch['op']} {patch['field_name']}"
             if 'value' in patch:
-                new_msg += f", {patch['value']} "
+                msg += f", {patch['value']} "
             else:
-                new_msg += ' '
+                msg += ' '
 
         cls.audit_log_object(logger, obj, msg, cls.AuditType.Update, *args, **kwargs)

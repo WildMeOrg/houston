@@ -556,9 +556,14 @@ class Individual(db.Model, FeatherModel):
     def get_active_merge_requests(cls, user=None):
         from app.utils import get_celery_tasks_scheduled
 
-        reqs = get_celery_tasks_scheduled(
-            'app.modules.individuals.tasks.execute_merge_request'
-        )
+        try:
+            reqs = get_celery_tasks_scheduled(
+                'app.modules.individuals.tasks.execute_merge_request'
+            )
+        except NotImplementedError:
+            AuditLog.backend_fault(log, 'celery failure')
+            return []
+
         if not user:
             return reqs
         user_reqs = []

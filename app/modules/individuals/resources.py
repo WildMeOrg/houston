@@ -403,8 +403,11 @@ class IndividualByIDMerge(Resource):
 
         req = json.loads(request.data)
         from_individual_ids = req  # assume passed just list, check for otherwise
+        parameters = None
         if isinstance(req, dict):
             from_individual_ids = req.get('fromIndividualIds', None)
+            if 'parameters' in req and isinstance(req['parameters'], dict):
+                parameters = req['parameters']
         if not isinstance(from_individual_ids, list):
             abort(
                 success=False,
@@ -417,8 +420,6 @@ class IndividualByIDMerge(Resource):
                 message='list of individuals IDs to merge from cannot be empty',
                 code=500,
             )
-
-        # NOTE when merge conflict (DEX-514) is addressed, more potential args will be passed in
 
         meets_minimum = False
         # for which user does not have edit permissions
@@ -461,7 +462,9 @@ class IndividualByIDMerge(Resource):
             block_ids = [str(enc.guid) for enc in blocking_encounters]
             merge_request = None
             try:
-                merge_request = individual.merge_request_from(from_individuals)
+                merge_request = individual.merge_request_from(
+                    from_individuals, parameters=parameters
+                )
             except Exception as ex:
                 AuditLog.houston_fault(log, str(ex), individual)
                 abort(
@@ -491,7 +494,7 @@ class IndividualByIDMerge(Resource):
 
         merge = None
         try:
-            merge = individual.merge_from(*from_individuals)
+            merge = individual.merge_from(*from_individuals, parameters=parameters)
         except ValueError as ex:
             AuditLog.houston_fault(log, str(ex), individual)
             abort(
@@ -677,3 +680,27 @@ class IndividualMergeRequestByTaskId(Resource):
             [target_individual], request_data, NotificationType.individual_merge_complete
         )
         return {'vote': vote, 'merge_completed': True}
+
+
+@api.route('/merge_conflict_check')
+class IndividualMergeConflictCheck(Resource):
+    def post(self):
+        from flask_login import current_user
+
+        if not current_user or current_user.is_anonymous:
+            abort(code=401)
+        if not isinstance(request.json, list):
+            abort(message='must be passed a list of individual ids', code=500)
+        if len(request.json) < 2:
+            abort(message='must be passed at least 2 individual ids', code=500)
+        individuals = []
+        for indiv_id in request.json:
+            indiv = Individual.query.get(indiv_id)
+            if not indiv:
+                abort(message=f'Individual {indiv_id} not found', code=404)
+            individuals.append(indiv)
+        if not current_user_has_merge_request_access(individuals):
+            abort(code=403)
+
+        conflicts = Individual.find_merge_conflicts(individuals)
+        return conflicts

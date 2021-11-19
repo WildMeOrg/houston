@@ -218,7 +218,7 @@ class Individual(db.Model, FeatherModel):
                     rt_val = True
         return rt_val
 
-    def merge_from(self, *source_individuals, sex=None, primary_name=None):
+    def merge_from(self, *source_individuals, parameters=None):
         if (
             not source_individuals
             or not isinstance(source_individuals, tuple)
@@ -228,8 +228,7 @@ class Individual(db.Model, FeatherModel):
         data = {
             'targetIndividualId': str(self.guid),
             'sourceIndividualIds': [],
-            'sex': sex,
-            'primaryName': primary_name,
+            'parameters': parameters,
         }
         for indiv in source_individuals:
             data['sourceIndividualIds'].append(str(indiv.guid))
@@ -385,9 +384,8 @@ class Individual(db.Model, FeatherModel):
 
         # validate_merge_request should check hashes etc and means we are good to merge
         target_individual = all_individuals.pop(0)
-        # TODO additional work TBD regarding conflict args/parameters (DEX-514)
         try:
-            res = target_individual.merge_from(*all_individuals)
+            res = target_individual.merge_from(*all_individuals, parameters=parameters)
         except Exception as ex:
             res = f'Exception caught: {str(ex)}'
         if not isinstance(res, dict):
@@ -557,6 +555,27 @@ class Individual(db.Model, FeatherModel):
         parts = [indiv._merge_request_hash() for indiv in individuals]
         parts.sort()
         return hash(tuple(parts))
+
+    @classmethod
+    def find_merge_conflicts(self, individuals):
+        if len(individuals) < 2:
+            raise ValueError('not enough individuals')
+        # we are passing on any kind of name-conflict now til that is sorted  FIXME
+        values = {'sex': set()}
+        for individual in individuals:
+            edm_res = current_app.edm.get_dict(
+                'individual.data_complete', individual.guid
+            )
+            if (
+                not isinstance(edm_res, dict)
+                or not edm_res.get('success')
+                or 'result' not in edm_res
+            ):
+                raise ValueError(
+                    f'could not get individual data from edm for id={individual.guid}'
+                )
+            values['sex'].add(edm_res['result'].get('sex', None))
+        return [key for key in values.keys() if len(values[key]) > 1]
 
     def delete(self):
         AuditLog.delete_object(log, self)

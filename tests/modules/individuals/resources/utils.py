@@ -185,3 +185,23 @@ def vote_merge_request(
         response_200=set(),
     )
     return resp
+
+
+def merge_conflicts(
+    flask_app_client,
+    user,
+    individuals,
+    auth_scopes=('individuals:write',),
+    expected_status_code=200,
+):
+    resp = test_utils.post_via_flask(
+        flask_app_client,
+        user,
+        scopes=auth_scopes,
+        path='/api/v1/individuals/merge_conflict_check',
+        data=individuals,
+        expected_status_code=expected_status_code,
+        response_200=set(),
+        returns_list=True,
+    )
+    return resp.json

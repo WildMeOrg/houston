@@ -73,7 +73,7 @@ jobs:
         run: |
           set -ex
           # Need -c integration_tests/conftest.py otherwise it tries to use tests/conftest.py
-          pytest -s -x -c integration_tests/conftest.py integration_tests/
+          pytest -s -vv -c integration_tests/conftest.py integration_tests/
 
       - name: Show docker-compose logs if failed
         if: failure()

@@ -274,6 +274,18 @@ def test_get_data_and_voting(
     assert 'request' in response.json
     assert response.json['request'].get('id') == request_id
 
+    # we also make sure the req shows up in /users/me
+    with flask_app_client.login(researcher_1, auth_scopes=('users:read',)):
+        response = flask_app_client.get('/api/v1/users/me')
+    assert response.json
+    assert 'individual_merge_requests' in response.json
+    assert len(response.json['individual_merge_requests']) > 0
+    match = False
+    for req in response.json['individual_merge_requests']:
+        if 'request' in req and req['request'].get('id') == request_id:
+            match = True
+    assert match
+
     # invalid vote (422)
     response = individual_res_utils.vote_merge_request(
         flask_app_client,

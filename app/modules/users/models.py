@@ -573,6 +573,12 @@ class User(db.Model, FeatherModel, UserEDMMixin):
         preferences = UserNotificationPreferences.get_user_preferences(self)
         return preferences
 
+    def get_individual_merge_requests(self):
+        from app.modules.individuals.models import Individual
+
+        reqs = Individual.get_active_merge_requests(self)
+        return reqs
+
     def unprocessed_asset_groups(self):
         return [
             asset_group.guid

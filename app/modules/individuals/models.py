@@ -461,6 +461,8 @@ class Individual(db.Model, FeatherModel):
             delta = timedelta(seconds=parameters['deadline_delta_seconds'])
         deadline = datetime.utcnow() + delta
         individual_guids = [str(indiv.guid) for indiv in individuals]
+        stakeholders = Individual.get_merge_request_stakeholders([self] + individuals)
+        parameters['stakeholder_guids'] = [str(u.guid) for u in stakeholders]
         args = (str(self.guid), individual_guids, parameters)
         async_res = execute_merge_request.apply_async(args, eta=deadline)
         AuditLog.audit_log_object(
@@ -549,6 +551,30 @@ class Individual(db.Model, FeatherModel):
         parts.append(hash(self.guid))
         parts.sort()
         return hash(tuple(parts))
+
+    @classmethod
+    def get_active_merge_requests(cls, user=None):
+        from app.utils import get_celery_tasks_scheduled
+
+        reqs = get_celery_tasks_scheduled(
+            'app.modules.individuals.tasks.execute_merge_request'
+        )
+        if not user:
+            return reqs
+        user_reqs = []
+        for req in reqs:
+            if (  # warning, extreme nested json parsing!
+                'request' in req
+                and 'args' in req['request']
+                and isinstance(req['request']['args'], list)
+                and len(req['request']['args']) > 2
+                and isinstance(req['request']['args'][2], dict)
+                and 'stakeholder_guids' in req['request']['args'][2]
+                and isinstance(req['request']['args'][2]['stakeholder_guids'], list)
+                and str(user.guid) in req['request']['args'][2]['stakeholder_guids']
+            ):
+                user_reqs.append(req)
+        return user_reqs
 
     @classmethod
     def merge_request_hash(cls, individuals):

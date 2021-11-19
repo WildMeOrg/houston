@@ -33,14 +33,10 @@ class PatchSightingDetailsParameters(PatchJSONParameters):
     )
 
     PATH_CHOICES_EDM = (
-        '/bearing',
-        '/behavior',
         '/comments',
-        '/context',
         '/customFields',
         '/decimalLatitude',
         '/decimalLongitude',
-        '/distance',
         '/encounters',
         '/endTime',
         '/locationId',

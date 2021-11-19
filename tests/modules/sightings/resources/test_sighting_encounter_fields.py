@@ -5,10 +5,13 @@ from tests.modules.sightings.resources import utils as sighting_utils
 from tests.extensions.edm import utils as edm_utils
 from tests.modules.configuration.resources import utils as conf_utils
 import pytest
-import random
 import json
 
-from tests.utils import module_unavailable, random_decimal_latitude, random_decimal_longitude
+from tests.utils import (
+    module_unavailable,
+    random_decimal_latitude,
+    random_decimal_longitude,
+)
 
 
 @pytest.mark.skipif(
@@ -62,7 +65,6 @@ def test_mega_data(
         'taxonomy': {'id': tx_guid},
         'decimalLatitude': random_decimal_latitude(),
         'decimalLongitude': random_decimal_longitude(),
-        'country': 'TEST',
         'sex': 'male',
         'customFields': {
             encounter_cfd_id: cfd_test_value,
@@ -75,8 +77,6 @@ def test_mega_data(
         'locationId': 'sig-test',
         'decimalLatitude': random_decimal_latitude(),
         'decimalLongitude': random_decimal_longitude(),
-        'bearing': random.uniform(0, 180),
-        'distance': random.uniform(1, 100),
         'customFields': {
             sighting_cfd_id: cfd_test_value,
         },

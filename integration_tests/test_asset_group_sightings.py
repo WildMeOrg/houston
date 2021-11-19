@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 import datetime
-import random
 
 from . import utils
 
@@ -34,8 +33,6 @@ def test_asset_group_sightings(session, login, codex_url, test_root):
     )
     # 2021-11-09T11:40:53.802Z
     encounter_timestamp = datetime.datetime.now().isoformat()[:-3] + 'Z'
-    bearing = random.uniform(0, 180)
-    distance = random.uniform(1, 100)
     response = session.post(
         codex_url('/api/v1/asset_groups/'),
         json={
@@ -43,14 +40,11 @@ def test_asset_group_sightings(session, login, codex_url, test_root):
             'sightings': [
                 {
                     'assetReferences': ['zebra.jpg'],
-                    'bearing': bearing,
                     'customFields': {occ_test_cfd: 'OCC_TEST_CFD'},
                     'decimalLatitude': -39.063228,
                     'decimalLongitude': 21.832598,
-                    'distance': distance,
                     'encounters': [
                         {
-                            'country': 'TEST',
                             'customFields': {
                                 enc_test_cfd: 'CFD_TEST_VALUE',
                             },
@@ -144,7 +138,6 @@ def test_asset_group_sightings(session, login, codex_url, test_root):
                 'updated': assets[0]['updated'],
             },
         ],
-        # missing 'bearing': bearing,
         'comments': 'None',
         'completion': 10,
         'createdEDM': None,
@@ -153,11 +146,9 @@ def test_asset_group_sightings(session, login, codex_url, test_root):
         'customFields': {occ_test_cfd: 'OCC_TEST_CFD'},
         'decimalLatitude': -39.063228,
         'decimalLongitude': 21.832598,
-        # missing 'distance': distance,
         'encounterCounts': {},
         'encounters': [
             {
-                'country': 'TEST',
                 # 2021-11-13T16:57:41.937173+00:00
                 'createdHouston': encounters[0]['createdHouston'],
                 'customFields': {
@@ -256,7 +247,6 @@ def test_asset_group_sightings(session, login, codex_url, test_root):
         'encounterCounts': {},
         'encounters': [
             {
-                'country': 'TEST',
                 # 2021-11-13T16:57:41.937173+00:00
                 'createdHouston': encounters[0]['createdHouston'],
                 'customFields': {

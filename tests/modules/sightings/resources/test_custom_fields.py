@@ -105,7 +105,7 @@ def test_custom_fields_on_sighting(
             'locationId': 'test',
             'comments': 'None',
             'encounters': encounters,
-            'encounterCounts': {'lifeStage': {}, 'sex': {}, 'individuals': 0},
+            'encounterCounts': {'sex': {}, 'individuals': 0},
             'version': sighting.version,
             'createdHouston': sighting.created.isoformat() + '+00:00',
             'updatedHouston': sighting.updated.isoformat() + '+00:00',

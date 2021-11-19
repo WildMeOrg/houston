@@ -39,15 +39,15 @@ def test_asset_group_sightings(session, login, codex_url, test_root):
     response = session.post(
         codex_url('/api/v1/asset_groups/'),
         json={
-            'bearing': bearing,
-            'customFields': {occ_test_cfd: 'OCC_TEST_CFD'},
             'description': 'This is a test asset group, please ignore',
-            'decimalLatitude': -39.063228,
-            'decimalLongitude': 21.832598,
-            'distance': distance,
             'sightings': [
                 {
                     'assetReferences': ['zebra.jpg'],
+                    'bearing': bearing,
+                    'customFields': {occ_test_cfd: 'OCC_TEST_CFD'},
+                    'decimalLatitude': -39.063228,
+                    'decimalLongitude': 21.832598,
+                    'distance': distance,
                     'encounters': [
                         {
                             'country': 'TEST',
@@ -144,14 +144,16 @@ def test_asset_group_sightings(session, login, codex_url, test_root):
                 'updated': assets[0]['updated'],
             },
         ],
+        # missing 'bearing': bearing,
         'comments': 'None',
         'completion': 10,
         'createdEDM': None,
         # 2021-11-12T18:28:32.744114+00:00
         'createdHouston': response.json()['createdHouston'],
-        'customFields': {},
-        'decimalLatitude': None,
-        'decimalLongitude': None,
+        'customFields': {occ_test_cfd: 'OCC_TEST_CFD'},
+        'decimalLatitude': -39.063228,
+        'decimalLongitude': 21.832598,
+        # missing 'distance': distance,
         'encounterCounts': {},
         'encounters': [
             {
@@ -248,7 +250,7 @@ def test_asset_group_sightings(session, login, codex_url, test_root):
         'createdEDM': None,
         # 2021-11-12T18:28:32.744114+00:00
         'createdHouston': response.json()['createdHouston'],
-        'customFields': {},
+        'customFields': {occ_test_cfd: 'OCC_TEST_CFD'},
         'decimalLatitude': 52.152029,
         'decimalLongitude': 2.318116,
         'encounterCounts': {},

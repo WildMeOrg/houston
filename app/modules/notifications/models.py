@@ -32,7 +32,6 @@ class NotificationType(str, enum.Enum):
     collab_manager_create = 'collaboration_manager_create'
     # A user manager has revoked a collaboration for you with another user
     collab_manager_revoke = 'collaboration_manager_revoke'
-    merge_request = 'individual_merge_request'
     individual_merge_request = 'individual_merge_request'
     individual_merge_complete = 'individual_merge_complete'
 

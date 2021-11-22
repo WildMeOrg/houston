@@ -13,7 +13,6 @@ import sqlalchemy
 from werkzeug.contrib.fixers import ProxyFix
 
 from config import (
-    BaseConfig,
     DevelopmentConfig,
     ProductionConfig,
     TestingConfig,
@@ -30,7 +29,7 @@ CONFIG_NAME_MAPPER = {
 }
 
 
-def _ensure_storage(app=None):
+def _ensure_storage(app):
     # Ensure database submissions and asset store
     config_list = [
         ('DB', 'PROJECT_DATABASE_PATH'),
@@ -40,10 +39,7 @@ def _ensure_storage(app=None):
     ]
 
     for config_label, config_name in config_list:
-        if app is None:
-            path = getattr(BaseConfig, config_name, None)
-        else:
-            path = app.config.get(config_name, None)
+        path = app.config.get(config_name, None)
         if path is not None and not os.path.exists(path):
             print(
                 'Creating %s path: %r'
@@ -195,7 +191,3 @@ def create_app(flask_config_name=None, config_override={}, testing=False, **kwar
     app.before_first_request(functools.partial(_ensure_oauth_user, app.config))
 
     return app
-
-
-# Do this on import as well
-_ensure_storage()

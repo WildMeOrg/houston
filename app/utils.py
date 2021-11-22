@@ -64,6 +64,26 @@ def site_email_hostname():
     return dom.lower()
 
 
+# optionally filter on type
+def get_celery_tasks_scheduled(type=None):
+    from flask import current_app
+
+    inspect = current_app.celery.control.inspect()
+    workers = inspect.ping()
+    if not workers:
+        raise NotImplementedError('there are no celery workers to get data from')
+    scheduled = inspect.scheduled()
+    if not scheduled:
+        return []
+    tasks = []
+    for queue, items in scheduled.items():
+        for item in items:
+            if type and 'request' in item and item['request'].get('type') != type:
+                continue
+            tasks.append(item)
+    return tasks
+
+
 def get_celery_data(task_id):
     from flask import current_app
     from celery.result import AsyncResult

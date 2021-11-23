@@ -23,7 +23,7 @@ def export(context, output_format='json', quiet=False):
 
     from app import create_app
 
-    app = create_app(flask_config_name='testing')
+    app = create_app(environment='testing')
     swagger_content = app.test_client().get('/api/v1/swagger.%s' % output_format).data
     if not quiet:
         print(swagger_content.decode('utf-8'))

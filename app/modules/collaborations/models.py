@@ -130,9 +130,15 @@ class Collaboration(db.Model, HoustonModel):
             collab_creator = CollaborationUserAssociations(
                 collaboration=self, user=initiator_user
             )
+            from app.modules.notifications.models import NotificationType
 
             collab_creator.read_approval_state = CollaborationUserState.CREATOR
             collab_creator.edit_approval_state = CollaborationUserState.CREATOR
+            for user in members:
+                user_assoc = self._get_association_for_user(user.guid)
+                self._notify_user(
+                    collab_creator, user_assoc, NotificationType.collab_manager_create
+                )
             with db.session.begin(subtransactions=True):
                 db.session.add(collab_creator)
 
@@ -179,32 +185,38 @@ class Collaboration(db.Model, HoustonModel):
                 collab_user_assoc.read_approval_state == CollaborationUserState.PENDING
                 or collab_user_assoc.edit_approval_state == CollaborationUserState.PENDING
             ):
-                from app.modules.notifications.models import (
-                    Notification,
-                    NotificationType,
-                    NotificationBuilder,
-                )
+                from app.modules.notifications.models import NotificationType
 
                 other_user_assoc = self._get_association_for_other_user(
                     collab_user_assoc.user.guid
                 )
-                builder = NotificationBuilder(other_user_assoc.user)
-                builder.set_collaboration(self)
 
                 if (
                     collab_user_assoc.read_approval_state
                     == CollaborationUserState.PENDING
                 ):
-                    Notification.create(
-                        NotificationType.collab_request, collab_user_assoc.user, builder
+                    self._notify_user(
+                        other_user_assoc,
+                        collab_user_assoc,
+                        NotificationType.collab_request,
                     )
+
                 if (
                     collab_user_assoc.edit_approval_state
                     == CollaborationUserState.PENDING
                 ):
-                    Notification.create(
-                        NotificationType.collab_edit, collab_user_assoc.user, builder
+                    self._notify_user(
+                        other_user_assoc,
+                        collab_user_assoc,
+                        NotificationType.collab_edit_request,
                     )
+
+    def _notify_user(self, sending_user_assoc, receiving_user_assoc, notification_type):
+        from app.modules.notifications.models import Notification, NotificationBuilder
+
+        builder = NotificationBuilder(sending_user_assoc.user)
+        builder.set_collaboration(self)
+        Notification.create(notification_type, receiving_user_assoc.user, builder)
 
     def get_user_data_as_json(self):
         from app.modules.users.schemas import BaseUserSchema
@@ -270,6 +282,21 @@ class Collaboration(db.Model, HoustonModel):
                         ):
 
                             association.edit_approval_state = state
+
+                        from app.modules.notifications.models import NotificationType
+
+                        if state == CollaborationUserState.REVOKED:
+                            self._notify_user(
+                                association,
+                                self._get_association_for_other_user(user_guid),
+                                NotificationType.collab_revoke,
+                            )
+                        elif state == CollaborationUserState.APPROVED:
+                            self._notify_user(
+                                association,
+                                self._get_association_for_other_user(user_guid),
+                                NotificationType.collab_approved,
+                            )
                         with db.session.begin(subtransactions=True):
                             db.session.merge(association)
                         success = True
@@ -320,6 +347,20 @@ class Collaboration(db.Model, HoustonModel):
                         association.edit_approval_state = state
                         with db.session.begin(subtransactions=True):
                             db.session.merge(association)
+                        from app.modules.notifications.models import NotificationType
+
+                        if state == CollaborationUserState.REVOKED:
+                            self._notify_user(
+                                association,
+                                self._get_association_for_other_user(user_guid),
+                                NotificationType.collab_edit_revoke,
+                            )
+                        elif state == CollaborationUserState.APPROVED:
+                            self._notify_user(
+                                association,
+                                self._get_association_for_other_user(user_guid),
+                                NotificationType.collab_edit_approved,
+                            )
                         success = True
         return success
 

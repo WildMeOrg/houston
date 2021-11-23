@@ -17,9 +17,14 @@ def test_notification_preferences(session, login, logout, codex_url):
     assert response.status_code == 200
     assert response.json()['notification_preferences'] == {
         'all': {'restAPI': True, 'email': False},
-        'raw': {'restAPI': True, 'email': True},
         'collaboration_request': {'restAPI': True, 'email': False},
+        'collaboration_approved': {'email': False, 'restAPI': True},
+        'collaboration_revoke': {'email': False, 'restAPI': True},
         'collaboration_edit_request': {'restAPI': True, 'email': False},
+        'collaboration_edit_approved': {'email': False, 'restAPI': True},
+        'collaboration_edit_revoke': {'email': False, 'restAPI': True},
+        'collaboration_manager_create': {'email': False, 'restAPI': True},
+        'collaboration_manager_revoke': {'email': False, 'restAPI': True},
         'individual_merge_request': {'restAPI': True, 'email': False},
         'individual_merge_complete': {'restAPI': True, 'email': False},
     }
@@ -47,30 +52,17 @@ def test_notification_preferences(session, login, logout, codex_url):
     )
     assert response.status_code == 200
     assert response.json()['notification_preferences'] == {
-        'all': {
-            'restAPI': True,
-            'email': False,
-        },
-        'raw': {
-            'restAPI': True,
-            'email': True,
-        },
-        'collaboration_request': {
-            'restAPI': True,
-            'email': False,
-        },
-        'collaboration_edit_request': {
-            'restAPI': True,
-            'email': False,
-        },
-        'individual_merge_request': {
-            'restAPI': False,
-            'email': False,
-        },
-        'individual_merge_complete': {
-            'restAPI': True,
-            'email': False,
-        },
+        'all': {'restAPI': True, 'email': False},
+        'collaboration_request': {'restAPI': True, 'email': True},
+        'collaboration_approved': {'email': False, 'restAPI': True},
+        'collaboration_revoke': {'email': False, 'restAPI': True},
+        'collaboration_edit_request': {'restAPI': True, 'email': False},
+        'collaboration_edit_approved': {'email': False, 'restAPI': True},
+        'collaboration_edit_revoke': {'email': False, 'restAPI': True},
+        'collaboration_manager_create': {'email': False, 'restAPI': True},
+        'collaboration_manager_revoke': {'email': False, 'restAPI': True},
+        'individual_merge_request': {'restAPI': False, 'email': False},
+        'individual_merge_complete': {'restAPI': True, 'email': False},
     }
 
     # DELETE user

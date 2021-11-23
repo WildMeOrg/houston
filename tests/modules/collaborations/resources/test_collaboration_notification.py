@@ -18,6 +18,7 @@ def test_edit_collaboration(flask_app_client, researcher_1, researcher_2, db, re
     notif_utils.mark_all_notifications_as_read(flask_app_client, researcher_1)
     notif_utils.mark_all_notifications_as_read(flask_app_client, researcher_2)
 
+    # Researcher 2 requests to collaborate with researcher1
     create_resp = collab_utils.create_simple_collaboration(
         flask_app_client, researcher_2, researcher_1
     )
@@ -44,6 +45,16 @@ def test_edit_collaboration(flask_app_client, researcher_1, researcher_2, db, re
         flask_app_client, collab_guid, researcher_1, researcher_2
     )
 
+    # Researcher 2 should now receive a notification
+    researcher_2_notifs = notif_utils.read_all_unread_notifications(
+        flask_app_client, researcher_2
+    )
+    collab_edit_approvals_from_res1 = notif_utils.get_unread_notifications(
+        researcher_2_notifs.json, str(researcher_1.guid), 'collaboration_approved'
+    )
+    assert len(collab_edit_approvals_from_res1) == 1
+    notif_utils.mark_all_notifications_as_read(flask_app_client, researcher_2)
+
     # Researcher 1 requests that this is escalated to an edit collaboration
     collab_utils.request_edit_simple_collaboration(
         flask_app_client, collab_guid, researcher_1, researcher_2
@@ -64,20 +75,49 @@ def test_edit_collaboration(flask_app_client, researcher_1, researcher_2, db, re
         flask_app_client, collab_guid, researcher_2, researcher_1
     )
 
+    # Researcher 1 should be told about this
+    researcher_1_notifs = notif_utils.read_all_notifications(
+        flask_app_client, researcher_1
+    )
+    edit_approvals_from_res2 = notif_utils.get_unread_notifications(
+        researcher_1_notifs.json, str(researcher_2.guid), 'collaboration_request'
+    )
+    assert len(edit_approvals_from_res2) >= 1
+
     # back to view only
     collab_utils.revoke_edit_on_collaboration(
         flask_app_client, collab_guid, researcher_1, researcher_2
     )
 
+    # researcher 2 should get a notification
+    researcher_2_notifs = notif_utils.read_all_unread_notifications(
+        flask_app_client, researcher_2
+    )
+    collab_edit_revokes_from_res1 = notif_utils.get_unread_notifications(
+        researcher_2_notifs.json, str(researcher_1.guid), 'collaboration_edit_revoke'
+    )
+    assert len(collab_edit_revokes_from_res1) == 1
+    notif_utils.mark_all_notifications_as_read(flask_app_client, researcher_2)
+
     # Researcher 1 can change their mind and go straight back to edit
     collab_utils.request_edit(flask_app_client, collab.guid, researcher_1)
     collab_utils.validate_full_access(collab_guid, researcher_1, researcher_2)
 
-    # Researcher 2 gets no notification of the revoke or the restore
     researcher_2_notifs = notif_utils.read_all_unread_notifications(
         flask_app_client, researcher_2
     )
-    collab_edit_requests_from_res1 = notif_utils.get_unread_notifications(
-        researcher_2_notifs.json, str(researcher_1.guid), 'collaboration_edit_request'
+    assert len(researcher_2_notifs.json) == 0
+
+    # remove all permissions
+    collab_utils.revoke_view_on_collaboration(
+        flask_app_client, collab_guid, researcher_1, researcher_2, was_edit=True
     )
-    assert len(collab_edit_requests_from_res1) == 0
+
+    # researcher 2 should get a notification
+    researcher_2_notifs = notif_utils.read_all_unread_notifications(
+        flask_app_client, researcher_2
+    )
+    collab_revokes_from_res1 = notif_utils.get_unread_notifications(
+        researcher_2_notifs.json, str(researcher_1.guid), 'collaboration_revoke'
+    )
+    assert len(collab_revokes_from_res1) == 1

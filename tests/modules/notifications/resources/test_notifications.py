@@ -3,6 +3,7 @@
 
 import logging
 import tests.utils as test_utils
+from app.modules.collaborations.models import Collaboration
 from app.modules.notifications.models import (
     Notification,
     NotificationType,
@@ -26,7 +27,7 @@ def get_notifications_with_guid(json_data, guid_str, notification_type, sender_g
 
 
 def test_get_notifications(
-    db, flask_app_client, researcher_1, researcher_2, user_manager_user
+    db, flask_app_client, researcher_1, researcher_2, user_manager_user, request
 ):
     # Start with no unread notifications to ensure that they are always created here
     notif_utils.mark_all_notifications_as_read(flask_app_client, researcher_1)
@@ -43,17 +44,23 @@ def test_get_notifications(
         flask_app_client, user_manager_user
     )
 
-    # Create a couple of them
+    # Create a couple of them using a dummy collaboration
+    # Note the notification code does not care who created the collaboration and who should be informed only that
+    # it has been told to send one
     notif_to_researcher_2_data = NotificationBuilder(researcher_1)
-    # Just needs anything with a guid
-    notif_to_researcher_2_data.set_collaboration(user_manager_user)
+    members = [researcher_1, researcher_2]
+    basic_collab = Collaboration(members, researcher_2)
+    request.addfinalizer(basic_collab.delete)
+
+    notif_to_researcher_2_data.set_collaboration(basic_collab)
 
     notif_to_researcher_2 = Notification.create(
         NotificationType.collab_request, researcher_2, notif_to_researcher_2_data
     )
     notif_to_researcher_1_data = NotificationBuilder(researcher_2)
+    notif_to_researcher_1_data.set_collaboration(basic_collab)
     notif_to_researcher_1 = Notification.create(
-        NotificationType.raw, researcher_1, notif_to_researcher_1_data
+        NotificationType.collab_request, researcher_1, notif_to_researcher_1_data
     )
 
     researcher_1_notifs = notif_utils.read_all_notifications(
@@ -78,13 +85,13 @@ def test_get_notifications(
     )
     assert len(collab_reqs_from_researcher_1) == 1
 
-    raw_requests_from_researcher_2 = get_notifications_with_guid(
+    collab_requests_from_researcher_2 = get_notifications_with_guid(
         researcher_1_notifs.json,
         str(notif_to_researcher_1.guid),
-        'raw',
+        'collaboration_request',
         str(researcher_2.guid),
     )
-    assert len(raw_requests_from_researcher_2) == 1
+    assert len(collab_requests_from_researcher_2) == 1
 
     notif_utils.read_notification(
         flask_app_client, researcher_1, notif_to_researcher_2.guid, 403
@@ -105,7 +112,7 @@ def test_get_notifications(
 
 
 def test_patch_notification(
-    db, flask_app_client, researcher_1, researcher_2, user_manager_user
+    db, flask_app_client, researcher_1, researcher_2, user_manager_user, request
 ):
     # Start with no unread notifications to ensure that they are always created here
     notif_utils.mark_all_notifications_as_read(flask_app_client, researcher_1)
@@ -114,15 +121,16 @@ def test_patch_notification(
 
     # Create a dummy one
     notif_1_data = NotificationBuilder(researcher_1)
-    # Just needs anything with a guid
-    notif_1_data.set_collaboration(user_manager_user)
+    members = [researcher_1, researcher_2]
+    basic_collab = Collaboration(members, researcher_2)
+    request.addfinalizer(basic_collab.delete)
+    notif_1_data.set_collaboration(basic_collab)
 
     Notification.create(NotificationType.collab_request, researcher_2, notif_1_data)
 
     researcher_2_unread_notifs = notif_utils.read_all_unread_notifications(
         flask_app_client, researcher_2
     )
-
     notif_guid = researcher_2_unread_notifs.json[-1]['guid']
     notif_utils.mark_notification_as_read(flask_app_client, researcher_2, notif_guid)
 
@@ -143,14 +151,15 @@ def test_patch_notification(
 
 
 def test_notification_preferences(
-    db, flask_app_client, researcher_1, researcher_2, user_manager_user
+    db, flask_app_client, researcher_1, researcher_2, user_manager_user, request
 ):
     notif_1_data = NotificationBuilder(researcher_1)
-    # Just needs anything with a guid
-    notif_1_data.set_collaboration(user_manager_user)
+    members = [researcher_1, researcher_2]
+    basic_collab = Collaboration(members, researcher_2)
+    request.addfinalizer(basic_collab.delete)
+    notif_1_data.set_collaboration(basic_collab)
 
     Notification.create(NotificationType.collab_request, researcher_2, notif_1_data)
-
     researcher_2_notifs = notif_utils.read_all_notifications(
         flask_app_client, researcher_2
     )
@@ -164,10 +173,22 @@ def test_notification_preferences(
     data = [
         test_utils.patch_replace_op(
             'notification_preferences',
-            {'collaboration_request': {'restAPI': False, 'email': False}},
-        )
+            {'raw': {'restAPI': True, 'email': True}},
+        ),
+        test_utils.patch_replace_op(
+            'notification_preferences',
+            {'individual_merge_request': {'restAPI': False, 'email': False}},
+        ),
     ]
-    user_utils.patch_user(flask_app_client, researcher_2, data)
+
+    resp = user_utils.patch_user(flask_app_client, researcher_2, data)
+    assert set(resp.json['notification_preferences']) >= set(
+        {'raw': {'restAPI': True, 'email': True}}
+    )
+    assert set(resp.json['notification_preferences']) >= set(
+        {'individual_merge_request': {'restAPI': False, 'email': False}}
+    )
+
     researcher_2_notifs = notif_utils.read_all_notifications(
         flask_app_client, researcher_2
     )
@@ -196,7 +217,10 @@ def test_notification_preferences(
         test_utils.patch_replace_op(
             'notification_preferences',
             {'collaboration_request': {'restAPI': True, 'email': False}},
-        )
+        ),
+        test_utils.patch_replace_op(
+            'notification_preferences', {'all': {'restAPI': True, 'email': False}}
+        ),
     ]
     user_utils.patch_user(flask_app_client, researcher_2, data)
     researcher_2_notifs = notif_utils.read_all_notifications(

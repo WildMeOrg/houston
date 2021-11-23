@@ -132,3 +132,16 @@ def mark_all_notifications_as_read(flask_app_client, user):
     unread_notifs = read_all_unread_notifications(flask_app_client, user)
     for notif in unread_notifs.json:
         mark_notification_as_read(flask_app_client, user, notif['guid'])
+
+
+# Not a traditional util, this deletes all notifications in the system, the reason being that when many
+# notifications are used, they are marked as read and cannot be recreated. This is intentional by design
+# But it means that the tests can be non deterministic in that they can work or fail depending on what has
+# happened before
+def delete_all_notifications(db):
+    from app.modules.notifications.models import Notification
+
+    notifs = Notification.query.all()
+    for notif in notifs:
+        with db.session.begin(subtransactions=True):
+            db.session.delete(notif)

@@ -63,6 +63,21 @@ def check_cleanup_objects(db):
     ), 'Some objects created in the test need to be cleaned up'
 
 
+@pytest.fixture(autouse=True)
+def cleanup_objects(db):
+    # This deletes all notifications in the system, the reason being that when many
+    # notifications are used, they are marked as read and cannot be recreated. This is intentional by design
+    # But it means that the tests can be non deterministic in that they can work or fail depending on what has
+    # happened before. The tests may create notifications themselves but they may also be created by the system
+    # and the test cannot delete them, so it is done here
+    from app.modules.notifications.models import Notification
+
+    notifs = Notification.query.all()
+    for notif in notifs:
+        with db.session.begin(subtransactions=True):
+            db.session.delete(notif)
+
+
 @pytest.fixture(scope='session')
 def flask_app(gitlab_remote_login_pat):
     with tempfile.TemporaryDirectory() as td:

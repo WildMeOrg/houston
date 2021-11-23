@@ -255,7 +255,9 @@ class PatchUserDetailsParameters(PatchJSONParameters):
                 abort(ex.status_code, ex.message)
 
             if len(current_user.notification_preferences) != 0:
-                current_user.notification_preferences[0].preferences = value
+                current_user.notification_preferences[0].preferences = (
+                    current_user.notification_preferences[0].preferences | value
+                )
             else:
                 # No existing one, create a new one
                 user_prefs = UserNotificationPreferences(

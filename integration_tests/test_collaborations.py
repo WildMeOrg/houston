@@ -25,7 +25,6 @@ def test_collaboration(session, codex_url, login, logout, admin_email):
         json={'user_guid': new_user_guid},
     )
     assert response.status_code == 200
-    assert sorted(response.json()['user_guids']) == sorted([new_user_guid, my_guid])
     assert set(response.json()['members'].keys()) == {new_user_guid, my_guid}
     assert response.json()['members'][my_guid]['viewState'] == 'approved'
     assert response.json()['members'][my_guid]['editState'] == 'not_initiated'
@@ -44,8 +43,8 @@ def test_collaboration(session, codex_url, login, logout, admin_email):
         json={'user_guid': new_user_guid, 'second_user_guid': new_user_guid_2},
     )
     assert response.status_code == 200
-    assert sorted(response.json()['user_guids']) == sorted(
-        [new_user_guid, new_user_guid_2]
+    assert set(sorted(response.json()['members'].keys())) == set(
+        {new_user_guid, new_user_guid_2}
     )
     assert response.json()['members'][new_user_guid]['viewState'] == 'approved'
     assert response.json()['members'][new_user_guid]['editState'] == 'not_initiated'

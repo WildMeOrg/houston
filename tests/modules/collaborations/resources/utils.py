@@ -80,7 +80,7 @@ def read_collaboration(
         scopes='collaborations:read',
         path=f'{PATH}{collaboration_guid}',
         expected_status_code=expected_status_code,
-        response_200={'guid'},
+        response_200={'members', 'guid'},
     )
 
 
@@ -95,7 +95,7 @@ def read_all_collaborations(
         scopes='collaborations:read',
         path=PATH,
         expected_status_code=expected_status_code,
-        expected_fields={'user_guids', 'guid'},
+        expected_fields={'members', 'guid'},
     )
 
 
@@ -121,12 +121,9 @@ def request_edit(
 def validate_expected_states(json_data, expected_states):
     # Check collab is in the state we expect
     members = json_data.get('members')
-    users = json_data.get('user_guids', {})
     assert members
     assert len(members) == len(expected_states)
-    assert len(members) == len(users)
     for expected_user_guid in expected_states.keys():
-        assert str(expected_user_guid) in users
         for expected_state in expected_states[expected_user_guid].keys():
             assert (
                 members[str(expected_user_guid)][expected_state]

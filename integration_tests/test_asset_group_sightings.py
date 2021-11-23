@@ -188,6 +188,13 @@ def test_asset_group_sightings(session, login, codex_url, test_root):
         'updatedHouston': response.json()['updatedHouston'],
         'verbatimLocality': '',
         'version': None,
+        'asset_group_guid': asset_group_guid,
+        'sightingGuid': 'None',
+        'creator': {
+            'full_name': 'Test admin',
+            'guid': my_guid,
+            'profile_fileupload': None,
+        },
     }
 
     # PATCH asset group sighting as sighting
@@ -286,6 +293,13 @@ def test_asset_group_sightings(session, login, codex_url, test_root):
         'updatedHouston': response.json()['updatedHouston'],
         'verbatimLocality': '',
         'version': None,
+        'asset_group_guid': asset_group_guid,
+        'sightingGuid': 'None',
+        'creator': {
+            'full_name': 'Test admin',
+            'guid': my_guid,
+            'profile_fileupload': None,
+        },
     }
 
     # Commit asset group sighting (becomes sighting)

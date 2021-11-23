@@ -119,6 +119,13 @@ def test_create_asset_group_detection(session, codex_url, test_root, login):
             'assetReferences': ['zebra.jpg'],
         },
         'guid': ags_guids[0],
+        'asset_group_guid': asset_group['guid'],
+        'sighting_guid': 'None',
+        'creator': {
+            'full_name': 'Test admin',
+            'guid': me['guid'],
+            'profile_fileupload': None,
+        },
     }
 
     # DELETE asset group

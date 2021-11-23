@@ -704,20 +704,33 @@ def patch_asset_group_sighting_as_sighting(
 def read_asset_group_sighting(
     flask_app_client, user, asset_group_sighting_guid, expected_status_code=200
 ):
-    return test_utils.get_dict_via_flask(
+    response = test_utils.get_dict_via_flask(
         flask_app_client,
         user,
         scopes='asset_group_sightings:read',
         path=f'{PATH}sighting/{asset_group_sighting_guid}',
         expected_status_code=expected_status_code,
-        response_200={'guid', 'stage', 'config', 'completion', 'assets'},
+        response_200={
+            'guid',
+            'stage',
+            'config',
+            'completion',
+            'assets',
+            'creator',
+            'asset_group_guid',
+            'sighting_guid',
+        },
     )
+    # so we can capture the example if we want, via -s flag on pytest
+    print('Asset Group Sighting: ')
+    print(json.dumps(response.json, indent=4, sort_keys=True))
+    return response
 
 
 def read_asset_group_sighting_as_sighting(
     flask_app_client, user, asset_group_sighting_guid, expected_status_code=200
 ):
-    return test_utils.get_dict_via_flask(
+    response = test_utils.get_dict_via_flask(
         flask_app_client,
         user,
         scopes='asset_group_sightings:read',
@@ -725,8 +738,22 @@ def read_asset_group_sighting_as_sighting(
         expected_status_code=expected_status_code,
         # startTime and locationId are only present in the _as_sighting endpoints,
         # since they are in the config of a standard AGS
-        response_200={'guid', 'stage', 'completion', 'assets', 'startTime', 'locationId'},
+        response_200={
+            'guid',
+            'stage',
+            'completion',
+            'assets',
+            'startTime',
+            'locationId',
+            'creator',
+            'asset_group_guid',
+            'sightingGuid',
+        },
     )
+    # so we can capture the example if we want, via -s flag on pytest
+    print('Asset Group Sighting As Sighting: ')
+    print(json.dumps(response.json, indent=4, sort_keys=True))
+    return response
 
 
 def simulate_job_detection_response(

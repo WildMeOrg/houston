@@ -277,7 +277,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
         if len(self.sighting) > 0:
             return self.sighting[0].guid
         else:
-            return 'None'
+            return None
 
     # Returns a percentage complete value 0-100
     def get_completion(self):

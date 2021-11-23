@@ -80,7 +80,7 @@ RUN set -ex \
  && rm -rf ~/.cache/pip
 
 EXPOSE 5000
-ENV FLASK_CONFIG production
+ENV FLASK_ENV production
 
 # Location to mount our data
 ENV DATA_VOLUME /data

@@ -19,9 +19,9 @@ class ProjectEncounter(db.Model, HoustonModel):
     project = db.relationship('Project', back_populates='encounter_members')
 
     if is_module_enabled('encounters', 'projects'):
-        # <HOTFIX: MWS>
+        # FIXME: MWS config is missing 'encounters' and 'projects' modules,
+        #        but their relationship is loaded on runtime
         encounter = db.relationship('Encounter', back_populates='projects')
-        # </HOTFIX>
 
 
 class ProjectUserMembershipEnrollment(db.Model, HoustonModel):

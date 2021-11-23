@@ -80,13 +80,13 @@ class Encounter(db.Model, FeatherModel):
     public = db.Column(db.Boolean, default=False, nullable=False)
 
     if is_module_enabled('encounters', 'projects'):
-        # <HOTFIX: MWS>
+        # FIXME: MWS config is missing 'encounters' and 'projects' modules,
+        #        but their relationship is loaded on runtime
         projects = db.relationship(
             'ProjectEncounter',
             back_populates='encounter',
             order_by='ProjectEncounter.project_guid',
         )
-        # </HOTFIX>
 
     annotations = db.relationship(
         'Annotation', back_populates='encounter', order_by='Annotation.guid'

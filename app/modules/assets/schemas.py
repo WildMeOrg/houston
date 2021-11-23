@@ -13,8 +13,6 @@ from app.modules import is_module_enabled
 
 from .models import Asset
 
-from config import BaseConfig  # NOQA
-
 
 class BaseAssetSchema(ModelSchema):
     """

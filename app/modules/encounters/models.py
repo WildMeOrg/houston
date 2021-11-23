@@ -11,7 +11,6 @@ from app.modules import is_module_enabled
 from app.modules.individuals.models import Individual
 import app.extensions.logging as AuditLog
 
-from config import BaseConfig  # NOQA
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 

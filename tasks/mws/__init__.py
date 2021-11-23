@@ -5,6 +5,8 @@ Application related tasks for Invoke.
 
 from invoke import Collection
 
+from config import get_preliminary_config
+
 from tasks.app import run
 from tasks.mws import (
     consistency,
@@ -12,7 +14,6 @@ from tasks.mws import (
     integrations,
 )
 
-from config import BaseConfig
 
 namespace = Collection(
     consistency,
@@ -21,4 +22,4 @@ namespace = Collection(
     run,
 )
 
-namespace.configure({'app': {'static_root': BaseConfig.STATIC_ROOT}})
+namespace.configure({'app': {'static_root': get_preliminary_config().STATIC_ROOT}})

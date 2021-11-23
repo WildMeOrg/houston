@@ -5,28 +5,16 @@ Houston API Server.
 import functools
 import logging
 import os
-import sys
 
 from celery import Celery
 from flask import Flask
 import sqlalchemy
 from werkzeug.contrib.fixers import ProxyFix
 
-from config import (
-    DevelopmentConfig,
-    ProductionConfig,
-    TestingConfig,
-)
+from config import configure_app
 
 
 log = logging.getLogger(__name__)
-
-
-CONFIG_NAME_MAPPER = {
-    'development': DevelopmentConfig,
-    'testing': TestingConfig,
-    'production': ProductionConfig,
-}
 
 
 def _ensure_storage(app):
@@ -83,25 +71,6 @@ def _ensure_oauth_user(config):
         create_session_oauth2_client(user, **kwargs)
 
 
-def configure_from_env_object(app, flask_config_name='production'):
-    """Configures the application from an environment specific config object"""
-    if not flask_config_name:
-        flask_config_name = os.getenv('FLASK_CONFIG', 'production')
-
-    try:
-        config_cls = CONFIG_NAME_MAPPER[flask_config_name]
-    except KeyError:
-        app.logger.exception(  # pylint: disable=no-member
-            'You must set the `FLASK_CONFIG` environment variable '
-            f'to one of the following options: {", ".join(CONFIG_NAME_MAPPER.keys())}'
-        )
-        sys.exit(1)
-
-    log.info(f'Using app.config @ {flask_config_name!r} as {config_cls!r}')
-    cfg = config_cls()
-    app.config.from_object(cfg)
-
-
 def configure_from_cli(app, config_override):
     blacklist = [
         'EDM_AUTHENTICATIONS',
@@ -131,7 +100,9 @@ def configure_using_houston_flask_config(app):
     app.config = houston_flask_config
 
 
-def create_app(flask_config_name=None, config_override={}, testing=False, **kwargs):
+def create_app(
+    config_override={}, testing=False, context=None, environment=None, **kwargs
+):
     """
     Entry point to the Houston Server application.
 
@@ -145,7 +116,7 @@ def create_app(flask_config_name=None, config_override={}, testing=False, **kwar
     app = Flask(__name__, **kwargs)
 
     # Initialize app config from config.py
-    configure_from_env_object(app, flask_config_name)
+    configure_app(app, context=context, environment=environment)
 
     # Update app config from create_app arguments (passed from CLI)
     configure_from_cli(app, config_override)

@@ -78,7 +78,7 @@ def read_sighting(flask_app_client, user, sight_guid, expected_status_code=200):
         'sightings:read',
         f'{PATH}{sight_guid}',
         expected_status_code,
-        response_200={'id'},
+        response_200={'id', 'creator', 'encounters', 'stage', 'assets'},
     )
 
     if expected_status_code == 200:

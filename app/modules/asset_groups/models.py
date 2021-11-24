@@ -270,6 +270,15 @@ class AssetGroupSighting(db.Model, HoustonModel):
             filename in self.config.get('assetReferences', []) if self.config else False
         )
 
+    def get_owner(self):
+        return self.asset_group.owner
+
+    def get_sighting_guid(self):
+        if len(self.sighting) > 0:
+            return self.sighting[0].guid
+        else:
+            return None
+
     # Returns a percentage complete value 0-100
     def get_completion(self):
         # Design allows for these limits to be configured later, potentially this data could be project specific

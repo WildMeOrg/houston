@@ -52,8 +52,24 @@ def test_commit_asset_group(flask_app_client, researcher_1, regular_user, test_r
         group_sighting = asset_group_utils.read_asset_group_sighting(
             flask_app_client, researcher_1, asset_group_sighting_guid
         )
-        assert 'completion' in group_sighting.json
+        assert set(group_sighting.json.keys()) >= set(
+            {
+                'completion',
+                'asset_group_guid',
+                'assets',
+                'stage',
+                'creator',
+                'jobs',
+                'config',
+                'guid',
+                'sighting_guid',
+            }
+        )
         assert group_sighting.json['completion'] == 76
+        assert group_sighting.json['asset_group_guid'] == asset_group_uuid
+        assert group_sighting.json['creator']['guid'] == str(regular_user.guid)
+        assert group_sighting.json['sighting_guid'] == sighting_uuid
+
     finally:
         # Restore original state
         if asset_group_uuid:

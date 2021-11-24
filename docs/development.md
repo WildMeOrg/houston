@@ -26,11 +26,13 @@ In this example, however, `init_app` imports `resources` and registeres `api`
 ## Where to start reading the code?
 
 
-The easiest way to start the application is by using PyInvoke command `codex.run`
+The easiest way to start the application is by using PyInvoke command `app.run`
 implemented in `tasks/app/run.py`:
 
 ```
-invoke codex.run
+export HOUSTON_APP_CONTEXT=codex
+export FLASK_ENV=development
+invoke app.run
 ```
 
 The command creates an application by running

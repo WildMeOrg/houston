@@ -101,7 +101,8 @@ NOTE: All dependencies and database migrations will be automatically handled,
 so go ahead and turn the server ON! (Read more details on this in Tips section)
 
 ```bash
-$ invoke codex.run
+export HOUSTON_APP_CONTEXT=codex
+$ invoke app.run
 ```
 
 #### Deploy Server

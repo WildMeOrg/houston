@@ -21,14 +21,14 @@ class Logging(object):
     AUDIT = 45
 
     class AuditType(str, enum.Enum):
-        UserCreate = 'User Create'
-        SystemCreate = 'System Create'
-        Delete = 'Delete'
-        Update = 'Update'  # Generic Update
-        FrontEndFault = 'Front End Fault'  # Bad message received on API
-        BackEndFault = 'Back End Fault'  # Faulty message received from ACM/EDM etc
-        HoustonFault = 'Houston Fault'  # Internal Error within Houston
-        Other = 'Other'  # None of the above
+        UserCreate = 'User Create of'
+        SystemCreate = 'System Create of'
+        Delete = 'Delete of'
+        Update = 'Update of'  # Generic Update
+        FrontEndFault = 'Front End Fault on'  # Bad message received on API
+        BackEndFault = 'Back End Fault on'  # Faulty message received from ACM/EDM etc
+        HoustonFault = 'Houston Fault on'  # Internal Error within Houston
+        Other = 'Access of'  # None of the above
 
     def __init__(self, app=None):
         if app:
@@ -62,9 +62,12 @@ class Logging(object):
         logging.addLevelName(self.AUDIT, 'AUDIT')
 
     @classmethod
-    def _log_message(cls, logger, msg, *args, **kwargs):
-        if current_user and not current_user.is_anonymous:
-            msg = f'{msg} executed by user :{current_user.guid} {current_user.email}'
+    def _log_message(cls, logger, msg, audit_type, *args, **kwargs):
+        if audit_type == cls.AuditType.SystemCreate:
+            # Just leave message as is for system create, no user created this
+            pass
+        elif current_user and not current_user.is_anonymous:
+            msg = f'{msg} executed by {current_user.email}({current_user.guid})'
         else:
             msg += ' executed by anonymous user'
         log_kwargs = kwargs
@@ -82,7 +85,7 @@ class Logging(object):
     def audit_log(cls, logger, msg, audit_type=AuditType.Other, *args, **kwargs):
         assert object
 
-        cls._log_message(logger, msg, *args, **kwargs)
+        cls._log_message(logger, msg, audit_type, *args, **kwargs)
 
         from app.modules.audit_logs.models import AuditLog
 
@@ -97,8 +100,8 @@ class Logging(object):
         assert isinstance(audit_type, cls.AuditType)
 
         module_name = obj.__class__.__name__
-        log_msg = f'{audit_type} of {module_name} {obj.guid} {msg}'
-        cls._log_message(logger, log_msg, *args, **kwargs)
+        log_msg = f'{audit_type} {module_name} {obj.guid} {msg}'
+        cls._log_message(logger, log_msg, audit_type, *args, **kwargs)
 
         from app.modules.audit_logs.models import AuditLog
 
@@ -110,7 +113,9 @@ class Logging(object):
 
     @classmethod
     def system_create_object(cls, logger, obj, msg='', *args, **kwargs):
-        cls.audit_log_object(logger, obj, msg, cls.AuditType.UserCreate, *args, **kwargs)
+        cls.audit_log_object(
+            logger, obj, msg, cls.AuditType.SystemCreate, *args, **kwargs
+        )
 
     @classmethod
     def backend_fault(cls, logger, msg='', obj=None, *args, **kwargs):
@@ -146,10 +151,10 @@ class Logging(object):
     @classmethod
     def patch_object(cls, logger, obj, patch_args, *args, **kwargs):
 
-        msg = ''
+        msg = 'Patch: '
         for patch in patch_args:
 
-            msg = f"{patch['op']} {patch['field_name']}"
+            msg += f"{patch['op']} {patch['field_name']}"
             if 'value' in patch:
                 msg += f", {patch['value']} "
             else:

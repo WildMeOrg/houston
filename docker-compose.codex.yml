@@ -60,7 +60,7 @@ services:
 
   acm:
     # https://github.com/WildMeOrg/wildbook-ia
-    image: wildme/wildbook-ia:nightly
+    image: wildme/wildbook-ia:latest
     # FIXME: Adjust entrypoint to allow for additive command arguments
     # , "--db-uri", "${WBIA_DB_URI}"
     command: [ "wait-for", "db:5432", "--", "python3.7", "-m", "wbia.dev", "--dbdir", "${WBIA_DB_DIR}", "--logdir", "/data/logs/", "--web", "--port", "5000", "--web-deterministic-ports", "--containerized", "--cpudark", "--production"]

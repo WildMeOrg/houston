@@ -75,18 +75,18 @@ class GitlabManager(object):
             )
             remote_namespace = current_app.config.get('GITLAB_NAMESPACE', None)
 
-            log.info('Logging into Asset Group GitLab...')
-            log.info('\t URI: %r' % (remote_uri,))
-            log.info('\t NS : %r' % (remote_namespace,))
-            if current_app.config.get('DEBUG', False):
-                log.info(f'\t GITLAB_REMOTE_LOGIN_PAT: {remote_personal_access_token}')
+            # log.info('Logging into Asset Group GitLab...')
+            # log.info('\t URI: %r' % (remote_uri,))
+            # log.info('\t NS : %r' % (remote_namespace,))
+            # if current_app.config.get('DEBUG', False):
+            #     log.info(f'\t GITLAB_REMOTE_LOGIN_PAT: {remote_personal_access_token}')
 
             try:
                 self.gl = gitlab.Gitlab(
                     remote_uri, private_token=remote_personal_access_token
                 )
                 self.gl.auth()
-                log.info('Logged in: %r' % (self.gl,))
+                # log.info('Logged in: %r' % (self.gl,))
 
                 # Check for namespace
                 if remote_namespace is None:
@@ -104,7 +104,7 @@ class GitlabManager(object):
                     namespace = namespaces[0]
 
                 self.namespace = namespace
-                log.info('Using namespace: %r' % (self.namespace,))
+                # log.info('Using namespace: %r' % (self.namespace,))
 
                 self.initialized = True
             except Exception:

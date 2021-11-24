@@ -239,9 +239,13 @@ class AssetGroupSighting(db.Model, HoustonModel):
                     # Must be valid, checked in metadata parsing
                     assert len(annots) == 1
                     annot = annots[0]
-                    log.info(
-                        f'Added annotation {annot_uuid} to encounter {new_encounter.guid}'
+                    AuditLog.audit_log_object(
+                        log,
+                        new_encounter,
+                        f' Added annotation {annot_uuid}',
+                        AuditLog.AuditType.Update,
                     )
+
                     new_encounter.add_annotation(annot)
 
                 sighting.add_encounter(new_encounter)
@@ -418,26 +422,36 @@ class AssetGroupSighting(db.Model, HoustonModel):
         job_id = uuid.uuid4()
         detection_request = self.build_detection_request(job_id, model)
         log.info(f'Sending detection message to Sage for {model}')
-        current_app.acm.request_passthrough_result(
-            'job.detect_request', 'post', {'params': detection_request}, 'cnn/lightnet'
-        )
-        from datetime import datetime  # NOQA
+        try:
+            current_app.acm.request_passthrough_result(
+                'job.detect_request',
+                'post',
+                {'params': detection_request},
+                'cnn/lightnet',
+            )
+            from datetime import datetime  # NOQA
 
-        self.jobs[str(job_id)] = {
-            'model': model,
-            'active': True,
-            'start': datetime.utcnow(),
-            'asset_ids': [
-                uri.rsplit('/', 1)[-1]
-                for uri in json.loads(detection_request['image_uuid_list'])
-            ],
-        }
-        # This is necessary because we can only mark self as modified if
-        # we assign to one of the database attributes
-        self.jobs = self.jobs
+            self.jobs[str(job_id)] = {
+                'model': model,
+                'active': True,
+                'start': datetime.utcnow(),
+                'asset_ids': [
+                    uri.rsplit('/', 1)[-1]
+                    for uri in json.loads(detection_request['image_uuid_list'])
+                ],
+            }
+            # This is necessary because we can only mark self as modified if
+            # we assign to one of the database attributes
+            self.jobs = self.jobs
 
-        with db.session.begin(subtransactions=True):
-            db.session.merge(self)
+            with db.session.begin(subtransactions=True):
+                db.session.merge(self)
+        except HoustonException:
+            log.warning(
+                f'Sage Detection on AssetGroupSighting({self.guid}) Job{job_id} failed to start'
+            )
+            # TODO Celery will retry, do we want it to?
+            self.stage = AssetGroupSightingStage.failed
 
     def check_job_status(self, job_id):
         if str(job_id) not in self.jobs:
@@ -454,7 +468,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
             db.session.merge(self)
 
     def detected(self, job_id, response):
-        AuditLog.audit_log_object(log, self, 'Received Sage detection response')
+        log.info(f'Received Sage detection response on AssetGroupSighting {self.guid}')
         if self.stage != AssetGroupSightingStage.detection:
             raise HoustonException(
                 log, f'AssetGroupSighting {self.guid} is not detecting'
@@ -542,7 +556,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
                     )
                 )
         for new_annot in annotations:
-            AuditLog.system_create_object(log, new_annot)
+            AuditLog.system_create_object(log, new_annot, 'from Sage detection response')
             with db.session.begin(subtransactions=True):
                 db.session.add(new_annot)
         self.job_complete(str(job_id))
@@ -576,7 +590,9 @@ class AssetGroupSighting(db.Model, HoustonModel):
         # Temporary restriction for MVP
         assert len(asset_group_config['speciesDetectionModel']) == 1
         for config in asset_group_config['speciesDetectionModel']:
-            log.info(f'ia pipeline starting detection {config}')
+            log.info(
+                f'ia pipeline starting detection {config} on AssetGroupSighting {self.guid}'
+            )
             # Call sage_detection in the background by doing .delay()
             sage_detection.delay(str(self.guid), config)
 
@@ -758,7 +774,7 @@ class AssetGroup(db.Model, HoustonModel):
                 'mime.whitelist.%s.json' % (self._mime_type_whitelist_guid,),
             )
             if not os.path.exists(mime_type_whitelist_mapping_filepath):
-                log.info(
+                log.debug(
                     'Creating new MIME whitelist manifest: %r'
                     % (mime_type_whitelist_mapping_filepath,)
                 )
@@ -821,8 +837,6 @@ class AssetGroup(db.Model, HoustonModel):
 
         with open(metadata_path, 'w') as metatdata_file:
             json.dump(group_metadata, metatdata_file)
-
-        log.info('LOCAL  REPO: %r' % (repo.working_tree_dir,))
 
         return repo
 
@@ -1009,7 +1023,7 @@ class AssetGroup(db.Model, HoustonModel):
         with db.session.begin(subtransactions=True):
             db.session.add(asset_group)
 
-        log.info('created asset_group %r' % asset_group)
+        log.debug('created asset_group %r' % asset_group)
 
         if metadata.tus_transaction_id:
             try:
@@ -1024,7 +1038,7 @@ class AssetGroup(db.Model, HoustonModel):
                 asset_group.delete()
                 raise
 
-            log.info('asset_group imported %r' % added)
+            log.debug('asset_group imported %r' % added)
         return asset_group
 
     @classmethod
@@ -1087,7 +1101,7 @@ class AssetGroup(db.Model, HoustonModel):
 
         assets_added = []
         if num_files > 0:
-            log.info('Tus collect for %d files moved' % (num_files))
+            log.debug('Tus collect for %d files moved' % (num_files))
             self.git_commit('Tus collect commit for %d files.' % (num_files,))
             # Do git push to gitlab in the background (we won't wait for its
             # completion here)
@@ -1141,7 +1155,6 @@ class AssetGroup(db.Model, HoustonModel):
         skipped = []
         errors = []
         walk_list = sorted(list(os.walk(asset_group_path)))
-        log.info('Walking asset_group...')
         for root, directories, filenames in tqdm.tqdm(walk_list):
             filenames = sorted(filenames)
             for filename in filenames:
@@ -1509,6 +1522,9 @@ class AssetGroup(db.Model, HoustonModel):
             return Repo(repo_path)
 
     def ensure_repository(self):
+        from app.extensions.elapsed_time import ElapsedTime
+
+        timer = ElapsedTime()
         repo = self.get_repository()
         if repo:
             if 'origin' in repo.remotes:
@@ -1520,6 +1536,11 @@ class AssetGroup(db.Model, HoustonModel):
             else:
                 repo = Repo.init(self.get_absolute_path())
         self._ensure_repository_files()
+
+        if float(timer.elapsed()) > 0.05:
+            log.info(
+                f'Ensure Git repository for AssetGroup {self.guid} took {timer.elapsed()} seconds'
+            )
         return repo
 
     @classmethod

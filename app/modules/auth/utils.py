@@ -50,7 +50,7 @@ def create_session_oauth2_client(user, **kwargs):
         )
         with db.session.begin():
             db.session.add(session_oauth2_client)
-    log.info('Using session Oauth2 client = %r' % (session_oauth2_client,))
+    log.debug('Using session Oauth2 client = %r' % (session_oauth2_client,))
     return session_oauth2_client
 
 

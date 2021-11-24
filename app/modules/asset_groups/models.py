@@ -343,6 +343,8 @@ class AssetGroupSighting(db.Model, HoustonModel):
 
     def check_all_job_status(self):
         jobs = self.jobs
+        if not jobs:
+            return
         for job_id in jobs.keys():
             job = jobs[job_id]
             if job['active']:
@@ -592,6 +594,8 @@ class AssetGroupSighting(db.Model, HoustonModel):
     # Used to build the response to AssetGroupSighting GET
     def get_assets(self):
         assets = []
+        if not self.config.get('assetReferences'):
+            return assets
         for filename in self.config.get('assetReferences'):
             asset = self.asset_group.get_asset_for_file(filename)
             assert asset

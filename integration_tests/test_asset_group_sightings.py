@@ -138,7 +138,7 @@ def test_asset_group_sightings(session, login, codex_url, test_root):
                 'updated': assets[0]['updated'],
             },
         ],
-        'comments': 'None',
+        'comments': None,
         'completion': 10,
         'createdEDM': None,
         # 2021-11-12T18:28:32.744114+00:00
@@ -243,7 +243,7 @@ def test_asset_group_sightings(session, login, codex_url, test_root):
                 'updated': assets[0]['updated'],
             },
         ],
-        'comments': 'None',
+        'comments': None,
         'completion': 10,
         'createdEDM': None,
         # 2021-11-12T18:28:32.744114+00:00

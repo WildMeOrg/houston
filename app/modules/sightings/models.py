@@ -192,6 +192,8 @@ class Sighting(db.Model, FeatherModel):
 
     def check_all_job_status(self):
         jobs = self.jobs
+        if not jobs:
+            return
         for job_id in jobs.keys():
             job = jobs[job_id]
             if job['active']:

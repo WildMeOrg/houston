@@ -23,6 +23,7 @@ SIGHTING_FIELDS_IN_AGS_CONFIG = {
     'verbatimLocality',
     'encounterCounts',
     'id',
+    'comments',
     'featuredAssetGuid',
 }
 
@@ -131,11 +132,12 @@ class AssetGroupSightingAsSightingSchema(AugmentedEdmSightingSchema):
         AssetGroupSighting.config_field_getter('featuredAssetGuid')
     )
     sightingGuid = base_fields.Function(AssetGroupSighting.get_sighting_guid)
-
+    comments = base_fields.Function(
+        AssetGroupSighting.config_field_getter('comments', default=None)
+    )
     # These are fields that are in Sighting but don't exist for
     # AssetGroupSighting
     createdEDM = base_fields.DateTime(default=None)
-    comments = base_fields.String(default='None')
     customFields = base_fields.Dict(attribute='get_custom_fields')
     version = base_fields.String(default=None)
 

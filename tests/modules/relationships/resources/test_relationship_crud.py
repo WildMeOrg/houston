@@ -9,6 +9,7 @@ from app.modules.individuals.models import Individual
 from app.modules.relationships.models import Relationship
 
 from tests.modules.individuals.resources import utils as individual_utils
+from tests.modules.encounters.resources import utils as encounter_utils
 from tests.modules.relationships.resources import utils as relationship_utils
 from tests import utils
 from tests.utils import module_unavailable
@@ -23,7 +24,7 @@ log = logging.getLogger(__name__)
 @pytest.mark.skipif(
     module_unavailable('relationships'), reason='Relationships module disabled'
 )
-def test_create_read_delete_relationship(flask_app_client):
+def test_create_read_delete_relationship(flask_app_client, researcher_1):
 
     temp_owner = None
     temp_enc_1 = None
@@ -37,23 +38,23 @@ def test_create_read_delete_relationship(flask_app_client):
         is_researcher=True,
     )
 
-    temp_enc_1 = utils.generate_encounter_instance(
-        user_email='enc@user', user_password='encuser', user_full_name='enc user 1'
-    )
-    enc_1_json = {'encounters': [{'id': str(temp_enc_1.guid)}]}
-    temp_enc_1.owner = temp_owner
+    temp_enc_1 = encounter_utils.create_encounter(flask_app_client, researcher_1)
+    temp_enc_1_guid = temp_enc_1.json['result']['encounters'][0]['id']
+
+    enc_1_json = {'encounters': [{'id': str(temp_enc_1_guid)}]}
+    temp_enc_1.owner = researcher_1
     response = individual_utils.create_individual(
-        flask_app_client, temp_owner, expected_status_code=200, data_in=enc_1_json
+        flask_app_client, researcher_1, expected_status_code=200, data_in=enc_1_json
     )
     individual_1_guid = response.json['result']['id']
 
-    temp_enc_2 = utils.generate_encounter_instance(
-        user_email='enc@user', user_password='encuser', user_full_name='enc user 1'
-    )
-    enc_2_json = {'encounters': [{'id': str(temp_enc_2.guid)}]}
-    temp_enc_2.owner = temp_owner
+    temp_enc_2 = encounter_utils.create_encounter(flask_app_client, researcher_1)
+    temp_enc_2_guid = temp_enc_2.json['result']['encounters'][0]['id']
+
+    enc_2_json = {'encounters': [{'id': str(temp_enc_2_guid)}]}
+    temp_enc_2.owner = researcher_1
     response = individual_utils.create_individual(
-        flask_app_client, temp_owner, expected_status_code=200, data_in=enc_2_json
+        flask_app_client, researcher_1, expected_status_code=200, data_in=enc_2_json
     )
     individual_2_guid = response.json['result']['id']
 
@@ -64,15 +65,28 @@ def test_create_read_delete_relationship(flask_app_client):
         'individual_2_role': 'Calf',
     }
     response = relationship_utils.create_relationship(
-        flask_app_client, temp_owner, expected_status_code=200, data_in=relationship_json
+        flask_app_client,
+        researcher_1,
+        expected_status_code=200,
+        data_in=relationship_json,
     )
-    relationship_guid = response.json['result']['id']
+
+    log.debug(
+        '+++++++++++++++++++++++ RELATIONSHIP RESPONSE OUTSIDE UTIL: '
+        + str(response.json)
+    )
+
+    relationship_guid = response.json['guid']
 
     # finally:
-    individual_utils.delete_individual(flask_app_client, temp_owner, individual_1_guid)
-    individual_utils.delete_individual(flask_app_client, temp_owner, individual_2_guid)
-    relationship_utils.delete_relationship(
-        flask_app_client, temp_owner, relationship_guid
+    resp = individual_utils.delete_individual(
+        flask_app_client, researcher_1, individual_1_guid
     )
-    temp_enc_1.delete_cascade()
-    temp_enc_2.delete_cascade()
+    log.debug('INDIVIDUAL DELETION RESP 2: ' + str(resp.json))
+    resp = individual_utils.delete_individual(
+        flask_app_client, researcher_1, individual_2_guid
+    )
+    log.debug('INDIVIDUAL DELETION RESP 3: ' + str(resp.json))
+    relationship_utils.delete_relationship(
+        flask_app_client, researcher_1, relationship_guid
+    )

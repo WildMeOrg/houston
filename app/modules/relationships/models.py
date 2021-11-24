@@ -8,6 +8,7 @@ from sqlalchemy_utils import Timestamp
 
 from app.extensions import HoustonModel, db
 from datetime import datetime  # NOQA
+import app.extensions.logging as AuditLog
 
 import uuid
 
@@ -17,16 +18,17 @@ log = logging.getLogger(__name__)
 
 
 class RelationshipIndividualMember(db.Model, HoustonModel):
-    relationship_guid = db.Column(
-        db.GUID, db.ForeignKey('relationship.guid'), primary_key=True
-    )
+
+    guid = db.Column(
+        db.GUID, default=uuid.uuid4, primary_key=True
+    )  # pylint: disable=invalid-name
+
+    relationship_guid = db.Column(db.GUID, db.ForeignKey('relationship.guid'))
     relationship = db.relationship(
         'Relationship', backref=db.backref('individual_members')
     )
 
-    individual_guid = db.Column(
-        db.GUID, db.ForeignKey('individual.guid'), primary_key=True
-    )
+    individual_guid = db.Column(db.GUID, db.ForeignKey('individual.guid'))
     individual = db.relationship('Individual', backref=db.backref('relationships'))
 
     individual_role = db.Column(db.String, nullable=False)
@@ -83,14 +85,18 @@ class Relationship(db.Model, Timestamp):
 
     def has_individual(self, individual_guid):
         for individual_member in self.individual_members:
-            if individual_member.individual_guid == individual_guid:
+            log.debug(
+                'PRINTING MEMBERS: '
+                + str(str(individual_member.individual_guid) + ' == ' + individual_guid)
+            )
+            if str(individual_member.individual_guid) == individual_guid:
                 return True
         return False
 
     def get_relationship_role_for_individual(self, individual_guid):
         if self.has_individual(individual_guid):
             for individual_member in self.individual_members:
-                if individual_member.individual_guid is individual_guid:
+                if str(individual_member.individual_guid) == individual_guid:
                     return individual_member.individual_role
         return None
 
@@ -100,3 +106,11 @@ class Relationship(db.Model, Timestamp):
             'guid={self.guid}, '
             ')>'.format(class_name=self.__class__.__name__, self=self)
         )
+
+    def delete(self):
+        AuditLog.delete_object(log, self)
+
+        with db.session.begin(subtransactions=True):
+            for individual_member in self.individual_members:
+                db.session.delete(individual_member)
+            db.session.delete(self)

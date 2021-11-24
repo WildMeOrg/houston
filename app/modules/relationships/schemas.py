@@ -46,7 +46,7 @@ class DetailedRelationshipSchema(BaseRelationshipSchema):
     Detailed Relationship schema exposes all useful fields.
     """
 
-    individuals = base_fields.Nested(
+    individual_members = base_fields.Nested(
         'BaseRelationshipIndividualMemberSchema',
         many=True,
         only=('guid', 'individual_guid', 'individual_role'),
@@ -59,7 +59,7 @@ class DetailedRelationshipSchema(BaseRelationshipSchema):
             Relationship.start_date.key,
             Relationship.end_date.key,
             Relationship.type.key,
-            'individuals',
+            'individual_members',
         )
         dump_only = BaseRelationshipSchema.Meta.dump_only + (
             Relationship.created.key,
@@ -67,5 +67,5 @@ class DetailedRelationshipSchema(BaseRelationshipSchema):
             Relationship.start_date.key,
             Relationship.end_date.key,
             Relationship.type.key,
-            'individuals',
+            'individual_members',
         )

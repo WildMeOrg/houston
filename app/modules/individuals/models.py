@@ -730,6 +730,15 @@ class Individual(db.Model, FeatherModel):
         with db.session.begin(subtransactions=True):
             for group in self.social_groups:
                 db.session.delete(group)
+            from app.modules.relationships.models import Relationship
+
+            if self.relationships:
+                for relationship_membership in self.relationships:
+                    relationship = Relationship.query.get(
+                        relationship_membership.relationship_guid
+                    )
+                    relationship.delete()
+
             db.session.delete(self)
 
     def delete_from_edm(self):

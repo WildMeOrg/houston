@@ -3,17 +3,19 @@
 Asset_group resources utils
 -------------
 """
-import config
 import json
 import os
 import re
 import shutil
 from unittest import mock
+
+from config import get_preliminary_config
+
 import tests.extensions.tus.utils as tus_utils
 import tests.modules.individuals.resources.utils as individual_utils
-
 from tests import utils as test_utils
 from tests import TEST_ASSET_GROUP_UUID, TEST_EMPTY_ASSET_GROUP_UUID
+
 
 PATH = '/api/v1/asset_groups/'
 EXPECTED_ASSET_GROUP_SIGHTING_FIELDS = {
@@ -866,7 +868,7 @@ class CloneAssetGroup(object):
         # Allow the option of forced cloning, this could raise an exception if the assertion fails
         # but this does not need to be in any try/except/finally construct as no resources are allocated yet
         if force_clone:
-            database_path = config.TestingConfig.ASSET_GROUP_DATABASE_PATH
+            database_path = get_preliminary_config().ASSET_GROUP_DATABASE_PATH
             asset_group_path = os.path.join(database_path, str(guid))
 
             if os.path.exists(asset_group_path):
@@ -897,7 +899,7 @@ class CloneAssetGroup(object):
             ), f'url={url} status_code={self.response.status_code} data={self.response.data}'
 
     def remove_files(self):
-        database_path = config.TestingConfig.ASSET_GROUP_DATABASE_PATH
+        database_path = get_preliminary_config().ASSET_GROUP_DATABASE_PATH
         asset_group_path = os.path.join(database_path, str(self.guid))
         if os.path.exists(asset_group_path):
             shutil.rmtree(asset_group_path)

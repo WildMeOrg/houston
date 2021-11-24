@@ -38,10 +38,10 @@ jobs:
 
       # Push images out to image registries
       - name: Push to GitHub Packages
-        run: ./scripts/utils/publish.sh -t nightly -r docker.pkg.github.com codex
+        run: ./scripts/utils/publish.sh -t nightly -r docker.pkg.github.com houston
       - name: Push to Docker Hub
         if: github.event_name == 'schedule'
-        run: ./scripts/utils/publish.sh -t nightly codex
+        run: ./scripts/utils/publish.sh -t nightly houston
 
       # Notify status in Slack
       - name: Slack Notification
@@ -101,7 +101,7 @@ jobs:
 
       - name: Build the swagger UI
         run: |
-          ./scripts/swagger/build.frontend.sh
+          ./scripts/swagger/build.sh
 
       # Notify status in Slack
       - name: Slack Notification

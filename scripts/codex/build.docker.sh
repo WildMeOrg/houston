@@ -1,3 +1,1 @@
-#!/bin/bash
-
-docker build --build-arg PROJECT="codex" --tag wildme/codex:latest .
+../utils/build.docker.sh

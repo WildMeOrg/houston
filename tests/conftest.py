@@ -9,9 +9,16 @@ from unittest import mock
 import sqlalchemy
 import pytest
 from flask_login import current_user, login_user, logout_user
+
 from app import create_app
+from config import CONTEXT_ENVIRONMENT_VARIABLE, VALID_CONTEXTS
 
 from . import utils, TEST_ASSET_GROUP_UUID, TEST_EMPTY_ASSET_GROUP_UUID
+
+
+# Force FLASK_ENV to be testing instead of using what's defined in the environment
+os.environ['FLASK_ENV'] = 'testing'
+
 
 # Import all models first for db.relationship to avoid model look up
 # error:
@@ -29,10 +36,6 @@ for models in project_root.glob('app/modules/*/models.py'):
     import_module(models_module)
 
 
-# Force FLASK_CONFIG to be testing instead of using what's defined in the environment
-os.environ['FLASK_CONFIG'] = 'testing'
-
-
 def pytest_addoption(parser):
     parser.addoption(
         '--gitlab-remote-login-pat',
@@ -40,6 +43,36 @@ def pytest_addoption(parser):
         default=[],
         help=('Specify additional config argument for GitLab'),
     )
+
+
+def pytest_collection_modifyitems(config, items):
+    """Modify the collected tests... See also
+    https://doc.pytest.org/en/latest/how-to/writing_hook_functions.html#hook-function-validation-and-execution
+
+    Use the ``pytest.mark.only_for_{app_context}`` decorator
+    to skip a test that is not within the current application context.
+    For example, if you are writing a test that is only for MWS,
+    use `pytest.mark.only_for_mws`.
+
+    """
+    # Which variant of the app are we running under?
+    app_context = os.getenv(CONTEXT_ENVIRONMENT_VARIABLE)
+
+    # Create a skip marker for apps outside the current app context
+    skip_reason = f"only running tests for the '{app_context}' app context"
+    skip = pytest.mark.skip(reason=skip_reason)
+
+    # Define the `pytest.mark.only_for_{app_context}` markers to skip
+    keywords_to_skip = []
+    for context in VALID_CONTEXTS:
+        if context != app_context:
+            keywords_to_skip.append(f'only_for_{context}')
+
+    # Roll over the test items, skipping as needed
+    for item in items:
+        for kw in keywords_to_skip:
+            if kw in item.keywords:
+                item.add_marker(skip)
 
 
 def pytest_generate_tests(metafunc):
@@ -96,7 +129,7 @@ def flask_app(gitlab_remote_login_pat):
             pathlib.Path(td) / 'database.sqlite3'
         )
 
-        app = create_app(flask_config_name='testing', config_override=config_override)
+        app = create_app(config_override=config_override)
         from app.extensions import db
 
         with app.app_context() as ctx:

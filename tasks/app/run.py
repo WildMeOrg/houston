@@ -5,7 +5,7 @@ Application execution related tasks for Invoke.
 """
 
 try:
-    from importlib import reload  # NOQA
+    from importlib import reload
 except ImportError:  # pragma: no cover
     pass  # Python 2 has built-in reload() function
 import os
@@ -30,7 +30,6 @@ DEFAULT_HOST = '0.0.0.0'
 def warmup(
     context,
     host=DEFAULT_HOST,
-    flask_config=None,
     install_dependencies=False,
     build_frontend=True,
     upgrade_db=True,
@@ -39,9 +38,6 @@ def warmup(
     """
     Pre-configure the Houston API Server before running
     """
-    if flask_config is not None:
-        os.environ['FLASK_CONFIG'] = flask_config
-
     if install_dependencies:
         context.invoke_execute(context, 'dependencies.install-python-dependencies')
 
@@ -71,7 +67,6 @@ def run(
     context,
     host=DEFAULT_HOST,
     port=5000,
-    flask_config=None,
     install_dependencies=False,
     build_frontend=True,
     upgrade_db=True,
@@ -85,7 +80,6 @@ def run(
     app = warmup(
         context,
         host,
-        flask_config=flask_config,
         install_dependencies=install_dependencies,
         build_frontend=build_frontend,
         upgrade_db=upgrade_db,

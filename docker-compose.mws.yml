@@ -66,12 +66,11 @@ services:
 
   houston:
     # https://github.com/WildMeOrg/houston
-    image: wildme/mws:latest
+    image: wildme/houston:latest
     build: &houston-build
       context: .
-      args:
-        - PROJECT=mws
-    command: [ "wait-for", "db:5432", "--", "wait-for", "--timeout=60", "elasticsearch:9200", "--", "invoke", "mws.run", "--host", "0.0.0.0" ]
+      target: main
+    command: [ "wait-for", "db:5432", "--", "wait-for", "--timeout=60", "elasticsearch:9200", "--", "invoke", "app.run", "--host", "0.0.0.0" ]
     networks:
       - intranet
       - frontend
@@ -79,7 +78,8 @@ services:
       # FIXME: exposed for developer verification
       - "83:5000"
     environment: &houston-environment
-      FLASK_CONFIG: development
+      HOUSTON_APP_CONTEXT: codex
+      FLASK_ENV: development
       SQLALCHEMY_DATABASE_URI: "${SQLALCHEMY_DATABASE_URI}"
       TEST_DATABASE_URI: "${TEST_DATABASE_URI}"
       ACM_AUTHENTICATIONS_URI__DEFAULT: "${ACM_AUTHENTICATIONS_URI__DEFAULT}"
@@ -100,14 +100,15 @@ services:
       retries: 10
     volumes: &houston-volumes
       - houston-var:/data
-      - .dockerfiles/docker-entrypoint.mws.sh:/docker-entrypoint.sh
+      # These are added for development. Do not mount these in production.
+      - .dockerfiles/docker-entrypoint.sh:/docker-entrypoint.sh
       - .dockerfiles/docker-entrypoint-init.d.mws:/docker-entrypoint-init.d
       - .dockerfiles/docker-entrypoint-always-init.d:/docker-entrypoint-always-init.d
       # FIXME: pull in development code while working on bringing up the container
       - .:/code
 
   celery_beat:
-    image: wildme/mws:latest
+    image: wildme/houston:latest
     build: *houston-build
     command: [ "wait-for", "db:5432", "--", "celery", "-A", "app.extensions.celery.celery", "beat", "-s", "/data/var/celerybeat-schedule", "-l", "DEBUG"]
     networks:
@@ -119,7 +120,7 @@ services:
     volumes: *houston-volumes
 
   celery_worker:
-    image: wildme/mws:latest
+    image: wildme/houston:latest
     build: *houston-build
     command: [ "wait-for", "db:5432", "--", "celery", "-A", "app.extensions.celery.celery", "worker", "-l", "DEBUG"]
     networks:

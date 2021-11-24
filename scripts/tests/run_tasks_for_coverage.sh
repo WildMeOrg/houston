@@ -56,8 +56,7 @@ then
 fi
 
 # warm-ups
-coverage run --append `which invoke` codex.run.warmup --print-routes
-coverage run --append `which invoke` mws.run.warmup --print-routes
+coverage run --append `which invoke` app.run.warmup --print-routes
 
 # test app.users.*
 echo password | coverage run --append `which invoke` app.users.create-user user@example.org
@@ -70,14 +69,18 @@ coverage run --append `which invoke` app.users.remove-role --role=Researcher --e
 coverage run --append `which invoke` app.assets.list-all
 
 # test codex.consistency.*
-coverage run --append `which invoke` codex.consistency.all
-coverage run --append `which invoke` codex.consistency.user-staff-permissions
-coverage run --append `which invoke` codex.consistency.cleanup-gitlab --dryrun
+if [ "$HOUSTON_APP_CONTEXT" == 'codex' ]; then
+    coverage run --append `which invoke` codex.consistency.all
+    coverage run --append `which invoke` codex.consistency.user-staff-permissions
+    coverage run --append `which invoke` codex.consistency.cleanup-gitlab --dryrun
+fi
 
 # test codex.*
-coverage run --append `which invoke` codex.asset-groups.list-all
-coverage run --append `which invoke` codex.encounters.list-all
-coverage run --append `which invoke` codex.organizations.list-all
-coverage run --append `which invoke` codex.projects.list-all
+if [ "$HOUSTON_APP_CONTEXT" == 'codex' ]; then
+    coverage run --append `which invoke` codex.asset-groups.list-all
+    coverage run --append `which invoke` codex.encounters.list-all
+    coverage run --append `which invoke` codex.organizations.list-all
+    coverage run --append `which invoke` codex.projects.list-all
+fi
 
 coverage run --append `which invoke` dependencies.install-all-ui --on-error skip

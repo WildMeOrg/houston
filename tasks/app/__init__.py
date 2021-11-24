@@ -5,6 +5,8 @@ Application related tasks for Invoke.
 
 from invoke import Collection
 
+from config import get_preliminary_config
+
 from tasks.app import (
     assets,
     boilerplates,
@@ -16,13 +18,13 @@ from tasks.app import (
     fileuploads,
     initial_development_data,
     job_control,
+    run,
     shell,
     site_settings,
     swagger,
     users,
 )
 
-from config import BaseConfig
 
 namespace = Collection(
     assets,
@@ -35,10 +37,11 @@ namespace = Collection(
     fileuploads,
     initial_development_data,
     job_control,
+    run,
     shell,
     site_settings,
     swagger,
     users,
 )
 
-namespace.configure({'app': {'static_root': BaseConfig.STATIC_ROOT}})
+namespace.configure({'app': {'static_root': get_preliminary_config().STATIC_ROOT}})

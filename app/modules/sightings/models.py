@@ -429,23 +429,31 @@ class Sighting(db.Model, FeatherModel):
             encoded_request = {}
             for key in id_request:
                 encoded_request[key] = json.dumps(id_request[key])
-            current_app.acm.request_passthrough_result(
-                'job.identification_request', 'post', {'params': encoded_request}
-            )
-            log.info(f'Sent ID Request, creating job {job_uuid}')
-            self.jobs[str(job_uuid)] = {
-                'matching_set': matching_set_data,
-                'algorithm': algorithm,
-                'annotation': str(annotation_uuid),
-                'active': True,
-                'start': datetime.utcnow(),
-            }
-            # This is necessary because we can only mark self as modified if
-            # we assign to one of the database attributes
+            try:
+                current_app.acm.request_passthrough_result(
+                    'job.identification_request', 'post', {'params': encoded_request}
+                )
 
-            self.jobs = self.jobs
-            with db.session.begin(subtransactions=True):
-                db.session.merge(self)
+                log.info(f'Sent ID Request, creating job {job_uuid}')
+                self.jobs[str(job_uuid)] = {
+                    'matching_set': matching_set_data,
+                    'algorithm': algorithm,
+                    'annotation': str(annotation_uuid),
+                    'active': True,
+                    'start': datetime.utcnow(),
+                }
+                # This is necessary because we can only mark self as modified if
+                # we assign to one of the database attributes
+                self.jobs = self.jobs
+                with db.session.begin(subtransactions=True):
+                    db.session.merge(self)
+            except HoustonException:
+                log.warning(
+                    f'Sage Identification on Sighting({self.guid}) Job{job_uuid} failed to start'
+                )
+                # TODO Celery will retry, do we want it to?
+                self.stage = SightingStage.failed
+
         else:
             # TODO, this is correct for MVP as there is only one id per Sighting but this will need
             # rework when there are multiple
@@ -605,7 +613,10 @@ class Sighting(db.Model, FeatherModel):
         # No annotations to identify or no algorithms, go straight to un-reviewed
         if len(encounters_with_annotations) == 0 or num_algorithms == 0:
             self.stage = SightingStage.un_reviewed
-
+            log.info(
+                f'Sighting {self.guid} un-reviewed, {num_algorithms} algoirithms, '
+                f'{len(encounters_with_annotations)} encounters with annotations'
+            )
             for encounter in self.encounters:
                 encounter_metadata = self.asset_group_sighting.get_encounter_metadata(
                     encounter.asset_group_sighting_encounter_guid
@@ -618,6 +629,7 @@ class Sighting(db.Model, FeatherModel):
                         assert individual
                         encounter.set_individual(individual)
         else:
+            num_jobs = 0
             # Use task to send ID req with retries
             # Once we support multiple IA configs and algorithms, the number of jobs is going to grow....rapidly
             for config_id in range(len(id_configs)):
@@ -631,3 +643,5 @@ class Sighting(db.Model, FeatherModel):
                                 annotation.guid,
                                 annotation.content_guid,
                             )
+                            num_jobs += 1
+            log.info(f'Starting Identification for {self.guid} using {num_jobs} jobs')

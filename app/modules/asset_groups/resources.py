@@ -326,6 +326,10 @@ class AssetGroupSightingByID(Resource):
     @api.parameters(parameters.PatchAssetGroupSightingDetailsParameters())
     @api.response(schemas.DetailedAssetGroupSightingSchema())
     def patch(self, args, asset_group_sighting):
+        from app.extensions.elapsed_time import ElapsedTime
+        import app.extensions.logging as AuditLog  # NOQA
+
+        timer = ElapsedTime()
         context = api.commit_or_abort(
             db.session,
             default_error_message='Failed to update Asset_group_sighting details.',
@@ -341,6 +345,7 @@ class AssetGroupSightingByID(Resource):
                     code=error.status_code,
                 )
             db.session.merge(asset_group_sighting)
+        AuditLog.patch_object(log, asset_group_sighting, args, duration=timer.elapsed())
         return asset_group_sighting
 
 
@@ -383,6 +388,11 @@ class AssetGroupSightingAsSighting(Resource):
     @api.parameters(parameters.PatchAssetGroupSightingAsSightingParameters())
     @api.response(schemas.AssetGroupSightingAsSightingSchema())
     def patch(self, args, asset_group_sighting):
+        from app.extensions.elapsed_time import ElapsedTime
+        import app.extensions.logging as AuditLog  # NOQA
+
+        timer = ElapsedTime()
+
         context = api.commit_or_abort(
             db.session,
             default_error_message='Failed to update Asset_group_sighting details.',
@@ -398,6 +408,7 @@ class AssetGroupSightingAsSighting(Resource):
                     code=error.status_code,
                 )
             db.session.merge(asset_group_sighting)
+        AuditLog.patch_object(log, asset_group_sighting, args, duration=timer.elapsed())
         return asset_group_sighting
 
 
@@ -423,6 +434,10 @@ class AssetGroupSightingEncounterByID(Resource):
     @api.parameters(parameters.PatchAssetGroupSightingEncounterDetailsParameters())
     @api.response(schemas.DetailedAssetGroupSightingSchema())
     def patch(self, args, asset_group_sighting, encounter_guid):
+        from app.extensions.elapsed_time import ElapsedTime
+        import app.extensions.logging as AuditLog  # NOQA
+
+        timer = ElapsedTime()
         context = api.commit_or_abort(
             db.session,
             default_error_message='Failed to update Asset_group_sighting details.',
@@ -440,6 +455,7 @@ class AssetGroupSightingEncounterByID(Resource):
                     code=error.status_code,
                 )
             db.session.merge(asset_group_sighting)
+        AuditLog.patch_object(log, asset_group_sighting, args, duration=timer.elapsed())
         return asset_group_sighting
 
 

@@ -151,10 +151,10 @@ class Logging(object):
     @classmethod
     def patch_object(cls, logger, obj, patch_args, *args, **kwargs):
 
-        msg = 'Patch: '
+        msg = 'Patch:'
         for patch in patch_args:
 
-            msg += f"{patch['op']} {patch['field_name']}"
+            msg += f" {patch['op']} {patch['field_name']}"
             if 'value' in patch:
                 msg += f", {patch['value']} "
             else:

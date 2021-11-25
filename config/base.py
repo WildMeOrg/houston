@@ -1,34 +1,19 @@
 # -*- coding: utf-8 -*-
-# pylint: disable=too-few-public-methods,invalid-name,missing-docstring
-import os
-import logging
 import datetime
-from pathlib import Path
+import os
 import random
 import string
-
-import pytz
-from dotenv import load_dotenv
+from pathlib import Path
 
 import flask
+import pytz
 
-log = logging.getLogger(__name__)
-
-HERE = Path(__file__).parent
-
-# Load .env.codex into environment variables (then available under os.environ)
-_DEFAULT_DOTENV = HERE / '.env.codex'
-_dotenv = os.getenv('HOUSTON_DOTENV', _DEFAULT_DOTENV)
-# unset GITLAB_REMOTE_LOGIN_PAT if empty
-if 'GITLAB_REMOTE_LOGIN_PAT' in os.environ and not os.environ['GITLAB_REMOTE_LOGIN_PAT']:
-    del os.environ['GITLAB_REMOTE_LOGIN_PAT']
-load_dotenv(_dotenv, override=False)  # gracefully fails if file doesn't exist
-
+HERE = Path.cwd()
 PROJECT_ROOT = str(HERE)
 DATA_ROOT = Path(os.getenv('DATA_ROOT', HERE / '_db'))
 
 
-class BaseConfig(object):
+class FlaskConfigOverrides:
     # Override Flask's SERVER_NAME (default: None)
     SERVER_NAME = os.getenv('SERVER_NAME')
 
@@ -47,7 +32,20 @@ class BaseConfig(object):
             )
         return scheme
 
-    # SQLITE
+
+class BaseConfig(FlaskConfigOverrides):
+    # This class is expected to be initialized to enable the `@property`
+    # based settings. Because the configuration of this application is divided
+    # into variants based on context and environment,
+    # we capture these two items at initialization.
+    # But please do not use the __init__ for anything else.
+
+    def __init__(self, context, environment):
+        # Do not add to this initialization method.
+        # If you need a computeded value, use the `@property` method decorator.
+        self.PROJECT_CONTEXT = context
+        self.PROJECT_ENVIRONMENT = environment
+
     PROJECT_NAME = 'Codex'
     PROJECT_ROOT = PROJECT_ROOT
     PROJECT_DATABASE_PATH = str(DATA_ROOT)
@@ -404,67 +402,3 @@ class WildbookDatabaseConfig:
         port = self.WILDBOOK_DB_PORT
         database = self.WILDBOOK_DB_NAME
         return f'postgresql://{user}:{password}@{host}:{port}/{database}'
-
-
-class ProductionConfig(
-    BaseConfig,
-    EDMConfig,
-    ACMConfig,
-    EmailConfig,
-    GoogleConfig,
-    AssetGroupConfig,
-    ReCaptchaConfig,
-    ElasticsearchConfig,
-    WildbookDatabaseConfig,
-):
-    TESTING = False
-
-    BASE_URL = 'https://houston.dyn.wildme.io/'
-
-    MAIL_BASE_URL = BASE_URL
-    MAIL_OVERRIDE_RECIPIENTS = None
-    MAIL_ERROR_RECIPIENTS = [
-        'mail-errors@wildme.org',
-    ]
-
-    SENTRY_DSN = 'https://140fc4d010bb43b28417ab57b0e41b44@sentry.dyn.wildme.io/3'
-
-
-class DevelopmentConfig(
-    BaseConfig,
-    EDMConfig,
-    ACMConfig,
-    EmailConfig,
-    GoogleConfig,
-    AssetGroupConfig,
-    ReCaptchaConfig,
-    ElasticsearchConfig,
-    WildbookDatabaseConfig,
-):
-    DEBUG = True
-
-    BASE_URL = os.environ.get('HOUSTON_URL', 'https://wildme.ngrok.io/')
-
-    MAIL_BASE_URL = BASE_URL
-    MAIL_OVERRIDE_RECIPIENTS = [
-        'testing@wildme.org',
-    ]
-    MAIL_ERROR_RECIPIENTS = [
-        'mail-errors@wildme.org',
-    ]
-
-    SECRET_KEY = 'DEVELOPMENT_SECRET_KEY'
-    SENTRY_DSN = None
-
-
-class TestingConfig(DevelopmentConfig):
-    TESTING = True
-
-    # Use in-memory SQLite database for testing if SQLALCHEMY_DATABASE_URI and TEST_DATABASE_URI are not specified
-    SQLALCHEMY_DATABASE_URI = (
-        os.getenv('TEST_DATABASE_URI')
-        or os.getenv('SQLALCHEMY_DATABASE_URI')
-        or 'sqlite://'
-    )
-
-    MAIL_SUPPRESS_SEND = True

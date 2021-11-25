@@ -18,14 +18,11 @@ import logging
 
 log = logging.getLogger(__name__)
 
-from config import BaseConfig  # NOQA
-
 
 api_v1_blueprint = Blueprint('api', __name__, url_prefix='/api/v1')
 api_v1 = Api(  # pylint: disable=invalid-name
     api_v1_blueprint,
     version='Version: %s' % (version,),
-    title='Wild Me %s' % (BaseConfig.PROJECT_NAME,),
     contact='info@wildme.org',
     # license='Apache License 2.0',
     # license_url='https://www.apache.org/licenses/LICENSE-2.0',
@@ -39,4 +36,5 @@ def init_app(app, **kwargs):
     """
     # Prevent config variable modification with runtime changes
     api_v1.authorizations = deepcopy(app.config['AUTHORIZATIONS'])
+    api_v1.title = f"Wild Me {app.config['PROJECT_NAME']}"
     app.register_blueprint(api_v1_blueprint)

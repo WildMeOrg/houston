@@ -581,7 +581,10 @@ class User(db.Model, FeatherModel, UserEDMMixin):
 
     def unprocessed_asset_groups(self):
         return [
-            asset_group.guid
+            {
+                'uuid': str(asset_group.guid),
+                'uploadType': asset_group.get_config_field('uploadType'),
+            }
             for asset_group in self.asset_groups
             if not asset_group.is_processed()
         ]

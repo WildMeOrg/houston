@@ -80,6 +80,7 @@ class AugmentedEdmSightingSchema(BaseSightingSchema):
         ),
     )
     featuredAssetGuid = base_fields.UUID(attribute='featured_asset_guid')
+    creator = base_fields.Nested('PublicUserSchema', attribute='get_owner', many=False)
 
     class Meta(BaseSightingSchema.Meta):
         """
@@ -94,4 +95,5 @@ class AugmentedEdmSightingSchema(BaseSightingSchema):
             'assets',
             'featuredAssetGuid',
             'stage',
+            'creator',
         )

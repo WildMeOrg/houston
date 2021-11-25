@@ -161,6 +161,8 @@ def test_patch_asset_group_sighting_as_sighting(
         # since they are in the config of a standard AGS
         for field in {'guid', 'stage', 'completion', 'assets', 'startTime', 'locationId'}:
             assert field in group_sighting.json
+        assert group_sighting.json['asset_group_guid'] == asset_group_uuid
+        assert group_sighting.json['creator']['guid'] == str(regular_user.guid)
 
         # Valid patch, adding a new encounter with an existing file
         new_encounters = copy.deepcopy(group_sighting.json['encounters'])

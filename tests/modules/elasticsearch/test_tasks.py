@@ -1,8 +1,12 @@
 # -*- coding: utf-8 -*-
 from unittest import mock
 
-from config import BaseConfig  # NOQA
 import pytest
+
+
+# Mark this module as only working for codex.
+pytestmark = [pytest.mark.only_for_codex]
+
 
 # To produce the value for SQL_QUERY_RESULTS,
 # use something like the following run within `invoke codex.shell`:
@@ -64,9 +68,6 @@ SQL_QUERY_RESULTS = [
 ]
 
 
-@pytest.mark.skipif(
-    BaseConfig.PROJECT_NAME not in ['Codex'], reason='Codex not activated'
-)
 def test_load_codex_indexes(monkeypatch, flask_app):
     from app.modules.elasticsearch import tasks
 

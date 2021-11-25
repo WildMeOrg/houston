@@ -3,17 +3,19 @@
 Asset_group resources utils
 -------------
 """
-import config
 import json
 import os
 import re
 import shutil
 from unittest import mock
+
+from config import get_preliminary_config
+
 import tests.extensions.tus.utils as tus_utils
 import tests.modules.individuals.resources.utils as individual_utils
-
 from tests import utils as test_utils
 from tests import TEST_ASSET_GROUP_UUID, TEST_EMPTY_ASSET_GROUP_UUID
+
 
 PATH = '/api/v1/asset_groups/'
 EXPECTED_ASSET_GROUP_SIGHTING_FIELDS = {
@@ -704,20 +706,33 @@ def patch_asset_group_sighting_as_sighting(
 def read_asset_group_sighting(
     flask_app_client, user, asset_group_sighting_guid, expected_status_code=200
 ):
-    return test_utils.get_dict_via_flask(
+    response = test_utils.get_dict_via_flask(
         flask_app_client,
         user,
         scopes='asset_group_sightings:read',
         path=f'{PATH}sighting/{asset_group_sighting_guid}',
         expected_status_code=expected_status_code,
-        response_200={'guid', 'stage', 'config', 'completion', 'assets'},
+        response_200={
+            'guid',
+            'stage',
+            'config',
+            'completion',
+            'assets',
+            'creator',
+            'asset_group_guid',
+            'sighting_guid',
+        },
     )
+    # so we can capture the example if we want, via -s flag on pytest
+    print('Asset Group Sighting: ')
+    print(json.dumps(response.json, indent=4, sort_keys=True))
+    return response
 
 
 def read_asset_group_sighting_as_sighting(
     flask_app_client, user, asset_group_sighting_guid, expected_status_code=200
 ):
-    return test_utils.get_dict_via_flask(
+    response = test_utils.get_dict_via_flask(
         flask_app_client,
         user,
         scopes='asset_group_sightings:read',
@@ -725,8 +740,22 @@ def read_asset_group_sighting_as_sighting(
         expected_status_code=expected_status_code,
         # startTime and locationId are only present in the _as_sighting endpoints,
         # since they are in the config of a standard AGS
-        response_200={'guid', 'stage', 'completion', 'assets', 'startTime', 'locationId'},
+        response_200={
+            'guid',
+            'stage',
+            'completion',
+            'assets',
+            'startTime',
+            'locationId',
+            'creator',
+            'asset_group_guid',
+            'sightingGuid',
+        },
     )
+    # so we can capture the example if we want, via -s flag on pytest
+    print('Asset Group Sighting As Sighting: ')
+    print(json.dumps(response.json, indent=4, sort_keys=True))
+    return response
 
 
 def simulate_job_detection_response(
@@ -839,7 +868,7 @@ class CloneAssetGroup(object):
         # Allow the option of forced cloning, this could raise an exception if the assertion fails
         # but this does not need to be in any try/except/finally construct as no resources are allocated yet
         if force_clone:
-            database_path = config.TestingConfig.ASSET_GROUP_DATABASE_PATH
+            database_path = get_preliminary_config().ASSET_GROUP_DATABASE_PATH
             asset_group_path = os.path.join(database_path, str(guid))
 
             if os.path.exists(asset_group_path):
@@ -870,7 +899,7 @@ class CloneAssetGroup(object):
             ), f'url={url} status_code={self.response.status_code} data={self.response.data}'
 
     def remove_files(self):
-        database_path = config.TestingConfig.ASSET_GROUP_DATABASE_PATH
+        database_path = get_preliminary_config().ASSET_GROUP_DATABASE_PATH
         asset_group_path = os.path.join(database_path, str(self.guid))
         if os.path.exists(asset_group_path):
             shutil.rmtree(asset_group_path)

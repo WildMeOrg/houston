@@ -13,6 +13,7 @@ jobs:
     env:
       OS: ubuntu-latest
       PYTHON: ${{ matrix.python-version }}
+      DOCKER_BUILDKIT: 1
     steps:
       # Checkout and env setup
       - uses: actions/checkout@v2
@@ -35,7 +36,7 @@ jobs:
       - name: Build frontend and swagger ui
         run: |
           ./scripts/codex/build.frontend.sh
-          ./scripts/swagger/build.frontend.sh
+          ./scripts/swagger/build.sh
 
       - name: Run docker-compose
         run: |

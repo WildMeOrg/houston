@@ -5,6 +5,9 @@ Application related tasks for Invoke.
 
 from invoke import Collection
 
+from config import get_preliminary_config
+
+from tasks.app import run
 from tasks.codex import (
     asset_groups,
     consistency,
@@ -15,10 +18,8 @@ from tasks.codex import (
     organizations,
     collaborations,
     projects,
-    run,
 )
 
-from config import BaseConfig
 
 namespace = Collection(
     asset_groups,
@@ -33,4 +34,4 @@ namespace = Collection(
     run,
 )
 
-namespace.configure({'app': {'static_root': BaseConfig.STATIC_ROOT}})
+namespace.configure({'app': {'static_root': get_preliminary_config().STATIC_ROOT}})

@@ -11,8 +11,7 @@ from werkzeug import cached_property  # NOQA
 from werkzeug import exceptions as http_exceptions
 
 from .model import Model, DefaultHTTPErrorSchema
-
-from config import BaseConfig  # NOQA
+from config import get_preliminary_config
 
 
 def is_x_enabled(names, name_args, enabled_names):
@@ -26,11 +25,13 @@ def is_x_enabled(names, name_args, enabled_names):
 
 
 def is_extension_enabled(extension_names, *args):
-    return is_x_enabled(extension_names, args, BaseConfig.ENABLED_EXTENSIONS)
+    config = get_preliminary_config()
+    return is_x_enabled(extension_names, args, config.ENABLED_EXTENSIONS)
 
 
 def is_module_enabled(module_names, *args):
-    return is_x_enabled(module_names, args, BaseConfig.ENABLED_MODULES)
+    config = get_preliminary_config()
+    return is_x_enabled(module_names, args, config.ENABLED_MODULES)
 
 
 def x_required(

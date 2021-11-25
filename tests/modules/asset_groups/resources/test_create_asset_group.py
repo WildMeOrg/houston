@@ -529,10 +529,17 @@ def test_create_bulk_asset_group(flask_app_client, researcher_1, test_root, db, 
 
         # Make sure that the user has the group and it's in the correct state
         user_resp = user_utils.read_user(flask_app_client, researcher_1, 'me')
+
         assert 'unprocessed_asset_groups' in user_resp.json
         # Not being too rigid in the validation as sporadically '00000000-0000-0000-0000-000000000003'
         # is also in there
-        assert asset_group_uuid in user_resp.json['unprocessed_asset_groups']
+        group_data = [
+            group
+            for group in user_resp.json['unprocessed_asset_groups']
+            if group['uuid'] == asset_group_uuid
+        ]
+        assert len(group_data) == 1
+        assert group_data[0]['uploadType'] == 'bulk'
 
     finally:
         if asset_group_uuid:

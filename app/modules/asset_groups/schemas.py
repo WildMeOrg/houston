@@ -23,6 +23,7 @@ SIGHTING_FIELDS_IN_AGS_CONFIG = {
     'verbatimLocality',
     'encounterCounts',
     'id',
+    'comments',
     'featuredAssetGuid',
 }
 
@@ -51,6 +52,9 @@ class DetailedAssetGroupSightingSchema(BaseAssetGroupSightingSchema):
     )
 
     completion = base_fields.Function(AssetGroupSighting.get_completion)
+    sighting_guid = base_fields.Function(AssetGroupSighting.get_sighting_guid)
+
+    creator = base_fields.Nested('PublicUserSchema', attribute='get_owner', many=False)
 
     class Meta(BaseAssetGroupSightingSchema.Meta):
 
@@ -59,7 +63,10 @@ class DetailedAssetGroupSightingSchema(BaseAssetGroupSightingSchema):
             AssetGroupSighting.config.key,
             'assets',
             'completion',
+            'creator',
+            'sighting_guid',
             AssetGroupSighting.jobs.key,
+            AssetGroupSighting.asset_group_guid.key,
         )
         dump_only = BaseAssetGroupSightingSchema.Meta.dump_only + (
             AssetGroupSighting.jobs.key,
@@ -96,7 +103,7 @@ class AssetGroupSightingAsSightingSchema(AugmentedEdmSightingSchema):
     """
 
     completion = base_fields.Function(AssetGroupSighting.get_completion)
-
+    creator = base_fields.Nested('PublicUserSchema', attribute='get_owner', many=False)
     # Note: these config_field_getter vars should conform to SIGHTING_FIELDS_IN_AGS_CONFIG
     # at the top of this file
     startTime = base_fields.Function(AssetGroupSighting.config_field_getter('startTime'))
@@ -124,16 +131,19 @@ class AssetGroupSightingAsSightingSchema(AugmentedEdmSightingSchema):
     featuredAssetGuid = base_fields.Function(
         AssetGroupSighting.config_field_getter('featuredAssetGuid')
     )
+    sightingGuid = base_fields.Function(AssetGroupSighting.get_sighting_guid)
+    comments = base_fields.Function(
+        AssetGroupSighting.config_field_getter('comments', default=None)
+    )
     # These are fields that are in Sighting but don't exist for
     # AssetGroupSighting
     createdEDM = base_fields.DateTime(default=None)
-    comments = base_fields.String(default='None')
     customFields = base_fields.Dict(attribute='get_custom_fields')
     version = base_fields.String(default=None)
 
     class Meta:
         # adds 'stage' to the fields already defined above
-        additional = ('stage',)
+        additional = ('stage', 'asset_group_guid')
         dump_only = BaseAssetGroupSightingSchema.Meta.dump_only
 
 

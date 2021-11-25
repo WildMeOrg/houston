@@ -101,6 +101,12 @@ class Sighting(db.Model, FeatherModel):
             return self.get_owners()[0]
         return None
 
+    def get_creator(self):
+        if self.asset_group_sighting:
+            return self.asset_group_sighting.get_owner()
+        else:
+            return None
+
     # will return None if not a single owner of all encounters (otherwise that user)
     def single_encounter_owner(self):
         single = None
@@ -186,6 +192,8 @@ class Sighting(db.Model, FeatherModel):
 
     def check_all_job_status(self):
         jobs = self.jobs
+        if not jobs:
+            return
         for job_id in jobs.keys():
             job = jobs[job_id]
             if job['active']:

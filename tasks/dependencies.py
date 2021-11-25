@@ -44,7 +44,7 @@ def install_swagger_ui(context, on_error='raise'):
     """
     log.info('Installing Swagger UI assets...')
     try:
-        context.run('bash scripts/swagger/build.frontend.sh')
+        context.run('bash scripts/swagger/build.sh')
         log.info('Swagger UI is installed.')
     except Exception as ex:
         if on_error in ['raise']:

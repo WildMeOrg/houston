@@ -274,6 +274,15 @@ class AssetGroupSighting(db.Model, HoustonModel):
             filename in self.config.get('assetReferences', []) if self.config else False
         )
 
+    def get_owner(self):
+        return self.asset_group.owner
+
+    def get_sighting_guid(self):
+        if len(self.sighting) > 0:
+            return self.sighting[0].guid
+        else:
+            return None
+
     # Returns a percentage complete value 0-100
     def get_completion(self):
         # Design allows for these limits to be configured later, potentially this data could be project specific
@@ -338,6 +347,8 @@ class AssetGroupSighting(db.Model, HoustonModel):
 
     def check_all_job_status(self):
         jobs = self.jobs
+        if not jobs:
+            return
         for job_id in jobs.keys():
             job = jobs[job_id]
             if job['active']:
@@ -599,6 +610,8 @@ class AssetGroupSighting(db.Model, HoustonModel):
     # Used to build the response to AssetGroupSighting GET
     def get_assets(self):
         assets = []
+        if not self.config.get('assetReferences'):
+            return assets
         for filename in self.config.get('assetReferences'):
             asset = self.asset_group.get_asset_for_file(filename)
             assert asset
@@ -786,6 +799,9 @@ class AssetGroup(db.Model, HoustonModel):
                     }
                     mime_type_file.write(json.dumps(mime_type_whitelist_dict))
         return self._mime_type_whitelist_guid
+
+    def get_config_field(self, field):
+        return self.config.get(field) if isinstance(self.config, dict) else None
 
     def _ensure_repository_files(self):
         group_path = self.get_absolute_path()

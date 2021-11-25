@@ -23,14 +23,11 @@ RUN set -x \
     && cd /code \
     && ls -lah \
     && export DEBUG=1 \
-    && /bin/bash -c "source ./scripts/swagger/build.frontend.sh && build" \
-    && /bin/bash -c "source ./scripts/swagger/build.frontend.sh && install"
+    && /bin/bash -c "source ./scripts/swagger/build.sh && build" \
+    && /bin/bash -c "source ./scripts/swagger/build.sh && install"
 
 
 FROM python:3.9 as main
-
-# "mws" or "codex"
-ARG PROJECT
 
 RUN apt update \
  # && curl -sL https://deb.nodesource.com/setup_14.x | bash - \
@@ -66,12 +63,10 @@ RUN set -x \
     # test it works
     && wait-for google.com:80 -- echo "success"
 
-ENV FRONTEND_DIST /var/www/frontend
 ENV SWAGGER_UI_DIST /var/www/swagger-ui
 
 COPY . /code
 RUN ls -lah /code/app/static
-COPY --from=frontend /code/app/static/dist-latest ${FRONTEND_DIST}
 COPY --from=swagger-ui /code/app/static/swagger-ui ${SWAGGER_UI_DIST}
 RUN ls -lah /code/app/static
 
@@ -85,7 +80,7 @@ RUN set -ex \
  && rm -rf ~/.cache/pip
 
 EXPOSE 5000
-ENV FLASK_CONFIG production
+ENV FLASK_ENV production
 
 # Location to mount our data
 ENV DATA_VOLUME /data
@@ -96,8 +91,14 @@ VOLUME [ "${DATA_VOLUME}" ]
 # Location to source additional environment variables
 ENV HOUSTON_DOTENV ${DATA_ROOT}/.env
 
-COPY ./.dockerfiles/docker-entrypoint.${PROJECT}.sh /docker-entrypoint.sh
+COPY ./.dockerfiles/docker-entrypoint.sh /docker-entrypoint.sh
 
 ENTRYPOINT [ "/docker-entrypoint.sh" ]
 #: default command within the entrypoint
 # CMD [ "invoke", "app.run" ]
+
+
+FROM main as with_frontend
+
+ENV FRONTEND_DIST /var/www/frontend
+COPY --from=frontend /code/app/static/dist-latest ${FRONTEND_DIST}

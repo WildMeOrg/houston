@@ -174,6 +174,11 @@ def test_sightings(session, login, codex_url, test_root, admin_name):
         # FIXME missing taxonomies: [{'id': tx_id}],
         'updatedHouston': response.json()['updatedHouston'],
         'version': response.json()['version'],  # 1636456524261
+        'creator': {
+            'full_name': 'Test admin',
+            'guid': my_guid,
+            'profile_fileupload': None,
+        },
     }
 
     # PATCH sighting
@@ -275,6 +280,11 @@ def test_sightings(session, login, codex_url, test_root, admin_name):
         # 2021-11-16T09:45:26.717432+00:00
         'updatedHouston': response.json()['updatedHouston'],
         'version': sighting_version,
+        'creator': {
+            'full_name': 'Test admin',
+            'guid': my_guid,
+            'profile_fileupload': None,
+        },
     }
 
     # DELETE asset group

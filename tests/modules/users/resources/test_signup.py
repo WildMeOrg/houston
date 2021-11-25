@@ -3,7 +3,7 @@
 import uuid
 import tests.modules.users.resources.utils as user_utils
 
-# import config
+# from config import get_preliminary_config
 
 
 # def test_recaptcha(flask_app_client):
@@ -12,7 +12,7 @@ import tests.modules.users.resources.utils as user_utils
 #     assert response.content_type == 'application/json'
 #     assert set(response.json.keys()) == {'recaptcha_public_key'}
 #     assert (
-#         response.json['recaptcha_public_key'] == config.TestingConfig.RECAPTCHA_PUBLIC_KEY
+#         response.json['recaptcha_public_key'] == get_preliminary_config().RECAPTCHA_PUBLIC_KEY
 #     )
 
 
@@ -21,7 +21,7 @@ def create_new_user(flask_app_client, data, must_succeed=True):
     Helper function for valid new user creation.
     """
     # _data = {
-    #     'recaptcha_key': config.TestingConfig.RECAPTCHA_BYPASS,
+    #     'recaptcha_key': get_preliminary_config().RECAPTCHA_BYPASS,
     # }
     # _data.update(data)
     # response = flask_app_client.post('/api/v1/users/', data=_data)

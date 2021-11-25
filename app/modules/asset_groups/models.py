@@ -784,6 +784,9 @@ class AssetGroup(db.Model, HoustonModel):
                     mime_type_file.write(json.dumps(mime_type_whitelist_dict))
         return self._mime_type_whitelist_guid
 
+    def get_config_field(self, field):
+        return self.config.get(field) if isinstance(self.config, dict) else None
+
     def _ensure_repository_files(self):
         group_path = self.get_absolute_path()
 

@@ -107,7 +107,7 @@ class BaseCodexConfig(
 
 
 class ProductionConfig(BaseCodexConfig):
-    BASE_URL = 'https://houston.dyn.wildme.io/'
+    BASE_URL = os.environ.get('HOUSTON_URL')
 
     MAIL_BASE_URL = BASE_URL
     MAIL_OVERRIDE_RECIPIENTS = None

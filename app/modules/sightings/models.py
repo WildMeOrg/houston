@@ -361,14 +361,16 @@ class Sighting(db.Model, FeatherModel):
         for annot in unique_annots:
             if annot.encounter:
                 if annot.encounter.sighting.stage == SightingStage.processed:
-                    individual = annot.get_individual()
-                    if individual:
-                        individual_guid = individual.guid
-                    else:
-                        # Use Sage default value
-                        individual_guid = '____'
-                    matching_set_individual_uuids.append(individual_guid)
-                    matching_set_annot_uuids.append(to_acm_uuid(annot.content_guid))
+                    acm_annot_uuid = to_acm_uuid(annot.content_guid)
+                    if acm_annot_uuid not in matching_set_annot_uuids:
+                        matching_set_annot_uuids.append(acm_annot_uuid)
+                        individual = annot.get_individual()
+                        if individual:
+                            individual_guid = individual.guid
+                        else:
+                            # Use Sage default value
+                            individual_guid = '____'
+                        matching_set_individual_uuids.append(individual_guid)
 
         log.debug(
             f'Built matching set individuals {matching_set_individual_uuids}, '

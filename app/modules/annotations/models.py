@@ -114,13 +114,11 @@ class Annotation(db.Model, HoustonModel):
         return user is not None and user == self.asset.asset_group.owner
 
     # Used for building matching set but abstract the annotation to name mapping
-    def get_name(self):
-        name = 'unknown'
+    def get_individual(self):
+        individual = None
         if self.encounter and self.encounter.individual:
-            name = 'not quite'
-            # TODO when individual has a name
-            # name = self.encounter.individual.name
-        return name
+            individual = self.encounter.individual
+        return individual
 
     def delete(self):
         with db.session.begin(subtransactions=True):

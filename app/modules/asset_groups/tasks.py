@@ -69,9 +69,9 @@ def git_push(asset_group_guid):
     repo = asset_group.get_repository()
     if 'origin' not in repo.remotes:
         ensure_remote(asset_group_guid)
-    log.info('Pushing to authorized URL')
+    log.debug('Pushing to authorized URL')
     repo.git.push('--set-upstream', repo.remotes.origin, repo.head.ref)
-    log.info(f'...pushed to {repo.head.ref}')
+    log.debug(f'...pushed to {repo.head.ref}')
 
 
 @celery.task(

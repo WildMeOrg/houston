@@ -213,16 +213,18 @@ class RestManager(RestManagerUserMixin):
                 not isinstance(response, requests.models.Response) or response.ok
             ), f'{self.NAME} Authentication for {target} returned non-OK code: {response.status_code}'
 
-        log.info(f'Created authenticated session for {self.NAME} target {target}')
+        log.debug(f'Created authenticated session for {self.NAME} target {target}')
 
     def _ensure_initialized(self):
         if not self.initialized:
-            log.info('Initializing %s' % self.NAME)
+            from app.extensions.elapsed_time import ElapsedTime
+
+            timer = ElapsedTime()
             self._ensure_config_uris()
             self._ensure_config_auths()
             self._init_all_sessions()
-            log.info('\t%s' % (ut.repr3(self.uris)))
-            log.info('%s Manager is ready' % self.NAME)
+            log.debug('\t%s' % (ut.repr3(self.uris)))
+            log.info(f'{self.NAME} Manager initialised in {timer.elapsed()} seconds')
             self.initialized = True
 
     def get_target_endpoint_url(self, target='default'):
@@ -269,7 +271,10 @@ class RestManager(RestManagerUserMixin):
         endpoint_encoded = requests.utils.quote(endpoint, safe='/?:=&')
 
         if verbose:
-            log.info(f'Sending {method} request to {self.NAME}: {endpoint_encoded}')
+            from app.extensions.elapsed_time import ElapsedTime
+
+            timer = ElapsedTime()
+            log.debug(f'Sending {method} request to {self.NAME}: {endpoint_encoded}')
             log.debug(f'Contents {passthrough_kwargs}')
 
         session_ = target_session or self.sessions[target]
@@ -307,7 +312,10 @@ class RestManager(RestManagerUserMixin):
             log.warning(
                 f'Non-OK ({response.status_code}) response on {method} {endpoint}: {response.content}'
             )
-
+        if verbose:
+            log.info(
+                f'{self.NAME} {method} of {endpoint_encoded} took {timer.elapsed()} seconds'
+            )
         return response
 
     def get_list(self, list_name, target='default'):

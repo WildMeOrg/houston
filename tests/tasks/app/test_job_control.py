@@ -4,7 +4,6 @@ import uuid
 from unittest import mock
 import tests.extensions.tus.utils as tus_utils
 import tests.modules.asset_groups.resources.utils as asset_group_utils
-import tests.modules.sightings.resources.utils as sighting_utils
 import tests.utils as test_utils
 
 from invoke import MockContext
@@ -206,7 +205,5 @@ def test_sighting_identification_jobs(
     finally:
         for group in asset_group_uuids:
             asset_group_utils.delete_asset_group(flask_app_client, researcher_1, group)
-        for sighting_uuid in sighting_uuids:
-            sighting_utils.delete_sighting(flask_app_client, researcher_1, sighting_uuid)
         for trans in transactions:
             tus_utils.cleanup_tus_dir(trans)

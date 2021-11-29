@@ -654,6 +654,9 @@ class AssetGroupSighting(db.Model, HoustonModel):
             log.warning(f'job_id {job_id_str} not found in AssetGroupSighting')
 
     def delete(self):
+        if self.sighting:
+            self.sighting[0].delete_cascade()
+
         with db.session.begin(subtransactions=True):
             db.session.delete(self)
 

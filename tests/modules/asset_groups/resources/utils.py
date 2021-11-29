@@ -540,7 +540,6 @@ def create_asset_group_and_sighting(
         sighting_uuid = commit_response.json['guid']
         sighting = Sighting.query.get(sighting_uuid)
         sightings.append(sighting)
-        request.addfinalizer(lambda: sighting.delete_cascade())
 
     return asset_group, sightings
 

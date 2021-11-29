@@ -336,26 +336,31 @@ class Sighting(db.Model, FeatherModel):
             )
             self.add_encounter(encounter)
 
-    def get_matching_set_data(self, matching_set_data):
+    def _get_matching_set_annots(self, matching_set_option):
         annots = []
-        from app.extensions.acm import to_acm_uuid
 
         # Must match the options validated in the metadata.py
-        if matching_set_data == 'mine':
+        if matching_set_option == 'mine':
             data_owner = self.single_encounter_owner()
             assert data_owner
             annots = data_owner.get_my_annotations()
-        elif matching_set_data == 'extended':
+        elif matching_set_option == 'extended':
             data_owner = self.single_encounter_owner()
             assert data_owner
             annots = data_owner.get_all_annotations()
-        elif matching_set_data == 'all':
+        elif matching_set_option == 'all':
             annots = Annotation.query.all()
         else:
             # Should have been caught at the metadata validation
-            log.error(f'MatchingDataSet {matching_set_data} not supported')
+            log.error(f'MatchingDataSet {matching_set_option} not supported')
 
         unique_annots = set(annots)
+        return unique_annots
+
+    def get_matching_set_data(self, matching_set_option):
+        from app.extensions.acm import to_acm_uuid
+
+        unique_annots = self._get_matching_set_annots(matching_set_option)
         matching_set_individual_uuids = []
         matching_set_annot_uuids = []
         for annot in unique_annots:
@@ -366,7 +371,7 @@ class Sighting(db.Model, FeatherModel):
                         matching_set_annot_uuids.append(acm_annot_uuid)
                         individual = annot.get_individual()
                         if individual:
-                            individual_guid = individual.guid
+                            individual_guid = str(individual.guid)
                         else:
                             # Use Sage default value
                             individual_guid = '____'
@@ -377,6 +382,14 @@ class Sighting(db.Model, FeatherModel):
             f'annots {matching_set_annot_uuids}'
         )
         return matching_set_individual_uuids, matching_set_annot_uuids
+
+    def _has_matching_set(self, matching_set_option):
+        unique_annots = self._get_matching_set_annots(matching_set_option)
+        for annot in unique_annots:
+            if annot.encounter:
+                if annot.encounter.sighting.stage == SightingStage.processed:
+                    return True
+        return False
 
     def build_identification_request(
         self, config_id, annotation_uuid, job_uuid, algorithm
@@ -610,14 +623,7 @@ class Sighting(db.Model, FeatherModel):
                 assert 'matchingSetDataOwners' in config
 
                 # Only use the algorithm if there is a matching data set to ID against
-                (
-                    matching_set_individual_uuids,
-                    matching_set_annot_uuids,
-                ) = self.get_matching_set_data(config['matchingSetDataOwners'])
-                if (
-                    len(matching_set_individual_uuids) > 0
-                    and len(matching_set_annot_uuids) > 0
-                ):
+                if self._has_matching_set(config['matchingSetDataOwners']):
                     num_algorithms += len(config['algorithms'])
 
                 # For now, regions are ignored

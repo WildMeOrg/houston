@@ -10,7 +10,13 @@ on:
 jobs:
   generate-models-graph:
     runs-on: ubuntu-latest
-
+    strategy:
+      fail-fast: false
+      matrix:
+        app-context: ["codex", "mws"]
+    env:
+      HOUSTON_APP_CONTEXT: ${{ matrix.app-context }}
+      FLASK_ENV: development
     steps:
       - uses: actions/checkout@v2
         with:
@@ -29,7 +35,7 @@ jobs:
       - name: Commit and push to docs
         run: |
           bash -xe <<EOF
-          git add docs/models-graph.png
+          git add docs/${HOUSTON_APP_CONTEXT}-models-graph.png
           git config user.name github-actions
           git config user.email github-actions@github.com
           git commit -am 'Update docs/models-graph.png'

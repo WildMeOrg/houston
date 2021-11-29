@@ -1,5 +1,6 @@
 .git*
 .dockerignore
+.env
 .DS_Store
 
 .github/

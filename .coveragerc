@@ -9,6 +9,7 @@ omit =
     setup.py
     migrations/*
     virtualenv/*
+    scripts/*
 
 [report]
 exclude_lines =

@@ -1,13 +1,19 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-from importlib import import_module
+import os
 import pathlib
+from importlib import import_module
 
 import pydot
 
+from config import get_preliminary_config
+
 
 def get_models():
+    config = get_preliminary_config()
     for models_py in pathlib.Path('app/modules/').glob('*/models.py'):
+        if models_py.parent.name not in config.ENABLED_MODULES:
+            continue
         module_path = str(models_py).replace('.py', '').replace('/', '.')
         module = import_module(module_path)
         for name in dir(module):
@@ -18,7 +24,12 @@ def get_models():
                     yield cls
 
 
-graph = pydot.Dot('models_graph', graph_type='graph', label='Houston Models')
+houston_app_context = os.getenv('HOUSTON_APP_CONTEXT')
+graph = pydot.Dot(
+    'models_graph',
+    graph_type='graph',
+    label=f'Houston {houston_app_context} Models',
+)
 relationships = []
 for model in get_models():
     column_names = []
@@ -42,5 +53,6 @@ for model in get_models():
     )
 for cls1, cls2 in relationships:
     graph.add_edge(pydot.Edge(cls1, cls2))
-graph.write_png('./docs/models-graph.png')
-print('Output in ./docs/models-graph.png')
+filepath = f'./docs/{houston_app_context}-models-graph.png'
+graph.write_png(filepath)
+print(f'Output in {filepath}')

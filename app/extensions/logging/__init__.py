@@ -21,14 +21,14 @@ class Logging(object):
     AUDIT = 45
 
     class AuditType(str, enum.Enum):
-        UserCreate = 'User Create of'
-        SystemCreate = 'System Create of'
-        Delete = 'Delete of'
-        Update = 'Update of'  # Generic Update
-        FrontEndFault = 'Front End Fault on'  # Bad message received on API
-        BackEndFault = 'Back End Fault on'  # Faulty message received from ACM/EDM etc
-        HoustonFault = 'Houston Fault on'  # Internal Error within Houston
-        Other = 'Access of'  # None of the above
+        UserCreate = 'User Create'
+        SystemCreate = 'System Create'
+        Delete = 'Delete'
+        Update = 'Update'  # Generic Update
+        FrontEndFault = 'Front End Fault'  # Bad message received on API
+        BackEndFault = 'Back End Fault'  # Faulty message received from ACM/EDM etc
+        HoustonFault = 'Houston Fault'  # Internal Error within Houston
+        Other = 'Access'  # None of the above
 
     def __init__(self, app=None):
         if app:
@@ -100,7 +100,7 @@ class Logging(object):
         assert isinstance(audit_type, cls.AuditType)
 
         module_name = obj.__class__.__name__
-        log_msg = f'{audit_type} {module_name} {obj.guid} {msg}'
+        log_msg = f'{module_name} {audit_type} {obj.guid} {msg}'
         cls._log_message(logger, log_msg, audit_type, *args, **kwargs)
 
         from app.modules.audit_logs.models import AuditLog

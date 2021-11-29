@@ -106,7 +106,5 @@ def test_sighting_identification(
     finally:
         for group in asset_group_uuids:
             asset_group_utils.delete_asset_group(flask_app_client, researcher_1, group)
-        for sighting_uuid in sighting_uuids:
-            sighting_utils.delete_sighting(flask_app_client, researcher_1, sighting_uuid)
         for trans in transactions:
             tus_utils.cleanup_tus_dir(trans)

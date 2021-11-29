@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=missing-docstring
 import tests.modules.asset_groups.resources.utils as asset_group_utils
-import tests.modules.sightings.resources.utils as sighting_utils
 import pytest
 from tests.utils import module_unavailable
 
@@ -33,7 +32,6 @@ def test_ia_pipeline_sim_detect_response(
     )
 
     asset_group_uuid = None
-    sighting_uuid = None
     try:
 
         # and the sim_sage util to catch it
@@ -79,8 +77,3 @@ def test_ia_pipeline_sim_detect_response(
             asset_group_utils.delete_asset_group(
                 flask_app_client, researcher_1, asset_group_uuid
             )
-        if sighting_uuid:
-            sighting_utils.delete_sighting(flask_app_client, staff_user, sighting_uuid)
-
-
-# TODO DEX-335 A test that has sage simulated detection and identification

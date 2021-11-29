@@ -3,7 +3,6 @@
 import tests.modules.asset_groups.resources.utils as asset_group_utils
 import tests.modules.users.resources.utils as user_utils
 import tests.modules.audit_logs.resources.utils as audit_utils
-import tests.modules.sightings.resources.utils as sighting_utils
 import pytest
 
 from tests.utils import module_unavailable
@@ -19,7 +18,6 @@ def test_audit_asset_group_creation(
     from tests.modules.asset_groups.resources.utils import AssetGroupCreationData
 
     asset_group_uuid = None
-    sighting_uuid = None
     try:
         data = AssetGroupCreationData(None)
         data.remove_field('transactionId')
@@ -73,10 +71,6 @@ def test_audit_asset_group_creation(
             asset_group_utils.delete_asset_group(
                 flask_app_client, researcher_1, asset_group_uuid
             )
-        if sighting_uuid:
-            import tests.modules.sightings.resources.utils as sighting_utils
-
-            sighting_utils.delete_sighting(flask_app_client, researcher_1, sighting_uuid)
 
 
 # Basically a duplication of the ia pipeline up to Sighting creation and making sure that the required audit
@@ -147,11 +141,7 @@ def test_most_ia_pipeline_audit_log(
         flask_app_client, researcher_1, asset_group_sighting1_guid
     )
     sighting_uuid = response.json['guid']
-    request.addfinalizer(
-        lambda: sighting_utils.delete_sighting(
-            flask_app_client, staff_user, sighting_uuid
-        )
-    )
+
     sighting = Sighting.query.get(sighting_uuid)
     encounters = sighting.get_encounters()
     assert len(encounters) == 2

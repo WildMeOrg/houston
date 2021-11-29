@@ -290,7 +290,3 @@ def test_sightings(session, login, codex_url, test_root, admin_name):
     # DELETE asset group
     response = session.delete(codex_url(f'/api/v1/asset_groups/{asset_group_guid}'))
     assert response.status_code == 204
-
-    # DELETE sighting
-    response = session.delete(codex_url(f'/api/v1/sightings/{sighting_id}'))
-    assert response.status_code == 204

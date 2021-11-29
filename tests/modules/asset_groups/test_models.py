@@ -165,8 +165,7 @@ def test_asset_group_sighting_get_completion(
             ],
         },
     ):
-        sighting = asset_group_sighting.commit()
-    request.addfinalizer(sighting.delete_cascade)
+        asset_group_sighting.commit()
     assert asset_group_sighting.stage == AssetGroupSightingStage.processed
     assert asset_group_sighting.get_completion() == 76
 

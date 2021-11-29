@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=missing-docstring
 import tests.modules.asset_groups.resources.utils as asset_group_utils
-import tests.modules.sightings.resources.utils as sighting_utils
 import tests.extensions.tus.utils as tus_utils
 from tests import utils as test_utils
 import pytest
@@ -20,7 +19,6 @@ def test_commit_asset_group(flask_app_client, researcher_1, regular_user, test_r
 
     transaction_id, test_filename = tus_utils.prep_tus_dir(test_root)
     asset_group_uuid = None
-    sighting_uuid = None
     try:
         data = AssetGroupCreationData(transaction_id)
         data.add_filename(0, test_filename)
@@ -76,8 +74,7 @@ def test_commit_asset_group(flask_app_client, researcher_1, regular_user, test_r
             asset_group_utils.delete_asset_group(
                 flask_app_client, regular_user, asset_group_uuid
             )
-        if sighting_uuid:
-            sighting_utils.delete_sighting(flask_app_client, regular_user, sighting_uuid)
+
         tus_utils.cleanup_tus_dir(transaction_id)
 
 
@@ -91,7 +88,6 @@ def test_commit_owner_asset_group(
     from app.modules.sightings.models import Sighting, SightingStage
 
     asset_group_uuid = None
-    sighting_uuid = None
     try:
         data = asset_group_utils.get_bulk_creation_data(test_root, request)
         # order of ags not deterministic so to make the test simpler, make the first encounter in all
@@ -125,8 +121,6 @@ def test_commit_owner_asset_group(
             asset_group_utils.delete_asset_group(
                 flask_app_client, researcher_1, asset_group_uuid
             )
-        if sighting_uuid:
-            sighting_utils.delete_sighting(flask_app_client, staff_user, sighting_uuid)
 
 
 # Create an asset group with an annotation and an ia_config and expect it to start IA
@@ -142,7 +136,6 @@ def test_commit_asset_group_ia(
 
     transaction_id, test_filename = tus_utils.prep_tus_dir(test_root)
     asset_group_uuid = None
-    sighting_uuid = None
     try:
         data = AssetGroupCreationData(transaction_id)
         data.add_filename(0, test_filename)
@@ -202,8 +195,7 @@ def test_commit_asset_group_ia(
             asset_group_utils.delete_asset_group(
                 flask_app_client, regular_user, asset_group_uuid
             )
-        if sighting_uuid:
-            sighting_utils.delete_sighting(flask_app_client, regular_user, sighting_uuid)
+
         tus_utils.cleanup_tus_dir(transaction_id)
 
 
@@ -225,7 +217,6 @@ def test_commit_individual_asset_group(
     from app.modules.asset_groups.models import AssetGroupSighting
 
     asset_group_uuid = None
-    sighting_uuid = None
     try:
         data = asset_group_utils.get_bulk_creation_data(test_root, request)
         with db.session.begin():
@@ -272,5 +263,3 @@ def test_commit_individual_asset_group(
             asset_group_utils.delete_asset_group(
                 flask_app_client, researcher_1, asset_group_uuid
             )
-        if sighting_uuid:
-            sighting_utils.delete_sighting(flask_app_client, staff_user, sighting_uuid)

@@ -179,7 +179,6 @@ def test_create_asset_group_no_assets(
     from tests.modules.asset_groups.resources.utils import AssetGroupCreationData
 
     asset_group_uuid = None
-    sighting_uuid = None
     try:
         data = AssetGroupCreationData(None)
         data.remove_field('transactionId')
@@ -197,16 +196,11 @@ def test_create_asset_group_no_assets(
         user_resp = user_utils.read_user(flask_app_client, researcher_1, 'me')
         assert 'unprocessed_sightings' in user_resp.json
         assert len(user_resp.json['unprocessed_sightings']) == 1
-        sighting_uuid = user_resp.json['unprocessed_sightings'][0]
     finally:
         if asset_group_uuid:
             asset_group_utils.delete_asset_group(
                 flask_app_client, researcher_1, asset_group_uuid
             )
-        if sighting_uuid:
-            import tests.modules.sightings.resources.utils as sighting_utils
-
-            sighting_utils.delete_sighting(flask_app_client, researcher_1, sighting_uuid)
 
 
 @pytest.mark.skipif(

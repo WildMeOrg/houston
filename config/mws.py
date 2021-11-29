@@ -91,7 +91,7 @@ class ProductionConfig(BaseMWSConfig):
         'parham@wildme.org',
     ]
 
-    SENTRY_DSN = 'https://140fc4d010bb43b28417ab57b0e41b44@sentry.dyn.wildme.io/3'
+    SENTRY_DSN = os.getenv('SENTRY_DSN')
 
 
 class DevelopmentConfig(BaseMWSConfig):

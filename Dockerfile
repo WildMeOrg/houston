@@ -1,18 +1,3 @@
-FROM node:lts as frontend
-# "mws" or "codex"
-ARG PROJECT
-# Copy the necessary source items
-RUN mkdir /code
-COPY ./scripts /code/scripts
-# Build the frontend
-RUN set -x \
-    && cd /code \
-    && git clone https://github.com/WildMeOrg/${PROJECT}-frontend.git _frontend.${PROJECT} \
-    && export DEBUG=1 \
-    && /bin/bash -c "source ./scripts/${PROJECT}/build.frontend.sh && build" \
-    && /bin/bash -c "source ./scripts/${PROJECT}/build.frontend.sh && install"
-
-
 FROM node:lts as swagger-ui
 # Copy the necessary source items
 RUN mkdir /code
@@ -96,6 +81,21 @@ COPY ./.dockerfiles/docker-entrypoint.sh /docker-entrypoint.sh
 ENTRYPOINT [ "/docker-entrypoint.sh" ]
 #: default command within the entrypoint
 # CMD [ "invoke", "app.run" ]
+
+
+FROM node:lts as frontend
+# "mws" or "codex"
+ARG PROJECT
+# Copy the necessary source items
+RUN mkdir /code
+COPY ./scripts /code/scripts
+# Build the frontend
+RUN set -x \
+    && cd /code \
+    && git clone https://github.com/WildMeOrg/${PROJECT}-frontend.git _frontend.${PROJECT} \
+    && export DEBUG=1 \
+    && /bin/bash -c "source ./scripts/${PROJECT}/build.frontend.sh && build" \
+    && /bin/bash -c "source ./scripts/${PROJECT}/build.frontend.sh && install"
 
 
 FROM main as with_frontend

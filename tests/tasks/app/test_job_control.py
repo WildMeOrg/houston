@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 import io
-import uuid
 from unittest import mock
 import tests.extensions.tus.utils as tus_utils
 import tests.modules.asset_groups.resources.utils as asset_group_utils
@@ -89,119 +88,103 @@ def test_sighting_identification_jobs(
     # pylint: disable=invalid-name
     from app.modules.sightings.models import Sighting, SightingStage
 
-    asset_group_uuids = []
-    sighting_uuids = []
-    transactions = []
-    try:
-        # Create two sightings so that there will be a valid annotation when doing ID for the second one.
-        # Otherwise the get_matching_set_data in sightings will return an empty list
-        transaction_id, test_filename = tus_utils.prep_tus_dir(test_root)
-        (
-            asset_group_uuid,
-            sighting_uuid,
-            annot_uuid,
-        ) = asset_group_utils.create_and_commit_asset_group(
-            flask_app_client, db, researcher_1, transaction_id, test_filename
-        )
-        asset_group_uuids.append(asset_group_uuid)
-        sighting_uuids.append(sighting_uuid)
-        transactions.append(transaction_id)
-        # Fake it being all the way though to processed or it won't be valid in the matching set
-        sighting = Sighting.query.get(sighting_uuid)
-        sighting.stage = SightingStage.processed
+    # Create two sightings so that there will be a valid annotation when doing ID for the second one.
+    # Otherwise the get_matching_set_data in sightings will return an empty list
+    (
+        asset_group_uuid1,
+        asset_group_sighting_guid1,
+        asset_uuid1,
+    ) = asset_group_utils.create_simple_asset_group(
+        flask_app_client, researcher_1, request, test_root
+    )
+    asset_group_utils.patch_in_dummy_annotation(
+        flask_app_client, db, researcher_1, asset_group_sighting_guid1, asset_uuid1
+    )
+    commit_response = asset_group_utils.commit_asset_group_sighting(
+        flask_app_client, researcher_1, asset_group_sighting_guid1
+    )
+    sighting_uuid = commit_response.json['guid']
 
-        # Second sighting, the one we'll use for testing
-        transaction_id, test_filename = tus_utils.prep_tus_dir(
-            test_root, str(uuid.uuid4())
-        )
+    # Fake it being all the way though to processed or it won't be valid in the matching set
+    sighting = Sighting.query.get(sighting_uuid)
+    sighting.stage = SightingStage.processed
 
-        data = asset_group_utils.AssetGroupCreationData(transaction_id, test_filename)
-        response = asset_group_utils.create_asset_group(
-            flask_app_client, researcher_1, data.get()
-        )
-        asset_group_uuid = response.json['guid']
-        asset_group_sighting_guid = response.json['asset_group_sightings'][0]['guid']
-        asset_uuid = response.json['assets'][0]['guid']
-        annot_uuid = asset_group_utils.patch_in_dummy_annotation(
-            flask_app_client, db, researcher_1, asset_group_sighting_guid, asset_uuid
-        )
+    # Second sighting, the one we'll use for testing
+    (
+        asset_group_uuid2,
+        asset_group_sighting_guid2,
+        asset_uuid2,
+    ) = asset_group_utils.create_simple_asset_group(
+        flask_app_client, researcher_1, request, test_root
+    )
+    annot_uuid = asset_group_utils.patch_in_dummy_annotation(
+        flask_app_client, db, researcher_1, asset_group_sighting_guid2, asset_uuid2
+    )
+    response = asset_group_utils.commit_asset_group_sighting_sage_identification(
+        flask_app, flask_app_client, researcher_1, asset_group_sighting_guid2
+    )
+    sighting_uuid = response.json['guid']
 
-        response = asset_group_utils.commit_asset_group_sighting_sage_identification(
-            flask_app, flask_app_client, researcher_1, asset_group_sighting_guid
-        )
-        sighting_uuid = response.json['guid']
+    # Here starts the test for real
+    sighting = Sighting.query.get(sighting_uuid)
+    # Push stage back to ID
+    sighting.stage = SightingStage.identification
 
-        asset_group_uuids.append(asset_group_uuid)
-        sighting_uuids.append(sighting_uuid)
-        transactions.append(transaction_id)
+    # Now give it an ID config in the assetGroupSighting
+    id_configs = [
+        {
+            'algorithms': [
+                'hotspotter_nosv',
+            ],
+            'matchingSetDataOwners': 'mine',
+        }
+    ]
+    patch_data = [test_utils.patch_replace_op('idConfigs', id_configs)]
+    asset_group_utils.patch_asset_group_sighting(
+        flask_app_client,
+        researcher_1,
+        asset_group_sighting_guid2,
+        patch_data,
+    )
+    with mock.patch.object(
+        flask_app.acm,
+        'request_passthrough_result',
+        return_value={'success': True},
+    ):
+        from app.modules.sightings import tasks
 
-        # Here starts the test for real
-        sighting = Sighting.query.get(sighting_uuid)
-        # Push stage back to ID
-        sighting.stage = SightingStage.identification
-
-        # Now give it an ID config in the assetGroupSighting
-        id_configs = [
-            {
-                'algorithms': [
-                    'hotspotter_nosv',
-                ],
-                'matchingSetDataOwners': 'mine',
-            }
-        ]
-        patch_data = [test_utils.patch_replace_op('idConfigs', id_configs)]
-        asset_group_utils.patch_asset_group_sighting(
-            flask_app_client,
-            researcher_1,
-            asset_group_sighting_guid,
-            patch_data,
-        )
         with mock.patch.object(
-            flask_app.acm,
-            'request_passthrough_result',
-            return_value={'success': True},
+            tasks.send_identification,
+            'delay',
+            side_effect=lambda *args, **kwargs: tasks.send_identification(
+                *args, **kwargs
+            ),
         ):
-            from app.modules.sightings import tasks
+            sighting.ia_pipeline()
 
+    # Now see that the task gets what we expect
+    with mock.patch('app.create_app'):
+        with mock.patch('sys.stdout', new=io.StringIO()) as stdout:
+            from tasks.app import job_control
+
+            job_control.print_all_annotation_jobs(MockContext(), str(annot_uuid))
+            job_output = stdout.getvalue()
+            assert 'Job ' in job_output
+            assert 'Active:True Started (UTC)' in job_output
+            assert 'algorithm:hotspotter_nosv' in job_output
+
+            # Simulate a valid response from Sage but don't actually send the request to Sage
             with mock.patch.object(
-                tasks.send_identification,
-                'delay',
-                side_effect=lambda *args, **kwargs: tasks.send_identification(
-                    *args, **kwargs
-                ),
+                flask_app.acm,
+                'request_passthrough_result',
+                return_value={'success': True, 'content': 'something'},
             ):
-                sighting.ia_pipeline()
-
-        # Now see that the task gets what we expect
-        with mock.patch('app.create_app'):
-            with mock.patch('sys.stdout', new=io.StringIO()) as stdout:
-                from tasks.app import job_control
-
-                job_control.print_all_annotation_jobs(MockContext(), str(annot_uuid))
+                job_control.print_last_annotation_job(
+                    MockContext(), str(annot_uuid), verbose=True
+                )
                 job_output = stdout.getvalue()
                 assert 'Job ' in job_output
                 assert 'Active:True Started (UTC)' in job_output
                 assert 'algorithm:hotspotter_nosv' in job_output
-
-                # Simulate a valid response from Sage but don't actually send the request to Sage
-                with mock.patch.object(
-                    flask_app.acm,
-                    'request_passthrough_result',
-                    return_value={'success': True, 'content': 'something'},
-                ):
-                    job_control.print_last_annotation_job(
-                        MockContext(), str(annot_uuid), verbose=True
-                    )
-                    job_output = stdout.getvalue()
-                    assert 'Job ' in job_output
-                    assert 'Active:True Started (UTC)' in job_output
-                    assert 'algorithm:hotspotter_nosv' in job_output
-                    assert "Request:{'jobid': " in job_output
-                    assert (
-                        "Response:{'success': True, 'content': 'something'}" in job_output
-                    )
-    finally:
-        for group in asset_group_uuids:
-            asset_group_utils.delete_asset_group(flask_app_client, researcher_1, group)
-        for trans in transactions:
-            tus_utils.cleanup_tus_dir(trans)
+                assert "Request:{'jobid': " in job_output
+                assert "Response:{'success': True, 'content': 'something'}" in job_output

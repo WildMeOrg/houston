@@ -215,7 +215,6 @@ def test_create_asset_group_anonymous(
     asset_group_uuid = None
     try:
         data = AssetGroupCreationData(transaction_id, test_filename)
-        data.add_filename(0, test_filename)
         data.set_field('submitterEmail', researcher_1.email)
         resp_msg = 'Invalid submitter data'
         asset_group_utils.create_asset_group(
@@ -373,18 +372,44 @@ def test_create_asset_group_repeat_detection(
     request,
 ):
     import tests.modules.assets.resources.utils as asset_utils
-
-    (
-        asset_group_uuid,
-        asset_group_sighting_uuid,
-    ) = asset_group_utils.create_asset_group_to_curation(
-        flask_app, flask_app_client, researcher_1, internal_user, test_root, request
-    )
-
     from app.modules.asset_groups.models import (
         AssetGroupSighting,
         AssetGroupSightingStage,
     )
+
+    asset_group_uuid = None
+    data = asset_group_utils.get_bulk_creation_data(test_root, request)
+    # Use a real detection model to trigger a request sent to Sage
+    data.set_field('speciesDetectionModel', ['african_terrestrial'])
+
+    # and the sim_sage util to catch it
+    resp = asset_group_utils.create_asset_group_sim_sage_init_resp(
+        flask_app, flask_app_client, researcher_1, data.get()
+    )
+    asset_group_uuid = resp.json['guid']
+    request.addfinalizer(
+        lambda: asset_group_utils.delete_asset_group(
+            flask_app_client, researcher_1, asset_group_uuid
+        )
+    )
+    asset_group_sighting1_guid = resp.json['asset_group_sightings'][0]['guid']
+
+    ags1 = AssetGroupSighting.query.get(asset_group_sighting1_guid)
+    assert ags1
+
+    job_uuids = [guid for guid in ags1.jobs.keys()]
+    assert len(job_uuids) == 1
+    job_uuid = job_uuids[0]
+    assert ags1.jobs[job_uuid]['model'] == 'african_terrestrial'
+
+    # Simulate response from Sage
+    asset_group_utils.send_sage_detection_response(
+        flask_app_client,
+        internal_user,
+        asset_group_sighting1_guid,
+        job_uuid,
+    )
+    assert ags1.stage == AssetGroupSightingStage.curation
 
     # Rotate one of the assets
     from app.modules.annotations.models import Annotation
@@ -418,7 +443,7 @@ def test_create_asset_group_repeat_detection(
             side_effect=lambda *args, **kwargs: tasks.sage_detection(*args, **kwargs),
         ):
             asset_group_utils.detect_asset_group_sighting(
-                flask_app_client, researcher_1, asset_group_sighting_uuid
+                flask_app_client, researcher_1, asset_group_sighting1_guid
             )
         assert detection_reran.call_count == 1
         passed_args = detection_reran.call_args[0]
@@ -435,18 +460,13 @@ def test_create_asset_group_repeat_detection(
             [f'houston+http://houston:5000/api/v1/assets/src_raw/{asset_guid}']
         )
         job_uuid = params['jobid']
-        ags1 = AssetGroupSighting.query.get(asset_group_sighting_uuid)
         assert ags1.stage == AssetGroupSightingStage.detection
         # Simulate response from Sage
-        sage_resp = asset_group_utils.build_sage_detection_response(
-            asset_group_sighting_uuid, job_uuid
-        )
         asset_group_utils.send_sage_detection_response(
             flask_app_client,
             internal_user,
-            asset_group_sighting_uuid,
+            asset_group_sighting1_guid,
             job_uuid,
-            sage_resp,
         )
         assert ags1.stage == AssetGroupSightingStage.curation
 
@@ -459,20 +479,12 @@ def test_create_bulk_asset_group_dup_asset(
 ):
     # pylint: disable=invalid-name
 
-    asset_group_uuid = None
-    try:
-        data = asset_group_utils.get_bulk_creation_data(test_root, request)
-        data.add_filename(0, 'fluke.jpg')
-        expected_err = 'found fluke.jpg in multiple sightings'
-        asset_group_utils.create_asset_group(
-            flask_app_client, researcher_1, data.get(), 400, expected_err
-        )
-
-    finally:
-        if asset_group_uuid:
-            asset_group_utils.delete_asset_group(
-                flask_app_client, researcher_1, asset_group_uuid
-            )
+    data = asset_group_utils.get_bulk_creation_data(test_root, request)
+    data.add_filename(0, 'fluke.jpg')
+    expected_err = 'found fluke.jpg in multiple sightings'
+    asset_group_utils.create_asset_group(
+        flask_app_client, researcher_1, data.get(), 400, expected_err
+    )
 
 
 @pytest.mark.skipif(

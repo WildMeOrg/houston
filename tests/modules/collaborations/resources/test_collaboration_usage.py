@@ -15,36 +15,26 @@ def test_use_collaboration(
 ):
     from app.modules.collaborations.models import Collaboration
 
-    asset_group_uuid = None
-    collab = None
-    try:
-        data = asset_group_utils.get_bulk_creation_data(test_root, request)
+    (
+        asset_group_uuid,
+        asset_group_sighting_guid,
+        asset_uuid,
+    ) = asset_group_utils.create_simple_asset_group(
+        flask_app_client, researcher_1, request, test_root
+    )
 
-        asset_group_resp = asset_group_utils.create_asset_group(
-            flask_app_client, researcher_1, data.get()
-        )
-        asset_group_uuid = asset_group_resp.json['guid']
+    data = {
+        'user_guid': str(researcher_1.guid),
+    }
 
-        data = {
-            'user_guid': str(researcher_1.guid),
-        }
+    collab_utils.create_collaboration(flask_app_client, researcher_2, data)
+    collabs = Collaboration.query.all()
+    collab = collabs[0]
+    request.addfinalizer(lambda: collab.delete())
 
-        collab_utils.create_collaboration(flask_app_client, researcher_2, data)
-        collabs = Collaboration.query.all()
-        collab = collabs[0]
-        asset_group_utils.read_asset_group(
-            flask_app_client, researcher_2, asset_group_uuid, 403
-        )
-        collab.set_read_approval_state_for_user(researcher_1.guid, 'approved')
+    asset_group_utils.read_asset_group(
+        flask_app_client, researcher_2, asset_group_uuid, 403
+    )
+    collab.set_read_approval_state_for_user(researcher_1.guid, 'approved')
 
-        asset_group_utils.read_asset_group(
-            flask_app_client, researcher_2, asset_group_uuid
-        )
-
-    finally:
-        if collab:
-            collab.delete()
-        if asset_group_uuid:
-            asset_group_utils.delete_asset_group(
-                flask_app_client, researcher_1, asset_group_uuid
-            )
+    asset_group_utils.read_asset_group(flask_app_client, researcher_2, asset_group_uuid)

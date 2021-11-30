@@ -46,23 +46,10 @@ def cleanup_tus_dir(tid):
 def create_sighting(
     flask_app_client,
     user,
-    test_root,
-    request,
     data_in={'locationId': 'PYTEST', 'startTime': '2000-01-01T01:01:01Z'},
     expected_status_code=200,
     expected_error=None,
 ):
-    from tests.modules.asset_groups.resources import utils as asset_group_utils
-
-    asset_group_data = asset_group_utils.AssetGroupCreationData()
-
-    asset_group, sightings = asset_group_utils.create_asset_group_and_sighting(
-        flask_app_client,
-        user,
-        test_root,
-        request,
-        asset_group_data.get(),
-    )
     response = test_utils.post_via_flask(
         flask_app_client,
         user,

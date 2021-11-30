@@ -22,7 +22,7 @@ def test_create_asset_group(flask_app_client, researcher_1, readonly_user, test_
     asset_group_uuid = None
 
     try:
-        data = AssetGroupCreationData(transaction_id, False)
+        data = AssetGroupCreationData(transaction_id, populate_default=False)
         data.set_field('uploadType', 'form')
         data.set_field('description', 'This is a test asset_group, please ignore')
 
@@ -140,8 +140,7 @@ def test_create_asset_group_2_assets(flask_app_client, researcher_1, test_root, 
     tus_utils.prep_tus_dir(test_root, filename='coelacanth.png')
     asset_group_uuid = None
     try:
-        data = AssetGroupCreationData(transaction_id)
-        data.add_filename(0, test_filename)
+        data = AssetGroupCreationData(transaction_id, test_filename)
         data.add_filename(0, 'coelacanth.png')
         resp = asset_group_utils.create_asset_group(
             flask_app_client, researcher_1, data.get()
@@ -215,7 +214,7 @@ def test_create_asset_group_anonymous(
     transaction_id, test_filename = tus_utils.prep_tus_dir(test_root)
     asset_group_uuid = None
     try:
-        data = AssetGroupCreationData(transaction_id)
+        data = AssetGroupCreationData(transaction_id, test_filename)
         data.add_filename(0, test_filename)
         data.set_field('submitterEmail', researcher_1.email)
         resp_msg = 'Invalid submitter data'
@@ -266,8 +265,7 @@ def no_test_create_asset_group_detection(
 
     transaction_id, test_filename = tus_utils.prep_tus_dir(test_root)
 
-    data = AssetGroupCreationData(transaction_id)
-    data.add_filename(0, test_filename)
+    data = AssetGroupCreationData(transaction_id, test_filename)
     data.set_field('speciesDetectionModel', ['african_terrestrial'])
     resp = asset_group_utils.create_asset_group(
         flask_app_client, researcher_1, data.get()
@@ -309,8 +307,7 @@ def test_create_asset_group_sim_detection(
     transaction_id, test_filename = tus_utils.prep_tus_dir(test_root)
     asset_group_uuid = None
     try:
-        data = AssetGroupCreationData(transaction_id)
-        data.add_filename(0, test_filename)
+        data = AssetGroupCreationData(transaction_id, test_filename)
         data.set_field('speciesDetectionModel', ['african_terrestrial'])
 
         # Simulate a valid response from Sage but don't actually send the request to Sage
@@ -560,8 +557,7 @@ def test_create_asset_group_individual(
     transaction_id, test_filename = tus_utils.prep_tus_dir(test_root)
     asset_group_uuid = None
     try:
-        data = AssetGroupCreationData(transaction_id)
-        data.add_filename(0, test_filename)
+        data = AssetGroupCreationData(transaction_id, test_filename)
         dummy_uuid = str(uuid.uuid4())
         data.set_encounter_field(0, 0, 'individualUuid', dummy_uuid)
         resp_msg = f'Encounter 1.1 individual {dummy_uuid} not found'

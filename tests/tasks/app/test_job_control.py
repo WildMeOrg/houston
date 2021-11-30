@@ -24,8 +24,7 @@ def test_asset_group_detection_jobs(
     transaction_id, test_filename = tus_utils.prep_tus_dir(test_root)
     asset_group_uuid = None
     try:
-        data = asset_group_utils.AssetGroupCreationData(transaction_id)
-        data.add_filename(0, test_filename)
+        data = asset_group_utils.AssetGroupCreationData(transaction_id, test_filename)
         data.set_field('speciesDetectionModel', ['african_terrestrial'])
 
         # Simulate a valid response from Sage but don't actually send the request to Sage
@@ -116,8 +115,7 @@ def test_sighting_identification_jobs(
             test_root, str(uuid.uuid4())
         )
 
-        data = asset_group_utils.AssetGroupCreationData(transaction_id)
-        data.add_filename(0, test_filename)
+        data = asset_group_utils.AssetGroupCreationData(transaction_id, test_filename)
         response = asset_group_utils.create_asset_group(
             flask_app_client, researcher_1, data.get()
         )

@@ -42,9 +42,33 @@ DERIVED_MD5SUM_VALUES = {
     'fluke.jpg': '0b546f813ec9631ce5c9b1dd579c623b',
 }
 
+###################################################################################################################
+# Simple helpers for use with most tests
+###################################################################################################################
+
+
+# Helper for 'normal' tests that don't want to do something clever with the asset group
+def create_simple_asset_group(flask_app_client, user, request, test_root):
+
+    transaction_id, test_filename = tus_utils.prep_tus_dir(test_root)
+    request.addfinalizer(lambda: tus_utils.cleanup_tus_dir(transaction_id))
+
+    data = AssetGroupCreationData(transaction_id, test_filename)
+    response = create_asset_group(flask_app_client, user, data.get())
+
+    json_resp = response.json
+    group_guid = json_resp['guid']
+    asset_guids = [asset['guid'] for asset in json_resp['assets']]
+    ags_guids = [ags['guid'] for ags in json_resp['asset_group_sightings']]
+
+    assert len(ags_guids) == 1
+    assert len(asset_guids) == 1
+    request.addfinalizer(lambda: delete_asset_group(flask_app_client, user, group_guid))
+    return group_guid, ags_guids[0], asset_guids[0]
+
 
 class AssetGroupCreationData(object):
-    def __init__(self, transaction_id, populate_default=True):
+    def __init__(self, transaction_id, filename=None, populate_default=True):
 
         if not populate_default:
             self.content = {}
@@ -65,6 +89,8 @@ class AssetGroupCreationData(object):
                     },
                 ],
             }
+            if filename:
+                self.add_filename(0, filename)
 
     def add_filename(self, sighting, filename):
         if 'assetReferences' not in self.content['sightings'][sighting]:
@@ -205,7 +231,6 @@ def create_asset_group_sim_sage_init_resp(
 
 # Helper as many bulk uploads use a common set of files
 def create_bulk_tus_transaction(test_root):
-    import tests.extensions.tus.utils as tus_utils
 
     transaction_id, test_filename = tus_utils.prep_tus_dir(test_root)
     tus_utils.prep_tus_dir(test_root, filename='coelacanth.png')
@@ -221,8 +246,7 @@ def get_bulk_creation_data(test_root, request, species_detection_model=None):
     tus_utils.prep_tus_dir(test_root, filename='phoenix.jpg')
     request.addfinalizer(lambda: tus_utils.cleanup_tus_dir(transaction_id))
 
-    data = AssetGroupCreationData(transaction_id)
-    data.add_filename(0, first_filename)
+    data = AssetGroupCreationData(transaction_id, first_filename)
     data.add_encounter(0)
     data.add_filename(0, 'coelacanth.png')
     data.add_sighting('Hogpits Bottom')
@@ -238,8 +262,7 @@ def get_bulk_creation_data(test_root, request, species_detection_model=None):
 
 
 def get_bulk_creation_data_one_sighting(transaction_id, test_filename):
-    data = AssetGroupCreationData(transaction_id)
-    data.add_filename(0, test_filename)
+    data = AssetGroupCreationData(transaction_id, test_filename)
     data.add_encounter(0)
     data.add_filename(0, 'fluke.jpg')
     data.add_encounter(0)
@@ -441,8 +464,7 @@ def commit_asset_group_sighting_sage_identification(
 def create_asset_group_with_annotation(
     flask_app_client, db, user, transaction_id, test_filename
 ):
-    data = AssetGroupCreationData(transaction_id)
-    data.add_filename(0, test_filename)
+    data = AssetGroupCreationData(transaction_id, test_filename)
     response = create_asset_group(flask_app_client, user, data.get())
     asset_group_uuid = response.json['guid']
     asset_group_sighting_guid = response.json['asset_group_sightings'][0]['guid']

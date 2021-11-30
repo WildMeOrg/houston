@@ -1,13 +1,6 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=invalid-name,missing-docstring
 
-import sqlalchemy
-
-import logging
-
-import uuid
-
-from app.modules.individuals.models import Individual
 from app.modules.relationships.models import Relationship
 
 from tests.modules.individuals.resources import utils as indiv_utils
@@ -60,11 +53,3 @@ def test_relationship_instantiation(db, staff_user, flask_app_client, request):
     relationship_utils.delete_relationship(
         flask_app_client, staff_user, relationship.guid
     )
-    # indiv_utils.delete_individual(flask_app_client, staff_user, individual_1_guid)
-    # indiv_utils.delete_individual(flask_app_client, staff_user, individual_2_guid)
-
-    # individual_1 = Individual.query.get(individual_1_guid)
-    # individual_2 = Individual.query.get(individual_2_guid)
-
-    # individual_1.delete()
-    # individual_2.delete()

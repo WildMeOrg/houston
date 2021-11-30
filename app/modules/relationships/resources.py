@@ -8,7 +8,6 @@ RESTful API Relationships resources
 import logging
 
 from flask import request
-from flask_login import current_user
 from flask_restx_patched import Resource
 from flask_restx._http import HTTPStatus
 
@@ -53,14 +52,14 @@ class Relationships(Resource):
         """
         return Relationship.query.offset(args['offset']).limit(args['limit'])
 
-    # @api.permission_required(
-    #     permissions.ModuleAccessPermission,
-    #     kwargs_on_request=lambda kwargs: {
-    #         'module': Relationship,
-    #         'action': AccessOperation.WRITE,
-    #     },
-    # )
-    # @api.login_required(oauth_scopes=['relationships:write'])
+    @api.permission_required(
+        permissions.ModuleAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'module': Relationship,
+            'action': AccessOperation.WRITE,
+        },
+    )
+    @api.login_required(oauth_scopes=['relationships:write'])
     @api.parameters(parameters.CreateRelationshipParameters())
     @api.response(schemas.DetailedRelationshipSchema())
     @api.response(code=HTTPStatus.CONFLICT)
@@ -68,10 +67,6 @@ class Relationships(Resource):
         """
         Create a new instance of Relationship.
         """
-
-        log.debug(' $$$$$$$$$$$$$$$$$$$$$$$$$ Tryyyinnna POST!  ')
-
-        import utool as ut
 
         request_in = {}
         import json
@@ -81,8 +76,6 @@ class Relationships(Resource):
             request_in.update(request_in_)
         except Exception:
             pass
-
-        log.debug('WHAT ARE THE RELATIONSHIP ARGS: ' + str(request_in))
 
         context = api.commit_or_abort(
             db.session, default_error_message='Failed to create a new Relationship'
@@ -192,9 +185,6 @@ class RelationshipByID(Resource):
         context = api.commit_or_abort(
             db.session, default_error_message='Failed to delete the Relationship.'
         )
-
-        # import utool as ut
-        # ut.embed()
 
         with context:
             relationship.delete()

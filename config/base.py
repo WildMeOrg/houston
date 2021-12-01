@@ -33,7 +33,38 @@ class FlaskConfigOverrides:
         return scheme
 
 
-class BaseConfig(FlaskConfigOverrides):
+class RedisConfig:
+    REDIS_HOST = os.getenv('REDIS_HOST')
+    REDIS_PORT = os.getenv('REDIS_PORT', '6379')
+    REDIS_USE_SSL = bool(int(os.getenv('REDIS_USE_SSL', 0)))
+    REDIS_PASSWORD = os.getenv('REDIS_PASSWORD')
+    REDIS_DATABASE = os.getenv('REDIS_DATABASE', '1')
+
+    @property
+    def REDIS_CONNECTION_STRING(self):
+        # See redis-py docs for connection string format
+        # https://redis-py.readthedocs.io/en/stable/index.html#redis.Redis.from_url
+        # See also https://docs.celeryproject.org/en/master/userguide/configuration.html#redis-backend-settings
+        if self.REDIS_USE_SSL:
+            proto = 'rediss'
+            query_string = '?ssl_cert_reqs=required'
+        else:
+            proto = 'redis'
+            query_string = ''
+        host = self.REDIS_HOST
+        database = self.REDIS_DATABASE
+        port = self.REDIS_PORT
+        password_parts = ''
+        if self.REDIS_PASSWORD:
+            # Include the formating bits in this string, because the password is optional.
+            # ':' to indicate it's a password and '@' to separate it from the host'
+            password_parts = f':{self.REDIS_PASSWORD}@'
+
+        conn_str = f'{proto}://{password_parts}{host}:{port}/{database}{query_string}'
+        return conn_str
+
+
+class BaseConfig(FlaskConfigOverrides, RedisConfig):
     # This class is expected to be initialized to enable the `@property`
     # based settings. Because the configuration of this application is divided
     # into variants based on context and environment,
@@ -95,7 +126,6 @@ class BaseConfig(FlaskConfigOverrides):
 
     # specifically this is where tus "temporary" files go
     UPLOADS_DATABASE_PATH = str(DATA_ROOT / 'uploads')
-    REDIS_HOST = os.getenv('REDIS_HOST') or 'localhost'
 
     FILEUPLOAD_BASE_PATH = os.path.join(PROJECT_DATABASE_PATH, 'fileuploads')
 

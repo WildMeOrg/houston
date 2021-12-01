@@ -24,8 +24,10 @@ services:
 
   redis:
     image: redis:latest
+    command: ["redis-server", "/redis.conf"]
     volumes:
       - redis-var:/data
+      - .dockerfiles/redis/redis.conf:/redis.conf
     networks:
       - intranet
 
@@ -129,6 +131,7 @@ services:
       ELASTICSEARCH_HOSTS: "${ELASTICSEARCH_HOSTS}"
       HOUSTON_URL: "${HOUSTON_URL}"
       REDIS_HOST: redis
+      REDIS_PASSWORD: "seekret_development_password"
       GITLAB_PROTO: "${GITLAB_PROTO}"
       GITLAB_HOST: "${GITLAB_HOST}"
       GITLAB_PORT: "${GITLAB_PORT}"

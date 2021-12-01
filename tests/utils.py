@@ -18,6 +18,7 @@ import random
 import uuid
 import os
 
+from config import get_preliminary_config
 from . import TEST_ASSET_GROUP_UUID, TEST_EMPTY_ASSET_GROUP_UUID
 
 from flask_restx_patched import is_extension_enabled, is_module_enabled
@@ -447,9 +448,10 @@ def row_count(db, cls):
 
 def redis_unavailable(cached_value=[]):
     if len(cached_value) == 0:
+        config = get_preliminary_config(environment='testing')
         try:
-            host = os.getenv('REDIS_HOST') or 'localhost'
-            redis.Redis(host=host).get('test')
+            url = config.REDIS_CONNECTION_STRING
+            redis.from_url(url).get('test')
             cached_value.append(False)
         except redis.exceptions.ConnectionError:
             cached_value.append(True)

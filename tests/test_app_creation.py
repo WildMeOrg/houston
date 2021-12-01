@@ -31,7 +31,8 @@ class FauxConfig:
         self.PROJECT_CONTEXT = context
         self.PROJECT_ENVIRONMENT = environment
 
-    REDIS_HOST = 'redis'
+    REDIS_CONNECTION_STRING = 'redis://redis/1'
+    REDIS_USE_SSL = False
     FAUX = True
 
 

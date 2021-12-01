@@ -187,6 +187,7 @@ def test_asset_group_sightings(session, login, codex_url, test_root):
         # 2021-11-12T18:28:32.744135+00:00
         'updatedHouston': response.json()['updatedHouston'],
         'verbatimLocality': '',
+        'verbatimEventDate': '',
         'version': None,
         'asset_group_guid': asset_group_guid,
         'sightingGuid': None,
@@ -292,6 +293,7 @@ def test_asset_group_sightings(session, login, codex_url, test_root):
         # 2021-11-12T18:28:32.744135+00:00
         'updatedHouston': response.json()['updatedHouston'],
         'verbatimLocality': '',
+        'verbatimEventDate': '',
         'version': None,
         'asset_group_guid': asset_group_guid,
         'sightingGuid': None,
@@ -341,12 +343,14 @@ def test_bulk_upload(session, login, codex_url, test_root, request):
                     'decimalLongitude': '73.5622',
                     'decimalLatitude': '4.286',
                     'verbatimLocality': 'North Male Lankan Reef',
+                    'verbatimEventDate': 'yesterday',
                     'startTime': '2014-01-01T09:00:00.000Z',
                     'encounters': [
                         {
                             'decimalLatitude': '4.286',
                             'decimalLongitude': '73.5622',
                             'verbatimLocality': 'North Male Lankan Reef',
+                            'verbatimEventDate': 'yesterday',
                             'taxonomy': 'ace5e17c-e74a-423f-8bd2-ecc3d7a78f4c',
                             'time': '2014-01-01T09:00:00.000Z',
                         }
@@ -357,12 +361,14 @@ def test_bulk_upload(session, login, codex_url, test_root, request):
                     'decimalLongitude': '73.5622',
                     'decimalLatitude': '4.2861',
                     'verbatimLocality': 'North Male Lankan Reef',
+                    'verbatimEventDate': 'yesterday',
                     'startTime': '2014-01-01T09:00:00.000Z',
                     'encounters': [
                         {
                             'decimalLatitude': '4.2861',
                             'decimalLongitude': '73.5622',
                             'verbatimLocality': 'North Male Lankan Reef',
+                            'verbatimEventDate': 'yesterday',
                             'taxonomy': 'ace5e17c-e74a-423f-8bd2-ecc3d7a78f4c',
                             'time': '2014-01-01T09:00:00.000Z',
                         }

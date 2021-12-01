@@ -107,7 +107,7 @@ class BaseCodexConfig(
 
 
 class ProductionConfig(BaseCodexConfig):
-    BASE_URL = 'https://houston.dyn.wildme.io/'
+    BASE_URL = os.environ.get('HOUSTON_URL')
 
     MAIL_BASE_URL = BASE_URL
     MAIL_OVERRIDE_RECIPIENTS = None
@@ -115,7 +115,7 @@ class ProductionConfig(BaseCodexConfig):
         'mail-errors@wildme.org',
     ]
 
-    SENTRY_DSN = 'https://140fc4d010bb43b28417ab57b0e41b44@sentry.dyn.wildme.io/3'
+    SENTRY_DSN = os.getenv('SENTRY_DSN')
 
 
 class DevelopmentConfig(BaseCodexConfig):

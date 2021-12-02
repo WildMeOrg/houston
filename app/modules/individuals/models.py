@@ -10,6 +10,7 @@ import uuid
 import logging
 import app.extensions.logging as AuditLog
 from datetime import datetime
+from app.modules.names.models import Name
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
@@ -85,6 +86,10 @@ class Individual(db.Model, FeatherModel):
         'Encounter', back_populates='individual', order_by='Encounter.guid'
     )
 
+    names = db.relationship(
+        'Name', back_populates='individual', order_by='Name.guid', cascade='delete'
+    )
+
     social_groups = db.relationship(
         'SocialGroupIndividualMembership',
         back_populates='individual',
@@ -122,6 +127,45 @@ class Individual(db.Model, FeatherModel):
 
     def get_members(self):
         return [encounter.owner for encounter in self.encounters]
+
+    def get_names(self):
+        return self.names
+
+    def get_name_for_context(self, context):
+        return Name.query.filter_by(individual_guid=self.guid, context=context).first()
+
+    def get_name_for_value(self, value):
+        return Name.query.filter_by(individual_guid=self.guid, value=value).first()
+
+    def get_names_display(self):
+        return Name.query.filter_by(individual_guid=self.guid, is_display=True).all()
+
+    def get_names_adoption(self):
+        return Name.query.filter_by(individual_guid=self.guid, is_adoption=True).all()
+
+    def add_name(self, context, value, creator):
+        new_name = Name(
+            individual_guid=self.guid,
+            context=context,
+            value=value,
+            creator_guid=creator.guid,
+        )
+        with db.session.begin(subtransactions=True):
+            db.session.add(new_name)
+        return new_name
+
+    def remove_name(self, name):
+        name.delete()
+
+    def remove_name_by_value(self, value):
+        name = self.get_name_for_value(value)
+        if name:
+            name.delete()
+
+    def remove_name_by_context(self, context):
+        name = self.get_name_for_context(context)
+        if name:
+            name.delete()
 
     def get_featured_asset_guid(self):
         rt_val = None
@@ -613,6 +657,8 @@ class Individual(db.Model, FeatherModel):
         with db.session.begin():
             for group in self.social_groups:
                 db.session.delete(group)
+            for name in self.names:
+                db.session.delete(name)
             db.session.delete(self)
 
     def delete_from_edm(self):

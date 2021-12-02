@@ -21,6 +21,7 @@ SIGHTING_FIELDS_IN_AGS_CONFIG = {
     'encounters',
     'locationId',
     'verbatimLocality',
+    'verbatimEventDate',
     'encounterCounts',
     'id',
     'comments',
@@ -123,6 +124,9 @@ class AssetGroupSightingAsSightingSchema(AugmentedEdmSightingSchema):
     )
     verbatimLocality = base_fields.Function(
         AssetGroupSighting.config_field_getter('verbatimLocality', default='')
+    )
+    verbatimEventDate = base_fields.Function(
+        AssetGroupSighting.config_field_getter('verbatimEventDate', default='')
     )
     id = base_fields.UUID(attribute='guid')
     encounterCounts = base_fields.Function(

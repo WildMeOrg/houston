@@ -3,6 +3,8 @@
 
 from tests.modules.sightings.resources import utils as sighting_utils
 from tests.modules.individuals.resources import utils as individual_utils
+from tests.modules.asset_groups.resources import utils as asset_group_utils
+from tests.extensions.tus import utils as tus_utils
 from tests import utils as test_utils
 import datetime
 import pytest
@@ -196,32 +198,43 @@ def test_create_and_modify_and_delete_sighting(
     assert ct == orig_ct
 
 
-# TODO Fix before submit, needs my latest PR
 @pytest.mark.skipif(module_unavailable('sightings'), reason='Sightings module disabled')
-def no_test_create_anon_and_delete_sighting(
-    db, flask_app_client, staff_user, test_root, request
+def test_create_anon_and_delete_sighting(
+    db, flask_app_client, researcher_1, staff_user, test_root, request
 ):
     from app.modules.sightings.models import Sighting
-    from app.modules.users.models import User
 
-    # Need to create a sighting with multiple files so need to use the Asset Group utils directly,
-    # not the Sighting helper
-
-    transaction_id, test_filename = sighting_utils.prep_tus_dir(test_root)
-    sighting_utils.prep_tus_dir(test_root, filename='fluke.jpg')
-    data_in = {
+    transaction_id, test_filename = tus_utils.prep_tus_dir(test_root)
+    request.addfinalizer(lambda: tus_utils.cleanup_tus_dir(transaction_id))
+    tus_utils.prep_tus_dir(test_root, filename='fluke.jpg')
+    sighting_data = {
         'startTime': timestamp,
         'context': 'test',
         'locationId': 'test',
         'encounters': [{}],
         'assetReferences': [test_filename, 'fluke.jpg'],
     }
-
-    response = sighting_utils.create_sighting(
-        flask_app_client, None, request, test_root, data_in
+    group_data = {
+        'description': 'This is an anonymous asset_group, please ignore',
+        'uploadType': 'form',
+        'speciesDetectionModel': [
+            'None',
+        ],
+        'transactionId': transaction_id,
+        'sightings': [
+            sighting_data,
+        ],
+    }
+    group_create_response = asset_group_utils.create_asset_group(
+        flask_app_client, None, group_data
     )
-    # TODO is this possible
-    assets = sorted(response.json['result']['assets'], key=lambda a: a['filename'])
+    group_guid = group_create_response.json['guid']
+    request.addfinalizer(
+        lambda: asset_group_utils.delete_asset_group(
+            flask_app_client, staff_user, group_guid
+        )
+    )
+    assets = sorted(group_create_response.json['assets'], key=lambda a: a['filename'])
     asset_guids = [a['guid'] for a in assets]
     assert assets[0]['filename'] == 'fluke.jpg'
     assert assets[0]['guid'] == asset_guids[0]
@@ -230,8 +243,14 @@ def no_test_create_anon_and_delete_sighting(
     assert assets[1]['guid'] == asset_guids[1]
     assert assets[1]['src'] == f'/api/v1/assets/src/{asset_guids[1]}'
 
+    asset_group_sighting_guid = group_create_response.json['asset_group_sightings'][0][
+        'guid'
+    ]
+    commit_resp = asset_group_utils.commit_asset_group_sighting(
+        flask_app_client, researcher_1, asset_group_sighting_guid
+    )
+    sighting_id = commit_resp.json['guid']
     # Check sighting and assets are stored in the database
-    sighting_id = response.json['result']['id']
     sighting = Sighting.query.get(sighting_id)
     assert sighting is not None
     asset_guids.sort()
@@ -253,46 +272,6 @@ def no_test_create_anon_and_delete_sighting(
         ],
         expected_status_code=401,
     )
-
-    # upon success (yay) we clean up our mess (but need staff_user to do it)
-    sighting_utils.cleanup_tus_dir(transaction_id)
-    sighting_utils.delete_sighting(flask_app_client, staff_user, sighting_id)
-
-    # anonymous, but using valid (active) user - should be blocked with 403
-    data_in = {
-        'startTime': timestamp,
-        'context': 'test',
-        'locationId': 'test',
-        'submitterEmail': 'public@localhost',
-        'encounters': [{}],
-    }
-    sighting_utils.create_sighting(
-        flask_app_client, None, request, test_root, data_in, 403, 'Invalid submitter data'
-    )
-
-    # anonymous, but using acceptable email address (should create new inactive user)
-    test_email = 'test_anon_123@example.com'
-    data_in = {
-        'startTime': timestamp,
-        'context': 'test',
-        'locationId': 'test',
-        'submitterEmail': test_email,
-        'encounters': [{}],
-    }
-    uuids = sighting_utils.create_sighting(
-        flask_app_client, None, request, test_root, data_in
-    )
-    sighting_id = uuids['sighting']
-    sighting = Sighting.query.get(sighting_id)
-    assert sighting is not None
-    new_user = User.find(email=test_email)
-    assert new_user is not None
-    assert sighting.encounters[0].submitter == new_user
-
-    # upon success (yay) we clean up our mess (but need staff_user to do it)
-    sighting_utils.cleanup_tus_dir(transaction_id)
-    sighting_utils.delete_sighting(flask_app_client, staff_user, sighting_id)
-    new_user.delete()
 
 
 @pytest.mark.skipif(

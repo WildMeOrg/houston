@@ -12,7 +12,6 @@ from unittest import mock
 from config import get_preliminary_config
 
 import tests.extensions.tus.utils as tus_utils
-import tests.modules.individuals.resources.utils as individual_utils
 from tests import utils as test_utils
 from tests import TEST_ASSET_GROUP_UUID, TEST_EMPTY_ASSET_GROUP_UUID
 
@@ -627,113 +626,6 @@ def commit_asset_group_sighting_sage_identification(
                 flask_app_client, user, asset_group_sighting_guid, expected_status_code
             )
     return response
-
-
-def create_asset_group_and_sighting(
-    flask_app_client, user, request, test_root=None, data=None
-):
-    from app.modules.sightings.models import Sighting
-    from app.modules.asset_groups.models import AssetGroup
-
-    if not data:
-        # Need at least one of them set
-        assert test_root is not None
-        transaction_id, filenames = create_bulk_tus_transaction(test_root)
-        request.addfinalizer(lambda: tus_utils.cleanup_tus_dir(transaction_id))
-        import random
-
-        locationId = random.randrange(10000)
-        data = {
-            'description': 'This is a test asset_group, please ignore',
-            'uploadType': 'bulk',
-            'speciesDetectionModel': ['None'],
-            'transactionId': transaction_id,
-            'sightings': [
-                {
-                    'startTime': '2000-01-01T01:01:01Z',
-                    'locationId': f'Location {locationId}',
-                    'encounters': [
-                        {
-                            'decimalLatitude': test_utils.random_decimal_latitude(),
-                            'decimalLongitude': test_utils.random_decimal_longitude(),
-                            # Yes, that really is a location, it's a village in Wiltshire
-                            # https://en.wikipedia.org/wiki/Tiddleywink
-                            'verbatimLocality': 'Tiddleywink',
-                            'locationId': f'Location {locationId}',
-                        },
-                        {
-                            'decimalLatitude': test_utils.random_decimal_latitude(),
-                            'decimalLongitude': test_utils.random_decimal_longitude(),
-                            'verbatimLocality': 'Tiddleywink',
-                            'locationId': f'Location {locationId}',
-                        },
-                    ],
-                    'assetReferences': [
-                        filenames[0],
-                        filenames[1],
-                        filenames[2],
-                        filenames[3],
-                    ],
-                },
-            ],
-        }
-
-    create_response = create_asset_group(flask_app_client, user, data)
-    asset_group_uuid = create_response.json['guid']
-    request.addfinalizer(
-        lambda: delete_asset_group(flask_app_client, user, asset_group_uuid)
-    )
-    asset_group = AssetGroup.query.get(asset_group_uuid)
-    assert create_response.json['description'] == data['description']
-    assert create_response.json['owner_guid'] == str(user.guid)
-
-    # Commit them all
-    sightings = []
-    for asset_group_sighting in create_response.json['asset_group_sightings']:
-        commit_response = commit_asset_group_sighting(
-            flask_app_client, user, asset_group_sighting['guid']
-        )
-        sighting_uuid = commit_response.json['guid']
-        sighting = Sighting.query.get(sighting_uuid)
-        sightings.append(sighting)
-
-    return asset_group, sightings
-
-
-def create_asset_group_with_sighting_and_individual(
-    flask_app_client,
-    user,
-    request,
-    test_root=None,
-    asset_group_data=None,
-    individual_data=None,
-):
-    from app.modules.individuals.models import Individual
-
-    asset_group, sightings = create_asset_group_and_sighting(
-        flask_app_client, user, request, test_root, asset_group_data
-    )
-
-    # Extract the encounters to use to create an individual
-    encounters = sightings[0].encounters
-    assert len(encounters) >= 1
-    if individual_data:
-        individual_data['encounters'] = [{'id': str(encounters[0].guid)}]
-    else:
-        individual_data = {'encounters': [{'id': str(encounters[0].guid)}]}
-
-    individual_response = individual_utils.create_individual(
-        flask_app_client, user, 200, individual_data
-    )
-
-    individual_guid = individual_response.json['result']['id']
-    request.addfinalizer(
-        lambda: individual_utils.delete_individual(
-            flask_app_client, user, individual_guid
-        )
-    )
-    individual = Individual.query.get(individual_guid)
-    return asset_group, sightings, individual
 
 
 def simulate_job_detection_response(

@@ -1,8 +1,7 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=missing-docstring
 
-from tests.modules.individuals.resources import utils as individual_res_utils
-from tests.modules.individuals import utils as individual_utils
+from tests.modules.individuals.resources import utils as individual_utils
 from app.modules.individuals.models import Individual, IndividualMergeRequestVote
 import pytest
 from tests import utils as test_utils
@@ -16,32 +15,24 @@ log = logging.getLogger(__name__)
     reason='Individuals module disabled',
 )
 def test_merge_basics(db, flask_app_client, researcher_1, request, test_root):
-    sighting1, encounter1 = individual_utils.simple_sighting_encounter(
-        db,
+    individual1_uuids = individual_utils.create_individual_and_sighting(
         flask_app_client,
         researcher_1,
         request,
         test_root,
     )
-    request.addfinalizer(sighting1.delete_cascade)
-    individual1_id = str(encounter1.individual_guid)
-    request.addfinalizer(
-        lambda: individual_res_utils.delete_individual(
-            flask_app_client, researcher_1, individual1_id
-        )
-    )
-    sighting2, encounter2 = individual_utils.simple_sighting_encounter(
-        db,
+    individual2_uuids = individual_utils.create_individual_and_sighting(
         flask_app_client,
         researcher_1,
         request,
         test_root,
     )
-    request.addfinalizer(sighting2.delete_cascade)
-    individual2_id = str(encounter2.individual_guid)
+
+    individual1_id = individual1_uuids['individual']
+    individual2_id = individual2_uuids['individual']
 
     data_in = {}  # first try with bunk data
-    response = individual_res_utils.merge_individuals(
+    response = individual_utils.merge_individuals(
         flask_app_client,
         researcher_1,
         individual1_id,
@@ -53,7 +44,7 @@ def test_merge_basics(db, flask_app_client, researcher_1, request, test_root):
     # send an invalid guid
     bad_id = '00000000-0000-0000-0000-000000002170'
     data_in = [bad_id]
-    response = individual_res_utils.merge_individuals(
+    response = individual_utils.merge_individuals(
         flask_app_client,
         researcher_1,
         individual1_id,
@@ -68,7 +59,7 @@ def test_merge_basics(db, flask_app_client, researcher_1, request, test_root):
     }
     # data_in = [individual2_id]  # would also be valid
     # note: this tests positive permission case as well (user owns everything)
-    response = individual_res_utils.merge_individuals(
+    response = individual_utils.merge_individuals(
         flask_app_client,
         researcher_1,
         individual1_id,
@@ -91,38 +82,27 @@ def test_merge_permissions(
     request,
     test_root,
 ):
-    sighting1, encounter1 = individual_utils.simple_sighting_encounter(
-        db,
+    individual1_uuids = individual_utils.create_individual_and_sighting(
         flask_app_client,
         researcher_1,
         request,
         test_root,
     )
-    request.addfinalizer(sighting1.delete_cascade)
-    individual1_id = str(encounter1.individual_guid)
-    request.addfinalizer(
-        lambda: individual_res_utils.delete_individual(
-            flask_app_client, researcher_1, individual1_id
-        )
-    )
-    sighting2, encounter2 = individual_utils.simple_sighting_encounter(
-        db,
+    # Second one owned by different researcher
+    individual2_uuids = individual_utils.create_individual_and_sighting(
         flask_app_client,
         researcher_2,
         request,
         test_root,
     )
-    request.addfinalizer(sighting2.delete_cascade)
-    individual2_id = str(encounter2.individual_guid)
-    request.addfinalizer(
-        lambda: individual_res_utils.delete_individual(
-            flask_app_client, researcher_2, individual2_id
-        )
-    )
+
+    individual1_id = individual1_uuids['individual']
+    encounter1_id = individual1_uuids['encounters'][0]
+    individual2_id = individual2_uuids['individual']
 
     # this tests as researcher_2, which should trigger a merge-request (owns just 1 encounter)
     data_in = [individual2_id]
-    response = individual_res_utils.merge_individuals(
+    response = individual_utils.merge_individuals(
         flask_app_client,
         researcher_2,
         individual1_id,
@@ -135,7 +115,7 @@ def test_merge_permissions(
         },
     )
     assert response['merge_request']
-    assert response['blocking_encounters'] == [str(encounter1.guid)]
+    assert response['blocking_encounters'] == [encounter1_id]
     # check that the celery task is there and contains what it should
     assert response['request_id']
     try:
@@ -146,7 +126,7 @@ def test_merge_permissions(
         log.info('Merge-request test skipped; no celery workers available')
 
     # a user who owns none (403 fail, no go)
-    response = individual_res_utils.merge_individuals(
+    response = individual_utils.merge_individuals(
         flask_app_client,
         contributor_1,
         individual1_id,
@@ -155,7 +135,7 @@ def test_merge_permissions(
     )
 
     # anonymous (401)
-    response = individual_res_utils.merge_individuals(
+    response = individual_utils.merge_individuals(
         flask_app_client,
         None,
         individual1_id,
@@ -179,7 +159,7 @@ def test_get_data_and_voting(
 ):
     bad_id = '00000000-0000-0000-0000-000000002170'
     # first anon permission check (401)
-    response = individual_res_utils.get_merge_request(
+    response = individual_utils.get_merge_request(
         flask_app_client,
         None,
         bad_id,
@@ -194,7 +174,7 @@ def test_get_data_and_voting(
         pytest.skip('celery not running')
 
     # invalid id (404)
-    response = individual_res_utils.get_merge_request(
+    response = individual_utils.get_merge_request(
         flask_app_client,
         contributor_1,  # just needs to not be anon
         bad_id,
@@ -202,29 +182,24 @@ def test_get_data_and_voting(
     )
 
     # now we need real data
-    sighting1, encounter1 = individual_utils.simple_sighting_encounter(
-        db,
+    individual1_uuids = individual_utils.create_individual_and_sighting(
         flask_app_client,
         researcher_1,
         request,
         test_root,
     )
-    request.addfinalizer(sighting1.delete_cascade)
-    individual1_id = str(encounter1.individual_guid)
-    request.addfinalizer(
-        lambda: individual_res_utils.delete_individual(
-            flask_app_client, researcher_1, individual1_id
-        )
-    )
-    sighting2, encounter2 = individual_utils.simple_sighting_encounter(
-        db,
+    # Second one owned by different researcher
+    individual2_uuids = individual_utils.create_individual_and_sighting(
         flask_app_client,
         researcher_2,
         request,
         test_root,
     )
-    request.addfinalizer(sighting2.delete_cascade)
-    individual2_id = str(encounter2.individual_guid)
+
+    individual1_id = individual1_uuids['individual']
+    encounter1_id = individual1_uuids['encounters'][0]
+    individual2_id = individual2_uuids['individual']
+
     # do not need to delete individual2, as merge succeeds with vote below
     # request.addfinalizer(
     #    lambda: individual_res_utils.delete_individual(
@@ -234,7 +209,7 @@ def test_get_data_and_voting(
 
     # this tests as researcher_2, which should trigger a merge-request (owns just 1 encounter)
     data_in = [individual2_id]
-    response = individual_res_utils.merge_individuals(
+    response = individual_utils.merge_individuals(
         flask_app_client,
         researcher_2,
         individual1_id,
@@ -247,7 +222,7 @@ def test_get_data_and_voting(
         },
     )
     assert response['merge_request']
-    assert response['blocking_encounters'] == [str(encounter1.guid)]
+    assert response['blocking_encounters'] == [encounter1_id]
     request_id = response.get('request_id')
     assert request_id
     # we should have a valid merge request now to test against
@@ -257,7 +232,7 @@ def test_get_data_and_voting(
     assert voters[0] == researcher_2
 
     # so now we test unauthorized user (403)
-    response = individual_res_utils.get_merge_request(
+    response = individual_utils.get_merge_request(
         flask_app_client,
         contributor_1,
         request_id,
@@ -265,7 +240,7 @@ def test_get_data_and_voting(
     )
 
     # now this get-data should work
-    response = individual_res_utils.get_merge_request(
+    response = individual_utils.get_merge_request(
         flask_app_client,
         researcher_1,
         request_id,
@@ -287,7 +262,7 @@ def test_get_data_and_voting(
     assert match
 
     # invalid vote (422)
-    response = individual_res_utils.vote_merge_request(
+    response = individual_utils.vote_merge_request(
         flask_app_client,
         researcher_1,
         request_id,
@@ -296,7 +271,7 @@ def test_get_data_and_voting(
     )
 
     # valid vote (will incidentally also do merge!)
-    response = individual_res_utils.vote_merge_request(
+    response = individual_utils.vote_merge_request(
         flask_app_client,
         researcher_1,
         request_id,

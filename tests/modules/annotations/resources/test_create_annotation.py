@@ -55,11 +55,10 @@ def test_create_failures(flask_app_client, researcher_1, test_clone_asset_group_
     module_unavailable('asset_groups'), reason='AssetGroups module disabled'
 )
 def test_create_and_delete_annotation(
-    flask_app_client, researcher_1, test_clone_asset_group_data
+    flask_app_client, researcher_1, test_clone_asset_group_data, request, test_root
 ):
     # pylint: disable=invalid-name
     from app.modules.annotations.models import Annotation
-    from app.modules.encounters.models import Encounter
 
     clone = sub_utils.clone_asset_group(
         flask_app_client,
@@ -68,8 +67,8 @@ def test_create_and_delete_annotation(
     )
     asset_guid = test_clone_asset_group_data['asset_uuids'][0]
 
-    response = enc_utils.create_encounter(flask_app_client, researcher_1)
-    enc_guid = response.json['result']['encounters'][0]['id']
+    uuids = enc_utils.create_encounter(flask_app_client, researcher_1, request, test_root)
+    enc_guid = uuids['encounters'][0]
     response = annot_utils.create_annotation(
         flask_app_client,
         researcher_1,
@@ -88,7 +87,7 @@ def test_create_and_delete_annotation(
 
     # make sure annot shows up on asset
     asset_res = asset_utils.read_asset(flask_app_client, researcher_1, asset_guid)
-    assert len(asset_res.json['annotations']) == 1
+    assert annotation_guid in [annot['guid'] for annot in asset_res.json['annotations']]
 
     # And deleting it
     annot_utils.delete_annotation(flask_app_client, researcher_1, annotation_guid)
@@ -97,8 +96,6 @@ def test_create_and_delete_annotation(
     assert read_annotation is None
 
     clone.cleanup()
-    Encounter.query.get(enc_guid).sighting.delete()
-    Encounter.query.get(enc_guid).delete()
 
 
 @pytest.mark.skipif(
@@ -111,9 +108,9 @@ def test_annotation_permission(
     researcher_1,
     researcher_2,
     test_clone_asset_group_data,
+    request,
+    test_root,
 ):
-    from app.modules.encounters.models import Encounter
-
     # Before we create any Annotations, find out how many are there already
     previous_annots = annot_utils.read_all_annotations(flask_app_client, staff_user)
     clone = sub_utils.clone_asset_group(
@@ -122,8 +119,8 @@ def test_annotation_permission(
         test_clone_asset_group_data['asset_group_uuid'],
     )
 
-    response = enc_utils.create_encounter(flask_app_client, researcher_1)
-    enc_guid = response.json['result']['encounters'][0]['id']
+    uuids = enc_utils.create_encounter(flask_app_client, researcher_1, request, test_root)
+    enc_guid = uuids['encounters'][0]
     response = annot_utils.create_annotation(
         flask_app_client,
         researcher_1,
@@ -162,7 +159,4 @@ def test_annotation_permission(
     annot_utils.read_all_annotations(flask_app_client, researcher_2)
 
     # delete it
-    annot_utils.delete_annotation(flask_app_client, researcher_1, annotation_guid)
     clone.cleanup()
-    Encounter.query.get(enc_guid).sighting.delete()
-    Encounter.query.get(enc_guid).delete()

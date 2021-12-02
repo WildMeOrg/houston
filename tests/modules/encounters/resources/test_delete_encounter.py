@@ -15,7 +15,9 @@ timestamp = datetime.datetime.now().isoformat() + 'Z'
 
 
 @pytest.mark.skipif(module_unavailable('encounters'), reason='Encounters module disabled')
-def test_delete_method(db, flask_app_client, researcher_1, test_root, staff_user):
+def test_delete_method(
+    db, flask_app_client, researcher_1, test_root, staff_user, request
+):
     from app.modules.sightings.models import Sighting
 
     # we should end up with these same counts (which _should be_ all zeros!)
@@ -29,14 +31,16 @@ def test_delete_method(db, flask_app_client, researcher_1, test_root, staff_user
             {'locationId': 'test2'},
         ],
     }
-    response = sighting_utils.create_sighting(flask_app_client, researcher_1, data_in)
+    uuids = sighting_utils.create_sighting(
+        flask_app_client, researcher_1, request, test_root, data_in
+    )
 
-    sighting_id = response.json['result']['id']
+    sighting_id = uuids['sighting']
     sighting = Sighting.query.get(sighting_id)
     assert sighting is not None
-
-    enc0_id = response.json['result']['encounters'][0]['id']
-    enc1_id = response.json['result']['encounters'][1]['id']
+    assert len(uuids['encounters']) == 2
+    enc0_id = uuids['encounters'][0]
+    enc1_id = uuids['encounters'][1]
     assert enc0_id is not None
     assert enc1_id is not None
 

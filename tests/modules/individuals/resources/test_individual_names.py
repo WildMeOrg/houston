@@ -3,7 +3,7 @@
 
 from tests import utils
 from tests.modules.individuals.resources import utils as individual_utils
-from tests.modules.asset_groups.resources import utils as asset_group_utils
+from tests.modules.sightings.resources import utils as sighting_utils
 
 import pytest
 
@@ -15,11 +15,15 @@ from tests.utils import module_unavailable
 )
 def test_get_set_individual_names(db, flask_app_client, researcher_1, request, test_root):
 
-    asset_group, sightings = asset_group_utils.create_asset_group_and_sighting(
+    uuids = sighting_utils.create_sighting(
         flask_app_client, researcher_1, request, test_root
     )
-    assert len(sightings) > 0
-    sighting = sightings[0]
+    sighting_guid = uuids['sighting']
+    from app.modules.sightings.models import Sighting
+
+    sighting = Sighting.query.get(sighting_guid)
+    assert sighting
+
     assert len(sighting.encounters) > 0
     enc = sighting.encounters[0]
 
@@ -113,12 +117,15 @@ def test_get_set_individual_names(db, flask_app_client, researcher_1, request, t
 def test_ensure_default_name_on_individual_creation(
     db, flask_app_client, researcher_1, test_root, request
 ):
-
-    asset_group, sightings = asset_group_utils.create_asset_group_and_sighting(
+    uuids = sighting_utils.create_sighting(
         flask_app_client, researcher_1, request, test_root
     )
-    assert len(sightings) > 0
-    sighting = sightings[0]
+    sighting_guid = uuids['sighting']
+    from app.modules.sightings.models import Sighting
+
+    sighting = Sighting.query.get(sighting_guid)
+    assert sighting
+
     assert len(sighting.encounters) > 0
     enc = sighting.encounters[0]
 

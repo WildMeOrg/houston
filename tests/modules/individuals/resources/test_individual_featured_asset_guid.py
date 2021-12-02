@@ -13,38 +13,28 @@ from tests.utils import module_unavailable
 @pytest.mark.skipif(
     module_unavailable('individuals', 'sightings'), reason='Individuals module disabled'
 )
-def test_patch_featured_asset_guid_on_individual(db, flask_app_client, researcher_1):
+def test_patch_featured_asset_guid_on_individual(
+    db, flask_app_client, researcher_1, request, test_root
+):
 
     # this test is a monster because it involves almost all of the major modules
-
+    from app.modules.encounters.models import Encounter
     from app.modules.sightings.models import Sighting
 
-    data_in = {
-        'encounters': [{}],
-        'startTime': '2000-01-01T01:01:01Z',
-        'locationId': 'test',
-    }
+    uuids = sighting_utils.create_sighting(
+        flask_app_client, researcher_1, request, test_root
+    )
 
-    response = sighting_utils.create_sighting(flask_app_client, researcher_1, data_in)
+    assert len(uuids['encounters']) == 1
+    encounter_uuid = uuids['encounters'][0]
 
-    from app.modules.encounters.models import Encounter
-
-    response_json = response.json
-
-    assert response_json['result']['encounters']
-    assert response_json['result']['encounters'][0]
-    assert response_json['result']['encounters'][0]['id']
-
-    guid = response_json['result']['encounters'][0]['id']
-
-    enc = Encounter.query.get(guid)
-    assert enc is not None
+    enc = Encounter.query.get(encounter_uuid)
 
     with db.session.begin():
         db.session.add(enc)
 
-    sighting_id = response_json['result']['id']
-    sighting = Sighting.query.get(sighting_id)
+    sighting_uuid = uuids['sighting']
+    sighting = Sighting.query.get(sighting_uuid)
     assert sighting is not None
 
     new_asset_group = utils.generate_asset_group_instance(researcher_1)
@@ -145,24 +135,31 @@ def test_patch_featured_asset_guid_on_individual(db, flask_app_client, researche
 )
 def test_featured_individual_read(db, flask_app_client, researcher_1, test_root, request):
     from app.modules.annotations.models import Annotation
+    from app.modules.individuals.models import Individual
+    from app.modules.assets.models import Asset
 
-    (
-        asset_group,
-        sightings,
-        individual,
-    ) = asset_group_utils.create_asset_group_with_sighting_and_individual(
-        flask_app_client, researcher_1, request, test_root
+    # Specifically use the large one as we want multiple assets
+    uuids = individual_utils.create_individual_and_sighting(
+        flask_app_client,
+        researcher_1,
+        request,
+        test_root,
+        large=True,
     )
-    assert len(sightings) > 0
-    sighting = sightings[0]
-    assert len(sighting.encounters) > 0
-    encounters = sighting.encounters
-    assert len(asset_group.assets) > 1
-    assets = asset_group.assets
+    individual_guid = uuids['individual']
+    enc_guids = uuids['encounters']
+    asset_guids = uuids['assets']
+
+    individual = Individual.query.get(individual_guid)
+    assert individual
+    asset0 = Asset.query.get(asset_guids[0])
+    assert asset0
+    asset1 = Asset.query.get(asset_guids[1])
+    assert asset1
 
     # Before individual has any annotations, no assets are available
     image_response = individual_utils.read_individual_path(
-        flask_app_client, researcher_1, f'{individual.guid}/featured_image'
+        flask_app_client, researcher_1, f'{individual_guid}/featured_image'
     )
     assert image_response.content_type == 'image/jpeg'
     assert image_response.calculate_content_length() == 0
@@ -170,8 +167,8 @@ def test_featured_individual_read(db, flask_app_client, researcher_1, test_root,
     ann0_resp = annot_utils.create_annotation(
         flask_app_client,
         researcher_1,
-        str(assets[0].guid),
-        str(encounters[0].guid),
+        asset_guids[0],
+        enc_guids[0],
     )
     ann0_guid = ann0_resp.json['guid']
     ann0 = Annotation.query.get(ann0_guid)
@@ -179,28 +176,28 @@ def test_featured_individual_read(db, flask_app_client, researcher_1, test_root,
 
     # Now the featured asset guid should be the only one
     image_response = individual_utils.read_individual_path(
-        flask_app_client, researcher_1, f'{individual.guid}/featured_image'
+        flask_app_client, researcher_1, f'{individual_guid}/featured_image'
     )
     assert image_response.content_type == 'image/jpeg'
-    asset_group_utils.validate_file_data(image_response.data, assets[0].filename)
+    asset_group_utils.validate_file_data(image_response.data, asset0.filename)
 
     # Add a second annotation
     ann1_resp = annot_utils.create_annotation(
         flask_app_client,
         researcher_1,
-        str(assets[1].guid),
-        str(encounters[0].guid),
+        asset_guids[1],
+        enc_guids[0],
     )
     ann1_guid = ann1_resp.json['guid']
     ann1 = Annotation.query.get(ann1_guid)
     request.addfinalizer(lambda: ann1.delete())
 
     # Make that asset the featured one
-    individual.set_featured_asset_guid(assets[1].guid)
+    individual.set_featured_asset_guid(asset_guids[1])
 
     # Reread the path, should now be asset 1
     image_response = individual_utils.read_individual_path(
-        flask_app_client, researcher_1, f'{individual.guid}/featured_image'
+        flask_app_client, researcher_1, f'{individual_guid}/featured_image'
     )
     assert image_response.content_type == 'image/jpeg'
-    asset_group_utils.validate_file_data(image_response.data, assets[1].filename)
+    asset_group_utils.validate_file_data(image_response.data, asset1.filename)

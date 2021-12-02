@@ -15,7 +15,12 @@ from tests.utils import module_unavailable
     module_unavailable('asset_groups'), reason='AssetGroups module disabled'
 )
 def test_patch_annotation(
-    flask_app_client, admin_user, researcher_1, test_clone_asset_group_data
+    flask_app_client,
+    admin_user,
+    researcher_1,
+    test_clone_asset_group_data,
+    request,
+    test_root,
 ):
     # pylint: disable=invalid-name
     from app.modules.annotations.models import Annotation
@@ -27,8 +32,8 @@ def test_patch_annotation(
         test_clone_asset_group_data['asset_group_uuid'],
     )
 
-    response = enc_utils.create_encounter(flask_app_client, researcher_1)
-    first_enc_guid = response.json['result']['encounters'][0]['id']
+    uuids = enc_utils.create_encounter(flask_app_client, researcher_1, request, test_root)
+    first_enc_guid = uuids['encounters'][0]
 
     response = annot_utils.create_annotation(
         flask_app_client,
@@ -46,8 +51,8 @@ def test_patch_annotation(
     assert len(first_encounter.annotations) == 1
     assert first_encounter.annotations[0].guid == uuid.UUID(annotation_guid)
 
-    response = enc_utils.create_encounter(flask_app_client, researcher_1)
-    second_enc_guid = response.json['result']['encounters'][0]['id']
+    uuids = enc_utils.create_encounter(flask_app_client, researcher_1, request, test_root)
+    second_enc_guid = uuids['encounters'][0]
     move_to_second_enc = [
         utils.patch_replace_op('encounter_guid', '%s' % second_enc_guid),
     ]
@@ -122,7 +127,3 @@ def test_patch_annotation(
     assert read_annotation is None
 
     clone.cleanup()
-    first_encounter.sighting.delete()
-    first_encounter.delete()
-    second_encounter.sighting.delete()
-    second_encounter.delete()

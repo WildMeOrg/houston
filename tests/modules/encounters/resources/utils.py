@@ -9,16 +9,18 @@ PATH = '/api/v1/encounters/'
 
 
 # to create an encounter, it must be part of a sighting, so we piggyback on sighting_util
-def create_encounter(flask_app_client, user, expected_status_code=200):
+def create_encounter(
+    flask_app_client, user, request, test_root, expected_status_code=200
+):
     from tests.modules.sightings.resources import utils as sighting_utils
 
-    data_in = {
-        'locationId': 'PYTEST-SIGHTING',
-        'startTime': '2000-01-01T01:01:01Z',
-        'encounters': [{'locationId': 'PYTEST-ENCOUNTER'}],
-    }
+    # Return is a map of the uuids of things created
     return sighting_utils.create_sighting(
-        flask_app_client, user, data_in, expected_status_code
+        flask_app_client,
+        user,
+        request,
+        test_root,
+        expected_status_code=expected_status_code,
     )
 
 

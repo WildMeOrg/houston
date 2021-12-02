@@ -8,21 +8,54 @@ from tests.utils import module_unavailable
 
 import tests.modules.social_groups.resources.utils as soc_group_utils
 import tests.modules.individuals.resources.utils as individual_utils
+import tests.modules.sightings.resources.utils as sighting_utils
 import tests.modules.audit_logs.resources.utils as audit_utils
 from tests import utils as test_utils
 
 log = logging.getLogger(__name__)
 
 
-def create_individuals(db, flask_app_client, user, request, num_individuals=3):
+# Needs to be a separate method as if you call the addfinalizer in a loop, it only deleted the last one
+def add_individual(flask_app_client, user, request, enc_id):
+    encounter_json = {'encounters': [{'id': enc_id}]}
+    resp = individual_utils.create_individual(
+        flask_app_client,
+        user,
+        data_in=encounter_json,
+    )
+
+    request.addfinalizer(
+        lambda: individual_utils.delete_individual(
+            flask_app_client, user, resp.json['result']['id']
+        )
+    )
+    return resp.json['result']
+
+
+def create_individuals(flask_app_client, user, request, test_root, num_individuals=3):
+
+    # Create a sighting with three encounters
+    sighting_data = {
+        'startTime': '2000-01-01T01:01:01Z',
+        'locationId': 'test social groups',
+        'encounters': [],
+    }
+    for enc_id in range(0, num_individuals):
+        sighting_data['encounters'].append({'locationId': f'loc{enc_id}'})
+
+    uuids = sighting_utils.create_sighting(
+        flask_app_client, user, request, test_root, sighting_data
+    )
+
+    assert len(uuids['encounters']) == num_individuals
+
     # Create the individuals to use in testing
     individuals = []
-    for count in range(0, num_individuals):
+    for ind_num in range(0, num_individuals):
         individuals.append(
-            individual_utils.create_individual_with_encounter(
-                db, flask_app_client, user, request
-            )
+            add_individual(flask_app_client, user, request, uuids['encounters'][ind_num])
         )
+
     return individuals
 
 
@@ -30,13 +63,13 @@ def create_individuals(db, flask_app_client, user, request, num_individuals=3):
     module_unavailable('social_groups'), reason='SocialGroup module disabled'
 )
 def test_basic_operation(
-    db, flask_app_client, researcher_1, researcher_2, admin_user, request
+    db, flask_app_client, researcher_1, researcher_2, admin_user, request, test_root
 ):
     # Set the basic roles we want
     soc_group_utils.set_basic_roles(flask_app_client, admin_user, request)
 
     # Create some individuals to use in testing
-    individuals = create_individuals(db, flask_app_client, researcher_1, request)
+    individuals = create_individuals(flask_app_client, researcher_1, request, test_root)
 
     # Create a social group for them
     data = {
@@ -114,13 +147,20 @@ def test_error_config(flask_app_client, researcher_1, admin_user):
     module_unavailable('social_groups'), reason='SocialGroup module disabled'
 )
 def test_invalid_creation(
-    db, flask_app_client, researcher_1, researcher_2, admin_user, regular_user, request
+    db,
+    flask_app_client,
+    researcher_1,
+    researcher_2,
+    admin_user,
+    regular_user,
+    request,
+    test_root,
 ):
     # Set the basic roles we want
     soc_group_utils.set_basic_roles(flask_app_client, admin_user, request)
 
     # Create some individuals to use in testing
-    individuals = create_individuals(db, flask_app_client, researcher_1, request)
+    individuals = create_individuals(flask_app_client, researcher_1, request, test_root)
 
     valid_data = {
         'name': 'Disreputable bunch of hooligans',
@@ -233,7 +273,7 @@ def test_invalid_creation(
     module_unavailable('social_groups'), reason='SocialGroup module disabled'
 )
 def test_role_changes(
-    db, flask_app_client, researcher_1, researcher_2, admin_user, request
+    db, flask_app_client, researcher_1, researcher_2, admin_user, request, test_root
 ):
     # Set the basic roles we want
     soc_group_utils.set_basic_roles(flask_app_client, admin_user, request)
@@ -244,7 +284,7 @@ def test_role_changes(
     assert set({'Matriarch', 'IrritatingGit'}) == set(current_roles.json['data'].keys())
 
     # Create some individuals to use in testing
-    individuals = create_individuals(db, flask_app_client, researcher_1, request)
+    individuals = create_individuals(flask_app_client, researcher_1, request, test_root)
 
     valid_group = {
         'name': 'Disreputable bunch of hooligans',
@@ -286,14 +326,21 @@ def test_role_changes(
     module_unavailable('social_groups'), reason='SocialGroup module disabled'
 )
 def test_patch(
-    db, flask_app_client, researcher_1, researcher_2, regular_user, admin_user, request
+    db,
+    flask_app_client,
+    researcher_1,
+    researcher_2,
+    regular_user,
+    admin_user,
+    request,
+    test_root,
 ):
     # Set the basic roles we want
     soc_group_utils.set_basic_roles(flask_app_client, admin_user, request)
 
     # Create some individuals to use in testing
     individuals = create_individuals(
-        db, flask_app_client, researcher_1, request, num_individuals=4
+        flask_app_client, researcher_1, request, test_root, num_individuals=4
     )
 
     valid_group = {
@@ -419,22 +466,19 @@ def test_patch(
 @pytest.mark.skipif(
     module_unavailable('social_groups'), reason='SocialGroup module disabled'
 )
-def test_individual_delete(db, flask_app_client, researcher_1, admin_user, request):
+def test_individual_delete(
+    db, flask_app_client, researcher_1, admin_user, request, test_root
+):
     # Set the basic roles we want
     soc_group_utils.set_basic_roles(flask_app_client, admin_user, request)
 
     # Create some individuals to use in testing
-    individuals = create_individuals(db, flask_app_client, researcher_1, request)
+    individuals = create_individuals(flask_app_client, researcher_1, request, test_root)
 
-    # Create an extra one that is not automatically deleted
-    ind_resp = individual_utils.create_individual(
-        flask_app_client,
-        researcher_1,
-        data_in=individual_utils.generate_individual_encounter_data(
-            researcher_1, db, request
-        ),
+    uuids = individual_utils.create_individual_and_sighting(
+        flask_app_client, researcher_1, request, test_root
     )
-    individuals.append(ind_resp.json['result'])
+    new_individual_uuid = uuids['individual']
 
     # Create a social group for them
     data = {
@@ -443,7 +487,7 @@ def test_individual_delete(db, flask_app_client, researcher_1, admin_user, reque
             individuals[0]['id']: {'roles': ['Matriarch']},
             individuals[1]['id']: {},
             individuals[2]['id']: {'roles': ['IrritatingGit']},
-            individuals[3]['id']: {},
+            new_individual_uuid: {},
         },
     }
     group_resp = soc_group_utils.create_social_group(
@@ -453,10 +497,10 @@ def test_individual_delete(db, flask_app_client, researcher_1, admin_user, reque
 
     # delete individual and make sure they go away from the group
     individual_utils.delete_individual(
-        flask_app_client, researcher_1, individuals[3]['id']
+        flask_app_client, researcher_1, new_individual_uuid
     )
     new_data = data
-    del new_data['members'][individuals[3]['id']]
+    del new_data['members'][new_individual_uuid]
     # read it
     later_group = soc_group_utils.read_social_group(
         flask_app_client, researcher_1, group_guid

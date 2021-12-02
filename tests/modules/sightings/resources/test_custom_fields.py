@@ -17,6 +17,7 @@ def test_custom_fields_on_sighting(
     staff_user,
     admin_user,
     test_asset_group_uuid,
+    request,
 ):
     from app.modules.sightings.models import Sighting
     import datetime
@@ -25,7 +26,7 @@ def test_custom_fields_on_sighting(
     assert cfd_id is not None
 
     timestamp = datetime.datetime.now().isoformat() + 'Z'
-    transaction_id, test_filename = sighting_utils.prep_tus_dir(test_root)
+    # transaction_id, test_filename = sighting_utils.prep_tus_dir(test_root)
     cfd_test_value = 'CFD_TEST_VALUE'
     data_in = {
         'startTime': timestamp,
@@ -35,13 +36,15 @@ def test_custom_fields_on_sighting(
         },
         'encounters': [{}],
     }
-    response = sighting_utils.create_sighting(
+    uuids = sighting_utils.create_sighting(
         flask_app_client,
         researcher_1,
+        request,
+        test_root,
         data_in,
     )
 
-    sighting_id = response.json['result']['id']
+    sighting_id = uuids['sighting']
     sighting = Sighting.query.get(sighting_id)
     assert sighting is not None
 
@@ -71,11 +74,6 @@ def test_custom_fields_on_sighting(
             'owner': {
                 'full_name': encounter.owner.full_name,
                 'guid': str(encounter.owner.guid),
-                'profile_fileupload': None,
-            },
-            'submitter': {
-                'full_name': encounter.submitter.full_name,
-                'guid': str(encounter.submitter.guid),
                 'profile_fileupload': None,
             },
         }
@@ -143,6 +141,3 @@ def test_custom_fields_on_sighting(
     assert 'customFields' in full_sighting.json
     assert cfd_id in full_sighting.json['customFields']
     assert full_sighting.json['customFields'][cfd_id] == new_cfd_test_value
-
-    # clean up
-    sighting_utils.delete_sighting(flask_app_client, researcher_1, sighting_id)

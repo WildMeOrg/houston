@@ -50,15 +50,11 @@ def test_ia_pipeline_sim_detect_response(
         assert ags1.jobs[job_uuid]['model'] == 'african_terrestrial'
 
         # Simulate response from Sage
-        sage_resp = asset_group_utils.build_sage_detection_response(
-            asset_group_sighting1_guid, job_uuid
-        )
         asset_group_utils.send_sage_detection_response(
             flask_app_client,
             internal_user,
             asset_group_sighting1_guid,
             job_uuid,
-            sage_resp,
         )
         assert ags1.stage == AssetGroupSightingStage.curation
 

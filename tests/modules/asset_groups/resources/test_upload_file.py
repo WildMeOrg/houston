@@ -20,8 +20,7 @@ def test_create_open_submission(flask_app_client, regular_user, test_root, db):
     try:
         from app.modules.asset_groups.models import AssetGroup
 
-        data = asset_group_utils.AssetGroupCreationData(transaction_id)
-        data.add_filename(0, test_filename)
+        data = asset_group_utils.AssetGroupCreationData(transaction_id, test_filename)
         response = asset_group_utils.create_asset_group(
             flask_app_client, regular_user, data.get()
         )

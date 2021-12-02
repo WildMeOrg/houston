@@ -64,14 +64,14 @@ def create_asset_group(session, codex_url, data):
     assert set(json_resp.keys()) >= set(
         {'guid', 'assets', 'asset_group_sightings', 'major_type', 'description'}
     )
-    asset_guid = json_resp['guid']
+    group_guid = json_resp['guid']
     asset_guids = [asset['guid'] for asset in json_resp['assets']]
     ags_guids = [ags['guid'] for ags in json_resp['asset_group_sightings']]
     assert len(ags_guids) == len(data['sightings'])
 
     assert json_resp['major_type'] == 'filesystem'
     assert json_resp['description'] == data['description']
-    return asset_guid, ags_guids, asset_guids
+    return group_guid, ags_guids, asset_guids
 
 
 def wait_for(

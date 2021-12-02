@@ -71,8 +71,7 @@ def test_create_patch_asset_group(
     try:
         from app.modules.asset_groups.models import AssetGroup
 
-        data = asset_group_utils.AssetGroupCreationData(transaction_id)
-        data.add_filename(0, test_filename)
+        data = asset_group_utils.AssetGroupCreationData(transaction_id, test_filename)
 
         create_response = asset_group_utils.create_asset_group(
             flask_app_client, researcher_1, data.get()

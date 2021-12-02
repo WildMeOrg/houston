@@ -174,6 +174,7 @@ class BaseConfig(FlaskConfigOverrides):
         'projects',
         'sightings',
         'individuals',
+        'names',
         'annotations',
         'social_groups',
         'site_settings',

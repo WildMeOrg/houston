@@ -137,12 +137,6 @@ class Individual(db.Model, FeatherModel):
     def get_name_for_value(self, value):
         return Name.query.filter_by(individual_guid=self.guid, value=value).first()
 
-    def get_names_display(self):
-        return Name.query.filter_by(individual_guid=self.guid, is_display=True).all()
-
-    def get_names_adoption(self):
-        return Name.query.filter_by(individual_guid=self.guid, is_adoption=True).all()
-
     def add_name(self, context, value, creator):
         new_name = Name(
             individual_guid=self.guid,

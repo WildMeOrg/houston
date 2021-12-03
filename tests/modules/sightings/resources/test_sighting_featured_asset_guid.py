@@ -9,152 +9,123 @@ from tests.utils import module_unavailable
 
 
 @pytest.mark.skipif(module_unavailable('sightings'), reason='Sightings module disabled')
-def test_featured_asset_guid_endpoint(db, flask_app_client, researcher_1):
+def test_featured_asset_guid_endpoint(
+    db, flask_app_client, researcher_1, request, test_root
+):
     from app.modules.sightings.models import Sighting
 
-    data_in = {
-        'encounters': [{}],
-        'startTime': '2000-01-01T01:01:01Z',
-        'locationId': 'test',
-    }
+    try:
+        uuids = sighting_utils.create_sighting(
+            flask_app_client, researcher_1, request, test_root
+        )
+        asset_group_guid = uuids['asset_group']
+        sighting_id = uuids['sighting']
+        sighting = Sighting.query.get(sighting_id)
+        assert sighting is not None
 
-    response = sighting_utils.create_sighting(
-        flask_app_client, researcher_1, data_in=data_in
-    )
+        path = f'{str(sighting.guid)}/featured_asset_guid'
+        response = sighting_utils.read_sighting_path(flask_app_client, researcher_1, path)
+        assert response.json['featured_asset_guid'] in uuids['assets']
 
-    sighting_id = response.json['result']['id']
-    sighting = Sighting.query.get(sighting_id)
-    assert sighting is not None
+        new_asset_1 = utils.generate_asset_instance(asset_group_guid)
+        new_asset_2 = utils.generate_asset_instance(asset_group_guid)
+        new_asset_3 = utils.generate_asset_instance(asset_group_guid)
 
-    new_asset_group = utils.generate_asset_group_instance(researcher_1)
+        with db.session.begin():
+            db.session.add(new_asset_1)
+            db.session.add(new_asset_2)
+            db.session.add(new_asset_3)
 
-    with db.session.begin():
-        db.session.add(new_asset_group)
+        sighting.add_asset(new_asset_1)
+        db.session.refresh(sighting)
 
-    path = f'{str(sighting.guid)}/featured_asset_guid'
-    response = sighting_utils.read_sighting_path(flask_app_client, researcher_1, path)
-    assert response.json['featured_asset_guid'] is None
+        response = sighting_utils.read_sighting_path(flask_app_client, researcher_1, path)
 
-    new_asset_1 = utils.generate_asset_instance(new_asset_group.guid)
-    new_asset_2 = utils.generate_asset_instance(new_asset_group.guid)
-    new_asset_3 = utils.generate_asset_instance(new_asset_group.guid)
+        assert response.json['guid'] == str(sighting.guid)
+        assert response.json['featured_asset_guid'] == str(sighting.featured_asset_guid)
 
-    with db.session.begin():
-        db.session.add(new_asset_1)
-        db.session.add(new_asset_2)
-        db.session.add(new_asset_3)
+        # featured image should be valid
+        image = sighting_utils.read_sighting_path(
+            flask_app_client, researcher_1, f'{sighting.guid}/featured_image'
+        )
+        assert image.content_type == 'image/jpeg'
 
-    sighting.add_asset(new_asset_1)
-    db.session.refresh(sighting)
+        sighting.add_asset(new_asset_2)
 
-    response = sighting_utils.read_sighting_path(flask_app_client, researcher_1, path)
+        asset_guid_data = {'featured_asset_guid': str(new_asset_2.guid)}
+        response = sighting_utils.write_sighting_path(
+            flask_app_client, researcher_1, path, asset_guid_data
+        )
+        assert response.json['success'] is True
 
-    assert str(sighting.get_featured_asset_guid()) == str(new_asset_1.guid)
-    assert str(sighting.featured_asset_guid) == str(new_asset_1.guid)
-    assert response.json['guid'] == str(sighting.guid)
-    assert response.json['featured_asset_guid'] == str(new_asset_1.guid)
+        response = sighting_utils.read_sighting_path(flask_app_client, researcher_1, path)
+        assert response.json['featured_asset_guid'] == str(new_asset_2.guid)
 
-    # The Asset was created by a hanging sighting, not part of an asset group, this will fail as that's not
-    # how assets should be created
-    sighting_utils.read_sighting_path(
-        flask_app_client, researcher_1, f'{sighting.guid}/featured_image', 400
-    )
-    sighting.add_asset(new_asset_2)
+        # Fails as asset 3 is not in the sighting so featured asset remains as 2
+        sighting.set_featured_asset_guid(new_asset_3.guid)
+        response = sighting_utils.read_sighting_path(flask_app_client, researcher_1, path)
+        assert response.json['featured_asset_guid'] == str(new_asset_2.guid)
 
-    asset_guid_data = {'featured_asset_guid': str(new_asset_2.guid)}
-    response = sighting_utils.write_sighting_path(
-        flask_app_client, researcher_1, path, asset_guid_data
-    )
-
-    assert response.json['success'] is True
-    response = sighting_utils.read_sighting_path(flask_app_client, researcher_1, path)
-
-    assert response.json['featured_asset_guid'] == str(new_asset_2.guid)
-    sighting.set_featured_asset_guid(new_asset_3.guid)
-    response = sighting_utils.read_sighting_path(flask_app_client, researcher_1, path)
-
-    assert response.json['featured_asset_guid'] == str(new_asset_2.guid)
-
-    # new_asset_group.delete_remote()
-    # new_asset_group.delete()
-    # sighting_utils.delete_sighting(flask_app_client, researcher_1, str(sighting.guid))
-
-    from app.modules.asset_groups.tasks import delete_remote
-
-    sighting_utils.delete_sighting(flask_app_client, researcher_1, str(sighting.guid))
-    delete_remote(str(new_asset_group.guid))
-    asset_group_utils.delete_asset_group(
-        flask_app_client, researcher_1, new_asset_group.guid
-    )
+    except AssertionError as ex:
+        sighting_utils.cleanup_sighting(flask_app_client, researcher_1, uuids)
+        raise ex
 
 
 @pytest.mark.skipif(module_unavailable('sightings'), reason='Sightings module disabled')
-def test_patch_featured_asset_guid_on_sighting(db, flask_app_client, researcher_1):
+def test_patch_featured_asset_guid_on_sighting(
+    db, flask_app_client, researcher_1, request, test_root
+):
     from app.modules.sightings.models import Sighting
 
-    data_in = {
-        'encounters': [{}],
-        'startTime': '2000-01-01T01:01:01Z',
-        'locationId': 'test',
-    }
+    try:
+        uuids = sighting_utils.create_sighting(
+            flask_app_client, researcher_1, request, test_root
+        )
+        asset_group_guid = uuids['asset_group']
+        sighting_id = uuids['sighting']
+        sighting = Sighting.query.get(sighting_id)
+        assert sighting is not None
 
-    response = sighting_utils.create_sighting(
-        flask_app_client, researcher_1, data_in=data_in
-    )
+        new_asset_1 = utils.generate_asset_instance(asset_group_guid)
+        new_asset_2 = utils.generate_asset_instance(asset_group_guid)
 
-    sighting_id = response.json['result']['id']
-    sighting = Sighting.query.get(sighting_id)
-    assert sighting is not None
+        with db.session.begin():
+            db.session.add(new_asset_1)
+            db.session.add(new_asset_2)
 
-    new_asset_group = utils.generate_asset_group_instance(researcher_1)
+        sighting.add_asset(new_asset_1)
 
-    with db.session.begin():
-        db.session.add(new_asset_group)
+        sighting.add_asset_no_context(new_asset_2)
+        db.session.refresh(sighting)
 
-    new_asset_1 = utils.generate_asset_instance(new_asset_group.guid)
-    new_asset_2 = utils.generate_asset_instance(new_asset_group.guid)
+        patch_op = [
+            utils.patch_replace_op('featuredAssetGuid', '%s' % new_asset_2.guid),
+        ]
 
-    with db.session.begin():
-        db.session.add(new_asset_group)
-        db.session.add(new_asset_1)
-        db.session.add(new_asset_2)
+        sighting_utils.patch_sighting(
+            flask_app_client, researcher_1, '%s' % sighting.guid, patch_op
+        )
 
-    sighting.add_asset(new_asset_1)
+        assert new_asset_2.guid == sighting.get_featured_asset_guid()
 
-    assert new_asset_1.guid == sighting.get_featured_asset_guid()
-
-    sighting.add_asset_no_context(new_asset_2)
-    db.session.refresh(sighting)
-
-    patch_op = [
-        utils.patch_replace_op('featuredAssetGuid', '%s' % new_asset_2.guid),
-    ]
-
-    sighting_utils.patch_sighting(
-        flask_app_client, researcher_1, '%s' % sighting.guid, patch_op
-    )
-
-    assert new_asset_2.guid == sighting.get_featured_asset_guid()
-
-    from app.modules.asset_groups.tasks import delete_remote
-
-    sighting_utils.delete_sighting(flask_app_client, researcher_1, str(sighting.guid))
-    delete_remote(str(new_asset_group.guid))
-    asset_group_utils.delete_asset_group(
-        flask_app_client, researcher_1, new_asset_group.guid
-    )
+    except AssertionError as ex:
+        sighting_utils.cleanup_sighting(flask_app_client, researcher_1, uuids)
+        raise ex
 
 
 @pytest.mark.skipif(module_unavailable('sightings'), reason='Sightings module disabled')
 def test_featured_sighting_read(db, flask_app_client, researcher_1, test_root, request):
+    from app.modules.sightings.models import Sighting
+    from app.modules.asset_groups.models import AssetGroup
 
-    asset_group, sightings = asset_group_utils.create_asset_group_and_sighting(
+    uuids = sighting_utils.create_large_sighting(
         flask_app_client, researcher_1, request, test_root
     )
+    asset_group = AssetGroup.query.get(uuids['asset_group'])
+    assert asset_group
 
-    assert len(sightings) > 0
-    sighting = sightings[0]
-    assert len(sighting.encounters) > 0
+    sighting = Sighting.query.get(uuids['sighting'])
+    assert sighting
 
     image_response = sighting_utils.read_sighting_path(
         flask_app_client, researcher_1, f'{sighting.guid}/featured_image'

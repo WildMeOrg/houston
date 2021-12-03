@@ -18,8 +18,8 @@ import app.modules.utils as util
 from uuid import UUID
 
 
-class CreateSightingParameters(Parameters, schemas.DetailedSightingSchema):
-    class Meta(schemas.DetailedSightingSchema.Meta):
+class CreateSightingParameters(Parameters, schemas.CreateSightingSchema):
+    class Meta(schemas.CreateSightingSchema.Meta):
         pass
 
 

@@ -204,7 +204,7 @@ class AssetGroupMetadata(object):
     def _validate_sighting(self, sighting, file_dir, sighting_debug, encounter_debug):
 
         sighting_fields = [
-            ('locationId', str, False),
+            ('locationId', str, True),
             ('startTime', str, True),
             ('encounters', list, True),
             ('name', str, False),
@@ -215,7 +215,10 @@ class AssetGroupMetadata(object):
 
         if 'assetReferences' in sighting:
             for filename in sighting['assetReferences']:
-
+                if not isinstance(filename, str):
+                    raise AssetGroupMetadataError(
+                        log, f'Invalid assetReference data {filename}'
+                    )
                 file_path = os.path.join(file_dir, filename)
                 file_size = 0
                 try:

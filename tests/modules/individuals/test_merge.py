@@ -1,8 +1,7 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=missing-docstring
 
-from tests.modules.individuals.resources import utils as individual_res_utils
-from tests.modules.individuals import utils as individual_utils
+from tests.modules.individuals.resources import utils as individual_utils
 from tests.modules.sightings.resources import utils as sighting_utils
 from tests.modules.social_groups.resources import utils as socgrp_utils
 import pytest
@@ -15,13 +14,10 @@ from tests.utils import module_unavailable
     module_unavailable('individuals', 'encounters', 'sightings'),
     reason='Individuals module disabled',
 )
-def test_merge(db, flask_app_client, researcher_1, request):
-
-    from app.modules.encounters.models import Encounter
-    from app.modules.sightings.models import Sighting
+def test_merge(db, flask_app_client, researcher_1, request, test_root):
     from app.modules.individuals.models import Individual
 
-    data_in = {
+    sighting_data = {
         'encounters': [
             {
                 'locationId': 'one',
@@ -37,16 +33,13 @@ def test_merge(db, flask_app_client, researcher_1, request):
         'locationId': 'test',
     }
 
-    response = sighting_utils.create_sighting(flask_app_client, researcher_1, data_in)
-    enc1_guid = response.json['result']['encounters'][0]['id']
-    enc2_guid = response.json['result']['encounters'][1]['id']
-    enc1 = Encounter.query.get(enc1_guid)
-    enc2 = Encounter.query.get(enc1_guid)
-    sighting = Sighting.query.get(response.json['result']['id'])
+    uuids = sighting_utils.create_sighting(
+        flask_app_client, researcher_1, request, test_root, sighting_data
+    )
+    assert len(uuids['encounters']) == len(sighting_data['encounters'])
 
-    request.addfinalizer(sighting.delete_cascade)
-    request.addfinalizer(enc1.delete_cascade)
-    request.addfinalizer(enc2.delete_cascade)
+    enc1_guid = uuids['encounters'][0]
+    enc2_guid = uuids['encounters'][1]
 
     individual_data_in = {
         'names': {'defaultName': 'NAME1'},
@@ -57,7 +50,7 @@ def test_merge(db, flask_app_client, researcher_1, request):
         ],
         'sex': 'female',
     }
-    individual_response = individual_res_utils.create_individual(
+    individual_response = individual_utils.create_individual(
         flask_app_client, researcher_1, 200, individual_data_in
     )
     indiv1_guid = individual_response.json['result']['id']
@@ -66,7 +59,7 @@ def test_merge(db, flask_app_client, researcher_1, request):
     individual_data_in['names']['defaultName'] = 'NAME2'
     individual_data_in['encounters'][0]['id'] = enc2_guid
     # both will be set female
-    individual_response = individual_res_utils.create_individual(
+    individual_response = individual_utils.create_individual(
         flask_app_client, researcher_1, 200, individual_data_in
     )
     indiv2_guid = individual_response.json['result']['id']
@@ -78,7 +71,7 @@ def test_merge(db, flask_app_client, researcher_1, request):
     assert str(indiv1.encounters[0].guid) == enc1_guid
     assert str(indiv2.encounters[0].guid) == enc2_guid
     request.addfinalizer(
-        lambda: individual_res_utils.delete_individual(
+        lambda: individual_utils.delete_individual(
             flask_app_client, researcher_1, indiv1.guid
         )
     )
@@ -107,29 +100,21 @@ def test_merge_social_groups(
     from app.modules.social_groups.models import SocialGroup
     from app.modules.individuals.models import Individual
 
-    sighting1, encounter1 = individual_utils.simple_sighting_encounter(
-        db,
+    individual1_uuids = individual_utils.create_individual_and_sighting(
         flask_app_client,
         researcher_1,
         request,
         test_root,
     )
-    request.addfinalizer(sighting1.delete_cascade)
-    individual1_id = str(encounter1.individual_guid)
-    sighting2, encounter2 = individual_utils.simple_sighting_encounter(
-        db,
+    individual2_uuids = individual_utils.create_individual_and_sighting(
         flask_app_client,
         researcher_1,
         request,
         test_root,
     )
-    request.addfinalizer(sighting2.delete_cascade)
-    request.addfinalizer(
-        lambda: individual_res_utils.delete_individual(
-            flask_app_client, researcher_1, individual1_id
-        )
-    )
-    individual2_id = str(encounter2.individual_guid)
+
+    individual1_id = individual1_uuids['individual']
+    individual2_id = individual2_uuids['individual']
 
     individual1 = Individual.query.get(individual1_id)
     individual2 = Individual.query.get(individual2_id)
@@ -254,7 +239,7 @@ def test_merge_request_init(db, flask_app_client, researcher_1, researcher_2, re
         message_type=NotificationType.individual_merge_request,
     ).first()
     assert notif
-    request.addfinalizer(individual.delete)
+
     assert (
         'request_id' in notif.message_values
         and notif.message_values['request_id'] == res['async'].id

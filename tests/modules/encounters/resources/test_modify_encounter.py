@@ -13,13 +13,20 @@ from tests.utils import module_unavailable
 
 @pytest.mark.skipif(module_unavailable('encounters'), reason='Encounters module disabled')
 def test_modify_encounter(
-    db, flask_app_client, researcher_1, researcher_2, admin_user, test_asset_group_uuid
+    db,
+    flask_app_client,
+    researcher_1,
+    researcher_2,
+    admin_user,
+    test_asset_group_uuid,
+    request,
+    test_root,
 ):
     # pylint: disable=invalid-name
     from app.modules.encounters.models import Encounter
 
-    response = enc_utils.create_encounter(flask_app_client, researcher_1)
-    first_enc_guid = response.json['result']['encounters'][0]['id']
+    uuids = enc_utils.create_encounter(flask_app_client, researcher_1, request, test_root)
+    first_enc_guid = uuids['encounters'][0]
     assert first_enc_guid is not None
     new_encounter_1 = Encounter.query.get(first_enc_guid)
 
@@ -144,11 +151,12 @@ def test_modify_encounter(
 
 
 @pytest.mark.skipif(module_unavailable('encounters'), reason='Encounters module disabled')
-def test_modify_encounter_error(flask_app, flask_app_client, researcher_1):
-    from app.modules.encounters.models import Encounter
-
-    response = enc_utils.create_encounter(flask_app_client, researcher_1)
-    first_enc_guid = response.json['result']['encounters'][0]['id']
+def test_modify_encounter_error(
+    flask_app, flask_app_client, researcher_1, request, test_root
+):
+    uuids = enc_utils.create_encounter(flask_app_client, researcher_1, request, test_root)
+    assert len(uuids['encounters']) == 1
+    first_enc_guid = uuids['encounters'][0]
 
     def edm_return_500(*args, **kwargs):
         response = mock.Mock(ok=False, status_code=500)
@@ -168,6 +176,3 @@ def test_modify_encounter_error(flask_app, flask_app_client, researcher_1):
             patch_data,
             expected_status_code=500,
         )
-
-    Encounter.query.get(first_enc_guid).sighting.delete()
-    Encounter.query.get(first_enc_guid).delete()

@@ -27,9 +27,9 @@ class BaseSightingSchema(ModelSchema):
         dump_only = (Sighting.guid.key,)
 
 
-class DetailedSightingSchema(BaseSightingSchema):
+class CreateSightingSchema(BaseSightingSchema):
     """
-    Detailed Sighting schema exposes all useful fields.
+    Create Sighting schema for all the fields needed at creation
     """
 
     class Meta(BaseSightingSchema.Meta):
@@ -43,6 +43,21 @@ class DetailedSightingSchema(BaseSightingSchema):
             Sighting.created.key,
             Sighting.updated.key,
         )
+
+
+class DetailedSightingSchema(CreateSightingSchema):
+    """
+    Detailed Sighting schema adds the parts that are on top of what is created
+    """
+
+    encounters = base_fields.Nested(
+        'BaseEncounterSchema',
+        attribute='get_encounters',
+        many=True,
+    )
+
+    class Meta(CreateSightingSchema.Meta):
+        fields = CreateSightingSchema.Meta.fields + ('encounters',)
 
 
 class FeaturedAssetOnlySchema(BaseSightingSchema):

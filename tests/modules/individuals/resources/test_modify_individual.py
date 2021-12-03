@@ -13,43 +13,30 @@ from tests.utils import module_unavailable
     module_unavailable('individuals', 'encounters', 'sightings'),
     reason='Individuals module disabled',
 )
-def test_modify_individual_edm_fields(db, flask_app_client, researcher_1):
+def test_modify_individual_edm_fields(
+    db, flask_app_client, researcher_1, request, test_root
+):
 
     from app.modules.encounters.models import Encounter
     from app.modules.sightings.models import Sighting
-
-    data_in = {
-        'encounters': [
-            {
-                'decimalLatitude': 45.999,
-                'decimalLongitude': 45.999,
-                'verbatimLocality': 'Tokyo',
-                'locationId': 'Tokyo',
-            }
-        ],
-        'startTime': '2000-01-01T01:01:01Z',
-        'locationId': 'test',
-    }
 
     individual_json = None
 
     try:
 
-        response = sighting_utils.create_sighting(flask_app_client, researcher_1, data_in)
+        uuids = sighting_utils.create_sighting(
+            flask_app_client, researcher_1, request, test_root
+        )
+        assert len(uuids['encounters']) == 1
+        encounter_uuid = uuids['encounters'][0]
 
-        response_json = response.json['result']
-
-        assert response_json['encounters']
-        assert response_json['encounters'][0]['id']
-
-        guid = response_json['encounters'][0]['id']
-        enc = Encounter.query.get(guid)
+        enc = Encounter.query.get(encounter_uuid)
 
         with db.session.begin():
             db.session.add(enc)
 
-        sighting_id = response_json['id']
-        sighting = Sighting.query.get(sighting_id)
+        sighting_uuid = uuids['sighting']
+        sighting = Sighting.query.get(sighting_uuid)
         assert sighting is not None
 
         individual_data_in = {

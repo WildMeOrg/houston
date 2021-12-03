@@ -8,30 +8,19 @@ from tests.utils import module_unavailable
 
 
 @pytest.mark.skipif(module_unavailable('sightings'), reason='Sightings module disabled')
-def test_asset_addition(db, flask_app_client, staff_user):
+def test_asset_addition(
+    db, flask_app_client, staff_user, researcher_1, request, test_root
+):
     # pylint: disable=invalid-name
     from app.modules.sightings.models import Sighting
 
     try:
-        new_researcher = utils.generate_user_instance(
-            email='adder_of_assets@mail.com', is_researcher=True
+        uuids = sighting_utils.create_sighting(
+            flask_app_client, researcher_1, request, test_root
         )
-
-        with db.session.begin():
-            db.session.add(new_researcher)
-
-        data_in = {
-            'context': 'test',
-            'locationId': 'test',
-            'startTime': '2000-01-01T00:00Z',
-            'encounters': [{}],
-        }
-        response = sighting_utils.create_sighting(
-            flask_app_client, new_researcher, data_in
-        )
-        sighting_id = response.json['result']['id']
+        sighting_id = uuids['sighting']
         new_sighting = Sighting.query.get(sighting_id)
-        new_asset_group = utils.generate_asset_group_instance(new_researcher)
+        new_asset_group = utils.generate_asset_group_instance(researcher_1)
 
         with db.session.begin():
             db.session.add(new_asset_group)
@@ -51,35 +40,25 @@ def test_asset_addition(db, flask_app_client, staff_user):
         assets = [new_asset_1, new_asset_2]
         new_sighting.add_assets(assets)
 
-        assert len(new_sighting.sighting_assets) == 2
+        assert len(new_sighting.sighting_assets) == 3
 
         add_asset = [
             utils.patch_add_op('assetId', '%s' % new_asset_3.guid),
         ]
 
         sighting_utils.patch_sighting(
-            flask_app_client, new_researcher, '%s' % new_sighting.guid, add_asset
+            flask_app_client, researcher_1, '%s' % new_sighting.guid, add_asset
         )
 
-        assert len(new_sighting.sighting_assets) == 3
+        assert len(new_sighting.sighting_assets) == 4
 
-    finally:
-        from app.modules.asset_groups.models import AssetGroup
-        from app.modules.asset_groups.tasks import delete_remote
-        from app.modules.assets.models import Asset
+    except AssertionError as ex:
+        import tests.modules.asset_groups.resources.utils as asset_group_utils
 
-        # staff can do this, no need to revisit encounter based ownership here
-        sighting_utils.delete_sighting(
-            flask_app_client, staff_user, str(new_sighting.guid)
+        asset_group_utils.delete_asset_group(
+            flask_app_client, staff_user, uuids['asset_group']
         )
-        # Check the assets and asset groups have been deleted
-        assert Asset.query.get(new_asset_1.guid) is None
-        assert Asset.query.get(new_asset_2.guid) is None
-        assert Asset.query.get(new_asset_3.guid) is None
-        assert AssetGroup.query.get(new_asset_group.guid) is None
-
-        delete_remote(str(new_asset_group.guid))
-        new_researcher.delete()
+        raise ex
 
 
 @pytest.mark.skipif(
@@ -109,54 +88,33 @@ def add_file_asset_to_sighting(
 
 
 @pytest.mark.skipif(module_unavailable('sightings'), reason='Sightings module disabled')
-def test_asset_file_addition(db, flask_app_client, staff_user):
+def test_asset_file_addition(
+    db, flask_app_client, staff_user, researcher_1, request, test_root
+):
     # pylint: disable=invalid-name
     from app.modules.sightings.models import Sighting
 
-    new_researcher = utils.generate_user_instance(
-        email='asset_adder@user.com', is_researcher=True
+    uuids = sighting_utils.create_sighting(
+        flask_app_client, researcher_1, request, test_root
     )
-
-    with db.session.begin():
-        db.session.add(new_researcher)
-
-    data_in = {
-        'context': 'test',
-        'locationId': 'test',
-        'startTime': '2000-01-01T00:00Z',
-        'encounters': [{}],
-    }
-    response = sighting_utils.create_sighting(flask_app_client, new_researcher, data_in)
-    sighting_id = response.json['result']['id']
+    sighting_id = uuids['sighting']
     new_sighting = Sighting.query.get(sighting_id)
 
-    try:
-        add_file_asset_to_sighting(
-            flask_app_client,
-            new_researcher,
-            new_sighting,
-            'new_stuff',
-            'new_file.csv',
-            '1,2,3,4,5',
-        )
-        assert len(new_sighting.sighting_assets) == 1
-        add_file_asset_to_sighting(
-            flask_app_client,
-            new_researcher,
-            new_sighting,
-            'more_stuff',
-            'next_file.csv',
-            '5,4,3,2,1',
-        )
-        assert len(new_sighting.sighting_assets) == 2
-
-    finally:
-        from app.modules.asset_groups.models import AssetGroup
-        from app.modules.asset_groups.tasks import delete_remote
-
-        sighting_utils.delete_sighting(flask_app_client, staff_user, sighting_id)
-        new_researcher.delete()
-        # assets are only cleaned up once the submissions are cleaned up
-        for asset_group in new_researcher.asset_groups:
-            assert AssetGroup.query.get(asset_group.guid) is None
-            delete_remote(str(asset_group.guid))
+    add_file_asset_to_sighting(
+        flask_app_client,
+        researcher_1,
+        new_sighting,
+        'new_stuff',
+        'new_file.csv',
+        '1,2,3,4,5',
+    )
+    assert len(new_sighting.sighting_assets) == 2
+    add_file_asset_to_sighting(
+        flask_app_client,
+        researcher_1,
+        new_sighting,
+        'more_stuff',
+        'next_file.csv',
+        '5,4,3,2,1',
+    )
+    assert len(new_sighting.sighting_assets) == 3

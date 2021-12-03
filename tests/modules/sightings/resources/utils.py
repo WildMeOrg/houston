@@ -7,43 +7,14 @@ import json
 import uuid
 
 from tests import utils as test_utils
-from flask import current_app
-import os
-import shutil
-from app.extensions.tus import tus_upload_dir
-
+import tests.extensions.tus.utils as tus_utils
+import tests.modules.asset_groups.resources.utils as asset_group_utils
 
 PATH = '/api/v1/sightings/'
 
 
-def get_transaction_id():
-    return '11111111-1111-1111-1111-111111111111'
-
-
-def prep_tus_dir(test_root, transaction_id=None, filename='zebra.jpg'):
-    if transaction_id is None:
-        transaction_id = get_transaction_id()
-
-    image_file = os.path.join(test_root, filename)
-
-    upload_dir = tus_upload_dir(current_app, transaction_id=transaction_id)
-    if not os.path.isdir(upload_dir):
-        os.mkdir(upload_dir)
-    shutil.copy(image_file, upload_dir)
-    size = os.path.getsize(image_file)
-    assert size > 0
-    return transaction_id, filename
-
-
-# should always follow the above when finished
-def cleanup_tus_dir(tid):
-    upload_dir = tus_upload_dir(current_app, transaction_id=tid)
-    if os.path.exists(upload_dir):
-        shutil.rmtree(upload_dir)
-
-
 # note: default data_in will fail
-def create_sighting(
+def create_old_sighting(
     flask_app_client,
     user,
     data_in={'locationId': 'PYTEST', 'startTime': '2000-01-01T01:01:01Z'},
@@ -69,6 +40,189 @@ def create_sighting(
             assert response.json['passed_message'] == expected_error
 
     return response
+
+
+def create_sighting(
+    flask_app_client,
+    user,
+    request,
+    test_root,
+    sighting_data=None,
+    expected_status_code=200,
+    expected_error=None,
+):
+
+    if not sighting_data:
+        # Create a valid but simple one
+        sighting_data = {
+            'encounters': [{}],
+            'startTime': '2000-01-01T01:01:01Z',
+            'locationId': 'test',
+        }
+    transaction_id, test_filename = tus_utils.prep_tus_dir(test_root)
+    uuids = {'transaction': transaction_id}
+    group_data = {
+        'description': 'This is a test asset_group, please ignore',
+        'uploadType': 'form',
+        'speciesDetectionModel': [
+            'None',
+        ],
+        'transactionId': transaction_id,
+        'sightings': [
+            sighting_data,
+        ],
+    }
+
+    # Need to add the new filename to the sighting for the Asset group code to process it
+    if 'assetReferences' not in group_data['sightings'][0].keys():
+        group_data['sightings'][0]['assetReferences'] = []
+    if test_filename not in group_data['sightings'][0]['assetReferences']:
+        group_data['sightings'][0]['assetReferences'].append(test_filename)
+
+    # For multiple encounters, it must be a bulk upload
+    if 'encounters' in sighting_data and len(sighting_data['encounters']) > 1:
+        group_data['uploadType'] = 'bulk'
+
+    # Use shared helper to create the asset group and extract the uuids
+    asset_group_uuids = _create_asset_group_extract_uuids(
+        flask_app_client,
+        user,
+        group_data,
+        request,
+        expected_status_code,
+        expected_error,
+    )
+    uuids.update(asset_group_uuids)
+
+    # Shared helper to extract the sighting data
+    if 'asset_group_sighting' in uuids.keys():
+        sighting_uuids = _commit_sighting_extract_uuids(
+            flask_app_client,
+            user,
+            uuids['asset_group_sighting'],
+        )
+        uuids.update(sighting_uuids)
+
+    return uuids
+
+
+# Helper that does what the above method does but for multiple files and multiple encounters in the sighting
+def create_large_sighting(flask_app_client, user, request, test_root):
+    import tests.extensions.tus.utils as tus_utils
+    from tests import utils as test_utils
+
+    transaction_id, filenames = asset_group_utils.create_bulk_tus_transaction(test_root)
+    uuids = {'transaction': transaction_id}
+    request.addfinalizer(lambda: tus_utils.cleanup_tus_dir(transaction_id))
+    import random
+
+    locationId = random.randrange(10000)
+    sighting_data = {
+        'startTime': '2000-01-01T01:01:01Z',
+        'locationId': f'Location {locationId}',
+        'encounters': [
+            {
+                'decimalLatitude': test_utils.random_decimal_latitude(),
+                'decimalLongitude': test_utils.random_decimal_longitude(),
+                'verbatimLocality': 'Tiddleywink',
+                'locationId': f'Location {locationId}',
+            },
+            {
+                'decimalLatitude': test_utils.random_decimal_latitude(),
+                'decimalLongitude': test_utils.random_decimal_longitude(),
+                'verbatimLocality': 'Tiddleywink',
+                'locationId': f'Location {locationId}',
+            },
+        ],
+        'assetReferences': [
+            filenames[0],
+            filenames[1],
+            filenames[2],
+            filenames[3],
+        ],
+    }
+
+    group_data = {
+        'description': 'This is a test asset_group, please ignore',
+        'uploadType': 'bulk',
+        'speciesDetectionModel': [
+            'None',
+        ],
+        'transactionId': transaction_id,
+        'sightings': [
+            sighting_data,
+        ],
+    }
+
+    # Use shared helper to create the asset group and extract the uuids
+    asset_group_uuids = _create_asset_group_extract_uuids(
+        flask_app_client, user, group_data, request
+    )
+    uuids.update(asset_group_uuids)
+
+    # Shared helper to extract the sighting data
+    if 'asset_group_sighting' in uuids.keys():
+        sighting_uuids = _commit_sighting_extract_uuids(
+            flask_app_client, user, uuids['asset_group_sighting']
+        )
+        uuids.update(sighting_uuids)
+
+    return uuids
+
+
+# Local helper for the two create functions above that creates the asset group and extracts the uuids
+def _create_asset_group_extract_uuids(
+    flask_app_client,
+    user,
+    group_data,
+    request,
+    expected_status_code=200,
+    expected_error=None,
+):
+    create_resp = asset_group_utils.create_asset_group(
+        flask_app_client, user, group_data, expected_status_code, expected_error
+    )
+    uuids = {}
+    if expected_status_code == 200:
+        asset_group_uuid = create_resp.json['guid']
+        request.addfinalizer(
+            lambda: asset_group_utils.delete_asset_group(
+                flask_app_client, user, asset_group_uuid
+            )
+        )
+        assert len(create_resp.json['asset_group_sightings']) == 1
+        uuids['asset_group'] = asset_group_uuid
+        uuids['asset_group_sighting'] = create_resp.json['asset_group_sightings'][0][
+            'guid'
+        ]
+        uuids['assets'] = [asset['guid'] for asset in create_resp.json['assets']]
+
+    return uuids
+
+
+def _commit_sighting_extract_uuids(flask_app_client, user, asset_group_sighting_guid):
+    uuids = {}
+
+    # Commit the sighting
+    commit_resp = asset_group_utils.commit_asset_group_sighting(
+        flask_app_client, user, asset_group_sighting_guid
+    )
+    sighting_uuid = commit_resp.json['guid']
+
+    # Return all the uuids of things created so that each test can do with them what they choose.
+    # Note it is not the responsibility of this code to duplicate the validation of the asset group create
+    # and commit responses
+    uuids['sighting'] = sighting_uuid
+    uuids['encounters'] = [enc['guid'] for enc in commit_resp.json['encounters']]
+
+    return uuids
+
+
+def cleanup_sighting(flask_app_client, user, uuids):
+    if 'transaction' in uuids.keys():
+        tus_utils.cleanup_tus_dir(uuids['transaction'])
+    if 'asset_group' in uuids.keys():
+        asset_group_utils.delete_asset_group(flask_app_client, user, uuids['asset_group'])
 
 
 def read_sighting(flask_app_client, user, sight_guid, expected_status_code=200):

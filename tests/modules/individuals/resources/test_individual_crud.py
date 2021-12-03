@@ -112,7 +112,7 @@ def test_read_encounter_from_edm(db, flask_app_client):
 @pytest.mark.skipif(
     module_unavailable('individuals'), reason='Individuals module disabled'
 )
-def test_add_remove_encounters(db, flask_app_client, researcher_1):
+def test_add_remove_encounters(db, flask_app_client, researcher_1, request, test_root):
 
     data_in = {
         'startTime': datetime.datetime.now().isoformat() + 'Z',
@@ -127,35 +127,35 @@ def test_add_remove_encounters(db, flask_app_client, researcher_1):
         ],
     }
 
-    response = sighting_utils.create_sighting(flask_app_client, researcher_1, data_in)
+    uuids = sighting_utils.create_sighting(
+        flask_app_client, researcher_1, request, test_root, data_in
+    )
 
     from app.modules.sightings.models import Sighting
 
-    sighting_id = response.json['result']['id']
+    sighting_id = uuids['sighting']
     sighting = Sighting.query.get(sighting_id)
-
-    assert response.json['success']
-    result_data = response.json['result']
+    assert len(uuids['encounters']) == 5
 
     from app.modules.encounters.models import Encounter
 
     enc_1 = Encounter(
-        guid=result_data['encounters'][0]['id'],
+        guid=uuids['encounters'][0],
         owner_guid=researcher_1.guid,
     )
 
     enc_2 = Encounter(
-        guid=result_data['encounters'][1]['id'],
+        guid=uuids['encounters'][1],
         owner_guid=researcher_1.guid,
     )
 
     enc_3 = Encounter(
-        guid=result_data['encounters'][2]['id'],
+        guid=uuids['encounters'][2],
         owner_guid=researcher_1.guid,
     )
 
     enc_4 = Encounter(
-        guid=result_data['encounters'][3]['id'],
+        guid=uuids['encounters'][3],
         owner_guid=researcher_1.guid,
     )
 
@@ -249,7 +249,9 @@ def test_add_remove_encounters(db, flask_app_client, researcher_1):
 @pytest.mark.skipif(
     module_unavailable('individuals'), reason='Individuals module disabled'
 )
-def test_individual_has_detailed_encounter_from_edm(db, flask_app_client, researcher_1):
+def test_individual_has_detailed_encounter_from_edm(
+    db, flask_app_client, researcher_1, request, test_root
+):
 
     data_in = {
         'encounters': [
@@ -268,23 +270,20 @@ def test_individual_has_detailed_encounter_from_edm(db, flask_app_client, resear
     individual_id = None
 
     try:
-        response = sighting_utils.create_sighting(
-            flask_app_client, researcher_1, data_in=data_in
+        uuids = sighting_utils.create_sighting(
+            flask_app_client, researcher_1, request, test_root, data_in
         )
 
-        response_json = response.json['result']
+        assert len(uuids['encounters']) == 1
+        encounter_uuid = uuids['encounters'][0]
 
-        assert response_json['encounters']
-        assert response_json['encounters'][0]['id']
-
-        guid = response_json['encounters'][0]['id']
-        enc = Encounter.query.get(guid)
+        enc = Encounter.query.get(encounter_uuid)
 
         with db.session.begin():
             db.session.add(enc)
 
-        sighting_id = response_json['id']
-        sighting = Sighting.query.get(sighting_id)
+        sighting_uuid = uuids['sighting']
+        sighting = Sighting.query.get(sighting_uuid)
         assert sighting is not None
 
         encounter = Encounter.query.get(enc.guid)
@@ -315,5 +314,4 @@ def test_individual_has_detailed_encounter_from_edm(db, flask_app_client, resear
 
     finally:
         individual_utils.delete_individual(flask_app_client, researcher_1, individual_id)
-        sighting.delete_cascade()
         enc.delete_cascade()

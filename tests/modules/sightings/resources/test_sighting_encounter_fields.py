@@ -23,6 +23,8 @@ def test_mega_data(
     flask_app_client,
     researcher_1,
     admin_user,
+    request,
+    test_root,
 ):
     from app.modules.sightings.models import Sighting
     import datetime
@@ -83,13 +85,15 @@ def test_mega_data(
         'encounters': [encounter_data_in],
         'taxonomies': [{'id': tx_guid}],
     }
-    response = sighting_utils.create_sighting(
+    uuids = sighting_utils.create_sighting(
         flask_app_client,
         researcher_1,
+        request,
+        test_root,
         sighting_data_in,
     )
 
-    sighting_id = response.json['result']['id']
+    sighting_id = uuids['sighting']
     sighting = Sighting.query.get(sighting_id)
     assert sighting is not None
 
@@ -120,6 +124,3 @@ def test_mega_data(
         full_sighting.json['encounters'][0]['customFields'][encounter_cfd_id]
         == cfd_test_value
     )
-
-    # clean up
-    sighting_utils.delete_sighting(flask_app_client, researcher_1, sighting_id)

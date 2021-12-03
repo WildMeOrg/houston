@@ -2,7 +2,6 @@
 # pylint: disable=missing-docstring
 
 from tests.modules.individuals.resources import utils as individual_utils
-from tests.modules.asset_groups.resources import utils as ags_utils
 import pytest
 from tests import utils as test_utils
 import logging
@@ -28,18 +27,20 @@ def test_get_conflicts(
     )
 
     # set up 2 similar individuals
-    ag, sight, individual1 = ags_utils.create_asset_group_with_sighting_and_individual(
+    individual1_uuids = individual_utils.create_individual_and_sighting(
         flask_app_client,
         researcher_1,
         request,
-        test_root=test_root,
+        test_root,
     )
-    ag, sight, individual2 = ags_utils.create_asset_group_with_sighting_and_individual(
+    individual2_uuids = individual_utils.create_individual_and_sighting(
         flask_app_client,
         researcher_1,
         request,
-        test_root=test_root,
+        test_root,
     )
+    individual1_guid = individual1_uuids['individual']
+    individual2_guid = individual2_uuids['individual']
 
     # bunk individual data
     res = individual_utils.merge_conflicts(
@@ -53,7 +54,7 @@ def test_get_conflicts(
     res = individual_utils.merge_conflicts(
         flask_app_client,
         researcher_2,
-        [str(individual1.guid), '0c898eb4-b913-4080-8dc5-5caefa8a1c82'],
+        [individual1_guid, '0c898eb4-b913-4080-8dc5-5caefa8a1c82'],
         expected_status_code=404,
     )
 
@@ -61,7 +62,7 @@ def test_get_conflicts(
     res = individual_utils.merge_conflicts(
         flask_app_client,
         researcher_2,
-        [str(individual1.guid), str(individual2.guid)],
+        [individual1_guid, individual2_guid],
         expected_status_code=403,
     )
 
@@ -69,23 +70,24 @@ def test_get_conflicts(
     res = individual_utils.merge_conflicts(
         flask_app_client,
         researcher_1,
-        [str(individual1.guid), str(individual2.guid)],
+        [individual1_guid, individual2_guid],
     )
     assert not res
 
     # now one with sex set
     indiv_data = {'sex': 'male'}
-    ag, sight, individual3 = ags_utils.create_asset_group_with_sighting_and_individual(
+    individual3_uuids = individual_utils.create_individual_and_sighting(
         flask_app_client,
         researcher_1,
         request,
+        test_root,
         individual_data=indiv_data,
-        test_root=test_root,
     )
+    individual3_guid = individual3_uuids['individual']
     res = individual_utils.merge_conflicts(
         flask_app_client,
         researcher_1,
-        [str(individual1.guid), str(individual3.guid)],
+        [individual1_guid, individual3_guid],
     )
     assert res == ['sex']
 
@@ -102,45 +104,48 @@ def test_overrides(
     request,
     test_root,
 ):
-    indiv_data = {'sex': 'male'}
-    ag, sight, individual1 = ags_utils.create_asset_group_with_sighting_and_individual(
+    indiv1_data = {'sex': 'male'}
+    individual1_uuids = individual_utils.create_individual_and_sighting(
         flask_app_client,
         researcher_1,
         request,
-        individual_data=indiv_data,
-        test_root=test_root,
+        test_root,
+        individual_data=indiv1_data,
     )
-    indiv_data = {'sex': 'female'}
-    ag, sight, individual2 = ags_utils.create_asset_group_with_sighting_and_individual(
+    indiv2_data = {'sex': 'female'}
+    individual2_uuids = individual_utils.create_individual_and_sighting(
         flask_app_client,
         researcher_1,
         request,
-        individual_data=indiv_data,
-        test_root=test_root,
+        test_root,
+        individual_data=indiv2_data,
     )
+    individual1_guid = individual1_uuids['individual']
+    individual2_guid = individual2_uuids['individual']
 
-    data = [str(individual2.guid)]
+    data = [individual2_guid]
     res = individual_utils.merge_individuals(
         flask_app_client,
         researcher_1,
-        str(individual1.guid),
+        individual1_guid,
         data_in=data,
     )
     assert res
-    assert res.get('targetId') == str(individual1.guid)
+    assert res.get('targetId') == individual1_guid
     assert res.get('targetSex') == 'male'
 
     # indiv1 and indiv3 male, but override merge with female
-    indiv_data = {'sex': 'male'}
-    ag, sight, individual3 = ags_utils.create_asset_group_with_sighting_and_individual(
+    indiv3_data = {'sex': 'male'}
+    individual3_uuids = individual_utils.create_individual_and_sighting(
         flask_app_client,
         researcher_1,
         request,
-        individual_data=indiv_data,
-        test_root=test_root,
+        test_root,
+        individual_data=indiv3_data,
     )
+    individual3_guid = individual3_uuids['individual']
     data = {
-        'fromIndividualIds': [str(individual1.guid)],
+        'fromIndividualIds': [individual1_guid],
         'parameters': {
             'override': {'sex': 'female'},
         },
@@ -148,9 +153,9 @@ def test_overrides(
     res = individual_utils.merge_individuals(
         flask_app_client,
         researcher_1,
-        str(individual3.guid),
+        individual3_guid,
         data_in=data,
     )
     assert res
-    assert res.get('targetId') == str(individual3.guid)
+    assert res.get('targetId') == individual3_guid
     assert res.get('targetSex') == 'female'

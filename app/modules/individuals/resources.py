@@ -347,7 +347,7 @@ class IndividualByID(Resource):
             abort(
                 success=False, passed_message='Delete failed', message='Error', code=400
             )
-
+        AuditLog.delete_object(log, individual)
         return None
 
 

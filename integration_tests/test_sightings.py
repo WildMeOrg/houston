@@ -82,7 +82,14 @@ def test_sightings(session, login, codex_url, test_root, admin_name):
     )
     assert response.status_code == 200
     sighting_id = response.json()['guid']
-    assert response.json() == {'guid': sighting_id}
+    assert response.json() == {
+        'guid': sighting_id,
+        'created': response.json()['created'],
+        'encounters': response.json()['encounters'],
+        'hasEdit': True,
+        'hasView': True,
+        'updated': response.json()['updated'],
+    }
 
     # GET sighting
     response = session.get(codex_url(f'/api/v1/sightings/{sighting_id}'))

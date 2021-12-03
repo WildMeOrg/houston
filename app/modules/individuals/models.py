@@ -728,6 +728,7 @@ class Individual(db.Model, FeatherModel):
         for name in self.names:
             name.delete()
         with db.session.begin(subtransactions=True):
+<<<<<<< HEAD
             for group in self.social_groups:
                 db.session.delete(group)
             from app.modules.relationships.models import Relationship
@@ -738,6 +739,14 @@ class Individual(db.Model, FeatherModel):
                         relationship_membership.relationship_guid
                     )
                     relationship.delete()
+=======
+            while self.social_groups:
+                db.session.delete(self.social_groups.pop())
+
+            if self.relationships:
+                for relationship_membership in self.relationships:
+                    relationship_membership.delete()
+>>>>>>> partial feedback changes, get online for test debug
 
             db.session.delete(self)
 

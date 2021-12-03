@@ -38,6 +38,10 @@ class RelationshipIndividualMember(db.Model, HoustonModel):
         self.individual_role = individual_role
         self.individual_guid = individual.guid
 
+    def delete(self):
+        relationship = Relationship.query.get(self.relationship_guid)
+        relationship.delete()
+
 
 class Relationship(db.Model, Timestamp):
     """
@@ -75,22 +79,26 @@ class Relationship(db.Model, Timestamp):
             individual_1 = Individual.query.get(individual_1_guid)
             individual_2 = Individual.query.get(individual_2_guid)
 
-            member_1 = RelationshipIndividualMember(individual_1, individual_1_role)
-            member_2 = RelationshipIndividualMember(individual_2, individual_2_role)
-
-            self.individual_members.append(member_1)
-            self.individual_members.append(member_2)
+            if individual_1 and individual_2:
+                member_1 = RelationshipIndividualMember(individual_1, individual_1_role)
+                member_2 = RelationshipIndividualMember(individual_2, individual_2_role)
+                self.individual_members.append(member_1)
+                self.individual_members.append(member_2)
+            else:
+                raise ValueError(
+                    'One of the Individual guids used to attempt Relationship creation was invalid.'
+                )
         else:
             raise ValueError('Relationship needs two individuals, each with a role.')
 
     def has_individual(self, individual_guid):
-        for individual_member in self.individual_members:
-            log.debug(
-                'PRINTING MEMBERS: '
-                + str(str(individual_member.individual_guid) + ' == ' + individual_guid)
-            )
-            if str(individual_member.individual_guid) == individual_guid:
-                return True
+        found_individual_members = [
+            individual_member
+            for individual_member in self.individual_members
+            if str(individual_member.individual_guid) == individual_guid
+        ]
+        if found_individual_members:
+            return True
         return False
 
     def get_relationship_role_for_individual(self, individual_guid):

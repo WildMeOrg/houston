@@ -50,7 +50,6 @@ def test_asset_group_sightings(session, login, codex_url, test_root):
                             },
                             'decimalLatitude': 63.142385,
                             'decimalLongitude': -21.596914,
-                            'locationId': 'enc-test',
                             'sex': 'male',
                             'taxonomy': {'id': tx_id},
                             'time': encounter_timestamp,
@@ -161,7 +160,6 @@ def test_asset_group_sightings(session, login, codex_url, test_root):
                 'hasView': True,
                 'id': encounter_guids[0],
                 'individual': {},
-                'locationId': 'enc-test',
                 'owner': {
                     'full_name': my_name,
                     'guid': my_guid,
@@ -267,7 +265,6 @@ def test_asset_group_sightings(session, login, codex_url, test_root):
                 'hasView': True,
                 'id': encounter_guids[0],
                 'individual': {},
-                'locationId': 'enc-test',
                 'owner': {
                     'full_name': my_name,
                     'guid': my_guid,

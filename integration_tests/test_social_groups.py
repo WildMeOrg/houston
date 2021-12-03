@@ -29,9 +29,9 @@ def test_social_groups(session, login, codex_url):
         'locationId': 'PYTEST-SIGHTING',
         'startTime': '2000-01-01T01:01:01Z',
         'encounters': [
-            {'locationId': 'PYTEST-ENCOUNTER-0'},
-            {'locationId': 'PYTEST-ENCOUNTER-1'},
-            {'locationId': 'PYTEST-ENCOUNTER-2'},
+            {},
+            {},
+            {},
         ],
     }
     response = session.post(codex_url('/api/v1/sightings/'), json=data)

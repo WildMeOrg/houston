@@ -7,7 +7,6 @@ import uuid
 
 from app.extensions import db, HoustonModel, Timestamp
 
-# from app.modules.individuals.models import Individual
 import logging
 import app.extensions.logging as AuditLog
 

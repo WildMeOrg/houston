@@ -8,7 +8,7 @@ from tests.utils import module_unavailable
 @pytest.mark.skipif(
     module_unavailable('names', 'individuals'), reason='Individual/Names module disabled'
 )
-def test_names_crud(db, researcher_1, empty_individual, request):
+def test_names_crud(db, researcher_1, researcher_2, empty_individual, request):
     from app.modules.individuals.models import Individual
 
     # from app.modules.names.models import Name
@@ -26,3 +26,63 @@ def test_names_crud(db, researcher_1, empty_individual, request):
     assert len(test_indiv.names) == 1
     assert test_indiv.names[0].context == context
     assert test_indiv.names[0].value == test_name
+
+    # twiddle the preferring users
+    test_indiv.names[0].add_preferring_user(researcher_1)
+    pref_users = test_indiv.names[0].get_preferring_users()
+    assert len(pref_users) == 1
+    assert pref_users[0] == researcher_1
+
+    # should fail, as they are already added
+    try:
+        test_indiv.names[0].add_preferring_user(researcher_1)
+    except ValueError:
+        pass
+
+    test_indiv.names[0].remove_preferring_user(researcher_1)
+    pref_users = test_indiv.names[0].get_preferring_users()
+    assert len(pref_users) == 0
+
+    # add a name with existing context
+    try:
+        empty_individual.add_name(context, test_name, researcher_2)
+    except ValueError as ve:
+        assert 'name could not be added' in str(ve)
+
+    another_context = 'test-context-2'
+    empty_individual.add_name(another_context, test_name, researcher_2)
+    test_indiv = Individual.query.get(empty_individual.guid)
+    assert test_indiv
+    assert len(test_indiv.names) == 2
+
+    # test some of the get_ types
+    test = empty_individual.get_names()
+    assert len(test) == 2
+    test = empty_individual.get_names_for_value(test_name)
+    assert len(test) == 2
+    assert test[0].value == test_name
+    test = empty_individual.get_names_for_value('no such value')
+    assert not test
+    test = empty_individual.get_name_for_context(context)
+    assert test
+    assert test.context == context
+    test = empty_individual.get_name_for_context('no such context')
+    assert not test
+
+    # now removal
+    test = empty_individual.remove_name_for_context('no such context')
+    assert not test
+    test = empty_individual.remove_names_for_value('no such value')
+    assert test == 0
+    test = empty_individual.remove_name_for_context(another_context)
+    assert test
+    assert len(empty_individual.names) == 1
+    # add back in so we have 2 with test_name value
+    empty_individual.add_name(another_context, test_name, researcher_2)
+    assert len(empty_individual.names) == 2
+    test = empty_individual.remove_names_for_value(test_name)
+    assert test == 2
+    assert len(empty_individual.names) == 0
+
+    # add one more for good luck, as this will test that the auto-deletion of individual is fine when has names
+    empty_individual.add_name(context, test_name, researcher_2)

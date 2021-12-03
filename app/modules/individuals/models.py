@@ -8,6 +8,7 @@ from app.extensions import FeatherModel, db
 from flask import current_app
 import uuid
 import logging
+import sqlalchemy
 import app.extensions.logging as AuditLog
 from datetime import datetime
 from app.modules.names.models import Name
@@ -86,9 +87,7 @@ class Individual(db.Model, FeatherModel):
         'Encounter', back_populates='individual', order_by='Encounter.guid'
     )
 
-    names = db.relationship(
-        'Name', back_populates='individual', order_by='Name.guid', cascade='delete'
-    )
+    names = db.relationship('Name', back_populates='individual', order_by='Name.guid')
 
     social_groups = db.relationship(
         'SocialGroupIndividualMembership',
@@ -131,11 +130,13 @@ class Individual(db.Model, FeatherModel):
     def get_names(self):
         return self.names
 
+    # should be only one of these
     def get_name_for_context(self, context):
         return Name.query.filter_by(individual_guid=self.guid, context=context).first()
 
-    def get_name_for_value(self, value):
-        return Name.query.filter_by(individual_guid=self.guid, value=value).first()
+    # can be many
+    def get_names_for_value(self, value):
+        return Name.query.filter_by(individual_guid=self.guid, value=value).all()
 
     def add_name(self, context, value, creator):
         new_name = Name(
@@ -144,22 +145,36 @@ class Individual(db.Model, FeatherModel):
             value=value,
             creator_guid=creator.guid,
         )
-        with db.session.begin(subtransactions=True):
-            db.session.add(new_name)
+        try:
+            with db.session.begin(subtransactions=True):
+                db.session.add(new_name)
+        except (sqlalchemy.orm.exc.FlushError, sqlalchemy.exc.IntegrityError) as err:
+            log.warning(
+                f'failed to add name to {self} (context={context}, value={value}, creator={creator}: {str(err)}'
+            )
+            raise ValueError(
+                f'name could not be added, perhaps context "{context}" is already used'
+            )
         return new_name
 
     def remove_name(self, name):
         name.delete()
 
-    def remove_name_by_value(self, value):
-        name = self.get_name_for_value(value)
-        if name:
-            name.delete()
-
-    def remove_name_by_context(self, context):
+    def remove_name_for_context(self, context):
         name = self.get_name_for_context(context)
-        if name:
+        if not name:
+            return False
+        name.delete()
+        return True
+
+    def remove_names_for_value(self, value):
+        names = self.get_names_for_value(value)
+        if not names:
+            return 0
+        num = len(names)
+        for name in names:
             name.delete()
+        return num
 
     def get_featured_asset_guid(self):
         rt_val = None
@@ -648,11 +663,11 @@ class Individual(db.Model, FeatherModel):
 
     def delete(self):
         AuditLog.delete_object(log, self)
-        with db.session.begin():
+        for name in self.names:
+            name.delete()
+        with db.session.begin(subtransactions=True):
             for group in self.social_groups:
                 db.session.delete(group)
-            for name in self.names:
-                db.session.delete(name)
             db.session.delete(self)
 
     def delete_from_edm(self):

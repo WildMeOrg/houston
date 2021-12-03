@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 Names database models
+A structure for holding a (user-provided) name for an Individual.
 --------------------
 """
 import uuid
@@ -26,8 +27,14 @@ class NamePreferringUsersJoin(db.Model, HoustonModel):
 
 class Name(db.Model, HoustonModel, Timestamp):
     """
-    Names database model.
+    Names database model.  For a name (one of possibly many) on an Individual.
     """
+
+    def __init__(self, *args, **kwargs):
+        AuditLog.user_create_object(
+            log, self, f"for Individual {kwargs.get('individual_guid')}"
+        )
+        super().__init__(*args, **kwargs)
 
     guid = db.Column(
         db.GUID, default=uuid.uuid4, primary_key=True

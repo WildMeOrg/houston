@@ -50,7 +50,6 @@ def test_sightings(session, login, codex_url, test_root, admin_name):
                             },
                             'decimalLatitude': 63.142385,
                             'decimalLongitude': -21.596914,
-                            'locationId': 'enc-test',
                             'sex': 'male',
                             'taxonomy': {'id': tx_id},
                             'time': encounter_timestamp,
@@ -148,7 +147,6 @@ def test_sightings(session, login, codex_url, test_root, admin_name):
                 'hasView': True,
                 'id': encounters[0]['guid'],
                 'individual': {},
-                'locationId': 'enc-test',
                 'owner': {
                     'full_name': my_name,
                     'guid': my_guid,
@@ -254,7 +252,6 @@ def test_sightings(session, login, codex_url, test_root, admin_name):
                 'hasView': True,
                 'id': encounters[0]['guid'],
                 'individual': {},
-                'locationId': 'enc-test',
                 'owner': {
                     'full_name': my_name,
                     'guid': my_guid,

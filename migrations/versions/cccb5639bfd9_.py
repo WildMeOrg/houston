@@ -34,8 +34,8 @@ def upgrade():
     sa.Column('context', sa.String(), nullable=False),
     sa.Column('individual_guid', app.extensions.GUID(), nullable=False),
     sa.Column('creator_guid', app.extensions.GUID(), nullable=False),
-    sa.ForeignKeyConstraint(['creator_guid'], ['user.guid'], name=op.f('fk_name_creator_guid_user'), ondelete='CASCADE'),
-    sa.ForeignKeyConstraint(['individual_guid'], ['individual.guid'], name=op.f('fk_name_individual_guid_individual'), ondelete='CASCADE'),
+    sa.ForeignKeyConstraint(['creator_guid'], ['user.guid'], name=op.f('fk_name_creator_guid_user')),
+    sa.ForeignKeyConstraint(['individual_guid'], ['individual.guid'], name=op.f('fk_name_individual_guid_individual')),
 
     sa.PrimaryKeyConstraint('guid', name=op.f('pk_name')),
     sa.UniqueConstraint('context', 'individual_guid', name=op.f('uq_name_context'))

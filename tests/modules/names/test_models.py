@@ -11,8 +11,6 @@ from tests.utils import module_unavailable
 def test_names_crud(db, researcher_1, researcher_2, empty_individual, request):
     from app.modules.individuals.models import Individual
 
-    # from app.modules.names.models import Name
-
     context = 'test-context'
     request.addfinalizer(empty_individual.delete)
     with db.session.begin(subtransactions=True):

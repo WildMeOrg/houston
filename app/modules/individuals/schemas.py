@@ -17,6 +17,7 @@ class BaseIndividualSchema(ModelSchema):
 
     hasView = base_fields.Function(Individual.current_user_has_view_permission)
     hasEdit = base_fields.Function(Individual.current_user_has_edit_permission)
+    names = base_fields.Function(Individual.get_names)
 
     class Meta:
         # pylint: disable=missing-docstring
@@ -25,6 +26,7 @@ class BaseIndividualSchema(ModelSchema):
             Individual.guid.key,
             'hasView',
             'hasEdit',
+            'names',
         )
         dump_only = (Individual.guid.key,)
 

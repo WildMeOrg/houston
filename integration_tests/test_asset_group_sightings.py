@@ -310,7 +310,14 @@ def test_asset_group_sightings(session, login, codex_url, test_root):
     )
     assert response.status_code == 200
     sighting_guid = response.json()['guid']
-    assert response.json() == {'guid': sighting_guid}
+    assert response.json() == {
+        'guid': sighting_guid,
+        'created': response.json()['created'],
+        'encounters': response.json()['encounters'],
+        'hasEdit': True,
+        'hasView': True,
+        'updated': response.json()['updated'],
+    }
 
     # GET sighting
     response = session.get(codex_url(f'/api/v1/sightings/{sighting_guid}'))
@@ -342,6 +349,7 @@ def test_bulk_upload(session, login, codex_url, test_root, request):
                     'assetReferences': ['turtle1.jpg'],
                     'decimalLongitude': '73.5622',
                     'decimalLatitude': '4.286',
+                    'locationId': 'PYTEST',
                     'verbatimLocality': 'North Male Lankan Reef',
                     'verbatimEventDate': 'yesterday',
                     'startTime': '2014-01-01T09:00:00.000Z',
@@ -360,6 +368,7 @@ def test_bulk_upload(session, login, codex_url, test_root, request):
                     'assetReferences': ['turtle2.jpg', 'turtle3.jpg'],
                     'decimalLongitude': '73.5622',
                     'decimalLatitude': '4.2861',
+                    'locationId': 'PYTEST too',
                     'verbatimLocality': 'North Male Lankan Reef',
                     'verbatimEventDate': 'yesterday',
                     'startTime': '2014-01-01T09:00:00.000Z',
@@ -378,6 +387,7 @@ def test_bulk_upload(session, login, codex_url, test_root, request):
                     'assetReferences': ['turtle4.jpg', 'turtle5.jpg'],
                     'decimalLongitude': '73.6421',
                     'decimalLatitude': '4.3638',
+                    'locationId': 'PYTEST too',
                     'verbatimLocality': 'North Male Gasfinolhu Inside Reef',
                     'startTime': '2019-01-01T09:00:00.000Z',
                     'encounters': [

@@ -111,7 +111,7 @@ class PatchIndividualDetailsParameters(PatchJSONParameters):
 
             if (
                 not isinstance(value, dict)
-                or set(value.keys()) != set(['guid']['context'], ['value'])
+                or set(value.keys()) != set(['guid'], ['context'], ['value'])
                 or not util.is_valid_guid(value['guid'])
             ):
                 abort(

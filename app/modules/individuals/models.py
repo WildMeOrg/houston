@@ -158,6 +158,8 @@ class Individual(db.Model, FeatherModel):
         return new_name
 
     def remove_name(self, name):
+        if self.guid != name.individual_guid:
+            raise ValueError(f'{name} not on {self}')
         name.delete()
 
     def remove_name_for_context(self, context):

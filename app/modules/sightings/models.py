@@ -261,22 +261,28 @@ class Sighting(db.Model, FeatherModel):
                 asset.delete()
 
     def delete_from_edm(self, current_app, request):
-        return Sighting.delete_from_edm_by_guid(current_app, self.guid, request)
+        return current_app.edm.request_passthrough_parsed(
+            'encounter.data',
+            'delete',
+            {},
+            self.guid,
+            request_headers=request.headers,
+        )
 
     def delete_from_edm_and_houston(self):
         # first try delete on edm, deleting all sub components too
-        request = (
-            'headers',
-            (
-                ('x-allow-delete-cascade-individual', True),
-                ('x-allow-delete-cascade-sighting', True),
-            ),
+        class DummyRequest(object):
+            def __init__(self, headers):
+                self.headers = headers
+
+        request = DummyRequest(
+            headers={
+                'x-allow-delete-cascade-individual': 'true',
+                'x-allow-delete-cascade-sighting': 'true',
+            }
         )
 
-        response = self.delete_from_edm(current_app, request)
-        response_data = None
-        if response.ok:
-            response_data = response.json()
+        (response, response_data, result) = self.delete_from_edm(current_app, request)
 
         if not response.ok or not response_data.get('success', False):
             raise HoustonException(

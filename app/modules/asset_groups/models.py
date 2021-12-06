@@ -655,7 +655,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
 
     def delete(self):
         if self.sighting:
-            self.sighting[0].delete_cascade()
+            self.sighting[0].delete_from_edm_and_houston()
 
         with db.session.begin(subtransactions=True):
             db.session.delete(self)
@@ -1518,7 +1518,7 @@ class AssetGroup(db.Model, HoustonModel):
             for asset in self.assets:
                 asset.delete_cascade()
             for sighting in self.asset_group_sightings:
-                sighting.delete_from_edm_and_houston()
+                sighting.delete()
         # TODO: This is potentially dangerous as it decouples the Asset deletion
         #       transaction with the AssetGroup deletion transaction, bad for rollbacks
         with db.session.begin(subtransactions=True):

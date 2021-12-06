@@ -1516,7 +1516,7 @@ class AssetGroup(db.Model, HoustonModel):
 
         with db.session.begin(subtransactions=True):
             for asset in self.assets:
-                asset.delete()
+                asset.delete_cascade()
             for sighting in self.asset_group_sightings:
                 sighting.delete()
         # TODO: This is potentially dangerous as it decouples the Asset deletion

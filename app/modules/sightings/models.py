@@ -263,6 +263,27 @@ class Sighting(db.Model, FeatherModel):
     def delete_from_edm(self, current_app, request):
         return Sighting.delete_from_edm_by_guid(current_app, self.guid, request)
 
+    def delete_from_edm_and_houston(self):
+        # first try delete on edm
+        response = self.delete_from_edm(current_app)
+        response_data = None
+        if response.ok:
+            response_data = response.json()
+
+        if not response.ok or not response_data.get('success', False):
+            raise HoustonException(
+                log,
+                f'Sighting.delete {self.guid} failed: {response_data}',
+                AuditLog.AuditType.BackEndFault,
+                message='Error',
+                passed_message='Delete failed',
+                success=False,
+            )
+
+        # if we get here, edm has deleted the sighting, now houston feather
+        # TODO handle failure of feather deletion (when edm successful!)  out-of-sync == bad
+        self.delete_cascade()
+
     @classmethod
     def delete_from_edm_by_guid(cls, current_app, guid, request):
         assert guid is not None

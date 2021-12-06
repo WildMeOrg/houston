@@ -285,14 +285,19 @@ class Asset(db.Model, HoustonModel):
             rgb.save(target_path)
         return target_path
 
-    def delete(self):
-        asset_group = self.asset_group
+    # Delete of an asset as part of deletion of asset_group
+    def delete_cascade(self):
         with db.session.begin(subtransactions=True):
             for annotation in self.annotations:
                 annotation.delete()
             for sighting in self.asset_sightings:
                 db.session.delete(sighting)
             db.session.delete(self)
+
+    # delete not part of asset group deletion so must inform asset group that we're gone
+    def delete(self):
+        asset_group = self.asset_group
+        self.delete_cascade()
         db.session.refresh(asset_group)
         asset_group.justify_existence()
 

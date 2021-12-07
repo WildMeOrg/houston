@@ -9,6 +9,8 @@ from flask_marshmallow import base_fields
 
 from .models import Individual
 
+from app.modules.names.schemas import DetailedNameSchema
+
 
 class BaseIndividualSchema(ModelSchema):
     """
@@ -17,7 +19,11 @@ class BaseIndividualSchema(ModelSchema):
 
     hasView = base_fields.Function(Individual.current_user_has_view_permission)
     hasEdit = base_fields.Function(Individual.current_user_has_edit_permission)
-    names = base_fields.Function(Individual.get_names)
+    names = base_fields.Nested(
+        DetailedNameSchema,
+        attribute='names',
+        many=True,
+    )
 
     class Meta:
         # pylint: disable=missing-docstring

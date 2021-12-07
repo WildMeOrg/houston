@@ -52,7 +52,7 @@ class SightingCleanup(object):
         )
         if self.sighting_guid is not None:
             log.warning('Cleanup removing Sighting %r from EDM' % self.sighting_guid)
-            Sighting.delete_from_edm_by_guid(current_app, self.sighting_guid)
+            Sighting.delete_from_edm_by_guid(current_app, self.sighting_guid, request)
         if self.asset_group is not None:
             log.warning('Cleanup removing %r' % self.asset_group)
             self.asset_group.delete()
@@ -599,7 +599,7 @@ class SightingByID(Resource):
         Delete a Sighting by ID.
         """
         # first try delete on edm
-        response = sighting.delete_from_edm(current_app)
+        response = sighting.delete_from_edm(current_app, request)
         response_data = None
         if response.ok:
             response_data = response.json()
@@ -607,8 +607,17 @@ class SightingByID(Resource):
         if not response.ok or not response_data.get('success', False):
             log.warning('Sighting.delete %r failed: %r' % (sighting.guid, response_data))
             abort(
-                success=False, passed_message='Delete failed', message='Error', code=400
+                success=False,
+                passed_message='Delete failed',
+                message='Error',
+                code=400,
+                edm_status_code=response.status_code,
             )
+
+        deleted_individuals = None
+        if response_data and isinstance(response_data.get('result'), dict):
+            deleted_individuals = response_data['result'].get('deletedIndividuals', None)
+        log.info(f'>>>>> deleted_individuals={deleted_individuals}')
 
         # if we get here, edm has deleted the sighting, now houston feather
         # TODO handle failure of feather deletion (when edm successful!)  out-of-sync == bad

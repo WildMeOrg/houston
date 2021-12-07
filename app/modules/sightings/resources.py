@@ -10,7 +10,7 @@ import logging
 from flask_restx_patched import Resource
 from flask_restx_patched._http import HTTPStatus
 from flask_login import current_user  # NOQA
-from flask import request, current_app, send_file
+from flask import request, current_app, send_file, make_response
 
 from app.extensions import db
 from app.extensions.api import Namespace
@@ -614,15 +614,35 @@ class SightingByID(Resource):
                 edm_status_code=response.status_code,
             )
 
+        # we have to roll our own response here (to return) as it seems the only way we can add a header
+        #   (which we are using to denote the encounter DELETE also triggered a individual DELETE, since
+        #   no body is returned on a 204 for DELETE
+        delete_resp = make_response()
+        delete_resp.status_code = 204
         deleted_individuals = None
         if response_data and isinstance(response_data.get('result'), dict):
             deleted_individuals = response_data['result'].get('deletedIndividuals', None)
-        log.info(f'>>>>> deleted_individuals={deleted_individuals}')
+        if deleted_individuals:
+            from app.modules.individuals.models import Individual
+
+            deleted_ids = []
+            for indiv_guid in deleted_individuals:
+                goner = Individual.query.get(indiv_guid)
+                if goner is None:
+                    log.error(
+                        f'EDM requested cascade-delete of individual id={indiv_guid}; but was not found in houston!'
+                    )
+                else:
+                    log.info(f'EDM requested cascade-delete of {goner}; deleting')
+                    deleted_ids.append(indiv_guid)
+                    goner.delete()
+
+            delete_resp.headers['x-deletedIndividual-guids'] = ', '.join(deleted_ids)
 
         # if we get here, edm has deleted the sighting, now houston feather
         # TODO handle failure of feather deletion (when edm successful!)  out-of-sync == bad
         sighting.delete_cascade()
-        return None
+        return delete_resp
 
 
 @api.route('/<uuid:sighting_guid>/featured_asset_guid')

@@ -599,7 +599,21 @@ class SightingByID(Resource):
         Delete a Sighting by ID.
         """
         # first try delete on edm
-        response = sighting.delete_from_edm(current_app, request)
+        try:
+            response = sighting.delete_from_edm(current_app, request)
+        except HoustonException as ex:
+            edm_status_code = ex.get_val('edm_status_code', 400)
+            log.warning(
+                f'Sighting.delete {sighting.guid} failed: ({ex.status_code} / edm={edm_status_code}) {ex.message}'
+            )
+            abort(
+                success=False,
+                edm_status_code=edm_status_code,
+                passed_message='Delete failed',
+                message='Error',
+                code=400,
+            )
+
         response_data = None
         if response.ok:
             response_data = response.json()

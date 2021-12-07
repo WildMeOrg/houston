@@ -267,7 +267,6 @@ class Sighting(db.Model, FeatherModel):
     def delete_from_edm_by_guid(cls, current_app, guid, request):
         assert guid is not None
         (response, response_data, result,) = current_app.edm.request_passthrough_parsed(
-            # response = current_app.edm.request_passthrough(
             'sighting.data',
             'delete',
             {},

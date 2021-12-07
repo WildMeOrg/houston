@@ -209,9 +209,10 @@ def test_multi_cascade(flask_app_client, test_root, researcher_1, request, db):
         flask_app_client, researcher_1, sighting_id, headers=headers
     )
     assert response
-    assert individual1_id
-    assert individual2_id
-    # import utool as ut
-    # ut.embed()
-    # assert response.headers.get('x-deletedIndividual-guids') == individual_id
-    # ct = test_utils.all_count(db)
+    assert response.headers
+    del_indiv_header = response.headers.get('x-deletedIndividual-guids')
+    assert del_indiv_header == ', '.join(
+        [individual1_id, individual2_id]
+    ) or del_indiv_header == ', '.join([individual2_id, individual1_id])
+    ct = test_utils.all_count(db)
+    assert ct['Individual'] == orig_ct['Individual']

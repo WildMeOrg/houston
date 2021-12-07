@@ -294,9 +294,11 @@ def patch_sighting(
     return response
 
 
-def delete_sighting(flask_app_client, user, sight_guid, expected_status_code=204):
+def delete_sighting(
+    flask_app_client, user, sight_guid, expected_status_code=204, headers=None
+):
     with flask_app_client.login(user, auth_scopes=('sightings:write',)):
-        response = flask_app_client.delete('%s%s' % (PATH, sight_guid))
+        response = flask_app_client.delete('%s%s' % (PATH, sight_guid), headers=headers)
 
     if expected_status_code == 204:
         assert response.status_code == 204, response.json
@@ -304,6 +306,7 @@ def delete_sighting(flask_app_client, user, sight_guid, expected_status_code=204
         test_utils.validate_dict_response(
             response, expected_status_code, {'status', 'message'}
         )
+    return response
 
 
 # Create a default valid Sage detection response (to allow for the test to corrupt it accordingly)

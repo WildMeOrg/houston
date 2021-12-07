@@ -238,6 +238,7 @@ class EncounterByID(Resource):
         if deleted_individuals:
             from app.modules.individuals.models import Individual
 
+            deleted_ids = []
             for indiv_guid in deleted_individuals:
                 goner = Individual.query.get(indiv_guid)
                 if goner is None:
@@ -246,6 +247,8 @@ class EncounterByID(Resource):
                     )
                 else:
                     log.info(f'EDM requested cascade-delete of {goner}; deleting')
+                    deleted_ids.append(indiv_guid)
                     goner.delete()
 
+            resp.headers['x-deletedIndividual-guids'] = ', '.join(deleted_ids)
         return resp

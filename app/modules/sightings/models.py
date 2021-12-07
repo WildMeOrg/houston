@@ -260,17 +260,18 @@ class Sighting(db.Model, FeatherModel):
                 asset = assets.pop()
                 asset.delete()
 
-    def delete_from_edm(self, current_app):
-        return Sighting.delete_from_edm_by_guid(current_app, self.guid)
+    def delete_from_edm(self, current_app, request):
+        return Sighting.delete_from_edm_by_guid(current_app, self.guid, request)
 
     @classmethod
-    def delete_from_edm_by_guid(cls, current_app, guid):
+    def delete_from_edm_by_guid(cls, current_app, guid, request):
         assert guid is not None
-        response = current_app.edm.request_passthrough(
+        (response, response_data, result,) = current_app.edm.request_passthrough_parsed(
             'sighting.data',
             'delete',
             {},
             guid,
+            request_headers=request.headers,
         )
         return response
 

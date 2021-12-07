@@ -10,7 +10,7 @@ import logging
 from flask_restx_patched import Resource
 from flask_restx_patched._http import HTTPStatus
 from flask_login import current_user  # NOQA
-from flask import request, current_app, send_file
+from flask import request, current_app, send_file, make_response
 
 from app.extensions import db
 from app.extensions.api import Namespace
@@ -52,7 +52,7 @@ class SightingCleanup(object):
         )
         if self.sighting_guid is not None:
             log.warning('Cleanup removing Sighting %r from EDM' % self.sighting_guid)
-            Sighting.delete_from_edm_by_guid(current_app, self.sighting_guid)
+            Sighting.delete_from_edm_by_guid(current_app, self.sighting_guid, request)
         if self.asset_group is not None:
             log.warning('Cleanup removing %r' % self.asset_group)
             self.asset_group.delete()
@@ -599,7 +599,21 @@ class SightingByID(Resource):
         Delete a Sighting by ID.
         """
         # first try delete on edm
-        response = sighting.delete_from_edm(current_app)
+        try:
+            response = sighting.delete_from_edm(current_app, request)
+        except HoustonException as ex:
+            edm_status_code = ex.get_val('edm_status_code', 400)
+            log.warning(
+                f'Sighting.delete {sighting.guid} failed: ({ex.status_code} / edm={edm_status_code}) {ex.message}'
+            )
+            abort(
+                success=False,
+                edm_status_code=edm_status_code,
+                passed_message='Delete failed',
+                message='Error',
+                code=400,
+            )
+
         response_data = None
         if response.ok:
             response_data = response.json()
@@ -607,13 +621,42 @@ class SightingByID(Resource):
         if not response.ok or not response_data.get('success', False):
             log.warning('Sighting.delete %r failed: %r' % (sighting.guid, response_data))
             abort(
-                success=False, passed_message='Delete failed', message='Error', code=400
+                success=False,
+                passed_message='Delete failed',
+                message='Error',
+                code=400,
+                edm_status_code=response.status_code,
             )
+
+        # we have to roll our own response here (to return) as it seems the only way we can add a header
+        #   (which we are using to denote the encounter DELETE also triggered a individual DELETE, since
+        #   no body is returned on a 204 for DELETE
+        delete_resp = make_response()
+        delete_resp.status_code = 204
+        deleted_individuals = None
+        if response_data and isinstance(response_data.get('result'), dict):
+            deleted_individuals = response_data['result'].get('deletedIndividuals', None)
+        if deleted_individuals:
+            from app.modules.individuals.models import Individual
+
+            deleted_ids = []
+            for indiv_guid in deleted_individuals:
+                goner = Individual.query.get(indiv_guid)
+                if goner is None:
+                    log.error(
+                        f'EDM requested cascade-delete of individual id={indiv_guid}; but was not found in houston!'
+                    )
+                else:
+                    log.info(f'EDM requested cascade-delete of {goner}; deleting')
+                    deleted_ids.append(indiv_guid)
+                    goner.delete()
+
+            delete_resp.headers['x-deletedIndividual-guids'] = ', '.join(deleted_ids)
 
         # if we get here, edm has deleted the sighting, now houston feather
         # TODO handle failure of feather deletion (when edm successful!)  out-of-sync == bad
         sighting.delete_cascade()
-        return None
+        return delete_resp
 
 
 @api.route('/<uuid:sighting_guid>/featured_asset_guid')

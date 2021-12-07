@@ -121,7 +121,7 @@ def test_individual_cascade(flask_app_client, test_root, researcher_1, request, 
     response = encounter_utils.delete_encounter(
         flask_app_client, researcher_1, encounter1_id, headers=headers
     )
-    # this is reported by edm, which sighting got cascade-deleted
+    # this is reported by edm, which individuals got cascade-deleted
     assert response.headers.get('x-deletedIndividual-guids') == individual_id
     ct = test_utils.all_count(db)
     assert ct['Encounter'] == orig_ct['Encounter'] + 1

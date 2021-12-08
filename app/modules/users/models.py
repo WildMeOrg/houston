@@ -750,9 +750,12 @@ class User(db.Model, FeatherModel, UserEDMMixin):
         return annotations
 
     @module_required('encounters', 'annotations', resolve='warn', default=[])
-    def get_all_encounters(self):
+    def get_all_annotations(self):
         annotations = self.get_my_annotations()
-        # TODO add collaboration annotations
+        for collab_assoc in self.user_collaboration_associations:
+            if collab_assoc.has_read():
+                annotations.append(collab_assoc.get_other_user().get_my_annotations())
+
         return annotations
 
     def remove_profile_file(self):

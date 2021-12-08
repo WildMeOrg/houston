@@ -63,6 +63,15 @@ class CollaborationUserAssociations(db.Model, HoustonModel):
     def delete(self):
         self.collaboration.user_deleted(self)
 
+    def has_read(self):
+        return self.collaboration.user_has_read_access(self.user_guid)
+
+    def has_edit(self):
+        return self.collaboration.user_has_edit_access(self.user_guid)
+
+    def get_other_user(self):
+        return self.collaboration.get_other_user(self.user_guid)
+
 
 class Collaboration(db.Model, HoustonModel):
     """
@@ -330,6 +339,12 @@ class Collaboration(db.Model, HoustonModel):
                 and other_assoc.edit_approval_state == CollaborationUserState.APPROVED
             )
         return ret_val
+
+    def get_other_user(self, user_guid):
+        other_assoc = self._get_association_for_other_user(user_guid)
+        if other_assoc:
+            return other_assoc.user
+        return None
 
     def set_edit_approval_state_for_user(self, user_guid, state):
         success = False

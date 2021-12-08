@@ -2,6 +2,7 @@
 # pylint: disable=invalid-name,missing-docstring
 import datetime
 from unittest import mock
+import tests.utils as test_utils
 
 
 def test_job_control(flask_app, researcher_1, test_root, db):
@@ -15,12 +16,11 @@ def test_job_control(flask_app, researcher_1, test_root, db):
         asset_group = AssetGroup(owner_guid=researcher_1.guid)
         ags = AssetGroupSighting(
             asset_group=asset_group,
-            sighting_config={'assetReferences': []},
-            detection_configs=[],
+            sighting_config=test_utils.dummy_sighting_info(),
+            detection_configs=test_utils.dummy_detection_info(),
         )
 
         db.session.add(asset_group)
-        db.session.add(ags)
 
         with mock.patch('app.modules.asset_groups.models.current_app') as mock_app:
             mock_app.return_value = flask_app

@@ -718,7 +718,8 @@ class Sighting(db.Model, FeatherModel):
         if num_configs > 0:
             # Only one for MVP
             assert num_configs == 1
-            for config in id_configs:
+            for config_num in range(num_configs):
+                config = id_configs[config_num]
                 assert 'algorithms' in config
                 # Only one for MVP
                 assert len(config['algorithms']) == 1

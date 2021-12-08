@@ -184,6 +184,8 @@ def test_asset_group_sightings(session, login, codex_url, test_root):
         'startTime': '2000-01-01T01:01:01Z',
         # 2021-11-12T18:28:32.744135+00:00
         'updatedHouston': response.json()['updatedHouston'],
+        'curation_start_time': response.json()['curation_start_time'],
+        'detection_start_time': response.json()['detection_start_time'],
         'verbatimLocality': '',
         'verbatimEventDate': '',
         'version': None,

@@ -88,6 +88,11 @@ def test_sightings(session, login, codex_url, test_root, admin_name):
         'hasEdit': True,
         'hasView': True,
         'updated': response.json()['updated'],
+        'curation_start_time': response.json()['curation_start_time'],
+        'detection_start_time': response.json()['detection_start_time'],
+        'identification_start_time': None,
+        'review_time': None,
+        'unreviewed_start_time': None,
     }
 
     # GET sighting

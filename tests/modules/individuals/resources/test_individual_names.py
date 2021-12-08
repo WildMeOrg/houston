@@ -171,11 +171,11 @@ def test_get_set_individual_names(db, flask_app_client, researcher_1, request, t
     )
     assert 'value must contain' in patch_individual_response.json.get('message')
 
-    # op=replace, all good - should work
+    # op=replace, just replace value
     patch_data = [
         utils.patch_replace_op(
             'names',
-            {'guid': name_guid, 'context': 'new-context', 'value': replacement_value},
+            {'guid': name_guid, 'value': replacement_value},
         ),
     ]
     patch_individual_response = individual_utils.patch_individual(
@@ -185,7 +185,55 @@ def test_get_set_individual_names(db, flask_app_client, researcher_1, request, t
         flask_app_client, researcher_1, individual_id
     ).json
     assert len(individual_json['names']) == 3
+    assert individual_json['names'][2]['context'] == 'context2'
     assert individual_json['names'][2]['value'] == replacement_value
+
+    # op=replace, try to replace context, but with one that exists
+    patch_data = [
+        utils.patch_replace_op(
+            'names',
+            {'guid': name_guid, 'context': 'A'},
+        ),
+    ]
+    patch_individual_response = individual_utils.patch_individual(
+        flask_app_client,
+        researcher_1,
+        individual_id,
+        patch_data,
+        expected_status_code=409,
+    )
+
+    # op=replace, valid context change
+    patch_data = [
+        utils.patch_replace_op(
+            'names',
+            {'guid': name_guid, 'context': 'C1'},
+        ),
+    ]
+    patch_individual_response = individual_utils.patch_individual(
+        flask_app_client, researcher_1, individual_id, patch_data
+    )
+    individual_json = individual_utils.read_individual(
+        flask_app_client, researcher_1, individual_id
+    ).json
+    assert individual_json['names'][2]['context'] == 'C1'
+    assert individual_json['names'][2]['value'] == replacement_value
+
+    # op=replace, valid context and value change
+    patch_data = [
+        utils.patch_replace_op(
+            'names',
+            {'guid': name_guid, 'context': 'C', 'value': 'name-C'},
+        ),
+    ]
+    patch_individual_response = individual_utils.patch_individual(
+        flask_app_client, researcher_1, individual_id, patch_data
+    )
+    individual_json = individual_utils.read_individual(
+        flask_app_client, researcher_1, individual_id
+    ).json
+    assert individual_json['names'][2]['context'] == 'C'
+    assert individual_json['names'][2]['value'] == 'name-C'
 
 
 @pytest.mark.skipif(

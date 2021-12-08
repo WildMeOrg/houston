@@ -110,12 +110,13 @@ class PatchIndividualDetailsParameters(PatchJSONParameters):
 
             if (
                 not isinstance(value, dict)
-                or set(value.keys()) != {'guid', 'context', 'value'}
+                or 'guid' not in value.keys()
                 or not util.is_valid_guid(value['guid'])
+                or ('context' not in value.keys() and 'value' not in value.keys())
             ):
                 abort(
                     code=HTTPStatus.UNPROCESSABLE_ENTITY,
-                    message='value must contain keys "guid", "context", and "value"',
+                    message='value must contain keys "guid" and at least one of: "context", "value"',
                 )
             name = Name.query.get(value['guid'])
             if not name or name.individual_guid != obj.guid:
@@ -123,8 +124,10 @@ class PatchIndividualDetailsParameters(PatchJSONParameters):
                     code=HTTPStatus.UNPROCESSABLE_ENTITY,
                     message=f"invalid name guid {value['guid']}",
                 )
-            name.context = value['context']
-            name.value = value['value']
+            if 'context' in value:
+                name.context = value['context']
+            if 'value' in value:
+                name.value = value['value']
             ret_val = True
 
         return ret_val

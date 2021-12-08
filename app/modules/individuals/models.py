@@ -86,7 +86,7 @@ class Individual(db.Model, FeatherModel):
         'Encounter', back_populates='individual', order_by='Encounter.guid'
     )
 
-    names = db.relationship('Name', back_populates='individual', order_by='Name.guid')
+    names = db.relationship('Name', back_populates='individual', order_by='Name.created')
 
     social_groups = db.relationship(
         'SocialGroupIndividualMembership',

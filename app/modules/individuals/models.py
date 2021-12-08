@@ -8,7 +8,6 @@ from app.extensions import FeatherModel, db
 from flask import current_app
 import uuid
 import logging
-import sqlalchemy
 import app.extensions.logging as AuditLog
 from datetime import datetime
 from app.modules.names.models import Name
@@ -145,16 +144,8 @@ class Individual(db.Model, FeatherModel):
             value=value,
             creator_guid=creator.guid,
         )
-        try:
-            with db.session.begin(subtransactions=True):
-                db.session.add(new_name)
-        except (sqlalchemy.orm.exc.FlushError, sqlalchemy.exc.IntegrityError) as err:
-            log.warning(
-                f'failed to add name to {self} (context={context}, value={value}, creator={creator}: {str(err)}'
-            )
-            raise ValueError(
-                f'name could not be added, perhaps context "{context}" is already used'
-            )
+        with db.session.begin(subtransactions=True):
+            db.session.add(new_name)
         return new_name
 
     def remove_name(self, name):

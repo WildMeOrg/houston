@@ -84,6 +84,7 @@ class PatchIndividualDetailsParameters(PatchJSONParameters):
                 )
             from flask_login import current_user
 
+            # if add_name fails (e.g. constraint violation due to context duplication) a 409/conflict will be returned
             obj.add_name(value['context'], value['value'], current_user)
             return True
 

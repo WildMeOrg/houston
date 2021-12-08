@@ -14,7 +14,9 @@ def test_job_control(flask_app, researcher_1, test_root, db):
     try:
         asset_group = AssetGroup(owner_guid=researcher_1.guid)
         ags = AssetGroupSighting(
-            asset_group_guid=asset_group.guid, config={'assetReferences': []}
+            asset_group=asset_group,
+            sighting_config={'assetReferences': []},
+            detection_configs=[],
         )
 
         db.session.add(asset_group)

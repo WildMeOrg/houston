@@ -54,6 +54,10 @@ class DetailedAssetGroupSightingSchema(BaseAssetGroupSightingSchema):
 
     completion = base_fields.Function(AssetGroupSighting.get_completion)
     sighting_guid = base_fields.Function(AssetGroupSighting.get_sighting_guid)
+    detection_start_time = base_fields.Function(
+        AssetGroupSighting.get_detection_start_time
+    )
+    curation_start_time = base_fields.Function(AssetGroupSighting.get_curation_start_time)
 
     creator = base_fields.Nested('PublicUserSchema', attribute='get_owner', many=False)
 
@@ -66,6 +70,8 @@ class DetailedAssetGroupSightingSchema(BaseAssetGroupSightingSchema):
             'completion',
             'creator',
             'sighting_guid',
+            'detection_start_time',
+            'curation_start_time',
             AssetGroupSighting.jobs.key,
             AssetGroupSighting.asset_group_guid.key,
         )
@@ -104,6 +110,11 @@ class AssetGroupSightingAsSightingSchema(AugmentedEdmSightingSchema):
 
     completion = base_fields.Function(AssetGroupSighting.get_completion)
     creator = base_fields.Nested('PublicUserSchema', attribute='get_owner', many=False)
+    detection_start_time = base_fields.Function(
+        AssetGroupSighting.get_detection_start_time
+    )
+    curation_start_time = base_fields.Function(AssetGroupSighting.get_curation_start_time)
+
     # Note: these config_field_getter vars should conform to SIGHTING_FIELDS_IN_AGS_CONFIG
     # at the top of this file
     startTime = base_fields.Function(AssetGroupSighting.config_field_getter('startTime'))

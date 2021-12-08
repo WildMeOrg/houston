@@ -55,9 +55,23 @@ class DetailedSightingSchema(CreateSightingSchema):
         attribute='get_encounters',
         many=True,
     )
+    detection_start_time = base_fields.Function(Sighting.get_detection_start_time)
+    curation_start_time = base_fields.Function(Sighting.get_curation_start_time)
+    identification_start_time = base_fields.Function(
+        Sighting.get_identification_start_time
+    )
+    unreviewed_start_time = base_fields.Function(Sighting.get_unreviewed_start_time)
+    review_time = base_fields.Function(Sighting.get_review_time)
 
     class Meta(CreateSightingSchema.Meta):
-        fields = CreateSightingSchema.Meta.fields + ('encounters',)
+        fields = CreateSightingSchema.Meta.fields + (
+            'encounters',
+            'detection_start_time',
+            'curation_start_time',
+            'identification_start_time',
+            'unreviewed_start_time',
+            'review_time',
+        )
 
 
 class FeaturedAssetOnlySchema(BaseSightingSchema):

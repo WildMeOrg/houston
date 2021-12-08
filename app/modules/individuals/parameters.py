@@ -34,7 +34,6 @@ class PatchIndividualDetailsParameters(PatchJSONParameters):
         '/timeOfBirth',
         '/timeOfDeath',
         '/comments',
-        '/names',
     )
 
     PATH_CHOICES_HOUSTON = ('/featuredAssetGuid', '/encounters', '/names')
@@ -64,11 +63,12 @@ class PatchIndividualDetailsParameters(PatchJSONParameters):
                     code=HTTPStatus.UNPROCESSABLE_ENTITY,
                     message=f'invalid name guid {value}',
                 )
-            removed = obj.remove_name(name)
-            if not removed:
+            try:
+                obj.remove_name(name)
+            except ValueError as ve:
                 abort(
                     code=HTTPStatus.UNPROCESSABLE_ENTITY,
-                    message=f'{name} could not be removed from {obj}',
+                    message=f'{name} could not be removed from {obj}: {str(ve)}',
                 )
             ret_val = True
 
@@ -77,9 +77,7 @@ class PatchIndividualDetailsParameters(PatchJSONParameters):
     @classmethod
     def add(cls, obj, field, value, state):
         if field == 'names':  # add and replace are diff for names
-            if not isinstance(value, dict) or set(value.keys()) != set(
-                ['context'], ['value']
-            ):
+            if not isinstance(value, dict) or set(value.keys()) != {'context', 'value'}:
                 abort(
                     code=HTTPStatus.UNPROCESSABLE_ENTITY,
                     message='value must contain keys "context" and "value"',
@@ -111,7 +109,7 @@ class PatchIndividualDetailsParameters(PatchJSONParameters):
 
             if (
                 not isinstance(value, dict)
-                or set(value.keys()) != set(['guid'], ['context'], ['value'])
+                or set(value.keys()) != {'guid', 'context', 'value'}
                 or not util.is_valid_guid(value['guid'])
             ):
                 abort(

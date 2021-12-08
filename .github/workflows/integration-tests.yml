@@ -17,6 +17,8 @@ jobs:
     steps:
       # Checkout and env setup
       - uses: actions/checkout@v2
+        with:
+          submodules: true
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v2
         with:
@@ -33,10 +35,14 @@ jobs:
         run: |
           sudo apt install libmagic1
 
-      - name: Build frontend and swagger ui
+      - name: Build swagger ui
         run: |
-          ./scripts/codex/build.frontend.sh
           ./scripts/swagger/build.sh
+
+      - name: Create apiKeys.js for frontend
+        run: |
+          cd _frontend.codex
+          cp src/constants/apiKeysTemplate.js src/constants/apiKeys.js
 
       - name: Run docker-compose
         run: |

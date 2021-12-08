@@ -156,7 +156,7 @@ For development purposes, this setup exposes each of the services as follows:
 <!-- don't use port 80 when defining any hosts -->
 - EDM - http://localhost:81/
 - Sage (Wildbook-IA) - http://localhost:82/
-- Houston - http://localhost:83/
+- Houston - http://localhost:83/houston/
 - CODEX (frontend) - http://localhost:84/
 - CODEX (api docs) - http://localhost:84/api/v1/
 - GitLab - http://localhost:85
@@ -319,7 +319,7 @@ There are some environment variables you can set for the integration tests:
 
 | Variable           | Default value          |                           |
 |--------------------|------------------------|---------------------------|
-| `CODEX_URL`        | `http://localhost:83/` | The url of the site to test |
+| `CODEX_URL`        | `http://localhost:84/` | The url of the site to test |
 | `ADMIN_EMAIL`      | `root@example.org`     | The email of the first admin user |
 | `ADMIN_PASSWORD`   | `password`             | The password of the first admin user |
 | `ADMIN_NAME`       | `Test admin`           | The name of the first admin user |

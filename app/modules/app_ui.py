@@ -30,6 +30,7 @@ from app.modules.users.models import User
 
 log = logging.getLogger(__name__)
 
+frontend_blueprint = Blueprint('frontend', __name__)
 backend_blueprint = Blueprint(
     'backend',
     __name__,
@@ -39,6 +40,7 @@ backend_blueprint = Blueprint(
 
 def init_app(app):
     backend_blueprint.static_folder = app.config['STATIC_ROOT']
+    app.register_blueprint(frontend_blueprint)
     app.register_blueprint(backend_blueprint)
 
 
@@ -166,12 +168,24 @@ def user_login(email=None, password=None, remember=None, refer=None, *args, **kw
 
 
 @backend_blueprint.route('/logout', methods=['GET'])
+@frontend_blueprint.route('/logout', methods=['POST'])
 @login_required
-def user_logout(*args, **kwargs):
+def user_logout(refer=None, *args, **kwargs):
     # pylint: disable=unused-argument
     """
     This endpoint is the landing page for the logged-in user
     """
+    if refer is None:
+        refer = flask.request.args.get('next', request.form.get('next', None))
+
+    if refer in ['origin']:
+        refer = request.referrer
+
+    if refer is not None:
+        if not _is_safe_url(refer):
+            log.error('User gave insecure next URL: %r' % (refer,))
+            refer = None
+
     # Delete the Oauth2 token for this session
     log.info('Logging out User: %r' % (current_user,))
 
@@ -181,7 +195,12 @@ def user_logout(*args, **kwargs):
 
     flash('You were successfully logged out.', 'warning')
 
-    return flask.redirect(_url_for('backend.home'))
+    if refer is None:
+        redirect = _url_for('backend.home')
+    else:
+        redirect = refer
+
+    return flask.redirect(redirect)
 
 
 @backend_blueprint.route('/admin_init', methods=['GET'])

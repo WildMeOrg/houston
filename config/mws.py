@@ -68,7 +68,6 @@ class BaseMWSConfig(
 
         # Front-end
         #   Dependencies: Users, Auth, Assets
-        'frontend_ui',
         'app_ui',
         'swagger_ui',
 

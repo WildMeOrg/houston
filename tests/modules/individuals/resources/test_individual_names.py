@@ -27,21 +27,24 @@ def test_get_set_individual_names(db, flask_app_client, researcher_1, request, t
     assert len(sighting.encounters) > 0
     enc = sighting.encounters[0]
 
+    # first we try with bunk data for one name
     individual_data_in = {
-        #'names': {
-        #'defaultName': 'Godzilla',
-        #'nickname': 'Doctor Atomic',
-        #'oldName': 'critter-271',
-        # },
+        'names': [
+            {'context': 'A', 'value': 'value-A'},
+            {'conxxxx': 'B', 'value': 'value-B'},
+        ],
         'encounters': [{'id': str(enc.guid)}],
     }
+    individual_response = individual_utils.create_individual(
+        flask_app_client, researcher_1, 422, individual_data_in
+    )
 
+    # fix the name and try again (will make our individual)
+    individual_data_in['names'][1] = {'context': 'B', 'value': 'value-B'}
     individual_response = individual_utils.create_individual(
         flask_app_client, researcher_1, 200, individual_data_in
     )
-
     assert individual_response.json['result']['id'] is not None
-
     individual_id = individual_response.json['result']['id']
     request.addfinalizer(
         lambda: individual_utils.delete_individual(
@@ -76,10 +79,10 @@ def test_get_set_individual_names(db, flask_app_client, researcher_1, request, t
         flask_app_client, researcher_1, individual_id, patch_data
     )
     assert patch_individual_response.json['guid'] == individual_id
-    assert len(patch_individual_response.json['names']) == 1
-    assert patch_individual_response.json['names'][0]['context'] == test_context
-    assert patch_individual_response.json['names'][0]['value'] == test_value
-    name_guid = patch_individual_response.json['names'][0]['guid']
+    assert len(patch_individual_response.json['names']) == 3
+    assert patch_individual_response.json['names'][2]['context'] == test_context
+    assert patch_individual_response.json['names'][2]['value'] == test_value
+    name_guid = patch_individual_response.json['names'][2]['guid']
 
     individual_json = individual_utils.read_individual(
         flask_app_client, researcher_1, patch_individual_response.json['guid']
@@ -93,7 +96,7 @@ def test_get_set_individual_names(db, flask_app_client, researcher_1, request, t
     patch_individual_response = individual_utils.patch_individual(
         flask_app_client, researcher_1, individual_id, patch_data
     )
-    assert len(patch_individual_response.json['names']) == 2
+    assert len(patch_individual_response.json['names']) == 4
 
     # now this should conflict (409) due to duplicate context
     patch_data = [
@@ -133,8 +136,8 @@ def test_get_set_individual_names(db, flask_app_client, researcher_1, request, t
     individual_json = individual_utils.read_individual(
         flask_app_client, researcher_1, individual_id
     ).json
-    assert len(individual_json['names']) == 1
-    name_guid = individual_json['names'][0]['guid']
+    assert len(individual_json['names']) == 3
+    name_guid = individual_json['names'][2]['guid']
 
     # op=replace, but with a bad name guid
     replacement_value = 'some new value'
@@ -181,8 +184,8 @@ def test_get_set_individual_names(db, flask_app_client, researcher_1, request, t
     individual_json = individual_utils.read_individual(
         flask_app_client, researcher_1, individual_id
     ).json
-    assert len(individual_json['names']) == 1
-    assert individual_json['names'][0]['value'] == replacement_value
+    assert len(individual_json['names']) == 3
+    assert individual_json['names'][2]['value'] == replacement_value
 
 
 @pytest.mark.skipif(

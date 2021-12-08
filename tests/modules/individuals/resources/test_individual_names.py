@@ -27,88 +27,162 @@ def test_get_set_individual_names(db, flask_app_client, researcher_1, request, t
     assert len(sighting.encounters) > 0
     enc = sighting.encounters[0]
 
-    try:
+    individual_data_in = {
+        #'names': {
+        #'defaultName': 'Godzilla',
+        #'nickname': 'Doctor Atomic',
+        #'oldName': 'critter-271',
+        # },
+        'encounters': [{'id': str(enc.guid)}],
+    }
 
-        individual_data_in = {
-            'names': {
-                'defaultName': 'Godzilla',
-                'nickname': 'Doctor Atomic',
-                'oldName': 'critter-271',
-            },
-            'encounters': [{'id': str(enc.guid)}],
-        }
+    individual_response = individual_utils.create_individual(
+        flask_app_client, researcher_1, 200, individual_data_in
+    )
 
-        individual_response = individual_utils.create_individual(
-            flask_app_client, researcher_1, 200, individual_data_in
-        )
+    assert individual_response.json['result']['id'] is not None
 
-        assert individual_response.json['result']['id'] is not None
-
-        individual_id = individual_response.json['result']['id']
-
-        individual_json = individual_utils.read_individual(
+    individual_id = individual_response.json['result']['id']
+    request.addfinalizer(
+        lambda: individual_utils.delete_individual(
             flask_app_client, researcher_1, individual_id
-        ).json
-
-        assert individual_json['names']['defaultName'] == 'Godzilla'
-        assert individual_json['names']['nickname'] == 'Doctor Atomic'
-        assert individual_json['names']['oldName'] == 'critter-271'
-
-        # change one
-        patch_data = [
-            utils.patch_replace_op('names', "{'nickname': 'Todd' }"),
-        ]
-        patch_individual_response = individual_utils.patch_individual(
-            flask_app_client, researcher_1, individual_id, patch_data
         )
+    )
 
-        assert patch_individual_response.json['guid'] is not None
+    individual_json = individual_utils.read_individual(
+        flask_app_client, researcher_1, individual_id
+    ).json
 
-        individual_json = individual_utils.read_individual(
-            flask_app_client, researcher_1, patch_individual_response.json['guid']
-        ).json
+    # invalid value
+    patch_data = [
+        utils.patch_add_op('names', 'FAIL'),
+    ]
+    patch_individual_response = individual_utils.patch_individual(
+        flask_app_client,
+        researcher_1,
+        individual_id,
+        patch_data,
+        expected_status_code=422,
+    )
+    assert 'value must contain keys' in patch_individual_response.json.get('message')
 
-        assert individual_json['id'] is not None
-        assert individual_json['names']['nickname'] == 'Todd'
+    # now this should work
+    test_context = 'test-context'
+    test_value = 'test-value'
+    patch_data = [
+        utils.patch_add_op('names', {'context': test_context, 'value': test_value}),
+    ]
+    patch_individual_response = individual_utils.patch_individual(
+        flask_app_client, researcher_1, individual_id, patch_data
+    )
+    assert patch_individual_response.json['guid'] == individual_id
+    assert len(patch_individual_response.json['names']) == 1
+    assert patch_individual_response.json['names'][0]['context'] == test_context
+    assert patch_individual_response.json['names'][0]['value'] == test_value
+    name_guid = patch_individual_response.json['names'][0]['guid']
 
-        # add one
-        patch_data = [
-            utils.patch_replace_op('names', "{'newestName': 'Old Fancypants'}"),
-        ]
-        patch_individual_response = individual_utils.patch_individual(
-            flask_app_client, researcher_1, individual_id, patch_data
-        )
+    individual_json = individual_utils.read_individual(
+        flask_app_client, researcher_1, patch_individual_response.json['guid']
+    ).json
+    assert individual_json['names'] == patch_individual_response.json['names']
 
-        assert patch_individual_response.json['guid'] is not None
+    # add a second one for kicks
+    patch_data = [
+        utils.patch_add_op('names', {'context': 'context2', 'value': test_value}),
+    ]
+    patch_individual_response = individual_utils.patch_individual(
+        flask_app_client, researcher_1, individual_id, patch_data
+    )
+    assert len(patch_individual_response.json['names']) == 2
 
-        individual_json = individual_utils.read_individual(
-            flask_app_client, researcher_1, patch_individual_response.json['guid']
-        ).json
+    # now this should conflict (409) due to duplicate context
+    patch_data = [
+        utils.patch_add_op('names', {'context': test_context, 'value': 'name-o'}),
+    ]
+    patch_individual_response = individual_utils.patch_individual(
+        flask_app_client,
+        researcher_1,
+        individual_id,
+        patch_data,
+        expected_status_code=409,
+    )
 
-        assert individual_json['id'] is not None
-        assert individual_json['names']['nickname'] == 'Todd'
+    # now lets remove one (but invalid Name guid)
+    bad_guid = '00000000-0000-0000-2170-000000000000'
+    patch_data = [
+        utils.patch_remove_op('names', bad_guid),
+    ]
+    patch_individual_response = individual_utils.patch_individual(
+        flask_app_client,
+        researcher_1,
+        individual_id,
+        patch_data,
+        expected_status_code=422,
+    )
+    assert (
+        patch_individual_response.json.get('message') == f'invalid name guid {bad_guid}'
+    )
 
-        # remove one
-        patch_data = [
-            utils.patch_remove_op('names', "{'oldName': 'critter-271' }"),
-        ]
-        patch_individual_response = individual_utils.patch_individual(
-            flask_app_client, researcher_1, individual_id, patch_data
-        )
+    # now really remove one
+    patch_data = [
+        utils.patch_remove_op('names', name_guid),
+    ]
+    patch_individual_response = individual_utils.patch_individual(
+        flask_app_client, researcher_1, individual_id, patch_data
+    )
+    individual_json = individual_utils.read_individual(
+        flask_app_client, researcher_1, individual_id
+    ).json
+    assert len(individual_json['names']) == 1
+    name_guid = individual_json['names'][0]['guid']
 
-        assert patch_individual_response.json['guid'] is not None
+    # op=replace, but with a bad name guid
+    replacement_value = 'some new value'
+    patch_data = [
+        utils.patch_replace_op(
+            'names',
+            {'guid': bad_guid, 'context': 'new-context', 'value': replacement_value},
+        ),
+    ]
+    patch_individual_response = individual_utils.patch_individual(
+        flask_app_client,
+        researcher_1,
+        individual_id,
+        patch_data,
+        expected_status_code=422,
+    )
+    assert (
+        patch_individual_response.json.get('message') == f'invalid name guid {bad_guid}'
+    )
 
-        individual_json = individual_utils.read_individual(
-            flask_app_client, researcher_1, patch_individual_response.json['guid']
-        ).json
+    # op=replace, valid name guid, but bad context/value
+    patch_data = [
+        utils.patch_replace_op('names', {'guid': name_guid, 'foo': 'bar'}),
+    ]
+    patch_individual_response = individual_utils.patch_individual(
+        flask_app_client,
+        researcher_1,
+        individual_id,
+        patch_data,
+        expected_status_code=422,
+    )
+    assert 'value must contain' in patch_individual_response.json.get('message')
 
-        assert individual_json['id'] is not None
-        assert 'oldName' not in individual_json['names']
-
-    finally:
-        individual_utils.delete_individual(
-            flask_app_client, researcher_1, individual_json['id']
-        )
+    # op=replace, all good - should work
+    patch_data = [
+        utils.patch_replace_op(
+            'names',
+            {'guid': name_guid, 'context': 'new-context', 'value': replacement_value},
+        ),
+    ]
+    patch_individual_response = individual_utils.patch_individual(
+        flask_app_client, researcher_1, individual_id, patch_data
+    )
+    individual_json = individual_utils.read_individual(
+        flask_app_client, researcher_1, individual_id
+    ).json
+    assert len(individual_json['names']) == 1
+    assert individual_json['names'][0]['value'] == replacement_value
 
 
 @pytest.mark.skipif(

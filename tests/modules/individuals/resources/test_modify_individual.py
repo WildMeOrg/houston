@@ -40,7 +40,7 @@ def test_modify_individual_edm_fields(
         assert sighting is not None
 
         individual_data_in = {
-            'names': {'defaultName': 'Godzilla'},
+            'names': [{'context': 'defaultName', 'value': 'Godzilla'}],
             'encounters': [
                 {
                     'id': str(enc.guid),
@@ -64,7 +64,9 @@ def test_modify_individual_edm_fields(
         ).json
 
         assert individual_json['sex'] == 'female'
-        assert individual_json['names']['defaultName'] == 'Godzilla'
+        assert len(individual_json['names']) == 1
+        assert individual_json['names'][0]['context'] == 'defaultName'
+        assert individual_json['names'][0]['value'] == 'Godzilla'
         assert individual_json['comments'] == 'Test Individual'
 
         # when skynet went online

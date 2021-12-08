@@ -42,7 +42,7 @@ def test_merge(db, flask_app_client, researcher_1, request, test_root):
     enc2_guid = uuids['encounters'][1]
 
     individual_data_in = {
-        'names': {'defaultName': 'NAME1'},
+        'names': [{'context': 'text', 'value': 'name-1'}],
         'encounters': [
             {
                 'id': enc1_guid,
@@ -56,7 +56,7 @@ def test_merge(db, flask_app_client, researcher_1, request, test_root):
     indiv1_guid = individual_response.json['result']['id']
 
     # now same for 2nd indiv
-    individual_data_in['names']['defaultName'] = 'NAME2'
+    individual_data_in['names'][0]['value'] = 'name-2'
     individual_data_in['encounters'][0]['id'] = enc2_guid
     # both will be set female
     individual_response = individual_utils.create_individual(

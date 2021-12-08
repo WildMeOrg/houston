@@ -290,7 +290,7 @@ def test_individual_has_detailed_encounter_from_edm(
         encounter.asset_group_sighting_encounter_guid = uuid.uuid4()
 
         individual_data_in = {
-            'names': {'defaultName': 'Wilbur'},
+            'names': [{'context': 'defaultName', 'value': 'Wilbur'}],
             'encounters': [{'id': str(enc.guid)}],
         }
 

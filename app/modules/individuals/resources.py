@@ -164,10 +164,32 @@ class Individuals(Resource):
                     code=500,
                 )
 
+        names = []
+        if 'names' in request_in and isinstance(request_in['names'], list):
+            from flask_login import current_user
+            from app.modules.names.models import Name
+
+            for name_json in request_in['names']:
+                name_context = name_json.get('context')
+                name_value = name_json.get('value')
+                if not name_context or not name_value:
+                    AuditLog.frontend_fault(log, f'invalid name data {name_json}')
+                    cleanup.rollback_and_abort(
+                        message='Invalid name data {name_json}',
+                        code=400,
+                    )
+                new_name = Name(
+                    context=name_context,
+                    value=name_value,
+                    creator_guid=current_user.guid,
+                )
+                names.append(new_name)
+
         # finally make the Individual if all encounters are found
         individual = Individual(
             guid=result_data['id'],
             encounters=encounters,
+            names=names,
             version=result_data.get('version'),
         )
         AuditLog.user_create_object(log, individual, duration=timer.elapsed())

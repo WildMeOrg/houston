@@ -249,7 +249,7 @@ class Sighting(db.Model, FeatherModel):
             if job['active']:
                 log.warning(
                     f"Sighting:{self.guid} Job:{job_id} Matching_set:{job['matching_set']} "
-                    f"Algorithm:{job['algorithm']} Annotation:{job['annotaion']} UTC Start:{job['start']}"
+                    f"Algorithm:{job['algorithm']} Annotation:{job['annotation']} UTC Start:{job['start']}"
                 )
 
     def any_jobs_active(self):

@@ -8,6 +8,7 @@ RESTful API Relationships resources
 import logging
 
 from flask import request
+from app.modules.individuals.models import Individual
 from flask_restx_patched import Resource
 from flask_restx._http import HTTPStatus
 
@@ -91,17 +92,27 @@ class Relationships(Resource):
             and request_in['individual_1_role']
             and request_in['individual_2_role']
         ):
-            with context:
-                relationship = Relationship(
-                    request_in['individual_1_guid'],
-                    request_in['individual_2_guid'],
-                    request_in['individual_1_role'],
-                    request_in['individual_2_role'],
+
+            if _user_has_write_permission_on_both_individuals(
+                request_in['individual_1_guid'], request_in['individual_2_guid']
+            ):
+                with context:
+                    relationship = Relationship(
+                        request_in['individual_1_guid'],
+                        request_in['individual_2_guid'],
+                        request_in['individual_1_role'],
+                        request_in['individual_2_role'],
+                    )
+                    db.session.add(relationship)
+                    for member in relationship.individual_members:
+                        db.session.add(member)
+                AuditLog.user_create_object(log, relationship, duration=timer.elapsed())
+            else:
+                AuditLog.backend_fault(
+                    log,
+                    'Current user lacks permission to create Relationship for one or both Individuals.',
+                    self,
                 )
-                db.session.add(relationship)
-                for member in relationship.individual_members:
-                    db.session.add(member)
-            AuditLog.user_create_object(log, relationship, duration=timer.elapsed())
             return relationship
 
 
@@ -173,12 +184,33 @@ class RelationshipByID(Resource):
         from app.extensions.elapsed_time import ElapsedTime
         import app.extensions.logging as AuditLog  # NOQA
 
-        timer = ElapsedTime()
-        context = api.commit_or_abort(
-            db.session, default_error_message='Failed to delete the Relationship.'
-        )
-
-        with context:
-            relationship.delete()
-            AuditLog.delete_object(log, relationship, duration=timer.elapsed())
+        individual_1_guid = relationship.individual_members[0].individual_guid
+        individual_2_guid = relationship.individual_members[1].individual_guid
+        if _user_has_write_permission_on_both_individuals(
+            individual_1_guid, individual_2_guid
+        ):
+            timer = ElapsedTime()
+            context = api.commit_or_abort(
+                db.session, default_error_message='Failed to delete the Relationship.'
+            )
+            with context:
+                relationship.delete()
+                AuditLog.delete_object(log, relationship, duration=timer.elapsed())
+        else:
+            AuditLog.backend_fault(
+                log,
+                'Current user lacks permission to delete Relationship for one or both Individuals.',
+                self,
+            )
         return None
+
+
+def _user_has_write_permission_on_both_individuals(individual_1_guid, individual_2_guid):
+    individual_1 = Individual.query.get(individual_1_guid)
+    individual_2 = Individual.query.get(individual_2_guid)
+    if (
+        individual_1.current_user_has_edit_permission()
+        and individual_2.current_user_has_edit_permission()
+    ):
+        return True
+    return False

@@ -280,7 +280,14 @@ class AssetGroupByID(Resource):
         asset_group = self._get_asset_group_with_428(asset_group)
 
         if asset_group is not None:
-            asset_group.delete()
+            try:
+                asset_group.delete()
+            except HoustonException as ex:
+                abort(
+                    ex.status_code,
+                    ex.message,
+                    edm_status_code=ex.get_val('edm_status_code', None),
+                )
         else:
             from .tasks import delete_remote
 

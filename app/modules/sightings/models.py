@@ -263,17 +263,69 @@ class Sighting(db.Model, FeatherModel):
     def delete_from_edm(self, current_app, request):
         return Sighting.delete_from_edm_by_guid(current_app, self.guid, request)
 
+    def delete_from_edm_and_houston(self, request=None):
+        # first try delete on edm, deleting all sub components too
+        class DummyRequest(object):
+            def __init__(self, headers):
+                self.headers = headers
+
+        if not request:
+            request = DummyRequest(
+                headers={
+                    'x-allow-delete-cascade-individual': 'True',
+                    'x-allow-delete-cascade-sighting': 'True',
+                }
+            )
+
+        try:
+            (response, response_data, result) = self.delete_from_edm(current_app, request)
+        except HoustonException as ex:
+            if ex.get_val('edm_status_code', 0) == 500:
+                # assume that means that we tried to delete a non-existent sighting
+                # TODO handle failure
+                self.delete_cascade()
+                AuditLog.audit_log_object(
+                    log,
+                    self,
+                    f'deleted of {self.guid} on EDM failed, assuming it was not there',
+                )
+                return
+            raise
+
+        deleted_individuals = None
+        deleted_ids = []
+        if result and isinstance(result, dict):
+            deleted_individuals = result.get('deletedIndividuals', None)
+        if deleted_individuals:
+            from app.modules.individuals.models import Individual
+
+            deleted_ids = []
+            for indiv_guid in deleted_individuals:
+                goner = Individual.query.get(indiv_guid)
+                if goner is None:
+                    log.error(
+                        f'EDM requested cascade-delete of individual id={indiv_guid}; but was not found in houston!'
+                    )
+                else:
+                    log.info(f'EDM requested cascade-delete of {goner}; deleting')
+                    deleted_ids.append(indiv_guid)
+                    goner.delete()
+        # if we get here, edm has deleted the sighting, now houston feather
+        # TODO handle failure of feather deletion (when edm successful!)  out-of-sync = bad
+        self.delete_cascade()
+
+        return deleted_ids
+
     @classmethod
     def delete_from_edm_by_guid(cls, current_app, guid, request):
         assert guid is not None
-        (response, response_data, result,) = current_app.edm.request_passthrough_parsed(
+        return current_app.edm.request_passthrough_parsed(
             'sighting.data',
             'delete',
             {},
             guid,
             request_headers=request.headers,
         )
-        return response
 
     # given edm_json (verbose json from edm) will populate with houston-specific data from feather object
     # note: this modifies the passed in edm_json, so not sure how legit that is?

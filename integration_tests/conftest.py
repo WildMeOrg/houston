@@ -14,7 +14,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 
 TIMEOUT = int(os.getenv('TIMEOUT', 20))
 POLL_FREQUENCY = int(os.getenv('POLL_FREQUENCY', 1))
-CODEX_URL = os.getenv('CODEX_URL', 'http://localhost:83/')
+CODEX_URL = os.getenv('CODEX_URL', 'http://localhost:84/')
 ADMIN_EMAIL = os.getenv('ADMIN_EMAIL', 'root@example.org')
 ADMIN_PASSWORD = os.getenv('ADMIN_PASSWORD', 'password')
 ADMIN_NAME = os.getenv('ADMIN_NAME', 'Test admin')

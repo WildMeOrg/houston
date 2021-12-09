@@ -16,6 +16,8 @@ jobs:
     steps:
       # Checkout and env setup
       - uses: actions/checkout@v2
+        with:
+          submodules: true
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v2
         with:
@@ -74,12 +76,6 @@ jobs:
         run: |
           sudo apt install libmagic1
 
-      - name: Create frontend static directory (tests complains if static directory does not exist)
-        run: |
-          mkdir -p app/static/dist-latest
-          touch app/static/dist-latest/404.html
-          touch app/static/dist-latest/index.html
-
       - name: Run docker-compose
         run: |
           set -ex
@@ -95,7 +91,7 @@ jobs:
             then
               exit 1
             fi
-            wget --tries=1 -O - http://localhost:83/ && break
+            wget --tries=1 -O - http://localhost:83/houston/ && break
           done
 
       # Install and test - Test order is randomized, run three times to ensure correctness

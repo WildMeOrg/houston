@@ -170,6 +170,25 @@ class Individuals(Resource):
             from app.modules.names.models import Name
 
             for name_json in request_in['names']:
+                preferring_users = []
+                # this is not getting parsed right FIXME
+                if 'preferring_users' in name_json and isinstance(
+                    name_json['preferring_users'], list
+                ):
+                    from app.modules.users.models import User
+
+                    for user_guid in name_json['preferring_users']:
+                        user = User.query.get(user_guid)
+                        if not user:
+                            AuditLog.frontend_fault(
+                                log,
+                                f'invalid user guid ({user_guid}) in preferring_users {name_json}',
+                            )
+                            cleanup.rollback_and_abort(
+                                message='Invalid user guid ({user_guid}) in name data {name_json}',
+                                code=400,
+                            )
+                        preferring_users.append(user)
                 name_context = name_json.get('context')
                 name_value = name_json.get('value')
                 if not name_context or not name_value:
@@ -183,6 +202,7 @@ class Individuals(Resource):
                     value=name_value,
                     creator_guid=current_user.guid,
                 )
+                # new_name.add_preferring_users(preferring_users)
                 names.append(new_name)
 
         # finally make the Individual if all encounters are found

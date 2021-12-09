@@ -13,7 +13,9 @@ from tests.utils import module_unavailable
 @pytest.mark.skipif(
     module_unavailable('individuals'), reason='Individuals module disabled'
 )
-def test_get_set_individual_names(db, flask_app_client, researcher_1, request, test_root):
+def test_get_set_individual_names(
+    db, flask_app_client, researcher_1, researcher_2, request, test_root
+):
 
     uuids = sighting_utils.create_sighting(
         flask_app_client, researcher_1, request, test_root
@@ -26,6 +28,7 @@ def test_get_set_individual_names(db, flask_app_client, researcher_1, request, t
 
     assert len(sighting.encounters) > 0
     enc = sighting.encounters[0]
+    bad_guid = '00000000-0000-0000-2170-000000000000'
 
     # first we try with bunk data for one name
     individual_data_in = {
@@ -39,8 +42,25 @@ def test_get_set_individual_names(db, flask_app_client, researcher_1, request, t
         flask_app_client, researcher_1, 422, individual_data_in
     )
 
-    # fix the name and try again (will make our individual)
-    individual_data_in['names'][1] = {'context': 'B', 'value': 'value-B'}
+    # now with bunk preferring_users user guid, but name fixed
+    individual_data_in = {
+        'names': [
+            {'context': 'A', 'value': 'value-A'},
+            {'context': 'B', 'value': 'value-B', 'preferring_users': [bad_guid]},
+        ],
+        'encounters': [{'id': str(enc.guid)}],
+    }
+    individual_response = individual_utils.create_individual(
+        flask_app_client, researcher_1, 422, individual_data_in
+    )
+
+    # fix the name and preferring_users and try again (will make our individual)
+    individual_data_in['names'][1] = {
+        'context': 'B',
+        'value': 'value-B',
+        # TODO FIXME  POST + preferring_users is currently now working
+        # 'preferring_users': [{'guid':str(researcher_1.guid)}],
+    }
     individual_response = individual_utils.create_individual(
         flask_app_client, researcher_1, 200, individual_data_in
     )
@@ -111,7 +131,6 @@ def test_get_set_individual_names(db, flask_app_client, researcher_1, request, t
     )
 
     # now lets remove one (but invalid Name guid)
-    bad_guid = '00000000-0000-0000-2170-000000000000'
     patch_data = [
         utils.patch_remove_op('names', bad_guid),
     ]
@@ -234,6 +253,89 @@ def test_get_set_individual_names(db, flask_app_client, researcher_1, request, t
     ).json
     assert individual_json['names'][2]['context'] == 'C'
     assert individual_json['names'][2]['value'] == 'name-C'
+
+    # op=add, but add a preferring_user to an existing name
+    patch_data = [
+        utils.patch_add_op(
+            'names',
+            {'guid': name_guid, 'preferring_user': str(researcher_1.guid)},
+        ),
+    ]
+    patch_individual_response = individual_utils.patch_individual(
+        flask_app_client, researcher_1, individual_id, patch_data
+    )
+    individual_json = individual_utils.read_individual(
+        flask_app_client, researcher_1, individual_id
+    ).json
+    assert len(individual_json['names'][2]['preferring_users']) == 1
+    assert individual_json['names'][2]['preferring_users'][0]['guid'] == str(
+        researcher_1.guid
+    )
+
+    # op=add, but add a preferring_user *but not current_user* so it should fail
+    patch_data = [
+        utils.patch_add_op(
+            'names',
+            {'guid': name_guid, 'preferring_user': str(researcher_2.guid)},
+        ),
+    ]
+    patch_individual_response = individual_utils.patch_individual(
+        flask_app_client,
+        researcher_1,
+        individual_id,
+        patch_data,
+        expected_status_code=422,
+    )
+    assert (
+        patch_individual_response.json['message']
+        == f'invalid user guid {str(researcher_2.guid)}'
+    )
+
+    # op=add, preferring_user, but an invalid user guid
+    patch_data = [
+        utils.patch_add_op(
+            'names',
+            {'guid': name_guid, 'preferring_user': bad_guid},
+        ),
+    ]
+    patch_individual_response = individual_utils.patch_individual(
+        flask_app_client,
+        researcher_1,
+        individual_id,
+        patch_data,
+        expected_status_code=422,
+    )
+    assert patch_individual_response.json['message'] == f'invalid user guid {bad_guid}'
+
+    # remove preferring_user, bad user guid
+    patch_data = [
+        utils.patch_remove_op('names', {'guid': name_guid, 'preferring_user': bad_guid}),
+    ]
+    patch_individual_response = individual_utils.patch_individual(
+        flask_app_client,
+        researcher_1,
+        individual_id,
+        patch_data,
+        expected_status_code=422,
+    )
+    assert patch_individual_response.json['message'] == f'invalid user guid {bad_guid}'
+
+    # remove preferring_user, but this should work
+    patch_data = [
+        utils.patch_remove_op(
+            'names', {'guid': name_guid, 'preferring_user': str(researcher_1.guid)}
+        ),
+    ]
+    patch_individual_response = individual_utils.patch_individual(
+        flask_app_client,
+        researcher_1,
+        individual_id,
+        patch_data,
+    )
+    individual_json = individual_utils.read_individual(
+        flask_app_client, researcher_1, individual_id
+    ).json
+    assert len(individual_json['names'][2]['preferring_users']) == 0
 
 
 @pytest.mark.skipif(

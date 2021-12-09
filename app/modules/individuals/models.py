@@ -137,7 +137,7 @@ class Individual(db.Model, FeatherModel):
     def get_names_for_value(self, value):
         return Name.query.filter_by(individual_guid=self.guid, value=value).all()
 
-    def add_name(self, context, value, creator):
+    def add_name(self, context, value, creator, preferring_users=[]):
         new_name = Name(
             individual_guid=self.guid,
             context=context,
@@ -146,6 +146,7 @@ class Individual(db.Model, FeatherModel):
         )
         with db.session.begin(subtransactions=True):
             db.session.add(new_name)
+        new_name.add_preferring_users(preferring_users)
         return new_name
 
     def remove_name(self, name):

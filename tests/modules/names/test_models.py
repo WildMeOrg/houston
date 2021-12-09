@@ -2,6 +2,7 @@
 # pylint: disable=invalid-name,missing-docstring
 
 import pytest
+import sqlalchemy
 from tests.utils import module_unavailable
 
 
@@ -44,8 +45,8 @@ def test_names_crud(db, researcher_1, researcher_2, empty_individual, request):
     # add a name with existing context
     try:
         empty_individual.add_name(context, test_name, researcher_2)
-    except ValueError as ve:
-        assert 'name could not be added' in str(ve)
+    except sqlalchemy.exc.IntegrityError as ie:
+        assert 'duplicate key' in str(ie)
 
     another_context = 'test-context-2'
     empty_individual.add_name(another_context, test_name, researcher_2)

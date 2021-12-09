@@ -86,6 +86,11 @@ def test_collaboration_read_state_changes(db, collab_user_a, collab_user_b, requ
         (collab_user_a.guid, CollaborationUserState.APPROVED),
         (collab_user_b.guid, CollaborationUserState.APPROVED),
     )
+    assert collab_user_a.user_collaboration_associations[0].has_read()
+    assert collab_user_b.user_collaboration_associations[0].has_read()
+    assert (
+        collab_user_a.user_collaboration_associations[0].get_other_user() == collab_user_b
+    )
 
 
 @pytest.mark.skipif(

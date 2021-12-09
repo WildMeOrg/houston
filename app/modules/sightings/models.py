@@ -208,9 +208,9 @@ class Sighting(db.Model, FeatherModel):
             return self.created.isoformat() + 'Z'
         return None
 
-    # unreviewed start time is only valid if there were identification jobs
+    # unreviewed start time is only valid if there were no active identification jobs
     def get_unreviewed_start_time(self):
-        if self.any_jobs_active():
+        if not self.any_jobs_active():
             return self.unreviewed_start.isoformat() + 'Z'
         return None
 

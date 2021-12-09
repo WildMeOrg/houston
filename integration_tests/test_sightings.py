@@ -92,7 +92,7 @@ def test_sightings(session, login, codex_url, test_root, admin_name):
         'detection_start_time': response.json()['detection_start_time'],
         'identification_start_time': None,
         'review_time': None,
-        'unreviewed_start_time': None,
+        'unreviewed_start_time': response.json()['unreviewed_start_time'],
     }
 
     # GET sighting

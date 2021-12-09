@@ -89,11 +89,39 @@ def test_get_set_individual_names(
     )
     assert 'value must contain keys' in patch_individual_response.json.get('message')
 
-    # now this should work
     test_context = 'test-context'
     test_value = 'test-value'
+
+    # this should fail cuz of bad user_guid in preferring_users
     patch_data = [
-        utils.patch_add_op('names', {'context': test_context, 'value': test_value}),
+        utils.patch_add_op(
+            'names',
+            {
+                'context': test_context,
+                'value': test_value,
+                'preferring_users': [bad_guid],
+            },
+        ),
+    ]
+    patch_individual_response = individual_utils.patch_individual(
+        flask_app_client,
+        researcher_1,
+        individual_id,
+        patch_data,
+        expected_status_code=422,
+    )
+    assert patch_individual_response.json['message'] == f'invalid user guid {bad_guid}'
+
+    # now this should work
+    patch_data = [
+        utils.patch_add_op(
+            'names',
+            {
+                'context': test_context,
+                'value': test_value,
+                'preferring_users': [str(researcher_1.guid)],
+            },
+        ),
     ]
     patch_individual_response = individual_utils.patch_individual(
         flask_app_client, researcher_1, individual_id, patch_data
@@ -102,6 +130,7 @@ def test_get_set_individual_names(
     assert len(patch_individual_response.json['names']) == 3
     assert patch_individual_response.json['names'][2]['context'] == test_context
     assert patch_individual_response.json['names'][2]['value'] == test_value
+    assert len(patch_individual_response.json['names'][2]['preferring_users']) == 1
     name_guid = patch_individual_response.json['names'][2]['guid']
 
     individual_json = individual_utils.read_individual(

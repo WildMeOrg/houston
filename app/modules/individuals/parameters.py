@@ -110,7 +110,7 @@ class PatchIndividualDetailsParameters(PatchJSONParameters):
         # 2. ADD NEW PREFERRING USER (existing name):  value = {guid: name_guid, preferring_user: user_guid}
         if field == 'names':  # add and replace are diff for names
             if not isinstance(value, dict) or (
-                set(value.keys()) != {'context', 'value'}
+                not set(value.keys()) >= {'context', 'value'}
                 and set(value.keys()) != {'guid', 'preferring_user'}
             ):
                 abort(
@@ -123,7 +123,22 @@ class PatchIndividualDetailsParameters(PatchJSONParameters):
 
             if 'context' in value:
                 # if add_name fails (e.g. constraint violation due to context duplication) a 409/conflict will be returned
-                obj.add_name(value['context'], value['value'], current_user)
+                preferring_users = []
+                if 'preferring_users' in value and isinstance(
+                    value['preferring_users'], list
+                ):
+                    for user_guid in value['preferring_users']:
+                        user = User.query.get(user_guid)
+                        # see above decree from 2021-12-08
+                        if not user or user != current_user:
+                            abort(
+                                code=HTTPStatus.UNPROCESSABLE_ENTITY,
+                                message=f'invalid user guid {user_guid}',
+                            )
+                        preferring_users.append(user)
+                obj.add_name(
+                    value['context'], value['value'], current_user, preferring_users
+                )
                 return True
             else:
                 name = Name.query.get(value['guid'])
@@ -133,8 +148,7 @@ class PatchIndividualDetailsParameters(PatchJSONParameters):
                         message=f"invalid name guid {value['guid']}",
                     )
                 user = User.query.get(value['preferring_user'])
-                # decree from 2021-12-08 slack discussion is user can only add/remove self
-                #   but this can be rolled back by dropping second part of this conditional
+                # see above decree from 2021-12-08
                 if not user or user != current_user:
                     abort(
                         code=HTTPStatus.UNPROCESSABLE_ENTITY,

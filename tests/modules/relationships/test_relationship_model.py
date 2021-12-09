@@ -16,24 +16,18 @@ import pytest
 @pytest.mark.skipif(
     module_unavailable('relationships'), reason='Relationships module disabled'
 )
-def test_relationship_instantiation(db, staff_user, flask_app_client, request):
+def test_relationship_instantiation(db, staff_user, flask_app_client, request, test_root):
 
-    response_1 = indiv_utils.create_individual_with_encounter(
-        db,
-        flask_app_client,
-        staff_user,
-        request,
+    response_1 = indiv_utils.create_individual_and_sighting(
+        flask_app_client, staff_user, request, test_root
     )
 
-    response_2 = indiv_utils.create_individual_with_encounter(
-        db,
-        flask_app_client,
-        staff_user,
-        request,
+    response_2 = indiv_utils.create_individual_and_sighting(
+        flask_app_client, staff_user, request, test_root
     )
 
-    individual_1_guid = response_1['id']
-    individual_2_guid = response_2['id']
+    individual_1_guid = response_1['individual']
+    individual_2_guid = response_2['individual']
 
     relationship_role_1 = 'Mother'
     relationship_role_2 = 'Calf'

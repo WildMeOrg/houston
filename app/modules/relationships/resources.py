@@ -67,6 +67,10 @@ class Relationships(Resource):
         """
         Create a new instance of Relationship.
         """
+        from app.extensions.elapsed_time import ElapsedTime
+        import app.extensions.logging as AuditLog  # NOQA
+
+        timer = ElapsedTime()
 
         request_in = {}
         import json
@@ -97,24 +101,8 @@ class Relationships(Resource):
                 db.session.add(relationship)
                 for member in relationship.individual_members:
                     db.session.add(member)
-
-            rtn = {
-                'success': True,
-                'guid': relationship.guid,
-                'type': relationship.type,
-                'start_date': relationship.start_date,
-                'individual_members': [],
-            }
-            for member in relationship.individual_members:
-                each_member = {
-                    'individual_role': member.individual_role,
-                    'individual_guid': str(member.individual_guid),
-                }
-                rtn['individual_members'].append(each_member)
-            # ut.embed()
-            return rtn
-        else:
-            log.debug('FAILED TO CREATE RELATIONSHIP!')
+            AuditLog.user_create_object(log, relationship, duration=timer.elapsed())
+            return relationship
 
 
 @api.route('/<uuid:relationship_guid>')
@@ -182,10 +170,15 @@ class RelationshipByID(Resource):
         """
         Delete a Relationship by ID.
         """
+        from app.extensions.elapsed_time import ElapsedTime
+        import app.extensions.logging as AuditLog  # NOQA
+
+        timer = ElapsedTime()
         context = api.commit_or_abort(
             db.session, default_error_message='Failed to delete the Relationship.'
         )
 
         with context:
             relationship.delete()
+            AuditLog.delete_object(log, relationship, duration=timer.elapsed())
         return None

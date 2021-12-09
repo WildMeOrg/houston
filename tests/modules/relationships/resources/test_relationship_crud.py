@@ -20,7 +20,9 @@ log = logging.getLogger(__name__)
 @pytest.mark.skipif(
     module_unavailable('relationships'), reason='Relationships module disabled'
 )
-def test_create_read_delete_relationship(flask_app_client, researcher_1, request):
+def test_create_read_delete_relationship(
+    flask_app_client, researcher_1, request, test_root
+):
 
     temp_enc_1 = None
     temp_enc_2 = None
@@ -29,13 +31,20 @@ def test_create_read_delete_relationship(flask_app_client, researcher_1, request
 
     headers = (('x-allow-delete-cascade-sighting', True),)
 
-    temp_enc_1 = encounter_utils.create_encounter(flask_app_client, researcher_1)
-    temp_enc_1_guid = temp_enc_1.json['result']['encounters'][0]['id']
+    response = encounter_utils.create_encounter(
+        flask_app_client, researcher_1, request, test_root
+    )
+
+    temp_enc_1_guid = response['encounters'][0]
     request.addfinalizer(
         lambda: encounter_utils.delete_encounter(
             flask_app_client, researcher_1, temp_enc_1_guid, headers=headers
         )
     )
+
+    from app.modules.encounters.models import Encounter
+
+    temp_enc_1 = Encounter.query.get(temp_enc_1_guid)
 
     enc_1_json = {'encounters': [{'id': str(temp_enc_1_guid)}]}
     temp_enc_1.owner = researcher_1
@@ -49,8 +58,10 @@ def test_create_read_delete_relationship(flask_app_client, researcher_1, request
         )
     )
 
-    temp_enc_2 = encounter_utils.create_encounter(flask_app_client, researcher_1)
-    temp_enc_2_guid = temp_enc_2.json['result']['encounters'][0]['id']
+    response = encounter_utils.create_encounter(
+        flask_app_client, researcher_1, request, test_root
+    )
+    temp_enc_2_guid = response['encounters'][0]
     request.addfinalizer(
         lambda: encounter_utils.delete_encounter(
             flask_app_client, researcher_1, temp_enc_2_guid, headers=headers
@@ -58,6 +69,8 @@ def test_create_read_delete_relationship(flask_app_client, researcher_1, request
     )
 
     enc_2_json = {'encounters': [{'id': str(temp_enc_2_guid)}]}
+
+    temp_enc_2 = Encounter.query.get(temp_enc_2_guid)
     temp_enc_2.owner = researcher_1
     response = individual_utils.create_individual(
         flask_app_client, researcher_1, expected_status_code=200, data_in=enc_2_json

@@ -92,26 +92,32 @@ class Relationship(db.Model, Timestamp):
             raise ValueError('Relationship needs two individuals, each with a role.')
 
     def has_individual(self, individual_guid):
-        found_individual_members = [
-            individual_member
-            for individual_member in self.individual_members
-            if str(individual_member.individual_guid) == individual_guid
-        ]
-        if found_individual_members:
+        if self._get_membership_for_guid(individual_guid):
             return True
         return False
 
     def get_relationship_role_for_individual(self, individual_guid):
-        if self.has_individual(individual_guid):
+        membership = self._get_membership_for_guid(individual_guid)
+        if membership:
             for individual_member in self.individual_members:
                 if str(individual_member.individual_guid) == individual_guid:
                     return individual_member.individual_role
         return None
 
+    def _get_membership_for_guid(self, individual_guid):
+        found_individual_members = [
+            individual_member
+            for individual_member in self.individual_members
+            if str(individual_member.individual_guid) == individual_guid
+        ]
+        return found_individual_members[0]
+
     def __repr__(self):
         return (
             '<{class_name}('
             'guid={self.guid}, '
+            'individual_member_1={self.individual_members[0].individual_guid}, '
+            'individual_member_2={self.individual_members[1].individual_guid}, '
             ')>'.format(class_name=self.__class__.__name__, self=self)
         )
 

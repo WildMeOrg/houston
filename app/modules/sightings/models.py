@@ -261,13 +261,7 @@ class Sighting(db.Model, FeatherModel):
                 asset.delete()
 
     def delete_from_edm(self, current_app, request):
-        return current_app.edm.request_passthrough_parsed(
-            'encounter.data',
-            'delete',
-            {},
-            self.guid,
-            request_headers=request.headers,
-        )
+        return Sighting.delete_from_edm_by_guid(current_app, self.guid, request)
 
     def delete_from_edm_and_houston(self):
         # first try delete on edm, deleting all sub components too
@@ -301,14 +295,13 @@ class Sighting(db.Model, FeatherModel):
     @classmethod
     def delete_from_edm_by_guid(cls, current_app, guid, request):
         assert guid is not None
-        (response, response_data, result,) = current_app.edm.request_passthrough_parsed(
+        return current_app.edm.request_passthrough_parsed(
             'sighting.data',
             'delete',
             {},
             guid,
             request_headers=request.headers,
         )
-        return response
 
     # given edm_json (verbose json from edm) will populate with houston-specific data from feather object
     # note: this modifies the passed in edm_json, so not sure how legit that is?

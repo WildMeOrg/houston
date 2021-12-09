@@ -52,7 +52,7 @@ class SightingCleanup(object):
         )
         if self.sighting_guid is not None:
             log.warning('Cleanup removing Sighting %r from EDM' % self.sighting_guid)
-            Sighting.delete_from_edm_by_guid(current_app, self.sighting_guid, request)
+            Sighting.delete_from_edm(current_app, request)
         if self.asset_group is not None:
             log.warning('Cleanup removing %r' % self.asset_group)
             self.asset_group.delete()
@@ -600,7 +600,9 @@ class SightingByID(Resource):
         """
         # first try delete on edm
         try:
-            response = sighting.delete_from_edm(current_app, request)
+            (response, response_data, result) = sighting.delete_from_edm(
+                current_app, request
+            )
         except HoustonException as ex:
             edm_status_code = ex.get_val('edm_status_code', 400)
             log.warning(
@@ -613,10 +615,6 @@ class SightingByID(Resource):
                 message='Error',
                 code=400,
             )
-
-        response_data = None
-        if response.ok:
-            response_data = response.json()
 
         if not response.ok or not response_data.get('success', False):
             log.warning('Sighting.delete %r failed: %r' % (sighting.guid, response_data))

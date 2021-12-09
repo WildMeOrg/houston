@@ -19,11 +19,6 @@ class BaseIndividualSchema(ModelSchema):
 
     hasView = base_fields.Function(Individual.current_user_has_view_permission)
     hasEdit = base_fields.Function(Individual.current_user_has_edit_permission)
-    names = base_fields.Nested(
-        DetailedNameSchema,
-        attribute='names',
-        many=True,
-    )
 
     class Meta:
         # pylint: disable=missing-docstring
@@ -32,7 +27,6 @@ class BaseIndividualSchema(ModelSchema):
             Individual.guid.key,
             'hasView',
             'hasEdit',
-            'names',
         )
         dump_only = (Individual.guid.key,)
 
@@ -43,12 +37,18 @@ class DetailedIndividualSchema(BaseIndividualSchema):
     """
 
     featuredAssetGuid = base_fields.Function(Individual.get_featured_asset_guid)
+    names = base_fields.Nested(
+        DetailedNameSchema,
+        attribute='names',
+        many=True,
+    )
 
     class Meta(BaseIndividualSchema.Meta):
         fields = BaseIndividualSchema.Meta.fields + (
             Individual.created.key,
             Individual.updated.key,
             'featuredAssetGuid',
+            'names',
         )
         dump_only = BaseIndividualSchema.Meta.dump_only + (
             Individual.created.key,

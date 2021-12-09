@@ -271,8 +271,8 @@ class Sighting(db.Model, FeatherModel):
 
         request = DummyRequest(
             headers={
-                'x-allow-delete-cascade-individual': 'true',
-                'x-allow-delete-cascade-sighting': 'true',
+                'x-allow-delete-cascade-individual': 'True',
+                'x-allow-delete-cascade-sighting': 'True',
             }
         )
 

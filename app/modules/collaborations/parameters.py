@@ -5,11 +5,15 @@ Input arguments (Parameters) for Collaborations resources RESTful API
 """
 from flask_restx_patched import Parameters, PatchJSONParameters
 from flask_marshmallow import base_fields
+import logging
 
 from . import schemas
 from flask_login import current_user
 from app.modules.users.permissions.types import AccessOperation
 from app.modules.users.permissions import rules
+from app.utils import HoustonException
+
+log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
 
 class CreateCollaborationParameters(Parameters, schemas.DetailedCollaborationSchema):
@@ -37,7 +41,33 @@ class PatchCollaborationDetailsParameters(PatchJSONParameters):
     PATH_CHOICES = (
         '/view_permission',
         '/edit_permission',
+        '/managed_view_permission',
+        '/managed_edit_permission',
     )
+
+    @classmethod
+    def get_managed_values(cls, field, value):
+        if not isinstance(value, dict):
+            raise HoustonException(
+                log, f'Value for {field} must be passed as a dictionary'
+            )
+
+        if 'user_guid' not in value.keys():
+            raise HoustonException(log, f'Value for {field} must contain a user_guid')
+
+        if 'permission' not in value.keys():
+            raise HoustonException(
+                log, f'Value for {field} must contain a permission field'
+            )
+
+        # Is the user guid valid?
+        from app.modules.users.models import User
+
+        user = User.query.get(value['user_guid'])
+        if not user:
+            raise HoustonException(log, f"User for {value['user_guid']} not found")
+
+        return user.guid, value['permission']
 
     @classmethod
     def add(cls, obj, field, value, state):
@@ -48,11 +78,22 @@ class PatchCollaborationDetailsParameters(PatchJSONParameters):
 
         ret_val = False
 
-        has_permission = rules.ObjectActionRule(obj, AccessOperation.WRITE).check()
-
-        if has_permission:
-            if field == 'view_permission':
+        if field == 'view_permission':
+            if rules.ObjectActionRule(obj, AccessOperation.WRITE).check():
                 ret_val = obj.set_read_approval_state_for_user(current_user.guid, value)
-            if field == 'edit_permission':
+
+        elif field == 'edit_permission':
+            if rules.ObjectActionRule(obj, AccessOperation.WRITE).check():
                 ret_val = obj.set_edit_approval_state_for_user(current_user.guid, value)
+
+        elif field == 'managed_view_permission':
+            if current_user.is_user_manager:
+                user_guid, permission = cls.get_managed_values(field, value)
+                ret_val = obj.set_read_approval_state_for_user(user_guid, permission)
+
+        elif field == 'managed_edit_permission':
+            if current_user.is_user_manager:
+                user_guid, permission = cls.get_managed_values(field, value)
+                ret_val = obj.set_edit_approval_state_for_user(user_guid, permission)
+
         return ret_val

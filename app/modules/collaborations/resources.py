@@ -192,6 +192,8 @@ class CollaborationByID(Resource):
                 abort(
                     400, message=f"unable to set {args[0]['path']} to {args[0]['value']}"
                 )
+            except HoustonException as ex:
+                abort(ex.status_code, ex.message)
 
         AuditLog.patch_object(log, collaboration, args, duration=timer.elapsed())
         return collaboration

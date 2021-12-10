@@ -43,16 +43,20 @@ class IndividualCleanup(object):
     def rollback_and_abort(self, message='Unknown Error', code=400):
         if self.individual_guid is not None:
             failed_individual = Individual.query.get(self.individual_guid)
+            # we try deleting from edm *regardless of failed_individual*, as sometimes
+            #   the houston individual did not get made, but the edm did
+            log.error(f'Attempting to delete Individual {self.individual_guid} from EDM')
+            try:
+                current_app.edm.request_passthrough(
+                    'individual.data', 'delete', {}, self.individual_guid
+                )
+            except Exception:
+                pass
             if failed_individual is not None:
                 with db.session.begin():
-                    try:
-                        failed_individual.delete_from_edm(current_app)
-                    except Exception:
-                        pass
                     db.session.delete(failed_individual)
-
                 log.error(
-                    'The Individual with guid %r was not persisted to the EDM and has been deleted from Houston'
+                    'The Individual with guid %r has been deleted from Houston'
                     % self.individual_guid
                 )
         abort(
@@ -185,7 +189,7 @@ class Individuals(Resource):
                                 f'invalid user guid ({user_guid}) in preferring_users {name_json}',
                             )
                             cleanup.rollback_and_abort(
-                                message='Invalid user guid ({user_guid}) in name data {name_json}',
+                                message=f'Invalid user guid ({user_guid}) in name data {name_json}',
                                 code=400,
                             )
                         preferring_users.append(user)
@@ -194,7 +198,7 @@ class Individuals(Resource):
                 if not name_context or not name_value:
                     AuditLog.frontend_fault(log, f'invalid name data {name_json}')
                     cleanup.rollback_and_abort(
-                        message='Invalid name data {name_json}',
+                        message=f'Invalid name data {name_json}',
                         code=400,
                     )
                 new_name = Name(

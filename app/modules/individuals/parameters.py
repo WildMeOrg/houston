@@ -8,6 +8,7 @@ from . import schemas
 import logging
 import app.modules.utils as util
 from flask_restx_patched._http import HTTPStatus
+from flask_marshmallow import base_fields
 from app.extensions.api import abort
 from uuid import UUID
 
@@ -16,6 +17,12 @@ log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
 
 class CreateIndividualParameters(Parameters, schemas.DetailedIndividualSchema):
+    names = base_fields.List(
+        base_fields.Raw(),
+        description='List of Individual Names',
+        required=False,
+    )
+
     class Meta(schemas.DetailedIndividualSchema.Meta):
         pass
 

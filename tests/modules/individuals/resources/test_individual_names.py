@@ -39,7 +39,7 @@ def test_get_set_individual_names(
         'encounters': [{'id': str(enc.guid)}],
     }
     individual_response = individual_utils.create_individual(
-        flask_app_client, researcher_1, 422, individual_data_in
+        flask_app_client, researcher_1, 400, individual_data_in
     )
 
     # now with bunk preferring_users user guid, but name fixed
@@ -51,7 +51,7 @@ def test_get_set_individual_names(
         'encounters': [{'id': str(enc.guid)}],
     }
     individual_response = individual_utils.create_individual(
-        flask_app_client, researcher_1, 422, individual_data_in
+        flask_app_client, researcher_1, 400, individual_data_in
     )
 
     # fix the name and preferring_users and try again (will make our individual)

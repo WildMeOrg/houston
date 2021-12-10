@@ -45,8 +45,8 @@ def test_names_crud(db, researcher_1, researcher_2, empty_individual, request):
     # add a name with existing context
     try:
         empty_individual.add_name(context, test_name, researcher_2)
-    except sqlalchemy.exc.IntegrityError as ie:
-        assert 'duplicate key' in str(ie)
+    except sqlalchemy.exc.IntegrityError:
+        pass
 
     another_context = 'test-context-2'
     empty_individual.add_name(another_context, test_name, researcher_2)

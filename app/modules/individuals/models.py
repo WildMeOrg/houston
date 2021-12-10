@@ -486,20 +486,14 @@ class Individual(db.Model, FeatherModel):
                     name.context = Individual._incremented_context(
                         name.context, contexts_on_self
                     )
-                    log.warn(f'>>>>>>>>>>>>> just incremented to {name.context}!!!')
                 name.individual_guid = self.guid  # attach name to self
                 # does name actually get stored here?
-                log.warn(f'>>>>>>>>>>>>> adding {name} to self')
                 contexts_on_self.add(name.context)
         # now we deal with overrides
         for name in self.names:
             if name.context in override_contexts:
                 name.value = override[name.context]
-                log.warn(
-                    f'>>>>>>>>>>>>> found override-context {name.context}, updating value to {name.value}'
-                )
-        # self.names = self.names
-        db.session.refresh(self)
+        db.session.refresh(self)  # updates .names on all parties
         return self.names
 
     @classmethod
@@ -509,7 +503,6 @@ class Individual(db.Model, FeatherModel):
         ct = -1
         reg = '^' + ctx + r'(\d+)'
         for ex in existing:
-            # print(f'#### {ex}:{ct}')
             if ex == ctx and ct < 0:
                 ct = 0  # this at least should happen
                 continue
@@ -517,9 +510,7 @@ class Individual(db.Model, FeatherModel):
             if not m:
                 continue
             val = int(m.groups()[0])
-            # print(f'>>>> val={val},ct={ct}')
             ct = max(val, ct)
-            # print(f'>>>> ct={ct}')
         if ct < 0:
             raise ValueError(f'no matches of {ctx} in {existing}')
         ct += 1

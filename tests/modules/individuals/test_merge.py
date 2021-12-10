@@ -404,21 +404,15 @@ def test_merge_names(db, flask_app_client, researcher_1, admin_user, request, te
     overridden_context = 'test-override'
     individual1.add_name(shared_context, 'one', researcher_1)
     individual1.add_name('another', 'another', researcher_1)
-    individual1.add_name(
-        overridden_context, 'gone1', researcher_1
-    )  # blown away by override
-    individual2.add_name(
-        shared_context, 'two', researcher_1
-    )  # should get bumped to have 2 suffix
-    individual2.add_name(
-        overridden_context, 'gone2', researcher_1
-    )  # blown away by override
-    individual3.add_name(
-        shared_context, 'three', researcher_1
-    )  # should get bumped to have 3 suffix
-    individual3.add_name(
-        'third', '333', researcher_1
-    )  # should get bumped to have 3 suffix
+    # blown away by override
+    individual1.add_name(overridden_context, 'gone1', researcher_1)
+    # should get bumped to have 1 suffix
+    individual2.add_name(shared_context, 'two', researcher_1)
+    # blown away by override
+    individual2.add_name(overridden_context, 'gone2', researcher_1)
+    # should get bumped to have 2 suffix
+    individual3.add_name(shared_context, 'three', researcher_1)
+    individual3.add_name('third', '333', researcher_1)
     assert len(individual1.names) == 3
     assert len(individual2.names) == 2
     assert len(individual3.names) == 2
@@ -470,9 +464,9 @@ def test_merge_names(db, flask_app_client, researcher_1, admin_user, request, te
     individual3_id = individual3_uuids['individual']
     individual2 = Individual.query.get(individual2_id)
     individual3 = Individual.query.get(individual3_id)
-    # should be ignored via override
+    # both of these should be ignored via override
     individual2.add_name(shared_context, 'AAA', researcher_1)
-    individual3.add_name(shared_context, 'BBB', researcher_1)  # ditto
+    individual3.add_name(shared_context, 'BBB', researcher_1)
     individual3.add_name('endearment', 'sweetie', researcher_1)  # will get added
     assert len(individual2.names) == 1
     assert len(individual3.names) == 2
@@ -484,3 +478,9 @@ def test_merge_names(db, flask_app_client, researcher_1, admin_user, request, te
     assert len(individual1.names) == 7  # original 6 (one swapped out - override) + 1 new
     assert len(individual2.names) == 0
     assert len(individual3.names) == 0
+    # verify override one stuck
+    found = False
+    for name in individual1.names:
+        if name.context == shared_context and name.value == final_value:
+            found = True
+    assert found

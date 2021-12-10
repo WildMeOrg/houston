@@ -471,9 +471,7 @@ class Individual(db.Model, FeatherModel):
     #  currently, override-context will only replace an existing one, not add to names when it does not exist
     def merge_names(self, source_individuals, override=None, fail_on_conflict=False):
         override_contexts = set(override.keys()) if isinstance(override, dict) else set()
-        contexts_on_self = set()
-        for name in self.names:
-            contexts_on_self.add(name.context)
+        contexts_on_self = set([name.context for name in self.names])
         for indiv in source_individuals:
             for name in indiv.names:
                 if fail_on_conflict and name.context in contexts_on_self:
@@ -487,7 +485,6 @@ class Individual(db.Model, FeatherModel):
                         name.context, contexts_on_self
                     )
                 name.individual_guid = self.guid  # attach name to self
-                # does name actually get stored here?
                 contexts_on_self.add(name.context)
         # now we deal with overrides
         for name in self.names:
@@ -500,21 +497,23 @@ class Individual(db.Model, FeatherModel):
     def _incremented_context(cls, ctx, existing):
         import re
 
-        ct = -1
+        num = -1
         reg = '^' + ctx + r'(\d+)'
         for ex in existing:
-            if ex == ctx and ct < 0:
-                ct = 0  # this at least should happen
+            if ex == ctx and num < 0:
+                # ctx "should always" be in existing, so this is "guaranteed"
+                num = 0
                 continue
             m = re.match(reg, ex)
             if not m:
                 continue
             val = int(m.groups()[0])
-            ct = max(val, ct)
-        if ct < 0:
+            num = max(val, num)
+        if num < 0:
+            # this means our guarantee failed
             raise ValueError(f'no matches of {ctx} in {existing}')
-        ct += 1
-        return f'{ctx}{ct}'
+        num += 1
+        return f'{ctx}{num}'
 
     def get_blocking_encounters(self):
         blocking = []

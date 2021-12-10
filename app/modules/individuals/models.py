@@ -644,9 +644,11 @@ class Individual(db.Model, FeatherModel):
     def find_merge_conflicts(self, individuals):
         if len(individuals) < 2:
             raise ValueError('not enough individuals')
-        # we are passing on any kind of name-conflict now til that is sorted  FIXME
         values = {'sex': set()}
+        name_contexts = {}
         for individual in individuals:
+            for name in individual.names:
+                name_contexts[name.context] = name_contexts.get(name.context, 0) + 1
             edm_res = current_app.edm.get_dict(
                 'individual.data_complete', individual.guid
             )
@@ -659,7 +661,16 @@ class Individual(db.Model, FeatherModel):
                     f'could not get individual data from edm for id={individual.guid}'
                 )
             values['sex'].add(edm_res['result'].get('sex', None))
-        return [key for key in values.keys() if len(values[key]) > 1]
+        conflicts = {'name_contexts': []}
+        for key in values.keys():
+            if len(values[key]) > 1:
+                conflicts[key] = True
+        for context in name_contexts.keys():
+            if name_contexts[context] > 1:
+                conflicts['name_contexts'].append(context)
+        if not conflicts['name_contexts']:
+            del conflicts['name_contexts']  # eject if empty
+        return conflicts
 
     def delete(self):
         AuditLog.delete_object(log, self)

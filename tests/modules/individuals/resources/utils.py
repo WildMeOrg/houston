@@ -220,6 +220,5 @@ def merge_conflicts(
         data=individuals,
         expected_status_code=expected_status_code,
         response_200=set(),
-        returns_list=True,
     )
     return resp.json

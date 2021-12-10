@@ -363,3 +363,37 @@ def test_failure_cases(db, flask_app_client, researcher_1, request):
     assert rtn
     assert len(rtn) == 2
     assert set([individual1, individual2]) == set(rtn)
+
+
+@pytest.mark.skipif(
+    test_utils.module_unavailable('individuals', 'encounters', 'sightings'),
+    reason='Individuals module disabled',
+)
+def test_merge_names(db, flask_app_client, researcher_1, admin_user, request, test_root):
+    from app.modules.individuals.models import Individual
+
+    individual1_uuids = individual_utils.create_individual_and_sighting(
+        flask_app_client,
+        researcher_1,
+        request,
+        test_root,
+    )
+    individual2_uuids = individual_utils.create_individual_and_sighting(
+        flask_app_client,
+        researcher_1,
+        request,
+        test_root,
+    )
+
+    individual1_id = individual1_uuids['individual']
+    individual2_id = individual2_uuids['individual']
+
+    shared_context = 'test-context'
+    individual1 = Individual.query.get(individual1_id)
+    individual1.add_name(shared_context, 'one', researcher_1)
+    individual1.add_name('another', 'another', researcher_1)
+    individual2 = Individual.query.get(individual2_id)
+    individual2.add_name(shared_context, 'two', researcher_1)
+    import utool as ut
+
+    ut.embed()

@@ -5,6 +5,7 @@ from tests.modules.individuals.resources import utils as individual_utils
 import pytest
 from tests import utils as test_utils
 import logging
+from app.modules.individuals.models import Individual
 
 log = logging.getLogger(__name__)
 
@@ -92,8 +93,6 @@ def test_get_conflicts(
     assert res == {'sex': True}
 
     # add some names with a common context
-    from app.modules.individuals.models import Individual
-
     individual1 = Individual.query.get(individual1_guid)
     individual2 = Individual.query.get(individual2_guid)
     assert individual1

@@ -325,6 +325,12 @@ class Individual(db.Model, FeatherModel):
             log.info(
                 f"edm reports successful merge of indiv {merged_id} into {result['targetId']} for encounters {result['merged'][merged_id]}; adjusting locally"
             )
+        self.merge_names(
+            source_individuals,
+            parameters
+            and parameters.get('override')
+            and parameters['override'].get('name_context'),
+        )
         # now we steal their encounters and delete them
         # NOTE:  technically we could iterate over the enc ids in merged.merged_id array, but we run (tiny) risk of this individual
         #   getting assigned to additional encounters in the interim, so instead we just steal all the encounters directly
@@ -459,6 +465,65 @@ class Individual(db.Model, FeatherModel):
         Individual.merge_notify(
             [target_individual], request_data, NotificationType.individual_merge_complete
         )
+
+    # note: this will destructively remove names from source_individuals
+    #  override looks like:  { context: value } and will replace any/all names with context
+    #  currently, override-context will only replace an existing one, not add to names when it does not exist
+    def merge_names(self, source_individuals, override=None, fail_on_conflict=False):
+        override_contexts = set(override.keys()) if isinstance(override, dict) else set()
+        contexts_on_self = set()
+        for name in self.names:
+            contexts_on_self.add(name.context)
+        for indiv in source_individuals:
+            for name in indiv.names:
+                if fail_on_conflict and name.context in contexts_on_self:
+                    raise ValueError(f'conflict on context {name.context} on {indiv}')
+                elif (
+                    name.context in override_contexts and name.context in contexts_on_self
+                ):
+                    continue  # skip, as override will ultimately win
+                elif name.context in contexts_on_self:
+                    name.context = Individual._incremented_context(
+                        name.context, contexts_on_self
+                    )
+                    log.warn(f'>>>>>>>>>>>>> just incremented to {name.context}!!!')
+                name.individual_guid = self.guid  # attach name to self
+                # does name actually get stored here?
+                log.warn(f'>>>>>>>>>>>>> adding {name} to self')
+                contexts_on_self.add(name.context)
+        # now we deal with overrides
+        for name in self.names:
+            if name.context in override_contexts:
+                name.value = override[name.context]
+                log.warn(
+                    f'>>>>>>>>>>>>> found override-context {name.context}, updating value to {name.value}'
+                )
+        # self.names = self.names
+        db.session.refresh(self)
+        return self.names
+
+    @classmethod
+    def _incremented_context(cls, ctx, existing):
+        import re
+
+        ct = -1
+        reg = '^' + ctx + r'(\d+)'
+        for ex in existing:
+            # print(f'#### {ex}:{ct}')
+            if ex == ctx and ct < 0:
+                ct = 0  # this at least should happen
+                continue
+            m = re.match(reg, ex)
+            if not m:
+                continue
+            val = int(m.groups()[0])
+            # print(f'>>>> val={val},ct={ct}')
+            ct = max(val, ct)
+            # print(f'>>>> ct={ct}')
+        if ct < 0:
+            raise ValueError(f'no matches of {ctx} in {existing}')
+        ct += 1
+        return f'{ctx}{ct}'
 
     def get_blocking_encounters(self):
         blocking = []

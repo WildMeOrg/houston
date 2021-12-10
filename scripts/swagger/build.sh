@@ -45,7 +45,8 @@ function build() {
 
     npm install --legacy-peer-deps
 
-    npm audit fix --force
+    # FIXME: added --audit-level=high to circumvent https://github.com/advisories/GHSA-qrmm-w75w-3wpx
+    npm audit fix --force --audit-level=high
 
     # Copy files
     cp node_modules/swagger-ui-dist/{swagger-ui*.{css,js}{,.map},favicon*.png,oauth2-redirect.html} swagger_static/

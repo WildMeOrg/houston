@@ -110,7 +110,28 @@
                     SwaggerUIStandalonePreset.slice(1) // No Topbar
                 ],
                 plugins: [
-                    SwaggerUIBundle.plugins.DownloadUrl
+                    SwaggerUIBundle.plugins.DownloadUrl,
+                    {# added to correct security problem #}
+                    {# see also https://github.com/advisories/GHSA-qrmm-w75w-3wpx #}
+                    function UrlParamDisablePlugin() {
+                      return {
+                        statePlugins: {
+                          spec: {
+                            wrapActions: {
+                              // Remove the ?url parameter from loading an external OpenAPI definition.
+                              updateUrl: (oriAction) => (payload) => {
+                                const url = new URL(window.location.href)
+                                if (url.searchParams.has('url')) {
+                                  url.searchParams.delete('url')
+                                  window.location.replace(url.toString())
+                                }
+                                return oriAction(payload)
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
                 ],
                 {% if config.SWAGGER_SUPPORTED_SUBMIT_METHODS is defined -%}
                   supportedSubmitMethods: {{ config.SWAGGER_SUPPORTED_SUBMIT_METHODS | tojson}},

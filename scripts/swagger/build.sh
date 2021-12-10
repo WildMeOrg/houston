@@ -30,6 +30,7 @@ function build() {
     # Update code
     pushd "${SOURCE_PATH}"
 
+    set -ex
     # Remove any pre-downloaded modules
     rm -rf node_modules/
     rm -rf package-lock.json
@@ -44,7 +45,8 @@ function build() {
 
     npm install --legacy-peer-deps
 
-    npm audit fix --force
+    # FIXME: added --audit-level=high to circumvent https://github.com/advisories/GHSA-qrmm-w75w-3wpx
+    npm audit fix --force --audit-level=high
 
     # Copy files
     cp node_modules/swagger-ui-dist/{swagger-ui*.{css,js}{,.map},favicon*.png,oauth2-redirect.html} swagger_static/
@@ -53,6 +55,7 @@ function build() {
 
     cp -R node_modules/typeface-droid-sans/files swagger_static/
 
+    set ex
     popd
 }
 

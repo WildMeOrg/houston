@@ -76,12 +76,13 @@ class PatchJSONParameters(Parameters):
     op = base_fields.String(required=True)  # pylint: disable=invalid-name
 
     PATH_CHOICES = None
+    NON_NULL_PATHS = ()
 
     path = base_fields.String(required=True)
 
     NO_VALUE_OPERATIONS = (OP_REMOVE,)
 
-    value = base_fields.Raw(required=False)
+    value = base_fields.Raw(required=False, allow_none=True)
 
     def __init__(self, *args, **kwargs):
         if 'many' in kwargs:
@@ -121,6 +122,13 @@ class PatchJSONParameters(Parameters):
             raise ValidationError('Path is required and must always begin with /')
         else:
             data['field_name'] = data['path'][1:]
+
+        if (
+            data['op'] not in self.NO_VALUE_OPERATIONS
+            and data['path'] in self.NON_NULL_PATHS
+            and not data.get('value')
+        ):
+            raise ValidationError('value cannot be null')
 
     @classmethod
     def perform_patch(cls, operations, obj, state=None):

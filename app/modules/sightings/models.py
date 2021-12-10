@@ -280,7 +280,10 @@ class Sighting(db.Model, FeatherModel):
         try:
             (response, response_data, result) = self.delete_from_edm(current_app, request)
         except HoustonException as ex:
-            if ex.get_val('edm_status_code', 0) == 500:
+            if (
+                ex.get_val('edm_status_code', 0) == 404
+                or ex.get_val('edm_status_code', 0) == 500
+            ):
                 # assume that means that we tried to delete a non-existent sighting
                 # TODO handle failure
                 self.delete_cascade()

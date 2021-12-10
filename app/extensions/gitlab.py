@@ -70,6 +70,10 @@ class GitlabManager(object):
             assert self.gl is None
 
             remote_uri = current_app.config.get('GITLAB_REMOTE_URI', None)
+            if remote_uri == '-':
+                raise GitlabInitializationError(
+                    f'Skip gitlab initialization GITLAB_REMOTE_URI={remote_uri}'
+                )
             remote_personal_access_token = current_app.config.get(
                 'GITLAB_REMOTE_LOGIN_PAT', None
             )

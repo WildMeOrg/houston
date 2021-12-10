@@ -30,6 +30,7 @@ function build() {
     # Update code
     pushd "${SOURCE_PATH}"
 
+    set -ex
     # Remove any pre-downloaded modules
     rm -rf node_modules/
     rm -rf package-lock.json
@@ -53,6 +54,7 @@ function build() {
 
     cp -R node_modules/typeface-droid-sans/files swagger_static/
 
+    set ex
     popd
 }
 

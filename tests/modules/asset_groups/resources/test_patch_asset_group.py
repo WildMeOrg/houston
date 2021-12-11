@@ -165,6 +165,33 @@ def test_patch_asset_group_sighting_as_sighting(
     # chosen for reasons of incongruity as the naked mole rat is virtually blind
     # so has no 'sight'
     add_name_patch = [utils.patch_add_op('name', 'Naked Mole Rat')]
-    asset_group_utils.patch_asset_group_sighting_as_sighting(
+    response = asset_group_utils.patch_asset_group_sighting_as_sighting(
         flask_app_client, researcher_1, asset_group_sighting_guid, add_name_patch
     )
+
+    # Patch encounter in asset group sighting
+    encounter_guids = [e['guid'] for e in response.json['encounters']]
+
+    # Set first encounter sex to male
+    response = utils.patch_via_flask(
+        flask_app_client,
+        researcher_1,
+        scopes='asset_groups:write',
+        path=f'/api/v1/asset_groups/sighting/as_sighting/{asset_group_sighting_guid}/encounter/{encounter_guids[0]}',
+        data=[{'op': 'replace', 'path': '/sex', 'value': 'male'}],
+        expected_status_code=200,
+        response_200={'guid', 'encounters'},
+    )
+    assert [e['sex'] for e in response.json['encounters']] == ['male', None]
+
+    # Set first encounter sex to null
+    response = utils.patch_via_flask(
+        flask_app_client,
+        researcher_1,
+        scopes='asset_groups:write',
+        path=f'/api/v1/asset_groups/sighting/as_sighting/{asset_group_sighting_guid}/encounter/{encounter_guids[0]}',
+        data=[{'op': 'replace', 'path': '/sex', 'value': None}],
+        expected_status_code=200,
+        response_200={'guid', 'encounters'},
+    )
+    assert [e['sex'] for e in response.json['encounters']] == [None, None]

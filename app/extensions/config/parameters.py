@@ -12,6 +12,7 @@ from .models import HoustonConfig
 class PatchHoustonConfigParameters(PatchJSONParametersWithPassword):
     VALID_FIELDS = _CONFIG_PATH_CHOICES + ['current_password']
     PATH_CHOICES = tuple('/%s' % field for field in VALID_FIELDS)
+    NON_NULL_PATHS = ('/ENV',)
 
     @classmethod
     def add(cls, obj, field, value, state):

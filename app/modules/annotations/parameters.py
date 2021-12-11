@@ -53,6 +53,8 @@ class PatchAnnotationDetailsParameters(PatchJSONParameters):
         )
     )
 
+    NON_NULL_PATHS = ('/ia_class',)
+
     @classmethod
     def add(cls, obj, field, value, state):
         if field == 'keywords':

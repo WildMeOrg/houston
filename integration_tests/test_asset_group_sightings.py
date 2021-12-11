@@ -301,6 +301,49 @@ def test_asset_group_sightings(session, login, codex_url, test_root):
         },
     }
 
+    # PATCH asset group sightings encounter with sex None
+    response = session.patch(
+        codex_url(
+            f'/api/v1/asset_groups/sighting/as_sighting/{ags_guids[0]}/encounter/{encounter_guids[0]}'
+        ),
+        json=[
+            {
+                'op': 'replace',
+                'path': '/sex',
+                'value': None,
+            }
+        ],
+    )
+    assert response.status_code == 200
+    assert response.json()['encounters'] == [
+        {
+            # 2021-11-13T16:57:41.937173+00:00
+            'createdHouston': encounters[0]['createdHouston'],
+            'customFields': {
+                enc_test_cfd: 'CFD_TEST_VALUE',
+            },
+            'decimalLatitude': 63.142385,
+            'decimalLongitude': -21.596914,
+            'guid': encounter_guids[0],
+            'hasEdit': True,
+            'hasView': True,
+            'id': encounter_guids[0],
+            'individual': {},
+            'owner': {
+                'full_name': my_name,
+                'guid': my_guid,
+                'profile_fileupload': None,
+            },
+            'sex': None,
+            'submitter': None,
+            'taxonomy': {'id': tx_id},
+            'time': encounter_timestamp,
+            # 2021-11-13T16:57:41.937187+00:00
+            'updatedHouston': response.json()['updatedHouston'],
+            'version': None,
+        },
+    ]
+
     # Commit asset group sighting (becomes sighting)
     response = session.post(
         codex_url(f'/api/v1/asset_groups/sighting/{ags_guids[0]}/commit')

@@ -58,10 +58,14 @@ class PatchIndividualDetailsParameters(PatchJSONParameters):
                 if encounter is not None and encounter in obj.encounters:
                     obj.remove_encounter(encounter)
                     ret_val = True
-        elif field == 'featuredAssetGuid' and util.is_valid_guid(value):
+        elif field == 'featuredAssetGuid' and util.is_valid_uuid_string(value):
             obj.set_featured_asset_guid(UUID(value, version=4))
             ret_val = True
-        elif field == 'names' and isinstance(value, str) and util.is_valid_guid(value):
+        elif (
+            field == 'names'
+            and isinstance(value, str)
+            and util.is_valid_uuid_string(value)
+        ):
             from app.modules.names.models import Name
 
             name = Name.query.get(value)
@@ -84,8 +88,8 @@ class PatchIndividualDetailsParameters(PatchJSONParameters):
             field == 'names'
             and isinstance(value, dict)
             and {'guid', 'preferring_user'} == set(value.keys())
-            and util.is_valid_guid(value['guid'])
-            and util.is_valid_guid(value['preferring_user'])
+            and util.is_valid_uuid_string(value['guid'])
+            and util.is_valid_uuid_string(value['preferring_user'])
         ):
             from app.modules.names.models import Name
             from app.modules.users.models import User
@@ -178,7 +182,7 @@ class PatchIndividualDetailsParameters(PatchJSONParameters):
                     obj.add_encounter(encounter)
                     assert encounter in obj.get_encounters()
                     ret_val = True
-        elif field == 'featuredAssetGuid' and util.is_valid_guid(value):
+        elif field == 'featuredAssetGuid' and util.is_valid_uuid_string(value):
             obj.set_featured_asset_guid(UUID(value, version=4))
             ret_val = True
         elif field == 'names':
@@ -187,7 +191,7 @@ class PatchIndividualDetailsParameters(PatchJSONParameters):
             if (
                 not isinstance(value, dict)
                 or 'guid' not in value.keys()
-                or not util.is_valid_guid(value['guid'])
+                or not util.is_valid_uuid_string(value['guid'])
                 or ('context' not in value.keys() and 'value' not in value.keys())
             ):
                 abort(

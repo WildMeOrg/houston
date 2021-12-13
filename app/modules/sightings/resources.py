@@ -668,7 +668,7 @@ class FeaturedAssetGuidBySightingID(Resource):
 
         success = False
 
-        if utils.is_valid_guid(featured_asset_guid):
+        if utils.is_valid_uuid_string(featured_asset_guid):
             sighting.set_featured_asset_guid(UUID(featured_asset_guid, version=4))
             with context:
                 db.session.merge(sighting)

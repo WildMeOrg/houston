@@ -56,10 +56,8 @@ def test_patch_asset_group(
         expected_resp,
     )
 
-    # Valid patch, adding a new encounter with an existing file
-    new_encounters = copy.deepcopy(group_sighting.json['config']['encounters'])
-    new_encounters.append({})
-    patch_data = [utils.patch_replace_op('encounters', new_encounters)]
+    # Valid patch, adding a new encounter
+    patch_data = [utils.patch_add_op('encounters', {})]
 
     # Should not work as contributor
     asset_group_utils.patch_asset_group_sighting(
@@ -67,9 +65,10 @@ def test_patch_asset_group(
     )
 
     # should work as researcher
-    asset_group_utils.patch_asset_group_sighting(
+    patch_resp = asset_group_utils.patch_asset_group_sighting(
         flask_app_client, researcher_1, asset_group_sighting_guid, patch_data
     )
+    assert len(patch_resp.json['config']['encounters']) == 2
 
     # chosen for reasons of incongruity as the naked mole rat is virtually blind
     # so has no 'sight'
@@ -103,12 +102,20 @@ def test_patch_asset_group(
     request.addfinalizer(lambda: db.session.delete(empty_individual))
     patch_data = [utils.patch_add_op('individualUuid', str(empty_individual.guid))]
     path = f'{asset_group_sighting_guid}/encounter/{encounter_guid}'
-    asset_group_utils.patch_asset_group_sighting(
+    patch_resp = asset_group_utils.patch_asset_group_sighting(
         flask_app_client,
         researcher_1,
         path,
         patch_data,
     )
+
+    # Valid patch, adding a new encounter
+    guid_to_go = patch_resp.json['config']['encounters'][-1]['guid']
+    patch_remove = [utils.patch_remove_op('encounters', [guid_to_go])]
+    patch_resp = asset_group_utils.patch_asset_group_sighting(
+        flask_app_client, researcher_1, asset_group_sighting_guid, patch_remove
+    )
+    assert len(patch_resp.json['config']['encounters']) == 1
 
 
 # similar to the above but against the AGS-as-sighting endpoint
@@ -147,10 +154,8 @@ def test_patch_asset_group_sighting_as_sighting(
     assert group_sighting.json['asset_group_guid'] == asset_group_uuid
     assert group_sighting.json['creator']['guid'] == str(regular_user.guid)
 
-    # Valid patch, adding a new encounter with an existing file
-    new_encounters = copy.deepcopy(group_sighting.json['encounters'])
-    new_encounters.append({})
-    patch_data = [utils.patch_replace_op('encounters', new_encounters)]
+    # Valid patch, adding a new encounter
+    patch_data = [utils.patch_add_op('encounters', {})]
 
     # Should not work as contributor
     asset_group_utils.patch_asset_group_sighting_as_sighting(

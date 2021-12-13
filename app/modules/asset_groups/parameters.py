@@ -55,7 +55,11 @@ class PatchAssetGroupDetailsParameters(PatchJSONParameters):
 
 class PatchAssetGroupSightingDetailsParameters(PatchJSONParameters):
     # pylint: disable=abstract-method,missing-docstring
-    OPERATION_CHOICES = (PatchJSONParameters.OP_REPLACE, PatchJSONParameters.OP_ADD)
+    OPERATION_CHOICES = (
+        PatchJSONParameters.OP_REPLACE,
+        PatchJSONParameters.OP_ADD,
+        PatchJSONParameters.OP_REMOVE,
+    )
     # These don't exist as entities in the AssetGroupSighting, they're just config blobs
     # but we allow patching faking them to be real
     # This uses the fact that anything that is an EDM sighting path is in the
@@ -68,8 +72,36 @@ class PatchAssetGroupSightingDetailsParameters(PatchJSONParameters):
 
     @classmethod
     def add(cls, obj, field, value, state):
-        # Add and replace are the same operation so reuse the one method
-        return cls.replace(obj, field, value, state)
+        # Encounter is special in that it can only be added to an AssetGroupSightingDetails.
+        if field == 'encounters':
+            # Reuse metadata methods to validate ID Config, creating a single entry list for the encounters
+            from .metadata import AssetGroupMetadata
+
+            AssetGroupMetadata.validate_encounters(
+                [
+                    value,
+                ],
+                f'Sighting {obj.guid}',
+            )
+            # can assign annotations (in patch only) but they must be valid
+            if 'annotations' in value:
+                AssetGroupMetadata.validate_annotations(
+                    obj, value['annotations'], f'Sighting {obj.guid}'
+                )
+            if 'encounters' not in obj.config.keys():
+                obj.config['encounters'] = []
+
+            # allocate pseudo ID for encounter
+            value['guid'] = str(uuid.uuid4())
+            obj.config['encounters'].append(value)
+
+            # force write
+            obj.config = obj.config
+            return True
+
+        else:
+            # Add and replace are the same operation for all other fields so reuse the one method
+            return cls.replace(obj, field, value, state)
 
     # Asset ref patching is different enough from asset ref creation to not to be able to reuse the
     # metadata functionality
@@ -102,18 +134,8 @@ class PatchAssetGroupSightingDetailsParameters(PatchJSONParameters):
             obj.config[field] = value
             ret_val = True
         elif field == 'encounters':
-            AssetGroupMetadata.validate_encounters(value, f'Sighting {obj.guid}')
-            # can assign annotations (in patch only) but they must be valid
-            if 'annotations' in value:
-                AssetGroupMetadata.validate_annotations(
-                    obj, value['annotations'], f'Sighting {obj.guid}'
-                )
-            obj.config[field] = value
-            # All encounters in the metadata need to be allocated a pseudo ID for later patching
-            for encounter_num in range(len(obj.config['encounters'])):
-                if 'guid' not in obj.config['encounters'][encounter_num]:
-                    obj.config['encounters'][encounter_num]['guid'] = str(uuid.uuid4())
-            ret_val = True
+            # Does not make sense to replace an encounter
+            ret_val = False
         elif field == 'assetReferences':
             # Only supports patch of all refs as one operation
             # Raises AssetGroupMetadataError on error which is intentionally unnhandled
@@ -129,37 +151,37 @@ class PatchAssetGroupSightingDetailsParameters(PatchJSONParameters):
 
         return ret_val
 
+    @classmethod
+    def remove(cls, obj, field, value, state):
+        ret_val = False
+        changed = False
 
-class PatchAssetGroupSightingAsSightingParameters(PatchJSONParameters):
-    # pylint: disable=abstract-method,missing-docstring
-    OPERATION_CHOICES = (PatchJSONParameters.OP_REPLACE, PatchJSONParameters.OP_ADD)
+        if field == 'encounters':
+            # 'remove' passed for the encounter even if it wasn't there to start with
+            ret_val = True
+            if 'encounters' in obj.config.keys():
+                for encounter_guid in value:
+                    for config_encounter in obj.config['encounters']:
+                        if config_encounter['guid'] == encounter_guid:
+                            obj.config['encounters'].remove(config_encounter)
+                            changed = True
+        if changed:
+            # Force the DB write
+            obj.config = obj.config
+
+        return ret_val
+
+
+# PATH_CHOICES and a couple of other methods are identical to the DetailsParameters class, only the replace
+# is special
+class PatchAssetGroupSightingAsSightingParameters(
+    PatchAssetGroupSightingDetailsParameters
+):
+
     # These don't exist as entities in the AssetGroupSighting, they're just config blobs
     # but we allow patching faking them to be real
     # This uses the fact that anything that is an EDM sighting path is in the
     # AssetGroupSighting in the same format
-    PATH_CHOICES = PatchSightingDetailsParameters.PATH_CHOICES_EDM + (
-        '/idConfigs',
-        '/assetReferences',
-        '/name',
-    )
-
-    @classmethod
-    def add(cls, obj, field, value, state):
-        # Add and replace are the same operation so reuse the one method
-        return cls.replace(obj, field, value, state)
-
-    # Asset ref patching is different enough from asset ref creation to not to be able to reuse the
-    # metadata functionality
-    @classmethod
-    def validate_asset_references(cls, obj, asset_refs):
-        from .metadata import AssetGroupMetadataError
-
-        for filename in asset_refs:
-            # asset must exist and must be part of the group
-            if not obj.asset_group.get_asset_for_file(filename):
-                raise AssetGroupMetadataError(
-                    f'{filename} not in Group for assetGroupSighting {obj.guid}'
-                )
 
     @classmethod
     def replace(cls, obj, field, value, state):
@@ -178,18 +200,8 @@ class PatchAssetGroupSightingAsSightingParameters(PatchJSONParameters):
             obj.config[field] = value
             ret_val = True
         elif field == 'encounters':
-            AssetGroupMetadata.validate_encounters(value, f'Sighting {obj.guid}')
-            # can assign annotations (in patch only) but they must be valid
-            if 'annotations' in value:
-                AssetGroupMetadata.validate_annotations(
-                    obj, value['annotations'], f'Sighting {obj.guid}'
-                )
-            obj.config[field] = value
-            # All encounters in the metadata need to be allocated a pseudo ID for later patching
-            for encounter_num in range(len(obj.config['encounters'])):
-                if 'guid' not in obj.config['encounters'][encounter_num]:
-                    obj.config['encounters'][encounter_num]['guid'] = str(uuid.uuid4())
-            ret_val = True
+            # Does not make sense to replace an encounter
+            ret_val = False
         elif field == 'assetReferences':
             # Only supports patch of all refs as one operation
             # Raises AssetGroupMetadataError on error which is intentionally unnhandled

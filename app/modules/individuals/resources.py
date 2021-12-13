@@ -316,9 +316,12 @@ class IndividualByID(Resource):
         ]
 
         with context:
-            parameters.PatchIndividualDetailsParameters.perform_patch(
-                houston_args, obj=individual
-            )
+            try:
+                parameters.PatchIndividualDetailsParameters.perform_patch(
+                    houston_args, obj=individual
+                )
+            except HoustonException as ex:
+                abort(ex.status_code, ex.message)
 
         edm_args = [
             arg

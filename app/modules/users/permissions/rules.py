@@ -78,6 +78,7 @@ OBJECT_USER_MAP = {
     ('SocialGroup', AccessOperation.READ): ['is_researcher'],
     ('SocialGroup', AccessOperation.WRITE): ['is_researcher'],
     ('SocialGroup', AccessOperation.DELETE): ['is_researcher'],
+    ('Collaboration', AccessOperation.WRITE): ['is_user_manager'],
 }
 
 # Map of methods (that are passed the current user as a param) on the object.

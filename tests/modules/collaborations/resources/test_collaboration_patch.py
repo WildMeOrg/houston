@@ -3,6 +3,7 @@
 import tests.modules.collaborations.resources.utils as collab_utils
 from tests import utils
 import pytest
+import uuid
 
 from tests.utils import module_unavailable
 
@@ -148,3 +149,105 @@ def test_patch_collaboration_states(
     collab_utils.approve_view_on_collaboration(
         flask_app_client, collab_guid, researcher_2, researcher_1
     )
+
+
+@pytest.mark.skipif(
+    module_unavailable('collaborations'), reason='Collaborations module disabled'
+)
+def test_patch_managed_collaboration_states(
+    flask_app_client, researcher_1, researcher_2, user_manager_user, db, request
+):
+
+    create_resp = collab_utils.create_simple_collaboration(
+        flask_app_client, researcher_1, researcher_2
+    )
+    collab_guid = create_resp.json['guid']
+    collab = collab_utils.get_collab_object_for_user(researcher_1, collab_guid)
+    request.addfinalizer(collab.delete)
+
+    # should not work
+    patch_data = [utils.patch_replace_op('managed_view_permission', 'not a dictionary')]
+    resp = 'Value for managed_view_permission must be passed as a dictionary'
+    collab_utils.patch_collaboration(
+        flask_app_client, collab_guid, user_manager_user, patch_data, 400, resp
+    )
+    collab_utils.validate_no_access(collab_guid, researcher_1, researcher_2)
+
+    # No user guid
+    patch_data = [utils.patch_replace_op('managed_view_permission', {})]
+    resp = 'Value for managed_view_permission must contain a user_guid'
+    collab_utils.patch_collaboration(
+        flask_app_client, collab_guid, user_manager_user, patch_data, 400, resp
+    )
+    collab_utils.validate_no_access(collab_guid, researcher_1, researcher_2)
+
+    garbage_uuid = str(uuid.uuid4())
+
+    # no permission
+    patch_data = [
+        utils.patch_replace_op('managed_view_permission', {'user_guid': garbage_uuid})
+    ]
+    resp = 'Value for managed_view_permission must contain a permission field'
+    collab_utils.patch_collaboration(
+        flask_app_client, collab_guid, user_manager_user, patch_data, 400, resp
+    )
+    collab_utils.validate_no_access(collab_guid, researcher_1, researcher_2)
+
+    # Garbage user guid
+    garbage_uuid = str(uuid.uuid4())
+    patch_data = [
+        utils.patch_replace_op(
+            'managed_view_permission',
+            {'user_guid': garbage_uuid, 'permission': 'approved'},
+        )
+    ]
+    resp = f'User for {garbage_uuid} not found'
+    collab_utils.patch_collaboration(
+        flask_app_client, collab_guid, user_manager_user, patch_data, 400, resp
+    )
+    collab_utils.validate_no_access(collab_guid, researcher_1, researcher_2)
+
+    # should actually work
+    patch_data = [
+        utils.patch_replace_op(
+            'managed_view_permission',
+            {'user_guid': str(researcher_2.guid), 'permission': 'approved'},
+        )
+    ]
+    collab_utils.patch_collaboration(
+        flask_app_client,
+        collab_guid,
+        user_manager_user,
+        patch_data,
+    )
+    collab_utils.validate_read_only(collab_guid, researcher_1, researcher_2)
+
+    # Manager should also be able to change edit permissions
+    patch_data = [
+        utils.patch_replace_op(
+            'managed_edit_permission',
+            {'user_guid': str(researcher_2.guid), 'permission': 'approved'},
+        )
+    ]
+    collab_utils.patch_collaboration(
+        flask_app_client,
+        collab_guid,
+        user_manager_user,
+        patch_data,
+    )
+    collab_utils.validate_read_only(collab_guid, researcher_1, researcher_2)
+
+    # plus revoke the collaboration
+    patch_data = [
+        utils.patch_replace_op(
+            'managed_view_permission',
+            {'user_guid': str(researcher_2.guid), 'permission': 'revoked'},
+        )
+    ]
+    collab_utils.patch_collaboration(
+        flask_app_client,
+        collab_guid,
+        user_manager_user,
+        patch_data,
+    )
+    collab_utils.validate_no_access(collab_guid, researcher_1, researcher_2)

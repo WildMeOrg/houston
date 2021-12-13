@@ -4,6 +4,7 @@ import pathlib
 from unittest import mock
 import uuid
 import tests.modules.asset_groups.resources.utils as asset_group_utils
+import tests.utils as test_utils
 import pytest
 
 from tests.utils import module_unavailable
@@ -29,19 +30,22 @@ def test_asset_group_sightings_jobs(flask_app, db, admin_user, test_root, reques
     )
     with db.session.begin():
         db.session.add(asset_group)
+    asset_group.config['speciesDetectionModel'] = test_utils.dummy_detection_info()
     request.addfinalizer(asset_group.delete)
-
+    sighting_config1 = test_utils.dummy_sighting_info()
+    sighting_config1['assetReferences'] = ['zebra.jpg']
     ags1 = AssetGroupSighting(
-        config={'assetReferences': ['zebra.jpg']}, asset_group_guid=asset_group.guid
+        asset_group=asset_group,
+        sighting_config=sighting_config1,
+        detection_configs=test_utils.dummy_detection_info(),
     )
+    sighting_config2 = test_utils.dummy_sighting_info()
+    sighting_config2['assetReferences'] = []
     ags2 = AssetGroupSighting(
-        config={'assetReferences': []}, asset_group_guid=asset_group.guid
+        asset_group=asset_group,
+        sighting_config=sighting_config2,
+        detection_configs=test_utils.dummy_detection_info(),
     )
-    with db.session.begin():
-        db.session.add(ags1)
-        db.session.add(ags2)
-    request.addfinalizer(ags1.delete)
-    request.addfinalizer(ags2.delete)
 
     now = datetime.datetime(2021, 7, 7, 17, 55, 34)
     job_id1 = uuid.UUID('53ea04e0-1e87-412d-aa17-0ff5e05db78d')
@@ -182,7 +186,11 @@ def test_asset_group_sighting_config_field_getter(researcher_1, request):
 
     asset_group = AssetGroup(owner=researcher_1)
     request.addfinalizer(asset_group.delete)
-    ags = AssetGroupSighting(asset_group=asset_group)
+    ags = AssetGroupSighting(
+        asset_group=asset_group,
+        sighting_config=test_utils.dummy_sighting_info(),
+        detection_configs=test_utils.dummy_detection_info(),
+    )
     request.addfinalizer(ags.delete)
 
     config_field_getter = AssetGroupSighting.config_field_getter

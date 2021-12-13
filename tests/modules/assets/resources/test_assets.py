@@ -5,7 +5,7 @@ import json
 
 import tests.modules.asset_groups.resources.utils as asset_group_utils
 import tests.modules.assets.resources.utils as asset_utils
-
+import tests.utils as test_utils
 import pytest
 
 from tests.utils import module_unavailable
@@ -140,12 +140,13 @@ def test_find_raw_asset(
         )
 
         new_sighting = AssetGroupSighting(
-            stage=AssetGroupSightingStage.detection,
-            asset_group_guid=clone.asset_group.guid,
+            asset_group=clone.asset_group,
+            sighting_config=test_utils.dummy_sighting_info(),
+            detection_configs=test_utils.dummy_detection_info(),
         )
-        with db.session.begin():
-            db.session.add(new_sighting)
-            clone.asset_group.asset_group_sightings.append(new_sighting)
+
+        # now force it back to 'detection' stage to permit testing
+        new_sighting.stage = AssetGroupSightingStage.detection
 
         raw_src_response = asset_utils.read_raw_src_asset(
             flask_app_client, internal_user, asset_guid
@@ -167,6 +168,7 @@ def test_find_raw_asset(
         if raw_src_response:
             raw_src_response.close()
         clone.cleanup()
+        new_sighting.delete()
 
 
 @pytest.mark.skipif(

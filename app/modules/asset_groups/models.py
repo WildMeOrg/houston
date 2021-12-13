@@ -10,6 +10,7 @@ from flask_login import current_user  # NOQA
 import requests.exceptions
 import utool as ut
 import git
+from datetime import datetime  # NOQA
 from git import Git as BaseGit, Repo as BaseRepo
 
 from app.extensions.gitlab import GitlabInitializationError
@@ -127,6 +128,42 @@ class AssetGroupSighting(db.Model, HoustonModel):
 
     # May have multiple jobs outstanding, store as Json obj uuid_str is key, In_progress Bool is value
     jobs = db.Column(db.JSON, default=lambda: {}, nullable=True)
+
+    curation_start = db.Column(
+        db.DateTime, index=True, default=datetime.utcnow, nullable=False
+    )
+
+    def __init__(self, asset_group, sighting_config, detection_configs):
+        self.asset_group = asset_group
+        self.config = sighting_config
+
+        # Start by writing to DB so that all rollback on failure works
+        with db.session.begin(subtransactions=True):
+            db.session.add(self)
+        db.session.refresh(self)
+
+        # Allow sightings to have no Assets, they go straight to curation
+        if (
+            'assetReferences' not in self.config
+            or len(self.config['assetReferences']) == 0
+        ):
+            self.stage = AssetGroupSightingStage.curation
+            self.commit()
+
+        elif len(detection_configs) == 1 and (
+            not detection_configs[0] or detection_configs[0] == 'None'
+        ):
+            self.stage = AssetGroupSightingStage.curation
+        else:
+            self.stage = AssetGroupSightingStage.detection
+
+        if self.stage == AssetGroupSightingStage.detection:
+            try:
+                self.start_detection()
+
+            except HoustonException as ex:
+                self.delete()
+                raise ex
 
     def commit(self):
         from app.modules.utils import Cleanup
@@ -283,6 +320,20 @@ class AssetGroupSighting(db.Model, HoustonModel):
         else:
             return None
 
+    # Don't store detection start time directly. It's either the creation time if we ever had detection
+    # jobs or None if no detection was done (and hence no jobs exist)
+    def get_detection_start_time(self):
+        if len(self.jobs):
+            return self.created.isoformat() + 'Z'
+        return None
+
+    # curation time is only valid if there are no active detection jobs
+    # Either detection has completed or no detection jobs were run
+    def get_curation_start_time(self):
+        if not self.any_jobs_active():
+            return self.curation_start.isoformat() + 'Z'
+        return None
+
     # Returns a percentage complete value 0-100
     def get_completion(self):
         # Design allows for these limits to be configured later, potentially this data could be project specific
@@ -371,6 +422,16 @@ class AssetGroupSighting(db.Model, HoustonModel):
                 log.warning(
                     f"AssetGroupSighting:{self.guid} Job:{job_id} Model:{job['model']} UTC Start:{job['start']}"
                 )
+
+    def any_jobs_active(self):
+        jobs = self.jobs
+        if not jobs:
+            return False
+        for job_id in jobs.keys():
+            job = jobs[job_id]
+            if job['active']:
+                return True
+        return False
 
     # Build up dict to print out status (calling function chooses what to collect and print)
     def get_job_details(self, verbose):
@@ -643,6 +704,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
                     del self.config['updatedAssets']
                 self.config = self.config
                 self.stage = AssetGroupSightingStage.curation
+                self.curation_start = datetime.utcnow()
 
             # This is necessary because we can only mark jobs as
             # modified if we assign to it
@@ -1461,39 +1523,11 @@ class AssetGroup(db.Model, HoustonModel):
             for encounter_num in range(len(sighting_meta['encounters'])):
                 sighting_meta['encounters'][encounter_num]['guid'] = str(uuid.uuid4())
 
-            new_sighting = AssetGroupSighting(
+            AssetGroupSighting(
                 asset_group=self,
-                asset_group_guid=self.guid,
-                config=copy.deepcopy(sighting_meta),
+                sighting_config=copy.deepcopy(sighting_meta),
+                detection_configs=metadata.detection_configs,
             )
-
-            # Allow sightings to have no Assets, they go straight to Commit
-            if (
-                'assetReferences' not in sighting_meta
-                or len(sighting_meta['assetReferences']) == 0
-            ):
-                new_sighting.stage = AssetGroupSightingStage.curation
-                new_sighting.commit()
-
-            elif len(metadata.detection_configs) == 1 and (
-                not metadata.detection_configs[0]
-                or metadata.detection_configs[0] == 'None'
-            ):
-                new_sighting.stage = AssetGroupSightingStage.curation
-            else:
-                new_sighting.stage = AssetGroupSightingStage.detection
-
-            with db.session.begin(subtransactions=True):
-                db.session.add(new_sighting)
-            db.session.refresh(new_sighting)
-
-            if new_sighting.stage == AssetGroupSightingStage.detection:
-                try:
-                    new_sighting.start_detection()
-
-                except HoustonException as ex:
-                    new_sighting.delete()
-                    raise ex
 
         # make sure the repo is created
         self.ensure_repository()

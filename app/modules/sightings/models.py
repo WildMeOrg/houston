@@ -7,7 +7,7 @@ import enum
 import logging
 import uuid
 import json
-
+from datetime import datetime  # NOQA
 from flask import current_app
 
 from app.extensions import FeatherModel, HoustonModel, db
@@ -73,6 +73,12 @@ class Sighting(db.Model, FeatherModel):
 
     encounters = db.relationship(
         'Encounter', back_populates='sighting', order_by='Encounter.guid'
+    )
+    unreviewed_start = db.Column(
+        db.DateTime, index=True, default=datetime.utcnow, nullable=False
+    )
+    review_time = db.Column(
+        db.DateTime, index=True, default=datetime.utcnow, nullable=False
     )
 
     def __repr__(self):
@@ -185,6 +191,35 @@ class Sighting(db.Model, FeatherModel):
         if guid in asset_guids:
             self.featured_asset_guid = guid
 
+    def get_detection_start_time(self):
+        if self.asset_group_sighting:
+            return self.asset_group_sighting.get_detection_start_time()
+        return None
+
+    def get_curation_start_time(self):
+        if self.asset_group_sighting:
+            return self.asset_group_sighting.get_curation_start_time()
+        return None
+
+    # Don't store identification start time directly. It's either the creation time if we ever had identification
+    # jobs or None if no identification was done (and hence no jobs exist)
+    def get_identification_start_time(self):
+        if len(self.jobs) > 0:
+            return self.created.isoformat() + 'Z'
+        return None
+
+    # unreviewed start time is only valid if there were no active identification jobs
+    def get_unreviewed_start_time(self):
+        if not self.any_jobs_active():
+            return self.unreviewed_start.isoformat() + 'Z'
+        return None
+
+    def get_review_time(self):
+        if self.stage == SightingStage.processed:
+            return self.review_time.isoformat() + 'Z'
+        else:
+            return None
+
     @classmethod
     def check_jobs(cls):
         for sighting in Sighting.query.all():
@@ -216,6 +251,16 @@ class Sighting(db.Model, FeatherModel):
                     f"Sighting:{self.guid} Job:{job_id} Matching_set:{job['matching_set']} "
                     f"Algorithm:{job['algorithm']} Annotation:{job['annotaion']} UTC Start:{job['start']}"
                 )
+
+    def any_jobs_active(self):
+        jobs = self.jobs
+        if not jobs:
+            return False
+        for job_id in jobs.keys():
+            job = jobs[job_id]
+            if job['active']:
+                return True
+        return False
 
     # Build up dict to print out status (calling function chooses what to collect and print)
     def get_job_details(self, annotation_id, verbose):
@@ -628,6 +673,7 @@ class Sighting(db.Model, FeatherModel):
         job['active'] = False
         self.jobs = self.jobs
         self.stage = SightingStage.un_reviewed
+        self.unreviewed_start = datetime.utcnow()
 
     def check_job_status(self, job_id):
         if str(job_id) not in self.jobs:
@@ -672,7 +718,8 @@ class Sighting(db.Model, FeatherModel):
         if num_configs > 0:
             # Only one for MVP
             assert num_configs == 1
-            for config in id_configs:
+            for config_num in range(num_configs):
+                config = id_configs[config_num]
                 assert 'algorithms' in config
                 # Only one for MVP
                 assert len(config['algorithms']) == 1

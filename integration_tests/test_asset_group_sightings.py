@@ -184,6 +184,8 @@ def test_asset_group_sightings(session, login, codex_url, test_root):
         'startTime': '2000-01-01T01:01:01Z',
         # 2021-11-12T18:28:32.744135+00:00
         'updatedHouston': response.json()['updatedHouston'],
+        'curation_start_time': response.json()['curation_start_time'],
+        'detection_start_time': response.json()['detection_start_time'],
         'verbatimLocality': '',
         'verbatimEventDate': '',
         'version': None,
@@ -247,6 +249,8 @@ def test_asset_group_sightings(session, login, codex_url, test_root):
         'createdEDM': None,
         # 2021-11-12T18:28:32.744114+00:00
         'createdHouston': response.json()['createdHouston'],
+        'curation_start_time': response.json()['curation_start_time'],
+        'detection_start_time': response.json()['detection_start_time'],
         'customFields': {occ_test_cfd: 'OCC_TEST_CFD'},
         'decimalLatitude': 52.152029,
         'decimalLongitude': 2.318116,
@@ -357,6 +361,11 @@ def test_asset_group_sightings(session, login, codex_url, test_root):
         'hasEdit': True,
         'hasView': True,
         'updated': response.json()['updated'],
+        'curation_start_time': response.json()['curation_start_time'],
+        'detection_start_time': response.json()['detection_start_time'],
+        'identification_start_time': None,
+        'review_time': None,
+        'unreviewed_start_time': response.json()['unreviewed_start_time'],
     }
 
     # GET sighting
@@ -466,3 +475,11 @@ def test_bulk_upload(session, login, codex_url, test_root, request):
         )
         assert response.status_code == 200
         sighting_guids.append(response.json()['guid'])
+
+
+def disabled_test_remove_all_groups(session, login, codex_url, test_root, request):
+    login(session)
+    groups = session.get(codex_url('/api/v1/asset_groups/'))
+    for group_dat in groups.json():
+        group_guid = group_dat['guid']
+        session.delete(codex_url(f'/api/v1/asset_groups/{group_guid}'))

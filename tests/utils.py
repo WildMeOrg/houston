@@ -470,3 +470,20 @@ def random_decimal_latitude():
 
 def random_decimal_longitude():
     return random.uniform(-180, 80)
+
+
+def isoformat_timestamp_now():
+    return datetime.now().isoformat() + 'Z'
+
+
+def dummy_sighting_info():
+    return {
+        'startTime': isoformat_timestamp_now(),
+        'locationId': 'narnia',
+        'encounters': [{'guid': uuid.uuid4()}],
+        'assetReferences': [],
+    }
+
+
+def dummy_detection_info():
+    return ['None']

@@ -168,46 +168,7 @@ class Individuals(Resource):
                     code=500,
                 )
 
-        names = []
-        if 'names' in request_in and isinstance(request_in['names'], list):
-            from flask_login import current_user
-            from app.modules.names.models import Name
-
-            for name_json in request_in['names']:
-                preferring_users = []
-                # this is not getting parsed right FIXME
-                if 'preferring_users' in name_json and isinstance(
-                    name_json['preferring_users'], list
-                ):
-                    from app.modules.users.models import User
-
-                    for user_guid in name_json['preferring_users']:
-                        user = User.query.get(user_guid)
-                        if not user:
-                            AuditLog.frontend_fault(
-                                log,
-                                f'invalid user guid ({user_guid}) in preferring_users {name_json}',
-                            )
-                            cleanup.rollback_and_abort(
-                                message=f'Invalid user guid ({user_guid}) in name data {name_json}',
-                                code=400,
-                            )
-                        preferring_users.append(user)
-                name_context = name_json.get('context')
-                name_value = name_json.get('value')
-                if not name_context or not name_value:
-                    AuditLog.frontend_fault(log, f'invalid name data {name_json}')
-                    cleanup.rollback_and_abort(
-                        message=f'Invalid name data {name_json}',
-                        code=400,
-                    )
-                new_name = Name(
-                    context=name_context,
-                    value=name_value,
-                    creator_guid=current_user.guid,
-                )
-                # new_name.add_preferring_users(preferring_users)
-                names.append(new_name)
+        names = self._parse_names(request_in.get('names'), cleanup)
 
         # finally make the Individual if all encounters are found
         individual = Individual(
@@ -235,6 +196,49 @@ class Individuals(Resource):
         }
 
         return rtn
+
+    def _parse_names(self, names_data, cleanup):
+        names = []
+        if not names_data or not isinstance(names_data, list):
+            return names
+        from flask_login import current_user
+        from app.modules.names.models import Name
+
+        for name_json in names_data:
+            preferring_users = []
+            if 'preferring_users' in name_json and isinstance(
+                name_json['preferring_users'], list
+            ):
+                from app.modules.users.models import User
+
+                for user_guid in name_json['preferring_users']:
+                    user = User.query.get(user_guid)
+                    if not user:
+                        AuditLog.frontend_fault(
+                            log,
+                            f'invalid user guid ({user_guid}) in preferring_users {name_json}',
+                        )
+                        cleanup.rollback_and_abort(
+                            message=f'Invalid user guid ({user_guid}) in name data {name_json}',
+                            code=400,
+                        )
+                    preferring_users.append(user)
+            name_context = name_json.get('context')
+            name_value = name_json.get('value')
+            if not name_context or not name_value:
+                AuditLog.frontend_fault(log, f'invalid name data {name_json}')
+                cleanup.rollback_and_abort(
+                    message=f'Invalid name data {name_json}',
+                    code=400,
+                )
+            new_name = Name(
+                context=name_context,
+                value=name_value,
+                creator_guid=current_user.guid,
+            )
+            # new_name.add_preferring_users(preferring_users)
+            names.append(new_name)
+        return names
 
 
 @api.route('/<uuid:individual_guid>')

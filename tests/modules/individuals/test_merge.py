@@ -363,3 +363,124 @@ def test_failure_cases(db, flask_app_client, researcher_1, request):
     assert rtn
     assert len(rtn) == 2
     assert set([individual1, individual2]) == set(rtn)
+
+
+@pytest.mark.skipif(
+    test_utils.module_unavailable('individuals', 'encounters', 'sightings'),
+    reason='Individuals module disabled',
+)
+def test_merge_names(db, flask_app_client, researcher_1, admin_user, request, test_root):
+    from app.modules.individuals.models import Individual
+
+    individual1_uuids = individual_utils.create_individual_and_sighting(
+        flask_app_client,
+        researcher_1,
+        request,
+        test_root,
+    )
+    individual2_uuids = individual_utils.create_individual_and_sighting(
+        flask_app_client,
+        researcher_1,
+        request,
+        test_root,
+    )
+    individual3_uuids = individual_utils.create_individual_and_sighting(
+        flask_app_client,
+        researcher_1,
+        request,
+        test_root,
+    )
+
+    individual1_id = individual1_uuids['individual']
+    individual2_id = individual2_uuids['individual']
+    individual3_id = individual3_uuids['individual']
+    individual1 = Individual.query.get(individual1_id)
+    individual2 = Individual.query.get(individual2_id)
+    individual3 = Individual.query.get(individual3_id)
+
+    # this tests directly individual.merge_names() which currently is only used
+    #   from within merging
+    shared_context = 'test-context'
+    overridden_context = 'test-override'
+    individual1.add_name(shared_context, 'one', researcher_1)
+    individual1.add_name('another', 'another', researcher_1)
+    # blown away by override
+    individual1.add_name(overridden_context, 'gone1', researcher_1)
+    # should get bumped to have 1 suffix
+    individual2.add_name(shared_context, 'two', researcher_1)
+    # blown away by override
+    individual2.add_name(overridden_context, 'gone2', researcher_1)
+    # should get bumped to have 2 suffix
+    individual3.add_name(shared_context, 'three', researcher_1)
+    individual3.add_name('third', '333', researcher_1)
+    assert len(individual1.names) == 3
+    assert len(individual2.names) == 2
+    assert len(individual3.names) == 2
+
+    individual1.merge_names([individual2, individual3], {overridden_context: 'winner'})
+    assert len(individual1.names) == 6
+    assert len(individual2.names) == 1  # overridden one is left behind to die
+    assert len(individual3.names) == 0
+    assert {
+        shared_context,
+        f'{shared_context}1',
+        f'{shared_context}2',
+        'another',
+        'third',
+        overridden_context,
+    } == set([name.context for name in individual1.names])
+
+    # test fail_on_conflict flag (currently not used anywhere) - should raise ValueError
+    individual4_uuids = individual_utils.create_individual_and_sighting(
+        flask_app_client,
+        researcher_1,
+        request,
+        test_root,
+    )
+    individual4_id = individual4_uuids['individual']
+    individual4 = Individual.query.get(individual4_id)
+    individual4.add_name(shared_context, 'break', researcher_1)
+    try:
+        individual1.merge_names([individual4], fail_on_conflict=True)
+    except ValueError as ve:
+        assert str(ve).startswith(f'conflict on context {shared_context}')
+    assert len(individual1.names) == 6
+    assert len(individual4.names) == 1
+
+    # now we try as a part of an actual merge, with an override as well
+    individual2_uuids = individual_utils.create_individual_and_sighting(
+        flask_app_client,
+        researcher_1,
+        request,
+        test_root,
+    )
+    individual3_uuids = individual_utils.create_individual_and_sighting(
+        flask_app_client,
+        researcher_1,
+        request,
+        test_root,
+    )
+    individual2_id = individual2_uuids['individual']
+    individual3_id = individual3_uuids['individual']
+    individual2 = Individual.query.get(individual2_id)
+    individual3 = Individual.query.get(individual3_id)
+    # both of these should be ignored via override
+    individual2.add_name(shared_context, 'AAA', researcher_1)
+    individual3.add_name(shared_context, 'BBB', researcher_1)
+    individual3.add_name('endearment', 'sweetie', researcher_1)  # will get added
+    assert len(individual2.names) == 1
+    assert len(individual3.names) == 2
+
+    final_value = 'final-value'
+    merge_from = [individual2, individual3]
+    parameters = {'override': {'name_context': {shared_context: final_value}}}
+    individual1.merge_from(*merge_from, parameters=parameters)
+    assert len(individual1.names) == 7  # original 6 (one swapped out - override) + 1 new
+    assert len(individual2.names) == 0
+    assert len(individual3.names) == 0
+    # verify override one stuck
+    found = False
+    for name in individual1.names:
+        if name.context == shared_context and name.value == final_value:
+            found = True
+    assert found

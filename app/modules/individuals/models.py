@@ -325,6 +325,12 @@ class Individual(db.Model, FeatherModel):
             log.info(
                 f"edm reports successful merge of indiv {merged_id} into {result['targetId']} for encounters {result['merged'][merged_id]}; adjusting locally"
             )
+        self.merge_names(
+            source_individuals,
+            parameters
+            and parameters.get('override')
+            and parameters['override'].get('name_context'),
+        )
         # now we steal their encounters and delete them
         # NOTE:  technically we could iterate over the enc ids in merged.merged_id array, but we run (tiny) risk of this individual
         #   getting assigned to additional encounters in the interim, so instead we just steal all the encounters directly
@@ -459,6 +465,55 @@ class Individual(db.Model, FeatherModel):
         Individual.merge_notify(
             [target_individual], request_data, NotificationType.individual_merge_complete
         )
+
+    # note: this will destructively remove names from source_individuals
+    #  override looks like:  { context: value } and will replace any/all names with context
+    #  currently, override-context will only replace an existing one, not add to names when it does not exist
+    def merge_names(self, source_individuals, override=None, fail_on_conflict=False):
+        override_contexts = set(override.keys()) if isinstance(override, dict) else set()
+        contexts_on_self = set([name.context for name in self.names])
+        for indiv in source_individuals:
+            for name in indiv.names:
+                if fail_on_conflict and name.context in contexts_on_self:
+                    raise ValueError(f'conflict on context {name.context} on {indiv}')
+                elif (
+                    name.context in override_contexts and name.context in contexts_on_self
+                ):
+                    continue  # skip, as override will ultimately win
+                elif name.context in contexts_on_self:
+                    name.context = Individual._incremented_context(
+                        name.context, contexts_on_self
+                    )
+                name.individual_guid = self.guid  # attach name to self
+                contexts_on_self.add(name.context)
+        # now we deal with overrides
+        for name in self.names:
+            if name.context in override_contexts:
+                name.value = override[name.context]
+        db.session.refresh(self)  # updates .names on all parties
+        return self.names
+
+    @classmethod
+    def _incremented_context(cls, ctx, existing):
+        import re
+
+        num = -1
+        reg = '^' + ctx + r'(\d+)'
+        for ex in existing:
+            if ex == ctx and num < 0:
+                # ctx "should always" be in existing, so this is "guaranteed"
+                num = 0
+                continue
+            m = re.match(reg, ex)
+            if not m:
+                continue
+            val = int(m.groups()[0])
+            num = max(val, num)
+        if num < 0:
+            # this means our guarantee failed
+            raise ValueError(f'no matches of {ctx} in {existing}')
+        num += 1
+        return f'{ctx}{num}'
 
     def get_blocking_encounters(self):
         blocking = []
@@ -644,9 +699,11 @@ class Individual(db.Model, FeatherModel):
     def find_merge_conflicts(self, individuals):
         if len(individuals) < 2:
             raise ValueError('not enough individuals')
-        # we are passing on any kind of name-conflict now til that is sorted  FIXME
         values = {'sex': set()}
+        name_contexts = {}
         for individual in individuals:
+            for name in individual.names:
+                name_contexts[name.context] = name_contexts.get(name.context, 0) + 1
             edm_res = current_app.edm.get_dict(
                 'individual.data_complete', individual.guid
             )
@@ -659,7 +716,16 @@ class Individual(db.Model, FeatherModel):
                     f'could not get individual data from edm for id={individual.guid}'
                 )
             values['sex'].add(edm_res['result'].get('sex', None))
-        return [key for key in values.keys() if len(values[key]) > 1]
+        conflicts = {'name_contexts': []}
+        for key in values.keys():
+            if len(values[key]) > 1:
+                conflicts[key] = True
+        for context in name_contexts.keys():
+            if name_contexts[context] > 1:
+                conflicts['name_contexts'].append(context)
+        if not conflicts['name_contexts']:
+            del conflicts['name_contexts']  # eject if empty
+        return conflicts
 
     def delete(self):
         AuditLog.delete_object(log, self)

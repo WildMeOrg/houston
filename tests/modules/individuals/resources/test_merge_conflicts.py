@@ -5,6 +5,7 @@ from tests.modules.individuals.resources import utils as individual_utils
 import pytest
 from tests import utils as test_utils
 import logging
+from app.modules.individuals.models import Individual
 
 log = logging.getLogger(__name__)
 
@@ -72,7 +73,7 @@ def test_get_conflicts(
         researcher_1,
         [individual1_guid, individual2_guid],
     )
-    assert not res
+    assert not len(res)
 
     # now one with sex set
     indiv_data = {'sex': 'male'}
@@ -89,7 +90,25 @@ def test_get_conflicts(
         researcher_1,
         [individual1_guid, individual3_guid],
     )
-    assert res == ['sex']
+    assert res == {'sex': True}
+
+    # add some names with a common context
+    individual1 = Individual.query.get(individual1_guid)
+    individual2 = Individual.query.get(individual2_guid)
+    assert individual1
+    assert individual2
+    shared_context = 'test-context'
+    individual1.add_name(shared_context, 'name1', researcher_1)
+    individual2.add_name(shared_context, 'name2', researcher_1)
+    individual2.add_name('a different context', 'nameX', researcher_1)
+    res = individual_utils.merge_conflicts(
+        flask_app_client,
+        researcher_1,
+        [individual1_guid, individual2_guid],
+    )
+    assert 'name_contexts' in res
+    assert len(res['name_contexts']) == 1
+    assert res['name_contexts'][0] == shared_context
 
 
 @pytest.mark.skipif(

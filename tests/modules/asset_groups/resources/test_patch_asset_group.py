@@ -109,9 +109,9 @@ def test_patch_asset_group(
         patch_data,
     )
 
-    # Valid patch, adding a new encounter
+    # Valid patch, removing the added encounter
     guid_to_go = patch_resp.json['config']['encounters'][-1]['guid']
-    patch_remove = [utils.patch_remove_op('encounters', [guid_to_go])]
+    patch_remove = [utils.patch_remove_op('encounters', guid_to_go)]
     patch_resp = asset_group_utils.patch_asset_group_sighting(
         flask_app_client, researcher_1, asset_group_sighting_guid, patch_remove
     )

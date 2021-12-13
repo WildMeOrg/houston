@@ -160,9 +160,12 @@ class PatchAssetGroupSightingDetailsParameters(PatchJSONParameters):
             # 'remove' passed for the encounter even if it wasn't there to start with
             ret_val = True
             if 'encounters' in obj.config.keys():
-                for encounter_guid in value:
+                if not isinstance(value, str):
+                    # but fails for invalid value type
+                    ret_val = False
+                else:
                     for config_encounter in obj.config['encounters']:
-                        if config_encounter['guid'] == encounter_guid:
+                        if config_encounter['guid'] == value:
                             obj.config['encounters'].remove(config_encounter)
                             changed = True
         if changed:

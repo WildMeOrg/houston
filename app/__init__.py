@@ -126,7 +126,7 @@ def create_app(
 
     # Set up celery using redis as the broker and result backend
     # Use the same redis instance as tus but use database "1"
-    redis_uri = f'redis://{app.config["REDIS_HOST"]}/1'
+    redis_uri = app.config['REDIS_CONNECTION_STRING']
     app.celery = Celery('houston', broker=redis_uri, backend=redis_uri)
     # celery.conf.update(app.config)
 

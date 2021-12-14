@@ -35,7 +35,7 @@ class TusManager(object):
         self.upload_folder = app.config['UPLOADS_DATABASE_PATH']
         self.tus_max_file_size = app.config.get('tus_max_file_size_in_bytes', 4294967296)
         self.file_overwrite = app.config.get('tus_file_overwrite', True)
-        self.redis_host = app.config['REDIS_HOST']
+        self.redis_connection_string = app.config['REDIS_CONNECTION_STRING']
 
         self._register_routes()
         self.app = app
@@ -105,7 +105,7 @@ class TusManager(object):
 
     # handle redis server connection
     def redis_connect(self):
-        return redis.Redis(host=self.redis_host)
+        return redis.from_url(self.redis_connection_string)
 
     @property
     def redis_connection(self):

@@ -76,7 +76,7 @@ class PatchSightingDetailsParameters(PatchJSONParameters):
 
         if has_permission:
 
-            if field == 'assetId' and util.is_valid_guid(value):
+            if field == 'assetId' and util.is_valid_uuid_string(value):
                 asset = Asset.query.get(value)
                 if asset and (
                     asset.asset_group.owner == current_user or current_user.is_admin
@@ -94,7 +94,7 @@ class PatchSightingDetailsParameters(PatchJSONParameters):
                     obj.add_asset(asset)
                 ret_val = True
 
-            elif field == 'featuredAssetGuid' and util.is_valid_guid(value):
+            elif field == 'featuredAssetGuid' and util.is_valid_uuid_string(value):
                 obj.set_featured_asset_guid(UUID(value, version=4))
                 ret_val = True
 

@@ -30,7 +30,9 @@ def fail_on_missing_static_folder(
         )
 
 
-def is_valid_guid(guid):
+def is_valid_uuid_string(guid):
+    if not guid or not isinstance(guid, str):
+        return False
     try:
         _ = UUID(guid, version=4)  # pylint: disable=W0612,W0641
     except ValueError:

@@ -43,16 +43,20 @@ class IndividualCleanup(object):
     def rollback_and_abort(self, message='Unknown Error', code=400):
         if self.individual_guid is not None:
             failed_individual = Individual.query.get(self.individual_guid)
+            # we try deleting from edm *regardless of failed_individual*, as sometimes
+            #   the houston individual did not get made, but the edm did
+            log.error(f'Attempting to delete Individual {self.individual_guid} from EDM')
+            try:
+                current_app.edm.request_passthrough(
+                    'individual.data', 'delete', {}, self.individual_guid
+                )
+            except Exception:
+                pass
             if failed_individual is not None:
                 with db.session.begin():
-                    try:
-                        failed_individual.delete_from_edm(current_app)
-                    except Exception:
-                        pass
                     db.session.delete(failed_individual)
-
                 log.error(
-                    'The Individual with guid %r was not persisted to the EDM and has been deleted from Houston'
+                    'The Individual with guid %r has been deleted from Houston'
                     % self.individual_guid
                 )
         abort(
@@ -164,10 +168,13 @@ class Individuals(Resource):
                     code=500,
                 )
 
+        names = self._parse_names(request_in.get('names'), cleanup)
+
         # finally make the Individual if all encounters are found
         individual = Individual(
             guid=result_data['id'],
             encounters=encounters,
+            names=names,
             version=result_data.get('version'),
         )
         AuditLog.user_create_object(log, individual, duration=timer.elapsed())
@@ -189,6 +196,49 @@ class Individuals(Resource):
         }
 
         return rtn
+
+    def _parse_names(self, names_data, cleanup):
+        names = []
+        if not names_data or not isinstance(names_data, list):
+            return names
+        from flask_login import current_user
+        from app.modules.names.models import Name
+
+        for name_json in names_data:
+            preferring_users = []
+            if 'preferring_users' in name_json and isinstance(
+                name_json['preferring_users'], list
+            ):
+                from app.modules.users.models import User
+
+                for user_guid in name_json['preferring_users']:
+                    user = User.query.get(user_guid)
+                    if not user:
+                        AuditLog.frontend_fault(
+                            log,
+                            f'invalid user guid ({user_guid}) in preferring_users {name_json}',
+                        )
+                        cleanup.rollback_and_abort(
+                            message=f'Invalid user guid ({user_guid}) in name data {name_json}',
+                            code=400,
+                        )
+                    preferring_users.append(user)
+            name_context = name_json.get('context')
+            name_value = name_json.get('value')
+            if not name_context or not name_value:
+                AuditLog.frontend_fault(log, f'invalid name data {name_json}')
+                cleanup.rollback_and_abort(
+                    message=f'Invalid name data {name_json}',
+                    code=400,
+                )
+            new_name = Name(
+                context=name_context,
+                value=name_value,
+                creator_guid=current_user.guid,
+            )
+            # new_name.add_preferring_users(preferring_users)
+            names.append(new_name)
+        return names
 
 
 @api.route('/<uuid:individual_guid>')
@@ -270,9 +320,12 @@ class IndividualByID(Resource):
         ]
 
         with context:
-            parameters.PatchIndividualDetailsParameters.perform_patch(
-                houston_args, obj=individual
-            )
+            try:
+                parameters.PatchIndividualDetailsParameters.perform_patch(
+                    houston_args, obj=individual
+                )
+            except HoustonException as ex:
+                abort(ex.status_code, ex.message)
 
         edm_args = [
             arg

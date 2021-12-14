@@ -2,6 +2,7 @@
 # pylint: disable=invalid-name,missing-docstring
 
 import pytest
+import sqlalchemy
 from tests.utils import module_unavailable
 
 
@@ -44,8 +45,8 @@ def test_names_crud(db, researcher_1, researcher_2, empty_individual, request):
     # add a name with existing context
     try:
         empty_individual.add_name(context, test_name, researcher_2)
-    except ValueError as ve:
-        assert 'name could not be added' in str(ve)
+    except sqlalchemy.exc.IntegrityError:
+        pass
 
     another_context = 'test-context-2'
     empty_individual.add_name(another_context, test_name, researcher_2)
@@ -81,6 +82,19 @@ def test_names_crud(db, researcher_1, researcher_2, empty_individual, request):
     test = empty_individual.remove_names_for_value(test_name)
     assert test == 2
     assert len(empty_individual.names) == 0
+
+    # attempt to remove a name from wrong individual
+    individual2 = Individual()
+    request.addfinalizer(individual2.delete)
+    with db.session.begin(subtransactions=True):
+        db.session.add(individual2)
+    name2 = individual2.add_name(context, test_name, researcher_2)
+    assert name2
+    assert name2.value == test_name
+    try:
+        empty_individual.remove_name(name2)
+    except ValueError as ve:
+        assert ' not on ' in str(ve)
 
     # add one more for good luck, as this will test that the auto-deletion of individual is fine when has names
     empty_individual.add_name(context, test_name, researcher_2)

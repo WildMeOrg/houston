@@ -8,7 +8,6 @@ from app.extensions import FeatherModel, db
 from flask import current_app
 import uuid
 import logging
-import sqlalchemy
 import app.extensions.logging as AuditLog
 from datetime import datetime
 from app.modules.names.models import Name
@@ -87,7 +86,7 @@ class Individual(db.Model, FeatherModel):
         'Encounter', back_populates='individual', order_by='Encounter.guid'
     )
 
-    names = db.relationship('Name', back_populates='individual', order_by='Name.guid')
+    names = db.relationship('Name', back_populates='individual', order_by='Name.created')
 
     social_groups = db.relationship(
         'SocialGroupIndividualMembership',
@@ -138,26 +137,21 @@ class Individual(db.Model, FeatherModel):
     def get_names_for_value(self, value):
         return Name.query.filter_by(individual_guid=self.guid, value=value).all()
 
-    def add_name(self, context, value, creator):
+    def add_name(self, context, value, creator, preferring_users=[]):
         new_name = Name(
             individual_guid=self.guid,
             context=context,
             value=value,
             creator_guid=creator.guid,
         )
-        try:
-            with db.session.begin(subtransactions=True):
-                db.session.add(new_name)
-        except (sqlalchemy.orm.exc.FlushError, sqlalchemy.exc.IntegrityError) as err:
-            log.warning(
-                f'failed to add name to {self} (context={context}, value={value}, creator={creator}: {str(err)}'
-            )
-            raise ValueError(
-                f'name could not be added, perhaps context "{context}" is already used'
-            )
+        with db.session.begin(subtransactions=True):
+            db.session.add(new_name)
+        new_name.add_preferring_users(preferring_users)
         return new_name
 
     def remove_name(self, name):
+        if self.guid != name.individual_guid:
+            raise ValueError(f'{name} not on {self}')
         name.delete()
 
     def remove_name_for_context(self, context):

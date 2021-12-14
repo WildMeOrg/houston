@@ -9,6 +9,8 @@ from flask_marshmallow import base_fields
 
 from .models import Individual
 
+from app.modules.names.schemas import DetailedNameSchema
+
 
 class BaseIndividualSchema(ModelSchema):
     """
@@ -35,12 +37,18 @@ class DetailedIndividualSchema(BaseIndividualSchema):
     """
 
     featuredAssetGuid = base_fields.Function(Individual.get_featured_asset_guid)
+    names = base_fields.Nested(
+        DetailedNameSchema,
+        attribute='names',
+        many=True,
+    )
 
     class Meta(BaseIndividualSchema.Meta):
         fields = BaseIndividualSchema.Meta.fields + (
             Individual.created.key,
             Individual.updated.key,
             'featuredAssetGuid',
+            'names',
         )
         dump_only = BaseIndividualSchema.Meta.dump_only + (
             Individual.created.key,

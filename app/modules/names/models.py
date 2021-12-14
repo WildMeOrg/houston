@@ -84,8 +84,14 @@ class Name(db.Model, HoustonModel, Timestamp):
         if user in self.get_preferring_users():
             raise ValueError(f'{user} already in list')
         pref_join = NamePreferringUsersJoin(name_guid=self.guid, user_guid=user.guid)
-        with db.session.begin():
+        with db.session.begin(subtransactions=True):
             db.session.add(pref_join)
+
+    def add_preferring_users(self, users):
+        if not users or not isinstance(users, list):
+            return
+        for user in set(users):  # forces unique
+            self.add_preferring_user(user)
 
     def remove_preferring_user(self, user):
         found = None
@@ -93,8 +99,10 @@ class Name(db.Model, HoustonModel, Timestamp):
             if pref_join.user_guid == user.guid:
                 found = pref_join
         if found:
-            with db.session.begin():
+            with db.session.begin(subtransactions=True):
                 db.session.delete(found)
+            return True
+        return False
 
     def delete(self):
         AuditLog.delete_object(log, self, f'from Individual {self.individual.guid}')

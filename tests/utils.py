@@ -489,3 +489,9 @@ def dummy_sighting_info():
 
 def dummy_detection_info():
     return ['None']
+
+
+def print_message(message):
+    import json
+
+    print(json.dumps(message, indent=4, sort_keys=True))

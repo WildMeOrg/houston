@@ -19,6 +19,8 @@ class BaseAssetSchema(ModelSchema):
     Base Asset schema exposes only the most general fields.
     """
 
+    dimensions = base_fields.Function(Asset.get_dimensions)
+
     class Meta:
         # pylint: disable=missing-docstring
         model = Asset
@@ -54,12 +56,15 @@ class DetailedAssetSchema(BaseAssetSchema):
 
 
 class DetailedAssetGroupAssetSchema(BaseAssetSchema):
-    fields = BaseAssetSchema.Meta.fields + (
-        Asset.created.key,
-        Asset.updated.key,
-        'annotations',
-        'dimensions',
-    )
+    annotations = base_fields.Nested('BaseAnnotationSchema', many=True)
+
+    class Meta(BaseAssetSchema.Meta):
+        fields = BaseAssetSchema.Meta.fields + (
+            Asset.created.key,
+            Asset.updated.key,
+            'annotations',
+            'dimensions',
+        )
 
 
 def not_negative(value):

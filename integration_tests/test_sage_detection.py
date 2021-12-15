@@ -62,13 +62,21 @@ def test_create_asset_group_detection(session, codex_url, test_root, login):
     first_job = response_json['jobs'][job_id]
     job_start = first_job['start']
     annotations = first_job['json_result']['results_list'][0]
-    annotation_uuids = [annot['uuid']['__UUID__'] for annot in annotations]
+    sage_annotation_uuids = [annot['uuid']['__UUID__'] for annot in annotations]
+
     assert response_json == {
         'assets': [
             {
                 'guid': asset_guids[0],
                 'src': f'/api/v1/assets/src/{asset_guids[0]}',
                 'filename': 'zebra.jpg',
+                'annotations': response_json['assets'][0]['annotations'],
+                'created': response_json['assets'][0]['created'],
+                'updated': response_json['assets'][0]['updated'],
+                'dimensions': {
+                    'height': 664,
+                    'width': 1000,
+                },
             }
         ],
         'completion': 10,
@@ -89,7 +97,7 @@ def test_create_asset_group_detection(session, codex_url, test_root, login):
                         [
                             {
                                 'id': annotations[0]['id'],
-                                'uuid': {'__UUID__': annotation_uuids[0]},
+                                'uuid': {'__UUID__': sage_annotation_uuids[0]},
                                 'xtl': 178,
                                 'ytl': 72,
                                 'left': 178,

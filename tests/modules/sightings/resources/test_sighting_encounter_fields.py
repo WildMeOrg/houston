@@ -64,7 +64,7 @@ def test_mega_data(
     encounter_data_in = {
         'time': encounter_timestamp,
         'locationId': 'enc-test',
-        'taxonomy': {'id': tx_guid},
+        'taxonomy': tx_guid,
         'decimalLatitude': random_decimal_latitude(),
         'decimalLongitude': random_decimal_longitude(),
         'sex': 'male',
@@ -83,7 +83,7 @@ def test_mega_data(
             sighting_cfd_id: cfd_test_value,
         },
         'encounters': [encounter_data_in],
-        'taxonomies': [{'id': tx_guid}],
+        'taxonomies': [tx_guid],
     }
     uuids = sighting_utils.create_sighting(
         flask_app_client,
@@ -117,7 +117,7 @@ def test_mega_data(
     assert (
         'encounters' in full_sighting.json and len(full_sighting.json['encounters']) == 1
     )
-    assert full_sighting.json['encounters'][0]['taxonomy']['id'] == tx_guid
+    assert full_sighting.json['encounters'][0]['taxonomy'] == tx_guid
     assert full_sighting.json['encounters'][0]['time'][0:18] == encounter_timestamp[0:18]
     assert encounter_cfd_id in full_sighting.json['encounters'][0]['customFields']
     assert (

@@ -93,7 +93,7 @@ class AssetGroupSightingEncounterSchema(ModelSchema):
     owner = base_fields.Dict()
     sex = base_fields.String(default=None, allow_none=True)
     submitter = base_fields.Dict(default=None)
-    taxonomy = base_fields.Dict(default={})
+    taxonomy = base_fields.UUID()
     time = base_fields.String(default=None)
     updatedHouston = base_fields.DateTime()
     version = base_fields.String(default=None)

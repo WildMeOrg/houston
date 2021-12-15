@@ -47,6 +47,8 @@ jobs:
       - name: Run docker-compose
         run: |
           set -ex
+          # Use docker-compose.no-gitlab.yml
+          ln -s docker-compose.no-gitlab.yml docker-compose.override.yml
           docker-compose up -d
 
       - name: Install dependencies
@@ -74,6 +76,16 @@ jobs:
             fi
             # Wait for houston to be ready
             wget --tries=1 -O - http://localhost:83/api/v1/users/admin_user_initialized && break
+          done
+          # Wait for frontend to be ready
+          while sleep 10
+          do
+            wget --tries=1 -O - http://localhost:84/ && break
+          done
+          # Wait for acm to be ready
+          while sleep 10
+          do
+            wget --tries=1 -O - http://localhost:82/ && break
           done
 
       - name: Run tests

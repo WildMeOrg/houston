@@ -157,7 +157,7 @@ def initialize(browser):
     browser.get(CODEX_URL)
     timeout = 240
     while True:
-        wait_until(browser, lambda b: '</style>' in b.page_source)
+        wait_until(browser, lambda b: '</title>' in b.page_source)
         if 'Server unavailable' not in browser.page_source:
             break
         time.sleep(10)

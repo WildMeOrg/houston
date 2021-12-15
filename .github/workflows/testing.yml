@@ -79,7 +79,9 @@ jobs:
       - name: Run docker-compose
         run: |
           set -ex
-          docker-compose up -d db redis gitlab edm houston acm elasticsearch
+          # Use docker-compose.no-gitlab.yml
+          ln -s docker-compose.no-gitlab.yml docker-compose.override.yml
+          docker-compose up -d db redis edm houston acm elasticsearch
           # Check the state of the containers
           sleep 1m
           # Wait until houston is up
@@ -94,16 +96,10 @@ jobs:
             wget --tries=1 -O - http://localhost:83/houston/ && break
           done
 
-      # Install and test - Test order is randomized, run three times to ensure correctness
-      - name: "Run ${{ matrix.app-context }} tests (random x3)"
+      - name: Run tests
         run: |
-          docker-compose exec -T -e TEST_DATABASE_URI=$TEST_DATABASE_URI houston pytest -s -v
-          docker-compose exec -T -e TEST_DATABASE_URI=$TEST_DATABASE_URI houston pytest -s -v
-          docker-compose exec -T -e TEST_DATABASE_URI=$TEST_DATABASE_URI houston pytest -s -v
-
-      - name: "Run ${{ matrix.app-context }} tests without gitlab"
-        run: |
-          docker-compose exec -T -e TEST_DATABASE_URI=$TEST_DATABASE_URI -e GITLAB_REMOTE_URI=http://connection-error/ houston pytest -s -v
+          set -ex
+          docker-compose exec -T -e TEST_DATABASE_URI=$TEST_DATABASE_URI houston pytest -s -v --cov=./ --cov-append --random-order-seed=1
 
       - name: Check DB migrations (sqlite)
         if: matrix.db-uri == 'sqlite://'
@@ -126,17 +122,6 @@ jobs:
           docker-compose exec -T -e SQLALCHEMY_DATABASE_URI=$TEST_DATABASE_URI houston coverage run --append /usr/local/bin/invoke app.db.downgrade
           docker-compose exec -T -e SQLALCHEMY_DATABASE_URI=$TEST_DATABASE_URI houston coverage run --append /usr/local/bin/invoke app.db.upgrade --no-backup
           docker-compose exec -T -e SQLALCHEMY_DATABASE_URI=$TEST_DATABASE_URI houston /bin/bash -c 'if [ -n "$(coverage run --append /usr/local/bin/invoke app.db.migrate)" ]; then echo Missing database migration; exit 1; fi'
-
-      - name: "Run ${{ matrix.app-context }} tests after DB checks"
-        run: |
-          docker-compose exec -T -e TEST_DATABASE_URI=$TEST_DATABASE_URI houston pytest --no-cov -s -v
-
-      - name: Run Codecov
-        continue-on-error: true
-        run: |
-          docker-compose exec -T -e TEST_DATABASE_URI=$TEST_DATABASE_URI houston pytest -s -v --cov=./ --cov-append
-          docker-compose exec -T -e TEST_DATABASE_URI=$TEST_DATABASE_URI houston pytest -s -v -m separate tests/test_transactions.py::test_transactions[None-request_transaction] --cov-append
-          docker-compose exec -T -e TEST_DATABASE_URI=$TEST_DATABASE_URI houston pytest -s -v -m separate tests/test_transactions.py::test_transactions[None-commit_or_abort] --cov-append
 
       - name: Run other invoke tasks for coverage and errors
         run: |

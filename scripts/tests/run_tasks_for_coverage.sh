@@ -6,8 +6,6 @@ if [ "$SQLALCHEMY_DATABASE_URI" == "sqlite://" ]
 then
     SQLALCHEMY_DATABASE_URI=''
     rm -f _db/database.sqlite3
-else
-    python -c 'import os; import sqlalchemy; sqlalchemy.create_engine(os.environ["SQLALCHEMY_DATABASE_URI"]).execute("DROP TABLE IF EXISTS alembic_version")'
 fi
 
 # test app.db.*
@@ -72,7 +70,6 @@ coverage run --append `which invoke` app.assets.list-all
 if [ "$HOUSTON_APP_CONTEXT" == 'codex' ]; then
     coverage run --append `which invoke` codex.consistency.all
     coverage run --append `which invoke` codex.consistency.user-staff-permissions
-    coverage run --append `which invoke` codex.consistency.cleanup-gitlab --dryrun
 fi
 
 # test codex.*

@@ -79,7 +79,7 @@ def wait_for(
     url,
     response_checker,
     status_code=200,
-    timeout=4 * 60,
+    timeout=6 * 60,
     *args,
     **kwargs,
 ):

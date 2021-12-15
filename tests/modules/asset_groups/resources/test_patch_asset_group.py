@@ -4,6 +4,7 @@ import uuid
 import copy
 
 import tests.modules.asset_groups.resources.utils as asset_group_utils
+import tests.modules.annotations.resources.utils as annot_utils
 from tests import utils
 import pytest
 
@@ -79,11 +80,12 @@ def test_patch_asset_group(
 
     # invalid patch, encounter has individualuuid of nonsense
     encounter_guid = group_sighting.json['config']['encounters'][0]['guid']
+    encounter_path = f'{asset_group_sighting_guid}/encounter/{encounter_guid}'
+
     patch_data = [utils.patch_add_op('individualUuid', '8037460')]
     expected_resp = f'Encounter {encounter_guid} individual 8037460 not valid'
-    path = f'{asset_group_sighting_guid}/encounter/{encounter_guid}'
     asset_group_utils.patch_asset_group_sighting(
-        flask_app_client, researcher_1, path, patch_data, 400, expected_resp
+        flask_app_client, researcher_1, encounter_path, patch_data, 400, expected_resp
     )
 
     # invalid patch, encounter has invalid individualuuid
@@ -91,9 +93,8 @@ def test_patch_asset_group(
 
     patch_data = [utils.patch_add_op('individualUuid', invalid_uuid)]
     expected_resp = f'Encounter {encounter_guid} individual {invalid_uuid} not found'
-    path = f'{asset_group_sighting_guid}/encounter/{encounter_guid}'
     asset_group_utils.patch_asset_group_sighting(
-        flask_app_client, researcher_1, path, patch_data, 400, expected_resp
+        flask_app_client, researcher_1, encounter_path, patch_data, 400, expected_resp
     )
 
     # valid patch, real individual
@@ -101,14 +102,14 @@ def test_patch_asset_group(
         db.session.add(empty_individual)
     request.addfinalizer(lambda: db.session.delete(empty_individual))
     patch_data = [utils.patch_add_op('individualUuid', str(empty_individual.guid))]
-    path = f'{asset_group_sighting_guid}/encounter/{encounter_guid}'
-    patch_resp = asset_group_utils.patch_asset_group_sighting(
+    asset_group_utils.patch_asset_group_sighting(
         flask_app_client,
         researcher_1,
-        path,
+        encounter_path,
         patch_data,
     )
 
+    # TODO look at this block. Where does it need to go
     # Valid patch, removing the added encounter
     guid_to_go = patch_resp.json['config']['encounters'][-1]['guid']
     patch_remove = [utils.patch_remove_op('encounters', guid_to_go)]
@@ -116,6 +117,40 @@ def test_patch_asset_group(
         flask_app_client, researcher_1, asset_group_sighting_guid, patch_remove
     )
     assert len(patch_resp.json['config']['encounters']) == 1
+
+    # invalid patch, encounter has invalid annotation uuid
+    patch_data = [utils.patch_add_op('annotations', invalid_uuid)]
+    expected_resp = f'Encounter {encounter_guid} annotation:{invalid_uuid} not found'
+    asset_group_utils.patch_asset_group_sighting(
+        flask_app_client, researcher_1, encounter_path, patch_data, 400, expected_resp
+    )
+
+    annot_response = annot_utils.create_annotation_simple(
+        flask_app_client,
+        researcher_1,
+        asset_guid,
+    )
+
+    annotation_guid = annot_response.json['guid']
+
+    # Attempt to replace which should fail
+    patch_replace_annot = [utils.patch_replace_op('annotations', annotation_guid)]
+    asset_group_utils.patch_asset_group_sighting(
+        flask_app_client,
+        researcher_1,
+        encounter_path,
+        patch_replace_annot,
+        409,
+    )
+
+    # Add annot, should succeed
+    patch_annot = [utils.patch_add_op('annotations', annotation_guid)]
+    annot_add_resp = asset_group_utils.patch_asset_group_sighting(
+        flask_app_client, researcher_1, encounter_path, patch_annot
+    )
+    annots = annot_add_resp.json['config']['encounters'][0]['annotations']
+    assert len(annots) == 1
+    assert annots[0] == annotation_guid
 
 
 # similar to the above but against the AGS-as-sighting endpoint

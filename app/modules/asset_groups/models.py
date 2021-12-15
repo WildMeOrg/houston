@@ -266,16 +266,9 @@ class AssetGroupSighting(db.Model, HoustonModel):
 
                 annotations = req_data.get('annotations', [])
                 for annot_uuid in annotations:
-                    annots = [
-                        annot
-                        for annot in Annotation.query.filter_by(
-                            content_guid=annot_uuid
-                        ).all()
-                        if annot.asset.asset_group_guid == self.asset_group_guid
-                    ]
-                    # Must be valid, checked in metadata parsing
-                    assert len(annots) == 1
-                    annot = annots[0]
+                    annot = Annotation.query.get(annot_uuid)
+                    assert annot
+
                     AuditLog.audit_log_object(
                         log,
                         new_encounter,

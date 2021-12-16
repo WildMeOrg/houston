@@ -8,7 +8,7 @@ import uuid
 
 from app.modules.sightings.parameters import PatchSightingDetailsParameters
 from app.modules.encounters.parameters import PatchEncounterDetailsParameters
-
+from .metadata import AssetGroupMetadata, AssetGroupMetadataError
 from flask_restx_patched import Parameters, PatchJSONParameters
 from flask_login import current_user  # NOQA
 
@@ -74,9 +74,6 @@ class PatchAssetGroupSightingDetailsParameters(PatchJSONParameters):
     def add(cls, obj, field, value, state):
         # Encounter is special in that it can only be added to an AssetGroupSightingDetails.
         if field == 'encounters':
-            # Reuse metadata methods to validate ID Config, creating a single entry list for the encounters
-            from .metadata import AssetGroupMetadata
-
             AssetGroupMetadata.validate_encounters(
                 [
                     value,
@@ -107,8 +104,6 @@ class PatchAssetGroupSightingDetailsParameters(PatchJSONParameters):
     # metadata functionality
     @classmethod
     def validate_asset_references(cls, obj, asset_refs):
-        from .metadata import AssetGroupMetadataError
-
         for filename in asset_refs:
             # asset must exist and must be part of the group
             if not obj.asset_group.get_asset_for_file(filename):
@@ -118,9 +113,6 @@ class PatchAssetGroupSightingDetailsParameters(PatchJSONParameters):
 
     @classmethod
     def replace(cls, obj, field, value, state):
-        # Reuse metadata methods to validate ID Config
-        from .metadata import AssetGroupMetadata
-
         ret_val = False
 
         if field == 'config':
@@ -180,16 +172,12 @@ class PatchAssetGroupSightingDetailsParameters(PatchJSONParameters):
 class PatchAssetGroupSightingAsSightingParameters(
     PatchAssetGroupSightingDetailsParameters
 ):
-
     # These don't exist as entities in the AssetGroupSighting, they're just config blobs
     # but we allow patching faking them to be real
     # This uses the fact that anything that is an EDM sighting path is in the
     # AssetGroupSighting in the same format
-
     @classmethod
     def replace(cls, obj, field, value, state):
-        # Reuse metadata methods to validate ID Config
-        from .metadata import AssetGroupMetadata
 
         ret_val = False
 
@@ -223,7 +211,11 @@ class PatchAssetGroupSightingAsSightingParameters(
 
 class PatchAssetGroupSightingEncounterDetailsParameters(PatchJSONParameters):
     # pylint: disable=abstract-method,missing-docstring
-    OPERATION_CHOICES = (PatchJSONParameters.OP_REPLACE, PatchJSONParameters.OP_ADD)
+    OPERATION_CHOICES = (
+        PatchJSONParameters.OP_REPLACE,
+        PatchJSONParameters.OP_ADD,
+        PatchJSONParameters.OP_REMOVE,
+    )
     # These don't exist as entities in the AssetGroupSighting, they're just config blobs
     # but we allow patching faking them to be real
 
@@ -234,17 +226,7 @@ class PatchAssetGroupSightingEncounterDetailsParameters(PatchJSONParameters):
     )
 
     @classmethod
-    def add(cls, obj, field, value, state):
-        # Add and replace are the same operation so reuse the one method
-        return cls.replace(obj, field, value, state)
-
-    @classmethod
-    def replace(cls, obj, field, value, state):
-        # Reuse metadata methods to validate fields
-        from .metadata import AssetGroupMetadata, AssetGroupMetadataError
-
-        ret_val = True
-
+    def _get_encounter_data(cls, obj, state):
         assert 'encounter_uuid' in state
         encounter_uuid = state['encounter_uuid']
         encounter_metadata = obj.get_encounter_metadata(encounter_uuid)
@@ -254,15 +236,45 @@ class PatchAssetGroupSightingEncounterDetailsParameters(PatchJSONParameters):
                 log,
                 f'Encounter {encounter_uuid} not found in AssetGroupSighting {obj.guid}',
             )
+        return encounter_uuid, encounter_metadata
+
+    @classmethod
+    def add(cls, obj, field, value, state):
+
+        # Annotations are special in that it can only be added, not replaced.
+        if field == 'annotations':
+            encounter_uuid, encounter_metadata = cls._get_encounter_data(obj, state)
+
+            AssetGroupMetadata.validate_annotations(
+                obj,
+                [
+                    value,
+                ],
+                f'Encounter {encounter_uuid}',
+            )
+            if 'annotations' not in encounter_metadata.keys():
+                encounter_metadata['annotations'] = []
+            encounter_metadata['annotations'].append(value)
+            # force the write to the database
+            obj.config = obj.config
+            return True
+
+        else:
+            # For everything else, Add and replace are the same operation so reuse the one method
+            return cls.replace(obj, field, value, state)
+
+    @classmethod
+    def replace(cls, obj, field, value, state):
+
+        ret_val = True
+        encounter_uuid, encounter_metadata = cls._get_encounter_data(obj, state)
 
         if field == 'ownerEmail':
             AssetGroupMetadata.validate_owner_email(value, f'Encounter {encounter_uuid}')
             encounter_metadata[field] = value
         elif field == 'annotations':
-            AssetGroupMetadata.validate_annotations(
-                obj, value, f'Encounter {encounter_uuid}'
-            )
-            encounter_metadata[field] = value
+            # Cannot replace the list, must do add and remove on individual annotations
+            ret_val = False
         elif field == 'individualUuid':
             AssetGroupMetadata.validate_individual(value, f'Encounter {encounter_uuid}')
             encounter_metadata[field] = value
@@ -270,4 +282,27 @@ class PatchAssetGroupSightingEncounterDetailsParameters(PatchJSONParameters):
             encounter_metadata[field] = value
         # force the write to the database
         obj.config = obj.config
+        return ret_val
+
+    @classmethod
+    def remove(cls, obj, field, value, state):
+        ret_val = False
+        changed = False
+        encounter_uuid, encounter_metadata = cls._get_encounter_data(obj, state)
+        if field == 'annotations':
+            # 'remove' passed for the annotation even if it wasn't there to start with
+            ret_val = True
+            if 'annotations' in encounter_metadata.keys():
+                if not isinstance(value, str):
+                    # but fails for invalid value type
+                    ret_val = False
+                else:
+                    for config_annotation in encounter_metadata['annotations']:
+                        if config_annotation['guid'] == value:
+                            encounter_metadata['annotations'].remove(config_annotation)
+                            changed = True
+        if changed:
+            # Force the DB write
+            obj.config = obj.config
+
         return ret_val

@@ -42,22 +42,20 @@ def create_sighting(session, codex_url, test_root, filename):
         session.get, ags_url, lambda response: response.json()['stage'] == 'curation'
     )
     response_json = response.json()
-    job_id = list(response_json['jobs'].keys())[0]
-    first_job = response_json['jobs'][job_id]
-    annotation_guids = [
-        annot['uuid']['__UUID__'] for annot in first_job['json_result']['results_list'][0]
-    ]
+
+    assert len(response_json['assets']) == 1
+    assert len(response_json['assets'][0]['annotations']) == 1
+    annot_guid = response_json['assets'][0]['annotations'][0]['guid']
+
     encounter_guids = [enc['guid'] for enc in response_json['config']['encounters']]
 
-    assert len(annotation_guids) == 1
-    annot_guid = annotation_guids[0]
     assert len(encounter_guids) == 1
     encounter_guid = encounter_guids[0]
 
     # We got an annotation back, need to add it to the encounter in the sighting
     patch_response = session.patch(
         codex_url(f'/api/v1/asset_groups/sighting/{ags_guid}/encounter/{encounter_guid}'),
-        json=[{'op': 'add', 'path': '/annotations', 'value': [annot_guid]}],
+        json=[{'op': 'add', 'path': '/annotations', 'value': annot_guid}],
     )
     assert patch_response.status_code == 200
     # Commit it

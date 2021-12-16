@@ -152,14 +152,7 @@ class AssetGroupMetadata(object):
             )
 
         for annot_uuid in annotations:
-            # Need to find the annotation for which the asset is part of the current asset group
-            annots = [
-                annot
-                for annot in Annotation.query.filter_by(content_guid=annot_uuid).all()
-                if annot.asset.asset_group_guid == asset_group_sighting.asset_group_guid
-            ]
-
-            if len(annots) != 1:
+            if not Annotation.query.get(annot_uuid):
                 raise AssetGroupMetadataError(
                     log, f'{debug} annotation:{str(annot_uuid)} not found'
                 )

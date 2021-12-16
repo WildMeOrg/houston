@@ -62,24 +62,22 @@ services:
 
   acm:
     # https://github.com/WildMeOrg/wildbook-ia
-    image: wildme/wildbook-ia:latest
-    # FIXME: Adjust entrypoint to allow for additive command arguments
-    # , "--db-uri", "${WBIA_DB_URI}"
-    command: [ "wait-for", "db:5432", "--", "python3.7", "-m", "wbia.dev", "--dbdir", "${WBIA_DB_DIR}", "--logdir", "/data/logs/", "--web", "--port", "5000", "--web-deterministic-ports", "--containerized", "--cpudark", "--production"]
-    volumes:
-      # FIXME: `PermissionError: [Errno 13] Permission denied: '/data/db/_ibsdb'`
-      #        https://github.com/WildMeOrg/wildbook-ia/pull/184
-      - acm-var:/data/db
+    image: wildme/wbia:latest
+    depends_on:
+      - db
+    command: ["--db-uri", "${WBIA_DB_URI}"]
     networks:
       - intranet
-    environment:
-      # FIXME: Run as root to fix the PermissionError in volumes
-      EXEC_PRIVILEGED: 1
-      HOUSTON_CLIENT_ID: "${HOUSTON_CLIENT_ID}"
-      HOUSTON_CLIENT_SECRET: "${HOUSTON_CLIENT_SECRET}"
     ports:
       # FIXME: exposed for developer verification
       - "82:5000"
+    volumes:
+      - acm-database-var:/data/db
+      - acm-cache-var:/cache
+    environment:
+      WBIA_DB_URI: "${WBIA_DB_URI}"
+      HOUSTON_CLIENT_ID: "${HOUSTON_CLIENT_ID}"
+      HOUSTON_CLIENT_SECRET: "${HOUSTON_CLIENT_SECRET}"
 
   edm:
     # See: https://github.com/WildMeOrg/Wildbook/tree/next-gen
@@ -209,7 +207,8 @@ volumes:
   edm-var:
   # es-var:
   redis-var:
-  acm-var:
+  acm-database-var:
+  acm-cache-var:
   houston-var:
   gitlab-var-config:
   gitlab-var-logs:

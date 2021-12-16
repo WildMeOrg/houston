@@ -109,7 +109,6 @@ def test_patch_asset_group(
         patch_data,
     )
 
-    # TODO look at this block. Where does it need to go
     # Valid patch, removing the added encounter
     guid_to_go = patch_resp.json['config']['encounters'][-1]['guid']
     patch_remove = [utils.patch_remove_op('encounters', guid_to_go)]

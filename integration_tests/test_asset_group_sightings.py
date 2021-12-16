@@ -408,7 +408,7 @@ def test_bulk_upload(session, login, codex_url, test_root, request):
                             'decimalLongitude': '73.5622',
                             'verbatimLocality': 'North Male Lankan Reef',
                             'verbatimEventDate': 'yesterday',
-                            'taxonomy': 'ace5e17c-e74a-423f-8bd2-ecc3d7a78f4c',
+                            #'taxonomy': 'ace5e17c-e74a-423f-8bd2-ecc3d7a78f4c',
                             'time': '2014-01-01T09:00:00.000Z',
                         }
                     ],
@@ -427,7 +427,7 @@ def test_bulk_upload(session, login, codex_url, test_root, request):
                             'decimalLongitude': '73.5622',
                             'verbatimLocality': 'North Male Lankan Reef',
                             'verbatimEventDate': 'yesterday',
-                            'taxonomy': 'ace5e17c-e74a-423f-8bd2-ecc3d7a78f4c',
+                            #'taxonomy': 'ace5e17c-e74a-423f-8bd2-ecc3d7a78f4c',
                             'time': '2014-01-01T09:00:00.000Z',
                         }
                     ],
@@ -444,7 +444,7 @@ def test_bulk_upload(session, login, codex_url, test_root, request):
                             'decimalLatitude': '4.3638',
                             'decimalLongitude': '73.6421',
                             'verbatimLocality': 'North Male Gasfinolhu Inside Reef',
-                            'taxonomy': 'ace5e17c-e74a-423f-8bd2-ecc3d7a78f4c',
+                            #'taxonomy': 'ace5e17c-e74a-423f-8bd2-ecc3d7a78f4c',
                             'time': '2019-01-01T09:00:00.000Z',
                         }
                     ],

@@ -181,10 +181,17 @@ def test_sightings(session, login, codex_url, test_root, admin_name):
         'updatedHouston': response.json()['updatedHouston'],
         'version': response.json()['version'],  # 1636456524261
         'creator': {
-            'full_name': 'Test admin',
+            'full_name': response.json()['creator']['full_name'],
             'guid': my_guid,
             'profile_fileupload': None,
         },
+        'created': response.json()['created'],
+        'updated': response.json()['updated'],
+        'detection_start_time': response.json()['detection_start_time'],
+        'curation_start_time': response.json()['curation_start_time'],
+        'identification_start_time': None,
+        'unreviewed_start_time': response.json()['unreviewed_start_time'],
+        'review_time': None,
     }
 
     # PATCH sighting

@@ -24,7 +24,7 @@ from app.utils import HoustonException
 from . import parameters, schemas
 from .metadata import AssetGroupMetadataError, AssetGroupMetadata
 from .models import AssetGroup, AssetGroupSighting
-from app.modules.sightings.schemas import DetailedSightingSchema
+from app.modules.sightings.schemas import SightingForAssetGroupSightingSchema
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 api = Namespace(
@@ -536,7 +536,7 @@ class AssetGroupSightingCommit(Resource):
     )
     # NOTE this returns a sighting schema not an AssetGroup one as the output of this is that
     # a sighting is created
-    @api.response(DetailedSightingSchema())
+    @api.response(SightingForAssetGroupSightingSchema())
     def post(self, asset_group_sighting):
         try:
             sighting = asset_group_sighting.commit()

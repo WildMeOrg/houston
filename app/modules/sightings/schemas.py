@@ -45,16 +45,11 @@ class CreateSightingSchema(BaseSightingSchema):
         )
 
 
-class DetailedSightingSchema(CreateSightingSchema):
+class TimedSightingSchema(CreateSightingSchema):
     """
-    Detailed Sighting schema adds the parts that are on top of what is created
+    Timed Sighting schema adds the stage times
     """
 
-    encounters = base_fields.Nested(
-        'BaseEncounterSchema',
-        attribute='get_encounters',
-        many=True,
-    )
     detection_start_time = base_fields.Function(Sighting.get_detection_start_time)
     curation_start_time = base_fields.Function(Sighting.get_curation_start_time)
     identification_start_time = base_fields.Function(
@@ -65,13 +60,27 @@ class DetailedSightingSchema(CreateSightingSchema):
 
     class Meta(CreateSightingSchema.Meta):
         fields = CreateSightingSchema.Meta.fields + (
-            'encounters',
             'detection_start_time',
             'curation_start_time',
             'identification_start_time',
             'unreviewed_start_time',
             'review_time',
         )
+
+
+class SightingForAssetGroupSightingSchema(TimedSightingSchema):
+    """
+    SightingForAssetGroupSighting schema adds the encounters
+    """
+
+    encounters = base_fields.Nested(
+        'BaseEncounterSchema',
+        attribute='get_encounters',
+        many=True,
+    )
+
+    class Meta(TimedSightingSchema.Meta):
+        fields = TimedSightingSchema.Meta.fields + ('encounters',)
 
 
 class FeaturedAssetOnlySchema(BaseSightingSchema):
@@ -87,7 +96,7 @@ class FeaturedAssetOnlySchema(BaseSightingSchema):
         )
 
 
-class AugmentedEdmSightingSchema(BaseSightingSchema):
+class AugmentedEdmSightingSchema(TimedSightingSchema):
     """
     Sighting schema with EDM and Houston data.
     """
@@ -111,12 +120,12 @@ class AugmentedEdmSightingSchema(BaseSightingSchema):
     featuredAssetGuid = base_fields.UUID(attribute='featured_asset_guid')
     creator = base_fields.Nested('PublicUserSchema', attribute='get_owner', many=False)
 
-    class Meta(BaseSightingSchema.Meta):
+    class Meta(TimedSightingSchema.Meta):
         """
         Desired Sighting fields.
         """
 
-        fields = BaseSightingSchema.Meta.fields + (
+        fields = TimedSightingSchema.Meta.fields + (
             'createdHouston',
             'updatedHouston',
             'hasView',

@@ -7,7 +7,7 @@ Serialization schemas for Sightings resources RESTful API
 from flask_restx_patched import ModelSchema
 from flask_marshmallow import base_fields
 
-from app.modules.assets.schemas import DetailedAssetSchema
+from app.modules.assets.schemas import ExtendedAssetSchema
 
 from .models import Sighting
 
@@ -89,7 +89,7 @@ class AugmentedEdmSightingSchema(TimedSightingSchema):
     createdHouston = base_fields.DateTime(attribute='created')
     updatedHouston = base_fields.DateTime(attribute='updated')
     assets = base_fields.Nested(
-        DetailedAssetSchema,
+        ExtendedAssetSchema,
         attribute='get_assets',
         many=True,
     )

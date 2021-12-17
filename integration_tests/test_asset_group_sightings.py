@@ -11,6 +11,11 @@ def test_asset_group_sightings(session, login, codex_url, test_root):
     my_guid = response.json()['guid']
     my_name = response.json()['full_name']
 
+    creator_data = {
+        'full_name': 'Test admin',
+        'guid': my_guid,
+        'profile_fileupload': None,
+    }
     # Add an example species and custom fields in edm
     response = utils.add_site_species(
         session,
@@ -114,18 +119,10 @@ def test_asset_group_sightings(session, login, codex_url, test_root):
                 'annotations': [
                     {
                         'asset_guid': assets[0]['guid'],
-                        'bounds': {
-                            'rect': [178, 72, 604, 534],
-                            'theta': 0.0,
-                        },
-                        # 2021-11-09T11:15:09.910872+00:00
-                        'created': annots_0[0]['created'],
                         'encounter_guid': None,
                         'guid': annots_0[0]['guid'],
                         'ia_class': 'zebra_plains',
-                        'keywords': [],
                         'viewpoint': 'unknown',
-                        'updated': annots_0[0]['updated'],
                     },
                 ],
                 # 2021-11-09T11:15:08.923895+00:00
@@ -189,11 +186,7 @@ def test_asset_group_sightings(session, login, codex_url, test_root):
         'version': None,
         'asset_group_guid': asset_group_guid,
         'sightingGuid': None,
-        'creator': {
-            'full_name': 'Test admin',
-            'guid': my_guid,
-            'profile_fileupload': None,
-        },
+        'creator': creator_data,
         'created': response.json()['created'],
         'updated': response.json()['updated'],
         'detection_start_time': response.json()['detection_start_time'],
@@ -226,18 +219,10 @@ def test_asset_group_sightings(session, login, codex_url, test_root):
                 'annotations': [
                     {
                         'asset_guid': assets[0]['guid'],
-                        'bounds': {
-                            'rect': [178, 72, 604, 534],
-                            'theta': 0.0,
-                        },
-                        # 2021-11-09T11:15:09.910872+00:00
-                        'created': annots_0[0]['created'],
                         'encounter_guid': None,
                         'guid': annots_0[0]['guid'],
                         'ia_class': 'zebra_plains',
-                        'keywords': [],
                         'viewpoint': 'unknown',
-                        'updated': annots_0[0]['updated'],
                     },
                 ],
                 # 2021-11-09T11:15:08.923895+00:00
@@ -254,8 +239,6 @@ def test_asset_group_sightings(session, login, codex_url, test_root):
         'createdEDM': None,
         # 2021-11-12T18:28:32.744114+00:00
         'createdHouston': response.json()['createdHouston'],
-        'curation_start_time': response.json()['curation_start_time'],
-        'detection_start_time': response.json()['detection_start_time'],
         'customFields': {occ_test_cfd: 'OCC_TEST_CFD'},
         'decimalLatitude': 52.152029,
         'decimalLongitude': 2.318116,
@@ -303,11 +286,14 @@ def test_asset_group_sightings(session, login, codex_url, test_root):
         'version': None,
         'asset_group_guid': asset_group_guid,
         'sightingGuid': None,
-        'creator': {
-            'full_name': 'Test admin',
-            'guid': my_guid,
-            'profile_fileupload': None,
-        },
+        'creator': creator_data,
+        'created': response.json()['created'],
+        'updated': response.json()['updated'],
+        'detection_start_time': response.json()['detection_start_time'],
+        'curation_start_time': response.json()['curation_start_time'],
+        'identification_start_time': response.json()['identification_start_time'],
+        'unreviewed_start_time': response.json()['unreviewed_start_time'],
+        'review_time': None,
     }
 
     # PATCH asset group sightings encounter with sex None
@@ -324,13 +310,14 @@ def test_asset_group_sightings(session, login, codex_url, test_root):
         ],
     )
     assert response.status_code == 200
+    custom_fields = {
+        enc_test_cfd: 'CFD_TEST_VALUE',
+    }
     assert response.json()['encounters'] == [
         {
             # 2021-11-13T16:57:41.937173+00:00
             'createdHouston': encounters[0]['createdHouston'],
-            'customFields': {
-                enc_test_cfd: 'CFD_TEST_VALUE',
-            },
+            'customFields': custom_fields,
             'decimalLatitude': 63.142385,
             'decimalLongitude': -21.596914,
             'guid': encounter_guids[0],
@@ -361,11 +348,27 @@ def test_asset_group_sightings(session, login, codex_url, test_root):
     sighting_guid = response.json()['guid']
     assert response.json() == {
         'guid': sighting_guid,
+        'id': sighting_guid,
         'created': response.json()['created'],
         'encounters': response.json()['encounters'],
+        'assets': response.json()['assets'],
         'hasEdit': True,
         'hasView': True,
+        'stage': 'un_reviewed',
         'updated': response.json()['updated'],
+        'comments': 'None',
+        'creator': creator_data,
+        'customFields': custom_fields,
+        'createdEDM': response.json()['createdEDM'],
+        'decimalLatitude': 52.152029,
+        'decimalLongitude': 2.318116,
+        'encounterCounts': {'individuals': 0, 'sex': {}},
+        'locationId': 'PYTEST',
+        'version': response.json()['version'],
+        'featuredAssetGuid': response.json()['featuredAssetGuid'],
+        'startTime': response.json()['startTime'],
+        'createdHouston': response.json()['createdHouston'],
+        'updatedHouston': response.json()['updatedHouston'],
         'curation_start_time': response.json()['curation_start_time'],
         'detection_start_time': response.json()['detection_start_time'],
         'identification_start_time': None,
@@ -483,7 +486,7 @@ def test_bulk_upload(session, login, codex_url, test_root, request):
 
 
 # Run the integration test enough times and it leaves a load of groups which causes the limit to be reached
-def disabled_test_remove_all_groups(session, login, codex_url, test_root, request):
+def test_remove_all_groups(session, login, codex_url, test_root, request):
     login(session)
     groups = session.get(codex_url('/api/v1/asset_groups/'))
     for group_dat in groups.json():

@@ -55,7 +55,7 @@ class DetailedAssetSchema(BaseAssetSchema):
         )
 
 
-class DetailedAssetGroupAssetSchema(BaseAssetSchema):
+class ExtendedAssetSchema(BaseAssetSchema):
     annotations = base_fields.Nested('BaseAnnotationSchema', many=True)
 
     class Meta(BaseAssetSchema.Meta):

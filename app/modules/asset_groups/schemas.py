@@ -6,8 +6,7 @@ Serialization schemas for Asset_groups resources RESTful API
 
 from flask_marshmallow import base_fields
 from flask_restx_patched import ModelSchema
-from app.modules.assets.schemas import DetailedAssetGroupAssetSchema
-from app.modules.assets.schemas import DetailedAssetSchema
+from app.modules.assets.schemas import ExtendedAssetSchema
 
 from .models import AssetGroup, AssetGroupSighting
 
@@ -47,7 +46,7 @@ class DetailedAssetGroupSightingSchema(BaseAssetGroupSightingSchema):
     """
 
     assets = base_fields.Nested(
-        DetailedAssetGroupAssetSchema,
+        ExtendedAssetSchema,
         attribute='get_assets',
         many=True,
     )
@@ -127,7 +126,7 @@ class AssetGroupSightingAsSightingSchema(ModelSchema):
     )
 
     assets = base_fields.Nested(
-        DetailedAssetSchema,
+        ExtendedAssetSchema,
         attribute='get_assets',
         many=True,
     )
@@ -166,9 +165,20 @@ class AssetGroupSightingAsSightingSchema(ModelSchema):
     unreviewed_start_time = base_fields.String(default=None)
     review_time = base_fields.String(default=None)
 
+    hasView = base_fields.Boolean(default=True)
+    hasEdit = base_fields.Boolean(default=True)
+
     class Meta:
-        # adds 'stage' to the fields already defined above
-        additional = ('stage', 'asset_group_guid')
+        # adds extras to the fields already defined above
+        additional = (
+            AssetGroupSighting.guid.key,
+            AssetGroupSighting.created.key,
+            AssetGroupSighting.updated.key,
+            'hasView',
+            'hasEdit',
+            'stage',
+            'asset_group_guid',
+        )
         dump_only = BaseAssetGroupSightingSchema.Meta.dump_only
 
 

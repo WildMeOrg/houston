@@ -117,3 +117,46 @@ class ComplexDateTime(db.Model):
 
     def isoformat_in_timezone(self):
         return self.get_datetime_in_timezone().isoformat()
+
+    # for equality, must share same specificity too
+    #  so cdt1 == cdt2 only when they are same utc datetime and same specificity
+    def __eq__(self, other):
+        if not isinstance(other, ComplexDateTime):
+            return False
+        return self.datetime == other.datetime and self.specificity == other.specificity
+
+    def __ne__(self, other):
+        return not self == other
+
+    # this compares all attributes, not just datetime
+    def is_identical(self, other):
+        if not isinstance(other, ComplexDateTime):
+            return False
+        if self.specificity != other.specificity:
+            return False
+        # this is a bit of a reach.... since there are synonyms for "identical" timezones, we cannot just compare
+        #   self.timezone == other.timezone; so, instead we compare their isoformat strings and hope for the best!
+        return self.isoformat_in_timezone() == other.isoformat_in_timezone()
+
+    # for these comparators, we return NotImplemented when specificities do not match, as we basically cant compare
+    def __lt__(self, other):
+        self._check_comparability(other)
+        return self.datetime < other.datetime
+
+    def __le__(self, other):
+        self._check_comparability(other)
+        return self.datetime <= other.datetime
+
+    def __gt__(self, other):
+        self._check_comparability(other)
+        return self.datetime > other.datetime
+
+    def __ge__(self, other):
+        self._check_comparability(other)
+        return self.datetime >= other.datetime
+
+    def _check_comparability(self, other):
+        if not isinstance(other, ComplexDateTime):
+            raise NotImplementedError('comparing to incompatible type')
+        if self.specificity != other.specificity:
+            raise NotImplementedError('mismatched specificities; cannot compare')

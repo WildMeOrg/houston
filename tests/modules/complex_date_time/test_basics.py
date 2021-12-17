@@ -112,3 +112,37 @@ def test_models(db, request):
     assert cdt.get_datetime_in_timezone().day == 31
     assert 'T00:00:00' in cdt.isoformat_in_timezone()
     assert cdt.specificity == Specificities.day
+
+    # now some comparisons.  note this assumes we have not traveled back in time prior to 1999.
+    dt_later = datetime.utcnow()
+    # same specificity as cdt
+    later = ComplexDateTime(dt_later, 'US/Pacific', Specificities.day)
+    later_mountain = ComplexDateTime(dt_later, 'US/Mountain', Specificities.day)
+    later_mountain2 = ComplexDateTime(dt_later, 'US/Mountain', Specificities.day)
+    # different specificity, so cant do > or < comparisons
+    later_month = ComplexDateTime(dt_later, 'US/Pacific', Specificities.month)
+
+    assert cdt != later
+    # specificities match, so these work:
+    assert cdt < later
+    assert later >= cdt
+
+    # note that timezone is irrelevant for these comparisons, as utc value is used
+    assert later == later_mountain
+    # but is_identical takes into account all attributes
+    assert not later.is_identical(later_mountain)
+    assert later_mountain.is_identical(later_mountain2)
+    assert not later_month.is_identical(later_mountain)
+
+    # this are fine because == and != dont care about specificity-compatibility
+    assert not cdt == later_month
+    assert cdt != later_month
+    # but the others need equivalent specificities so give us NotImplementedErrors
+    try:
+        cdt > later_month
+    except NotImplementedError as nie:
+        assert 'mismatched specificities' in str(nie)
+    try:
+        cdt <= later_month
+    except NotImplementedError as nie:
+        assert 'mismatched specificities' in str(nie)

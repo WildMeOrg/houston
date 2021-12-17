@@ -375,9 +375,30 @@ class Sighting(db.Model, FeatherModel):
             request_headers=request.headers,
         )
 
+    def get_augmented_sighting_json(self):
+        response = current_app.edm.get_dict('sighting.data_complete', self.guid)
+        if not isinstance(response, dict):  # some non-200 thing, incl 404
+            return response
+        if not response.get('success', False):
+            return response
+
+        from app.modules.sightings.schemas import AugmentedEdmSightingSchema
+
+        schema = AugmentedEdmSightingSchema()
+        edm_response = response['result']
+        for encounter in edm_response.get('encounters') or []:
+            # EDM returns strings for decimalLatitude and decimalLongitude
+            if encounter.get('decimalLongitude'):
+                encounter['decimalLongitude'] = float(encounter['decimalLongitude'])
+            if encounter.get('decimalLatitude'):
+                encounter['decimalLatitude'] = float(encounter['decimalLatitude'])
+        edm_response.update(schema.dump(self).data)
+
+        return self._augment_edm_json(edm_response)
+
     # given edm_json (verbose json from edm) will populate with houston-specific data from feather object
     # note: this modifies the passed in edm_json, so not sure how legit that is?
-    def augment_edm_json(self, edm_json):
+    def _augment_edm_json(self, edm_json):
 
         if (self.encounters is not None and edm_json['encounters'] is None) or (
             self.encounters is None and edm_json['encounters'] is not None

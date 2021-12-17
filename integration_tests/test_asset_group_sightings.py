@@ -184,8 +184,6 @@ def test_asset_group_sightings(session, login, codex_url, test_root):
         'startTime': '2000-01-01T01:01:01Z',
         # 2021-11-12T18:28:32.744135+00:00
         'updatedHouston': response.json()['updatedHouston'],
-        'curation_start_time': response.json()['curation_start_time'],
-        'detection_start_time': response.json()['detection_start_time'],
         'verbatimLocality': '',
         'verbatimEventDate': '',
         'version': None,
@@ -196,6 +194,13 @@ def test_asset_group_sightings(session, login, codex_url, test_root):
             'guid': my_guid,
             'profile_fileupload': None,
         },
+        'created': response.json()['created'],
+        'updated': response.json()['updated'],
+        'detection_start_time': response.json()['detection_start_time'],
+        'curation_start_time': response.json()['curation_start_time'],
+        'identification_start_time': response.json()['identification_start_time'],
+        'unreviewed_start_time': response.json()['unreviewed_start_time'],
+        'review_time': None,
     }
 
     # PATCH asset group sighting as sighting

@@ -24,7 +24,6 @@ from app.utils import HoustonException
 from . import parameters, schemas
 from .metadata import AssetGroupMetadataError, AssetGroupMetadata
 from .models import AssetGroup, AssetGroupSighting
-from app.modules.sightings.schemas import SightingForAssetGroupSightingSchema
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 api = Namespace(
@@ -535,15 +534,14 @@ class AssetGroupSightingCommit(Resource):
         },
     )
     # NOTE this returns a sighting schema not an AssetGroup one as the output of this is that
-    # a sighting is created
-    @api.response(SightingForAssetGroupSightingSchema())
+    # a sighting is created. This is also an augmented Sighting schema with the EDM data
     def post(self, asset_group_sighting):
         try:
             sighting = asset_group_sighting.commit()
         except HoustonException as ex:
             abort(ex.status_code, ex.message, errorFields=ex.get_val('error', 'Error'))
 
-        return sighting
+        return sighting.get_augmented_sighting_json()
 
 
 @api.route('/sighting/<uuid:asset_group_sighting_guid>/detect')

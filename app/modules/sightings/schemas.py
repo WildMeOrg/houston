@@ -68,21 +68,6 @@ class TimedSightingSchema(CreateSightingSchema):
         )
 
 
-class SightingForAssetGroupSightingSchema(TimedSightingSchema):
-    """
-    SightingForAssetGroupSighting schema adds the encounters
-    """
-
-    encounters = base_fields.Nested(
-        'BaseEncounterSchema',
-        attribute='get_encounters',
-        many=True,
-    )
-
-    class Meta(TimedSightingSchema.Meta):
-        fields = TimedSightingSchema.Meta.fields + ('encounters',)
-
-
 class FeaturedAssetOnlySchema(BaseSightingSchema):
     """
     Sighting schema for featured_asset_guid only API.
@@ -107,15 +92,6 @@ class AugmentedEdmSightingSchema(TimedSightingSchema):
         DetailedAssetSchema,
         attribute='get_assets',
         many=True,
-        only=(
-            'guid',
-            'filename',
-            'src',
-            'annotations',
-            'dimensions',
-            'created',
-            'updated',
-        ),
     )
     featuredAssetGuid = base_fields.UUID(attribute='featured_asset_guid')
     creator = base_fields.Nested('PublicUserSchema', attribute='get_owner', many=False)

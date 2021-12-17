@@ -7,7 +7,7 @@ Serialization schemas for Asset_groups resources RESTful API
 from flask_marshmallow import base_fields
 from flask_restx_patched import ModelSchema
 from app.modules.assets.schemas import DetailedAssetGroupAssetSchema
-from app.modules.sightings.schemas import AugmentedEdmSightingSchema
+from app.modules.assets.schemas import DetailedAssetSchema
 
 from .models import AssetGroup, AssetGroupSighting
 
@@ -99,7 +99,7 @@ class AssetGroupSightingEncounterSchema(ModelSchema):
     version = base_fields.String(default=None)
 
 
-class AssetGroupSightingAsSightingSchema(AugmentedEdmSightingSchema):
+class AssetGroupSightingAsSightingSchema(ModelSchema):
     """
     In order for the frontend to render an AGS with the same code that renders a
     sighting, we have to pop out all the fields in AGS.config into the top-level
@@ -108,6 +108,8 @@ class AssetGroupSightingAsSightingSchema(AugmentedEdmSightingSchema):
     fields using the pattern below.
     """
 
+    createdHouston = base_fields.DateTime(attribute='created')
+    updatedHouston = base_fields.DateTime(attribute='updated')
     completion = base_fields.Function(AssetGroupSighting.get_completion)
     creator = base_fields.Nested('PublicUserSchema', attribute='get_owner', many=False)
     detection_start_time = base_fields.Function(
@@ -121,6 +123,12 @@ class AssetGroupSightingAsSightingSchema(AugmentedEdmSightingSchema):
     encounters = base_fields.Nested(
         AssetGroupSightingEncounterSchema,
         attribute='get_encounters',
+        many=True,
+    )
+
+    assets = base_fields.Nested(
+        DetailedAssetSchema,
+        attribute='get_assets',
         many=True,
     )
     decimalLatitude = base_fields.Function(
@@ -154,6 +162,9 @@ class AssetGroupSightingAsSightingSchema(AugmentedEdmSightingSchema):
     createdEDM = base_fields.DateTime(default=None)
     customFields = base_fields.Dict(attribute='get_custom_fields')
     version = base_fields.String(default=None)
+    identification_start_time = base_fields.String(default=None)
+    unreviewed_start_time = base_fields.String(default=None)
+    review_time = base_fields.String(default=None)
 
     class Meta:
         # adds 'stage' to the fields already defined above

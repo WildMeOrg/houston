@@ -70,7 +70,7 @@ def test_models(db, request):
     cdt = ComplexDateTime(dt, 'US/Pacific', Specificities.day)
     assert cdt
     assert cdt.datetime == dt.astimezone(tz.UTC)
-    assert cdt.datetime == cdt.get_datetime_timezone()
+    assert cdt.datetime == cdt.get_datetime_in_timezone()
 
     with db.session.begin():
         db.session.add(cdt)
@@ -78,7 +78,7 @@ def test_models(db, request):
     test = ComplexDateTime.query.get(cdt.guid)
     assert test
     assert test.datetime == cdt.datetime
-    assert test.isoformat_timezone() == cdt.isoformat_timezone()
+    assert test.isoformat_in_timezone() == cdt.isoformat_in_timezone()
 
     dtlist = None
     try:
@@ -96,19 +96,19 @@ def test_models(db, request):
     cdt = ComplexDateTime.from_list(dtlist, 'US/Pacific')
     assert cdt
     # since only year passed, should be set to January 1
-    assert cdt.get_datetime_timezone().year == 2021
-    assert cdt.get_datetime_timezone().month == 1
-    assert cdt.get_datetime_timezone().day == 1
+    assert cdt.get_datetime_in_timezone().year == 2021
+    assert cdt.get_datetime_in_timezone().month == 1
+    assert cdt.get_datetime_in_timezone().day == 1
     # and time should be midnight of (in timezone-based version)
-    assert 'T00:00:00' in cdt.isoformat_timezone()
+    assert 'T00:00:00' in cdt.isoformat_in_timezone()
     # but we are only this specific:
     assert cdt.specificity == Specificities.year
 
     # another quicky check of day-level specificity
     cdt = ComplexDateTime.from_list([1999, 5, 31], 'US/Eastern')
     assert cdt
-    assert cdt.get_datetime_timezone().year == 1999
-    assert cdt.get_datetime_timezone().month == 5
-    assert cdt.get_datetime_timezone().day == 31
-    assert 'T00:00:00' in cdt.isoformat_timezone()
+    assert cdt.get_datetime_in_timezone().year == 1999
+    assert cdt.get_datetime_in_timezone().month == 5
+    assert cdt.get_datetime_in_timezone().day == 31
+    assert 'T00:00:00' in cdt.isoformat_in_timezone()
     assert cdt.specificity == Specificities.day

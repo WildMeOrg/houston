@@ -106,14 +106,14 @@ class ComplexDateTime(db.Model):
     def get_timezone_object(self):
         return tz.gettz(self.timezone)
 
-    def get_datetime_timezone(self):
+    def get_datetime_in_timezone(self):
         return self.datetime.astimezone(self.get_timezone_object())
 
     def get_timezone_normalized(self):
-        return normalized_timezone_string(self.get_datetime_timezone())
+        return normalized_timezone_string(self.get_datetime_in_timezone())
 
     def isoformat_utc(self):
         return self.datetime.isoformat()
 
-    def isoformat_timezone(self):
-        return self.get_datetime_timezone().isoformat()
+    def isoformat_in_timezone(self):
+        return self.get_datetime_in_timezone().isoformat()

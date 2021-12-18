@@ -107,3 +107,37 @@ def get_celery_data(task_id):
                 if 'request' in item and item['request'].get('id') == task_id:
                     return AsyncResult(task_id), item
     return None, None
+
+
+# will throw ValueError if cant parse string
+#  also *requires* timezone on iso string or will ValueError
+def iso8601_to_datetime_with_timezone(iso):
+    from datetime import datetime
+
+    dt = datetime.fromisoformat(iso)
+    if dt.tzinfo is None or dt.tzinfo.utcoffset(dt) is None:
+        raise ValueError(f'no time zone provided in {iso}')
+    return dt
+
+
+# this "should" handle cases such as: tzstring='+07:00', '-0400', 'US/Pacific'
+def datetime_as_timezone(dt, tzstring):
+    from dateutil import tz
+    from datetime import datetime
+
+    if not dt or not isinstance(dt, datetime):
+        raise ValueError('must pass datetime object')
+    zone = tz.gettz(tzstring)
+    if not zone:
+        raise ValueError(f'unknown time zone value "{tzstring}"')
+    return dt.astimezone(zone)
+
+
+# in a nutshell dt.tzname() *sucks*.  i am not sure what it is showing, but its bunk.
+#   this is an attempt to get a string *that can be read back in above*
+def normalized_timezone_string(dt):
+    from datetime import datetime
+
+    if not dt or not isinstance(dt, datetime):
+        raise ValueError('must pass datetime object')
+    return dt.strftime('UTC%z')

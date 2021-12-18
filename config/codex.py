@@ -80,6 +80,7 @@ class BaseCodexConfig(
         'sightings',
         'individuals',
         'names',
+        'complex_date_time',
         'annotations',
         'social_groups',
         'site_settings',

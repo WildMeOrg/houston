@@ -212,25 +212,19 @@ def test_patch_asset_group_sighting_as_sighting(
     encounter_guids = [e['guid'] for e in response.json['encounters']]
 
     # Set first encounter sex to male
-    response = utils.patch_via_flask(
+    response = asset_group_utils.patch_asset_group_sighting_as_sighting(
         flask_app_client,
         researcher_1,
-        scopes='asset_groups:write',
-        path=f'/api/v1/asset_groups/sighting/as_sighting/{asset_group_sighting_guid}/encounter/{encounter_guids[0]}',
-        data=[{'op': 'replace', 'path': '/sex', 'value': 'male'}],
-        expected_status_code=200,
-        response_200={'guid', 'encounters'},
+        f'{asset_group_sighting_guid}/encounter/{encounter_guids[0]}',
+        [utils.patch_replace_op('sex', 'male')],
     )
     assert [e['sex'] for e in response.json['encounters']] == ['male', None]
 
     # Set first encounter sex to null
-    response = utils.patch_via_flask(
+    response = asset_group_utils.patch_asset_group_sighting_as_sighting(
         flask_app_client,
         researcher_1,
-        scopes='asset_groups:write',
-        path=f'/api/v1/asset_groups/sighting/as_sighting/{asset_group_sighting_guid}/encounter/{encounter_guids[0]}',
-        data=[{'op': 'replace', 'path': '/sex', 'value': None}],
-        expected_status_code=200,
-        response_200={'guid', 'encounters'},
+        f'{asset_group_sighting_guid}/encounter/{encounter_guids[0]}',
+        [utils.patch_replace_op('sex', None)],
     )
     assert [e['sex'] for e in response.json['encounters']] == [None, None]

@@ -110,6 +110,34 @@ def test_create_and_modify_and_delete_sighting(
     response = sighting_utils.read_sighting(flask_app_client, researcher_1, sighting_id)
     assert response.json['locationId'] == new_loc_id
 
+    # Single test that Sighting response has the correct keys
+    assert set(response.json.keys()) >= {
+        'comments',
+        'encounters',
+        'createdEDM',
+        'customFields',
+        'locationId',
+        'startTime',
+        'id',
+        'encounterCounts',
+        'version',
+        'hasView',
+        'updated',
+        'identification_start_time',
+        'review_time',
+        'stage',
+        'updatedHouston',
+        'guid',
+        'hasEdit',
+        'assets',
+        'created',
+        'featuredAssetGuid',
+        'unreviewed_start_time',
+        'creator',
+        'curation_start_time',
+        'detection_start_time',
+    }
+
     # test some modification (should fail due to invalid data)
     sighting_utils.patch_sighting(
         flask_app_client,

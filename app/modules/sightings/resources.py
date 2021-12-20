@@ -403,27 +403,6 @@ class SightingByID(Resource):
     Manipulations with a specific Sighting.
     """
 
-    def _get_sighting(self, sighting):
-        response = current_app.edm.get_dict('sighting.data_complete', sighting.guid)
-        if not isinstance(response, dict):  # some non-200 thing, incl 404
-            return response
-        if not response.get('success', False):
-            return response
-
-        from app.modules.sightings.schemas import AugmentedEdmSightingSchema
-
-        schema = AugmentedEdmSightingSchema()
-        edm_response = response['result']
-        for encounter in edm_response.get('encounters') or []:
-            # EDM returns strings for decimalLatitude and decimalLongitude
-            if encounter.get('decimalLongitude'):
-                encounter['decimalLongitude'] = float(encounter['decimalLongitude'])
-            if encounter.get('decimalLatitude'):
-                encounter['decimalLatitude'] = float(encounter['decimalLatitude'])
-        edm_response.update(schema.dump(sighting).data)
-
-        return sighting.augment_edm_json(edm_response)
-
     @api.login_required(oauth_scopes=['sightings:read'])
     @api.permission_required(
         permissions.ObjectAccessPermission,
@@ -439,7 +418,7 @@ class SightingByID(Resource):
 
         # note: should probably _still_ check edm for: stale cache, deletion!
         #      user.edm_sync(version)
-        return self._get_sighting(sighting)
+        return sighting.get_augmented_sighting_json()
 
     @api.login_required(oauth_scopes=['sightings:write'])
     @api.permission_required(
@@ -562,7 +541,7 @@ class SightingByID(Resource):
                     db.session.merge(sighting)
             AuditLog.patch_object(log, sighting, args, duration=timer.elapsed())
 
-            sighting_response = self._get_sighting(sighting)
+            sighting_response = sighting.get_augmented_sighting_json()
             if isinstance(sighting_response, dict):
                 return sighting_response
             else:

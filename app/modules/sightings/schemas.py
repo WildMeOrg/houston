@@ -7,7 +7,7 @@ Serialization schemas for Sightings resources RESTful API
 from flask_restx_patched import ModelSchema
 from flask_marshmallow import base_fields
 
-from app.modules.assets.schemas import DetailedAssetSchema
+from app.modules.assets.schemas import ExtendedAssetSchema
 
 from .models import Sighting
 
@@ -45,16 +45,11 @@ class CreateSightingSchema(BaseSightingSchema):
         )
 
 
-class DetailedSightingSchema(CreateSightingSchema):
+class TimedSightingSchema(CreateSightingSchema):
     """
-    Detailed Sighting schema adds the parts that are on top of what is created
+    Timed Sighting schema adds the stage times
     """
 
-    encounters = base_fields.Nested(
-        'BaseEncounterSchema',
-        attribute='get_encounters',
-        many=True,
-    )
     detection_start_time = base_fields.Function(Sighting.get_detection_start_time)
     curation_start_time = base_fields.Function(Sighting.get_curation_start_time)
     identification_start_time = base_fields.Function(
@@ -65,7 +60,6 @@ class DetailedSightingSchema(CreateSightingSchema):
 
     class Meta(CreateSightingSchema.Meta):
         fields = CreateSightingSchema.Meta.fields + (
-            'encounters',
             'detection_start_time',
             'curation_start_time',
             'identification_start_time',
@@ -87,7 +81,7 @@ class FeaturedAssetOnlySchema(BaseSightingSchema):
         )
 
 
-class AugmentedEdmSightingSchema(BaseSightingSchema):
+class AugmentedEdmSightingSchema(TimedSightingSchema):
     """
     Sighting schema with EDM and Houston data.
     """
@@ -95,28 +89,19 @@ class AugmentedEdmSightingSchema(BaseSightingSchema):
     createdHouston = base_fields.DateTime(attribute='created')
     updatedHouston = base_fields.DateTime(attribute='updated')
     assets = base_fields.Nested(
-        DetailedAssetSchema,
+        ExtendedAssetSchema,
         attribute='get_assets',
         many=True,
-        only=(
-            'guid',
-            'filename',
-            'src',
-            'annotations',
-            'dimensions',
-            'created',
-            'updated',
-        ),
     )
     featuredAssetGuid = base_fields.UUID(attribute='featured_asset_guid')
     creator = base_fields.Nested('PublicUserSchema', attribute='get_owner', many=False)
 
-    class Meta(BaseSightingSchema.Meta):
+    class Meta(TimedSightingSchema.Meta):
         """
         Desired Sighting fields.
         """
 
-        fields = BaseSightingSchema.Meta.fields + (
+        fields = TimedSightingSchema.Meta.fields + (
             'createdHouston',
             'updatedHouston',
             'hasView',

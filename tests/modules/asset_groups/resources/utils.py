@@ -281,7 +281,7 @@ def read_asset_group_sighting_as_sighting(
         # startTime and locationId are only present in the _as_sighting endpoints,
         # since they are in the config of a standard AGS
         response_200={
-            'guid',
+            'id',
             'stage',
             'completion',
             'assets',

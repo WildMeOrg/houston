@@ -24,7 +24,9 @@ def test_sightings(session, login, codex_url, test_root, admin_name):
     enc_test_cfd = utils.create_custom_field(
         session, codex_url, 'Encounter', 'enc_test_cfd'
     )
+    enc_custom_fields = {enc_test_cfd: 'CFD_TEST_VALUE'}
 
+    occ_custom_fields = {occ_test_cfd: 'OCC_TEST_CFD'}
     # Create sighting by committing asset group sighting
     transaction_id = utils.upload_to_tus(
         session,
@@ -40,14 +42,12 @@ def test_sightings(session, login, codex_url, test_root, admin_name):
             'sightings': [
                 {
                     'assetReferences': ['zebra.jpg'],
-                    'customFields': {occ_test_cfd: 'OCC_TEST_CFD'},
+                    'customFields': occ_custom_fields,
                     'decimalLatitude': -39.063228,
                     'decimalLongitude': 21.832598,
                     'encounters': [
                         {
-                            'customFields': {
-                                enc_test_cfd: 'CFD_TEST_VALUE',
-                            },
+                            'customFields': enc_custom_fields,
                             'decimalLatitude': 63.142385,
                             'decimalLongitude': -21.596914,
                             'sex': 'male',
@@ -81,19 +81,7 @@ def test_sightings(session, login, codex_url, test_root, admin_name):
     )
     assert response.status_code == 200
     sighting_id = response.json()['guid']
-    assert response.json() == {
-        'guid': sighting_id,
-        'created': response.json()['created'],
-        'encounters': response.json()['encounters'],
-        'hasEdit': True,
-        'hasView': True,
-        'updated': response.json()['updated'],
-        'curation_start_time': response.json()['curation_start_time'],
-        'detection_start_time': response.json()['detection_start_time'],
-        'identification_start_time': None,
-        'review_time': None,
-        'unreviewed_start_time': response.json()['unreviewed_start_time'],
-    }
+    # No need to validate the contents, that's tested as part of the asset group sighting tests
 
     # GET sighting
     response = session.get(codex_url(f'/api/v1/sightings/{sighting_id}'))
@@ -108,18 +96,10 @@ def test_sightings(session, login, codex_url, test_root, admin_name):
                 'annotations': [
                     {
                         'asset_guid': assets[0]['guid'],
-                        'bounds': {
-                            'rect': [178, 72, 604, 534],
-                            'theta': 0.0,
-                        },
-                        # 2021-11-09T11:15:09.910872+00:00
-                        'created': annots_0[0]['created'],
                         'encounter_guid': None,
                         'guid': annots_0[0]['guid'],
                         'ia_class': 'zebra_plains',
-                        'keywords': [],
                         'viewpoint': 'unknown',
-                        'updated': annots_0[0]['updated'],
                     },
                 ],
                 # 2021-11-09T11:15:08.923895+00:00
@@ -135,16 +115,14 @@ def test_sightings(session, login, codex_url, test_root, admin_name):
         'createdEDM': response.json()['createdEDM'],  # 2021-11-09 11:15:24
         # 2021-11-09T11:15:24.316645+00:00
         'createdHouston': response.json()['createdHouston'],
-        'customFields': {occ_test_cfd: 'OCC_TEST_CFD'},
+        'customFields': occ_custom_fields,
         'decimalLatitude': -39.063228,
         'decimalLongitude': 21.832598,
         'encounters': [
             {
                 # 2021-11-09T11:15:24.343018+00:00
                 'createdHouston': encounters[0]['createdHouston'],
-                'customFields': {
-                    enc_test_cfd: 'CFD_TEST_VALUE',
-                },
+                'customFields': enc_custom_fields,
                 'decimalLatitude': 63.142385,
                 'decimalLongitude': -21.596914,
                 'guid': encounters[0]['guid'],
@@ -185,6 +163,13 @@ def test_sightings(session, login, codex_url, test_root, admin_name):
             'guid': my_guid,
             'profile_fileupload': None,
         },
+        'created': response.json()['created'],
+        'updated': response.json()['updated'],
+        'detection_start_time': response.json()['detection_start_time'],
+        'curation_start_time': response.json()['curation_start_time'],
+        'identification_start_time': None,
+        'unreviewed_start_time': response.json()['unreviewed_start_time'],
+        'review_time': None,
     }
 
     # PATCH sighting
@@ -212,16 +197,9 @@ def test_sightings(session, login, codex_url, test_root, admin_name):
                 'annotations': [
                     {
                         'asset_guid': assets[0]['guid'],
-                        'bounds': {
-                            'rect': [178, 72, 604, 534],
-                            'theta': 0.0,
-                        },
-                        'created': annots_0[0]['created'],
                         'encounter_guid': None,
                         'guid': annots_0[0]['guid'],
                         'ia_class': 'zebra_plains',
-                        'keywords': [],
-                        'updated': annots_0[0]['updated'],
                         'viewpoint': 'unknown',
                     },
                 ],
@@ -237,15 +215,13 @@ def test_sightings(session, login, codex_url, test_root, admin_name):
         'createdEDM': response.json()['createdEDM'],  # 2021-11-16 09:45:26
         # 2021-11-16T09:45:26.717326+00:00
         'createdHouston': response.json()['createdHouston'],
-        'customFields': {occ_test_cfd: 'OCC_TEST_CFD'},
+        'customFields': occ_custom_fields,
         'decimalLatitude': 52.152029,
         'decimalLongitude': 2.318116,
         'encounters': [
             {
                 'createdHouston': encounters[0]['createdHouston'],
-                'customFields': {
-                    enc_test_cfd: 'CFD_TEST_VALUE',
-                },
+                'customFields': enc_custom_fields,
                 'decimalLatitude': 63.142385,
                 'decimalLongitude': -21.596914,
                 'guid': encounters[0]['guid'],
@@ -286,6 +262,13 @@ def test_sightings(session, login, codex_url, test_root, admin_name):
             'guid': my_guid,
             'profile_fileupload': None,
         },
+        'created': response.json()['created'],
+        'updated': response.json()['updated'],
+        'detection_start_time': response.json()['detection_start_time'],
+        'curation_start_time': response.json()['curation_start_time'],
+        'identification_start_time': None,
+        'unreviewed_start_time': response.json()['unreviewed_start_time'],
+        'review_time': None,
     }
 
     # DELETE asset group

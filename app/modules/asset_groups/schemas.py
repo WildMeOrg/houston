@@ -174,10 +174,8 @@ class AssetGroupSightingAsSightingSchema(ModelSchema):
             AssetGroupSighting.guid.key,
             AssetGroupSighting.created.key,
             AssetGroupSighting.updated.key,
-            'hasView',
-            'hasEdit',
-            'stage',
-            'asset_group_guid',
+            AssetGroupSighting.stage.key,
+            AssetGroupSighting.asset_group_guid.key,
         )
         dump_only = BaseAssetGroupSightingSchema.Meta.dump_only
 

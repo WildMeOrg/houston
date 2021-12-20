@@ -230,7 +230,7 @@ def patch_asset_group_sighting_as_sighting(
         test_utils.validate_dict_response(
             response,
             200,
-            {'id', 'stage', 'completion', 'assets', 'startTime', 'locationId'},
+            {'guid', 'stage', 'completion', 'assets', 'startTime', 'locationId'},
         )
     elif expected_status_code == 400:
         test_utils.validate_dict_response(

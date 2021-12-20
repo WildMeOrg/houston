@@ -182,7 +182,7 @@ def test_patch_asset_group_sighting_as_sighting(
 
     # startTime and locationId are only present in the _as_sighting endpoints,
     # since they are in the config of a standard AGS
-    for field in {'id', 'stage', 'completion', 'assets', 'startTime', 'locationId'}:
+    for field in {'guid', 'stage', 'completion', 'assets', 'startTime', 'locationId'}:
         assert field in group_sighting.json
 
     assert group_sighting.json['asset_group_guid'] == asset_group_uuid

@@ -246,7 +246,7 @@ class DetailedAssetGroupSchema(CreateAssetGroupSchema):
         many=True,
     )
     asset_group_sightings = base_fields.Nested(
-        'BaseAssetGroupSightingSchema',
+        'DetailedAssetGroupSightingSchema',
         many=True,
     )
 

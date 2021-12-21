@@ -23,21 +23,21 @@ def test_asset_group_sightings(session, login, codex_url, test_root):
         {'commonNames': ['Example'], 'scientificName': 'Exempli gratia'},
     )
     tx_id = response.json()['response']['value'][-1]['id']
-    occ_test_cfd = utils.create_custom_field(
+    sighting_test_cfd = utils.create_custom_field(
         session, codex_url, 'Occurrence', 'occ_test_cfd'
     )
     enc_test_cfd = utils.create_custom_field(
         session, codex_url, 'Encounter', 'enc_test_cfd'
     )
     enc_custom_fields = {enc_test_cfd: 'CFD_TEST_VALUE'}
-
-    occ_custom_fields = {occ_test_cfd: 'OCC_TEST_CFD'}
+    sighting_custom_fields = {sighting_test_cfd: 'OCC_TEST_CFD'}
+    sighting_filename = 'zebra.jpg'
 
     # Create asset group sighting
     transaction_id = utils.upload_to_tus(
         session,
         codex_url,
-        [test_root / 'zebra.jpg'],
+        [test_root / sighting_filename],
     )
     # 2021-11-09T11:40:53.802+00:00
     encounter_timestamp = datetime.datetime.now().isoformat() + '+00:00'
@@ -47,8 +47,8 @@ def test_asset_group_sightings(session, login, codex_url, test_root):
             'description': 'This is a test asset group, please ignore',
             'sightings': [
                 {
-                    'assetReferences': ['zebra.jpg'],
-                    'customFields': occ_custom_fields,
+                    'assetReferences': [sighting_filename],
+                    'customFields': sighting_custom_fields,
                     'decimalLatitude': -39.063228,
                     'decimalLongitude': 21.832598,
                     'encounters': [
@@ -73,20 +73,64 @@ def test_asset_group_sightings(session, login, codex_url, test_root):
         },
     )
     assert response.status_code == 200
-    assets = response.json()['assets']
-    ags_guids = [a['guid'] for a in response.json()['asset_group_sightings']]
+    assert len(response.json()['assets']) == 1
+    asset = response.json()['assets'][0]
+    assert len(response.json()['asset_group_sightings']) == 1
+    ags = response.json()['asset_group_sightings'][0]
+    ags_guid = ags['guid']
+    assert len(ags['assets']) == 1
+    ags_asset = ags['assets'][0]
+    ags_encounter = ags['config']['encounters'][0]
     asset_group_guid = response.json()['guid']
     assert response.json() == {
         'assets': [
             {
-                'guid': assets[0]['guid'],
-                'filename': assets[0]['filename'],
-                'src': f'/api/v1/assets/src/{assets[0]["guid"]}',
+                'guid': asset['guid'],
+                'filename': sighting_filename,
+                'src': f'/api/v1/assets/src/{asset["guid"]}',
             },
         ],
         'asset_group_sightings': [
             {
-                'guid': ags_guids[0],
+                'asset_group_guid': asset_group_guid,
+                'assets': [
+                    {
+                        'annotations': [],
+                        'created': ags_asset['created'],
+                        'dimensions': {'height': 664, 'width': 1000},
+                        'filename': sighting_filename,
+                        'guid': asset['guid'],
+                        'src': f"/api/v1/assets/src/{asset['guid']}",
+                        'updated': ags_asset['updated'],
+                    },
+                ],
+                'completion': 0,
+                'config': {
+                    'assetReferences': [sighting_filename],
+                    'customFields': sighting_custom_fields,
+                    'decimalLatitude': -39.063228,
+                    'decimalLongitude': 21.832598,
+                    'encounters': [
+                        {
+                            'customFields': enc_custom_fields,
+                            'decimalLatitude': 63.142385,
+                            'decimalLongitude': -21.596914,
+                            'guid': ags_encounter['guid'],
+                            'sex': 'male',
+                            'taxonomy': ags_encounter['taxonomy'],
+                            'time': ags_encounter['time'],
+                        }
+                    ],
+                    'locationId': 'PYTEST',
+                    'startTime': '2000-01-01T01:01:01Z',
+                },
+                'creator': creator_data,
+                'curation_start_time': ags['curation_start_time'],
+                'detection_start_time': None,
+                'guid': ags_guid,
+                'jobs': {},
+                'sighting_guid': None,
+                'stage': 'detection',
             },
         ],
         'commit': response.json()['commit'],
@@ -98,17 +142,16 @@ def test_asset_group_sightings(session, login, codex_url, test_root):
         'owner_guid': my_guid,
         'updated': response.json()['updated'],
     }
-    assert set(a['filename'] for a in assets) == {'zebra.jpg'}
 
     # Wait for detection
-    ags_url = codex_url(f'/api/v1/asset_groups/sighting/{ags_guids[0]}')
+    ags_url = codex_url(f'/api/v1/asset_groups/sighting/{ags_guid}')
     utils.wait_for(
         session.get, ags_url, lambda response: response.json()['stage'] == 'curation'
     )
 
     # GET asset group sighting as sighting
     response = session.get(
-        codex_url(f'/api/v1/asset_groups/sighting/as_sighting/{ags_guids[0]}')
+        codex_url(f'/api/v1/asset_groups/sighting/as_sighting/{ags_guid}')
     )
     assets = response.json()['assets']
     annots_0 = assets[0]['annotations']
@@ -141,7 +184,7 @@ def test_asset_group_sightings(session, login, codex_url, test_root):
         'createdEDM': None,
         # 2021-11-12T18:28:32.744114+00:00
         'createdHouston': response.json()['createdHouston'],
-        'customFields': occ_custom_fields,
+        'customFields': sighting_custom_fields,
         'decimalLatitude': -39.063228,
         'decimalLongitude': 21.832598,
         'encounterCounts': {},
@@ -173,10 +216,10 @@ def test_asset_group_sightings(session, login, codex_url, test_root):
             },
         ],
         'featuredAssetGuid': None,
-        'guid': ags_guids[0],
+        'guid': ags_guid,
         'hasEdit': True,
         'hasView': True,
-        'id': ags_guids[0],
+        'id': ags_guid,
         'locationId': 'PYTEST',
         'stage': 'curation',
         'startTime': '2000-01-01T01:01:01Z',
@@ -199,7 +242,7 @@ def test_asset_group_sightings(session, login, codex_url, test_root):
 
     # PATCH asset group sighting as sighting
     response = session.patch(
-        codex_url(f'/api/v1/asset_groups/sighting/as_sighting/{ags_guids[0]}'),
+        codex_url(f'/api/v1/asset_groups/sighting/as_sighting/{ags_guid}'),
         json=[
             {
                 'op': 'add',
@@ -225,7 +268,7 @@ def test_asset_group_sightings(session, login, codex_url, test_root):
     # PATCH asset group sightings encounter with sex None
     response = session.patch(
         codex_url(
-            f'/api/v1/asset_groups/sighting/as_sighting/{ags_guids[0]}/encounter/{encounter_guids[0]}'
+            f'/api/v1/asset_groups/sighting/as_sighting/{ags_guid}/encounter/{encounter_guids[0]}'
         ),
         json=[
             {
@@ -245,9 +288,7 @@ def test_asset_group_sightings(session, login, codex_url, test_root):
     )
 
     # Commit asset group sighting (becomes sighting)
-    response = session.post(
-        codex_url(f'/api/v1/asset_groups/sighting/{ags_guids[0]}/commit')
-    )
+    response = session.post(codex_url(f'/api/v1/asset_groups/sighting/{ags_guid}/commit'))
     assert response.status_code == 200
     sighting_guid = response.json()['guid']
     assert response.json() == {
@@ -262,7 +303,7 @@ def test_asset_group_sightings(session, login, codex_url, test_root):
         'updated': response.json()['updated'],
         'comments': 'None',
         'creator': creator_data,
-        'customFields': occ_custom_fields,
+        'customFields': sighting_custom_fields,
         'createdEDM': response.json()['createdEDM'],
         'decimalLatitude': 52.152029,
         'decimalLongitude': 2.318116,

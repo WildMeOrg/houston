@@ -44,7 +44,7 @@ def test_create_asset_group_detection(session, codex_url, test_root, login):
 
     response_json = response.json()
     first_job = response_json['jobs'][0]
-
+    job_start = first_job['start']
     assert response_json == {
         'assets': [
             {
@@ -68,7 +68,7 @@ def test_create_asset_group_detection(session, codex_url, test_root, login):
                 'model': 'african_terrestrial',
                 'active': False,
                 'start': first_job['start'],
-                'asset_ids': asset_guids,
+                'asset_ids': [asset_guid],
             },
         ],
         'config': {

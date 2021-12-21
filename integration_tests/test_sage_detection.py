@@ -28,31 +28,16 @@ def test_create_asset_group_detection(session, codex_url, test_root, login):
         json=data,
     )
     assert response.status_code == 200
+    asset_group_guid = response.json()['guid']
+    assert len(response.json()['assets']) == 1
+    asset_guid = response.json()['assets'][0]['guid']
+    assert len(response.json()['asset_group_sightings']) == 1
+    ags_guid = response.json()['asset_group_sightings'][0]['guid']
 
-    asset_group = response.json()
-    asset_guids = [asset['guid'] for asset in asset_group['assets']]
-    ags_guids = [ags['guid'] for ags in asset_group['asset_group_sightings']]
-
-    assert response.json() == {
-        'commit': asset_group['commit'],
-        'created': asset_group['created'],
-        'updated': asset_group['updated'],
-        'assets': [
-            {
-                'src': f'/api/v1/assets/src/{asset_guids[0]}',
-                'filename': 'zebra.jpg',
-                'guid': asset_guids[0],
-            },
-        ],
-        'asset_group_sightings': [{'guid': ags_guids[0]}],
-        'major_type': 'filesystem',
-        'description': 'This is a test asset_group, please ignore',
-        'owner_guid': me['guid'],
-        'guid': asset_group['guid'],
-    }
+    # Asset group sighting test validates the response so don't duplicate here
 
     # Wait for sage detection and GET asset group sighting
-    ags_url = codex_url(f'/api/v1/asset_groups/sighting/{ags_guids[0]}')
+    ags_url = codex_url(f'/api/v1/asset_groups/sighting/{ags_guid}')
     response = utils.wait_for(
         session.get, ags_url, lambda response: response.json()['stage'] == 'curation'
     )
@@ -63,8 +48,8 @@ def test_create_asset_group_detection(session, codex_url, test_root, login):
     assert response_json == {
         'assets': [
             {
-                'guid': asset_guids[0],
-                'src': f'/api/v1/assets/src/{asset_guids[0]}',
+                'guid': asset_guid,
+                'src': f'/api/v1/assets/src/{asset_guid}',
                 'filename': 'zebra.jpg',
                 'annotations': response_json['assets'][0]['annotations'],
                 'created': response_json['assets'][0]['created'],
@@ -92,10 +77,10 @@ def test_create_asset_group_detection(session, codex_url, test_root, login):
             'encounters': response_json['config']['encounters'],
             'assetReferences': ['zebra.jpg'],
         },
-        'guid': ags_guids[0],
+        'guid': ags_guid,
         'curation_start_time': response.json()['curation_start_time'],
         'detection_start_time': response.json()['detection_start_time'],
-        'asset_group_guid': asset_group['guid'],
+        'asset_group_guid': asset_group_guid,
         'sighting_guid': None,
         'creator': {
             'full_name': 'Test admin',
@@ -105,5 +90,5 @@ def test_create_asset_group_detection(session, codex_url, test_root, login):
     }
 
     # DELETE asset group
-    response = session.delete(codex_url(f'/api/v1/asset_groups/{asset_group["guid"]}'))
+    response = session.delete(codex_url(f'/api/v1/asset_groups/{asset_group_guid}'))
     assert response.status_code == 204

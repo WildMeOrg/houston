@@ -531,7 +531,6 @@ class AssetGroupSightingAsSightingEncounterByID(Resource):
     )
     @api.login_required(oauth_scopes=['asset_group_sightings:write'])
     @api.parameters(parameters.PatchAssetGroupSightingEncounterDetailsParameters())
-    @api.response(schemas.AssetGroupSightingAsSightingSchema())
     def patch(self, args, asset_group_sighting, encounter_guid):
         from app.extensions.elapsed_time import ElapsedTime
         import app.extensions.logging as AuditLog  # NOQA
@@ -555,7 +554,11 @@ class AssetGroupSightingAsSightingEncounterByID(Resource):
                 )
             db.session.merge(asset_group_sighting)
         AuditLog.patch_object(log, asset_group_sighting, args, duration=timer.elapsed())
-        return asset_group_sighting
+        schema = schemas.AssetGroupSightingEncounterSchema()
+        returned_json = {'version': 00000000000000}
+        houston_encounter_json = asset_group_sighting.get_encounter_json(encounter_guid)
+        returned_json.update(schema.dump(houston_encounter_json).data)
+        return returned_json
 
 
 @api.route('/sighting/<uuid:asset_group_sighting_guid>/commit')

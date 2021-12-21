@@ -218,7 +218,7 @@ def test_patch_asset_group_sighting_as_sighting(
         f'{asset_group_sighting_guid}/encounter/{encounter_guids[0]}',
         [utils.patch_replace_op('sex', 'male')],
     )
-    assert [e['sex'] for e in response.json['encounters']] == ['male', None]
+    assert response.json['sex'] == 'male'
 
     # Set first encounter sex to null
     response = asset_group_utils.patch_asset_group_sighting_as_sighting(
@@ -227,4 +227,4 @@ def test_patch_asset_group_sighting_as_sighting(
         f'{asset_group_sighting_guid}/encounter/{encounter_guids[0]}',
         [utils.patch_replace_op('sex', None)],
     )
-    assert [e['sex'] for e in response.json['encounters']] == [None, None]
+    assert response.json['sex'] is None

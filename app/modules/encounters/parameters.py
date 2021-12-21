@@ -5,7 +5,8 @@ Input arguments (Parameters) for Encounters resources RESTful API
 """
 
 from flask_login import current_user
-from flask_restx_patched import Parameters, PatchJSONParametersWithPassword
+from flask_restx_patched import Parameters, PatchJSONParameters
+
 from . import schemas
 from app.modules.users.permissions import rules
 import logging
@@ -18,7 +19,7 @@ class CreateEncounterParameters(Parameters, schemas.DetailedEncounterSchema):
         pass
 
 
-class PatchEncounterDetailsParameters(PatchJSONParametersWithPassword):
+class PatchEncounterDetailsParameters(PatchJSONParameters):
     # pylint: disable=abstract-method,missing-docstring
 
     PATH_CHOICES_EDM = (
@@ -34,14 +35,18 @@ class PatchEncounterDetailsParameters(PatchJSONParametersWithPassword):
 
     # Valid options for patching are replace '/owner'
     PATH_CHOICES_HOUSTON = (
-        '/current_password',
-        '/user',
         '/owner',
         '/time',
         '/timeSpecificity',
     )
 
     PATH_CHOICES = PATH_CHOICES_EDM + PATH_CHOICES_HOUSTON
+
+    OPERATION_CHOICES = (
+        PatchJSONParameters.OP_REPLACE,
+        PatchJSONParameters.OP_ADD,
+        PatchJSONParameters.OP_REMOVE,
+    )
 
     # equivalent to replace for all our targets
     @classmethod
@@ -57,7 +62,6 @@ class PatchEncounterDetailsParameters(PatchJSONParametersWithPassword):
         from .models import db
         import pytz
 
-        super(PatchEncounterDetailsParameters, cls).replace(obj, field, value, state)
         ret_val = False
         if field == 'owner':
             # owner is permitted to assign ownership to another researcher
@@ -69,7 +73,15 @@ class PatchEncounterDetailsParameters(PatchJSONParametersWithPassword):
             ):
                 obj.owner = user
                 ret_val = True
-
+        elif field == 'annotations':
+            # Reuse metadata methods to validate ID Config, creating a single entry list for the encounters
+            from app.modules.asset_groups.metadata import AssetGroupMetadata
+            # can assign annotations (in patch only) but they must be valid
+            if 'annotations' in value:
+                AssetGroupMetadata.validate_annotations(
+                    obj, value['annotations'], f'Sighting {obj.guid}'
+                )
+                # TODO actually do this patch
         # * note: field==time requires `value` is iso8601 **with timezone**
         # this gets a little funky in the event there is *no existing time set* as the patch
         #   happens in two parts that know nothing about each other.  so we have to create a ComplexDateTime and

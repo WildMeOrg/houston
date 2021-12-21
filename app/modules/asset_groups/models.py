@@ -402,17 +402,40 @@ class AssetGroupSighting(db.Model, HoustonModel):
     def get_custom_fields(self):
         return self.__class__.config_field_getter('customFields', default={})(self)
 
-    def get_encounters(self):
+    def _augment_encounter_json(self, encounter_data):
+        from app.modules.users.schemas import PublicUserSchema
+
+        user_schema = PublicUserSchema()
+        enc_json = encounter_data
+        enc_json['createdHouston'] = self.created
+        enc_json['updatedHouston'] = self.updated
+        owner = self.asset_group.owner
+        if 'ownerEmail' in encounter_data:
+            owner = User.find(email=encounter_data['ownerEmail'])
+            # Validated in the metadata code so must be correct
+            assert owner
+        enc_json['owner'] = user_schema.dump(owner).data
+        if self.asset_group.submitter_guid:
+            submitter = User.find(self.asset_group.submitter_guid)
+            enc_json['submitter'] = user_schema.dump(submitter).data
+        return enc_json
+
+    def get_encounter_json(self, encounter_guid):
         encounters = self.config and self.config.get('encounters') or []
+        enc_json = None
         for encounter in encounters:
-            encounter['owner'] = {
-                'full_name': current_user.full_name,
-                'guid': current_user.guid,
-                'profile_fileupload': None,
-            }
-            encounter['createdHouston'] = self.created
-            encounter['updatedHouston'] = self.updated
-        return encounters
+            if encounter['guid'] == str(encounter_guid):
+                enc_json = self._augment_encounter_json(encounter)
+                break
+        return enc_json
+
+    def get_encounters_json(self):
+        encounters = self.config and self.config.get('encounters') or []
+        enc_json = []
+        for encounter in encounters:
+            enc_json.append(self._augment_encounter_json(encounter))
+
+        return enc_json
 
     @classmethod
     def check_jobs(cls):

@@ -89,9 +89,8 @@ class EncounterByID(Resource):
             return response
 
         edm_json = response['result']
-        from app.modules.encounters.schemas import AugmentedEdmEncounterSchema
 
-        schema = AugmentedEdmEncounterSchema()
+        schema = schemas.AugmentedEdmEncounterSchema()
         edm_json.update(schema.dump(encounter).data)
         return edm_json
 
@@ -133,10 +132,15 @@ class EncounterByID(Resource):
                 )
                 db.session.merge(encounter)
             # this mimics output format of edm-patching
-            return {
-                'id': str(encounter.guid),
+            result_data = {
                 'version': encounter.version,
             }
+
+            schema = schemas.AugmentedEdmEncounterSchema()
+            result_data.update(schema.dump(encounter).data)
+            # EDM uses id, houston API is all guid so ditch the id
+            result_data.pop('id', None)
+            return result_data
 
         # must be edm patch
         log.debug(f'wanting to do edm patch on args={args}')
@@ -168,6 +172,10 @@ class EncounterByID(Resource):
                 db.session.merge(encounter)
         # rtn['_patchResults'] = rdata.get('patchResults', None)  # FIXME i think this gets lost cuz not part of results_data
         AuditLog.patch_object(log, encounter, args, duration=timer.elapsed())
+        schema = schemas.AugmentedEdmEncounterSchema()
+        result_data.update(schema.dump(encounter).data)
+        # EDM uses id, houston API is all guid so ditch the id
+        result_data.pop('id', None)
         return result_data
 
     @api.permission_required(

@@ -48,7 +48,6 @@ def test_modify_encounter(
 
     # non Owner cannot make themselves the owner
     new_owner_as_res_2 = [
-        utils.patch_test_op(researcher_2.password_secret),
         utils.patch_replace_op('owner', str(researcher_2.guid)),
     ]
 
@@ -64,7 +63,6 @@ def test_modify_encounter(
 
     # But the owner can
     new_owner_as_res_1 = [
-        utils.patch_test_op(researcher_1.password_secret),
         utils.patch_replace_op('owner', str(researcher_2.guid)),
     ]
     enc_utils.patch_encounter(

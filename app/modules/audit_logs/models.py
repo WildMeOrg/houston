@@ -6,8 +6,11 @@ Audit Logs database models
 
 from flask_login import current_user  # NOQA
 from app.extensions import db, Timestamp
+import logging
 
 import uuid
+
+log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
 
 class AuditLog(db.Model, Timestamp):
@@ -46,12 +49,20 @@ class AuditLog(db.Model, Timestamp):
     def create(
         cls, msg, audit_type, module_name=None, item_guid=None, user=None, *args, **kwargs
     ):
-
         user_email = 'anonymous user'
         if user and not user.is_anonymous:
             user_email = user.email
         elif current_user and not current_user.is_anonymous:
             user_email = current_user.email
+
+        # Some messages back from EDM are enormous and we can only store so much data
+        if len(msg) > 2500:
+            # The start and the end are usually the most useful
+            new_msg = msg[:1000]
+            new_msg += '.....Text Removed.....'
+            new_msg += msg[-1000:]
+            log.warning(f'Truncating message. Was {len(msg)}, now {len(new_msg)}.')
+            msg = new_msg
 
         duration = None
         if 'duration' in kwargs:

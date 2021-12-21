@@ -87,6 +87,7 @@ def test_create_read_delete_relationship(
         'individual_2_guid': individual_2_guid,
         'individual_1_role': 'Mother',
         'individual_2_role': 'Calf',
+        'type': 'Family',
     }
     response = relationship_utils.create_relationship(
         flask_app_client,

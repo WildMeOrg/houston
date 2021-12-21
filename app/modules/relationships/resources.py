@@ -11,6 +11,7 @@ from flask import request
 from app.modules.individuals.models import Individual
 from flask_restx_patched import Resource
 from flask_restx._http import HTTPStatus
+from datetime import datetime  # NOQA
 
 from app.extensions import db
 from app.extensions.api import Namespace
@@ -103,6 +104,31 @@ class Relationships(Resource):
                         request_in['individual_1_role'],
                         request_in['individual_2_role'],
                     )
+                    if 'type' in request_in:
+                        relationship.type = request_in['type']
+                    if 'start_date' in request_in:
+                        try:
+                            relationship.start_date = datetime.strptime(
+                                request_in['start_date']
+                            )
+                        except ValueError as ve:
+                            AuditLog.backend_fault(
+                                log,
+                                ve,
+                                self,
+                            )
+                    if 'end_date' in request_in:
+                        try:
+                            relationship.start_date = datetime.strptime(
+                                request_in['end_date']
+                            )
+                        except ValueError as ve:
+                            AuditLog.backend_fault(
+                                log,
+                                ve,
+                                self,
+                            )
+
                     db.session.add(relationship)
                     for member in relationship.individual_members:
                         db.session.add(member)

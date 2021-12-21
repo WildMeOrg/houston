@@ -93,6 +93,15 @@ class PatchEncounterDetailsParameters(PatchJSONParameters):
             with db.session.begin(subtransactions=True):
                 db.session.merge(annot)
             ret_val = True
+        elif field == 'annotations':
+            # Reuse metadata methods to validate ID Config, creating a single entry list for the encounters
+            from app.modules.asset_groups.metadata import AssetGroupMetadata
+            # can assign annotations (in patch only) but they must be valid
+            if 'annotations' in value:
+                AssetGroupMetadata.validate_annotations(
+                    obj, value['annotations'], f'Sighting {obj.guid}'
+                )
+                # TODO actually do this patch
         # * note: field==time requires `value` is iso8601 **with timezone**
         # this gets a little funky in the event there is *no existing time set* as the patch
         #   happens in two parts that know nothing about each other.  so we have to create a ComplexDateTime and

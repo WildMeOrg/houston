@@ -20,6 +20,10 @@ log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
 
 class Specificities(str, enum.Enum):
+    @classmethod
+    def has_value(cls, value):
+        return value in cls._value2member_map_
+
     year = 'year'
     month = 'month'
     day = 'day'

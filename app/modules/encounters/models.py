@@ -120,6 +120,14 @@ class Encounter(db.Model, FeatherModel):
     def get_time_specificity(self):
         return self.time.specificity if self.time else None
 
+    # this does the heavy lifting of trying to set time from user-provided data
+    def set_time_from_data(self, data):
+        from app.modules.complex_date_time.models import ComplexDateTime
+
+        log.debug(f'{self} set_time_from_data: {data}')
+        # will raise ValueError if data no good
+        self.time = ComplexDateTime.from_data(data)
+
     # not going to check for ownership by User.get_public_user() because:
     #  a) this allows for other-user-owned data to be toggled to public
     #  b) allows for us to _disallow_ public access to public-user-owned data

@@ -141,8 +141,9 @@ class PatchEncounterDetailsParameters(PatchJSONParametersWithPassword):
                 return False
             from .models import db
 
+            log.debug(f'patch removing {cdt} from {obj}')
             obj.time_guid = None
-            with db.session.begin():
+            with db.session.begin(subtransactions=True):
                 db.session.delete(cdt)
             ret_val = True
 

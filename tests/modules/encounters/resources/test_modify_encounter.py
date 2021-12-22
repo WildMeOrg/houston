@@ -25,7 +25,7 @@ def test_modify_encounter(
     # pylint: disable=invalid-name
     from app.modules.encounters.models import Encounter
     from datetime import datetime
-    from app.modules.complex_date_time.models import Specificities
+    from app.modules.complex_date_time.models import ComplexDateTime, Specificities
 
     uuids = enc_utils.create_encounter(flask_app_client, researcher_1, request, test_root)
     first_enc_guid = uuids['encounters'][0]
@@ -148,6 +148,23 @@ def test_modify_encounter(
     assert test_enc.time.specificity == Specificities.day
     assert test_enc.time.timezone == 'UTC+0300'
     assert test_enc.time.isoformat_in_timezone() == test_dt
+
+    # now lets remove it!
+    cdt_guid = test_enc.time_guid
+    cdt = ComplexDateTime.query.get(cdt_guid)
+    assert cdt
+    patch_data = [
+        utils.patch_test_op(researcher_2.password_secret),
+        utils.patch_remove_op('time'),
+    ]
+    patch_res = enc_utils.patch_encounter(
+        flask_app_client, new_encounter_1.guid, researcher_2, patch_data
+    )
+    test_enc = Encounter.query.get(new_encounter_1.guid)
+    cdt = ComplexDateTime.query.get(cdt_guid)
+    assert not test_enc.time_guid
+    assert not test_enc.time
+    assert not cdt
 
     # Attach some assets and annotations
     from app.modules.asset_groups.models import AssetGroup

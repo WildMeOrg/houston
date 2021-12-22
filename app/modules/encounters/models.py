@@ -122,9 +122,10 @@ class Encounter(db.Model, FeatherModel):
 
     # this does the heavy lifting of trying to set time from user-provided data
     def set_time_from_data(self, data):
+        if not data or 'time' not in data:
+            return  # no need to try, time not being set
         from app.modules.complex_date_time.models import ComplexDateTime
 
-        log.debug(f'{self} set_time_from_data: {data}')
         # will raise ValueError if data no good
         self.time = ComplexDateTime.from_data(data)
 

@@ -2,7 +2,7 @@
 from pathlib import Path
 from typing import NoReturn, Optional, Union
 from app.extensions.api import abort
-from flask import Blueprint, Flask, current_app
+from flask import Blueprint, Flask, current_app, request
 
 import logging
 
@@ -73,7 +73,7 @@ class Cleanup(object):
             if alloc_guid['type'] == Sighting:
                 guid = alloc_guid['guid']
                 log.warning(f'Cleanup removing Sighting {guid} from EDM ')
-                Sighting.delete_from_edm_by_guid(current_app, guid)
+                Sighting.delete_from_edm_by_guid(current_app, guid, request)
 
         for alloc_obj in self.allocated_objs:
             log.warning('Cleanup removing %r' % alloc_obj)
@@ -91,6 +91,7 @@ class Cleanup(object):
 
     def rollback_and_houston_exception(
         self,
+        log,
         message='Unknown error',
         log_message=None,
         status_code=400,
@@ -100,6 +101,7 @@ class Cleanup(object):
 
         self.rollback(message, log_message, error_fields)
         raise HoustonException(
+            log,
             status_code=status_code,
             message=message,
             log_message=log_message,

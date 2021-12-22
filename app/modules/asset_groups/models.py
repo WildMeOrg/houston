@@ -324,10 +324,14 @@ class AssetGroupSighting(db.Model, HoustonModel):
             return self.created.isoformat() + 'Z'
         return None
 
-    # curation time is only valid if there are no active detection jobs
+    # curation time is only valid if there are no active detection jobs and there were some assets
     # Either detection has completed or no detection jobs were run
     def get_curation_start_time(self):
-        if not self.any_jobs_active():
+        if (
+            not self.any_jobs_active()
+            and 'assetReferences' in self.config.keys()
+            and len(self.config['assetReferences']) != 0
+        ):
             return self.curation_start.isoformat() + 'Z'
         return None
 

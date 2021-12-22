@@ -205,6 +205,8 @@ def test_create_asset_group_no_assets(
         ags = resp.json['asset_group_sightings'][0]
         assert ags['sighting_guid'] is not None
         assert ags['stage'] == 'processed'
+        assert ags['curation_start_time'] is None
+        assert ags['detection_start_time'] is None
 
         # Make sure that the user has a single unprocessed sighting
         user_resp = user_utils.read_user(flask_app_client, researcher_1, 'me')

@@ -264,3 +264,44 @@ def test_modify_encounter_error(
             patch_data,
             expected_status_code=500,
         )
+
+
+@pytest.mark.skipif(module_unavailable('encounters'), reason='Encounters module disabled')
+def test_create_encounter_time_test(
+    flask_app, flask_app_client, researcher_1, request, test_root
+):
+    from tests.modules.sightings.resources import utils as sighting_utils
+
+    # test with invalid time
+    sighting_data = {
+        'encounters': [
+            {
+                'time': 'fubar',
+            }
+        ],
+        'startTime': '2000-01-01T01:01:01Z',
+        'locationId': 'test',
+    }
+    uuids = sighting_utils.create_sighting(
+        flask_app_client,
+        researcher_1,
+        request,
+        test_root,
+        sighting_data=sighting_data,
+        expected_status_code=200,
+        commit_expected_status_code=400,
+    )
+    assert False
+
+    # now ok, but missing timezone
+    sighting_data['encounters'][0]['time'] = '1999-12-31T23:59:59'
+    uuids = sighting_utils.create_sighting(
+        flask_app_client,
+        researcher_1,
+        request,
+        test_root,
+        sighting_data=sighting_data,
+        expected_status_code=200,
+    )
+    assert False
+    assert uuids

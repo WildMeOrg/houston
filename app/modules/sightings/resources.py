@@ -362,6 +362,7 @@ class Sightings(Resource):
                         submitter_guid=submitter_guid,
                         public=pub,
                     )
+                    encounter.set_time_from_data(result_data['encounters'][i])
                     sighting.add_encounter(encounter)
                     i += 1
                 except Exception as ex:

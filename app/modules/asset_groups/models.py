@@ -210,12 +210,14 @@ class AssetGroupSighting(db.Model, HoustonModel):
             'encounters' not in self.config and 'encounters' in result_data
         ):
             cleanup.rollback_and_houston_exception(
+                log,
                 'Missing encounters between requested config and result',
                 'Sighting.post missing encounters in one of %r or %r'
                 % (self.config, result_data),
             )
         if not len(self.config['encounters']) == len(result_data['encounters']):
             cleanup.rollback_and_houston_exception(
+                log,
                 'Imbalance in encounters between data and result',
                 'Sighting.post imbalanced encounters in %r or %r'
                 % (self.config, result_data),
@@ -259,6 +261,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
                     submitter_guid=self.asset_group.submitter_guid,
                     public=self.asset_group.anonymous,
                 )
+                new_encounter.set_time_from_data(req_data)
 
                 AuditLog.user_create_object(
                     log, new_encounter, f' for owner {owner_guid}'
@@ -284,7 +287,8 @@ class AssetGroupSighting(db.Model, HoustonModel):
 
             except Exception as ex:
                 cleanup.rollback_and_houston_exception(
-                    'Problem with creating encounter: ',
+                    log,
+                    f'Problem with creating encounter [{encounter_num}]: {ex}',
                     f'{ex} on encounter {encounter_num}: enc={req_data}',
                 )
 

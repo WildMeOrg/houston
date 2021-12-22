@@ -118,12 +118,17 @@ class PatchEncounterDetailsParameters(PatchJSONParametersWithPassword):
                 obj.time_guid = time_cfd.guid
                 ret_val = True
 
-        # this takes a dict and uses for ComplexDateTime creation.  dict can be one of:
-        #  - { time: iso8601, specificity: y }   (timezone derived from iso8601)
-        #  - { time: iso8601, timeZone: tz, specificity: y }   (timezone explicit, not from time value)
         elif field == 'time' and isinstance(value, dict):
-            raise ValueError('not yet implemented')  # FIXME
-            ret_val = False
+            time_cfd = ComplexDateTime.from_dict(value)
+            with db.session.begin(subtransactions=True):
+                db.session.add(time_cfd)
+            old_cdt = ComplexDateTime.query.get(obj.time_guid)
+            if old_cdt:
+                with db.session.begin(subtransactions=True):
+                    db.session.delete(old_cdt)
+            obj.time = time_cfd
+            obj.time_guid = time_cfd.guid
+            ret_val = True
 
         return ret_val
 

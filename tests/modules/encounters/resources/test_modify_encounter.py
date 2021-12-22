@@ -271,6 +271,8 @@ def test_create_encounter_time_test(
     flask_app, flask_app_client, researcher_1, request, test_root
 ):
     from tests.modules.sightings.resources import utils as sighting_utils
+    from app.modules.encounters.models import Encounter
+    from app.modules.complex_date_time.models import Specificities
 
     # test with invalid time
     sighting_data = {
@@ -291,7 +293,6 @@ def test_create_encounter_time_test(
         expected_status_code=200,
         commit_expected_status_code=400,
     )
-    assert False
 
     # now ok, but missing timezone
     sighting_data['encounters'][0]['time'] = '1999-12-31T23:59:59'
@@ -302,6 +303,91 @@ def test_create_encounter_time_test(
         test_root,
         sighting_data=sighting_data,
         expected_status_code=200,
+        commit_expected_status_code=400,
     )
-    assert False
+
+    # timezone included, but no specificity
+    sighting_data['encounters'][0]['time'] = '1999-12-31T23:59:59+03:00'
+    uuids = sighting_utils.create_sighting(
+        flask_app_client,
+        researcher_1,
+        request,
+        test_root,
+        sighting_data=sighting_data,
+        expected_status_code=200,
+        commit_expected_status_code=400,
+    )
+
+    # getting closer; bad specificity
+    sighting_data['encounters'][0]['timeSpecificity'] = 'fubar'
+    uuids = sighting_utils.create_sighting(
+        flask_app_client,
+        researcher_1,
+        request,
+        test_root,
+        sighting_data=sighting_data,
+        expected_status_code=200,
+        commit_expected_status_code=400,
+    )
+
+    # finally; ok
+    sighting_data['encounters'][0]['timeSpecificity'] = 'day'
+    uuids = sighting_utils.create_sighting(
+        flask_app_client,
+        researcher_1,
+        request,
+        test_root,
+        sighting_data=sighting_data,
+        expected_status_code=200,
+    )
     assert uuids
+    test_enc = Encounter.query.get(uuids['encounters'][0])
+    assert test_enc
+    assert test_enc.time
+    assert test_enc.time.timezone == 'UTC+0300'
+    assert test_enc.time.specificity == Specificities.day
+    assert test_enc.time.isoformat_in_timezone() == sighting_data['encounters'][0]['time']
+
+    # now test dict-value version
+    test_dt_str = '2000-01-01T01:02:03'
+    del sighting_data['encounters'][0]['timeSpecificity']
+    sighting_data['encounters'][0]['time'] = {
+        'datetime': test_dt_str,
+        'timezone': 'US/Eastern',
+        'specificity': 'month',
+    }
+    uuids = sighting_utils.create_sighting(
+        flask_app_client,
+        researcher_1,
+        request,
+        test_root,
+        sighting_data=sighting_data,
+        expected_status_code=200,
+    )
+    assert uuids
+    test_enc = Encounter.query.get(uuids['encounters'][0])
+    assert test_enc
+    assert test_enc.time
+    assert test_enc.time.specificity == Specificities.month
+    assert test_enc.time.isoformat_utc() == test_dt_str
+
+    # now list/components
+    sighting_data['encounters'][0]['time'] = {
+        'components': [2021, 12],
+        'timezone': 'US/Mountain',
+        # specificity should be deduced as month
+    }
+    uuids = sighting_utils.create_sighting(
+        flask_app_client,
+        researcher_1,
+        request,
+        test_root,
+        sighting_data=sighting_data,
+        expected_status_code=200,
+    )
+    assert uuids
+    test_enc = Encounter.query.get(uuids['encounters'][0])
+    assert test_enc
+    assert test_enc.time
+    assert test_enc.time.specificity == Specificities.month
+    assert test_enc.time.isoformat_utc().startswith('2021-12-01T')

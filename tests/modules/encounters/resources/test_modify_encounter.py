@@ -24,6 +24,8 @@ def test_modify_encounter(
 ):
     # pylint: disable=invalid-name
     from app.modules.encounters.models import Encounter
+    from datetime import datetime
+    from app.modules.complex_date_time.models import Specificities
 
     uuids = enc_utils.create_encounter(flask_app_client, researcher_1, request, test_root)
     first_enc_guid = uuids['encounters'][0]
@@ -77,6 +79,76 @@ def test_modify_encounter(
         flask_app_client, new_encounter_1.guid, researcher_2, patch_data
     )
 
+    # test setting ComplexDateTime time value
+    dt = datetime.utcnow()
+    dt_string = dt.isoformat()  # first test no time zone (error)
+    patch_data = [
+        utils.patch_test_op(researcher_2.password_secret),
+        utils.patch_replace_op('time', dt_string),
+    ]
+    patch_res = enc_utils.patch_encounter(
+        flask_app_client, new_encounter_1.guid, researcher_2, patch_data, 409
+    )
+    assert 'does not have time zone' in patch_res.json['message']
+
+    # now invalid specificity
+    patch_data = [
+        utils.patch_test_op(researcher_2.password_secret),
+        utils.patch_replace_op('timeSpecificity', 'fubar'),
+    ]
+    patch_res = enc_utils.patch_encounter(
+        flask_app_client,
+        new_encounter_1.guid,
+        researcher_2,
+        patch_data,
+        409,
+        'invalid specificity: fubar',
+    )
+
+    # should be sufficient to set a (new) time
+    test_dt = '1999-01-01T12:34:56-07:00'
+    patch_data = [
+        utils.patch_test_op(researcher_2.password_secret),
+        utils.patch_replace_op('time', test_dt),
+        utils.patch_replace_op('timeSpecificity', 'month'),
+    ]
+    patch_res = enc_utils.patch_encounter(
+        flask_app_client, new_encounter_1.guid, researcher_2, patch_data
+    )
+    test_enc = Encounter.query.get(new_encounter_1.guid)
+    assert test_enc.time
+    assert test_enc.time.specificity == Specificities.month
+    assert test_enc.time.timezone == 'UTC-0700'
+    assert test_enc.time.isoformat_in_timezone() == test_dt
+
+    # now update just the specificity
+    patch_data = [
+        utils.patch_test_op(researcher_2.password_secret),
+        utils.patch_replace_op('timeSpecificity', 'day'),
+    ]
+    patch_res = enc_utils.patch_encounter(
+        flask_app_client, new_encounter_1.guid, researcher_2, patch_data
+    )
+    test_enc = Encounter.query.get(new_encounter_1.guid)
+    assert test_enc.time
+    assert test_enc.time.specificity == Specificities.day
+    assert test_enc.time.isoformat_in_timezone() == test_dt
+
+    # now update just the date/time
+    test_dt = datetime.utcnow().isoformat() + '+03:00'
+    patch_data = [
+        utils.patch_test_op(researcher_2.password_secret),
+        utils.patch_replace_op('time', test_dt),
+    ]
+    patch_res = enc_utils.patch_encounter(
+        flask_app_client, new_encounter_1.guid, researcher_2, patch_data
+    )
+    test_enc = Encounter.query.get(new_encounter_1.guid)
+    assert test_enc.time
+    assert test_enc.time.specificity == Specificities.day
+    assert test_enc.time.timezone == 'UTC+0300'
+    assert test_enc.time.isoformat_in_timezone() == test_dt
+
     # Attach some assets and annotations
     from app.modules.asset_groups.models import AssetGroup
 
@@ -103,7 +175,6 @@ def test_modify_encounter(
             'id': str(new_encounter_1.guid),
             'guid': str(new_encounter_1.guid),
             'locationId': new_val,
-            'timeValues': [None, None, None, 0, 0],
             'version': new_encounter_1.version,
             'createdHouston': new_encounter_1.created.isoformat() + '+00:00',
             'updatedHouston': new_encounter_1.updated.isoformat() + '+00:00',

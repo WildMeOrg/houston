@@ -11,7 +11,7 @@ import pytest
 
 from tests.utils import module_unavailable
 
-timestamp = datetime.datetime.now().isoformat() + 'Z'
+timestamp = datetime.datetime.now().isoformat() + '+00:00'
 
 
 @pytest.mark.skipif(module_unavailable('sightings'), reason='Sightings module disabled')
@@ -322,7 +322,8 @@ def test_edm_and_houston_encounter_data_within_sightings(
                     'decimalLatitude': 25.9999,
                     'decimalLongitude': 25.9999,
                     'verbatimLocality': 'Saturn',
-                    'time': '2010-01-01T01:01:01Z',
+                    'time': '2010-01-01T01:01:01+00:00',
+                    'timeSpecificity': 'time',
                 },
             ],
         }
@@ -342,7 +343,8 @@ def test_edm_and_houston_encounter_data_within_sightings(
         # EDM stuff
         assert json['encounters'][0]['verbatimLocality'] == 'Saturn'
         assert json['encounters'][0]['locationId'] == 'Saturn'
-        assert json['encounters'][0]['time'] == '2010-01-01T01:01:01Z'
+        assert json['encounters'][0]['time'] == '2010-01-01T01:01:01+00:00'
+        assert json['encounters'][0]['timeSpecificity'] == 'time'
         assert json['encounters'][0]['decimalLatitude'] == 25.9999
         assert json['encounters'][0]['decimalLongitude'] == 25.9999
 
@@ -417,7 +419,8 @@ def test_create_old_sighting(flask_app_client, researcher_1):
                 'decimalLatitude': 25.9999,
                 'decimalLongitude': 25.9999,
                 'verbatimLocality': 'Saturn',
-                'time': '2010-01-01T01:01:01Z',
+                'time': '2010-01-01T01:01:01+00:00',
+                'timeSpecificity': 'time',
             },
         ],
     }

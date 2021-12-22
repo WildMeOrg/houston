@@ -362,7 +362,7 @@ class Sightings(Resource):
                         submitter_guid=submitter_guid,
                         public=pub,
                     )
-                    encounter.set_time_from_data(result_data['encounters'][i])
+                    encounter.set_time_from_data(request_in['encounters'][i])
                     sighting.add_encounter(encounter)
                     i += 1
                 except Exception as ex:
@@ -461,9 +461,11 @@ class SightingByID(Resource):
             log.debug(f'wanting to do edm patch on args={args}')
 
             # we pre-check any annotations we will want to attach to new encounters
-            enc_anns = (
-                []
-            )  # list of lists of annotations for each encounter (if applicable)
+
+            # list of lists of annotations for each encounter (if applicable)
+            enc_anns = []
+            # list of initial data (used for setting .time)
+            enc_json_data = []
             try:
                 for arg in args:
                     if (
@@ -473,6 +475,7 @@ class SightingByID(Resource):
                         enc_json = arg.get('value', {})
                         anns = _get_annotations(enc_json)
                         enc_anns.append(anns)
+                        enc_json_data.append(enc_json)
 
             except Exception as ex:
                 cleanup.rollback_and_abort(
@@ -510,6 +513,7 @@ class SightingByID(Resource):
                 return response_data
 
             sighting.rectify_edm_encounters(result.get('encounters'), current_user)
+            assert len(enc_anns) == len(enc_json_data)
             # if we have enc_anns (len=N, N > 0), these should map to the last N encounters in this sighting
             if len(enc_anns) > 0:
                 enc_res = result.get('encounters', [])
@@ -529,6 +533,7 @@ class SightingByID(Resource):
                         f'enc_len={len(sighting.encounters)},offset={offset},i={i}: onto encounters[{offset+i}] setting {enc_anns[i]}'
                     )
                     sighting.encounters[offset + i].annotations = enc_anns[i]
+                    sighting.encounters[offset + i].set_time_from_data(enc_json_data[i])
                     i += 1
 
             new_version = result.get('version', None)

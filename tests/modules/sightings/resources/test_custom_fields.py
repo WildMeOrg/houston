@@ -25,7 +25,7 @@ def test_custom_fields_on_sighting(
     cfd_id = edm_utils.custom_field_create(flask_app_client, admin_user, 'test_cfd')
     assert cfd_id is not None
 
-    timestamp = datetime.datetime.now().isoformat() + 'Z'
+    timestamp = datetime.datetime.now().isoformat() + '+00:00'
     # transaction_id, test_filename = sighting_utils.prep_tus_dir(test_root)
     cfd_test_value = 'CFD_TEST_VALUE'
     data_in = {

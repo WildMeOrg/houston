@@ -54,15 +54,16 @@ def test_mega_data(
     assert 'response' in response.json and 'value' in response.json['response']
     tx_guid = response.json['response']['value'][-1]['id']
 
-    sighting_timestamp_start = datetime.datetime.now().isoformat() + 'Z'
+    sighting_timestamp_start = datetime.datetime.now().isoformat() + '+00:00'
     sighting_timestamp_end = (
         datetime.datetime.now() + datetime.timedelta(hours=1)
-    ).isoformat() + 'Z'
-    encounter_timestamp = datetime.datetime.now().isoformat() + 'Z'
+    ).isoformat() + '+00:00'
+    encounter_timestamp = datetime.datetime.now().isoformat() + '+00:00'
     cfd_test_value = 'CFD_TEST_VALUE'
 
     encounter_data_in = {
         'time': encounter_timestamp,
+        'timeSpecificity': 'time',
         'locationId': 'enc-test',
         'taxonomy': tx_guid,
         'decimalLatitude': random_decimal_latitude(),

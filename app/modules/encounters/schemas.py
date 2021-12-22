@@ -90,6 +90,8 @@ class AugmentedIndividualApiEncounterSchema(BaseEncounterSchema):
             'hasEdit',
             'asset_group_sighting_encounter_guid',
             'encounters',
+            'time',
+            'timeSpecificity',
         )
         dump_only = BaseEncounterSchema.Meta.dump_only + ('encounters',)
 

@@ -98,10 +98,9 @@ class ComplexDateTime(db.Model):
 
     # this accepts a dict which is roughly "user input".  it will look for a mix of items passed in,
     #   but requires `time` to be one of them.   valid combinations include:
-    #   1. time (iso8601 with timezone) - if only this, then time_specificity is inferred to be 'time'
-    #   2. time, timeSpecificity - as above, but explicit specificity
-    #   3. time = {datetime:, timezone:, specificity:} - timezone optional here iff included in datetime iso8601
-    #   4. time = {components: [], timezone:, specificity:} - components = [Y, M, D, h, m, s]; specificity is optional
+    #   1. time, timeSpecificity - as above, but explicit specificity
+    #   2. time = {datetime:, timezone:, specificity:} - timezone optional here iff included in datetime iso8601
+    #   3. time = {components: [], timezone:, specificity:} - components = [Y, M, D, h, m, s]; specificity is optional
     @classmethod
     def from_data(cls, data):
         if not data or not isinstance(data, dict) or 'time' not in data:

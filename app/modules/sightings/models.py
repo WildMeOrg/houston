@@ -447,7 +447,6 @@ class Sighting(db.Model, FeatherModel):
                     del edm_map[str(enc.guid)]
 
         # now any left should be new encounters from edm
-        enc_ct = 0
         for enc_id in edm_map.keys():
             log.debug(f'adding new houston Encounter guid={enc_id}')
             user_guid = user.guid if user else None
@@ -458,9 +457,7 @@ class Sighting(db.Model, FeatherModel):
                 owner_guid=user_guid,
                 submitter_guid=user_guid,
             )
-            encounter.set_time_from_data(self.encounters[enc_ct])
             self.add_encounter(encounter)
-            enc_ct += 1
 
     def _get_matching_set_annots(self, matching_set_option):
         annots = []

@@ -23,7 +23,7 @@ import pytest
 
 from tests.utils import module_unavailable
 
-timestamp = datetime.datetime.now().isoformat() + 'Z'
+timestamp = datetime.datetime.now().isoformat() + '+00:00'
 
 
 # this one will do nothing with individuals

@@ -12,6 +12,7 @@ from app.modules.individuals.models import Individual
 from flask_restx_patched import Resource
 from flask_restx._http import HTTPStatus
 from datetime import datetime  # NOQA
+import dateutil
 
 from app.extensions import db
 from app.extensions.api import Namespace
@@ -108,7 +109,7 @@ class Relationships(Resource):
                         relationship.type = request_in['type']
                     if 'start_date' in request_in:
                         try:
-                            relationship.start_date = datetime.strptime(
+                            relationship.start_date = dateutil.parser.parse(
                                 request_in['start_date']
                             )
                         except ValueError as ve:
@@ -119,7 +120,7 @@ class Relationships(Resource):
                             )
                     if 'end_date' in request_in:
                         try:
-                            relationship.start_date = datetime.strptime(
+                            relationship.end_date = dateutil.parser.parse(
                                 request_in['end_date']
                             )
                         except ValueError as ve:

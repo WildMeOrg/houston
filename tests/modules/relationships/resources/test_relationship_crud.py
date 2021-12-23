@@ -9,6 +9,7 @@ from tests.modules.individuals.resources import utils as individual_utils
 from tests.modules.encounters.resources import utils as encounter_utils
 from tests.modules.relationships.resources import utils as relationship_utils
 from tests.utils import module_unavailable
+from datetime import datetime, timedelta  # NOQA
 import pytest
 
 log = logging.getLogger(__name__)
@@ -88,6 +89,8 @@ def test_create_read_delete_relationship(
         'individual_1_role': 'Mother',
         'individual_2_role': 'Calf',
         'type': 'Family',
+        'start_date': str(datetime.utcnow()),
+        'end_date': str(datetime.utcnow() + timedelta(days=1)),
     }
     response = relationship_utils.create_relationship(
         flask_app_client,
@@ -105,8 +108,6 @@ def test_create_read_delete_relationship(
 
     relationship_1 = Relationship.query.get(relationship_guid)
 
-    # exact same checks as the model test
-
     assert relationship_1.has_individual(individual_1_guid)
     assert relationship_1.has_individual(individual_2_guid)
 
@@ -116,3 +117,8 @@ def test_create_read_delete_relationship(
     assert (
         relationship_1.get_relationship_role_for_individual(individual_2_guid) == 'Calf'
     )
+
+    assert relationship_1.type == 'Family'
+
+    # one day time delta for this test
+    assert relationship_1.start_date.day == (relationship_1.end_date.day - 1)

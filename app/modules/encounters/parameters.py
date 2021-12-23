@@ -70,7 +70,7 @@ class PatchEncounterDetailsParameters(PatchJSONParametersWithPassword):
                 obj.owner = user
                 ret_val = True
 
-        # * note: requires `value` is iso8601 **with timezone**
+        # * note: field==time requires `value` is iso8601 **with timezone**
         # this gets a little funky in the event there is *no existing time set* as the patch
         #   happens in two parts that know nothing about each other.  so we have to create a ComplexDateTime and
         #   *fake* the other field value (time/timeSpecificity) upon doing so.  :(  we then hope that the subsequent
@@ -103,7 +103,8 @@ class PatchEncounterDetailsParameters(PatchJSONParametersWithPassword):
                     log.debug(f'patch updated datetime+timezone on {time_cfd}')
                 ret_val = True
             else:
-                # this is the wonky bit - we have to create ComplexDateTime based only one of datetime/specificity
+                # this is the wonky bit - we have to create ComplexDateTime based on only one of datetime/specificity
+                #   the hope is that the next patch op will add/replace the other attribute
                 if not dt:
                     dt = datetime.utcnow()
                     timezone = 'UTC'

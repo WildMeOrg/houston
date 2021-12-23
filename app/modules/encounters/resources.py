@@ -92,6 +92,8 @@ class EncounterByID(Resource):
 
         schema = schemas.AugmentedEdmEncounterSchema()
         edm_json.update(schema.dump(encounter).data)
+        # EDM uses id, houston API is all guid so ditch the id
+        edm_json.pop('id', None)
         return edm_json
 
     @api.permission_required(
@@ -127,9 +129,15 @@ class EncounterByID(Resource):
                 db.session, default_error_message='Failed to update Encounter details.'
             )
             with context:
-                parameters.PatchEncounterDetailsParameters.perform_patch(
-                    args, obj=encounter
-                )
+                try:
+                    parameters.PatchEncounterDetailsParameters.perform_patch(
+                        args, obj=encounter
+                    )
+                except HoustonException as ex:
+                    abort(
+                        ex.status_code,
+                        ex.message,
+                    )
                 db.session.merge(encounter)
             # this mimics output format of edm-patching
             result_data = {

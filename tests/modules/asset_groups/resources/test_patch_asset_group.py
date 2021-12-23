@@ -130,26 +130,36 @@ def test_patch_asset_group(
         asset_guid,
     )
 
-    annotation_guid = annot_response.json['guid']
+    annotation1_guid = annot_response.json['guid']
 
-    # Attempt to replace which should fail
-    patch_replace_annot = [utils.patch_replace_op('annotations', annotation_guid)]
-    asset_group_utils.patch_asset_group_sighting(
+    annot_response = annot_utils.create_annotation_simple(
+        flask_app_client,
+        researcher_1,
+        asset_guid,
+    )
+    annotation2_guid = annot_response.json['guid']
+
+    # Attempt to replace which should pass
+    annot_replace_resp = asset_group_utils.patch_asset_group_sighting(
         flask_app_client,
         researcher_1,
         encounter_path,
-        patch_replace_annot,
-        409,
+        [utils.patch_replace_op('annotations', annotation1_guid)],
     )
+    annots = annot_replace_resp.json['config']['encounters'][0]['annotations']
+    assert len(annots) == 1
+    assert annots[0] == annotation1_guid
 
     # Add annot, should succeed
-    patch_annot = [utils.patch_add_op('annotations', annotation_guid)]
     annot_add_resp = asset_group_utils.patch_asset_group_sighting(
-        flask_app_client, researcher_1, encounter_path, patch_annot
+        flask_app_client,
+        researcher_1,
+        encounter_path,
+        [utils.patch_add_op('annotations', annotation2_guid)],
     )
     annots = annot_add_resp.json['config']['encounters'][0]['annotations']
-    assert len(annots) == 1
-    assert annots[0] == annotation_guid
+    assert len(annots) == 2
+    assert annots[1] == annotation2_guid
 
 
 # similar to the above but against the AGS-as-sighting endpoint
@@ -157,7 +167,7 @@ def test_patch_asset_group(
     module_unavailable('asset_groups'), reason='AssetGroups module disabled'
 )
 def test_patch_asset_group_sighting_as_sighting(
-    flask_app_client, researcher_1, regular_user, test_root, request
+    flask_app_client, researcher_1, researcher_2, regular_user, test_root, request
 ):
     # pylint: disable=invalid-name
     from tests import utils
@@ -212,11 +222,23 @@ def test_patch_asset_group_sighting_as_sighting(
     encounter_guids = [e['guid'] for e in response.json['encounters']]
 
     # Set first encounter sex to male
+    encounter_patch_fields = {
+        'version',
+        'hasView',
+        'hasEdit',
+        'guid',
+        'owner',
+        'updatedHouston',
+        'createdHouston',
+        'submitter',
+    }
+
     response = asset_group_utils.patch_asset_group_sighting_as_sighting(
         flask_app_client,
         researcher_1,
         f'{asset_group_sighting_guid}/encounter/{encounter_guids[0]}',
         [utils.patch_replace_op('sex', 'male')],
+        response_200=encounter_patch_fields,
     )
     assert response.json['sex'] == 'male'
 
@@ -226,5 +248,27 @@ def test_patch_asset_group_sighting_as_sighting(
         researcher_1,
         f'{asset_group_sighting_guid}/encounter/{encounter_guids[0]}',
         [utils.patch_replace_op('sex', None)],
+        response_200=encounter_patch_fields,
     )
     assert response.json['sex'] is None
+
+    # Reassign to researcher2 via email
+    response = asset_group_utils.patch_asset_group_sighting_as_sighting(
+        flask_app_client,
+        researcher_1,
+        f'{asset_group_sighting_guid}/encounter/{encounter_guids[0]}',
+        [utils.patch_add_op('ownerEmail', researcher_2.email)],
+        response_200=encounter_patch_fields,
+    )
+
+    assert response.json['owner']['guid'] == str(researcher_2.guid)
+
+    # And back to researcher 1 by guid
+    response = asset_group_utils.patch_asset_group_sighting_as_sighting(
+        flask_app_client,
+        researcher_2,
+        f'{asset_group_sighting_guid}/encounter/{encounter_guids[0]}',
+        [utils.patch_replace_op('owner', str(researcher_1.guid))],
+        response_200=encounter_patch_fields,
+    )
+    assert response.json['owner']['guid'] == str(researcher_1.guid)

@@ -118,7 +118,6 @@ def test_create_and_modify_and_delete_sighting(
         'customFields',
         'locationId',
         'startTime',
-        'id',
         'encounterCounts',
         'version',
         'hasView',
@@ -349,9 +348,9 @@ def test_edm_and_houston_encounter_data_within_sightings(
         assert json['encounters'][0]['decimalLongitude'] == 25.9999
 
         # houston stuff
-        assert json['encounters'][0]['id'] is not None
+        assert json['encounters'][0]['guid'] is not None
 
-        enc_id = json['encounters'][0]['id']
+        enc_id = json['encounters'][0]['guid']
 
         assert json['encounters'][0]['hasView'] is True
         assert json['encounters'][0]['hasEdit'] is True
@@ -386,7 +385,7 @@ def test_edm_and_houston_encounter_data_within_sightings(
         response = sighting_utils.read_sighting(
             flask_app_client,
             researcher_1,
-            response.json['id'],
+            response.json['guid'],
             expected_status_code=200,
         )
         json = response.json

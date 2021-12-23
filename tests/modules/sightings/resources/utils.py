@@ -12,6 +12,33 @@ import tests.modules.asset_groups.resources.utils as asset_group_utils
 
 PATH = '/api/v1/sightings/'
 
+EXPECTED_FIELDS = {
+    'curation_start_time',
+    'created',
+    'hasEdit',
+    'review_time',
+    'version',
+    'createdHouston',
+    'detection_start_time',
+    'locationId',
+    'comments',
+    'hasView',
+    'encounterCounts',
+    'stage',
+    'customFields',
+    'createdEDM',
+    'creator',
+    'updated',
+    'updatedHouston',
+    'startTime',
+    'guid',
+    'identification_start_time',
+    'encounters',
+    'unreviewed_start_time',
+    'assets',
+    'featuredAssetGuid',
+}
+
 
 # note: default data_in will fail
 def create_old_sighting(
@@ -242,11 +269,11 @@ def read_sighting(flask_app_client, user, sight_guid, expected_status_code=200):
         'sightings:read',
         f'{PATH}{sight_guid}',
         expected_status_code,
-        response_200={'id', 'creator', 'encounters', 'stage', 'assets'},
+        response_200=EXPECTED_FIELDS,
     )
 
     if expected_status_code == 200:
-        assert response.json['id'] == str(sight_guid)
+        assert response.json['guid'] == str(sight_guid)
     return response
 
 
@@ -294,7 +321,7 @@ def patch_sighting(
     )
     if expected_status_code == 200:
         if 'version' in response.json.keys():
-            assert response.json.keys() >= {'version', 'guid', 'id'}
+            assert response.json.keys() >= EXPECTED_FIELDS
         else:
             assert response.json.keys() >= {'result', 'success'}
             assert response.json['success']

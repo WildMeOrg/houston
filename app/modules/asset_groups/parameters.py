@@ -221,6 +221,7 @@ class PatchAssetGroupSightingEncounterDetailsParameters(PatchJSONParameters):
 
     PATH_CHOICES = PatchEncounterDetailsParameters.PATH_CHOICES_EDM + (
         '/ownerEmail',
+        '/owner',  # Needed as that is the field name in the encounter that we're pretending to be
         '/annotations',
         '/individualUuid',
     )
@@ -241,27 +242,8 @@ class PatchAssetGroupSightingEncounterDetailsParameters(PatchJSONParameters):
     @classmethod
     def add(cls, obj, field, value, state):
 
-        # Annotations are special in that it can only be added, not replaced.
-        if field == 'annotations':
-            encounter_uuid, encounter_metadata = cls._get_encounter_data(obj, state)
-
-            AssetGroupMetadata.validate_annotations(
-                obj,
-                [
-                    value,
-                ],
-                f'Encounter {encounter_uuid}',
-            )
-            if 'annotations' not in encounter_metadata.keys():
-                encounter_metadata['annotations'] = []
-            encounter_metadata['annotations'].append(value)
-            # force the write to the database
-            obj.config = obj.config
-            return True
-
-        else:
-            # For everything else, Add and replace are the same operation so reuse the one method
-            return cls.replace(obj, field, value, state)
+        # For everything, Add and replace are the same operation so reuse the one method
+        return cls.replace(obj, field, value, state)
 
     @classmethod
     def replace(cls, obj, field, value, state):
@@ -272,9 +254,35 @@ class PatchAssetGroupSightingEncounterDetailsParameters(PatchJSONParameters):
         if field == 'ownerEmail':
             AssetGroupMetadata.validate_owner_email(value, f'Encounter {encounter_uuid}')
             encounter_metadata[field] = value
+        elif field == 'owner':
+            from app.modules.users.models import User
+
+            user = User.query.get(value)
+            if user and user.is_researcher:
+                encounter_metadata['ownerEmail'] = user.email
+
         elif field == 'annotations':
-            # Cannot replace the list, must do add and remove on individual annotations
-            ret_val = False
+            from app.modules.annotations.models import Annotation
+
+            AssetGroupMetadata.validate_annotations(
+                obj,
+                [
+                    value,
+                ],
+                f'Encounter {encounter_uuid}',
+            )
+            annot = Annotation.query.get(value)
+            assert annot
+            if annot.encounter and not annot.encounter.current_user_has_write_access():
+                # No stealing annotations
+                raise AssetGroupMetadataError(
+                    log,
+                    f'You are not permitted to reassign {value} Annotation',
+                )
+            if 'annotations' not in encounter_metadata.keys():
+                encounter_metadata['annotations'] = []
+            encounter_metadata['annotations'].append(value)
+
         elif field == 'individualUuid':
             AssetGroupMetadata.validate_individual(value, f'Encounter {encounter_uuid}')
             encounter_metadata[field] = value

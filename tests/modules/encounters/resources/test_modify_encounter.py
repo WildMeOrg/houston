@@ -1,10 +1,12 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=missing-docstring
+import uuid
 from unittest import mock
 
 from tests import utils
 from tests.modules.annotations.resources import utils as annot_utils
 from tests.modules.encounters.resources import utils as enc_utils
+from tests.modules.sightings.resources import utils as sighting_utils
 from tests.extensions.edm import utils as edm_utils
 import pytest
 
@@ -24,13 +26,29 @@ def test_modify_encounter(
 ):
     # pylint: disable=invalid-name
     from app.modules.encounters.models import Encounter
+    import datetime
+
+    data_in = {
+        'startTime': datetime.datetime.now().isoformat() + 'Z',
+        'context': 'test',
+        'locationId': 'test',
+        'encounters': [
+            {},
+            {'locationId': 'Monster Island'},
+        ],
+    }
     from datetime import datetime
     from app.modules.complex_date_time.models import ComplexDateTime, Specificities
 
-    uuids = enc_utils.create_encounter(flask_app_client, researcher_1, request, test_root)
-    first_enc_guid = uuids['encounters'][0]
-    assert first_enc_guid is not None
-    new_encounter_1 = Encounter.query.get(first_enc_guid)
+    uuids = sighting_utils.create_sighting(
+        flask_app_client, researcher_1, request, test_root, data_in
+    )
+    assert len(uuids['encounters']) == 2
+
+    new_encounter_1 = Encounter.query.get(uuids['encounters'][0])
+    assert new_encounter_1
+    new_encounter_2 = Encounter.query.get(uuids['encounters'][1])
+    assert new_encounter_2
 
     # test that we cant mix edm/houston
     patch_data = [
@@ -174,7 +192,7 @@ def test_modify_encounter(
             flask_app_client, researcher_2, str(asset.guid), str(new_encounter_1.guid)
         )
 
-    annotations = [
+    enc1_annotations = [
         {
             'asset_guid': str(ann.asset.guid),
             'ia_class': 'test',
@@ -183,11 +201,10 @@ def test_modify_encounter(
         for ann in new_encounter_1.annotations
     ]
 
-    enc = enc_utils.read_encounter(flask_app_client, researcher_2, new_encounter_1.guid)
-    assert set(enc.json) >= set(
+    enc1 = enc_utils.read_encounter(flask_app_client, researcher_2, new_encounter_1.guid)
+    assert set(enc1.json) >= set(
         {
             'customFields': {},
-            'id': str(new_encounter_1.guid),
             'guid': str(new_encounter_1.guid),
             'locationId': new_val,
             'version': new_encounter_1.version,
@@ -203,11 +220,58 @@ def test_modify_encounter(
                 'guid': str(researcher_1.guid),
                 'profile_fileupload': None,
             },
-            'annotations': annotations,
+            'annotations': enc1_annotations,
             'hasEdit': True,
             'hasView': True,
         }
     )
+
+    # Now try moving some annots from enc 1 to enc 2
+    # Not an annot
+    invalid_annot_guid = str(uuid.uuid4())
+    enc_utils.patch_encounter(
+        flask_app_client,
+        new_encounter_2.guid,
+        researcher_1,
+        [utils.patch_add_op('annotations', invalid_annot_guid)],
+        400,
+        f'guid value passed ({invalid_annot_guid}) is not an annotation guid',
+    )
+
+    # try to steal annotation on an encounter owned by a researcher 2
+    private_annot_guid = enc1_annotations[0]['guid']
+    enc_utils.patch_encounter(
+        flask_app_client,
+        new_encounter_2.guid,
+        researcher_1,
+        [utils.patch_add_op('annotations', private_annot_guid)],
+        400,
+        f'annotation {private_annot_guid} owned by a different user',
+    )
+
+    # Need to make encounter 2 owned by researcher 2
+    # But the owner can
+    new_owner_as_res_1 = [
+        utils.patch_replace_op('owner', str(researcher_2.guid)),
+    ]
+    enc_utils.patch_encounter(
+        flask_app_client, new_encounter_2.guid, researcher_1, new_owner_as_res_1
+    )
+    assert new_encounter_2.owner == researcher_2
+
+    # Now the patch should work
+    owned_annot_guid = private_annot_guid
+    patch_resp = enc_utils.patch_encounter(
+        flask_app_client,
+        new_encounter_2.guid,
+        researcher_2,
+        [utils.patch_add_op('annotations', owned_annot_guid)],
+    )
+    assert patch_resp.json['annotations'][0]['guid'] == owned_annot_guid
+    assert str(new_encounter_2.annotations[0].guid) == owned_annot_guid
+    assert owned_annot_guid not in [
+        str(annot.guid) for annot in new_encounter_1.annotations
+    ]
 
     # now we test modifying customFields
     cfd_id = edm_utils.custom_field_create(

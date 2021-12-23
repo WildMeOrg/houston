@@ -67,11 +67,11 @@ def read_encounter(flask_app_client, user, enc_guid, expected_status_code=200):
         'encounters:read',
         f'{PATH}{enc_guid}',
         expected_status_code,
-        response_200={'id'},
+        response_200=EXPECTED_FIELDS,
     )
 
     if expected_status_code == 200:
-        assert response.json['id'] == str(enc_guid)
+        assert response.json['guid'] == str(enc_guid)
     return response
 
 

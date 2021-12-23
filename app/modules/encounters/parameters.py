@@ -3,13 +3,18 @@
 Input arguments (Parameters) for Encounters resources RESTful API
 -----------------------------------------------------------
 """
-
+import logging
 from flask_login import current_user
 from flask_restx_patched import Parameters, PatchJSONParameters
 
 from . import schemas
+from app.extensions import db
 from app.modules.users.permissions import rules
 import logging
+
+log = logging.getLogger(__name__)
+
+from app.utils import HoustonException
 
 log = logging.getLogger(__name__)
 
@@ -36,6 +41,7 @@ class PatchEncounterDetailsParameters(PatchJSONParameters):
     # Valid options for patching are replace '/owner'
     PATH_CHOICES_HOUSTON = (
         '/owner',
+        '/annotationns',
         '/time',
         '/timeSpecificity',
     )
@@ -74,14 +80,23 @@ class PatchEncounterDetailsParameters(PatchJSONParameters):
                 obj.owner = user
                 ret_val = True
         elif field == 'annotations':
-            # Reuse metadata methods to validate ID Config, creating a single entry list for the encounters
-            from app.modules.asset_groups.metadata import AssetGroupMetadata
+            from app.modules.annotations.models import Annotation
+
             # can assign annotations (in patch only) but they must be valid
-            if 'annotations' in value:
-                AssetGroupMetadata.validate_annotations(
-                    obj, value['annotations'], f'Sighting {obj.guid}'
+            annot = Annotation.query.get(value)
+            if not annot:
+                raise HoustonException(
+                    log, f'guid value passed ({value}) is not an annotation guid'
                 )
-                # TODO actually do this patch
+            if not annot.encounter.current_user_has_edit_permission():
+                raise HoustonException(
+                    log, f'annotation {value} owned by a different user'
+                )
+            annot.encounter = obj
+
+            with db.session.begin(subtransactions=True):
+                db.session.merge(annot)
+            ret_val = True
         # * note: field==time requires `value` is iso8601 **with timezone**
         # this gets a little funky in the event there is *no existing time set* as the patch
         #   happens in two parts that know nothing about each other.  so we have to create a ComplexDateTime and

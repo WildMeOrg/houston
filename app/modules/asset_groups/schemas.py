@@ -159,7 +159,6 @@ class AssetGroupSightingAsSightingSchema(ModelSchema):
     verbatimEventDate = base_fields.Function(
         AssetGroupSighting.config_field_getter('verbatimEventDate', default='')
     )
-    id = base_fields.UUID(attribute='guid')
     encounterCounts = base_fields.Function(
         AssetGroupSighting.config_field_getter('encounterCounts', default={})
     )

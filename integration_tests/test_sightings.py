@@ -129,7 +129,6 @@ def test_sightings(session, login, codex_url, test_root, admin_name):
                 'guid': encounters[0]['guid'],
                 'hasEdit': True,
                 'hasView': True,
-                'id': encounters[0]['guid'],
                 'individual': {},
                 'owner': {
                     'full_name': my_name,
@@ -153,7 +152,6 @@ def test_sightings(session, login, codex_url, test_root, admin_name):
         'guid': sighting_id,
         'hasEdit': True,
         'hasView': True,
-        'id': sighting_id,
         'locationId': 'PYTEST',
         'startTime': '2000-01-01T01:01:01Z',
         'stage': 'un_reviewed',
@@ -229,7 +227,6 @@ def test_sightings(session, login, codex_url, test_root, admin_name):
                 'guid': encounters[0]['guid'],
                 'hasEdit': True,
                 'hasView': True,
-                'id': encounters[0]['guid'],
                 'individual': {},
                 'owner': {
                     'full_name': my_name,
@@ -253,7 +250,6 @@ def test_sightings(session, login, codex_url, test_root, admin_name):
         'guid': sighting_id,
         'hasEdit': True,
         'hasView': True,
-        'id': sighting_id,
         'locationId': 'PYTEST',
         'startTime': '2000-01-01T01:01:01Z',
         'stage': 'un_reviewed',

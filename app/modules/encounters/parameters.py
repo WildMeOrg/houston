@@ -3,12 +3,18 @@
 Input arguments (Parameters) for Encounters resources RESTful API
 -----------------------------------------------------------
 """
+import logging
 from flask_login import current_user
 from flask_restx_patched import Parameters, PatchJSONParameters
 
 from . import schemas
+from app.extensions import db
 from app.modules.users.permissions import rules
 import logging
+
+from app.utils import HoustonException
+
+log = logging.getLogger(__name__)
 
 from app.utils import HoustonException
 

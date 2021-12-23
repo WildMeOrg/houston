@@ -55,6 +55,7 @@ class PatchEncounterDetailsParameters(PatchJSONParametersWithPassword):
         from datetime import datetime
         from app.utils import normalized_timezone_string
         from .models import db
+        import pytz
 
         super(PatchEncounterDetailsParameters, cls).replace(obj, field, value, state)
         ret_val = False
@@ -97,7 +98,7 @@ class PatchEncounterDetailsParameters(PatchJSONParametersWithPassword):
                     time_cfd.specificity = specificity
                     log.debug(f'patch updated specificity on {time_cfd}')
                 else:
-                    time_cfd.datetime = dt
+                    time_cfd.datetime = dt.astimezone(pytz.UTC)
                     time_cfd.timezone = timezone
                     log.debug(f'patch updated datetime+timezone on {time_cfd}')
                 ret_val = True

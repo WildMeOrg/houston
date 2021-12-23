@@ -80,6 +80,74 @@ def test_models(db, request):
     assert test.datetime == cdt.datetime
     assert test.isoformat_in_timezone() == cdt.isoformat_in_timezone()
 
+    dtdata = []  # invalid
+    try:
+        cdt = ComplexDateTime.from_data(dtdata)
+    except ValueError as ve:
+        assert str(ve).startswith('invalid data: ')
+
+    dtdata = {'time': []}  # also invalid
+    try:
+        cdt = ComplexDateTime.from_data(dtdata)
+    except ValueError as ve:
+        assert str(ve).startswith('invalid data: ')
+
+    dtdata = {
+        'time': '1999-01-01T00:01:02+01:00',
+    }
+    try:
+        cdt = ComplexDateTime.from_data(dtdata)
+    except ValueError as ve:
+        assert 'invalid specificity' in str(ve)
+
+    dtdata = {
+        'time': '1999-01-01T00:01:02+01:00',
+        'timeSpecificity': 'fubar',
+    }
+    try:
+        cdt = ComplexDateTime.from_data(dtdata)
+    except ValueError as ve:
+        assert 'invalid specificity' in str(ve)
+
+    dtdict = []  # invalid
+    try:
+        cdt = ComplexDateTime.from_dict(dtdict)
+    except ValueError as ve:
+        assert 'invalid data' in str(ve)
+
+    dtdict = {
+        'components': 'fubar',
+    }
+    try:
+        cdt = ComplexDateTime.from_dict(dtdict)
+    except ValueError as ve:
+        assert 'components must be a list' in str(ve)
+
+    dtdict = {
+        'fubar': 1,
+    }
+    try:
+        cdt = ComplexDateTime.from_dict(dtdict)
+    except ValueError as ve:
+        assert 'missing datetime value' in str(ve)
+
+    dtdict = {
+        'datetime': '2000-02-02T02:02:02',  # no tz
+    }
+    try:
+        cdt = ComplexDateTime.from_dict(dtdict)
+    except ValueError as ve:
+        assert 'timezone not passed' in str(ve)
+
+    dtdict = {
+        'datetime': '2000-02-02T02:02:02+03:00',
+        'specificity': 'fail',
+    }
+    try:
+        cdt = ComplexDateTime.from_dict(dtdict)
+    except ValueError as ve:
+        assert 'invalid specificity' in str(ve)
+
     dtlist = None
     try:
         cdt = ComplexDateTime.from_list(dtlist, 'fubar')

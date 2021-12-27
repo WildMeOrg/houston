@@ -115,7 +115,7 @@ def test_read_encounter_from_edm(db, flask_app_client):
 def test_add_remove_encounters(db, flask_app_client, researcher_1, request, test_root):
 
     data_in = {
-        'startTime': datetime.datetime.now().isoformat() + 'Z',
+        'startTime': datetime.datetime.now().isoformat() + '+00:00',
         'context': 'test',
         'locationId': 'test',
         'encounters': [
@@ -260,14 +260,16 @@ def test_individual_has_detailed_encounter_from_edm(
                 'decimalLongitude': 25.9999,
                 'verbatimLocality': 'Antarctica',
                 'locationId': 'Antarctica',
-                'time': '2010-01-01T01:01:01Z',
+                'time': '2010-01-01T01:01:01+00:00',
+                'timeSpecificity': 'time',
             }
         ],
-        'startTime': '2000-01-01T01:01:01Z',
+        'startTime': '2000-01-01T01:01:01+00:00',
         'locationId': 'test',
     }
 
     individual_id = None
+    enc = None
 
     try:
         uuids = sighting_utils.create_sighting(
@@ -310,8 +312,9 @@ def test_individual_has_detailed_encounter_from_edm(
         assert individual_json['encounters'][0]['decimalLongitude'] == '25.9999'
         assert individual_json['encounters'][0]['verbatimLocality'] == 'Antarctica'
         assert individual_json['encounters'][0]['locationId'] == 'Antarctica'
-        assert individual_json['encounters'][0]['time'] == '2010-01-01T01:01:01Z'
+        assert individual_json['encounters'][0]['time'] == '2010-01-01T01:01:01+00:00'
 
     finally:
         individual_utils.delete_individual(flask_app_client, researcher_1, individual_id)
-        enc.delete_cascade()
+        if enc:
+            enc.delete_cascade()

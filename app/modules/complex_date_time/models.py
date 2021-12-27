@@ -10,7 +10,7 @@ import enum
 from app.extensions import db
 import logging
 
-# import app.extensions.logging as AuditLog
+import app.extensions.logging as AuditLog
 from datetime import datetime
 from dateutil import tz
 from app.utils import normalized_timezone_string
@@ -20,6 +20,10 @@ log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
 
 class Specificities(str, enum.Enum):
+    @classmethod
+    def has_value(cls, value):
+        return value in cls._value2member_map_
+
     year = 'year'
     month = 'month'
     day = 'day'
@@ -90,6 +94,75 @@ class ComplexDateTime(db.Model):
             parts.append(1)  # add 1st of month
         # will throw ValueError if bunk data passed in
         dt = datetime(*parts, tzinfo=tz.gettz(timezone))
+        return ComplexDateTime(dt, timezone, specificity)
+
+    # this accepts a dict which is roughly "user input".  it will look for a mix of items passed in,
+    #   but requires `time` to be one of them.   valid combinations include:
+    #   1. time, timeSpecificity - time is iso8601 and must have timezone
+    #   2. time = {datetime:, timezone:, specificity:} - timezone optional here iff included in datetime iso8601
+    #   3. time = {components: [], timezone:, specificity:} - components = [Y, M, D, h, m, s]; specificity is optional
+    #  note: heavy-lifting really done by from_dict() below
+    @classmethod
+    def from_data(cls, data):
+        if not data or not isinstance(data, dict) or 'time' not in data:
+            AuditLog.frontend_fault(
+                log, f'invalid data for ComplexDateTime.from_data(): {data}'
+            )
+            raise ValueError(f'invalid data: {data}')
+        time_data = data['time']
+        if isinstance(time_data, str):
+            time_data = {
+                'datetime': data['time'],
+                'specificity': data.get('timeSpecificity'),
+            }
+        elif not isinstance(time_data, dict):
+            AuditLog.frontend_fault(
+                log, f'invalid data type for ComplexDateTime.from_data(): {time_data}'
+            )
+            raise ValueError(f'invalid data: {time_data}')
+        return cls.from_dict(time_data)
+
+    # see notes above; this only wants a dict passed in
+    @classmethod
+    def from_dict(cls, data):
+        if not data or not isinstance(data, dict):
+            AuditLog.frontend_fault(
+                log, f'invalid data for ComplexDateTime.from_dict(): {data}'
+            )
+            raise ValueError(f'time parsing error, invalid data: {data}')
+        if 'components' in data:
+            if not isinstance(data['components'], list):
+                AuditLog.frontend_fault(
+                    log,
+                    f'components element not a list in ComplexDateTime.from_dict(): {data}',
+                )
+                raise ValueError('time parsing error, components must be a list')
+            return cls.from_list(
+                data['components'], data.get('timezone'), data.get('specificity')
+            )
+        dt_str = data.get('datetime')
+        if not dt_str:
+            AuditLog.frontend_fault(
+                log, f'no datetime for ComplexDateTime.from_dict(): {data}'
+            )
+            raise ValueError('time parsing error, missing datetime value')
+        dt = datetime.fromisoformat(dt_str)  # will throw ValueError if invalid
+        timezone = data.get('timezone')
+        if not timezone:  # hope we can get one from datetime
+            if not dt.tzinfo:
+                AuditLog.frontend_fault(
+                    log,
+                    f'no timezone in data and cannot be derived from datetime: {data}',
+                )
+                raise ValueError(
+                    f'time parsing error, timezone not passed and cannot be derived from {dt_str}'
+                )
+            timezone = normalized_timezone_string(dt)
+        spec_str = data.get('specificity')
+        if not spec_str or not Specificities.has_value(spec_str):
+            AuditLog.frontend_fault(log, f'no/invalid specificity: {data}')
+            raise ValueError('time parsing error, invalid specificity')
+        specificity = Specificities[spec_str]
         return ComplexDateTime(dt, timezone, specificity)
 
     def __repr__(self):

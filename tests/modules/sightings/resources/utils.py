@@ -50,6 +50,7 @@ def create_sighting(
     sighting_data=None,
     expected_status_code=200,
     expected_error=None,
+    commit_expected_status_code=200,
 ):
 
     if not sighting_data:
@@ -100,8 +101,10 @@ def create_sighting(
             flask_app_client,
             user,
             uuids['asset_group_sighting'],
+            expected_status_code=commit_expected_status_code,
         )
-        uuids.update(sighting_uuids)
+        if sighting_uuids:  # empty if non-200 above
+            uuids.update(sighting_uuids)
 
     return uuids
 
@@ -200,13 +203,20 @@ def _create_asset_group_extract_uuids(
     return uuids
 
 
-def _commit_sighting_extract_uuids(flask_app_client, user, asset_group_sighting_guid):
+def _commit_sighting_extract_uuids(
+    flask_app_client, user, asset_group_sighting_guid, expected_status_code=200
+):
     uuids = {}
 
     # Commit the sighting
     commit_resp = asset_group_utils.commit_asset_group_sighting(
-        flask_app_client, user, asset_group_sighting_guid
+        flask_app_client,
+        user,
+        asset_group_sighting_guid,
+        expected_status_code=expected_status_code,
     )
+    if expected_status_code != 200:
+        return
     sighting_uuid = commit_resp.json['guid']
 
     # Return all the uuids of things created so that each test can do with them what they choose.

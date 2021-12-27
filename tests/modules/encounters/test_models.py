@@ -75,3 +75,24 @@ def test_owned_encounters_ordering(db, request):
     request.addfinalizer(cleanup)
 
     assert public_owner.owned_encounters == encounters
+
+
+@pytest.mark.skipif(module_unavailable('encounters'), reason='Encounters module disabled')
+def test_encounter_time(db, request):
+    from app.modules.users.models import User
+    from datetime import datetime
+    from app.modules.complex_date_time.models import ComplexDateTime, Specificities
+    from app.modules.encounters.models import Encounter
+
+    public_owner = User.get_public_user()
+    test_encounter = test_utils.generate_owned_encounter(public_owner)
+    request.addfinalizer(test_encounter.delete)
+
+    dt = datetime.utcnow()
+    cdt = ComplexDateTime(dt, 'US/Pacific', Specificities.day)
+    test_encounter.time = cdt
+    with db.session.begin():
+        db.session.add(test_encounter)
+
+    again = Encounter.query.get(test_encounter.guid)
+    assert cdt.isoformat_in_timezone() == again.time.isoformat_in_timezone()

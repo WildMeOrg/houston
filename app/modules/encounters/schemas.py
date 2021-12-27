@@ -20,6 +20,8 @@ class BaseEncounterSchema(ModelSchema):
     owner = base_fields.Nested('PublicUserSchema', many=False)
     hasView = base_fields.Function(Encounter.current_user_has_view_permission)
     hasEdit = base_fields.Function(Encounter.current_user_has_edit_permission)
+    time = base_fields.Function(Encounter.get_time_isoformat_in_timezone)
+    timeSpecificity = base_fields.Function(Encounter.get_time_specificity)
 
     class Meta:
         # pylint: disable=missing-docstring
@@ -66,6 +68,8 @@ class AugmentedEdmEncounterSchema(BaseEncounterSchema):
             'hasView',
             'hasEdit',
             'annotations',
+            'time',
+            'timeSpecificity',
         )
 
 
@@ -86,6 +90,8 @@ class AugmentedIndividualApiEncounterSchema(BaseEncounterSchema):
             'hasEdit',
             'asset_group_sighting_encounter_guid',
             'encounters',
+            'time',
+            'timeSpecificity',
         )
         dump_only = BaseEncounterSchema.Meta.dump_only + ('encounters',)
 

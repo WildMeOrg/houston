@@ -92,6 +92,11 @@ class Encounter(db.Model, FeatherModel):
         'Annotation', back_populates='encounter', order_by='Annotation.guid'
     )
 
+    time_guid = db.Column(
+        db.GUID, db.ForeignKey('complex_date_time.guid'), index=True, nullable=True
+    )
+    time = db.relationship('ComplexDateTime')
+
     def __repr__(self):
         return (
             '<{class_name}('
@@ -108,6 +113,21 @@ class Encounter(db.Model, FeatherModel):
 
     def get_sighting(self):
         return self.sighting
+
+    def get_time_isoformat_in_timezone(self):
+        return self.time.isoformat_in_timezone() if self.time else None
+
+    def get_time_specificity(self):
+        return self.time.specificity if self.time else None
+
+    # this does the heavy lifting of trying to set time from user-provided data
+    def set_time_from_data(self, data):
+        if not data or 'time' not in data:
+            return  # no need to try, time not being set
+        from app.modules.complex_date_time.models import ComplexDateTime
+
+        # will raise ValueError if data no good
+        self.time = ComplexDateTime.from_data(data)
 
     # not going to check for ownership by User.get_public_user() because:
     #  a) this allows for other-user-owned data to be toggled to public

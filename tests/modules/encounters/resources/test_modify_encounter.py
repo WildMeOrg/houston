@@ -24,6 +24,8 @@ def test_modify_encounter(
 ):
     # pylint: disable=invalid-name
     from app.modules.encounters.models import Encounter
+    from datetime import datetime
+    from app.modules.complex_date_time.models import ComplexDateTime, Specificities
 
     uuids = enc_utils.create_encounter(flask_app_client, researcher_1, request, test_root)
     first_enc_guid = uuids['encounters'][0]
@@ -77,6 +79,93 @@ def test_modify_encounter(
         flask_app_client, new_encounter_1.guid, researcher_2, patch_data
     )
 
+    # test setting ComplexDateTime time value
+    dt = datetime.utcnow()
+    dt_string = dt.isoformat()  # first test no time zone (error)
+    patch_data = [
+        utils.patch_test_op(researcher_2.password_secret),
+        utils.patch_replace_op('time', dt_string),
+    ]
+    patch_res = enc_utils.patch_encounter(
+        flask_app_client, new_encounter_1.guid, researcher_2, patch_data, 409
+    )
+    assert 'does not have time zone' in patch_res.json['message']
+
+    # now invalid specificity
+    patch_data = [
+        utils.patch_test_op(researcher_2.password_secret),
+        utils.patch_replace_op('timeSpecificity', 'fubar'),
+    ]
+    patch_res = enc_utils.patch_encounter(
+        flask_app_client,
+        new_encounter_1.guid,
+        researcher_2,
+        patch_data,
+        409,
+        'invalid specificity: fubar',
+    )
+
+    # should be sufficient to set a (new) time
+    test_dt = '1999-01-01T12:34:56-07:00'
+    patch_data = [
+        utils.patch_test_op(researcher_2.password_secret),
+        utils.patch_replace_op('time', test_dt),
+        utils.patch_replace_op('timeSpecificity', 'month'),
+    ]
+    patch_res = enc_utils.patch_encounter(
+        flask_app_client, new_encounter_1.guid, researcher_2, patch_data
+    )
+    test_enc = Encounter.query.get(new_encounter_1.guid)
+    assert test_enc.time
+    assert test_enc.time.specificity == Specificities.month
+    assert test_enc.time.timezone == 'UTC-0700'
+    assert test_enc.time.isoformat_in_timezone() == test_dt
+
+    # now update just the specificity
+    patch_data = [
+        utils.patch_test_op(researcher_2.password_secret),
+        utils.patch_replace_op('timeSpecificity', 'day'),
+    ]
+    patch_res = enc_utils.patch_encounter(
+        flask_app_client, new_encounter_1.guid, researcher_2, patch_data
+    )
+    test_enc = Encounter.query.get(new_encounter_1.guid)
+    assert test_enc.time
+    assert test_enc.time.specificity == Specificities.day
+    assert test_enc.time.isoformat_in_timezone() == test_dt
+
+    # now update just the date/time
+    test_dt = datetime.utcnow().isoformat() + '+03:00'
+    patch_data = [
+        utils.patch_test_op(researcher_2.password_secret),
+        utils.patch_replace_op('time', test_dt),
+    ]
+    patch_res = enc_utils.patch_encounter(
+        flask_app_client, new_encounter_1.guid, researcher_2, patch_data
+    )
+    test_enc = Encounter.query.get(new_encounter_1.guid)
+    assert test_enc.time
+    assert test_enc.time.specificity == Specificities.day
+    assert test_enc.time.timezone == 'UTC+0300'
+    assert test_enc.time.isoformat_in_timezone() == test_dt
+
+    # now lets remove it!
+    cdt_guid = test_enc.time_guid
+    cdt = ComplexDateTime.query.get(cdt_guid)
+    assert cdt
+    patch_data = [
+        utils.patch_test_op(researcher_2.password_secret),
+        utils.patch_remove_op('time'),
+    ]
+    patch_res = enc_utils.patch_encounter(
+        flask_app_client, new_encounter_1.guid, researcher_2, patch_data
+    )
+    test_enc = Encounter.query.get(new_encounter_1.guid)
+    cdt = ComplexDateTime.query.get(cdt_guid)
+    assert not test_enc.time_guid
+    assert not test_enc.time
+    assert not cdt
+
     # Attach some assets and annotations
     from app.modules.asset_groups.models import AssetGroup
 
@@ -103,7 +192,6 @@ def test_modify_encounter(
             'id': str(new_encounter_1.guid),
             'guid': str(new_encounter_1.guid),
             'locationId': new_val,
-            'timeValues': [None, None, None, 0, 0],
             'version': new_encounter_1.version,
             'createdHouston': new_encounter_1.created.isoformat() + '+00:00',
             'updatedHouston': new_encounter_1.updated.isoformat() + '+00:00',
@@ -176,3 +264,130 @@ def test_modify_encounter_error(
             patch_data,
             expected_status_code=500,
         )
+
+
+@pytest.mark.skipif(module_unavailable('encounters'), reason='Encounters module disabled')
+def test_create_encounter_time_test(
+    flask_app, flask_app_client, researcher_1, request, test_root
+):
+    from tests.modules.sightings.resources import utils as sighting_utils
+    from app.modules.encounters.models import Encounter
+    from app.modules.complex_date_time.models import Specificities
+
+    # test with invalid time
+    sighting_data = {
+        'encounters': [
+            {
+                'time': 'fubar',
+            }
+        ],
+        'startTime': '2000-01-01T01:01:01Z',
+        'locationId': 'test',
+    }
+    uuids = sighting_utils.create_sighting(
+        flask_app_client,
+        researcher_1,
+        request,
+        test_root,
+        sighting_data=sighting_data,
+        expected_status_code=200,
+        commit_expected_status_code=400,
+    )
+
+    # now ok, but missing timezone
+    sighting_data['encounters'][0]['time'] = '1999-12-31T23:59:59'
+    uuids = sighting_utils.create_sighting(
+        flask_app_client,
+        researcher_1,
+        request,
+        test_root,
+        sighting_data=sighting_data,
+        expected_status_code=200,
+        commit_expected_status_code=400,
+    )
+
+    # timezone included, but no specificity
+    sighting_data['encounters'][0]['time'] = '1999-12-31T23:59:59+03:00'
+    uuids = sighting_utils.create_sighting(
+        flask_app_client,
+        researcher_1,
+        request,
+        test_root,
+        sighting_data=sighting_data,
+        expected_status_code=200,
+        commit_expected_status_code=400,
+    )
+
+    # getting closer; bad specificity
+    sighting_data['encounters'][0]['timeSpecificity'] = 'fubar'
+    uuids = sighting_utils.create_sighting(
+        flask_app_client,
+        researcher_1,
+        request,
+        test_root,
+        sighting_data=sighting_data,
+        expected_status_code=200,
+        commit_expected_status_code=400,
+    )
+
+    # finally; ok
+    sighting_data['encounters'][0]['timeSpecificity'] = 'day'
+    uuids = sighting_utils.create_sighting(
+        flask_app_client,
+        researcher_1,
+        request,
+        test_root,
+        sighting_data=sighting_data,
+        expected_status_code=200,
+    )
+    assert uuids
+    test_enc = Encounter.query.get(uuids['encounters'][0])
+    assert test_enc
+    assert test_enc.time
+    assert test_enc.time.timezone == 'UTC+0300'
+    assert test_enc.time.specificity == Specificities.day
+    assert test_enc.time.isoformat_in_timezone() == sighting_data['encounters'][0]['time']
+
+    # now test dict-value version
+    test_dt_str = '2000-01-01T01:02:03'
+    del sighting_data['encounters'][0]['timeSpecificity']
+    sighting_data['encounters'][0]['time'] = {
+        'datetime': test_dt_str,
+        'timezone': 'US/Eastern',
+        'specificity': 'month',
+    }
+    uuids = sighting_utils.create_sighting(
+        flask_app_client,
+        researcher_1,
+        request,
+        test_root,
+        sighting_data=sighting_data,
+        expected_status_code=200,
+    )
+    assert uuids
+    test_enc = Encounter.query.get(uuids['encounters'][0])
+    assert test_enc
+    assert test_enc.time
+    assert test_enc.time.specificity == Specificities.month
+    assert test_enc.time.isoformat_utc() == test_dt_str
+
+    # now list/components
+    sighting_data['encounters'][0]['time'] = {
+        'components': [2021, 12],
+        'timezone': 'US/Mountain',
+        # specificity should be deduced as month
+    }
+    uuids = sighting_utils.create_sighting(
+        flask_app_client,
+        researcher_1,
+        request,
+        test_root,
+        sighting_data=sighting_data,
+        expected_status_code=200,
+    )
+    assert uuids
+    test_enc = Encounter.query.get(uuids['encounters'][0])
+    assert test_enc
+    assert test_enc.time
+    assert test_enc.time.specificity == Specificities.month
+    assert test_enc.time.isoformat_utc().startswith('2021-12-01T')

@@ -286,7 +286,8 @@ class Sighting(db.Model, FeatherModel):
 
     def delete(self):
         AuditLog.delete_object(log, self)
-
+        while self.sighting_assets:
+            db.session.delete(self.sighting_assets.pop())
         with db.session.begin():
             db.session.delete(self)
 

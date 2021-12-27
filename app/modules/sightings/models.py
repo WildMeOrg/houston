@@ -71,6 +71,11 @@ class Sighting(db.Model, FeatherModel):
 
     name = db.Column(db.String(length=120), nullable=True)
 
+    time_guid = db.Column(
+        db.GUID, db.ForeignKey('complex_date_time.guid'), index=True, nullable=False
+    )
+    time = db.relationship('ComplexDateTime')
+
     encounters = db.relationship(
         'Encounter', back_populates='sighting', order_by='Encounter.guid'
     )
@@ -140,6 +145,21 @@ class Sighting(db.Model, FeatherModel):
     def add_encounter(self, encounter):
         if encounter not in self.encounters:
             self.encounters.append(encounter)
+
+    def get_time_isoformat_in_timezone(self):
+        return self.time.isoformat_in_timezone() if self.time else None
+
+    def get_time_specificity(self):
+        return self.time.specificity if self.time else None
+
+    # this does the heavy lifting of trying to set time from user-provided data
+    def set_time_from_data(self, data):
+        if not data or 'time' not in data:
+            return  # no need to try, time not being set
+        from app.modules.complex_date_time.models import ComplexDateTime
+
+        # will raise ValueError if data no good
+        self.time = ComplexDateTime.from_data(data)
 
     def get_assets(self):
         return [ref.asset for ref in self.sighting_assets]

@@ -17,6 +17,8 @@ class BaseSightingSchema(ModelSchema):
 
     hasView = base_fields.Function(Sighting.current_user_has_view_permission)
     hasEdit = base_fields.Function(Sighting.current_user_has_edit_permission)
+    time = base_fields.Function(Sighting.get_time_isoformat_in_timezone)
+    timeSpecificity = base_fields.Function(Sighting.get_time_specificity)
 
     class Meta:
         # pylint: disable=missing-docstring
@@ -36,6 +38,8 @@ class CreateSightingSchema(BaseSightingSchema):
             Sighting.updated.key,
             'hasView',
             'hasEdit',
+            'time',
+            'timeSpecificity',
         )
         dump_only = BaseSightingSchema.Meta.dump_only + (
             Sighting.created.key,
@@ -108,6 +112,8 @@ class AugmentedEdmSightingSchema(TimedSightingSchema):
             'featuredAssetGuid',
             'stage',
             'creator',
+            'time',
+            'timeSpecificity',
         )
 
 

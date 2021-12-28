@@ -376,6 +376,39 @@ class Sighting(db.Model, FeatherModel):
             request_headers=request.headers,
         )
 
+    def get_jobs_json(self):
+        job_data = []
+        for job in self.jobs:
+            from app.modules.sightings.schemas import DetailedSightingJobSchema
+
+            schema = DetailedSightingJobSchema()
+            this_job = schema.dump(self.jobs[job]).data
+            this_job['job_id'] = job
+            job_data.append(this_job)
+
+        return job_data
+
+    def get_debug_sighting_json(self):
+        response = current_app.edm.get_dict('sighting.data_complete', self.guid)
+        if not isinstance(response, dict):  # some non-200 thing, incl 404
+            return response
+        if not response.get('success', False):
+            return response
+
+        from app.modules.sightings.schemas import DebugSightingSchema
+
+        schema = DebugSightingSchema()
+        edm_response = response['result']
+        for encounter in edm_response.get('encounters') or []:
+            # EDM returns strings for decimalLatitude and decimalLongitude
+            if encounter.get('decimalLongitude'):
+                encounter['decimalLongitude'] = float(encounter['decimalLongitude'])
+            if encounter.get('decimalLatitude'):
+                encounter['decimalLatitude'] = float(encounter['decimalLatitude'])
+        edm_response.update(schema.dump(self).data)
+
+        return self._augment_edm_json(edm_response)
+
     def get_augmented_sighting_json(self):
         response = current_app.edm.get_dict('sighting.data_complete', self.guid)
         if not isinstance(response, dict):  # some non-200 thing, incl 404
@@ -726,7 +759,7 @@ class Sighting(db.Model, FeatherModel):
                     stage_base_sizes[SightingStage.identification]
                     - stage_base_sizes[self.stage]
                 )
-                complete_jobs = [job for job in self.jobs if not job['active']]
+                complete_jobs = [job for job in self.jobs.values() if not job['active']]
                 completion += size_range * (len(complete_jobs) / len(self.jobs))
         return completion
 

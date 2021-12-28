@@ -277,7 +277,7 @@ class AdminUserInitialized(Resource):
                 password,
                 is_internal=True,
                 is_admin=True,
-                is_staff=True,
+                is_staff=False,
                 is_researcher=True,
                 is_contributor=True,
                 is_user_manager=True,

@@ -31,6 +31,27 @@ api = Namespace(
 )  # pylint: disable=invalid-name
 
 
+# the resolve_object_by_model returns a tuple if the return_not_found is set as it is here
+# a common helper to get the asset_group object or raise 428 if remote only
+def _get_asset_group_with_428(asset_group):
+    asset_group, asset_group_guids = asset_group
+    if asset_group is not None:
+        return asset_group
+
+    # We did not find the asset_group by its UUID in the Houston database
+    # We now need to check the GitlabManager for the existence of that repo
+    asset_group_guid = asset_group_guids[0]
+    assert isinstance(asset_group_guid, uuid.UUID)
+
+    if AssetGroup.is_on_remote(asset_group_guid):
+        # Asset_group is not local but is on remote
+        log.info(f'Asset_group {asset_group_guid} on remote but not local')
+        raise werkzeug.exceptions.PreconditionRequired
+    else:
+        # Asset_group neither local nor remote
+        return None
+
+
 @api.route('/')
 class AssetGroups(Resource):
     """
@@ -138,26 +159,6 @@ class AssetGroupByID(Resource):
     Manipulations with a specific Asset_group.
     """
 
-    # the resolve_object_by_model returns a tuple if the return_not_found is set as it is here
-    # a common helper to get the asset_group object or raise 428 if remote only
-    def _get_asset_group_with_428(self, asset_group):
-        asset_group, asset_group_guids = asset_group
-        if asset_group is not None:
-            return asset_group
-
-        # We did not find the asset_group by its UUID in the Houston database
-        # We now need to check the GitlabManager for the existence of that repo
-        asset_group_guid = asset_group_guids[0]
-        assert isinstance(asset_group_guid, uuid.UUID)
-
-        if AssetGroup.is_on_remote(asset_group_guid):
-            # Asset_group is not local but is on remote
-            log.info(f'Asset_group {asset_group_guid} on remote but not local')
-            raise werkzeug.exceptions.PreconditionRequired
-        else:
-            # Asset_group neither local nor remote
-            return None
-
     @api.permission_required(
         permissions.ModuleOrObjectAccessPermission,
         kwargs_on_request=lambda kwargs: {
@@ -178,7 +179,7 @@ class AssetGroupByID(Resource):
 
         Otherwise the asset_group will be returned
         """
-        asset_group = self._get_asset_group_with_428(asset_group)
+        asset_group = _get_asset_group_with_428(asset_group)
         if asset_group is None:
             raise werkzeug.exceptions.NotFound
 
@@ -246,7 +247,7 @@ class AssetGroupByID(Resource):
 
         Otherwise the asset_group will be patched
         """
-        asset_group = self._get_asset_group_with_428(asset_group)
+        asset_group = _get_asset_group_with_428(asset_group)
         if asset_group is None:
             raise werkzeug.exceptions.NotFound
 
@@ -276,7 +277,7 @@ class AssetGroupByID(Resource):
         Delete an Asset_group by ID.
         """
         _, asset_group_id = asset_group
-        asset_group = self._get_asset_group_with_428(asset_group)
+        asset_group = _get_asset_group_with_428(asset_group)
 
         if asset_group is not None:
             try:
@@ -293,6 +294,49 @@ class AssetGroupByID(Resource):
             delete_remote.delay(str(asset_group_id))
 
         return None
+
+
+@api.login_required(oauth_scopes=['asset_groups:read'])
+@api.route('/<uuid:asset_group_guid>/debug', doc=False)
+@api.resolve_object_by_model(AssetGroup, 'asset_group', return_not_found=True)
+@api.response(
+    code=HTTPStatus.NOT_FOUND,
+    description='Asset_group not found.',
+)
+@api.response(
+    code=HTTPStatus.PRECONDITION_REQUIRED,
+    description='Asset_group not local, need to post',
+)
+class AssetGroupByIDDebug(Resource):
+    """
+    Manipulations with a specific Asset_group.
+    """
+
+    @api.permission_required(
+        permissions.ModuleOrObjectAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'module': AssetGroup,
+            'obj': kwargs['asset_group'][0],
+            'action': AccessOperation.READ_PRIVILEGED,
+        },
+    )
+    @api.response(schemas.DebugAssetGroupSchema())
+    def get(self, asset_group):
+        """
+        Get Asset_group details by ID.
+
+        If asset_group is not found locally in database, but is on the remote Github,
+        a 428 PRECONDITION_REQUIRED will be returned.
+
+        If asset_group is not local and not on remote github, 404 will be returned.
+
+        Otherwise the asset_group will be returned
+        """
+        asset_group = _get_asset_group_with_428(asset_group)
+        if asset_group is None:
+            raise werkzeug.exceptions.NotFound
+
+        return asset_group
 
 
 @api.route('/sighting/<uuid:asset_group_sighting_guid>')

@@ -719,3 +719,22 @@ class SightingImageByID(Resource):
             except HoustonException as ex:
                 abort(ex.status_code, ex.message)
             return send_file(image_path, attachment_filename='sighting_image.jpg')
+
+
+@api.route('/<uuid:sighting_guid>/debug', doc=False)
+@api.login_required(oauth_scopes=['sightings:read'])
+@api.response(
+    code=HTTPStatus.NOT_FOUND,
+    description='Sighting not found.',
+)
+@api.resolve_object_by_model(Sighting, 'sighting')
+class SightingDebugByID(Resource):
+    @api.permission_required(
+        permissions.ObjectAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'obj': kwargs['sighting'],
+            'action': AccessOperation.READ_PRIVILEGED,
+        },
+    )
+    def get(self, sighting):
+        return sighting.get_debug_sighting_json()

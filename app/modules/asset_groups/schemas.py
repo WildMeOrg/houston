@@ -14,7 +14,8 @@ from .models import AssetGroup, AssetGroupSighting
 # Sighting endpoints to standardize frontend interactions. For that reason we need
 # to know which sighting fields to expect in an AssetGroupSighting.config dict
 SIGHTING_FIELDS_IN_AGS_CONFIG = {
-    'startTime',
+    'time',
+    'timeSpecificity',
     'decimalLatitude',
     'decimalLongitude',
     'encounters',
@@ -132,7 +133,10 @@ class AssetGroupSightingAsSightingSchema(ModelSchema):
 
     # Note: these config_field_getter vars should conform to SIGHTING_FIELDS_IN_AGS_CONFIG
     # at the top of this file
-    startTime = base_fields.Function(AssetGroupSighting.config_field_getter('startTime'))
+    time = base_fields.Function(AssetGroupSighting.config_field_getter('time'))
+    timeSpecificity = base_fields.Function(
+        AssetGroupSighting.config_field_getter('timeSpecificity')
+    )
     encounters = base_fields.Nested(
         AssetGroupSightingEncounterSchema,
         attribute='get_encounters_json',

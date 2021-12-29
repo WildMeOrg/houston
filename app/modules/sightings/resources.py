@@ -338,6 +338,7 @@ class Sightings(Resource):
             version=result_data.get('version', 2),
             stage=SightingStage.processed,
         )
+        sighting.set_time_from_data(request_in)
         AuditLog.user_create_object(log, sighting, duration=timer.elapsed())
 
         assets = None

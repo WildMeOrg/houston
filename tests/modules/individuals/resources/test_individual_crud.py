@@ -114,7 +114,8 @@ def test_read_encounter_from_edm(db, flask_app_client):
 def test_add_remove_encounters(db, flask_app_client, researcher_1, request, test_root):
 
     data_in = {
-        'startTime': datetime.datetime.now().isoformat() + '+00:00',
+        'time': datetime.datetime.now().isoformat() + '+00:00',
+        'timeSpecificity': 'time',
         'context': 'test',
         'locationId': 'test',
         'encounters': [
@@ -263,7 +264,8 @@ def test_individual_has_detailed_encounter_from_edm(
                 'timeSpecificity': 'time',
             }
         ],
-        'startTime': '2000-01-01T01:01:01+00:00',
+        'time': '2000-01-01T01:01:01+00:00',
+        'timeSpecificity': 'time',
         'locationId': 'test',
     }
 

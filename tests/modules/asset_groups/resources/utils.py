@@ -24,7 +24,8 @@ EXPECTED_ASSET_GROUP_SIGHTING_FIELDS = {
     'decimalLongitude',
     'encounters',
     'locationId',
-    'startTime',
+    'time',
+    'timeSpecificity',
     'completion',
     'assets',
 }
@@ -209,7 +210,7 @@ def patch_asset_group_sighting_as_sighting(
     patch_path,
     data,
     expected_status_code=200,
-    response_200={'guid', 'stage', 'completion', 'assets', 'startTime', 'locationId'},
+    response_200={'guid', 'stage', 'completion', 'assets', 'time', 'timeSpecificity', 'locationId'},
 ):
     with flask_app_client.login(user, auth_scopes=('asset_group_sightings:write',)):
         response = flask_app_client.patch(
@@ -219,7 +220,7 @@ def patch_asset_group_sighting_as_sighting(
         )
 
     if expected_status_code == 200:
-        # startTime and locationId are only present in the _as_sighting endpoints,
+        # time and locationId are only present in the _as_sighting endpoints,
         # since they are in the config of a standard AGS
         test_utils.validate_dict_response(response, 200, response_200)
     elif expected_status_code == 400:
@@ -268,14 +269,15 @@ def read_asset_group_sighting_as_sighting(
         scopes='asset_group_sightings:read',
         path=f'{PATH}sighting/as_sighting/{asset_group_sighting_guid}',
         expected_status_code=expected_status_code,
-        # startTime and locationId are only present in the _as_sighting endpoints,
+        # time and locationId are only present in the _as_sighting endpoints,
         # since they are in the config of a standard AGS
         response_200={
             'guid',
             'stage',
             'completion',
             'assets',
-            'startTime',
+            'time',
+            'timeSpecificity',
             'locationId',
             'creator',
             'asset_group_guid',
@@ -308,7 +310,8 @@ class AssetGroupCreationData(object):
                 'transactionId': transaction_id,
                 'sightings': [
                     {
-                        'startTime': '2000-01-01T01:01:01Z',
+                        'time': '2000-01-01T01:01:01+00:00',
+                        'timeSpecificity': 'time',
                         # Yes, that really is a location, it's a village in Wiltshire https://en.wikipedia.org/wiki/Tiddleywink
                         'locationId': 'Tiddleywink',
                         'encounters': [{}],
@@ -327,7 +330,8 @@ class AssetGroupCreationData(object):
         self.content['sightings'].append(
             {
                 'locationId': location,
-                'startTime': '2000-01-01T01:01:01Z',
+                'time': '2000-01-01T01:01:01+00:00',
+                'timeSpecificity': 'time',
                 'assetReferences': [],
                 'encounters': [],
             }

@@ -33,7 +33,7 @@ def test_create_failures(flask_app_client, test_root, researcher_1, request):
         flask_app_client, researcher_1, request, test_root, data_in, 400, expected_error
     )
 
-    data_in = {'locationId': 'wibble', 'startTime': timestamp}
+    data_in = {'locationId': 'wibble', 'time': timestamp, 'timeSpecificity': 'time'}
     expected_error = 'encounters field missing from Sighting 1'
     sighting_utils.create_sighting(
         flask_app_client, researcher_1, request, test_root, data_in, 400, expected_error
@@ -42,7 +42,8 @@ def test_create_failures(flask_app_client, test_root, researcher_1, request):
     # has encounters, but bunk assetReferences
     data_in = {
         'encounters': [{}],
-        'startTime': timestamp,
+        'time': timestamp,
+        'timeSpecificity': 'time',
         'assetReferences': [{'fail': 'fail'}],
         'context': 'test',
         'locationId': 'test',
@@ -72,7 +73,8 @@ def test_create_and_modify_and_delete_sighting(
     orig_ct = test_utils.all_count(db)
     data_in = {
         'encounters': [{}, {}],
-        'startTime': timestamp,
+        'time': timestamp,
+        'timeSpecificity': 'time',
         'context': 'test',
         'locationId': 'test',
     }
@@ -117,7 +119,8 @@ def test_create_and_modify_and_delete_sighting(
         'createdEDM',
         'customFields',
         'locationId',
-        'startTime',
+        'time',
+        'timeSpecificity',
         'encounterCounts',
         'version',
         'hasView',
@@ -235,7 +238,8 @@ def test_create_anon_and_delete_sighting(
     request.addfinalizer(lambda: tus_utils.cleanup_tus_dir(transaction_id))
     tus_utils.prep_tus_dir(test_root, filename='fluke.jpg')
     sighting_data = {
-        'startTime': timestamp,
+        'time': timestamp,
+        'timeSpecificity': 'time',
         'context': 'test',
         'locationId': 'test',
         'encounters': [{}],
@@ -312,7 +316,8 @@ def test_edm_and_houston_encounter_data_within_sightings(
     individual_json = None
     try:
         data_in = {
-            'startTime': timestamp,
+            'time': timestamp,
+            'timeSpecificity': 'time',
             'context': 'test',
             'locationId': 'test',
             'encounters': [
@@ -408,7 +413,8 @@ def test_edm_and_houston_encounter_data_within_sightings(
 # This is now disabled, so make sure that it is
 def test_create_old_sighting(flask_app_client, researcher_1):
     sighting_data = {
-        'startTime': timestamp,
+        'time': timestamp,
+        'timeSpecificity': 'time',
         'context': 'test',
         'locationId': 'test',
         'encounters': [

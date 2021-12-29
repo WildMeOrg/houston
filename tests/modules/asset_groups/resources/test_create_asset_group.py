@@ -58,11 +58,17 @@ def test_create_asset_group(flask_app_client, researcher_1, readonly_user, test_
 
         data.set_field('sightings', [{}])
         data.set_sighting_field(0, 'locationId', 'Lacock')
-        resp_msg = 'startTime field missing from Sighting 1'
+        resp_msg = 'time field missing from Sighting 1'
         asset_group_utils.create_asset_group(
             flask_app_client, researcher_1, data.get(), 400, resp_msg
         )
-        data.set_sighting_field(0, 'startTime', 'never')
+        data.set_sighting_field(0, 'time', 'never')
+
+        resp_msg = 'timeSpecificity field missing from Sighting 1'
+        asset_group_utils.create_asset_group(
+            flask_app_client, researcher_1, data.get(), 400, resp_msg
+        )
+        data.set_sighting_field(0, 'timeSpecificity', 'time')
 
         resp_msg = 'encounters field missing from Sighting 1'
         asset_group_utils.create_asset_group(

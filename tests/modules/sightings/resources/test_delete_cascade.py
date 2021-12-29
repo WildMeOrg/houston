@@ -36,7 +36,8 @@ def test_sighting_cascade(flask_app_client, test_root, researcher_1, request, db
     orig_ct = test_utils.all_count(db)
     data_in = {
         'encounters': [{}, {}],
-        'startTime': timestamp,
+        'time': timestamp,
+        'timeSpecificity': 'time',
         'locationId': 'test',
     }
     uuids = sighting_utils.create_sighting(
@@ -89,7 +90,8 @@ def test_individual_cascade(flask_app_client, test_root, researcher_1, request, 
     orig_ct = test_utils.all_count(db)
     data_in = {
         'encounters': [{}, {}],
-        'startTime': timestamp,
+        'time': timestamp,
+        'timeSpecificity': 'time',
         'locationId': 'test',
     }
     uuids = individual_utils.create_individual_and_sighting(
@@ -165,7 +167,8 @@ def test_multi_cascade(flask_app_client, test_root, researcher_1, request, db):
     orig_ct = test_utils.all_count(db)
     data_in = {
         'encounters': [{}, {}],
-        'startTime': timestamp,
+        'time': timestamp,
+        'timeSpecificity': 'time',
         'locationId': 'test',
     }
     uuids = individual_utils.create_individual_and_sighting(

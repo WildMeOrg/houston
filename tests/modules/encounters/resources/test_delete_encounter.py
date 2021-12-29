@@ -11,7 +11,7 @@ import pytest
 from tests.utils import module_unavailable
 
 
-timestamp = datetime.datetime.now().isoformat() + 'Z'
+timestamp = datetime.datetime.now().isoformat() + '+00:00'
 
 
 @pytest.mark.skipif(module_unavailable('encounters'), reason='Encounters module disabled')
@@ -24,7 +24,8 @@ def test_delete_method(
     orig_ct = test_utils.all_count(db)
 
     data_in = {
-        'startTime': timestamp,
+        'time': timestamp,
+        'timeSpecificity': 'time',
         'locationId': 'test_delete_method',
         'encounters': [
             {},

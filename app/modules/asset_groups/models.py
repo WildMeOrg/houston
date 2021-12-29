@@ -234,6 +234,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
             stage=SightingStage.identification,
             version=result_data.get('version', 2),
         )
+        sighting.set_time_from_data(self.config)
         with db.session.begin(subtransactions=True):
             db.session.add(sighting)
         # Add the assets for all of the encounters to the created sighting object

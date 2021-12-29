@@ -475,12 +475,13 @@ def random_decimal_longitude():
 
 
 def isoformat_timestamp_now():
-    return datetime.now().isoformat() + 'Z'
+    return datetime.now().isoformat() + '+00:00'
 
 
 def dummy_sighting_info():
     return {
-        'startTime': isoformat_timestamp_now(),
+        'time': isoformat_timestamp_now(),
+        'timeSpecificity': 'time',
         'locationId': 'narnia',
         'encounters': [{'guid': uuid.uuid4()}],
         'assetReferences': [],

@@ -39,8 +39,8 @@ def test_asset_group_sightings(session, login, codex_url, test_root):
         codex_url,
         [test_root / 'zebra.jpg'],
     )
-    # 2021-11-09T11:40:53.802Z
-    encounter_timestamp = datetime.datetime.now().isoformat()[:-3] + 'Z'
+    # 2021-11-09T11:40:53.802+00:00
+    encounter_timestamp = datetime.datetime.now().isoformat()[:-3] + '+00:00'
     response = session.post(
         codex_url('/api/v1/asset_groups/'),
         json={
@@ -59,6 +59,7 @@ def test_asset_group_sightings(session, login, codex_url, test_root):
                             'sex': 'male',
                             'taxonomy': tx_id,
                             'time': encounter_timestamp,
+                            'timeSpecificity': 'time',
                         },
                     ],
                     'locationId': 'PYTEST',
@@ -165,6 +166,7 @@ def test_asset_group_sightings(session, login, codex_url, test_root):
                 'submitter': None,
                 'taxonomy': tx_id,
                 'time': encounter_timestamp,
+                'timeSpecificity': 'time',
                 # 2021-11-13T16:57:41.937187+00:00
                 'updatedHouston': response.json()['updatedHouston'],
                 'version': None,
@@ -319,7 +321,8 @@ def test_bulk_upload(session, login, codex_url, test_root, request):
                             'verbatimLocality': 'North Male Lankan Reef',
                             'verbatimEventDate': 'yesterday',
                             #'taxonomy': 'ace5e17c-e74a-423f-8bd2-ecc3d7a78f4c',
-                            'time': '2014-01-01T09:00:00.000Z',
+                            'time': '2014-01-01T09:00:00.000+00:00',
+                            'timeSpecificity': 'time',
                         }
                     ],
                 },
@@ -338,7 +341,8 @@ def test_bulk_upload(session, login, codex_url, test_root, request):
                             'verbatimLocality': 'North Male Lankan Reef',
                             'verbatimEventDate': 'yesterday',
                             #'taxonomy': 'ace5e17c-e74a-423f-8bd2-ecc3d7a78f4c',
-                            'time': '2014-01-01T09:00:00.000Z',
+                            'time': '2014-01-01T09:00:00.000+00:00',
+                            'timeSpecificity': 'time',
                         }
                     ],
                 },
@@ -355,7 +359,8 @@ def test_bulk_upload(session, login, codex_url, test_root, request):
                             'decimalLongitude': '73.6421',
                             'verbatimLocality': 'North Male Gasfinolhu Inside Reef',
                             #'taxonomy': 'ace5e17c-e74a-423f-8bd2-ecc3d7a78f4c',
-                            'time': '2019-01-01T09:00:00.000Z',
+                            'time': '2019-01-01T09:00:00.000+00:00',
+                            'timeSpecificity': 'time',
                         }
                     ],
                 },

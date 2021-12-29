@@ -34,7 +34,7 @@ def test_sightings(session, login, codex_url, test_root, admin_name):
         [test_root / 'zebra.jpg'],
     )
     # 2021-11-09T11:40:53.802+00:00
-    encounter_timestamp = datetime.datetime.now().isoformat()[:-3] + '+00:00'
+    encounter_timestamp = datetime.datetime.now().isoformat() + '+00:00'
     response = session.post(
         codex_url('/api/v1/asset_groups/'),
         json={

@@ -33,8 +33,8 @@ def test_sightings(session, login, codex_url, test_root, admin_name):
         codex_url,
         [test_root / 'zebra.jpg'],
     )
-    # 2021-11-09T11:40:53.802Z
-    encounter_timestamp = datetime.datetime.now().isoformat()[:-3] + 'Z'
+    # 2021-11-09T11:40:53.802+00:00
+    encounter_timestamp = datetime.datetime.now().isoformat() + '+00:00'
     response = session.post(
         codex_url('/api/v1/asset_groups/'),
         json={
@@ -53,6 +53,7 @@ def test_sightings(session, login, codex_url, test_root, admin_name):
                             'sex': 'male',
                             'taxonomy': tx_id,
                             'time': encounter_timestamp,
+                            'timeSpecificity': 'time',
                         },
                     ],
                     'locationId': 'PYTEST',
@@ -139,6 +140,7 @@ def test_sightings(session, login, codex_url, test_root, admin_name):
                 'submitter': None,
                 'taxonomy': tx_id,
                 'time': encounter_timestamp,
+                'timeSpecificity': 'time',
                 'updatedHouston': encounters[0]['updatedHouston'],
                 'version': encounters[0]['version'],  # 1636456524261
             },
@@ -238,6 +240,7 @@ def test_sightings(session, login, codex_url, test_root, admin_name):
                 'submitter': None,
                 'taxonomy': tx_id,
                 'time': encounter_timestamp,
+                'timeSpecificity': 'time',
                 'updatedHouston': encounters[0]['updatedHouston'],
                 'version': encounters[0]['version'],
             },

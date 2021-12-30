@@ -6,8 +6,8 @@ from . import utils
 
 def test_asset_group_sightings(session, login, codex_url, test_root):
     login(session)
-
     response = session.get(codex_url('/api/v1/users/me'))
+    assert response.status_code == 200
     my_guid = response.json()['guid']
     my_name = response.json()['full_name']
 

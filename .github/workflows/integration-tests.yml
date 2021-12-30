@@ -87,7 +87,7 @@ jobs:
           do
             wget --tries=1 -O - http://localhost:82/ && break
           done
-
+          sleep 600
       - name: Run tests
         run: |
           set -ex

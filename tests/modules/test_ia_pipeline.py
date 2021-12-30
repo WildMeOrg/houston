@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=missing-docstring
 import tests.modules.asset_groups.resources.utils as asset_group_utils
+import tests.modules.sightings.resources.utils as sighting_utils
 import pytest
 from tests.utils import module_unavailable
 
@@ -70,6 +71,9 @@ def test_ia_pipeline_sim_detect_response(
         # Deliberately do not test the contents. This is fluid and for our debug only
         asset_group_utils.read_asset_group(
             flask_app_client, staff_user, f'{asset_group_uuid}/debug'
+        )
+        sighting_utils.read_sighting_path(
+            flask_app_client, staff_user, f'{sighting_uuid}/debug'
         )
     finally:
         # Restore original state

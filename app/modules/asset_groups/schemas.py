@@ -94,6 +94,7 @@ class AssetGroupSightingEncounterSchema(ModelSchema):
     submitter = base_fields.Dict(default=None)
     taxonomy = base_fields.UUID()
     time = base_fields.String(default=None)
+    timeSpecificity = base_fields.String(default=None)
     updatedHouston = base_fields.DateTime()
     version = base_fields.String(default=None)
 

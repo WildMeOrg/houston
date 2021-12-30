@@ -121,3 +121,29 @@ def list_all(context):
 
     for asset_group in asset_groups:
         print('AssetGroup : {} {}'.format(asset_group, asset_group.assets))
+
+
+@app_context_task
+def details(context, guid):
+    """
+    Show full existing of a specific asset_group.
+
+    Command Line:
+    > invoke codex.asset_groups.details 00000000-0000-0000-0000-000000000002
+    """
+
+    from app.modules.asset_groups.models import AssetGroup
+
+    asset_group = AssetGroup.query.get(guid)
+
+    if asset_group is None:
+        print(f'AssetGroup {guid} not found')
+        return
+
+    # Just reuse the debug schema
+    from app.modules.asset_groups.schemas import DebugAssetGroupSchema
+
+    schema = DebugAssetGroupSchema()
+    import json
+
+    print(json.dumps(schema.dump(asset_group).data, indent=4, sort_keys=True))

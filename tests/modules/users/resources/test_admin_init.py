@@ -38,7 +38,7 @@ def test_admin_creation(flask_app_client):
     assert user.is_internal
     assert user.is_privileged
     assert user.is_researcher
-    assert user.is_staff
+    assert not user.is_staff
     assert user.is_user_manager
     assert user.in_alpha
     assert user.in_beta

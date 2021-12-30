@@ -313,7 +313,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
 
     def get_sighting_guid(self):
         if len(self.sighting) > 0:
-            return self.sighting[0].guid
+            return str(self.sighting[0].guid)
         else:
             return None
 
@@ -361,6 +361,32 @@ class AssetGroupSighting(db.Model, HoustonModel):
 
         # calculation generates a floating point value, reporting that would be claiming precision without accuracy
         return round(completion)
+
+    def get_detailed_jobs_json(self):
+        job_data = []
+        for job in self.jobs:
+            from app.modules.asset_groups.schemas import (
+                DetailedAssetGroupSightingJobSchema,
+            )
+
+            schema = DetailedAssetGroupSightingJobSchema()
+            this_job = schema.dump(self.jobs[job]).data
+            this_job['job_id'] = job
+            job_data.append(this_job)
+
+        return job_data
+
+    def get_debug_jobs_json(self):
+        job_data = []
+        for job in self.jobs:
+            from app.modules.asset_groups.schemas import DebugAssetGroupSightingJobSchema
+
+            schema = DebugAssetGroupSightingJobSchema()
+            this_job = schema.dump(self.jobs[job]).data
+            this_job['job_id'] = job
+            job_data.append(this_job)
+
+        return job_data
 
     # returns a getter for a given config field, allowing for casting and default vals
     @staticmethod

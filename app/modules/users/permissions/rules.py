@@ -50,6 +50,7 @@ MODULE_USER_MAP = {
 OBJECT_USER_MAP = {
     ('SiteSetting', AccessOperation.WRITE): ['is_admin'],
     ('SiteSetting', AccessOperation.DELETE): ['is_admin'],
+    ('AssetGroup', AccessOperation.READ_PRIVILEGED): ['is_staff'],
     ('AssetGroupSighting', AccessOperation.READ): [
         'is_admin',
         'is_researcher',
@@ -75,6 +76,7 @@ OBJECT_USER_MAP = {
     ],
     ('Keyword', AccessOperation.READ): ['is_active'],
     ('Sighting', AccessOperation.WRITE_PRIVILEGED): ['is_internal'],
+    ('Sighting', AccessOperation.READ_PRIVILEGED): ['is_staff'],
     ('SocialGroup', AccessOperation.READ): ['is_researcher'],
     ('SocialGroup', AccessOperation.WRITE): ['is_researcher'],
     ('SocialGroup', AccessOperation.DELETE): ['is_researcher'],

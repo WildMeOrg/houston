@@ -40,6 +40,18 @@ class BaseAssetGroupSightingSchema(ModelSchema):
         dump_only = (AssetGroupSighting.guid.key,)
 
 
+class DetailedAssetGroupSightingJobSchema(ModelSchema):
+    job_id = base_fields.String()
+    model = base_fields.String()
+    active = base_fields.Boolean()
+    start = base_fields.DateTime()
+    asset_ids = base_fields.List(base_fields.String)
+
+
+class DebugAssetGroupSightingJobSchema(DetailedAssetGroupSightingJobSchema):
+    json_result = base_fields.Dict()
+
+
 class DetailedAssetGroupSightingSchema(BaseAssetGroupSightingSchema):
     """
     Detailed Asset_group_sighting schema exposes all useful fields.
@@ -60,6 +72,8 @@ class DetailedAssetGroupSightingSchema(BaseAssetGroupSightingSchema):
 
     creator = base_fields.Nested('PublicUserSchema', attribute='get_owner', many=False)
 
+    jobs = base_fields.Function(AssetGroupSighting.get_detailed_jobs_json)
+
     class Meta(BaseAssetGroupSightingSchema.Meta):
 
         fields = BaseAssetGroupSightingSchema.Meta.fields + (
@@ -71,7 +85,7 @@ class DetailedAssetGroupSightingSchema(BaseAssetGroupSightingSchema):
             'sighting_guid',
             'detection_start_time',
             'curation_start_time',
-            AssetGroupSighting.jobs.key,
+            'jobs',
             AssetGroupSighting.asset_group_guid.key,
         )
         dump_only = BaseAssetGroupSightingSchema.Meta.dump_only + (
@@ -238,4 +252,31 @@ class DetailedAssetGroupSchema(CreateAssetGroupSchema):
 
     class Meta(CreateAssetGroupSchema.Meta):
         fields = CreateAssetGroupSchema.Meta.fields + ('assets', 'asset_group_sightings')
+        dump_only = CreateAssetGroupSchema.Meta.dump_only
+
+
+class DebugAssetGroupSightingSchema(DetailedAssetGroupSightingSchema):
+    jobs = base_fields.Function(AssetGroupSighting.get_debug_jobs_json)
+
+
+class DebugAssetGroupSchema(CreateAssetGroupSchema):
+    """
+    Debug Asset_group schema exposes all fields as a debug util.
+    """
+
+    assets = base_fields.Nested(
+        'DetailedAssetSchema',
+        many=True,
+    )
+    asset_group_sightings = base_fields.Nested(
+        DebugAssetGroupSightingSchema,
+        many=True,
+    )
+
+    class Meta(CreateAssetGroupSchema.Meta):
+        fields = CreateAssetGroupSchema.Meta.fields + (
+            AssetGroup.config.key,
+            'assets',
+            'asset_group_sightings',
+        )
         dump_only = CreateAssetGroupSchema.Meta.dump_only

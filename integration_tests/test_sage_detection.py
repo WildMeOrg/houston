@@ -58,11 +58,7 @@ def test_create_asset_group_detection(session, codex_url, test_root, login):
     )
 
     response_json = response.json()
-    job_id = list(response_json['jobs'].keys())[0]
-    first_job = response_json['jobs'][job_id]
-    job_start = first_job['start']
-    annotations = first_job['json_result']['results_list'][0]
-    sage_annotation_uuids = [annot['uuid']['__UUID__'] for annot in annotations]
+    first_job = response_json['jobs'][0]
 
     assert response_json == {
         'assets': [
@@ -81,45 +77,15 @@ def test_create_asset_group_detection(session, codex_url, test_root, login):
         ],
         'completion': 10,
         'stage': 'curation',
-        'jobs': {
-            job_id: {
+        'jobs': [
+            {
+                'job_id': first_job['job_id'],
                 'model': 'african_terrestrial',
                 'active': False,
-                'start': job_start,
+                'start': first_job['start'],
                 'asset_ids': asset_guids,
-                'json_result': {
-                    'image_uuid_list': [
-                        {
-                            '__UUID__': '90917c9d-6e50-3b28-7396-c08f77f0c7eb',
-                        },
-                    ],
-                    'results_list': [
-                        [
-                            {
-                                'id': annotations[0]['id'],
-                                'uuid': {'__UUID__': sage_annotation_uuids[0]},
-                                'xtl': 178,
-                                'ytl': 72,
-                                'left': 178,
-                                'top': 72,
-                                'width': 604,
-                                'height': 534,
-                                'theta': 0.0,
-                                'confidence': 0.9185,
-                                'class': 'zebra_plains',
-                                'species': 'zebra_plains',
-                                'viewpoint': None,
-                                'quality': None,
-                                'multiple': False,
-                                'interest': False,
-                            }
-                        ],
-                    ],
-                    'score_list': [0.0],
-                    'has_assignments': False,
-                },
             },
-        },
+        ],
         'config': {
             'startTime': response_json['config']['startTime'],
             'locationId': 'Tiddleywink',

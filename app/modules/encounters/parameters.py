@@ -3,16 +3,12 @@
 Input arguments (Parameters) for Encounters resources RESTful API
 -----------------------------------------------------------
 """
-import logging
 from flask_login import current_user
 from flask_restx_patched import Parameters, PatchJSONParameters
 
 from . import schemas
-from app.extensions import db
 from app.modules.users.permissions import rules
 import logging
-
-log = logging.getLogger(__name__)
 
 from app.utils import HoustonException
 
@@ -41,7 +37,7 @@ class PatchEncounterDetailsParameters(PatchJSONParameters):
     # Valid options for patching are replace '/owner'
     PATH_CHOICES_HOUSTON = (
         '/owner',
-        '/annotationns',
+        '/annotations',
         '/time',
         '/timeSpecificity',
     )
@@ -165,7 +161,6 @@ class PatchEncounterDetailsParameters(PatchJSONParameters):
     def remove(cls, obj, field, value, state):
         from app.modules.complex_date_time.models import ComplexDateTime
 
-        super(PatchEncounterDetailsParameters, cls).remove(obj, field, value, state)
         ret_val = False
 
         # remove one of these, it will remove both

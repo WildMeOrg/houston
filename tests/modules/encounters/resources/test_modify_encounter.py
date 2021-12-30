@@ -99,7 +99,6 @@ def test_modify_encounter(
     dt = datetime.utcnow()
     dt_string = dt.isoformat()  # first test no time zone (error)
     patch_data = [
-        utils.patch_test_op(researcher_2.password_secret),
         utils.patch_replace_op('time', dt_string),
     ]
     patch_res = enc_utils.patch_encounter(
@@ -109,7 +108,6 @@ def test_modify_encounter(
 
     # now invalid specificity
     patch_data = [
-        utils.patch_test_op(researcher_2.password_secret),
         utils.patch_replace_op('timeSpecificity', 'fubar'),
     ]
     patch_res = enc_utils.patch_encounter(
@@ -124,7 +122,6 @@ def test_modify_encounter(
     # should be sufficient to set a (new) time
     test_dt = '1999-01-01T12:34:56-07:00'
     patch_data = [
-        utils.patch_test_op(researcher_2.password_secret),
         utils.patch_replace_op('time', test_dt),
         utils.patch_replace_op('timeSpecificity', 'month'),
     ]
@@ -139,7 +136,6 @@ def test_modify_encounter(
 
     # now update just the specificity
     patch_data = [
-        utils.patch_test_op(researcher_2.password_secret),
         utils.patch_replace_op('timeSpecificity', 'day'),
     ]
     patch_res = enc_utils.patch_encounter(
@@ -153,7 +149,6 @@ def test_modify_encounter(
     # now update just the date/time
     test_dt = datetime.utcnow().isoformat() + '+03:00'
     patch_data = [
-        utils.patch_test_op(researcher_2.password_secret),
         utils.patch_replace_op('time', test_dt),
     ]
     patch_res = enc_utils.patch_encounter(
@@ -170,7 +165,6 @@ def test_modify_encounter(
     cdt = ComplexDateTime.query.get(cdt_guid)
     assert cdt
     patch_data = [
-        utils.patch_test_op(researcher_2.password_secret),
         utils.patch_remove_op('time'),
     ]
     patch_res = enc_utils.patch_encounter(

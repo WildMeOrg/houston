@@ -67,6 +67,10 @@ def test_ia_pipeline_sim_detect_response(
         encounters = sighting.get_encounters()
         assert len(encounters) == 2
 
+        # Deliberately do not test the contents. This is fluid and for our debug only
+        asset_group_utils.read_asset_group(
+            flask_app_client, staff_user, f'{asset_group_uuid}/debug'
+        )
     finally:
         # Restore original state
         if asset_group_uuid:

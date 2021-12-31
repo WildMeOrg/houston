@@ -229,12 +229,28 @@ class AssetGroupSighting(db.Model, HoustonModel):
 
         sighting = Sighting(
             guid=result_data['id'],
-            asset_group_sighting=self,
+            # asset_group_sighting=self,  -- see note below
             name=self.config.get('name', ''),
             stage=SightingStage.identification,
             version=result_data.get('version', 2),
         )
-        sighting.set_time_from_data(self.config)
+        try:
+            sighting.set_time_from_data(self.config)
+        except ValueError as ve:
+            cleanup.rollback_and_abort(
+                f'Problem with sighting time/timeSpecificity values: {str(ve)}',
+                f"invalid time ({self.config.get('time')}) or timeSpecificity ({self.config.get('timeSpecificity')}): {str(ve)}",
+                error_fields=['time'],
+            )
+        if not sighting.time:
+            cleanup.rollback_and_houston_exception(
+                log,
+                'Must have time/timeSpecificity values',
+                'Must have time/timeSpecificity values',
+            )
+        # we do not set this in the Sighting() constructor above, as a failure due to `time` value above
+        #   causes an attempt to persist `sighting`, which we do not want
+        sighting.asset_group_sighting = self
         with db.session.begin(subtransactions=True):
             db.session.add(sighting)
         # Add the assets for all of the encounters to the created sighting object

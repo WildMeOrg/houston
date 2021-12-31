@@ -339,6 +339,11 @@ class Sightings(Resource):
             stage=SightingStage.processed,
         )
         sighting.set_time_from_data(request_in)
+        if not sighting.time_guid:
+            cleanup.rollback_and_abort(
+                'Problem with sighting time/timeSpecificity values',
+                f"invalid time ({request_in.get('time')}) or timeSpecificity ({request_in.get('timeSpecificity')})",
+            )
         AuditLog.user_create_object(log, sighting, duration=timer.elapsed())
 
         assets = None

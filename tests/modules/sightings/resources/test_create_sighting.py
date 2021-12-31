@@ -432,3 +432,84 @@ def test_create_old_sighting(flask_app_client, researcher_1):
     sighting_utils.create_old_sighting(
         flask_app_client, researcher_1, sighting_data, 400, error
     )
+
+
+@pytest.mark.skipif(module_unavailable('sightings'), reason='Sightings module disabled')
+def test_create_sighting_time_test(
+    flask_app, flask_app_client, researcher_1, request, test_root
+):
+    from tests.modules.sightings.resources import utils as sighting_utils
+    from app.modules.sightings.models import Sighting
+    from app.modules.complex_date_time.models import Specificities
+
+    # test with invalid time
+    sighting_data = {
+        'time': 'fubar',
+        'timeSpecificity': 'time',
+        'locationId': 'test',
+        'encounters': [{}],
+    }
+    uuids = sighting_utils.create_sighting(
+        flask_app_client,
+        researcher_1,
+        request,
+        test_root,
+        sighting_data=sighting_data,
+        expected_status_code=200,
+        commit_expected_status_code=400,
+    )
+
+    # now ok, but missing timezone
+    sighting_data['time'] = '1999-12-31T23:59:59'
+    uuids = sighting_utils.create_sighting(
+        flask_app_client,
+        researcher_1,
+        request,
+        test_root,
+        sighting_data=sighting_data,
+        expected_status_code=200,
+        commit_expected_status_code=400,
+    )
+
+    # timezone included, but no specificity
+    sighting_data['time'] = '1999-12-31T23:59:59+03:00'
+    del sighting_data['timeSpecificity']
+    uuids = sighting_utils.create_sighting(
+        flask_app_client,
+        researcher_1,
+        request,
+        test_root,
+        sighting_data=sighting_data,
+        expected_status_code=400,
+        expected_error='timeSpecificity field missing from Sighting 1',
+    )
+
+    # getting closer; bad specificity
+    sighting_data['timeSpecificity'] = 'fubar'
+    uuids = sighting_utils.create_sighting(
+        flask_app_client,
+        researcher_1,
+        request,
+        test_root,
+        sighting_data=sighting_data,
+        expected_status_code=200,
+        commit_expected_status_code=400,
+    )
+
+    # finally; ok
+    sighting_data['timeSpecificity'] = 'day'
+    uuids = sighting_utils.create_sighting(
+        flask_app_client,
+        researcher_1,
+        request,
+        test_root,
+        sighting_data=sighting_data,
+        expected_status_code=200,
+    )
+    assert uuids
+    test_sight = Sighting.query.get(uuids['sighting'])
+    assert test_sight
+    assert test_sight.time
+    assert test_sight.time.timezone == 'UTC+0300'
+    assert test_sight.time.specificity == Specificities.day
+    assert test_sight.time.isoformat_in_timezone() == sighting_data['time']

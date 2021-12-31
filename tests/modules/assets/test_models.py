@@ -7,6 +7,7 @@ import uuid
 from PIL import Image
 import pytest
 
+import tests.utils as test_utils
 from tests.utils import module_unavailable
 
 
@@ -58,6 +59,7 @@ def set_up_assets(flask_app, db, test_root, admin_user, request):
         asset_guid=asset_group.assets[0].guid, ia_class='test', viewpoint='test'
     )
     sighting = Sighting(stage=SightingStage.identification)
+    sighting.time = test_utils.complex_date_time_now()
     sighting_assets = SightingAssets(
         sighting_guid=sighting.guid, asset_guid=asset_group.assets[0].guid
     )

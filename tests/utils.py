@@ -478,6 +478,12 @@ def isoformat_timestamp_now():
     return datetime.now().isoformat() + '+00:00'
 
 
+def complex_date_time_now():
+    from app.modules.complex_date_time.models import ComplexDateTime, Specificities
+
+    return ComplexDateTime(datetime.utcnow(), 'UTC+00:00', Specificities.time)
+
+
 def dummy_sighting_info():
     return {
         'time': isoformat_timestamp_now(),

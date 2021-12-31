@@ -14,6 +14,7 @@ def test_sighting_create_and_add_encounters(db):
     from app.modules.sightings.models import Sighting, SightingStage
 
     test_sighting = Sighting(stage=SightingStage.processed)
+    test_sighting.time = test_utils.complex_date_time_now()
     owner = User.get_public_user()
 
     test_encounter_a = test_utils.generate_owned_encounter(owner)
@@ -60,6 +61,7 @@ def test_sighting_ensure_no_duplicate_encounters(db):
     from app.modules.sightings.models import Sighting, SightingStage
 
     test_sighting = Sighting(stage=SightingStage.processed)
+    test_sighting.time = test_utils.complex_date_time_now()
     owner = User.get_public_user()
 
     test_encounter = test_utils.generate_owned_encounter(owner)

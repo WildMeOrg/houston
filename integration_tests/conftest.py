@@ -8,6 +8,7 @@ from urllib.parse import urljoin
 import pytest
 import requests
 from selenium import webdriver
+from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import WebDriverWait
 
@@ -104,11 +105,11 @@ def wait_until(browser, func, timeout=TIMEOUT, poll_frequency=POLL_FREQUENCY):
 
 def login_browser(browser, email=ADMIN_EMAIL, password=ADMIN_PASSWORD):
     browser.get(CODEX_URL)
-    wait_until(browser, lambda b: b.find_element_by_link_text('Login'))
-    browser.find_element_by_link_text('Login').click()
-    wait_until(browser, lambda b: b.find_element_by_id('email'))
-    browser.find_element_by_id('email').send_keys(email)
-    browser.find_element_by_id('password').send_keys(password + Keys.ENTER)
+    wait_until(browser, lambda b: b.find_element(By.LINK_TEXT, 'Login'))
+    browser.find_element(By.LINK_TEXT, 'Login').click()
+    wait_until(browser, lambda b: b.find_element(By.ID, 'email'))
+    browser.find_element(By.ID, 'email').send_keys(email)
+    browser.find_element(By.ID, 'password').send_keys(password + Keys.ENTER)
     wait_until(browser, lambda b: 'User since' in b.page_source)
 
 
@@ -130,13 +131,13 @@ def login():
 
 
 def logout_browser(browser):
-    header = browser.find_element_by_class_name('MuiToolbar-root')
-    last_button = header.find_elements_by_tag_name('button')[-1]
+    header = browser.find_element(By.CLASS_NAME, 'MuiToolbar-root')
+    last_button = header.find_elements(By.TAG_NAME, 'button')[-1]
     last_button.click()
-    for li in browser.find_elements_by_tag_name('li'):
+    for li in browser.find_elements(By.TAG_NAME, 'li'):
         if li.text == 'Log out':
             li.click()
-    wait_until(browser, lambda b: b.find_element_by_link_text('Login'))
+    wait_until(browser, lambda b: b.find_element(By.LINK_TEXT, 'Login'))
 
 
 def logout_session(session):
@@ -168,19 +169,19 @@ def initialize(browser):
     wait_until(
         browser,
         lambda b: 'Codex initialized!' in b.page_source
-        or b.find_element_by_link_text('Login'),
+        or b.find_element(By.LINK_TEXT, 'Login'),
     )
     if 'Codex initialized!' not in browser.page_source:
         # Already initialized
         return
 
-    browser.find_element_by_id('email').send_keys(ADMIN_EMAIL)
-    browser.find_element_by_id('password1').send_keys(ADMIN_PASSWORD)
-    browser.find_element_by_id('password2').send_keys(ADMIN_PASSWORD)
-    browser.find_element_by_id('createAdminUser').click()
+    browser.find_element(By.ID, 'email').send_keys(ADMIN_EMAIL)
+    browser.find_element(By.ID, 'password1').send_keys(ADMIN_PASSWORD)
+    browser.find_element(By.ID, 'password2').send_keys(ADMIN_PASSWORD)
+    browser.find_element(By.ID, 'createAdminUser').click()
 
     wait_until(browser, lambda b: 'Welcome to Codex!' in b.page_source)
-    inputs = browser.find_elements_by_tag_name('input')
+    inputs = browser.find_elements(By.TAG_NAME, 'input')
     # Site name
     # inputs[0].clear() does not work in chrome
     # len(inputs[0].text) returns 0 in chrome
@@ -190,7 +191,7 @@ def initialize(browser):
     inputs[3].send_keys(Keys.BACKSPACE * 50)
     inputs[3].send_keys(f'Welcome to {SITE_NAME.lower()}')
 
-    textareas = browser.find_elements_by_tag_name('textarea')
+    textareas = browser.find_elements(By.TAG_NAME, 'textarea')
     # Tagline subtitle
     textareas[0].send_keys(Keys.BACKSPACE * len(textareas[0].text))
     textareas[0].send_keys('AI for the conservation of zebras.')
@@ -200,16 +201,16 @@ def initialize(browser):
         'Researchers use my test site to identify and organize sightings of zebras.'
     )
 
-    for button in browser.find_elements_by_tag_name('button'):
+    for button in browser.find_elements(By.TAG_NAME, 'button'):
         if button.text == 'FINISH SETUP':
             button.click()
             break
 
     wait_until(browser, lambda b: 'Set up profile' in b.page_source)
-    browser.find_element_by_id('name').send_keys(ADMIN_NAME)
-    browser.find_element_by_id('saveProfile').click()
+    browser.find_element(By.ID, 'name').send_keys(ADMIN_NAME)
+    browser.find_element(By.ID, 'saveProfile').click()
     wait_until(
-        browser, lambda b: b.find_element_by_tag_name('p').text.startswith('User since')
+        browser, lambda b: b.find_element(By.TAG_NAME, 'p').text.startswith('User since')
     )
 
     logout_browser(browser)

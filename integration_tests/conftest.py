@@ -209,7 +209,7 @@ def initialize(browser):
     browser.find_element_by_id('name').send_keys(ADMIN_NAME)
     browser.find_element_by_id('saveProfile').click()
     wait_until(
-        browser, lambda b: b.find_element_by_tag_name('h6').text.startswith('User since')
+        browser, lambda b: b.find_element_by_tag_name('p').text.startswith('User since')
     )
 
     logout_browser(browser)

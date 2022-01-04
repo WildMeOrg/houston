@@ -122,6 +122,16 @@ def test_create_asset_group(flask_app_client, researcher_1, readonly_user, test_
                                 request_json[key][sighting_num][sighting_key]
                                 == file_json[key][sighting_num][sighting_key]
                             )
+
+        # Basic checking that AGS data is valid
+        assert len(resp.json['asset_group_sightings']) == 1
+        ags = resp.json['asset_group_sightings'][0]
+        assert ags['asset_group_guid'] == asset_group_uuid
+        assert ags['stage'] == 'curation'
+        assert ags['creator']['guid'] == str(researcher_1.guid)
+        assert ags['detection_start_time'] is None
+        assert ags['curation_start_time'] is not None
+
     finally:
         if asset_group_uuid:
             asset_group_utils.delete_asset_group(
@@ -191,6 +201,12 @@ def test_create_asset_group_no_assets(
             flask_app_client, researcher_1, data.get()
         )
         asset_group_uuid = resp.json['guid']
+        assert len(resp.json['asset_group_sightings']) == 1
+        ags = resp.json['asset_group_sightings'][0]
+        assert ags['sighting_guid'] is not None
+        assert ags['stage'] == 'processed'
+        assert ags['curation_start_time'] is None
+        assert ags['detection_start_time'] is None
 
         # Make sure that the user has a single unprocessed sighting
         user_resp = user_utils.read_user(flask_app_client, researcher_1, 'me')

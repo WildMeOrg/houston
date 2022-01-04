@@ -405,8 +405,9 @@ class Sighting(db.Model, FeatherModel):
                 encounter['decimalLongitude'] = float(encounter['decimalLongitude'])
             if encounter.get('decimalLatitude'):
                 encounter['decimalLatitude'] = float(encounter['decimalLatitude'])
+            encounter['guid'] = encounter.pop('id', None)
         edm_response.update(schema.dump(self).data)
-
+        edm_response.pop('id', None)
         return self._augment_edm_json(edm_response)
 
     def get_augmented_sighting_json(self):

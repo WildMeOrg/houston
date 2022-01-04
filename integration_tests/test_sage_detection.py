@@ -44,7 +44,6 @@ def test_create_asset_group_detection(session, codex_url, test_root, login):
 
     response_json = response.json()
     first_job = response_json['jobs'][0]
-    job_start = first_job['start']
     assert response_json == {
         'assets': [
             {

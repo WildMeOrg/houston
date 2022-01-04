@@ -119,6 +119,7 @@ def test_asset_group_sightings(session, login, codex_url, test_root):
                             'sex': 'male',
                             'taxonomy': ags_encounter['taxonomy'],
                             'time': ags_encounter['time'],
+                            'timeSpecificity': 'time',
                         }
                     ],
                     'locationId': 'PYTEST',

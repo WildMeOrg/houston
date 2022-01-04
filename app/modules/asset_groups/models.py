@@ -186,10 +186,14 @@ class AssetGroupSighting(db.Model, HoustonModel):
 
         # Create sighting in EDM
         try:
+            # Don't send the encounter guids. EDM doesn't use them but they confuse anyone reading logs
+            sent_data = self.config
+            for enc in sent_data['encounters']:
+                enc.pop('guid')
             result_data = current_app.edm.request_passthrough_result(
                 'sighting.data',
                 'post',
-                {'data': self.config, 'headers': {'Content-Type': 'application/json'}},
+                {'data': sent_data, 'headers': {'Content-Type': 'application/json'}},
                 '',
             )
         except HoustonException as ex:

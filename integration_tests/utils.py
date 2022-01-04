@@ -83,6 +83,9 @@ def wait_for(
     *args,
     **kwargs,
 ):
+    # Wait for something but have a quick nap before the first attempt to read, Sage mostly replies in this time
+    # meaning that 15 second sleeps are avoided
+    time.sleep(5)
     try:
         while timeout >= 0:
             response = session_method(url, *args, **kwargs)

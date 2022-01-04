@@ -35,10 +35,10 @@ ANNOTATION_UUIDS = [
 ]
 
 DERIVED_MD5SUM_VALUES = {
-    'phoenix.jpg': 'da06dc2f5ad273b058217d26f5aa1858',
-    'coelacanth.png': 'b6ba153ff160ad4d21ab7b42fbe51892',
-    'zebra.jpg': '9c2e4476488534c05b7c557a0e663ccd',
-    'fluke.jpg': '0b546f813ec9631ce5c9b1dd579c623b',
+    'phoenix.jpg': '16f6c0bbc6dbfccb71a798fb396e580f',
+    'coelacanth.png': '1e4fe359537049f1cd4e571ddadf9ff3',
+    'zebra.jpg': '0cd08301ba591bb98002667d75dc9e47',
+    'fluke.jpg': 'b588835de1aea9d7814c4250f07c41b9',
 }
 
 ###################################################################################################################
@@ -567,6 +567,15 @@ def build_sage_detection_response(asset_group_sighting_guid, job_uuid):
 
 def validate_file_data(data, filename):
     import hashlib
+
+    # TODO get the hash from the calculated derived data
+    # from PIL import Image
+    # from app.modules.assets.models import Asset
+    # full_path = f'{test_root}/{filename}'
+    # full_path = full_path.replace('/code/', '')
+    # with Image.open(full_path) as source_image:
+    #     source_image.thumbnail(Asset.FORMATS['master'])
+    #     # rgb = source_image.convert('RGB')
 
     assert hashlib.md5(data).hexdigest() == DERIVED_MD5SUM_VALUES[filename]
 

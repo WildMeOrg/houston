@@ -79,6 +79,7 @@ class BaseCodexConfig(
         'projects',
         'sightings',
         'individuals',
+        'relationships',
         'names',
         'complex_date_time',
         'annotations',

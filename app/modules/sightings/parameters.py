@@ -67,12 +67,6 @@ class PatchSightingDetailsParameters(PatchJSONParameters):
         from app.modules.assets.models import Asset
         from app.modules.asset_groups.models import AssetGroup
 
-        # from app.modules.complex_date_time.models import ComplexDateTime, Specificities
-        # from datetime import datetime
-        # from app.utils import normalized_timezone_string
-        # from .models import db
-        # import pytz
-
         if ('/' + field) not in PatchSightingDetailsParameters.COMPLEX_PATH_CHOICES:
             super(PatchSightingDetailsParameters, cls).add(obj, field, value, state)
 

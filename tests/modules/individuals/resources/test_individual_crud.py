@@ -2,7 +2,6 @@
 # pylint: disable=missing-docstring
 import logging
 
-# import json
 import uuid
 import datetime
 from app.modules.individuals.models import Individual

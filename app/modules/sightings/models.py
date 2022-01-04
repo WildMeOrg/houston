@@ -405,8 +405,9 @@ class Sighting(db.Model, FeatherModel):
                 encounter['decimalLongitude'] = float(encounter['decimalLongitude'])
             if encounter.get('decimalLatitude'):
                 encounter['decimalLatitude'] = float(encounter['decimalLatitude'])
+            encounter['guid'] = encounter.pop('id', None)
         edm_response.update(schema.dump(self).data)
-
+        edm_response.pop('id', None)
         return self._augment_edm_json(edm_response)
 
     def get_augmented_sighting_json(self):
@@ -426,7 +427,9 @@ class Sighting(db.Model, FeatherModel):
                 encounter['decimalLongitude'] = float(encounter['decimalLongitude'])
             if encounter.get('decimalLatitude'):
                 encounter['decimalLatitude'] = float(encounter['decimalLatitude'])
+            encounter['guid'] = encounter.pop('id', None)
         edm_response.update(schema.dump(self).data)
+        edm_response.pop('id', None)
 
         return self._augment_edm_json(edm_response)
 
@@ -439,7 +442,7 @@ class Sighting(db.Model, FeatherModel):
         ):
             log.warning('Only one None encounters value between edm/feather objects!')
         if self.encounters is not None and edm_json['encounters'] is not None:
-            id_to_encounter = {e['id']: e for e in edm_json['encounters']}
+            id_to_encounter = {e['guid']: e for e in edm_json['encounters']}
             if set(str(e.guid) for e in self.encounters) != set(id_to_encounter):
                 log.warning(
                     'Imbalanced encounters between edm/feather objects on sighting '

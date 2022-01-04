@@ -3,12 +3,15 @@
 Input arguments (Parameters) for Encounters resources RESTful API
 -----------------------------------------------------------
 """
-
 from flask_login import current_user
-from flask_restx_patched import Parameters, PatchJSONParametersWithPassword
+from flask_restx_patched import Parameters, PatchJSONParameters
+
 from . import schemas
 from app.modules.users.permissions import rules
 import logging
+
+
+from app.utils import HoustonException
 
 log = logging.getLogger(__name__)
 
@@ -18,7 +21,7 @@ class CreateEncounterParameters(Parameters, schemas.DetailedEncounterSchema):
         pass
 
 
-class PatchEncounterDetailsParameters(PatchJSONParametersWithPassword):
+class PatchEncounterDetailsParameters(PatchJSONParameters):
     # pylint: disable=abstract-method,missing-docstring
 
     PATH_CHOICES_EDM = (
@@ -34,14 +37,19 @@ class PatchEncounterDetailsParameters(PatchJSONParametersWithPassword):
 
     # Valid options for patching are replace '/owner'
     PATH_CHOICES_HOUSTON = (
-        '/current_password',
-        '/user',
         '/owner',
+        '/annotations',
         '/time',
         '/timeSpecificity',
     )
 
     PATH_CHOICES = PATH_CHOICES_EDM + PATH_CHOICES_HOUSTON
+
+    OPERATION_CHOICES = (
+        PatchJSONParameters.OP_REPLACE,
+        PatchJSONParameters.OP_ADD,
+        PatchJSONParameters.OP_REMOVE,
+    )
 
     # equivalent to replace for all our targets
     @classmethod
@@ -57,7 +65,6 @@ class PatchEncounterDetailsParameters(PatchJSONParametersWithPassword):
         from .models import db
         import pytz
 
-        super(PatchEncounterDetailsParameters, cls).replace(obj, field, value, state)
         ret_val = False
         if field == 'owner':
             # owner is permitted to assign ownership to another researcher
@@ -69,7 +76,24 @@ class PatchEncounterDetailsParameters(PatchJSONParametersWithPassword):
             ):
                 obj.owner = user
                 ret_val = True
+        elif field == 'annotations':
+            from app.modules.annotations.models import Annotation
 
+            # can assign annotations (in patch only) but they must be valid
+            annot = Annotation.query.get(value)
+            if not annot:
+                raise HoustonException(
+                    log, f'guid value passed ({value}) is not an annotation guid'
+                )
+            if not annot.encounter.current_user_has_edit_permission():
+                raise HoustonException(
+                    log, f'annotation {value} owned by a different user'
+                )
+            annot.encounter = obj
+
+            with db.session.begin(subtransactions=True):
+                db.session.merge(annot)
+            ret_val = True
         # * note: field==time requires `value` is iso8601 **with timezone**
         # this gets a little funky in the event there is *no existing time set* as the patch
         #   happens in two parts that know nothing about each other.  so we have to create a ComplexDateTime and
@@ -138,7 +162,6 @@ class PatchEncounterDetailsParameters(PatchJSONParametersWithPassword):
     def remove(cls, obj, field, value, state):
         from app.modules.complex_date_time.models import ComplexDateTime
 
-        super(PatchEncounterDetailsParameters, cls).remove(obj, field, value, state)
         ret_val = False
 
         # remove one of these, it will remove both

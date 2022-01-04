@@ -75,10 +75,9 @@ class AugmentedEdmEncounterSchema(BaseEncounterSchema):
 
 class AugmentedIndividualApiEncounterSchema(BaseEncounterSchema):
 
-    submitter = base_fields.Nested(
-        'BaseUserSchema', many=False, only=('full_name', 'guid')
-    )
-    owner = base_fields.Nested('BaseUserSchema', many=False, only=('full_name', 'guid'))
+    submitter = base_fields.Nested('PublicUserSchema', many=False)
+    owner = base_fields.Nested('PublicUserSchema', many=False)
+
     encounters = base_fields.Nested('AugmentedSightingApiEncounterSchema', many=True)
 
     class Meta(BaseEncounterSchema.Meta):

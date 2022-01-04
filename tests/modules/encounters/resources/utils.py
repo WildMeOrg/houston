@@ -7,6 +7,18 @@ from tests import utils as test_utils
 
 PATH = '/api/v1/encounters/'
 
+EXPECTED_FIELDS = {
+    'version',
+    'hasView',
+    'hasEdit',
+    'guid',
+    'owner',
+    'updatedHouston',
+    'annotations',
+    'createdHouston',
+    'submitter',
+}
+
 
 # to create an encounter, it must be part of a sighting, so we piggyback on sighting_util
 def create_encounter(
@@ -39,11 +51,11 @@ def patch_encounter(
         f'{PATH}{encounter_guid}',
         data,
         expected_status_code,
-        response_200={'id', 'version'},
+        response_200=EXPECTED_FIELDS,
         expected_error=expected_error,
     )
     if expected_status_code == 200:
-        assert response.json['id'] == str(encounter_guid)
+        assert response.json['guid'] == str(encounter_guid)
 
     return response
 
@@ -55,11 +67,11 @@ def read_encounter(flask_app_client, user, enc_guid, expected_status_code=200):
         'encounters:read',
         f'{PATH}{enc_guid}',
         expected_status_code,
-        response_200={'id'},
+        response_200=EXPECTED_FIELDS,
     )
 
     if expected_status_code == 200:
-        assert response.json['id'] == str(enc_guid)
+        assert response.json['guid'] == str(enc_guid)
     return response
 
 

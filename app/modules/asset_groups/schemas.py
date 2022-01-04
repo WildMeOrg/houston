@@ -101,7 +101,6 @@ class AssetGroupSightingEncounterSchema(ModelSchema):
     guid = base_fields.UUID()
     hasEdit = base_fields.Boolean(default=True)
     hasView = base_fields.Boolean(default=True)
-    id = base_fields.UUID(attribute='guid')
     individual = base_fields.Dict(default={})
     owner = base_fields.Dict()
     sex = base_fields.String(default=None, allow_none=True)
@@ -136,7 +135,7 @@ class AssetGroupSightingAsSightingSchema(ModelSchema):
     startTime = base_fields.Function(AssetGroupSighting.config_field_getter('startTime'))
     encounters = base_fields.Nested(
         AssetGroupSightingEncounterSchema,
-        attribute='get_encounters',
+        attribute='get_encounters_json',
         many=True,
     )
 
@@ -160,7 +159,6 @@ class AssetGroupSightingAsSightingSchema(ModelSchema):
     verbatimEventDate = base_fields.Function(
         AssetGroupSighting.config_field_getter('verbatimEventDate', default='')
     )
-    id = base_fields.UUID(attribute='guid')
     encounterCounts = base_fields.Function(
         AssetGroupSighting.config_field_getter('encounterCounts', default={})
     )

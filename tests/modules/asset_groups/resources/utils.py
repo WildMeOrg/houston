@@ -209,6 +209,7 @@ def patch_asset_group_sighting_as_sighting(
     patch_path,
     data,
     expected_status_code=200,
+    response_200={'guid', 'stage', 'completion', 'assets', 'startTime', 'locationId'},
 ):
     with flask_app_client.login(user, auth_scopes=('asset_group_sightings:write',)):
         response = flask_app_client.patch(
@@ -220,11 +221,7 @@ def patch_asset_group_sighting_as_sighting(
     if expected_status_code == 200:
         # startTime and locationId are only present in the _as_sighting endpoints,
         # since they are in the config of a standard AGS
-        test_utils.validate_dict_response(
-            response,
-            200,
-            {'guid', 'stage', 'completion', 'assets', 'startTime', 'locationId'},
-        )
+        test_utils.validate_dict_response(response, 200, response_200)
     elif expected_status_code == 400:
         test_utils.validate_dict_response(
             response, expected_status_code, {'status', 'message', 'passed_message'}
@@ -274,7 +271,7 @@ def read_asset_group_sighting_as_sighting(
         # startTime and locationId are only present in the _as_sighting endpoints,
         # since they are in the config of a standard AGS
         response_200={
-            'id',
+            'guid',
             'stage',
             'completion',
             'assets',

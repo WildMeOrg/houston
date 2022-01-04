@@ -199,7 +199,6 @@ def test_asset_group_sightings(session, login, codex_url, test_root):
                 'guid': encounter_guids[0],
                 'hasEdit': True,
                 'hasView': True,
-                'id': encounter_guids[0],
                 'individual': {},
                 'owner': {
                     'full_name': my_name,
@@ -220,7 +219,6 @@ def test_asset_group_sightings(session, login, codex_url, test_root):
         'guid': ags_guid,
         'hasEdit': True,
         'hasView': True,
-        'id': ags_guid,
         'locationId': 'PYTEST',
         'stage': 'curation',
         'startTime': '2000-01-01T01:01:01Z',
@@ -281,7 +279,7 @@ def test_asset_group_sightings(session, login, codex_url, test_root):
     )
     assert response.status_code == 200
 
-    assert set(response.json()['encounters'][0]) >= set(
+    assert set(response.json()) >= set(
         {
             'customFields': enc_custom_fields,
             'sex': None,
@@ -294,7 +292,6 @@ def test_asset_group_sightings(session, login, codex_url, test_root):
     sighting_guid = response.json()['guid']
     assert response.json() == {
         'guid': sighting_guid,
-        'id': sighting_guid,
         'created': response.json()['created'],
         'encounters': response.json()['encounters'],
         'assets': response.json()['assets'],

@@ -64,7 +64,6 @@ def test_custom_fields_on_sighting(
         {
             'customFields': {},
             'timeValues': [None, None, None, 0, 0],
-            'id': str(encounter.guid),
             'guid': str(encounter.guid),
             'hasEdit': True,
             'hasView': True,
@@ -96,7 +95,6 @@ def test_custom_fields_on_sighting(
     # make sure customFields value is actually set
     assert set(full_sighting.json) >= set(
         {
-            'id': str(sighting.guid),
             'guid': str(sighting.guid),
             'hasEdit': True,
             'hasView': True,

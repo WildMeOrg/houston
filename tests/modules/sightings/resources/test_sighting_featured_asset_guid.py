@@ -138,7 +138,9 @@ def test_featured_sighting_read(db, flask_app_client, researcher_1, test_root, r
         if asset.guid == sighting.featured_asset_guid
     ]
     assert len(featured_asset) == 1
-    asset_group_utils.validate_file_data(image_response.data, featured_asset[0].filename)
+    asset_group_utils.validate_file_data(
+        test_root, image_response.data, featured_asset[0].filename
+    )
 
     # make fluke the featured asset, It may have been anyway but if the code fails this will catch it
     fluke_assets = [
@@ -152,4 +154,4 @@ def test_featured_sighting_read(db, flask_app_client, researcher_1, test_root, r
         flask_app_client, researcher_1, f'{sighting.guid}/featured_image'
     )
     assert image_response.content_type == 'image/jpeg'
-    asset_group_utils.validate_file_data(image_response.data, 'fluke.jpg')
+    asset_group_utils.validate_file_data(test_root, image_response.data, 'fluke.jpg')

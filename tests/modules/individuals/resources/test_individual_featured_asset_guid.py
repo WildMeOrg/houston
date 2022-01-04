@@ -179,7 +179,7 @@ def test_featured_individual_read(db, flask_app_client, researcher_1, test_root,
         flask_app_client, researcher_1, f'{individual_guid}/featured_image'
     )
     assert image_response.content_type == 'image/jpeg'
-    asset_group_utils.validate_file_data(image_response.data, asset0.filename)
+    asset_group_utils.validate_file_data(test_root, image_response.data, asset0.filename)
 
     # Add a second annotation
     ann1_resp = annot_utils.create_annotation(
@@ -200,4 +200,4 @@ def test_featured_individual_read(db, flask_app_client, researcher_1, test_root,
         flask_app_client, researcher_1, f'{individual_guid}/featured_image'
     )
     assert image_response.content_type == 'image/jpeg'
-    asset_group_utils.validate_file_data(image_response.data, asset1.filename)
+    asset_group_utils.validate_file_data(test_root, image_response.data, asset1.filename)

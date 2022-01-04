@@ -34,13 +34,6 @@ ANNOTATION_UUIDS = [
     '0c6f3a16-c3f0-4f8d-a47d-951e49b0dacb',
 ]
 
-DERIVED_MD5SUM_VALUES = {
-    'phoenix.jpg': '16f6c0bbc6dbfccb71a798fb396e580f',
-    'coelacanth.png': '1e4fe359537049f1cd4e571ddadf9ff3',
-    'zebra.jpg': '0cd08301ba591bb98002667d75dc9e47',
-    'fluke.jpg': 'b588835de1aea9d7814c4250f07c41b9',
-}
-
 ###################################################################################################################
 # Simple helpers for use with most tests
 ###################################################################################################################
@@ -565,19 +558,26 @@ def build_sage_detection_response(asset_group_sighting_guid, job_uuid):
     return sage_resp
 
 
-def validate_file_data(data, filename):
+def validate_file_data(test_root, data, filename):
     import hashlib
 
-    # TODO get the hash from the calculated derived data
-    # from PIL import Image
-    # from app.modules.assets.models import Asset
-    # full_path = f'{test_root}/{filename}'
-    # full_path = full_path.replace('/code/', '')
-    # with Image.open(full_path) as source_image:
-    #     source_image.thumbnail(Asset.FORMATS['master'])
-    #     # rgb = source_image.convert('RGB')
+    from PIL import Image
+    import io
+    from app.modules.assets.models import Asset
 
-    assert hashlib.md5(data).hexdigest() == DERIVED_MD5SUM_VALUES[filename]
+    full_path = f'{test_root}/{filename}'
+    full_path = full_path.replace('/code/', '')
+
+    with Image.open(full_path) as source_image:
+        source_image.thumbnail(Asset.FORMATS['master'])
+        rgb = source_image.convert('RGB')
+        # hashlib.md5(source_image.tobytes()).hexdigest()
+        # should have worked but didn't
+        with io.BytesIO() as mem_file:
+            rgb.save(mem_file, 'JPEG')
+            md5sum = hashlib.md5(mem_file.getvalue()).hexdigest()
+
+    assert hashlib.md5(data).hexdigest() == md5sum
 
 
 def send_sage_detection_response(

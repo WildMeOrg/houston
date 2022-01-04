@@ -160,8 +160,10 @@ class Individuals(Resource):
             if result_encounter is not None:
                 encounters.append(result_encounter)
             else:
+                missing_encounter = result_encounter_json['id']
                 log.error(
-                    'Individual.post: at least one encounter found in request_in or result_data was not found in the Houston database. Aborting Individual creation.'
+                    f'Individual.post: at least one encounter found in request_in or result_data was not found'
+                    f' in the Houston database {missing_encounter}.  Aborting Individual creation.'
                 )
                 cleanup.rollback_and_abort(
                     message='Encounter(s) in request or response not in Houston db.',

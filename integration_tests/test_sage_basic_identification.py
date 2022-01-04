@@ -1,10 +1,8 @@
 # -*- coding: utf-8 -*-
 from . import utils
-import time
 
 
-# Not a generic util as there has to be exactly one asset group sighting, asset, sighting, encounter,
-# annotation and encounter
+# Not a generic util as there are fixed number of things
 def create_sighting(session, codex_url, test_root, filename):
     transaction_id = utils.upload_to_tus(session, codex_url, [test_root / filename])
     group_data = {
@@ -34,9 +32,6 @@ def create_sighting(session, codex_url, test_root, filename):
     ags_guid = asset_group_sighting_guids[0]
     assert len(asset_guids) == 1
 
-    # Wait for detection, but have a quick nap before the first attempt to read, Sage mostly replies in this time
-    # meaning that 15 second sleeps are avoided
-    time.sleep(5)
     ags_url = codex_url(f'/api/v1/asset_groups/sighting/{ags_guid}')
     response = utils.wait_for(
         session.get, ags_url, lambda response: response.json()['stage'] == 'curation'

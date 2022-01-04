@@ -1,4 +1,52 @@
 # -*- coding: utf-8 -*-
+from . import utils
+
+
+# Not a generic util as there has to be exactly one asset group sighting, no assets, one sighting, and three
+# encounters,
+def create_sighting(session, codex_url):
+    group_data = {
+        'description': 'This is a test asset_group, please ignore',
+        'uploadType': 'bulk',
+        'speciesDetectionModel': ['None'],
+        'sightings': [
+            {
+                'startTime': '2000-01-01T01:01:01Z',
+                'locationId': 'PYTEST-SIGHTING',
+                'encounters': [{}, {}, {}],
+            },
+        ],
+    }
+    asset_group_guid, asset_group_sighting_guids, asset_guids = utils.create_asset_group(
+        session, codex_url, group_data
+    )
+    assert len(asset_group_sighting_guids) == 1
+    ags_guid = asset_group_sighting_guids[0]
+
+    # Should not need a wait, should be just a get
+    ags_url = codex_url(f'/api/v1/asset_groups/sighting/{ags_guid}')
+    ags_json = session.get(ags_url).json()
+    assert len(ags_json['assets']) == 0
+    assert ags_json['stage'] == 'processed'
+    assert 'sighting_guid' in ags_json.keys()
+
+    sighting_guid = ags_json['sighting_guid']
+    sight_url = codex_url(f'/api/v1/sightings/{sighting_guid}')
+    sight_json = session.get(sight_url).json()
+    assert sight_json['stage'] == 'un_reviewed'
+    assert len(sight_json['encounters']) == 3
+
+    encounter_guids = [enc['guid'] for enc in sight_json['encounters']]
+    assert len(encounter_guids) == 3
+
+    return {
+        'asset_group': asset_group_guid,
+        'ags': ags_guid,
+        'sighting': sighting_guid,
+        'encounters': encounter_guids,
+    }
+
+
 def test_social_groups(session, login, codex_url):
     # Create social group roles
     login(session)
@@ -24,45 +72,9 @@ def test_social_groups(session, login, codex_url):
         'updated': response.json()['updated'],
     }
 
-    # Create encounters
-    data = {
-        'locationId': 'PYTEST-SIGHTING',
-        'startTime': '2000-01-01T01:01:01Z',
-        'encounters': [
-            {},
-            {},
-            {},
-        ],
-    }
-    response = session.post(codex_url('/api/v1/sightings/'), json=data)
-    assert response.status_code == 200
-    sighting_id = response.json()['result']['id']
-    result = response.json()['result']
-    encounter_ids = [e['id'] for e in result['encounters']]
-    encounter_versions = [e['version'] for e in result['encounters']]
-    assert response.json() == {
-        'success': True,
-        'result': {
-            'id': result['id'],  # 7934b1db-6d5f-405a-9502-88f754fa9179
-            'version': result['version'],  # 1635538733340,
-            'encounters': [
-                {
-                    # 06292cf1-1168-43ac-b6a0-40972afb9af3
-                    'id': encounter_ids[0],
-                    'version': encounter_versions[0],  # 1635538733339
-                },
-                {
-                    'id': encounter_ids[1],
-                    'version': encounter_versions[1],
-                },
-                {
-                    'id': encounter_ids[2],
-                    'version': encounter_versions[2],
-                },
-            ],
-            'assets': {},
-        },
-    }
+    uuids = create_sighting(session, codex_url)
+    asset_group_id = uuids['asset_group']
+    encounter_ids = uuids['encounters']
 
     # Create individuals
     responses = []
@@ -70,7 +82,7 @@ def test_social_groups(session, login, codex_url):
         data = {'encounters': [{'id': encounter_ids[i]}]}
         responses.append(session.post(codex_url('/api/v1/individuals/'), json=data))
         assert responses[-1].status_code == 200
-    result = responses[0].json()['result']
+
     individual_ids = [r.json()['result']['id'] for r in responses]
     assert responses[0].json() == {
         'success': True,
@@ -80,7 +92,7 @@ def test_social_groups(session, login, codex_url):
             'encounters': [
                 {
                     'id': encounter_ids[0],
-                    'version': encounter_versions[0],
+                    'version': responses[0].json()['result']['encounters'][0]['version'],
                 }
             ],
         },
@@ -209,5 +221,5 @@ def test_social_groups(session, login, codex_url):
         assert response.status_code == 204
 
     # DELETE sighting
-    response = session.delete(codex_url(f'/api/v1/sightings/{sighting_id}'))
+    response = session.delete(codex_url(f'/api/v1/asset_groups/{asset_group_id}'))
     assert response.status_code == 204

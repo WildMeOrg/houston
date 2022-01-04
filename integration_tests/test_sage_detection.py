@@ -16,7 +16,8 @@ def test_create_asset_group_detection(session, codex_url, test_root, login):
         'transactionId': transaction_id,
         'sightings': [
             {
-                'startTime': '2000-01-01T01:01:01Z',
+                'time': '2000-01-01T01:01:01+00:00',
+                'timeSpecificity': 'time',
                 'locationId': 'Tiddleywink',
                 'encounters': [{}],
                 'assetReferences': [zebra.name],
@@ -71,7 +72,8 @@ def test_create_asset_group_detection(session, codex_url, test_root, login):
             },
         ],
         'config': {
-            'startTime': response_json['config']['startTime'],
+            'time': response_json['config']['time'],
+            'timeSpecificity': 'time',
             'locationId': 'Tiddleywink',
             'encounters': response_json['config']['encounters'],
             'assetReferences': ['zebra.jpg'],

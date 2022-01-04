@@ -63,7 +63,8 @@ def test_asset_group_sightings(session, login, codex_url, test_root):
                         },
                     ],
                     'locationId': 'PYTEST',
-                    'startTime': '2000-01-01T01:01:01Z',
+                    'time': '2000-01-01T01:01:01+00:00',
+                    'timeSpecificity': 'time',
                 },
             ],
             'speciesDetectionModel': ['african_terrestrial'],
@@ -221,7 +222,8 @@ def test_asset_group_sightings(session, login, codex_url, test_root):
         'hasView': True,
         'locationId': 'PYTEST',
         'stage': 'curation',
-        'startTime': '2000-01-01T01:01:01Z',
+        'time': '2000-01-01T01:01:01+00:00',
+        'timeSpecificity': 'time',
         # 2021-11-12T18:28:32.744135+00:00
         'updatedHouston': response.json()['updatedHouston'],
         'verbatimLocality': '',
@@ -309,7 +311,8 @@ def test_asset_group_sightings(session, login, codex_url, test_root):
         'locationId': 'PYTEST',
         'version': response.json()['version'],
         'featuredAssetGuid': response.json()['featuredAssetGuid'],
-        'startTime': response.json()['startTime'],
+        'time': response.json()['time'],
+        'timeSpecificity': response.json()['timeSpecificity'],
         'createdHouston': response.json()['createdHouston'],
         'updatedHouston': response.json()['updatedHouston'],
         'curation_start_time': response.json()['curation_start_time'],
@@ -352,7 +355,8 @@ def test_bulk_upload(session, login, codex_url, test_root, request):
                     'locationId': 'PYTEST',
                     'verbatimLocality': 'North Male Lankan Reef',
                     'verbatimEventDate': 'yesterday',
-                    'startTime': '2014-01-01T09:00:00.000Z',
+                    'time': '2014-01-01T09:00:00.000+00:00',
+                    'timeSpecificity': 'time',
                     'encounters': [
                         {
                             'decimalLatitude': '4.286',
@@ -372,7 +376,8 @@ def test_bulk_upload(session, login, codex_url, test_root, request):
                     'locationId': 'PYTEST too',
                     'verbatimLocality': 'North Male Lankan Reef',
                     'verbatimEventDate': 'yesterday',
-                    'startTime': '2014-01-01T09:00:00.000Z',
+                    'time': '2014-01-01T09:00:00.000+00:00',
+                    'timeSpecificity': 'time',
                     'encounters': [
                         {
                             'decimalLatitude': '4.2861',
@@ -391,7 +396,8 @@ def test_bulk_upload(session, login, codex_url, test_root, request):
                     'decimalLatitude': '4.3638',
                     'locationId': 'PYTEST too',
                     'verbatimLocality': 'North Male Gasfinolhu Inside Reef',
-                    'startTime': '2019-01-01T09:00:00.000Z',
+                    'time': '2019-01-01T09:00:00.000+00:00',
+                    'timeSpecificity': 'time',
                     'encounters': [
                         {
                             'decimalLatitude': '4.3638',

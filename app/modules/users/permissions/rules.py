@@ -44,6 +44,8 @@ MODULE_USER_MAP = {
     ('AuditLog', AccessOperation.READ_PRIVILEGED): ['is_admin'],
     ('SocialGroup', AccessOperation.READ): ['is_researcher'],
     ('SocialGroup', AccessOperation.WRITE): ['is_researcher'],
+    ('Relationship', AccessOperation.READ): ['is_researcher'],
+    ('Relationship', AccessOperation.WRITE): ['is_researcher'],
 }
 
 # Map of user permissions on the object. These permissions are not granted by collaboration
@@ -80,6 +82,8 @@ OBJECT_USER_MAP = {
     ('SocialGroup', AccessOperation.READ): ['is_researcher'],
     ('SocialGroup', AccessOperation.WRITE): ['is_researcher'],
     ('SocialGroup', AccessOperation.DELETE): ['is_researcher'],
+    ('Relationship', AccessOperation.READ): ['is_researcher'],
+    ('Relationship', AccessOperation.WRITE): ['is_researcher'],
     ('Collaboration', AccessOperation.WRITE): ['is_user_manager'],
 }
 

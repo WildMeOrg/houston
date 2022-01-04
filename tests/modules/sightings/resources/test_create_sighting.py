@@ -405,8 +405,7 @@ def test_edm_and_houston_encounter_data_within_sightings(
         )
 
 
-# Shouldn't really be needed but have to call the olde way at least once to keep code coverage stats high enough
-# to allow merge
+# This is now disabled, so make sure that it is
 def test_create_old_sighting(flask_app_client, researcher_1):
     sighting_data = {
         'startTime': timestamp,
@@ -423,9 +422,7 @@ def test_create_old_sighting(flask_app_client, researcher_1):
             },
         ],
     }
-    sighting_resp = sighting_utils.create_old_sighting(
-        flask_app_client, researcher_1, sighting_data
+    error = 'Not supported. Use the AssetGroup POST API instead'
+    sighting_utils.create_old_sighting(
+        flask_app_client, researcher_1, sighting_data, 400, error
     )
-    sighting_id = sighting_resp.json['result']['id']
-    # sighting_utils.cleanup_tus_dir(transaction_id)
-    sighting_utils.delete_sighting(flask_app_client, researcher_1, sighting_id)

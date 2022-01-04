@@ -94,6 +94,8 @@ class Individual(db.Model, FeatherModel):
         order_by='SocialGroupIndividualMembership.individual_guid',
     )
 
+    # there is a backref'd 'relationships' list of RelationshipIndividualMember accessible here
+
     def __repr__(self):
         return (
             '<{class_name}('
@@ -726,8 +728,13 @@ class Individual(db.Model, FeatherModel):
         for name in self.names:
             name.delete()
         with db.session.begin(subtransactions=True):
-            for group in self.social_groups:
-                db.session.delete(group)
+            while self.social_groups:
+                db.session.delete(self.social_groups.pop())
+
+            if self.relationships:
+                for relationship_membership in self.relationships:
+                    relationship_membership.delete()
+
             db.session.delete(self)
 
     def delete_from_edm(self):

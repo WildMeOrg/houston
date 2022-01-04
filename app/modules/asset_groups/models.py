@@ -186,10 +186,14 @@ class AssetGroupSighting(db.Model, HoustonModel):
 
         # Create sighting in EDM
         try:
+            # Don't send the encounter guids. EDM doesn't use them but they confuse anyone reading logs
+            sent_data = self.config
+            for enc in sent_data['encounters']:
+                enc.pop('guid')
             result_data = current_app.edm.request_passthrough_result(
                 'sighting.data',
                 'post',
-                {'data': self.config, 'headers': {'Content-Type': 'application/json'}},
+                {'data': sent_data, 'headers': {'Content-Type': 'application/json'}},
                 '',
             )
         except HoustonException as ex:
@@ -324,10 +328,14 @@ class AssetGroupSighting(db.Model, HoustonModel):
             return self.created.isoformat() + 'Z'
         return None
 
-    # curation time is only valid if there are no active detection jobs
+    # curation time is only valid if there are no active detection jobs and there were some assets
     # Either detection has completed or no detection jobs were run
     def get_curation_start_time(self):
-        if not self.any_jobs_active():
+        if (
+            not self.any_jobs_active()
+            and 'assetReferences' in self.config.keys()
+            and len(self.config['assetReferences']) != 0
+        ):
             return self.curation_start.isoformat() + 'Z'
         return None
 

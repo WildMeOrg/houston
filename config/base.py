@@ -208,6 +208,7 @@ class BaseConfig(FlaskConfigOverrides, RedisConfig):
         'complex_date_time',
         'annotations',
         'social_groups',
+        'relationships',
         'site_settings',
         'site_info',
         'job_control',

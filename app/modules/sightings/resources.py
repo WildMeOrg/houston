@@ -182,8 +182,11 @@ class Sightings(Resource):
     @api.response(code=HTTPStatus.CONFLICT)
     def post(self, args):
         """
-        Create a new instance of Sighting.
+        Create a new instance of Sighting - Not supported
         """
+        # Now disabled. Should use AssetGroup API instead
+        abort(400, 'Not supported. Use the AssetGroup POST API instead')
+
         from app.extensions.elapsed_time import ElapsedTime
 
         timer = ElapsedTime()

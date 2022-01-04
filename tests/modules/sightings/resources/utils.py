@@ -61,10 +61,7 @@ def create_old_sighting(
     if expected_status_code == 200:
         assert response.json['success']
     else:
-        assert not response.json['success']
-        assert response.json['message'] == 'Error'
-        if expected_error:
-            assert response.json['passed_message'] == expected_error
+        assert response.json['message'] == expected_error
 
     return response
 

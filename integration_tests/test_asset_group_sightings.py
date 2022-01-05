@@ -124,7 +124,8 @@ def test_asset_group_sightings(session, login, codex_url, test_root):
                         }
                     ],
                     'locationId': 'PYTEST',
-                    'startTime': '2000-01-01T01:01:01Z',
+                    'time': '2000-01-01T01:01:01+00:00',
+                    'timeSpecificity': 'time',
                 },
                 'creator': creator_data,
                 'curation_start_time': ags['curation_start_time'],

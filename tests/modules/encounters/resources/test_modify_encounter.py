@@ -29,7 +29,8 @@ def test_modify_encounter(
     import datetime
 
     data_in = {
-        'startTime': datetime.datetime.now().isoformat() + 'Z',
+        'time': datetime.datetime.now().isoformat() + '+00:00',
+        'timeSpecificity': 'time',
         'context': 'test',
         'locationId': 'test',
         'encounters': [

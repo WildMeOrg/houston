@@ -329,7 +329,7 @@ def patch_sighting(
         else:
             assert response.json.keys() >= {'result', 'success'}
             assert response.json['success']
-    elif expected_status_code != 401:
+    elif expected_status_code != 401 and expected_status_code != 409:
         assert not response.json['success']
 
     return response

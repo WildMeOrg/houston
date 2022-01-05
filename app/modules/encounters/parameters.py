@@ -59,11 +59,8 @@ class PatchEncounterDetailsParameters(PatchJSONParameters):
     @classmethod
     def replace(cls, obj, field, value, state):
         from app.modules.users.models import User
-        from app.modules.complex_date_time.models import ComplexDateTime, Specificities
-        from datetime import datetime
-        from app.utils import normalized_timezone_string
+        from app.modules.complex_date_time.models import ComplexDateTime
         from .models import db
-        import pytz
 
         ret_val = False
         if field == 'owner':
@@ -94,67 +91,9 @@ class PatchEncounterDetailsParameters(PatchJSONParameters):
             with db.session.begin(subtransactions=True):
                 db.session.merge(annot)
             ret_val = True
-        # * note: field==time requires `value` is iso8601 **with timezone**
-        # this gets a little funky in the event there is *no existing time set* as the patch
-        #   happens in two parts that know nothing about each other.  so we have to create a ComplexDateTime and
-        #   *fake* the other field value (time/timeSpecificity) upon doing so.  :(  we then hope that the subsequent
-        #   patch for the other field is coming down the pipe.  api user beware!
-        # note: the dict-based all-at-once solution below is the better choice if you can swing it.
-        elif (field == 'time' or field == 'timeSpecificity') and isinstance(value, str):
-            dt = None
-            specificity = None
-            timezone = None
-            if field == 'time':
-                # this will throw ValueError if not parseable
-                dt = datetime.fromisoformat(value)
-                if not dt.tzinfo:
-                    raise ValueError(f'passed value {value} does not have time zone data')
-                timezone = normalized_timezone_string(dt)
-                log.debug(f'patch field={field} value => {dt} + {timezone}')
-            else:
-                if not Specificities.has_value(value):
-                    raise ValueError(f'invalid specificity: {value}')
-                specificity = Specificities[value]
-                log.debug(f'patch field={field} value => {specificity}')
-            time_cfd = obj.time
-            if time_cfd:  # we just update it
-                if specificity:
-                    time_cfd.specificity = specificity
-                    log.debug(f'patch updated specificity on {time_cfd}')
-                else:
-                    time_cfd.datetime = dt.astimezone(pytz.UTC)
-                    time_cfd.timezone = timezone
-                    log.debug(f'patch updated datetime+timezone on {time_cfd}')
-                ret_val = True
-            else:
-                # this is the wonky bit - we have to create ComplexDateTime based on only one of datetime/specificity
-                #   the hope is that the next patch op will add/replace the other attribute
-                if not dt:
-                    dt = datetime.utcnow()
-                    timezone = 'UTC'
-                if not specificity:
-                    specificity = Specificities.time
-                log.warning(
-                    f'patch field={field} given single value and has no current ComplexDateTime, generating new one with ({dt}, {timezone}, {specificity})'
-                )
-                time_cfd = ComplexDateTime(dt, timezone, specificity)
-                with db.session.begin(subtransactions=True):
-                    db.session.add(time_cfd)
-                obj.time = time_cfd
-                obj.time_guid = time_cfd.guid
-                ret_val = True
 
-        elif field == 'time' and isinstance(value, dict):
-            time_cfd = ComplexDateTime.from_dict(value)
-            with db.session.begin(subtransactions=True):
-                db.session.add(time_cfd)
-            old_cdt = ComplexDateTime.query.get(obj.time_guid)
-            if old_cdt:
-                with db.session.begin(subtransactions=True):
-                    db.session.delete(old_cdt)
-            obj.time = time_cfd
-            obj.time_guid = time_cfd.guid
-            ret_val = True
+        elif field == 'time' or field == 'timeSpecificity':
+            ret_val = ComplexDateTime.patch_replace_helper(obj, field, value)
 
         return ret_val
 

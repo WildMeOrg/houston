@@ -52,7 +52,7 @@ class SightingCleanup(object):
         )
         if self.sighting_guid is not None:
             log.warning('Cleanup removing Sighting %r from EDM' % self.sighting_guid)
-            Sighting.delete_from_edm(current_app, request)
+            Sighting.delete_from_edm_by_guid(current_app, self.sighting_guid, request)
         if self.asset_group is not None:
             log.warning('Cleanup removing %r' % self.asset_group)
             self.asset_group.delete()
@@ -338,6 +338,12 @@ class Sightings(Resource):
             version=result_data.get('version', 2),
             stage=SightingStage.processed,
         )
+        sighting.set_time_from_data(request_in)
+        if not sighting.time:
+            cleanup.rollback_and_abort(
+                'Problem with sighting time/timeSpecificity values',
+                f"invalid time ({request_in.get('time')}) or timeSpecificity ({request_in.get('timeSpecificity')})",
+            )
         AuditLog.user_create_object(log, sighting, duration=timer.elapsed())
 
         assets = None

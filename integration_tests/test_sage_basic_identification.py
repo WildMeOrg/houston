@@ -12,7 +12,8 @@ def create_sighting(session, codex_url, test_root, filename):
         'transactionId': transaction_id,
         'sightings': [
             {
-                'startTime': '2000-01-01T01:01:01Z',
+                'time': '2000-01-01T01:01:01+00:00',
+                'timeSpecificity': 'time',
                 'locationId': 'Tiddleywink',
                 'encounters': [{}],
                 'assetReferences': [filename],

@@ -29,7 +29,8 @@ def test_merge(db, flask_app_client, researcher_1, request, test_root):
                 'locationId': 'three',
             },
         ],
-        'startTime': '2000-01-01T01:01:01Z',
+        'time': '2000-01-01T01:01:01+00:00',
+        'timeSpecificity': 'time',
         'locationId': 'test',
     }
 

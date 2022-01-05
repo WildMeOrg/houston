@@ -190,9 +190,17 @@ def test_patch_asset_group_sighting_as_sighting(
         flask_app_client, researcher_1, asset_group_sighting_guid
     )
 
-    # startTime and locationId are only present in the _as_sighting endpoints,
+    # time and locationId are only present in the _as_sighting endpoints,
     # since they are in the config of a standard AGS
-    for field in {'guid', 'stage', 'completion', 'assets', 'startTime', 'locationId'}:
+    for field in {
+        'guid',
+        'stage',
+        'completion',
+        'assets',
+        'time',
+        'timeSpecificity',
+        'locationId',
+    }:
         assert field in group_sighting.json
 
     assert group_sighting.json['asset_group_guid'] == asset_group_uuid

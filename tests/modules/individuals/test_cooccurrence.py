@@ -17,6 +17,7 @@ def test_cooccurrence(db, flask_app_client, researcher_1):
     from app.modules.individuals.models import Individual
 
     sighting = Sighting(stage=SightingStage.processed)
+    sighting.time = test_utils.complex_date_time_now()
     owner = User.get_public_user()
 
     encounter_a = test_utils.generate_owned_encounter(owner)
@@ -61,6 +62,7 @@ def test_cooccurrence(db, flask_app_client, researcher_1):
     # tests indiv.get_shared_sightings(list_individual_guids)
     individual_4 = Individual()
     sighting_two = Sighting(stage=SightingStage.processed)
+    sighting_two.time = test_utils.complex_date_time_now()
     encounter_d = test_utils.generate_owned_encounter(owner)
     individual_1.add_encounter(encounter_d)
     encounter_e = test_utils.generate_owned_encounter(owner)

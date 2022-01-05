@@ -36,7 +36,7 @@ class EDMManager(RestManager):
     ENDPOINT_PREFIX = 'api'
 
     # this is based on edm date of most recent commit (we must be at or greater than this)
-    MIN_VERSION = '2021-12-15 00:12:34 -0700'
+    MIN_VERSION = '2021-12-28 00:12:34 -0700'
 
     # We use // as a shorthand for prefix
     # fmt: off

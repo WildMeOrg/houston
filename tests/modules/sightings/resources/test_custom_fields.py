@@ -29,7 +29,8 @@ def test_custom_fields_on_sighting(
     # transaction_id, test_filename = sighting_utils.prep_tus_dir(test_root)
     cfd_test_value = 'CFD_TEST_VALUE'
     data_in = {
-        'startTime': timestamp,
+        'time': timestamp,
+        'timeSpecificity': 'time',
         'locationId': 'test',
         'customFields': {
             cfd_id: cfd_test_value,
@@ -109,7 +110,8 @@ def test_custom_fields_on_sighting(
             'featuredAssetGuid': str(sighting.featured_asset_guid),
             'customFields': {cfd_id: cfd_test_value},
             # Only asserting that these fields exist
-            'startTime': full_sighting.json['startTime'],
+            'time': full_sighting.json['time'],
+            'timeSpecificity': full_sighting.json['timeSpecificity'],
             'createdEDM': full_sighting.json['createdEDM'],
         }
     )

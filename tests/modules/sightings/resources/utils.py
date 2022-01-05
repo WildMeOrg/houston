@@ -30,7 +30,8 @@ EXPECTED_FIELDS = {
     'creator',
     'updated',
     'updatedHouston',
-    'startTime',
+    'time',
+    'timeSpecificity',
     'guid',
     'identification_start_time',
     'encounters',
@@ -44,7 +45,11 @@ EXPECTED_FIELDS = {
 def create_old_sighting(
     flask_app_client,
     user,
-    data_in={'locationId': 'PYTEST', 'startTime': '2000-01-01T01:01:01Z'},
+    data_in={
+        'locationId': 'PYTEST',
+        'time': '2000-01-01T01:01:01+00:00',
+        'timeSpecificity': 'time',
+    },
     expected_status_code=200,
     expected_error=None,
 ):
@@ -81,7 +86,8 @@ def create_sighting(
         # Create a valid but simple one
         sighting_data = {
             'encounters': [{}],
-            'startTime': '2000-01-01T01:01:01Z',
+            'time': '2000-01-01T01:01:01+00:00',
+            'timeSpecificity': 'time',
             'locationId': 'test',
         }
     transaction_id, test_filename = tus_utils.prep_tus_dir(test_root)
@@ -145,7 +151,8 @@ def create_large_sighting(flask_app_client, user, request, test_root):
 
     locationId = random.randrange(10000)
     sighting_data = {
-        'startTime': '2000-01-01T01:01:01Z',
+        'time': '2000-01-01T01:01:01+00:00',
+        'timeSpecificity': 'time',
         'locationId': f'Location {locationId}',
         'encounters': [
             {
@@ -322,7 +329,7 @@ def patch_sighting(
         else:
             assert response.json.keys() >= {'result', 'success'}
             assert response.json['success']
-    elif expected_status_code != 401:
+    elif expected_status_code != 401 and expected_status_code != 409:
         assert not response.json['success']
 
     return response

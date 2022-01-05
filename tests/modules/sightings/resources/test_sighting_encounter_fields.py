@@ -54,10 +54,7 @@ def test_mega_data(
     assert 'response' in response.json and 'value' in response.json['response']
     tx_guid = response.json['response']['value'][-1]['id']
 
-    sighting_timestamp_start = datetime.datetime.now().isoformat() + '+00:00'
-    sighting_timestamp_end = (
-        datetime.datetime.now() + datetime.timedelta(hours=1)
-    ).isoformat() + '+00:00'
+    sighting_timestamp = datetime.datetime.now().isoformat() + '+00:00'
     encounter_timestamp = datetime.datetime.now().isoformat() + '+00:00'
     cfd_test_value = 'CFD_TEST_VALUE'
 
@@ -75,8 +72,8 @@ def test_mega_data(
     }
 
     sighting_data_in = {
-        'startTime': sighting_timestamp_start,
-        'endTime': sighting_timestamp_end,
+        'time': sighting_timestamp,
+        'timeSpecificity': 'time',
         'locationId': 'sig-test',
         'decimalLatitude': random_decimal_latitude(),
         'decimalLongitude': random_decimal_longitude(),
@@ -109,9 +106,8 @@ def test_mega_data(
 
     # some checks on response
     assert (
-        full_sighting.json['startTime'][0:18] == sighting_timestamp_start[0:18]
+        full_sighting.json['time'][0:18] == sighting_timestamp[0:18]
     )  # grr rounding/precision
-    assert full_sighting.json['endTime'][0:18] == sighting_timestamp_end[0:18]
     assert 'customFields' in full_sighting.json
     assert sighting_cfd_id in full_sighting.json['customFields']
     assert full_sighting.json['customFields'][sighting_cfd_id] == cfd_test_value

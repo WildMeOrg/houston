@@ -29,7 +29,8 @@ def test_modify_encounter(
     import datetime
 
     data_in = {
-        'startTime': datetime.datetime.now().isoformat() + 'Z',
+        'time': datetime.datetime.now().isoformat() + '+00:00',
+        'timeSpecificity': 'time',
         'context': 'test',
         'locationId': 'test',
         'encounters': [
@@ -337,7 +338,8 @@ def test_create_encounter_time_test(
                 'time': 'fubar',
             }
         ],
-        'startTime': '2000-01-01T01:01:01Z',
+        'time': '2000-01-01T01:01:01+00:00',
+        'timeSpecificity': 'time',
         'locationId': 'test',
     }
     uuids = sighting_utils.create_sighting(

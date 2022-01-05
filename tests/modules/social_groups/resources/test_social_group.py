@@ -36,7 +36,8 @@ def create_individuals(flask_app_client, user, request, test_root, num_individua
 
     # Create a sighting with three encounters
     sighting_data = {
-        'startTime': '2000-01-01T01:01:01Z',
+        'time': '2000-01-01T01:01:01+00:00',
+        'timeSpecificity': 'time',
         'locationId': 'test social groups',
         'encounters': [],
     }

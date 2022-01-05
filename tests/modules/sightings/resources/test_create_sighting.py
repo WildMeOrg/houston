@@ -33,7 +33,7 @@ def test_create_failures(flask_app_client, test_root, researcher_1, request):
         flask_app_client, researcher_1, request, test_root, data_in, 400, expected_error
     )
 
-    data_in = {'locationId': 'wibble', 'startTime': timestamp}
+    data_in = {'locationId': 'wibble', 'time': timestamp, 'timeSpecificity': 'time'}
     expected_error = 'encounters field missing from Sighting 1'
     sighting_utils.create_sighting(
         flask_app_client, researcher_1, request, test_root, data_in, 400, expected_error
@@ -42,7 +42,8 @@ def test_create_failures(flask_app_client, test_root, researcher_1, request):
     # has encounters, but bunk assetReferences
     data_in = {
         'encounters': [{}],
-        'startTime': timestamp,
+        'time': timestamp,
+        'timeSpecificity': 'time',
         'assetReferences': [{'fail': 'fail'}],
         'context': 'test',
         'locationId': 'test',
@@ -67,12 +68,14 @@ def test_create_and_modify_and_delete_sighting(
     db, flask_app_client, researcher_1, test_root, staff_user, request
 ):
     from app.modules.sightings.models import Sighting
+    from app.modules.complex_date_time.models import Specificities
 
     # we should end up with these same counts (which _should be_ all zeros!)
     orig_ct = test_utils.all_count(db)
     data_in = {
         'encounters': [{}, {}],
-        'startTime': timestamp,
+        'time': timestamp,
+        'timeSpecificity': 'time',
         'context': 'test',
         'locationId': 'test',
     }
@@ -117,7 +120,8 @@ def test_create_and_modify_and_delete_sighting(
         'createdEDM',
         'customFields',
         'locationId',
-        'startTime',
+        'time',
+        'timeSpecificity',
         'encounterCounts',
         'version',
         'hasView',
@@ -136,6 +140,69 @@ def test_create_and_modify_and_delete_sighting(
         'curation_start_time',
         'detection_start_time',
     }
+
+    # some time-related patching -- invalid specificity (should fail w/409)
+    patch_data = [
+        test_utils.patch_replace_op('timeSpecificity', 'fubar'),
+    ]
+    patch_res = sighting_utils.patch_sighting(
+        flask_app_client,
+        researcher_1,
+        sighting_id,
+        patch_data,
+        expected_status_code=409,
+    )
+    assert patch_res.json.get('message') == 'invalid specificity: fubar'
+
+    # should be sufficient to set a (new) time
+    test_dt = '1999-01-01T12:34:56-07:00'
+    patch_data = [
+        test_utils.patch_replace_op('time', test_dt),
+        test_utils.patch_replace_op('timeSpecificity', 'month'),
+    ]
+    patch_res = sighting_utils.patch_sighting(
+        flask_app_client,
+        researcher_1,
+        sighting_id,
+        patch_data,
+    )
+    test_sight = Sighting.query.get(sighting_id)
+    assert test_sight.time
+    assert test_sight.time.specificity == Specificities.month
+    assert test_sight.time.timezone == 'UTC-0700'
+    assert test_sight.time.isoformat_in_timezone() == test_dt
+
+    # now update just the specificity
+    patch_data = [
+        test_utils.patch_replace_op('timeSpecificity', 'day'),
+    ]
+    patch_res = sighting_utils.patch_sighting(
+        flask_app_client,
+        researcher_1,
+        sighting_id,
+        patch_data,
+    )
+    test_sight = Sighting.query.get(sighting_id)
+    assert test_sight.time
+    assert test_sight.time.specificity == Specificities.day
+    assert test_sight.time.isoformat_in_timezone() == test_dt
+
+    # now update just the date/time
+    test_dt = datetime.datetime.utcnow().isoformat() + '+03:00'
+    patch_data = [
+        test_utils.patch_replace_op('time', test_dt),
+    ]
+    patch_res = sighting_utils.patch_sighting(
+        flask_app_client,
+        researcher_1,
+        sighting_id,
+        patch_data,
+    )
+    test_sight = Sighting.query.get(sighting_id)
+    assert test_sight.time
+    assert test_sight.time.specificity == Specificities.day
+    assert test_sight.time.timezone == 'UTC+0300'
+    assert test_sight.time.isoformat_in_timezone() == test_dt
 
     # test some modification (should fail due to invalid data)
     sighting_utils.patch_sighting(
@@ -235,7 +302,8 @@ def test_create_anon_and_delete_sighting(
     request.addfinalizer(lambda: tus_utils.cleanup_tus_dir(transaction_id))
     tus_utils.prep_tus_dir(test_root, filename='fluke.jpg')
     sighting_data = {
-        'startTime': timestamp,
+        'time': timestamp,
+        'timeSpecificity': 'time',
         'context': 'test',
         'locationId': 'test',
         'encounters': [{}],
@@ -312,7 +380,8 @@ def test_edm_and_houston_encounter_data_within_sightings(
     individual_json = None
     try:
         data_in = {
-            'startTime': timestamp,
+            'time': timestamp,
+            'timeSpecificity': 'time',
             'context': 'test',
             'locationId': 'test',
             'encounters': [
@@ -408,7 +477,8 @@ def test_edm_and_houston_encounter_data_within_sightings(
 # This is now disabled, so make sure that it is
 def test_create_old_sighting(flask_app_client, researcher_1):
     sighting_data = {
-        'startTime': timestamp,
+        'time': timestamp,
+        'timeSpecificity': 'time',
         'context': 'test',
         'locationId': 'test',
         'encounters': [
@@ -426,3 +496,84 @@ def test_create_old_sighting(flask_app_client, researcher_1):
     sighting_utils.create_old_sighting(
         flask_app_client, researcher_1, sighting_data, 400, error
     )
+
+
+@pytest.mark.skipif(module_unavailable('sightings'), reason='Sightings module disabled')
+def test_create_sighting_time_test(
+    flask_app, flask_app_client, researcher_1, request, test_root
+):
+    from tests.modules.sightings.resources import utils as sighting_utils
+    from app.modules.sightings.models import Sighting
+    from app.modules.complex_date_time.models import Specificities
+
+    # test with invalid time
+    sighting_data = {
+        'time': 'fubar',
+        'timeSpecificity': 'time',
+        'locationId': 'test',
+        'encounters': [{}],
+    }
+    uuids = sighting_utils.create_sighting(
+        flask_app_client,
+        researcher_1,
+        request,
+        test_root,
+        sighting_data=sighting_data,
+        expected_status_code=200,
+        commit_expected_status_code=400,
+    )
+
+    # now ok, but missing timezone
+    sighting_data['time'] = '1999-12-31T23:59:59'
+    uuids = sighting_utils.create_sighting(
+        flask_app_client,
+        researcher_1,
+        request,
+        test_root,
+        sighting_data=sighting_data,
+        expected_status_code=200,
+        commit_expected_status_code=400,
+    )
+
+    # timezone included, but no specificity
+    sighting_data['time'] = '1999-12-31T23:59:59+03:00'
+    del sighting_data['timeSpecificity']
+    uuids = sighting_utils.create_sighting(
+        flask_app_client,
+        researcher_1,
+        request,
+        test_root,
+        sighting_data=sighting_data,
+        expected_status_code=400,
+        expected_error='timeSpecificity field missing from Sighting 1',
+    )
+
+    # getting closer; bad specificity
+    sighting_data['timeSpecificity'] = 'fubar'
+    uuids = sighting_utils.create_sighting(
+        flask_app_client,
+        researcher_1,
+        request,
+        test_root,
+        sighting_data=sighting_data,
+        expected_status_code=200,
+        commit_expected_status_code=400,
+    )
+
+    # finally; ok
+    sighting_data['timeSpecificity'] = 'day'
+    uuids = sighting_utils.create_sighting(
+        flask_app_client,
+        researcher_1,
+        request,
+        test_root,
+        sighting_data=sighting_data,
+        expected_status_code=200,
+    )
+    assert uuids
+    test_sight = Sighting.query.get(uuids['sighting'])
+    assert test_sight
+    assert test_sight.time
+    assert test_sight.time.timezone == 'UTC+0300'
+    assert test_sight.time.specificity == Specificities.day
+    assert test_sight.time.isoformat_in_timezone() == sighting_data['time']

@@ -66,6 +66,7 @@ class PatchSightingDetailsParameters(PatchJSONParameters):
 
         from app.modules.assets.models import Asset
         from app.modules.asset_groups.models import AssetGroup
+        from app.modules.complex_date_time.models import ComplexDateTime
 
         if ('/' + field) not in PatchSightingDetailsParameters.COMPLEX_PATH_CHOICES:
             super(PatchSightingDetailsParameters, cls).add(obj, field, value, state)
@@ -112,4 +113,8 @@ class PatchSightingDetailsParameters(PatchJSONParameters):
                 ):
                     obj.stage = SightingStage.processed
                     ret_val = True
+
+            elif field == 'time' or field == 'timeSpecificity':
+                ret_val = ComplexDateTime.patch_replace_helper(obj, field, value)
+
         return ret_val

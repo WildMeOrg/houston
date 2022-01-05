@@ -68,6 +68,7 @@ def test_create_and_modify_and_delete_sighting(
     db, flask_app_client, researcher_1, test_root, staff_user, request
 ):
     from app.modules.sightings.models import Sighting
+    from app.modules.complex_date_time.models import Specificities
 
     # we should end up with these same counts (which _should be_ all zeros!)
     orig_ct = test_utils.all_count(db)
@@ -139,6 +140,69 @@ def test_create_and_modify_and_delete_sighting(
         'curation_start_time',
         'detection_start_time',
     }
+
+    # some time-related patching -- invalid specificity (should fail w/409)
+    patch_data = [
+        test_utils.patch_replace_op('timeSpecificity', 'fubar'),
+    ]
+    patch_res = sighting_utils.patch_sighting(
+        flask_app_client,
+        researcher_1,
+        sighting_id,
+        patch_data,
+        expected_status_code=409,
+    )
+    assert patch_res.json.get('message') == 'invalid specificity: fubar'
+
+    # should be sufficient to set a (new) time
+    test_dt = '1999-01-01T12:34:56-07:00'
+    patch_data = [
+        test_utils.patch_replace_op('time', test_dt),
+        test_utils.patch_replace_op('timeSpecificity', 'month'),
+    ]
+    patch_res = sighting_utils.patch_sighting(
+        flask_app_client,
+        researcher_1,
+        sighting_id,
+        patch_data,
+    )
+    test_sight = Sighting.query.get(sighting_id)
+    assert test_sight.time
+    assert test_sight.time.specificity == Specificities.month
+    assert test_sight.time.timezone == 'UTC-0700'
+    assert test_sight.time.isoformat_in_timezone() == test_dt
+
+    # now update just the specificity
+    patch_data = [
+        test_utils.patch_replace_op('timeSpecificity', 'day'),
+    ]
+    patch_res = sighting_utils.patch_sighting(
+        flask_app_client,
+        researcher_1,
+        sighting_id,
+        patch_data,
+    )
+    test_sight = Sighting.query.get(sighting_id)
+    assert test_sight.time
+    assert test_sight.time.specificity == Specificities.day
+    assert test_sight.time.isoformat_in_timezone() == test_dt
+
+    # now update just the date/time
+    test_dt = datetime.datetime.utcnow().isoformat() + '+03:00'
+    patch_data = [
+        test_utils.patch_replace_op('time', test_dt),
+    ]
+    patch_res = sighting_utils.patch_sighting(
+        flask_app_client,
+        researcher_1,
+        sighting_id,
+        patch_data,
+    )
+    test_sight = Sighting.query.get(sighting_id)
+    assert test_sight.time
+    assert test_sight.time.specificity == Specificities.day
+    assert test_sight.time.timezone == 'UTC+0300'
+    assert test_sight.time.isoformat_in_timezone() == test_dt
 
     # test some modification (should fail due to invalid data)
     sighting_utils.patch_sighting(

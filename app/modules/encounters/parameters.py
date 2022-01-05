@@ -60,6 +60,7 @@ class PatchEncounterDetailsParameters(PatchJSONParameters):
     def replace(cls, obj, field, value, state):
         from app.modules.users.models import User
         from app.modules.complex_date_time.models import ComplexDateTime
+        from .models import db
 
         ret_val = False
         if field == 'owner':

@@ -82,7 +82,7 @@ EOF
         echo "Found and removing existing SSH key pair"
         rm -f ${GIT_SSH_KEY_FILEPATH} ${GIT_SSH_KEY_FILEPATH}.pub
     fi
-    ssh-keygen -t rsa -b 4096 -C "Houston (${user_id})" -f "${GIT_SSH_KEY_FILEPATH}" -N ""
+    ssh-keygen -t ecdsa -b 521 -C "Houston (${user_id})" -f "${GIT_SSH_KEY_FILEPATH}" -N ""
     echo "Send the 'houston' user's public ssh key to gitlab"
     resp=$(gitlab user-key create --user-id ${user_id} --title "Houston Application" --key "$(cat ${GIT_SSH_KEY_FILEPATH}.pub)")
     # See also https://docs.gitlab.com/ee/ssh/

@@ -68,6 +68,8 @@ class PatchAssetGroupSightingDetailsParameters(PatchJSONParameters):
         '/idConfigs',
         '/assetReferences',
         '/name',
+        '/time',
+        '/timeSpecificity',
     )
 
     @classmethod

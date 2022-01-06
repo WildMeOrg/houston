@@ -6,6 +6,7 @@ Annotations database models
 
 from app.extensions import db, HoustonModel
 from app.modules.keywords.models import Keyword, KeywordSource
+from app.modules import is_module_enabled
 from app.utils import HoustonException
 
 import uuid
@@ -47,17 +48,32 @@ class Annotation(db.Model, HoustonModel):
     )
     asset = db.relationship('Asset', back_populates='annotations')
 
-    encounter_guid = db.Column(
-        db.GUID,
-        db.ForeignKey('encounter.guid', ondelete='CASCADE'),
-        index=True,
-        nullable=True,
-    )
-    encounter = db.relationship('Encounter', back_populates='annotations')
+    if is_module_enabled('encounter'):
+        encounter_guid = db.Column(
+            db.GUID,
+            db.ForeignKey('encounter.guid', ondelete='CASCADE'),
+            index=True,
+            nullable=True,
+        )
+        encounter = db.relationship('Encounter', back_populates='annotations')
+
     keyword_refs = db.relationship('AnnotationKeywords')
     ia_class = db.Column(db.String(length=255), nullable=False)
     viewpoint = db.Column(db.String(length=255), nullable=False)
     bounds = db.Column(db.JSON, nullable=False)
+
+    contributor_guid = db.Column(
+        db.GUID, db.ForeignKey('user.guid'), index=True, nullable=True
+    )
+    contributor = db.relationship(
+        'User',
+        backref=db.backref(
+            'contributed_annotations',
+            primaryjoin='User.guid == Annotation.contributor_guid',
+            order_by='Annotation.guid',
+        ),
+        foreign_keys=[contributor_guid],
+    )
 
     # May have multiple jobs outstanding, store as Json obj uuid_str is key, In_progress Bool is value
     jobs = db.Column(db.JSON, nullable=True)

@@ -20,7 +20,6 @@ class BaseAnnotationSchema(ModelSchema):
         fields = (
             Annotation.guid.key,
             Annotation.asset_guid.key,
-            Annotation.encounter_guid.key,
             Annotation.ia_class.key,
             Annotation.viewpoint.key,
         )

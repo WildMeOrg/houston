@@ -280,3 +280,46 @@ def test_patch_asset_group_sighting_as_sighting(
         response_200=encounter_patch_fields,
     )
     assert response.json['owner']['guid'] == str(researcher_1.guid)
+
+
+# specifically for DEX-644
+@pytest.mark.skipif(
+    module_unavailable('asset_groups'), reason='AssetGroups module disabled'
+)
+def test_annotation_in_asset_group(
+    flask_app_client, researcher_1, regular_user, test_root, db, empty_individual, request
+):
+    # pylint: disable=invalid-name
+    from tests.modules.annotations.resources import utils as annot_utils
+
+    (
+        asset_group_guid,
+        asset_group_sighting_guid,
+        asset_guid,
+    ) = asset_group_utils.create_simple_asset_group(
+        flask_app_client, regular_user, request, test_root
+    )
+
+    response = annot_utils.create_annotation_simple(
+        flask_app_client,
+        researcher_1,
+        asset_guid,
+    )
+    annotation_guid = response.json['guid']
+
+    group_sighting = asset_group_utils.read_asset_group_sighting(
+        flask_app_client,
+        researcher_1,
+        asset_group_sighting_guid,
+    )
+    assert group_sighting.json['assets']
+    assert len(group_sighting.json['assets'][0]['annotations']) == 1
+    assert group_sighting.json['assets'][0]['annotations'][0]['guid'] == annotation_guid
+    assert 'bounds' in group_sighting.json['assets'][0]['annotations'][0]
+    assert 'rect' in group_sighting.json['assets'][0]['annotations'][0]['bounds']
+    assert group_sighting.json['assets'][0]['annotations'][0]['bounds']['rect'] == [
+        0,
+        1,
+        2,
+        3,
+    ]

@@ -6,7 +6,7 @@ Serialization schemas for Asset_groups resources RESTful API
 
 from flask_marshmallow import base_fields
 from flask_restx_patched import ModelSchema
-from app.modules.assets.schemas import ExtendedAssetSchema
+from app.modules.assets.schemas import ExtendedAssetSchema, DetailedAssetSchema
 
 from .models import AssetGroup, AssetGroupSighting
 
@@ -59,7 +59,7 @@ class DetailedAssetGroupSightingSchema(BaseAssetGroupSightingSchema):
     """
 
     assets = base_fields.Nested(
-        ExtendedAssetSchema,
+        DetailedAssetSchema,
         attribute='get_assets',
         many=True,
     )

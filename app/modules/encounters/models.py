@@ -88,9 +88,9 @@ class Encounter(db.Model, FeatherModel):
             order_by='ProjectEncounter.project_guid',
         )
 
-    annotations = db.relationship(
-        'Annotation', back_populates='encounter', order_by='Annotation.guid'
-    )
+        annotations = db.relationship(
+            'Annotation', back_populates='encounter', order_by='Annotation.guid'
+        )
 
     time_guid = db.Column(
         db.GUID, db.ForeignKey('complex_date_time.guid'), index=True, nullable=True

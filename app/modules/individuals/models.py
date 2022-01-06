@@ -88,11 +88,11 @@ class Individual(db.Model, FeatherModel):
 
     names = db.relationship('Name', back_populates='individual', order_by='Name.created')
 
-    social_groups = db.relationship(
-        'SocialGroupIndividualMembership',
-        back_populates='individual',
-        order_by='SocialGroupIndividualMembership.individual_guid',
-    )
+    # social_groups = db.relationship(
+    #     'SocialGroupIndividualMembership',
+    #     back_populates='individual',
+    #     order_by='SocialGroupIndividualMembership.individual_guid',
+    # )
 
     # there is a backref'd 'relationships' list of RelationshipIndividualMember accessible here
 

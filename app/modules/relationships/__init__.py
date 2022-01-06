@@ -12,8 +12,12 @@ def init_app(app, **kwargs):
     """
     Init Relationships module.
     """
-    api_v1.add_oauth_scope('relationships:read', 'Provide access to Relationships details')
-    api_v1.add_oauth_scope('relationships:write', 'Provide write access to Relationships details')
+    api_v1.add_oauth_scope(
+        'relationships:read', 'Provide access to Relationships details'
+    )
+    api_v1.add_oauth_scope(
+        'relationships:write', 'Provide write access to Relationships details'
+    )
 
     # Touch underlying modules
     from . import models, resources  # NOQA

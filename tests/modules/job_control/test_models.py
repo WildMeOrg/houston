@@ -3,8 +3,13 @@
 import datetime
 from unittest import mock
 import tests.utils as test_utils
+import pytest
+from tests.utils import module_unavailable
 
 
+@pytest.mark.skipif(
+    module_unavailable('asset_groups'), reason='Asset Group module disabled'
+)
 def test_job_control(flask_app, researcher_1, test_root, db):
     # pylint: disable=invalid-name
     from app.modules.asset_groups.models import AssetGroup, AssetGroupSighting

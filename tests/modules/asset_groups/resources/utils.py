@@ -210,7 +210,15 @@ def patch_asset_group_sighting_as_sighting(
     patch_path,
     data,
     expected_status_code=200,
-    response_200={'guid', 'stage', 'completion', 'assets', 'time', 'timeSpecificity', 'locationId'},
+    response_200={
+        'guid',
+        'stage',
+        'completion',
+        'assets',
+        'time',
+        'timeSpecificity',
+        'locationId',
+    },
 ):
     with flask_app_client.login(user, auth_scopes=('asset_group_sightings:write',)):
         response = flask_app_client.patch(

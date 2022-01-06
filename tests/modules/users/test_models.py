@@ -17,7 +17,7 @@ def test_User_auth(user_instance):
 
 
 @pytest.mark.parametrize(
-    'init_static_roles,is_internal,is_admin,is_staff,is_active,is_data_manager',
+    'init_static_roles,is_internal,is_admin,is_staff,is_active,is_data_manager,is_interpreter',
     [
         (
             _init_static_roles,
@@ -26,6 +26,7 @@ def test_User_auth(user_instance):
             _is_staff,
             _is_active,
             _is_data_manager,
+            _is_interpreter,
         )
         for _init_static_roles in (
             0,
@@ -42,6 +43,7 @@ def test_User_auth(user_instance):
         for _is_staff in (False, True)
         for _is_active in (False, True)
         for _is_data_manager in (False, True)
+        for _is_interpreter in (False, True)
     ],
 )
 def test_User_static_roles_setting(
@@ -51,6 +53,7 @@ def test_User_static_roles_setting(
     is_staff,
     is_active,
     is_data_manager,
+    is_interpreter,
     user_instance,
 ):
     """
@@ -86,6 +89,11 @@ def test_User_static_roles_setting(
     else:
         user_instance.unset_static_role(user_instance.StaticRoles.DATA_MANAGER)
 
+    if is_interpreter:
+        user_instance.set_static_role(user_instance.StaticRoles.INTERPRETER)
+    else:
+        user_instance.unset_static_role(user_instance.StaticRoles.INTERPRETER)
+
     assert (
         user_instance.has_static_role(user_instance.StaticRoles.INTERNAL) is is_internal
     )
@@ -96,12 +104,17 @@ def test_User_static_roles_setting(
         user_instance.has_static_role(user_instance.StaticRoles.DATA_MANAGER)
         is is_data_manager
     )
+    assert (
+        user_instance.has_static_role(user_instance.StaticRoles.INTERPRETER)
+        is is_interpreter
+    )
 
     assert user_instance.is_internal is is_internal
     assert user_instance.is_admin is is_admin
     assert user_instance.is_staff is is_staff
     assert user_instance.is_active is is_active
     assert user_instance.is_data_manager is is_data_manager
+    assert user_instance.is_interpreter is is_interpreter
 
     if (
         not is_active
@@ -109,6 +122,7 @@ def test_User_static_roles_setting(
         and not is_admin
         and not is_internal
         and not is_data_manager
+        and not is_interpreter
     ):
         assert user_instance.static_roles == 0
 

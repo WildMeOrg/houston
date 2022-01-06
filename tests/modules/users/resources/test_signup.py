@@ -230,7 +230,7 @@ def test_new_user_creation_roles_admin(flask_app_client, admin_user, db):
     assert response.content_type == 'application/json'
     assert response.json == {
         'status': 422,
-        'message': 'invalid roles: is_researcher2.  Valid roles are is_data_manager, is_user_manager, is_contributor, is_researcher, is_exporter, is_internal, is_admin, is_staff, is_active, in_alpha, in_beta',
+        'message': 'invalid roles: is_researcher2.  Valid roles are is_interpreter, is_data_manager, is_user_manager, is_contributor, is_researcher, is_exporter, is_internal, is_admin, is_staff, is_active, in_alpha, in_beta',
     }
 
     with flask_app_client.login(admin_user):

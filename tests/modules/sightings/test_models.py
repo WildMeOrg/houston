@@ -7,6 +7,9 @@ import uuid
 
 from app.modules.users.models import User
 import tests.utils as test_utils
+import pytest
+
+from tests.utils import extension_unavailable
 
 
 def test_sighting_create_and_add_encounters(db):
@@ -105,6 +108,7 @@ def test_sighting_ensure_no_duplicate_encounters(db):
     test_encounter.delete()
 
 
+@pytest.mark.skipif(extension_unavailable('edm'), reason='EDM extension disabled')
 def test_sighting_jobs(db, request, researcher_1):
     from app.modules.sightings.models import Sighting, SightingStage
 

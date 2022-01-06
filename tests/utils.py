@@ -422,6 +422,8 @@ def patch_replace_op(path, value):
 
 
 def all_count(db):
+    from app.modules import is_module_enabled
+
     from app.modules.sightings.models import Sighting
     from app.modules.encounters.models import Encounter
     from app.modules.assets.models import Asset
@@ -432,13 +434,17 @@ def all_count(db):
     count = {}
     for cls in (Sighting, Encounter, Individual, Collaboration):
         count[cls.__name__] = row_count(db, cls)
-    asset_query = Asset.query
-    asset_group_query = AssetGroup.query
-    for guid in (TEST_ASSET_GROUP_UUID, TEST_EMPTY_ASSET_GROUP_UUID):
-        asset_query = asset_query.filter(Asset.asset_group_guid != guid)
-        asset_group_query = asset_group_query.filter(AssetGroup.guid != guid)
-    count['Asset'] = asset_query.count()
-    count['AssetGroup'] = asset_group_query.count()
+    if is_module_enabled('asset_groups'):
+        asset_query = Asset.query
+        asset_group_query = AssetGroup.query
+        for guid in (TEST_ASSET_GROUP_UUID, TEST_EMPTY_ASSET_GROUP_UUID):
+            asset_query = asset_query.filter(Asset.asset_group_guid != guid)
+            asset_group_query = asset_group_query.filter(AssetGroup.guid != guid)
+        count['Asset'] = asset_query.count()
+        count['AssetGroup'] = asset_group_query.count()
+    else:
+        count['Asset'] = 0
+        count['AssetGroup'] = 0
     return count
 
 

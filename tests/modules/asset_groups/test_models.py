@@ -7,7 +7,7 @@ import tests.modules.asset_groups.resources.utils as asset_group_utils
 import tests.utils as test_utils
 import pytest
 
-from tests.utils import module_unavailable
+from tests.utils import module_unavailable, extension_unavailable
 
 
 @pytest.mark.skipif(
@@ -181,6 +181,7 @@ def test_asset_group_sighting_get_completion(
     assert asset_group_sighting.get_completion() == 100
 
 
+@pytest.mark.skipif(extension_unavailable('edm'), reason='EDM extension disabled')
 def test_asset_group_sighting_config_field_getter(researcher_1, request):
     from app.modules.asset_groups.models import AssetGroupSighting, AssetGroup
 

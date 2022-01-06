@@ -58,6 +58,7 @@ class BaseMWSConfig(
         'notifications',
         'annotations',
         'missions',
+        'tasks',
         'site_settings',
         'site_info',
         'job_control',

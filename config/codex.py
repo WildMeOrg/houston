@@ -104,6 +104,7 @@ class BaseCodexConfig(
 
         # MWS
         'missions',
+        'tasks',
     )
     # fmt: on
 

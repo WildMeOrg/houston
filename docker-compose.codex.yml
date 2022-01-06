@@ -47,7 +47,7 @@ services:
 
   acm:
     # https://github.com/WildMeOrg/wildbook-ia
-    image: wildme/wbia:latest
+    image: wildme/wbia:arm64
     depends_on:
       - db
     command: ["--db-uri", "${WBIA_DB_URI}"]
@@ -119,7 +119,7 @@ services:
       GITLAB_HOST: "${GITLAB_HOST}"
       GITLAB_PORT: "${GITLAB_PORT}"
       GITLAB_ADMIN_PASSWORD: "${GITLAB_ADMIN_PASSWORD}"
-      GITLAB_REMOTE_URI: "${GITLAB_REMOTE_URI}"
+      GITLAB_REMOTE_URI: "-"
       GITLAB_REMOTE_LOGIN_PAT: "${GITLAB_REMOTE_LOGIN_PAT}"
       GIT_SSH_KEY: "${GIT_SSH_KEY}"
       GIT_PUBLIC_NAME: "${GIT_PUBLIC_NAME}"

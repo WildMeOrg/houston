@@ -1,6 +1,6 @@
 #!/bin/bash
 
-./scripts/venv.sh
+./scripts/mws/venv.sh
 
 source virtualenv/mws/bin/activate
 

@@ -171,6 +171,10 @@ def test_asset_group_sightings(session, login, codex_url, test_root):
                         'guid': annots_0[0]['guid'],
                         'ia_class': 'zebra_plains',
                         'viewpoint': 'unknown',
+                        'bounds': annots_0[0]['bounds'],
+                        'created': annots_0[0]['created'],
+                        'updated': annots_0[0]['updated'],
+                        'keywords': [],
                     },
                 ],
                 # 2021-11-09T11:15:08.923895+00:00

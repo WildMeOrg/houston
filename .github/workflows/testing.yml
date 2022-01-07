@@ -76,6 +76,11 @@ jobs:
         run: |
           sudo apt install libmagic1
 
+      - name: Setup App Context
+        run: |
+          set -ex
+          ./scripts/${HOUSTON_APP_CONTEXT}/activate.sh
+
       - name: Run docker-compose
         run: |
           set -ex

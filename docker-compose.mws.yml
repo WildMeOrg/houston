@@ -45,7 +45,7 @@ services:
 
   acm:
     # https://github.com/WildMeOrg/wildbook-ia
-    image: wildme/wbia:arm64
+    image: wildme/wbia:latest
     depends_on:
       - db
     command: ["--db-uri", "${WBIA_DB_URI}"]

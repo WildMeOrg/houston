@@ -297,8 +297,6 @@ class AdminUserInitialized(Resource):
 
             # now we attempt to create on edm as well
             if is_extension_enabled('edm'):
-                from flask import current_app
-
                 rtn['edmInitialized'] = current_app.edm.initialize_edm_admin_user(
                     email, password
                 )
@@ -359,28 +357,9 @@ class UserSightings(Resource):
         """
         Get Sightings for user with EDM metadata
         """
-        response = {'sightings': [], 'success': True}
 
         start, end = args['offset'], args['offset'] + args['limit']
-        for sighting in user.get_sightings()[start:end]:
-            if is_extension_enabled('edm'):
-                sighting_response = current_app.edm.get_dict(
-                    'sighting.data_complete', sighting.guid
-                )
-            else:
-                sighting_response = None
-
-            if (
-                sighting_response is not None
-                and sighting_response.get('result') is not None
-            ):
-                response['sightings'].append(sighting_response['result'])
-
-        return response
-
-        # The new variant, when Ben is ready
-        # start, end = args['offset'], args['offset'] + args['limit']
-        # return user.get_sightings_json(start, end)
+        return user.get_sightings_json(start, end)
 
 
 @api.route('/<uuid:user_guid>/asset_group_sightings')

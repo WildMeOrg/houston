@@ -88,6 +88,7 @@ def test_create_and_delete_annotation(
     # make sure annot shows up on asset
     asset_res = asset_utils.read_asset(flask_app_client, researcher_1, asset_guid)
     assert annotation_guid in [annot['guid'] for annot in asset_res.json['annotations']]
+    assert asset_res.json['annotations'][0]['bounds']['rect'] == [0, 1, 2, 3]
 
     # And deleting it
     annot_utils.delete_annotation(flask_app_client, researcher_1, annotation_guid)

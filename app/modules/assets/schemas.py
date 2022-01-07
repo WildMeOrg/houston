@@ -67,6 +67,18 @@ class ExtendedAssetSchema(BaseAssetSchema):
         )
 
 
+class ExtendedAssetDetailedAnnotationsSchema(BaseAssetSchema):
+    annotations = base_fields.Nested('DetailedAnnotationSchema', many=True)
+
+    class Meta(BaseAssetSchema.Meta):
+        fields = BaseAssetSchema.Meta.fields + (
+            Asset.created.key,
+            Asset.updated.key,
+            'annotations',
+            'dimensions',
+        )
+
+
 def not_negative(value):
     if value < 0:
         raise ValidationError('Value must be greater than 0.')

@@ -389,38 +389,6 @@ class UserAssetGroupSightings(Resource):
         """
         return user.get_unprocessed_asset_group_sightings()
 
-        # The new variant, when Ben is ready
-        # start, end = args['offset'], args['offset'] + args['limit']
-        # return user.get_sightings_json(start, end)
-
-
-@api.route('/<uuid:user_guid>/asset_group_sightings')
-@api.module_required('sightings')
-@api.resolve_object_by_model(User, 'user')
-class UserAssetGroupSightings(Resource):
-    """
-    AssetGroupSightings for a given Houston user. Note that we use PaginationParameters,
-    meaning by default this call returns 20 assetGroupSightings and will never return more
-    than 100. For such scenarios the frontend should call this successively,
-    allowing batches of <= 100 sightings to load while others are fetched.
-    """
-
-    @api.login_required(oauth_scopes=['users:read'])
-    @api.permission_required(
-        permissions.ObjectAccessPermission,
-        kwargs_on_request=lambda kwargs: {
-            'obj': kwargs['user'],
-            'action': AccessOperation.READ,
-        },
-    )
-    @api.parameters(PaginationParameters())
-    @api.response(assetGroupSchemas.AssetGroupSightingAsSightingSchema(many=True))
-    def get(self, args, user):
-        """
-        Get AssetGroupSightings for user
-        """
-        return user.get_unprocessed_asset_group_sightings()
-
 
 @api.route('/<uuid:user_guid>/profile_image', doc=False)
 @api.response(

@@ -307,7 +307,7 @@ def test_annotation_in_asset_group(
     )
     annotation_guid = response.json['guid']
 
-    group_sighting = asset_group_utils.read_asset_group_sighting(
+    group_sighting = asset_group_utils.read_asset_group_sighting_as_sighting(
         flask_app_client,
         researcher_1,
         asset_group_sighting_guid,

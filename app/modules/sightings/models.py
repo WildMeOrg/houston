@@ -10,7 +10,7 @@ import json
 from datetime import datetime  # NOQA
 from flask import current_app
 
-from app.extensions import FeatherModel, HoustonModel, db
+from app.extensions import FeatherModel, HoustonModel, db, is_extension_enabled
 from app.modules.annotations.models import Annotation
 from app.modules.encounters.models import Encounter
 from app.modules.individuals.models import Individual
@@ -431,7 +431,8 @@ class Sighting(db.Model, FeatherModel):
         return self._augment_edm_json(edm_response)
 
     def get_augmented_sighting_json(self):
-        response = current_app.edm.get_dict('sighting.data_complete', self.guid)
+        if is_extension_enabled('edm'):
+            response = current_app.edm.get_dict('sighting.data_complete', self.guid)
         if not isinstance(response, dict):  # some non-200 thing, incl 404
             return response
         if not response.get('success', False):

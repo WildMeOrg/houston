@@ -589,6 +589,14 @@ class User(db.Model, FeatherModel, UserEDMMixin):
             if not asset_group.is_processed()
         ]
 
+    def get_unprocessed_asset_group_sightings(self):
+        ags = []
+
+        for group in self.asset_groups:
+            new_ags = [ags for ags in group.get_unprocessed_asset_group_sightings()]
+            ags.extend(new_ags)
+        return ags
+
     @module_required('sightings', resolve='warn', default=[])
     def unprocessed_sightings(self):
         from app.modules.sightings.models import SightingStage
@@ -597,6 +605,13 @@ class User(db.Model, FeatherModel, UserEDMMixin):
             sighting.guid
             for sighting in self.get_sightings()
             if not sighting.stage == SightingStage.processed
+        ]
+
+    @module_required('sightings', resolve='warn', default=[])
+    def get_sightings_json(self, start, end):
+        return [
+            sighting.get_augmented_sighting_json()
+            for sighting in self.get_sightings()[start:end]
         ]
 
     def get_id(self):

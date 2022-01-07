@@ -408,13 +408,6 @@ class UserAssetGroupSightings(Resource):
         """
         Get AssetGroupSightings for user
         """
-        # schema = assetGroupSchemas.AssetGroupSightingAsSightingSchema(many=True)
-        # response = {
-        #     'sightings': schema.dump(user.get_unprocessed_asset_group_sightings()).data,
-        #     'success': True
-        # }
-        #
-        # return response
         return user.get_unprocessed_asset_group_sightings()
 
 

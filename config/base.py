@@ -388,15 +388,15 @@ class AssetGroupConfig(object):
             #        needs loaded before all the configuration is available.
             return fp
         # Assume if the file exists, we're all good.
-        if not fp.exists():
+        if not fp.exists():  # pragma: no cover
             with fp.open('w') as fb:
                 fb.write(self.GIT_SSH_KEY)
                 # Write a newline at the end of the file to avoid
                 # `Load key "/data/var/id_ssh_key": invalid format`
                 fb.write('\n')
-        # Ensure permissions are read-only for the runtime user
-        # to avoid `Load key "/data/var/id_ssh_key": bad permissions`
-        fp.chmod(0o400)
+            # Ensure permissions are read-only for the runtime user
+            # to avoid `Load key "/data/var/id_ssh_key": bad permissions`
+            fp.chmod(0o400)
         return fp
 
     @property

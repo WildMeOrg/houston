@@ -133,9 +133,8 @@ class IaConfig:
     def get_frontend_species_summary(self, genus_species):
         species_key = genus_species.replace(' ', '.')
         id_algos = self.get_supported_id_algos(genus_species)
-        for value_dict in id_algos.values():
-            value_dict.pop('query_config_dict')
-
+        for algo in id_algos:
+            id_algos[algo] = id_algos[algo]['frontend']
         summary_dict = {
             'scientific_name': genus_species,
             'common_name': self.get(f'{species_key}._common_name'),

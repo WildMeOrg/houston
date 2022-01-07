@@ -181,11 +181,14 @@ def test_getting_sightings_for_user(
 
     assert response.status_code == 200
     assert response.content_type == 'application/json'
-    assert isinstance(response.json, dict)
+    assert isinstance(response.json, list)
 
-    assert response.json['sightings'] is not None
-    assert response.json['sightings'][0]['id'] == sighting_id
-    assert response.json['success'] is True
+    assert len(response.json) == 1
+    sighting_json = response.json[0]
+
+    assert sighting_json['guid'] == sighting_id
+    assert sighting_json['stage'] == 'un_reviewed'
+    assert sighting_json['unreviewed_start_time'] is not None
 
 
 @pytest.mark.skipif(module_unavailable('sightings'), reason='Sightings module disabled')

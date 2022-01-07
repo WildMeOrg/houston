@@ -124,3 +124,65 @@ def test_configure_app_from_env_vars(monkeypatch):
     # Check the configuration is loaded
     assert app.config['PROJECT_CONTEXT'] == context
     assert app.config['PROJECT_ENVIRONMENT'] == environment
+
+
+@pytest.mark.only_for_codex
+class TestAssetGroupConfig:
+    @property
+    def target_cls(self):
+        from config.base import AssetGroupConfig
+
+        return AssetGroupConfig
+
+    def test_GIT_SSH_KEY_FILEPATH_without_key(self, monkeypatch):
+        # Set the sceario where gitlab isn't in use
+        #: using setattr because the class loads by env-var on declaration
+        monkeypatch.setattr(self.target_cls, 'GIT_SSH_KEY', None)
+
+        # Target
+        config = self.target_cls()
+
+        # Check the property is the default
+        assert config.GIT_SSH_KEY_FILEPATH == self.target_cls.default_git_ssh_key_filepath
+
+    def test_GIT_SSH_KEY_FILEPATH_with_existing_file(self, monkeypatch, tmp_path):
+        # Set the sceario where the ssh key is set,
+        # but the id_ssh_key file already exists.
+        id_ssh_key_filepath = tmp_path / 'id_ssh_key'
+        ssh_key = '--file based key--'
+        with id_ssh_key_filepath.open('w') as fb:
+            fb.write(ssh_key)
+        perm_bits = 0o644
+        id_ssh_key_filepath.chmod(perm_bits)
+        monkeypatch.setenv('GIT_SSH_KEY_FILEPATH', str(id_ssh_key_filepath))
+        #: using setattr because the class loads by env-var on declaration
+        monkeypatch.setattr(self.target_cls, 'GIT_SSH_KEY', '--key--')
+
+        # Target
+        config = self.target_cls()
+
+        # Check the property is the as env set
+        assert config.GIT_SSH_KEY_FILEPATH == id_ssh_key_filepath
+        # Check the file was not overwritten
+        with id_ssh_key_filepath.open('r') as fb:
+            assert fb.read() == ssh_key
+        assert id_ssh_key_filepath.stat().st_mode == 33188  # i.e. 644
+
+    def test_GIT_SSH_KEY_FILEPATH_without_existing_file(self, monkeypatch, tmp_path):
+        # Set the sceario where the ssh key is set,
+        # but the id_ssh_key file already exists.
+        id_ssh_key_filepath = tmp_path / 'id_ssh_key'
+        monkeypatch.setenv('GIT_SSH_KEY_FILEPATH', str(id_ssh_key_filepath))
+        ssh_key = '--key--'
+        #: using setattr because the class loads by env-var on declaration
+        monkeypatch.setattr(self.target_cls, 'GIT_SSH_KEY', ssh_key)
+
+        # Target
+        config = self.target_cls()
+
+        # Check the property is the as env set
+        assert config.GIT_SSH_KEY_FILEPATH == id_ssh_key_filepath
+        # Check the file was not overwritten
+        with id_ssh_key_filepath.open('r') as fb:
+            assert fb.read() == f'{ssh_key}\n'
+        assert id_ssh_key_filepath.stat().st_mode == 33024  # i.e. 400

@@ -378,17 +378,20 @@ class AssetGroupConfig(object):
     # FIXME: Note, if you change the SSH key, you should also delete the ssh_id file (see GIT_SSH_KEY_FILEPATH)
     GIT_SSH_KEY = os.getenv('GIT_SSH_KEY')
 
+    #: using lowercase so Flask won't pick it up as a legit setting
+    default_git_ssh_key_filepath = DATA_ROOT / 'id_ssh_key'
+
     @property
     def GIT_SSH_KEY_FILEPATH(self):
         # Assuming mixed-in with BaseConfig
-        fp = Path(os.getenv('GIT_SSH_KEY_FILEPATH', DATA_ROOT / 'id_ssh_key'))
+        fp = Path(os.getenv('GIT_SSH_KEY_FILEPATH', self.default_git_ssh_key_filepath))
         if self.GIT_SSH_KEY is None:
             # Assume the user knows what they are doing and bail out
             # FIXME: It's possible to get here because parts of the application
             #        needs loaded before all the configuration is available.
             return fp
         # Assume if the file exists, we're all good.
-        if not fp.exists():  # pragma: no cover
+        if not fp.exists():
             with fp.open('w') as fb:
                 fb.write(self.GIT_SSH_KEY)
                 # Write a newline at the end of the file to avoid

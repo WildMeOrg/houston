@@ -18,7 +18,7 @@ from app.extensions import is_extension_enabled
 from . import permissions, schemas, parameters
 from app.modules.users.permissions.types import AccessOperation
 from .models import db, User
-
+import app.modules.asset_groups.schemas as assetGroupSchemas
 
 log = logging.getLogger(__name__)
 api = Namespace('users', description='Users')
@@ -297,8 +297,6 @@ class AdminUserInitialized(Resource):
 
             # now we attempt to create on edm as well
             if is_extension_enabled('edm'):
-                from flask import current_app
-
                 rtn['edmInitialized'] = current_app.edm.initialize_edm_admin_user(
                     email, password
                 )
@@ -359,24 +357,37 @@ class UserSightings(Resource):
         """
         Get Sightings for user with EDM metadata
         """
-        response = {'sightings': [], 'success': True}
 
         start, end = args['offset'], args['offset'] + args['limit']
-        for sighting in user.get_sightings()[start:end]:
-            if is_extension_enabled('edm'):
-                sighting_response = current_app.edm.get_dict(
-                    'sighting.data_complete', sighting.guid
-                )
-            else:
-                sighting_response = None
+        return user.get_sightings_json(start, end)
 
-            if (
-                sighting_response is not None
-                and sighting_response.get('result') is not None
-            ):
-                response['sightings'].append(sighting_response['result'])
 
-        return response
+@api.route('/<uuid:user_guid>/asset_group_sightings')
+@api.module_required('sightings')
+@api.resolve_object_by_model(User, 'user')
+class UserAssetGroupSightings(Resource):
+    """
+    AssetGroupSightings for a given Houston user. Note that we use PaginationParameters,
+    meaning by default this call returns 20 assetGroupSightings and will never return more
+    than 100. For such scenarios the frontend should call this successively,
+    allowing batches of <= 100 sightings to load while others are fetched.
+    """
+
+    @api.login_required(oauth_scopes=['users:read'])
+    @api.permission_required(
+        permissions.ObjectAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'obj': kwargs['user'],
+            'action': AccessOperation.READ,
+        },
+    )
+    @api.parameters(PaginationParameters())
+    @api.response(assetGroupSchemas.AssetGroupSightingAsSightingSchema(many=True))
+    def get(self, args, user):
+        """
+        Get AssetGroupSightings for user
+        """
+        return user.get_unprocessed_asset_group_sightings()
 
 
 @api.route('/<uuid:user_guid>/profile_image', doc=False)

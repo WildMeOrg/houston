@@ -175,13 +175,44 @@ def test_getting_sightings_for_user(
     assert sighting.encounters[0].owner is researcher_1
     assert str(researcher_1.get_sightings()[0].guid) == sighting_id
 
-    with flask_app_client.login(researcher_1, auth_scopes=('users:read',)):
-        response = flask_app_client.get(f'/api/v1/users/{researcher_1.guid}/sightings')
+    response = user_utils.read_user_path(
+        flask_app_client, researcher_1, f'{researcher_1.guid}/sightings'
+    )
 
     assert response.status_code == 200
     assert response.content_type == 'application/json'
-    assert isinstance(response.json, dict)
+    assert isinstance(response.json, list)
 
-    assert response.json['sightings'] is not None
-    assert response.json['sightings'][0]['id'] == sighting_id
-    assert response.json['success'] is True
+    assert len(response.json) == 1
+    sighting_json = response.json[0]
+
+    assert sighting_json['guid'] == sighting_id
+    assert sighting_json['stage'] == 'un_reviewed'
+    assert sighting_json['unreviewed_start_time'] is not None
+
+
+@pytest.mark.skipif(module_unavailable('sightings'), reason='Sightings module disabled')
+def test_getting_asset_group_sightings_for_user(
+    flask_app_client, db, staff_user, researcher_1, request, test_root
+):
+
+    from tests.modules.asset_groups.resources import utils as group_utils
+
+    uuids = group_utils.create_simple_asset_group(
+        flask_app_client, researcher_1, request, test_root
+    )
+
+    response = user_utils.read_user_path(
+        flask_app_client, researcher_1, f'{researcher_1.guid}/asset_group_sightings'
+    )
+
+    assert response.status_code == 200
+    assert response.content_type == 'application/json'
+    assert isinstance(response.json, list)
+
+    assert len(response.json) == 1
+    ags = response.json[0]
+
+    assert ags['asset_group_guid'] == uuids[0]
+    assert ags['guid'] == uuids[1]
+    assert ags['stage'] == 'curation'

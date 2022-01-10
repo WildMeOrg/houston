@@ -1579,6 +1579,13 @@ class AssetGroup(db.Model, HoustonModel):
     def get_asset_group_sightings_for_asset(self, asset):
         return [ags for ags in self.asset_group_sightings if ags.has_filename(asset.path)]
 
+    def get_unprocessed_asset_group_sightings(self):
+        return [
+            ags
+            for ags in self.asset_group_sightings
+            if ags.stage != AssetGroupSightingStage.processed
+        ]
+
     def begin_ia_pipeline(self, metadata):
         # Temporary restriction for MVP
         assert len(metadata.detection_configs) == 1

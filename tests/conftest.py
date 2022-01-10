@@ -45,11 +45,8 @@ def pytest_addoption(parser):
     )
 
 
-def pytest_collection_modifyitems(config, items):
-    """Modify the collected tests... See also
-    https://doc.pytest.org/en/latest/how-to/writing_hook_functions.html#hook-function-validation-and-execution
-
-    Use the ``pytest.mark.only_for_{app_context}`` decorator
+def _skip_on_app_context(config, items):
+    """Use the ``pytest.mark.only_for_{app_context}`` decorator
     to skip a test that is not within the current application context.
     For example, if you are writing a test that is only for MWS,
     use `pytest.mark.only_for_mws`.
@@ -73,6 +70,14 @@ def pytest_collection_modifyitems(config, items):
         for kw in keywords_to_skip:
             if kw in item.keywords:
                 item.add_marker(skip)
+
+
+def pytest_collection_modifyitems(config, items):
+    """Modify the collected tests... See also
+    https://doc.pytest.org/en/latest/how-to/writing_hook_functions.html#hook-function-validation-and-execution
+
+    """
+    _skip_on_app_context(config, items)
 
 
 def pytest_generate_tests(metafunc):

@@ -16,10 +16,14 @@
   },
   "_identifiers": {
     "hotspotter_nosv": {
-      "query_config_dict": {
-        "sv_on":false
+      "sage": {
+        "query_config_dict": {
+          "sv_on": false
+        }
       },
-      "description": "HotSpotter pattern-matcher"
+      "frontend": {
+        "description": "HotSpotter pattern-matcher"
+      }
     }
   },
 

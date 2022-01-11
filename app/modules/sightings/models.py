@@ -595,12 +595,10 @@ class Sighting(db.Model, FeatherModel):
         )
         ia_config_reader = IaConfig(current_app.config.get('CONFIG_MODEL'))
         try:
-            id_config_dict = ia_config_reader.get(f'_identifiers.{algorithm}').copy()
+            id_config_dict = ia_config_reader.get(f'_identifiers.{algorithm}')['sage']
         except KeyError:
             raise HoustonException(log, f'failed to find {algorithm}')
 
-        # description is used for populating the frontend but Sage complains if it's there so remove it
-        id_config_dict.pop('description', None)
         id_request = {
             'jobid': str(job_uuid),
             'callback_url': f'houston+{callback_url}',

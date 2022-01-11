@@ -71,8 +71,8 @@ def test_get_identifiers_zebras(flask_app_client):
     # also '_identifiers.' prefix added to algo names
     desired_identifiers = {
         '_identifiers.hotspotter_nosv': {
-            'query_config_dict': {'sv_on': False},
-            'description': 'HotSpotter pattern-matcher',
+            'sage': {'query_config_dict': {'sv_on': False}},
+            'frontend': {'description': 'HotSpotter pattern-matcher'},
         }
     }
     assert identifiers == desired_identifiers

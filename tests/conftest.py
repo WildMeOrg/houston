@@ -72,12 +72,55 @@ def _skip_on_app_context(config, items):
                 item.add_marker(skip)
 
 
+def _keyword_skip(config, items):
+    """Skips based on keywords used in the marker.
+
+    Available skips:
+
+    - Use the ``pytest.mark.requires_local_gitlab`` decorator
+      to skip a test if a gitlab is not locally installed.
+      This also skips if gitlab is unavailable.
+
+    """
+    # Are we using a local gitlab?
+    gitlab_host = os.getenv('GITLAB_HOST')
+    gitlab_uri = os.getenv('GITLAB_REMOTE_URI')
+    is_local_gitlab = (
+        #: to account for when locally run in docker as 'gitlab'
+        gitlab_host == 'gitlab'
+        #: to account for when gitlab backend connection is disabled
+        and not gitlab_uri != '-'
+    )
+
+    # Create a keyword lists and skip objects
+    keyword_skips = [
+        # (skipping condition, keywords, skip object)
+        (
+            not is_local_gitlab,  # only skip if not local
+            ['requires_local_gitlab'],
+            pytest.mark.skip(reason='test requires a local instance of gitlab'),
+        ),
+    ]
+
+    # Iterate over the defined keyword skip pairs
+    for should_skip, keywords_to_skip, skip in keyword_skips:
+        if not should_skip:
+            # According to the condition we shouldn't modify any tests
+            continue
+        # Roll over the test items, skipping as needed
+        for item in items:
+            for kw in keywords_to_skip:
+                if kw in item.keywords:
+                    item.add_marker(skip)
+
+
 def pytest_collection_modifyitems(config, items):
     """Modify the collected tests... See also
     https://doc.pytest.org/en/latest/how-to/writing_hook_functions.html#hook-function-validation-and-execution
 
     """
     _skip_on_app_context(config, items)
+    _keyword_skip(config, items)
 
 
 def pytest_generate_tests(metafunc):

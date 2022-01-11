@@ -175,19 +175,38 @@ Note, the composition can take several minutes to successfully come up.
 There are a number of operations setting up the services and automating the connections between them.
 All re-ups should be relatively fast.
 
-##### Running the applications without gitlab
+##### Running the applications with gitlab
 
-The gitlab container uses a lot of resources and can be impractical to
-run on a development machine.  It is possible to run the applications
-without gitlab by doing:
+If you choose to use the gitlab backend for saving assets, you'll need to configure houston with specific gitlab settings. You may choose to not use it, use a remote instance, or a local instance. The following instructions suggest how to connect to a gitlab instance. By default no gitlab instance is present.
 
-    docker-compose -f docker-compose.yml -f docker-compose.no-gitlab.yml up -d
+Note, for development it is recommended that you only install gitlab if you need to integrate and test portions of the code that that require gitlab. GitLab is resource heavy. Therefore it is wise to use a remote gitlab instance if possible.
 
-This tells `docker-compose` to use both `docker-compose.yml` and
-`docker-compose.no-gitlab.yml`.  This is really only necessary for
-`docker-compose up` and `docker-compose run`.  For `docker-compose ps`
-or `docker-compose exec`, there's no need to include
-`-f docker-compose.yml -f docker-compose.no-gitlab.yml`.
+###### Without GitLab
+
+By default the composition (i.e. `docker-compose.yml`) does not run a gitlab instance. The `GITLAB_REMOTE_URI` is set to `-`, which indicates to the houston software that it should not try to connect to gitlab.
+
+###### Remote GitLab
+
+If you choose to use a remotely installed gitlab instance you'll need to set the following variables in your `.env` file:
+
+```
+GITLAB_PROTO=https
+GITLAB_HOST=gitlab.sub.staging.wildme.io
+GITLAB_PORT=443
+GITLAB_REMOTE_URI=https://gitlab.sub.staging.wildme.io
+GIT_PUBLIC_NAME=Houston
+GIT_EMAIL=dev@wildme.org
+GITLAB_NAMESPACE=TEST
+GITLAB_REMOTE_LOGIN_PAT='<paste-personal-access-token-here>'
+GIT_SSH_KEY='<paste-contents-of-id_ssh_key-here>'
+```
+
+Note, if you are working with a freshly installed instance of GitLab, you may want to supply `GITLAB_ADMIN_PASSWORD` and nullify (aka leave blank) the `GITLAB_REMOTE_LOGIN_PAT` & `GIT_SSH_KEY` environment variables. Using this method will invoke the houston container's setup init scripts to create both the PAT and SSH key, but only when the houston instance is new.
+
+
+###### Local GitLab
+
+To use a local gitlab, include the `docker-compose.gitlab.yml` file. To do this add `-f docker-compose.gitlab.yml` to your `docker-compose` command. For example, `docker-compose -f docker-compose.yml -f docker-compose.gitlab.yml up -d`. Hint, use `alias docker-compose='docker-compose -f docker-compose.yml -f docker-compose.gitlab.yml'` so that you don't have to type the configuration options for each command.
 
 
 ##### Cleaning up

@@ -45,21 +45,6 @@ services:
     networks:
       - intranet
 
-  gitlab:
-    image: gitlab/gitlab-ce:13.9.3-ce.0
-    volumes:
-      - gitlab-var-config:/etc/gitlab
-      - gitlab-var-logs:/var/log/gitlab
-      - gitlab-var-data:/var/opt/gitlab
-    networks:
-      - intranet
-    ports:
-      # - "22:22"
-      # - "80:80"
-      # - "443:443"
-      # FIXME: exposed for developers
-      - "85:80"
-
   acm:
     # https://github.com/WildMeOrg/wildbook-ia
     image: wildme/wbia:latest
@@ -136,6 +121,7 @@ services:
       GITLAB_ADMIN_PASSWORD: "${GITLAB_ADMIN_PASSWORD}"
       GITLAB_REMOTE_URI: "${GITLAB_REMOTE_URI}"
       GITLAB_REMOTE_LOGIN_PAT: "${GITLAB_REMOTE_LOGIN_PAT}"
+      GIT_SSH_KEY: "${GIT_SSH_KEY}"
       GIT_PUBLIC_NAME: "${GIT_PUBLIC_NAME}"
       GIT_EMAIL: "${GIT_EMAIL}"
       GITLAB_NAMESPACE: "${GITLAB_NAMESPACE}"

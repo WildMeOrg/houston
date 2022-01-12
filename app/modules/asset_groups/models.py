@@ -16,7 +16,6 @@ from git import Git as BaseGit, Repo as BaseRepo
 from app.extensions.gitlab import GitlabInitializationError
 from app.extensions import db, HoustonModel, parallel
 import app.extensions.logging as AuditLog  # NOQA
-from app.modules import is_module_enabled
 from app.modules.annotations.models import Annotation
 from app.modules.assets.models import Asset
 from app.modules.encounters.models import Encounter
@@ -884,11 +883,9 @@ class AssetGroup(db.Model, HoustonModel):
         cascade='all, delete',
     )
 
-    if is_module_enabled('asset_groups'):
-
-        assets = db.relationship(
-            'Asset', back_populates='asset_group', order_by='Asset.guid'
-        )
+    # assets = db.relationship(
+    #     'Asset', back_populates='asset_group', order_by='Asset.guid'
+    # )
 
     def __repr__(self):
         return (

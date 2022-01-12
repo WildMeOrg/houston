@@ -48,14 +48,23 @@ class Annotation(db.Model, HoustonModel):
     )
     asset = db.relationship('Asset', back_populates='annotations')
 
-    if is_module_enabled('encounter'):
+    if is_module_enabled('encounters'):
         encounter_guid = db.Column(
             db.GUID,
             db.ForeignKey('encounter.guid', ondelete='CASCADE'),
             index=True,
             nullable=True,
         )
-        encounter = db.relationship('Encounter', back_populates='annotations')
+        encounter = db.relationship(
+            'Encounter',
+            backref=db.backref(
+                'annotations',
+                primaryjoin='Encounter.guid == Annotation.encounter_guid',
+                order_by='Annotation.guid',
+            ),
+        )
+    else:
+        encounter_guid = None
 
     keyword_refs = db.relationship('AnnotationKeywords')
     ia_class = db.Column(db.String(length=255), nullable=False)

@@ -6,7 +6,6 @@ Projects database models
 import uuid
 
 from app.extensions import db, HoustonModel, Timestamp
-from app.modules import is_module_enabled
 
 
 # All many:many associations handled as Houston model classes to give control and history
@@ -18,10 +17,7 @@ class ProjectEncounter(db.Model, HoustonModel):
 
     project = db.relationship('Project', back_populates='encounter_members')
 
-    if is_module_enabled('encounters', 'projects'):
-        # FIXME: MWS config is missing 'encounters' and 'projects' modules,
-        #        but their relationship is loaded on runtime
-        encounter = db.relationship('Encounter', back_populates='projects')
+    encounter = db.relationship('Encounter', backref=db.backref('projects'))
 
 
 class ProjectUserMembershipEnrollment(db.Model, HoustonModel):

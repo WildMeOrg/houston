@@ -23,12 +23,19 @@ except RuntimeError:
 #        As such, things like checking for an appliation's context is necessary.
 # Register celery tasks
 
-if config.PROJECT_NAME in ['Codex']:
-    import app.modules.asset_groups.tasks  # noqa
+if is_module_enabled('job_control'):
     import app.modules.job_control.tasks  # noqa
+
+if is_module_enabled('asset_groups'):
+    import app.modules.asset_groups.tasks  # noqa
+
+if is_module_enabled('sightings'):
     import app.modules.sightings.tasks  # noqa
+
+if is_module_enabled('individuals'):
     import app.modules.individuals.tasks  # noqa
-elif config.PROJECT_NAME in ['MWS']:
+
+if is_module_enabled('missions'):
     import app.modules.missions.tasks  # noqa
 
 if is_module_enabled('elasticsearch'):

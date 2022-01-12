@@ -34,6 +34,7 @@ class SightingAssets(db.Model, HoustonModel):
             'asset_sightings',
             primaryjoin='Asset.guid == SightingAssets.asset_guid',
             order_by='SightingAssets.sighting_guid',
+            cascade='delete, delete-orphan',
         ),
     )
 

@@ -65,7 +65,14 @@ class Asset(db.Model, HoustonModel):
             index=True,
             nullable=False,
         )
-        asset_group = db.relationship('AssetGroup', back_populates='assets')
+        asset_group = db.relationship(
+            'AssetGroup',
+            backref=db.backref(
+                'assets',
+                primaryjoin='AssetGroup.guid == Asset.asset_group_guid',
+            ),
+            order_by='Asset.guid',
+        )
 
     # asset_sightings = db.relationship(
     #     'SightingAssets', back_populates='asset', order_by='SightingAssets.sighting_guid'

@@ -6,6 +6,7 @@ Serialization schemas for Annotations resources RESTful API
 
 from flask_marshmallow import base_fields
 from flask_restx_patched import ModelSchema
+from app.modules import is_module_enabled
 from .models import Annotation
 
 
@@ -20,6 +21,9 @@ class BaseAnnotationSchema(ModelSchema):
         fields = (
             Annotation.guid.key,
             Annotation.asset_guid.key,
+            Annotation.encounter_guid.key
+            if is_module_enabled('encounters')
+            else 'encounter_guid',
             Annotation.ia_class.key,
             Annotation.viewpoint.key,
         )

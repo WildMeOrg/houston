@@ -7,7 +7,6 @@ import uuid
 import logging
 
 from app.extensions import db, FeatherModel
-from app.modules import is_module_enabled
 from app.modules.individuals.models import Individual
 import app.extensions.logging as AuditLog
 
@@ -79,18 +78,15 @@ class Encounter(db.Model, FeatherModel):
 
     public = db.Column(db.Boolean, default=False, nullable=False)
 
-    if is_module_enabled('encounters', 'projects'):
-        # FIXME: MWS config is missing 'encounters' and 'projects' modules,
-        #        but their relationship is loaded on runtime
-        projects = db.relationship(
-            'ProjectEncounter',
-            back_populates='encounter',
-            order_by='ProjectEncounter.project_guid',
-        )
+    # projects = db.relationship(
+    #     'ProjectEncounter',
+    #     back_populates='encounter',
+    #     order_by='ProjectEncounter.project_guid',
+    # )
 
-        annotations = db.relationship(
-            'Annotation', back_populates='encounter', order_by='Annotation.guid'
-        )
+    # annotations = db.relationship(
+    #     'Annotation', back_populates='encounter', order_by='Annotation.guid'
+    # )
 
     time_guid = db.Column(
         db.GUID, db.ForeignKey('complex_date_time.guid'), index=True, nullable=True

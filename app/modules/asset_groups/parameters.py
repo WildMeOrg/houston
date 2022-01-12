@@ -224,6 +224,8 @@ class PatchAssetGroupSightingEncounterDetailsParameters(PatchJSONParameters):
     PATH_CHOICES = PatchEncounterDetailsParameters.PATH_CHOICES_EDM + (
         '/ownerEmail',
         '/owner',  # Needed as that is the field name in the encounter that we're pretending to be
+        '/time',
+        '/timeSpecificity',
         '/annotations',
         '/individualUuid',
     )

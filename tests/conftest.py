@@ -429,7 +429,7 @@ def test_root(flask_app):
 
 def ensure_asset_group_repo(flask_app, db, asset_group, file_data=[]):
     if not utils.is_extension_enabled('gitlab'):
-        print('gitlab unavailable, skip git_push')
+        print('Gitlab unavailable, skip git_push')
         return
 
     from app.extensions.gitlab import GitlabInitializationError
@@ -441,7 +441,7 @@ def ensure_asset_group_repo(flask_app, db, asset_group, file_data=[]):
         ensure_remote(str(asset_group.guid), additional_tags=['type:pytest-required'])
     except GitlabInitializationError:
         print(
-            f'gitlab unavailable, skip ensure_remote for asset group {asset_group.guid}'
+            f'Gitlab unavailable, skip ensure_remote for asset group {asset_group.guid}'
         )
     filepath_guid_mapping = {}
     if len(asset_group.assets) == 0:
@@ -456,7 +456,7 @@ def ensure_asset_group_repo(flask_app, db, asset_group, file_data=[]):
         try:
             git_push(str(asset_group.guid))
         except GitlabInitializationError:
-            print(f'gitlab unavailable, skip git_push for asset group {asset_group.guid}')
+            print(f'Gitlab unavailable, skip git_push for asset group {asset_group.guid}')
 
 
 @pytest.fixture
@@ -484,7 +484,7 @@ def test_asset_group_file_data(test_root):
 @pytest.fixture
 def test_asset_group_uuid(flask_app, db, researcher_1, test_asset_group_file_data):
     if not utils.is_extension_enabled('gitlab'):
-        print('gitlab unavailable, skip ensure_asset_group_repo')
+        print('Gitlab unavailable, skip ensure_asset_group_repo')
         return
 
     from app.extensions.gitlab import GitlabInitializationError
@@ -511,7 +511,7 @@ def test_asset_group_uuid(flask_app, db, researcher_1, test_asset_group_file_dat
     try:
         ensure_asset_group_repo(flask_app, db, asset_group, test_asset_group_file_data)
     except GitlabInitializationError:
-        print(f'gitlab unavailable, skip ensure_asset_group_repo for {asset_group.guid}')
+        print(f'Gitlab unavailable, skip ensure_asset_group_repo for {asset_group.guid}')
     return asset_group.guid
 
 

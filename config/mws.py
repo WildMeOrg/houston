@@ -56,6 +56,7 @@ class BaseMWSConfig(
         'keywords',
         'fileuploads',
         'notifications',
+        'complex_date_time',
         'annotations',
         'missions',
         'tasks',

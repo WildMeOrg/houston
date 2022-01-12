@@ -70,8 +70,8 @@ class Asset(db.Model, HoustonModel):
             backref=db.backref(
                 'assets',
                 primaryjoin='AssetGroup.guid == Asset.asset_group_guid',
+                order_by='Asset.guid',
             ),
-            order_by='Asset.guid',
         )
 
     # asset_sightings = db.relationship(

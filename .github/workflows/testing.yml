@@ -81,10 +81,21 @@ jobs:
           set -ex
           ./scripts/${HOUSTON_APP_CONTEXT}/activate.sh
 
-      - name: Run docker-compose
+      - name: Run docker-compose (MWS)
+        if: matrix.app-context == 'mws'
+        run: |
+          set -ex
+          docker-compose up -d db redis houston acm elasticsearch
+
+      - name: Run docker-compose (Codex)
+        if: matrix.app-context == 'codex'
         run: |
           set -ex
           docker-compose up -d db redis edm houston acm elasticsearch
+
+      - name: Check docker-compose status
+        run: |
+          set -ex
           # Check the state of the containers
           sleep 1m
           # Wait until houston is up

@@ -220,6 +220,8 @@ def downgrade():
     with op.batch_alter_table('mission_user_assignment', schema=None) as batch_op:
         batch_op.drop_index(batch_op.f('ix_mission_user_assignment_updated'))
         batch_op.drop_index(batch_op.f('ix_mission_user_assignment_created'))
+    
+    sa.Enum(name='tasktypes').drop(op.get_bind(), checkfirst=False)
 
     op.drop_table('mission_user_assignment')
     # ### end Alembic commands ###

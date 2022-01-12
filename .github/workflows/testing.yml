@@ -138,13 +138,13 @@ jobs:
           docker-compose exec -T -e SQLALCHEMY_DATABASE_URI=$TEST_DATABASE_URI houston /bin/bash -c 'if [ -n "$(coverage run --append /usr/local/bin/invoke app.db.migrate)" ]; then echo Missing database migration; exit 1; fi'
 
       - name: Run other invoke tasks for coverage and errors
-        if: matrix.db-uri != 'sqlite://' && matrix.app-context == 'codex'
+        if: matrix.app-context == 'codex'
         run: |
           docker-compose exec -T -e SQLALCHEMY_DATABASE_URI=$TEST_DATABASE_URI houston ./scripts/tests/run_tasks_for_coverage.sh
           docker-compose exec -T -e SQLALCHEMY_DATABASE_URI=$TEST_DATABASE_URI houston coverage xml
 
       - name: Upload coverage to Codecov
-        if: matrix.db-uri != 'sqlite://' && matrix.app-context == 'codex'
+        if: matrix.app-context == 'codex'
         uses: codecov/codecov-action@v1.2.1
         with:
           token: ${{ secrets.CODECOV_TOKEN }}

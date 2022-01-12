@@ -117,7 +117,7 @@ def test_sighting_identification(
     assert sighting.stage == SightingStage.un_reviewed
 
     path = f'{sighting_uuid}/id_result'
-    breakpoint()
+
     id_data_resp = sighting_utils.read_sighting_path(flask_app_client, researcher_1, path)
     id_data = id_data_resp.json
     assert id_data['query_annotations'][0]['status'] == 'complete'

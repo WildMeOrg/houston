@@ -87,6 +87,26 @@ def test_create_asset_group_identification(session, codex_url, test_root, login)
 
     assert response.status_code == 200
 
-    # TODO use utils wait_for to wait for Sage to do the identification
     assert 'stage' in response.json().keys()
     assert response.json()['stage'] == 'identification'
+    phoenix_sighting_guid = phoenix_guids['sighting']
+
+    sight_url = codex_url(f'/api/v1/sightings/{phoenix_sighting_guid}')
+    response = utils.wait_for(
+        session.get, sight_url, lambda response: response.json()['stage'] == 'un_reviewed'
+    )
+
+    id_result = session.get(
+        codex_url(f"/api/v1/sightings/{phoenix_guids['sighting']}/id_result")
+    )
+    assert id_result.status_code == 200
+    id_resp = id_result.json()
+    assert 'query_annotations' in id_resp.keys()
+    assert len(id_resp['query_annotations']) == 1
+    query_annot = id_resp['query_annotations'][0]
+    assert query_annot['status'] == 'complete'
+    assert query_annot['guid'] in id_resp['annotation_data'].keys()
+    assert (
+        query_annot['algorithms']['hotspotter_nosv']['scores_by_annotation'][0]['guid']
+        in id_resp['annotation_data'].keys()
+    )

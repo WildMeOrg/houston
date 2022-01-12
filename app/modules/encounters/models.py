@@ -110,6 +110,10 @@ class Encounter(db.Model, FeatherModel):
     def get_sighting(self):
         return self.sighting
 
+    def get_location(self):
+        # TODO get from EDM
+        return None
+
     def get_time_isoformat_in_timezone(self):
         return self.time.isoformat_in_timezone() if self.time else None
 

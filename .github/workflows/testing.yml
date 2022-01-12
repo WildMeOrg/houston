@@ -85,13 +85,13 @@ jobs:
         if: matrix.app-context == 'mws'
         run: |
           set -ex
-          docker-compose up -d db redis houston acm elasticsearch
+          docker-compose up -d db redis elasticsearch acm houston
 
       - name: Run docker-compose (Codex)
         if: matrix.app-context == 'codex'
         run: |
           set -ex
-          docker-compose up -d db redis edm houston acm elasticsearch
+          docker-compose up -d db redis elasticsearch acm edm houston
 
       - name: Check docker-compose status
         run: |

@@ -14,6 +14,7 @@ jobs:
       OS: ubuntu-latest
       PYTHON: ${{ matrix.python-version }}
       DOCKER_BUILDKIT: 1
+      HOUSTON_APP_CONTEXT: "codex"
     steps:
       # Checkout and env setup
       - uses: actions/checkout@v2
@@ -34,6 +35,11 @@ jobs:
       - name: Install libmagic on Ubuntu
         run: |
           sudo apt install libmagic1
+
+      - name: Setup App Context
+        run: |
+          set -ex
+          ./scripts/${HOUSTON_APP_CONTEXT}/activate.sh
 
       - name: Build swagger ui
         run: |

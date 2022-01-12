@@ -172,10 +172,6 @@ class Annotation(db.Model, HoustonModel):
         self.validate_bounds(bounds)
         self.bounds = bounds
 
-    def get_image_url(self):
-        # TODO this needs a new Jira
-        return None
-
     @classmethod
     def validate_bounds(cls, bounds):
         assert isinstance(bounds, dict)

@@ -841,7 +841,9 @@ class Sighting(db.Model, FeatherModel):
                 'viewpoint': annot.viewpoint,
                 'encounter_location': encounter_location,
                 'individual_guid': individual_guid,
-                'image_url': annot.get_image_url(),
+                'image_url': annot.asset.get_image_url(),
+                'asset_dimensions': annot.asset.get_dimensions(),
+                'bounds': annot.bounds,
             }
 
         if (

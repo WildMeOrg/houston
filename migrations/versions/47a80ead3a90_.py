@@ -17,7 +17,6 @@ import sqlalchemy_utils
 import app
 import app.extensions
 
-from sqlalchemy.dialects import postgresql
 
 def upgrade():
     """
@@ -172,11 +171,11 @@ def downgrade():
         batch_op.drop_column('contributor_guid')
 
     op.create_table('mission_user_membership_enrollment',
-    sa.Column('created', postgresql.TIMESTAMP(), autoincrement=False, nullable=False),
-    sa.Column('updated', postgresql.TIMESTAMP(), autoincrement=False, nullable=False),
-    sa.Column('viewed', postgresql.TIMESTAMP(), autoincrement=False, nullable=False),
-    sa.Column('mission_guid', postgresql.UUID(), autoincrement=False, nullable=False),
-    sa.Column('user_guid', postgresql.UUID(), autoincrement=False, nullable=False),
+    sa.Column('created', sa.DateTime(), autoincrement=False, nullable=False),
+    sa.Column('updated', sa.DateTime(), autoincrement=False, nullable=False),
+    sa.Column('viewed', sa.DateTime(), autoincrement=False, nullable=False),
+    sa.Column('mission_guid', app.extensions.GUID(), autoincrement=False, nullable=False),
+    sa.Column('user_guid', app.extensions.GUID(), autoincrement=False, nullable=False),
     sa.ForeignKeyConstraint(['mission_guid'], ['mission.guid'], name='fk_mission_user_membership_enrollment_mission_guid_mission'),
     sa.ForeignKeyConstraint(['user_guid'], ['user.guid'], name='fk_mission_user_membership_enrollment_user_guid_user'),
     sa.PrimaryKeyConstraint('mission_guid', 'user_guid', name='pk_mission_user_membership_enrollment')

@@ -323,3 +323,54 @@ def test_annotation_in_asset_group(
         2,
         3,
     ]
+
+
+# specifically for DEX-660
+@pytest.mark.skipif(
+    module_unavailable('asset_groups'), reason='AssetGroups module disabled'
+)
+def test_patch_time_ags_encounters(
+    flask_app_client, researcher_1, regular_user, test_root, db, empty_individual, request
+):
+
+    (
+        asset_group_guid,
+        asset_group_sighting_guid,
+        asset_guid,
+    ) = asset_group_utils.create_simple_asset_group(
+        flask_app_client, regular_user, request, test_root
+    )
+
+    group_sighting = asset_group_utils.read_asset_group_sighting(
+        flask_app_client,
+        researcher_1,
+        asset_group_sighting_guid,
+    )
+    encounter_guid = group_sighting.json['config']['encounters'][0]['guid']
+    assert encounter_guid
+
+    # patch time value on encounter
+    encounter_path = f'{asset_group_sighting_guid}/encounter/{encounter_guid}'
+    time_value = '2000-01-01T01:01:01+00:00'
+    patch_data = [
+        utils.patch_add_op('time', time_value),
+        utils.patch_add_op('timeSpecificity', 'month'),
+    ]
+    asset_group_utils.patch_asset_group_sighting(
+        flask_app_client,
+        researcher_1,
+        encounter_path,
+        patch_data,
+    )
+
+    # now verify change
+    group_sighting_verify = asset_group_utils.read_asset_group_sighting(
+        flask_app_client,
+        researcher_1,
+        asset_group_sighting_guid,
+    )
+    assert group_sighting_verify.json['config']['encounters'][0]['time'] == time_value
+    assert (
+        group_sighting_verify.json['config']['encounters'][0]['timeSpecificity']
+        == 'month'
+    )

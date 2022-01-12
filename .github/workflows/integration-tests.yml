@@ -47,8 +47,6 @@ jobs:
       - name: Run docker-compose
         run: |
           set -ex
-          # Use docker-compose.no-gitlab.yml
-          ln -s docker-compose.no-gitlab.yml docker-compose.override.yml
           docker-compose up -d
 
       - name: Install dependencies

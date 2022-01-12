@@ -57,6 +57,7 @@ def test_rebuild():
 
 
 @pytest.mark.skipif(extension_unavailable('gitlab'), reason='GitLab extension disabled')
+@pytest.mark.requires_local_gitlab
 def test_rebuild_gitlab():
     with mock.patch('tasks.docker_compose.logger') as logger:
         context = MockContext(

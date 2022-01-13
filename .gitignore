@@ -88,3 +88,4 @@ docker_local_config.py
 .env
 config.py
 docker-compose.yml
+docker-compose.override.yml

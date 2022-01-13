@@ -11,59 +11,59 @@ def test_mission_add_members(
 ):  # pylint: disable=unused-argument
     from app.modules.missions.models import (
         Mission,
-        MissionUserMembershipEnrollment,
+        MissionUserAssignment,
     )
 
-    temp_proj = Mission(
+    temp_mission = Mission(
         title='Temp Mission',
         owner_guid=temp_user.guid,
     )
 
-    temp_enrollment = MissionUserMembershipEnrollment()
-    temp_enrollment.user = temp_user
-    temp_proj.user_membership_enrollments.append(temp_enrollment)
+    temp_assignment = MissionUserAssignment()
+    temp_assignment.user = temp_user
+    temp_mission.user_assignments.append(temp_assignment)
 
     # Doing this multiple times should not have an effect
-    temp_proj.user_membership_enrollments.append(temp_enrollment)
-    temp_proj.user_membership_enrollments.append(temp_enrollment)
-    temp_proj.user_membership_enrollments.append(temp_enrollment)
+    temp_mission.user_assignments.append(temp_assignment)
+    temp_mission.user_assignments.append(temp_assignment)
+    temp_mission.user_assignments.append(temp_assignment)
 
     with db.session.begin():
-        db.session.add(temp_proj)
-        db.session.add(temp_enrollment)
+        db.session.add(temp_mission)
+        db.session.add(temp_assignment)
 
     db.session.refresh(temp_user)
-    db.session.refresh(temp_proj)
-    db.session.refresh(temp_enrollment)
+    db.session.refresh(temp_mission)
+    db.session.refresh(temp_assignment)
 
-    for value in temp_proj.user_membership_enrollments:
-        assert value in temp_user.mission_membership_enrollments
-    logging.info(temp_user.mission_membership_enrollments)
-    logging.info(temp_proj.user_membership_enrollments)
+    for value in temp_mission.user_assignments:
+        assert value in temp_user.mission_assignments
+    logging.info(temp_user.mission_assignments)
+    logging.info(temp_mission.user_assignments)
 
     logging.info(temp_user.get_missions())
-    logging.info(temp_proj)
+    logging.info(temp_mission)
 
     assert len(temp_user.get_missions()) >= 1
-    assert temp_proj in temp_user.get_missions()
+    assert temp_mission in temp_user.get_missions()
 
-    assert len(temp_proj.get_members()) == 1
-    assert temp_user in temp_proj.get_members()
+    assert len(temp_mission.get_members()) == 1
+    assert temp_user in temp_mission.get_members()
 
     try:
-        duplicate_enrollment = MissionUserMembershipEnrollment()
-        duplicate_enrollment.user = temp_user
-        temp_proj.user_membership_enrollments.append(duplicate_enrollment)
+        duplicate_assignment = MissionUserAssignment()
+        duplicate_assignment.user = temp_user
+        temp_mission.user_assignments.append(duplicate_assignment)
         with db.session.begin():
-            db.session.add(duplicate_enrollment)
+            db.session.add(duplicate_assignment)
     except (sqlalchemy.orm.exc.FlushError, sqlalchemy.exc.IntegrityError):
         pass
 
-    temp_proj.add_user_in_context(researcher_1)
+    temp_mission.add_user_in_context(researcher_1)
     # try removing a user that's not in the mission
-    temp_proj.remove_user_in_context(researcher_2)
-    temp_proj.remove_user_in_context(researcher_1)
+    temp_mission.remove_user_in_context(researcher_2)
+    temp_mission.remove_user_in_context(researcher_1)
 
     with db.session.begin():
-        db.session.delete(temp_proj)
-        db.session.delete(temp_enrollment)
+        db.session.delete(temp_mission)
+        db.session.delete(temp_assignment)

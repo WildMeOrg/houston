@@ -17,6 +17,11 @@ class KeywordSource(str, enum.Enum):
     wbia = 'wbia'
 
 
+# class KeywordModule(str, enum.Enum):
+#     annotation = 'annotation'
+#     asset = 'asset'
+
+
 class Keyword(db.Model, HoustonModel):
     """
     Keywords database model.
@@ -32,6 +37,12 @@ class Keyword(db.Model, HoustonModel):
         index=True,
         nullable=False,
     )
+    # module = db.Column(
+    #     db.Enum(KeywordModule),
+    #     default=KeywordModule.user,
+    #     index=True,
+    #     nullable=False,
+    # )
 
     def get_value(self):
         return self.value
@@ -50,12 +61,17 @@ class Keyword(db.Model, HoustonModel):
             db.session.delete(self)
 
     def delete_if_unreferenced(self):
-        if self.number_annotations() < 1:
-            log.warning(f'{self} is no longer referenced by any Annotation, deleting.')
+        if self.number_referenced_dependencies() < 1:
+            log.warning(
+                f'{self} is no longer referenced by any Annotation or Asset, deleting.'
+            )
             self.delete()
 
-    def number_annotations(self):
+    def number_referenced_dependencies(self):
         from app.modules.annotations.models import AnnotationKeywords
+        from app.modules.assets.models import AssetTags
 
-        refs = AnnotationKeywords.query.filter_by(keyword_guid=self.guid).all()
+        refs = []
+        refs += AnnotationKeywords.query.filter_by(keyword_guid=self.guid).all()
+        refs += AssetTags.query.filter_by(tag_guid=self.guid).all()
         return len(refs)

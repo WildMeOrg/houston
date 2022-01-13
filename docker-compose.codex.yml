@@ -196,6 +196,3 @@ volumes:
   acm-database-var:
   acm-cache-var:
   houston-var:
-  gitlab-var-config:
-  gitlab-var-logs:
-  gitlab-var-data:

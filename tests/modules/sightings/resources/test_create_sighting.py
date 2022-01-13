@@ -475,6 +475,7 @@ def test_edm_and_houston_encounter_data_within_sightings(
 
 
 # This is now disabled, so make sure that it is
+@pytest.mark.skipif(module_unavailable('sightings'), reason='Sightings module disabled')
 def test_create_old_sighting(flask_app_client, researcher_1):
     sighting_data = {
         'time': timestamp,

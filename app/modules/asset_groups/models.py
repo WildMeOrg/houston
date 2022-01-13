@@ -883,7 +883,9 @@ class AssetGroup(db.Model, HoustonModel):
         cascade='all, delete',
     )
 
-    assets = db.relationship('Asset', back_populates='asset_group', order_by='Asset.guid')
+    # assets = db.relationship(
+    #     'Asset', back_populates='asset_group', order_by='Asset.guid'
+    # )
 
     def __repr__(self):
         return (

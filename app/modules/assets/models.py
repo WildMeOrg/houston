@@ -7,7 +7,9 @@ Assets database models
 from functools import total_ordering
 import pathlib
 
+from app.modules.keywords.models import Keyword, KeywordSource
 from app.extensions import db, HoustonModel
+from app.modules import is_module_enabled
 from app.utils import HoustonException
 
 from PIL import Image
@@ -17,6 +19,13 @@ import logging
 
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
+
+
+class AssetTags(db.Model, HoustonModel):
+    asset_guid = db.Column(db.GUID, db.ForeignKey('asset.guid'), primary_key=True)
+    tag_guid = db.Column(db.GUID, db.ForeignKey('keyword.guid'), primary_key=True)
+    asset = db.relationship('Asset', back_populates='tag_refs')
+    tag = db.relationship('Keyword')
 
 
 @total_ordering
@@ -49,21 +58,35 @@ class Asset(db.Model, HoustonModel):
 
     meta = db.Column(db.JSON, nullable=True)
 
-    asset_group_guid = db.Column(
-        db.GUID,
-        db.ForeignKey('asset_group.guid', ondelete='CASCADE'),
-        index=True,
-        nullable=False,
-    )
-    asset_group = db.relationship('AssetGroup', back_populates='assets')
+    if is_module_enabled('asset_groups'):
+        asset_group_guid = db.Column(
+            db.GUID,
+            db.ForeignKey('asset_group.guid', ondelete='CASCADE'),
+            index=True,
+            nullable=False,
+        )
+        asset_group = db.relationship(
+            'AssetGroup',
+            backref=db.backref(
+                'assets',
+                primaryjoin='AssetGroup.guid == Asset.asset_group_guid',
+                order_by='Asset.guid',
+            ),
+        )
 
-    asset_sightings = db.relationship(
-        'SightingAssets', back_populates='asset', order_by='SightingAssets.sighting_guid'
-    )
+    # asset_sightings = db.relationship(
+    #     'SightingAssets', back_populates='asset', order_by='SightingAssets.sighting_guid'
+    # )
 
     annotations = db.relationship(
         'Annotation', back_populates='asset', order_by='Annotation.guid'
     )
+
+    tag_refs = db.relationship('AssetTags')
+
+    line_segments = db.Column(db.JSON, nullable=True)
+
+    classifications = db.Column(db.JSON, nullable=True)
 
     DERIVED_EXTENSION = 'jpg'
     DERIVED_MIME_TYPE = 'image/jpeg'
@@ -101,6 +124,45 @@ class Asset(db.Model, HoustonModel):
     def is_detection(self):
         # only checks at the granularity of any asset in the asset group in the detection stage
         return self.asset_group.is_detection_in_progress()
+
+    @property
+    def tags(self):
+        return self.get_tags()
+
+    def get_tags(self):
+        return [ref.tag for ref in self.tag_refs]
+
+    def add_tag(self, tag):
+        with db.session.begin(subtransactions=True):
+            self.add_tag_in_context(tag)
+
+    def add_new_tag(self, value, source=KeywordSource.user):
+        with db.session.begin(subtransactions=True):
+            tag = Keyword(value=value, source=source)
+            db.session.add(tag)
+            self.add_tag_in_context(tag)
+        return tag
+
+    def add_tags(self, tag_list):
+        with db.session.begin():
+            for tag in tag_list:
+                self.add_tag_in_context(tag)
+
+    def add_tag_in_context(self, tag):
+        # TODO disallow duplicates
+        rel = AssetTags(asset=self, tag=tag)
+        db.session.add(rel)
+        self.tag_refs.append(rel)
+
+    def remove_tag(self, tag):
+        with db.session.begin(subtransactions=True):
+            self.remove_tag_in_context(tag)
+
+    def remove_tag_in_context(self, tag):
+        for ref in self.tag_refs:
+            if ref.tag == tag:
+                db.session.delete(ref)
+                break
 
     @property
     def src(self):
@@ -292,6 +354,11 @@ class Asset(db.Model, HoustonModel):
                 annotation.delete()
             for sighting in self.asset_sightings:
                 db.session.delete(sighting)
+            while self.tag_refs:
+                ref = self.tag_refs.pop()
+                # this is actually removing the AssetTags refs (not actual Keywords)
+                db.session.delete(ref)
+                ref.tag.delete_if_unreferenced()
             db.session.delete(self)
 
     # delete not part of asset group deletion so must inform asset group that we're gone

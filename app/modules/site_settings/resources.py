@@ -15,7 +15,6 @@ from flask_restx._http import HTTPStatus
 from app.extensions import db
 from app.extensions.api import abort, Namespace
 from app.extensions.api.parameters import PaginationParameters
-from app.modules.fileuploads.models import FileUpload
 from app.modules.users import permissions
 from app.modules.users.permissions.types import AccessOperation
 from app.utils import HoustonException
@@ -72,6 +71,7 @@ class SiteSettings(Resource):
         """
         Create or update a SiteSetting.
         """
+        from app.modules.fileuploads.models import FileUpload
         from app.modules.social_groups.models import SocialGroup
 
         if args.get('transactionId'):

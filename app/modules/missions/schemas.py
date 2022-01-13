@@ -5,6 +5,7 @@ Serialization schemas for Missions resources RESTful API
 """
 
 from flask_restx_patched import ModelSchema
+from flask_marshmallow import base_fields
 
 from .models import Mission
 
@@ -32,3 +33,9 @@ class DetailedMissionSchema(BaseMissionSchema):
     class Meta(BaseMissionSchema.Meta):
         fields = BaseMissionSchema.Meta.fields
         dump_only = BaseMissionSchema.Meta.dump_only
+
+
+class DetailedMissionJobSchema(ModelSchema):
+    job_id = base_fields.String()
+    active = base_fields.Boolean()
+    start = base_fields.DateTime()

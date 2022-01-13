@@ -28,6 +28,8 @@ MODULE_USER_MAP = {
     ('Encounter', AccessOperation.WRITE): ['is_active'],  # TODO is this still correct
     ('Sighting', AccessOperation.READ): ['is_researcher'],
     ('Sighting', AccessOperation.WRITE): ['is_active'],
+    ('Mission', AccessOperation.READ): ['is_data_manager'],
+    ('Mission', AccessOperation.WRITE): ['is_data_manager'],
     ('Individual', AccessOperation.READ): ['is_researcher'],
     ('Individual', AccessOperation.WRITE): ['is_researcher'],
     ('Annotation', AccessOperation.READ): ['is_researcher'],
@@ -42,6 +44,8 @@ MODULE_USER_MAP = {
     ('Keyword', AccessOperation.WRITE): ['is_active'],
     ('AuditLog', AccessOperation.READ): ['is_researcher'],
     ('AuditLog', AccessOperation.READ_PRIVILEGED): ['is_admin'],
+    ('Task', AccessOperation.READ): ['is_interpreter'],
+    ('Task', AccessOperation.WRITE): ['is_data_manager'],
     ('SocialGroup', AccessOperation.READ): ['is_researcher'],
     ('SocialGroup', AccessOperation.WRITE): ['is_researcher'],
     ('Relationship', AccessOperation.READ): ['is_researcher'],

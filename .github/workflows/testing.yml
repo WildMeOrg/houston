@@ -76,10 +76,26 @@ jobs:
         run: |
           sudo apt install libmagic1
 
-      - name: Run docker-compose
+      - name: Setup App Context
         run: |
           set -ex
-          docker-compose up -d db redis edm houston acm elasticsearch
+          ./scripts/${HOUSTON_APP_CONTEXT}/activate.sh
+
+      - name: Run docker-compose (MWS)
+        if: matrix.app-context == 'mws'
+        run: |
+          set -ex
+          docker-compose up -d db redis elasticsearch acm houston
+
+      - name: Run docker-compose (Codex)
+        if: matrix.app-context == 'codex'
+        run: |
+          set -ex
+          docker-compose up -d db redis elasticsearch acm edm houston
+
+      - name: Check docker-compose status
+        run: |
+          set -ex
           # Check the state of the containers
           sleep 1m
           # Wait until houston is up
@@ -113,7 +129,7 @@ jobs:
           SQLALCHEMY_DATABASE_URI: ''
 
       - name: Check DB migrations (postgresql)
-        if: matrix.db-uri != 'sqlite://'
+        if: matrix.db-uri != 'sqlite://' && matrix.app-context == 'codex'
         run: |
           set -ex
           docker-compose exec -T -e SQLALCHEMY_DATABASE_URI=$TEST_DATABASE_URI houston coverage run /usr/local/bin/invoke app.db.upgrade --no-backup
@@ -122,11 +138,13 @@ jobs:
           docker-compose exec -T -e SQLALCHEMY_DATABASE_URI=$TEST_DATABASE_URI houston /bin/bash -c 'if [ -n "$(coverage run --append /usr/local/bin/invoke app.db.migrate)" ]; then echo Missing database migration; exit 1; fi'
 
       - name: Run other invoke tasks for coverage and errors
+        if: matrix.app-context == 'codex'
         run: |
           docker-compose exec -T -e SQLALCHEMY_DATABASE_URI=$TEST_DATABASE_URI houston ./scripts/tests/run_tasks_for_coverage.sh
           docker-compose exec -T -e SQLALCHEMY_DATABASE_URI=$TEST_DATABASE_URI houston coverage xml
 
       - name: Upload coverage to Codecov
+        if: matrix.app-context == 'codex'
         uses: codecov/codecov-action@v1.2.1
         with:
           token: ${{ secrets.CODECOV_TOKEN }}

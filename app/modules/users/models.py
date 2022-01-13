@@ -233,6 +233,8 @@ class User(db.Model, FeatherModel, UserEDMMixin):
 
     class StaticRoles(enum.Enum):
         # pylint: disable=missing-docstring,unsubscriptable-object
+        INTERPRETER = (0x200000, 'Interpreter', 'Interpreter', 'is_interpreter')
+
         DATA_MANAGER = (0x100000, 'DataManager', 'DataManager', 'is_data_manager')
         USER_MANAGER = (0x80000, 'UserManager', 'UserManager', 'is_user_manager')
         CONTRIBUTOR = (0x40000, 'Contributor', 'Contributor', 'is_contributor')
@@ -272,6 +274,9 @@ class User(db.Model, FeatherModel, UserEDMMixin):
     is_data_manager = _get_is_static_role_property(
         'is_data_manager', StaticRoles.DATA_MANAGER
     )
+    is_interpreter = _get_is_static_role_property(
+        'is_interpreter', StaticRoles.INTERPRETER
+    )
     is_researcher = _get_is_static_role_property('is_researcher', StaticRoles.RESEARCHER)
     is_exporter = _get_is_static_role_property('is_exporter', StaticRoles.EXPORTER)
     is_internal = _get_is_static_role_property('is_internal', StaticRoles.INTERNAL)
@@ -308,6 +313,12 @@ class User(db.Model, FeatherModel, UserEDMMixin):
         roles += [self.StaticRoles.CONTRIBUTOR.shorthand] if self.is_contributor else []
         roles += [self.StaticRoles.RESEARCHER.shorthand] if self.is_researcher else []
         roles += [self.StaticRoles.EXPORTER.shorthand] if self.is_exporter else []
+
+        if is_module_enabled('missions'):
+            roles += (
+                [self.StaticRoles.INTERPRETER.shorthand] if self.is_interpreter else []
+            )
+
         return roles
 
     def __repr__(self):
@@ -552,7 +563,11 @@ class User(db.Model, FeatherModel, UserEDMMixin):
 
     @module_required('missions', resolve='warn', default=[])
     def get_missions(self):
-        return [enrollment.mission for enrollment in self.mission_membership_enrollments]
+        return [assignment.mission for assignment in self.mission_assignments]
+
+    @module_required('tasks', resolve='warn', default=[])
+    def get_tasks(self):
+        return [assignment.task for assignment in self.task_assignments]
 
     @module_required('collaborations', resolve='warn', default=[])
     def get_collaborations_as_json(self):

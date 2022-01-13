@@ -28,8 +28,17 @@ class SocialGroupIndividualMembership(db.Model, HoustonModel):
         'SocialGroup', back_populates='members', order_by='SocialGroup.guid'
     )
 
+    # individual = db.relationship(
+    #     'Individual', back_populates='social_groups', order_by='Individual.guid'
+    # )
     individual = db.relationship(
-        'Individual', back_populates='social_groups', order_by='Individual.guid'
+        'Individual',
+        backref=db.backref(
+            'social_groups',
+            primaryjoin='Individual.guid == SocialGroupIndividualMembership.individual_guid',
+            order_by='SocialGroupIndividualMembership.group_guid',
+        ),
+        order_by='Individual.guid',
     )
 
     def __repr__(self):

@@ -77,7 +77,7 @@ def test_clone_asset_group_from_gitlab(
     try:
         flask_app.git_backend._ensure_initialized()
     except GitlabInitializationError:
-        pytest.skip('gitlab unavailable')
+        pytest.skip('Gitlab unavailable')
     clone_root = pathlib.Path(flask_app.config['ASSET_GROUP_DATABASE_PATH'])
     repo_path = clone_root / str(test_asset_group_uuid)
 

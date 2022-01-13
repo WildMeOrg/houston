@@ -7,7 +7,6 @@ User schemas
 
 from flask_marshmallow import base_fields
 from flask_restx_patched import ModelSchema
-from app.modules.fileuploads.schemas import DetailedFileUploadSchema  # noqa
 
 from .models import User
 
@@ -29,6 +28,8 @@ class BaseUserSchema(ModelSchema):
 
 
 class UserListSchema(BaseUserSchema):
+    from app.modules.fileuploads.schemas import DetailedFileUploadSchema  # noqa
+
     profile_fileupload = base_fields.Nested('DetailedFileUploadSchema')
 
     class Meta(BaseUserSchema.Meta):
@@ -52,6 +53,8 @@ class UserListSchema(BaseUserSchema):
 
 class PublicUserSchema(ModelSchema):
     """Only fields which are safe for public display (very minimal)."""
+
+    from app.modules.fileuploads.schemas import DetailedFileUploadSchema  # noqa
 
     profile_fileupload = base_fields.Nested('DetailedFileUploadSchema')
 

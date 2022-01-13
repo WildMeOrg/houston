@@ -674,40 +674,18 @@ class Sighting(db.Model, FeatherModel):
             # rework when there are multiple
             self.stage = SightingStage.un_reviewed
 
-    def identified(self, job_id, data):
-        if self.stage != SightingStage.identification:
-            raise HoustonException(log, f'Sighting {self.guid} is not detecting')
-        job_id_str = str(job_id)
-        if job_id_str not in self.jobs:
-            raise HoustonException(log, f'job_id {job_id} not found')
-        job = self.jobs[job_id_str]
+    # validate that the id response is a valid format and extract the data required from it
+    def _parse_id_response(self, job_id_str, data):
+        status = data.get('status', 'failed')
 
-        if not job['active']:
-            raise HoustonException(log, f'job_id {job_id} not active')
-
-        status = data.get('status')
-        if not status:
-            raise HoustonException(
-                log, f'No status in ID response from Sage {job_id_str}'
-            )
-
-        success = status.get('success', False)
-        if not success:
+        if status != 'completed':
             self.stage = SightingStage.failed
             # This is not an exception as the message from Sage was valid
-            code = status.get('code', 'unset')
-            message = status.get('message', 'unset')
-            error_msg = f'JobID {job_id_str} failed with code: {code} message: {message}'
+            error_msg = f'JobID {job_id_str} failed  message: {status}'
             AuditLog.backend_fault(log, error_msg, self)
             return
 
-        response = data.get('response')
-        if not response:
-            raise HoustonException(
-                log, f'No response field in message from Sage {job_id_str}'
-            )
-
-        job_id_msg = response.get('jobid')
+        job_id_msg = data.get('jobid')
         if not job_id_msg:
             raise HoustonException(log, f'Must be a job id in the response {job_id_str}')
 
@@ -716,20 +694,10 @@ class Sighting(db.Model, FeatherModel):
                 log,
                 f'Job id in message {job_id_msg} must match job id in callback {job_id_str}',
             )
-        json_result = response.get('json_result')
+        json_result = data.get('json_result')
         if not json_result:
             raise HoustonException(
                 log, f'No json_result in the response for {job_id_str}'
-            )
-
-        cm_dict = json_result.get('cm_dict')
-        if not cm_dict:
-            raise HoustonException(log, f'No cm_dict in the json_result for {job_id_str}')
-
-        query_config_dict = json_result.get('query_config_dict')
-        if not query_config_dict:
-            raise HoustonException(
-                log, f'No query_config_dict in the json_result for {job_id_str}'
             )
 
         query_annot_uuids = json_result.get('query_annot_uuid_list', [])
@@ -738,10 +706,74 @@ class Sighting(db.Model, FeatherModel):
                 log, f'No query_annot_uuid_list in the json_result for {job_id_str}'
             )
 
+        if len(query_annot_uuids) != 1:
+            raise HoustonException(
+                log,
+                f'Sage ID responded with {len(query_annot_uuids)} query_annots for {job_id_str}',
+            )
+        from app.modules.annotations.models import Annotation
+        from app.extensions.acm import from_acm_uuid
+
+        acm_uuid = from_acm_uuid(query_annot_uuids[0])
+        query_annots = Annotation.query.filter_by(content_guid=acm_uuid).all()
+        if not query_annots:
+            raise HoustonException(
+                log,
+                f'Sage ID response with unknown query annot uuid {acm_uuid} for job {job_id_str}',
+            )
+
+        possible_annot_guids = [str(annot.guid) for annot in query_annots]
+        job = self.jobs[job_id_str]
+        if job['annotation'] not in possible_annot_guids:
+            raise HoustonException(
+                log,
+                f'Sage ID response with invalid annot uuid {acm_uuid} for job {job_id_str}',
+            )
+
+        # Now it's reasonably valid, let's extract the bits we need
+        result = {
+            'scores_by_annotation': [],
+            'scores_by_individual': [],
+        }
+        for target_annot_data in json_result['summary_annot']:
+            acm_uuid = from_acm_uuid(target_annot_data['duuid'])
+            target_annot = Annotation.query.filter_by(content_guid=acm_uuid).first()
+            if not target_annot:
+                raise HoustonException(
+                    log,
+                    f'Sage ID response with unknown target annot uuid {acm_uuid} for job {job_id_str}',
+                )
+            result['scores_by_annotation'].append(
+                {str(target_annot.guid): target_annot_data['score']}
+            )
+
+        for target_annot_data in json_result['summary_name']:
+            acm_uuid = from_acm_uuid(target_annot_data['duuid'])
+            target_annot = Annotation.query.filter_by(content_guid=acm_uuid).first()
+            if not target_annot:
+                raise HoustonException(
+                    log,
+                    f'Sage ID response with unknown target annot uuid {acm_uuid} for job {job_id_str}',
+                )
+            result['scores_by_individual'].append(
+                {str(target_annot.guid): target_annot_data['score']}
+            )
+
+        return result
+
+    def identified(self, job_id, data):
+        if self.stage != SightingStage.identification:
+            raise HoustonException(log, f'Sighting {self.guid} is not detecting')
+        job_id_str = str(job_id)
+        if job_id_str not in self.jobs:
+            raise HoustonException(log, f'job_id {job_id_str} not found')
+
+        result = self._parse_id_response(job_id_str, data)
+
         from app.modules.ia_config_reader import IaConfig
 
         ia_config_reader = IaConfig(current_app.config.get('CONFIG_MODEL'))
-
+        job = self.jobs[job_id_str]
         algorithm = job['algorithm']
         try:
             id_config_dict = ia_config_reader.get(f'_identifiers.{algorithm}')
@@ -749,16 +781,25 @@ class Sighting(db.Model, FeatherModel):
             raise HoustonException(log, f'failed to find {algorithm}')
 
         assert id_config_dict
-        description = id_config_dict.get('description', '')
+        description = ''
+        frontend_data = id_config_dict.get('frontend', '')
+        if frontend_data:
+            description = frontend_data.get('description', '')
         log.info(
-            f"Received successful {algorithm} response '{description}' from Sage for {job_id_str}"
+            f"Received successful {self.guid} {algorithm} response '{description}' from Sage for {job_id_str}"
         )
+        log.debug(f'Sighting ID response stored result: {result}')
 
         # All good, mark as complete
         job['active'] = False
+        job['result'] = result
+        job['complete_time'] = datetime.utcnow()
+
         self.jobs = self.jobs
         self.stage = SightingStage.un_reviewed
         self.unreviewed_start = datetime.utcnow()
+        with db.session.begin(subtransactions=True):
+            db.session.merge(self)
 
     def check_job_status(self, job_id):
         if str(job_id) not in self.jobs:
@@ -768,6 +809,139 @@ class Sighting(db.Model, FeatherModel):
         # TODO Poll ACM to see what's happening with this job, if it's ready to handle and we missed the
         # response, process it here
         return True
+
+    # Helper to build the annotation score data from the job result
+    def _get_annotation_id_data_from_job(self, t_annot_result, q_annot_job):
+
+        data = {}
+        assert len(t_annot_result.keys()) == 1
+        t_annot_guid = list(t_annot_result.keys())[0]
+        t_annot = Annotation.query.get(t_annot_guid)
+        # If no annot, assume that annot has been deleted since the job was run and use None
+        if t_annot:
+            data = {
+                'guid': t_annot_guid,
+                'score': t_annot_result[t_annot_guid],
+                'id_finish_time': str(q_annot_job['complete_time']),
+            }
+
+        return t_annot, data
+
+    # Helper to ensure that the required annot and individual data is present
+    def _ensure_annot_data_in_response(self, annot, response):
+
+        individual_guid = annot.encounter.individual_guid if annot.encounter else None
+
+        if annot.guid not in response['annotation_data'].keys():
+            encounter_location = (
+                annot.encounter.get_location() if annot.encounter else None
+            )
+            # add annot data
+            response['annotation_data'][str(annot.guid)] = {
+                'viewpoint': annot.viewpoint,
+                'encounter_location': encounter_location,
+                'individual_guid': individual_guid,
+                'image_url': annot.asset.get_image_url(),
+                'asset_dimensions': annot.asset.get_dimensions(),
+                'bounds': annot.bounds,
+            }
+
+        if (
+            individual_guid is not None
+            and annot.encounter.individual_guid not in response['individual_data'].keys()
+        ):
+            individual = Individual.query.get(individual_guid)
+            assert individual
+            # add individual data
+            response['individual_data'][str(individual_guid)] = {
+                'names': individual.get_names(),
+                'last_seen': str(individual.get_last_seen_time()),
+                'image': individual.get_featured_image_url(),
+            }
+
+    # See https://docs.google.com/document/d/1oveaPLspQsXS7XXx3hxKA8HUCYb2p-A2wd4zGPga3rs/edit#
+    def get_id_result(self):
+
+        response = {
+            'query_annotations': [],
+            'annotation_data': {},
+            'individual_data': {},
+        }
+        query_annots = []
+        for enc in self.encounters:
+            query_annots += enc.annotations
+
+        for q_annot in query_annots:
+            response['query_annotations'].append(
+                {
+                    'guid': str(q_annot.guid),
+                    'status': 'not_run',
+                    'individual_guid': None,
+                    'algorithms': {},
+                }
+            )
+            if q_annot.encounter and q_annot.encounter.individual_guid is not None:
+                response['query_annotations'][-1][
+                    'individual_guid'
+                ] = q_annot.encounter.individual_guid
+            self._ensure_annot_data_in_response(q_annot, response)
+
+            q_annot_jobs = [
+                self.jobs[job]
+                for job in self.jobs
+                if self.jobs[job]['annotation'] == str(q_annot.guid)
+            ]
+            if len(q_annot_jobs) < 1:
+                # Not run is perfectly valid
+                continue
+
+            q_annot_job = q_annot_jobs[-1]
+            if q_annot_job['active']:
+                response['query_annotations'][-1]['status'] = 'pending'
+                continue
+            if not q_annot_job['result']:
+                response['query_annotations'][-1]['status'] = 'failed'
+                continue
+
+            # It's valid, extract the data
+            response['query_annotations'][-1]['status'] = 'complete'
+
+            scores_by_annot = []
+            scores_by_individual = []
+            for t_annot_result in q_annot_job['result']['scores_by_annotation']:
+                t_annot, data = self._get_annotation_id_data_from_job(
+                    t_annot_result, q_annot_job
+                )
+
+                if not t_annot:
+                    # Assume that annot has been deleted since the job was run
+                    continue
+
+                scores_by_annot.append(data)
+                self._ensure_annot_data_in_response(t_annot, response)
+
+            for t_annot_result in q_annot_job['result']['scores_by_individual']:
+                t_annot, data = self._get_annotation_id_data_from_job(
+                    t_annot_result, q_annot_job
+                )
+
+                if not t_annot:
+                    # Assume that annot has been deleted since the job was run
+                    continue
+
+                scores_by_individual.append(data)
+                self._ensure_annot_data_in_response(t_annot, response)
+
+            algorithms = {
+                q_annot_job['algorithm']: {
+                    'scores_by_annotation': scores_by_annot,
+                    'scores_by_individual': scores_by_individual,
+                }
+            }
+
+            response['query_annotations'][-1]['algorithms'] = algorithms
+            log.debug(f'Sighting ID response: {response}')
+        return response
 
     # Returns a percentage complete value 0-100 for the AssetGroupSighting operations that occur withing
     # the Sighting object
@@ -846,6 +1020,10 @@ class Sighting(db.Model, FeatherModel):
                 for algorithm_id in range(len(id_configs[config_id]['algorithms'])):
                     for encounter in self.encounters:
                         for annotation in encounter.annotations:
+                            log.debug(
+                                f'Sending ID for Sighting:{self.guid}, config:{config_id}, algo:{algorithm_id}'
+                                f'annot:{annotation.guid}, sage_annot:{annotation.content_guid}'
+                            )
                             send_identification.delay(
                                 str(self.guid),
                                 config_id,
@@ -854,4 +1032,6 @@ class Sighting(db.Model, FeatherModel):
                                 annotation.content_guid,
                             )
                             num_jobs += 1
-            log.info(f'Starting Identification for {self.guid} using {num_jobs} jobs')
+            log.info(
+                f'Starting Identification for Sighting:{self.guid} using {num_jobs} jobs'
+            )

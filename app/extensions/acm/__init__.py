@@ -26,7 +26,7 @@ def from_acm_uuid(uuid_str):
     import uuid
 
     assert '__UUID__' in uuid_str.keys()
-    return uuid.uuid4(uuid_str['__UUID__'])
+    return uuid.UUID(uuid_str['__UUID__'])
 
 
 class ACMManager(RestManager):

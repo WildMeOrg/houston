@@ -4,7 +4,6 @@ Project resources utils
 -------------
 """
 import json
-import uuid
 
 from tests import utils as test_utils
 import tests.extensions.tus.utils as tus_utils
@@ -351,50 +350,42 @@ def delete_sighting(
 
 
 # Create a default valid Sage detection response (to allow for the test to corrupt it accordingly)
-def build_sage_identification_response(job_uuid, annot_uuid, algorithm):
+def build_sage_identification_response(
+    job_uuid, annot_uuid, algorithm, target_annot_uuid
+):
 
     # Generate the response back from Sage.
-    # 15th July, Do not assume this is correct. This is hacky first try and probably needs
-    # expanding depending on algorithm
     sage_resp = {
-        'response': {
-            'jobid': f'{str(job_uuid)}',
-            'json_result': {
-                'cm_dict': {annot_uuid: {}},
-                'inference_dict': {},
-                'query_annot_uuid_list': [annot_uuid],
-                'query_config_dict': {
-                    'pipeline_root': algorithm,
-                },
-                'summary_annot': [
-                    {
-                        'daid': 353909,
-                        'dnid': 101124,
-                        'duuid': str(uuid.uuid4()),
-                        'score': 0.49249419758140284,
-                        'species': 'tursiops_truncatus',
-                        'viewpoint': 'left',
-                    },
-                ],
-                'summary_name': [
-                    {
-                        'daid': 354564,
-                        'dnid': 78920,
-                        'duuid': str(uuid.uuid4()),
-                        'score': 4.755731035123042,
-                        'species': 'tursiops_truncatus',
-                        'viewpoint': 'right',
-                    },
-                ],
+        'jobid': f'{str(job_uuid)}',
+        'json_result': {
+            'cm_dict': {annot_uuid: {}},
+            'inference_dict': {},
+            'query_annot_uuid_list': [{'__UUID__': annot_uuid}],
+            'query_config_dict': {
+                'pipeline_root': algorithm,
             },
-            'status': 'completed',
+            'summary_annot': [
+                {
+                    'daid': 353909,
+                    'dnid': 101124,
+                    'duuid': {'__UUID__': target_annot_uuid},
+                    'score': 0.49249419758140284,
+                    'species': 'tursiops_truncatus',
+                    'viewpoint': 'left',
+                },
+            ],
+            'summary_name': [
+                {
+                    'daid': 354564,
+                    'dnid': 78920,
+                    'duuid': {'__UUID__': target_annot_uuid},
+                    'score': 4.755731035123042,
+                    'species': 'tursiops_truncatus',
+                    'viewpoint': 'right',
+                },
+            ],
         },
-        'status': {
-            'cache': -1,
-            'code': 200,
-            'message': {},
-            'success': True,
-        },
+        'status': 'completed',
     }
 
     return sage_resp

@@ -677,9 +677,9 @@ class FeaturedAssetGuidBySightingID(Resource):
     description='Sighting not found.',
 )
 @api.resolve_object_by_model(Sighting, 'sighting')
-class SightingIdentified(Resource):
+class SightingSageIdentified(Resource):
     """
-    Detection of Asset Group Sighting complete
+    Indentification of Sighting complete
     """
 
     @api.permission_required(
@@ -692,6 +692,32 @@ class SightingIdentified(Resource):
     def post(self, sighting, job_guid):
         try:
             sighting.identified(job_guid, json.loads(request.data))
+        except HoustonException as ex:
+            abort(ex.status_code, ex.message, errorFields=ex.get_val('error', 'Error'))
+
+
+@api.route('/<uuid:sighting_guid>/id_result')
+@api.login_required(oauth_scopes=['sightings:read'])
+@api.response(
+    code=HTTPStatus.NOT_FOUND,
+    description='Sighting not found.',
+)
+@api.resolve_object_by_model(Sighting, 'sighting')
+class SightingIdResult(Resource):
+    """
+    Get of latest Sighting ID data
+    """
+
+    @api.permission_required(
+        permissions.ObjectAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'obj': kwargs['sighting'],
+            'action': AccessOperation.READ,
+        },
+    )
+    def get(self, sighting):
+        try:
+            return sighting.get_id_result()
         except HoustonException as ex:
             abort(ex.status_code, ex.message, errorFields=ex.get_val('error', 'Error'))
 

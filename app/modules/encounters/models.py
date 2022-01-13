@@ -5,7 +5,7 @@ Encounters database models
 """
 import uuid
 import logging
-
+from flask import current_app
 from app.extensions import db, FeatherModel
 from app.modules.individuals.models import Individual
 import app.extensions.logging as AuditLog
@@ -109,6 +109,16 @@ class Encounter(db.Model, FeatherModel):
 
     def get_sighting(self):
         return self.sighting
+
+    def get_location(self):
+        edm_data = current_app.edm.get_dict('encounter.data_complete', self.guid)
+        location_id = None
+        if isinstance(edm_data, dict) and edm_data.get('success', False):
+            edm_json = edm_data['result']
+
+            if 'locationId' in edm_json.keys():
+                location_id = edm_json['locationId']
+        return location_id
 
     def get_time_isoformat_in_timezone(self):
         return self.time.isoformat_in_timezone() if self.time else None

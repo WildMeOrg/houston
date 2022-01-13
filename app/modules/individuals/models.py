@@ -187,6 +187,28 @@ class Individual(db.Model, FeatherModel):
                 rt_val = self.encounters[0].annotations[0].asset_guid
         return rt_val
 
+    def get_last_seen_time(self):
+        last_enc = None
+        for enc in self.encounters:
+            if last_enc:
+                if enc.created > last_enc.created:
+                    last_enc = enc
+            else:
+                last_enc = enc
+
+        return last_enc.created
+
+    def get_featured_image_url(self):
+        from app.utils import site_url_prefix
+
+        featured_image_url = None
+        featured_asset_guid = self.get_featured_asset_guid()
+        if featured_asset_guid:
+            featured_image_url = (
+                f'{site_url_prefix()}/api/v1/annotations/{featured_asset_guid}/image'
+            )
+        return featured_image_url
+
     # returns Individuals
     def get_cooccurring_individuals(self):
         return Individual.get_multiple(self.get_cooccurring_individual_guids())

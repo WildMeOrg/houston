@@ -11,7 +11,6 @@ from app.utils import HoustonException
 
 import uuid
 import logging
-import json
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
@@ -84,9 +83,6 @@ class Annotation(db.Model, HoustonModel):
         foreign_keys=[contributor_guid],
     )
 
-    # May have multiple jobs outstanding, store as Json obj uuid_str is key, In_progress Bool is value
-    jobs = db.Column(db.JSON, nullable=True)
-
     def __repr__(self):
         return (
             '<{class_name}('
@@ -153,20 +149,6 @@ class Annotation(db.Model, HoustonModel):
                 db.session.delete(ref)
                 ref.keyword.delete_if_unreferenced()  # but this *may* remove keyword itself
             db.session.delete(self)
-
-    def check_job_status(self, job_id):
-        job_id_str = str(job_id)
-        decoded_jobs = json.loads(self.jobs)
-        if job_id_str not in decoded_jobs.keys():
-            log.warning(f'check_job_status called for invalid job {job_id}')
-            return False
-        if decoded_jobs[job_id_str]:
-            log.warning(f'check_job_status called for completed job {job_id}')
-            return False
-
-        # TODO Poll ACM to see what's happening with this job, if it's ready to handle and we missed the
-        # response, process it here
-        return True
 
     def set_bounds(self, bounds):
         self.validate_bounds(bounds)

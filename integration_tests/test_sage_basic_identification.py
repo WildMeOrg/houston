@@ -74,10 +74,10 @@ def test_create_asset_group_identification(session, codex_url, test_root, login)
     login(session)
     zebra_guids = create_sighting(session, codex_url, test_root, 'zebra.jpg')
 
-    # presuming the first one does not go for identification, so patch it to make it processed so that the next one can
-    patch_response = session.patch(
-        codex_url(f"/api/v1/sightings/{zebra_guids['sighting']}"),
-        json=[{'op': 'replace', 'path': '/stage', 'value': 'processed'}],
+    # the first one does not go for identification, so make it processed so that the next one can
+    patch_response = session.post(
+        codex_url(f"/api/v1/sightings/{zebra_guids['sighting']}/reviewed"),
+        json=[],
     )
     assert patch_response.status_code == 200
     phoenix_guids = create_sighting(session, codex_url, test_root, 'phoenix.jpg')

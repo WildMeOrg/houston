@@ -48,7 +48,6 @@ class PatchSightingDetailsParameters(PatchJSONParameters):
         '/newAssetGroup',
         '/featuredAssetGuid',
         '/name',
-        '/stage',
         '/time',
         '/timeSpecificity',
     )
@@ -102,17 +101,6 @@ class PatchSightingDetailsParameters(PatchJSONParameters):
             elif field == 'name':
                 obj.name = value
                 ret_val = True
-
-            # TODO is this correct, do we know yet how a sighting should be marked as being done?
-            elif field == 'stage':
-                from app.modules.sightings.models import SightingStage
-
-                # TODO this is definitely wrong as it should be one or the other
-                if value == 'processed' and obj.stage in set(
-                    {SightingStage.un_reviewed, SightingStage.identification}
-                ):
-                    obj.stage = SightingStage.processed
-                    ret_val = True
 
             elif field == 'time' or field == 'timeSpecificity':
                 ret_val = ComplexDateTime.patch_replace_helper(obj, field, value)

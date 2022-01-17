@@ -154,6 +154,14 @@ class Sighting(db.Model, FeatherModel):
         if encounter not in self.encounters:
             self.encounters.append(encounter)
 
+    def reviewed(self):
+        ret_val = False
+        if self.stage == SightingStage.un_reviewed:
+            self.stage = SightingStage.processed
+            self.review_time = datetime.utcnow()
+            ret_val = True
+        return ret_val
+
     def get_time_isoformat_in_timezone(self):
         return self.time.isoformat_in_timezone() if self.time else None
 

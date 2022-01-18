@@ -7,6 +7,7 @@ User schemas
 
 from flask_marshmallow import base_fields
 from flask_restx_patched import ModelSchema
+from app.modules import is_module_enabled
 
 from .models import User
 
@@ -83,6 +84,9 @@ class DetailedUserSchema(UserListSchema):
     notification_preferences = base_fields.Function(User.get_notification_preferences)
     individual_merge_requests = base_fields.Function(User.get_individual_merge_requests)
 
+    if is_module_enabled('missions'):
+        assigned_missions = base_fields.Nested('DetailedMissionSchema', many=True)
+
     class Meta(UserListSchema.Meta):
         fields = UserListSchema.Meta.fields + (
             User.created.key,
@@ -95,6 +99,7 @@ class DetailedUserSchema(UserListSchema):
             'notification_preferences',
             'collaborations',
             'individual_merge_requests',
+            'assigned_missions',
         )
 
 

@@ -53,6 +53,8 @@ class Users(Resource):
 
         users = User.query_search(search)
 
+        # TODO: re-enable pagination on listing users
+        # return users.order_by(User.guid).offset(args['offset']).limit(args['limit'])
         return users.order_by(User.guid)
 
     @api.permission_required(
@@ -381,7 +383,7 @@ class UserProfileByID(Resource):
 
 
 if is_module_enabled('asset_groups'):
-    import app.modules.asset_groups.schemas as assetGroupSchemas
+    from app.modules.asset_groups.schemas import AssetGroupSightingAsSightingSchema
 
     @api.route('/<uuid:user_guid>/asset_group_sightings')
     @api.module_required('sightings')
@@ -403,9 +405,53 @@ if is_module_enabled('asset_groups'):
             },
         )
         @api.parameters(PaginationParameters())
-        @api.response(assetGroupSchemas.AssetGroupSightingAsSightingSchema(many=True))
+        @api.response(AssetGroupSightingAsSightingSchema(many=True))
         def get(self, args, user):
             """
             Get AssetGroupSightings for user
             """
             return user.get_unprocessed_asset_group_sightings()
+
+
+if is_module_enabled('missions'):
+    from app.modules.missions.schemas import DetailedMissionSchema
+
+    @api.route('/me/missions/assigned')
+    @api.module_required('missions')
+    @api.login_required(oauth_scopes=['users:read', 'missions:read'])
+    class UserMyAssignedMissions(Resource):
+        """
+        Get a user's assigned missions
+        """
+
+        @api.parameters(PaginationParameters())
+        @api.response(DetailedMissionSchema(many=True))
+        def get(self, args):
+            """
+            Get assigned missions for user
+            """
+            return current_user.get_assigned_missions()
+
+    @api.route('/<uuid:user_guid>/missions/assigned')
+    @api.module_required('missions')
+    @api.login_required(oauth_scopes=['users:read', 'missions:read'])
+    @api.resolve_object_by_model(User, 'user')
+    class UserAssignedMissions(Resource):
+        """
+        Get a user's assigned missions
+        """
+
+        @api.permission_required(
+            permissions.ObjectAccessPermission,
+            kwargs_on_request=lambda kwargs: {
+                'obj': kwargs['user'],
+                'action': AccessOperation.READ,
+            },
+        )
+        @api.parameters(PaginationParameters())
+        @api.response(DetailedMissionSchema(many=True))
+        def get(self, args, user):
+            """
+            Get assigned missions for user
+            """
+            return user.get_assigned_missions()

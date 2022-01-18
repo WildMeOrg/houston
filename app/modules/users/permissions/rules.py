@@ -28,7 +28,7 @@ MODULE_USER_MAP = {
     ('Encounter', AccessOperation.WRITE): ['is_active'],  # TODO is this still correct
     ('Sighting', AccessOperation.READ): ['is_researcher'],
     ('Sighting', AccessOperation.WRITE): ['is_active'],
-    ('Mission', AccessOperation.READ): ['is_data_manager'],
+    ('Mission', AccessOperation.READ): ['is_data_manager', 'is_admin'],
     ('Mission', AccessOperation.WRITE): ['is_data_manager'],
     ('Individual', AccessOperation.READ): ['is_researcher'],
     ('Individual', AccessOperation.WRITE): ['is_researcher'],
@@ -90,6 +90,9 @@ OBJECT_USER_MAP = {
     ('SocialGroup', AccessOperation.READ): ['is_researcher'],
     ('SocialGroup', AccessOperation.WRITE): ['is_researcher'],
     ('SocialGroup', AccessOperation.DELETE): ['is_researcher'],
+    ('Mission', AccessOperation.READ): ['is_data_manager', 'is_admin'],
+    ('Mission', AccessOperation.WRITE): ['is_data_manager', 'is_admin'],
+    ('Mission', AccessOperation.DELETE): ['is_data_manager', 'is_admin'],
     ('Relationship', AccessOperation.READ): ['is_researcher'],
     ('Relationship', AccessOperation.WRITE): ['is_researcher'],
     ('Collaboration', AccessOperation.WRITE): ['is_user_manager'],
@@ -108,6 +111,9 @@ OBJECT_USER_METHOD_MAP = {
     ('Annotation', AccessOperation.DELETE): ['user_is_owner'],
     ('Collaboration', AccessOperation.READ): ['user_can_access'],
     ('Collaboration', AccessOperation.WRITE): ['user_can_access'],
+    ('Mission', AccessOperation.READ): ['user_is_owner'],
+    ('Mission', AccessOperation.WRITE): ['user_is_owner'],
+    ('Mission', AccessOperation.DELETE): ['user_is_owner'],
 }
 
 

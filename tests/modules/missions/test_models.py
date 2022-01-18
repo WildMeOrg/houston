@@ -7,7 +7,7 @@ import logging
 
 
 def test_mission_add_members(
-    db, temp_user, researcher_1, researcher_2
+    db, temp_user, data_manager_1, data_manager_2
 ):  # pylint: disable=unused-argument
     from app.modules.missions.models import (
         Mission,
@@ -41,11 +41,11 @@ def test_mission_add_members(
     logging.info(temp_user.mission_assignments)
     logging.info(temp_mission.user_assignments)
 
-    logging.info(temp_user.get_missions())
+    logging.info(temp_user.get_assigned_missions())
     logging.info(temp_mission)
 
-    assert len(temp_user.get_missions()) >= 1
-    assert temp_mission in temp_user.get_missions()
+    assert len(temp_user.get_assigned_missions()) >= 1
+    assert temp_mission in temp_user.get_assigned_missions()
 
     assert len(temp_mission.get_members()) == 1
     assert temp_user in temp_mission.get_members()
@@ -59,10 +59,10 @@ def test_mission_add_members(
     except (sqlalchemy.orm.exc.FlushError, sqlalchemy.exc.IntegrityError):
         pass
 
-    temp_mission.add_user_in_context(researcher_1)
+    temp_mission.add_user_in_context(data_manager_1)
     # try removing a user that's not in the mission
-    temp_mission.remove_user_in_context(researcher_2)
-    temp_mission.remove_user_in_context(researcher_1)
+    temp_mission.remove_user_in_context(data_manager_2)
+    temp_mission.remove_user_in_context(data_manager_1)
 
     with db.session.begin():
         db.session.delete(temp_mission)

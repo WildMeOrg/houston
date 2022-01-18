@@ -20,7 +20,9 @@ class MissionUserAssignment(db.Model, HoustonModel):
 
     mission = db.relationship('Mission', back_populates='user_assignments')
 
-    user = db.relationship('User', backref=db.backref('mission_assignments'))
+    user = db.relationship(
+        'User', backref=db.backref('mission_assignments', cascade='delete, delete-orphan')
+    )
 
 
 class MissionAssetParticipation(db.Model, HoustonModel):
@@ -31,7 +33,10 @@ class MissionAssetParticipation(db.Model, HoustonModel):
 
     mission = db.relationship('Mission', back_populates='asset_participations')
 
-    asset = db.relationship('Asset', backref=db.backref('mission_participations'))
+    asset = db.relationship(
+        'Asset',
+        backref=db.backref('mission_participations', cascade='delete, delete-orphan'),
+    )
 
 
 class Mission(db.Model, HoustonModel, Timestamp):
@@ -88,6 +93,30 @@ class Mission(db.Model, HoustonModel, Timestamp):
             raise ValueError('Title has to be at least 3 characters long.')
         return title
 
+    @classmethod
+    def query_search(cls, search=None):
+        from sqlalchemy import or_, and_, String
+        from sqlalchemy_utils.functions import cast_if
+
+        if search is not None:
+            search = search.strip().replace(',', ' ').split(' ')
+            search = [term.strip() for term in search]
+            search = [term for term in search if len(term) > 0]
+
+            or_terms = []
+            for term in search:
+                or_term = or_(
+                    cast_if(cls.guid, String).contains(term),
+                    cls.title.contains(term),
+                    cast_if(cls.owner_guid, String).contains(term),
+                )
+                or_terms.append(or_term)
+            query = cls.query.filter(and_(*or_terms))
+        else:
+            query = cls.query
+
+        return query
+
     def get_options(self):
         return self.options.get('model_options', [])
 
@@ -109,6 +138,9 @@ class Mission(db.Model, HoustonModel, Timestamp):
 
         db.session.add(assignment)
         self.user_assignments.append(assignment)
+
+    def user_is_owner(self, user):
+        return user is not None and user == self.owner
 
     def remove_user_in_context(self, user):
         for assignment in self.user_assignments:
@@ -212,11 +244,15 @@ class Mission(db.Model, HoustonModel, Timestamp):
         with db.session.begin(subtransactions=True):
             db.session.merge(self)
 
-    def delete(self):
-        with db.session.begin():
+    def delete_cascade(self):
+        with db.session.begin(subtransactions=True):
             while self.user_assignments:
                 db.session.delete(self.user_assignments.pop())
             db.session.delete(self)
             while self.asset_participations:
                 db.session.delete(self.asset_participations.pop())
+            db.session.delete(self)
+
+    def delete(self):
+        with db.session.begin():
             db.session.delete(self)

@@ -13,7 +13,6 @@ from flask_login import current_user  # NOQA
 
 from app.extensions import db
 from app.extensions.api import Namespace
-from app.extensions.api.parameters import PaginationParameters
 from app.modules.users import permissions
 from app.modules.users.permissions.types import AccessOperation
 from . import parameters, schemas
@@ -38,7 +37,7 @@ class Missions(Resource):
             'action': AccessOperation.READ,
         },
     )
-    @api.parameters(PaginationParameters())
+    @api.parameters(parameters.ListMissionParameters())
     @api.response(schemas.BaseMissionSchema(many=True))
     def get(self, args):
         """
@@ -47,7 +46,13 @@ class Missions(Resource):
         Returns a list of Mission starting from ``offset`` limited by ``limit``
         parameter.
         """
-        return Mission.query.offset(args['offset']).limit(args['limit'])
+        search = args.get('search', None)
+        if search is not None and len(search) == 0:
+            search = None
+
+        missions = Mission.query_search(search)
+
+        return missions.order_by(Mission.guid).offset(args['offset']).limit(args['limit'])
 
     @api.permission_required(
         permissions.ModuleAccessPermission,
@@ -143,5 +148,5 @@ class MissionByID(Resource):
         """
         Delete a Mission by ID.
         """
-        mission.delete()
+        mission.delete_cascade()
         return None

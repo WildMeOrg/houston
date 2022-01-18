@@ -440,12 +440,3 @@ def test_bulk_upload(session, login, codex_url, test_root, request):
         )
         assert response.status_code == 200
         sighting_guids.append(response.json()['guid'])
-
-
-# Run the integration test enough times and it leaves a load of groups which causes the limit to be reached
-def test_remove_all_groups(session, login, codex_url, test_root, request):
-    login(session)
-    groups = session.get(codex_url('/api/v1/asset_groups/'))
-    for group_dat in groups.json():
-        group_guid = group_dat['guid']
-        session.delete(codex_url(f'/api/v1/asset_groups/{group_guid}'))

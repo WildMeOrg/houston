@@ -24,11 +24,12 @@ BROWSER = os.getenv('BROWSER', 'chrome').lower()
 BROWSER_HEADLESS = os.getenv('BROWSER_HEADLESS', 'true').lower() in ('true', 'yes')
 
 
+def _codex_url(relative_path):
+    return urljoin(CODEX_URL, relative_path)
+
+
 @pytest.fixture
 def codex_url():
-    def _codex_url(relative_path):
-        return urljoin(CODEX_URL, relative_path)
-
     return _codex_url
 
 
@@ -97,6 +98,19 @@ def delete_site(pytestconfig):
                 pass
         else:
             assert False, 'Unable to connect to acm'
+
+
+@pytest.fixture(autouse=True, scope='session')
+def cleanup():
+    yield
+    session = requests.Session()
+    # Remove all groups
+    # Run the integration test enough times and it leaves a load of groups which causes the limit to be reached
+    login_session(session)
+    groups = session.get(_codex_url('/api/v1/asset_groups/'))
+    for group_dat in groups.json():
+        group_guid = group_dat['guid']
+        session.delete(_codex_url(f'/api/v1/asset_groups/{group_guid}'))
 
 
 def wait_until(browser, func, timeout=TIMEOUT, poll_frequency=POLL_FREQUENCY):

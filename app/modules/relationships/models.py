@@ -112,6 +112,9 @@ class Relationship(db.Model, Timestamp):
         ]
         return found_individual_members[0]
 
+    def is_public(self):
+        return False
+
     def __repr__(self):
         return (
             '<{class_name}('

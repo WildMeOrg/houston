@@ -34,6 +34,7 @@ SITESETTINGS_TO_APPEND = (
     'email_service_password',
     'email_default_sender_email',
     'email_default_sender_name',
+    'relationship_type_roles',
 )
 
 
@@ -216,7 +217,7 @@ class EDMConfiguration(Resource):
 def _site_setting_get_inject(data):
     assert 'response' in data and 'configuration' in data['response']
     for sskey in SITESETTINGS_TO_APPEND:
-        val = SiteSetting.get_string(sskey)
+        val = SiteSetting.get_value(sskey)
         if val is None:
             data['response']['configuration'][sskey] = {
                 'id': sskey,
@@ -224,6 +225,8 @@ def _site_setting_get_inject(data):
                 'value': '',
                 'valueNotSet': True,
             }
+            if sskey == 'relationship_type_roles':
+                data['response']['configuration'][sskey]['value'] = {}
         else:
             data['response']['configuration'][sskey] = {
                 'id': sskey,
@@ -264,6 +267,12 @@ def _site_setting_get_definition_inject(data):
                     {'label': 'Mailchimp/Mandrill', 'value': 'mailchimp'},
                 ]
             }
+        if sskey == 'relationship_type_roles':
+            data['response']['configuration'][sskey]['fieldType'] = 'json'
+            data['response']['configuration'][sskey][
+                'displayType'
+            ] = 'relationship-type-role'
+            data['response']['configuration'][sskey]['required'] = False
     return data
 
 

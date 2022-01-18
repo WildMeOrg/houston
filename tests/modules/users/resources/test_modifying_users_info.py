@@ -311,6 +311,7 @@ def test_user_profile_fileupload(
         assert profile_response.status_code == 200, profile_response.data
         assert profile_response.content_type == 'image/jpeg'
         assert profile_response.calculate_content_length() == 0
+        profile_response.close()
 
         # PATCH remove /profile_upload_guid when it's not set
         kwargs = {
@@ -385,6 +386,7 @@ def test_user_profile_fileupload(
         assert profile_response.status_code == 200, profile_response.data
         assert profile_response.content_type == 'image/jpeg'
         assert profile_response.get_data() == bytes(file_contents, 'ascii')
+        profile_response.close()
 
         # Test transactionId is required when not using asset guid
         kwargs = {

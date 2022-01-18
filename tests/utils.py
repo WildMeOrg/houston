@@ -151,6 +151,7 @@ def generate_user_instance(
     is_researcher=False,
     is_contributor=True,
     is_user_manager=False,
+    is_data_manager=False,
     in_alpha=True,
 ):
     """
@@ -183,6 +184,7 @@ def generate_user_instance(
         is_researcher=is_researcher,
         is_contributor=is_contributor,
         is_user_manager=is_user_manager,
+        is_data_manager=is_data_manager,
         in_alpha=in_alpha,
     )
     user_instance.password_secret = password
@@ -478,6 +480,12 @@ def random_decimal_latitude():
 
 def random_decimal_longitude():
     return random.uniform(-180, 80)
+
+
+def random_nonce(length=16):
+    import string
+
+    return ''.join(random.choice(string.ascii_letters) for character in range(length))
 
 
 def isoformat_timestamp_now():

@@ -60,3 +60,19 @@ def test_reauthentication(flask_app):
         assert len(urls) == 3
         assert urls[0] == urls[2] == f'{edm_uri}api/v0/org.ecocean.Encounter/{random_id}'
         assert urls[1].startswith(f'{edm_uri}api/v0/login?')
+
+
+@pytest.mark.skipif(extension_unavailable('edm'), reason='EDM extension disabled')
+def test_reauthentication_fails(flask_app):
+    flask_app.edm._ensure_initialized()
+    mock_401 = mock.Mock(status_code=401, ok=False, content=b'')
+
+    def mock_get(url, *args, **kwargs):
+        return mock_401
+
+    with mock.patch.object(
+        flask_app.edm.sessions['default'], 'get', side_effect=mock_get
+    ):
+        random_id = uuid.uuid4()
+        result = flask_app.edm.get_dict('encounter.data', random_id)
+        assert result.status_code == 401

@@ -5,7 +5,7 @@ Input arguments (Parameters) for Tasks resources RESTful API
 """
 
 from flask_login import current_user  # NOQA
-from flask_restx_patched import Parameters, PatchJSONParametersWithPassword
+from flask_restx_patched import Parameters, PatchJSONParameters
 from . import schemas
 from .models import Task
 from app.modules.users.permissions import rules
@@ -16,7 +16,7 @@ class CreateTaskParameters(Parameters, schemas.DetailedTaskSchema):
         pass
 
 
-class PatchTaskDetailsParameters(PatchJSONParametersWithPassword):
+class PatchTaskDetailsParameters(PatchJSONParameters):
     # pylint: disable=abstract-method,missing-docstring
 
     # Valid options for patching are '/title' and '/user'

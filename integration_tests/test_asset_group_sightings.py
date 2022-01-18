@@ -440,3 +440,79 @@ def test_bulk_upload(session, login, codex_url, test_root, request):
         )
         assert response.status_code == 200
         sighting_guids.append(response.json()['guid'])
+
+
+def test_delete_asset_group_sightings(session, login, codex_url, test_root, request):
+    login(session)
+
+    # Create asset group sighting
+    transaction_id = utils.upload_to_tus(
+        session,
+        codex_url,
+        list(test_root.glob('turtle*.jpg')),
+    )
+    response = session.post(
+        codex_url('/api/v1/asset_groups/'),
+        json={
+            'description': 'Bulk import from user',
+            'uploadType': 'bulk',
+            'speciesDetectionModel': ['african_terrestrial'],
+            'transactionId': transaction_id,
+            'sightings': [
+                {
+                    'assetReferences': ['turtle1.jpg'],
+                    'locationId': 'PYTEST',
+                    'time': '2014-01-01T09:00:00.000+00:00',
+                    'timeSpecificity': 'time',
+                    'encounters': [{}],
+                },
+                {
+                    'assetReferences': ['turtle2.jpg', 'turtle3.jpg'],
+                    'locationId': 'PYTEST too',
+                    'time': '2014-01-01T09:00:00.000+00:00',
+                    'timeSpecificity': 'time',
+                    'encounters': [{}],
+                },
+            ],
+        },
+    )
+    asset_group_guid = response.json()['guid']
+    # Delete asset group after test
+    request.addfinalizer(
+        lambda: session.delete(codex_url(f'/api/v1/asset_groups/{asset_group_guid}'))
+    )
+
+    ags_guids = [a['guid'] for a in response.json()['asset_group_sightings']]
+    # Delete first asset group sighting
+    response = session.delete(
+        codex_url(f'/api/v1/asset_groups/sighting/as_sighting/{ags_guids[0]}')
+    )
+    assert response.status_code == 204
+
+    # GET first asset group sighting should be 404
+    response = session.get(
+        codex_url(f'/api/v1/asset_groups/sighting/as_sighting/{ags_guids[0]}')
+    )
+    assert response.status_code == 404
+
+    # GET second asset group sighting and asset group should be 200
+    response = session.get(
+        codex_url(f'/api/v1/asset_groups/sighting/as_sighting/{ags_guids[1]}')
+    )
+    assert response.status_code == 200
+    response = session.get(codex_url(f'/api/v1/asset_groups/{asset_group_guid}'))
+    assert response.status_code == 200
+
+    # Deleting the second (and final) asset group sighting should delete the asset group
+    response = session.delete(
+        codex_url(f'/api/v1/asset_groups/sighting/as_sighting/{ags_guids[1]}')
+    )
+    assert response.status_code == 204
+
+    # GET asset group sighting and asset group should be 404
+    response = session.get(
+        codex_url(f'/api/v1/asset_groups/sighting/as_sighting/{ags_guids[1]}')
+    )
+    assert response.status_code == 404
+    response = session.get(codex_url(f'/api/v1/asset_groups/{asset_group_guid}'))
+    assert response.status_code == 404

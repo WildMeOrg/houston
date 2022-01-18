@@ -1642,6 +1642,14 @@ class AssetGroup(db.Model, HoustonModel):
         # for its completion)
         delete_remote.delay(str(self.guid))
 
+    def delete_asset_group_sighting(self, asset_group_sighting):
+        with db.session.begin(subtransactions=True):
+            for asset in self.assets:
+                asset_ags = self.get_asset_group_sightings_for_asset(asset)
+                if asset_ags == [asset_group_sighting]:
+                    asset.delete_cascade()
+            asset_group_sighting.delete()
+
     # stub of DEX-220 ... to be continued
     def justify_existence(self):
         if self.assets:  # we have assets, so we live on

@@ -616,3 +616,79 @@ def test_create_asset_group_individual(
                 flask_app_client, staff_user, asset_group_uuid
             )
         tus_utils.cleanup_tus_dir(transaction_id)
+
+
+@pytest.mark.skipif(
+    module_unavailable('asset_groups'), reason='AssetGroups module disabled'
+)
+def test_delete_asset_group_sighting(test_root, flask_app_client, researcher_1, request):
+    transaction_id, test_filename = tus_utils.prep_tus_dir(test_root)
+    data = asset_group_utils.AssetGroupCreationData(transaction_id, test_filename)
+    # Create asset group with 1 sighting
+    resp = asset_group_utils.create_asset_group(
+        flask_app_client, researcher_1, data.get()
+    )
+    ag_guid = resp.json['guid']
+    request.addfinalizer(
+        lambda: asset_group_utils.delete_asset_group(
+            flask_app_client, researcher_1, ag_guid
+        )
+    )
+
+    # Delete the only asset group sighting deletes the asset group
+    ags_guid = resp.json['asset_group_sightings'][0]['guid']
+    with flask_app_client.login(
+        researcher_1, auth_scopes=('asset_group_sightings:write',)
+    ):
+        resp = flask_app_client.get(
+            f'/api/v1/asset_groups/sighting/as_sighting/{ags_guid}'
+        )
+        assert resp.status_code == 200
+        resp = flask_app_client.delete(
+            f'/api/v1/asset_groups/sighting/as_sighting/{ags_guid}'
+        )
+        assert resp.status_code == 204
+        resp = flask_app_client.get(
+            f'/api/v1/asset_groups/sighting/as_sighting/{ags_guid}'
+        )
+        assert resp.status_code == 404
+    asset_group_utils.read_asset_group(
+        flask_app_client, researcher_1, ag_guid, expected_status_code=404
+    )
+
+    # Create asset group with 2 sightings
+    data = asset_group_utils.get_bulk_creation_data(test_root, request)
+    resp = asset_group_utils.create_asset_group(
+        flask_app_client, researcher_1, data.get()
+    )
+    ag_guid = resp.json['guid']
+    request.addfinalizer(
+        lambda: asset_group_utils.delete_asset_group(
+            flask_app_client, researcher_1, ag_guid
+        )
+    )
+
+    # Delete one of the asset group sightings
+    ags_guids = [a['guid'] for a in resp.json['asset_group_sightings']]
+    with flask_app_client.login(
+        researcher_1, auth_scopes=('asset_group_sightings:write',)
+    ):
+        resp = flask_app_client.get(
+            f'/api/v1/asset_groups/sighting/as_sighting/{ags_guids[0]}'
+        )
+        assert resp.status_code == 200
+        resp = flask_app_client.delete(
+            f'/api/v1/asset_groups/sighting/as_sighting/{ags_guids[0]}'
+        )
+        assert resp.status_code == 204
+        resp = flask_app_client.get(
+            f'/api/v1/asset_groups/sighting/as_sighting/{ags_guids[0]}'
+        )
+        assert resp.status_code == 404
+        # Check the other asset group sighting still exist
+        resp = flask_app_client.get(
+            f'/api/v1/asset_groups/sighting/as_sighting/{ags_guids[1]}'
+        )
+        assert resp.status_code == 200
+    # Check asset group still exists
+    asset_group_utils.read_asset_group(flask_app_client, researcher_1, ag_guid)

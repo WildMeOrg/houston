@@ -65,6 +65,10 @@ OBJECT_USER_MAP = {
         'is_admin',
         'is_researcher',
     ],
+    ('AssetGroupSighting', AccessOperation.DELETE): [
+        'is_admin',
+        'is_researcher',
+    ],
     ('Individual', AccessOperation.READ): ['is_researcher'],
     ('AssetGroupSighting', AccessOperation.WRITE_PRIVILEGED): ['is_internal'],
     ('Encounter', AccessOperation.READ): ['is_researcher'],

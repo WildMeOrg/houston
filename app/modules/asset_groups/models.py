@@ -417,7 +417,8 @@ class AssetGroupSighting(db.Model, HoustonModel):
     @staticmethod
     def config_field_getter(field_name, default=None, cast=None):
         def getter(self):
-            value = self.config and self.config.get(field_name)
+            value = self.get_config_field(field_name)
+
             if cast is not None and value:
                 value = cast(value)
             return value or default
@@ -425,7 +426,10 @@ class AssetGroupSighting(db.Model, HoustonModel):
         return getter
 
     def get_config_field(self, field):
-        return self.config.get(field) if isinstance(self.config, dict) else None
+        value = self.config.get(field) if isinstance(self.config, dict) else None
+        if not value:
+            value = self.asset_group.get_config_field(field)
+        return value
 
     def get_custom_fields(self):
         return self.__class__.config_field_getter('customFields', default={})(self)

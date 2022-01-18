@@ -424,6 +424,9 @@ class AssetGroupSighting(db.Model, HoustonModel):
 
         return getter
 
+    def get_config_field(self, field):
+        return self.config.get(field) if isinstance(self.config, dict) else None
+
     def get_custom_fields(self):
         return self.__class__.config_field_getter('customFields', default={})(self)
 

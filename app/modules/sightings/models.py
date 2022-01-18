@@ -256,6 +256,20 @@ class Sighting(db.Model, FeatherModel):
         else:
             return None
 
+    # returns a getter for a given config field, allowing for casting and default vals
+    @staticmethod
+    def config_field_getter(field_name, default=None, cast=None):
+        def getter(self):
+            value = (
+                self.asset_group_sighting
+                and self.asset_group_sighting.get_config_field(field_name)
+            )
+            if cast is not None and value:
+                value = cast(value)
+            return value or default
+
+        return getter
+
     @classmethod
     def check_jobs(cls):
         for sighting in Sighting.query.all():

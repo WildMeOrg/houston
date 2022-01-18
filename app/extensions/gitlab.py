@@ -57,6 +57,9 @@ class GitlabManager(object):
         return self._gl_group
 
     def get_project(self, name):
+        if not self._is_gitlab_configured():
+            log.warning('Gitlab not configured, no project')
+            return None
         """Lookup a specific gitlab project/repo by name that is within the preconfigured namespace/group"""
         self._ensure_initialized()
 
@@ -69,6 +72,10 @@ class GitlabManager(object):
             return projects[0]
         else:
             return None
+
+    def _is_gitlab_configured(self):
+        remote_uri = current_app.config.get('GITLAB_REMOTE_URI', None)
+        return remote_uri != '-'
 
     def _ensure_initialized(self):
         if not self.initialized:

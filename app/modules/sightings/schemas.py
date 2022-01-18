@@ -97,6 +97,9 @@ class AugmentedEdmSightingSchema(TimedSightingSchema):
     )
     featuredAssetGuid = base_fields.UUID(attribute='featured_asset_guid')
     creator = base_fields.Nested('PublicUserSchema', attribute='get_owner', many=False)
+    speciesDetectionModel = base_fields.Function(
+        Sighting.config_field_getter('speciesDetectionModel', default=[])
+    )
 
     class Meta(TimedSightingSchema.Meta):
         """
@@ -114,6 +117,7 @@ class AugmentedEdmSightingSchema(TimedSightingSchema):
             'creator',
             'time',
             'timeSpecificity',
+            'speciesDetectionModel',
         )
 
 

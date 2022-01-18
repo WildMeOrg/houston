@@ -173,6 +173,10 @@ class AssetGroupSightingAsSightingSchema(ModelSchema):
     comments = base_fields.Function(
         AssetGroupSighting.config_field_getter('comments', default=None)
     )
+    speciesDetectionModel = base_fields.Function(
+        AssetGroupSighting.config_field_getter('speciesDetectionModel', default=[])
+    )
+
     # These are fields that are in Sighting but don't exist for
     # AssetGroupSighting
     createdEDM = base_fields.DateTime(default=None)

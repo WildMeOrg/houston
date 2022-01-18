@@ -120,6 +120,7 @@ def test_sightings(session, login, codex_url, test_root, admin_name):
         'customFields': occ_custom_fields,
         'decimalLatitude': -39.063228,
         'decimalLongitude': 21.832598,
+        'speciesDetectionModel': [],
         'encounters': [
             {
                 # 2021-11-09T11:15:24.343018+00:00
@@ -256,6 +257,7 @@ def test_sightings(session, login, codex_url, test_root, admin_name):
         'time': '2000-01-01T01:01:01+00:00',
         'timeSpecificity': 'time',
         'stage': 'un_reviewed',
+        'speciesDetectionModel': [],
         # 2021-11-16T09:45:26.717432+00:00
         'updatedHouston': response.json()['updatedHouston'],
         'version': sighting_version,

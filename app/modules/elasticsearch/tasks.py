@@ -2,7 +2,7 @@
 import logging
 
 from flask import current_app
-from gumby.models import Individual, Encounter
+from gumby.models import Individual, Encounter, Sighting
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Engine
 
@@ -128,7 +128,55 @@ FROM
 """
 
 
+def load_sightings_index():
+    wb_engine = create_wildbook_engine()
+    with wb_engine.connect() as wb_conn:
+        results = wb_conn.execute(text(SIGHTINGS_INDEX_SQL))
+        for result in results:
+            # Create the document object
+            sighting = Sighting(**result)
+            # Assign the elasticsearch document identify
+            sighting.meta.id = f'sighting_{sighting.id}'
+            # Save document to elasticsearch
+            sighting.save(using=current_app.elasticsearch)
+
+
+SIGHTINGS_INDEX_SQL = """\
+SELECT
+  oc."ID" AS id,
+  NULLIF((oc."DECIMALLATITUDE"::float || ',' || oc."DECIMALLONGITUDE")::text, ',') AS point,
+  start_time."DATETIME" AS start_time,
+  end_time."DATETIME" AS end_time,
+  -- First encounter genus
+  (
+    SELECT max("GENUS")
+    FROM "ENCOUNTER" en
+      RIGHT JOIN "OCCURRENCE_ENCOUNTERS" oe ON oe."ID_EID" = en."ID"
+    WHERE oe."ID_OID" = oc."ID") AS genus,
+  (
+    SELECT max("SPECIES")
+    FROM "ANNOTATION" an
+      RIGHT JOIN "ENCOUNTER_ANNOTATIONS" ea ON ea."ID_EID" = an."ID"
+      RIGHT JOIN "ENCOUNTER" en ON ea."ID_OID" = en."ID"
+      RIGHT JOIN "OCCURRENCE_ENCOUNTERS" oe ON oe."ID_EID" = en."ID"
+    WHERE oe."ID_OID" = oc."ID") AS species,
+  oc."GROUPBEHAVIOR" AS group_behavior,
+  oc."GROUPCOMPOSITION" AS group_composition,
+  oc."FIELDSTUDYSITE" AS field_study_site,
+  oc."INITIALCUE" AS initial_cue,
+  oc."SEASTATE" AS sea_state,
+  oc."HUMANACTIVITYNEARBY" AS human_activity_nearby,
+  oc."OBSERVER" AS observer,
+  oc."COMMENTS" AS comments
+FROM
+  "OCCURRENCE" oc
+  LEFT JOIN "COMPLEXDATETIME" start_time ON start_time."COMPLEXDATETIME_ID" = oc."STARTTIME_COMPLEXDATETIME_ID_OID"
+  LEFT JOIN "COMPLEXDATETIME" end_time ON end_time."COMPLEXDATETIME_ID" = oc."ENDTIME_COMPLEXDATETIME_ID_OID"
+"""
+
+
 @celery.task
 def load_codex_indexes():
     load_individuals_index()
     load_encounters_index()
+    load_sightings_index()

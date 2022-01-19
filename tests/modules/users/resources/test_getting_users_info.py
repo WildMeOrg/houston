@@ -205,6 +205,12 @@ def test_getting_sightings_for_user(
     assert sighting_json['guid'] == sighting_id
     assert sighting_json['stage'] == 'identification'
     assert sighting_json['unreviewed_start_time'] is not None
+    assert sighting_json['time'] == sighting.time.isoformat_in_timezone()
+    assert sighting_json['timeSpecificity'] == 'time'
+    # check time in encounters as well
+    assert len(sighting_json['encounters']) == 1
+    assert 'time' in sighting_json['encounters'][0]
+    assert 'timeSpecificity' in sighting_json['encounters'][0]
 
 
 @pytest.mark.skipif(module_unavailable('sightings'), reason='Sightings module disabled')
@@ -232,3 +238,10 @@ def test_getting_asset_group_sightings_for_user(
     assert ags['asset_group_guid'] == uuids[0]
     assert ags['guid'] == uuids[1]
     assert ags['stage'] == 'curation'
+    assert 'time' in ags
+    assert ags['time']
+    assert ags['timeSpecificity'] == 'time'
+    # check time in encounters as well
+    assert len(ags['encounters']) == 1
+    assert 'time' in ags['encounters'][0]
+    assert 'timeSpecificity' in ags['encounters'][0]

@@ -41,11 +41,11 @@ def test_task_add_members(
     logging.info(temp_user.task_assignments)
     logging.info(temp_task.user_assignments)
 
-    logging.info(temp_user.get_tasks())
+    logging.info(temp_user.get_assigned_tasks())
     logging.info(temp_task)
 
-    assert len(temp_user.get_tasks()) >= 1
-    assert temp_task in temp_user.get_tasks()
+    assert len(temp_user.get_assigned_tasks()) >= 1
+    assert temp_task in temp_user.get_assigned_tasks()
 
     assert len(temp_task.get_assigned_users()) == 1
     assert temp_user in temp_task.get_assigned_users()

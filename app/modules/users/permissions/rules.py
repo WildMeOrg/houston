@@ -44,7 +44,7 @@ MODULE_USER_MAP = {
     ('Keyword', AccessOperation.WRITE): ['is_active'],
     ('AuditLog', AccessOperation.READ): ['is_researcher'],
     ('AuditLog', AccessOperation.READ_PRIVILEGED): ['is_admin'],
-    ('Task', AccessOperation.READ): ['is_interpreter'],
+    ('Task', AccessOperation.READ): ['is_data_manager', 'is_admin'],
     ('Task', AccessOperation.WRITE): ['is_data_manager'],
     ('SocialGroup', AccessOperation.READ): ['is_researcher'],
     ('SocialGroup', AccessOperation.WRITE): ['is_researcher'],
@@ -93,6 +93,9 @@ OBJECT_USER_MAP = {
     ('Mission', AccessOperation.READ): ['is_data_manager', 'is_admin'],
     ('Mission', AccessOperation.WRITE): ['is_data_manager', 'is_admin'],
     ('Mission', AccessOperation.DELETE): ['is_data_manager', 'is_admin'],
+    ('Task', AccessOperation.READ): ['is_data_manager', 'is_admin'],
+    ('Task', AccessOperation.WRITE): ['is_data_manager', 'is_admin'],
+    ('Task', AccessOperation.DELETE): ['is_data_manager', 'is_admin'],
     ('Relationship', AccessOperation.READ): ['is_researcher'],
     ('Relationship', AccessOperation.WRITE): ['is_researcher'],
     ('Collaboration', AccessOperation.WRITE): ['is_user_manager'],
@@ -114,6 +117,9 @@ OBJECT_USER_METHOD_MAP = {
     ('Mission', AccessOperation.READ): ['user_is_owner'],
     ('Mission', AccessOperation.WRITE): ['user_is_owner'],
     ('Mission', AccessOperation.DELETE): ['user_is_owner'],
+    ('Task', AccessOperation.READ): ['user_is_owner'],
+    ('Task', AccessOperation.WRITE): ['user_is_owner'],
+    ('Task', AccessOperation.DELETE): ['user_is_owner'],
 }
 
 

@@ -100,6 +100,7 @@ class DetailedUserSchema(UserListSchema):
             'collaborations',
             'individual_merge_requests',
             'assigned_missions',
+            'assigned_tasks',
         )
 
 

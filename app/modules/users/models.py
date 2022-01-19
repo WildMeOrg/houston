@@ -547,6 +547,10 @@ class User(db.Model, FeatherModel, UserEDMMixin):
     def assigned_missions(self):
         return self.get_assigned_missions()
 
+    @property
+    def assigned_tasks(self):
+        return self.get_assigned_tasks()
+
     @module_required('organizations', resolve='warn', default=[])
     def get_org_memberships(self):
         return [
@@ -570,7 +574,7 @@ class User(db.Model, FeatherModel, UserEDMMixin):
         return [assignment.mission for assignment in self.mission_assignments]
 
     @module_required('tasks', resolve='warn', default=[])
-    def get_tasks(self):
+    def get_assigned_tasks(self):
         return [assignment.task for assignment in self.task_assignments]
 
     @module_required('collaborations', resolve='warn', default=[])
@@ -746,6 +750,12 @@ class User(db.Model, FeatherModel, UserEDMMixin):
             from app.modules.missions.models import Mission
 
             if isinstance(obj, Mission):
+                ret_val = obj.owner == self
+
+        if is_module_enabled('tasks'):
+            from app.modules.tasks.models import Task
+
+            if isinstance(obj, Task):
                 ret_val = obj.owner == self
 
         if is_module_enabled('notifications'):

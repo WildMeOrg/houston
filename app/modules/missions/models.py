@@ -13,7 +13,6 @@ log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
 
 class MissionUserAssignment(db.Model, HoustonModel):
-
     mission_guid = db.Column(db.GUID, db.ForeignKey('mission.guid'), primary_key=True)
 
     user_guid = db.Column(db.GUID, db.ForeignKey('user.guid'), primary_key=True)
@@ -26,7 +25,6 @@ class MissionUserAssignment(db.Model, HoustonModel):
 
 
 class MissionAssetParticipation(db.Model, HoustonModel):
-
     mission_guid = db.Column(db.GUID, db.ForeignKey('mission.guid'), primary_key=True)
 
     asset_guid = db.Column(db.GUID, db.ForeignKey('asset.guid'), primary_key=True)
@@ -248,7 +246,6 @@ class Mission(db.Model, HoustonModel, Timestamp):
         with db.session.begin(subtransactions=True):
             while self.user_assignments:
                 db.session.delete(self.user_assignments.pop())
-            db.session.delete(self)
             while self.asset_participations:
                 db.session.delete(self.asset_participations.pop())
             db.session.delete(self)

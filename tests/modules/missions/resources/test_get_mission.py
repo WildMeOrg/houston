@@ -36,13 +36,11 @@ def test_get_owned_missions(flask_app_client, admin_user, data_manager_1, data_m
     data_manager1_list = mission_utils.read_user_assigned_missions(
         flask_app_client, data_manager_1
     )
-    assert len(data_manager1_list.json) == 3
     guid1_list = [mission['guid'] for mission in data_manager1_list.json]
 
     data_manager2_list = mission_utils.read_user_assigned_missions(
         flask_app_client, data_manager_2
     )
-    assert len(data_manager2_list.json) == 3
     guid2_list = [mission['guid'] for mission in data_manager2_list.json]
 
     assert len(set(guid1_list) & set(guid2_list)) == 0

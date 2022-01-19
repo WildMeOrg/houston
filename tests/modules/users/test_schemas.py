@@ -50,6 +50,8 @@ def test_DetailedUserSchema_dump_user_instance(user_instance):
         'in_beta',
         'profile_fileupload',
         'affiliation',
+        'assigned_missions',
+        'assigned_tasks',
         'location',
         'forum_id',
         'website',

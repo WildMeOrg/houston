@@ -455,3 +455,47 @@ if is_module_enabled('missions'):
             Get assigned missions for user
             """
             return user.get_assigned_missions()
+
+
+if is_module_enabled('tasks'):
+    from app.modules.tasks.schemas import DetailedTaskSchema
+
+    @api.route('/me/tasks/assigned')
+    @api.module_required('tasks')
+    @api.login_required(oauth_scopes=['users:read', 'tasks:read'])
+    class UserMyAssignedTasks(Resource):
+        """
+        Get a user's assigned tasks
+        """
+
+        @api.parameters(PaginationParameters())
+        @api.response(DetailedTaskSchema(many=True))
+        def get(self, args):
+            """
+            Get assigned tasks for user
+            """
+            return current_user.get_assigned_tasks()
+
+    @api.route('/<uuid:user_guid>/tasks/assigned')
+    @api.module_required('tasks')
+    @api.login_required(oauth_scopes=['users:read', 'tasks:read'])
+    @api.resolve_object_by_model(User, 'user')
+    class UserAssignedTasks(Resource):
+        """
+        Get a user's assigned tasks
+        """
+
+        @api.permission_required(
+            permissions.ObjectAccessPermission,
+            kwargs_on_request=lambda kwargs: {
+                'obj': kwargs['user'],
+                'action': AccessOperation.READ,
+            },
+        )
+        @api.parameters(PaginationParameters())
+        @api.response(DetailedTaskSchema(many=True))
+        def get(self, args, user):
+            """
+            Get assigned tasks for user
+            """
+            return user.get_assigned_tasks()

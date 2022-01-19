@@ -49,6 +49,7 @@ def test_featured_asset_guid_endpoint(
             flask_app_client, researcher_1, f'{sighting.guid}/featured_image'
         )
         assert image.content_type == 'image/jpeg'
+        image.close()
 
         sighting.add_asset(new_asset_2)
 
@@ -60,11 +61,13 @@ def test_featured_asset_guid_endpoint(
 
         response = sighting_utils.read_sighting_path(flask_app_client, researcher_1, path)
         assert response.json['featured_asset_guid'] == str(new_asset_2.guid)
+        response.close()
 
         # Fails as asset 3 is not in the sighting so featured asset remains as 2
         sighting.set_featured_asset_guid(new_asset_3.guid)
         response = sighting_utils.read_sighting_path(flask_app_client, researcher_1, path)
         assert response.json['featured_asset_guid'] == str(new_asset_2.guid)
+        response.close()
 
     except AssertionError as ex:
         sighting_utils.cleanup_sighting(flask_app_client, researcher_1, uuids)
@@ -141,6 +144,7 @@ def test_featured_sighting_read(db, flask_app_client, researcher_1, test_root, r
     asset_group_utils.validate_file_data(
         test_root, image_response.data, featured_asset[0].filename
     )
+    image_response.close()
 
     # make fluke the featured asset, It may have been anyway but if the code fails this will catch it
     fluke_assets = [
@@ -155,3 +159,4 @@ def test_featured_sighting_read(db, flask_app_client, researcher_1, test_root, r
     )
     assert image_response.content_type == 'image/jpeg'
     asset_group_utils.validate_file_data(test_root, image_response.data, 'fluke.jpg')
+    image_response.close()

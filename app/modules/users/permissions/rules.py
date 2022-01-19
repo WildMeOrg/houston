@@ -136,6 +136,13 @@ class DenyAbortMixin(object):
     DENY_ABORT_HTTP_CODE = HTTPStatus.FORBIDDEN
     DENY_ABORT_MESSAGE = None
 
+    # Helper to identify what the module is
+    def _is_module(self, cls: Type[Any]):
+        try:
+            return issubclass(self._module, tuple(cls))
+        except TypeError:
+            return False
+
     def deny(self):
         """
         Abort HTTP request by raising HTTP error exception with a specified
@@ -233,13 +240,6 @@ class ModuleActionRule(DenyAbortMixin, Rule):
                 % (self._action, self._module, current_user)
             )
         return has_permission
-
-    # Helper to identify what the module is
-    def _is_module(self, cls: Type[Any]):
-        try:
-            return issubclass(self._module, tuple(cls))
-        except TypeError:
-            return False
 
     # Permissions control entry point for real users, for all objects and all operations
     def _can_user_perform_action(self, user):

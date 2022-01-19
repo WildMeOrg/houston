@@ -18,6 +18,12 @@ import uuid
 import sqlalchemy
 import app.extensions.logging as AuditLog  # NOQA
 
+from flask_restx_patched import is_extension_enabled
+
+if not is_extension_enabled('edm'):
+    raise RuntimeError('EDM is not enabled')
+
+
 KEYWORD_SET = set(keyword.kwlist)
 
 log = logging.getLogger(__name__)

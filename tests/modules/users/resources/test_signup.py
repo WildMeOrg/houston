@@ -251,6 +251,8 @@ def test_new_user_creation_roles_admin(flask_app_client, admin_user, db):
 
     assert response.json == {
         'affiliation': '',
+        'assigned_missions': [],
+        'assigned_tasks': [],
         'created': response.json['created'],
         'email': 'user1@localhost',
         'forum_id': '',

@@ -7,7 +7,6 @@ import uuid
 import logging
 from flask import current_app
 from app.extensions import db, FeatherModel
-from app.modules.individuals.models import Individual
 import app.extensions.logging as AuditLog
 
 
@@ -139,6 +138,8 @@ class Encounter(db.Model, FeatherModel):
     #  a) this allows for other-user-owned data to be toggled to public
     #  b) allows for us to _disallow_ public access to public-user-owned data
     def set_individual(self, individual):
+        from app.modules.individuals.models import Individual
+
         if isinstance(individual, Individual):
             self.individual = individual
 

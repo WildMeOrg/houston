@@ -28,6 +28,12 @@ import re
 import datetime
 
 
+from flask_restx_patched import is_extension_enabled
+
+if not is_extension_enabled('mail'):
+    raise RuntimeError('Email is not enabled')
+
+
 NEWLINE_TEMP_CODE = '_^_NEWLINE_CHARACTER_^_'
 WEBFONTS_PLACEHOLDER_CODE = '_^_WEBFONTS_PLACEHOLDER_^_'
 

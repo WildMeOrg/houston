@@ -101,7 +101,12 @@ def configure_using_houston_flask_config(app):
 
 
 def create_app(
-    config_override={}, testing=False, context=None, environment=None, **kwargs
+    config_override={},
+    testing=False,
+    context=None,
+    environment=None,
+    force_enable=False,
+    **kwargs
 ):
     """
     Entry point to the Houston Server application.
@@ -140,10 +145,13 @@ def create_app(
     if testing:
         return app
 
+    if force_enable:
+        log.warning('Forcing all extensions and modules (force_enable=True)')
+
     # Initialize all extensions
     from . import extensions
 
-    extensions.init_app(app)
+    extensions.init_app(app, force_enable=force_enable)
 
     # Ensure on disk storage
     _ensure_storage(app)
@@ -151,7 +159,7 @@ def create_app(
     # Initialize all modules
     from . import modules
 
-    modules.init_app(app)
+    modules.init_app(app, force_enable=force_enable)
 
     # Configure reverse proxy
     if app.config['REVERSE_PROXY_SETUP']:

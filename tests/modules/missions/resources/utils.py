@@ -7,6 +7,7 @@ import json
 from tests import utils as test_utils
 
 PATH = '/api/v1/missions/'
+PATH_USER_MISSIONS = '/api/v1/users/%s/missions/assigned'
 
 
 def create_mission(flask_app_client, user, title, expected_status_code=200):
@@ -55,9 +56,38 @@ def read_mission(flask_app_client, user, mission_guid, expected_status_code=200)
     return response
 
 
-def read_all_missions(flask_app_client, user, expected_status_code=200):
+def read_user_assigned_missions(
+    flask_app_client, user, user_guid=None, expected_status_code=200
+):
+    if user_guid is None:
+        user_guid = user.guid
+
+    with flask_app_client.login(
+        user,
+        auth_scopes=(
+            'users:read',
+            'missions:read',
+        ),
+    ):
+        response = flask_app_client.get(PATH_USER_MISSIONS % (user_guid,))
+
+    if expected_status_code == 200:
+        test_utils.validate_list_response(response, 200)
+    else:
+        test_utils.validate_dict_response(
+            response, expected_status_code, {'status', 'message'}
+        )
+    return response
+
+
+def read_all_missions(flask_app_client, user, expected_status_code=200, **kwargs):
+    assert set(kwargs.keys()) <= {'search', 'limit', 'offset'}
+
     with flask_app_client.login(user, auth_scopes=('missions:read',)):
-        response = flask_app_client.get(PATH)
+        response = flask_app_client.get(
+            PATH,
+            query_string=kwargs,
+        )
 
     if expected_status_code == 200:
         test_utils.validate_list_response(response, 200)

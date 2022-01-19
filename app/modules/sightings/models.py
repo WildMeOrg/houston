@@ -684,6 +684,8 @@ class Sighting(db.Model, FeatherModel):
 
     # validate that the id response is a valid format and extract the data required from it
     def _parse_id_response(self, job_id_str, data):
+        from app.extensions.acm import from_acm_uuid
+
         status = data.get('status', 'failed')
 
         if status != 'completed':
@@ -719,8 +721,6 @@ class Sighting(db.Model, FeatherModel):
                 log,
                 f'Sage ID responded with {len(query_annot_uuids)} query_annots for {job_id_str}',
             )
-        from app.modules.annotations.models import Annotation
-        from app.extensions.acm import from_acm_uuid
 
         acm_uuid = from_acm_uuid(query_annot_uuids[0])
         query_annots = Annotation.query.filter_by(content_guid=acm_uuid).all()

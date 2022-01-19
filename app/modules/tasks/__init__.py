@@ -6,6 +6,11 @@ Tasks module
 
 from app.extensions.api import api_v1
 
+from app.modules import is_module_enabled
+
+if not is_module_enabled('tasks'):
+    raise RuntimeError('Tasks is not enabled')
+
 
 def init_app(app, **kwargs):
     # pylint: disable=unused-argument,unused-variable

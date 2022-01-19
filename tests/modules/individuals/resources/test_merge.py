@@ -2,7 +2,6 @@
 # pylint: disable=missing-docstring
 
 from tests.modules.individuals.resources import utils as individual_utils
-from app.modules.individuals.models import Individual, IndividualMergeRequestVote
 import pytest
 from tests import utils as test_utils
 import logging
@@ -15,6 +14,8 @@ log = logging.getLogger(__name__)
     reason='Individuals module disabled',
 )
 def test_merge_basics(db, flask_app_client, researcher_1, request, test_root):
+    from app.modules.individuals.models import Individual
+
     individual1_uuids = individual_utils.create_individual_and_sighting(
         flask_app_client,
         researcher_1,
@@ -82,6 +83,8 @@ def test_merge_permissions(
     request,
     test_root,
 ):
+    from app.modules.individuals.models import Individual
+
     individual1_uuids = individual_utils.create_individual_and_sighting(
         flask_app_client,
         researcher_1,
@@ -157,6 +160,8 @@ def test_get_data_and_voting(
     request,
     test_root,
 ):
+    from app.modules.individuals.models import Individual, IndividualMergeRequestVote
+
     bad_id = '00000000-0000-0000-0000-000000002170'
     # first anon permission check (401)
     response = individual_utils.get_merge_request(

@@ -14,7 +14,6 @@ from flask_login import current_user  # NOQA
 from app.extensions import db, FeatherModel, is_extension_enabled
 from app.modules import module_required, is_module_enabled
 from app.extensions.auth import security
-from app.extensions.edm import EDMObjectMixin
 from app.extensions.api.parameters import _get_is_static_role_property
 import app.extensions.logging as AuditLog
 
@@ -22,71 +21,77 @@ import app.extensions.logging as AuditLog
 log = logging.getLogger(__name__)
 
 
-class UserEDMMixin(EDMObjectMixin):
+if is_extension_enabled('edm'):
+    from app.extensions.edm import EDMObjectMixin
 
-    # fmt: off
-    # Name of the module, used for knowing what to sync i.e user.list, user.data
-    EDM_NAME = 'user'
+    class UserEDMMixin(EDMObjectMixin):
 
-    # The EDM attribute for the version, if reported
-    EDM_VERSION_ATTRIBUTE = 'version'
+        # fmt: off
+        # Name of the module, used for knowing what to sync i.e user.list, user.data
+        EDM_NAME = 'user'
 
-    #
-    EDM_LOG_ATTRIBUTES = [
-        'emailAddress',
-    ]
+        # The EDM attribute for the version, if reported
+        EDM_VERSION_ATTRIBUTE = 'version'
 
-    EDM_ATTRIBUTE_MAPPING = {
-        # Ignored
-        'id'                    : None,
-        'lastLogin'             : None,
-        'username'              : None,
+        #
+        EDM_LOG_ATTRIBUTES = [
+            'emailAddress',
+        ]
 
-        # Attributes
-        'acceptedUserAgreement' : 'accepted_user_agreement',
-        'affiliation'           : 'affiliation',
-        'emailAddress'          : 'email',
-        'fullName'              : 'full_name',
-        'receiveEmails'         : 'receive_notification_emails',
-        'sharing'               : 'shares_data',
-        'userURL'               : 'website',
-        'version'               : 'version',
+        EDM_ATTRIBUTE_MAPPING = {
+            # Ignored
+            'id'                    : None,
+            'lastLogin'             : None,
+            'username'              : None,
 
-        # Functions
-        'organizations'         : '_process_edm_user_organization',
-        'profileImageUrl'       : '_process_edm_user_profile_url',
-    }
-    # fmt: on
+            # Attributes
+            'acceptedUserAgreement' : 'accepted_user_agreement',
+            'affiliation'           : 'affiliation',
+            'emailAddress'          : 'email',
+            'fullName'              : 'full_name',
+            'receiveEmails'         : 'receive_notification_emails',
+            'sharing'               : 'shares_data',
+            'userURL'               : 'website',
+            'version'               : 'version',
 
-    @classmethod
-    def ensure_edm_obj(cls, guid):
-        user = User.query.filter(User.guid == guid).first()
-        is_new = user is None
+            # Functions
+            'organizations'         : '_process_edm_user_organization',
+            'profileImageUrl'       : '_process_edm_user_profile_url',
+        }
+        # fmt: on
 
-        if is_new:
-            email = '%s@localhost' % (guid,)
-            password = User.initial_random_password()
-            user = User(
-                guid=guid,
-                email=email,
-                password=password,
-                version=None,
-                is_active=True,
-                in_alpha=True,
-            )
-            with db.session.begin():
-                db.session.add(user)
-            db.session.refresh(user)
+        @classmethod
+        def ensure_edm_obj(cls, guid):
+            user = User.query.filter(User.guid == guid).first()
+            is_new = user is None
 
-        return user, is_new
+            if is_new:
+                email = '%s@localhost' % (guid,)
+                password = User.initial_random_password()
+                user = User(
+                    guid=guid,
+                    email=email,
+                    password=password,
+                    version=None,
+                    is_active=True,
+                    in_alpha=True,
+                )
+                with db.session.begin():
+                    db.session.add(user)
+                db.session.refresh(user)
 
-    def _process_edm_user_profile_url(self, url):
-        # TODO is this actually needed
-        log.warning('User._process_edm_profile_url() not implemented yet')
+            return user, is_new
 
-    def _process_edm_user_organization(self, org):
-        # TODO is this actually needed
-        log.warning('User._process_edm_user_organization() not implemented yet')
+        def _process_edm_user_profile_url(self, url):
+            # TODO is this actually needed
+            log.warning('User._process_edm_profile_url() not implemented yet')
+
+        def _process_edm_user_organization(self, org):
+            # TODO is this actually needed
+            log.warning('User._process_edm_user_organization() not implemented yet')
+
+else:
+    UserEDMMixin = object
 
 
 class User(db.Model, FeatherModel, UserEDMMixin):
@@ -543,6 +548,14 @@ class User(db.Model, FeatherModel, UserEDMMixin):
             return False
         return code.is_resolved
 
+    @property
+    def assigned_missions(self):
+        return self.get_assigned_missions()
+
+    @property
+    def assigned_tasks(self):
+        return self.get_assigned_tasks()
+
     @module_required('organizations', resolve='warn', default=[])
     def get_org_memberships(self):
         return [
@@ -562,11 +575,11 @@ class User(db.Model, FeatherModel, UserEDMMixin):
         return [enrollment.project for enrollment in self.project_membership_enrollments]
 
     @module_required('missions', resolve='warn', default=[])
-    def get_missions(self):
+    def get_assigned_missions(self):
         return [assignment.mission for assignment in self.mission_assignments]
 
     @module_required('tasks', resolve='warn', default=[])
-    def get_tasks(self):
+    def get_assigned_tasks(self):
         return [assignment.task for assignment in self.task_assignments]
 
     @module_required('collaborations', resolve='warn', default=[])
@@ -580,6 +593,10 @@ class User(db.Model, FeatherModel, UserEDMMixin):
             )
         return json_resp
 
+    @module_required('collaborations', resolve='warn', default=[])
+    def get_collaboration_associations(self):
+        return self.user_collaboration_associations
+
     def get_notification_preferences(self):
         from app.modules.notifications.models import UserNotificationPreferences
 
@@ -588,26 +605,33 @@ class User(db.Model, FeatherModel, UserEDMMixin):
         preferences = UserNotificationPreferences.get_user_preferences(self)
         return preferences
 
+    @module_required('individuals', resolve='warn', default=[])
     def get_individual_merge_requests(self):
         from app.modules.individuals.models import Individual
 
         reqs = Individual.get_active_merge_requests(self)
         return reqs
 
+    @module_required('asset_groups', resolve='warn', default=[])
+    def get_asset_groups(self):
+        return self.asset_groups
+
+    @module_required('asset_groups', resolve='warn', default=[])
     def unprocessed_asset_groups(self):
         return [
             {
                 'uuid': str(asset_group.guid),
                 'uploadType': asset_group.get_config_field('uploadType'),
             }
-            for asset_group in self.asset_groups
+            for asset_group in self.get_asset_groups()
             if not asset_group.is_processed()
         ]
 
+    @module_required('asset_groups', resolve='warn', default=[])
     def get_unprocessed_asset_group_sightings(self):
         ags = []
 
-        for group in self.asset_groups:
+        for group in self.get_asset_groups():
             new_ags = [ags for ags in group.get_unprocessed_asset_group_sightings()]
             ags.extend(new_ags)
         return ags
@@ -738,6 +762,18 @@ class User(db.Model, FeatherModel, UserEDMMixin):
             if isinstance(obj, Project):
                 ret_val = obj.owner == self
 
+        if is_module_enabled('missions'):
+            from app.modules.missions.models import Mission
+
+            if isinstance(obj, Mission):
+                ret_val = obj.owner == self
+
+        if is_module_enabled('tasks'):
+            from app.modules.tasks.models import Task
+
+            if isinstance(obj, Task):
+                ret_val = obj.owner == self
+
         if is_module_enabled('notifications'):
             from app.modules.notifications.models import Notification
 
@@ -782,7 +818,7 @@ class User(db.Model, FeatherModel, UserEDMMixin):
     @module_required('encounters', 'annotations', resolve='warn', default=[])
     def get_all_annotations(self):
         annotations = self.get_my_annotations()
-        for collab_assoc in self.user_collaboration_associations:
+        for collab_assoc in self.get_collaboration_associations():
             if collab_assoc.has_read():
                 annotations.append(collab_assoc.get_other_user().get_my_annotations())
 
@@ -814,9 +850,9 @@ class User(db.Model, FeatherModel, UserEDMMixin):
             db.session.merge(self)
 
     def delete(self):
-        for collab_assoc in self.user_collaboration_associations:
+        for collab_assoc in self.get_collaboration_associations():
             collab_assoc.delete()
-        for asset_group in self.asset_groups:
+        for asset_group in self.get_asset_groups():
             asset_group.delete()
 
         with db.session.begin(subtransactions=True):

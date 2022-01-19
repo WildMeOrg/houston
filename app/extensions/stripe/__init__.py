@@ -5,6 +5,12 @@ Logging adapter
 """
 import logging
 
+from flask_restx_patched import is_extension_enabled
+
+if not is_extension_enabled('stripe'):
+    raise RuntimeError('Stripe is not enabled')
+
+
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
 

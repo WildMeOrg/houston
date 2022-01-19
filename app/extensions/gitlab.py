@@ -12,6 +12,11 @@ import gitlab
 
 import keyword
 
+from flask_restx_patched import is_extension_enabled
+
+if not is_extension_enabled('gitlab'):
+    raise RuntimeError('GitLab is not enabled')
+
 
 KEYWORD_SET = set(keyword.kwlist)
 

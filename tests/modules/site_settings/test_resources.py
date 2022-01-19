@@ -4,10 +4,14 @@ from pathlib import Path
 from app.modules.fileuploads.models import FileUpload
 from app.modules.site_settings.models import SiteSetting
 
-from tests.utils import TemporaryDirectoryGraceful
+from tests.utils import TemporaryDirectoryGraceful, module_unavailable
+import pytest
 import json
 
 
+@pytest.mark.skipif(
+    module_unavailable('social_groups'), reason='Social Groups module disabled'
+)
 def test_site_settings(admin_user, flask_app_client, flask_app, db, request, test_root):
     zebra_path = test_root / 'zebra.jpg'
     fup = FileUpload.create_fileupload_from_path(str(zebra_path), copy=True)

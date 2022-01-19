@@ -4,7 +4,6 @@
 import logging
 
 import pytest
-from app.modules.collaborations.models import Collaboration
 from app.modules.notifications.models import (
     Notification,
     NotificationChannel,
@@ -15,6 +14,9 @@ from app.modules.notifications.models import (
     SystemNotificationPreferences,
 )
 from app.utils import HoustonException
+
+from tests.utils import module_unavailable
+
 
 log = logging.getLogger(__name__)
 
@@ -47,7 +49,11 @@ def test_get_notification_prefs(db, researcher_1):
             db.session.delete(notification_preferences)
 
 
+@pytest.mark.skipif(
+    module_unavailable('collaborations'), reason='Collaborations module disabled'
+)
 def test_notification_message(db, researcher_1, researcher_2, flask_app, request):
+    from app.modules.collaborations.models import Collaboration
     from tests.modules.emails.test_email import _prep_sending, _cleanup_sending
 
     builder = NotificationBuilder(researcher_1)

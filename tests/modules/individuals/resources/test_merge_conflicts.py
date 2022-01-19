@@ -1,11 +1,8 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=missing-docstring
-
-from tests.modules.individuals.resources import utils as individual_utils
 import pytest
 from tests import utils as test_utils
 import logging
-from app.modules.individuals.models import Individual
 
 log = logging.getLogger(__name__)
 
@@ -22,6 +19,9 @@ def test_get_conflicts(
     request,
     test_root,
 ):
+    from app.modules.individuals.models import Individual
+    from tests.modules.individuals.resources import utils as individual_utils
+
     # make sure anon gets 401
     res = individual_utils.merge_conflicts(
         flask_app_client, None, [], expected_status_code=401
@@ -123,6 +123,8 @@ def test_overrides(
     request,
     test_root,
 ):
+    from tests.modules.individuals.resources import utils as individual_utils
+
     indiv1_data = {'sex': 'male'}
     individual1_uuids = individual_utils.create_individual_and_sighting(
         flask_app_client,

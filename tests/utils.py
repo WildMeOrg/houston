@@ -151,6 +151,7 @@ def generate_user_instance(
     is_researcher=False,
     is_contributor=True,
     is_user_manager=False,
+    is_data_manager=False,
     in_alpha=True,
 ):
     """
@@ -183,6 +184,7 @@ def generate_user_instance(
         is_researcher=is_researcher,
         is_contributor=is_contributor,
         is_user_manager=is_user_manager,
+        is_data_manager=is_data_manager,
         in_alpha=in_alpha,
     )
     user_instance.password_secret = password
@@ -424,17 +426,31 @@ def patch_replace_op(path, value):
 def all_count(db):
     from app.modules import is_module_enabled
 
-    from app.modules.sightings.models import Sighting
-    from app.modules.encounters.models import Encounter
-    from app.modules.assets.models import Asset
-    from app.modules.asset_groups.models import AssetGroup
-    from app.modules.individuals.models import Individual
-    from app.modules.collaborations.models import Collaboration
+    classes = []
+    if is_module_enabled('sightings'):
+        from app.modules.sightings.models import Sighting
+
+        classes.append(Sighting)
+    if is_module_enabled('encounters'):
+        from app.modules.encounters.models import Encounter
+
+        classes.append(Encounter)
+    if is_module_enabled('individuals'):
+        from app.modules.individuals.models import Individual
+
+        classes.append(Individual)
+    if is_module_enabled('collaborations'):
+        from app.modules.collaborations.models import Collaboration
+
+        classes.append(Collaboration)
 
     count = {}
-    for cls in (Sighting, Encounter, Individual, Collaboration):
+    for cls in classes:
         count[cls.__name__] = row_count(db, cls)
-    if is_module_enabled('asset_groups'):
+    if is_module_enabled('assets', 'asset_groups'):
+        from app.modules.assets.models import Asset
+        from app.modules.asset_groups.models import AssetGroup
+
         asset_query = Asset.query
         asset_group_query = AssetGroup.query
         for guid in (TEST_ASSET_GROUP_UUID, TEST_EMPTY_ASSET_GROUP_UUID):
@@ -478,6 +494,12 @@ def random_decimal_latitude():
 
 def random_decimal_longitude():
     return random.uniform(-180, 80)
+
+
+def random_nonce(length=16):
+    import string
+
+    return ''.join(random.choice(string.ascii_letters) for character in range(length))
 
 
 def isoformat_timestamp_now():

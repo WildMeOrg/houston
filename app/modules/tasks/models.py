@@ -21,7 +21,9 @@ class TaskUserAssignment(db.Model, HoustonModel):
 
     task = db.relationship('Task', back_populates='user_assignments')
 
-    user = db.relationship('User', backref=db.backref('task_assignments'))
+    user = db.relationship(
+        'User', backref=db.backref('task_assignments', cascade='delete, delete-orphan')
+    )
 
 
 class TaskAssetParticipation(db.Model, HoustonModel):
@@ -32,7 +34,10 @@ class TaskAssetParticipation(db.Model, HoustonModel):
 
     task = db.relationship('Task', back_populates='asset_participations')
 
-    asset = db.relationship('Asset', backref=db.backref('task_participations'))
+    asset = db.relationship(
+        'Asset',
+        backref=db.backref('task_participations', cascade='delete, delete-orphan'),
+    )
 
 
 class TaskAnnotationParticipation(db.Model, HoustonModel):
@@ -45,7 +50,10 @@ class TaskAnnotationParticipation(db.Model, HoustonModel):
 
     task = db.relationship('Task', back_populates='annotation_participations')
 
-    annotation = db.relationship('Annotation', backref=db.backref('task_participations'))
+    annotation = db.relationship(
+        'Annotation',
+        backref=db.backref('task_participations', cascade='delete, delete-orphan'),
+    )
 
 
 class Task(db.Model, HoustonModel, Timestamp):
@@ -112,6 +120,9 @@ class Task(db.Model, HoustonModel, Timestamp):
         if len(title) < 3:
             raise ValueError('Title has to be at least 3 characters long.')
         return title
+
+    def user_is_owner(self, user):
+        return user is not None and user == self.owner
 
     def get_assigned_users(self):
         return [assignment.user for assignment in self.user_assignments]
@@ -188,10 +199,8 @@ class Task(db.Model, HoustonModel, Timestamp):
         with db.session.begin():
             while self.user_assignments:
                 db.session.delete(self.user_assignments.pop())
-            db.session.delete(self)
             while self.asset_participations:
                 db.session.delete(self.asset_participations.pop())
-            db.session.delete(self)
             while self.annotation_participations:
                 db.session.delete(self.annotation_participations.pop())
             db.session.delete(self)

@@ -4,14 +4,15 @@ import datetime
 import logging
 from unittest import mock
 import uuid
+import pytest
 
 from app.modules.users.models import User
 import tests.utils as test_utils
-import pytest
 
-from tests.utils import extension_unavailable
+from tests.utils import extension_unavailable, module_unavailable
 
 
+@pytest.mark.skipif(module_unavailable('sightings'), reason='Sightings module disabled')
 def test_sighting_create_and_add_encounters(db):
 
     from app.modules.sightings.models import Sighting, SightingStage
@@ -60,6 +61,7 @@ def test_sighting_create_and_add_encounters(db):
     test_sighting.delete()
 
 
+@pytest.mark.skipif(module_unavailable('sightings'), reason='Sightings module disabled')
 def test_sighting_ensure_no_duplicate_encounters(db):
     from app.modules.sightings.models import Sighting, SightingStage
 

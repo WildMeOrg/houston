@@ -9,6 +9,11 @@ import shutil
 
 from flask import current_app
 
+from flask_restx_patched import is_extension_enabled
+
+if not is_extension_enabled('tus'):
+    raise RuntimeError('Tus is not enabled')
+
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 

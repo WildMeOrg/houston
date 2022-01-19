@@ -2,8 +2,8 @@
 # pylint: disable=invalid-name,missing-docstring
 
 import logging
+import pytest
 import tests.utils as test_utils
-from app.modules.collaborations.models import Collaboration
 from app.modules.notifications.models import (
     Notification,
     NotificationType,
@@ -11,6 +11,8 @@ from app.modules.notifications.models import (
 )
 import tests.modules.notifications.resources.utils as notif_utils
 import tests.modules.users.resources.utils as user_utils
+
+from tests.utils import module_unavailable
 
 log = logging.getLogger(__name__)
 
@@ -26,9 +28,14 @@ def get_notifications_with_guid(json_data, guid_str, notification_type, sender_g
     )
 
 
+@pytest.mark.skipif(
+    module_unavailable('collaborations'), reason='Collaborations module disabled'
+)
 def test_get_notifications(
     db, flask_app_client, researcher_1, researcher_2, user_manager_user, request
 ):
+    from app.modules.collaborations.models import Collaboration
+
     # Start with no unread notifications to ensure that they are always created here
     notif_utils.mark_all_notifications_as_read(flask_app_client, researcher_1)
     notif_utils.mark_all_notifications_as_read(flask_app_client, researcher_2)
@@ -111,9 +118,14 @@ def test_get_notifications(
     assert set(values.keys()) >= set({'collaboration_guid'})
 
 
+@pytest.mark.skipif(
+    module_unavailable('collaborations'), reason='Collaborations module disabled'
+)
 def test_patch_notification(
     db, flask_app_client, researcher_1, researcher_2, user_manager_user, request
 ):
+    from app.modules.collaborations.models import Collaboration
+
     # Start with no unread notifications to ensure that they are always created here
     notif_utils.mark_all_notifications_as_read(flask_app_client, researcher_1)
     notif_utils.mark_all_notifications_as_read(flask_app_client, researcher_2)
@@ -150,9 +162,14 @@ def test_patch_notification(
     assert len(researcher_2_unread_notifs.json) <= len(researcher_2_notifs.json)
 
 
+@pytest.mark.skipif(
+    module_unavailable('collaborations'), reason='Collaborations module disabled'
+)
 def test_notification_preferences(
     db, flask_app_client, researcher_1, researcher_2, user_manager_user, request
 ):
+    from app.modules.collaborations.models import Collaboration
+
     notif_1_data = NotificationBuilder(researcher_1)
     members = [researcher_1, researcher_2]
     basic_collab = Collaboration(members, researcher_2)

@@ -153,84 +153,11 @@ class BaseConfig(FlaskConfigOverrides, RedisConfig):
         },
     }
 
-    # fmt: off
-    ENABLED_EXTENSIONS = (
-        'acm',
-        'edm',
-        'cors',
-        'elasticsearch',
-        'gitlab',
-        'tus',
-        'mail',
-        'stripe',
-    )
-    # fmt: on
+    # This is defined by the application's context configuration
+    ENABLED_EXTENSIONS = ()
 
-    # fmt: off
-    # THIS ORDERING IS VERY SPECIFIC AND INFLUENCES WHICH MODULES CAN DEPEND ON EACH OTHER
-    ENABLED_MODULES = (
-        # Users
-        #   Dependencies: [NONE]
-        'users',
-
-        # Organizations
-        #   Dependencies: Users
-        #
-        #   Note: Organization defines a many-to-many relationship with User
-        #         and will import app.modules.organizations.models when the
-        #         User module and object are imported.  Disabling the
-        #         'organizations' modules will currently break the implementation
-        #         of the User model because it creates a broken backref
-        'organizations',
-
-        # Authentication
-        #   Dependencies: Users
-        'auth',
-
-        # Asset_groups
-        #   Dependencies: Users
-        'asset_groups',
-
-        # Assets
-        #   Dependencies: Asset_groups
-        'assets',
-
-        # Miscellaneous
-        'keywords',
-        'fileuploads',
-        'collaborations',
-        'notifications',
-        'encounters',
-        'projects',
-        'sightings',
-        'individuals',
-        'names',
-        'complex_date_time',
-        'annotations',
-        'social_groups',
-        'relationships',
-        'site_settings',
-        'site_info',
-        'job_control',
-        'elasticsearch_proxy',
-        'elasticsearch',
-
-        # Front-end
-        #   Dependencies: Users, Auth, Assets
-        'app_ui',
-        'swagger_ui',
-
-        # REST APIs = API, Passthroughs, Configuration
-        #   Dependencies: Users, Auth
-        'api',
-        'passthroughs',
-        'configuration',
-        'audit_logs',
-
-        # MWS
-        'missions',
-    )
-    # fmt: on
+    # This is defined by the application's context configuration
+    ENABLED_MODULES = ()
 
     STATIC_ROOT = os.path.join(PROJECT_ROOT, 'app', 'static')
     FRONTEND_DIST = os.getenv(

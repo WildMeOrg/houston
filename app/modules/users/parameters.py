@@ -33,7 +33,9 @@ class ListUserParameters(PaginationParameters):
     New user creation (sign up) parameters.
     """
 
-    search = base_fields.String(description='Example: search@example.com', required=False)
+    search = base_fields.String(
+        description='Example: mission title segment', required=False
+    )
 
 
 class CreateUserParameters(Parameters, schemas.BaseUserSchema):

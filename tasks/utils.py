@@ -59,6 +59,10 @@ def app_context_task(*args, **kwargs):
             decorated function is run inside the application context.
             """
             app = kwargs.pop('app', None)
+            force_enable = kwargs.pop(
+                'force_enable', os.environ.get('FORCE_ENABLE', False)
+            )
+
             edm_authentication = kwargs.get('edm_authentication', None)
 
             if app is None:
@@ -87,7 +91,14 @@ def app_context_task(*args, **kwargs):
                             'Passed an invalid CLI argument for --edm-authentication.'
                         )
 
-                app = create_app(config_override=config_override)
+                if force_enable:
+                    # We want to force all modules and extensions to load, and we want all
+                    # is_X_enabled functions to also work as expected
+                    os.environ['FORCE_ENABLE'] = 'ON'
+
+                app = create_app(
+                    config_override=config_override, force_enable=force_enable
+                )
 
             with app.app_context():
                 return func(*args, **kwargs)

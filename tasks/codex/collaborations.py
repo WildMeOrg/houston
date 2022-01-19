@@ -33,7 +33,7 @@ def list_user_collabs(context, email):
         print("User with email '%s' does not exist." % email)
         return
 
-    for collab_assoc in user.user_collaboration_associations:
+    for collab_assoc in user.get_collaboration_associations():
         users = collab_assoc.collaboration.get_users()
         if collab_assoc.read_approval_state == CollaborationUserState.CREATOR:
             print(f'Created Collaboration: {collab_assoc.collaboration} Users: {users}')

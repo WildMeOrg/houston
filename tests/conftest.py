@@ -9,6 +9,7 @@ from unittest import mock
 import sqlalchemy
 import pytest
 from flask_login import current_user, login_user, logout_user
+from flask_restx_patched import is_module_enabled
 
 from app import create_app
 from config import CONTEXT_ENVIRONMENT_VARIABLE, VALID_CONTEXTS
@@ -33,7 +34,9 @@ project_root = pathlib.Path(__file__).parent.parent
 for models in project_root.glob('app/modules/*/models.py'):
     models_path = models.relative_to(project_root)
     models_module = str(models_path).replace('.py', '').replace('/', '.')
-    import_module(models_module)
+    module_name = models_module.strip().split('.')[-2]
+    if is_module_enabled(module_name):
+        import_module(models_module)
 
 
 def pytest_addoption(parser):

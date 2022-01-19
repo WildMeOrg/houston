@@ -76,6 +76,7 @@ class BaseMWSConfig(
         # REST APIs = API, Passthroughs, Configuration
         #   Dependencies: Users, Auth
         'api',
+        'emails',
         'audit_logs',
     )
     # fmt: on

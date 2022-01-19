@@ -87,6 +87,9 @@ class DetailedUserSchema(UserListSchema):
     if is_module_enabled('missions'):
         assigned_missions = base_fields.Nested('DetailedMissionSchema', many=True)
 
+    if is_module_enabled('tasks'):
+        assigned_tasks = base_fields.Nested('DetailedTaskSchema', many=True)
+
     class Meta(UserListSchema.Meta):
         fields = UserListSchema.Meta.fields + (
             User.created.key,

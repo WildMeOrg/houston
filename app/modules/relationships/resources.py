@@ -8,7 +8,6 @@ RESTful API Relationships resources
 import logging
 
 from flask import request
-from app.modules.individuals.models import Individual
 from flask_restx_patched import Resource
 from flask_restx._http import HTTPStatus
 from datetime import datetime  # NOQA
@@ -233,6 +232,8 @@ class RelationshipByID(Resource):
 
 
 def _user_has_write_permission_on_both_individuals(individual_1_guid, individual_2_guid):
+    from app.modules.individuals.models import Individual
+
     individual_1 = Individual.query.get(individual_1_guid)
     individual_2 = Individual.query.get(individual_2_guid)
     if (

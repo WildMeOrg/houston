@@ -596,6 +596,7 @@ class User(db.Model, FeatherModel, UserEDMMixin):
         preferences = UserNotificationPreferences.get_user_preferences(self)
         return preferences
 
+    @module_required('individual', resolve='warn', default=[])
     def get_individual_merge_requests(self):
         from app.modules.individuals.models import Individual
 

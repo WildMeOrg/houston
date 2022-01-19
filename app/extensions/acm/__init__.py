@@ -13,6 +13,12 @@ from app.utils import HoustonException
 import logging
 import keyword
 
+from flask_restx_patched import is_extension_enabled
+
+if not is_extension_enabled('acm'):
+    raise RuntimeError('ACM is not enabled')
+
+
 KEYWORD_SET = set(keyword.kwlist)
 
 log = logging.getLogger(__name__)

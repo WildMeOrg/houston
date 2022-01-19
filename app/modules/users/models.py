@@ -14,7 +14,6 @@ from flask_login import current_user  # NOQA
 from app.extensions import db, FeatherModel, is_extension_enabled
 from app.modules import module_required, is_module_enabled
 from app.extensions.auth import security
-from app.extensions.edm import EDMObjectMixin
 from app.extensions.api.parameters import _get_is_static_role_property
 import app.extensions.logging as AuditLog
 
@@ -22,71 +21,77 @@ import app.extensions.logging as AuditLog
 log = logging.getLogger(__name__)
 
 
-class UserEDMMixin(EDMObjectMixin):
+if is_extension_enabled('edm'):
+    from app.extensions.edm import EDMObjectMixin
 
-    # fmt: off
-    # Name of the module, used for knowing what to sync i.e user.list, user.data
-    EDM_NAME = 'user'
+    class UserEDMMixin(EDMObjectMixin):
 
-    # The EDM attribute for the version, if reported
-    EDM_VERSION_ATTRIBUTE = 'version'
+        # fmt: off
+        # Name of the module, used for knowing what to sync i.e user.list, user.data
+        EDM_NAME = 'user'
 
-    #
-    EDM_LOG_ATTRIBUTES = [
-        'emailAddress',
-    ]
+        # The EDM attribute for the version, if reported
+        EDM_VERSION_ATTRIBUTE = 'version'
 
-    EDM_ATTRIBUTE_MAPPING = {
-        # Ignored
-        'id'                    : None,
-        'lastLogin'             : None,
-        'username'              : None,
+        #
+        EDM_LOG_ATTRIBUTES = [
+            'emailAddress',
+        ]
 
-        # Attributes
-        'acceptedUserAgreement' : 'accepted_user_agreement',
-        'affiliation'           : 'affiliation',
-        'emailAddress'          : 'email',
-        'fullName'              : 'full_name',
-        'receiveEmails'         : 'receive_notification_emails',
-        'sharing'               : 'shares_data',
-        'userURL'               : 'website',
-        'version'               : 'version',
+        EDM_ATTRIBUTE_MAPPING = {
+            # Ignored
+            'id'                    : None,
+            'lastLogin'             : None,
+            'username'              : None,
 
-        # Functions
-        'organizations'         : '_process_edm_user_organization',
-        'profileImageUrl'       : '_process_edm_user_profile_url',
-    }
-    # fmt: on
+            # Attributes
+            'acceptedUserAgreement' : 'accepted_user_agreement',
+            'affiliation'           : 'affiliation',
+            'emailAddress'          : 'email',
+            'fullName'              : 'full_name',
+            'receiveEmails'         : 'receive_notification_emails',
+            'sharing'               : 'shares_data',
+            'userURL'               : 'website',
+            'version'               : 'version',
 
-    @classmethod
-    def ensure_edm_obj(cls, guid):
-        user = User.query.filter(User.guid == guid).first()
-        is_new = user is None
+            # Functions
+            'organizations'         : '_process_edm_user_organization',
+            'profileImageUrl'       : '_process_edm_user_profile_url',
+        }
+        # fmt: on
 
-        if is_new:
-            email = '%s@localhost' % (guid,)
-            password = User.initial_random_password()
-            user = User(
-                guid=guid,
-                email=email,
-                password=password,
-                version=None,
-                is_active=True,
-                in_alpha=True,
-            )
-            with db.session.begin():
-                db.session.add(user)
-            db.session.refresh(user)
+        @classmethod
+        def ensure_edm_obj(cls, guid):
+            user = User.query.filter(User.guid == guid).first()
+            is_new = user is None
 
-        return user, is_new
+            if is_new:
+                email = '%s@localhost' % (guid,)
+                password = User.initial_random_password()
+                user = User(
+                    guid=guid,
+                    email=email,
+                    password=password,
+                    version=None,
+                    is_active=True,
+                    in_alpha=True,
+                )
+                with db.session.begin():
+                    db.session.add(user)
+                db.session.refresh(user)
 
-    def _process_edm_user_profile_url(self, url):
-        # TODO is this actually needed
-        log.warning('User._process_edm_profile_url() not implemented yet')
+            return user, is_new
 
-    def _process_edm_user_organization(self, org):
-        # TODO is this actually needed
-        log.warning('User._process_edm_user_organization() not implemented yet')
+        def _process_edm_user_profile_url(self, url):
+            # TODO is this actually needed
+            log.warning('User._process_edm_profile_url() not implemented yet')
+
+        def _process_edm_user_organization(self, org):
+            # TODO is this actually needed
+            log.warning('User._process_edm_user_organization() not implemented yet')
+
+else:
+    UserEDMMixin = object
 
 
 class User(db.Model, FeatherModel, UserEDMMixin):

@@ -5,6 +5,11 @@ Auth module
 """
 from app.extensions.api import api_v1
 
+from app.modules import is_module_enabled
+
+if not is_module_enabled('auth'):
+    raise RuntimeError('Auth is not enabled')
+
 
 def init_app(app, **kwargs):
     # pylint: disable=unused-argument

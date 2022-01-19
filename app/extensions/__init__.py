@@ -17,10 +17,7 @@ from .logging import Logging  # NOQA
 
 logging = Logging()
 
-from flask_cors import CORS  # NOQA
 import flask.json  # NOQA
-
-cross_origin_resource_sharing = CORS()
 
 from .flask_sqlalchemy import SQLAlchemy  # NOQA
 from sqlalchemy.ext import mutable  # NOQA
@@ -56,29 +53,57 @@ from .auth import OAuth2Provider  # NOQA
 
 oauth2 = OAuth2Provider()
 
-from .email import mail  # NOQA
-
 # from flask_minify import minify  # NOQA
 
-from . import edm  # NOQA
-
-from . import elasticsearch  # NOQA
-
-from . import acm  # NOQA
-
-from . import gitlab  # NOQA
-
-from . import tus  # NOQA
+from . import sentry  # NOQA
 
 from . import api  # NOQA
 
 from . import config  # NOQA
 
-from . import sentry  # NOQA
-
-from . import stripe  # NOQA
-
 from flask_restx_patched import is_extension_enabled, extension_required  # NOQA
+
+if is_extension_enabled('cors'):
+    from flask_cors import CORS  # NOQA
+
+    cross_origin_resource_sharing = CORS()
+else:
+    cross_origin_resource_sharing = None
+
+if is_extension_enabled('tus'):
+    from . import tus  # NOQA
+else:
+    tus = None
+
+if is_extension_enabled('acm'):
+    from . import acm  # NOQA
+else:
+    acm = None
+
+if is_extension_enabled('edm'):
+    from . import edm  # NOQA
+else:
+    edm = None
+
+if is_extension_enabled('gitlab'):
+    from . import gitlab  # NOQA
+else:
+    gitlab = None
+
+if is_extension_enabled('elasticsearch'):
+    from . import elasticsearch  # NOQA
+else:
+    elasticsearch = None
+
+if is_extension_enabled('mail'):
+    from .email import mail  # NOQA
+else:
+    mail = None
+
+if is_extension_enabled('stripe'):
+    from . import stripe  # NOQA
+else:
+    stripe = None
 
 
 ##########################################################################################
@@ -477,7 +502,8 @@ def init_app(app):
         if extension_name in app.config['ENABLED_EXTENSIONS']:
             log.info('Init extension %r' % (extension_name,))
             extension = optional_extensions.get(extension_name)
-            extension.init_app(app)
+            if extension is not None:
+                extension.init_app(app)
         else:
             log.info('Skipped extension %r (disabled)' % (extension_name,))
 

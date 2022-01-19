@@ -12,7 +12,7 @@ PATH = '/api/v1/collaborations/'
 def get_collab_object_for_user(user, collab_guid, expected_len=1):
     user_assocs = [
         assoc
-        for assoc in user.user_collaboration_associations
+        for assoc in user.get_collaboration_associations()
         if str(assoc.collaboration_guid) == collab_guid
     ]
     assert len(user_assocs) == expected_len

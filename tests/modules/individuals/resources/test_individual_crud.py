@@ -4,9 +4,6 @@ import logging
 
 import uuid
 import datetime
-from app.modules.individuals.models import Individual
-from app.modules.encounters.models import Encounter
-from app.modules.sightings.models import Sighting
 
 from tests.modules.individuals.resources import utils as individual_utils
 from tests.modules.sightings.resources import utils as sighting_utils
@@ -35,6 +32,8 @@ def test_get_individual_not_found(flask_app_client, researcher_1):
     module_unavailable('individuals'), reason='Individuals module disabled'
 )
 def test_create_read_delete_individual(db, flask_app_client):
+    from app.modules.individuals.models import Individual
+
     temp_owner = utils.generate_user_instance(
         email='owner@localhost',
         is_researcher=True,
@@ -72,6 +71,8 @@ def test_create_read_delete_individual(db, flask_app_client):
     module_unavailable('individuals'), reason='Individuals module disabled'
 )
 def test_read_encounter_from_edm(db, flask_app_client):
+    from app.modules.individuals.models import Individual
+
     temp_owner = utils.generate_user_instance(
         email='owner@localhost',
         is_researcher=True,
@@ -112,6 +113,9 @@ def test_read_encounter_from_edm(db, flask_app_client):
     module_unavailable('individuals'), reason='Individuals module disabled'
 )
 def test_add_remove_encounters(db, flask_app_client, researcher_1, request, test_root):
+    from app.modules.individuals.models import Individual
+    from app.modules.encounters.models import Encounter
+    from app.modules.sightings.models import Sighting
 
     data_in = {
         'time': datetime.datetime.now().isoformat() + '+00:00',
@@ -131,13 +135,9 @@ def test_add_remove_encounters(db, flask_app_client, researcher_1, request, test
         flask_app_client, researcher_1, request, test_root, data_in
     )
 
-    from app.modules.sightings.models import Sighting
-
     sighting_id = uuids['sighting']
     sighting = Sighting.query.get(sighting_id)
     assert len(uuids['encounters']) == 5
-
-    from app.modules.encounters.models import Encounter
 
     enc_1 = Encounter(
         guid=uuids['encounters'][0],
@@ -252,6 +252,8 @@ def test_add_remove_encounters(db, flask_app_client, researcher_1, request, test
 def test_individual_has_detailed_encounter_from_edm(
     db, flask_app_client, researcher_1, request, test_root
 ):
+    from app.modules.encounters.models import Encounter
+    from app.modules.sightings.models import Sighting
 
     data_in = {
         'encounters': [

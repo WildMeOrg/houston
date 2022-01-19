@@ -593,6 +593,10 @@ class User(db.Model, FeatherModel, UserEDMMixin):
             )
         return json_resp
 
+    @module_required('collaborations', resolve='warn', default=[])
+    def get_collaboration_associations(self):
+        return self.user_collaboration_associations
+
     def get_notification_preferences(self):
         from app.modules.notifications.models import UserNotificationPreferences
 
@@ -608,20 +612,26 @@ class User(db.Model, FeatherModel, UserEDMMixin):
         reqs = Individual.get_active_merge_requests(self)
         return reqs
 
+    @module_required('asset_groups', resolve='warn', default=[])
+    def get_asset_groups(self):
+        return self.asset_groups
+
+    @module_required('asset_groups', resolve='warn', default=[])
     def unprocessed_asset_groups(self):
         return [
             {
                 'uuid': str(asset_group.guid),
                 'uploadType': asset_group.get_config_field('uploadType'),
             }
-            for asset_group in self.asset_groups
+            for asset_group in self.get_asset_groups()
             if not asset_group.is_processed()
         ]
 
+    @module_required('asset_groups', resolve='warn', default=[])
     def get_unprocessed_asset_group_sightings(self):
         ags = []
 
-        for group in self.asset_groups:
+        for group in self.get_asset_groups():
             new_ags = [ags for ags in group.get_unprocessed_asset_group_sightings()]
             ags.extend(new_ags)
         return ags
@@ -808,7 +818,7 @@ class User(db.Model, FeatherModel, UserEDMMixin):
     @module_required('encounters', 'annotations', resolve='warn', default=[])
     def get_all_annotations(self):
         annotations = self.get_my_annotations()
-        for collab_assoc in self.user_collaboration_associations:
+        for collab_assoc in self.get_collaboration_associations():
             if collab_assoc.has_read():
                 annotations.append(collab_assoc.get_other_user().get_my_annotations())
 
@@ -840,9 +850,9 @@ class User(db.Model, FeatherModel, UserEDMMixin):
             db.session.merge(self)
 
     def delete(self):
-        for collab_assoc in self.user_collaboration_associations:
+        for collab_assoc in self.get_collaboration_associations():
             collab_assoc.delete()
-        for asset_group in self.asset_groups:
+        for asset_group in self.get_asset_groups():
             asset_group.delete()
 
         with db.session.begin(subtransactions=True):

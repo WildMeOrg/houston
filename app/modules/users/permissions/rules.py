@@ -11,6 +11,7 @@ from flask_restx_patched._http import HTTPStatus
 from permission import Rule as BaseRule
 from typing import Type, Any
 from app.extensions.api import abort
+from app.modules import module_required, is_module_enabled
 from app.modules.users.permissions.types import AccessOperation
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
@@ -186,17 +187,32 @@ class ModuleActionRule(DenyAbortMixin, Rule):
         super().__init__(**kwargs)
 
     def check(self):
-        from app.modules.asset_groups.models import AssetGroup
-        from app.modules.users.models import User
-        from app.modules.encounters.models import Encounter
-        from app.modules.sightings.models import Sighting
+
+        enabled_modules = []
+
+        if is_module_enabled('asset_groups'):
+            from app.modules.asset_groups.models import AssetGroup
+
+            enabled_modules.append(AssetGroup)
+        if is_module_enabled('users'):
+            from app.modules.users.models import User
+
+            enabled_modules.append(User)
+        if is_module_enabled('encounters'):
+            from app.modules.encounters.models import Encounter
+
+            enabled_modules.append(Encounter)
+        if is_module_enabled('sightings'):
+            from app.modules.sightings.models import Sighting
+
+            enabled_modules.append(Sighting)
 
         # This Rule is for checking permissions on modules, so there must be one,
         assert self._module is not None
         has_permission = False
         if not current_user or current_user.is_anonymous:
             if self._action == AccessOperation.WRITE:
-                has_permission = self._is_module((AssetGroup, User, Encounter, Sighting))
+                has_permission = self._is_module(enabled_modules)
         else:
             roles = MODULE_USER_MAP.get((self._module.__name__, self._action))
             if roles:
@@ -221,20 +237,29 @@ class ModuleActionRule(DenyAbortMixin, Rule):
     # Helper to identify what the module is
     def _is_module(self, cls: Type[Any]):
         try:
-            return issubclass(self._module, cls)
+            return issubclass(self._module, tuple(cls))
         except TypeError:
             return False
 
     # Permissions control entry point for real users, for all objects and all operations
     def _can_user_perform_action(self, user):
-        from app.modules.organizations.models import Organization
-        from app.modules.projects.models import Project
+
+        enabled_modules = []
+
+        if is_module_enabled('organizations'):
+            from app.modules.organizations.models import Organization
+
+            enabled_modules.append(Organization)
+        if is_module_enabled('projects'):
+            from app.modules.projects.models import Project
+
+            enabled_modules.append(Project)
 
         has_permission = False
 
         if user.is_privileged:
             # Organizations and Projects not supported for MVP, no-one can create them
-            if not self._is_module((Organization, Project)):
+            if not self._is_module(enabled_modules):
                 has_permission = True
 
         return has_permission
@@ -360,6 +385,7 @@ class ObjectActionRule(DenyAbortMixin, Rule):
     #                         has_permission = self._obj in encounter.get_assets()
     #             project_index = project_index + 1
 
+    @module_required('collaborations', resolve='warn', default=False)
     def _permitted_via_collaboration(self, user):
         from app.modules.collaborations.models import CollaborationUserState
 
@@ -368,7 +394,7 @@ class ObjectActionRule(DenyAbortMixin, Rule):
             (self._obj.__class__.__name__, self._action)
         )
 
-        for collab_assoc in user.user_collaboration_associations:
+        for collab_assoc in user.get_collaboration_associations():
             if collab_assoc.read_approval_state != CollaborationUserState.CREATOR:
                 collab_users = collab_assoc.collaboration.get_users()
                 for other_user in collab_users:
@@ -420,14 +446,19 @@ class ModuleOrObjectActionRule(DenyAbortMixin, Rule):
         super().__init__(**kwargs)
 
     def check(self):
-        from app.modules.asset_groups.models import AssetGroup
+        enabled_modules = []
+
+        if is_module_enabled('asset_groups'):
+            from app.modules.asset_groups.models import AssetGroup
+
+            enabled_modules.append(AssetGroup)
 
         has_permission = False
         assert self._obj is not None or self._module is not None
         if self._obj:
             has_permission = ObjectActionRule(self._obj, self._action).check()
         else:
-            if self._module == AssetGroup:
+            if self._is_module(enabled_modules):
                 # Read in this case equates to learn that the asset_group exists on gitlab,
                 # Delete is to allow the researcher to know that it's on gitlab but not local
                 if (

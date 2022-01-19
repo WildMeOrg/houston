@@ -105,7 +105,7 @@ class Collaborations(Resource):
 
             users = [other_user, second_user]
 
-        for collab_assoc in users[0].user_collaboration_associations:
+        for collab_assoc in users[0].get_collaboration_associations():
             if collab_assoc.read_approval_state == CollaborationUserState.CREATOR:
                 # Dont check associations where the current user is the creator
                 continue

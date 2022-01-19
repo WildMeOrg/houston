@@ -5,8 +5,6 @@ import pytest
 
 import logging
 
-from app.modules.collaborations.models import Collaboration
-from app.modules.collaborations.models import CollaborationUserState
 from unittest import mock
 
 from tests.utils import module_unavailable
@@ -20,6 +18,7 @@ log = logging.getLogger(__name__)
 def test_collaboration_create_with_members(
     db, collab_user_a, collab_user_b, user_manager_user, request
 ):  # pylint: disable=unused-argument
+    from app.modules.collaborations.models import Collaboration
 
     members = [collab_user_a, collab_user_b]
 
@@ -53,6 +52,8 @@ def test_collaboration_create_with_members(
     module_unavailable('collaborations'), reason='Collaborations module disabled'
 )
 def test_collaboration_read_state_changes(db, collab_user_a, collab_user_b, request):
+    from app.modules.collaborations.models import Collaboration
+    from app.modules.collaborations.models import CollaborationUserState
 
     collab = Collaboration([collab_user_a, collab_user_b], collab_user_a)
     with db.session.begin():
@@ -86,10 +87,11 @@ def test_collaboration_read_state_changes(db, collab_user_a, collab_user_b, requ
         (collab_user_a.guid, CollaborationUserState.APPROVED),
         (collab_user_b.guid, CollaborationUserState.APPROVED),
     )
-    assert collab_user_a.user_collaboration_associations[0].has_read()
-    assert collab_user_b.user_collaboration_associations[0].has_read()
+    assert collab_user_a.get_collaboration_associations()[0].has_read()
+    assert collab_user_b.get_collaboration_associations()[0].has_read()
     assert (
-        collab_user_a.user_collaboration_associations[0].get_other_user() == collab_user_b
+        collab_user_a.get_collaboration_associations()[0].get_other_user()
+        == collab_user_b
     )
 
 
@@ -97,6 +99,9 @@ def test_collaboration_read_state_changes(db, collab_user_a, collab_user_b, requ
     module_unavailable('collaborations'), reason='Collaborations module disabled'
 )
 def test_collaboration_edit_state_changes(db, collab_user_a, collab_user_b, request):
+    from app.modules.collaborations.models import Collaboration
+    from app.modules.collaborations.models import CollaborationUserState
+
     collab = Collaboration([collab_user_a, collab_user_b], collab_user_a)
     with db.session.begin():
         db.session.add(collab)
@@ -146,6 +151,8 @@ def test_collaboration_edit_state_changes(db, collab_user_a, collab_user_b, requ
     module_unavailable('collaborations'), reason='Collaborations module disabled'
 )
 def test_fail_create_collaboration(collab_user_a, collab_user_b):
+    from app.modules.collaborations.models import Collaboration
+
     def validate_failure(users, initiator):
 
         with pytest.raises(ValueError):

@@ -3,11 +3,6 @@
 
 import logging
 
-from app.modules.relationships.models import Relationship
-
-from tests.modules.individuals.resources import utils as individual_utils
-from tests.modules.encounters.resources import utils as encounter_utils
-from tests.modules.relationships.resources import utils as relationship_utils
 from tests.utils import module_unavailable
 from datetime import datetime, timedelta  # NOQA
 import pytest
@@ -16,14 +11,16 @@ log = logging.getLogger(__name__)
 
 
 @pytest.mark.skipif(
-    module_unavailable('individuals'), reason='Individuals module disabled'
-)
-@pytest.mark.skipif(
-    module_unavailable('relationships'), reason='Relationships module disabled'
+    module_unavailable('individuals', 'relationships'),
+    reason='Individuals or Relationships module disabled',
 )
 def test_create_read_delete_relationship(
     flask_app_client, researcher_1, request, test_root
 ):
+    from tests.modules.individuals.resources import utils as individual_utils
+    from tests.modules.encounters.resources import utils as encounter_utils
+    from tests.modules.relationships.resources import utils as relationship_utils
+    from app.modules.relationships.models import Relationship
 
     temp_enc_1 = None
     temp_enc_2 = None

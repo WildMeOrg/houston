@@ -97,7 +97,7 @@ def test_create_approved_collaboration(
             flask_app_client, user_manager_user, data
         )
         researcher_1_assocs = [
-            assoc for assoc in researcher_1.user_collaboration_associations
+            assoc for assoc in researcher_1.get_collaboration_associations()
         ]
         collab = researcher_1_assocs[0].collaboration
         assert len(researcher_1_assocs) == 1
@@ -188,7 +188,7 @@ def test_create_approved_collaboration_remove_creator(
     request.addfinalizer(collab.delete)
 
     researcher_1_assocs = [
-        assoc for assoc in researcher_1.user_collaboration_associations
+        assoc for assoc in researcher_1.get_collaboration_associations()
     ]
     collab = researcher_1_assocs[0].collaboration
 

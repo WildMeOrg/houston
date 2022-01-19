@@ -1,22 +1,19 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=invalid-name,missing-docstring
 
-from app.modules.relationships.models import Relationship
-
-from tests.modules.individuals.resources import utils as indiv_utils
-from tests.modules.relationships.resources import utils as relationship_utils
-
 from tests.utils import module_unavailable
 import pytest
 
 
 @pytest.mark.skipif(
-    module_unavailable('individuals'), reason='Individuals module disabled'
-)
-@pytest.mark.skipif(
-    module_unavailable('relationships'), reason='Relationships module disabled'
+    module_unavailable('individuals', 'relationships'),
+    reason='Individuals and/or Relationships module disabled',
 )
 def test_relationship_instantiation(db, staff_user, flask_app_client, request, test_root):
+    from app.modules.relationships.models import Relationship
+
+    from tests.modules.individuals.resources import utils as indiv_utils
+    from tests.modules.relationships.resources import utils as relationship_utils
 
     response_1 = indiv_utils.create_individual_and_sighting(
         flask_app_client, staff_user, request, test_root

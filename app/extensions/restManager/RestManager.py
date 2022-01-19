@@ -181,7 +181,7 @@ class RestManager(RestManagerUserMixin):
         for target in self.uris:
             self._ensure_session(target)
 
-    def _ensure_session(self, target):
+    def _ensure_session(self, target, reauthenticating=False):
         """
         Ensures that a session always exists, uses the presence of the auth credentials in the
         environment to determine if a login is required.
@@ -208,6 +208,7 @@ class RestManager(RestManagerUserMixin):
                 password,
                 target=target,
                 ensure_initialized=False,
+                reauthenticated=reauthenticating,
             )
             assert (
                 not isinstance(response, requests.models.Response) or response.ok
@@ -293,7 +294,7 @@ class RestManager(RestManagerUserMixin):
                 response = json.loads(response.text, object_hook=_json_object_hook)
         elif response.status_code == 401 and not reauthenticated:
             # Try re-authenticating
-            self._ensure_session(target)
+            self._ensure_session(target, reauthenticating=True)
             return self._request(
                 method,
                 tag,

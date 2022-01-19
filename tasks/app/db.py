@@ -125,7 +125,7 @@ def revision(
         'head': 'Specify head revision or <branchname>@head to base new revision on',
         'sql': "Don't emit SQL to database - dump to standard output instead",
         'directory': 'migration script directory',
-    }
+    },
 )
 def migrate(
     context,
@@ -137,9 +137,11 @@ def migrate(
     branch_label=None,
     version_path=None,
     rev_id=None,
+    force_enable=True,
 ):
     """Alias for 'revision --autogenerate'"""
     config = _get_config(directory, opts=['autogenerate'])
+
     if alembic_version >= (0, 7, 0):
         command.revision(
             config,

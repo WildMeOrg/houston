@@ -460,7 +460,7 @@ def parallel(worker_func, args_list, kwargs_list=None, thread=True, workers=None
 _CONFIG_PATH_CHOICES = None
 
 
-def init_app(app):
+def init_app(app, force_enable=False):
     """
     Application extensions initialization.
     """
@@ -481,8 +481,9 @@ def init_app(app):
         'marshmallow': marshmallow,
     }
 
-    for extension_name in essential_extensions.keys():
-        log.info('Init extension %r' % (extension_name,))
+    extension_names = essential_extensions.keys()
+    for extension_name in extension_names:
+        log.info('Init required extension %r' % (extension_name,))
         extension = essential_extensions.get(extension_name)
         extension.init_app(app)
 
@@ -498,9 +499,20 @@ def init_app(app):
         'stripe': stripe,
     }
 
-    for extension_name in optional_extensions.keys():
-        if extension_name in app.config['ENABLED_EXTENSIONS']:
-            log.info('Init extension %r' % (extension_name,))
+    extension_names = sorted(optional_extensions.keys())
+    for extension_name in extension_names:
+        if force_enable or extension_name in app.config['ENABLED_EXTENSIONS']:
+            if force_enable and extension_name not in app.config['ENABLED_EXTENSIONS']:
+                enable_str = ' (forced)'
+            else:
+                enable_str = ''
+            log.info(
+                'Init optional extension %r%s'
+                % (
+                    extension_name,
+                    enable_str,
+                )
+            )
             extension = optional_extensions.get(extension_name)
             if extension is not None:
                 extension.init_app(app)

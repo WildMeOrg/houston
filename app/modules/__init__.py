@@ -13,7 +13,7 @@ import logging
 from flask_restx_patched import is_module_enabled, module_required  # NOQA
 
 
-def init_app(app, **kwargs):
+def init_app(app, force_enable=False, **kwargs):
     from importlib import import_module
 
     # Import all models first for db.relationship to avoid model look up
@@ -25,13 +25,46 @@ def init_app(app, **kwargs):
     # class name, consider adding this relationship() to the <class
     # 'app.modules.asset_groups.models.AssetGroupSighting'> class after
     # both dependent classes have been defined.
-    for module_name in app.config['ENABLED_MODULES']:
+    if force_enable:
+        import os
+        import glob
+
+        skip_module_names = [
+            'ia_config_reader',
+            'utils',
+        ]
+
+        module_path = os.path.join(app.config['PROJECT_ROOT'], 'app', 'modules')
+        module_paths = glob.glob('%s/*' % (module_path,))
+        module_names = []
+        for module_path in module_paths:
+            _, module_name_raw = os.path.split(module_path)
+            module_name, _ = os.path.splitext(module_name_raw)
+            if module_name.startswith('__'):
+                continue
+            if module_name not in skip_module_names:
+                module_names.append(module_name)
+    else:
+        module_names = app.config['ENABLED_MODULES']
+
+    module_names = sorted(module_names)
+    for module_name in module_names:
         try:
             import_module(f'.{module_name}.models', package=__name__)
         except ModuleNotFoundError:
             # Some modules don't have models and that's ok
             pass
 
-    for module_name in app.config['ENABLED_MODULES']:
-        logging.info('Init module %r' % (module_name,))
+    for module_name in module_names:
+        if force_enable and module_name not in app.config['ENABLED_MODULES']:
+            enable_str = ' (forced)'
+        else:
+            enable_str = ''
+        logging.info(
+            'Init module %r%s'
+            % (
+                module_name,
+                enable_str,
+            )
+        )
         import_module('.%s' % module_name, package=__name__).init_app(app, **kwargs)

@@ -27,6 +27,7 @@ class BaseMWSConfig(
     WildbookDatabaseConfig,
 ):
     PROJECT_NAME = 'MWS'
+
     # fmt: off
     ENABLED_EXTENSIONS = (
         'acm',
@@ -35,24 +36,12 @@ class BaseMWSConfig(
         'tus',
         'mail',
     )
-    # fmt: on
 
-    # fmt: off
-    # THIS ORDERING IS VERY SPECIFIC AND INFLUENCES WHICH MODULES CAN DEPEND ON EACH OTHER
     ENABLED_MODULES = (
-        # Users
-        #   Dependencies: [NONE]
         'users',
-
-        # Authentication
-        #   Dependencies: Users
         'auth',
-
-        # Assets
-        #   Dependencies: Asset_groups
         'assets',
 
-        # Miscellaneous
         'keywords',
         'fileuploads',
         'notifications',
@@ -63,18 +52,12 @@ class BaseMWSConfig(
         'site_settings',
         'site_info',
         'job_control',
-
-        # Elastic Search
         'elasticsearch_proxy',
         'elasticsearch',
 
-        # Front-end
-        #   Dependencies: Users, Auth, Assets
         'app_ui',
         'swagger_ui',
 
-        # REST APIs = API, Passthroughs, Configuration
-        #   Dependencies: Users, Auth
         'api',
         'emails',
         'audit_logs',

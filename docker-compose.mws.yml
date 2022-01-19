@@ -140,8 +140,6 @@ services:
       HOST: "0.0.0.0"
       # See port served by 'www' component (i.e. the reverse proxy)
       PORT: "84"
-    ports:
-      - "85:3000"
     volumes:
       - .dockerfiles/dev-frontend/docker-entrypoint.sh:/docker-entrypoint.sh
       - ./_frontend.mws:/code

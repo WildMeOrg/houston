@@ -2,10 +2,13 @@
 # pylint: disable=invalid-name,missing-docstring
 
 import sqlalchemy
-
+import pytest
 import logging
 
+from tests.utils import module_unavailable
 
+
+@pytest.mark.skipif(module_unavailable('tasks'), reason='Tasks module disabled')
 def test_task_add_members(
     db, temp_user, data_manager_1, data_manager_2
 ):  # pylint: disable=unused-argument

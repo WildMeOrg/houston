@@ -145,9 +145,6 @@ SIGHTINGS_INDEX_SQL = """\
 SELECT
   oc."ID" AS id,
   NULLIF((oc."DECIMALLATITUDE"::float || ',' || oc."DECIMALLONGITUDE")::text, ',') AS point,
-  start_time."DATETIME" AS start_time,
-  end_time."DATETIME" AS end_time,
-  -- First encounter genus
   (
     SELECT max("GENUS")
     FROM "ENCOUNTER" en
@@ -160,18 +157,9 @@ SELECT
       RIGHT JOIN "ENCOUNTER" en ON ea."ID_OID" = en."ID"
       RIGHT JOIN "OCCURRENCE_ENCOUNTERS" oe ON oe."ID_EID" = en."ID"
     WHERE oe."ID_OID" = oc."ID") AS species,
-  oc."GROUPBEHAVIOR" AS group_behavior,
-  oc."GROUPCOMPOSITION" AS group_composition,
-  oc."FIELDSTUDYSITE" AS field_study_site,
-  oc."INITIALCUE" AS initial_cue,
-  oc."SEASTATE" AS sea_state,
-  oc."HUMANACTIVITYNEARBY" AS human_activity_nearby,
-  oc."OBSERVER" AS observer,
   oc."COMMENTS" AS comments
 FROM
   "OCCURRENCE" oc
-  LEFT JOIN "COMPLEXDATETIME" start_time ON start_time."COMPLEXDATETIME_ID" = oc."STARTTIME_COMPLEXDATETIME_ID_OID"
-  LEFT JOIN "COMPLEXDATETIME" end_time ON end_time."COMPLEXDATETIME_ID" = oc."ENDTIME_COMPLEXDATETIME_ID_OID"
 """
 
 

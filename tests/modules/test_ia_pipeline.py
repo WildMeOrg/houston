@@ -45,6 +45,11 @@ def test_ia_pipeline_sim_detect_response(
         ags1 = AssetGroupSighting.query.get(asset_group_sighting1_guid)
         assert ags1
 
+        ags_as_sighting = asset_group_utils.read_asset_group_sighting_as_sighting(
+            flask_app_client, researcher_1, asset_group_sighting1_guid
+        )
+        assert ags_as_sighting.json['speciesDetectionModel'] == ['african_terrestrial']
+
         job_uuids = [guid for guid in ags1.jobs.keys()]
         assert len(job_uuids) == 1
         job_uuid = job_uuids[0]
@@ -68,6 +73,10 @@ def test_ia_pipeline_sim_detect_response(
         encounters = sighting.get_encounters()
         assert len(encounters) == 2
 
+        sighting_resp = sighting_utils.read_sighting(
+            flask_app_client, researcher_1, sighting_uuid
+        )
+        assert sighting_resp.json['speciesDetectionModel'] == ['african_terrestrial']
         # Deliberately do not test the contents. This is fluid and for our debug only
         asset_group_utils.read_asset_group(
             flask_app_client, staff_user, f'{asset_group_uuid}/debug'

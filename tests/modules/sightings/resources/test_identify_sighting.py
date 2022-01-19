@@ -40,9 +40,10 @@ def test_sighting_identification(
     )
     sighting_uuid = commit_response.json['guid']
 
-    # Fake it being all the way though to processed or it won't be valid in the matching set
-    sighting = Sighting.query.get(sighting_uuid)
-    sighting.stage = SightingStage.processed
+    # mark it as processed or it won't be valid in the matching set
+    sighting_utils.write_sighting_path(
+        flask_app_client, researcher_1, f'{sighting_uuid}/reviewed', {}
+    )
 
     # Second sighting, the one we'll use for testing, Create with annotation but don't commit.... yet
     (

@@ -773,3 +773,23 @@ class SightingDebugByID(Resource):
     )
     def get(self, sighting):
         return sighting.get_debug_sighting_json()
+
+
+@api.route('/<uuid:sighting_guid>/reviewed', doc=False)
+@api.login_required(oauth_scopes=['sightings:write'])
+@api.response(
+    code=HTTPStatus.NOT_FOUND,
+    description='Sighting not found.',
+)
+@api.resolve_object_by_model(Sighting, 'sighting')
+class SightingReviewedByID(Resource):
+    @api.permission_required(
+        permissions.ObjectAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'obj': kwargs['sighting'],
+            'action': AccessOperation.WRITE,
+        },
+    )
+    def post(self, sighting):
+        if sighting.reviewed():
+            AuditLog.audit_log_object(log, sighting, 'Reviewed')

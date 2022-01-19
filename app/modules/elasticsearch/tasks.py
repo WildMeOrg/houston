@@ -2,7 +2,7 @@
 import logging
 
 from flask import current_app
-from gumby.models import Individual
+from gumby.models import Individual, Encounter
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Engine
 
@@ -24,8 +24,7 @@ def create_wildbook_engine() -> Engine:
     return create_engine(current_app.config['WILDBOOK_DB_URI'])
 
 
-@celery.task
-def load_codex_indexes():
+def load_individuals_index():
     wb_engine = create_wildbook_engine()
     with wb_engine.connect() as wb_conn:
         # Query for marked individual records
@@ -95,3 +94,41 @@ FROM
   left join "TAXONOMY" as tax on (mi."TAXONOMY_ID_OID" = tax."ID")
 ;
 """
+
+
+def load_encounters_index():
+    wb_engine = create_wildbook_engine()
+    with wb_engine.connect() as wb_conn:
+        results = wb_conn.execute(text(ENCOUNTERS_INDEX_SQL))
+        for result in results:
+            # Create the document object
+            encounter = Encounter(**result)
+            # Assign the elasticsearch document identify
+            encounter.meta.id = f'encounter_{encounter.id}'
+            # Save document to elasticsearch
+            encounter.save(using=current_app.elasticsearch)
+
+
+ENCOUNTERS_INDEX_SQL = """\
+SELECT
+  en."ID" AS id,
+  NULLIF((en."DECIMALLATITUDE"::float || ',' || en."DECIMALLONGITUDE")::text, ',') AS point,
+  en."LOCATIONID" AS locationid,
+  CASE WHEN en."SEX" = 'unk' THEN 'unknown'
+       ELSE en."SEX"
+  END AS sex,
+  en."GENUS" AS genus,
+  an."SPECIES" AS species,
+  en."LIVINGSTATUS" AS living_status,
+  en."LIFESTAGE" AS lifestage
+FROM
+  "ENCOUNTER" AS en
+  LEFT JOIN "ENCOUNTER_ANNOTATIONS" AS ea ON ea."ID_OID" = en."ID"
+  LEFT JOIN "ANNOTATION" AS an ON ea."ID_EID" = an."ID"
+"""
+
+
+@celery.task
+def load_codex_indexes():
+    load_individuals_index()
+    load_encounters_index()

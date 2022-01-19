@@ -80,9 +80,10 @@ def test_load_codex_indexes(monkeypatch, flask_app):
     # Capture elasticsearch object saving for proof checks
     captures = []
     capture_save = lambda self, **kwargs: captures.append([self, kwargs])  # noqa: E731
-    from gumby.models import Individual
+    from gumby.models import Individual, Encounter
 
     monkeypatch.setattr(Individual, 'save', capture_save)
+    monkeypatch.setattr(Encounter, 'save', mock.Mock())
 
     # Call the target function
     tasks.load_codex_indexes()

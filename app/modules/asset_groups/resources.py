@@ -461,6 +461,32 @@ class AssetGroupSightingAsSighting(Resource):
         AuditLog.patch_object(log, asset_group_sighting, args, duration=timer.elapsed())
         return asset_group_sighting
 
+    @api.permission_required(
+        permissions.ObjectAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'obj': kwargs['asset_group_sighting'],
+            'action': AccessOperation.DELETE,
+        },
+    )
+    @api.login_required(oauth_scopes=['asset_group_sightings:write'])
+    @api.response(code=HTTPStatus.CONFLICT)
+    @api.response(code=HTTPStatus.NO_CONTENT)
+    def delete(self, asset_group_sighting):
+        """Delete an asset group sighting by ID."""
+        asset_group = asset_group_sighting.asset_group
+        if [asset_group_sighting] == asset_group.asset_group_sightings:
+            # Delete the only asset group sighting deletes the asset group
+            try:
+                asset_group.delete()
+            except HoustonException as ex:
+                abort(
+                    ex.status_code,
+                    ex.message,
+                    edm_status_code=ex.get_val('edm_status_code', None),
+                )
+        else:
+            asset_group.delete_asset_group_sighting(asset_group_sighting)
+
 
 @api.route('/sighting/<uuid:asset_group_sighting_guid>/encounter/<uuid:encounter_guid>')
 @api.response(

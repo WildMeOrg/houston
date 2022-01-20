@@ -4,8 +4,6 @@ Relationships database models
 --------------------
 """
 
-from sqlalchemy_utils import Timestamp
-
 from app.extensions import HoustonModel, db
 from datetime import datetime  # NOQA
 import app.extensions.logging as AuditLog
@@ -43,7 +41,7 @@ class RelationshipIndividualMember(db.Model, HoustonModel):
         relationship.delete()
 
 
-class Relationship(db.Model, Timestamp):
+class Relationship(db.Model, HoustonModel):
     """
     Relationships database model.
     """
@@ -111,9 +109,6 @@ class Relationship(db.Model, Timestamp):
             if str(individual_member.individual_guid) == individual_guid
         ]
         return found_individual_members[0]
-
-    def is_public(self):
-        return False
 
     def __repr__(self):
         return (

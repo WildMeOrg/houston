@@ -6,6 +6,7 @@ Notifications database models
 
 from app.extensions import db, HoustonModel
 from app.utils import HoustonException
+from datetime import datetime  # NOQA
 
 import enum
 import uuid
@@ -207,6 +208,11 @@ class Notification(db.Model, HoustonModel):
     )
     recipient = db.relationship('User', back_populates='notifications')
     sender_guid = db.Column(db.GUID, nullable=True)
+
+    created = db.Column(
+        db.DateTime, index=True, default=datetime.utcnow, nullable=False
+    )
+
 
     def __repr__(self):
         return (

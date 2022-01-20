@@ -43,6 +43,7 @@ class BaseNotificationSchema(ModelSchema):
             'sender_name',
             Notification.sender_guid.key,
             Notification.message_type.key,
+            Notification.created,
         )
         dump_only = (Notification.guid.key,)
 

@@ -285,7 +285,8 @@ class PatchAssetGroupSightingEncounterDetailsParameters(PatchJSONParameters):
                 )
             if 'annotations' not in encounter_metadata.keys():
                 encounter_metadata['annotations'] = []
-            encounter_metadata['annotations'].append(value)
+            if value not in encounter_metadata['annotations']:
+                encounter_metadata['annotations'].append(value)
 
         elif field == 'individualUuid':
             AssetGroupMetadata.validate_individual(value, f'Encounter {encounter_uuid}')

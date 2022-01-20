@@ -161,6 +161,17 @@ def test_patch_asset_group(
     assert len(annots) == 2
     assert annots[1] == annotation2_guid
 
+    # adding it again should have no effect
+    annot_add_resp = asset_group_utils.patch_asset_group_sighting(
+        flask_app_client,
+        researcher_1,
+        encounter_path,
+        [utils.patch_add_op('annotations', annotation2_guid)],
+    )
+    annots = annot_add_resp.json['config']['encounters'][0]['annotations']
+    assert len(annots) == 2
+    assert annots[1] == annotation2_guid
+
 
 # similar to the above but against the AGS-as-sighting endpoint
 @pytest.mark.skipif(

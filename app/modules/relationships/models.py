@@ -4,8 +4,6 @@ Relationships database models
 --------------------
 """
 
-from sqlalchemy_utils import Timestamp
-
 from app.extensions import HoustonModel, db
 from datetime import datetime  # NOQA
 import app.extensions.logging as AuditLog
@@ -43,7 +41,7 @@ class RelationshipIndividualMember(db.Model, HoustonModel):
         relationship.delete()
 
 
-class Relationship(db.Model, HoustonModel, Timestamp):
+class Relationship(db.Model, HoustonModel):
     """
     Relationships database model.
     """

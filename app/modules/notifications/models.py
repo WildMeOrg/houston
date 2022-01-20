@@ -209,10 +209,7 @@ class Notification(db.Model, HoustonModel):
     recipient = db.relationship('User', back_populates='notifications')
     sender_guid = db.Column(db.GUID, nullable=True)
 
-    created = db.Column(
-        db.DateTime, index=True, default=datetime.utcnow, nullable=False
-    )
-
+    created = db.Column(db.DateTime, index=True, default=datetime.utcnow, nullable=False)
 
     def __repr__(self):
         return (

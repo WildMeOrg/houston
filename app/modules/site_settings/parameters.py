@@ -9,9 +9,9 @@ from flask_restx_patched import Parameters
 from . import schemas
 
 
-class CreateSiteSettingParameters(Parameters, schemas.DetailedSiteSettingSchema):
-    class Meta(schemas.DetailedSiteSettingSchema.Meta):
-        fields = schemas.DetailedSiteSettingSchema.Meta.fields + (
+class CreateSiteSettingFileParameters(Parameters, schemas.DetailedSiteSettingFileSchema):
+    class Meta(schemas.DetailedSiteSettingFileSchema.Meta):
+        fields = schemas.DetailedSiteSettingFileSchema.Meta.fields + (
             'transactionId',
             'transactionPath',
         )

@@ -9,7 +9,7 @@ from flask_restx_patched import ModelSchema
 from .models import SiteSetting
 
 
-class BaseSiteSettingSchema(ModelSchema):
+class BaseSiteSettingFileSchema(ModelSchema):
     """
     Base SiteSetting schema exposes only the most general fields.
     """
@@ -25,19 +25,19 @@ class BaseSiteSettingSchema(ModelSchema):
         dump_only = ()
 
 
-class DetailedSiteSettingSchema(BaseSiteSettingSchema):
+class DetailedSiteSettingFileSchema(BaseSiteSettingFileSchema):
     """
     Detailed SiteSetting schema exposes all useful fields.
     """
 
-    class Meta(BaseSiteSettingSchema.Meta):
-        fields = BaseSiteSettingSchema.Meta.fields + (
+    class Meta(BaseSiteSettingFileSchema.Meta):
+        fields = BaseSiteSettingFileSchema.Meta.fields + (
             SiteSetting.created.key,
             SiteSetting.updated.key,
             SiteSetting.string.key,
             SiteSetting.data.key,
         )
-        dump_only = BaseSiteSettingSchema.Meta.dump_only + (
+        dump_only = BaseSiteSettingFileSchema.Meta.dump_only + (
             SiteSetting.created.key,
             SiteSetting.updated.key,
         )

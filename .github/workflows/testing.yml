@@ -135,6 +135,7 @@ jobs:
         env:
           # Don't use in memory sqlite database for database migration
           SQLALCHEMY_DATABASE_URI: ''
+          LOG_WIDTH: 120
 
       - name: Check DB migrations (postgresql)
         if: matrix.db-uri != 'sqlite://' && matrix.app-context == 'codex'
@@ -147,12 +148,16 @@ jobs:
           docker-compose exec -T -e SQLALCHEMY_DATABASE_URI=$TEST_DATABASE_URI houston coverage run --append /usr/local/bin/invoke app.db.upgrade
           docker-compose exec -T -e SQLALCHEMY_DATABASE_URI=$TEST_DATABASE_URI houston /bin/bash -c 'if [ -n "$(coverage run --append /usr/local/bin/invoke app.db.migrate)" ]; then echo Missing database migration; exit 1; fi'
           docker-compose exec -T -e SQLALCHEMY_DATABASE_URI=$TEST_DATABASE_URI houston coverage run --append /usr/local/bin/invoke app.db._reset
+        env:
+          LOG_WIDTH: 120
 
       - name: Run other invoke tasks for coverage and errors
         if: matrix.app-context == 'codex'
         run: |
           docker-compose exec -T -e SQLALCHEMY_DATABASE_URI=$TEST_DATABASE_URI houston ./scripts/tests/run_tasks_for_coverage.sh
           docker-compose exec -T -e SQLALCHEMY_DATABASE_URI=$TEST_DATABASE_URI houston coverage xml
+        env:
+          LOG_WIDTH: 120
 
       - name: Upload coverage to Codecov
         if: matrix.app-context == 'codex'

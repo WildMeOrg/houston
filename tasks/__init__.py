@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-# -*- coding: utf-8 -*-
 # pylint: disable=invalid-name,wrong-import-position
 """
 The starting point of Invoke tasks for Houston.
@@ -37,7 +36,7 @@ try:
         # Inside docker without TTL
         console_kwargs['force_terminal'] = True
         console_kwargs['force_interactive'] = True
-        console_kwargs['width'] = 200
+        console_kwargs['width'] = float(os.environ.get('LOG_WIDTH', 200))
         console_kwargs['soft_wrap'] = True
 
     rich.reconfigure(**console_kwargs)
@@ -52,7 +51,7 @@ except ImportError:  # pragma: no cover
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
-logging.getLogger('app').setLevel(logging.DEBUG)
+# logging.getLogger('app').setLevel(logging.DEBUG)
 
 from invoke import Collection  # NOQA
 from invoke.executor import Executor  # NOQA

@@ -123,6 +123,7 @@ services:
       context: .
       target: main
     command: ["invoke", "app.run", "--host", "0.0.0.0"]
+    tty: true
     depends_on:
       db:
         condition: service_healthy

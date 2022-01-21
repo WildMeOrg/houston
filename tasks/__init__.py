@@ -33,10 +33,16 @@ try:
         'tracebacks_show_locals': True,
     }
     if os.environ.get('TERM', None) is None:
+        try:
+            log_width = os.environ.get('LOG_WIDTH', None)
+            log_width = float(log_width)
+        except Exception:
+            log_width = 200
+
         # Inside docker without TTL
         console_kwargs['force_terminal'] = True
         console_kwargs['force_interactive'] = True
-        console_kwargs['width'] = float(os.environ.get('LOG_WIDTH', 200))
+        console_kwargs['width'] = log_width
         console_kwargs['soft_wrap'] = True
 
     rich.reconfigure(**console_kwargs)

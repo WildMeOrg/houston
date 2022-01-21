@@ -33,6 +33,7 @@ class BaseNotificationSchema(ModelSchema):
     """
 
     sender_name = base_fields.Function(Notification.get_sender_name)
+    created = base_fields.DateTime()
 
     class Meta:
         # pylint: disable=missing-docstring
@@ -43,6 +44,7 @@ class BaseNotificationSchema(ModelSchema):
             'sender_name',
             Notification.sender_guid.key,
             Notification.message_type.key,
+            'created',
         )
         dump_only = (Notification.guid.key,)
 

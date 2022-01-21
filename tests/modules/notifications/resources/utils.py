@@ -14,6 +14,7 @@ EXPECTED_NOTIFICATION_KEYS = {
     'sender_name',
     'sender_guid',
     'message_values',
+    'created',
 }
 EXPECTED_LIST_KEYS = {
     'guid',
@@ -21,6 +22,7 @@ EXPECTED_LIST_KEYS = {
     'message_type',
     'sender_name',
     'sender_guid',
+    'created',
 }
 
 

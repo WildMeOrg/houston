@@ -26,6 +26,22 @@ log = logging.getLogger(__name__)
 DEFAULT_HOST = '0.0.0.0'
 
 
+def hide_noisy_endpoint_logs():
+    """Disable logs for requests to specific endpoints."""
+    from werkzeug import serving
+    import re
+
+    disabled_endpoints = ('/api/v1/site-info/heartbeat',)
+
+    parent_log_request = serving.WSGIRequestHandler.log_request
+
+    def log_request(self, *args, **kwargs):
+        if not any(re.match(f'{de}$', self.path) for de in disabled_endpoints):
+            parent_log_request(self, *args, **kwargs)
+
+    serving.WSGIRequestHandler.log_request = log_request
+
+
 @app_context_task()
 def warmup(
     context,
@@ -84,6 +100,9 @@ def run(
         build_frontend=build_frontend,
         upgrade_db=upgrade_db,
     )
+
+    # Turn off logging the access log for noisy endpoints (like the heartbeat)
+    hide_noisy_endpoint_logs()
 
     # use_reloader = app.debug
     use_reloader = False

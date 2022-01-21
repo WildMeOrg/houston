@@ -82,7 +82,7 @@ class PatchEncounterDetailsParameters(PatchJSONParameters):
                 raise HoustonException(
                     log, f'guid value passed ({value}) is not an annotation guid'
                 )
-            if not annot.encounter.current_user_has_edit_permission():
+            if annot.encounter and not annot.encounter.current_user_has_edit_permission():
                 raise HoustonException(
                     log, f'annotation {value} owned by a different user'
                 )

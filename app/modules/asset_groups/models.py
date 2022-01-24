@@ -341,7 +341,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
     # Don't store detection start time directly. It's either the creation time if we ever had detection
     # jobs or None if no detection was done (and hence no jobs exist)
     def get_detection_start_time(self):
-        if len(self.jobs):
+        if self.jobs and len(self.jobs):
             return self.created.isoformat() + 'Z'
         return None
 
@@ -371,7 +371,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
         # some stages are either all or nothing, these just use the base sizes above.
         # For those that have granularity we need to know the size range available and estimate how much has been done
         if self.stage == AssetGroupSightingStage.detection:
-            if len(self.jobs) > 0:
+            if self.jobs and len(self.jobs) > 0:
                 size_range = (
                     stage_base_sizes[AssetGroupSightingStage.curation]
                     - stage_base_sizes[self.stage]

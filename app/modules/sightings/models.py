@@ -240,7 +240,7 @@ class Sighting(db.Model, FeatherModel):
     # Don't store identification start time directly. It's either the creation time if we ever had identification
     # jobs or None if no identification was done (and hence no jobs exist)
     def get_identification_start_time(self):
-        if len(self.jobs) > 0:
+        if self.jobs and len(self.jobs) > 0:
             return self.created.isoformat() + 'Z'
         return None
 
@@ -980,7 +980,7 @@ class Sighting(db.Model, FeatherModel):
         # virtually all stages are either all or nothing, these just use the base sizes above.
         # For those that have granularity we need to know the size range available and estimate how much has been done
         if self.stage == SightingStage.identification:
-            if len(self.jobs) > 0:
+            if self.jobs and len(self.jobs) > 0:
                 size_range = (
                     stage_base_sizes[SightingStage.identification]
                     - stage_base_sizes[self.stage]

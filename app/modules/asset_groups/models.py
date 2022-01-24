@@ -3,7 +3,7 @@
 AssetGroups database models
 --------------------
 """
-
+import copy
 import enum
 from flask import current_app
 from flask_login import current_user  # NOQA
@@ -436,11 +436,21 @@ class AssetGroupSighting(db.Model, HoustonModel):
 
     def _augment_encounter_json(self, encounter_data):
         from app.modules.users.schemas import PublicUserSchema
+        from app.modules.annotations.schemas import BaseAnnotationSchema
 
         user_schema = PublicUserSchema()
-        enc_json = encounter_data
+        annot_schema = BaseAnnotationSchema()
+        enc_json = copy.deepcopy(encounter_data)
         enc_json['createdHouston'] = self.created
         enc_json['updatedHouston'] = self.updated
+        enc_json['annotations'] = []
+        if 'annotations' in encounter_data.keys():
+            enc_json['annotations'] = []
+            for annot_guid in encounter_data['annotations']:
+                annot_json = annot_schema.dump(Annotation.query.get(annot_guid)).data
+                annot_json['encounter_guid'] = encounter_data['guid']
+                enc_json['annotations'].append(annot_json)
+
         owner = self.asset_group.owner
         if 'ownerEmail' in encounter_data:
             owner = User.find(email=encounter_data['ownerEmail'])

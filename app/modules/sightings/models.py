@@ -506,7 +506,7 @@ class Sighting(db.Model, FeatherModel):
 
             for encounter in self.encounters:  # now we augment each encounter
                 found_edm = id_to_encounter[str(encounter.guid)]
-                edm_schema = AugmentedEdmEncounterSchema(exclude=('annotations',))
+                edm_schema = AugmentedEdmEncounterSchema()
                 found_edm.update(edm_schema.dump(encounter).data)
 
         return edm_json

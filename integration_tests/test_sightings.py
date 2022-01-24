@@ -95,11 +95,21 @@ def test_sightings(session, login, codex_url, test_root, admin_name):
     assert response.json() == {
         'assets': [
             {
+                'asset_group': {
+                    'guid': assets[0]['asset_group']['guid'],
+                    'commit': assets[0]['asset_group']['commit'],
+                    'description': assets[0]['asset_group']['description'],
+                    'major_type': assets[0]['asset_group']['major_type'],
+                },
                 'annotations': [
                     {
+                        'guid': annots_0[0]['guid'],
+                        'bounds': annots_0[0]['bounds'],
+                        'created': annots_0[0]['created'],
+                        'updated': annots_0[0]['updated'],
+                        'keywords': [],
                         'asset_guid': assets[0]['guid'],
                         'encounter_guid': None,
-                        'guid': annots_0[0]['guid'],
                         'ia_class': 'zebra_plains',
                         'viewpoint': 'unknown',
                     },
@@ -197,6 +207,12 @@ def test_sightings(session, login, codex_url, test_root, admin_name):
     assert response.json() == {
         'assets': [
             {
+                'asset_group': {
+                    'guid': assets[0]['asset_group']['guid'],
+                    'commit': assets[0]['asset_group']['commit'],
+                    'description': assets[0]['asset_group']['description'],
+                    'major_type': assets[0]['asset_group']['major_type'],
+                },
                 'annotations': [
                     {
                         'asset_guid': assets[0]['guid'],
@@ -204,6 +220,10 @@ def test_sightings(session, login, codex_url, test_root, admin_name):
                         'guid': annots_0[0]['guid'],
                         'ia_class': 'zebra_plains',
                         'viewpoint': 'unknown',
+                        'bounds': annots_0[0]['bounds'],
+                        'created': annots_0[0]['created'],
+                        'updated': annots_0[0]['updated'],
+                        'keywords': [],
                     },
                 ],
                 'created': assets[0]['created'],

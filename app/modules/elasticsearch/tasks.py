@@ -117,14 +117,12 @@ SELECT
   CASE WHEN en."SEX" = 'unk' THEN 'unknown'
        ELSE en."SEX"
   END AS sex,
-  en."GENUS" AS genus,
-  an."SPECIES" AS species,
+  ta."SCIENTIFICNAME" as taxonomy,
   en."LIVINGSTATUS" AS living_status,
   en."LIFESTAGE" AS lifestage
 FROM
   "ENCOUNTER" AS en
-  LEFT JOIN "ENCOUNTER_ANNOTATIONS" AS ea ON ea."ID_OID" = en."ID"
-  LEFT JOIN "ANNOTATION" AS an ON ea."ID_EID" = an."ID"
+  LEFT JOIN "TAXONOMY" AS ta ON ta."ID" = en."TAXONOMY_ID_OID"
 """
 
 

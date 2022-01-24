@@ -145,21 +145,14 @@ SIGHTINGS_INDEX_SQL = """\
 SELECT
   oc."ID" AS id,
   NULLIF((oc."DECIMALLATITUDE"::float || ',' || oc."DECIMALLONGITUDE")::text, ',') AS point,
-  (
-    SELECT max("GENUS")
-    FROM "ENCOUNTER" en
-      RIGHT JOIN "OCCURRENCE_ENCOUNTERS" oe ON oe."ID_EID" = en."ID"
-    WHERE oe."ID_OID" = oc."ID") AS genus,
-  (
-    SELECT max("SPECIES")
-    FROM "ANNOTATION" an
-      RIGHT JOIN "ENCOUNTER_ANNOTATIONS" ea ON ea."ID_EID" = an."ID"
-      RIGHT JOIN "ENCOUNTER" en ON ea."ID_OID" = en."ID"
-      RIGHT JOIN "OCCURRENCE_ENCOUNTERS" oe ON oe."ID_EID" = en."ID"
-    WHERE oe."ID_OID" = oc."ID") AS species,
+  (array_agg(ta."SCIENTIFICNAME"))[1] AS taxonomy,
   oc."COMMENTS" AS comments
 FROM
   "OCCURRENCE" oc
+  LEFT JOIN "OCCURRENCE_ENCOUNTERS" oe ON oe."ID_OID" = oc."ID"
+  LEFT JOIN "ENCOUNTER" en ON en."ID" = oe."ID_EID"
+  LEFT JOIN "TAXONOMY" ta ON ta."ID" = en."TAXONOMY_ID_OID"
+GROUP BY oc."ID"
 """
 
 

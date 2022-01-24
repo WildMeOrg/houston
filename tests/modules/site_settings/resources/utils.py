@@ -41,7 +41,7 @@ def read_configuration_definition(
     res = test_utils.get_dict_via_flask(
         flask_app_client,
         user,
-        scopes='configuration:read',
+        scopes='site-settings:read',
         path=f'{CONFIG_DEF_PATH}/{conf_key}',
         expected_status_code=expected_status_code,
         response_200=EXPECTED_KEYS,
@@ -66,7 +66,7 @@ def modify_configuration(
     res = test_utils.post_via_flask(
         flask_app_client,
         user,
-        scopes='configuration:write',
+        scopes='site-settings:write',
         path=path,
         data=data,
         expected_status_code=expected_status_code,

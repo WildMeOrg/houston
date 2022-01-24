@@ -5,7 +5,12 @@ Site Settings database models
 """
 from app.extensions import db, Timestamp, extension_required, is_extension_enabled
 from flask import current_app
+from app.modules import is_module_enabled
+from app.utils import HoustonException
 
+import logging
+
+log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
 # these will be disallowed to be set via api (must be done elsewhere in code by using override_readonly)
 READ_ONLY = 'system_guid'
@@ -19,6 +24,16 @@ class SiteSetting(db.Model, Timestamp):
 
     __mapper_args__ = {
         'confirm_deleted_rows': False,
+    }
+
+    HOUSTON_SETTINGS = {
+        'email_service': {'type': str, 'public': False},
+        'email_service_username': {'type': str, 'public': False},
+        'email_service_password': {'type': str, 'public': False},
+        'email_default_sender_email': {'type': str, 'public': False},
+        'email_default_sender_name': {'type': str, 'public': False},
+        'social_group_roles': {'type': dict, 'public': True},
+        'relationship_type_roles': {'type': dict, 'public': True},
     }
 
     key = db.Column(db.String, primary_key=True, nullable=False)
@@ -53,7 +68,7 @@ class SiteSetting(db.Model, Timestamp):
     ):
         if is_extension_enabled('edm') and key.startswith(EDM_PREFIX):
             raise ValueError(
-                f'forbidden to directly set key with prefix "{EDM_PREFIX}" via SiteSetting (key={key})'
+                f'forbidden to directly set key with prefix "{EDM_PREFIX}" via (key={key})'
             )
         if key in READ_ONLY and not override_readonly:
             raise ValueError(f'read-only key {key}')
@@ -68,6 +83,58 @@ class SiteSetting(db.Model, Timestamp):
         setting = cls(**kwargs)
         with db.session.begin(subtransactions=True):
             return db.session.merge(setting)
+
+    @classmethod
+    def get_setting_keys(cls):
+        return cls.HOUSTON_SETTINGS.keys()
+
+    @classmethod
+    def get_default_value(cls, key):
+        def_val = ''
+        assert key in cls.HOUSTON_SETTINGS.keys()
+        if cls.HOUSTON_SETTINGS[key]['type'] == dict:
+            def_val = {}
+        return def_val
+
+    @classmethod
+    def set_key_value(cls, key, value):
+        if key == 'social_group_roles' and is_module_enabled('social_groups'):
+            from app.modules.social_groups.models import SocialGroup
+
+            # raises houston exception on failure
+            SocialGroup.validate_roles(value)
+
+        assert key in cls.HOUSTON_SETTINGS.keys()
+        if not isinstance(value, cls.HOUSTON_SETTINGS[key]['type']):
+            msg = f'Houston Setting key={key}, value incorrect type value={value}'
+            raise HoustonException(log, msg)
+
+        if isinstance(value, str):
+            log.debug(f'updating Houston Setting key={key}')
+            cls.set(key, string=value, public=cls.HOUSTON_SETTINGS[key]['public'])
+        elif isinstance(value, dict):
+            log.debug(f'updating Houston Setting key={key}')
+            cls.set_detailed(key, data=value, public=cls.HOUSTON_SETTINGS[key]['public'])
+        else:
+            msg = f'Houston Setting key={key}, value is not string or dict; value={value}'
+            raise HoustonException(log, msg)
+
+        if key == 'social_group_roles' and is_module_enabled('social_groups'):
+            from app.modules.social_groups.models import SocialGroup
+
+            SocialGroup.site_settings_updated()
+
+    @classmethod
+    def forget_key_value(cls, key):
+        setting = cls.query.get(key)
+        if setting:
+            with db.session.begin(subtransactions=True):
+                db.session.delete(setting)
+
+            if key == 'social_group_roles' and is_module_enabled('social_groups'):
+                from app.modules.social_groups.models import SocialGroup
+
+                SocialGroup.site_settings_updated()
 
     @classmethod
     def get_string(cls, key, default=None):

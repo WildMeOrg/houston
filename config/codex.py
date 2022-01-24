@@ -71,7 +71,6 @@ class BaseCodexConfig(
 
         'api',
         'passthroughs',
-        'configuration',
         'emails',
         'audit_logs',
     )

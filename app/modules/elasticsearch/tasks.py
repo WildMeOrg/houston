@@ -119,7 +119,6 @@ SELECT
   END AS sex,
   ta."SCIENTIFICNAME" as taxonomy,
   en."LIVINGSTATUS" AS living_status,
-  en."LIFESTAGE" AS lifestage
 FROM
   "ENCOUNTER" AS en
   LEFT JOIN "TAXONOMY" AS ta ON ta."ID" = en."TAXONOMY_ID_OID"

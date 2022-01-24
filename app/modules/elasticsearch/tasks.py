@@ -24,6 +24,81 @@ def create_wildbook_engine() -> Engine:
     return create_engine(current_app.config['WILDBOOK_DB_URI'])
 
 
+def create_houston_engine() -> Engine:
+    """Creates a SQLAlchemy Engine for connecting to the houston database"""
+    return create_engine(current_app.config['SQLALCHEMY_DATABASE_URI'])
+
+
+def set_up_houston_tables():
+    # Fetch houston enum types
+    h_engine = create_houston_engine()
+    with h_engine.connect() as h_conn:
+        results = h_conn.execute(text(ENUM_TYPE_LIST_SQL_QUERY))
+        enum_list = results.fetchall()
+
+    wb_engine = create_wildbook_engine()
+    with wb_engine.connect() as wb_conn:
+        # Create houston enum types
+        results = wb_conn.execute(text(ENUM_TYPE_LIST_SQL_QUERY))
+        wb_enum_list = dict(results.fetchall())
+        for enum_name, enum_labels in enum_list:
+            if enum_name not in wb_enum_list:
+                enum_values = ', '.join(repr(label) for label in enum_labels)
+                wb_conn.execute(text(f'CREATE TYPE {enum_name} AS ENUM ({enum_values})'))
+
+        # Import houston tables if schema 'houston' doesn't exist
+        if not wb_conn.execute(
+            text(
+                "SELECT * FROM information_schema.schemata WHERE schema_name = 'houston'"
+            )
+        ).fetchone():
+            wb_conn.execute(text('CREATE EXTENSION IF NOT EXISTS postgres_fdw'))
+            server_options = [f'dbname {repr(h_engine.url.database)}']
+            user_mapping_options = [f'user {repr(h_engine.url.username)}']
+            if h_engine.url.host:
+                server_options.append(f'host {repr(h_engine.url.host)}')
+            if h_engine.url.port:
+                server_options.append(f'port {repr(h_engine.url.port)}')
+            if h_engine.url.password:
+                user_mapping_options.append(f'password {repr(h_engine.url.password)}')
+            wb_conn.execute(
+                text(
+                    CREATE_SERVER_SQL
+                    % {
+                        'wb_user': wb_engine.url.username,
+                        'server_options': ', '.join(server_options),
+                        'user_mapping_options': ', '.join(user_mapping_options),
+                    }
+                )
+            )
+
+
+ENUM_TYPE_LIST_SQL_QUERY = """\
+SELECT
+  t.typname AS enum_name,
+  array_agg(e.enumlabel) AS enum_labels
+FROM
+  pg_type t
+  JOIN pg_enum e ON t.oid = e.enumtypid
+GROUP BY enum_name
+"""
+
+
+CREATE_SERVER_SQL = """\
+CREATE EXTENSION IF NOT EXISTS postgres_fdw;
+
+CREATE SERVER IF NOT EXISTS houston
+FOREIGN DATA WRAPPER postgres_fdw
+OPTIONS (%(server_options)s);
+
+CREATE SCHEMA IF NOT EXISTS houston;
+
+CREATE USER MAPPING IF NOT EXISTS FOR %(wb_user)s SERVER houston OPTIONS (%(user_mapping_options)s);
+
+IMPORT FOREIGN SCHEMA public FROM SERVER houston INTO houston;
+"""
+
+
 def load_individuals_index():
     wb_engine = create_wildbook_engine()
     with wb_engine.connect() as wb_conn:
@@ -155,6 +230,7 @@ GROUP BY oc."ID"
 
 @celery.task
 def load_codex_indexes():
+    set_up_houston_tables()
     load_individuals_index()
     load_encounters_index()
     load_sightings_index()

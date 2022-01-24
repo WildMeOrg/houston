@@ -13,7 +13,7 @@ from flask import current_app, request, redirect, url_for
 from flask_restx_patched import Resource
 from flask_restx._http import HTTPStatus
 
-from app.extensions import db
+from app.extensions import db, is_extension_enabled
 from app.extensions.api import abort, Namespace
 from app.extensions.api.parameters import PaginationParameters
 from app.modules.users.models import User
@@ -199,6 +199,10 @@ class MainConfigurationDefinition(Resource):
     """
 
     def get(self, path):
+        if not is_extension_enabled('edm'):
+            data = {}
+            return _site_setting_get_definition_inject(data)
+
         edm_path = '__bundle_setup' if path == 'block' else path
         data = current_app.edm.get_dict(
             'configurationDefinition.data',
@@ -296,12 +300,16 @@ class MainConfiguration(Resource):
             }
             return data
 
-        edm_path = '__bundle_setup' if path == 'block' else path
-        data = current_app.edm.get_dict(
-            'configuration.data',
-            edm_path,
-            target='default',
-        )
+        if is_extension_enabled('edm'):
+            edm_path = '__bundle_setup' if path == 'block' else path
+            data = current_app.edm.get_dict(
+                'configuration.data',
+                edm_path,
+                target='default',
+            )
+        else:
+            # If tried to set EDM value and we have no EDM, it's a failure
+            data = {'success': False, 'response': {'configuration': {}}}
 
         user_is_admin = (
             current_user is not None
@@ -375,15 +383,22 @@ class MainConfiguration(Resource):
         if len(files) > 0:
             passthrough_kwargs['files'] = files
 
-        edm_path = '' if path == 'block' else path
-        response = current_app.edm.request_passthrough(
-            'configuration.data', 'post', passthrough_kwargs, edm_path, target='default'
-        )
-        if not response.ok:
-            return response
-        res = response.json()
-        if 'updated' in res:
-            res['updated'].extend(success_ss_keys)
+        if is_extension_enabled('edm'):
+            edm_path = '' if path == 'block' else path
+            response = current_app.edm.request_passthrough(
+                'configuration.data',
+                'post',
+                passthrough_kwargs,
+                edm_path,
+                target='default',
+            )
+            if not response.ok:
+                return response
+            res = response.json()
+            if 'updated' in res:
+                res['updated'].extend(success_ss_keys)
+        else:
+            res = {'success': False}
         return res
 
     # Patch not used by the frontend and this implementation does not handle Houston settings

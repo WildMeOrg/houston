@@ -116,6 +116,15 @@ class IaConfig:
         ia_classes = [key for key in self.get(species_key) if not key.startswith('_')]
         return ia_classes
 
+    def get_all_ia_classes(self):
+        all_species = self.get_configured_species()
+        all_ia_classes = set()
+        for specie in all_species:
+            all_ia_classes = all_ia_classes | set(self.get_supported_ia_classes(specie))
+        all_ia_classes = list(all_ia_classes)
+        all_ia_classes.sort()
+        return all_ia_classes
+
     def get_supported_id_algos(self, genus_species, ia_classes=None):
         if ia_classes is None:
             ia_classes = self.get_supported_ia_classes(genus_species)

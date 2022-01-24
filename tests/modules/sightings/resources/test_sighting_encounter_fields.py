@@ -3,7 +3,7 @@
 
 from tests.modules.sightings.resources import utils as sighting_utils
 from tests.extensions.edm import utils as edm_utils
-from tests.modules.configuration.resources import utils as conf_utils
+from tests.modules.site_settings.resources import utils as conf_utils
 import pytest
 import json
 

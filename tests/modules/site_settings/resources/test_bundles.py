@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=missing-docstring
-from tests.modules.configuration.resources import utils as conf_utils
+from tests.modules.site_settings.resources import utils as conf_utils
 from app.modules.site_settings.models import SiteSetting
 import uuid
 import pytest
@@ -12,7 +12,7 @@ BUNDLE_PATH = '__bundle_setup'
 
 
 @pytest.mark.skipif(
-    module_unavailable('configuration'), reason='Configurations module disabled'
+    module_unavailable('site_settings'), reason='Site-settings module disabled'
 )
 def test_bundle_read(flask_app_client, admin_user):
     response = conf_utils.read_configuration(flask_app_client, admin_user, BUNDLE_PATH)
@@ -26,7 +26,7 @@ def test_bundle_read(flask_app_client, admin_user):
 
 
 @pytest.mark.skipif(
-    module_unavailable('configuration'), reason='Configurations module disabled'
+    module_unavailable('site_settings'), reason='Site-Settings module disabled'
 )
 def test_bundle_modify(flask_app_client, admin_user, db):
     response = conf_utils.read_configuration(flask_app_client, admin_user, BUNDLE_PATH)

@@ -5,12 +5,13 @@ from app.modules.site_settings.models import SiteSetting
 import uuid
 import pytest
 
-from tests.utils import module_unavailable
+from tests.utils import module_unavailable, extension_unavailable
 
 
 BUNDLE_PATH = '__bundle_setup'
 
 
+@pytest.mark.skipif(extension_unavailable('edm'), reason='EDM extension disabled')
 @pytest.mark.skipif(
     module_unavailable('site_settings'), reason='Site-settings module disabled'
 )
@@ -25,6 +26,7 @@ def test_bundle_read(flask_app_client, admin_user):
     assert response.json['response']['configuration']['site.name'] is not None
 
 
+@pytest.mark.skipif(extension_unavailable('edm'), reason='EDM extension disabled')
 @pytest.mark.skipif(
     module_unavailable('site_settings'), reason='Site-Settings module disabled'
 )

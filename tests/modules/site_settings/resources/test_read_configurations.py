@@ -3,9 +3,10 @@
 from tests.modules.site_settings.resources import utils as conf_utils
 import pytest
 
-from tests.utils import module_unavailable
+from tests.utils import module_unavailable, extension_unavailable
 
 
+@pytest.mark.skipif(extension_unavailable('edm'), reason='EDM extension disabled')
 @pytest.mark.skipif(
     module_unavailable('site_settings'), reason='Site-settings module disabled'
 )
@@ -62,6 +63,7 @@ def test_read_configurations(flask_app_client, researcher_1):
     )
 
 
+@pytest.mark.skipif(extension_unavailable('edm'), reason='EDM extension disabled')
 @pytest.mark.skipif(
     module_unavailable('site_settings'), reason='Site-settings module disabled'
 )

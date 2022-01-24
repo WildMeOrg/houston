@@ -28,7 +28,7 @@ def test_create_failures(flask_app_client, test_root, researcher_1, request):
 
     # empty data_in will fail (no location ID)
     data_in = {'foo': 'bar'}
-    expected_error = 'locationId field missing from Sighting 1'
+    expected_error = 'time field missing from Sighting 1'
     sighting_utils.create_sighting(
         flask_app_client, researcher_1, request, test_root, data_in, 400, expected_error
     )

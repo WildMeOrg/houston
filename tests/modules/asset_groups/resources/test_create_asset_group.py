@@ -7,7 +7,11 @@ import json
 from unittest import mock
 import pytest
 
-from tests.utils import module_unavailable
+from tests.utils import (
+    module_unavailable,
+    random_decimal_latitude,
+    random_decimal_longitude,
+)
 
 
 # Test a bunch of failure scenarios
@@ -49,15 +53,7 @@ def test_create_asset_group(flask_app_client, researcher_1, readonly_user, test_
         asset_group_utils.create_asset_group(
             flask_app_client, researcher_1, data.get(), 400, resp_msg
         )
-
         data.set_field('sightings', [{}])
-        resp_msg = 'locationId field missing from Sighting 1'
-        asset_group_utils.create_asset_group(
-            flask_app_client, researcher_1, data.get(), 400, resp_msg
-        )
-
-        data.set_field('sightings', [{}])
-        data.set_sighting_field(0, 'locationId', 'Lacock')
         resp_msg = 'time field missing from Sighting 1'
         asset_group_utils.create_asset_group(
             flask_app_client, researcher_1, data.get(), 400, resp_msg
@@ -97,7 +93,13 @@ def test_create_asset_group(flask_app_client, researcher_1, readonly_user, test_
         )
 
         data.set_field('uploadType', 'form')
+        resp_msg = 'Need either locationID or GPS data in Sighting 1'
+        asset_group_utils.create_asset_group(
+            flask_app_client, researcher_1, data.get(), 400, resp_msg
+        )
 
+        data.set_sighting_field(0, 'decimalLatitude', random_decimal_latitude())
+        data.set_sighting_field(0, 'decimalLongitude', random_decimal_longitude())
         resp = asset_group_utils.create_asset_group(
             flask_app_client, researcher_1, data.get()
         )

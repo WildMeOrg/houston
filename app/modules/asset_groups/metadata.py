@@ -197,7 +197,9 @@ class AssetGroupMetadata(object):
     def _validate_sighting(self, sighting, file_dir, sighting_debug, encounter_debug):
 
         sighting_fields = [
-            ('locationId', str, True),
+            ('locationId', str, False),
+            ('decimalLatitude', float, False),
+            ('decimalLongitude', float, False),
             ('time', str, True),
             ('timeSpecificity', str, True),
             ('encounters', list, True),
@@ -237,6 +239,12 @@ class AssetGroupMetadata(object):
         self.owner_assignment = self.validate_encounters(
             sighting['encounters'], f'{encounter_debug}'
         )
+
+        if 'locationId' not in sighting:
+            if 'decimalLatitude' not in sighting or 'decimalLongitude' not in sighting:
+                raise AssetGroupMetadataError(
+                    log, f'Need either locationID or GPS data in {sighting_debug}'
+                )
 
     @property
     def bulk_upload(self):

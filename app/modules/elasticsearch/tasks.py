@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import datetime
 import logging
 
 from flask import current_app
@@ -175,7 +176,8 @@ def load_encounters_index():
     wb_engine = create_wildbook_engine()
     with wb_engine.connect() as wb_conn:
         results = wb_conn.execute(text(ENCOUNTERS_INDEX_SQL))
-        for result in results:
+        for row in results:
+            result = combine_datetime(row)
             # Create the document object
             encounter = Encounter(**result)
             # Assign the elasticsearch document identify
@@ -192,11 +194,17 @@ SELECT
   CASE WHEN en."SEX" = 'unk' THEN 'unknown'
        ELSE en."SEX"
   END AS sex,
-  ta."SCIENTIFICNAME" as taxonomy,
+  ta."SCIENTIFICNAME" AS taxonomy,
   en."LIVINGSTATUS" AS living_status,
+  cdt.datetime AS datetime,
+  -- timezone stored as "UTC+0300", change to "+03:00"
+  left(right(cdt.timezone, 5), 3) || ':' || right(cdt.timezone, 2) AS timezone,
+  cdt.specificity AS time_specificity
 FROM
   "ENCOUNTER" AS en
   LEFT JOIN "TAXONOMY" AS ta ON ta."ID" = en."TAXONOMY_ID_OID"
+  LEFT JOIN houston.encounter hen ON en."ID" = hen.guid::text
+  LEFT JOIN houston.complex_date_time cdt ON hen.time_guid = cdt.guid
 """
 
 
@@ -204,7 +212,8 @@ def load_sightings_index():
     wb_engine = create_wildbook_engine()
     with wb_engine.connect() as wb_conn:
         results = wb_conn.execute(text(SIGHTINGS_INDEX_SQL))
-        for result in results:
+        for i, row in enumerate(results):
+            result = combine_datetime(row)
             # Create the document object
             sighting = Sighting(**result)
             # Assign the elasticsearch document identify
@@ -217,6 +226,10 @@ SIGHTINGS_INDEX_SQL = """\
 SELECT
   oc."ID" AS id,
   NULLIF((oc."DECIMALLATITUDE"::float || ',' || oc."DECIMALLONGITUDE")::text, ',') AS point,
+  cdt.datetime AS datetime,
+  -- timezone stored as "UTC+0300", change to "+03:00"
+  left(right(cdt.timezone, 5), 3) || ':' || right(cdt.timezone, 2) AS timezone,
+  cdt.specificity AS time_specificity,
   (array_agg(ta."SCIENTIFICNAME"))[1] AS taxonomy,
   oc."COMMENTS" AS comments
 FROM
@@ -224,8 +237,19 @@ FROM
   LEFT JOIN "OCCURRENCE_ENCOUNTERS" oe ON oe."ID_OID" = oc."ID"
   LEFT JOIN "ENCOUNTER" en ON en."ID" = oe."ID_EID"
   LEFT JOIN "TAXONOMY" ta ON ta."ID" = en."TAXONOMY_ID_OID"
-GROUP BY oc."ID"
+  LEFT JOIN houston.sighting si ON oc."ID" = si.guid::text
+  LEFT JOIN houston.complex_date_time cdt ON si.time_guid = cdt.guid
+GROUP BY id, datetime, timezone, specificity
 """
+
+
+def combine_datetime(row):
+    result = dict(row)
+    if row['datetime']:
+        result['datetime'] = datetime.datetime.fromisoformat(
+            row['datetime'].isoformat() + result.pop('timezone')
+        )
+    return result
 
 
 @celery.task

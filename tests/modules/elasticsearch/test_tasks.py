@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+import datetime
+import re
 from unittest import mock
 
 import pytest
@@ -8,12 +10,12 @@ import pytest
 pytestmark = [pytest.mark.only_for_codex]
 
 
-# To produce the value for SQL_QUERY_RESULTS,
+# To produce the value for INDIVIDUAL_SQL_QUERY_RESULTS,
 # use something like the following run within `invoke codex.shell`:
 #     from app.modules.elasticsearch.tasks import create_wildbook_engine, WILDBOOK_MARKEDINDIVIDUAL_SQL_QUERY
 #     engine = create_wildbook_engine()
 #     print(dict(engine.execute(WILDBOOK_MARKEDINDIVIDUAL_SQL_QUERY).fetchone()))
-SQL_QUERY_RESULTS = [
+INDIVIDUAL_SQL_QUERY_RESULTS = [
     {
         'id': '6d1d65e9-0801-4fbd-8c59-01258e9aae47',
         'name': 'IBEIS_UNKNOWN_3833',
@@ -68,27 +70,147 @@ SQL_QUERY_RESULTS = [
 ]
 
 
+ENUM_TYPE_LIST_SQL_QUERY_RESULTS = [
+    ('keywordsource', ['user', 'wbia']),
+    ('tokentypes', ['Bearer']),
+]
+
+
+ENCOUNTERS_INDEX_SQL_RESULTS = [
+    {
+        'id': '0001b6e4-2f31-460c-a868-03620bad8fd6',
+        'point': None,
+        'locationid': 'Ol Jogi',
+        'sex': 'female',
+        'taxonomy': 'Equus grevyi',
+        'living_status': None,
+        'datetime': datetime.datetime(2014, 4, 3, 21, 0),
+        'timezone': '+03:00',
+        'time_specificity': 'time',
+    },
+    {
+        'id': '4741f978-ce2e-4827-b4d8-6e12eede4784',
+        'point': '0.329942743091,37.0890847601924',
+        'locationid': 'Pyramid',
+        'sex': 'male',
+        'taxonomy': 'Equus grevyi',
+        'living_status': 'alive',
+        'datetime': None,
+        'timezone': None,
+        'time_specificity': None,
+    },
+]
+
+
+SIGHTINGS_INDEX_SQL_RESULTS = [
+    {
+        'id': '00012f77-f284-4c74-952b-efc43520c6fc',
+        'point': None,
+        'datetime': datetime.datetime(2000, 1, 1, 1, 23, 45, 678900),
+        'timezone': '+00:00',
+        'time_specificity': 'year',
+        'taxonomy': 'Equus quagga',
+        'comments': 'None',
+    },
+    {
+        'id': '00126fd2-813d-4d46-b80f-d2fba3fb7590',
+        'point': None,
+        'datetime': datetime.datetime(2000, 1, 1, 1, 23, 45, 678900),
+        'timezone': '+00:00',
+        'time_specificity': 'year',
+        'taxonomy': None,
+        'comments': 'None',
+    },
+]
+
+
 def test_load_codex_indexes(monkeypatch, flask_app):
     from app.modules.elasticsearch import tasks
 
     # Mock the response from the wildbook database query
-    mock_engine = mock.MagicMock()
-    monkeypatch.setattr(tasks, 'create_wildbook_engine', lambda: mock_engine)
-    mock_engine.connect.return_value.__enter__.return_value.execute.return_value = (
-        SQL_QUERY_RESULTS
+    mock_wildbook_engine = mock.MagicMock()
+    monkeypatch.setattr(tasks, 'create_wildbook_engine', lambda: mock_wildbook_engine)
+    wildbook_create_stmts = []
+
+    def mock_wildbook_connection_execute(text_clause, *args, **kwargs):
+        normalized_clause = re.sub(r'\s+', ' ', str(text_clause).lower())
+        if 'from "markedindividual"' in normalized_clause:
+            return INDIVIDUAL_SQL_QUERY_RESULTS
+        elif 'from pg_type' in normalized_clause:
+            return mock.Mock(fetchall=lambda: [])
+        elif 'from "encounter"' in normalized_clause:
+            return ENCOUNTERS_INDEX_SQL_RESULTS
+        elif 'from "occurrence"' in normalized_clause:
+            return SIGHTINGS_INDEX_SQL_RESULTS
+        elif 'from information_schema.schemata' in normalized_clause:
+            return mock.Mock(fetchone=lambda: None)
+        elif normalized_clause.startswith('create'):
+            wildbook_create_stmts.append(text_clause)
+            return
+        raise NotImplementedError(f'normalized_clause={normalized_clause}')
+
+    mock_wildbook_engine.connect.return_value.__enter__.return_value = mock.Mock(
+        execute=mock_wildbook_connection_execute
     )
+
+    mock_houston_engine = mock.MagicMock()
+    monkeypatch.setattr(tasks, 'create_houston_engine', lambda: mock_houston_engine)
+
+    houston_create_stmts = []
+
+    def mock_houston_connection_execute(text_clause, *args, **kwargs):
+        normalized_clause = re.sub(r'\s+', ' ', str(text_clause).lower())
+        if 'from pg_type' in normalized_clause:
+            return mock.Mock(fetchall=lambda: ENUM_TYPE_LIST_SQL_QUERY_RESULTS)
+        elif normalized_clause.startswith('create'):
+            houston_create_stmts.append(text_clause)
+            return
+        raise NotImplementedError
+
+    mock_houston_engine.connect.return_value.__enter__.return_value = mock.Mock(
+        execute=mock_houston_connection_execute
+    )
+
     # Capture elasticsearch object saving for proof checks
-    captures = []
-    capture_save = lambda self, **kwargs: captures.append([self, kwargs])  # noqa: E731
     from gumby.models import Individual, Encounter, Sighting
 
-    monkeypatch.setattr(Individual, 'save', capture_save)
-    monkeypatch.setattr(Encounter, 'save', mock.Mock())
-    monkeypatch.setattr(Sighting, 'save', mock.Mock())
+    individuals_saved = []
+    monkeypatch.setattr(
+        Individual, 'save', lambda individual, **kw: individuals_saved.append(individual)
+    )
+    encounters_saved = []
+    monkeypatch.setattr(
+        Encounter, 'save', lambda encounter, **kw: encounters_saved.append(encounter)
+    )
+    sightings_saved = []
+    monkeypatch.setattr(
+        Sighting, 'save', lambda sighting, **kw: sightings_saved.append(sighting)
+    )
 
     # Call the target function
     tasks.load_codex_indexes()
 
+    # Check import houston tables into wildbook database
+    assert houston_create_stmts == []
+
     # Check for the expected documents within the index
-    assert len(captures) == len(SQL_QUERY_RESULTS)
-    assert [s.to_dict(skip_empty=False) for s, kw in captures] == SQL_QUERY_RESULTS
+    assert len(individuals_saved) == len(INDIVIDUAL_SQL_QUERY_RESULTS)
+    assert [
+        individual.to_dict(skip_empty=False) for individual in individuals_saved
+    ] == INDIVIDUAL_SQL_QUERY_RESULTS
+
+    assert len(encounters_saved) == len(ENCOUNTERS_INDEX_SQL_RESULTS)
+    assert encounters_saved[0]['datetime'].isoformat() == '2014-04-03T21:00:00+03:00'
+    assert encounters_saved[0]['time_specificity'] == 'time'
+    assert encounters_saved[1]['datetime'] is None
+    assert encounters_saved[1]['time_specificity'] is None
+
+    assert len(sightings_saved) == len(SIGHTINGS_INDEX_SQL_RESULTS)
+    assert (
+        sightings_saved[0]['datetime'].isoformat() == '2000-01-01T01:23:45.678900+00:00'
+    )
+    assert sightings_saved[0]['time_specificity'] == 'year'
+    assert (
+        sightings_saved[1]['datetime'].isoformat() == '2000-01-01T01:23:45.678900+00:00'
+    )
+    assert sightings_saved[1]['time_specificity'] == 'year'

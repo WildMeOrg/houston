@@ -35,9 +35,14 @@ def upgrade():
     task_type = task_type_sa.with_variant(task_type_postgres, 'postgresql')
     task_type.create(op.get_bind(), checkfirst=True)
 
-    op.drop_constraint('fk_task_annotation_participation_task_guid_task', 'task_annotation_participation', type_='foreignkey')
-    op.drop_constraint('fk_task_user_assignment_task_guid_task', 'task_user_assignment', type_='foreignkey')
-    op.drop_constraint('fk_task_asset_participation_task_guid_task', 'task_asset_participation', type_='foreignkey')
+    with op.batch_alter_table('task_annotation_participation', schema=None) as batch_op:
+        batch_op.drop_constraint('fk_task_annotation_participation_task_guid_task', type_='foreignkey')
+
+    with op.batch_alter_table('task_user_assignment', schema=None) as batch_op:
+        batch_op.drop_constraint('fk_task_user_assignment_task_guid_task', type_='foreignkey')
+
+    with op.batch_alter_table('task_asset_participation', schema=None) as batch_op:
+        batch_op.drop_constraint('fk_task_asset_participation_task_guid_task', type_='foreignkey')
 
     op.create_table('git_store',
     sa.Column('created', sa.DateTime(), nullable=False),

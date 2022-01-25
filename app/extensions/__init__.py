@@ -460,10 +460,13 @@ def parallel(worker_func, args_list, kwargs_list=None, thread=True, workers=None
 _CONFIG_PATH_CHOICES = None
 
 
-def init_app(app, force_enable=False):
+def init_app(app, force_enable=False, force_disable=None):
     """
     Application extensions initialization.
     """
+    if force_disable is None:
+        force_disable = []
+
     global _CONFIG_PATH_CHOICES
     _CONFIG_PATH_CHOICES = sorted(app.config.keys())
 
@@ -483,9 +486,12 @@ def init_app(app, force_enable=False):
 
     extension_names = essential_extensions.keys()
     for extension_name in extension_names:
-        log.info('Init required extension %r' % (extension_name,))
-        extension = essential_extensions.get(extension_name)
-        extension.init_app(app)
+        if extension_name not in force_disable:
+            log.info('Init required extension %r' % (extension_name,))
+            extension = essential_extensions.get(extension_name)
+            extension.init_app(app)
+        else:
+            log.info('Skipped required extension %r (force disabled)' % (extension_name,))
 
     # The remaining extensions
     optional_extensions = {
@@ -499,10 +505,14 @@ def init_app(app, force_enable=False):
         'stripe': stripe,
     }
 
+    enabled_extension_names = app.config['ENABLED_EXTENSIONS']
+
     extension_names = sorted(optional_extensions.keys())
     for extension_name in extension_names:
-        if force_enable or extension_name in app.config['ENABLED_EXTENSIONS']:
-            if force_enable and extension_name not in app.config['ENABLED_EXTENSIONS']:
+        if (force_enable or extension_name in enabled_extension_names) and (
+            extension_name not in force_disable
+        ):
+            if force_enable and extension_name not in enabled_extension_names:
                 enable_str = ' (forced)'
             else:
                 enable_str = ''
@@ -516,8 +526,10 @@ def init_app(app, force_enable=False):
             extension = optional_extensions.get(extension_name)
             if extension is not None:
                 extension.init_app(app)
+        elif extension_name not in force_disable:
+            log.info('Skipped optional extension %r (disabled)' % (extension_name,))
         else:
-            log.info('Skipped extension %r (disabled)' % (extension_name,))
+            log.info('Skipped optional extension %r (force disabled)' % (extension_name,))
 
     # minify(app=app)
 

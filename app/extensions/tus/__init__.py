@@ -54,7 +54,7 @@ def _tus_file_handler(upload_file_path, filename, req, app):
 
     dir = os.path.join(tus_upload_dir(app), 'unknown')
     if asset_group_id is not None:
-        dir = tus_upload_dir(app, asset_group_guid=asset_group_id)
+        dir = tus_upload_dir(app, git_store_guid=asset_group_id)
     elif transaction_id is not None:
         dir = tus_upload_dir(app, transaction_id=transaction_id)
     elif 'session' in req.cookies:
@@ -68,16 +68,16 @@ def _tus_file_handler(upload_file_path, filename, req, app):
     os.rename(upload_file_path, os.path.join(dir, filename))
 
 
-def tus_upload_dir(app, asset_group_guid=None, transaction_id=None, session_id=None):
+def tus_upload_dir(app, git_store_guid=None, transaction_id=None, session_id=None):
     """Returns the location to an upload directory"""
     import hashlib
 
     base_path = app.config.get('UPLOADS_DATABASE_PATH', None)
-    # log.warning('tus_upload_dir got base_path=%r %r %r %r' % (base_path, asset_group_guid, transaction_id, session_id))
-    if asset_group_guid is None and transaction_id is None and session_id is None:
+    # log.warning('tus_upload_dir got base_path=%r %r %r %r' % (base_path, git_store_guid, transaction_id, session_id))
+    if git_store_guid is None and transaction_id is None and session_id is None:
         return base_path
-    if asset_group_guid is not None:
-        return os.path.join(base_path, '-'.join(['sub', str(asset_group_guid)]))
+    if git_store_guid is not None:
+        return os.path.join(base_path, '-'.join(['sub', str(git_store_guid)]))
     if transaction_id is not None:
         return os.path.join(base_path, '-'.join(['trans', transaction_id]))
     # must be session_id
@@ -86,11 +86,11 @@ def tus_upload_dir(app, asset_group_guid=None, transaction_id=None, session_id=N
 
 
 def _tus_filepaths_from(
-    asset_group_guid=None, session_id=None, transaction_id=None, paths=None
+    git_store_guid=None, session_id=None, transaction_id=None, paths=None
 ):
     upload_dir = tus_upload_dir(
         current_app,
-        asset_group_guid=asset_group_guid,
+        git_store_guid=git_store_guid,
         session_id=session_id,
         transaction_id=transaction_id,
     )
@@ -111,10 +111,10 @@ def _tus_filepaths_from(
     return filepaths
 
 
-def _tus_purge(asset_group_guid=None, session_id=None, transaction_id=None):
+def _tus_purge(git_store_guid=None, session_id=None, transaction_id=None):
     upload_dir = tus_upload_dir(
         current_app,
-        asset_group_guid=asset_group_guid,
+        git_store_guid=git_store_guid,
         session_id=session_id,
         transaction_id=transaction_id,
     )

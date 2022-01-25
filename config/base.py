@@ -129,9 +129,6 @@ class BaseConfig(FlaskConfigOverrides, RedisConfig):
 
     FILEUPLOAD_BASE_PATH = os.path.join(PROJECT_DATABASE_PATH, 'fileuploads')
 
-    # FIXME: There is code that won't allow for `SQLALCHEMY_DATABASE_PATH = None`
-    #        File "/code/tasks/codex/db.py", in upgrade: `if os.path.exists(_db_filepath):`
-    # SQLALCHEMY_DATABASE_PATH = None
     SQLALCHEMY_DATABASE_PATH = str(DATA_ROOT / 'database.sqlite3')
     SQLALCHEMY_DATABASE_URI = os.getenv('SQLALCHEMY_DATABASE_URI') or 'sqlite:///%s' % (
         SQLALCHEMY_DATABASE_PATH

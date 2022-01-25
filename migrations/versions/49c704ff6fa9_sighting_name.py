@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """sighting name
 
 Revision ID: 49c704ff6fa9
@@ -5,18 +6,13 @@ Revises: 7d391a027bd4
 Create Date: 2021-07-20 13:46:26.545335
 
 """
+from alembic import op
+import sqlalchemy as sa
+
 
 # revision identifiers, used by Alembic.
 revision = '49c704ff6fa9'
 down_revision = '7d391a027bd4'
-
-from alembic import op
-import sqlalchemy as sa
-import sqlalchemy_utils
-
-import app
-import app.extensions
-
 
 
 def upgrade():

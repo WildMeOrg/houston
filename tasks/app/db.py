@@ -245,6 +245,7 @@ def upgrade(
     """Upgrade to a later version"""
     db_uri = current_app.config.get('SQLALCHEMY_DATABASE_URI')
     sqlite = db_uri.startswith('sqlite://')
+
     if sqlite:
         _db_filepath = current_app.config.get('SQLALCHEMY_DATABASE_PATH', None)
         _db_filepath_backup = '%s.backup' % (_db_filepath,)
@@ -254,10 +255,13 @@ def upgrade(
             log.warning('No backup code implemented for non SQLite3 databases')
         else:
             if os.path.exists(_db_filepath):
+                log.warning('Creating database backup %r' % (_db_filepath_backup,))
                 log.info('Pre-upgrade Sqlite3 database backup')
                 log.info('\tDatabase : %r' % (_db_filepath,))
                 log.info('\tBackup   : %r' % (_db_filepath_backup,))
                 shutil.copy2(_db_filepath, _db_filepath_backup)
+            else:
+                log.warning('Cannot backup missing database %r' % (_db_filepath,))
 
     config = _get_config(directory, x_arg=x_arg)
     try:
@@ -293,14 +297,51 @@ def downgrade(
     sql=False,
     tag=None,
     x_arg=None,
+    app=None,
+    backup=True,
     force_disable_extensions=SKIP_EXTENSIONS,
     force_disable_modules=SKIP_MODULES,
 ):
     """Revert to a previous version"""
+    db_uri = current_app.config.get('SQLALCHEMY_DATABASE_URI')
+    sqlite = db_uri.startswith('sqlite://')
+    if sqlite:
+        _db_filepath = current_app.config.get('SQLALCHEMY_DATABASE_PATH', None)
+        _db_filepath_backup = '%s.backup' % (_db_filepath,)
+
+    if backup:
+        if not sqlite:
+            log.warning('No backup code implemented for non SQLite3 databases')
+        else:
+            log.warning('Creating database backup %r' % (_db_filepath_backup,))
+            if os.path.exists(_db_filepath):
+                log.info('Pre-downgrade Sqlite3 database backup')
+                log.info('\tDatabase : %r' % (_db_filepath,))
+                log.info('\tBackup   : %r' % (_db_filepath_backup,))
+                shutil.copy2(_db_filepath, _db_filepath_backup)
+            else:
+                log.warning('Cannot backup missing database %r' % (_db_filepath,))
+
     config = _get_config(directory, x_arg=x_arg)
+
     if sql and revision == '-1':
         revision = 'head:-1'
-    command.downgrade(config, revision, sql=sql, tag=tag)
+
+    try:
+        command.downgrade(config, revision, sql=sql, tag=tag)
+        command.current(config)
+    except Exception:
+        if sqlite and os.path.exists(_db_filepath_backup):
+            log.error('Rolling back Sqlite3 database to backup')
+            shutil.copy2(_db_filepath_backup, _db_filepath)
+            log.error('...restored')
+        log.critical('Database upgrade failed')
+        raise
+    finally:
+        if sqlite and os.path.exists(_db_filepath_backup):
+            log.info('Deleting database backup %r' % (_db_filepath_backup,))
+            os.remove(_db_filepath_backup)
+            log.info('...deleted')
 
 
 @app_context_task(

@@ -10,8 +10,7 @@ exclude: |
       ^app/templates/ |
       ^clients/ |
       ^Houston.egg-info |
-      ^virtualenv |
-      ^migrations/versions/
+      ^virtualenv
   )
 repos:
   # - repo: https://github.com/psf/black

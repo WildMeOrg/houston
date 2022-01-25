@@ -2,8 +2,7 @@
 # pylint: disable=missing-docstring
 
 from tests.modules.sightings.resources import utils as sighting_utils
-from tests.extensions.edm import utils as edm_utils
-from tests.modules.site_settings.resources import utils as conf_utils
+from tests.modules.site_settings.resources import utils as setting_utils
 import pytest
 import json
 
@@ -30,27 +29,31 @@ def test_mega_data(
     import datetime
 
     # make some customFields in edm
-    sighting_cfd_id = edm_utils.custom_field_create(
+    sighting_cfd_id = setting_utils.custom_field_create(
         flask_app_client, admin_user, 'occ_test_cfd'
     )
     assert sighting_cfd_id is not None
-    encounter_cfd_id = edm_utils.custom_field_create(
+    encounter_cfd_id = setting_utils.custom_field_create(
         flask_app_client, admin_user, 'enc_test_cfd', cls='Encounter'
     )
     assert encounter_cfd_id is not None
 
     # make us a taxonomy to use in edm
-    response = conf_utils.read_configuration(flask_app_client, admin_user, 'site.species')
+    response = setting_utils.read_main_settings(
+        flask_app_client, admin_user, 'site.species'
+    )
     assert 'value' in response.json['response']
     vals = response.json['response']['value']
     vals.append({'commonNames': ['Example'], 'scientificName': 'Exempli gratia'})
-    response = conf_utils.modify_configuration(
+    response = setting_utils.modify_main_settings(
         flask_app_client,
         admin_user,
-        'site.species',
         {'_value': vals},
+        'site.species',
     )
-    response = conf_utils.read_configuration(flask_app_client, admin_user, 'site.species')
+    response = setting_utils.read_main_settings(
+        flask_app_client, admin_user, 'site.species'
+    )
     assert 'response' in response.json and 'value' in response.json['response']
     tx_guid = response.json['response']['value'][-1]['id']
 

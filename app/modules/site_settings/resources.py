@@ -20,6 +20,7 @@ from app.modules.users.models import User
 from app.modules.users import permissions
 from app.modules.users.permissions.types import AccessOperation
 from app.utils import HoustonException
+import app.version
 
 from . import schemas, parameters
 from .models import SiteSetting, EDM_PREFIX
@@ -32,21 +33,11 @@ api = Namespace(
 )  # pylint: disable=invalid-name
 
 
-configuration = Namespace(
-    'configuration', description='System Configuration'
-)  # pylint: disable=invalid-name
-
-# TODO remove DEX 675
-configurationDefinition = Namespace(
-    'configurationDefinition', description='System Configuration Definition'
-)  # pylint: disable=invalid-name
-
-
-@api.route('/')
+@api.route('/file')
 @api.login_required(oauth_scopes=['site-settings:read'])
 class SiteSettingFile(Resource):
     """
-    Manipulations with Site Settings.
+    Manipulations with File.
     """
 
     @api.permission_required(
@@ -60,13 +51,16 @@ class SiteSettingFile(Resource):
     @api.response(schemas.BaseSiteSettingFileSchema(many=True))
     def get(self, args):
         """
-        List of SiteSetting.
+        List of Files.
 
-        Returns a list of SiteSetting starting from ``offset`` limited by ``limit``
+        Returns a list of Files starting from ``offset`` limited by ``limit``
         parameter.
         """
         return (
-            SiteSetting.query.order_by('key').offset(args['offset']).limit(args['limit'])
+            SiteSetting.query.filter(SiteSetting.file_upload_guid is not None)
+            .order_by('key')
+            .offset(args['offset'])
+            .limit(args['limit'])
         )
 
     @api.permission_required(
@@ -82,10 +76,9 @@ class SiteSettingFile(Resource):
     @api.response(code=HTTPStatus.CONFLICT)
     def post(self, args):
         """
-        Create or update a SiteSetting.
+        Create or update a File.
         """
         from app.modules.fileuploads.models import FileUpload
-        from app.modules.social_groups.models import SocialGroup
 
         if args.get('transactionId'):
             transaction_id = args.pop('transactionId')
@@ -111,91 +104,78 @@ class SiteSettingFile(Resource):
             with db.session.begin():
                 db.session.add(fups[0])
             args['file_upload_guid'] = fups[0].guid
+        elif not args.get('file_upload_guid'):
+            abort(400, 'The File API should only be used for manipulating files')
 
-        if args.get('key') == 'social_group_roles':
-            if 'data' not in args.keys():
-                abort(
-                    code=HTTPStatus.UNPROCESSABLE_ENTITY,
-                    message='social_group_roles must have a data field populated',
-                )
-            try:
-                SocialGroup.validate_roles(args.get('data'))
-            except HoustonException as ex:
-                abort(ex.status_code, ex.message)
         site_setting = SiteSetting.set(**args)
 
-        if args.get('key') == 'social_group_roles':
-            SocialGroup.site_settings_updated()
         return site_setting
 
 
-@api.route('/<string:site_setting_key>')
+@api.route('/file/<string:file_key>')
 @api.response(
     code=HTTPStatus.NOT_FOUND,
-    description='SiteSetting not found.',
+    description='File not found.',
 )
-@api.resolve_object_by_model(SiteSetting, 'site_setting', 'site_setting_key')
+@api.resolve_object_by_model(SiteSetting, 'file', 'file_key')
 class SiteSettingFileByKey(Resource):
     """
-    Manipulations with a specific SiteSetting.
+    Manipulations with a specific File.
     """
 
     @api.permission_required(
         permissions.ObjectAccessPermission,
         kwargs_on_request=lambda kwargs: {
-            'obj': kwargs['site_setting'],
+            'obj': kwargs['file'],
             'action': AccessOperation.READ,
         },
     )
-    def get(self, site_setting):
+    def get(self, file):
         """
-        Get SiteSetting details by ID.
+        Get File details by ID.
         """
-        if site_setting.file_upload_guid:
+        if file.file_upload_guid:
             return redirect(
                 url_for(
                     'api.fileuploads_file_upload_src_u_by_id_2',
-                    fileupload_guid=site_setting.file_upload_guid,
+                    fileupload_guid=file.file_upload_guid,
                 )
             )
+        else:
+            abort(400, 'File endpoint only for manipulation of files')
+
         schema = schemas.DetailedSiteSettingFileSchema()
-        json_msg, err = schema.dump(site_setting)
+        json_msg, err = schema.dump(file)
         return json_msg
 
     @api.permission_required(
         permissions.ObjectAccessPermission,
         kwargs_on_request=lambda kwargs: {
-            'obj': kwargs['site_setting'],
+            'obj': kwargs['file'],
             'action': AccessOperation.DELETE,
         },
     )
     @api.login_required(oauth_scopes=['site-settings:write'])
     @api.response(code=HTTPStatus.CONFLICT)
     @api.response(code=HTTPStatus.NO_CONTENT)
-    def delete(self, site_setting):
+    def delete(self, file):
         """
-        Delete a SiteSetting by ID.
+        Delete a File by ID.
         """
-        setting_key = site_setting.key
         context = api.commit_or_abort(
             db.session,
-            default_error_message=f'Failed to delete the SiteSetting "{site_setting.key}".',
+            default_error_message=f'Failed to delete the SiteSetting "{file.key}".',
         )
         with context:
-            db.session.delete(site_setting)
+            db.session.delete(file)
 
-        if setting_key == 'social_group_roles':
-            from app.modules.social_groups.models import SocialGroup
-
-            SocialGroup.site_settings_updated()
         return None
 
 
-# @configuration.route('/definition/main/<path:path>')
-@configurationDefinition.route('/default/<path:path>')
+@api.route('/definition/main/<path:path>')
 class MainConfigurationDefinition(Resource):
     """
-    Configuration Definitions
+    Site Setting Definitions
     """
 
     def get(self, path):
@@ -248,10 +228,8 @@ class MainConfigurationDefinition(Resource):
         return data
 
 
-# @configuration.route('/main/<path:path>')
-# @configuration.route('/main', defaults={'path': ''})
-@configuration.route('/default', defaults={'path': ''}, doc=False)
-@configuration.route('/default/<path:path>')
+@api.route('/main/<path:path>')
+@api.route('/main', defaults={'path': ''}, doc=False)
 class MainConfiguration(Resource):
     r"""
     A pass-through allows a GET or POST request to be referred to a registered back-end EDM
@@ -343,14 +321,14 @@ class MainConfiguration(Resource):
 
         return data
 
-    @configuration.permission_required(
+    @api.permission_required(
         permissions.ModuleAccessPermission,
         kwargs_on_request=lambda kwargs: {
             'module': SiteSetting,
             'action': AccessOperation.WRITE,
         },
     )
-    @configuration.login_required(oauth_scopes=['site-settings:write'])
+    @api.login_required(oauth_scopes=['site-settings:write'])
     def post(self, path):
         data = {}
         data.update(request.args)
@@ -366,7 +344,7 @@ class MainConfiguration(Resource):
             if path == '' or path == 'block':  # posting a bundle (no path)
                 success_ss_keys = _process_houston_data(data)
             elif path in SiteSetting.get_setting_keys():
-                SiteSetting.set(path, data)
+                SiteSetting.set_key_value(path, data)
                 resp = {'success': True, 'key': path}
                 return resp
 
@@ -401,24 +379,8 @@ class MainConfiguration(Resource):
             res = {'success': False}
         return res
 
-    # Patch not used by the frontend and this implementation does not handle Houston settings
-    # @configuration.login_required(oauth_scopes=['site-settings:write'])
-    # def patch(self, path):
-    #     data = {}
-    #     try:
-    #         data = json.loads(request.data)
-    #     except Exception:
-    #         pass
-    #
-    #     passthrough_kwargs = {'data': data}
-    #     response = current_app.edm.request_passthrough(
-    #         'configuration.data', 'patch', passthrough_kwargs, path, target='default'
-    #     )
-    #
-    #     return response
-
-    @configuration.login_required(oauth_scopes=['site-settings:write'])
-    @configuration.response(code=HTTPStatus.NO_CONTENT)
+    @api.login_required(oauth_scopes=['site-settings:write'])
+    @api.response(code=HTTPStatus.NO_CONTENT)
     def delete(self, path):
         if path == 'block':
             abort(400, 'Not permitted to delete entire config')
@@ -524,3 +486,58 @@ def _site_setting_get_definition_inject(data):
             ] = 'relationship-type-role'
             data['response']['configuration'][sskey]['required'] = False
     return data
+
+
+@api.route('/detection')
+class DetectionConfigs(Resource):
+    """
+    Detection pipeline configurations
+    """
+
+    def get(self):
+        """
+        Returns a json describing the available detectors for the frontend to
+        provide users with options
+        """
+        from app.modules.ia_config_reader import IaConfig
+
+        ia_config_reader = IaConfig()
+        detection_config = ia_config_reader.get_detect_model_frontend_data()
+        success = detection_config is not None
+        response = {'detection_config': detection_config, 'success': success}
+        log.debug(f'Detection config: {response}')
+
+        return response
+
+
+@api.route('/site-info/')
+class SiteInfo(Resource):
+    def get(self):
+
+        acm_version = current_app.acm.get_dict('version.dict', None)
+        if isinstance(acm_version, dict):
+            acm_version = acm_version['response']
+        else:
+            # acm returns a non 200 response
+            acm_version = repr(acm_version)
+        edm_version = current_app.edm.get_dict('version.dict', None)
+        if not isinstance(edm_version, dict):
+            # edm returns a non 200 response
+            edm_version = repr(edm_version)
+        return {
+            'houston': {
+                'version': app.version.version,
+                'git_version': app.version.git_revision,
+            },
+            'acm': acm_version,
+            'edm': edm_version,
+        }
+
+
+@api.route('/heartbeat')
+class SiteHeartbeat(Resource):
+    def get(self):
+        return {
+            'version': app.version.version,
+            'git_version': app.version.git_revision,
+        }

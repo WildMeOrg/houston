@@ -113,11 +113,8 @@ def test_basic_operation(
 )
 def test_error_config(flask_app_client, researcher_1, admin_user):
     valid_data = {
-        'key': 'social_group_roles',
-        'data': {
-            'Matriarch': {'multipleInGroup': False},
-            'IrritatingGit': {'multipleInGroup': True},
-        },
+        'Matriarch': {'multipleInGroup': False},
+        'IrritatingGit': {'multipleInGroup': True},
     }
 
     # Valid data but non admin user so should fail
@@ -125,21 +122,15 @@ def test_error_config(flask_app_client, researcher_1, admin_user):
     soc_group_utils.set_roles(flask_app_client, researcher_1, valid_data, 403, error)
 
     missing_field = {
-        'key': 'social_group_roles',
-        'data': {
-            'Matriarch': {},
-            'IrritatingGit': {'multipleInGroup': True},
-        },
+        'Matriarch': {},
+        'IrritatingGit': {'multipleInGroup': True},
     }
     error = "Role dictionary must have the following keys : {'multipleInGroup'}"
     soc_group_utils.set_roles(flask_app_client, admin_user, missing_field, 400, error)
 
     extra_field = {
-        'key': 'social_group_roles',
-        'data': {
-            'Matriarch': {'multipleInGroup': False, 'attitude': True},
-            'IrritatingGit': {'multipleInGroup': True},
-        },
+        'Matriarch': {'multipleInGroup': False, 'attitude': True},
+        'IrritatingGit': {'multipleInGroup': True},
     }
     soc_group_utils.set_roles(flask_app_client, admin_user, extra_field, 400, error)
 
@@ -279,10 +270,12 @@ def test_role_changes(
     # Set the basic roles we want
     soc_group_utils.set_basic_roles(flask_app_client, admin_user, request)
 
-    current_roles = soc_group_utils.get_roles(flask_app_client, admin_user)
-    assert 'data' in current_roles.json
+    get_response = soc_group_utils.get_roles(flask_app_client, admin_user)
+    current_roles = get_response.json['response']['configuration']['social_group_roles'][
+        'value'
+    ]
 
-    assert set({'Matriarch', 'IrritatingGit'}) == set(current_roles.json['data'].keys())
+    assert set({'Matriarch', 'IrritatingGit'}) == set(current_roles.keys())
 
     # Create some individuals to use in testing
     individuals = create_individuals(flask_app_client, researcher_1, request, test_root)
@@ -303,10 +296,7 @@ def test_role_changes(
 
     # Social group was created, now change the config and see what changes
     changed_config = {
-        'key': 'social_group_roles',
-        'data': {
-            'IrritatingGit': {'multipleInGroup': False},
-        },
+        'IrritatingGit': {'multipleInGroup': False},
     }
 
     soc_group_utils.set_roles(flask_app_client, admin_user, changed_config)

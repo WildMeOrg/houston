@@ -2,7 +2,7 @@
 import logging
 
 from flask import current_app
-from gumby.models import Individual, Encounter
+from gumby.models import Individual, Encounter, Sighting
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Engine
 
@@ -117,14 +117,39 @@ SELECT
   CASE WHEN en."SEX" = 'unk' THEN 'unknown'
        ELSE en."SEX"
   END AS sex,
-  en."GENUS" AS genus,
-  an."SPECIES" AS species,
+  ta."SCIENTIFICNAME" as taxonomy,
   en."LIVINGSTATUS" AS living_status,
-  en."LIFESTAGE" AS lifestage
 FROM
   "ENCOUNTER" AS en
-  LEFT JOIN "ENCOUNTER_ANNOTATIONS" AS ea ON ea."ID_OID" = en."ID"
-  LEFT JOIN "ANNOTATION" AS an ON ea."ID_EID" = an."ID"
+  LEFT JOIN "TAXONOMY" AS ta ON ta."ID" = en."TAXONOMY_ID_OID"
+"""
+
+
+def load_sightings_index():
+    wb_engine = create_wildbook_engine()
+    with wb_engine.connect() as wb_conn:
+        results = wb_conn.execute(text(SIGHTINGS_INDEX_SQL))
+        for result in results:
+            # Create the document object
+            sighting = Sighting(**result)
+            # Assign the elasticsearch document identify
+            sighting.meta.id = f'sighting_{sighting.id}'
+            # Save document to elasticsearch
+            sighting.save(using=current_app.elasticsearch)
+
+
+SIGHTINGS_INDEX_SQL = """\
+SELECT
+  oc."ID" AS id,
+  NULLIF((oc."DECIMALLATITUDE"::float || ',' || oc."DECIMALLONGITUDE")::text, ',') AS point,
+  (array_agg(ta."SCIENTIFICNAME"))[1] AS taxonomy,
+  oc."COMMENTS" AS comments
+FROM
+  "OCCURRENCE" oc
+  LEFT JOIN "OCCURRENCE_ENCOUNTERS" oe ON oe."ID_OID" = oc."ID"
+  LEFT JOIN "ENCOUNTER" en ON en."ID" = oe."ID_EID"
+  LEFT JOIN "TAXONOMY" ta ON ta."ID" = en."TAXONOMY_ID_OID"
+GROUP BY oc."ID"
 """
 
 
@@ -132,3 +157,4 @@ FROM
 def load_codex_indexes():
     load_individuals_index()
     load_encounters_index()
+    load_sightings_index()

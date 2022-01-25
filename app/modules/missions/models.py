@@ -27,19 +27,6 @@ class MissionUserAssignment(db.Model, HoustonModel):
     )
 
 
-class MissionAssetParticipation(db.Model, HoustonModel):
-    mission_guid = db.Column(db.GUID, db.ForeignKey('mission.guid'), primary_key=True)
-
-    asset_guid = db.Column(db.GUID, db.ForeignKey('asset.guid'), primary_key=True)
-
-    mission = db.relationship('Mission', back_populates='asset_participations')
-
-    asset = db.relationship(
-        'Asset',
-        backref=db.backref('mission_participations', cascade='delete, delete-orphan'),
-    )
-
-
 class Mission(db.Model, HoustonModel, Timestamp):
     """
     Missions database model.
@@ -62,10 +49,6 @@ class Mission(db.Model, HoustonModel, Timestamp):
     )
 
     user_assignments = db.relationship('MissionUserAssignment', back_populates='mission')
-
-    asset_participations = db.relationship(
-        'MissionAssetParticipation', back_populates='mission'
-    )
 
     options = db.Column(db.JSON, default=lambda: {}, nullable=False)
 
@@ -148,26 +131,10 @@ class Mission(db.Model, HoustonModel, Timestamp):
                 break
 
     def get_assets(self):
-        return [participation.asset for participation in self.asset_participations]
-
-    def add_asset(self, asset):
-        with db.session.begin():
-            self.add_asset_in_context(asset)
-
-    def add_asset_in_context(self, asset):
-        participation = MissionAssetParticipation(
-            mission=self,
-            asset=asset,
-        )
-
-        db.session.add(participation)
-        self.asset_participations.append(participation)
-
-    def remove_asset_in_context(self, asset):
-        for participation in self.asset_participations:
-            if participation.asset == asset:
-                db.session.delete(participation)
-                break
+        assets = []
+        for collection in self.collections:
+            assets += collection.assets
+        return assets
 
     def get_jobs_json(self):
         job_data = []
@@ -247,8 +214,8 @@ class Mission(db.Model, HoustonModel, Timestamp):
         with db.session.begin(subtransactions=True):
             while self.user_assignments:
                 db.session.delete(self.user_assignments.pop())
-            while self.asset_participations:
-                db.session.delete(self.asset_participations.pop())
+            while self.collections:
+                db.session.delete(self.collections.pop())
             db.session.delete(self)
 
     def delete(self):
@@ -266,6 +233,17 @@ class MissionCollection(GitStore):
     GIT_STORE_DATABASE_PATH_CONFIG_NAME = 'MISSION_COLLECTION_DATABASE_PATH'
 
     guid = db.Column(db.GUID, db.ForeignKey('git_store.guid'), primary_key=True)
+
+    mission_guid = db.Column(
+        db.GUID,
+        db.ForeignKey('mission.guid'),
+        index=True,
+        nullable=False,
+    )
+    mission = db.relationship(
+        'Mission',
+        backref=db.backref('collections', cascade='delete, delete-orphan'),
+    )
 
     __mapper_args__ = {
         'polymorphic_identity': 'mission_collection',

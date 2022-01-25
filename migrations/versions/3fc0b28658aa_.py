@@ -377,7 +377,7 @@ def downgrade():
         'unknown',
         'error',
         'reject',
-        name='assetgroupmajortype',
+        name='gitstoremajortype',
         create_type=False,
     )
     major_type_sa = sa.Enum(
@@ -388,7 +388,7 @@ def downgrade():
         'unknown',
         'error',
         'reject',
-        name='assetgroupmajortype',
+        name='gitstoremajortype',
     )
     major_type = major_type_sa.with_variant(major_type_postgres, 'postgresql')
     major_type.create(op.get_bind(), checkfirst=True)

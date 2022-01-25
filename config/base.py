@@ -77,11 +77,11 @@ class BaseConfig(FlaskConfigOverrides, RedisConfig):
         self.PROJECT_CONTEXT = context
         self.PROJECT_ENVIRONMENT = environment
 
-    PROJECT_NAME = 'Codex'
+    PROJECT_NAME = 'Not Set'
+
     PROJECT_ROOT = PROJECT_ROOT
     PROJECT_DATABASE_PATH = str(DATA_ROOT)
 
-    ASSET_GROUP_DATABASE_PATH = str(DATA_ROOT / 'asset_group')
     ASSET_MIME_TYPE_WHITELIST = [
         'application/json',
         'application/ld+json',

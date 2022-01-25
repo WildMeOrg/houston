@@ -91,7 +91,7 @@ class AugmentedEdmSightingSchema(TimedSightingSchema):
     createdHouston = base_fields.DateTime(attribute='created')
     updatedHouston = base_fields.DateTime(attribute='updated')
     assets = base_fields.Nested(
-        'ExtendedAssetSchema',
+        'DetailedAssetSchema',
         attribute='get_assets',
         many=True,
     )

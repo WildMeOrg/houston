@@ -39,6 +39,13 @@ else:
             return os.path.join(package_dir, 'db_templates')
 
 
+SKIP_EXTENSIONS = (
+    'elasticsearch',
+    'oauth2',
+)
+SKIP_MODULES = ('swagger_ui',)
+
+
 def _get_config(directory, x_arg=None, opts=None):
     """
     A helper that prepares AlembicConfig instance.
@@ -63,7 +70,13 @@ def _get_config(directory, x_arg=None, opts=None):
         'multidb': 'Multiple databases migraton',
     }
 )
-def init(context, directory='migrations', multidb=False):
+def init(
+    context,
+    directory='migrations',
+    multidb=False,
+    force_disable_extensions=SKIP_EXTENSIONS,
+    force_disable_modules=SKIP_MODULES,
+):
     """Generates a new migration"""
     config = Config()
     config.set_main_option('script_location', directory)
@@ -97,6 +110,8 @@ def revision(
     branch_label=None,
     version_path=None,
     rev_id=None,
+    force_disable_extensions=SKIP_EXTENSIONS,
+    force_disable_modules=SKIP_MODULES,
 ):
     """Create a new revision file."""
     config = _get_config(directory)
@@ -138,6 +153,8 @@ def migrate(
     version_path=None,
     rev_id=None,
     force_enable=True,
+    force_disable_extensions=SKIP_EXTENSIONS,
+    force_disable_modules=SKIP_MODULES,
 ):
     """Alias for 'revision --autogenerate'"""
     config = _get_config(directory, opts=['autogenerate'])
@@ -161,7 +178,13 @@ def migrate(
 @app_context_task(
     help={'revision': 'revision identifier', 'directory': 'migration script directory'}
 )
-def edit(context, revision='current', directory='migrations'):
+def edit(
+    context,
+    revision='current',
+    directory='migrations',
+    force_disable_extensions=SKIP_EXTENSIONS,
+    force_disable_modules=SKIP_MODULES,
+):
     """Upgrade to a later version"""
     if alembic_version >= (0, 8, 0):
         config = _get_config(directory)
@@ -185,6 +208,8 @@ def merge(
     message=None,
     branch_label=None,
     rev_id=None,
+    force_disable_extensions=SKIP_EXTENSIONS,
+    force_disable_modules=SKIP_MODULES,
 ):
     """Merge two revisions together.  Creates a new migration file"""
     if alembic_version >= (0, 7, 0):
@@ -214,6 +239,8 @@ def upgrade(
     x_arg=None,
     app=None,
     backup=True,
+    force_disable_extensions=SKIP_EXTENSIONS,
+    force_disable_modules=SKIP_MODULES,
 ):
     """Upgrade to a later version"""
     db_uri = current_app.config.get('SQLALCHEMY_DATABASE_URI')
@@ -224,14 +251,13 @@ def upgrade(
 
     if backup:
         if not sqlite:
-            raise NotImplementedError(
-                'No backup code implemented for non sqlite databases, use --no-backup'
-            )
-        if os.path.exists(_db_filepath):
-            log.info('Pre-upgrade Sqlite3 database backup')
-            log.info('\tDatabase : %r' % (_db_filepath,))
-            log.info('\tBackup   : %r' % (_db_filepath_backup,))
-            shutil.copy2(_db_filepath, _db_filepath_backup)
+            log.warning('No backup code implemented for non SQLite3 databases')
+        else:
+            if os.path.exists(_db_filepath):
+                log.info('Pre-upgrade Sqlite3 database backup')
+                log.info('\tDatabase : %r' % (_db_filepath,))
+                log.info('\tBackup   : %r' % (_db_filepath_backup,))
+                shutil.copy2(_db_filepath, _db_filepath_backup)
 
     config = _get_config(directory, x_arg=x_arg)
     try:
@@ -261,7 +287,14 @@ def upgrade(
     }
 )
 def downgrade(
-    context, directory='migrations', revision='-1', sql=False, tag=None, x_arg=None
+    context,
+    directory='migrations',
+    revision='-1',
+    sql=False,
+    tag=None,
+    x_arg=None,
+    force_disable_extensions=SKIP_EXTENSIONS,
+    force_disable_modules=SKIP_MODULES,
 ):
     """Revert to a previous version"""
     config = _get_config(directory, x_arg=x_arg)
@@ -273,7 +306,13 @@ def downgrade(
 @app_context_task(
     help={'revision': 'revision identifier', 'directory': 'migration script directory'}
 )
-def show(context, directory='migrations', revision='head'):
+def show(
+    context,
+    directory='migrations',
+    revision='head',
+    force_disable_extensions=SKIP_EXTENSIONS,
+    force_disable_modules=SKIP_MODULES,
+):
     """Show the revision denoted by the given symbol."""
     if alembic_version >= (0, 7, 0):
         config = _get_config(directory)
@@ -289,7 +328,14 @@ def show(context, directory='migrations', revision='head'):
         'directory': 'migration script directory',
     }
 )
-def history(context, directory='migrations', rev_range=None, verbose=False):
+def history(
+    context,
+    directory='migrations',
+    rev_range=None,
+    verbose=False,
+    force_disable_extensions=SKIP_EXTENSIONS,
+    force_disable_modules=SKIP_MODULES,
+):
     """List changeset scripts in chronological order."""
     config = _get_config(directory)
     if alembic_version >= (0, 7, 0):
@@ -305,7 +351,14 @@ def history(context, directory='migrations', rev_range=None, verbose=False):
         'directory': 'migration script directory',
     }
 )
-def heads(context, directory='migrations', verbose=False, resolve_dependencies=False):
+def heads(
+    context,
+    directory='migrations',
+    verbose=False,
+    resolve_dependencies=False,
+    force_disable_extensions=SKIP_EXTENSIONS,
+    force_disable_modules=SKIP_MODULES,
+):
     """Show current available heads in the script directory"""
     if alembic_version >= (0, 7, 0):
         config = _get_config(directory)
@@ -320,7 +373,13 @@ def heads(context, directory='migrations', verbose=False, resolve_dependencies=F
         'directory': 'migration script directory',
     }
 )
-def branches(context, directory='migrations', verbose=False):
+def branches(
+    context,
+    directory='migrations',
+    verbose=False,
+    force_disable_extensions=SKIP_EXTENSIONS,
+    force_disable_modules=SKIP_MODULES,
+):
     """Show current branch points"""
     config = _get_config(directory)
     if alembic_version >= (0, 7, 0):
@@ -336,7 +395,14 @@ def branches(context, directory='migrations', verbose=False):
         'directory': 'migration script directory',
     }
 )
-def current(context, directory='migrations', verbose=False, head_only=False):
+def current(
+    context,
+    directory='migrations',
+    verbose=False,
+    head_only=False,
+    force_disable_extensions=SKIP_EXTENSIONS,
+    force_disable_modules=SKIP_MODULES,
+):
     """Display the current revision for each database."""
     config = _get_config(directory)
     if alembic_version >= (1, 5, 0):
@@ -355,7 +421,15 @@ def current(context, directory='migrations', verbose=False, head_only=False):
         'directory': 'migration script directory',
     }
 )
-def stamp(context, directory='migrations', revision='head', sql=False, tag=None):
+def stamp(
+    context,
+    directory='migrations',
+    revision='head',
+    sql=False,
+    tag=None,
+    force_disable_extensions=SKIP_EXTENSIONS,
+    force_disable_modules=SKIP_MODULES,
+):
     """'stamp' the revision table with the given revision; don't run any migrations"""
     config = _get_config(directory)
     command.stamp(config, revision, sql=sql, tag=tag)
@@ -399,17 +473,15 @@ def _reset(context, edm_authentication=None):
     """
     from config import BaseConfig  # NOQA
 
-    _db_filepath = current_app.config.get('SQLALCHEMY_DATABASE_PATH', None)
-    _asset_groups_filepath = current_app.config.get('ASSET_GROUP_DATABASE_PATH', None)
-    _asset_filepath = current_app.config.get('ASSET_DATABASE_PATH', None)
-
-    delete_filepaths = [
-        _db_filepath,
-        _asset_groups_filepath,
-        _asset_filepath,
+    delete_path_configs = [
+        'SQLALCHEMY_DATABASE_PATH',
+        'ASSET_GROUP_DATABASE_PATH',
+        'ASSET_DATABASE_PATH',
+        'MISSION_COLLECTION_DATABASE_PATH',
     ]
 
-    for delete_filepath in delete_filepaths:
+    for delete_path_config in delete_path_configs:
+        delete_filepath = current_app.config.get(delete_path_config, None)
         assert delete_filepath is not None
         if os.path.exists(delete_filepath):
             if os.path.isdir(delete_filepath):

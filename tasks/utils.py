@@ -62,6 +62,8 @@ def app_context_task(*args, **kwargs):
             force_enable = kwargs.pop(
                 'force_enable', os.environ.get('FORCE_ENABLE', False)
             )
+            force_disable_extensions = kwargs.pop('force_disable_extensions', None)
+            force_disable_modules = kwargs.pop('force_disable_modules', None)
 
             edm_authentication = kwargs.get('edm_authentication', None)
 
@@ -97,7 +99,10 @@ def app_context_task(*args, **kwargs):
                     os.environ['FORCE_ENABLE'] = 'ON'
 
                 app = create_app(
-                    config_override=config_override, force_enable=force_enable
+                    config_override=config_override,
+                    force_enable=force_enable,
+                    force_disable_extensions=force_disable_extensions,
+                    force_disable_modules=force_disable_modules,
                 )
 
             with app.app_context():

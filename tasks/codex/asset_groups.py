@@ -27,8 +27,9 @@ def create_asset_group_from_path(
     > invoke codex.asset_groups.create-asset_group-from-path --path tests/asset_groups/test-000/ --email jason@wildme.org
     """
     from app.modules.users.models import User
-    from app.modules.asset_groups.models import AssetGroup, AssetGroupMajorType
+    from app.modules.asset_groups.models import AssetGroup
     from app.modules.asset_groups.tasks import git_push
+    from app.extensions.git_store import GitStoreMajorType as AssetGroupMajorType
     from app.extensions import db
     import socket
 
@@ -100,7 +101,7 @@ def clone_asset_group_from_gitlab(
         asset_group.ensure_repository()
         return
 
-    asset_group = AssetGroup.ensure_asset_group(guid, owner=user)
+    asset_group = AssetGroup.ensure_store(guid, owner=user)
 
     if asset_group is None:
         raise ValueError('Could not find asset_group in GitLab using GUID %r' % (guid,))

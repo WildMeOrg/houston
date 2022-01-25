@@ -388,7 +388,7 @@ class AssetGroupMetadata(object):
                         403,
                     )
         elif self.bulk_upload:
-            for group in current_user.asset_groups:
+            for group in current_user.get_asset_groups():
                 if group.bulk_upload and not group.is_processed():
                     # Only one unprocessed bulk upload allowed at a time
                     raise AssetGroupMetadataError(
@@ -398,7 +398,7 @@ class AssetGroupMetadata(object):
 
         else:  # Form upload by logged in user
             unprocessed_groups = 0
-            for group in current_user.asset_groups:
+            for group in current_user.get_asset_groups():
                 if not group.is_processed() and not group.bulk_upload:
                     unprocessed_groups += 1
             # TODO arbitrary limit chosen for now

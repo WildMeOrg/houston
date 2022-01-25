@@ -217,7 +217,7 @@ class AssetGroupByID(Resource):
         assert isinstance(asset_group_guid, uuid.UUID)
 
         # Clone if present on gitlab
-        asset_group = AssetGroup.ensure_asset_group(asset_group_guid)
+        asset_group = AssetGroup.ensure_store(asset_group_guid)
         if asset_group is None:
             # We have checked the asset_group manager and cannot find this asset_group, raise 404 manually
             raise werkzeug.exceptions.NotFound

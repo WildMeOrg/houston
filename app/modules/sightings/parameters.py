@@ -79,7 +79,7 @@ class PatchSightingDetailsParameters(PatchJSONParameters):
             if field == 'assetId' and util.is_valid_uuid_string(value):
                 asset = Asset.query.get(value)
                 if asset and (
-                    asset.asset_group.owner == current_user or current_user.is_admin
+                    asset.git_store.owner == current_user or current_user.is_admin
                 ):
                     obj.add_asset(asset)
                     ret_val = True

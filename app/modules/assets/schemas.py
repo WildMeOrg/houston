@@ -6,10 +6,10 @@ Serialization schemas for Assets resources RESTful API
 
 from flask_marshmallow import base_fields
 from marshmallow import ValidationError
+from app.extensions.git_store import GitStore
 
 from flask_restx_patched import ModelSchema
 from app.extensions import ExtraValidationSchema
-from app.modules import is_module_enabled
 
 from .models import Asset
 
@@ -33,8 +33,7 @@ class DetailedAssetSchema(BaseAssetSchema):
     Detailed Asset schema exposes all useful fields.
     """
 
-    if is_module_enabled('asset_groups'):
-        asset_group = base_fields.Nested('BaseAssetGroupSchema')
+    git_store = base_fields.Nested('BaseGitStoreSchema')
 
     annotations = base_fields.Nested('DetailedAnnotationSchema', many=True)
 
@@ -42,12 +41,10 @@ class DetailedAssetSchema(BaseAssetSchema):
         fields = BaseAssetSchema.Meta.fields + (
             Asset.created.key,
             Asset.updated.key,
+            Asset.git_store.key,
             'annotations',
             'dimensions',
         )
-
-        if is_module_enabled('asset_groups'):
-            fields = fields + (Asset.asset_group.key,)
 
         dump_only = BaseAssetSchema.Meta.dump_only + (
             Asset.created.key,
@@ -89,3 +86,59 @@ class PatchAssetSchema(ExtraValidationSchema):
         angle = base_fields.Integer(validate=not_negative)
 
     rotate = base_fields.Nested(AssetRotateSchema)
+
+
+class BaseGitStoreSchema(ModelSchema):
+    """
+    Base Git Store schema exposes only the most general fields.
+    """
+
+    class Meta:
+        # pylint: disable=missing-docstring
+        model = GitStore
+        fields = (
+            GitStore.guid.key,
+            GitStore.commit.key,
+            GitStore.major_type.key,
+            GitStore.description.key,
+        )
+        dump_only = (
+            GitStore.guid.key,
+            GitStore.commit.key,
+        )
+
+
+class CreateGitStoreSchema(BaseGitStoreSchema):
+    """
+    Detailed Git Store schema exposes all useful fields.
+    """
+
+    class Meta(BaseGitStoreSchema.Meta):
+        fields = BaseGitStoreSchema.Meta.fields + (
+            GitStore.owner_guid.key,
+            GitStore.created.key,
+            GitStore.updated.key,
+        )
+        dump_only = BaseGitStoreSchema.Meta.dump_only + (
+            GitStore.owner_guid.key,
+            GitStore.created.key,
+            GitStore.updated.key,
+        )
+
+
+class DetailedGitStoreSchema(CreateGitStoreSchema):
+    """
+    Detailed Git Store schema exposes all useful fields.
+    """
+
+    from app.modules.assets.models import Asset
+
+    assets = base_fields.Nested(
+        'BaseAssetSchema',
+        exclude=Asset.git_store_guid.key,
+        many=True,
+    )
+
+    class Meta(CreateGitStoreSchema.Meta):
+        fields = CreateGitStoreSchema.Meta.fields + ('assets',)
+        dump_only = CreateGitStoreSchema.Meta.dump_only

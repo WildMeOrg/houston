@@ -131,8 +131,8 @@ def test_list_all(flask_app, test_asset_group_uuid, test_empty_asset_group_uuid)
         with mock.patch('sys.stdout', new=io.StringIO()) as stdout:
             list_all(MockContext())
             asset_groups = stdout.getvalue()
-            assert f'<AssetGroup(guid={test_asset_group_uuid}' in asset_groups
-            assert f'<AssetGroup(guid={test_empty_asset_group_uuid}' in asset_groups
+            assert f'<AssetGroup(guid={test_asset_group_uuid}, )' in asset_groups
+            assert f'<AssetGroup(guid={test_empty_asset_group_uuid}, )' in asset_groups
 
         with mock.patch('app.modules.asset_groups.tasks.delete_remote'):
             AssetGroup.query.get(test_asset_group_uuid).delete()

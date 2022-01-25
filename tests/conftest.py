@@ -14,7 +14,13 @@ from flask_restx_patched import is_module_enabled
 from app import create_app
 from config import CONTEXT_ENVIRONMENT_VARIABLE, VALID_CONTEXTS
 
-from . import utils, TEST_ASSET_GROUP_UUID, TEST_EMPTY_ASSET_GROUP_UUID
+from . import (
+    utils,
+    TEST_ASSET_GROUP_UUID,
+    TEST_EMPTY_ASSET_GROUP_UUID,
+    TEST_MISSION_COLLECTION_UUID,
+    TEST_EMPTY_MISSION_COLLECTION_UUID,
+)
 
 
 # Force FLASK_ENV to be testing instead of using what's defined in the environment
@@ -172,6 +178,9 @@ def flask_app(gitlab_remote_login_pat):
         config_override['PROJECT_DATABASE_PATH'] = td
         config_override['ASSET_GROUP_DATABASE_PATH'] = str(
             pathlib.Path(td) / 'asset_group'
+        )
+        config_override['MISSION_COLLECTION_DATABASE_PATH'] = str(
+            pathlib.Path(td) / 'mission_collection'
         )
         config_override['ASSET_DATABASE_PATH'] = str(pathlib.Path(td) / 'assets')
         config_override['UPLOADS_DATABASE_PATH'] = str(pathlib.Path(td) / 'uploads')
@@ -513,7 +522,8 @@ def test_asset_group_uuid(flask_app, db, researcher_1, test_asset_group_file_dat
         return
 
     from app.extensions.gitlab import GitlabInitializationError
-    from app.modules.asset_groups.models import AssetGroup, AssetGroupMajorType
+    from app.modules.asset_groups.models import AssetGroup
+    from app.extensions.git_store import GitStoreMajorType as AssetGroupMajorType
 
     guid = TEST_ASSET_GROUP_UUID
     asset_group = AssetGroup.query.get(guid)
@@ -542,7 +552,8 @@ def test_asset_group_uuid(flask_app, db, researcher_1, test_asset_group_file_dat
 
 @pytest.fixture
 def test_empty_asset_group_uuid(flask_app, db, researcher_1):
-    from app.modules.asset_groups.models import AssetGroup, AssetGroupMajorType
+    from app.modules.asset_groups.models import AssetGroup
+    from app.extensions.git_store import GitStoreMajorType as AssetGroupMajorType
 
     guid = TEST_EMPTY_ASSET_GROUP_UUID
     asset_group = AssetGroup.query.get(guid)
@@ -564,6 +575,137 @@ def test_clone_asset_group_data(test_asset_group_uuid, test_asset_group_file_dat
     return {
         'asset_group_uuid': test_asset_group_uuid,
         'asset_uuids': [str(f[0]) for f in test_asset_group_file_data],
+    }
+
+
+def ensure_mission_collection_repo(flask_app, db, mission_collection, file_data=[]):
+    if not utils.is_extension_enabled('gitlab'):
+        print('Gitlab unavailable, skip git_push')
+        return
+
+    from app.extensions.gitlab import GitlabInitializationError
+    from app.modules.missions.tasks import git_push, ensure_remote
+
+    mission_collection.ensure_repository()
+    # Call ensure_remote without .delay in tests to do it in the foreground
+    try:
+        ensure_remote(
+            str(mission_collection.guid), additional_tags=['type:pytest-required']
+        )
+    except GitlabInitializationError:
+        print(
+            f'Gitlab unavailable, skip ensure_remote for mission collection {mission_collection.guid}'
+        )
+    filepath_guid_mapping = {}
+    if len(mission_collection.assets) == 0:
+        for uuid_, path in file_data:
+            repo_filepath = mission_collection.git_copy_file_add(str(path))
+            filepath_guid_mapping[repo_filepath] = uuid_
+        mission_collection.git_commit(
+            'Initial commit for testing',
+            existing_filepath_guid_mapping=filepath_guid_mapping,
+        )
+        # Call git_push without .delay in tests to do it in the foreground
+        try:
+            git_push(str(mission_collection.guid))
+        except GitlabInitializationError:
+            print(
+                f'Gitlab unavailable, skip git_push for mission collection {mission_collection.guid}'
+            )
+
+
+@pytest.fixture
+def test_mission_collection_file_data(test_root):
+    return [
+        (
+            uuid.UUID('00000000-0000-0000-0000-000000000011'),
+            test_root / 'zebra.jpg',
+        ),
+        (
+            uuid.UUID('00000000-0000-0000-0000-000000000012'),
+            test_root / 'fluke.jpg',
+        ),
+        (
+            uuid.UUID('00000000-0000-0000-0000-000000000013'),
+            test_root / 'phoenix.jpg',
+        ),
+        (
+            uuid.UUID('00000000-0000-0000-0000-000000000014'),
+            test_root / 'coelacanth.png',
+        ),
+    ]
+
+
+@pytest.fixture
+def test_mission_collection_uuid(
+    flask_app, db, data_manager_1, test_mission_collection_file_data
+):
+    if not utils.is_extension_enabled('gitlab'):
+        print('Gitlab unavailable, skip ensure_mission_collection_repo')
+        return
+
+    from app.extensions.gitlab import GitlabInitializationError
+    from app.modules.missions.models import MissionCollection
+    from app.extensions.git_store import GitStoreMajorType as MissionCollectionMajorType
+
+    guid = TEST_MISSION_COLLECTION_UUID
+    mission_collection = MissionCollection.query.get(guid)
+    if mission_collection is None:
+        mission_collection = MissionCollection(
+            guid=guid,
+            owner_guid=data_manager_1.guid,
+            major_type=MissionCollectionMajorType.test,
+            description='This is a required PyTest submission (do not delete)',
+        )
+        with db.session.begin():
+            db.session.add(mission_collection)
+    else:
+        mission_collection.owner_guid = data_manager_1.guid
+        mission_collection.major_type = MissionCollectionMajorType.test
+        mission_collection.description = (
+            'This is a required PyTest submission (do not delete)'
+        )
+        with db.session.begin():
+            db.session.merge(mission_collection)
+
+    try:
+        ensure_mission_collection_repo(
+            flask_app, db, mission_collection, test_mission_collection_file_data
+        )
+    except GitlabInitializationError:
+        print(
+            f'Gitlab unavailable, skip ensure_mission_collection_repo for {mission_collection.guid}'
+        )
+    return mission_collection.guid
+
+
+@pytest.fixture
+def test_empty_mission_collection_uuid(flask_app, db, data_manager_1):
+    from app.modules.missions.models import MissionCollection
+    from app.extensions.git_store import GitStoreMajorType as MissionCollectionMajorType
+
+    guid = TEST_EMPTY_MISSION_COLLECTION_UUID
+    mission_collection = MissionCollection.query.get(guid)
+    if mission_collection is None:
+        mission_collection = MissionCollection(
+            guid=guid,
+            owner_guid=data_manager_1.guid,
+            major_type=MissionCollectionMajorType.test,
+            description='',
+        )
+        with db.session.begin():
+            db.session.add(mission_collection)
+    ensure_mission_collection_repo(flask_app, db, mission_collection)
+    return mission_collection.guid
+
+
+@pytest.fixture
+def test_clone_mission_collection_data(
+    test_mission_collection_uuid, test_mission_collection_file_data
+):
+    return {
+        'mission_collection_uuid': test_mission_collection_uuid,
+        'asset_uuids': [str(f[0]) for f in test_mission_collection_file_data],
     }
 
 

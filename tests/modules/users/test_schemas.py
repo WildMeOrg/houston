@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=invalid-name,missing-docstring
 
+from app.modules import is_module_enabled
+
 
 def test_BaseUserSchema_dump_empty_input():
     from app.modules.users import schemas
@@ -31,7 +33,8 @@ def test_DetailedUserSchema_dump_user_instance(user_instance):
     dumped_result = schemas.DetailedUserSchema().dump(user_instance)
     assert dumped_result.errors == {}
     assert 'password' not in dumped_result.data
-    assert set(dumped_result.data.keys()) == {
+
+    desired_keys = {
         'guid',
         'email',
         'full_name',
@@ -50,8 +53,6 @@ def test_DetailedUserSchema_dump_user_instance(user_instance):
         'in_beta',
         'profile_fileupload',
         'affiliation',
-        'assigned_missions',
-        'assigned_tasks',
         'location',
         'forum_id',
         'website',
@@ -59,6 +60,11 @@ def test_DetailedUserSchema_dump_user_instance(user_instance):
         'individual_merge_requests',
         'notification_preferences',
     }
+
+    if is_module_enabled('missions'):
+        desired_keys = desired_keys | set(['owned_missions', 'owned_mission_tasks'])
+
+    assert set(dumped_result.data.keys()) == desired_keys
 
 
 def test_ReCaptchaPublicServerKeySchema_dump():

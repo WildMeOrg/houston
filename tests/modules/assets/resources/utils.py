@@ -21,7 +21,7 @@ def patch_asset(flask_app_client, asset_guid, user, data, expected_status_code=2
 
     if expected_status_code == 200:
         test_utils.validate_dict_response(
-            response, 200, {'asset_group', 'src', 'guid', 'filename'}
+            response, 200, {'git_store', 'src', 'guid', 'filename'}
         )
     else:
         test_utils.validate_dict_response(
@@ -65,7 +65,7 @@ def read_asset(flask_app_client, user, asset_guid, expected_status_code=200):
 
     if expected_status_code == 200:
         test_utils.validate_dict_response(
-            response, 200, {'asset_group', 'src', 'guid', 'filename'}
+            response, 200, {'git_store', 'src', 'guid', 'filename'}
         )
     elif expected_status_code == 404:
         test_utils.validate_dict_response(response, expected_status_code, {'message'})

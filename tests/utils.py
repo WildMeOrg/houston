@@ -198,7 +198,7 @@ def generate_asset_group_instance(owner):
     return asset_group_instance
 
 
-def generate_asset_instance(asset_group_guid):
+def generate_asset_instance(git_store_guid):
     from app.modules.assets.models import Asset
 
     asset_instance = Asset(
@@ -210,7 +210,7 @@ def generate_asset_instance(asset_group_guid):
         filesystem_xxhash64='42',
         filesystem_guid=uuid.uuid4(),
         semantic_guid=uuid.uuid4(),
-        asset_group_guid=asset_group_guid,
+        git_store_guid=git_store_guid,
     )
     return asset_instance
 
@@ -358,7 +358,6 @@ def patch_via_flask(
         response = flask_app_client.patch(
             path, content_type='application/json', data=json.dumps(data), headers=headers
         )
-
     if expected_status_code == 200:
         validate_dict_response(response, 200, response_200)
     elif expected_status_code:
@@ -447,6 +446,7 @@ def all_count(db):
     count = {}
     for cls in classes:
         count[cls.__name__] = row_count(db, cls)
+
     if is_module_enabled('assets', 'asset_groups'):
         from app.modules.assets.models import Asset
         from app.modules.asset_groups.models import AssetGroup
@@ -454,7 +454,7 @@ def all_count(db):
         asset_query = Asset.query
         asset_group_query = AssetGroup.query
         for guid in (TEST_ASSET_GROUP_UUID, TEST_EMPTY_ASSET_GROUP_UUID):
-            asset_query = asset_query.filter(Asset.asset_group_guid != guid)
+            asset_query = asset_query.filter(Asset.git_store_guid != guid)
             asset_group_query = asset_group_query.filter(AssetGroup.guid != guid)
         count['Asset'] = asset_query.count()
         count['AssetGroup'] = asset_group_query.count()

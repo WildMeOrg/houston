@@ -173,7 +173,7 @@ def test_sightings(session, login, codex_url, test_root, admin_name):
         'updatedHouston': response.json()['updatedHouston'],
         'version': response.json()['version'],  # 1636456524261
         'creator': {
-            'full_name': 'Test admin',
+            'full_name': my_name,
             'guid': my_guid,
             'profile_fileupload': None,
         },

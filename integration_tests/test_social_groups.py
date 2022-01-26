@@ -56,7 +56,7 @@ def test_social_groups(session, login, codex_url):
         'Patriarch': {'multipleInGroup': True},
     }
     response = session.post(
-        codex_url('/api/v1/site-settings/main/social_group_roles'), json=data
+        codex_url('/api/v1/site-settings/main/social_group_roles'), json={'_value': data}
     )
     assert response.status_code == 200
     assert response.json() == {

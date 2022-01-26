@@ -99,9 +99,66 @@ def test_dict_write(flask_app_client, admin_user):
     }
 
     resp = conf_utils.modify_main_settings(
-        flask_app_client, admin_user, data, 'social_group_roles'
+        flask_app_client, admin_user, {'_value': data}, 'social_group_roles'
     )
 
     assert resp.json['key'] == 'social_group_roles'
 
     conf_utils.delete_main_setting(flask_app_client, admin_user, 'social_group_roles')
+
+
+@pytest.mark.skipif(extension_unavailable('edm'), reason='EDM extension disabled')
+@pytest.mark.skipif(
+    module_unavailable('site_settings'), reason='Site-settings module disabled'
+)
+def test_alter_houston_settings(flask_app_client, admin_user, researcher_1):
+
+    username = 'noone@nowhere.com'
+    password = 'VeryPrivateThing'
+    conf_utils.modify_main_settings(
+        flask_app_client,
+        admin_user,
+        {'_value': username},
+        'email_service_username',
+    )
+    conf_utils.modify_main_settings(
+        flask_app_client,
+        admin_user,
+        {'_value': password},
+        'email_service_password',
+    )
+    config_def_response_admin = conf_utils.read_main_settings_definition(
+        flask_app_client, admin_user, '__bundle_setup'
+    )
+    config_def_response_researcher = conf_utils.read_main_settings_definition(
+        flask_app_client, researcher_1, '__bundle_setup'
+    )
+    config_response_admin = conf_utils.read_main_settings(
+        flask_app_client, admin_user, '__bundle_setup'
+    )
+    config_response_researcher = conf_utils.read_main_settings(
+        flask_app_client, researcher_1, '__bundle_setup'
+    )
+
+    # admin should be able to see uname & pass, researcher should not.
+    admin_configuration = config_response_admin.json['response']['configuration']
+    admin_definition = config_def_response_admin.json['response']['configuration']
+    researcher_configuration = config_response_researcher.json['response'][
+        'configuration'
+    ]
+    researcher_definition = config_def_response_researcher.json['response'][
+        'configuration'
+    ]
+
+    assert admin_configuration['email_service_username']['value'] == username
+    assert admin_configuration['email_service_username']['valueNotSet'] is False
+    assert admin_configuration['email_service_password']['value'] == password
+    assert admin_configuration['email_service_password']['valueNotSet'] is False
+    assert researcher_configuration['email_service_username']['value'] == ''
+    assert researcher_configuration['email_service_username']['valueNotSet'] is True
+    assert researcher_configuration['email_service_password']['value'] == ''
+    assert researcher_configuration['email_service_password']['valueNotSet'] is True
+    assert 'currentValue' not in researcher_definition['email_service_username'].keys()
+    assert 'currentValue' not in researcher_definition['email_service_password'].keys()
+    assert admin_definition['email_service_username']['currentValue'] == username
+    assert admin_definition['email_service_password']['currentValue'] == password

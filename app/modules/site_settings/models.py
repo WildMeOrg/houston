@@ -5,6 +5,8 @@ Site Settings database models
 """
 from app.extensions import db, Timestamp, extension_required, is_extension_enabled
 from flask import current_app
+from flask_login import current_user  # NOQA
+
 from app.modules import is_module_enabled
 from app.utils import HoustonException
 
@@ -27,13 +29,34 @@ class SiteSetting(db.Model, Timestamp):
     }
 
     HOUSTON_SETTINGS = {
-        'email_service': {'type': str, 'public': False},
+        'email_service': {
+            'type': str,
+            'public': False,
+            'edm_definition': {
+                'defaultValue': '',
+                'displayType': 'select',
+                'schema': {
+                    'choices': [
+                        {'label': 'Do not send mail', 'value': ''},
+                        {'label': 'Mailchimp/Mandrill', 'value': 'mailchimp'},
+                    ]
+                },
+            },
+        },
         'email_service_username': {'type': str, 'public': False},
         'email_service_password': {'type': str, 'public': False},
         'email_default_sender_email': {'type': str, 'public': False},
         'email_default_sender_name': {'type': str, 'public': False},
         'social_group_roles': {'type': dict, 'public': True},
-        'relationship_type_roles': {'type': dict, 'public': True},
+        'relationship_type_roles': {
+            'type': dict,
+            'public': True,
+            'edm_definition': {
+                'fieldType': 'json',
+                'displayType': 'relationship-type-role',
+                'required': False,
+            },
+        },
     }
 
     key = db.Column(db.String, primary_key=True, nullable=False)
@@ -89,7 +112,54 @@ class SiteSetting(db.Model, Timestamp):
         return cls.HOUSTON_SETTINGS.keys()
 
     @classmethod
-    def get_default_value(cls, key):
+    def _get_value_for_edm_formats(cls, key):
+        assert key in cls.HOUSTON_SETTINGS.keys()
+        value = cls.get_value(key)
+
+        # Only admin can read private data
+        if not cls.HOUSTON_SETTINGS[key]['public']:
+            if not current_user or current_user.is_anonymous or not current_user.is_admin:
+                value = None
+        return value
+
+    @classmethod
+    def get_as_edm_format(cls, key):
+        assert key in cls.HOUSTON_SETTINGS.keys()
+        value = cls._get_value_for_edm_formats(key)
+
+        data = {
+            'id': key,
+            'isSiteSetting': True,
+            'value': value if value else cls._get_default_value(key),
+            'valueNotSet': value is None,
+        }
+        return data
+
+    @classmethod
+    def get_as_edm_definition_format(cls, key):
+        assert key in cls.HOUSTON_SETTINGS.keys()
+        value = cls._get_value_for_edm_formats(key)
+
+        data = {
+            'descriptionId': f'CONFIGURATION_{key.upper()}_DESCRIPTION',
+            'labelId': f'CONFIGURATION_{key.upper()}_LABEL',
+            'defaultValue': '',
+            'isPrivate': not cls.HOUSTON_SETTINGS[key]['public'],
+            'settable': True,
+            'required': True,
+            'fieldType': 'string',
+            'displayType': 'string',
+        }
+        if value:
+            data['currentValue'] = value
+
+        # Some variables have specific values so incorporate those as required
+        if 'edm_definition' in cls.HOUSTON_SETTINGS[key].keys():
+            data.update(cls.HOUSTON_SETTINGS[key]['edm_definition'])
+        return data
+
+    @classmethod
+    def _get_default_value(cls, key):
         def_val = ''
         assert key in cls.HOUSTON_SETTINGS.keys()
         if cls.HOUSTON_SETTINGS[key]['type'] == dict:

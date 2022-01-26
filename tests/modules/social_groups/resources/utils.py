@@ -105,7 +105,7 @@ def set_roles(
     return setting_utils.modify_main_settings(
         flask_app_client,
         user,
-        data,
+        {'_value': data},
         'social_group_roles',
         expected_status_code,
         expected_error,

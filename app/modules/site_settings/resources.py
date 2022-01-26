@@ -242,6 +242,7 @@ class MainConfigurationDefinition(Resource):
 
 # TODO Remove DEX 675
 @configuration.route('/default/<path:path>')
+@configuration.route('/default', defaults={'path': ''}, doc=False)
 @api.route('/main/<path:path>')
 @api.route('/main', defaults={'path': ''}, doc=False)
 class MainConfiguration(Resource):

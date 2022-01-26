@@ -447,27 +447,22 @@ class SightingByID(Resource):
         from app.extensions.elapsed_time import ElapsedTime
 
         timer = ElapsedTime()
+        houston_args = [
+            arg
+            for arg in args
+            if arg['path']
+            in parameters.PatchSightingDetailsParameters.PATH_CHOICES_HOUSTON
+        ]
 
-        edm_count = 0
-        for arg in args:
-            if (
-                'path' in arg
-                and arg['path']
-                in parameters.PatchSightingDetailsParameters.PATH_CHOICES_EDM
-            ):
-                edm_count += 1
-        if edm_count > 0 and edm_count != len(args):
-            log.error(f'Mixed edm/houston patch called with args {args}')
-            abort(
-                success=False,
-                passed_message='Cannot mix EDM patch paths and houston patch paths',
-                message='Error',
-                code=400,
-            )
+        edm_args = [
+            arg
+            for arg in args
+            if arg['path'] in parameters.PatchSightingDetailsParameters.PATH_CHOICES_EDM
+        ]
 
-        if edm_count > 0:
+        if edm_args:
             cleanup = SightingCleanup()
-            log.debug(f'wanting to do edm patch on args={args}')
+            log.debug(f'wanting to do edm patch on args={edm_args}')
 
             # we pre-check any annotations we will want to attach to new encounters
 
@@ -476,7 +471,7 @@ class SightingByID(Resource):
             # list of initial data (used for setting .time)
             enc_json_data = []
             try:
-                for arg in args:
+                for arg in edm_args:
                     if (
                         arg.get('path', None) == '/encounters'
                         and arg.get('op', None) == 'add'
@@ -501,7 +496,7 @@ class SightingByID(Resource):
                 ) = current_app.edm.request_passthrough_parsed(
                     'sighting.data',
                     'patch',
-                    {'data': args},
+                    {'data': edm_args},
                     sighting.guid,
                     request_headers=request.headers,
                 )
@@ -554,29 +549,24 @@ class SightingByID(Resource):
                 )
                 with context:
                     db.session.merge(sighting)
-            AuditLog.patch_object(log, sighting, args, duration=timer.elapsed())
 
-            sighting_response = sighting.get_augmented_sighting_json()
-            if isinstance(sighting_response, dict):
-                return sighting_response
-            else:
-                # sighting might be deleted, return the original patch response_data
-                return response_data
+        if houston_args:
+            # regular houston-patching
+            context = api.commit_or_abort(
+                db.session, default_error_message='Failed to update Sighting details.'
+            )
+            with context:
+                parameters.PatchSightingDetailsParameters.perform_patch(houston_args, obj=sighting)
+                db.session.merge(sighting)
 
-        # no EDM, so fall thru to regular houston-patching
-        context = api.commit_or_abort(
-            db.session, default_error_message='Failed to update Sighting details.'
-        )
-        with context:
-            parameters.PatchSightingDetailsParameters.perform_patch(args, obj=sighting)
-            db.session.merge(sighting)
         AuditLog.patch_object(log, sighting, args, duration=timer.elapsed())
 
-        # this mimics output format of edm-patching
-        return {
-            'success': True,
-            'result': {'id': str(sighting.guid), 'version': sighting.version},
-        }
+        sighting_response = sighting.get_augmented_sighting_json()
+        if isinstance(sighting_response, dict):
+            return sighting_response
+        else:
+            # sighting might be deleted, return the original patch response_data
+            return response_data
 
     @api.login_required(oauth_scopes=['sightings:write'])
     @api.permission_required(

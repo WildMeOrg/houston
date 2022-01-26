@@ -321,28 +321,11 @@ class IndividualByID(Resource):
             in parameters.PatchIndividualDetailsParameters.PATH_CHOICES_HOUSTON
         ]
 
-        with context:
-            try:
-                parameters.PatchIndividualDetailsParameters.perform_patch(
-                    houston_args, obj=individual
-                )
-            except HoustonException as ex:
-                abort(ex.status_code, ex.message)
-
         edm_args = [
             arg
             for arg in args
             if arg['path'] in parameters.PatchIndividualDetailsParameters.PATH_CHOICES_EDM
         ]
-
-        if len(edm_args) > 0 and len(edm_args) != len(args):
-            log.error(f'Mixed edm/houston patch called with args {args}')
-            abort(
-                success=False,
-                passed_message='Cannot mix EDM patch paths and houston patch paths',
-                message='Error',
-                code=400,
-            )
 
         if len(edm_args) > 0:
             log.debug(f'wanting to do edm patch on args={args}')
@@ -369,6 +352,15 @@ class IndividualByID(Resource):
                 )
 
             # TODO handle individual deletion if last encounter removed
+
+        if houston_args:
+            with context:
+                try:
+                    parameters.PatchIndividualDetailsParameters.perform_patch(
+                        houston_args, obj=individual
+                    )
+                except HoustonException as ex:
+                    abort(ex.status_code, ex.message)
 
         db.session.merge(individual)
         AuditLog.patch_object(log, individual, args, duration=timer.elapsed())

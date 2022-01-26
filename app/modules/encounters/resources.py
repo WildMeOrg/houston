@@ -113,25 +113,53 @@ class EncounterByID(Resource):
         from app.extensions.elapsed_time import ElapsedTime
 
         timer = ElapsedTime()
-
         edm_args = [
             arg
             for arg in args
             if arg.get('path')
             in parameters.PatchEncounterDetailsParameters.PATH_CHOICES_EDM
         ]
-        if edm_args and len(edm_args) != len(args):
-            log.error(f'Mixed edm/houston patch called with args {args}')
-            abort(400, 'Cannot mix EDM patch paths and houston patch paths')
+        houston_args = [
+            arg
+            for arg in args
+            if arg.get('path')
+            in parameters.PatchEncounterDetailsParameters.PATH_CHOICES_HOUSTON
+        ]
 
-        if not edm_args:
+        if edm_args:
+            log.debug(f'wanting to do edm patch on args={edm_args}')
+            try:
+                result_data = current_app.edm.request_passthrough_result(
+                    'encounter.data',
+                    'patch',
+                    {'data': edm_args},
+                    encounter.guid,
+                    request_headers=request.headers,
+                )
+                # EDM uses id, houston API is all guid so ditch the id
+                result_data.pop('id', None)
+
+            except HoustonException as ex:
+                abort(
+                    ex.status_code,
+                    ex.message,
+                    error=ex.get_val('error', 'Error'),
+                    edm_status_code=ex.get_val('edm_status_code', None),
+                )
+        else:
+            # this mimics output format of edm-patching
+            result_data = {
+                'version': encounter.version,
+            }
+
+        if houston_args:
             context = api.commit_or_abort(
                 db.session, default_error_message='Failed to update Encounter details.'
             )
             with context:
                 try:
                     parameters.PatchEncounterDetailsParameters.perform_patch(
-                        args, obj=encounter
+                        houston_args, obj=encounter
                     )
                 except HoustonException as ex:
                     abort(
@@ -139,51 +167,26 @@ class EncounterByID(Resource):
                         ex.message,
                     )
                 db.session.merge(encounter)
-            # this mimics output format of edm-patching
-            result_data = {
-                'version': encounter.version,
-            }
 
             schema = schemas.AugmentedEdmEncounterSchema()
             result_data.update(schema.dump(encounter).data)
-            # EDM uses id, houston API is all guid so ditch the id
-            result_data.pop('id', None)
-            return result_data
 
-        # must be edm patch
-        log.debug(f'wanting to do edm patch on args={args}')
-        try:
-            result_data = current_app.edm.request_passthrough_result(
-                'encounter.data',
-                'patch',
-                {'data': args},
-                encounter.guid,
-                request_headers=request.headers,
-            )
-        except HoustonException as ex:
-            abort(
-                ex.status_code,
-                ex.message,
-                error=ex.get_val('error', 'Error'),
-                edm_status_code=ex.get_val('edm_status_code', None),
-            )
+        if edm_args:
+            # edm patch was successful
+            new_version = result_data.get('version', None)
+            if new_version is not None:
+                encounter.version = new_version
+                context = api.commit_or_abort(
+                    db.session,
+                    default_error_message='Failed to update Encounter version.',
+                )
+                with context:
+                    db.session.merge(encounter)
+            # rtn['_patchResults'] = rdata.get('patchResults', None)  # FIXME i think this gets lost cuz not part of results_data
 
-        # edm patch was successful
-        new_version = result_data.get('version', None)
-        if new_version is not None:
-            encounter.version = new_version
-            context = api.commit_or_abort(
-                db.session,
-                default_error_message='Failed to update Encounter version.',
-            )
-            with context:
-                db.session.merge(encounter)
-        # rtn['_patchResults'] = rdata.get('patchResults', None)  # FIXME i think this gets lost cuz not part of results_data
         AuditLog.patch_object(log, encounter, args, duration=timer.elapsed())
         schema = schemas.AugmentedEdmEncounterSchema()
         result_data.update(schema.dump(encounter).data)
-        # EDM uses id, houston API is all guid so ditch the id
-        result_data.pop('id', None)
         return result_data
 
     @api.permission_required(

@@ -111,6 +111,7 @@ class AssetGroupSightingEncounterSchema(ModelSchema):
     timeSpecificity = base_fields.String(default=None)
     updatedHouston = base_fields.DateTime()
     version = base_fields.String(default=None)
+    annotations = base_fields.Dict()
 
 
 class AssetGroupSightingAsSightingSchema(ModelSchema):

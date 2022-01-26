@@ -268,25 +268,30 @@ class PatchAssetGroupSightingEncounterDetailsParameters(PatchJSONParameters):
         elif field == 'annotations':
             from app.modules.annotations.models import Annotation
 
+            # Need to make it a list unless it's already one
+            annot_guids = value if isinstance(value, list) else [value]
+
             AssetGroupMetadata.validate_annotations(
                 obj,
-                [
-                    value,
-                ],
+                annot_guids,
                 f'Encounter {encounter_uuid}',
             )
-            annot = Annotation.query.get(value)
-            assert annot
-            if annot.encounter and not annot.encounter.current_user_has_write_access():
-                # No stealing annotations
-                raise AssetGroupMetadataError(
-                    log,
-                    f'You are not permitted to reassign {value} Annotation',
-                )
-            if 'annotations' not in encounter_metadata.keys():
-                encounter_metadata['annotations'] = []
-            if value not in encounter_metadata['annotations']:
-                encounter_metadata['annotations'].append(value)
+            for annot_guid in annot_guids:
+                annot = Annotation.query.get(annot_guid)
+                assert annot
+                if (
+                    annot.encounter
+                    and not annot.encounter.current_user_has_write_access()
+                ):
+                    # No stealing annotations
+                    raise AssetGroupMetadataError(
+                        log,
+                        f'You are not permitted to reassign {value} Annotation',
+                    )
+                if 'annotations' not in encounter_metadata.keys():
+                    encounter_metadata['annotations'] = []
+                if annot_guid not in encounter_metadata['annotations']:
+                    encounter_metadata['annotations'].append(annot_guid)
 
         elif field == 'individualUuid':
             AssetGroupMetadata.validate_individual(value, f'Encounter {encounter_uuid}')

@@ -64,6 +64,33 @@ def test_ia_pipeline_sim_detect_response(
         )
         assert ags1.stage == AssetGroupSightingStage.curation
 
+        # manually add annots to encounters
+        ags_as_sighting = asset_group_utils.read_asset_group_sighting_as_sighting(
+            flask_app_client, researcher_1, asset_group_sighting1_guid
+        )
+        annots = []
+        for asset in ags_as_sighting.json['assets']:
+            annots += asset['annotations']
+
+        annot_guids = [annot['guid'] for annot in annots]
+        encounter_guids = [enc['guid'] for enc in ags_as_sighting.json['encounters']]
+
+        asset_group_utils.patch_in_annotations(
+            flask_app_client,
+            researcher_1,
+            asset_group_sighting1_guid,
+            encounter_guids[0],
+            annot_guids,
+        )
+        ags_as_sighting = asset_group_utils.read_asset_group_sighting_as_sighting(
+            flask_app_client, researcher_1, asset_group_sighting1_guid
+        )
+
+        # Make sure the patch worked
+        for enc in ags_as_sighting.json['encounters']:
+            for ann in enc.get('annotations', []):
+                assert ann['encounter_guid'] == enc['guid']
+
         # commit it (without Identification)
         response = asset_group_utils.commit_asset_group_sighting(
             flask_app_client, researcher_1, asset_group_sighting1_guid

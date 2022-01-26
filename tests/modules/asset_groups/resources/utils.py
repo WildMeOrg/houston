@@ -98,6 +98,18 @@ def patch_in_dummy_annotation(
     return new_annot.guid
 
 
+def patch_in_annotations(
+    flask_app_client, user, asset_group_sighting_uuid, encounter_guid, annotation_guids
+):
+    patch_data = [test_utils.patch_add_op('annotations', annotation_guids)]
+    patch_asset_group_sighting(
+        flask_app_client,
+        user,
+        f'{asset_group_sighting_uuid}/encounter/{encounter_guid}',
+        patch_data,
+    )
+
+
 def commit_asset_group_sighting(
     flask_app_client,
     user,

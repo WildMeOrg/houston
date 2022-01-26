@@ -52,25 +52,16 @@ def test_social_groups(session, login, codex_url):
     # Create social group roles
     login(session)
     data = {
-        'key': 'social_group_roles',
-        'data': {
-            'Matriarch': {'multipleInGroup': False},
-            'Patriarch': {'multipleInGroup': True},
-        },
+        'Matriarch': {'multipleInGroup': False},
+        'Patriarch': {'multipleInGroup': True},
     }
-    response = session.post(codex_url('/api/v1/site-settings/'), json=data)
+    response = session.post(
+        codex_url('/api/v1/site-settings/main/social_group_roles'), json=data
+    )
     assert response.status_code == 200
     assert response.json() == {
         'key': 'social_group_roles',
-        'data': {
-            'Matriarch': {'multipleInGroup': False},
-            'Patriarch': {'multipleInGroup': True},
-        },
-        'created': response.json()['created'],  # 2021-10-29T20:17:46.585288+00:00
-        'string': response.json()['string'],  # '' or None
-        'file_upload_guid': None,
-        'public': True,
-        'updated': response.json()['updated'],
+        'success': True,
     }
 
     uuids = create_sighting(session, codex_url)

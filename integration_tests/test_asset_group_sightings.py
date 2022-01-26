@@ -12,7 +12,7 @@ def test_asset_group_sightings(session, login, codex_url, test_root):
     my_name = response.json()['full_name']
 
     creator_data = {
-        'full_name': 'Test admin',
+        'full_name': my_name,
         'guid': my_guid,
         'profile_fileupload': None,
     }

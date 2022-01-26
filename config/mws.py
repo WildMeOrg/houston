@@ -50,7 +50,6 @@ class BaseMWSConfig(
         'missions',
         'tasks',
         'site_settings',
-        'site_info',
         'job_control',
         'elasticsearch_proxy',
         'elasticsearch',

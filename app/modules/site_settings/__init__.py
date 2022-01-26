@@ -28,5 +28,7 @@ def init_app(app, **kwargs):
     from . import models, resources  # NOQA
 
     api_v1.add_namespace(resources.api)
+
+    # TODO remove DEX 675
     api_v1.add_namespace(resources.configuration)
     api_v1.add_namespace(resources.configurationDefinition)

@@ -121,17 +121,19 @@ def test_merge_social_groups(
     individual2 = Individual.query.get(individual2_id)
 
     # set up roles
-    role_data = {'key': 'social_group_roles', 'data': {}}
+    # set up roles
     groupA_role_from_2 = 'doomed-to-be-merged'
-    role_data['data'][groupA_role_from_2] = {'multipleInGroup': False}
     groupB_role_from_1 = 'roleB1'
-    role_data['data'][groupB_role_from_1] = {'multipleInGroup': True}
     groupB_role_from_2 = 'roleB2'
-    role_data['data'][groupB_role_from_2] = {'multipleInGroup': True}
     groupC_shared_role = 'sharedC'
-    role_data['data'][groupC_shared_role] = {'multipleInGroup': True}
     groupC_role_from_2 = 'roleC2'
-    role_data['data'][groupC_role_from_2] = {'multipleInGroup': True}
+    role_data = {
+        groupA_role_from_2: {'multipleInGroup': False},
+        groupB_role_from_1: {'multipleInGroup': True},
+        groupB_role_from_2: {'multipleInGroup': True},
+        groupC_shared_role: {'multipleInGroup': True},
+        groupC_role_from_2: {'multipleInGroup': True},
+    }
     socgrp_utils.set_roles(flask_app_client, admin_user, role_data)
     request.addfinalizer(lambda: socgrp_utils.delete_roles(flask_app_client, admin_user))
 

@@ -4,12 +4,13 @@ social_group resources utils
 -------------
 """
 from tests import utils as test_utils
+import tests.modules.site_settings.resources.utils as setting_utils
 
 PATH = '/api/v1/social-groups/'
-SETTING_PATH = '/api/v1/site-settings/'
 EXPECTED_KEYS = {'guid', 'name', 'members'}
 EXPECTED_LIST_KEYS = {'guid'}
-EXPECTED_SETTING_KEYS = {'key', 'string'}
+EXPECTED_SET_SETTING_KEYS = {'_payload', 'message'}
+EXPECTED_GET_SETTING_KEYS = {'success', 'response'}
 
 
 def create_social_group(
@@ -101,14 +102,12 @@ def set_roles(
     expected_status_code=200,
     expected_error=None,
 ):
-    return test_utils.post_via_flask(
+    return setting_utils.modify_main_settings(
         flask_app_client,
         user,
-        'site-settings:write',
-        SETTING_PATH,
         data,
+        'social_group_roles',
         expected_status_code,
-        EXPECTED_SETTING_KEYS,
         expected_error,
     )
 
@@ -116,37 +115,23 @@ def set_roles(
 # expected to work so just have a simple util
 def set_basic_roles(flask_app_client, user, request):
     data = {
-        'key': 'social_group_roles',
-        'data': {
-            'Matriarch': {'multipleInGroup': False},
-            'IrritatingGit': {'multipleInGroup': True},
-        },
+        'Matriarch': {'multipleInGroup': False},
+        'IrritatingGit': {'multipleInGroup': True},
     }
     resp = set_roles(flask_app_client, user, data)
     request.addfinalizer(lambda: delete_roles(flask_app_client, user))
     return resp
 
 
-def get_roles(flask_app_client, user, expected_status_code=200, expected_error=None):
-    return test_utils.get_dict_via_flask(
-        flask_app_client,
-        user,
-        'site-settings:read',
-        f'{SETTING_PATH}social_group_roles',
-        expected_status_code,
-        EXPECTED_SETTING_KEYS,
-        expected_error,
+def get_roles(flask_app_client, user, expected_status_code=200):
+    return setting_utils.read_main_settings(
+        flask_app_client, user, 'social_group_roles', expected_status_code
     )
 
 
 def delete_roles(flask_app_client, user, expected_status_code=204, expected_error=None):
-    return test_utils.delete_via_flask(
-        flask_app_client,
-        user,
-        'site-settings:write',
-        f'{SETTING_PATH}social_group_roles',
-        expected_status_code,
-        expected_error,
+    return setting_utils.delete_main_setting(
+        flask_app_client, user, 'social_group_roles', expected_status_code
     )
 
 

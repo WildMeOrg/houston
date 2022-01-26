@@ -114,7 +114,7 @@ class SiteSetting(db.Model, Timestamp):
             cls.set(key, string=value, public=cls.HOUSTON_SETTINGS[key]['public'])
         elif isinstance(value, dict):
             log.debug(f'updating Houston Setting key={key}')
-            cls.set_detailed(key, data=value, public=cls.HOUSTON_SETTINGS[key]['public'])
+            cls.set(key, data=value, public=cls.HOUSTON_SETTINGS[key]['public'])
         else:
             msg = f'Houston Setting key={key}, value is not string or dict; value={value}'
             raise HoustonException(log, msg)

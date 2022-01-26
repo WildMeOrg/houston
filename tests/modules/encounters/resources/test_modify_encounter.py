@@ -7,7 +7,7 @@ from tests import utils
 from tests.modules.annotations.resources import utils as annot_utils
 from tests.modules.encounters.resources import utils as enc_utils
 from tests.modules.sightings.resources import utils as sighting_utils
-from tests.extensions.edm import utils as edm_utils
+from tests.modules.site_settings.resources import utils as setting_utils
 import pytest
 
 from tests.utils import module_unavailable
@@ -269,7 +269,7 @@ def test_modify_encounter(
     ]
 
     # now we test modifying customFields
-    cfd_id = edm_utils.custom_field_create(
+    cfd_id = setting_utils.custom_field_create(
         flask_app_client, admin_user, 'test_cfd', cls='Encounter'
     )
     assert cfd_id is not None

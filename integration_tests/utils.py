@@ -102,7 +102,7 @@ def wait_for(
 
 
 def add_site_species(session, codex_url, data):
-    site_species_url = codex_url('/api/v1/configuration/default/site.species')
+    site_species_url = codex_url('/api/v1/site-settings/main/site.species')
     response = session.get(site_species_url)
     values = response.json()['response']['value']
     for v in values:
@@ -117,7 +117,7 @@ def add_site_species(session, codex_url, data):
 
 
 def create_custom_field(session, codex_url, cls, name, type='string', multiple=False):
-    config_url = codex_url('/api/v1/configuration/default')
+    config_url = codex_url('/api/v1/site-settings/main')
     response = session.post(
         config_url,
         json={

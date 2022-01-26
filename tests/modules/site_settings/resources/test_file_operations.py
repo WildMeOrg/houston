@@ -6,13 +6,12 @@ from app.modules.site_settings.models import SiteSetting
 
 from tests.utils import TemporaryDirectoryGraceful, module_unavailable
 import pytest
-import json
 
 
 @pytest.mark.skipif(
     module_unavailable('social_groups'), reason='Social Groups module disabled'
 )
-def test_site_settings(admin_user, flask_app_client, flask_app, db, request, test_root):
+def test_file_settings(admin_user, flask_app_client, flask_app, db, request, test_root):
     zebra_path = test_root / 'zebra.jpg'
     fup = FileUpload.create_fileupload_from_path(str(zebra_path), copy=True)
     with db.session.begin():
@@ -22,7 +21,7 @@ def test_site_settings(admin_user, flask_app_client, flask_app, db, request, tes
     request.addfinalizer(lambda: db.session.delete(header_image))
 
     # Get site setting without logging in
-    resp = flask_app_client.get('/api/v1/site-settings/header_image')
+    resp = flask_app_client.get('/api/v1/site-settings/file/header_image')
     assert resp.status_code == 302
     resp = flask_app_client.get(resp.location)
     assert resp.status_code == 200
@@ -31,7 +30,7 @@ def test_site_settings(admin_user, flask_app_client, flask_app, db, request, tes
 
     # Get non public setting without logging in
     SiteSetting.set('not_public', fup.guid, public=False)
-    resp = flask_app_client.get('/api/v1/site-settings/not_public')
+    resp = flask_app_client.get('/api/v1/site-settings/file/not_public')
     assert resp.status_code == 403
 
     with flask_app_client.login(
@@ -39,7 +38,7 @@ def test_site_settings(admin_user, flask_app_client, flask_app, db, request, tes
     ):
         # Create site setting
         resp = flask_app_client.post(
-            '/api/v1/site-settings/',
+            '/api/v1/site-settings/file',
             data={
                 'key': 'footer_image',
                 'file_upload_guid': str(fup.guid),
@@ -50,7 +49,7 @@ def test_site_settings(admin_user, flask_app_client, flask_app, db, request, tes
         assert site_setting['key'] == 'footer_image'
 
         # List site settings
-        resp = flask_app_client.get('/api/v1/site-settings/')
+        resp = flask_app_client.get('/api/v1/site-settings/file')
         assert resp.status_code == 200
         assert resp.json == [
             {'key': 'footer_image', 'file_upload_guid': str(fup.guid), 'public': True},
@@ -60,7 +59,7 @@ def test_site_settings(admin_user, flask_app_client, flask_app, db, request, tes
 
         # Edit site setting
         resp = flask_app_client.post(
-            '/api/v1/site-settings/',
+            '/api/v1/site-settings/file',
             data={
                 'key': 'header_image',
                 'file_upload_guid': str(fup.guid),
@@ -79,7 +78,7 @@ def test_site_settings(admin_user, flask_app_client, flask_app, db, request, tes
                 with zebra_path.open('rb') as g:
                     f.write(g.read())
             resp = flask_app_client.post(
-                '/api/v1/site-settings/',
+                '/api/v1/site-settings/file',
                 data={
                     'key': 'header_image',
                     'transactionId': transaction_id,
@@ -97,7 +96,7 @@ def test_site_settings(admin_user, flask_app_client, flask_app, db, request, tes
             with (Path(td) / 'b.txt').open('w') as f:
                 f.write('5678')
             resp = flask_app_client.post(
-                '/api/v1/site-settings/',
+                '/api/v1/site-settings/file',
                 data={
                     'key': 'header_image',
                     'transactionId': transaction_id,
@@ -117,7 +116,7 @@ def test_site_settings(admin_user, flask_app_client, flask_app, db, request, tes
             with (Path(td) / 'b.txt').open('w') as f:
                 f.write('5678')
             resp = flask_app_client.post(
-                '/api/v1/site-settings/',
+                '/api/v1/site-settings/file',
                 data={
                     'key': 'header_image',
                     'transactionId': transaction_id,
@@ -127,33 +126,14 @@ def test_site_settings(admin_user, flask_app_client, flask_app, db, request, tes
             assert resp.status_code == 200
             assert resp.json['key'] == 'header_image'
 
-        # Create json site setting
-        data = {
-            'key': 'social_group_roles',
-            'data': {
-                'Matriarch': {'multipleInGroup': False},
-                'IrritatingGit': {'multipleInGroup': True},
-            },
-        }
-
-        resp = flask_app_client.post(
-            '/api/v1/site-settings/',
-            content_type='application/json',
-            data=json.dumps(data),
-        )
-        assert resp.status_code == 200
-        assert resp.json['key'] == 'social_group_roles'
-
         # Delete site setting
-        resp = flask_app_client.delete('/api/v1/site-settings/header_image')
+        resp = flask_app_client.delete('/api/v1/site-settings/file/header_image')
         assert resp.status_code == 204
-        resp = flask_app_client.delete('/api/v1/site-settings/footer_image')
-        assert resp.status_code == 204
-        resp = flask_app_client.delete('/api/v1/site-settings/social_group_roles')
+        resp = flask_app_client.delete('/api/v1/site-settings/file/footer_image')
         assert resp.status_code == 204
 
         # List site settings
-        resp = flask_app_client.get('/api/v1/site-settings/')
+        resp = flask_app_client.get('/api/v1/site-settings/file')
         assert resp.status_code == 200
         assert resp.json == []
 
@@ -174,7 +154,7 @@ def test_site_settings_permissions(
     ):
         # Create site setting
         resp = flask_app_client.post(
-            '/api/v1/site-settings/',
+            '/api/v1/site-settings/file',
             data={
                 'key': 'footer_image',
                 'file_upload_guid': str(fup.guid),
@@ -184,7 +164,7 @@ def test_site_settings_permissions(
 
         # Edit site setting
         resp = flask_app_client.post(
-            '/api/v1/site-settings/',
+            '/api/v1/site-settings/file',
             data={
                 'key': 'header_image',
                 'file_upload_guid': str(fup.guid),
@@ -193,9 +173,9 @@ def test_site_settings_permissions(
         assert resp.status_code == 403
 
         # List site settings
-        resp = flask_app_client.get('/api/v1/site-settings/')
+        resp = flask_app_client.get('/api/v1/site-settings/file')
         assert resp.status_code == 403
 
         # Delete site setting
-        resp = flask_app_client.delete('/api/v1/site-settings/header_image')
+        resp = flask_app_client.delete('/api/v1/site-settings/file/header_image')
         assert resp.status_code == 403

@@ -32,7 +32,7 @@ def test_site_info(flask_app_client):
                 'hash': '477dac40056d1f722579bffa949b8979fc7e6e31',
                 'branch': 'next-gen',
             }
-            resp = flask_app_client.get('/api/v1/site-info/')
+            resp = flask_app_client.get('/api/v1/site-settings/site-info/')
     assert resp.status_code == 200
     assert resp.content_type == 'application/json'
     assert resp.json == {
@@ -63,7 +63,7 @@ def test_site_info_api_error(flask_app_client):
             acm_get_dict.return_value = not_found
             edm_get_dict.return_value = not_found
             # both acm and edm returns 404
-            resp = flask_app_client.get('/api/v1/site-info/')
+            resp = flask_app_client.get('/api/v1/site-settings/site-info/')
 
     assert resp.status_code == 200
     assert resp.content_type == 'application/json'

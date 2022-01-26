@@ -8,7 +8,7 @@ import pytest
 from tests.utils import module_unavailable, extension_unavailable
 
 
-BUNDLE_PATH = '__bundle_setup'
+BUNDLE_PATH = 'block'
 
 
 @pytest.mark.skipif(extension_unavailable('edm'), reason='EDM extension disabled')
@@ -16,7 +16,7 @@ BUNDLE_PATH = '__bundle_setup'
     module_unavailable('site_settings'), reason='Site-settings module disabled'
 )
 def test_bundle_read(flask_app_client, admin_user):
-    response = conf_utils.read_configuration(flask_app_client, admin_user, BUNDLE_PATH)
+    response = conf_utils.read_main_settings(flask_app_client, admin_user)
     assert response.json['success']
     assert response.json['response']
     assert 'configuration' in response.json['response']
@@ -31,17 +31,16 @@ def test_bundle_read(flask_app_client, admin_user):
     module_unavailable('site_settings'), reason='Site-Settings module disabled'
 )
 def test_bundle_modify(flask_app_client, admin_user, db):
-    response = conf_utils.read_configuration(flask_app_client, admin_user, BUNDLE_PATH)
+    response = conf_utils.read_main_settings(flask_app_client, admin_user)
     orig_name = response.json['response']['configuration']['site.name']['value']
     key = 'site.name'
     test_value = 'TEST-' + str(uuid.uuid4())
     data = {
         key: test_value,
     }
-    response = conf_utils.modify_configuration(
+    response = conf_utils.modify_main_settings(
         flask_app_client,
         admin_user,
-        None,  # to modify more than one value, there is no trailing path
         data,
     )
     assert response.json['success']
@@ -58,10 +57,9 @@ def test_bundle_modify(flask_app_client, admin_user, db):
         'bad_key': 'abcd',  # this should be ignored
         key: {'foo': 'bar'},  # this should cause a 400
     }
-    response = conf_utils.modify_configuration(
+    response = conf_utils.modify_main_settings(
         flask_app_client,
         admin_user,
-        None,  # to modify more than one value, there is no trailing path
         data,
         expected_status_code=400,
     )
@@ -74,10 +72,9 @@ def test_bundle_modify(flask_app_client, admin_user, db):
         key: test_value,
         key2: orig_name,
     }
-    response = conf_utils.modify_configuration(
+    response = conf_utils.modify_main_settings(
         flask_app_client,
         admin_user,
-        None,
         data,
     )
     assert response.json['success']

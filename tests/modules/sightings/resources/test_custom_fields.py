@@ -2,7 +2,7 @@
 # pylint: disable=missing-docstring
 
 from tests.modules.sightings.resources import utils as sighting_utils
-from tests.extensions.edm import utils as edm_utils
+from tests.modules.site_settings.resources import utils as setting_utils
 import pytest
 
 from tests.utils import module_unavailable
@@ -22,7 +22,7 @@ def test_custom_fields_on_sighting(
     from app.modules.sightings.models import Sighting
     import datetime
 
-    cfd_id = edm_utils.custom_field_create(flask_app_client, admin_user, 'test_cfd')
+    cfd_id = setting_utils.custom_field_create(flask_app_client, admin_user, 'test_cfd')
     assert cfd_id is not None
 
     timestamp = datetime.datetime.now().isoformat() + '+00:00'

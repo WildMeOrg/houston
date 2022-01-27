@@ -14,8 +14,16 @@ def test_modify_mission_task_users(db, flask_app_client, data_manager_1, data_ma
     # pylint: disable=invalid-name
     from app.modules.missions.models import MissionTask
 
+    response = mission_utils.create_mission(
+        flask_app_client, data_manager_1, 'This is a test mission, please ignore'
+    )
+    mission_guid = response.json['guid']
+
     response = mission_utils.create_mission_task(
-        flask_app_client, data_manager_1, 'This is a test task, please ignore'
+        flask_app_client,
+        data_manager_1,
+        'This is a test task, please ignore',
+        mission_guid,
     )
     mission_task_guid = response.json['guid']
 
@@ -42,12 +50,22 @@ def test_modify_mission_task_users(db, flask_app_client, data_manager_1, data_ma
 
     mission_utils.delete_mission_task(flask_app_client, data_manager_1, mission_task_guid)
 
+    mission_utils.delete_mission(flask_app_client, data_manager_1, mission_guid)
+
 
 @pytest.mark.skipif(module_unavailable('missions'), reason='Missions module disabled')
 def test_owner_permission(flask_app_client, data_manager_1, data_manager_2):
 
+    response = mission_utils.create_mission(
+        flask_app_client, data_manager_1, 'This is a test mission, please ignore'
+    )
+    mission_guid = response.json['guid']
+
     response = mission_utils.create_mission_task(
-        flask_app_client, data_manager_1, 'This is a test task, please ignore'
+        flask_app_client,
+        data_manager_1,
+        'This is a test task, please ignore',
+        mission_guid,
     )
     mission_task_guid = response.json['guid']
 
@@ -98,3 +116,5 @@ def test_owner_permission(flask_app_client, data_manager_1, data_manager_2):
     )
 
     mission_utils.delete_mission_task(flask_app_client, data_manager_1, mission_task_guid)
+
+    mission_utils.delete_mission(flask_app_client, data_manager_1, mission_guid)

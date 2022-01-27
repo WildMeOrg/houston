@@ -78,6 +78,8 @@ ENV HOUSTON_DOTENV ${DATA_ROOT}/.env
 
 COPY ./.dockerfiles/docker-entrypoint.sh /docker-entrypoint.sh
 
+COPY ./.dockerfiles/embed.sh /bin/embed
+
 ENTRYPOINT [ "/docker-entrypoint.sh" ]
 #: default command within the entrypoint
 # CMD [ "invoke", "app.run" ]

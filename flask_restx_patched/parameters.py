@@ -315,6 +315,8 @@ class PatchJSONParametersWithPassword(PatchJSONParameters):
                     message='Updating database requires `current_password` test operation.',
                 )
 
+        # return PatchJSONParameters.add(obj, field, value, state)
+
     @classmethod
     def remove(cls, obj, field, value, state):
         from app.extensions.api import abort
@@ -326,6 +328,8 @@ class PatchJSONParametersWithPassword(PatchJSONParameters):
                     message='Updating database requires `current_password` test operation.',
                 )
 
+        # return PatchJSONParameters.remove(obj, field, value, state)
+
     @classmethod
     def replace(cls, obj, field, value, state):
         from app.extensions.api import abort
@@ -336,3 +340,5 @@ class PatchJSONParametersWithPassword(PatchJSONParameters):
                     code=HTTPStatus.FORBIDDEN,
                     message='Updating database requires `current_password` test operation.',
                 )
+
+        return PatchJSONParameters.replace(obj, field, value, state)

@@ -76,28 +76,19 @@ class Mission(db.Model, HoustonModel, Timestamp):
         return title
 
     @classmethod
-    def query_search(cls, search=None):
-        from sqlalchemy import or_, and_, String
+    def query_search_term_hook(cls, term):
         from sqlalchemy_utils.functions import cast_if
+        from sqlalchemy import String
 
-        if search is not None:
-            search = search.strip().replace(',', ' ').split(' ')
-            search = [term.strip() for term in search]
-            search = [term for term in search if len(term) > 0]
+        return (
+            cast_if(cls.guid, String).contains(term),
+            cls.title.contains(term),
+            cast_if(cls.owner_guid, String).contains(term),
+        )
 
-            or_terms = []
-            for term in search:
-                or_term = or_(
-                    cast_if(cls.guid, String).contains(term),
-                    cls.title.contains(term),
-                    cast_if(cls.owner_guid, String).contains(term),
-                )
-                or_terms.append(or_term)
-            query = cls.query.filter(and_(*or_terms))
-        else:
-            query = cls.query
-
-        return query
+    @property
+    def assigned_users(self):
+        return self.get_assigned_users()
 
     def get_options(self):
         return self.options.get('model_options', [])
@@ -106,7 +97,7 @@ class Mission(db.Model, HoustonModel, Timestamp):
         return [assignment.user for assignment in self.user_assignments]
 
     def get_members(self):
-        return self.get_assigned_users()
+        return list(set([self.owner] + self.get_assigned_users()))
 
     def add_user(self, user):
         with db.session.begin():
@@ -250,6 +241,18 @@ class MissionCollection(GitStore):
     }
 
     @classmethod
+    def query_search_term_hook(cls, term):
+        from sqlalchemy_utils.functions import cast_if
+        from sqlalchemy import String
+
+        return (
+            cast_if(cls.guid, String).contains(term),
+            cls.description.contains(term),
+            cast_if(cls.owner_guid, String).contains(term),
+            cast_if(cls.mission_guid, String).contains(term),
+        )
+
+    @classmethod
     def ensure_remote_delay(cls, mission_collection):
         from .tasks import ensure_remote
 
@@ -351,12 +354,12 @@ class MissionTask(db.Model, HoustonModel, Timestamp):
     )
 
     mission_guid = db.Column(
-        db.GUID, db.ForeignKey('mission.guid'), index=True, nullable=True
+        db.GUID, db.ForeignKey('mission.guid'), index=True, nullable=False
     )
     mission = db.relationship(
         'Mission',
         backref=db.backref(
-            'mission_tasks',
+            'tasks',
             primaryjoin='Mission.guid == MissionTask.mission_guid',
             order_by='MissionTask.guid',
         ),
@@ -376,6 +379,8 @@ class MissionTask(db.Model, HoustonModel, Timestamp):
 
     notes = db.Column(db.UnicodeText, nullable=True)
 
+    __table_args__ = (db.UniqueConstraint(mission_guid, title),)
+
     def __repr__(self):
         return (
             '<{class_name}('
@@ -387,6 +392,18 @@ class MissionTask(db.Model, HoustonModel, Timestamp):
                 self=self,
                 members=self.get_assigned_users(),
             )
+        )
+
+    @classmethod
+    def query_search_term_hook(cls, term):
+        from sqlalchemy_utils.functions import cast_if
+        from sqlalchemy import String
+
+        return (
+            cast_if(cls.guid, String).contains(term),
+            cls.title.contains(term),
+            cast_if(cls.owner_guid, String).contains(term),
+            cast_if(cls.mission_guid, String).contains(term),
         )
 
     @db.validates('title')
@@ -402,7 +419,7 @@ class MissionTask(db.Model, HoustonModel, Timestamp):
         return [assignment.user for assignment in self.user_assignments]
 
     def get_members(self):
-        return self.get_assigned_users()
+        return list(set([self.owner] + self.get_assigned_users()))
 
     def add_user(self, user):
         with db.session.begin():

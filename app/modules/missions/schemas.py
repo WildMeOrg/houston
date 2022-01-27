@@ -26,14 +26,36 @@ class BaseMissionSchema(ModelSchema):
         dump_only = (Mission.guid.key,)
 
 
-class DetailedMissionSchema(BaseMissionSchema):
+class CreationMissionSchema(BaseMissionSchema):
     """
     Detailed Mission schema exposes all useful fields.
     """
 
     class Meta(BaseMissionSchema.Meta):
-        fields = BaseMissionSchema.Meta.fields
+        fields = BaseMissionSchema.Meta.fields + (
+            Mission.title.key,
+            Mission.options.key,
+            Mission.classifications.key,
+            Mission.notes.key,
+        )
         dump_only = BaseMissionSchema.Meta.dump_only
+
+
+class DetailedMissionSchema(CreationMissionSchema):
+    """
+    Detailed Mission schema exposes all useful fields.
+    """
+
+    owner = base_fields.Nested('PublicUserSchema', many=False)
+
+    assigned_users = base_fields.Nested('PublicUserSchema', many=True)
+
+    class Meta(CreationMissionSchema.Meta):
+        fields = CreationMissionSchema.Meta.fields + (
+            'owner',
+            'assigned_users',
+        )
+        dump_only = CreationMissionSchema.Meta.dump_only
 
 
 class DetailedMissionJobSchema(ModelSchema):
@@ -103,12 +125,15 @@ class BaseMissionTaskSchema(ModelSchema):
     Base MissionTask schema exposes only the most general fields.
     """
 
+    mission = base_fields.Nested('BaseMissionSchema', many=False)
+
     class Meta:
         # pylint: disable=missing-docstring
         model = MissionTask
         fields = (
             MissionTask.guid.key,
             MissionTask.title.key,
+            'mission',
         )
         dump_only = (MissionTask.guid.key,)
 

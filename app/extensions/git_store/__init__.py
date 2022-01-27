@@ -412,7 +412,7 @@ class GitStore(db.Model, HoustonModel):
         return repo
 
     @classmethod
-    def ensure_store(cls, store_guid, owner=None):
+    def ensure_store(cls, store_guid, owner=None, **kwargs):
         git_store = cls.query.get(store_guid)
         if git_store is None:
             from app.extensions import db
@@ -423,10 +423,7 @@ class GitStore(db.Model, HoustonModel):
             if owner is None:
                 owner = current_user
 
-            git_store = cls(
-                guid=store_guid,
-                owner_guid=owner.guid,
-            )
+            git_store = cls(guid=store_guid, owner_guid=owner.guid, **kwargs)
 
             with db.session.begin():
                 db.session.add(git_store)
@@ -442,7 +439,7 @@ class GitStore(db.Model, HoustonModel):
         return git_store
 
     @classmethod
-    def create_from_metadata(cls, metadata):
+    def create_from_metadata(cls, metadata, **kwargs):
         if metadata.owner is not None and not metadata.owner.is_anonymous:
             git_store_owner = metadata.owner
         else:
@@ -462,6 +459,7 @@ class GitStore(db.Model, HoustonModel):
             major_type=GitStoreMajorType.filesystem,
             description=metadata.description,
             owner_guid=git_store_owner.guid,
+            **kwargs,
         )
 
         if metadata.anonymous_submitter:
@@ -490,7 +488,7 @@ class GitStore(db.Model, HoustonModel):
 
     @classmethod
     def create_from_tus(
-        cls, description, owner, transaction_id, paths=None, submitter=None
+        cls, description, owner, transaction_id, paths=None, submitter=None, **kwargs
     ):
         assert transaction_id is not None
         if owner is not None and not owner.is_anonymous:
@@ -501,6 +499,7 @@ class GitStore(db.Model, HoustonModel):
             major_type=GitStoreMajorType.filesystem,
             description=description,
             owner_guid=git_store_owner.guid,
+            **kwargs,
         )
 
         if submitter:

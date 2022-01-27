@@ -30,7 +30,7 @@ def init_app(app, **kwargs):
     if not os.path.exists(uploads_directory):
         os.makedirs(uploads_directory)
     tm = TusManager()
-    tm.init_app(app, upload_url='/api/v1/asset_groups/tus')
+    tm.init_app(app, upload_url='/api/v1/tus')
     tm.upload_file_handler(_tus_file_handler)
 
 

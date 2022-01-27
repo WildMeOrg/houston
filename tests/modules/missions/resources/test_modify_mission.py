@@ -47,22 +47,16 @@ def test_owner_permission(flask_app_client, data_manager_1, data_manager_2):
     )
     mission_guid = response.json['guid']
 
-    # another user cannot update the title
+    # Patch the mission's title
     data = [
-        utils.patch_test_op(data_manager_2.password_secret),
-        utils.patch_add_op('title', 'Invalid update'),
-    ]
-    mission_utils.patch_mission(flask_app_client, mission_guid, data_manager_2, data, 409)
-
-    # Owner can do that
-    data = [
-        utils.patch_test_op(data_manager_1.password_secret),
-        utils.patch_add_op('title', 'An owner modified test mission, please ignore'),
+        utils.patch_replace_op('title', 'An owner modified test mission, please ignore'),
+        utils.patch_replace_op('notes', 'An owner modified test mission, please ignore'),
     ]
     response = mission_utils.patch_mission(
         flask_app_client, mission_guid, data_manager_1, data
     )
     assert response.json['title'] == 'An owner modified test mission, please ignore'
+    assert response.json['notes'] == 'An owner modified test mission, please ignore'
 
     # add data manager 2 user to the mission
     data = [
@@ -74,7 +68,7 @@ def test_owner_permission(flask_app_client, data_manager_1, data_manager_2):
     # make them the owner
     data = [
         utils.patch_test_op(data_manager_1.password_secret),
-        utils.patch_add_op('owner', '%s' % data_manager_2.guid),
+        utils.patch_replace_op('owner', '%s' % data_manager_2.guid),
     ]
     mission_utils.patch_mission(flask_app_client, mission_guid, data_manager_1, data)
 

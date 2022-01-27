@@ -16,8 +16,16 @@ def test_create_and_delete_mission_task(flask_app_client, data_manager_1):
         MissionTaskAssetParticipation,
     )
 
+    response = mission_utils.create_mission(
+        flask_app_client, data_manager_1, 'This is a test mission, please ignore'
+    )
+    mission_guid = response.json['guid']
+
     response = mission_utils.create_mission_task(
-        flask_app_client, data_manager_1, 'This is a test task, please ignore'
+        flask_app_client,
+        data_manager_1,
+        'This is a test task, please ignore',
+        mission_guid,
     )
 
     mission_task_guid = response.json['guid']
@@ -44,6 +52,8 @@ def test_create_and_delete_mission_task(flask_app_client, data_manager_1):
     ).all()
     assert len(read_mission_task) == 0
 
+    mission_utils.delete_mission(flask_app_client, data_manager_1, mission_guid)
+
 
 @pytest.mark.skipif(module_unavailable('missions'), reason='Missions module disabled')
 def test_mission_task_permission(
@@ -52,8 +62,16 @@ def test_mission_task_permission(
     # Before we create any MissionTasks, find out how many are there already
     previous_list = mission_utils.read_all_mission_tasks(flask_app_client, staff_user)
 
+    response = mission_utils.create_mission(
+        flask_app_client, data_manager_1, 'This is a test mission, please ignore'
+    )
+    mission_guid = response.json['guid']
+
     response = mission_utils.create_mission_task(
-        flask_app_client, data_manager_1, 'This is a test task, please ignore'
+        flask_app_client,
+        data_manager_1,
+        'This is a test task, please ignore',
+        mission_guid,
     )
 
     mission_task_guid = response.json['guid']
@@ -92,3 +110,5 @@ def test_mission_task_permission(
 
     # delete it
     mission_utils.delete_mission_task(flask_app_client, data_manager_1, mission_task_guid)
+
+    mission_utils.delete_mission(flask_app_client, data_manager_1, mission_guid)

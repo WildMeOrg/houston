@@ -19,7 +19,7 @@ def test_mission_add_members(
 
     temp_mission = Mission(
         title='Temp Mission',
-        owner_guid=temp_user.guid,
+        owner=temp_user,
     )
 
     temp_assignment = MissionUserAssignment()
@@ -77,13 +77,20 @@ def test_mission_task_add_members(
     db, temp_user, data_manager_1, data_manager_2
 ):  # pylint: disable=unused-argument
     from app.modules.missions.models import (
+        Mission,
         MissionTask,
         MissionTaskUserAssignment,
     )
 
+    temp_mission = Mission(
+        title='Temp Mission',
+        owner=temp_user,
+    )
+
     temp_mission_task = MissionTask(
         title='Temp MissionTask',
-        owner_guid=temp_user.guid,
+        owner=temp_user,
+        mission=temp_mission,
     )
 
     temp_assignment = MissionTaskUserAssignment()
@@ -132,5 +139,6 @@ def test_mission_task_add_members(
     temp_mission_task.remove_user_in_context(data_manager_1)
 
     with db.session.begin():
-        db.session.delete(temp_mission_task)
         db.session.delete(temp_assignment)
+        db.session.delete(temp_mission_task)
+        db.session.delete(temp_mission)

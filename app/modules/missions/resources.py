@@ -15,7 +15,6 @@ from flask_login import current_user  # NOQA
 
 from app.extensions import db
 from app.extensions.api import Namespace, abort
-from app.extensions.api.parameters import PaginationParameters
 from app.modules.users import permissions
 from app.modules.users.permissions.types import AccessOperation
 from . import parameters, schemas
@@ -26,6 +25,27 @@ from app.utils import HoustonException
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 api = Namespace('missions', description='Missions')  # pylint: disable=invalid-name
+
+
+# the resolve_object_by_model returns a tuple if the return_not_found is set as it is here
+# a common helper to get the mission_collection object or raise 428 if remote only
+def _get_mission_collection_with_428(mission_collection):
+    mission_collection, mission_collection_guids = mission_collection
+    if mission_collection is not None:
+        return mission_collection
+
+    # We did not find the mission_collection by its UUID in the Houston database
+    # We now need to check the GitlabManager for the existence of that repo
+    mission_collection_guid = mission_collection_guids[0]
+    assert isinstance(mission_collection_guid, uuid.UUID)
+
+    if MissionCollection.is_on_remote(mission_collection_guid):
+        # Mission Collection is not local but is on remote
+        log.info(f'Mission Collection {mission_collection_guid} on remote but not local')
+        raise werkzeug.exceptions.PreconditionRequired
+    else:
+        # Mission Collection neither local nor remote
+        return None
 
 
 @api.route('/')
@@ -77,7 +97,7 @@ class Missions(Resource):
         context = api.commit_or_abort(
             db.session, default_error_message='Failed to create a new Mission'
         )
-        args['owner_guid'] = current_user.guid
+        args['owner'] = current_user
         mission = Mission(**args)
         # User who creates the mission gets added to it
         mission.add_user(current_user)
@@ -157,28 +177,138 @@ class MissionByID(Resource):
         return None
 
 
-# the resolve_object_by_model returns a tuple if the return_not_found is set as it is here
-# a common helper to get the mission_collection object or raise 428 if remote only
-def _get_mission_collection_with_428(mission_collection):
-    mission_collection, mission_collection_guids = mission_collection
-    if mission_collection is not None:
+@api.route('/<uuid:mission_guid>/tus/collect/')
+@api.login_required(oauth_scopes=['missions:read'])
+@api.response(
+    code=HTTPStatus.NOT_FOUND,
+    description='Mission not found.',
+)
+@api.resolve_object_by_model(Mission, 'mission')
+class MissionTusCollect(Resource):
+    """
+    Collect files uploaded by Tus endpoint for this Mission Collection
+    """
+
+    @api.permission_required(
+        permissions.ObjectAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'obj': kwargs['mission'],
+            'action': AccessOperation.WRITE,
+        },
+    )
+    @api.login_required(oauth_scopes=['missions:write'])
+    @api.parameters(parameters.CreateMissionCollectionParameters())
+    @api.response(schemas.DetailedMissionCollectionSchema())
+    @api.response(code=HTTPStatus.CONFLICT)
+    def post(self, args, mission):
+        """
+        Alias of [POST] /api/v1/missions/<uuid:mission_guid>/collections/
+        """
+        args['owner'] = current_user
+        args['mission'] = mission
+        mission_collection = MissionCollection.create_from_tus(**args)
+        db.session.refresh(mission_collection)
         return mission_collection
 
-    # We did not find the mission_collection by its UUID in the Houston database
-    # We now need to check the GitlabManager for the existence of that repo
-    mission_collection_guid = mission_collection_guids[0]
-    assert isinstance(mission_collection_guid, uuid.UUID)
 
-    if MissionCollection.is_on_remote(mission_collection_guid):
-        # Mission Collection is not local but is on remote
-        log.info(f'Mission Collection {mission_collection_guid} on remote but not local')
-        raise werkzeug.exceptions.PreconditionRequired
-    else:
-        # Mission Collection neither local nor remote
-        return None
+@api.route('/<uuid:mission_guid>/collections/')
+@api.login_required(oauth_scopes=['missions:read'])
+@api.response(
+    code=HTTPStatus.NOT_FOUND,
+    description='Mission not found.',
+)
+@api.resolve_object_by_model(Mission, 'mission')
+class MissionCollectionsForMission(Resource):
+    """
+    List a Mission's Mission Collections.
+    """
+
+    @api.permission_required(
+        permissions.ObjectAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'obj': kwargs['mission'],
+            'action': AccessOperation.WRITE,
+        },
+    )
+    @api.response(schemas.DetailedMissionCollectionSchema(many=True))
+    def get(self, mission):
+        return mission.collections
+
+    @api.permission_required(
+        permissions.ObjectAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'obj': kwargs['mission'],
+            'action': AccessOperation.WRITE,
+        },
+    )
+    @api.login_required(oauth_scopes=['missions:write'])
+    @api.parameters(parameters.CreateMissionCollectionParameters())
+    @api.response(schemas.DetailedMissionCollectionSchema())
+    @api.response(code=HTTPStatus.CONFLICT)
+    def post(self, args, mission):
+
+        args['owner'] = current_user
+        args['mission'] = mission
+        mission_collection = MissionCollection.create_from_tus(**args)
+        return mission_collection
+
+
+@api.route('/<uuid:mission_guid>/tasks/')
+@api.login_required(oauth_scopes=['missions:read'])
+@api.response(
+    code=HTTPStatus.NOT_FOUND,
+    description='Mission not found.',
+)
+@api.resolve_object_by_model(Mission, 'mission')
+class MissionTasksForMission(Resource):
+    """
+    Manipulations with Mission Tasks.
+    """
+
+    @api.permission_required(
+        permissions.ObjectAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'obj': kwargs['mission'],
+            'action': AccessOperation.WRITE,
+        },
+    )
+    @api.response(schemas.DetailedMissionCollectionSchema(many=True))
+    def get(self, mission):
+        return mission.tasks
+
+    @api.permission_required(
+        permissions.ModuleAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'module': Mission,
+            'action': AccessOperation.WRITE,
+        },
+    )
+    @api.login_required(oauth_scopes=['missions:write'])
+    @api.parameters(parameters.CreateMissionTaskParameters())
+    @api.response(schemas.DetailedMissionTaskSchema())
+    @api.response(code=HTTPStatus.CONFLICT)
+    def post(self, args, mission):
+        """
+        Create a new instance of Mission.
+        """
+        context = api.commit_or_abort(
+            db.session, default_error_message='Failed to create a new MissionTask'
+        )
+        args['owner'] = current_user
+        args['mission'] = mission
+        mission_task = MissionTask(**args)
+        # User who creates the mission gets added to it
+        mission_task.add_user(current_user)
+        with context:
+            db.session.add(mission_task)
+
+        db.session.refresh(mission_task)
+
+        return mission_task
 
 
 @api.route('/collections/')
+@api.login_required(oauth_scopes=['missions:read'])
 class MissionCollections(Resource):
     """
     Manipulations with Mission Collections.
@@ -191,7 +321,7 @@ class MissionCollections(Resource):
             'action': AccessOperation.READ,
         },
     )
-    @api.parameters(PaginationParameters())
+    @api.parameters(parameters.ListMissionCollectionParameters())
     @api.response(schemas.BaseMissionCollectionSchema(many=True))
     def get(self, args):
         """
@@ -200,7 +330,17 @@ class MissionCollections(Resource):
         Returns a list of Mission Collection starting from ``offset`` limited by ``limit``
         parameter.
         """
-        return MissionCollection.query.offset(args['offset']).limit(args['limit'])
+        search = args.get('search', None)
+        if search is not None and len(search) == 0:
+            search = None
+
+        mission_collections = MissionCollection.query_search(search)
+
+        return (
+            mission_collections.order_by(MissionCollection.guid)
+            .offset(args['offset'])
+            .limit(args['limit'])
+        )
 
 
 @api.login_required(oauth_scopes=['missions:read'])
@@ -361,45 +501,11 @@ class MissionCollectionByID(Resource):
         return None
 
 
-@api.route('/tus/collect/<uuid:mission_collection_guid>')
-@api.login_required(oauth_scopes=['missions:read'])
-@api.response(
-    code=HTTPStatus.NOT_FOUND,
-    description='Mission Collection not found.',
-)
-@api.resolve_object_by_model(
-    MissionCollection, 'mission_collection', return_not_found=True
-)
-class MissionCollectionTusCollect(Resource):
-    """
-    Collect files uploaded by Tus endpoint for this Mission Collection
-    """
-
-    @api.permission_required(
-        permissions.ObjectAccessPermission,
-        kwargs_on_request=lambda kwargs: {
-            'obj': kwargs['mission_collection'],
-            'action': AccessOperation.READ,
-        },
-    )
-    @api.response(schemas.DetailedMissionCollectionSchema())
-    def get(self, mission_collection):
-        mission_collection, mission_collection_guids = mission_collection
-
-        if mission_collection is None:
-            # We have checked the mission_collection manager and cannot find this mission_collection, raise 404 manually
-            raise werkzeug.exceptions.NotFound
-
-        mission_collection.import_tus_files()
-
-        return mission_collection
-
-
 @api.route('/tasks/')
 @api.login_required(oauth_scopes=['missions:read'])
 class MissionTasks(Resource):
     """
-    Manipulations with MissionTasks.
+    Manipulations with Mission Tasks.
     """
 
     @api.permission_required(
@@ -409,45 +515,26 @@ class MissionTasks(Resource):
             'action': AccessOperation.READ,
         },
     )
-    @api.parameters(PaginationParameters())
+    @api.parameters(parameters.ListMissionTaskParameters())
     @api.response(schemas.BaseMissionTaskSchema(many=True))
     def get(self, args):
         """
-        List of MissionTask.
+        List of Mission Task.
 
-        Returns a list of MissionTask starting from ``offset`` limited by ``limit``
+        Returns a list of Mission Task starting from ``offset`` limited by ``limit``
         parameter.
         """
-        return MissionTask.query.offset(args['offset']).limit(args['limit'])
+        search = args.get('search', None)
+        if search is not None and len(search) == 0:
+            search = None
 
-    @api.permission_required(
-        permissions.ModuleAccessPermission,
-        kwargs_on_request=lambda kwargs: {
-            'module': MissionTask,
-            'action': AccessOperation.WRITE,
-        },
-    )
-    @api.login_required(oauth_scopes=['missions:write'])
-    @api.parameters(parameters.CreateMissionTaskParameters())
-    @api.response(schemas.DetailedMissionTaskSchema())
-    @api.response(code=HTTPStatus.CONFLICT)
-    def post(self, args):
-        """
-        Create a new instance of MissionTask.
-        """
-        context = api.commit_or_abort(
-            db.session, default_error_message='Failed to create a new MissionTask'
+        mission_tasks = MissionTask.query_search(search)
+
+        return (
+            mission_tasks.order_by(MissionTask.guid)
+            .offset(args['offset'])
+            .limit(args['limit'])
         )
-        args['owner_guid'] = current_user.guid
-        mission_task = MissionTask(**args)
-        # User who creates the task gets added to it
-        mission_task.add_user(current_user)
-        with context:
-            db.session.add(mission_task)
-
-        db.session.refresh(mission_task)
-
-        return mission_task
 
 
 @api.route('/tasks/<uuid:mission_task_guid>')

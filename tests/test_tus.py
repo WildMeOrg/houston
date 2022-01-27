@@ -29,7 +29,7 @@ def file_upload_path(flask_app, file_upload_asset_group_id, file_upload_filename
 
 
 def test_tus_options(flask_app_client):
-    response = flask_app_client.options('/api/v1/asset_groups/tus')
+    response = flask_app_client.options('/api/v1/tus')
     assert response.status_code in (200, 204)
     assert response.headers['Tus-Resumable'] == '1.0.0'
     assert int(response.headers['Tus-Max-Size']) > 0
@@ -47,7 +47,7 @@ def test_tus_upload_protocol(
     filename = file_upload_path.name
     encoded_filename = base64.b64encode(filename.encode('utf-8')).decode('utf-8')
     response = flask_app_client.post(
-        '/api/v1/asset_groups/tus',
+        '/api/v1/tus',
         headers={
             'Upload-Metadata': f'filename {encoded_filename}',
             'Upload-Length': len(a_txt),
@@ -58,7 +58,7 @@ def test_tus_upload_protocol(
     assert response.data == b''
 
     path = urllib.parse.urlparse(response.headers['Location']).path
-    assert path.startswith('/api/v1/asset_groups/tus/')
+    assert path.startswith('/api/v1/tus/')
 
     # Get file state on server
     response = flask_app_client.head(
@@ -131,7 +131,7 @@ def test_tus_delete(flask_app_client, file_upload_path):
     filename = file_upload_path.name
     encoded_filename = base64.b64encode(filename.encode('utf-8')).decode('utf-8')
     response = flask_app_client.post(
-        '/api/v1/asset_groups/tus',
+        '/api/v1/tus',
         headers={
             'Upload-Metadata': f'filename {encoded_filename}',
             'Upload-Length': len(a_txt),
@@ -146,7 +146,7 @@ def test_tus_delete(flask_app_client, file_upload_path):
 
     # Check that the file exists on the server
     response = flask_app_client.get(
-        '/api/v1/asset_groups/tus',
+        '/api/v1/tus',
         headers={
             'Upload-Metadata': f'filename {encoded_filename}',
         },
@@ -181,7 +181,7 @@ def test_tus_delete(flask_app_client, file_upload_path):
 
     # Check that the file is deleted on the server
     response = flask_app_client.get(
-        '/api/v1/asset_groups/tus',
+        '/api/v1/tus',
         headers={
             'Upload-Metadata': f'filename {encoded_filename}',
         },
@@ -198,7 +198,7 @@ def test_tus_corner_cases(flask_app, flask_app_client, file_upload_filename):
 
     # No Upload-Metadata and Tus-Resumable when initializing file upload
     response = flask_app_client.post(
-        '/api/v1/asset_groups/tus',
+        '/api/v1/tus',
         headers={
             'Upload-Length': len(a_txt),
         },
@@ -208,7 +208,7 @@ def test_tus_corner_cases(flask_app, flask_app_client, file_upload_filename):
 
     # Initialize file upload (Add X-Forwarded-Proto)
     response = flask_app_client.post(
-        '/api/v1/asset_groups/tus',
+        '/api/v1/tus',
         headers={
             'Upload-Metadata': f'filename {encoded_filename}',
             'Upload-Length': len(a_txt),
@@ -225,7 +225,7 @@ def test_tus_corner_cases(flask_app, flask_app_client, file_upload_filename):
 
     # OPTIONS with Upload-Metadata and Access-Control-Request-Method
     response = flask_app_client.options(
-        '/api/v1/asset_groups/tus',
+        '/api/v1/tus',
         headers={
             'Upload-Metadata': f'filename {encoded_filename}',
             'Access-Control-Request-Method': 'POST',
@@ -233,8 +233,8 @@ def test_tus_corner_cases(flask_app, flask_app_client, file_upload_filename):
     )
     assert response.status_code == 200
 
-    # GET /api/v1/asset_groups/tus without sending Upload-Metadata
-    response = flask_app_client.get('/api/v1/asset_groups/tus')
+    # GET /api/v1/tus without sending Upload-Metadata
+    response = flask_app_client.get('/api/v1/tus')
     assert response.status_code == 404
     assert response.data == b'metadata filename is not set'
 

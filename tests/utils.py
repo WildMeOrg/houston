@@ -496,6 +496,16 @@ def random_decimal_longitude():
     return random.uniform(-180, 80)
 
 
+def random_uuid():
+    import uuid
+
+    return uuid.uuid4()
+
+
+def random_guid():
+    return random_uuid()
+
+
 def random_nonce(length=16):
     import string
 

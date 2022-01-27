@@ -387,6 +387,32 @@ class FeatherModel(GhostModel, TimestampViewed):
         return rule.check()
 
     @classmethod
+    def query_search(cls, search=None):
+        from sqlalchemy import or_, and_
+
+        if search is not None:
+            search = search.strip().replace(',', ' ').split(' ')
+            search = [term.strip() for term in search]
+            search = [term for term in search if len(term) > 0]
+
+            or_terms = []
+            for term in search:
+                or_term = or_(*cls.query_search_term_hook(term))
+                or_terms.append(or_term)
+            query = cls.query.filter(and_(*or_terms))
+        else:
+            query = cls.query
+
+        return query
+
+    @classmethod
+    def query_search_term_hook(cls, term):
+        from sqlalchemy_utils.functions import cast_if
+        from sqlalchemy import String
+
+        return (cast_if(cls.guid, String).contains(term),)
+
+    @classmethod
     def get_multiple(cls, guids):
         if not guids or not isinstance(guids, list) or len(guids) < 1:
             return []

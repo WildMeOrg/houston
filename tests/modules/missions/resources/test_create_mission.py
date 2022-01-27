@@ -13,7 +13,6 @@ def test_create_and_delete_mission(flask_app_client, data_manager_1):
     from app.modules.missions.models import (
         Mission,
         MissionUserAssignment,
-        MissionAssetParticipation,
     )
 
     response = mission_utils.create_mission(
@@ -35,11 +34,6 @@ def test_create_and_delete_mission(flask_app_client, data_manager_1):
     assert read_mission is None
 
     read_mission = MissionUserAssignment.query.filter_by(mission_guid=mission_guid).all()
-    assert len(read_mission) == 0
-
-    read_mission = MissionAssetParticipation.query.filter_by(
-        mission_guid=mission_guid
-    ).all()
     assert len(read_mission) == 0
 
 

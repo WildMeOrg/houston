@@ -168,7 +168,7 @@ def user_login(email=None, password=None, remember=None, refer=None, *args, **kw
 
 
 @backend_blueprint.route('/logout', methods=['GET'])
-@frontend_blueprint.route('/logout', methods=['POST'])
+@frontend_blueprint.route('/logout', methods=['GET', 'POST'])
 @login_required
 def user_logout(refer=None, *args, **kwargs):
     # pylint: disable=unused-argument

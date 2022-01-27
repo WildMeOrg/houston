@@ -20,14 +20,6 @@ from app.extensions import oauth2, login_manager
 from app.modules.users.models import User
 
 
-def _url_for(value, *args, **kwargs):
-    # kwargs['_external'] = 'https'
-    # kwargs['_scheme'] = 'https'
-    kwargs['_external'] = 'http'
-    kwargs['_scheme'] = 'http'
-    return url_for(value, *args, **kwargs)
-
-
 def _is_safe_url(target):
     ref_url = urlparse(request.host_url)
     test_url = urlparse(urljoin(request.host_url, target))
@@ -63,4 +55,4 @@ def load_user(guid):
 @login_manager.unauthorized_handler
 def unauthorized():
     flash('You tried to load an unauthorized page.', 'danger')
-    return flask.redirect(_url_for('backend.home'))
+    return flask.redirect(url_for('backend.home'))

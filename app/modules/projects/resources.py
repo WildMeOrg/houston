@@ -24,7 +24,7 @@ log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 api = Namespace('projects', description='Projects')  # pylint: disable=invalid-name
 
 
-@api.route('/')
+@api.route('/', strict_slashes=False)
 @api.login_required(oauth_scopes=['projects:read'])
 class Projects(Resource):
     """
@@ -125,7 +125,7 @@ class ProjectByID(Resource):
             db.session, default_error_message='Failed to update Project details.'
         )
         with context:
-            parameters.PatchProjectDetailsParameters.perform_patch(args, obj=project)
+            parameters.PatchProjectDetailsParameters.perform_patch(args, project)
             db.session.merge(project)
         return project
 

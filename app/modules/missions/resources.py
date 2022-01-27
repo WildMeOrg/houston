@@ -48,7 +48,7 @@ def _get_mission_collection_with_428(mission_collection):
         return None
 
 
-@api.route('/')
+@api.route('/', strict_slashes=False)
 @api.login_required(oauth_scopes=['missions:read'])
 class Missions(Resource):
     """
@@ -155,7 +155,7 @@ class MissionByID(Resource):
             db.session, default_error_message='Failed to update Mission details.'
         )
         with context:
-            parameters.PatchMissionDetailsParameters.perform_patch(args, obj=mission)
+            parameters.PatchMissionDetailsParameters.perform_patch(args, mission)
             db.session.merge(mission)
         return mission
 
@@ -177,7 +177,7 @@ class MissionByID(Resource):
         return None
 
 
-@api.route('/<uuid:mission_guid>/tus/collect/')
+@api.route('/<uuid:mission_guid>/tus/collect')
 @api.login_required(oauth_scopes=['missions:read'])
 @api.response(
     code=HTTPStatus.NOT_FOUND,
@@ -211,7 +211,7 @@ class MissionTusCollect(Resource):
         return mission_collection
 
 
-@api.route('/<uuid:mission_guid>/collections/')
+@api.route('/<uuid:mission_guid>/collections')
 @api.login_required(oauth_scopes=['missions:read'])
 @api.response(
     code=HTTPStatus.NOT_FOUND,
@@ -253,7 +253,7 @@ class MissionCollectionsForMission(Resource):
         return mission_collection
 
 
-@api.route('/<uuid:mission_guid>/tasks/')
+@api.route('/<uuid:mission_guid>/tasks')
 @api.login_required(oauth_scopes=['missions:read'])
 @api.response(
     code=HTTPStatus.NOT_FOUND,
@@ -307,7 +307,7 @@ class MissionTasksForMission(Resource):
         return mission_task
 
 
-@api.route('/collections/')
+@api.route('/collections')
 @api.login_required(oauth_scopes=['missions:read'])
 class MissionCollections(Resource):
     """
@@ -461,7 +461,7 @@ class MissionCollectionByID(Resource):
         )
         with context:
             parameters.PatchMissionCollectionDetailsParameters.perform_patch(
-                args, obj=mission_collection
+                args, mission_collection
             )
             db.session.merge(mission_collection)
         return mission_collection
@@ -501,7 +501,7 @@ class MissionCollectionByID(Resource):
         return None
 
 
-@api.route('/tasks/')
+@api.route('/tasks')
 @api.login_required(oauth_scopes=['missions:read'])
 class MissionTasks(Resource):
     """
@@ -583,9 +583,7 @@ class MissionTaskByID(Resource):
             db.session, default_error_message='Failed to update MissionTask details.'
         )
         with context:
-            parameters.PatchMissionTaskDetailsParameters.perform_patch(
-                args, obj=mission_task
-            )
+            parameters.PatchMissionTaskDetailsParameters.perform_patch(args, mission_task)
             db.session.merge(mission_task)
         return mission_task
 

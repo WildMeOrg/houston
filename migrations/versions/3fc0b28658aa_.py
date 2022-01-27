@@ -343,6 +343,7 @@ def upgrade():
         batch_op.drop_column('owner_guid')
         batch_op.drop_column('submitter_guid')
         batch_op.drop_column('updated')
+        batch_op.drop_column('major_type')
         batch_op.drop_column('commit')
         batch_op.drop_column('viewed')
         batch_op.drop_column('config')
@@ -350,11 +351,8 @@ def upgrade():
         batch_op.drop_column('commit_houston_api_version')
         batch_op.drop_column('description')
 
-    try:
-        with op.batch_alter_table('asset_group', schema=None) as batch_op:
-            batch_op.drop_column('major_type')
-    except Exception:
-        pass
+        if 'sqlite' in op.get_bind().dialect.dialect_description:
+            batch_op.drop_constraint('ck_asset_group_assetgroupmajortype')
 
     with op.batch_alter_table('mission', schema=None) as batch_op:
         batch_op.alter_column(
@@ -377,7 +375,7 @@ def downgrade():
         'unknown',
         'error',
         'reject',
-        name='gitstoremajortype',
+        name='assetgroupmajortype',
         create_type=False,
     )
     major_type_sa = sa.Enum(
@@ -388,7 +386,7 @@ def downgrade():
         'unknown',
         'error',
         'reject',
-        name='gitstoremajortype',
+        name='assetgroupmajortype',
     )
     major_type = major_type_sa.with_variant(major_type_postgres, 'postgresql')
     major_type.create(op.get_bind(), checkfirst=True)

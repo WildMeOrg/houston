@@ -81,7 +81,7 @@ def init(
     config = Config()
     config.set_main_option('script_location', directory)
     config.config_file_name = os.path.join(directory, 'alembic.ini')
-    if multidb:
+    if multidb:  # pragma: no cover
         command.init(config, directory, 'flask-multidb')
     else:
         command.init(config, directory, 'flask')
@@ -267,7 +267,7 @@ def upgrade(
     try:
         command.upgrade(config, revision, sql=sql, tag=tag)
         command.current(config)
-    except Exception:
+    except Exception:  # pragma: no cover
         if sqlite and os.path.exists(_db_filepath_backup):
             log.error('Rolling back Sqlite3 database to backup')
             shutil.copy2(_db_filepath_backup, _db_filepath)
@@ -330,7 +330,7 @@ def downgrade(
     try:
         command.downgrade(config, revision, sql=sql, tag=tag)
         command.current(config)
-    except Exception:
+    except Exception:  # pragma: no cover
         if sqlite and os.path.exists(_db_filepath_backup):
             log.error('Rolling back Sqlite3 database to backup')
             shutil.copy2(_db_filepath_backup, _db_filepath)
@@ -490,7 +490,7 @@ def init_development_data(context, upgrade_db=True, skip_on_failure=False):
 
     try:
         initial_development_data.init()
-    except AssertionError as exception:
+    except AssertionError as exception:  # pragma: no cover
         if not skip_on_failure:
             log.error('%s', exception)
         else:
@@ -512,7 +512,7 @@ def _reset(context, edm_authentication=None):
     """
     Delete the database and initialize it with data from the EDM
     """
-    from config import BaseConfig  # NOQA
+    from config import get_preliminary_config
 
     delete_path_configs = [
         'SQLALCHEMY_DATABASE_PATH',
@@ -523,7 +523,8 @@ def _reset(context, edm_authentication=None):
 
     for delete_path_config in delete_path_configs:
         delete_filepath = current_app.config.get(delete_path_config, None)
-        assert delete_filepath is not None
+        if delete_filepath is None:
+            continue
         if os.path.exists(delete_filepath):
             if os.path.isdir(delete_filepath):
                 shutil.rmtree(delete_filepath)
@@ -531,15 +532,9 @@ def _reset(context, edm_authentication=None):
                 os.remove(delete_filepath)
             assert not os.path.exists(delete_filepath)
 
-    if BaseConfig.PROJECT_NAME in ['Codex']:
+    config = get_preliminary_config()
+
+    if config.PROJECT_NAME in ['Codex']:
         context.invoke_execute(context, 'codex.run.warmup')
-
-        context.invoke_execute(
-            context, 'codex.initialize.all', edm_authentication=edm_authentication
-        )
-    elif BaseConfig.PROJECT_NAME in ['MWS']:
+    elif config.PROJECT_NAME in ['MWS']:
         context.invoke_execute(context, 'mws.run.warmup')
-
-        context.invoke_execute(
-            context, 'mws.initialize.all', edm_authentication=edm_authentication
-        )

@@ -58,6 +58,7 @@ RUN ls -lah /code/app/static
 WORKDIR /code
 
 RUN set -ex \
+ && pip install --upgrade pip \
  && pip install -e . \
  #: Install developer tools
  && pip install -r app/requirements.dev.txt \

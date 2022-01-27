@@ -24,7 +24,7 @@ log = logging.getLogger(__name__)
 api = Namespace('users', description='Users')
 
 
-@api.route('/')
+@api.route('/', strict_slashes=False)
 class Users(Resource):
     """
     Manipulations with users.

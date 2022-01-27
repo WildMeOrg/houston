@@ -90,6 +90,9 @@ class Mission(db.Model, HoustonModel, Timestamp):
     def assigned_users(self):
         return self.get_assigned_users()
 
+    def assets(self):
+        return self.get_assets()
+
     def get_options(self):
         return self.options.get('model_options', [])
 

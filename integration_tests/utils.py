@@ -58,6 +58,8 @@ def create_asset_group(session, codex_url, data):
         codex_url('/api/v1/asset_groups/'),
         json=data,
     )
+    print(response.json)
+    print(response.text)
     assert response.status_code == 200
 
     json_resp = response.json()

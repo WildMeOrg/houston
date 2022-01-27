@@ -25,7 +25,7 @@ log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 api = Namespace('annotations', description='Annotations')  # pylint: disable=invalid-name
 
 
-@api.route('/')
+@api.route('/', strict_slashes=False)
 @api.login_required(oauth_scopes=['annotations:read'])
 class Annotations(Resource):
     """
@@ -147,9 +147,7 @@ class AnnotationByID(Resource):
             db.session, default_error_message='Failed to update Annotation details.'
         )
         with context:
-            parameters.PatchAnnotationDetailsParameters.perform_patch(
-                args, obj=annotation
-            )
+            parameters.PatchAnnotationDetailsParameters.perform_patch(args, annotation)
             db.session.merge(annotation)
             AuditLog.patch_object(log, annotation, args, duration=timer.elapsed())
 

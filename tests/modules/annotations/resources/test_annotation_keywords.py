@@ -20,7 +20,7 @@ def test_keywords_on_annotation(
     from app.modules.keywords.models import Keyword, KeywordSource
 
     # this gives us an "existing" keyword to work with
-    keyword_value1 = 'TEST_VALUE_1'
+    keyword_value1 = 'TEST_KEYWORD_VALUE_1'
     keyword = Keyword(value=keyword_value1)
     with db.session.begin():
         db.session.add(keyword)
@@ -54,7 +54,7 @@ def test_keywords_on_annotation(
     assert kw[0].value == keyword_value1
 
     # patch to add *new* keyword (by value)
-    keyword_value2 = 'TEST_VALUE_2'
+    keyword_value2 = 'TEST_KEYWORD_VALUE_2'
     res = annot_utils.patch_annotation(
         flask_app_client,
         annotation.guid,

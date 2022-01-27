@@ -35,7 +35,7 @@ api = Namespace(
 )  # pylint: disable=invalid-name
 
 
-@api.route('/')
+@api.route('/', strict_slashes=False)
 @api.login_required(oauth_scopes=['notifications:read'])
 class Notifications(Resource):
     """
@@ -183,7 +183,7 @@ class NotificationByID(Resource):
         with context:
             try:
                 parameters.PatchNotificationDetailsParameters.perform_patch(
-                    args, obj=notification
+                    args, notification
                 )
                 db.session.merge(notification)
             except ValidationError:

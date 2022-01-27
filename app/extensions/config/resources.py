@@ -22,7 +22,7 @@ log = logging.getLogger(__name__)
 api = Namespace('config/houston', description='HoustonConfig')
 
 
-@api.route('/')
+@api.route('/', strict_slashes=False)
 @api.login_required(oauth_scopes=['config.houston:read'])
 class HoustonConfigs(Resource):
     """
@@ -43,5 +43,5 @@ class HoustonConfigs(Resource):
         """
         Patch config details by ID.
         """
-        response = parameters.PatchHoustonConfigParameters.perform_patch(args, obj=None)
+        response = parameters.PatchHoustonConfigParameters.perform_patch(args)
         return response

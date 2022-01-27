@@ -546,7 +546,7 @@ class IaClassConfigs(Resource):
         return response
 
 
-@api.route('/site-info/')
+@api.route('/site-info', strict_slashes=False)
 class SiteInfo(Resource):
     def get(self):
 

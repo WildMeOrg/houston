@@ -27,7 +27,7 @@ log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 api = Namespace('assets', description='Assets')  # pylint: disable=invalid-name
 
 
-@api.route('/')
+@api.route('/', strict_slashes=False)
 @api.login_required(oauth_scopes=['assets:read'])
 class Assets(Resource):
     """
@@ -54,6 +54,29 @@ class Assets(Resource):
         return (
             Asset.query.order_by(Asset.guid).offset(args['offset']).limit(args['limit'])
         )
+
+    # @api.permission_required(
+    #     permissions.ModuleAccessPermission,
+    #     kwargs_on_request=lambda kwargs: {
+    #         'module': Asset,
+    #         'action': AccessOperation.WRITE,
+    #     },
+    # )
+    @api.login_required(oauth_scopes=['assets:write'])
+    @api.parameters(parameters.PatchAssetParameters())
+    @api.response(schemas.BaseAssetSchema(many=True))
+    def patch(self, args):
+        """
+        Patch Assets' details by ID.
+        """
+        context = api.commit_or_abort(
+            db.session, default_error_message='Failed to bulk update Asset details.'
+        )
+        with context:
+            assets = parameters.PatchAssetParameters.perform_patch(args, obj_cls=Asset)
+            for asset in assets:
+                db.session.merge(asset)
+        return assets
 
 
 @api.route('/<uuid:asset_guid>')
@@ -100,7 +123,7 @@ class AssetByID(Resource):
             db.session, default_error_message='Failed to update Asset details.'
         )
         with context:
-            parameters.PatchAssetParameters.perform_patch(args, obj=asset)
+            parameters.PatchAssetParameters.perform_patch(args, asset)
             db.session.merge(asset)
         return asset
 

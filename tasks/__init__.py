@@ -62,21 +62,21 @@ try:
     from tasks import app as app_tasks  # NOQA
 
     namespaces.append(app_tasks)
-except ModuleNotFoundError as e:
+except ModuleNotFoundError as e:  # pragma: no cover
     logger.warning(f'Unable to load tasks.app.*\n{str(e)}')
 
 try:
     from tasks import codex as codex_tasks  # NOQA
 
     namespaces.append(codex_tasks)
-except ModuleNotFoundError as e:
+except ModuleNotFoundError as e:  # pragma: no cover
     logger.warning(f'Unable to load tasks.codex.*\n{str(e)}')
 
 try:
     from tasks import mws as mws_tasks  # NOQA
 
     namespaces.append(mws_tasks)
-except ModuleNotFoundError as e:
+except ModuleNotFoundError as e:  # pragma: no cover
     logger.warning(f'Unable to load tasks.mws.*\n{str(e)}')
 
 from tasks import dependencies as task_dependencies  # NOQA
@@ -89,7 +89,7 @@ try:
     from tasks import gumby as gumby_tasks  # NOQA
 
     namespaces.append(gumby_tasks)
-except ModuleNotFoundError as e:
+except ModuleNotFoundError as e:  # pragma: no cover
     logger.warning(f'Unable to load tasks.gumby.*\n{str(e)}')
 
 # NOTE: `namespace` or `ns` name is required!

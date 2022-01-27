@@ -49,7 +49,7 @@ def compute_xxhash64_digest_filepath(filepath):
 
         with open(filepath, 'rb') as file_:
             digest = xxhash.xxh64_hexdigest(file_.read())
-    except Exception:
+    except Exception:  # pragma: no cover
         digest = None
     return digest
 
@@ -188,7 +188,7 @@ class GitStore(db.Model, HoustonModel):
     def delete_remote_delay(self):
         raise NotImplementedError()
 
-    def git_commit_metadata_hook(self, local_store_metadata):
+    def git_commit_metadata_hook(self, local_store_metadata):  # pragma: no cover
         pass
 
     @property
@@ -475,7 +475,7 @@ class GitStore(db.Model, HoustonModel):
                 added = git_store.import_tus_files(
                     transaction_id=metadata.tus_transaction_id, paths=metadata.files
                 )
-            except Exception:
+            except Exception:  # pragma: no cover
                 log.exception(
                     'create_from_tus() had problems with import_tus_files(); deleting from db and fs %r'
                     % git_store
@@ -512,7 +512,7 @@ class GitStore(db.Model, HoustonModel):
         added = None
         try:
             added = git_store.import_tus_files(transaction_id=transaction_id, paths=paths)
-        except Exception:
+        except Exception:  # pragma: no cover
             log.exception(
                 'create_from_tus() had problems with import_tus_files(); deleting from db and fs %r'
                 % git_store
@@ -652,7 +652,7 @@ class GitStore(db.Model, HoustonModel):
                     }
 
                     files.append(file_data)
-                except Exception:
+                except Exception:  # pragma: no cover
                     logging.exception('Got exception in update_asset_symlinks')
                     errors.append(filepath)
 
@@ -884,7 +884,10 @@ class GitStore(db.Model, HoustonModel):
 
         try:
             return current_app.git_backend.get_project(str(guid))
-        except (GitlabInitializationError, requests.exceptions.RequestException):
+        except (
+            GitlabInitializationError,
+            requests.exceptions.RequestException,
+        ):  # pragma: no cover
             log.exception(f'Error when calling git store get_remote({guid})')
 
     @classmethod
@@ -893,7 +896,10 @@ class GitStore(db.Model, HoustonModel):
 
         try:
             return current_app.git_backend.is_project_on_remote(str(guid))
-        except (GitlabInitializationError, requests.exceptions.RequestException):
+        except (
+            GitlabInitializationError,
+            requests.exceptions.RequestException,
+        ):  # pragma: no cover
             log.exception(f'Error when calling git store is_on_remote({guid})')
             return False
 

@@ -387,39 +387,49 @@ def delete_via_flask(
             assert response.json['message'] == expected_error, response.json['message']
 
 
-def patch_test_op(value):
-    return {
+def patch_test_op(value, guid=None):
+    operation = {
         'op': 'test',
         'path': '/current_password',
         'value': value,
     }
+    if guid is not None:
+        operation['guid'] = str(guid)
+    return operation
 
 
-def patch_add_op(path, value):
-    return {
+def patch_add_op(path, value, guid=None):
+    operation = {
         'op': 'add',
         'path': '/%s' % (path,),
         'value': value,
     }
+    if guid is not None:
+        operation['guid'] = str(guid)
+    return operation
 
 
-def patch_remove_op(path, value=None):
+def patch_remove_op(path, value=None, guid=None):
     operation = {
         'op': 'remove',
         'path': '/%s' % (path,),
     }
     if value:
         operation['value'] = value
-
+    if guid is not None:
+        operation['guid'] = str(guid)
     return operation
 
 
-def patch_replace_op(path, value):
-    return {
+def patch_replace_op(path, value, guid=None):
+    operation = {
         'op': 'replace',
         'path': '/%s' % (path,),
         'value': value,
     }
+    if guid is not None:
+        operation['guid'] = str(guid)
+    return operation
 
 
 def all_count(db):

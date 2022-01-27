@@ -24,7 +24,7 @@ log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 api = Namespace('keywords', description='Keywords')  # pylint: disable=invalid-name
 
 
-@api.route('/')
+@api.route('/', strict_slashes=False)
 # no login decorator as read-all is public
 class Keywords(Resource):
     """
@@ -112,7 +112,7 @@ class KeywordByID(Resource):
             db.session, default_error_message='Failed to update Keyword details.'
         )
         with context:
-            parameters.PatchKeywordDetailsParameters.perform_patch(args, obj=keyword)
+            parameters.PatchKeywordDetailsParameters.perform_patch(args, keyword)
             db.session.merge(keyword)
         return keyword
 

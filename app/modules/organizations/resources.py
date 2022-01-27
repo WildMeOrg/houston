@@ -28,7 +28,7 @@ api = Namespace(
 )  # pylint: disable=invalid-name
 
 
-@api.route('/')
+@api.route('/', strict_slashes=False)
 @api.login_required(oauth_scopes=['organizations:read'])
 class Organizations(Resource):
     """
@@ -127,7 +127,7 @@ class OrganizationByID(Resource):
         )
         with context:
             parameters.PatchOrganizationDetailsParameters.perform_patch(
-                args, obj=organization
+                args, organization
             )
             db.session.merge(organization)
         return organization

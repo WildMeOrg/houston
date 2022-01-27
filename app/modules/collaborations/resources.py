@@ -33,7 +33,7 @@ api = Namespace(
 )  # pylint: disable=invalid-name
 
 
-@api.route('/')
+@api.route('/', strict_slashes=False)
 @api.login_required(oauth_scopes=['collaborations:read'])
 class Collaborations(Resource):
     """
@@ -185,7 +185,7 @@ class CollaborationByID(Resource):
         with context:
             try:
                 parameters.PatchCollaborationDetailsParameters.perform_patch(
-                    args, obj=collaboration
+                    args, collaboration
                 )
                 db.session.merge(collaboration)
             except ValidationError:

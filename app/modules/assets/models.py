@@ -168,6 +168,11 @@ class Asset(db.Model, HoustonModel):
     def src(self):
         return '/api/v1/assets/src/%s' % (str(self.guid),)
 
+    @property
+    @module_required('annotations', resolve='warn', default=-1)
+    def annotation_count(self):
+        return -1 if self.annotations is None else len(self.annotations)
+
     @module_required('sightings', resolve='warn', default=[])
     def get_asset_sightings(self):
         return self.asset_sightings

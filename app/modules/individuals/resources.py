@@ -67,7 +67,7 @@ class IndividualCleanup(object):
         )
 
 
-@api.route('/')
+@api.route('/', strict_slashes=False)
 @api.login_required(oauth_scopes=['individuals:read'])
 class Individuals(Resource):
     """
@@ -357,7 +357,7 @@ class IndividualByID(Resource):
             with context:
                 try:
                     parameters.PatchIndividualDetailsParameters.perform_patch(
-                        houston_args, obj=individual
+                        houston_args, individual
                     )
                 except HoustonException as ex:
                     abort(ex.status_code, ex.message)

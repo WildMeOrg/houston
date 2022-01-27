@@ -29,7 +29,7 @@ api = Namespace(
 )  # pylint: disable=invalid-name
 
 
-@api.route('/')
+@api.route('/', strict_slashes=False)
 class Relationships(Resource):
     """
     Manipulations with Relationships.
@@ -188,7 +188,7 @@ class RelationshipByID(Resource):
         )
         with context:
             parameters.PatchRelationshipDetailsParameters.perform_patch(
-                args, obj=relationship
+                args, relationship
             )
             db.session.merge(relationship)
         return relationship

@@ -50,10 +50,19 @@ class DetailedMissionSchema(CreationMissionSchema):
 
     assigned_users = base_fields.Nested('PublicUserSchema', many=True)
 
+    collections = base_fields.Nested('BaseMissionCollectionSchema', many=True)
+
+    assets = base_fields.Nested(
+        'DetailedAssetTableSchema',
+        many=True,
+    )
+
     class Meta(CreationMissionSchema.Meta):
         fields = CreationMissionSchema.Meta.fields + (
             'owner',
             'assigned_users',
+            'collections',
+            'assets',
         )
         dump_only = CreationMissionSchema.Meta.dump_only
 
@@ -74,6 +83,7 @@ class BaseMissionCollectionSchema(ModelSchema):
         model = MissionCollection
         fields = (
             MissionCollection.guid.key,
+            MissionCollection.mission_guid.key,
             MissionCollection.commit.key,
             MissionCollection.major_type.key,
             MissionCollection.description.key,
@@ -81,6 +91,7 @@ class BaseMissionCollectionSchema(ModelSchema):
         dump_only = (
             MissionCollection.guid.key,
             MissionCollection.commit.key,
+            MissionCollection.mission_guid.key,
         )
 
 

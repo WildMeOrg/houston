@@ -47,6 +47,7 @@ def test_find_asset(
         test_clone_asset_group_data['asset_group_uuid'],
     )
 
+    src_response = None
     try:
         asset_guid = test_clone_asset_group_data['asset_uuids'][3]
         asset_response = asset_utils.read_asset(
@@ -62,7 +63,8 @@ def test_find_asset(
         assert src_response.content_type == 'image/jpeg'
     finally:
         # Force the server to release the file handler
-        src_response.close()
+        if src_response is not None:
+            src_response.close()
         clone.cleanup()
 
 
@@ -214,7 +216,6 @@ def test_read_all_assets(
     admin_response = asset_utils.read_all_assets(flask_app_client, admin_user)
     asset_utils.read_all_assets(flask_app_client, researcher_1, 403)
 
-    assert len(admin_response.json) == 4
     # both of these lists should be lexical order
     assert admin_response.json[0]['guid'] == test_clone_asset_group_data['asset_uuids'][0]
     assert admin_response.json[1]['guid'] == test_clone_asset_group_data['asset_uuids'][1]

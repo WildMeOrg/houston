@@ -28,6 +28,33 @@ class BaseAssetSchema(ModelSchema):
         dump_only = (Asset.guid.key,)
 
 
+class DetailedAssetTableSchema(BaseAssetSchema):
+    """
+    Detailed Asset schema exposes all useful fields.
+    """
+
+    tags = base_fields.Nested(
+        'BaseKeywordSchema',
+        many=True,
+    )
+
+    class Meta(BaseAssetSchema.Meta):
+        fields = BaseAssetSchema.Meta.fields + (
+            Asset.created.key,
+            Asset.updated.key,
+            Asset.size_bytes.key,
+            'dimensions',
+            'annotation_count',
+            'classifications',
+            'tags',
+        )
+
+        dump_only = BaseAssetSchema.Meta.dump_only + (
+            Asset.created.key,
+            Asset.updated.key,
+        )
+
+
 class DetailedAssetSchema(BaseAssetSchema):
     """
     Detailed Asset schema exposes all useful fields.
@@ -37,6 +64,11 @@ class DetailedAssetSchema(BaseAssetSchema):
 
     annotations = base_fields.Nested('DetailedAnnotationSchema', many=True)
 
+    tags = base_fields.Nested(
+        'BaseKeywordSchema',
+        many=True,
+    )
+
     class Meta(BaseAssetSchema.Meta):
         fields = BaseAssetSchema.Meta.fields + (
             Asset.created.key,
@@ -44,6 +76,8 @@ class DetailedAssetSchema(BaseAssetSchema):
             Asset.git_store.key,
             'annotations',
             'dimensions',
+            'classifications',
+            'tags',
         )
 
         dump_only = BaseAssetSchema.Meta.dump_only + (

@@ -77,7 +77,7 @@ def validate_members(input_data):
             current_roles[role] = True
 
 
-@api.route('/')
+@api.route('/', strict_slashes=False)
 @api.login_required(oauth_scopes=['social-groups:read'])
 class SocialGroups(Resource):
     """
@@ -185,7 +185,7 @@ class SocialGroupByID(Resource):
         with context:
             try:
                 parameters.PatchSocialGroupDetailsParameters.perform_patch(
-                    args, obj=social_group
+                    args, social_group
                 )
             except HoustonException as ex:
                 abort(ex.status_code, ex.message)

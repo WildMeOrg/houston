@@ -30,7 +30,7 @@ log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 api = Namespace('encounters', description='Encounters')  # pylint: disable=invalid-name
 
 
-@api.route('/')
+@api.route('/', strict_slashes=False)
 class Encounters(Resource):
     """
     Manipulations with Encounters.
@@ -159,7 +159,7 @@ class EncounterByID(Resource):
             with context:
                 try:
                     parameters.PatchEncounterDetailsParameters.perform_patch(
-                        houston_args, obj=encounter
+                        houston_args, encounter
                     )
                 except HoustonException as ex:
                     abort(

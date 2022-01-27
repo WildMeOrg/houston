@@ -146,7 +146,7 @@ def _get_annotations(enc_json):
     return anns
 
 
-@api.route('/')
+@api.route('/', strict_slashes=False)
 class Sightings(Resource):
     """
     Manipulations with Sightings.
@@ -556,7 +556,9 @@ class SightingByID(Resource):
                 db.session, default_error_message='Failed to update Sighting details.'
             )
             with context:
-                parameters.PatchSightingDetailsParameters.perform_patch(houston_args, obj=sighting)
+                parameters.PatchSightingDetailsParameters.perform_patch(
+                    houston_args, sighting
+                )
                 db.session.merge(sighting)
 
         AuditLog.patch_object(log, sighting, args, duration=timer.elapsed())

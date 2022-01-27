@@ -56,6 +56,12 @@ fi
 # warm-ups
 coverage run --append `which invoke` app.run.warmup --print-routes
 
+# test integrations check
+if [ "$HOUSTON_APP_CONTEXT" == 'codex' ]; then
+    # `|| true` is used to ignore integration fail with gitlab
+    coverage run --append `which invoke` codex.integrations.check || true
+fi
+
 # test app.users.*
 echo password | coverage run --append `which invoke` app.users.create-user user@example.org
 echo password | coverage run --append `which invoke` app.users.create-user test@wildme.org

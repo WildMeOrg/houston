@@ -1003,12 +1003,6 @@ class AssetGroup(db.Model, HoustonModel):
             with open(metadata_path, 'w') as metatdata_file:
                 json.dump({}, metatdata_file)
 
-        with open(metadata_path, 'r') as metatdata_file:
-            group_metadata = json.load(metatdata_file)
-
-        with open(metadata_path, 'w') as metatdata_file:
-            json.dump(group_metadata, metatdata_file)
-
         return repo
 
     def git_write_upload_file(self, upload_file):

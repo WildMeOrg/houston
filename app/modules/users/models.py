@@ -90,6 +90,7 @@ if is_extension_enabled('edm'):
             # TODO is this actually needed
             log.warning('User._process_edm_user_organization() not implemented yet')
 
+
 else:
     UserEDMMixin = object
 
@@ -618,19 +619,29 @@ class User(db.Model, FeatherModel, UserEDMMixin):
 
     @module_required('asset_groups', resolve='warn', default=[])
     def unprocessed_asset_groups(self):
+        from app.modules.asset_groups.models import (
+            AssetGroup,
+            AssetGroupSighting,
+            AssetGroupSightingStage,
+        )
+
+        res = (
+            db.session.query(AssetGroup)
+            .join(AssetGroupSighting)
+            .filter(AssetGroup.owner_guid == self.guid)
+            .filter(AssetGroupSighting.stage != AssetGroupSightingStage.processed)
+        ).all()
         return [
             {
                 'uuid': str(asset_group.guid),
                 'uploadType': asset_group.get_config_field('uploadType'),
             }
-            for asset_group in self.get_asset_groups()
-            if not asset_group.is_processed()
+            for asset_group in res
         ]
 
     @module_required('asset_groups', resolve='warn', default=[])
     def get_unprocessed_asset_group_sightings(self):
         ags = []
-
         for group in self.get_asset_groups():
             new_ags = [ags for ags in group.get_unprocessed_asset_group_sightings()]
             ags.extend(new_ags)
@@ -889,14 +900,14 @@ class User(db.Model, FeatherModel, UserEDMMixin):
 
     @module_required('sightings', resolve='warn', default=[])
     def get_sightings(self):
-        sightings = []
-        for encounter in self.owned_encounters:
-            sighting = encounter.get_sighting()
-            if sighting:
-                sightings.append(encounter.get_sighting())
+        from app.modules.sightings.models import Sighting
+        from app.modules.encounters.models import Encounter
 
-        sighting_set = set(sightings)
-        return list(sighting_set)
+        return (
+            db.session.query(Sighting)
+            .join(Encounter)
+            .filter(Encounter.owner_guid == self.guid)
+        ).all()
 
     # FIXME just stubbing out for email
     def get_preferred_langauge(self):

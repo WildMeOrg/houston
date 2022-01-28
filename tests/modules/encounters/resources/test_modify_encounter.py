@@ -61,8 +61,6 @@ def test_modify_encounter(
         new_encounter_1.guid,
         researcher_1,
         patch_data,
-        400,
-        'Cannot mix EDM patch paths and houston patch paths',
     )
 
     # non Owner cannot make themselves the owner

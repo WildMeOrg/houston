@@ -284,7 +284,7 @@ def test_sightings(session, login, codex_url, test_root, admin_name):
         'updatedHouston': response.json()['updatedHouston'],
         'version': sighting_version,
         'creator': {
-            'full_name': 'Test admin',
+            'full_name': admin_name,
             'guid': my_guid,
             'profile_fileupload': None,
         },

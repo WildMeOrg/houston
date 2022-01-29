@@ -84,7 +84,7 @@ def test_create_asset_group_detection(session, codex_url, test_root, login):
         'asset_group_guid': asset_group_guid,
         'sighting_guid': None,
         'creator': {
-            'full_name': 'Test admin',
+            'full_name': me['full_name'],
             'guid': me['guid'],
             'profile_fileupload': None,
         },

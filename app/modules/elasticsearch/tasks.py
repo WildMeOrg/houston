@@ -341,7 +341,7 @@ def update_incremental_cutoff(key_prefix):
             f"SELECT value_datetime FROM elasticsearch_metadata WHERE key='{inc_key}'"
         )
         if res.rowcount > 0:
-            cutoff = res.first()[0]
+            cutoff = res.first()[0].strftime('%Y-%m-%d %H:%M:%S')
             h_conn.execute(
                 f"UPDATE elasticsearch_metadata SET value_datetime='{dt_now}' WHERE key='{inc_key}'"
             )

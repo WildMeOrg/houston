@@ -1,13 +1,12 @@
 # -*- coding: utf-8 -*-
-import datetime
-import json
 import logging
 
+import json
 from flask import current_app
 from gumby.models import Individual, Encounter, Sighting
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine, text, MetaData, Table, Column, String, DateTime
 from sqlalchemy.engine import Engine
-
+from datetime import datetime
 from app.extensions.celery import celery
 
 
@@ -37,6 +36,16 @@ def set_up_houston_tables():
     with h_engine.connect() as h_conn:
         results = h_conn.execute(text(ENUM_TYPE_LIST_SQL_QUERY))
         enum_list = results.fetchall()
+
+        # table with version info to determine if indexing is needed
+        metadata = MetaData(h_engine)
+        Table(
+            'elasticsearch_metadata',
+            metadata,
+            Column('key', String, primary_key=True, nullable=False),
+            Column('value_datetime', DateTime),
+        )
+        metadata.create_all()  # only will create if doesnt exist
 
     wb_engine = create_wildbook_engine()
     with wb_engine.connect() as wb_conn:
@@ -174,9 +183,13 @@ FROM
 
 
 def load_encounters_index():
+    incremental_cutoff = update_incremental_cutoff('encounter')
     wb_engine = create_wildbook_engine()
     with wb_engine.connect() as wb_conn:
-        results = wb_conn.execute(text(ENCOUNTERS_INDEX_SQL))
+        sql = ENCOUNTERS_INDEX_SQL
+        sql = sql.replace('{incremental_cutoff}', incremental_cutoff)
+        results = wb_conn.execute(text(sql))
+        log.debug(f'len results = {results.rowcount}')
         for row in results:
             result = combine_datetime(row)
             result = combine_customfields(result)
@@ -229,6 +242,8 @@ FROM
   LEFT JOIN "TAXONOMY" AS ta ON ta."ID" = en."TAXONOMY_ID_OID"
   JOIN houston.encounter hen ON en."ID" = hen.guid::text
   LEFT JOIN houston.complex_date_time cdt ON hen.time_guid = cdt.guid
+WHERE
+  hen.updated >= '{incremental_cutoff}'
 """
 
 
@@ -316,9 +331,31 @@ def combine_customfields(result):
     return result
 
 
+def update_incremental_cutoff(key_prefix):
+    dt_now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    cutoff = dt_now
+    inc_key = f'{key_prefix}_incremental_cutoff'
+    h_engine = create_houston_engine()
+    with h_engine.connect() as h_conn:
+        res = h_conn.execute(
+            f"SELECT value_datetime FROM elasticsearch_metadata WHERE key='{inc_key}'"
+        )
+        if res.rowcount > 0:
+            cutoff = res.first()[0]
+            h_conn.execute(
+                f"UPDATE elasticsearch_metadata SET value_datetime='{dt_now}' WHERE key='{inc_key}'"
+            )
+        else:
+            h_conn.execute(
+                f"INSERT INTO elasticsearch_metadata (key, value_datetime) VALUES ('{inc_key}', '{dt_now}')"
+            )
+    log.info(f'incremental_cutoff [{key_prefix}] => {cutoff}, dt_now = {dt_now}')
+    return cutoff
+
+
 @celery.task
 def load_codex_indexes():
     set_up_houston_tables()
-    load_individuals_index()
+    # load_individuals_index()
     load_encounters_index()
-    load_sightings_index()
+    # load_sightings_index()

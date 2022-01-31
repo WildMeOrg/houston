@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import datetime
+import json
 import logging
 
 from flask import current_app
@@ -178,6 +179,7 @@ def load_encounters_index():
         results = wb_conn.execute(text(ENCOUNTERS_INDEX_SQL))
         for row in results:
             result = combine_datetime(row)
+            result = combine_customfields(result)
             # Create the document object
             encounter = Encounter(**result)
             # Assign the elasticsearch document identify
@@ -199,11 +201,33 @@ SELECT
   cdt.datetime AS datetime,
   -- timezone stored as "UTC+0300", change to "+03:00"
   left(right(cdt.timezone, 5), 3) || ':' || right(cdt.timezone, 2) AS timezone,
-  cdt.specificity AS time_specificity
+  cdt.specificity AS time_specificity,
+  (SELECT
+    NULLIF(
+      array_to_json(array_agg((
+        '{' ||
+        to_json(cfv."DEFINITION_ID_OID") ||
+        ':' ||
+        coalesce(
+          to_json(cfd."VALUE"),
+          to_json(cfdo."VALUE"),
+          to_json(cfi."VALUE"),
+          to_json(cfs."VALUE")
+        ) || '}')::json))::text,
+      '[null]')
+   FROM
+    "APICUSTOMFIELDS_CUSTOMFIELDVALUES" cf
+    LEFT JOIN "CUSTOMFIELDVALUEDATE" cfd ON cf."ID_EID" = cfd."ID"
+    LEFT JOIN "CUSTOMFIELDVALUEDOUBLE" cfdo ON cf."ID_EID" = cfdo."ID"
+    LEFT JOIN "CUSTOMFIELDVALUEINTEGER" cfi ON cf."ID_EID" = cfi."ID"
+    LEFT JOIN "CUSTOMFIELDVALUESTRING" cfs ON cf."ID_EID" = cfs."ID"
+    LEFT JOIN "CUSTOMFIELDVALUE" cfv ON cf."ID_EID" = cfv."ID"
+   WHERE en."ID" = cf."ID_OID"
+  ) AS custom_fields
 FROM
   "ENCOUNTER" AS en
   LEFT JOIN "TAXONOMY" AS ta ON ta."ID" = en."TAXONOMY_ID_OID"
-  LEFT JOIN houston.encounter hen ON en."ID" = hen.guid::text
+  JOIN houston.encounter hen ON en."ID" = hen.guid::text
   LEFT JOIN houston.complex_date_time cdt ON hen.time_guid = cdt.guid
 """
 
@@ -214,6 +238,7 @@ def load_sightings_index():
         results = wb_conn.execute(text(SIGHTINGS_INDEX_SQL))
         for i, row in enumerate(results):
             result = combine_datetime(row)
+            result = combine_customfields(result)
             # Create the document object
             sighting = Sighting(**result)
             # Assign the elasticsearch document identify
@@ -231,13 +256,36 @@ SELECT
   left(right(cdt.timezone, 5), 3) || ':' || right(cdt.timezone, 2) AS timezone,
   cdt.specificity AS time_specificity,
   (array_agg(ta."SCIENTIFICNAME"))[1] AS taxonomy,
-  oc."COMMENTS" AS comments
+  oc."COMMENTS" AS comments,
+  (SELECT
+    NULLIF(
+      array_to_json(array_agg((
+        '{' ||
+        to_json(cfv."DEFINITION_ID_OID") ||
+        ':' ||
+        coalesce(
+          to_json(cfd."VALUE"),
+          to_json(cfdo."VALUE"),
+          to_json(cfi."VALUE"),
+          to_json(cfs."VALUE")
+        ) || '}')::json))::text,
+      '[null]')
+   FROM
+    "APICUSTOMFIELDS_CUSTOMFIELDVALUES" cf
+    LEFT JOIN "CUSTOMFIELDVALUEDATE" cfd ON cf."ID_EID" = cfd."ID"
+    LEFT JOIN "CUSTOMFIELDVALUEDOUBLE" cfdo ON cf."ID_EID" = cfdo."ID"
+    LEFT JOIN "CUSTOMFIELDVALUEINTEGER" cfi ON cf."ID_EID" = cfi."ID"
+    LEFT JOIN "CUSTOMFIELDVALUESTRING" cfs ON cf."ID_EID" = cfs."ID"
+    LEFT JOIN "CUSTOMFIELDVALUE" cfv ON cf."ID_EID" = cfv."ID"
+   WHERE
+    cf."ID_OID" = oc."ID"
+  ) AS custom_fields
 FROM
   "OCCURRENCE" oc
   LEFT JOIN "OCCURRENCE_ENCOUNTERS" oe ON oe."ID_OID" = oc."ID"
   LEFT JOIN "ENCOUNTER" en ON en."ID" = oe."ID_EID"
   LEFT JOIN "TAXONOMY" ta ON ta."ID" = en."TAXONOMY_ID_OID"
-  LEFT JOIN houston.sighting si ON oc."ID" = si.guid::text
+  JOIN houston.sighting si ON oc."ID" = si.guid::text
   LEFT JOIN houston.complex_date_time cdt ON si.time_guid = cdt.guid
 GROUP BY id, datetime, timezone, specificity
 """
@@ -249,6 +297,22 @@ def combine_datetime(row):
         result['datetime'] = datetime.datetime.fromisoformat(
             row['datetime'].isoformat() + result.pop('timezone')
         )
+    return result
+
+
+def combine_customfields(result):
+    if result['custom_fields']:
+        custom_fields = {}
+        # [{"5fda2b91-d4aa-4f5e-9479-9845402a9386":"Giraffe"}]
+        for field_value_dict in json.loads(result['custom_fields']):
+            for field, value in field_value_dict.items():
+                if field in custom_fields:
+                    if not isinstance(custom_fields[field], list):
+                        custom_fields[field] = [custom_fields[field]]
+                    custom_fields[field].append(value)
+                else:
+                    custom_fields[field] = value
+        result['custom_fields'] = custom_fields
     return result
 
 

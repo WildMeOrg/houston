@@ -87,6 +87,7 @@ ENCOUNTERS_INDEX_SQL_RESULTS = [
         'datetime': datetime.datetime(2014, 4, 3, 21, 0),
         'timezone': '+03:00',
         'time_specificity': 'time',
+        'custom_fields': '[{"4dfdde5c-5767-454a-92eb-1edb65496fe3":"bachelor"}]',
     },
     {
         'id': '4741f978-ce2e-4827-b4d8-6e12eede4784',
@@ -98,6 +99,7 @@ ENCOUNTERS_INDEX_SQL_RESULTS = [
         'datetime': None,
         'timezone': None,
         'time_specificity': None,
+        'custom_fields': None,
     },
 ]
 
@@ -111,6 +113,7 @@ SIGHTINGS_INDEX_SQL_RESULTS = [
         'time_specificity': 'year',
         'taxonomy': 'Equus quagga',
         'comments': 'None',
+        'custom_fields': None,
     },
     {
         'id': '00126fd2-813d-4d46-b80f-d2fba3fb7590',
@@ -120,6 +123,7 @@ SIGHTINGS_INDEX_SQL_RESULTS = [
         'time_specificity': 'year',
         'taxonomy': None,
         'comments': 'None',
+        'custom_fields': '[{"2fe1c780-983c-41b9-9974-44d77a9a9035":"no wind"},{"9acc33ef-caa1-4341-b475-9a5d762cd243":"Grazing"},{"9acc33ef-caa1-4341-b475-9a5d762cd243":"A second value"}]',
     },
 ]
 
@@ -202,15 +206,24 @@ def test_load_codex_indexes(monkeypatch, flask_app):
     assert len(encounters_saved) == len(ENCOUNTERS_INDEX_SQL_RESULTS)
     assert encounters_saved[0]['datetime'].isoformat() == '2014-04-03T21:00:00+03:00'
     assert encounters_saved[0]['time_specificity'] == 'time'
+    assert encounters_saved[0]['custom_fields'] == {
+        '4dfdde5c-5767-454a-92eb-1edb65496fe3': 'bachelor',
+    }
     assert encounters_saved[1]['datetime'] is None
     assert encounters_saved[1]['time_specificity'] is None
+    assert encounters_saved[1]['custom_fields'] is None
 
     assert len(sightings_saved) == len(SIGHTINGS_INDEX_SQL_RESULTS)
     assert (
         sightings_saved[0]['datetime'].isoformat() == '2000-01-01T01:23:45.678900+00:00'
     )
     assert sightings_saved[0]['time_specificity'] == 'year'
+    assert sightings_saved[0]['custom_fields'] is None
     assert (
         sightings_saved[1]['datetime'].isoformat() == '2000-01-01T01:23:45.678900+00:00'
     )
     assert sightings_saved[1]['time_specificity'] == 'year'
+    assert sightings_saved[1]['custom_fields'] == {
+        '2fe1c780-983c-41b9-9974-44d77a9a9035': 'no wind',
+        '9acc33ef-caa1-4341-b475-9a5d762cd243': ['Grazing', 'A second value'],
+    }

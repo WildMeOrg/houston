@@ -146,7 +146,7 @@ def _get_annotations(enc_json):
     return anns
 
 
-@api.route('/', strict_slashes=False)
+@api.route('/')
 class Sightings(Resource):
     """
     Manipulations with Sightings.

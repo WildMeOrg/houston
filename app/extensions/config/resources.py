@@ -22,7 +22,7 @@ log = logging.getLogger(__name__)
 api = Namespace('config/houston', description='HoustonConfig')
 
 
-@api.route('/', strict_slashes=False)
+@api.route('/')
 @api.login_required(oauth_scopes=['config.houston:read'])
 class HoustonConfigs(Resource):
     """

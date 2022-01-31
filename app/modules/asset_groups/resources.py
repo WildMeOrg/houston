@@ -52,7 +52,7 @@ def _get_asset_group_with_428(asset_group):
         return None
 
 
-@api.route('/', strict_slashes=False)
+@api.route('/')
 class AssetGroups(Resource):
     """
     Manipulations with Asset_groups.

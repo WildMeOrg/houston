@@ -29,7 +29,7 @@ api = Namespace(
 )  # pylint: disable=invalid-name
 
 
-@api.route('/', strict_slashes=False)
+@api.route('/')
 class Relationships(Resource):
     """
     Manipulations with Relationships.

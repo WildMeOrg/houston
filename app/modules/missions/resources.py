@@ -48,7 +48,7 @@ def _get_mission_collection_with_428(mission_collection):
         return None
 
 
-@api.route('/', strict_slashes=False)
+@api.route('/')
 @api.login_required(oauth_scopes=['missions:read'])
 class Missions(Resource):
     """

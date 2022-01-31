@@ -30,7 +30,7 @@ log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 api = Namespace('encounters', description='Encounters')  # pylint: disable=invalid-name
 
 
-@api.route('/', strict_slashes=False)
+@api.route('/')
 class Encounters(Resource):
     """
     Manipulations with Encounters.

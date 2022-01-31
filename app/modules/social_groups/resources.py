@@ -77,7 +77,7 @@ def validate_members(input_data):
             current_roles[role] = True
 
 
-@api.route('/', strict_slashes=False)
+@api.route('/')
 @api.login_required(oauth_scopes=['social-groups:read'])
 class SocialGroups(Resource):
     """

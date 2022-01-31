@@ -23,7 +23,7 @@ log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 api = Namespace('audit_logs', description='Audit_logs')  # pylint: disable=invalid-name
 
 
-@api.route('/', strict_slashes=False)
+@api.route('/')
 @api.login_required(oauth_scopes=['audit_logs:read'])
 class AuditLogs(Resource):
     """

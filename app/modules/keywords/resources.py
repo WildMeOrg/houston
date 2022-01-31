@@ -24,7 +24,7 @@ log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 api = Namespace('keywords', description='Keywords')  # pylint: disable=invalid-name
 
 
-@api.route('/', strict_slashes=False)
+@api.route('/')
 # no login decorator as read-all is public
 class Keywords(Resource):
     """

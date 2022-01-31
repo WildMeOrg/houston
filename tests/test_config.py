@@ -98,6 +98,8 @@ def test_configure_app_with_parameters():
     import flask
 
     app = flask.Flask('testing')
+    app.url_map.strict_slashes = False
+
     context = 'codex'
     environment = 'development'
 
@@ -113,6 +115,8 @@ def test_configure_app_from_env_vars(monkeypatch):
     import flask
 
     app = flask.Flask('testing')
+    app.url_map.strict_slashes = False
+
     context = 'codex'
     environment = 'development'
     monkeypatch.setenv(CONTEXT_ENVIRONMENT_VARIABLE, context)

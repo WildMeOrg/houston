@@ -67,7 +67,7 @@ class IndividualCleanup(object):
         )
 
 
-@api.route('/', strict_slashes=False)
+@api.route('/')
 @api.login_required(oauth_scopes=['individuals:read'])
 class Individuals(Resource):
     """

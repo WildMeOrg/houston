@@ -35,7 +35,7 @@ api = Namespace(
 )  # pylint: disable=invalid-name
 
 
-@api.route('/', strict_slashes=False)
+@api.route('/')
 @api.login_required(oauth_scopes=['notifications:read'])
 class Notifications(Resource):
     """

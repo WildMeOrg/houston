@@ -145,6 +145,7 @@ def create_app(
     # Use the same redis instance as tus but use database "1"
     redis_uri = app.config['REDIS_CONNECTION_STRING']
     app.celery = Celery('houston', broker=redis_uri, backend=redis_uri)
+    app.url_map.strict_slashes = False
     # celery.conf.update(app.config)
 
     class ContextTask(app.celery.Task):

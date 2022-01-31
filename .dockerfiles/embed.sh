@@ -2,6 +2,8 @@
 
 set -ex
 
-pip install -e ".[testing]"
+source /docker-entrypoint.sh
 
-python setup.py --version
+docker_setup_env
+
+set_up_development_mode

@@ -191,6 +191,10 @@ class PatchMissionCollectionDetailsParameters(PatchJSONParameters):
         return ret_val
 
 
+class ListMissionAssetParameters(Parameters):
+    search = base_fields.String(description='Example: search@example.com', required=False)
+
+
 class ListMissionTaskParameters(PaginationParameters):
     search = base_fields.String(description='Example: search@example.com', required=False)
 

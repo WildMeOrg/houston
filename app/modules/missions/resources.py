@@ -17,6 +17,7 @@ from app.extensions import db
 from app.extensions.api import Namespace, abort
 from app.modules.users import permissions
 from app.modules.users.permissions.types import AccessOperation
+from app.modules.assets.schemas import DetailedAssetTableSchema
 from . import parameters, schemas
 from .models import Mission, MissionCollection, MissionTask
 
@@ -251,6 +252,37 @@ class MissionCollectionsForMission(Resource):
         args['mission'] = mission
         mission_collection = MissionCollection.create_from_tus(**args)
         return mission_collection
+
+
+@api.route('/<uuid:mission_guid>/assets')
+@api.login_required(oauth_scopes=['missions:read'])
+@api.response(
+    code=HTTPStatus.NOT_FOUND,
+    description='Mission not found.',
+)
+@api.resolve_object_by_model(Mission, 'mission')
+class AssetsForMission(Resource):
+    """
+    Manipulations with Mission Tasks.
+    """
+
+    @api.permission_required(
+        permissions.ObjectAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'obj': kwargs['mission'],
+            'action': AccessOperation.WRITE,
+        },
+    )
+    @api.parameters(parameters.ListMissionAssetParameters())
+    @api.response(DetailedAssetTableSchema(many=True))
+    def get(self, args, mission):
+        search = args.get('search', None)
+        if search is not None and len(search) == 0:
+            search = None
+
+        log.warning('Ignoring search %r' % (search,))
+
+        return mission.assets
 
 
 @api.route('/<uuid:mission_guid>/tasks')

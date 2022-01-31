@@ -116,7 +116,7 @@ jobs:
           docker-compose exec -T -e TEST_DATABASE_URI=$TEST_DATABASE_URI houston pytest -s -v --cov=./ --cov-append --random-order-seed=1
 
       - name: Check DB migrations (sqlite)
-        if: matrix.db-uri == 'sqlite://'
+        if: matrix.db-uri == 'sqlite://' && matrix.app-context == 'codex'
         run: |
           # initialize the database
           docker-compose exec -T -e SQLALCHEMY_DATABASE_URI=$SQLALCHEMY_DATABASE_URI houston invoke app.db.upgrade --no-backup

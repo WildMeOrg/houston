@@ -38,19 +38,19 @@ def upgrade():
         .values(stage='processed')
     )
 
-    if False:  # 'postgresql' in op.get_bind().dialect.dialect_description:
-        # Create a temporary "_stage" type, convert and drop the "old" type
-        tmp_type.create(op.get_bind(), checkfirst=False)
-        op.execute(
-            'ALTER TABLE asset_group_sighting ALTER COLUMN stage TYPE _stage USING stage::TEXT::_stage'
-        )
-        old_type.drop(op.get_bind(), checkfirst=False)
-        # Create and convert to the "new" stage type
-        new_type.create(op.get_bind(), checkfirst=False)
-        op.execute(
-            'ALTER TABLE asset_group_sighting ALTER COLUMN stage TYPE assetgroupsightingstage USING stage::TEXT::assetgroupsightingstage'
-        )
-        tmp_type.drop(op.get_bind(), checkfirst=False)
+    # if 'postgresql' in op.get_bind().dialect.dialect_description:
+    #     # Create a temporary "_stage" type, convert and drop the "old" type
+    #     tmp_type.create(op.get_bind(), checkfirst=False)
+    #     op.execute(
+    #         'ALTER TABLE asset_group_sighting ALTER COLUMN stage TYPE _stage USING stage::TEXT::_stage'
+    #     )
+    #     old_type.drop(op.get_bind(), checkfirst=False)
+    #     # Create and convert to the "new" stage type
+    #     new_type.create(op.get_bind(), checkfirst=False)
+    #     op.execute(
+    #         'ALTER TABLE asset_group_sighting ALTER COLUMN stage TYPE assetgroupsightingstage USING stage::TEXT::assetgroupsightingstage'
+    #     )
+    #     tmp_type.drop(op.get_bind(), checkfirst=False)
 
     sightingstage = sa.Enum(
         'identification', 'un_reviewed', 'processed', 'failed', name='sightingstage'
@@ -83,17 +83,18 @@ def downgrade():
 
     sa.Enum(name='sightingstage').drop(op.get_bind(), checkfirst=False)
 
-    if False:  # 'postgresql' in op.get_bind().dialect.dialect_description:
-        # Create a temporary "_stage" type, convert and drop the "new" type
-        tmp_type.create(op.get_bind(), checkfirst=False)
-        op.execute(
-            'ALTER TABLE asset_group_sighting ALTER COLUMN stage TYPE _stage USING stage::TEXT::_stage'
-        )
-        new_type.drop(op.get_bind(), checkfirst=False)
-        # Create and convert to the "old" stage type
-        old_type.create(op.get_bind(), checkfirst=False)
-        op.execute(
-            'ALTER TABLE asset_group_sighting ALTER COLUMN stage TYPE assetgroupsightingstage USING stage::TEXT::assetgroupsightingstage'
-        )
-        tmp_type.drop(op.get_bind(), checkfirst=False)
+    # if 'postgresql' in op.get_bind().dialect.dialect_description:
+    #     # Create a temporary "_stage" type, convert and drop the "new" type
+    #     tmp_type.create(op.get_bind(), checkfirst=False)
+    #     op.execute(
+    #         'ALTER TABLE asset_group_sighting ALTER COLUMN stage TYPE _stage USING stage::TEXT::_stage'
+    #     )
+    #     new_type.drop(op.get_bind(), checkfirst=False)
+    #     # Create and convert to the "old" stage type
+    #     old_type.create(op.get_bind(), checkfirst=False)
+    #     op.execute(
+    #         'ALTER TABLE asset_group_sighting ALTER COLUMN stage TYPE assetgroupsightingstage USING stage::TEXT::assetgroupsightingstage'
+    #     )
+    #     tmp_type.drop(op.get_bind(), checkfirst=False)
+
     # ### end Alembic commands ###

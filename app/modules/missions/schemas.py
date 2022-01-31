@@ -52,17 +52,11 @@ class DetailedMissionSchema(CreationMissionSchema):
 
     collections = base_fields.Nested('BaseMissionCollectionSchema', many=True)
 
-    assets = base_fields.Nested(
-        'DetailedAssetTableSchema',
-        many=True,
-    )
-
     class Meta(CreationMissionSchema.Meta):
         fields = CreationMissionSchema.Meta.fields + (
             'owner',
             'assigned_users',
             'collections',
-            'assets',
         )
         dump_only = CreationMissionSchema.Meta.dump_only
 
@@ -121,7 +115,7 @@ class DetailedMissionCollectionSchema(CreateMissionCollectionSchema):
     from app.modules.assets.models import Asset
 
     assets = base_fields.Nested(
-        'BaseAssetSchema',
+        'DetailedAssetTableSchema',
         # exclude=Asset.mission_collection_guid.key,
         many=True,
     )

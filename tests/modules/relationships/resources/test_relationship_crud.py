@@ -118,4 +118,7 @@ def test_create_read_delete_relationship(
     assert relationship_1.type == 'Family'
 
     # one day time delta for this test
-    assert relationship_1.start_date.day == (relationship_1.end_date.day - 1)
+    assert (
+        relationship_1.start_date.date()
+        == (relationship_1.end_date - timedelta(days=1)).date()
+    )

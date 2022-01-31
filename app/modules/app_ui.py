@@ -18,7 +18,6 @@ from flask import (
 from flask_login import login_user, logout_user, login_required, current_user
 
 from app.modules.auth.views import (
-    _url_for,
     _is_safe_url,
 )
 from app.modules.auth.utils import (
@@ -129,14 +128,14 @@ def user_login(email=None, password=None, remember=None, refer=None, *args, **kw
 
     user = User.find(email=email, password=password)
 
-    redirect = _url_for(failure_refer)
+    redirect = url_for(failure_refer)
     if user is not None:
         if True not in [user.in_alpha, user.in_beta, user.is_staff, user.is_admin]:
             flash(
                 'Your login was correct, but Wildbook is in BETA at the moment and is invite-only.',
                 'danger',
             )
-            redirect = _url_for(failure_refer)
+            redirect = url_for(failure_refer)
         else:
             status = login_user(user, remember=remember)
 
@@ -159,16 +158,16 @@ def user_login(email=None, password=None, remember=None, refer=None, *args, **kw
                     'We could not log you in, most likely due to your account being disabled.  Please speak to a staff member.',
                     'danger',
                 )
-                redirect = _url_for(failure_refer)
+                redirect = url_for(failure_refer)
     else:
         flash('Username or password unrecognized.', 'danger')
-        redirect = _url_for(failure_refer)
+        redirect = url_for(failure_refer)
 
     return flask.redirect(redirect)
 
 
 @backend_blueprint.route('/logout', methods=['GET'])
-@frontend_blueprint.route('/logout', methods=['POST'])
+@frontend_blueprint.route('/logout', methods=['GET', 'POST'])
 @login_required
 def user_logout(refer=None, *args, **kwargs):
     # pylint: disable=unused-argument
@@ -196,7 +195,7 @@ def user_logout(refer=None, *args, **kwargs):
     flash('You were successfully logged out.', 'warning')
 
     if refer is None:
-        redirect = _url_for('backend.home')
+        redirect = url_for('backend.home')
     else:
         redirect = refer
 
@@ -242,7 +241,7 @@ def create_admin_user(email=None, password=None, repeat_password=None, *args, **
                 if admin.is_admin:
                     message = 'Success creating startup admin user.'
                     # update configuration value for admin user created
-                    return flask.redirect(_url_for('backend.home'))
+                    return flask.redirect(url_for('backend.home'))
                 else:
                     message = 'We failed to create or update the user as an admin.'
             else:

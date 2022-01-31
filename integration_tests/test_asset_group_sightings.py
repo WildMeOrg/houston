@@ -207,11 +207,7 @@ def test_asset_group_sightings(session, login, codex_url, test_root):
                 'hasEdit': True,
                 'hasView': True,
                 'individual': {},
-                'owner': {
-                    'full_name': my_name,
-                    'guid': my_guid,
-                    'profile_fileupload': None,
-                },
+                'owner': creator_data,
                 'sex': 'male',
                 'submitter': None,
                 'taxonomy': tx_id,

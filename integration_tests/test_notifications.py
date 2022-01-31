@@ -12,7 +12,7 @@ def test_notification_preferences(session, login, logout, codex_url):
     logout(session)
 
     # GET user
-    login(session, email=new_email)
+    login(session, email=new_email, password='password')
     response = session.get(codex_url('/api/v1/users/me'))
     assert response.status_code == 200
     assert response.json()['notification_preferences'] == {

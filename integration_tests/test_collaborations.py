@@ -59,7 +59,7 @@ def test_collaboration(session, codex_url, login, logout, admin_email):
     logout(session)
 
     # Log in as new user and check collaboration request
-    login(session, new_email)
+    login(session, new_email, password='password')
     response = session.get(codex_url('/api/v1/users/me'))
     assert response.status_code == 200
     assert collaboration_guid in [c['guid'] for c in response.json()['collaborations']]

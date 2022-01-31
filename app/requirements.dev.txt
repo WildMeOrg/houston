@@ -1,0 +1,4 @@
+# black 22.1.0 requires click>=8.0.0 which is incompatible with our flask and celery
+git+https://github.com/psf/black@21.12b0
+ipython
+utool

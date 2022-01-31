@@ -60,7 +60,7 @@ WORKDIR /code
 RUN set -ex \
  && pip install -e . \
  #: Install developer tools
- && pip install utool ipython \
+ && pip install -r app/requirements.dev.txt \
  #: Remove pip download cache
  && rm -rf ~/.cache/pip
 

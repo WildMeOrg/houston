@@ -227,7 +227,7 @@ SELECT
 FROM
   "ENCOUNTER" AS en
   LEFT JOIN "TAXONOMY" AS ta ON ta."ID" = en."TAXONOMY_ID_OID"
-  LEFT JOIN houston.encounter hen ON en."ID" = hen.guid::text
+  JOIN houston.encounter hen ON en."ID" = hen.guid::text
   LEFT JOIN houston.complex_date_time cdt ON hen.time_guid = cdt.guid
 """
 
@@ -285,7 +285,7 @@ FROM
   LEFT JOIN "OCCURRENCE_ENCOUNTERS" oe ON oe."ID_OID" = oc."ID"
   LEFT JOIN "ENCOUNTER" en ON en."ID" = oe."ID_EID"
   LEFT JOIN "TAXONOMY" ta ON ta."ID" = en."TAXONOMY_ID_OID"
-  LEFT JOIN houston.sighting si ON oc."ID" = si.guid::text
+  JOIN houston.sighting si ON oc."ID" = si.guid::text
   LEFT JOIN houston.complex_date_time cdt ON si.time_guid = cdt.guid
 GROUP BY id, datetime, timezone, specificity
 """

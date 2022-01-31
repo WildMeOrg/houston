@@ -34,7 +34,7 @@ def test_tags_on_asset(flask_app_client, researcher_1, test_clone_asset_group_da
 
     asset = None
     try:
-        asset_guid = test_clone_asset_group_data['asset_uuids'][3]
+        asset_guid = clone.asset_group.assets[0].guid
         response = asset_utils.read_asset(flask_app_client, researcher_1, asset_guid)
         asset_guid = response.json['guid']
         asset = Asset.query.get(asset_guid)
@@ -115,13 +115,17 @@ def test_tags_on_asset(flask_app_client, researcher_1, test_clone_asset_group_da
         assert len(res.json) == kwct - 1
     finally:
         with db.session.begin():
-            if asset is not None:
-                asset.delete_cascade()
+            for asset in clone.asset_group.assets:
                 # Delete the asset
-                read_asset = Asset.query.get(asset_guid)
+                asset.delete_cascade()
+                read_asset = Asset.query.get(asset.guid)
                 assert read_asset is None
 
-            db.session.delete(tag)
+            for tag in Tag.query.all():
+                if tag.value.startswith('TEST_TAG_VALUE_'):
+                    db.session.delete(tag)
+                    read_tag = Tag.query.get(tag.guid)
+                    assert read_tag is None
 
         clone.cleanup()
 
@@ -214,8 +218,8 @@ def test_tags_on_bulk_asset(
                 assert kw[1].value == tag_value2
             elif index == 2:
                 assert len(kw) == 2
-                assert kw[0].value == tag_value2
-                assert kw[1].value == tag_value1
+                assert kw[0].value == tag_value1
+                assert kw[1].value == tag_value2
             elif index == 3:
                 assert len(kw) == 1
                 assert kw[0].value == tag_value2
@@ -269,8 +273,8 @@ def test_tags_on_bulk_asset(
                 assert len(kw) == 0
             elif index == 3:
                 assert len(kw) == 2
-                assert kw[0].value == tag_value2
-                assert kw[1].value == tag_value1
+                assert kw[0].value == tag_value1
+                assert kw[1].value == tag_value2
             else:
                 raise RuntimeError()
 
@@ -357,13 +361,16 @@ def test_tags_on_bulk_asset(
 
     finally:
         with db.session.begin():
-            for asset in assets:
+            for asset in clone.asset_group.assets:
                 # Delete the asset
                 asset.delete_cascade()
                 read_asset = Asset.query.get(asset.guid)
                 assert read_asset is None
 
-            db.session.delete(tag1)
-            db.session.delete(tag2)
+            for tag in Tag.query.all():
+                if tag.value.startswith('TEST_TAG_VALUE_'):
+                    db.session.delete(tag)
+                    read_tag = Tag.query.get(tag.guid)
+                    assert read_tag is None
 
         clone.cleanup()

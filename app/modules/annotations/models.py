@@ -95,7 +95,7 @@ class Annotation(db.Model, HoustonModel):
         return self.get_keywords()
 
     def get_keywords(self):
-        return [ref.keyword for ref in self.keyword_refs]
+        return sorted([ref.keyword for ref in self.keyword_refs])
 
     def add_keyword(self, keyword):
         with db.session.begin(subtransactions=True):

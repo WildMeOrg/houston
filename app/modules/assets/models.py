@@ -130,7 +130,7 @@ class Asset(db.Model, HoustonModel):
         return self.get_tags()
 
     def get_tags(self):
-        return [ref.tag for ref in self.tag_refs]
+        return sorted([ref.tag for ref in self.tag_refs])
 
     def add_tag(self, tag):
         with db.session.begin(subtransactions=True):

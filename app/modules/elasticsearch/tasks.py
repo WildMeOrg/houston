@@ -4,9 +4,18 @@ import logging
 import json
 from flask import current_app
 from gumby.models import Individual, Encounter, Sighting
-from sqlalchemy import create_engine, text, MetaData, Table, Column, String, DateTime
+from sqlalchemy import (
+    create_engine,
+    text,
+    MetaData,
+    Table,
+    Column,
+    String,
+    DateTime,
+    Integer,
+)
 from sqlalchemy.engine import Engine
-from datetime import datetime
+from datetime import datetime, timedelta
 from app.extensions.celery import celery
 
 
@@ -44,6 +53,8 @@ def set_up_houston_tables():
             metadata,
             Column('key', String, primary_key=True, nullable=False),
             Column('value_datetime', DateTime),
+            Column('value_string', String),
+            Column('value_integer', Integer),
         )
         metadata.create_all()  # only will create if doesnt exist
 
@@ -110,7 +121,9 @@ IMPORT FOREIGN SCHEMA public FROM SERVER houston INTO houston;
 """
 
 
-def load_individuals_index():
+def load_individuals_index(
+    catchup_index_before=None, catchup_index_batch_size=0, catchup_index_mark=None
+):
     wb_engine = create_wildbook_engine()
     with wb_engine.connect() as wb_conn:
         # Query for marked individual records
@@ -182,12 +195,19 @@ FROM
 """
 
 
-def load_encounters_index():
-    incremental_cutoff = update_incremental_cutoff('encounter')
+def load_encounters_index(
+    catchup_index_before=None, catchup_index_batch_size=0, catchup_index_mark=None
+):
+    if catchup_index_before:
+        where_clause = f"WHERE hen.updated < '{catchup_index_before}' AND hen.guid > '{catchup_index_mark}' ORDER BY hen.guid LIMIT {catchup_index_batch_size}"
+    else:
+        cutoff = update_incremental_cutoff('encounter')
+        where_clause = f"WHERE hen.updated >= '{cutoff}'"
     wb_engine = create_wildbook_engine()
+    last_guid = None
     with wb_engine.connect() as wb_conn:
         sql = ENCOUNTERS_INDEX_SQL
-        sql = sql.replace('{incremental_cutoff}', incremental_cutoff)
+        sql = sql.replace('{where_clause}', where_clause)
         results = wb_conn.execute(text(sql))
         log.debug(f'len results = {results.rowcount}')
         for row in results:
@@ -199,6 +219,8 @@ def load_encounters_index():
             encounter.meta.id = f'encounter_{encounter.id}'
             # Save document to elasticsearch
             encounter.save(using=current_app.elasticsearch)
+            last_guid = encounter.id
+    return last_guid
 
 
 ENCOUNTERS_INDEX_SQL = """\
@@ -242,12 +264,13 @@ FROM
   LEFT JOIN "TAXONOMY" AS ta ON ta."ID" = en."TAXONOMY_ID_OID"
   JOIN houston.encounter hen ON en."ID" = hen.guid::text
   LEFT JOIN houston.complex_date_time cdt ON hen.time_guid = cdt.guid
-WHERE
-  hen.updated >= '{incremental_cutoff}'
+{where_clause}
 """
 
 
-def load_sightings_index():
+def load_sightings_index(
+    catchup_index_before=None, catchup_index_batch_size=0, catchup_index_mark=None
+):
     wb_engine = create_wildbook_engine()
     with wb_engine.connect() as wb_conn:
         results = wb_conn.execute(text(SIGHTINGS_INDEX_SQL))
@@ -309,7 +332,7 @@ GROUP BY id, datetime, timezone, specificity
 def combine_datetime(row):
     result = dict(row)
     if row['datetime']:
-        result['datetime'] = datetime.datetime.fromisoformat(
+        result['datetime'] = datetime.fromisoformat(
             row['datetime'].isoformat() + result.pop('timezone')
         )
     return result
@@ -356,6 +379,142 @@ def update_incremental_cutoff(key_prefix):
 @celery.task
 def load_codex_indexes():
     set_up_houston_tables()
-    # load_individuals_index()
+    load_individuals_index()
     load_encounters_index()
-    # load_sightings_index()
+    load_sightings_index()
+
+
+def catchup_index_get():
+    set_up_houston_tables()
+    conf = {}
+    h_engine = create_houston_engine()
+    with h_engine.connect() as h_conn:
+        res = h_conn.execute(
+            "SELECT value_datetime FROM elasticsearch_metadata WHERE key='catchup_index_before'"
+        )
+        if res.rowcount < 1:
+            return
+        conf['before'] = res.first()[0]
+        conf['batch_size'] = 250
+        conf['batch_pause'] = 5
+        conf['encounter_mark'] = '00000000-0000-0000-0000-000000000000'
+        conf['sighting_mark'] = '00000000-0000-0000-0000-000000000000'
+        conf['individual_mark'] = '00000000-0000-0000-0000-000000000000'
+        res = h_conn.execute(
+            "SELECT value_integer FROM elasticsearch_metadata WHERE key='catchup_index_batch_size'"
+        )
+        if res.rowcount > 0:
+            conf['batch_size'] = res.first()[0]
+        res = h_conn.execute(
+            "SELECT value_integer FROM elasticsearch_metadata WHERE key='catchup_index_batch_pause'"
+        )
+        if res.rowcount > 0:
+            conf['batch_pause'] = res.first()[0]
+        res = h_conn.execute(
+            "SELECT value_string FROM elasticsearch_metadata WHERE key='catchup_index_encounter_mark'"
+        )
+        if res.rowcount > 0:
+            conf['encounter_mark'] = res.first()[0]
+        res = h_conn.execute(
+            "SELECT value_string FROM elasticsearch_metadata WHERE key='catchup_index_sighting_mark'"
+        )
+        if res.rowcount > 0:
+            conf['sighting_mark'] = res.first()[0]
+        res = h_conn.execute(
+            "SELECT value_string FROM elasticsearch_metadata WHERE key='catchup_index_individual_mark'"
+        )
+        if res.rowcount > 0:
+            conf['individual_mark'] = res.first()[0]
+    return conf
+
+
+def catchup_index_set(conf):
+    if not conf or 'before' not in conf:
+        return
+    h_engine = create_houston_engine()
+    with h_engine.connect() as h_conn:
+        h_conn.execute(
+            "DELETE FROM elasticsearch_metadata WHERE key LIKE 'catchup_index_%%'"
+        )
+        before_str = conf['before'].strftime('%Y-%m-%d %H:%M:%S')
+        h_conn.execute(
+            f"INSERT INTO elasticsearch_metadata (key, value_datetime) VALUES ('catchup_index_before', '{before_str}')"
+        )
+        if conf.get('batch_size'):
+            h_conn.execute(
+                f"INSERT INTO elasticsearch_metadata (key, value_integer) VALUES ('catchup_index_batch_size', {conf['batch_size']})"
+            )
+        if conf.get('batch_pause'):
+            h_conn.execute(
+                f"INSERT INTO elasticsearch_metadata (key, value_integer) VALUES ('catchup_index_batch_pause', {conf['batch_pause']})"
+            )
+        if conf.get('encounter_mark'):
+            h_conn.execute(
+                f"INSERT INTO elasticsearch_metadata (key, value_string) VALUES ('catchup_index_encounter_mark', '{conf['encounter_mark']}')"
+            )
+        if conf.get('individual_mark'):
+            h_conn.execute(
+                f"INSERT INTO elasticsearch_metadata (key, value_string) VALUES ('catchup_index_individual_mark', '{conf['individual_mark']}')"
+            )
+        if conf.get('sighting_mark'):
+            h_conn.execute(
+                f"INSERT INTO elasticsearch_metadata (key, value_string) VALUES ('catchup_index_sighting_mark', '{conf['sighting_mark']}')"
+            )
+
+
+@celery.task
+def catchup_index_start():
+    conf = catchup_index_get()
+    if not conf:
+        return
+    log.info(f'catchup index commencing with: {conf}')
+
+    last_guid_encounter = load_encounters_index(
+        catchup_index_before=conf['before'],
+        catchup_index_batch_size=conf['batch_size'],
+        catchup_index_mark=conf['encounter_mark'],
+    )
+    conf['encounter_mark'] = last_guid_encounter
+    log.debug(
+        f"catchup index finished encounters batch (size={conf['batch_size']}) on guid {last_guid_encounter}"
+    )
+
+    last_guid_sighting = load_sightings_index(
+        catchup_index_before=conf['before'],
+        catchup_index_batch_size=conf['batch_size'],
+        catchup_index_mark=conf['sighting_mark'],
+    )
+    conf['sighting_mark'] = last_guid_sighting
+    log.debug(
+        f"catchup index finished sightings batch (size={conf['batch_size']}) on guid {last_guid_sighting}"
+    )
+
+    last_guid_individual = load_individuals_index(
+        catchup_index_before=conf['before'],
+        catchup_index_batch_size=conf['batch_size'],
+        catchup_index_mark=conf['individual_mark'],
+    )
+    conf['individual_mark'] = last_guid_individual
+    log.debug(
+        f"catchup index finished individuals batch (size={conf['batch_size']}) on guid {last_guid_individual}"
+    )
+
+    if not last_guid_encounter and not last_guid_individual and not last_guid_sighting:
+        log.info(
+            'catchup index finished all batches with no results.  ENDING CATCHUP INDEX.'
+        )
+    else:
+        log.info(
+            f"catchup index finished all batches with more work to do; pausing {conf['batch_pause']} sec before next round"
+        )
+        catchup_index_set(conf)
+        start_time = datetime.utcnow() + timedelta(seconds=conf['batch_pause'])
+        catchup_index_start.apply_async(eta=start_time)
+
+
+def catchup_index_reset():
+    h_engine = create_houston_engine()
+    with h_engine.connect() as h_conn:
+        h_conn.execute(
+            "DELETE FROM elasticsearch_metadata WHERE key LIKE 'catchup_index_%%'"
+        )

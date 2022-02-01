@@ -18,6 +18,7 @@ from tasks.codex import (
     organizations,
     collaborations,
     projects,
+    elasticsearch,
     sightings,
 )
 
@@ -32,6 +33,7 @@ namespace = Collection(
     organizations,
     collaborations,
     projects,
+    elasticsearch,
     sightings,
     run,
 )

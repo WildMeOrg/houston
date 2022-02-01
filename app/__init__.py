@@ -6,6 +6,7 @@ import functools
 import logging
 import os
 
+from app.modules import is_module_enabled
 from celery import Celery
 from flask import Flask
 import sqlalchemy
@@ -21,10 +22,19 @@ def _ensure_storage(app):
     # Ensure database submissions and asset store
     config_list = [
         ('DB', 'PROJECT_DATABASE_PATH'),
-        ('AssetGroup', 'ASSET_GROUP_DATABASE_PATH'),
         ('FileUpload', 'FILEUPLOAD_BASE_PATH'),
         ('Asset', 'ASSET_DATABASE_PATH'),
     ]
+
+    if is_module_enabled('asset_groups'):
+        config_list += [
+            ('AssetGroup', 'ASSET_GROUP_DATABASE_PATH'),
+        ]
+
+    if is_module_enabled('missions'):
+        config_list += [
+            ('MissionCollection', 'MISSION_COLLECTION_DATABASE_PATH'),
+        ]
 
     for config_label, config_name in config_list:
         path = app.config.get(config_name, None)
@@ -106,6 +116,8 @@ def create_app(
     context=None,
     environment=None,
     force_enable=False,
+    force_disable_extensions=None,
+    force_disable_modules=None,
     **kwargs
 ):
     """
@@ -133,6 +145,7 @@ def create_app(
     # Use the same redis instance as tus but use database "1"
     redis_uri = app.config['REDIS_CONNECTION_STRING']
     app.celery = Celery('houston', broker=redis_uri, backend=redis_uri)
+    app.url_map.strict_slashes = False
     # celery.conf.update(app.config)
 
     class ContextTask(app.celery.Task):
@@ -151,7 +164,9 @@ def create_app(
     # Initialize all extensions
     from . import extensions
 
-    extensions.init_app(app, force_enable=force_enable)
+    extensions.init_app(
+        app, force_enable=force_enable, force_disable=force_disable_extensions
+    )
 
     # Ensure on disk storage
     _ensure_storage(app)
@@ -159,7 +174,7 @@ def create_app(
     # Initialize all modules
     from . import modules
 
-    modules.init_app(app, force_enable=force_enable)
+    modules.init_app(app, force_enable=force_enable, force_disable=force_disable_modules)
 
     # Configure reverse proxy
     if app.config['REVERSE_PROXY_SETUP']:

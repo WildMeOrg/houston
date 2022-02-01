@@ -357,7 +357,7 @@ class IndividualByID(Resource):
             with context:
                 try:
                     parameters.PatchIndividualDetailsParameters.perform_patch(
-                        houston_args, obj=individual
+                        houston_args, individual
                     )
                 except HoustonException as ex:
                     abort(ex.status_code, ex.message)

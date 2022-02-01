@@ -22,7 +22,7 @@ MODULE_USER_MAP = {
     ('SiteSetting', AccessOperation.READ): ['is_admin'],
     ('SiteSetting', AccessOperation.WRITE): ['is_admin'],
     ('HoustonConfig', AccessOperation.WRITE): ['is_admin'],
-    ('Asset', AccessOperation.READ): ['is_admin'],
+    ('Asset', AccessOperation.READ): ['is_admin', 'is_data_manager'],
     ('AssetGroup', AccessOperation.READ): ['is_admin'],
     ('AssetGroup', AccessOperation.WRITE): ['is_active'],
     ('Encounter', AccessOperation.READ): ['is_researcher'],
@@ -31,6 +31,10 @@ MODULE_USER_MAP = {
     ('Sighting', AccessOperation.WRITE): ['is_active'],
     ('Mission', AccessOperation.READ): ['is_data_manager', 'is_admin'],
     ('Mission', AccessOperation.WRITE): ['is_data_manager'],
+    ('MissionCollection', AccessOperation.READ): ['is_data_manager', 'is_admin'],
+    ('MissionCollection', AccessOperation.WRITE): ['is_data_manager'],
+    ('MissionTask', AccessOperation.READ): ['is_data_manager', 'is_admin'],
+    ('MissionTask', AccessOperation.WRITE): ['is_data_manager'],
     ('Individual', AccessOperation.READ): ['is_researcher'],
     ('Individual', AccessOperation.WRITE): ['is_researcher'],
     ('Annotation', AccessOperation.READ): ['is_researcher'],
@@ -45,8 +49,6 @@ MODULE_USER_MAP = {
     ('Keyword', AccessOperation.WRITE): ['is_active'],
     ('AuditLog', AccessOperation.READ): ['is_researcher'],
     ('AuditLog', AccessOperation.READ_PRIVILEGED): ['is_admin'],
-    ('Task', AccessOperation.READ): ['is_data_manager', 'is_admin'],
-    ('Task', AccessOperation.WRITE): ['is_data_manager'],
     ('SocialGroup', AccessOperation.READ): ['is_researcher'],
     ('SocialGroup', AccessOperation.WRITE): ['is_researcher'],
     ('Relationship', AccessOperation.READ): ['is_researcher'],
@@ -94,9 +96,12 @@ OBJECT_USER_MAP = {
     ('Mission', AccessOperation.READ): ['is_data_manager', 'is_admin'],
     ('Mission', AccessOperation.WRITE): ['is_data_manager', 'is_admin'],
     ('Mission', AccessOperation.DELETE): ['is_data_manager', 'is_admin'],
-    ('Task', AccessOperation.READ): ['is_data_manager', 'is_admin'],
-    ('Task', AccessOperation.WRITE): ['is_data_manager', 'is_admin'],
-    ('Task', AccessOperation.DELETE): ['is_data_manager', 'is_admin'],
+    ('MissionCollection', AccessOperation.READ): ['is_data_manager', 'is_admin'],
+    ('MissionCollection', AccessOperation.WRITE): ['is_data_manager', 'is_admin'],
+    ('MissionCollection', AccessOperation.DELETE): ['is_data_manager', 'is_admin'],
+    ('MissionTask', AccessOperation.READ): ['is_data_manager', 'is_admin'],
+    ('MissionTask', AccessOperation.WRITE): ['is_data_manager', 'is_admin'],
+    ('MissionTask', AccessOperation.DELETE): ['is_data_manager', 'is_admin'],
     ('Relationship', AccessOperation.READ): ['is_researcher'],
     ('Relationship', AccessOperation.WRITE): ['is_researcher'],
     ('Collaboration', AccessOperation.WRITE): ['is_user_manager'],
@@ -118,9 +123,12 @@ OBJECT_USER_METHOD_MAP = {
     ('Mission', AccessOperation.READ): ['user_is_owner'],
     ('Mission', AccessOperation.WRITE): ['user_is_owner'],
     ('Mission', AccessOperation.DELETE): ['user_is_owner'],
-    ('Task', AccessOperation.READ): ['user_is_owner'],
-    ('Task', AccessOperation.WRITE): ['user_is_owner'],
-    ('Task', AccessOperation.DELETE): ['user_is_owner'],
+    ('MissionCollection', AccessOperation.READ): ['user_is_owner'],
+    ('MissionCollection', AccessOperation.WRITE): ['user_is_owner'],
+    ('MissionCollection', AccessOperation.DELETE): ['user_is_owner'],
+    ('MissionTask', AccessOperation.READ): ['user_is_owner'],
+    ('MissionTask', AccessOperation.WRITE): ['user_is_owner'],
+    ('MissionTask', AccessOperation.DELETE): ['user_is_owner'],
 }
 
 
@@ -213,6 +221,11 @@ class ModuleActionRule(DenyAbortMixin, Rule):
             from app.modules.sightings.models import Sighting
 
             enabled_modules.append(Sighting)
+
+        if is_module_enabled('missions'):
+            from app.modules.missions.models import MissionCollection
+
+            enabled_modules.append(MissionCollection)
 
         # This Rule is for checking permissions on modules, so there must be one,
         assert self._module is not None
@@ -452,6 +465,11 @@ class ModuleOrObjectActionRule(DenyAbortMixin, Rule):
             from app.modules.asset_groups.models import AssetGroup
 
             enabled_modules.append(AssetGroup)
+
+        if is_module_enabled('missions'):
+            from app.modules.missions.models import MissionCollection
+
+            enabled_modules.append(MissionCollection)
 
         has_permission = False
         assert self._obj is not None or self._module is not None

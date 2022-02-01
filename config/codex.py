@@ -12,6 +12,7 @@ from .base import (
     GoogleConfig,
     ReCaptchaConfig,
     WildbookDatabaseConfig,
+    DATA_ROOT,
 )
 
 
@@ -27,6 +28,8 @@ class BaseCodexConfig(
     WildbookDatabaseConfig,
 ):
     PROJECT_NAME = 'Codex'
+
+    ASSET_GROUP_DATABASE_PATH = str(DATA_ROOT / 'asset_group')
 
     # fmt: off
     ENABLED_EXTENSIONS = (

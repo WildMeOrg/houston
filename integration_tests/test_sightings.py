@@ -95,11 +95,11 @@ def test_sightings(session, login, codex_url, test_root, admin_name):
     assert response.json() == {
         'assets': [
             {
-                'asset_group': {
-                    'guid': assets[0]['asset_group']['guid'],
-                    'commit': assets[0]['asset_group']['commit'],
-                    'description': assets[0]['asset_group']['description'],
-                    'major_type': assets[0]['asset_group']['major_type'],
+                'git_store': {
+                    'guid': assets[0]['git_store']['guid'],
+                    'commit': assets[0]['git_store']['commit'],
+                    'description': assets[0]['git_store']['description'],
+                    'major_type': assets[0]['git_store']['major_type'],
                 },
                 'annotations': [
                     {
@@ -115,11 +115,13 @@ def test_sightings(session, login, codex_url, test_root, admin_name):
                     },
                 ],
                 # 2021-11-09T11:15:08.923895+00:00
+                'classifications': None,
                 'created': assets[0]['created'],
                 'dimensions': {'width': 1000, 'height': 664},
                 'filename': 'zebra.jpg',
                 'guid': assets[0]['guid'],
                 'src': f'/api/v1/assets/src/{assets[0]["guid"]}',
+                'tags': [],
                 'updated': assets[0]['updated'],
             },
         ],
@@ -208,11 +210,11 @@ def test_sightings(session, login, codex_url, test_root, admin_name):
     assert response.json() == {
         'assets': [
             {
-                'asset_group': {
-                    'guid': assets[0]['asset_group']['guid'],
-                    'commit': assets[0]['asset_group']['commit'],
-                    'description': assets[0]['asset_group']['description'],
-                    'major_type': assets[0]['asset_group']['major_type'],
+                'git_store': {
+                    'guid': assets[0]['git_store']['guid'],
+                    'commit': assets[0]['git_store']['commit'],
+                    'description': assets[0]['git_store']['description'],
+                    'major_type': assets[0]['git_store']['major_type'],
                 },
                 'annotations': [
                     {
@@ -227,11 +229,13 @@ def test_sightings(session, login, codex_url, test_root, admin_name):
                         'keywords': [],
                     },
                 ],
+                'classifications': None,
                 'created': assets[0]['created'],
                 'dimensions': {'width': 1000, 'height': 664},
                 'filename': 'zebra.jpg',
                 'guid': assets[0]['guid'],
                 'src': f'/api/v1/assets/src/{assets[0]["guid"]}',
+                'tags': [],
                 'updated': assets[0]['updated'],
             },
         ],

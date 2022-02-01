@@ -125,7 +125,7 @@ class ProjectByID(Resource):
             db.session, default_error_message='Failed to update Project details.'
         )
         with context:
-            parameters.PatchProjectDetailsParameters.perform_patch(args, obj=project)
+            parameters.PatchProjectDetailsParameters.perform_patch(args, project)
             db.session.merge(project)
         return project
 

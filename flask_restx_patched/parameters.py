@@ -84,6 +84,10 @@ class PatchJSONParameters(Parameters):
 
     value = base_fields.Raw(required=False, allow_none=True)
 
+    guid = base_fields.UUID(
+        description='The GUID of the object', required=False, allow_none=True
+    )
+
     def __init__(self, *args, **kwargs):
         if 'many' in kwargs:
             assert kwargs['many'], "PATCH Parameters must be marked as 'many'"
@@ -131,14 +135,45 @@ class PatchJSONParameters(Parameters):
             raise ValidationError('value cannot be null')
 
     @classmethod
-    def perform_patch(cls, operations, obj, state=None):
+    def perform_patch(cls, operations, obj=None, obj_cls=None, state=None):
         """
         Performs all necessary operations by calling class methods with
         corresponding names.
         """
+        from app.modules.users import permissions
+        from app.modules.users.permissions.types import AccessOperation
+
         if state is None:
             state = {}
+
+        if obj_cls is not None:
+            assert obj is None, 'Cannot specify a obj when using module-level patching'
+
+        objs = []
         for operation in operations:
+            if obj_cls is not None:
+                guid = operation.get('guid', None)
+                if guid is None:
+                    raise ValidationError(
+                        'Failed to update %s details. Operation %s could not succeed.  Must provide a "guid" with each operation when using a module-level patch'
+                        % (obj.__class__.__name__, operation)
+                    )
+                obj = obj_cls.query.get(guid)
+                if obj is None:
+                    raise ValidationError(
+                        'Failed to update %s details. Operation %s could not succeed.  The provided GUID did not match any known object'
+                        % (obj.__class__.__name__, operation)
+                    )
+                perm = permissions.ObjectAccessPermission(
+                    obj=obj, action=AccessOperation.WRITE
+                )
+                if not perm.check():
+                    raise ValidationError(
+                        'Failed to update %s details. Operation %s could not succeed.  The current user does not have the permissions to modify it'
+                        % (obj.__class__.__name__, operation)
+                    )
+                objs.append(obj)
+
             if not cls._process_patch_operation(operation, obj=obj, state=state):
                 log.info(
                     '%s patching has been stopped because of unknown operation %s',
@@ -149,6 +184,10 @@ class PatchJSONParameters(Parameters):
                     'Failed to update %s details. Operation %s could not succeed.'
                     % (obj.__class__.__name__, operation)
                 )
+
+        if obj_cls is not None:
+            return objs
+
         return True
 
     @classmethod
@@ -315,6 +354,8 @@ class PatchJSONParametersWithPassword(PatchJSONParameters):
                     message='Updating database requires `current_password` test operation.',
                 )
 
+        # return PatchJSONParameters.add(obj, field, value, state)
+
     @classmethod
     def remove(cls, obj, field, value, state):
         from app.extensions.api import abort
@@ -326,6 +367,8 @@ class PatchJSONParametersWithPassword(PatchJSONParameters):
                     message='Updating database requires `current_password` test operation.',
                 )
 
+        # return PatchJSONParameters.remove(obj, field, value, state)
+
     @classmethod
     def replace(cls, obj, field, value, state):
         from app.extensions.api import abort
@@ -336,3 +379,5 @@ class PatchJSONParametersWithPassword(PatchJSONParameters):
                     code=HTTPStatus.FORBIDDEN,
                     message='Updating database requires `current_password` test operation.',
                 )
+
+        return PatchJSONParameters.replace(obj, field, value, state)

@@ -13,7 +13,7 @@ import logging
 from flask_restx_patched import is_module_enabled, module_required  # NOQA
 
 
-def init_app(app, force_enable=False, **kwargs):
+def init_app(app, force_enable=False, force_disable=None, **kwargs):
     from importlib import import_module
 
     # Import all models first for db.relationship to avoid model look up
@@ -25,6 +25,9 @@ def init_app(app, force_enable=False, **kwargs):
     # class name, consider adding this relationship() to the <class
     # 'app.modules.asset_groups.models.AssetGroupSighting'> class after
     # both dependent classes have been defined.
+    if force_disable is None:
+        force_disable = []
+
     if force_enable:
         import os
         import glob
@@ -56,15 +59,18 @@ def init_app(app, force_enable=False, **kwargs):
             pass
 
     for module_name in module_names:
-        if force_enable and module_name not in app.config['ENABLED_MODULES']:
-            enable_str = ' (forced)'
-        else:
-            enable_str = ''
-        logging.info(
-            'Init module %r%s'
-            % (
-                module_name,
-                enable_str,
+        if module_name not in force_disable:
+            if force_enable and module_name not in app.config['ENABLED_MODULES']:
+                enable_str = ' (forced)'
+            else:
+                enable_str = ''
+            logging.info(
+                'Init module %r%s'
+                % (
+                    module_name,
+                    enable_str,
+                )
             )
-        )
-        import_module('.%s' % module_name, package=__name__).init_app(app, **kwargs)
+            import_module('.%s' % module_name, package=__name__).init_app(app, **kwargs)
+        else:
+            logging.info('Skipped module %r (force disabled)' % (module_name,))

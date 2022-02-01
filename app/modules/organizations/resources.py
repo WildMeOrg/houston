@@ -127,7 +127,7 @@ class OrganizationByID(Resource):
         )
         with context:
             parameters.PatchOrganizationDetailsParameters.perform_patch(
-                args, obj=organization
+                args, organization
             )
             db.session.merge(organization)
         return organization

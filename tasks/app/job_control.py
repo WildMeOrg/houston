@@ -23,7 +23,7 @@ def get_jobs_for_asset(asset_guid, verbose):
         print(f'Asset {asset_guid} not found')
         return []
 
-    asset_group_sightings = asset.asset_group.get_asset_group_sightings_for_asset(asset)
+    asset_group_sightings = asset.git_store.get_asset_group_sightings_for_asset(asset)
 
     jobs = {}
     for ags in asset_group_sightings:

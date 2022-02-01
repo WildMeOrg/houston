@@ -199,7 +199,7 @@ def test_create_asset_group_no_assets(
         data = AssetGroupCreationData(None)
         data.remove_field('transactionId')
         # Should fail as not permitted for contributor
-        expected_resp = 'Only a Researcher can create an AssetGroup without any Assets'
+        expected_resp = 'Only a Researcher can create a Git Store without any Assets'
         asset_group_utils.create_asset_group(
             flask_app_client, contributor_1, data.get(), 400, expected_resp
         )

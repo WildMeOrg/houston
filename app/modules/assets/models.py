@@ -9,7 +9,7 @@ import pathlib
 
 from app.modules.keywords.models import Keyword, KeywordSource
 from app.extensions import db, HoustonModel
-from app.modules import is_module_enabled
+from app.modules import module_required
 from app.utils import HoustonException
 
 from PIL import Image
@@ -58,25 +58,21 @@ class Asset(db.Model, HoustonModel):
 
     meta = db.Column(db.JSON, nullable=True)
 
-    if is_module_enabled('asset_groups'):
-        asset_group_guid = db.Column(
-            db.GUID,
-            db.ForeignKey('asset_group.guid', ondelete='CASCADE'),
-            index=True,
-            nullable=False,
-        )
-        asset_group = db.relationship(
-            'AssetGroup',
-            backref=db.backref(
-                'assets',
-                primaryjoin='AssetGroup.guid == Asset.asset_group_guid',
-                order_by='Asset.guid',
-            ),
-        )
+    git_store_guid = db.Column(
+        db.GUID,
+        db.ForeignKey('git_store.guid', ondelete='CASCADE'),
+        index=True,
+        nullable=False,
+    )
 
-    # asset_sightings = db.relationship(
-    #     'SightingAssets', back_populates='asset', order_by='SightingAssets.sighting_guid'
-    # )
+    git_store = db.relationship(
+        'GitStore',
+        backref=db.backref(
+            'assets',
+            primaryjoin='GitStore.guid == Asset.git_store_guid',
+            order_by='Asset.guid',
+        ),
+    )
 
     annotations = db.relationship(
         'Annotation', back_populates='asset', order_by='Annotation.guid'
@@ -105,7 +101,7 @@ class Asset(db.Model, HoustonModel):
             'filesystem_guid={self.filesystem_guid}, '
             'semantic_guid={self.semantic_guid}, '
             'mime="{self.mime_type}", '
-            'asset_group_guid="{self.asset_group_guid}", '
+            'git_store_guid="{self.git_store_guid}", '
             ')>'.format(class_name=self.__class__.__name__, self=self)
         )
 
@@ -121,16 +117,20 @@ class Asset(db.Model, HoustonModel):
     def __hash__(self):
         return hash(self.guid)
 
+    @module_required('asset_groups', resolve='warn', default=False)
     def is_detection(self):
+        from app.modules.asset_groups.models import AssetGroup
+
         # only checks at the granularity of any asset in the asset group in the detection stage
-        return self.asset_group.is_detection_in_progress()
+        assert isinstance(self.git_store, AssetGroup)
+        return self.git_store.is_detection_in_progress()
 
     @property
     def tags(self):
         return self.get_tags()
 
     def get_tags(self):
-        return [ref.tag for ref in self.tag_refs]
+        return sorted([ref.tag for ref in self.tag_refs])
 
     def add_tag(self, tag):
         with db.session.begin(subtransactions=True):
@@ -168,6 +168,15 @@ class Asset(db.Model, HoustonModel):
     def src(self):
         return '/api/v1/assets/src/%s' % (str(self.guid),)
 
+    @property
+    @module_required('annotations', resolve='warn', default=-1)
+    def annotation_count(self):
+        return -1 if self.annotations is None else len(self.annotations)
+
+    @module_required('sightings', resolve='warn', default=[])
+    def get_asset_sightings(self):
+        return self.asset_sightings
+
     # this is actual (local) asset filename, not "original" (via user) filename (see: get_original_filename() below)
     def get_filename(self):
         return '%s.%s' % (
@@ -184,26 +193,26 @@ class Asset(db.Model, HoustonModel):
         return pathlib.Path(self.path).name
 
     def get_symlink(self):
-        asset_group_path = pathlib.Path(self.asset_group.get_absolute_path())
-        assets_path = asset_group_path / '_assets'
+        git_store_path = pathlib.Path(self.git_store.get_absolute_path())
+        assets_path = git_store_path / '_assets'
         return assets_path / self.get_filename()
 
     def get_derived_path(self, format):
-        asset_group_path = pathlib.Path(self.asset_group.get_absolute_path())
-        assets_path = asset_group_path / '_assets'
+        git_store_path = pathlib.Path(self.git_store.get_absolute_path())
+        assets_path = git_store_path / '_assets'
         filename = f'{self.guid}.{format}.{self.DERIVED_EXTENSION}'
         return assets_path / 'derived' / filename
 
-    def update_symlink(self, asset_asset_group_filepath):
-        target_path = pathlib.Path(asset_asset_group_filepath)
+    def update_symlink(self, asset_git_store_filepath):
+        target_path = pathlib.Path(asset_git_store_filepath)
         assert target_path.exists()
 
         asset_symlink = self.get_symlink()
         asset_symlink.unlink(missing_ok=True)
 
-        asset_group_path = pathlib.Path(self.asset_group.get_absolute_path())
+        git_store_path = pathlib.Path(self.git_store.get_absolute_path())
         asset_symlink.symlink_to(
-            pathlib.Path('..') / target_path.relative_to(asset_group_path)
+            pathlib.Path('..') / target_path.relative_to(git_store_path)
         )
         assert asset_symlink.exists()
         assert asset_symlink.is_symlink()
@@ -331,7 +340,7 @@ class Asset(db.Model, HoustonModel):
         for annotation in self.annotations:
             annotation.delete()
         self.annotations = []
-        self.asset_group.asset_updated(self)
+        self.git_store.asset_updated(self)
 
     # note: Image seems to *strip exif* sufficiently here (tested with gps, comments, etc) so this may be enough!
     # also note: this fails horribly in terms of exif orientation.  wom-womp
@@ -352,12 +361,12 @@ class Asset(db.Model, HoustonModel):
             rgb.save(target_path)
         return target_path
 
-    # Delete of an asset as part of deletion of asset_group
+    # Delete of an asset as part of deletion of git_store
     def delete_cascade(self):
         with db.session.begin(subtransactions=True):
             for annotation in self.annotations:
                 annotation.delete()
-            for sighting in self.asset_sightings:
+            for sighting in self.get_asset_sightings():
                 db.session.delete(sighting)
             while self.tag_refs:
                 ref = self.tag_refs.pop()
@@ -368,10 +377,9 @@ class Asset(db.Model, HoustonModel):
 
     # delete not part of asset group deletion so must inform asset group that we're gone
     def delete(self):
-        asset_group = self.asset_group
         self.delete_cascade()
-        db.session.refresh(asset_group)
-        asset_group.justify_existence()
+        db.session.refresh(self.git_store)
+        self.git_store.justify_existence()
 
     @classmethod
     def find(cls, guid):
@@ -380,5 +388,5 @@ class Asset(db.Model, HoustonModel):
         return cls.query.get(guid)
 
     def user_is_owner(self, user):
-        # Asset has no owner, but it has one asset_group that has an owner
-        return user is not None and user == self.asset_group.owner
+        # Asset has no owner, but it has one git_store that has an owner
+        return user is not None and user == self.git_store.owner

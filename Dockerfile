@@ -58,6 +58,7 @@ RUN ls -lah /code/app/static
 WORKDIR /code
 
 RUN set -ex \
+ && pip install --upgrade pip \
  && pip install -e . \
  #: Install developer tools
  && pip install -r app/requirements.dev.txt \
@@ -77,6 +78,8 @@ VOLUME [ "${DATA_VOLUME}" ]
 ENV HOUSTON_DOTENV ${DATA_ROOT}/.env
 
 COPY ./.dockerfiles/docker-entrypoint.sh /docker-entrypoint.sh
+
+COPY ./.dockerfiles/embed.sh /bin/embed
 
 ENTRYPOINT [ "/docker-entrypoint.sh" ]
 #: default command within the entrypoint

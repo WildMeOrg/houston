@@ -9,6 +9,7 @@ REPLACE_KEY = '<REPLACE_UUID>'
 @pytest.mark.parametrize(
     'path,status_code,expected_allowed_methods',
     (
+        ('/api/v1/users', 204, {'POST', 'OPTIONS'}),
         ('/api/v1/users/', 204, {'POST', 'OPTIONS'}),
         ('/api/v1/users/11111111-1111-1111-1111-111111111111', 404, None),
     ),

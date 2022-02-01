@@ -39,6 +39,13 @@ else:
             return os.path.join(package_dir, 'db_templates')
 
 
+SKIP_EXTENSIONS = (
+    'elasticsearch',
+    'oauth2',
+)
+SKIP_MODULES = ('swagger_ui',)
+
+
 def _get_config(directory, x_arg=None, opts=None):
     """
     A helper that prepares AlembicConfig instance.
@@ -63,12 +70,18 @@ def _get_config(directory, x_arg=None, opts=None):
         'multidb': 'Multiple databases migraton',
     }
 )
-def init(context, directory='migrations', multidb=False):
+def init(
+    context,
+    directory='migrations',
+    multidb=False,
+    force_disable_extensions=SKIP_EXTENSIONS,
+    force_disable_modules=SKIP_MODULES,
+):
     """Generates a new migration"""
     config = Config()
     config.set_main_option('script_location', directory)
     config.config_file_name = os.path.join(directory, 'alembic.ini')
-    if multidb:
+    if multidb:  # pragma: no cover
         command.init(config, directory, 'flask-multidb')
     else:
         command.init(config, directory, 'flask')
@@ -97,6 +110,8 @@ def revision(
     branch_label=None,
     version_path=None,
     rev_id=None,
+    force_disable_extensions=SKIP_EXTENSIONS,
+    force_disable_modules=SKIP_MODULES,
 ):
     """Create a new revision file."""
     config = _get_config(directory)
@@ -138,6 +153,8 @@ def migrate(
     version_path=None,
     rev_id=None,
     force_enable=True,
+    force_disable_extensions=SKIP_EXTENSIONS,
+    force_disable_modules=SKIP_MODULES,
 ):
     """Alias for 'revision --autogenerate'"""
     config = _get_config(directory, opts=['autogenerate'])
@@ -161,7 +178,13 @@ def migrate(
 @app_context_task(
     help={'revision': 'revision identifier', 'directory': 'migration script directory'}
 )
-def edit(context, revision='current', directory='migrations'):
+def edit(
+    context,
+    revision='current',
+    directory='migrations',
+    force_disable_extensions=SKIP_EXTENSIONS,
+    force_disable_modules=SKIP_MODULES,
+):
     """Upgrade to a later version"""
     if alembic_version >= (0, 8, 0):
         config = _get_config(directory)
@@ -185,6 +208,8 @@ def merge(
     message=None,
     branch_label=None,
     rev_id=None,
+    force_disable_extensions=SKIP_EXTENSIONS,
+    force_disable_modules=SKIP_MODULES,
 ):
     """Merge two revisions together.  Creates a new migration file"""
     if alembic_version >= (0, 7, 0):
@@ -214,30 +239,35 @@ def upgrade(
     x_arg=None,
     app=None,
     backup=True,
+    force_disable_extensions=SKIP_EXTENSIONS,
+    force_disable_modules=SKIP_MODULES,
 ):
     """Upgrade to a later version"""
     db_uri = current_app.config.get('SQLALCHEMY_DATABASE_URI')
     sqlite = db_uri.startswith('sqlite://')
+
     if sqlite:
         _db_filepath = current_app.config.get('SQLALCHEMY_DATABASE_PATH', None)
         _db_filepath_backup = '%s.backup' % (_db_filepath,)
 
     if backup:
         if not sqlite:
-            raise NotImplementedError(
-                'No backup code implemented for non sqlite databases, use --no-backup'
-            )
-        if os.path.exists(_db_filepath):
-            log.info('Pre-upgrade Sqlite3 database backup')
-            log.info('\tDatabase : %r' % (_db_filepath,))
-            log.info('\tBackup   : %r' % (_db_filepath_backup,))
-            shutil.copy2(_db_filepath, _db_filepath_backup)
+            log.warning('No backup code implemented for non SQLite3 databases')
+        else:
+            if os.path.exists(_db_filepath):
+                log.warning('Creating database backup %r' % (_db_filepath_backup,))
+                log.info('Pre-upgrade Sqlite3 database backup')
+                log.info('\tDatabase : %r' % (_db_filepath,))
+                log.info('\tBackup   : %r' % (_db_filepath_backup,))
+                shutil.copy2(_db_filepath, _db_filepath_backup)
+            else:
+                log.warning('Cannot backup missing database %r' % (_db_filepath,))
 
     config = _get_config(directory, x_arg=x_arg)
     try:
         command.upgrade(config, revision, sql=sql, tag=tag)
         command.current(config)
-    except Exception:
+    except Exception:  # pragma: no cover
         if sqlite and os.path.exists(_db_filepath_backup):
             log.error('Rolling back Sqlite3 database to backup')
             shutil.copy2(_db_filepath_backup, _db_filepath)
@@ -261,19 +291,69 @@ def upgrade(
     }
 )
 def downgrade(
-    context, directory='migrations', revision='-1', sql=False, tag=None, x_arg=None
+    context,
+    directory='migrations',
+    revision='-1',
+    sql=False,
+    tag=None,
+    x_arg=None,
+    app=None,
+    backup=True,
+    force_disable_extensions=SKIP_EXTENSIONS,
+    force_disable_modules=SKIP_MODULES,
 ):
     """Revert to a previous version"""
+    db_uri = current_app.config.get('SQLALCHEMY_DATABASE_URI')
+    sqlite = db_uri.startswith('sqlite://')
+    if sqlite:
+        _db_filepath = current_app.config.get('SQLALCHEMY_DATABASE_PATH', None)
+        _db_filepath_backup = '%s.backup' % (_db_filepath,)
+
+    if backup:
+        if not sqlite:
+            log.warning('No backup code implemented for non SQLite3 databases')
+        else:
+            log.warning('Creating database backup %r' % (_db_filepath_backup,))
+            if os.path.exists(_db_filepath):
+                log.info('Pre-downgrade Sqlite3 database backup')
+                log.info('\tDatabase : %r' % (_db_filepath,))
+                log.info('\tBackup   : %r' % (_db_filepath_backup,))
+                shutil.copy2(_db_filepath, _db_filepath_backup)
+            else:
+                log.warning('Cannot backup missing database %r' % (_db_filepath,))
+
     config = _get_config(directory, x_arg=x_arg)
+
     if sql and revision == '-1':
         revision = 'head:-1'
-    command.downgrade(config, revision, sql=sql, tag=tag)
+
+    try:
+        command.downgrade(config, revision, sql=sql, tag=tag)
+        command.current(config)
+    except Exception:  # pragma: no cover
+        if sqlite and os.path.exists(_db_filepath_backup):
+            log.error('Rolling back Sqlite3 database to backup')
+            shutil.copy2(_db_filepath_backup, _db_filepath)
+            log.error('...restored')
+        log.critical('Database upgrade failed')
+        raise
+    finally:
+        if sqlite and os.path.exists(_db_filepath_backup):
+            log.info('Deleting database backup %r' % (_db_filepath_backup,))
+            os.remove(_db_filepath_backup)
+            log.info('...deleted')
 
 
 @app_context_task(
     help={'revision': 'revision identifier', 'directory': 'migration script directory'}
 )
-def show(context, directory='migrations', revision='head'):
+def show(
+    context,
+    directory='migrations',
+    revision='head',
+    force_disable_extensions=SKIP_EXTENSIONS,
+    force_disable_modules=SKIP_MODULES,
+):
     """Show the revision denoted by the given symbol."""
     if alembic_version >= (0, 7, 0):
         config = _get_config(directory)
@@ -289,7 +369,14 @@ def show(context, directory='migrations', revision='head'):
         'directory': 'migration script directory',
     }
 )
-def history(context, directory='migrations', rev_range=None, verbose=False):
+def history(
+    context,
+    directory='migrations',
+    rev_range=None,
+    verbose=False,
+    force_disable_extensions=SKIP_EXTENSIONS,
+    force_disable_modules=SKIP_MODULES,
+):
     """List changeset scripts in chronological order."""
     config = _get_config(directory)
     if alembic_version >= (0, 7, 0):
@@ -305,7 +392,14 @@ def history(context, directory='migrations', rev_range=None, verbose=False):
         'directory': 'migration script directory',
     }
 )
-def heads(context, directory='migrations', verbose=False, resolve_dependencies=False):
+def heads(
+    context,
+    directory='migrations',
+    verbose=False,
+    resolve_dependencies=False,
+    force_disable_extensions=SKIP_EXTENSIONS,
+    force_disable_modules=SKIP_MODULES,
+):
     """Show current available heads in the script directory"""
     if alembic_version >= (0, 7, 0):
         config = _get_config(directory)
@@ -320,7 +414,13 @@ def heads(context, directory='migrations', verbose=False, resolve_dependencies=F
         'directory': 'migration script directory',
     }
 )
-def branches(context, directory='migrations', verbose=False):
+def branches(
+    context,
+    directory='migrations',
+    verbose=False,
+    force_disable_extensions=SKIP_EXTENSIONS,
+    force_disable_modules=SKIP_MODULES,
+):
     """Show current branch points"""
     config = _get_config(directory)
     if alembic_version >= (0, 7, 0):
@@ -336,7 +436,14 @@ def branches(context, directory='migrations', verbose=False):
         'directory': 'migration script directory',
     }
 )
-def current(context, directory='migrations', verbose=False, head_only=False):
+def current(
+    context,
+    directory='migrations',
+    verbose=False,
+    head_only=False,
+    force_disable_extensions=SKIP_EXTENSIONS,
+    force_disable_modules=SKIP_MODULES,
+):
     """Display the current revision for each database."""
     config = _get_config(directory)
     if alembic_version >= (1, 5, 0):
@@ -355,7 +462,15 @@ def current(context, directory='migrations', verbose=False, head_only=False):
         'directory': 'migration script directory',
     }
 )
-def stamp(context, directory='migrations', revision='head', sql=False, tag=None):
+def stamp(
+    context,
+    directory='migrations',
+    revision='head',
+    sql=False,
+    tag=None,
+    force_disable_extensions=SKIP_EXTENSIONS,
+    force_disable_modules=SKIP_MODULES,
+):
     """'stamp' the revision table with the given revision; don't run any migrations"""
     config = _get_config(directory)
     command.stamp(config, revision, sql=sql, tag=tag)
@@ -375,7 +490,7 @@ def init_development_data(context, upgrade_db=True, skip_on_failure=False):
 
     try:
         initial_development_data.init()
-    except AssertionError as exception:
+    except AssertionError as exception:  # pragma: no cover
         if not skip_on_failure:
             log.error('%s', exception)
         else:
@@ -397,20 +512,19 @@ def _reset(context, edm_authentication=None):
     """
     Delete the database and initialize it with data from the EDM
     """
-    from config import BaseConfig  # NOQA
+    from config import get_preliminary_config
 
-    _db_filepath = current_app.config.get('SQLALCHEMY_DATABASE_PATH', None)
-    _asset_groups_filepath = current_app.config.get('ASSET_GROUP_DATABASE_PATH', None)
-    _asset_filepath = current_app.config.get('ASSET_DATABASE_PATH', None)
-
-    delete_filepaths = [
-        _db_filepath,
-        _asset_groups_filepath,
-        _asset_filepath,
+    delete_path_configs = [
+        'SQLALCHEMY_DATABASE_PATH',
+        'ASSET_GROUP_DATABASE_PATH',
+        'ASSET_DATABASE_PATH',
+        'MISSION_COLLECTION_DATABASE_PATH',
     ]
 
-    for delete_filepath in delete_filepaths:
-        assert delete_filepath is not None
+    for delete_path_config in delete_path_configs:
+        delete_filepath = current_app.config.get(delete_path_config, None)
+        if delete_filepath is None:
+            continue
         if os.path.exists(delete_filepath):
             if os.path.isdir(delete_filepath):
                 shutil.rmtree(delete_filepath)
@@ -418,15 +532,9 @@ def _reset(context, edm_authentication=None):
                 os.remove(delete_filepath)
             assert not os.path.exists(delete_filepath)
 
-    if BaseConfig.PROJECT_NAME in ['Codex']:
+    config = get_preliminary_config()
+
+    if config.PROJECT_NAME in ['Codex']:
         context.invoke_execute(context, 'codex.run.warmup')
-
-        context.invoke_execute(
-            context, 'codex.initialize.all', edm_authentication=edm_authentication
-        )
-    elif BaseConfig.PROJECT_NAME in ['MWS']:
+    elif config.PROJECT_NAME in ['MWS']:
         context.invoke_execute(context, 'mws.run.warmup')
-
-        context.invoke_execute(
-            context, 'mws.initialize.all', edm_authentication=edm_authentication
-        )

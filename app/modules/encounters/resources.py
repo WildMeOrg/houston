@@ -159,7 +159,7 @@ class EncounterByID(Resource):
             with context:
                 try:
                     parameters.PatchEncounterDetailsParameters.perform_patch(
-                        houston_args, obj=encounter
+                        houston_args, encounter
                     )
                 except HoustonException as ex:
                     abort(

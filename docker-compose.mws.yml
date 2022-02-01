@@ -6,9 +6,9 @@ services:
     image: postgres:13.4
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 20
+      interval: 10s
+      timeout: 5s
+      retries: 60
     user: postgres
     volumes:
       - db-pgdata-var:/var/lib/postgresql/data
@@ -33,9 +33,9 @@ services:
     command: ["redis-server", "/redis.conf"]
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
-      interval: 30s
-      timeout: 10s
-      retries: 20
+      interval: 10s
+      timeout: 5s
+      retries: 60
     volumes:
       - redis-var:/data
       - .dockerfiles/redis/redis.conf:/redis.conf
@@ -50,9 +50,9 @@ services:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "curl --silent --fail localhost:9200/_cluster/health || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 20
+      interval: 10s
+      timeout: 5s
+      retries: 60
     # volumes:
     #   - es-var:/usr/share/elasticsearch/data
     networks:
@@ -99,9 +99,9 @@ services:
         condition: service_healthy
     healthcheck:
       test: [ "CMD", "curl", "-f", "http://localhost:5000/api/v1/site-settings/heartbeat"]
-      interval: 30s
-      timeout: 10s
-      retries: 20
+      interval: 10s
+      timeout: 5s
+      retries: 60
     volumes: &houston-volumes
       - houston-var:/data
       # These are added for development. Do not mount these in production.
@@ -153,9 +153,9 @@ services:
         condition: service_healthy
     healthcheck:
       test: [ "CMD", "celery", "-A", "app.extensions.celery.celery", "status"]
-      interval: 30s
-      timeout: 10s
-      retries: 20
+      interval: 10s
+      timeout: 5s
+      retries: 60
     volumes: *houston-volumes
     networks:
       - intranet
@@ -170,9 +170,9 @@ services:
         condition: service_healthy
     healthcheck:
       test: [ "CMD", "celery", "-A", "app.extensions.celery.celery", "status"]
-      interval: 30s
-      timeout: 10s
-      retries: 20
+      interval: 10s
+      timeout: 5s
+      retries: 60
     volumes: *houston-volumes
     networks:
       - intranet
@@ -185,9 +185,9 @@ services:
     entrypoint: "/docker-entrypoint.sh"
     healthcheck:
       test: [ "CMD", "curl", "-f", "http://localhost:3000/"]
-      interval: 30s
-      timeout: 10s
-      retries: 20
+      interval: 10s
+      timeout: 5s
+      retries: 60
     volumes:
       - .dockerfiles/dev-frontend/docker-entrypoint.sh:/docker-entrypoint.sh
       - ./_frontend.mws:/code
@@ -209,9 +209,9 @@ services:
         condition: service_healthy
     healthcheck:
       test: [ "CMD", "curl", "-f", "http://localhost:80/"]
-      interval: 30s
-      timeout: 10s
-      retries: 20
+      interval: 10s
+      timeout: 5s
+      retries: 60
     volumes:
       - .dockerfiles/www/nginx.conf:/etc/nginx/conf.d/default.conf
     networks:

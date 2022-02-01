@@ -43,5 +43,5 @@ class HoustonConfigs(Resource):
         """
         Patch config details by ID.
         """
-        response = parameters.PatchHoustonConfigParameters.perform_patch(args, obj=None)
+        response = parameters.PatchHoustonConfigParameters.perform_patch(args)
         return response

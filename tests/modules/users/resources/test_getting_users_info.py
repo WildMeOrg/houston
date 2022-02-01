@@ -5,6 +5,7 @@ import datetime
 from . import utils as user_utils
 
 from tests.utils import module_unavailable
+from app.modules import is_module_enabled
 
 
 timestamp = datetime.datetime.now().isoformat() + 'Z'
@@ -70,7 +71,8 @@ def test_getting_list_of_users_by_authorized_user(
     assert isinstance(response.json, list)
     user = [u for u in response.json if u['email'] == user_manager_user.email]
     assert len(user) == 1
-    assert user[0] == {
+
+    desired_user_data = {
         'guid': str(user_manager_user.guid),
         'email': user_manager_user.email,
         'full_name': user_manager_user.full_name,
@@ -92,6 +94,12 @@ def test_getting_list_of_users_by_authorized_user(
             'src': f'/api/v1/fileuploads/src/{fup.guid}',
         },
     }
+
+    if is_module_enabled('missions'):
+        desired_user_data['owned_missions'] = []
+        desired_user_data['owned_mission_tasks'] = []
+
+    assert user[0] == desired_user_data
 
 
 def test_getting_user_info_by_unauthorized_user(

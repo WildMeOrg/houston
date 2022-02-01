@@ -21,7 +21,7 @@ log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 api = Namespace('dev', description='Developer Tools')  # pylint: disable=invalid-name
 
 
-@api.route('/embed/')
+@api.route('/embed')
 class Develop(Resource):
     @api.login_required(oauth_scopes=['users:read'])
     @api.permission_required(permissions.AdminRolePermission())

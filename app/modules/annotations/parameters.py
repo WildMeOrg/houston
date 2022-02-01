@@ -84,7 +84,7 @@ class PatchAnnotationDetailsParameters(PatchJSONParameters):
         # Annotations don't have an owner and encounter are (briefly) optional, so we check asset(_group)
         #  future consideration: first check encounter (IF exists), fallback to asset(_group)
         if (
-            rules.owner_or_privileged(current_user, obj.asset.asset_group)
+            rules.owner_or_privileged(current_user, obj.asset.git_store)
             or current_user.is_admin
         ):
             # only can assign encounter if have privileges there

@@ -17,7 +17,7 @@ def upload_to_tus(session, codex_url, file_paths, transaction_id=None):
         length = len(content)
 
         response = session.post(
-            codex_url('/api/v1/asset_groups/tus'),
+            codex_url('/api/v1/tus'),
             headers={
                 'Upload-Metadata': f'filename {encoded_filename}',
                 'Upload-Length': str(length),
@@ -58,6 +58,8 @@ def create_asset_group(session, codex_url, data):
         codex_url('/api/v1/asset_groups/'),
         json=data,
     )
+    print(response.json)
+    print(response.text)
     assert response.status_code == 200
 
     json_resp = response.json()

@@ -14,7 +14,11 @@ from flask_restx_patched import is_module_enabled
 from app import create_app
 from config import CONTEXT_ENVIRONMENT_VARIABLE, VALID_CONTEXTS
 
-from . import utils, TEST_ASSET_GROUP_UUID, TEST_EMPTY_ASSET_GROUP_UUID
+from . import (
+    utils,
+    TEST_ASSET_GROUP_UUID,
+    TEST_EMPTY_ASSET_GROUP_UUID,
+)
 
 
 # Force FLASK_ENV to be testing instead of using what's defined in the environment
@@ -172,6 +176,9 @@ def flask_app(gitlab_remote_login_pat):
         config_override['PROJECT_DATABASE_PATH'] = td
         config_override['ASSET_GROUP_DATABASE_PATH'] = str(
             pathlib.Path(td) / 'asset_group'
+        )
+        config_override['MISSION_COLLECTION_DATABASE_PATH'] = str(
+            pathlib.Path(td) / 'mission_collection'
         )
         config_override['ASSET_DATABASE_PATH'] = str(pathlib.Path(td) / 'assets')
         config_override['UPLOADS_DATABASE_PATH'] = str(pathlib.Path(td) / 'uploads')
@@ -513,7 +520,8 @@ def test_asset_group_uuid(flask_app, db, researcher_1, test_asset_group_file_dat
         return
 
     from app.extensions.gitlab import GitlabInitializationError
-    from app.modules.asset_groups.models import AssetGroup, AssetGroupMajorType
+    from app.modules.asset_groups.models import AssetGroup
+    from app.extensions.git_store import GitStoreMajorType as AssetGroupMajorType
 
     guid = TEST_ASSET_GROUP_UUID
     asset_group = AssetGroup.query.get(guid)
@@ -542,7 +550,8 @@ def test_asset_group_uuid(flask_app, db, researcher_1, test_asset_group_file_dat
 
 @pytest.fixture
 def test_empty_asset_group_uuid(flask_app, db, researcher_1):
-    from app.modules.asset_groups.models import AssetGroup, AssetGroupMajorType
+    from app.modules.asset_groups.models import AssetGroup
+    from app.extensions.git_store import GitStoreMajorType as AssetGroupMajorType
 
     guid = TEST_EMPTY_ASSET_GROUP_UUID
     asset_group = AssetGroup.query.get(guid)

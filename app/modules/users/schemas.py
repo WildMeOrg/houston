@@ -33,6 +33,10 @@ class UserListSchema(BaseUserSchema):
 
     profile_fileupload = base_fields.Nested('DetailedFileUploadSchema')
 
+    if is_module_enabled('missions'):
+        owned_missions = base_fields.Nested('BaseMissionSchema', many=True)
+        owned_mission_tasks = base_fields.Nested('BaseMissionTaskSchema', many=True)
+
     class Meta(BaseUserSchema.Meta):
         # pylint: disable=missing-docstring
         model = User
@@ -49,6 +53,13 @@ class UserListSchema(BaseUserSchema):
             User.in_beta.fget.__name__,
             User.profile_fileupload.key,
         )
+
+        if is_module_enabled('missions'):
+            fields = fields + (
+                'owned_missions',
+                'owned_mission_tasks',
+            )
+
         dump_only = (User.guid.key,)
 
 
@@ -85,10 +96,8 @@ class DetailedUserSchema(UserListSchema):
     individual_merge_requests = base_fields.Function(User.get_individual_merge_requests)
 
     if is_module_enabled('missions'):
-        assigned_missions = base_fields.Nested('DetailedMissionSchema', many=True)
-
-    if is_module_enabled('tasks'):
-        assigned_tasks = base_fields.Nested('DetailedTaskSchema', many=True)
+        owned_missions = base_fields.Nested('DetailedMissionSchema', many=True)
+        owned_mission_tasks = base_fields.Nested('DetailedMissionTaskSchema', many=True)
 
     class Meta(UserListSchema.Meta):
         fields = UserListSchema.Meta.fields + (
@@ -102,9 +111,13 @@ class DetailedUserSchema(UserListSchema):
             'notification_preferences',
             'collaborations',
             'individual_merge_requests',
-            'assigned_missions',
-            'assigned_tasks',
         )
+
+        if is_module_enabled('missions'):
+            fields = fields + (
+                'owned_missions',
+                'owned_mission_tasks',
+            )
 
 
 class PersonalUserSchema(DetailedUserSchema):

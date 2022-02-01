@@ -112,7 +112,7 @@ class KeywordByID(Resource):
             db.session, default_error_message='Failed to update Keyword details.'
         )
         with context:
-            parameters.PatchKeywordDetailsParameters.perform_patch(args, obj=keyword)
+            parameters.PatchKeywordDetailsParameters.perform_patch(args, keyword)
             db.session.merge(keyword)
         return keyword
 

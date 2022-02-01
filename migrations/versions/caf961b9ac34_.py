@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """empty message
 
 Revision ID: caf961b9ac34
@@ -5,18 +6,13 @@ Revises: 32145d0959ae
 Create Date: 2021-09-09 14:51:16.383863
 
 """
+from alembic import op
+import sqlalchemy as sa
+
 
 # revision identifiers, used by Alembic.
 revision = 'caf961b9ac34'
 down_revision = '32145d0959ae'
-
-from alembic import op
-import sqlalchemy as sa
-import sqlalchemy_utils
-
-import app
-import app.extensions
-
 
 
 def upgrade():

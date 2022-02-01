@@ -185,7 +185,7 @@ class CollaborationByID(Resource):
         with context:
             try:
                 parameters.PatchCollaborationDetailsParameters.perform_patch(
-                    args, obj=collaboration
+                    args, collaboration
                 )
                 db.session.merge(collaboration)
             except ValidationError:

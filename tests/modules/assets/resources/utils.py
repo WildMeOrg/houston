@@ -21,8 +21,25 @@ def patch_asset(flask_app_client, asset_guid, user, data, expected_status_code=2
 
     if expected_status_code == 200:
         test_utils.validate_dict_response(
-            response, 200, {'asset_group', 'src', 'guid', 'filename'}
+            response, 200, {'git_store', 'src', 'guid', 'filename'}
         )
+    else:
+        test_utils.validate_dict_response(
+            response, expected_status_code, {'status', 'message'}
+        )
+    return response
+
+
+def patch_asset_bulk(flask_app_client, user, data, expected_status_code=200):
+    with flask_app_client.login(user, auth_scopes=('assets:write',)):
+        response = flask_app_client.patch(
+            PATH,
+            content_type='application/json',
+            data=json.dumps(data),
+        )
+
+    if expected_status_code == 200:
+        test_utils.validate_list_response(response, 200)
     else:
         test_utils.validate_dict_response(
             response, expected_status_code, {'status', 'message'}
@@ -65,7 +82,7 @@ def read_asset(flask_app_client, user, asset_guid, expected_status_code=200):
 
     if expected_status_code == 200:
         test_utils.validate_dict_response(
-            response, 200, {'asset_group', 'src', 'guid', 'filename'}
+            response, 200, {'git_store', 'src', 'guid', 'filename'}
         )
     elif expected_status_code == 404:
         test_utils.validate_dict_response(response, expected_status_code, {'message'})

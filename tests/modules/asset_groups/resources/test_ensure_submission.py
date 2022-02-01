@@ -36,7 +36,7 @@ def test_ensure_empty_asset_group_by_uuid(
 def test_ensure_clone_asset_group_by_uuid(
     flask_app_client, researcher_1, db, test_clone_asset_group_data
 ):
-    from app.modules.asset_groups.models import AssetGroupMajorType
+    from app.extensions.git_store import GitStoreMajorType as AssetGroupMajorType
     from app.modules.assets.models import Asset
 
     clone = utils.clone_asset_group(

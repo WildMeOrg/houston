@@ -2,6 +2,8 @@
 # pylint: disable=missing-docstring
 import uuid
 import tests.modules.users.resources.utils as user_utils
+from app.modules import is_module_enabled
+
 
 # from config import get_preliminary_config
 
@@ -249,10 +251,8 @@ def test_new_user_creation_roles_admin(flask_app_client, admin_user, db):
     user_guid = response.json['guid']
     from app.modules.notifications.models import NOTIFICATION_DEFAULTS
 
-    assert response.json == {
+    desired_schema = {
         'affiliation': '',
-        'assigned_missions': [],
-        'assigned_tasks': [],
         'created': response.json['created'],
         'email': 'user1@localhost',
         'forum_id': '',
@@ -277,6 +277,12 @@ def test_new_user_creation_roles_admin(flask_app_client, admin_user, db):
         'individual_merge_requests': [],
         'notification_preferences': NOTIFICATION_DEFAULTS,
     }
+
+    if is_module_enabled('missions'):
+        desired_schema['owned_missions'] = []
+        desired_schema['owned_mission_tasks'] = []
+
+    assert response.json == desired_schema
 
     # Cleanup
     from app.modules.users.models import User

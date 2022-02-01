@@ -90,7 +90,6 @@ if is_extension_enabled('edm'):
             # TODO is this actually needed
             log.warning('User._process_edm_user_organization() not implemented yet')
 
-
 else:
     UserEDMMixin = object
 
@@ -490,42 +489,13 @@ class User(db.Model, FeatherModel, UserEDMMixin):
         return None
 
     @classmethod
-    def query_search(cls, search=None):
-        from sqlalchemy import or_, and_
-        from app.modules.auth.models import Code, CodeTypes
-
-        if search is not None:
-            search = search.strip().split(' ')
-            search = [term.strip() for term in search]
-            search = [term for term in search if len(term) > 0]
-
-            or_terms = []
-            for term in search:
-                codes = (
-                    Code.query.filter_by(code_type=CodeTypes.checkin)
-                    .filter(
-                        Code.accept_code.contains(term),
-                    )
-                    .all()
-                )
-                code_users = set([])
-                for code in codes:
-                    if not code.is_expired:
-                        code_users.add(code.user.guid)
-
-                or_term = or_(
-                    cls.guid.in_(code_users),
-                    cls.email.contains(term),
-                    cls.affiliation.contains(term),
-                    cls.forum_id.contains(term),
-                    cls.full_name.contains(term),
-                )
-                or_terms.append(or_term)
-            users = cls.query.filter(and_(*or_terms))
-        else:
-            users = cls.query
-
-        return users
+    def query_search_term_hook(cls, term):
+        return (
+            cls.email.contains(term),
+            cls.affiliation.contains(term),
+            cls.forum_id.contains(term),
+            cls.full_name.contains(term),
+        )
 
     @property
     def is_authenticated(self):
@@ -550,12 +520,20 @@ class User(db.Model, FeatherModel, UserEDMMixin):
         return code.is_resolved
 
     @property
+    def owned_missions(self):
+        return self.get_owned_missions()
+
+    @property
+    def owned_mission_tasks(self):
+        return self.get_owned_mission_tasks()
+
+    @property
     def assigned_missions(self):
         return self.get_assigned_missions()
 
     @property
-    def assigned_tasks(self):
-        return self.get_assigned_tasks()
+    def assigned_mission_tasks(self):
+        return self.get_assigned_mission_tasks()
 
     @module_required('organizations', resolve='warn', default=[])
     def get_org_memberships(self):
@@ -576,12 +554,20 @@ class User(db.Model, FeatherModel, UserEDMMixin):
         return [enrollment.project for enrollment in self.project_membership_enrollments]
 
     @module_required('missions', resolve='warn', default=[])
+    def get_owned_missions(self):
+        return self.mission_ownerships
+
+    @module_required('missions', resolve='warn', default=[])
+    def get_owned_mission_tasks(self):
+        return self.mission_task_ownerships
+
+    @module_required('missions', resolve='warn', default=[])
     def get_assigned_missions(self):
         return [assignment.mission for assignment in self.mission_assignments]
 
-    @module_required('tasks', resolve='warn', default=[])
-    def get_assigned_tasks(self):
-        return [assignment.task for assignment in self.task_assignments]
+    @module_required('missions', resolve='warn', default=[])
+    def get_assigned_mission_tasks(self):
+        return [assignment.mission_task for assignment in self.mission_task_assignments]
 
     @module_required('collaborations', resolve='warn', default=[])
     def get_collaborations_as_json(self):
@@ -615,7 +601,10 @@ class User(db.Model, FeatherModel, UserEDMMixin):
 
     @module_required('asset_groups', resolve='warn', default=[])
     def get_asset_groups(self):
-        return self.asset_groups
+        from app.extensions.git_store import GitStore
+        from app.modules.asset_groups.models import AssetGroup
+
+        return GitStore.filter_for(AssetGroup, self.git_stores)
 
     @module_required('asset_groups', resolve='warn', default=[])
     def unprocessed_asset_groups(self):
@@ -774,15 +763,13 @@ class User(db.Model, FeatherModel, UserEDMMixin):
                 ret_val = obj.owner == self
 
         if is_module_enabled('missions'):
-            from app.modules.missions.models import Mission
+            from app.modules.missions.models import (
+                Mission,
+                MissionCollection,
+                MissionTask,
+            )
 
-            if isinstance(obj, Mission):
-                ret_val = obj.owner == self
-
-        if is_module_enabled('tasks'):
-            from app.modules.tasks.models import Task
-
-            if isinstance(obj, Task):
+            if isinstance(obj, (Mission, MissionCollection, MissionTask)):
                 ret_val = obj.owner == self
 
         if is_module_enabled('notifications'):
@@ -795,10 +782,10 @@ class User(db.Model, FeatherModel, UserEDMMixin):
             from app.modules.assets.models import Asset
 
             if isinstance(obj, Asset):
-                # assets are not owned directly by the user but the asset_group they're in is.
-                # TODO: need to understand once assets become part of an encounter, do they still have a asset_group
-                if obj.asset_group is not None:
-                    ret_val = obj.asset_group.owner is self
+                # assets are not owned directly by the user but the git store they're in is.
+                # TODO: need to understand once assets become part of an encounter, do they still have a git store
+                if obj.git_store is not None:
+                    ret_val = obj.git_store.owner is self
 
         if is_module_enabled('sightings'):
             from app.modules.sightings.models import Sighting

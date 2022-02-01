@@ -27,6 +27,10 @@ class Keyword(db.Model, HoustonModel):
     Keywords database model.
     """
 
+    __mapper_args__ = {
+        'confirm_deleted_rows': False,
+    }
+
     guid = db.Column(
         db.GUID, default=uuid.uuid4, primary_key=True
     )  # pylint: disable=invalid-name
@@ -55,6 +59,9 @@ class Keyword(db.Model, HoustonModel):
             'source={self.source}, '
             ')>'.format(class_name=self.__class__.__name__, self=self)
         )
+
+    def __lt__(self, other):
+        return self.value < other.value
 
     def delete(self):
         with db.session.begin(subtransactions=True):

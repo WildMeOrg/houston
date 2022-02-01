@@ -36,13 +36,18 @@ def test_create_keyword(db, flask_app_client, researcher_1):
     )
 
 
-def test_read_all_keywords(db, flask_app_client, researcher_1):
+def test_read_all_keywords(db, flask_app_client, researcher_1, staff_user):
     orig_ct = test_utils.row_count(db, Keyword)
     keyword_utils.create_keyword(
         flask_app_client, researcher_1, 'list_test'
     )  # lets have at least one
     response = keyword_utils.read_all_keywords(flask_app_client, None)
     assert len(response.json) == orig_ct + 1
+
+    # Clean-up
+    for keyword in response.json:
+        guid = keyword.get('guid', None)
+        keyword_utils.delete_keyword(flask_app_client, staff_user, guid)
 
 
 def test_modify_keyword(db, flask_app_client, researcher_1, staff_user):

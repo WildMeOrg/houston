@@ -55,6 +55,29 @@ class Assets(Resource):
             Asset.query.order_by(Asset.guid).offset(args['offset']).limit(args['limit'])
         )
 
+    # @api.permission_required(
+    #     permissions.ModuleAccessPermission,
+    #     kwargs_on_request=lambda kwargs: {
+    #         'module': Asset,
+    #         'action': AccessOperation.WRITE,
+    #     },
+    # )
+    @api.login_required(oauth_scopes=['assets:write'])
+    @api.parameters(parameters.PatchAssetParameters())
+    @api.response(schemas.BaseAssetSchema(many=True))
+    def patch(self, args):
+        """
+        Patch Assets' details by ID.
+        """
+        context = api.commit_or_abort(
+            db.session, default_error_message='Failed to bulk update Asset details.'
+        )
+        with context:
+            assets = parameters.PatchAssetParameters.perform_patch(args, obj_cls=Asset)
+            for asset in assets:
+                db.session.merge(asset)
+        return assets
+
 
 @api.route('/<uuid:asset_guid>')
 @api.response(
@@ -100,7 +123,7 @@ class AssetByID(Resource):
             db.session, default_error_message='Failed to update Asset details.'
         )
         with context:
-            parameters.PatchAssetParameters.perform_patch(args, obj=asset)
+            parameters.PatchAssetParameters.perform_patch(args, asset)
             db.session.merge(asset)
         return asset
 
@@ -146,9 +169,9 @@ class AssetSrcUByID(Resource):
         },
     )
     def get(self, asset, format):
-        from app.modules.asset_groups.models import AssetGroup
+        cls = type(asset.git_store)
+        cls.ensure_store(asset.git_store_guid)
 
-        AssetGroup.ensure_asset_group(asset.asset_group_guid)
         try:
             asset_format_path = asset.get_or_make_format_path(format)
         except Exception:

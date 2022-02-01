@@ -12,6 +12,7 @@ from .base import (
     GoogleConfig,
     ReCaptchaConfig,
     WildbookDatabaseConfig,
+    DATA_ROOT,
 )
 
 
@@ -28,6 +29,8 @@ class BaseMWSConfig(
 ):
     PROJECT_NAME = 'MWS'
 
+    MISSION_COLLECTION_DATABASE_PATH = str(DATA_ROOT / 'mission_collection')
+
     # fmt: off
     ENABLED_EXTENSIONS = (
         'acm',
@@ -35,6 +38,7 @@ class BaseMWSConfig(
         'elasticsearch',
         'tus',
         'mail',
+        'gitlab',
     )
 
     ENABLED_MODULES = (
@@ -48,7 +52,6 @@ class BaseMWSConfig(
         'complex_date_time',
         'annotations',
         'missions',
-        'tasks',
         'site_settings',
         'job_control',
         'elasticsearch_proxy',

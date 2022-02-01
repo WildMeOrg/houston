@@ -198,7 +198,7 @@ def generate_asset_group_instance(owner):
     return asset_group_instance
 
 
-def generate_asset_instance(asset_group_guid):
+def generate_asset_instance(git_store_guid):
     from app.modules.assets.models import Asset
 
     asset_instance = Asset(
@@ -210,7 +210,7 @@ def generate_asset_instance(asset_group_guid):
         filesystem_xxhash64='42',
         filesystem_guid=uuid.uuid4(),
         semantic_guid=uuid.uuid4(),
-        asset_group_guid=asset_group_guid,
+        git_store_guid=git_store_guid,
     )
     return asset_instance
 
@@ -358,7 +358,6 @@ def patch_via_flask(
         response = flask_app_client.patch(
             path, content_type='application/json', data=json.dumps(data), headers=headers
         )
-
     if expected_status_code == 200:
         validate_dict_response(response, 200, response_200)
     elif expected_status_code:
@@ -388,39 +387,49 @@ def delete_via_flask(
             assert response.json['message'] == expected_error, response.json['message']
 
 
-def patch_test_op(value):
-    return {
+def patch_test_op(value, guid=None):
+    operation = {
         'op': 'test',
         'path': '/current_password',
         'value': value,
     }
+    if guid is not None:
+        operation['guid'] = str(guid)
+    return operation
 
 
-def patch_add_op(path, value):
-    return {
+def patch_add_op(path, value, guid=None):
+    operation = {
         'op': 'add',
         'path': '/%s' % (path,),
         'value': value,
     }
+    if guid is not None:
+        operation['guid'] = str(guid)
+    return operation
 
 
-def patch_remove_op(path, value=None):
+def patch_remove_op(path, value=None, guid=None):
     operation = {
         'op': 'remove',
         'path': '/%s' % (path,),
     }
     if value:
         operation['value'] = value
-
+    if guid is not None:
+        operation['guid'] = str(guid)
     return operation
 
 
-def patch_replace_op(path, value):
-    return {
+def patch_replace_op(path, value, guid=None):
+    operation = {
         'op': 'replace',
         'path': '/%s' % (path,),
         'value': value,
     }
+    if guid is not None:
+        operation['guid'] = str(guid)
+    return operation
 
 
 def all_count(db):
@@ -447,6 +456,7 @@ def all_count(db):
     count = {}
     for cls in classes:
         count[cls.__name__] = row_count(db, cls)
+
     if is_module_enabled('assets', 'asset_groups'):
         from app.modules.assets.models import Asset
         from app.modules.asset_groups.models import AssetGroup
@@ -454,7 +464,7 @@ def all_count(db):
         asset_query = Asset.query
         asset_group_query = AssetGroup.query
         for guid in (TEST_ASSET_GROUP_UUID, TEST_EMPTY_ASSET_GROUP_UUID):
-            asset_query = asset_query.filter(Asset.asset_group_guid != guid)
+            asset_query = asset_query.filter(Asset.git_store_guid != guid)
             asset_group_query = asset_group_query.filter(AssetGroup.guid != guid)
         count['Asset'] = asset_query.count()
         count['AssetGroup'] = asset_group_query.count()
@@ -494,6 +504,16 @@ def random_decimal_latitude():
 
 def random_decimal_longitude():
     return random.uniform(-180, 80)
+
+
+def random_uuid():
+    import uuid
+
+    return uuid.uuid4()
+
+
+def random_guid():
+    return random_uuid()
 
 
 def random_nonce(length=16):

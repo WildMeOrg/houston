@@ -185,7 +185,7 @@ class SocialGroupByID(Resource):
         with context:
             try:
                 parameters.PatchSocialGroupDetailsParameters.perform_patch(
-                    args, obj=social_group
+                    args, social_group
                 )
             except HoustonException as ex:
                 abort(ex.status_code, ex.message)

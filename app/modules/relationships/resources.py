@@ -188,7 +188,7 @@ class RelationshipByID(Resource):
         )
         with context:
             parameters.PatchRelationshipDetailsParameters.perform_patch(
-                args, obj=relationship
+                args, relationship
             )
             db.session.merge(relationship)
         return relationship

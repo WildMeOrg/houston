@@ -217,7 +217,7 @@ class AssetGroupByID(Resource):
         assert isinstance(asset_group_guid, uuid.UUID)
 
         # Clone if present on gitlab
-        asset_group = AssetGroup.ensure_asset_group(asset_group_guid)
+        asset_group = AssetGroup.ensure_store(asset_group_guid)
         if asset_group is None:
             # We have checked the asset_group manager and cannot find this asset_group, raise 404 manually
             raise werkzeug.exceptions.NotFound
@@ -255,9 +255,7 @@ class AssetGroupByID(Resource):
             db.session, default_error_message='Failed to update Asset_group details.'
         )
         with context:
-            parameters.PatchAssetGroupDetailsParameters.perform_patch(
-                args, obj=asset_group
-            )
+            parameters.PatchAssetGroupDetailsParameters.perform_patch(args, asset_group)
             db.session.merge(asset_group)
         return asset_group
 
@@ -387,7 +385,7 @@ class AssetGroupSightingByID(Resource):
         with context:
             try:
                 parameters.PatchAssetGroupSightingDetailsParameters.perform_patch(
-                    args, obj=asset_group_sighting
+                    args, asset_group_sighting
                 )
             except AssetGroupMetadataError as error:
                 abort(
@@ -450,7 +448,7 @@ class AssetGroupSightingAsSighting(Resource):
         with context:
             try:
                 parameters.PatchAssetGroupSightingDetailsParameters.perform_patch(
-                    args, obj=asset_group_sighting
+                    args, asset_group_sighting
                 )
             except AssetGroupMetadataError as error:
                 abort(
@@ -522,7 +520,7 @@ class AssetGroupSightingEncounterByID(Resource):
             try:
                 parameters.PatchAssetGroupSightingEncounterDetailsParameters.perform_patch(
                     args,
-                    obj=asset_group_sighting,
+                    asset_group_sighting,
                     state={'encounter_uuid': encounter_guid},
                 )
             except AssetGroupMetadataError as error:
@@ -570,7 +568,7 @@ class AssetGroupSightingAsSightingEncounterByID(Resource):
             try:
                 parameters.PatchAssetGroupSightingEncounterDetailsParameters.perform_patch(
                     args,
-                    obj=asset_group_sighting,
+                    asset_group_sighting,
                     state={'encounter_uuid': encounter_guid},
                 )
             except AssetGroupMetadataError as error:

@@ -95,7 +95,7 @@ class Annotation(db.Model, HoustonModel):
         return self.get_keywords()
 
     def get_keywords(self):
-        return [ref.keyword for ref in self.keyword_refs]
+        return sorted([ref.keyword for ref in self.keyword_refs])
 
     def add_keyword(self, keyword):
         with db.session.begin(subtransactions=True):
@@ -130,9 +130,9 @@ class Annotation(db.Model, HoustonModel):
                 break
 
     def user_is_owner(self, user):
-        # Annotation has no owner, but it has one asset, that has one asset_group that has an owner
+        # Annotation has no owner, but it has one asset, that has one git store that has an owner
         # (encounter is no longer required on Annotation, so best route to owner is via Asset/Group)
-        return user is not None and user == self.asset.asset_group.owner
+        return user is not None and user == self.asset.git_store.owner
 
     # Used for building matching set but abstract the annotation to name mapping
     def get_individual(self):

@@ -525,6 +525,27 @@ class DetectionConfigs(Resource):
         return response
 
 
+@api.route('/ia_classes')
+class IaClassConfigs(Resource):
+    """
+    Configured IA classes
+    """
+
+    def get(self):
+        """
+        Returns a json describing the available detectors for the frontend to
+        provide users with options
+        """
+        from app.modules.ia_config_reader import IaConfig
+
+        ia_config_reader = IaConfig()
+        ia_classes = ia_config_reader.get_all_ia_classes()
+        success = ia_classes is not None
+        response = {'ia_classes': ia_classes, 'success': success}
+
+        return response
+
+
 @api.route('/site-info/')
 class SiteInfo(Resource):
     def get(self):

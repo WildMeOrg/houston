@@ -122,6 +122,7 @@ def user_login(email=None, password=None, remember=None, refer=None, *args, **kw
 
     if refer is not None:
         if not _is_safe_url(refer):
+            log.error('User gave insecure next URL: %r' % (refer,))
             refer = None
 
     failure_refer = 'backend.home'

@@ -129,7 +129,9 @@ jobs:
           # upgrade to the latest version
           docker-compose exec -T -e LOG_WIDTH=$LOG_WIDTH -e SQLALCHEMY_DATABASE_URI=$SQLALCHEMY_DATABASE_URI houston invoke app.db.upgrade
           # Check if there is a missiong database migration
-          docker-compose exec -T -e LOG_WIDTH=$LOG_WIDTH -e SQLALCHEMY_DATABASE_URI=$SQLALCHEMY_DATABASE_URI houston /bin/bash -c 'if [ -n "$(/usr/local/bin/invoke app.db.migrate)" ]; then echo Missing database migration; exit 1; fi'
+          docker-compose exec -T -e LOG_WIDTH=$LOG_WIDTH -e SQLALCHEMY_DATABASE_URI=$SQLALCHEMY_DATABASE_URI houston invoke app.db.migrate
+          # Check if there is a new migration revision file that was generated (this shouldn't happen)
+          docker-compose exec -T -e LOG_WIDTH=$LOG_WIDTH -e SQLALCHEMY_DATABASE_URI=$SQLALCHEMY_DATABASE_URI houston /bin/bash -c 'if [ -n "$(git ls-files --others --exclude-standard migrations/versions/)" ]; then echo Missing database migration; exit 1; fi'
           # reset database
           docker-compose exec -T -e LOG_WIDTH=$LOG_WIDTH -e SQLALCHEMY_DATABASE_URI=$SQLALCHEMY_DATABASE_URI houston invoke app.db._reset
         env:
@@ -146,7 +148,8 @@ jobs:
           docker-compose exec -T -e LOG_WIDTH=$LOG_WIDTH -e SQLALCHEMY_DATABASE_URI=$TEST_DATABASE_URI houston coverage run --append /usr/local/bin/invoke app.db.upgrade
           docker-compose exec -T -e LOG_WIDTH=$LOG_WIDTH -e SQLALCHEMY_DATABASE_URI=$TEST_DATABASE_URI houston coverage run --append /usr/local/bin/invoke app.db.downgrade --revision base
           docker-compose exec -T -e LOG_WIDTH=$LOG_WIDTH -e SQLALCHEMY_DATABASE_URI=$TEST_DATABASE_URI houston coverage run --append /usr/local/bin/invoke app.db.upgrade
-          docker-compose exec -T -e LOG_WIDTH=$LOG_WIDTH -e SQLALCHEMY_DATABASE_URI=$TEST_DATABASE_URI houston /bin/bash -c 'if [ -n "$(coverage run --append /usr/local/bin/invoke app.db.migrate)" ]; then echo Missing database migration; exit 1; fi'
+          docker-compose exec -T -e LOG_WIDTH=$LOG_WIDTH -e SQLALCHEMY_DATABASE_URI=$TEST_DATABASE_URI houston coverage run --append /usr/local/bin/invoke app.db.migrate
+          docker-compose exec -T -e LOG_WIDTH=$LOG_WIDTH -e SQLALCHEMY_DATABASE_URI=$TEST_DATABASE_URI houston /bin/bash -c 'if [ -n "$(git ls-files --others --exclude-standard migrations/versions/)" ]; then echo Missing database migration; exit 1; fi'
           docker-compose exec -T -e LOG_WIDTH=$LOG_WIDTH -e SQLALCHEMY_DATABASE_URI=$TEST_DATABASE_URI houston coverage run --append /usr/local/bin/invoke app.db._reset
         env:
           LOG_WIDTH: 120

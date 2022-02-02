@@ -250,6 +250,7 @@ def test_catchup_indexing():
     assert conf['encounter_mark'] == '00000000-0000-0000-0000-000000000000'
     assert conf['individual_mark'] == '00000000-0000-0000-0000-000000000000'
 
+    tasks.set_up_houston_tables()
     rtn = tasks.load_sightings_index(
         catchup_index_before=conf['before'],
         catchup_index_batch_size=conf['batch_size'],

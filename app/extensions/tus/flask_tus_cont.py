@@ -5,6 +5,7 @@ import os
 import redis
 import uuid
 from urllib.parse import urljoin
+from werkzeug.utils import secure_filename as werkzeug_secure_filename
 
 # Find the stack on which we want to store the database connection.
 # Starting with Flask 0.9, the _app_ctx_stack is the correct one,
@@ -122,6 +123,12 @@ class TusManager(object):
             for kv in upload_metadata.split(','):
                 (key, value) = kv.split(' ')
                 metadata[key] = base64.b64decode(value).decode('utf-8')
+
+        insecure_filename = metadata.get('filename', None)
+        if insecure_filename is not None:
+            secure_filename = werkzeug_secure_filename(insecure_filename)
+            metadata['filename'] = secure_filename
+
         return metadata
 
     # Untested. Possibly unused.
@@ -321,13 +328,15 @@ class TusManager(object):
             file_size == new_offset
         ):  # file transfer complete, rename from resource id to actual filename
             try:
+                secure_filename = werkzeug_secure_filename(filename)
                 if self.upload_file_handler_cb is None:
                     os.rename(
-                        upload_file_path, os.path.join(self.upload_folder, filename)
+                        upload_file_path,
+                        os.path.join(self.upload_folder, secure_filename),
                     )
                 else:
                     filename = self.upload_file_handler_cb(
-                        upload_file_path, filename, request, self.app
+                        upload_file_path, secure_filename, request, self.app
                     )
             finally:
                 self._remove_resources(resource_id)

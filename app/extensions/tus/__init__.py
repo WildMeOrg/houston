@@ -68,6 +68,8 @@ def _tus_file_handler(upload_file_path, filename, req, app):
     log.info('Tus finished uploading: %r in dir %r.' % (filename, dir))
     os.rename(upload_file_path, os.path.join(dir, filename))
 
+    return filename
+
 
 def tus_upload_dir(app, git_store_guid=None, transaction_id=None, session_id=None):
     """Returns the location to an upload directory"""

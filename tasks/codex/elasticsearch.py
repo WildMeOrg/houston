@@ -5,12 +5,6 @@ Application Users management related tasks for Invoke.
 
 from tasks.utils import app_context_task
 from datetime import datetime, timedelta
-from app.modules.elasticsearch.tasks import (
-    catchup_index_get,
-    catchup_index_set,
-    catchup_index_start,
-    catchup_index_reset,
-)
 
 
 @app_context_task(
@@ -21,6 +15,8 @@ from app.modules.elasticsearch.tasks import (
     }
 )
 def catchup_index(context, before, batch_size=100, batch_pause=3):
+    from app.modules.elasticsearch.tasks import catchup_index_set
+
     """
     Start indexing historic data before a certain date, in batches.
     """
@@ -37,6 +33,8 @@ def catchup_index(context, before, batch_size=100, batch_pause=3):
 
 @app_context_task()
 def catchup_index_continue(context):
+    from app.modules.elasticsearch.tasks import catchup_index_get
+
     conf = catchup_index_get()
     if not conf:
         print(
@@ -47,6 +45,8 @@ def catchup_index_continue(context):
 
 @app_context_task()
 def catchup_index_cancel(context):
+    from app.modules.elasticsearch.tasks import catchup_index_reset
+
     catchup_index_reset()
     print(
         'Reset catchup-index configuration.  If running, will stop after current batch.'
@@ -55,6 +55,8 @@ def catchup_index_cancel(context):
 
 
 def _kickoff():
+    from app.modules.elasticsearch.tasks import catchup_index_start
+
     start_pause = 10
     start_time = datetime.utcnow() + timedelta(seconds=start_pause)
     async_res = catchup_index_start.apply_async(eta=start_time)

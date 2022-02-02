@@ -4,19 +4,11 @@ import logging
 import json
 from flask import current_app
 from gumby.models import Individual, Encounter, Sighting
-from sqlalchemy import (
-    create_engine,
-    text,
-    MetaData,
-    Table,
-    Column,
-    String,
-    DateTime,
-    Integer,
-)
+from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Engine
 from datetime import datetime, timedelta
 from app.extensions.celery import celery
+from app.modules.site_settings.models import SiteSetting
 
 
 log = logging.getLogger(__name__)
@@ -25,7 +17,10 @@ log = logging.getLogger(__name__)
 @celery.on_after_configure.connect
 def setup_periodic_tasks(sender, **kwargs):
     sender.add_periodic_task(
-        10.0 * 60, load_codex_indexes.s(), name='Load Elasticsearch Indexes'
+        # 10.0 * 60, load_codex_indexes.s(), name='Load Elasticsearch Indexes'
+        0.5 * 60,
+        load_codex_indexes.s(),
+        name='Load Elasticsearch Indexes',
     )
 
 
@@ -45,18 +40,6 @@ def set_up_houston_tables():
     with h_engine.connect() as h_conn:
         results = h_conn.execute(text(ENUM_TYPE_LIST_SQL_QUERY))
         enum_list = results.fetchall()
-
-        # table with version info to determine if indexing is needed
-        metadata = MetaData(h_engine)
-        Table(
-            'elasticsearch_metadata',
-            metadata,
-            Column('key', String, primary_key=True, nullable=False),
-            Column('value_datetime', DateTime),
-            Column('value_string', String),
-            Column('value_integer', Integer),
-        )
-        metadata.create_all()  # only will create if doesnt exist
 
     wb_engine = create_wildbook_engine()
     with wb_engine.connect() as wb_conn:
@@ -124,10 +107,17 @@ IMPORT FOREIGN SCHEMA public FROM SERVER houston INTO houston;
 def load_individuals_index(
     catchup_index_before=None, catchup_index_batch_size=0, catchup_index_mark=None
 ):
+    if catchup_index_before:
+        where_clause = f"WHERE hind.updated < '{catchup_index_before}' AND hind.guid > '{catchup_index_mark}' ORDER BY hind.guid LIMIT {catchup_index_batch_size}"
+    else:
+        cutoff = update_incremental_cutoff('individual')
+        where_clause = f"WHERE hind.updated >= '{cutoff}'"
     wb_engine = create_wildbook_engine()
     with wb_engine.connect() as wb_conn:
         # Query for marked individual records
-        results = wb_conn.execute(text(WILDBOOK_MARKEDINDIVIDUAL_SQL_QUERY))
+        sql = WILDBOOK_MARKEDINDIVIDUAL_SQL_QUERY
+        sql = sql.replace('{where_clause}', where_clause)
+        results = wb_conn.execute(text(sql))
         for result in results:
             # Create the document object
             indv = Individual(**result)
@@ -191,6 +181,8 @@ FROM
   left join "MULTIVALUE" as multv on (mi."NAMES_ID_OID" = multv."ID")
   -- join for genus and species
   left join "TAXONOMY" as tax on (mi."TAXONOMY_ID_OID" = tax."ID")
+  JOIN houston.individual hind ON mi."ID" = hind.guid::text
+  {where_clause}
 ;
 """
 
@@ -209,7 +201,6 @@ def load_encounters_index(
         sql = ENCOUNTERS_INDEX_SQL
         sql = sql.replace('{where_clause}', where_clause)
         results = wb_conn.execute(text(sql))
-        log.debug(f'len results = {results.rowcount}')
         for row in results:
             result = combine_datetime(row)
             result = combine_customfields(result)
@@ -271,9 +262,16 @@ FROM
 def load_sightings_index(
     catchup_index_before=None, catchup_index_batch_size=0, catchup_index_mark=None
 ):
+    if catchup_index_before:
+        where_clause = f"WHERE si.updated < '{catchup_index_before}' AND si.guid > '{catchup_index_mark}' ORDER BY si.guid LIMIT {catchup_index_batch_size}"
+    else:
+        cutoff = update_incremental_cutoff('sighting')
+        where_clause = f"WHERE si.updated >= '{cutoff}'"
     wb_engine = create_wildbook_engine()
     with wb_engine.connect() as wb_conn:
-        results = wb_conn.execute(text(SIGHTINGS_INDEX_SQL))
+        sql = SIGHTINGS_INDEX_SQL
+        sql = sql.replace('{where_clause}', where_clause)
+        results = wb_conn.execute(text(sql))
         for i, row in enumerate(results):
             result = combine_datetime(row)
             result = combine_customfields(result)
@@ -325,6 +323,7 @@ FROM
   LEFT JOIN "TAXONOMY" ta ON ta."ID" = en."TAXONOMY_ID_OID"
   JOIN houston.sighting si ON oc."ID" = si.guid::text
   LEFT JOIN houston.complex_date_time cdt ON si.time_guid = cdt.guid
+{where_clause}
 GROUP BY id, datetime, timezone, specificity
 """
 
@@ -356,28 +355,18 @@ def combine_customfields(result):
 
 def update_incremental_cutoff(key_prefix):
     dt_now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    cutoff = dt_now
-    inc_key = f'{key_prefix}_incremental_cutoff'
-    h_engine = create_houston_engine()
-    with h_engine.connect() as h_conn:
-        res = h_conn.execute(
-            f"SELECT value_datetime FROM elasticsearch_metadata WHERE key='{inc_key}'"
-        )
-        if res.rowcount > 0:
-            cutoff = res.first()[0].strftime('%Y-%m-%d %H:%M:%S')
-            h_conn.execute(
-                f"UPDATE elasticsearch_metadata SET value_datetime='{dt_now}' WHERE key='{inc_key}'"
-            )
-        else:
-            h_conn.execute(
-                f"INSERT INTO elasticsearch_metadata (key, value_datetime) VALUES ('{inc_key}', '{dt_now}')"
-            )
+    inc_key = f'elasticsearch_incremental_cutoff_{key_prefix}'
+    cutoff = SiteSetting.get_string(inc_key)
+    if not cutoff:
+        cutoff = dt_now
+    SiteSetting.set(inc_key, string=dt_now)
     log.info(f'incremental_cutoff [{key_prefix}] => {cutoff}, dt_now = {dt_now}')
     return cutoff
 
 
 @celery.task
 def load_codex_indexes():
+    log.info('incremental indexing started')
     set_up_houston_tables()
     load_individuals_index()
     load_encounters_index()
@@ -385,81 +374,27 @@ def load_codex_indexes():
 
 
 def catchup_index_get():
-    set_up_houston_tables()
-    conf = {}
-    h_engine = create_houston_engine()
-    with h_engine.connect() as h_conn:
-        res = h_conn.execute(
-            "SELECT value_datetime FROM elasticsearch_metadata WHERE key='catchup_index_before'"
-        )
-        if res.rowcount < 1:
-            return
-        conf['before'] = res.first()[0]
-        conf['batch_size'] = 250
-        conf['batch_pause'] = 5
-        conf['encounter_mark'] = '00000000-0000-0000-0000-000000000000'
-        conf['sighting_mark'] = '00000000-0000-0000-0000-000000000000'
-        conf['individual_mark'] = '00000000-0000-0000-0000-000000000000'
-        res = h_conn.execute(
-            "SELECT value_integer FROM elasticsearch_metadata WHERE key='catchup_index_batch_size'"
-        )
-        if res.rowcount > 0:
-            conf['batch_size'] = res.first()[0]
-        res = h_conn.execute(
-            "SELECT value_integer FROM elasticsearch_metadata WHERE key='catchup_index_batch_pause'"
-        )
-        if res.rowcount > 0:
-            conf['batch_pause'] = res.first()[0]
-        res = h_conn.execute(
-            "SELECT value_string FROM elasticsearch_metadata WHERE key='catchup_index_encounter_mark'"
-        )
-        if res.rowcount > 0:
-            conf['encounter_mark'] = res.first()[0]
-        res = h_conn.execute(
-            "SELECT value_string FROM elasticsearch_metadata WHERE key='catchup_index_sighting_mark'"
-        )
-        if res.rowcount > 0:
-            conf['sighting_mark'] = res.first()[0]
-        res = h_conn.execute(
-            "SELECT value_string FROM elasticsearch_metadata WHERE key='catchup_index_individual_mark'"
-        )
-        if res.rowcount > 0:
-            conf['individual_mark'] = res.first()[0]
-    return conf
+    conf_key = 'elasticsearch_catchup_index_conf'
+    conf = SiteSetting.get_json(conf_key)
+    if not conf or 'before' not in conf:
+        return
+    # conf must have 'before' value; the rest can use these defaults
+    def_conf = {
+        'batch_size': 250,
+        'batch_pause': 5,
+        'encounter_mark': '00000000-0000-0000-0000-000000000000',
+        'sighting_mark': '00000000-0000-0000-0000-000000000000',
+        'individual_mark': '00000000-0000-0000-0000-000000000000',
+    }
+    def_conf.update(conf)
+    return def_conf
 
 
 def catchup_index_set(conf):
     if not conf or 'before' not in conf:
         return
-    h_engine = create_houston_engine()
-    with h_engine.connect() as h_conn:
-        h_conn.execute(
-            "DELETE FROM elasticsearch_metadata WHERE key LIKE 'catchup_index_%%'"
-        )
-        before_str = conf['before'].strftime('%Y-%m-%d %H:%M:%S')
-        h_conn.execute(
-            f"INSERT INTO elasticsearch_metadata (key, value_datetime) VALUES ('catchup_index_before', '{before_str}')"
-        )
-        if conf.get('batch_size'):
-            h_conn.execute(
-                f"INSERT INTO elasticsearch_metadata (key, value_integer) VALUES ('catchup_index_batch_size', {conf['batch_size']})"
-            )
-        if conf.get('batch_pause'):
-            h_conn.execute(
-                f"INSERT INTO elasticsearch_metadata (key, value_integer) VALUES ('catchup_index_batch_pause', {conf['batch_pause']})"
-            )
-        if conf.get('encounter_mark'):
-            h_conn.execute(
-                f"INSERT INTO elasticsearch_metadata (key, value_string) VALUES ('catchup_index_encounter_mark', '{conf['encounter_mark']}')"
-            )
-        if conf.get('individual_mark'):
-            h_conn.execute(
-                f"INSERT INTO elasticsearch_metadata (key, value_string) VALUES ('catchup_index_individual_mark', '{conf['individual_mark']}')"
-            )
-        if conf.get('sighting_mark'):
-            h_conn.execute(
-                f"INSERT INTO elasticsearch_metadata (key, value_string) VALUES ('catchup_index_sighting_mark', '{conf['sighting_mark']}')"
-            )
+    conf_key = 'elasticsearch_catchup_index_conf'
+    SiteSetting.set(conf_key, data=conf)
 
 
 @celery.task
@@ -513,8 +448,5 @@ def catchup_index_start():
 
 
 def catchup_index_reset():
-    h_engine = create_houston_engine()
-    with h_engine.connect() as h_conn:
-        h_conn.execute(
-            "DELETE FROM elasticsearch_metadata WHERE key LIKE 'catchup_index_%%'"
-        )
+    conf_key = 'elasticsearch_catchup_index_conf'
+    SiteSetting.forget_key_value(conf_key)

@@ -27,7 +27,7 @@ def catchup_index(context, before, batch_size=100, batch_pause=3):
     # from app.modules.individuals.tasks import execute_merge_request
     # async_res = execute_merge_request.apply_async(args, eta=deadline)
     conf = {
-        'before': datetime.fromisoformat(before),
+        'before': datetime.fromisoformat(before).strftime('%Y-%m-%d %H:%M:%S'),
         'batch_size': int(batch_size),
         'batch_pause': int(batch_pause),
     }

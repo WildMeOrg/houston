@@ -263,14 +263,17 @@ def load_sightings_index(
     catchup_index_before=None, catchup_index_batch_size=0, catchup_index_mark=None
 ):
     if catchup_index_before:
-        where_clause = f"WHERE si.updated < '{catchup_index_before}' AND si.guid > '{catchup_index_mark}' ORDER BY si.guid LIMIT {catchup_index_batch_size}"
+        where_clause = f"WHERE si.updated < '{catchup_index_before}' AND si.guid > '{catchup_index_mark}'"
+        order_clause = f"ORDER BY id LIMIT {catchup_index_batch_size}"
     else:
         cutoff = update_incremental_cutoff('sighting')
         where_clause = f"WHERE si.updated >= '{cutoff}'"
+        order_clause = ''
     wb_engine = create_wildbook_engine()
     with wb_engine.connect() as wb_conn:
         sql = SIGHTINGS_INDEX_SQL
         sql = sql.replace('{where_clause}', where_clause)
+        sql = sql.replace('{order_clause}', order_clause)
         results = wb_conn.execute(text(sql))
         for i, row in enumerate(results):
             result = combine_datetime(row)
@@ -325,6 +328,7 @@ FROM
   LEFT JOIN houston.complex_date_time cdt ON si.time_guid = cdt.guid
 {where_clause}
 GROUP BY id, datetime, timezone, specificity
+{order_clause}
 """
 
 

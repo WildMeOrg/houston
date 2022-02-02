@@ -17,10 +17,7 @@ log = logging.getLogger(__name__)
 @celery.on_after_configure.connect
 def setup_periodic_tasks(sender, **kwargs):
     sender.add_periodic_task(
-        # 10.0 * 60, load_codex_indexes.s(), name='Load Elasticsearch Indexes'
-        0.5 * 60,
-        load_codex_indexes.s(),
-        name='Load Elasticsearch Indexes',
+        10.0 * 60, load_codex_indexes.s(), name='Load Elasticsearch Indexes'
     )
 
 

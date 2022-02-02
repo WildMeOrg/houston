@@ -10,6 +10,7 @@ import shutil
 from flask import current_app
 
 from flask_restx_patched import is_extension_enabled
+from werkzeug.utils import secure_filename
 
 if not is_extension_enabled('tus'):
     raise RuntimeError('Tus is not enabled')
@@ -103,8 +104,9 @@ def _tus_filepaths_from(
     else:
         if len(paths) < 1:
             return None
-        for path in paths:
-            want_path = os.path.join(upload_dir, path)
+        for insecure_path in paths:
+            secure_path = secure_filename(insecure_path)
+            want_path = os.path.join(upload_dir, secure_path)
             assert os.path.exists(want_path), f'{want_path} does not exist'
             filepaths.append(want_path)
 

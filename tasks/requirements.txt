@@ -1,4 +1,4 @@
-colorlog
 invoke>=1.5.0
 lockfile
 requests
+rich

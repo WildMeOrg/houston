@@ -264,3 +264,29 @@ def internal_testing(*args, **kwargs):
         'internal.testing.jinja2',
         user=current_user,
     )
+
+
+@backend_blueprint.route('/internal/testing/logging', methods=['GET'])
+def log_testing(*args, **kwargs):
+    """
+    This endpoint is for internal logging testing
+    """
+    import app.extensions.logging as AuditLog
+
+    log.info('A test INFO message')
+    log.debug('A test DEBUG message')
+    log.warning('A test WARNING message')
+    log.error('A test ERROR message')
+    log.critical('A test CRITICAL message')
+
+    AuditLog.audit_log(log, 'A test AUDIT log message')
+
+    try:
+        try:
+            assert False, 'A test EXCEPTION message'
+        except AssertionError as ex:
+            log.exception(ex)
+    except Exception:
+        pass
+
+    return home()

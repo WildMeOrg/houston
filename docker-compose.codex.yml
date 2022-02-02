@@ -177,6 +177,7 @@ services:
       WILDBOOK_DB_NAME: "${WILDBOOK_DB_NAME}"
       WILDBOOK_DB_USER: "${WILDBOOK_DB_USER}"
       WILDBOOK_DB_PASSWORD: "${WILDBOOK_DB_PASSWORD}"
+      LOG_WIDTH: ${LOG_WIDTH}
 
   celery_beat:
     image: wildme/houston:latest

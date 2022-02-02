@@ -8,51 +8,56 @@ import logging
 import os
 import platform
 
-logging.basicConfig()
+try:
+    import rich
+    from rich.logging import RichHandler
+    from rich.theme import Theme
+    from rich.style import Style
+
+    console_kwargs = {
+        'theme': Theme(
+            {
+                'logging.keyword': Style(bold=True, color='yellow'),
+                'logging.level.notset': Style(dim=True),
+                'logging.level.debug': Style(color='cyan'),
+                'logging.level.info': Style(color='green'),
+                'logging.level.warning': Style(color='yellow'),
+                'logging.level.error': Style(color='red', bold=True),
+                'logging.level.critical': Style(color='red', bold=True, reverse=True),
+                'log.time': Style(color='white'),
+            }
+        )
+    }
+    handler_kwargs = {
+        'rich_tracebacks': True,
+        'tracebacks_show_locals': True,
+    }
+    if os.environ.get('TERM', None) is None:
+        try:
+            log_width = os.environ.get('LOG_WIDTH', None)
+            log_width = float(log_width)
+        except Exception:
+            log_width = 200
+
+        # Inside docker without TTL
+        console_kwargs['force_terminal'] = True
+        console_kwargs['force_interactive'] = True
+        console_kwargs['width'] = log_width
+        console_kwargs['soft_wrap'] = True
+
+    rich.reconfigure(**console_kwargs)
+    handler = RichHandler(**handler_kwargs)
+
+    FORMAT = '[%(name)s] %(message)s'
+    logging.basicConfig(
+        level=logging.DEBUG, format=FORMAT, datefmt='[%X]', handlers=[handler]
+    )
+except ImportError:  # pragma: no cover
+    logging.basicConfig()
+
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 # logging.getLogger('app').setLevel(logging.DEBUG)
-
-try:
-    import colorlog
-except ImportError:  # pragma: no cover
-    pass
-else:
-    formatter = colorlog.ColoredFormatter(
-        (
-            '%(asctime)s '
-            '[%(log_color)s%(levelname)s%(reset)s] '
-            '[%(cyan)s%(name)s%(reset)s] '
-            '%(message_log_color)s%(message)s'
-        ),
-        reset=True,
-        log_colors={
-            'DEBUG': 'bold_cyan',
-            'INFO': 'bold_green',
-            'WARNING': 'bold_yellow',
-            'ERROR': 'bold_red',
-            'CRITICAL': 'bold_red,bg_white',
-        },
-        secondary_log_colors={
-            'message': {
-                'DEBUG': 'white',
-                'INFO': 'bold_white',
-                'WARNING': 'bold_yellow',
-                'ERROR': 'bold_red',
-                'CRITICAL': 'bold_red',
-            },
-        },
-        style='%',
-    )
-
-    for handler in logger.handlers:
-        if isinstance(handler, logging.StreamHandler):
-            break
-    else:
-        handler = logging.StreamHandler()
-        logger.addHandler(handler)
-    handler.setFormatter(formatter)
-
 
 from invoke import Collection  # NOQA
 from invoke.executor import Executor  # NOQA

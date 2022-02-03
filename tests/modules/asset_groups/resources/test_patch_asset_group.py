@@ -385,3 +385,76 @@ def test_patch_time_ags_encounters(
         group_sighting_verify.json['config']['encounters'][0]['timeSpecificity']
         == 'month'
     )
+
+
+# moving annot from one encounter to the other
+@pytest.mark.skipif(
+    module_unavailable('asset_groups'), reason='AssetGroups module disabled'
+)
+def test_patch_asset_group_annots(
+    flask_app_client, researcher_1, regular_user, test_root, db, empty_individual, request
+):
+    # pylint: disable=invalid-name
+
+    # Using bulk creation data means we get an AGS with two encounters which is what we need to add the annot to
+    # the first one and then move it to the second
+    data = asset_group_utils.get_bulk_creation_data(test_root, request)
+    resp = asset_group_utils.create_asset_group(
+        flask_app_client, researcher_1, data.get()
+    )
+    asset_group_uuid = resp.json['guid']
+
+    request.addfinalizer(
+        lambda: asset_group_utils.delete_asset_group(
+            flask_app_client, researcher_1, asset_group_uuid
+        )
+    )
+    ags_guid = resp.json['asset_group_sightings'][0]['guid']
+    encounter_guids = [
+        enc['guid']
+        for enc in resp.json['asset_group_sightings'][0]['config']['encounters']
+    ]
+    assert len(encounter_guids) == 2
+    encounter1_path = f'{ags_guid}/encounter/{encounter_guids[0]}'
+    encounter2_path = f'{ags_guid}/encounter/{encounter_guids[1]}'
+
+    ags_asset_name = resp.json['asset_group_sightings'][0]['config']['assetReferences'][0]
+    asset_guids = [
+        asset['guid']
+        for asset in resp.json['assets']
+        if asset['filename'] == ags_asset_name
+    ]
+    assert len(asset_guids) == 1
+
+    response = annot_utils.create_annotation_simple(
+        flask_app_client,
+        researcher_1,
+        asset_guids[0],
+    )
+
+    annotation_guid = response.json['guid']
+
+    # Add annot, should succeed
+    annot_add_resp = asset_group_utils.patch_asset_group_sighting(
+        flask_app_client,
+        researcher_1,
+        encounter1_path,
+        [utils.patch_add_op('annotations', annotation_guid)],
+    )
+    enc1_annots = annot_add_resp.json['config']['encounters'][0]['annotations']
+    assert len(enc1_annots) == 1
+    assert enc1_annots[0] == annotation_guid
+
+    # Add annot to enc 2, should remove it from enc 1
+    annot_add_resp = asset_group_utils.patch_asset_group_sighting(
+        flask_app_client,
+        researcher_1,
+        encounter2_path,
+        [utils.patch_add_op('annotations', annotation_guid)],
+    )
+
+    enc1_annots = annot_add_resp.json['config']['encounters'][0]['annotations']
+    enc2_annots = annot_add_resp.json['config']['encounters'][1]['annotations']
+    assert len(enc1_annots) == 0
+    assert len(enc2_annots) == 1
+    assert enc2_annots[0] == annotation_guid

@@ -231,9 +231,7 @@ class PatchAssetGroupSightingEncounterDetailsParameters(PatchJSONParameters):
     )
 
     @classmethod
-    def _get_encounter_data(cls, obj, state):
-        assert 'encounter_uuid' in state
-        encounter_uuid = state['encounter_uuid']
+    def _get_encounter_data(cls, obj, encounter_uuid):
         encounter_metadata = obj.get_encounter_metadata(encounter_uuid)
 
         if not encounter_metadata:
@@ -241,7 +239,7 @@ class PatchAssetGroupSightingEncounterDetailsParameters(PatchJSONParameters):
                 log,
                 f'Encounter {encounter_uuid} not found in AssetGroupSighting {obj.guid}',
             )
-        return encounter_uuid, encounter_metadata
+        return encounter_metadata
 
     @classmethod
     def add(cls, obj, field, value, state):
@@ -253,7 +251,9 @@ class PatchAssetGroupSightingEncounterDetailsParameters(PatchJSONParameters):
     def replace(cls, obj, field, value, state):
 
         ret_val = True
-        encounter_uuid, encounter_metadata = cls._get_encounter_data(obj, state)
+        assert 'encounter_uuid' in state
+        encounter_uuid = state['encounter_uuid']
+        encounter_metadata = cls._get_encounter_data(obj, encounter_uuid)
 
         if field == 'ownerEmail':
             AssetGroupMetadata.validate_owner_email(value, f'Encounter {encounter_uuid}')
@@ -288,10 +288,10 @@ class PatchAssetGroupSightingEncounterDetailsParameters(PatchJSONParameters):
                         log,
                         f'You are not permitted to reassign {value} Annotation',
                     )
-                if 'annotations' not in encounter_metadata.keys():
-                    encounter_metadata['annotations'] = []
-                if annot_guid not in encounter_metadata['annotations']:
-                    encounter_metadata['annotations'].append(annot_guid)
+                # Probably a move from another encounter in the group. Remove it from all others first
+                obj.asset_group.remove_annotation_from_any_sighting(annot_guid)
+
+                obj.add_annotation_to_encounter(encounter_uuid, annot_guid)
 
         elif field == 'individualUuid':
             AssetGroupMetadata.validate_individual(value, f'Encounter {encounter_uuid}')
@@ -306,19 +306,19 @@ class PatchAssetGroupSightingEncounterDetailsParameters(PatchJSONParameters):
     def remove(cls, obj, field, value, state):
         ret_val = False
         changed = False
-        encounter_uuid, encounter_metadata = cls._get_encounter_data(obj, state)
+        assert 'encounter_uuid' in state
+        encounter_uuid = state['encounter_uuid']
+
         if field == 'annotations':
-            # 'remove' passed for the annotation even if it wasn't there to start with
-            ret_val = True
-            if 'annotations' in encounter_metadata.keys():
-                if not isinstance(value, str):
-                    # but fails for invalid value type
-                    ret_val = False
-                else:
-                    for config_annotation in encounter_metadata['annotations']:
-                        if config_annotation['guid'] == value:
-                            encounter_metadata['annotations'].remove(config_annotation)
-                            changed = True
+            if not isinstance(value, str):
+                # but fails for invalid value type
+                ret_val = False
+            else:
+                # 'remove' passed for the annotation even if it wasn't there to start with
+                ret_val = True
+                obj.remove_annotation_from_encounter(encounter_uuid, value)
+                changed = True
+
         if changed:
             # Force the DB write
             obj.config = obj.config

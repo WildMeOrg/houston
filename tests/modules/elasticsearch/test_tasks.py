@@ -228,9 +228,12 @@ def test_load_codex_indexes(monkeypatch, flask_app):
         '9acc33ef-caa1-4341-b475-9a5d762cd243': ['Grazing', 'A second value'],
     }
 
+    # rtn = tasks.load_individual_index()
+
 
 def test_catchup_indexing():
     from app.modules.elasticsearch import tasks
+
     conf = {}
     rtn = tasks.catchup_index_set(conf)  # fail due to bad conf
     assert not rtn
@@ -249,26 +252,6 @@ def test_catchup_indexing():
     assert conf['sighting_mark'] == '00000000-0000-0000-0000-000000000000'
     assert conf['encounter_mark'] == '00000000-0000-0000-0000-000000000000'
     assert conf['individual_mark'] == '00000000-0000-0000-0000-000000000000'
-
-    tasks.set_up_houston_tables()
-    rtn = tasks.load_sightings_index(
-        catchup_index_before=conf['before'],
-        catchup_index_batch_size=conf['batch_size'],
-        catchup_index_mark=conf['sighting_mark'],
-    )
-    assert not rtn
-    rtn = tasks.load_encounters_index(
-        catchup_index_before=conf['before'],
-        catchup_index_batch_size=conf['batch_size'],
-        catchup_index_mark=conf['encounter_mark'],
-    )
-    assert not rtn
-    rtn = tasks.load_individuals_index(
-        catchup_index_before=conf['before'],
-        catchup_index_batch_size=conf['batch_size'],
-        catchup_index_mark=conf['individual_mark'],
-    )
-    assert not rtn
 
     # now blow away conf data
     tasks.catchup_index_reset()

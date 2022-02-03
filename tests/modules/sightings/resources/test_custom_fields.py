@@ -135,6 +135,7 @@ def test_custom_fields_on_sighting(
 
     # test patch on customFields
     new_cfd_test_value = 'NEW_CFD_TEST_VALUE'
+    new_cfd_multi_value = ['A', 'B']
     sighting_utils.patch_sighting(
         flask_app_client,
         researcher_1,
@@ -144,7 +145,12 @@ def test_custom_fields_on_sighting(
                 'op': 'replace',
                 'path': '/customFields',
                 'value': {'id': cfd_id, 'value': new_cfd_test_value},
-            }
+            },
+            {
+                'op': 'replace',
+                'path': '/customFields',
+                'value': {'id': cfd_multi_id, 'value': new_cfd_multi_value},
+            },
         ],
     )
 
@@ -158,3 +164,5 @@ def test_custom_fields_on_sighting(
     assert 'customFields' in full_sighting.json
     assert cfd_id in full_sighting.json['customFields']
     assert full_sighting.json['customFields'][cfd_id] == new_cfd_test_value
+    assert cfd_multi_id in full_sighting.json['customFields']
+    assert full_sighting.json['customFields'][cfd_multi_id] == new_cfd_multi_value

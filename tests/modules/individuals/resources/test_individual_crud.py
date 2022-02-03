@@ -321,3 +321,55 @@ def test_individual_has_detailed_encounter_from_edm(
         individual_utils.delete_individual(flask_app_client, researcher_1, individual_id)
         if enc:
             enc.delete_cascade()
+
+
+@pytest.mark.skipif(
+    module_unavailable('individuals'), reason='Individuals module disabled'
+)
+def test_individual_mixed_edm_houston_patch(
+    db, flask_app_client, researcher_1, request, test_root
+):
+    uuids = individual_utils.create_individual_and_sighting(
+        flask_app_client,
+        researcher_1,
+        request,
+        test_root,
+    )
+    individual_id = uuids['individual']
+    valid_names_data_A = {'context': 'A', 'value': 'value-A'}
+    # valid_names_data_B = {'context': 'B', 'value': 'value-B'}
+    # invalid_names_data_B = {'context': 'B', 'value': 'value-B'}
+
+    # edm_patch_response = \
+    individual_utils.patch_individual(
+        flask_app_client,
+        researcher_1,
+        individual_id,
+        [
+            {'op': 'add', 'path': '/timeOfBirth', 'value': '1445410800000'},
+            {'op': 'add', 'path': '/timeOfDeath', 'value': 1445410803000},
+            {'op': 'replace', 'path': '/sex', 'value': '42'},
+        ],
+    )
+    # individual_json = individual_utils.read_individual(
+    #    flask_app_client, researcher_1, individual_id
+    # ).json
+    # TODO tests the outcome once EDM Patch is doing what it should be
+    # patch_individual_response =
+    individual_utils.patch_individual(
+        flask_app_client,
+        researcher_1,
+        individual_id,
+        [
+            {'op': 'add', 'path': '/featuredAssetGuid', 'value': str(uuid.uuid4())},
+            {'op': 'add', 'path': '/encounters', 'value': str(uuid.uuid4())},
+            {'op': 'add', 'path': '/names', 'value': valid_names_data_A},
+        ],
+        expected_status_code=409,
+    )
+    # individual_json = individual_utils.read_individual(
+    #    flask_app_client, researcher_1, individual_id
+    # ).json
+    # TODO tests the outcome once Houston Patch is doing what it should be
+    # breakpoint()
+    # TODO Houston and EDM patch together

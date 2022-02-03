@@ -136,7 +136,11 @@ class Namespace(BaseNamespace):
 
     @contextmanager
     def commit_or_abort(
-        self, session, default_error_message='The operation failed to complete'
+        self,
+        session,
+        default_error_message='The operation failed to complete',
+        code=HTTPStatus.CONFLICT,
+        **kwargs
     ):
         """
         Context manager to simplify a workflow in resources
@@ -144,6 +148,8 @@ class Namespace(BaseNamespace):
         Args:
             session: db.session instance
             default_error_message: Custom error message
+            kwargs: extra fields for the abort message
+            code: change the abort code used
 
         Exampple:
         >>> with api.commit_or_abort(db.session):
@@ -156,7 +162,7 @@ class Namespace(BaseNamespace):
                 yield
         except (ValueError, ValidationError) as exception:
             log.info('Database transaction was rolled back due to: %r', exception)
-            http_exceptions.abort(code=HTTPStatus.CONFLICT, message=str(exception))
+            http_exceptions.abort(code=code, message=str(exception), **kwargs)
         except sqlalchemy.exc.IntegrityError as exception:
             log.info('Database transaction was rolled back due to: %r', exception)
-            http_exceptions.abort(code=HTTPStatus.CONFLICT, message=default_error_message)
+            http_exceptions.abort(code=code, message=default_error_message, **kwargs)

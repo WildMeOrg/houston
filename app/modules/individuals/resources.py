@@ -300,10 +300,6 @@ class IndividualByID(Resource):
 
         timer = ElapsedTime()
 
-        context = api.commit_or_abort(
-            db.session, default_error_message='Failed to update Individual details.'
-        )
-
         # If value for /encounters is not a list, make it into a list
         for arg in args:
             if arg['path'] == '/encounters' and isinstance(arg['value'], str):
@@ -323,7 +319,7 @@ class IndividualByID(Resource):
         ]
 
         if len(edm_args) > 0:
-            log.debug(f'wanting to do edm patch on args={args}')
+            log.debug(f'wanting to do edm patch on args={edm_args}')
             result = None
             try:
                 (
@@ -338,11 +334,29 @@ class IndividualByID(Resource):
                     request_headers=request.headers,
                 )
             except HoustonException as ex:
-                abort(ex.status_code, ex.message)
+                if isinstance(ex.message, dict):
+                    message = ex.message.get('details', ex.message)
+                else:
+                    message = ex.message
+                abort(ex.status_code, message)
 
             # TODO handle individual deletion if last encounter removed
 
         if houston_args:
+            if not edm_args:
+                # regular houston-patching
+                context = api.commit_or_abort(
+                    db.session,
+                    default_error_message='Failed to update Individual details.',
+                )
+            else:
+                # irregular houston-patching, where we need to report that EDM data was set if houston setting failed
+                context = api.commit_or_abort(
+                    db.session,
+                    default_error_message='Failed to update Individual details.',
+                    code=417,  # Arbitrary choice (Expectation Failed)
+                    fields_written=edm_args,
+                )
             with context:
                 try:
                     parameters.PatchIndividualDetailsParameters.perform_patch(

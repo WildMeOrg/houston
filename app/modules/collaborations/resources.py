@@ -79,6 +79,9 @@ class Collaborations(Resource):
         from app.modules.users.models import User
 
         req = json.loads(request.data)
+        if not isinstance(req, dict):
+            abort(400, 'Collaboration request message must be a dictionary')
+
         other_user_guid = req.get('user_guid')
         other_user = User.query.get(other_user_guid)
         if not other_user:

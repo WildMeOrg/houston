@@ -129,11 +129,13 @@ NOTIFICATION_CONFIG = {
         'email_template_name': 'collaboration_manager_create',  # Not yet written
         'email_digest_content_template': 'collaboration_manager_create_digest',
         'mandatory_fields': {'collaboration_guid', 'user1_name', 'user2_name'},
+        'allow_multiple': True,
     },
     NotificationType.collab_manager_revoke: {
         'email_template_name': 'collaboration_manger_revoke',  # Not yet written
         'email_digest_content_template': 'collaboration_manager_revoke_digest',
         'mandatory_fields': {'collaboration_guid', 'user1_name', 'user2_name'},
+        'allow_multiple': True,
     },
     NotificationType.individual_merge_request: {
         'email_template_name': 'individual_merge_request',
@@ -166,7 +168,6 @@ class NotificationBuilder(object):
     def __init__(self, sender, multiple=False):
         self.sender = sender
         self.data = {}
-        self.allow_multiple = multiple
 
     def set_collaboration(self, collab):
         self.data['collaboration_guid'] = collab.guid
@@ -281,12 +282,10 @@ class Notification(db.Model, HoustonModel):
     @classmethod
     def create(cls, notification_type, receiving_user, builder):
         assert notification_type in NotificationType
-
+        config = NOTIFICATION_CONFIG[notification_type]
         data = builder.data
 
-        assert set(data.keys()) >= set(
-            NOTIFICATION_CONFIG[notification_type]['mandatory_fields']
-        )
+        assert set(data.keys()) >= set(config['mandatory_fields'])
 
         from app.modules.users.models import User
 
@@ -301,8 +300,13 @@ class Notification(db.Model, HoustonModel):
             sender_guid=sender_guid,
             is_read=False,
         ).all()
-        if not builder.allow_multiple and len(existing_notifications):
-            log.debug(f'reusing existing notification {existing_notifications[0]}')
+
+        if (
+            len(existing_notifications)
+            and 'allow_multiple' in config.keys()
+            and not config['allow_multiple']
+        ):
+            log.info(f'reusing existing notification {existing_notifications[0]}')
             return existing_notifications[0]
         else:
             new_notification = cls(

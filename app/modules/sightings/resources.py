@@ -58,11 +58,9 @@ class SightingCleanup(object):
             self.asset_group.delete()
             self.asset_group = None
         abort(
-            success=False,
-            passed_message=message,
-            message='Error',
+            status_code,
+            message,
             errorFields=error_fields,
-            code=status_code,
         )
 
 
@@ -501,13 +499,7 @@ class SightingByID(Resource):
                     request_headers=request.headers,
                 )
             except HoustonException as ex:
-                edm_status_code = ex.get_val('edm_status_code', 400)
-                abort(
-                    success=False,
-                    passed_message=ex.message,
-                    code=ex.status_code,
-                    edm_status_code=edm_status_code,
-                )
+                abort(ex.status_code, ex.message)
 
             if 'deletedSighting' in result:
                 log.warning(f'EDM triggered self-deletion of {sighting} result={result}')
@@ -591,13 +583,7 @@ class SightingByID(Resource):
             log.warning(
                 f'Sighting.delete {sighting.guid} failed: ({ex.status_code} / edm={edm_status_code}) {ex.message}'
             )
-            abort(
-                success=False,
-                edm_status_code=edm_status_code,
-                passed_message='Delete failed',
-                message='Error',
-                code=400,
-            )
+            abort(400, 'Delete failed')
 
         # we have to roll our own response here (to return) as it seems the only way we can add a header
         #   (which we are using to denote the encounter DELETE also triggered a individual DELETE, since

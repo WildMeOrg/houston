@@ -281,11 +281,7 @@ class AssetGroupByID(Resource):
             try:
                 asset_group.delete()
             except HoustonException as ex:
-                abort(
-                    ex.status_code,
-                    ex.message,
-                    edm_status_code=ex.get_val('edm_status_code', None),
-                )
+                abort(ex.status_code, ex.message)
         else:
             from .tasks import delete_remote
 
@@ -388,10 +384,8 @@ class AssetGroupSightingByID(Resource):
                     args, asset_group_sighting
                 )
             except AssetGroupMetadataError as error:
-                abort(
-                    passed_message=error.message,
-                    code=error.status_code,
-                )
+                abort(error.status_code, error.message)
+
             db.session.merge(asset_group_sighting)
         AuditLog.patch_object(log, asset_group_sighting, args, duration=timer.elapsed())
         return asset_group_sighting
@@ -451,10 +445,7 @@ class AssetGroupSightingAsSighting(Resource):
                     args, asset_group_sighting
                 )
             except AssetGroupMetadataError as error:
-                abort(
-                    passed_message=error.message,
-                    code=error.status_code,
-                )
+                abort(error.status_code, error.message)
             db.session.merge(asset_group_sighting)
         AuditLog.patch_object(log, asset_group_sighting, args, duration=timer.elapsed())
         return asset_group_sighting
@@ -477,11 +468,7 @@ class AssetGroupSightingAsSighting(Resource):
             try:
                 asset_group.delete()
             except HoustonException as ex:
-                abort(
-                    ex.status_code,
-                    ex.message,
-                    edm_status_code=ex.get_val('edm_status_code', None),
-                )
+                abort(ex.status_code, ex.message)
         else:
             asset_group.delete_asset_group_sighting(asset_group_sighting)
 
@@ -524,10 +511,7 @@ class AssetGroupSightingEncounterByID(Resource):
                     state={'encounter_uuid': encounter_guid},
                 )
             except AssetGroupMetadataError as error:
-                abort(
-                    passed_message=error.message,
-                    code=error.status_code,
-                )
+                abort(error.status_code, error.message)
             db.session.merge(asset_group_sighting)
         AuditLog.patch_object(log, asset_group_sighting, args, duration=timer.elapsed())
         return asset_group_sighting
@@ -572,10 +556,7 @@ class AssetGroupSightingAsSightingEncounterByID(Resource):
                     state={'encounter_uuid': encounter_guid},
                 )
             except AssetGroupMetadataError as error:
-                abort(
-                    passed_message=error.message,
-                    code=error.status_code,
-                )
+                abort(error.status_code, error.message)
             db.session.merge(asset_group_sighting)
         AuditLog.patch_object(log, asset_group_sighting, args, duration=timer.elapsed())
         schema = schemas.AssetGroupSightingEncounterSchema()

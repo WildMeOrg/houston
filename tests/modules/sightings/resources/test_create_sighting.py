@@ -272,7 +272,6 @@ def test_create_and_modify_and_delete_sighting(
         ],
         expected_status_code=400,
     )
-    assert response.json['edm_status_code'] == 602, response.json
     # should still have same number encounters as above here
     ct = test_utils.all_count(db)
     assert ct['Encounter'] == orig_ct['Encounter'] + 1

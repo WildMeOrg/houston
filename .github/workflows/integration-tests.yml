@@ -103,6 +103,7 @@ jobs:
         run: |
           docker-compose logs --tail=250
           docker-compose ps
+          docker-compose logs acm
 
       - name: Upload codex.html and codex.png if failed
         if: failure()

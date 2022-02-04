@@ -485,7 +485,6 @@ class SightingByID(Resource):
                 log.warning(f'_get_annotations failed {ex.message}')
                 abort(code=400, message=ex.message)
 
-
             result = None
             try:
                 (

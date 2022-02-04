@@ -15,6 +15,7 @@ def test_create_header_image(db, flask_app, test_root):
     with db.session.begin():
         db.session.add(fup)
         db.session.add(fup2)
+    prev_site_settings = SiteSetting.query.count()
     header_image = SiteSetting.set(key='header_image', file_upload_guid=fup.guid)
     try:
         assert (
@@ -23,7 +24,7 @@ def test_create_header_image(db, flask_app, test_root):
         )
         # Set header image again
         SiteSetting.set(key='header_image', file_upload_guid=fup2.guid)
-        assert SiteSetting.query.count() == 1
+        assert SiteSetting.query.count() == prev_site_settings + 1
     finally:
         db.session.delete(header_image)
         fup.delete()

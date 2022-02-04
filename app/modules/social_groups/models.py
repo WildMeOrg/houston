@@ -82,6 +82,20 @@ class SocialGroup(db.Model, HoustonModel):
         )
 
     @classmethod
+    def get_role_data(cls, role):
+        from app.modules.site_settings.models import SiteSetting
+
+        permitted_role_data = SiteSetting.get_json('social_group_roles')
+        permitted_role_names = [role['label'] for role in permitted_role_data]
+        if role not in permitted_role_names:
+            return None
+        role_data = [
+            rol_dat for rol_dat in permitted_role_data if rol_dat['label'] == role
+        ]
+        assert len(role_data) == 1
+        return role_data[0]
+
+    @classmethod
     def site_settings_updated(cls):
         from app.modules.site_settings.models import SiteSetting
 
@@ -99,7 +113,8 @@ class SocialGroup(db.Model, HoustonModel):
                     continue
 
                 for role in member.roles:
-                    if role not in permitted_role_data.keys():
+                    role_data = cls.get_role_data(role)
+                    if not role_data:
                         # That role not supported anymore
                         msg = f"member {member.individual_guid} lost role {role} as it's no longer supported"
                         AuditLog.audit_log_object(log, group, msg)
@@ -112,7 +127,7 @@ class SocialGroup(db.Model, HoustonModel):
                         continue
 
                     # if a role is now only singular in the group and we have multiple, all we can do is audit it
-                    if permitted_role_data[role]['multipleInGroup']:
+                    if role_data['multipleInGroup']:
                         if current_roles_singular.get(role):
                             current_roles_singular[role] = False
                         else:
@@ -126,20 +141,24 @@ class SocialGroup(db.Model, HoustonModel):
     # This is for validating te site settings social group roles format, not the roles of an individual social group
     @classmethod
     def validate_roles(cls, roles_input):
-        expected_fields = {'multipleInGroup'}
-        if not isinstance(roles_input, dict):
-            raise HoustonException(log, 'Role data needs to be a dictionary')
+        expected_fields = {'label', 'multipleInGroup'}
+        if not isinstance(roles_input, list):
+            raise HoustonException(log, 'Role data needs to be a list')
+        labels = []
         for item in roles_input:
-            if not isinstance(roles_input[item], dict):
+            if not isinstance(item, dict):
                 raise HoustonException(
-                    log, 'Role data needs to be a dictionary of dictionaries'
+                    log, 'Role data needs to be a list of dictionaries'
                 )
 
-            if set(roles_input[item].keys()) != set(expected_fields):
+            if set(item.keys()) != set(expected_fields):
                 raise HoustonException(
                     log,
                     f'Role dictionary must have the following keys : {expected_fields}',
                 )
+            if item['label'] in labels:
+                raise HoustonException(log, f'can only have {item["label"]} once')
+            labels.append(item["label"])
 
     def get_member_data_as_json(self):
         individual_data = {}

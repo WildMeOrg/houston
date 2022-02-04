@@ -178,10 +178,17 @@ class MainConfigurationDefinition(Resource):
     Site Setting Definitions
     """
 
+    def _insert_houston_definitions(self, data):
+        for key in SiteSetting.get_setting_keys():
+            data['response']['configuration'][
+                key
+            ] = SiteSetting.get_as_edm_definition_format(key)
+        return data
+
     def get(self, path):
         if not is_extension_enabled('edm'):
-            data = {}
-            return _site_setting_get_definition_inject(data)
+            data = {'response': {'configuration': {}}}
+            return self._insert_houston_definitions(data)
 
         edm_path = '__bundle_setup' if path == 'block' else path
         data = current_app.edm.get_dict(
@@ -222,7 +229,7 @@ class MainConfigurationDefinition(Resource):
                     )
 
         if path == '__bundle_setup' or path == 'block':
-            data = _site_setting_get_definition_inject(data)
+            data = self._insert_houston_definitions(data)
 
         # TODO also traverse private here FIXME
         return data
@@ -272,7 +279,7 @@ class MainConfiguration(Resource):
                 'success': True,
                 'response': {
                     'configuration': {
-                        path: _get_key_output_format(path),
+                        path: SiteSetting.get_as_edm_format(path),
                     }
                 },
             }
@@ -307,8 +314,10 @@ class MainConfiguration(Resource):
                         ss.key
                     ] = f'/api/v1/fileuploads/src/{str(ss.file_upload.guid)}'
             data['response']['configuration']['site.images'] = ss_json
-            data = _site_setting_get_inject(data)
-            data = _security_scrub_bundle(data, user_is_admin)
+
+            for key in SiteSetting.get_setting_keys():
+                key_data = SiteSetting.get_as_edm_format(key)
+                data['response']['configuration'][key] = key_data
         elif (
             'response' in data
             and data['response'].get('private', False)
@@ -344,7 +353,9 @@ class MainConfiguration(Resource):
             if path == '' or path == 'block':  # posting a bundle (no path)
                 success_ss_keys = _process_houston_data(data)
             elif path in SiteSetting.get_setting_keys():
-                SiteSetting.set_key_value(path, data)
+                if '_value' not in data.keys():
+                    abort(400, 'Need _value as the key in the data setting')
+                SiteSetting.set_key_value(path, data['_value'])
                 resp = {'success': True, 'key': path}
                 return resp
 
@@ -391,45 +402,6 @@ class MainConfiguration(Resource):
         return None
 
 
-def _get_key_output_format(key):
-    value = SiteSetting.get_value(key)
-    return {
-        'id': key,
-        'isSiteSetting': True,
-        'value': value if value else SiteSetting.get_default_value(key),
-        'valueNotSet': value is None,
-    }
-
-
-def _site_setting_get_inject(data):
-    assert 'response' in data and 'configuration' in data['response']
-
-    for key in SiteSetting.get_setting_keys():
-        key_data = _get_key_output_format(key)
-        if key == 'email_service_password':
-            key_data['private'] = True
-        data['response']['configuration'][key] = key_data
-
-    return data
-
-
-def _security_scrub_bundle(data, has_admin):
-    assert 'response' in data and 'configuration' in data['response']
-    delete_keys = []
-    for key in data['response']['configuration'].keys():
-        if not isinstance(data['response']['configuration'][key], dict):
-            continue
-        if not data['response']['configuration'][key].get('private', False):
-            continue
-        if has_admin:
-            log.debug(f'admin access given to private key={key} in bundle')
-        else:
-            delete_keys.append(key)
-    for key in delete_keys:
-        del data['response']['configuration'][key]
-    return data
-
-
 def _process_houston_data(data):
     assert isinstance(data, dict)
     delete_keys = []
@@ -448,44 +420,6 @@ def _process_houston_data(data):
     for key in delete_keys:
         del data[key]
     return success_keys
-
-
-def _site_setting_get_definition_inject(data):
-    assert 'response' in data and 'configuration' in data['response']
-    for sskey in SiteSetting.get_setting_keys():
-        data['response']['configuration'][sskey] = {
-            'descriptionId': f'CONFIGURATION_{sskey.upper()}_DESCRIPTION',
-            'labelId': f'CONFIGURATION_{sskey.upper()}_LABEL',
-            'defaultValue': '',
-            'isPrivate': False,
-            'settable': True,
-            'required': True,
-            'fieldType': 'string',
-            'displayType': 'string',
-        }
-        val = SiteSetting.get_string(sskey)
-        if val is not None:
-            data['response']['configuration'][sskey]['currentValue'] = val
-        if sskey == 'email_service_password':
-            data['response']['configuration'][sskey]['isPrivate'] = True
-            if 'currentValue' in data['response']['configuration'][sskey]:
-                del data['response']['configuration'][sskey]['currentValue']
-        if sskey == 'email_service':
-            data['response']['configuration'][sskey]['defaultValue'] = ''
-            data['response']['configuration'][sskey]['displayType'] = 'select'
-            data['response']['configuration'][sskey]['schema'] = {
-                'choices': [
-                    {'label': 'Do not send mail', 'value': ''},
-                    {'label': 'Mailchimp/Mandrill', 'value': 'mailchimp'},
-                ]
-            }
-        if sskey == 'relationship_type_roles':
-            data['response']['configuration'][sskey]['fieldType'] = 'json'
-            data['response']['configuration'][sskey][
-                'displayType'
-            ] = 'relationship-type-role'
-            data['response']['configuration'][sskey]['required'] = False
-    return data
 
 
 @api.route('/detection')

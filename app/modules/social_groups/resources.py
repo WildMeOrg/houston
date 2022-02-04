@@ -31,12 +31,9 @@ api = Namespace(
 
 def validate_members(input_data):
     from app.modules.individuals.models import Individual
-    from app.modules.site_settings.models import SiteSetting
 
     if not isinstance(input_data, dict):
         raise HoustonException(log, 'Social Group must be passed a dictionary')
-
-    permitted_role_data = SiteSetting.get_json('social_group_roles')
 
     current_roles = {}
     for member_guid, data in input_data.items():
@@ -69,9 +66,11 @@ def validate_members(input_data):
             return
 
         for role in roles:
-            if role not in permitted_role_data.keys():
+            role_data = SocialGroup.get_role_data(role)
+            if not role:
                 raise HoustonException(log, f'Social Group role {role} not supported')
-            elif not permitted_role_data[role]['multipleInGroup']:
+
+            if not role_data['multipleInGroup']:
                 if current_roles.get(role):
                     raise HoustonException(log, f'Can only have one {role} in a group')
             current_roles[role] = True

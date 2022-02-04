@@ -93,10 +93,10 @@ def test_alter_settings(flask_app_client, admin_user):
 
 def test_dict_write(flask_app_client, admin_user):
     # Create json site setting
-    data = {
-        'Matriarch': {'multipleInGroup': False},
-        'IrritatingGit': {'multipleInGroup': True},
-    }
+    data = [
+        {'label': 'Matriarch', 'multipleInGroup': False},
+        {'label': 'IrritatingGit', 'multipleInGroup': True},
+    ]
 
     resp = conf_utils.modify_main_settings(
         flask_app_client, admin_user, {'_value': data}, 'social_group_roles'

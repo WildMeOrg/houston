@@ -41,6 +41,7 @@ class BaseCodexConfig(
         'tus',
         'mail',
         'stripe',
+        'sentry',
     )
 
     ENABLED_MODULES = (
@@ -75,7 +76,6 @@ class BaseCodexConfig(
         'passthroughs',
         'emails',
         'audit_logs',
-        'sentry',
     )
     # fmt: on
 

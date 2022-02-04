@@ -39,6 +39,7 @@ class BaseMWSConfig(
         'tus',
         'mail',
         'gitlab',
+        'sentry',
     )
 
     ENABLED_MODULES = (
@@ -63,7 +64,6 @@ class BaseMWSConfig(
         'api',
         'emails',
         'audit_logs',
-        'sentry',
     )
     # fmt: on
 

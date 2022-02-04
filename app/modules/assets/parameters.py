@@ -14,6 +14,7 @@ from . import schemas
 class PatchAssetParameters(PatchJSONParameters):
     # pylint: disable=abstract-method,missing-docstring
     OPERATION_CHOICES = (
+        PatchJSONParameters.OP_TEST,
         PatchJSONParameters.OP_REPLACE,
         PatchJSONParameters.OP_ADD,
         PatchJSONParameters.OP_REMOVE,
@@ -22,19 +23,63 @@ class PatchAssetParameters(PatchJSONParameters):
     PATH_CHOICES = tuple('/%s' % field for field in ('tags', 'image'))
 
     @classmethod
+    def _check_tag_value(cls, obj, field, value, state, create=True):
+        from app.modules.keywords.models import Keyword as Tag
+
+        tag = None
+
+        # Tags can be pulled from previous test ops using the array indexing (i.e., "[0]") signature
+        if isinstance(value, str):
+            if value[0] == '[' and value[-1] == ']':
+                index = value[1:-1]
+                if index.isnumeric():
+                    index = int(index)
+                    tags = state.get(field, [])
+                    try:
+                        tag = tags[index]
+                    except Exception:
+                        pass
+
+        # Otherwise, try to ensure the tag as normal
+        if tag is None:
+            tag = Tag.ensure_keyword(value, create=create)
+
+        return tag
+
+    @classmethod
+    def test(cls, obj, field, value, state):
+        """
+        This is method for test operation. It is separated to provide a
+        possibility to easily override it in your Parameters.
+
+        Args:
+            obj (object): an instance to change.
+            field (str): field name
+            value (str): new value
+            state (dict): inter-operations state storage
+
+        Returns:
+            processing_status (bool): True
+        """
+        if field == 'tags':
+            tag = cls._check_tag_value(obj, field, value, state)
+            assert tag is not None, 'Tag creation failed'
+
+            if field not in state:
+                state[field] = []
+            state[field].append(tag)
+
+            return True
+
+        return super(PatchAssetParameters, cls).test(obj, field, value, state)
+
+    @classmethod
     def add(cls, obj, field, value, state):
         if field == 'tags':
-            from app.modules.keywords.models import Keyword as Tag
+            tag = cls._check_tag_value(obj, field, value, state, create=False)
 
-            if isinstance(value, dict):  # (possible) new tag
-                tag = obj.add_new_tag(value.get('value', None), value.get('source', None))
-                if tag is None:
-                    return False
-            else:
-                tag = Tag.query.get(value)
-                if tag is None:
-                    return False
-                obj.add_tag(tag)
+            obj.add_tag(tag)
+
             return True
 
         # otherwise, add and replace are the same operation so reuse the one method
@@ -60,12 +105,12 @@ class PatchAssetParameters(PatchJSONParameters):
     @classmethod
     def remove(cls, obj, field, value, state):
         if field == 'tags':
-            from app.modules.keywords.models import Keyword as Tag
+            tag = cls._check_tag_value(obj, field, value, state, create=False)
 
-            tag = Tag.query.get(value)
-            if tag is None:
-                return False
-            obj.remove_tag(tag)
-            tag.delete_if_unreferenced()
+            if tag is not None:
+                obj.remove_tag(tag)
+                tag.delete_if_unreferenced()
+
             return True
+
         return False

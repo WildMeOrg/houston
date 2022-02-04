@@ -51,7 +51,18 @@ def test_tags_on_asset(flask_app_client, researcher_1, test_clone_asset_group_da
         assert len(kw) == 1
         assert kw[0].value == tag_value1
 
-        # patch to add *new* tag (by value)
+        # patch to add *existing* tag
+        res = asset_utils.patch_asset(
+            flask_app_client,
+            asset.guid,
+            researcher_1,
+            [utils.patch_add_op('tags', str(tag.guid))],
+        )
+        kw = asset.get_tags()
+        assert len(kw) == 1
+        assert kw[0].value == tag_value1
+
+        # Doing this again should be fine and be a no-op
         tag_value2 = 'TEST_TAG_VALUE_2'
         res = asset_utils.patch_asset(
             flask_app_client,
@@ -70,7 +81,6 @@ def test_tags_on_asset(flask_app_client, researcher_1, test_clone_asset_group_da
             asset.guid,
             researcher_1,
             [utils.patch_add_op('tags', {'value': tag_value2, 'source': TagSource.user})],
-            409,
         )
 
         # patch to add invalid tag guid
@@ -82,10 +92,104 @@ def test_tags_on_asset(flask_app_client, researcher_1, test_clone_asset_group_da
             409,
         )
 
+        # patch a tag with a test op
+        tag_value3 = 'TEST_TAG_VALUE_3'
+        res = asset_utils.patch_asset(
+            flask_app_client,
+            asset.guid,
+            researcher_1,
+            [
+                utils.patch_test_op(
+                    tag_value3,
+                    path='tags',
+                ),
+                utils.patch_add_op('tags', '[0]'),
+            ],
+        )
+
+        # Check if missing the op causes a failure
+        res = asset_utils.patch_asset(
+            flask_app_client,
+            asset.guid,
+            researcher_1,
+            [utils.patch_add_op('tags', '[0]')],
+            409,
+        )
+
+        # Check if duplicates cause an issue
+        tag_value4 = 'TEST_TAG_VALUE_4'
+        tag_value5 = 'TEST_TAG_VALUE_5'
+        res = asset_utils.patch_asset(
+            flask_app_client,
+            asset.guid,
+            researcher_1,
+            [
+                utils.patch_test_op(
+                    str(tag.guid),
+                    path='tags',
+                ),
+                utils.patch_test_op(
+                    {'value': tag_value2, 'source': TagSource.user},
+                    path='tags',
+                ),
+                utils.patch_test_op(
+                    tag_value3,
+                    path='tags',
+                ),
+                utils.patch_add_op('tags', str(tag.guid)),
+                utils.patch_add_op('tags', tag_value3),
+                utils.patch_add_op('tags', '[0]'),
+                utils.patch_add_op('tags', '[1]'),
+                utils.patch_add_op('tags', '[2]'),
+                utils.patch_add_op('tags', '[0]'),
+                utils.patch_test_op(
+                    tag_value5,
+                    path='tags',
+                ),
+                utils.patch_add_op(
+                    'tags', {'value': tag_value4, 'source': TagSource.user}
+                ),
+                utils.patch_add_op('tags', '[3]'),
+            ],
+        )
+
+        # Check if removal works as well with indexing
+        res = asset_utils.patch_asset(
+            flask_app_client,
+            asset.guid,
+            researcher_1,
+            [
+                utils.patch_test_op(
+                    tag_value3,
+                    path='tags',
+                ),
+                utils.patch_remove_op('tags', '[0]'),
+                utils.patch_test_op(
+                    tag_value5,
+                    path='tags',
+                ),
+                utils.patch_remove_op(
+                    'tags', {'value': tag_value4, 'source': TagSource.user}
+                ),
+                utils.patch_remove_op('tags', '[1]'),
+            ],
+        )
+
         # patch to remove a tag (only can happen by id)
         res = tag_utils.read_all_keywords(flask_app_client, researcher_1)
         orig_kwct = len(res.json)
 
+        res = asset_utils.patch_asset(
+            flask_app_client,
+            asset.guid,
+            researcher_1,
+            [utils.patch_remove_op('tags', str(tag.guid))],
+        )
+        kw = asset.get_tags()
+        assert len(kw) == 1
+        assert kw[0].value == tag_value2
+
+        # Doing this again should be just fine
         res = asset_utils.patch_asset(
             flask_app_client,
             asset.guid,
@@ -141,13 +245,13 @@ def test_tags_on_bulk_asset(
     from app.modules.keywords.models import Keyword as Tag
 
     # this gives us an "existing" tag to work with
-    tag_value1 = 'TEST_TAG_VALUE_3'
+    tag_value1 = 'TEST_TAG_VALUE_6'
     tag1 = Tag(value=tag_value1)
     with db.session.begin():
         db.session.add(tag1)
     assert tag1 is not None
 
-    tag_value2 = 'TEST_TAG_VALUE_4'
+    tag_value2 = 'TEST_TAG_VALUE_7'
     tag2 = Tag(value=tag_value2)
     with db.session.begin():
         db.session.add(tag2)
@@ -174,6 +278,10 @@ def test_tags_on_bulk_asset(
         patch_ops = []
         for index, asset in enumerate(assets):
             if index == 0:
+                patch_ops.append(
+                    utils.patch_add_op('tags', str(tag1.guid), guid=asset.guid)
+                )
+                # doing this twice should be fine
                 patch_ops.append(
                     utils.patch_add_op('tags', str(tag1.guid), guid=asset.guid)
                 )
@@ -326,6 +434,33 @@ def test_tags_on_bulk_asset(
         kwct = len(res.json)
         assert kwct == orig_kwct - 1
 
+        # Check test OP with batch apply
+        patch_ops = [
+            utils.patch_test_op(
+                str(tag2.guid),
+                path='tags',
+            )
+        ]
+        for index, asset in enumerate(assets):
+            if index == 0:
+                pass
+            elif index == 1:
+                patch_ops.append(utils.patch_add_op('tags', '[0]', guid=asset.guid))
+            elif index == 2:
+                pass
+            elif index == 3:
+                patch_ops.append(utils.patch_add_op('tags', '[0]', guid=asset.guid))
+                # Doing this should be fine
+                patch_ops.append(utils.patch_add_op('tags', '[0]', guid=asset.guid))
+            else:
+                raise RuntimeError()
+
+        res = asset_utils.patch_asset_bulk(
+            flask_app_client,
+            researcher_1,
+            patch_ops,
+        )
+
         # Remove all tag1 references
         patch_ops = []
         for index, asset in enumerate(assets):
@@ -338,6 +473,10 @@ def test_tags_on_bulk_asset(
             elif index == 2:
                 pass
             elif index == 3:
+                patch_ops.append(
+                    utils.patch_remove_op('tags', str(tag2.guid), guid=asset.guid)
+                )
+                # Doing this should be fine
                 patch_ops.append(
                     utils.patch_remove_op('tags', str(tag2.guid), guid=asset.guid)
                 )
@@ -358,7 +497,6 @@ def test_tags_on_bulk_asset(
         # the delete_asset above should take the un-reference tag with it [DEX-347], thus:
         res = tag_utils.read_all_keywords(flask_app_client, researcher_1)
         assert len(res.json) == kwct - 1
-
     finally:
         with db.session.begin():
             for asset in clone.asset_group.assets:

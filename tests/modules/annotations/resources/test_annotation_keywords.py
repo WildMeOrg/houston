@@ -5,8 +5,11 @@ from tests.modules.annotations.resources import utils as annot_utils
 from tests.modules.asset_groups.resources import utils as sub_utils
 from tests.modules.keywords.resources import utils as keyword_utils
 import pytest
+import logging
 
 from tests.utils import module_unavailable
+
+log = logging.getLogger(__name__)
 
 
 @pytest.mark.skipif(
@@ -54,6 +57,17 @@ def test_keywords_on_annotation(
     assert len(kw) == 1
     assert kw[0].value == keyword_value1
 
+    # Doing this again should be fine and be a no-op
+    res = annot_utils.patch_annotation(
+        flask_app_client,
+        annotation.guid,
+        researcher_1,
+        [utils.patch_add_op('keywords', str(keyword.guid))],
+    )
+    kw = annotation.get_keywords()
+    assert len(kw) == 1
+    assert kw[0].value == keyword_value1
+
     # patch to add *new* keyword (by value)
     keyword_value2 = 'TEST_KEYWORD_VALUE_2'
     res = annot_utils.patch_annotation(
@@ -71,7 +85,7 @@ def test_keywords_on_annotation(
     # since keyword order is arbitrary, we dont know which this is, but should be one of them!
     assert kw[0].value == keyword_value2 or kw[1].value == keyword_value2
 
-    # patch to add *new* keyword (by value) -- except will fail (409) cuz keyword exists
+    # patch to add *new* keyword (by value)
     res = annot_utils.patch_annotation(
         flask_app_client,
         annotation.guid,
@@ -81,7 +95,6 @@ def test_keywords_on_annotation(
                 'keywords', {'value': keyword_value2, 'source': KeywordSource.user}
             )
         ],
-        409,
     )
 
     # patch to add invalid keyword guid
@@ -91,6 +104,89 @@ def test_keywords_on_annotation(
         researcher_1,
         [utils.patch_add_op('keywords', '00000000-0000-0000-0000-000000002170')],
         409,
+    )
+
+    # patch a keyword with a test op
+    keyword_value3 = 'TEST_KEYWORD_VALUE_3'
+    res = annot_utils.patch_annotation(
+        flask_app_client,
+        annotation.guid,
+        researcher_1,
+        [
+            utils.patch_test_op(
+                keyword_value3,
+                path='keywords',
+            ),
+            utils.patch_add_op('keywords', '[0]'),
+        ],
+    )
+
+    # Check if missing the op causes a failure
+    res = annot_utils.patch_annotation(
+        flask_app_client,
+        annotation.guid,
+        researcher_1,
+        [utils.patch_add_op('keywords', '[0]')],
+        409,
+    )
+
+    # Check if duplicates cause an issue
+    keyword_value4 = 'TEST_KEYWORD_VALUE_4'
+    keyword_value5 = 'TEST_KEYWORD_VALUE_5'
+    res = annot_utils.patch_annotation(
+        flask_app_client,
+        annotation.guid,
+        researcher_1,
+        [
+            utils.patch_test_op(
+                str(keyword.guid),
+                path='keywords',
+            ),
+            utils.patch_test_op(
+                {'value': keyword_value2, 'source': KeywordSource.user},
+                path='keywords',
+            ),
+            utils.patch_test_op(
+                keyword_value3,
+                path='keywords',
+            ),
+            utils.patch_add_op('keywords', str(keyword.guid)),
+            utils.patch_add_op('keywords', keyword_value3),
+            utils.patch_add_op('keywords', '[0]'),
+            utils.patch_add_op('keywords', '[1]'),
+            utils.patch_add_op('keywords', '[2]'),
+            utils.patch_add_op('keywords', '[0]'),
+            utils.patch_test_op(
+                keyword_value5,
+                path='keywords',
+            ),
+            utils.patch_add_op(
+                'keywords', {'value': keyword_value4, 'source': KeywordSource.user}
+            ),
+            utils.patch_add_op('keywords', '[3]'),
+        ],
+    )
+
+    # Check if removal works as well with indexing
+    res = annot_utils.patch_annotation(
+        flask_app_client,
+        annotation.guid,
+        researcher_1,
+        [
+            utils.patch_test_op(
+                keyword_value3,
+                path='keywords',
+            ),
+            utils.patch_remove_op('keywords', '[0]'),
+            utils.patch_test_op(
+                keyword_value5,
+                path='keywords',
+            ),
+            utils.patch_remove_op(
+                'keywords', {'value': keyword_value4, 'source': KeywordSource.user}
+            ),
+            utils.patch_remove_op('keywords', '[1]'),
+        ],
     )
 
     # patch to remove a keyword (only can happen by id)
@@ -103,6 +199,15 @@ def test_keywords_on_annotation(
         researcher_1,
         [utils.patch_remove_op('keywords', str(keyword.guid))],
     )
+
+    # Doing this again should be just fine
+    res = annot_utils.patch_annotation(
+        flask_app_client,
+        annotation.guid,
+        researcher_1,
+        [utils.patch_remove_op('keywords', str(keyword.guid))],
+    )
+
     kw = annotation.get_keywords()
     assert len(kw) == 1
     assert kw[0].value == keyword_value2

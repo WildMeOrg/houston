@@ -38,6 +38,7 @@ class CreateAnnotationParameters(Parameters, schemas.BaseAnnotationSchema):
 class PatchAnnotationDetailsParameters(PatchJSONParameters):
     # pylint: disable=abstract-method,missing-docstring
     OPERATION_CHOICES = (
+        PatchJSONParameters.OP_TEST,
         PatchJSONParameters.OP_REPLACE,
         PatchJSONParameters.OP_ADD,
         PatchJSONParameters.OP_REMOVE,
@@ -56,21 +57,63 @@ class PatchAnnotationDetailsParameters(PatchJSONParameters):
     NON_NULL_PATHS = ('/ia_class',)
 
     @classmethod
+    def _check_keyword_value(cls, obj, field, value, state, create=True):
+        from app.modules.keywords.models import Keyword
+
+        keyword = None
+
+        # Keywords can be pulled from previous test ops using the array indexing (i.e., "[0]") signature
+        if isinstance(value, str):
+            if value[0] == '[' and value[-1] == ']':
+                index = value[1:-1]
+                if index.isnumeric():
+                    index = int(index)
+                    keywords = state.get(field, [])
+                    try:
+                        keyword = keywords[index]
+                    except Exception:
+                        pass
+
+        # Otherwise, try to ensure the keyword as normal
+        if keyword is None:
+            keyword = Keyword.ensure_keyword(value, create=create)
+
+        return keyword
+
+    @classmethod
+    def test(cls, obj, field, value, state):
+        """
+        This is method for test operation. It is separated to provide a
+        possibility to easily override it in your Parameters.
+
+        Args:
+            obj (object): an instance to change.
+            field (str): field name
+            value (str): new value
+            state (dict): inter-operations state storage
+
+        Returns:
+            processing_status (bool): True
+        """
+        if field == 'keywords':
+            keyword = cls._check_keyword_value(obj, field, value, state)
+            assert keyword is not None, 'Keyword creation failed'
+
+            if field not in state:
+                state[field] = []
+            state[field].append(keyword)
+
+            return True
+
+        return super(PatchAnnotationDetailsParameters, cls).test(obj, field, value, state)
+
+    @classmethod
     def add(cls, obj, field, value, state):
         if field == 'keywords':
-            from app.modules.keywords.models import Keyword
+            keyword = cls._check_keyword_value(obj, field, value, state, create=False)
 
-            if isinstance(value, dict):  # (possible) new keyword
-                keyword = obj.add_new_keyword(
-                    value.get('value', None), value.get('source', None)
-                )
-                if keyword is None:
-                    return False
-            else:
-                keyword = Keyword.query.get(value)
-                if keyword is None:
-                    return False
-                obj.add_keyword(keyword)
+            obj.add_keyword(keyword)
+
             return True
 
         # otherwise, add and replace are the same operation so reuse the one method
@@ -111,12 +154,12 @@ class PatchAnnotationDetailsParameters(PatchJSONParameters):
     @classmethod
     def remove(cls, obj, field, value, state):
         if field == 'keywords':
-            from app.modules.keywords.models import Keyword
+            keyword = cls._check_keyword_value(obj, field, value, state, create=False)
 
-            keyword = Keyword.query.get(value)
-            if keyword is None:
-                return False
-            obj.remove_keyword(keyword)
-            keyword.delete_if_unreferenced()
+            if keyword is not None:
+                obj.remove_keyword(keyword)
+                keyword.delete_if_unreferenced()
+
             return True
+
         return False

@@ -52,7 +52,7 @@ def create_old_sighting(
     expected_status_code=200,
     expected_error=None,
 ):
-    response = test_utils.post_via_flask(
+    return test_utils.post_via_flask(
         flask_app_client,
         user,
         scopes='',
@@ -60,14 +60,8 @@ def create_old_sighting(
         data=data_in,
         expected_status_code=expected_status_code,
         response_200={'success'},
+        expected_error=expected_error,
     )
-
-    if expected_status_code == 200:
-        assert response.json['success']
-    else:
-        assert response.json['message'] == expected_error
-
-    return response
 
 
 def create_sighting(
@@ -326,10 +320,7 @@ def patch_sighting(
         if 'version' in response.json.keys():
             assert response.json.keys() >= EXPECTED_FIELDS
         else:
-            assert response.json.keys() >= {'result', 'success'}
-            assert response.json['success']
-    elif expected_status_code != 401 and expected_status_code != 409:
-        assert not response.json['success']
+            assert response.json.keys() >= {'result'}
 
     return response
 

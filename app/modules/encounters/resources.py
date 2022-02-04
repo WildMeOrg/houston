@@ -144,7 +144,6 @@ class EncounterByID(Resource):
                     ex.status_code,
                     ex.message,
                     error=ex.get_val('error', 'Error'),
-                    edm_status_code=ex.get_val('edm_status_code', None),
                 )
         else:
             # this mimics output format of edm-patching
@@ -162,10 +161,7 @@ class EncounterByID(Resource):
                         houston_args, encounter
                     )
                 except HoustonException as ex:
-                    abort(
-                        ex.status_code,
-                        ex.message,
-                    )
+                    abort(ex.status_code, ex.message)
                 db.session.merge(encounter)
 
             schema = schemas.AugmentedEdmEncounterSchema()
@@ -214,13 +210,7 @@ class EncounterByID(Resource):
             log.warning(
                 f'Encounter.delete {encounter.guid} failed: ({ex.status_code} / edm={edm_status_code}) {ex.message}'
             )
-            abort(
-                success=False,
-                edm_status_code=edm_status_code,
-                passed_message='Delete failed',
-                message='Error',
-                code=400,
-            )
+            abort(400, 'Delete failed')
 
         # we have to roll our own response here (to return) as it seems the only way we can add a header
         #   (which we are using to denote the encounter DELETE also triggered a sighting DELETE, since
@@ -240,11 +230,7 @@ class EncounterByID(Resource):
                 log.error(
                     f'deletion of {encounter} triggered deletion of sighting {sighting_id}; but this was not found!'
                 )
-                abort(
-                    success=False,
-                    message=f'Cascade-deleted Sighting not found id={sighting_id}',
-                    code=400,
-                )
+                abort(400, f'Cascade-deleted Sighting not found id={sighting_id}')
             else:
                 log.warning(  # TODO future audit log here
                     f'EDM triggered self-deletion of {sighting} result={result}'

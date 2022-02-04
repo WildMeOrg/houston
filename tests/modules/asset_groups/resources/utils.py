@@ -206,9 +206,9 @@ def patch_asset_group_sighting(
         test_utils.validate_dict_response(response, 200, {'guid', 'stage', 'config'})
     elif expected_status_code == 400:
         test_utils.validate_dict_response(
-            response, expected_status_code, {'status', 'message', 'passed_message'}
+            response, expected_status_code, {'status', 'message'}
         )
-        assert response.json['passed_message'] == expected_resp
+        assert response.json['message'] == expected_resp
     else:
         test_utils.validate_dict_response(
             response, expected_status_code, {'status', 'message'}
@@ -245,7 +245,7 @@ def patch_asset_group_sighting_as_sighting(
         test_utils.validate_dict_response(response, 200, response_200)
     elif expected_status_code == 400:
         test_utils.validate_dict_response(
-            response, expected_status_code, {'status', 'message', 'passed_message'}
+            response, expected_status_code, {'status', 'message'}
         )
     else:
         test_utils.validate_dict_response(

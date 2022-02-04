@@ -326,7 +326,7 @@ class MainConfiguration(Resource):
             log.warning(
                 f'blocked configuration {path} private=true for unauthorized user'
             )
-            abort(code=HTTPStatus.FORBIDDEN, message='unavailable', success=False)
+            abort(HTTPStatus.FORBIDDEN, 'unavailable')
 
         return data
 
@@ -360,11 +360,7 @@ class MainConfiguration(Resource):
                 return resp
 
         except HoustonException as ex:
-            abort(
-                ex.status_code,
-                ex.message,
-                success=False,
-            )
+            abort(ex.status_code, ex.message)
 
         passthrough_kwargs = {'data': data}
 

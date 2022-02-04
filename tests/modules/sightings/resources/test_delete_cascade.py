@@ -67,8 +67,6 @@ def test_sighting_cascade(flask_app_client, test_root, researcher_1, request, db
     response = encounter_utils.delete_encounter(
         flask_app_client, researcher_1, enc1_id, expected_status_code=400
     )
-    # 604 is the sighting-specific block from edm
-    assert response.json.get('edm_status_code') == 604
 
     # now it should work, taking the sighting with it
     headers = (('x-allow-delete-cascade-sighting', True),)
@@ -115,8 +113,6 @@ def test_individual_cascade(flask_app_client, test_root, researcher_1, request, 
     response = encounter_utils.delete_encounter(
         flask_app_client, researcher_1, encounter1_id, expected_status_code=400
     )
-    # 605 is the individual-specific block from edm
-    assert response.json.get('edm_status_code') == 605
 
     # now it should be okay
     headers = (('x-allow-delete-cascade-individual', True),)
@@ -203,8 +199,6 @@ def test_multi_cascade(flask_app_client, test_root, researcher_1, request, db):
     response = sighting_utils.delete_sighting(
         flask_app_client, researcher_1, sighting_id, expected_status_code=400
     )
-    # 605 means individual-delete-cascade is blocking
-    assert response.json.get('edm_status_code') == 605
 
     # lets say we are okay - should delete *two* individuals
     headers = (('x-allow-delete-cascade-individual', True),)

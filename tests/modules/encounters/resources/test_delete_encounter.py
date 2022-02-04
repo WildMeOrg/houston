@@ -78,14 +78,12 @@ def test_delete_method(
     )
     ct = test_utils.all_count(db)
     assert ct['Encounter'] == orig_ct['Encounter'] + 1
-    assert response.json['edm_status_code'] == 604
 
     # this will fail cuz it *only* allows sighting-cascade and we need individual also
     headers = (('x-allow-delete-cascade-sighting', True),)
     response = enc_utils.delete_encounter(
         flask_app_client, staff_user, enc1_id, headers=headers, expected_status_code=400
     )
-    assert response.json['edm_status_code'] == 605
 
     # now this should work but take the sighting and individual with it as well
     headers = (

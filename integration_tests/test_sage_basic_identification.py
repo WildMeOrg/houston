@@ -80,24 +80,24 @@ def test_create_asset_group_identification(session, codex_url, test_root, login)
         json=[],
     )
     assert patch_response.status_code == 200
-    phoenix_guids = create_sighting(session, codex_url, test_root, 'phoenix.jpg')
+    zebra2_guids = create_sighting(session, codex_url, test_root, 'zebra2.jpg')
 
     # Sighting should be being identified
-    response = session.get(codex_url(f"/api/v1/sightings/{phoenix_guids['sighting']}"))
+    response = session.get(codex_url(f"/api/v1/sightings/{zebra2_guids['sighting']}"))
 
     assert response.status_code == 200
 
     assert 'stage' in response.json().keys()
     assert response.json()['stage'] == 'identification'
-    phoenix_sighting_guid = phoenix_guids['sighting']
+    zebra2_sighting_guid = zebra2_guids['sighting']
 
-    sight_url = codex_url(f'/api/v1/sightings/{phoenix_sighting_guid}')
+    sight_url = codex_url(f'/api/v1/sightings/{zebra2_sighting_guid}')
     response = utils.wait_for(
         session.get, sight_url, lambda response: response.json()['stage'] == 'un_reviewed'
     )
 
     id_result = session.get(
-        codex_url(f"/api/v1/sightings/{phoenix_guids['sighting']}/id_result")
+        codex_url(f"/api/v1/sightings/{zebra2_guids['sighting']}/id_result")
     )
     assert id_result.status_code == 200
     id_resp = id_result.json()

@@ -144,6 +144,7 @@ class SocialGroup(db.Model, HoustonModel):
         expected_fields = {'label', 'multipleInGroup'}
         if not isinstance(roles_input, list):
             raise HoustonException(log, 'Role data needs to be a list')
+        labels = []
         for item in roles_input:
             if not isinstance(item, dict):
                 raise HoustonException(
@@ -155,6 +156,9 @@ class SocialGroup(db.Model, HoustonModel):
                     log,
                     f'Role dictionary must have the following keys : {expected_fields}',
                 )
+            if item['label'] in labels:
+                raise HoustonException(log, f'can only have {item["label"]} once')
+            labels.append(item["label"])
 
     def get_member_data_as_json(self):
         individual_data = {}

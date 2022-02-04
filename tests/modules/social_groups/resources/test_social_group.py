@@ -138,6 +138,13 @@ def test_error_config(flask_app_client, researcher_1, admin_user):
     resp = soc_group_utils.set_roles(flask_app_client, admin_user, extra_field, 400)
     assert 'Role dictionary must have the following keys' in resp.json['message']
 
+    duplicate_label = [
+        {'label': 'Matriarch', 'multipleInGroup': False},
+        {'label': 'Matriarch', 'multipleInGroup': True},
+    ]
+    error = 'can only have Matriarch once'
+    soc_group_utils.set_roles(flask_app_client, admin_user, duplicate_label, 400, error)
+
 
 @pytest.mark.skipif(
     module_unavailable('social_groups'), reason='SocialGroup module disabled'

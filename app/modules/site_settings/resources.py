@@ -32,16 +32,6 @@ api = Namespace(
     'site-settings', description='Site Settings'
 )  # pylint: disable=invalid-name
 
-# TODO remove DEX 675
-configuration = Namespace(
-    'configuration', description='System Configuration'
-)  # pylint: disable=invalid-name
-
-# TODO remove DEX 675
-configurationDefinition = Namespace(
-    'configurationDefinition', description='System Configuration Definition'
-)  # pylint: disable=invalid-name
-
 
 @api.route('/file')
 @api.login_required(oauth_scopes=['site-settings:read'])
@@ -182,8 +172,6 @@ class SiteSettingFileByKey(Resource):
         return None
 
 
-# TODO remove DEX 675
-@configurationDefinition.route('/default/<path:path>')
 @api.route('/definition/main/<path:path>')
 class MainConfigurationDefinition(Resource):
     """
@@ -240,9 +228,6 @@ class MainConfigurationDefinition(Resource):
         return data
 
 
-# TODO Remove DEX 675
-@configuration.route('/default/<path:path>')
-@configuration.route('/default', defaults={'path': ''}, doc=False)
 @api.route('/main/<path:path>')
 @api.route('/main', defaults={'path': ''}, doc=False)
 class MainConfiguration(Resource):

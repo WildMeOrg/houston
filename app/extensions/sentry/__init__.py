@@ -13,13 +13,23 @@ def init_app(app, **kwargs):
     """
     Sentry extension initialization point.
     """
-    import sentry_sdk
-    from sentry_sdk.integrations.flask import FlaskIntegration
-
-    # if specified, setup sentry for exception reporting and runtime telemetry
-    sentry_dsn = app.config.get('SENTRY_DSN', None)
-    if sentry_dsn is not None:
-        sentry_sdk.init(
-            dsn=sentry_dsn,
-            integrations=[FlaskIntegration()],
-        )
+    try:
+        import sentry_sdk
+        from sentry_sdk.integrations.flask import FlaskIntegration
+    except ImportError:
+        pass
+    else:
+        try:
+            sentry_dsn = app.config.get('SENTRY_DSN', None)
+            if (
+                sentry_dsn is not None
+                and isinstance(sentry_dsn, str)
+                and len(sentry_dsn) > 0
+            ):
+                sentry_sdk.init(
+                    sentry_dsn,
+                    integrations=[FlaskIntegration()],
+                    traces_sample_rate=1.0,
+                )
+        except Exception:
+            pass

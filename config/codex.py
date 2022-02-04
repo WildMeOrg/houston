@@ -75,11 +75,14 @@ class BaseCodexConfig(
         'passthroughs',
         'emails',
         'audit_logs',
+        'sentry',
     )
     # fmt: on
 
 
 class ProductionConfig(BaseCodexConfig):
+    TESTING = False
+
     BASE_URL = os.environ.get('HOUSTON_URL')
 
     MAIL_BASE_URL = BASE_URL
@@ -88,7 +91,7 @@ class ProductionConfig(BaseCodexConfig):
         'mail-errors@wildme.org',
     ]
 
-    SENTRY_DSN = os.getenv('SENTRY_DSN')
+    SENTRY_DSN = os.getenv('SENTRY_DSN_PRODUCTION', None)
 
 
 class DevelopmentConfig(BaseCodexConfig):
@@ -105,7 +108,7 @@ class DevelopmentConfig(BaseCodexConfig):
     ]
 
     SECRET_KEY = 'DEVELOPMENT_SECRET_KEY'
-    SENTRY_DSN = None
+    SENTRY_DSN = os.getenv('SENTRY_DSN_DEVELOPMENT', None)
 
 
 class TestingConfig(DevelopmentConfig):

@@ -39,7 +39,9 @@ class Users(Resource):
         },
     )
     @api.response(schemas.UserListSchema(many=True))
-    @api.paginate(parameters.ListUserParameters())
+    # turning off pagination as it defaults to only 20 shown  [DEX-729]
+    # @api.paginate(parameters.ListUserParameters())
+    @api.parameters(parameters.ListUserParameters())
     def get(self, args):
         """
         List of users.

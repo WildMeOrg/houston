@@ -114,10 +114,10 @@ def set_roles(
 
 # expected to work so just have a simple util
 def set_basic_roles(flask_app_client, user, request):
-    data = {
-        'Matriarch': {'multipleInGroup': False},
-        'IrritatingGit': {'multipleInGroup': True},
-    }
+    data = [
+        {'label': 'Matriarch', 'multipleInGroup': False},
+        {'label': 'IrritatingGit', 'multipleInGroup': True},
+    ]
     resp = set_roles(flask_app_client, user, data)
     request.addfinalizer(lambda: delete_roles(flask_app_client, user))
     return resp

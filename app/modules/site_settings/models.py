@@ -47,7 +47,7 @@ class SiteSetting(db.Model, Timestamp):
         'email_service_password': {'type': str, 'public': False},
         'email_default_sender_email': {'type': str, 'public': False},
         'email_default_sender_name': {'type': str, 'public': False},
-        'social_group_roles': {'type': dict, 'public': True},
+        'social_group_roles': {'type': list, 'public': True},
         'relationship_type_roles': {
             'type': dict,
             'public': True,
@@ -176,17 +176,18 @@ class SiteSetting(db.Model, Timestamp):
 
         assert key in cls.HOUSTON_SETTINGS.keys()
         if not isinstance(value, cls.HOUSTON_SETTINGS[key]['type']):
-            msg = f'Houston Setting key={key}, value incorrect type value={value}'
+            msg = f'Houston Setting key={key}, value incorrect type value={value},'
+            msg += f'needs to be {cls.HOUSTON_SETTINGS[key]["type"]}'
             raise HoustonException(log, msg)
 
         if isinstance(value, str):
             log.debug(f'updating Houston Setting key={key}')
             cls.set(key, string=value, public=cls.HOUSTON_SETTINGS[key]['public'])
-        elif isinstance(value, dict):
+        elif isinstance(value, dict) or isinstance(value, list):
             log.debug(f'updating Houston Setting key={key}')
             cls.set(key, data=value, public=cls.HOUSTON_SETTINGS[key]['public'])
         else:
-            msg = f'Houston Setting key={key}, value is not string or dict; value={value}'
+            msg = f'Houston Setting key={key}, value is not string, list or dict; value={value}'
             raise HoustonException(log, msg)
 
         if key == 'social_group_roles' and is_module_enabled('social_groups'):

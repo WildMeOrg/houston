@@ -127,13 +127,13 @@ def test_merge_social_groups(
     groupB_role_from_2 = 'roleB2'
     groupC_shared_role = 'sharedC'
     groupC_role_from_2 = 'roleC2'
-    role_data = {
-        groupA_role_from_2: {'multipleInGroup': False},
-        groupB_role_from_1: {'multipleInGroup': True},
-        groupB_role_from_2: {'multipleInGroup': True},
-        groupC_shared_role: {'multipleInGroup': True},
-        groupC_role_from_2: {'multipleInGroup': True},
-    }
+    role_data = [
+        {'label': groupA_role_from_2, 'multipleInGroup': False},
+        {'label': groupB_role_from_1, 'multipleInGroup': True},
+        {'label': groupB_role_from_2, 'multipleInGroup': True},
+        {'label': groupC_shared_role, 'multipleInGroup': True},
+        {'label': groupC_role_from_2, 'multipleInGroup': True},
+    ]
     socgrp_utils.set_roles(flask_app_client, admin_user, role_data)
     request.addfinalizer(lambda: socgrp_utils.delete_roles(flask_app_client, admin_user))
 

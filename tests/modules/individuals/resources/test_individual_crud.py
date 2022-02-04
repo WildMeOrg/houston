@@ -337,39 +337,64 @@ def test_individual_mixed_edm_houston_patch(
     )
     individual_id = uuids['individual']
     valid_names_data_A = {'context': 'A', 'value': 'value-A'}
-    # valid_names_data_B = {'context': 'B', 'value': 'value-B'}
-    # invalid_names_data_B = {'context': 'B', 'value': 'value-B'}
 
-    # edm_patch_response = \
-    individual_utils.patch_individual(
+    edm_patch_response = individual_utils.patch_individual(
         flask_app_client,
         researcher_1,
         individual_id,
         [
-            {'op': 'add', 'path': '/timeOfBirth', 'value': '1445410800000'},
-            {'op': 'add', 'path': '/timeOfDeath', 'value': 1445410803000},
-            {'op': 'replace', 'path': '/sex', 'value': '42'},
+            {'op': 'replace', 'path': '/timeOfBirth', 'value': '1445410800000'},
+            {'op': 'replace', 'path': '/timeOfDeath', 'value': 'cedric'},
         ],
+        expected_status_code=500,
     )
-    # individual_json = individual_utils.read_individual(
-    #    flask_app_client, researcher_1, individual_id
-    # ).json
-    # TODO tests the outcome once EDM Patch is doing what it should be
-    # patch_individual_response =
-    individual_utils.patch_individual(
+
+    individual_json = individual_utils.read_individual(
+        flask_app_client, researcher_1, individual_id
+    ).json
+    assert (
+        'due to an invalid String cedric for Long conversion'
+        in edm_patch_response.json['message']
+    )
+    assert individual_json['timeOfBirth'] == '0'
+
+    patch_individual_response = individual_utils.patch_individual(
         flask_app_client,
         researcher_1,
         individual_id,
         [
             {'op': 'add', 'path': '/featuredAssetGuid', 'value': str(uuid.uuid4())},
-            {'op': 'add', 'path': '/encounters', 'value': str(uuid.uuid4())},
             {'op': 'add', 'path': '/names', 'value': valid_names_data_A},
         ],
         expected_status_code=409,
     )
-    # individual_json = individual_utils.read_individual(
-    #    flask_app_client, researcher_1, individual_id
-    # ).json
-    # TODO tests the outcome once Houston Patch is doing what it should be
-    # breakpoint()
-    # TODO Houston and EDM patch together
+
+    individual_json = individual_utils.read_individual(
+        flask_app_client, researcher_1, individual_id
+    ).json
+    assert (
+        "'featuredAssetGuid')]) could not succeed."
+        in patch_individual_response.json['message']
+    )
+    assert individual_json['featuredAssetGuid'] is None
+
+    # Houston and EDM patch together
+    individual_utils.patch_individual(
+        flask_app_client,
+        researcher_1,
+        individual_id,
+        [
+            {'op': 'replace', 'path': '/timeOfBirth', 'value': '1445410800000'},
+            {'op': 'add', 'path': '/names', 'value': valid_names_data_A},
+            {'op': 'add', 'path': '/featuredAssetGuid', 'value': str(uuid.uuid4())},
+        ],
+        expected_status_code=417,
+    )
+
+    individual_json = individual_utils.read_individual(
+        flask_app_client, researcher_1, individual_id
+    ).json
+
+    # EDM patch should have succeeded, Houston failed
+    assert individual_json['timeOfBirth'] == '1445410800000'
+    assert individual_json['names'] == []

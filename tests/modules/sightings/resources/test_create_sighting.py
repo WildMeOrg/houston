@@ -543,7 +543,27 @@ def test_complex_mixed_patch(
     assert patch_resp.json['message'] == 'invalid specificity: fubar'
     assert read_resp.json['time'] == timestamp
 
-    # Now with mixed houston and edm data, edm will succeed, houston will fail
+    # Now with mixed houston and edm data, as encounters are duff houston will fail before trying EDM
+    patch_resp = sighting_utils.patch_sighting(
+        flask_app_client,
+        researcher_1,
+        sighting_guid,
+        patch_data=[
+            {'op': 'replace', 'path': '/time', 'value': test_dt},
+            # {'op': 'replace', 'path': '/timeSpecificity', 'value': 'fubar'},
+            {'op': 'replace', 'path': '/decimalLongitude', 'value': 24.9999},
+            {'op': 'add', 'path': '/encounters', 'value': str(uuid.uuid4())},
+        ],
+        expected_status_code=400,
+    )
+    read_resp = sighting_utils.read_sighting(
+        flask_app_client,
+        researcher_1,
+        sighting_guid,
+    )
+    assert read_resp.json['decimalLatitude'] == valid_lat
+
+    # Now with mixed houston and edm data, where EDM will succeed followed by Houston failure
     patch_resp = sighting_utils.patch_sighting(
         flask_app_client,
         researcher_1,
@@ -552,13 +572,10 @@ def test_complex_mixed_patch(
             {'op': 'replace', 'path': '/time', 'value': test_dt},
             {'op': 'replace', 'path': '/timeSpecificity', 'value': 'fubar'},
             {'op': 'add', 'path': '/decimalLongitude', 'value': 24.9999},
-            {'op': 'add', 'path': '/encounters', 'value': str(uuid.uuid4())},
         ],
         expected_status_code=417,
     )
-    # read_resp = sighting_utils.read_sighting(
-    #     flask_app_client, researcher_1, sighting_guid,
-    # )
+
     assert patch_resp.json['fields_written'] == [
         {
             'op': 'add',
@@ -567,7 +584,7 @@ def test_complex_mixed_patch(
             'field_name': 'decimalLongitude',
         }
     ]
-    # This fails, looks like an EDM bug
+    # EDM Bug TODO restore when DEX 725 fixed
     # assert read_resp.json['decimalLatitude'] == 24.999
 
 

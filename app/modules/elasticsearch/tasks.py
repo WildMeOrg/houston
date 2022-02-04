@@ -315,13 +315,15 @@ SELECT
     LEFT JOIN "CUSTOMFIELDVALUE" cfv ON cf."ID_EID" = cfv."ID"
    WHERE
     cf."ID_OID" = oc."ID"
-  ) AS custom_fields
+  ) AS custom_fields,
+  (array_agg(DISTINCT hen.owner_guid))[1] AS owner
 FROM
   "OCCURRENCE" oc
   LEFT JOIN "OCCURRENCE_ENCOUNTERS" oe ON oe."ID_OID" = oc."ID"
   LEFT JOIN "ENCOUNTER" en ON en."ID" = oe."ID_EID"
   LEFT JOIN "TAXONOMY" ta ON ta."ID" = en."TAXONOMY_ID_OID"
   JOIN houston.sighting si ON oc."ID" = si.guid::text
+  LEFT JOIN houston.encounter hen ON si.guid = hen.sighting_guid
   LEFT JOIN houston.complex_date_time cdt ON si.time_guid = cdt.guid
 {where_clause}
 GROUP BY id, datetime, timezone, specificity

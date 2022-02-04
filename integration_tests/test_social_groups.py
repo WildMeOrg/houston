@@ -51,10 +51,10 @@ def create_sighting(session, codex_url):
 def test_social_groups(session, login, codex_url):
     # Create social group roles
     login(session)
-    data = {
-        'Matriarch': {'multipleInGroup': False},
-        'Patriarch': {'multipleInGroup': True},
-    }
+    data = [
+        {'label': 'Matriarch', 'multipleInGroup': False},
+        {'label': 'Patriarch', 'multipleInGroup': True},
+    ]
     response = session.post(
         codex_url('/api/v1/site-settings/main/social_group_roles'), json={'_value': data}
     )

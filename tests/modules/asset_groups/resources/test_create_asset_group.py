@@ -350,7 +350,8 @@ def test_create_asset_group_sim_detection(
                 'jobid',
                 'callback_url',
                 'image_uuid_list',
-                'input',
+                'labeler_algo',
+                'labeler_model_tag',
             }
             assert passed_args[-1] == 'cnn/lightnet'
 
@@ -477,7 +478,8 @@ def test_create_asset_group_repeat_detection(
             'jobid',
             'callback_url',
             'image_uuid_list',
-            'input',
+            'labeler_algo',
+            'labeler_model_tag',
         }
         assert params['image_uuid_list'] == json.dumps(
             [f'houston+http://houston:5000/api/v1/assets/src_raw/{asset_guid}']

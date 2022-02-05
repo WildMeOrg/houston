@@ -446,16 +446,11 @@ def create_asset_group_sim_sage_init_resp(
             assert set(params.keys()) >= {
                 'endpoint',
                 'jobid',
-                'input',
+                'labeler_algo',
+                'labeler_model_tag',
                 'image_uuid_list',
                 'callback_url',
                 'callback_detailed',
-            }
-            assert set(params['input'].keys()) >= {
-                'start_detect',
-                'labeler_algo',
-                'labeler_model_tag',
-                'model_tag',
             }
             assert params['endpoint'] == '/api/engine/detect/cnn/lightnet/'
             assert re.match('[a-f0-9-]{36}', params['jobid'])
@@ -543,9 +538,9 @@ def build_sage_detection_response(asset_group_sighting_guid, job_uuid):
                         'height': 539,
                         'theta': 0.0,
                         'confidence': 0.8568,
-                        'class': 'zebra_plains',
-                        'species': 'zebra_plains',
-                        'viewpoint': 'test',
+                        'class': 'zebra',
+                        'species': 'zebra',
+                        'viewpoint': 'right',
                         'quality': None,
                         'multiple': False,
                         'interest': False,
@@ -561,9 +556,9 @@ def build_sage_detection_response(asset_group_sighting_guid, job_uuid):
                         'height': 500,
                         'theta': 0.0,
                         'confidence': 0.853,
-                        'class': 'zebra_plains',
-                        'species': 'zebra_plains',
-                        'viewpoint': 'test',
+                        'class': 'zebra',
+                        'species': 'zebra',
+                        'viewpoint': 'right',
                         'quality': None,
                         'multiple': False,
                         'interest': False,

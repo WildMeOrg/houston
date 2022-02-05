@@ -492,8 +492,8 @@ class AssetGroupSighting(db.Model, HoustonModel):
             'jobid': str(job_uuid),
             'callback_url': f'houston+{callback_url}',
             'callback_detailed': True,
-            'input': detector_config,
         }
+        model_config.update(detector_config)
         asset_url = urljoin(base_url, '/api/v1/assets/src_raw/')
 
         asset_guids = []

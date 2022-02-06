@@ -287,6 +287,8 @@ SIGHTINGS_INDEX_SQL = """\
 SELECT
   oc."ID" AS id,
   NULLIF((oc."DECIMALLATITUDE"::float || ',' || oc."DECIMALLONGITUDE")::text, ',') AS point,
+  NULLIF(array_agg(DISTINCT en."LOCATIONID"), '{NULL}') AS location_ids,
+  NULLIF(array_agg(DISTINCT en."VERBATIMLOCALITY"), '{NULL}') AS verbatim_localities,
   cdt.datetime AS datetime,
   -- timezone stored as "UTC+0300", change to "+03:00"
   left(right(cdt.timezone, 5), 3) || ':' || right(cdt.timezone, 2) AS timezone,

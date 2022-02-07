@@ -130,11 +130,6 @@ WILDBOOK_MARKEDINDIVIDUAL_SQL_QUERY = """\
 SELECT
   -- id = UUIDField(required=True)
   mi."ID" as id,
-  -- name = Keyword()
-  multv."VALUES"::json->'*'->>0 as name,
-  mi."NICKNAME" as nickname,
-  -- alias = Keyword()
-  multv."VALUES"::json->'Alternate ID'->>0 as alias,
   -- taxonomy = Keyword()
   tax."SCIENTIFICNAME" as taxonomy,
   -- last_sighting = Date()
@@ -145,6 +140,8 @@ SELECT
   mi."TIMEOFBIRTH" as birth,
   -- death = Date(required=False)
   mi."TIMEOFDEATH" as death,
+  -- houston-based names
+  array_to_json(array(select value from houston.name where individual_guid=hind.guid)) as all_names,
   -- encounters = []
   array_to_json(array(select row_to_json(enc_row) from(
     SELECT
@@ -174,8 +171,6 @@ SELECT
   ) as enc_row)) as encounters
 FROM
   "MARKEDINDIVIDUAL" as mi
-  -- join for name
-  left join "MULTIVALUE" as multv on (mi."NAMES_ID_OID" = multv."ID")
   -- join for genus and species
   left join "TAXONOMY" as tax on (mi."TAXONOMY_ID_OID" = tax."ID")
   JOIN houston.individual hind ON mi."ID" = hind.guid::text

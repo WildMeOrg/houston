@@ -161,3 +161,17 @@ class Logging(object):
                 msg += ' '
 
         cls.audit_log_object(logger, obj, msg, cls.AuditType.Update, *args, **kwargs)
+
+    @classmethod
+    def patch(cls, logger, patch_args, *args, **kwargs):
+
+        msg = 'Patch:'
+        for patch in patch_args:
+
+            msg += f" {patch['op']} {patch['field_name']}"
+            if 'value' in patch:
+                msg += f", {patch['value']} "
+            else:
+                msg += ' '
+
+        cls.audit_log(logger, msg, cls.AuditType.Update, *args, **kwargs)

@@ -165,7 +165,7 @@ NOTIFICATION_CONFIG = {
 
 # Simple class to build up the contents of the message so that the caller does not need to know the field names above
 class NotificationBuilder(object):
-    def __init__(self, sender, multiple=False):
+    def __init__(self, sender):
         self.sender = sender
         self.data = {}
 

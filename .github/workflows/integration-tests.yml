@@ -103,7 +103,16 @@ jobs:
         run: |
           docker-compose logs --tail=250
           docker-compose ps
+
+      - name: Show acm logs if failed
+        if: failure()
+        run: |
           docker-compose logs acm
+
+      - name: Show houston logs if failed
+        if: failure()
+        run: |
+          docker-compose logs houston
 
       - name: Upload codex.html and codex.png if failed
         if: failure()

@@ -10,6 +10,7 @@ PATH = '/api/v1/notifications/'
 EXPECTED_NOTIFICATION_KEYS = {
     'guid',
     'is_read',
+    'is_resolved',
     'message_type',
     'sender_name',
     'sender_guid',
@@ -19,6 +20,7 @@ EXPECTED_NOTIFICATION_KEYS = {
 EXPECTED_LIST_KEYS = {
     'guid',
     'is_read',
+    'is_resolved',
     'message_type',
     'sender_name',
     'sender_guid',

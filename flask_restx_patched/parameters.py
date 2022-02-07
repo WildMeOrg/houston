@@ -152,27 +152,34 @@ class PatchJSONParameters(Parameters):
         objs = []
         for operation in operations:
             if obj_cls is not None:
+                field_operaion = operation.get('op', None)
                 guid = operation.get('guid', None)
-                if guid is None:
-                    raise ValidationError(
-                        'Failed to update %s details. Operation %s could not succeed.  Must provide a "guid" with each operation when using a module-level patch'
-                        % (obj.__class__.__name__, operation)
+
+                if field_operaion == cls.OP_TEST and guid is None:
+                    obj = None
+                else:
+                    if guid is None:
+                        raise ValidationError(
+                            'Failed to update %s details. Operation %s could not succeed.  Must provide a "guid" with each operation when using a module-level patch'
+                            % (obj.__class__.__name__, operation)
+                        )
+                    obj = obj_cls.query.get(guid)
+                    if obj is None:
+                        raise ValidationError(
+                            'Failed to update %s details. Operation %s could not succeed.  The provided GUID did not match any known object'
+                            % (obj.__class__.__name__, operation)
+                        )
+                    perm = permissions.ObjectAccessPermission(
+                        obj=obj, action=AccessOperation.WRITE
                     )
-                obj = obj_cls.query.get(guid)
-                if obj is None:
-                    raise ValidationError(
-                        'Failed to update %s details. Operation %s could not succeed.  The provided GUID did not match any known object'
-                        % (obj.__class__.__name__, operation)
-                    )
-                perm = permissions.ObjectAccessPermission(
-                    obj=obj, action=AccessOperation.WRITE
-                )
-                if not perm.check():
-                    raise ValidationError(
-                        'Failed to update %s details. Operation %s could not succeed.  The current user does not have the permissions to modify it'
-                        % (obj.__class__.__name__, operation)
-                    )
-                objs.append(obj)
+                    if not perm.check():
+                        raise ValidationError(
+                            'Failed to update %s details. Operation %s could not succeed.  The current user does not have the permissions to modify it'
+                            % (obj.__class__.__name__, operation)
+                        )
+
+                if obj is not None:
+                    objs.append(obj)
 
             if not cls._process_patch_operation(operation, obj=obj, state=state):
                 log.info(

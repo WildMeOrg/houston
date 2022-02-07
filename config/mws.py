@@ -39,6 +39,7 @@ class BaseMWSConfig(
         'tus',
         'mail',
         'gitlab',
+        'sentry',
     )
 
     ENABLED_MODULES = (
@@ -75,10 +76,10 @@ class ProductionConfig(BaseMWSConfig):
     MAIL_BASE_URL = BASE_URL
     MAIL_OVERRIDE_RECIPIENTS = None
     MAIL_ERROR_RECIPIENTS = [
-        'parham@wildme.org',
+        'mail-errors@wildme.org',
     ]
 
-    SENTRY_DSN = os.getenv('SENTRY_DSN')
+    SENTRY_DSN = os.getenv('SENTRY_DSN_PRODUCTION', None)
 
 
 class DevelopmentConfig(BaseMWSConfig):
@@ -88,14 +89,14 @@ class DevelopmentConfig(BaseMWSConfig):
 
     MAIL_BASE_URL = BASE_URL
     MAIL_OVERRIDE_RECIPIENTS = [
-        'parham@wildme.org',
+        'testing@wildme.org',
     ]
     MAIL_ERROR_RECIPIENTS = [
-        'parham@wildme.org',
+        'mail-errors@wildme.org',
     ]
 
     SECRET_KEY = 'DEVELOPMENT_SECRET_KEY'
-    SENTRY_DSN = None
+    SENTRY_DSN = os.getenv('SENTRY_DSN_DEVELOPMENT', None)
 
 
 class TestingConfig(DevelopmentConfig):

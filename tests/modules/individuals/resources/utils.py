@@ -25,7 +25,7 @@ def create_individual(flask_app_client, user, expected_status_code=200, data_in=
     assert isinstance(response.json, dict)
     assert response.status_code == expected_status_code, response.status_code
     if response.status_code == 200:
-        test_utils.validate_dict_response(response, 200, {'success', 'result'})
+        test_utils.validate_dict_response(response, 200, {'result'})
 
     return response
 

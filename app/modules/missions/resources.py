@@ -520,11 +520,7 @@ class MissionCollectionByID(Resource):
             try:
                 mission_collection.delete()
             except HoustonException as ex:
-                abort(
-                    ex.status_code,
-                    ex.message,
-                    edm_status_code=ex.get_val('edm_status_code', None),
-                )
+                abort(ex.status_code, ex.message)
         else:
             from .tasks import delete_remote
 

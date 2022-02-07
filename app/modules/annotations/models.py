@@ -5,7 +5,6 @@ Annotations database models
 """
 
 from app.extensions import db, HoustonModel
-from app.modules.keywords.models import Keyword, KeywordSource
 from app.modules import is_module_enabled
 from app.utils import HoustonException
 
@@ -101,20 +100,18 @@ class Annotation(db.Model, HoustonModel):
         with db.session.begin(subtransactions=True):
             self.add_keyword_in_context(keyword)
 
-    def add_new_keyword(self, value, source=KeywordSource.user):
-        with db.session.begin(subtransactions=True):
-            keyword = Keyword(value=value, source=source)
-            db.session.add(keyword)
-            self.add_keyword_in_context(keyword)
-        return keyword
-
     def add_keywords(self, keyword_list):
         with db.session.begin():
             for keyword in keyword_list:
                 self.add_keyword_in_context(keyword)
 
     def add_keyword_in_context(self, keyword):
-        # TODO disallow duplicates
+        for ref in self.keyword_refs:
+            if ref.keyword == keyword:
+                # We found the keyword in the annotation's existing refs, no further action needed
+                return
+
+        # If not, create the new annotation-keyword relationship
         rel = AnnotationKeywords(annotation=self, keyword=keyword)
         db.session.add(rel)
         self.keyword_refs.append(rel)

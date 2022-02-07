@@ -51,6 +51,41 @@ class Keyword(db.Model, HoustonModel):
     def get_value(self):
         return self.value
 
+    @classmethod
+    def ensure_keyword(cls, value, source=None, create=True):
+        # Check if we have received a dictionary, if so, call it as arguments
+        if isinstance(value, dict):
+            assert source is None
+            value['create'] = True
+            return cls.ensure_keyword(**value)
+
+        # If a source is not provided, use the default
+        if source is None:
+            source = KeywordSource.user
+
+        assert value is not None, 'The value for a Keyword cannot be missing'
+        assert source is not None, 'The source for a Keyword must be specified'
+        keyword = cls.query.filter_by(value=value, source=source).first()
+
+        # If the keyword is not found, let's double check that the user didn't specify the GUID as the value
+        if keyword is None:
+            try:
+                keyword = cls.query.get(value)
+            except Exception:
+                pass
+
+        # If we still haven't found it, make it and return keyword
+        if keyword is None and create:
+            with db.session.begin(subtransactions=True):
+                keyword = cls(
+                    value=value,
+                    source=source,
+                )
+                db.session.add(keyword)
+            db.session.refresh(keyword)
+
+        return keyword
+
     def __repr__(self):
         return (
             '<{class_name}('

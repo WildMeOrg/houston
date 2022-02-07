@@ -5,7 +5,7 @@ Configuration resources utils
 """
 from tests import utils as test_utils
 
-EXPECTED_KEYS = {'response', 'success'}
+EXPECTED_KEYS = {'response'}
 SETTING_PATH = '/api/v1/site-settings'
 
 
@@ -22,12 +22,8 @@ def _read_settings(
         path=conf_path,
         expected_status_code=expected_status_code,
         response_200=EXPECTED_KEYS,
-        response_error={'success', 'message'},
+        response_error={'message'},
     )
-    if expected_status_code == 200:
-        assert res.json['success']
-    elif expected_status_code:
-        assert not res.json['success']
     return res
 
 

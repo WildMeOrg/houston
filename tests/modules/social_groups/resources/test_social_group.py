@@ -112,27 +112,38 @@ def test_basic_operation(
     module_unavailable('social_groups'), reason='SocialGroup module disabled'
 )
 def test_error_config(flask_app_client, researcher_1, admin_user):
-    valid_data = {
-        'Matriarch': {'multipleInGroup': False},
-        'IrritatingGit': {'multipleInGroup': True},
-    }
+    valid_data = [
+        {'label': 'Matriarch', 'multipleInGroup': False},
+        {'label': 'IrritatingGit', 'multipleInGroup': True},
+    ]
 
     # Valid data but non admin user so should fail
     error = "You don't have the permission to access the requested resource."
     soc_group_utils.set_roles(flask_app_client, researcher_1, valid_data, 403, error)
 
-    missing_field = {
-        'Matriarch': {},
-        'IrritatingGit': {'multipleInGroup': True},
-    }
-    error = "Role dictionary must have the following keys : {'multipleInGroup'}"
-    soc_group_utils.set_roles(flask_app_client, admin_user, missing_field, 400, error)
+    missing_field = [
+        {'label': 'Matriarch'},
+        {'label': 'IrritatingGit', 'multipleInGroup': True},
+    ]
 
-    extra_field = {
-        'Matriarch': {'multipleInGroup': False, 'attitude': True},
-        'IrritatingGit': {'multipleInGroup': True},
-    }
-    soc_group_utils.set_roles(flask_app_client, admin_user, extra_field, 400, error)
+    resp = soc_group_utils.set_roles(flask_app_client, admin_user, missing_field, 400)
+    # cant rely on order of keys so just test something
+    assert 'Role dictionary must have the following keys' in resp.json['message']
+
+    extra_field = [
+        {'label': 'Matriarch', 'multipleInGroup': False, 'attitude': True},
+        {'label': 'IrritatingGit', 'multipleInGroup': True},
+    ]
+
+    resp = soc_group_utils.set_roles(flask_app_client, admin_user, extra_field, 400)
+    assert 'Role dictionary must have the following keys' in resp.json['message']
+
+    duplicate_label = [
+        {'label': 'Matriarch', 'multipleInGroup': False},
+        {'label': 'Matriarch', 'multipleInGroup': True},
+    ]
+    error = 'can only have Matriarch once'
+    soc_group_utils.set_roles(flask_app_client, admin_user, duplicate_label, 400, error)
 
 
 @pytest.mark.skipif(
@@ -274,8 +285,9 @@ def test_role_changes(
     current_roles = get_response.json['response']['configuration']['social_group_roles'][
         'value'
     ]
-
-    assert set({'Matriarch', 'IrritatingGit'}) == set(current_roles.keys())
+    assert set({'Matriarch', 'IrritatingGit'}) == set(
+        [role['label'] for role in current_roles]
+    )
 
     # Create some individuals to use in testing
     individuals = create_individuals(flask_app_client, researcher_1, request, test_root)
@@ -295,9 +307,9 @@ def test_role_changes(
     group_guid = group_resp.json['guid']
 
     # Social group was created, now change the config and see what changes
-    changed_config = {
-        'IrritatingGit': {'multipleInGroup': False},
-    }
+    changed_config = [
+        {'label': 'IrritatingGit', 'multipleInGroup': False},
+    ]
 
     soc_group_utils.set_roles(flask_app_client, admin_user, changed_config)
 

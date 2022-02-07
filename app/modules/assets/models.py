@@ -7,7 +7,6 @@ Assets database models
 from functools import total_ordering
 import pathlib
 
-from app.modules.keywords.models import Keyword, KeywordSource
 from app.extensions import db, HoustonModel
 from app.modules import module_required
 from app.utils import HoustonException
@@ -136,20 +135,18 @@ class Asset(db.Model, HoustonModel):
         with db.session.begin(subtransactions=True):
             self.add_tag_in_context(tag)
 
-    def add_new_tag(self, value, source=KeywordSource.user):
-        with db.session.begin(subtransactions=True):
-            tag = Keyword(value=value, source=source)
-            db.session.add(tag)
-            self.add_tag_in_context(tag)
-        return tag
-
     def add_tags(self, tag_list):
         with db.session.begin():
             for tag in tag_list:
                 self.add_tag_in_context(tag)
 
     def add_tag_in_context(self, tag):
-        # TODO disallow duplicates
+        for ref in self.tag_refs:
+            if ref.tag == tag:
+                # We found the tag in the asset's existing refs, no further action needed
+                return
+
+        # If not, create the new asset-tag relationship
         rel = AssetTags(asset=self, tag=tag)
         db.session.add(rel)
         self.tag_refs.append(rel)

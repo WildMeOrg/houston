@@ -387,10 +387,10 @@ def delete_via_flask(
             assert response.json['message'] == expected_error, response.json['message']
 
 
-def patch_test_op(value, guid=None):
+def patch_test_op(value, path='current_password', guid=None):
     operation = {
         'op': 'test',
-        'path': '/current_password',
+        'path': '/%s' % (path,),
         'value': value,
     }
     if guid is not None:

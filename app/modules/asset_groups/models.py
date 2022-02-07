@@ -492,8 +492,8 @@ class AssetGroupSighting(db.Model, HoustonModel):
             'jobid': str(job_uuid),
             'callback_url': f'houston+{callback_url}',
             'callback_detailed': True,
-            'input': detector_config,
         }
+        model_config.update(detector_config)
         asset_url = urljoin(base_url, '/api/v1/assets/src_raw/')
 
         asset_guids = []
@@ -754,6 +754,37 @@ class AssetGroupSighting(db.Model, HoustonModel):
                 break
         return encounter_metadata
 
+    def add_annotation_to_encounter(self, encounter_guid, annot_guid):
+        for encounter_num in range(len(self.config['encounters'])):
+            encounter_metadata = self.config['encounters'][encounter_num]
+            if encounter_metadata['guid'] == str(encounter_guid):
+                if 'annotations' not in encounter_metadata.keys():
+                    encounter_metadata['annotations'] = []
+                if annot_guid not in encounter_metadata['annotations']:
+                    encounter_metadata['annotations'].append(annot_guid)
+
+    def remove_annotation_from_encounter(self, encounter_guid, annot_guid):
+        for encounter_num in range(len(self.config['encounters'])):
+            encounter_metadata = self.config['encounters'][encounter_num]
+            if encounter_metadata['guid'] == str(encounter_guid):
+                if (
+                    'annotations' in encounter_metadata.keys()
+                    and annot_guid in encounter_metadata['annotations']
+                ):
+                    breakpoint()
+                    self.config['encounters'][encounter_num]['annotations'].remove(
+                        annot_guid
+                    )
+
+    def remove_annotation(self, annot_guid):
+        for encounter_num in range(len(self.config['encounters'])):
+            encounter_metadata = self.config['encounters'][encounter_num]
+            if (
+                'annotations' in encounter_metadata.keys()
+                and annot_guid in encounter_metadata['annotations']
+            ):
+                self.config['encounters'][encounter_num]['annotations'].remove(annot_guid)
+
     def get_id_configs(self):
         return self.config.get('idConfigs', [])
 
@@ -839,6 +870,10 @@ class AssetGroup(GitStore):
             for ags in self.asset_group_sightings
             if ags.stage != AssetGroupSightingStage.processed
         ]
+
+    def remove_annotation_from_any_sighting(self, annot_guid):
+        for sighting in self.asset_group_sightings:
+            sighting.remove_annotation(str(annot_guid))
 
     def begin_ia_pipeline(self, metadata):
         # Temporary restriction for MVP

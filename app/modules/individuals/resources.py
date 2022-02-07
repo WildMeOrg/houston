@@ -59,12 +59,7 @@ class IndividualCleanup(object):
                     'The Individual with guid %r has been deleted from Houston'
                     % self.individual_guid
                 )
-        abort(
-            success=False,
-            passed_message=message,
-            message='Error',
-            code=code,
-        )
+        abort(code, message)
 
 
 @api.route('/')
@@ -343,13 +338,7 @@ class IndividualByID(Resource):
                     request_headers=request.headers,
                 )
             except HoustonException as ex:
-                edm_status_code = ex.get_val('edm_status_code', 400)
-                abort(
-                    success=False,
-                    passed_message=ex.message,
-                    code=ex.status_code,
-                    edm_status_code=edm_status_code,
-                )
+                abort(ex.status_code, ex.message)
 
             # TODO handle individual deletion if last encounter removed
 
@@ -390,9 +379,7 @@ class IndividualByID(Resource):
         try:
             individual.delete()
         except Exception:
-            abort(
-                success=False, passed_message='Delete failed', message='Error', code=400
-            )
+            abort(400, 'Delete failed')
         AuditLog.delete_object(log, individual)
         return None
 
@@ -455,17 +442,9 @@ class IndividualByIDMerge(Resource):
             if 'parameters' in req and isinstance(req['parameters'], dict):
                 parameters = req['parameters']
         if not isinstance(from_individual_ids, list):
-            abort(
-                success=False,
-                message='must pass a list of individuals IDs to merge from',
-                code=500,
-            )
+            abort(500, 'must pass a list of individuals IDs to merge from')
         if len(from_individual_ids) < 1:
-            abort(
-                success=False,
-                message='list of individuals IDs to merge from cannot be empty',
-                code=500,
-            )
+            abort(500, 'list of individuals IDs to merge from cannot be empty')
 
         meets_minimum = False
         # for which user does not have edit permissions
@@ -474,11 +453,7 @@ class IndividualByIDMerge(Resource):
         for from_id in from_individual_ids:
             from_indiv = Individual.query.get(from_id)
             if not from_indiv:
-                abort(
-                    success=False,
-                    message=f'passed from individual id={from_id} is invalid',
-                    code=500,
-                )
+                abort(500, f'passed from individual id={from_id} is invalid')
             blocking = from_indiv.get_blocking_encounters()
             if len(blocking) < len(from_indiv.encounters):
                 # means user has edit permission on *at least one* encounter
@@ -711,7 +686,7 @@ class IndividualMergeRequestByTaskId(Resource):
         if not isinstance(res, dict):
             msg = f'{task_id} (via unanimous vote) merge_from failed: {res}'
             AuditLog.houston_fault(log, msg, target_individual)
-            abort(success=False, message=msg, code=500)
+            abort(500, msg)
 
         Individual.merge_request_cleanup(task_id)
         # notify users that merge has happened

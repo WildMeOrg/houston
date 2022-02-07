@@ -227,3 +227,33 @@ def test_load_codex_indexes(monkeypatch, flask_app):
         '2fe1c780-983c-41b9-9974-44d77a9a9035': 'no wind',
         '9acc33ef-caa1-4341-b475-9a5d762cd243': ['Grazing', 'A second value'],
     }
+
+    # rtn = tasks.load_individual_index()
+
+
+def test_catchup_indexing():
+    from app.modules.elasticsearch import tasks
+
+    conf = {}
+    rtn = tasks.catchup_index_set(conf)  # fail due to bad conf
+    assert not rtn
+    rtn = tasks.catchup_index_get()
+    assert not rtn
+
+    bdate = '1900-01-01 00:11:22'
+    conf = {'before': bdate}
+    tasks.catchup_index_set(conf)
+    conf = tasks.catchup_index_get()
+    assert conf
+    assert 'before' in conf
+    assert conf['before'] == bdate
+    assert 'batch_size' in conf
+    assert conf['batch_size'] == 250
+    assert conf['sighting_mark'] == '00000000-0000-0000-0000-000000000000'
+    assert conf['encounter_mark'] == '00000000-0000-0000-0000-000000000000'
+    assert conf['individual_mark'] == '00000000-0000-0000-0000-000000000000'
+
+    # now blow away conf data
+    tasks.catchup_index_reset()
+    rtn = tasks.catchup_index_get()
+    assert not rtn

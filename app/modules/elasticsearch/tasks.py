@@ -1,14 +1,14 @@
 # -*- coding: utf-8 -*-
-import datetime
-import json
 import logging
 
+import json
 from flask import current_app
 from gumby.models import Individual, Encounter, Sighting
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Engine
-
+from datetime import datetime, timedelta
 from app.extensions.celery import celery
+from app.modules.site_settings.models import SiteSetting
 
 
 log = logging.getLogger(__name__)
@@ -101,11 +101,20 @@ IMPORT FOREIGN SCHEMA public FROM SERVER houston INTO houston;
 """
 
 
-def load_individuals_index():
+def load_individuals_index(
+    catchup_index_before=None, catchup_index_batch_size=0, catchup_index_mark=None
+):
+    if catchup_index_before:
+        where_clause = f"WHERE hind.updated < '{catchup_index_before}' AND hind.guid > '{catchup_index_mark}' ORDER BY hind.guid LIMIT {catchup_index_batch_size}"
+    else:
+        cutoff = update_incremental_cutoff('individual')
+        where_clause = f"WHERE hind.updated >= '{cutoff}'"
     wb_engine = create_wildbook_engine()
     with wb_engine.connect() as wb_conn:
         # Query for marked individual records
-        results = wb_conn.execute(text(WILDBOOK_MARKEDINDIVIDUAL_SQL_QUERY))
+        sql = WILDBOOK_MARKEDINDIVIDUAL_SQL_QUERY
+        sql = sql.replace('{where_clause}', where_clause)
+        results = wb_conn.execute(text(sql))
         for result in results:
             # Create the document object
             indv = Individual(**result)
@@ -169,14 +178,26 @@ FROM
   left join "MULTIVALUE" as multv on (mi."NAMES_ID_OID" = multv."ID")
   -- join for genus and species
   left join "TAXONOMY" as tax on (mi."TAXONOMY_ID_OID" = tax."ID")
+  JOIN houston.individual hind ON mi."ID" = hind.guid::text
+  {where_clause}
 ;
 """
 
 
-def load_encounters_index():
+def load_encounters_index(
+    catchup_index_before=None, catchup_index_batch_size=0, catchup_index_mark=None
+):
+    if catchup_index_before:
+        where_clause = f"WHERE hen.updated < '{catchup_index_before}' AND hen.guid > '{catchup_index_mark}' ORDER BY hen.guid LIMIT {catchup_index_batch_size}"
+    else:
+        cutoff = update_incremental_cutoff('encounter')
+        where_clause = f"WHERE hen.updated >= '{cutoff}'"
     wb_engine = create_wildbook_engine()
+    last_guid = None
     with wb_engine.connect() as wb_conn:
-        results = wb_conn.execute(text(ENCOUNTERS_INDEX_SQL))
+        sql = ENCOUNTERS_INDEX_SQL
+        sql = sql.replace('{where_clause}', where_clause)
+        results = wb_conn.execute(text(sql))
         for row in results:
             result = combine_datetime(row)
             result = combine_customfields(result)
@@ -186,6 +207,8 @@ def load_encounters_index():
             encounter.meta.id = f'encounter_{encounter.id}'
             # Save document to elasticsearch
             encounter.save(using=current_app.elasticsearch)
+            last_guid = encounter.id
+    return last_guid
 
 
 ENCOUNTERS_INDEX_SQL = """\
@@ -229,13 +252,26 @@ FROM
   LEFT JOIN "TAXONOMY" AS ta ON ta."ID" = en."TAXONOMY_ID_OID"
   JOIN houston.encounter hen ON en."ID" = hen.guid::text
   LEFT JOIN houston.complex_date_time cdt ON hen.time_guid = cdt.guid
+{where_clause}
 """
 
 
-def load_sightings_index():
+def load_sightings_index(
+    catchup_index_before=None, catchup_index_batch_size=0, catchup_index_mark=None
+):
+    if catchup_index_before:
+        where_clause = f"WHERE si.updated < '{catchup_index_before}' AND si.guid > '{catchup_index_mark}'"
+        order_clause = f"ORDER BY id LIMIT {catchup_index_batch_size}"
+    else:
+        cutoff = update_incremental_cutoff('sighting')
+        where_clause = f"WHERE si.updated >= '{cutoff}'"
+        order_clause = ''
     wb_engine = create_wildbook_engine()
     with wb_engine.connect() as wb_conn:
-        results = wb_conn.execute(text(SIGHTINGS_INDEX_SQL))
+        sql = SIGHTINGS_INDEX_SQL
+        sql = sql.replace('{where_clause}', where_clause)
+        sql = sql.replace('{order_clause}', order_clause)
+        results = wb_conn.execute(text(sql))
         for i, row in enumerate(results):
             result = combine_datetime(row)
             result = combine_customfields(result)
@@ -287,14 +323,16 @@ FROM
   LEFT JOIN "TAXONOMY" ta ON ta."ID" = en."TAXONOMY_ID_OID"
   JOIN houston.sighting si ON oc."ID" = si.guid::text
   LEFT JOIN houston.complex_date_time cdt ON si.time_guid = cdt.guid
+{where_clause}
 GROUP BY id, datetime, timezone, specificity
+{order_clause}
 """
 
 
 def combine_datetime(row):
     result = dict(row)
     if row['datetime']:
-        result['datetime'] = datetime.datetime.fromisoformat(
+        result['datetime'] = datetime.fromisoformat(
             row['datetime'].isoformat() + result.pop('timezone')
         )
     return result
@@ -316,9 +354,100 @@ def combine_customfields(result):
     return result
 
 
+def update_incremental_cutoff(key_prefix):
+    dt_now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    inc_key = f'elasticsearch_incremental_cutoff_{key_prefix}'
+    cutoff = SiteSetting.get_string(inc_key)
+    if not cutoff:
+        cutoff = dt_now
+    SiteSetting.set(inc_key, string=dt_now)
+    log.info(f'incremental_cutoff [{key_prefix}] => {cutoff}, dt_now = {dt_now}')
+    return cutoff
+
+
 @celery.task
 def load_codex_indexes():
+    log.info('incremental indexing started')
     set_up_houston_tables()
     load_individuals_index()
     load_encounters_index()
     load_sightings_index()
+
+
+def catchup_index_get():
+    conf_key = 'elasticsearch_catchup_index_conf'
+    conf = SiteSetting.get_json(conf_key)
+    if not conf or 'before' not in conf:
+        return
+    # conf must have 'before' value; the rest can use these defaults
+    def_conf = {
+        'batch_size': 250,
+        'batch_pause': 5,
+        'encounter_mark': '00000000-0000-0000-0000-000000000000',
+        'sighting_mark': '00000000-0000-0000-0000-000000000000',
+        'individual_mark': '00000000-0000-0000-0000-000000000000',
+    }
+    def_conf.update(conf)
+    return def_conf
+
+
+def catchup_index_set(conf):
+    if not conf or 'before' not in conf:
+        return
+    conf_key = 'elasticsearch_catchup_index_conf'
+    SiteSetting.set(conf_key, data=conf)
+
+
+@celery.task
+def catchup_index_start():
+    conf = catchup_index_get()
+    if not conf:
+        return
+    log.info(f'catchup index commencing with: {conf}')
+
+    last_guid_encounter = load_encounters_index(
+        catchup_index_before=conf['before'],
+        catchup_index_batch_size=conf['batch_size'],
+        catchup_index_mark=conf['encounter_mark'],
+    )
+    conf['encounter_mark'] = last_guid_encounter
+    log.debug(
+        f"catchup index finished encounters batch (size={conf['batch_size']}) on guid {last_guid_encounter}"
+    )
+
+    last_guid_sighting = load_sightings_index(
+        catchup_index_before=conf['before'],
+        catchup_index_batch_size=conf['batch_size'],
+        catchup_index_mark=conf['sighting_mark'],
+    )
+    conf['sighting_mark'] = last_guid_sighting
+    log.debug(
+        f"catchup index finished sightings batch (size={conf['batch_size']}) on guid {last_guid_sighting}"
+    )
+
+    last_guid_individual = load_individuals_index(
+        catchup_index_before=conf['before'],
+        catchup_index_batch_size=conf['batch_size'],
+        catchup_index_mark=conf['individual_mark'],
+    )
+    conf['individual_mark'] = last_guid_individual
+    log.debug(
+        f"catchup index finished individuals batch (size={conf['batch_size']}) on guid {last_guid_individual}"
+    )
+
+    if not last_guid_encounter and not last_guid_individual and not last_guid_sighting:
+        log.info(
+            'catchup index finished all batches with no results.  ENDING CATCHUP INDEX.'
+        )
+    else:
+        log.info(
+            f"catchup index finished all batches with more work to do; pausing {conf['batch_pause']} sec before next round"
+        )
+        catchup_index_set(conf)
+        start_time = datetime.utcnow() + timedelta(seconds=conf['batch_pause'])
+        catchup_index_start.apply_async(eta=start_time)
+
+
+def catchup_index_reset():
+    conf_key = 'elasticsearch_catchup_index_conf'
+    SiteSetting.forget_key_value(conf_key)

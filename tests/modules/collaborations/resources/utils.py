@@ -175,6 +175,20 @@ def create_simple_collaboration(flask_app_client, requesting_user, other_user):
     return create_resp
 
 
+def create_simple_manager_collaboration(
+    flask_app_client, user_manager, first_user, second_user
+):
+    data = {'user_guid': str(first_user.guid), 'second_user_guid': str(second_user.guid)}
+    create_resp = create_collaboration(flask_app_client, user_manager, data)
+    expected_states = {
+        first_user.guid: {'viewState': 'approved', 'editState': 'not_initiated'},
+        second_user.guid: {'viewState': 'approved', 'editState': 'not_initiated'},
+    }
+    validate_expected_states(create_resp.json, expected_states)
+    validate_read_only(create_resp.json['guid'], first_user, second_user)
+    return create_resp
+
+
 def approve_view_on_collaboration(
     flask_app_client, collab_guid, approving_user, other_user
 ):

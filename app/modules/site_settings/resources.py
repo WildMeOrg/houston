@@ -57,7 +57,7 @@ class SiteSettingFile(Resource):
         parameter.
         """
         return (
-            SiteSetting.query.filter(SiteSetting.file_upload_guid is not None)
+            SiteSetting.query.filter(SiteSetting.file_upload_guid.isnot(None))
             .order_by('key')
             .offset(args['offset'])
             .limit(args['limit'])

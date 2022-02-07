@@ -121,3 +121,48 @@ def test_edit_collaboration(flask_app_client, researcher_1, researcher_2, db, re
         researcher_2_notifs.json, str(researcher_1.guid), 'collaboration_revoke'
     )
     assert len(collab_revokes_from_res1) == 1
+
+
+@pytest.mark.skipif(
+    module_unavailable('collaborations'), reason='Collaborations module disabled'
+)
+def test_multi_collaboration(
+    flask_app_client,
+    researcher_1,
+    researcher_2,
+    collab_user_a,
+    collab_user_b,
+    user_manager_user,
+    db,
+    request,
+):
+
+    # Start with nothing outstanding
+    notif_utils.mark_all_notifications_as_read(flask_app_client, researcher_1)
+    notif_utils.mark_all_notifications_as_read(flask_app_client, researcher_2)
+    notif_utils.mark_all_notifications_as_read(flask_app_client, collab_user_a)
+    notif_utils.mark_all_notifications_as_read(flask_app_client, collab_user_b)
+
+    # Everybody requests to collaborate with researcher1
+    collabs = []
+    for user in researcher_2, collab_user_a, collab_user_b:
+        create_resp = collab_utils.create_simple_manager_collaboration(
+            flask_app_client, user_manager_user, user, researcher_1
+        )
+        collab_guid = create_resp.json['guid']
+        collab = collab_utils.get_collab_object_for_user(researcher_1, collab_guid)
+
+        request.addfinalizer(collab.delete)
+        collabs.append(collab)
+
+    # Check researcher1 gets the notification
+    researcher_1_notifs = notif_utils.read_all_notifications(
+        flask_app_client, researcher_1
+    )
+    notifs_manager = notif_utils.read_all_notifications(
+        flask_app_client, user_manager_user
+    )
+
+    # Manager should see all 6 notifications, researcher1 should only see those for themselves
+    assert len(researcher_1_notifs.json) == 3
+    assert len(notifs_manager.json) == 6

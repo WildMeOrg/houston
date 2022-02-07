@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=missing-docstring
+import uuid
 
 from tests.modules.sightings.resources import utils as sighting_utils
 from tests.modules.individuals.resources import utils as individual_utils
@@ -12,6 +13,26 @@ import pytest
 from tests.utils import module_unavailable
 
 timestamp = datetime.datetime.now().isoformat() + '+00:00'
+
+valid_lat = 25.9999
+valid_long = 25.9999
+# Used in multiple tests so only have it once
+saturn_data = {
+    'time': timestamp,
+    'timeSpecificity': 'time',
+    'context': 'test',
+    'locationId': 'test',
+    'encounters': [
+        {
+            'locationId': 'Saturn',
+            'decimalLatitude': valid_lat,
+            'decimalLongitude': valid_long,
+            'verbatimLocality': 'Saturn',
+            'time': '2010-01-01T01:01:01+00:00',
+            'timeSpecificity': 'time',
+        },
+    ],
+}
 
 
 @pytest.mark.skipif(module_unavailable('sightings'), reason='Sightings module disabled')
@@ -378,24 +399,8 @@ def test_edm_and_houston_encounter_data_within_sightings(
     json = None
     individual_json = None
     try:
-        data_in = {
-            'time': timestamp,
-            'timeSpecificity': 'time',
-            'context': 'test',
-            'locationId': 'test',
-            'encounters': [
-                {
-                    'locationId': 'Saturn',
-                    'decimalLatitude': 25.9999,
-                    'decimalLongitude': 25.9999,
-                    'verbatimLocality': 'Saturn',
-                    'time': '2010-01-01T01:01:01+00:00',
-                    'timeSpecificity': 'time',
-                },
-            ],
-        }
         uuids = sighting_utils.create_sighting(
-            flask_app_client, researcher_1, request, test_root, data_in
+            flask_app_client, researcher_1, request, test_root, saturn_data
         )
         sighting_guid = uuids['sighting']
 
@@ -476,26 +481,111 @@ def test_edm_and_houston_encounter_data_within_sightings(
 # This is now disabled, so make sure that it is
 @pytest.mark.skipif(module_unavailable('sightings'), reason='Sightings module disabled')
 def test_create_old_sighting(flask_app_client, researcher_1):
-    sighting_data = {
-        'time': timestamp,
-        'timeSpecificity': 'time',
-        'context': 'test',
-        'locationId': 'test',
-        'encounters': [
-            {
-                'locationId': 'Saturn',
-                'decimalLatitude': 25.9999,
-                'decimalLongitude': 25.9999,
-                'verbatimLocality': 'Saturn',
-                'time': '2010-01-01T01:01:01+00:00',
-                'timeSpecificity': 'time',
-            },
-        ],
-    }
     error = 'Not supported. Use the AssetGroup POST API instead'
     sighting_utils.create_old_sighting(
-        flask_app_client, researcher_1, sighting_data, 400, error
+        flask_app_client, researcher_1, saturn_data, 400, error
     )
+
+
+@pytest.mark.skipif(
+    module_unavailable('sightings', 'encounters'), reason='Sightings module disabled'
+)
+def test_complex_mixed_patch(
+    db, flask_app_client, researcher_1, staff_user, request, test_root
+):
+
+    uuids = sighting_utils.create_sighting(
+        flask_app_client, researcher_1, request, test_root, saturn_data
+    )
+    sighting_guid = uuids['sighting']
+
+    # test some EDM modification (should fail due to invalid data)
+    patch_resp = sighting_utils.patch_sighting(
+        flask_app_client,
+        researcher_1,
+        sighting_guid,
+        patch_data=[
+            {'op': 'add', 'path': '/decimalLongitude', 'value': 25.9998},
+            {'op': 'add', 'path': '/decimalLatitude', 'value': 999.9},
+        ],
+        expected_status_code=400,
+    )
+    patch_json = patch_resp.json
+    assert 'invalid latitude' in patch_json['message']
+
+    # And neither value changed
+    read_resp = sighting_utils.read_sighting(
+        flask_app_client,
+        researcher_1,
+        sighting_guid,
+    )
+    assert read_resp.json['decimalLatitude'] == valid_lat
+    assert read_resp.json['decimalLongitude'] == valid_long
+
+    # Same with houston only fields, some work, some fail, all are rolled back
+    test_dt = '1999-01-01T12:34:56-07:00'
+
+    patch_resp = sighting_utils.patch_sighting(
+        flask_app_client,
+        researcher_1,
+        sighting_guid,
+        patch_data=[
+            {'op': 'replace', 'path': '/time', 'value': test_dt},
+            {'op': 'replace', 'path': '/timeSpecificity', 'value': 'fubar'},
+        ],
+        expected_status_code=409,
+    )
+    read_resp = sighting_utils.read_sighting(
+        flask_app_client,
+        researcher_1,
+        sighting_guid,
+    )
+    assert patch_resp.json['message'] == 'invalid specificity: fubar'
+    assert read_resp.json['time'] == timestamp
+
+    # Now with mixed houston and edm data, as encounters are duff houston will fail before trying EDM
+    patch_resp = sighting_utils.patch_sighting(
+        flask_app_client,
+        researcher_1,
+        sighting_guid,
+        patch_data=[
+            {'op': 'replace', 'path': '/time', 'value': test_dt},
+            # {'op': 'replace', 'path': '/timeSpecificity', 'value': 'fubar'},
+            {'op': 'replace', 'path': '/decimalLongitude', 'value': 24.9999},
+            {'op': 'add', 'path': '/encounters', 'value': str(uuid.uuid4())},
+        ],
+        expected_status_code=400,
+    )
+    read_resp = sighting_utils.read_sighting(
+        flask_app_client,
+        researcher_1,
+        sighting_guid,
+    )
+    assert read_resp.json['decimalLatitude'] == valid_lat
+
+    # Now with mixed houston and edm data, where EDM will succeed followed by Houston failure
+    patch_resp = sighting_utils.patch_sighting(
+        flask_app_client,
+        researcher_1,
+        sighting_guid,
+        patch_data=[
+            {'op': 'replace', 'path': '/time', 'value': test_dt},
+            {'op': 'replace', 'path': '/timeSpecificity', 'value': 'fubar'},
+            {'op': 'add', 'path': '/decimalLongitude', 'value': 24.9999},
+        ],
+        expected_status_code=417,
+    )
+
+    assert patch_resp.json['fields_written'] == [
+        {
+            'op': 'add',
+            'path': '/decimalLongitude',
+            'value': 24.9999,
+            'field_name': 'decimalLongitude',
+        }
+    ]
+    # EDM Bug TODO restore when DEX 725 fixed
+    # assert read_resp.json['decimalLatitude'] == 24.999
 
 
 @pytest.mark.skipif(module_unavailable('sightings'), reason='Sightings module disabled')

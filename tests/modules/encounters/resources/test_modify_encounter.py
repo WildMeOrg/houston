@@ -2,6 +2,7 @@
 # pylint: disable=missing-docstring
 import uuid
 from unittest import mock
+import datetime
 
 from tests import utils
 from tests.modules.annotations.resources import utils as annot_utils
@@ -51,7 +52,7 @@ def test_modify_encounter(
     new_encounter_2 = Encounter.query.get(uuids['encounters'][1])
     assert new_encounter_2
 
-    # test that we cant mix edm/houston
+    # test that we can mix edm/houston
     patch_data = [
         utils.patch_replace_op('owner', str(researcher_1.guid)),
         utils.patch_replace_op('locationId', 'FAIL'),
@@ -447,3 +448,82 @@ def test_create_encounter_time_test(
     assert test_enc.time
     assert test_enc.time.specificity == Specificities.month
     assert test_enc.time.isoformat_utc().startswith('2021-12-01T')
+
+
+@pytest.mark.skipif(module_unavailable('encounters'), reason='Encounters module disabled')
+def test_mix_edm_houston_patch(
+    flask_app, flask_app_client, researcher_1, request, test_root
+):
+    uuids = enc_utils.create_encounter(flask_app_client, researcher_1, request, test_root)
+    encounter_guid = uuids['encounters'][0]
+
+    # EDM only patch
+    lat = utils.random_decimal_latitude()
+    patch_resp = enc_utils.patch_encounter(
+        flask_app_client,
+        encounter_guid,
+        researcher_1,
+        data=[
+            # valid
+            {'op': 'add', 'path': '/decimalLatitude', 'value': lat},
+            # invalid
+            {'op': 'add', 'path': '/decimalLongitude', 'value': 999.9},
+        ],
+        expected_status_code=400,
+    )
+    read_resp = enc_utils.read_encounter(flask_app_client, researcher_1, encounter_guid)
+    assert (
+        patch_resp.json['message']
+        == 'org.ecocean.api.ApiValueException: invalid longitude value'
+    )
+    assert 'decimalLatitude' not in read_resp.json.keys()
+
+    # Houston only patch
+    new_time = datetime.datetime.now().isoformat() + '+00:00'
+    patch_resp = enc_utils.patch_encounter(
+        flask_app_client,
+        encounter_guid,
+        researcher_1,
+        data=[
+            {'op': 'add', 'path': '/time', 'value': new_time},
+            {'op': 'add', 'path': '/owner', 'value': str(uuid.uuid4())},
+        ],
+        expected_status_code=409,
+    )
+    read_resp = enc_utils.read_encounter(flask_app_client, researcher_1, encounter_guid)
+    assert 'Failed to update Encounter details.' in patch_resp.json['message']
+    assert read_resp.json['time'] is None
+
+    # Houston and EDM patch
+    lat = utils.random_decimal_latitude()
+    long = utils.random_decimal_longitude()
+    new_time = datetime.datetime.now().isoformat() + '+00:00'
+    patch_resp = enc_utils.patch_encounter(
+        flask_app_client,
+        encounter_guid,
+        researcher_1,
+        data=[
+            {'op': 'add', 'path': '/decimalLatitude', 'value': lat},
+            {'op': 'add', 'path': '/decimalLongitude', 'value': long},
+            {'op': 'add', 'path': '/time', 'value': new_time},
+            {'op': 'add', 'path': '/owner', 'value': str(uuid.uuid4())},
+        ],
+        expected_status_code=417,
+    )
+    read_resp = enc_utils.read_encounter(flask_app_client, researcher_1, encounter_guid)
+    assert patch_resp.json['fields_written'] == [
+        {
+            'op': 'add',
+            'path': '/decimalLatitude',
+            'value': lat,
+            'field_name': 'decimalLatitude',
+        },
+        {
+            'op': 'add',
+            'path': '/decimalLongitude',
+            'value': long,
+            'field_name': 'decimalLongitude',
+        },
+    ]
+    assert read_resp.json['decimalLatitude'] == str(lat)
+    assert read_resp.json['decimalLongitude'] == str(long)

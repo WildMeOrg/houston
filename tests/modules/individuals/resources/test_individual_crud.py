@@ -321,3 +321,80 @@ def test_individual_has_detailed_encounter_from_edm(
         individual_utils.delete_individual(flask_app_client, researcher_1, individual_id)
         if enc:
             enc.delete_cascade()
+
+
+@pytest.mark.skipif(
+    module_unavailable('individuals'), reason='Individuals module disabled'
+)
+def test_individual_mixed_edm_houston_patch(
+    db, flask_app_client, researcher_1, request, test_root
+):
+    uuids = individual_utils.create_individual_and_sighting(
+        flask_app_client,
+        researcher_1,
+        request,
+        test_root,
+    )
+    individual_id = uuids['individual']
+    valid_names_data_A = {'context': 'A', 'value': 'value-A'}
+
+    edm_patch_response = individual_utils.patch_individual(
+        flask_app_client,
+        researcher_1,
+        individual_id,
+        [
+            {'op': 'replace', 'path': '/timeOfBirth', 'value': '1445410800000'},
+            {'op': 'replace', 'path': '/timeOfDeath', 'value': 'cedric'},
+        ],
+        expected_status_code=500,
+    )
+
+    individual_json = individual_utils.read_individual(
+        flask_app_client, researcher_1, individual_id
+    ).json
+    assert (
+        'due to an invalid String cedric for Long conversion'
+        in edm_patch_response.json['message']
+    )
+    assert individual_json['timeOfBirth'] == '0'
+
+    patch_individual_response = individual_utils.patch_individual(
+        flask_app_client,
+        researcher_1,
+        individual_id,
+        [
+            {'op': 'add', 'path': '/featuredAssetGuid', 'value': str(uuid.uuid4())},
+            {'op': 'add', 'path': '/names', 'value': valid_names_data_A},
+        ],
+        expected_status_code=409,
+    )
+
+    individual_json = individual_utils.read_individual(
+        flask_app_client, researcher_1, individual_id
+    ).json
+    assert (
+        "'featuredAssetGuid')]) could not succeed."
+        in patch_individual_response.json['message']
+    )
+    assert individual_json['featuredAssetGuid'] is None
+
+    # Houston and EDM patch together
+    individual_utils.patch_individual(
+        flask_app_client,
+        researcher_1,
+        individual_id,
+        [
+            {'op': 'replace', 'path': '/timeOfBirth', 'value': '1445410800000'},
+            {'op': 'add', 'path': '/names', 'value': valid_names_data_A},
+            {'op': 'add', 'path': '/featuredAssetGuid', 'value': str(uuid.uuid4())},
+        ],
+        expected_status_code=417,
+    )
+
+    individual_json = individual_utils.read_individual(
+        flask_app_client, researcher_1, individual_id
+    ).json
+
+    # EDM patch should have succeeded, Houston failed
+    assert individual_json['timeOfBirth'] == '1445410800000'
+    assert individual_json['names'] == []

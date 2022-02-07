@@ -140,9 +140,13 @@ class EncounterByID(Resource):
                 result_data.pop('id', None)
 
             except HoustonException as ex:
+                if isinstance(ex.message, dict):
+                    message = ex.message.get('details', ex.message)
+                else:
+                    message = ex.message
                 abort(
                     ex.status_code,
-                    ex.message,
+                    message,
                     error=ex.get_val('error', 'Error'),
                 )
         else:
@@ -152,9 +156,21 @@ class EncounterByID(Resource):
             }
 
         if houston_args:
-            context = api.commit_or_abort(
-                db.session, default_error_message='Failed to update Encounter details.'
-            )
+            if not edm_args:
+                # regular houston-patching
+                context = api.commit_or_abort(
+                    db.session,
+                    default_error_message='Failed to update Encounter details.',
+                )
+            else:
+                # irregular houston-patching, where we need to report that EDM data was set if houston setting failed
+                context = api.commit_or_abort(
+                    db.session,
+                    default_error_message='Failed to update Encounter details.',
+                    code=417,  # Arbitrary choice (Expectation Failed)
+                    fields_written=edm_args,
+                )
+
             with context:
                 try:
                     parameters.PatchEncounterDetailsParameters.perform_patch(

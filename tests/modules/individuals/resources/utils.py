@@ -142,7 +142,7 @@ def patch_individual(
         )
 
     assert isinstance(response.json, dict)
-    assert response.status_code == expected_status_code
+    assert response.status_code == expected_status_code, response
     return response
 
 

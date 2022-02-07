@@ -135,11 +135,15 @@ def _get_annotations(enc_json):
     assert enc_json is not None
     from app.modules.annotations.models import Annotation
 
+    if not isinstance(enc_json, dict):
+        raise HoustonException(log, 'encounters needs to be a dictionary')
     anns = []
     anns_in = enc_json.get('annotations', [])
     for ann_in in anns_in:
-        ann = Annotation.query.get(ann_in.get('guid', None))
-        assert ann is not None
+        ann_guid = ann_in.get('guid', None)
+        ann = Annotation.query.get(ann_guid)
+        if not ann:
+            raise HoustonException(log, f'Annotation {ann_guid} not found')
         anns.append(ann)
     return anns
 
@@ -459,7 +463,6 @@ class SightingByID(Resource):
         ]
 
         if edm_args:
-            cleanup = SightingCleanup()
             log.debug(f'wanting to do edm patch on args={edm_args}')
 
             # we pre-check any annotations we will want to attach to new encounters
@@ -470,20 +473,17 @@ class SightingByID(Resource):
             enc_json_data = []
             try:
                 for arg in edm_args:
-                    if (
-                        arg.get('path', None) == '/encounters'
-                        and arg.get('op', None) == 'add'
+                    if arg.get('path', None) == '/encounters' and (
+                        arg.get('op', None) == 'add' or arg.get('op', None) == 'replace'
                     ):
                         enc_json = arg.get('value', {})
                         anns = _get_annotations(enc_json)
                         enc_anns.append(anns)
                         enc_json_data.append(enc_json)
 
-            except Exception as ex:
-                cleanup.rollback_and_abort(
-                    'Invalid encounter.annotations',
-                    '_get_annotations() threw %r on encounters=%r' % (ex, enc_json),
-                )
+            except HoustonException as ex:
+                log.warning(f'_get_annotations failed {ex.message}')
+                abort(code=400, message=ex.message)
 
             result = None
             try:
@@ -499,7 +499,11 @@ class SightingByID(Resource):
                     request_headers=request.headers,
                 )
             except HoustonException as ex:
-                abort(ex.status_code, ex.message)
+                if isinstance(ex.message, dict):
+                    message = ex.message.get('details', ex.message)
+                else:
+                    message = ex.message
+                abort(ex.status_code, message)
 
             if 'deletedSighting' in result:
                 log.warning(f'EDM triggered self-deletion of {sighting} result={result}')
@@ -543,10 +547,19 @@ class SightingByID(Resource):
                     db.session.merge(sighting)
 
         if houston_args:
-            # regular houston-patching
-            context = api.commit_or_abort(
-                db.session, default_error_message='Failed to update Sighting details.'
-            )
+            if not edm_args:
+                # regular houston-patching
+                context = api.commit_or_abort(
+                    db.session, default_error_message='Failed to update Sighting details.'
+                )
+            else:
+                # irregular houston-patching, where we need to report that EDM data was set if houston setting failed
+                context = api.commit_or_abort(
+                    db.session,
+                    default_error_message='Failed to update Sighting details.',
+                    code=417,  # Arbitrary choice (Expectation Failed)
+                    fields_written=edm_args,
+                )
             with context:
                 parameters.PatchSightingDetailsParameters.perform_patch(
                     houston_args, sighting

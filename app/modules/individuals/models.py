@@ -276,6 +276,9 @@ class Individual(db.Model, FeatherModel):
     def set_featured_asset_guid(self, asset_guid):
         if self._ensure_asset_individual_association(asset_guid):
             self.featured_asset_guid = asset_guid
+            return True
+        else:
+            return False
 
     def _ensure_asset_individual_association(self, asset_guid):
 

@@ -65,19 +65,22 @@ class AssetGroupMetadata(object):
                     raise AssetGroupMetadataError(
                         log, f'{field} field missing from {error_str}'
                     )
-                elif (
-                    field_type == list
-                ):  # All mandatory lists must have at least one entry
+                if field_type == list:
+                    # All mandatory lists must have at least one entry
                     if len(dictionary[field]) < 1:
                         raise AssetGroupMetadataError(
                             log, f'{field} in {error_str} must have at least one entry'
                         )
-
             elif field in dictionary:
                 if not isinstance(dictionary[field], field_type):
                     raise AssetGroupMetadataError(
                         log, f'{field} incorrect type in {error_str}'
                     )
+
+            if field_type == str and field in dictionary and len(dictionary[field]) == 0:
+                raise AssetGroupMetadataError(
+                    log, f'{field} cannot be empty string in {error_str}'
+                )
 
     @classmethod
     def validate_id_configs(cls, id_configs, debug):

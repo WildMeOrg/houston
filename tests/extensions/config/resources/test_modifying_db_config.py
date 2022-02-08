@@ -36,7 +36,29 @@ def test_modifying_db_config_by_regular_user(flask_app_client, regular_user, db)
         utils.delete_all_houston_configs(db)
 
 
-def test_modifying_db_config_by_admin(flask_app_client, staff_user, db):
+def test_modifying_db_config_by_admin(flask_app_client, admin_user, db):
+    try:
+        utils.get_and_check_houston_configs()  # Ensure an empty database of existing configs
+
+        with flask_app_client.login(admin_user, auth_scopes=('config.houston:write',)):
+            data = [
+                test_utils.patch_test_op(admin_user.password_secret),
+                test_utils.patch_add_op('ENV', 'testing-with-db'),
+            ]
+            response = _patch_request(flask_app_client, data)
+
+            assert response.status_code == 403
+            assert response.content_type == 'application/json'
+            assert isinstance(response.json, dict)
+            assert set(response.json.keys()) >= {'status', 'message'}
+
+            utils.get_and_check_houston_configs()  # Ensure an empty database of existing configs
+    finally:
+        utils.delete_all_houston_configs(db)
+        # pylint: disable=invalid-name
+
+
+def test_modifying_db_config_by_staff(flask_app_client, staff_user, db):
     # pylint: disable=invalid-name
     try:
         utils.get_and_check_houston_configs()  # Ensure an empty database of existing configs
@@ -65,7 +87,7 @@ def test_modifying_db_config_by_admin(flask_app_client, staff_user, db):
         utils.delete_all_houston_configs(db)
 
 
-def test_modifying_db_config_by_admin_with_invalid_password_must_fail(
+def test_modifying_db_config_by_staff_with_invalid_password_must_fail(
     flask_app_client, staff_user, db
 ):
     # pylint: disable=invalid-name
@@ -91,7 +113,7 @@ def test_modifying_db_config_by_admin_with_invalid_password_must_fail(
         utils.delete_all_houston_configs(db)
 
 
-def test_modifying_db_config_by_admin_with_idempotence(flask_app_client, staff_user, db):
+def test_modifying_db_config_by_staff_with_idempotence(flask_app_client, staff_user, db):
     # pylint: disable=invalid-name
     try:
         utils.get_and_check_houston_configs()  # Ensure an empty database of existing configs

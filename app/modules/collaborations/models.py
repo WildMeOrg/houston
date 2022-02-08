@@ -92,9 +92,11 @@ class Collaboration(db.Model, HoustonModel):
     initiator_guid = db.Column(
         db.GUID, db.ForeignKey('user.guid'), index=True, nullable=False
     )
+    init_req_notification_guuid = db.Column(db.GUID, db.ForeignKey('notification.guid'), primary_key=True)
     edit_initiator_guid = db.Column(
         db.GUID, db.ForeignKey('user.guid'), index=True, nullable=True
     )
+    edit_req_notification_guuid = db.Column(db.GUID, db.ForeignKey('notification.guid'), primary_key=True)
 
     def __init__(self, members, initiator_user, **kwargs):
 
@@ -221,11 +223,17 @@ class Collaboration(db.Model, HoustonModel):
                     )
 
     def _notify_user(self, sending_user_assoc, receiving_user_assoc, notification_type):
-        from app.modules.notifications.models import Notification, NotificationBuilder
+        from app.modules.notifications.models import Notification, NotificationBuilder, NotificationType
 
         builder = NotificationBuilder(sending_user_assoc.user)
         builder.set_collaboration(self)
-        Notification.create(notification_type, receiving_user_assoc.user, builder)
+        notif = Notification.create(notification_type, receiving_user_assoc.user, builder)
+
+        if notification_type is NotificationType.collab_request:
+            self.read_req_notification_guuid = notif.guid
+        elif notification_type is NotificationType.collab_edit_request:
+            self.edit_req_notification_guuid = notif.guid
+
 
     def get_user_data_as_json(self):
         from app.modules.users.schemas import BaseUserSchema

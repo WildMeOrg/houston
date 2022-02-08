@@ -43,5 +43,15 @@ class HoustonConfigs(Resource):
         """
         Patch config details by ID.
         """
+        import app.extensions.logging as AuditLog  # NOQA
+
         response = parameters.PatchHoustonConfigParameters.perform_patch(args)
+
+        print_args = []
+        for arg in args:
+            # Audit the change but not the password with it
+            if arg.get('path') != '/current_password' and arg.get('op') != 'test':
+                print_args.append(arg)
+
+        AuditLog.patch(log, print_args)
         return response

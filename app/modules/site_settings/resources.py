@@ -14,6 +14,7 @@ from flask_restx_patched import Resource
 from flask_restx._http import HTTPStatus
 
 from app.extensions import db, is_extension_enabled
+import app.extensions.logging as AuditLog  # NOQA
 from app.extensions.api import abort, Namespace
 from app.extensions.api.parameters import PaginationParameters
 from app.modules.users.models import User
@@ -108,7 +109,8 @@ class SiteSettingFile(Resource):
             abort(400, 'The File API should only be used for manipulating files')
 
         site_setting = SiteSetting.set(**args)
-
+        message = f'{SiteSetting.__name__} file created with file guid:{site_setting.file_upload_guid}'
+        AuditLog.audit_log(log, message)
         return site_setting
 
 
@@ -162,13 +164,13 @@ class SiteSettingFileByKey(Resource):
         """
         Delete a File by ID.
         """
+        AuditLog.audit_log(log, f'Deleting file {file}')
         context = api.commit_or_abort(
             db.session,
             default_error_message=f'Failed to delete the SiteSetting "{file.key}".',
         )
         with context:
             db.session.delete(file)
-
         return None
 
 
@@ -339,6 +341,10 @@ class MainConfiguration(Resource):
     )
     @api.login_required(oauth_scopes=['site-settings:write'])
     def post(self, path):
+        from app.extensions.elapsed_time import ElapsedTime
+
+        timer = ElapsedTime()
+
         data = {}
         data.update(request.args)
         data.update(request.form)
@@ -384,6 +390,9 @@ class MainConfiguration(Resource):
                 res['updated'].extend(success_ss_keys)
         else:
             res = {'success': False}
+
+        message = f'Setting path:{path} to {data}'
+        AuditLog.audit_log(log, message, duration=timer.elapsed())
         return res
 
     @api.login_required(oauth_scopes=['site-settings:write'])
@@ -393,6 +402,7 @@ class MainConfiguration(Resource):
             abort(400, 'Not permitted to delete entire config')
 
         elif path in SiteSetting.get_setting_keys():
+            AuditLog.audit_log(log, f'Deleting {path}')
             SiteSetting.forget_key_value(path)
 
         return None

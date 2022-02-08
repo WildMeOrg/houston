@@ -3,7 +3,6 @@ import io
 from unittest import mock
 import tests.extensions.tus.utils as tus_utils
 import tests.modules.asset_groups.resources.utils as asset_group_utils
-import tests.utils as test_utils
 
 from invoke import MockContext
 import pytest
@@ -130,8 +129,8 @@ def test_sighting_identification_jobs(
     # Push stage back to ID
     sighting.stage = SightingStage.identification
 
-    # Now give it an ID config in the assetGroupSighting
-    id_configs = [
+    # Now give it an ID config
+    sighting.id_configs = [
         {
             'algorithms': [
                 'hotspotter_nosv',
@@ -139,13 +138,7 @@ def test_sighting_identification_jobs(
             'matchingSetDataOwners': 'mine',
         }
     ]
-    patch_data = [test_utils.patch_replace_op('idConfigs', id_configs)]
-    asset_group_utils.patch_asset_group_sighting(
-        flask_app_client,
-        researcher_1,
-        asset_group_sighting_guid2,
-        patch_data,
-    )
+
     with mock.patch.object(
         flask_app.acm,
         'request_passthrough_result',

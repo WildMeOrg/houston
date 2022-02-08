@@ -116,6 +116,7 @@ def load_individuals_index(
         sql = sql.replace('{where_clause}', where_clause)
         results = wb_conn.execute(text(sql))
         for result in results:
+            result = combine_names(result)
             # Create the document object
             indv = Individual(**result)
             # Assign the elasticsearch document identify
@@ -140,8 +141,13 @@ SELECT
   mi."TIMEOFBIRTH" as birth,
   -- death = Date(required=False)
   mi."TIMEOFDEATH" as death,
+  -- this all_names is deprecated in favor of name_dict
+  -- array_to_json(array(select value from houston.name where individual_guid=hind.guid)) as all_names,
   -- houston-based names
-  array_to_json(array(select value from houston.name where individual_guid=hind.guid)) as all_names,
+  json_object(
+    array(select context from houston.name where individual_guid=hind.guid order by houston.name.guid),
+    array(select value from houston.name where individual_guid=hind.guid order by houston.name.guid)
+  ) as name_dict,
   -- encounters = []
   array_to_json(array(select row_to_json(enc_row) from(
     SELECT
@@ -350,6 +356,19 @@ def combine_customfields(result):
                 else:
                     custom_fields[field] = value
         result['custom_fields'] = custom_fields
+    return result
+
+
+def combine_names(row):
+    result = dict(row)
+    if 'name_dict' in result and isinstance(result['name_dict'], dict) and len(result['name_dict']):
+        names = []
+        for context in result['name_dict']:
+            if context == 'default':
+                names.insert(0, result['name_dict'][context])  # priority treatment!
+            else:
+                names.append(result['name_dict'][context])
+            result['name'] = names
     return result
 
 

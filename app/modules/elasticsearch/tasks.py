@@ -376,8 +376,10 @@ def combine_names(row):
     ):
         names = []
         for context in result['name_dict']:
-            if context == 'default':
-                names.insert(0, result['name_dict'][context])  # priority treatment!
+            # old-world seems to favor 'default', but new-world uses 'defaultName',
+            #   so we let either of these get priority; if both exist, its luck of the draw
+            if context == 'default' or context == 'defaultName':
+                names.insert(0, result['name_dict'][context])
             else:
                 names.append(result['name_dict'][context])
             result['name'] = names

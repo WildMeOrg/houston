@@ -78,6 +78,7 @@ VOLUME [ "${DATA_VOLUME}" ]
 ENV HOUSTON_DOTENV ${DATA_ROOT}/.env
 
 COPY ./.dockerfiles/docker-entrypoint.sh /docker-entrypoint.sh
+COPY ./.dockerfiles/docker-healthcheck.sh /docker-healthcheck.sh
 
 COPY ./.dockerfiles/embed.sh /bin/embed
 

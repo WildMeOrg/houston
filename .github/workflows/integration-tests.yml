@@ -79,12 +79,12 @@ jobs:
               exit 1
             fi
             # Wait for houston to be ready
-            wget --tries=1 -O - http://localhost:83/api/v1/users/admin_user_initialized && break
+            wget --tries=1 -O - --header='Host: localhost' http://127.0.0.1:83/api/v1/users/admin_user_initialized && break
           done
           # Wait for frontend to be ready
           while sleep 10
           do
-            wget --tries=1 -O - http://localhost:84/ && break
+            wget --tries=1 -O - http://localhost/ && break
           done
           # Wait for acm to be ready
           while sleep 10

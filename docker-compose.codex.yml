@@ -49,7 +49,7 @@ services:
       redis:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "curl --silent --fail localhost:9200/_cluster/health || exit 1"]
+      test: ["CMD-SHELL", "curl --silent --fail 127.0.0.1:9200/_cluster/health || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 60
@@ -94,7 +94,7 @@ services:
       db:
         condition: service_healthy
     healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:8080/dbconnections.jsp"]
+      test: [ "CMD", "curl", "-f", "http://127.0.0.1:8080/dbconnections.jsp"]
       interval: 10s
       timeout: 5s
       retries: 60
@@ -129,7 +129,7 @@ services:
       elasticsearch:
         condition: service_healthy
     healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:5000/api/v1/site-settings/heartbeat"]
+      test: ['CMD', '/docker-healthcheck.sh']
       interval: 10s
       timeout: 5s
       retries: 60
@@ -137,6 +137,7 @@ services:
       - houston-var:/data
       # These are added for development. Do not mount these in production.
       - .dockerfiles/docker-entrypoint.sh:/docker-entrypoint.sh
+      - .dockerfiles/docker-healthcheck.sh:/docker-healthcheck.sh
       - .dockerfiles/docker-entrypoint-init.d.codex:/docker-entrypoint-init.d
       - .dockerfiles/docker-entrypoint-always-init.d:/docker-entrypoint-always-init.d
       # FIXME: pull in development code while working on bringing up the container
@@ -149,6 +150,9 @@ services:
       - "83:5000"
     environment: &houston-environment
       HOUSTON_APP_CONTEXT: codex
+      # exposed service is 'localhost' using default port 80
+      SERVER_NAME: "${SERVER_NAME}"
+      PREFERRED_URL_SCHEME: "${PREFERRED_URL_SCHEME}"
       FLASK_ENV: development
       SQLALCHEMY_DATABASE_URI: "${SQLALCHEMY_DATABASE_URI}"
       TEST_DATABASE_URI: "${TEST_DATABASE_URI}"
@@ -219,7 +223,7 @@ services:
     working_dir: /code
     entrypoint: "/docker-entrypoint.sh"
     healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:3000/"]
+      test: [ "CMD", "curl", "-f", "http://127.0.0.1:3000/"]
       interval: 10s
       timeout: 5s
       retries: 60
@@ -233,7 +237,7 @@ services:
       HOST: "0.0.0.0"
       PORT: "84"
 
-  www:
+  localhost:
     image: nginx:latest
     depends_on:
       edm:
@@ -255,6 +259,8 @@ services:
       - intranet
       - frontend
     ports:
+      - "80:80"
+      # BBB deprecated in favor or port 80, remains for backward compat
       - "84:80"
 
 networks:

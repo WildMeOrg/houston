@@ -77,6 +77,8 @@ class Sighting(db.Model, FeatherModel):
         'AssetGroupSighting', back_populates='sighting', uselist=False
     )
 
+    id_configs = db.Column(db.JSON, nullable=True)
+
     name = db.Column(db.String(length=120), nullable=True)
 
     time_guid = db.Column(
@@ -652,14 +654,19 @@ class Sighting(db.Model, FeatherModel):
     ):
         from datetime import datetime
 
+        if not self.id_configs:
+            log.warning('send_identification called without id_configs')
+            self.stage = SightingStage.failed
+            return
+
         log.debug(
             f'In send_identification for cnf:{config_id}  algo:{algorithm_id}  Ann UUID:{annotation_uuid}'
         )
-        id_configs = self.asset_group_sighting.get_id_configs()
+
         # Message construction has to be in the task as the jobId must be unique
         job_uuid = uuid.uuid4()
-        matching_set_data = id_configs[config_id].get('matchingSetDataOwners')
-        algorithm = id_configs[config_id]['algorithms'][algorithm_id]
+        matching_set_data = self.id_configs[config_id].get('matchingSetDataOwners')
+        algorithm = self.id_configs[config_id]['algorithms'][algorithm_id]
         id_request = self.build_identification_request(
             matching_set_data, annotation_sage_uuid, job_uuid, algorithm
         )
@@ -990,18 +997,22 @@ class Sighting(db.Model, FeatherModel):
                 completion += size_range * (len(complete_jobs) / len(self.jobs))
         return completion
 
+    def set_asset_group_sighting(self, ags):
+        self.asset_group_sighting = ags
+        self.id_configs = ags.get_id_configs()
+
     def ia_pipeline(self):
         from .tasks import send_identification
 
         assert self.stage == SightingStage.identification
         num_algorithms = 0
-        id_configs = self.asset_group_sighting.get_id_configs()
-        num_configs = len(id_configs)
+
+        num_configs = len(self.id_configs)
         if num_configs > 0:
             # Only one for MVP
             assert num_configs == 1
             for config_num in range(num_configs):
-                config = id_configs[config_num]
+                config = self.id_configs[config_num]
                 assert 'algorithms' in config
                 # Only one for MVP
                 assert len(config['algorithms']) == 1
@@ -1039,8 +1050,8 @@ class Sighting(db.Model, FeatherModel):
             num_jobs = 0
             # Use task to send ID req with retries
             # Once we support multiple IA configs and algorithms, the number of jobs is going to grow....rapidly
-            for config_id in range(len(id_configs)):
-                for algorithm_id in range(len(id_configs[config_id]['algorithms'])):
+            for config_id in range(len(self.id_configs)):
+                for algorithm_id in range(len(self.id_configs[config_id]['algorithms'])):
                     for encounter in self.encounters:
                         for annotation in encounter.annotations:
                             log.debug(

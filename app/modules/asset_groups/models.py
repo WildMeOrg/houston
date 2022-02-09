@@ -186,7 +186,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
             )
         # we do not set this in the Sighting() constructor above, as a failure due to `time` value above
         #   causes an attempt to persist `sighting`, which we do not want
-        sighting.asset_group_sighting = self
+        sighting.set_asset_group_sighting(self)
         with db.session.begin(subtransactions=True):
             db.session.add(sighting)
         # Add the assets for all of the encounters to the created sighting object

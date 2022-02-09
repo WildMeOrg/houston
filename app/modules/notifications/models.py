@@ -226,14 +226,19 @@ class Notification(db.Model, HoustonModel):
     def owner(self):
         return self.recipient
 
+    @property
+    def sender_name(self):
+        return self.get_sender_name()
+
     def get_sender_name(self):
         from app.modules.users.models import User
 
-        user = User.query.get(self.sender_guid)
-        if user:
-            return user.full_name
-        else:
-            return 'N/A'
+        if self.sender_guid is not None:
+            user = User.query.get(self.sender_guid)
+            if user:
+                return user.full_name
+
+        return 'N/A'
 
     def get_sender_email(self):
         from app.modules.users.models import User

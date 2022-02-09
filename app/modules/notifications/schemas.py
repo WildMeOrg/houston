@@ -32,7 +32,6 @@ class BaseNotificationSchema(ModelSchema):
     Base Notification schema exposes only the most general fields.
     """
 
-    sender_name = base_fields.Function(Notification.get_sender_name)
     created = base_fields.DateTime()
 
     class Meta:

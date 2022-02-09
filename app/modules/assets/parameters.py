@@ -78,8 +78,10 @@ class PatchAssetParameters(PatchJSONParameters):
         if field == 'tags':
             tag = cls._check_tag_value(obj, field, value, state, create=False)
 
-            obj.add_tag(tag)
+            if tag is None:
+                return False
 
+            obj.add_tag(tag)
             return True
 
         # otherwise, add and replace are the same operation so reuse the one method

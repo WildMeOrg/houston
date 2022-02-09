@@ -112,8 +112,10 @@ class PatchAnnotationDetailsParameters(PatchJSONParameters):
         if field == 'keywords':
             keyword = cls._check_keyword_value(obj, field, value, state, create=False)
 
-            obj.add_keyword(keyword)
+            if keyword is None:
+                return False
 
+            obj.add_keyword(keyword)
             return True
 
         # otherwise, add and replace are the same operation so reuse the one method

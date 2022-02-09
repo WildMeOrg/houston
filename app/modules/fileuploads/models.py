@@ -8,7 +8,7 @@ import uuid
 import os
 import shutil
 
-from flask import current_app
+from flask import current_app, url_for
 from PIL import Image
 
 from app.extensions import db, HoustonModel
@@ -151,7 +151,11 @@ class FileUpload(db.Model, HoustonModel):
 
     @property
     def src(self):
-        return '/api/v1/fileuploads/src/%s' % (str(self.guid),)
+        return url_for(
+            'api.fileuploads_file_upload_src_u_by_id_2',
+            fileupload_guid=str(self.guid),
+            _external=False,
+        )
 
     def derive_mime_type(self):
         import magic

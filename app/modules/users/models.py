@@ -5,10 +5,9 @@ User database models
 """
 import enum
 import logging
-from urllib.parse import urljoin
 import uuid
 
-from flask import current_app
+from flask import current_app, url_for
 from sqlalchemy_utils import types as column_types
 
 from flask_login import current_user  # NOQA
@@ -740,8 +739,11 @@ class User(db.Model, FeatherModel, UserEDMMixin):
     def send_verify_account_email(self):
         code = self.get_email_confirmation_code()
         msg = Email(recipients=[self])
-        url_prefix = msg.template_kwargs['site_url_prefix']
-        verify_link = urljoin(url_prefix, f'/api/v1/auth/code/{code.accept_code}')
+        verify_link = url_for(
+            'api.auth_code_received',
+            code_string_dot_json=code.accept_code,
+            _external=True,
+        )
         msg.template('misc/account_verify', verify_link=verify_link)
         msg.send_message()
 

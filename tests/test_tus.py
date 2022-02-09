@@ -214,11 +214,10 @@ def test_tus_corner_cases(flask_app, flask_app_client, file_upload_filename):
             'Upload-Metadata': f'filename {encoded_filename}',
             'Upload-Length': len(a_txt),
             'Tus-Resumable': '1.0.0',
-            'X-Forwarded-Proto': 'https',
         },
     )
     assert response.status_code == 201
-    assert response.headers['Location'].startswith('https://')
+    assert response.headers['Location'].startswith('http://localhost/api/v1/tus/')
 
     path = urllib.parse.urlparse(response.headers['Location']).path
     filename = path.split('/')[-1]

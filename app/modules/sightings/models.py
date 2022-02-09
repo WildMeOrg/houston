@@ -7,7 +7,7 @@ import enum
 import logging
 import uuid
 from datetime import datetime  # NOQA
-from flask import current_app
+from flask import current_app, url_for
 from flask_restx_patched._http import HTTPStatus
 
 from app.extensions import FeatherModel, HoustonModel, db
@@ -665,12 +665,13 @@ class Sighting(db.Model, FeatherModel):
             return {}
 
         from app.extensions.acm import to_acm_uuid
-
-        base_url = current_app.config.get('BASE_URL')
         from app.modules.ia_config_reader import IaConfig
 
-        callback_url = (
-            f'{base_url}api/v1/sightings/{str(self.guid)}/sage_identified/{str(job_uuid)}'
+        callback_url = url_for(
+            'api.sightings_sighting_sage_identified',
+            sighting_guid=str(self.guid),
+            job_guid=str(job_uuid),
+            _external=True,
         )
         ia_config_reader = IaConfig(current_app.config.get('CONFIG_MODEL'))
         try:

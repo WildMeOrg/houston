@@ -3,6 +3,7 @@
 import datetime
 import logging
 from functools import wraps
+from urllib.parse import urljoin
 
 # from app.modules.users.permissions import PasswordRequiredPermissionMixin
 import flask
@@ -46,7 +47,7 @@ def init_app(app):
 def _render_template(template, **kwargs):
     now = datetime.datetime.now(tz=current_app.config.get('TIMEZONE'))
     config = {
-        'base_url': current_app.config.get('BASE_URL'),
+        'base_url': urljoin(url_for('backend.home'), '/'),
         'google_analytics_tag': current_app.config.get('GOOGLE_ANALYTICS_TAG'),
         'stripe_public_key': current_app.config.get('STRIPE_PUBLIC_KEY'),
         'year': now.year,

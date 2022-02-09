@@ -21,7 +21,7 @@ log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 MODULE_USER_MAP = {
     ('SiteSetting', AccessOperation.READ): ['is_admin'],
     ('SiteSetting', AccessOperation.WRITE): ['is_admin'],
-    ('HoustonConfig', AccessOperation.WRITE): ['is_admin'],
+    ('HoustonConfig', AccessOperation.WRITE): ['is_staff'],
     ('Asset', AccessOperation.READ): ['is_admin', 'is_data_manager'],
     ('AssetGroup', AccessOperation.READ): ['is_admin'],
     ('AssetGroup', AccessOperation.WRITE): ['is_active'],

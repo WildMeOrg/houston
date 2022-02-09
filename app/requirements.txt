@@ -46,6 +46,7 @@ python-gitlab
 python-magic
 
 #Flask-Tus-Cont
+randomname
 redis
 
 scikit-build

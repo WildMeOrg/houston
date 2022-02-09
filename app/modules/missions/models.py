@@ -23,7 +23,8 @@ class MissionUserAssignment(db.Model, HoustonModel):
     mission = db.relationship('Mission', back_populates='user_assignments')
 
     user = db.relationship(
-        'User', backref=db.backref('mission_assignments', cascade='delete, delete-orphan')
+        'User',
+        backref=db.backref('mission_assignments', cascade='all, delete-orphan'),
     )
 
 
@@ -48,7 +49,11 @@ class Mission(db.Model, HoustonModel, Timestamp):
         ),
     )
 
-    user_assignments = db.relationship('MissionUserAssignment', back_populates='mission')
+    user_assignments = db.relationship(
+        'MissionUserAssignment',
+        back_populates='mission',
+        cascade='all, delete-orphan',
+    )
 
     options = db.Column(db.JSON, default=lambda: {}, nullable=False)
 
@@ -90,8 +95,20 @@ class Mission(db.Model, HoustonModel, Timestamp):
     def assigned_users(self):
         return self.get_assigned_users()
 
+    @property
     def assets(self):
         return self.get_assets()
+
+    def asset_search(self, search):
+        log.warning('Ignoring search string %r' % (search,))
+        return self.get_assets()
+
+    @property
+    def asset_count(self):
+        count = 0
+        for collection in self.collections:
+            count += collection.asset_count
+        return count
 
     def get_options(self):
         return self.options.get('model_options', [])
@@ -205,11 +222,22 @@ class Mission(db.Model, HoustonModel, Timestamp):
             db.session.merge(self)
 
     def delete_cascade(self):
+        with db.session.no_autoflush:
+            while self.tasks:
+                task = self.tasks.pop()
+                task.delete()
+
         with db.session.begin(subtransactions=True):
+            while self.assets:
+                asset = self.assets.pop()
+                asset.delete()
+
+            while self.collections:
+                collection = self.collections.pop()
+                collection.delete()
+
             while self.user_assignments:
                 db.session.delete(self.user_assignments.pop())
-            while self.collections:
-                db.session.delete(self.collections.pop())
             db.session.delete(self)
 
     def delete(self):
@@ -242,6 +270,10 @@ class MissionCollection(GitStore):
     __mapper_args__ = {
         'polymorphic_identity': 'mission_collection',
     }
+
+    @property
+    def asset_count(self):
+        return len(self.assets)
 
     @classmethod
     def query_search_term_hook(cls, term):
@@ -288,7 +320,7 @@ class MissionTaskUserAssignment(db.Model, HoustonModel):
 
     user = db.relationship(
         'User',
-        backref=db.backref('mission_task_assignments', cascade='delete, delete-orphan'),
+        backref=db.backref('mission_task_assignments', cascade='all, delete-orphan'),
     )
 
 
@@ -369,15 +401,21 @@ class MissionTask(db.Model, HoustonModel, Timestamp):
     )
 
     user_assignments = db.relationship(
-        'MissionTaskUserAssignment', back_populates='mission_task'
+        'MissionTaskUserAssignment',
+        back_populates='mission_task',
+        cascade='all, delete-orphan',
     )
 
     asset_participations = db.relationship(
-        'MissionTaskAssetParticipation', back_populates='mission_task'
+        'MissionTaskAssetParticipation',
+        back_populates='mission_task',
+        cascade='delete, delete-orphan',
     )
 
     annotation_participations = db.relationship(
-        'MissionTaskAnnotationParticipation', back_populates='mission_task'
+        'MissionTaskAnnotationParticipation',
+        back_populates='mission_task',
+        cascade='delete, delete-orphan',
     )
 
     notes = db.Column(db.UnicodeText, nullable=True)
@@ -408,6 +446,26 @@ class MissionTask(db.Model, HoustonModel, Timestamp):
             cast_if(cls.owner_guid, String).contains(term),
             cast_if(cls.mission_guid, String).contains(term),
         )
+
+    @property
+    def assigned_users(self):
+        return self.get_assigned_users()
+
+    @property
+    def assets(self):
+        return self.get_assets()
+
+    @property
+    def annotations(self):
+        return self.get_annotations()
+
+    @property
+    def asset_count(self):
+        return len(self.asset_participations)
+
+    @property
+    def annotation_count(self):
+        return len(self.annotation_participations)
 
     @db.validates('title')
     def validate_title(self, key, title):  # pylint: disable=unused-argument,no-self-use
@@ -452,7 +510,7 @@ class MissionTask(db.Model, HoustonModel, Timestamp):
 
     def add_asset_in_context(self, asset):
         participation = MissionTaskAssetParticipation(
-            task=self,
+            mission_task=self,
             asset=asset,
         )
 
@@ -490,11 +548,10 @@ class MissionTask(db.Model, HoustonModel, Timestamp):
                 break
 
     def delete(self):
-        with db.session.begin():
-            while self.user_assignments:
-                db.session.delete(self.user_assignments.pop())
-            while self.asset_participations:
-                db.session.delete(self.asset_participations.pop())
-            while self.annotation_participations:
-                db.session.delete(self.annotation_participations.pop())
-            db.session.delete(self)
+        while self.user_assignments:
+            db.session.delete(self.user_assignments.pop())
+        while self.asset_participations:
+            db.session.delete(self.asset_participations.pop())
+        while self.annotation_participations:
+            db.session.delete(self.annotation_participations.pop())
+        db.session.delete(self)

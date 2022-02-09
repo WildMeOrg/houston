@@ -20,8 +20,12 @@ from app.modules.users.permissions.types import AccessOperation
 from app.modules.assets.schemas import DetailedAssetTableSchema
 from . import parameters, schemas
 from .models import Mission, MissionCollection, MissionTask
+import randomname
 
 from app.utils import HoustonException
+
+
+USE_GLOBALLY_UNIQUE_MISSION_TASK_NAMES = True
 
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
@@ -280,9 +284,7 @@ class AssetsForMission(Resource):
         if search is not None and len(search) == 0:
             search = None
 
-        log.warning('Ignoring search %r' % (search,))
-
-        return mission.assets
+        return mission.asset_search(search)
 
 
 @api.route('/<uuid:mission_guid>/tasks')
@@ -323,14 +325,55 @@ class MissionTasksForMission(Resource):
         """
         Create a new instance of Mission.
         """
+        from app.modules.assets.models import Asset
+
+        asset_set = parameters.CreateMissionTaskParameters.perform_set_operations(
+            args, obj=mission, obj_cls=Asset
+        )
+
         context = api.commit_or_abort(
             db.session, default_error_message='Failed to create a new MissionTask'
         )
+
+        # Pick a random title with an adjective nown structure (see here: https://github.com/imsky/wordlists)
+        if USE_GLOBALLY_UNIQUE_MISSION_TASK_NAMES:
+            current_tasks = MissionTask.query.all()
+        else:
+            current_tasks = mission.tasks
+        titles = [task.title for task in current_tasks]
+        title = None
+        while title in titles + [None]:
+            title = randomname.get_name(
+                adj=(
+                    'character',
+                    'colors',
+                    'emotions',
+                    'shape',
+                ),
+                noun=(
+                    'apex_predators',
+                    'birds',
+                    'cats',
+                    'dogs',
+                    'fish',
+                ),
+                sep=' ',
+            ).title()
+            title = 'New Task: %s' % (title,)
+        assert title is not None
+        assert title not in titles
+
+        args = {}
+        args['title'] = title
         args['owner'] = current_user
         args['mission'] = mission
         mission_task = MissionTask(**args)
+
         # User who creates the mission gets added to it
         mission_task.add_user(current_user)
+        for asset in asset_set:
+            mission_task.add_asset(asset)
+
         with context:
             db.session.add(mission_task)
 
@@ -589,6 +632,47 @@ class MissionTaskByID(Resource):
         """
         Get MissionTask details by ID.
         """
+        return mission_task
+
+    @api.permission_required(
+        permissions.ObjectAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'obj': kwargs['mission_task'],
+            'action': AccessOperation.WRITE,
+        },
+    )
+    @api.login_required(oauth_scopes=['missions:write'])
+    @api.parameters(parameters.CreateMissionTaskParameters())
+    @api.response(schemas.DetailedMissionTaskSchema())
+    @api.response(code=HTTPStatus.CONFLICT)
+    def post(self, args, mission_task):
+        """
+        Create a new instance of Mission.
+        """
+        from app.modules.assets.models import Asset
+
+        starting_set = mission_task.assets
+        asset_set = parameters.CreateMissionTaskParameters.perform_set_operations(
+            args, obj=mission_task.mission, obj_cls=Asset, starting_set=starting_set
+        )
+
+        context = api.commit_or_abort(
+            db.session, default_error_message='Failed to create a new MissionTask'
+        )
+
+        with context:
+            add_set = asset_set - starting_set
+            for asset in add_set:
+                mission_task.add_asset_in_context(asset)
+
+            remove_set = starting_set - asset_set
+            for asset in remove_set:
+                mission_task.remove_asset_in_context(asset)
+
+            db.session.merge(mission_task)
+
+        db.session.refresh(mission_task)
+
         return mission_task
 
     @api.permission_required(

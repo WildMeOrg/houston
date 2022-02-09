@@ -432,6 +432,41 @@ def patch_replace_op(path, value, guid=None):
     return operation
 
 
+def set_union_op(path, value):
+    operation = {
+        'op': 'union',
+        'path': '/%s' % (path,),
+        'value': value,
+    }
+    return operation
+
+
+def set_intersection_op(path, value):
+    operation = {
+        'op': 'intersection',
+        'path': '/%s' % (path,),
+        'value': value,
+    }
+    return operation
+
+
+def set_difference_op(path, value):
+    operation = {
+        'op': 'difference',
+        'path': '/%s' % (path,),
+        'value': value,
+    }
+    return operation
+
+
+def set_or_op(*args, **kwargs):
+    return set_union_op(*args, **kwargs)
+
+
+def set_and_op(*args, **kwargs):
+    return set_intersection_op(*args, **kwargs)
+
+
 def all_count(db):
     from app.modules import is_module_enabled
 

@@ -93,8 +93,10 @@ class FileUpload(db.Model, HoustonModel):
         return fups
 
     @classmethod
-    # default behavior is to *move*
     def create_fileupload_from_path(cls, source_path, copy=False):
+        """
+        default behavior is to *move*
+        """
         assert source_path is not None
         fup = FileUpload()
         if copy:

@@ -127,30 +127,6 @@ class AssetByID(Resource):
             db.session.merge(asset)
         return asset
 
-    # @api.permission_required(
-    #     permissions.ObjectAccessPermission,
-    #     kwargs_on_request=lambda kwargs: {
-    #         'obj': kwargs['asset'],
-    #         'action': AccessOperation.WRITE,
-    #     },
-    # )
-    # @api.login_required(oauth_scopes=['assets:write'])
-    # @api.response(code=HTTPStatus.CONFLICT)
-    # @api.response(code=HTTPStatus.NO_CONTENT)
-    # def delete(self, asset):
-    #     """
-    #     Delete a Asset by ID.
-    #     """
-    #     import utool as ut
-    #     ut.embed()
-    #     context = api.commit_or_abort(
-    #         db.session,
-    #         default_error_message="Failed to delete the Asset."
-    #     )
-    #     with context:
-    #         db.session.delete(asset)
-    #     return None
-
 
 @api.route('/src/<uuid:asset_guid>', defaults={'format': 'master'}, doc=False)
 @api.route('/src/<string:format>/<uuid:asset_guid>')

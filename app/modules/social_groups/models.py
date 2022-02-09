@@ -158,7 +158,7 @@ class SocialGroup(db.Model, HoustonModel):
                 )
             if item['label'] in labels:
                 raise HoustonException(log, f'can only have {item["label"]} once')
-            labels.append(item["label"])
+            labels.append(item['label'])
 
     def get_member_data_as_json(self):
         individual_data = {}

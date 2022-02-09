@@ -261,7 +261,7 @@ def load_sightings_index(
 ):
     if catchup_index_before:
         where_clause = f"WHERE si.updated < '{catchup_index_before}' AND si.guid > '{catchup_index_mark}'"
-        order_clause = f"ORDER BY id LIMIT {catchup_index_batch_size}"
+        order_clause = f'ORDER BY id LIMIT {catchup_index_batch_size}'
     else:
         cutoff = update_incremental_cutoff('sighting')
         where_clause = f"WHERE si.updated >= '{cutoff}'"

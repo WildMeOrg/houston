@@ -10,12 +10,18 @@ from flask_restx_patched import (
     Parameters,
     PatchJSONParameters,
     PatchJSONParametersWithPassword,
+    SetOperationsJSONParameters,
 )
 from app.extensions.api.parameters import PaginationParameters
+from marshmallow import ValidationError
 
 from . import schemas
 from .models import Mission, MissionCollection, MissionTask
 from app.modules.users.permissions import rules
+import logging
+
+
+log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
 
 class ListMissionParameters(PaginationParameters):
@@ -38,17 +44,12 @@ class PatchMissionDetailsParameters(PatchJSONParametersWithPassword):
         'current_password',
         'owner',
         'user',
-        'asset',
         Mission.title.key,
         Mission.options.key,
-        Mission.classifications.key,
         Mission.notes.key,
     ]
 
-    SENSITIVE_FIELDS = (
-        'owner',
-        'user',
-    )
+    SENSITIVE_FIELDS = ('owner',)
 
     PRIVILEGED_FIELDS = ()
 
@@ -113,8 +114,10 @@ class PatchMissionDetailsParameters(PatchJSONParametersWithPassword):
             user = User.query.get(value)
 
             # make sure it's a valid request
-            if not user or user not in obj.get_members():
+            if not user:
                 pass
+            elif user not in obj.get_members():
+                ret_val = True
             elif user == obj.owner:
                 # Deleting the Mission owner would cause a maintenance nightmare so disallow it
                 pass
@@ -130,8 +133,10 @@ class PatchMissionDetailsParameters(PatchJSONParametersWithPassword):
             asset = Asset.query.get(value)
 
             # make sure it's a valid request
-            if not asset or asset not in obj.get_assets():
+            if not asset:
                 pass
+            elif asset not in obj.get_assets():
+                ret_val = True
             elif rules.owner_or_privileged(current_user, obj):
                 # removal of other users requires privileges
                 obj.remove_asset_in_context(asset)
@@ -199,8 +204,85 @@ class ListMissionTaskParameters(PaginationParameters):
     search = base_fields.String(description='Example: search@example.com', required=False)
 
 
-class CreateMissionTaskParameters(Parameters):
-    title = base_fields.String(description='The title of the Mission Task', required=True)
+class CreateMissionTaskParameters(SetOperationsJSONParameters):
+    # pylint: disable=abstract-method,missing-docstring
+
+    VALID_FIELDS = [
+        'search',
+        'collections',
+        'tasks',
+        'assets',
+    ]
+
+    PATH_CHOICES = tuple('/%s' % field for field in VALID_FIELDS)
+
+    @classmethod
+    def resolve(cls, field, value, obj):
+        from app.modules.missions.models import MissionCollection, MissionTask
+        from app.modules.assets.models import Asset
+
+        def _check(condition):
+            if not condition:
+                raise ValidationError(
+                    'Failed to update set. Operation (field=%r, value=%r) could not succeed because the value must be a list of string GUIDs.'
+                    % (field, value)
+                )
+
+        if field == 'search':
+            return obj.asset_search(value)
+        elif field == 'collections':
+            assets = []
+
+            _check(isinstance(value, list))
+            for guid in value:
+                _check(isinstance(guid, str))
+                mission_collection = MissionCollection.query.get(guid)
+                if mission_collection is not None:
+                    if mission_collection.mission == obj:
+                        assets += mission_collection.assets
+                    else:
+                        raise ValidationError(
+                            'Failed to update set. Mission Collection %r is not part of Mission %r'
+                            % (mission_collection.guid, obj.guid)
+                        )
+
+            return assets
+        elif field == 'tasks':
+            assets = []
+
+            _check(isinstance(value, list))
+            for guid in value:
+                _check(isinstance(guid, str))
+                mission_task = MissionTask.query.get(guid)
+                if mission_task is not None:
+                    if mission_task.mission == obj:
+                        assets += mission_task.assets
+                    else:
+                        raise ValidationError(
+                            'Failed to update set. Mission Task %r is not part of Mission %r'
+                            % (mission_task.guid, obj.guid)
+                        )
+
+            return assets
+        elif field == 'assets':
+            assets = []
+
+            _check(isinstance(value, list))
+            for guid in value:
+                _check(isinstance(guid, str))
+                asset = Asset.query.get(guid)
+                if asset is not None:
+                    if asset.git_store.mission == obj:
+                        assets.append(asset)
+                    else:
+                        raise ValidationError(
+                            'Failed to update set. Asset %r is not part of any Mission Collection for Mission %r'
+                            % (asset.guid, obj.guid)
+                        )
+
+            return assets
+
+        return None
 
 
 class PatchMissionTaskDetailsParameters(PatchJSONParametersWithPassword):
@@ -217,10 +299,7 @@ class PatchMissionTaskDetailsParameters(PatchJSONParametersWithPassword):
         MissionTask.title.key,
     ]
 
-    SENSITIVE_FIELDS = (
-        'owner',
-        'user',
-    )
+    SENSITIVE_FIELDS = ('owner',)
 
     PRIVILEGED_FIELDS = ()
 
@@ -266,44 +345,42 @@ class PatchMissionTaskDetailsParameters(PatchJSONParametersWithPassword):
         from app.modules.users.models import User
         from app.modules.assets.models import Asset
 
+        # Check permissions
         super(PatchMissionTaskDetailsParameters, cls).remove(obj, field, value, state)
 
-        ret_val = True
-        # If the field wasn't present anyway, report that as a success
-        # A failure is if the user did not have permissions to perform the action
-        if field == MissionTask.title.key or field == 'owner':
-            # no one deletes the owner or title
-            ret_val = False
-        elif field == 'user':
+        ret_val = False
+
+        if field == 'user':
             user = User.query.get(value)
 
             # make sure it's a valid request
-            if not user or user not in obj.get_members():
-                ret_val = False
+            if not user:
+                pass
+            elif user not in obj.get_members():
+                ret_val = True
             elif user == obj.owner:
-                # Deleting the MissionTask owner would cause a maintenance nightmare so disallow it
-                ret_val = False
+                # Deleting the Mission owner would cause a maintenance nightmare so disallow it
+                pass
             elif rules.owner_or_privileged(current_user, obj):
                 # removal of other users requires privileges
                 obj.remove_user_in_context(user)
+                ret_val = True
             elif user == current_user:
                 # any user can delete themselves
                 obj.remove_user_in_context(user)
-            else:
-                # but not other members
-                ret_val = False
+                ret_val = True
         elif field == 'asset':
             asset = Asset.query.get(value)
 
             # make sure it's a valid request
-            if not asset or asset not in obj.get_assets():
-                ret_val = False
+            if not asset:
+                pass
+            elif asset not in obj.get_assets():
+                ret_val = True
             elif rules.owner_or_privileged(current_user, obj):
                 # removal of other users requires privileges
                 obj.remove_asset_in_context(asset)
-            else:
-                # but not other members
-                ret_val = False
+                ret_val = True
 
         return ret_val
 

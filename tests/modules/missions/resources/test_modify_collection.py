@@ -20,6 +20,8 @@ def test_create_patch_mission_collection(
     # pylint: disable=invalid-name
     mission_guid, mission_collection_guid = None, None
     transaction_id, test_filename = tus_utils.prep_tus_dir(test_root)
+    transaction_ids = []
+    transaction_ids.append(transaction_id)
     try:
         temp_mission = Mission(
             title='Temp Mission',
@@ -41,6 +43,7 @@ def test_create_patch_mission_collection(
 
         # test with explicit paths (should succeed)
         tid, valid_file = tus_utils.prep_tus_dir(test_root)
+        transaction_ids.append(tid)
         temp_mission_collection = MissionCollection.create_from_tus(
             'PYTEST', data_manager_1, tid, mission=temp_mission, paths={valid_file}
         )
@@ -82,8 +85,6 @@ def test_create_patch_mission_collection(
         # temp_mission_collection should be already deleted on gitlab
         assert not MissionCollection.is_on_remote(str(temp_mission_collection.guid))
     finally:
-        tus_utils.cleanup_tus_dir(transaction_id)
-
         # Restore original state
         temp_mission_collection = MissionCollection.query.get(mission_collection_guid)
         if temp_mission_collection is not None:
@@ -95,3 +96,6 @@ def test_create_patch_mission_collection(
         temp_mission = Mission.query.get(mission_guid)
         if temp_mission is not None:
             temp_mission.delete()
+
+        for transaction_id in transaction_ids:
+            tus_utils.cleanup_tus_dir(transaction_id)

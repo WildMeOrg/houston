@@ -16,6 +16,10 @@ from .namespace import (  # NOQA
     module_required,  # NOQA
 )  # NOQA
 from .parameters import Parameters, PostFormParameters  # NOQA
-from .parameters import PatchJSONParameters, PatchJSONParametersWithPassword  # NOQA
+from .parameters import (  # NOQA
+    PatchJSONParameters,  # NOQA
+    PatchJSONParametersWithPassword,  # NOQA
+    SetOperationsJSONParameters,  # NOQA
+)  # NOQA
 from .swagger import Swagger  # NOQA
 from .resource import Resource  # NOQA

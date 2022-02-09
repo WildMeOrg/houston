@@ -1,11 +1,12 @@
 # -*- coding: utf-8 -*-
 from tasks.utils import download_file
 import os
-from os.path import abspath
+from os.path import abspath, exists
 import hashlib
 
 
 def test_download_file():
+    actual_local_filepath = None
     try:
         requested_local_filepath = 'icon.png'
         actual_local_filepath = download_file(
@@ -23,4 +24,6 @@ def test_download_file():
     except Exception as ex:
         raise ex
     finally:
-        os.remove(actual_local_filepath)
+        actual_local_filepath = abspath(actual_local_filepath)
+        if actual_local_filepath is not None and exists(actual_local_filepath):
+            os.remove(actual_local_filepath)

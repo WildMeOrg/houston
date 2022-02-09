@@ -76,14 +76,6 @@ def admin_required(func):
     return decorated_function
 
 
-# @backend_blueprint.before_app_request
-# def before_app_request():
-#     import utool as ut
-#     ut.embed()
-#     if not current_user and not User.admin_user_initialized():
-#         return redirect(url_for('backend.admin_init'))
-
-
 @backend_blueprint.route('/', methods=['GET'])
 @ensure_admin_exists
 def home(*args, **kwargs):

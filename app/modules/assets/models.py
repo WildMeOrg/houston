@@ -170,6 +170,14 @@ class Asset(db.Model, HoustonModel):
     def annotation_count(self):
         return -1 if self.annotations is None else len(self.annotations)
 
+    @property
+    @module_required('missions', resolve='warn', default=[])
+    def tasks(self):
+        return [
+            participation.mission_task
+            for participation in self.mission_task_participations
+        ]
+
     @module_required('sightings', resolve='warn', default=[])
     def get_asset_sightings(self):
         return self.asset_sightings
@@ -345,7 +353,8 @@ class Asset(db.Model, HoustonModel):
         source_path = self.get_symlink()
         if not source_path.exists():
             raise HoustonException(
-                log, 'Asset does not have a valid path, needs to be within an AssetGroup'
+                log,
+                'Asset does not have a valid path, needs to be within an AssetGroup',
             )
         target_path = self.get_derived_path('master')
         target_path.parent.mkdir(parents=True, exist_ok=True)

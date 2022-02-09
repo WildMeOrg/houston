@@ -21,7 +21,7 @@ class BaseMissionSchema(ModelSchema):
         fields = (
             Mission.guid.key,
             Mission.title.key,
-            'created',
+            Mission.created.key,
         )
         dump_only = (Mission.guid.key,)
 
@@ -33,6 +33,7 @@ class CreationMissionSchema(BaseMissionSchema):
 
     class Meta(BaseMissionSchema.Meta):
         fields = BaseMissionSchema.Meta.fields + (
+            Mission.updated.key,
             Mission.title.key,
             Mission.options.key,
             Mission.classifications.key,
@@ -52,11 +53,15 @@ class DetailedMissionSchema(CreationMissionSchema):
 
     collections = base_fields.Nested('BaseMissionCollectionSchema', many=True)
 
+    tasks = base_fields.Nested('BaseMissionTaskTableSchema', many=True)
+
     class Meta(CreationMissionSchema.Meta):
         fields = CreationMissionSchema.Meta.fields + (
             'owner',
             'assigned_users',
             'collections',
+            'tasks',
+            'asset_count',
         )
         dump_only = CreationMissionSchema.Meta.dump_only
 
@@ -81,6 +86,7 @@ class BaseMissionCollectionSchema(ModelSchema):
             MissionCollection.commit.key,
             MissionCollection.major_type.key,
             MissionCollection.description.key,
+            'asset_count',
         )
         dump_only = (
             MissionCollection.guid.key,
@@ -136,9 +142,23 @@ class BaseMissionTaskSchema(ModelSchema):
         # pylint: disable=missing-docstring
         model = MissionTask
         fields = (
+            MissionTask.created.key,
             MissionTask.guid.key,
             MissionTask.title.key,
             'mission',
+        )
+        dump_only = (MissionTask.guid.key,)
+
+
+class BaseMissionTaskTableSchema(ModelSchema):
+    class Meta:
+        # pylint: disable=missing-docstring
+        model = MissionTask
+        fields = (
+            MissionTask.created.key,
+            MissionTask.guid.key,
+            MissionTask.title.key,
+            'asset_count',
         )
         dump_only = (MissionTask.guid.key,)
 
@@ -148,6 +168,28 @@ class DetailedMissionTaskSchema(BaseMissionTaskSchema):
     Detailed MissionTask schema exposes all useful fields.
     """
 
+    owner = base_fields.Nested('PublicUserSchema', many=False)
+
+    assigned_users = base_fields.Nested('PublicUserSchema', many=True)
+
+    assets = base_fields.Nested(
+        'BaseAssetSchema',
+        many=True,
+    )
+
+    annotations = base_fields.Nested(
+        'BaseAnnotationSchema',
+        many=True,
+    )
+
     class Meta(BaseMissionTaskSchema.Meta):
-        fields = BaseMissionTaskSchema.Meta.fields
+        fields = BaseMissionTaskSchema.Meta.fields + (
+            MissionTask.updated.key,
+            MissionTask.type.key,
+            'owner',
+            'assigned_users',
+            'assets',
+            'annotations',
+            MissionTask.notes.key,
+        )
         dump_only = BaseMissionTaskSchema.Meta.dump_only

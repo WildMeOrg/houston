@@ -218,18 +218,36 @@ def delete_mission_collection(
 
 
 def create_mission_task(
-    flask_app_client, user, title, mission_guid, expected_status_code=200
+    flask_app_client, user, mission_guid, data, expected_status_code=200
 ):
     with flask_app_client.login(user, auth_scopes=('missions:write',)):
         response = flask_app_client.post(
             PATH_MISSION_TASKS_FOR_MISSION % (mission_guid,),
             content_type='application/json',
-            data=json.dumps({'title': title}),
+            data=json.dumps(data),
         )
 
     if expected_status_code == 200:
         test_utils.validate_dict_response(response, 200, {'guid', 'title'})
-        assert response.json['title'] == title
+    else:
+        test_utils.validate_dict_response(
+            response, expected_status_code, {'status', 'message'}
+        )
+    return response
+
+
+def update_mission_task(
+    flask_app_client, user, mission_task_guid, data, expected_status_code=200
+):
+    with flask_app_client.login(user, auth_scopes=('missions:write',)):
+        response = flask_app_client.post(
+            '%s%s' % (PATH_MISSION_TASKS, mission_task_guid),
+            content_type='application/json',
+            data=json.dumps(data),
+        )
+
+    if expected_status_code == 200:
+        test_utils.validate_dict_response(response, 200, {'guid', 'title'})
     else:
         test_utils.validate_dict_response(
             response, expected_status_code, {'status', 'message'}

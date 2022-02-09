@@ -58,9 +58,9 @@ class Notifications(Resource):
         Returns a list of Notification starting from ``offset`` limited by ``limit``
         parameter.
         """
-        all_notifications = Notification.query.all()
+
         if current_user.is_user_manager:
-            returned_notifications = all_notifications
+            returned_notifications = Notification.query.all()
         else:
             preferences = UserNotificationPreferences.get_user_preferences(current_user)
             returned_notifications = [

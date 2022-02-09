@@ -38,6 +38,11 @@ class DetailedAssetTableSchema(BaseAssetSchema):
         many=True,
     )
 
+    tasks = base_fields.Nested(
+        'BaseMissionTaskTableSchema',
+        many=True,
+    )
+
     class Meta(BaseAssetSchema.Meta):
         fields = BaseAssetSchema.Meta.fields + (
             Asset.created.key,
@@ -47,6 +52,7 @@ class DetailedAssetTableSchema(BaseAssetSchema):
             'annotation_count',
             'classifications',
             'tags',
+            'tasks',
         )
 
         dump_only = BaseAssetSchema.Meta.dump_only + (

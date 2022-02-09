@@ -73,14 +73,15 @@ class PatchJSONParameters(Parameters):
         OP_REMOVE,
         OP_REPLACE,
     )
-    op = base_fields.String(required=True)  # pylint: disable=invalid-name
 
     PATH_CHOICES = None
     NON_NULL_PATHS = ()
 
-    path = base_fields.String(required=True)
-
     NO_VALUE_OPERATIONS = (OP_REMOVE,)
+
+    op = base_fields.String(required=True)  # pylint: disable=invalid-name
+
+    path = base_fields.String(required=True)
 
     value = base_fields.Raw(required=False, allow_none=True)
 
@@ -388,3 +389,219 @@ class PatchJSONParametersWithPassword(PatchJSONParameters):
                 )
 
         return PatchJSONParameters.replace(obj, field, value, state)
+
+
+class SetOperationsJSONParameters(Parameters):
+    """
+    Base parameters class for handling Set Operation arguments.
+
+    This implementation is designed to mirror the PATCH arguments according to RFC 6902.
+    """
+
+    OP_UNION = ['union', 'and', '&']
+    OP_INTERSECTION = ['intersection', 'intersect', 'or', '|']
+    OP_DIFFERENCE = ['difference', 'diff', '-', '->']
+    OP_MIRRORED_DIFFERENCE = ['mirrored_difference', 'mirdiff', '--', '<-']
+    OP_SYMMETRIC_DIFFERENCE = ['symmetric_difference', 'symmetric', 'symdiff', 'sym', '^']
+
+    # However, we use only those which make sense in RESTful API
+    OPERATION_CHOICES = (
+        OP_UNION
+        + OP_INTERSECTION
+        + OP_DIFFERENCE
+        + OP_MIRRORED_DIFFERENCE
+        + OP_SYMMETRIC_DIFFERENCE
+    )
+
+    PATH_CHOICES = None
+
+    op = base_fields.String(required=True)  # pylint: disable=invalid-name
+
+    path = base_fields.String(required=True)
+
+    value = base_fields.Raw(required=True)
+
+    def __init__(self, *args, **kwargs):
+        if 'many' in kwargs:
+            assert kwargs['many'], "Set Operation Parameters must be marked as 'many'"
+        kwargs['many'] = True
+        super(SetOperationsJSONParameters, self).__init__(*args, **kwargs)
+        if not self.PATH_CHOICES:
+            raise ValueError('%s.PATH_CHOICES has to be set' % self.__class__.__name__)
+        # Make a copy of `validators` as otherwise we will modify the behaviour
+        # of all `marshmallow.Schema`-based classes
+        self.fields['op'].validators = self.fields['op'].validators + [
+            validate.OneOf(self.OPERATION_CHOICES)
+        ]
+        self.fields['path'].validators = self.fields['path'].validators + [
+            validate.OneOf(self.PATH_CHOICES)
+        ]
+
+    @validates_schema
+    def validate_set_operations_structure(self, data):
+        """
+        Common validation of POST structure
+
+        Provide check that 'value' present in all operations expect it.
+
+        Provide check if 'path' is present. 'path' can be absent if provided
+        without '/' at the start. Supposed that if 'path' is present than it
+        is prepended with '/'.
+        Removing '/' in the beginning to simplify usage in resource.
+        """
+        if 'op' not in data:
+            raise ValidationError('operation not supported')
+
+        if 'value' not in data:
+            raise ValidationError('value is required')
+
+        if 'path' not in data:
+            raise ValidationError('Path is required and must always begin with /')
+        else:
+            data['field_name'] = data['path'][1:]
+
+    @classmethod
+    def perform_set_operations(
+        cls, operations, obj=None, obj_cls=None, starting_set=None
+    ):
+        """
+        Performs all necessary operations by calling class methods with
+        corresponding names.
+        """
+        working_set = set([])
+
+        if starting_set is not None:
+            for starting_obj in starting_set:
+                assert isinstance(starting_obj, obj_cls)
+                working_set.add(starting_obj)
+
+        for operation in operations:
+            working_set = cls._process_set_operation(operation, working_set, obj, obj_cls)
+            if working_set is None:
+                log.info(
+                    'Set parsing has been stopped because of unknown operation %s',
+                    operation,
+                )
+                raise ValidationError(
+                    'Failed to update set. Operation %s could not succeed.' % (operation)
+                )
+
+        return working_set
+
+    @classmethod
+    def _process_set_operation(cls, operation, working_set, obj=None, obj_cls=None):
+        """
+        Args:
+            operation (dict): one set operation.
+
+        Returns:
+            processing_status (bool): True if operation was handled, otherwise False.
+        """
+        field_operaion = operation['op']
+
+        resolved_set = set(
+            cls.resolve(operation['field_name'], operation['value'], obj=obj)
+        )
+
+        for resolved_obj in resolved_set:
+            assert isinstance(resolved_obj, obj_cls)
+
+        if field_operaion in cls.OP_UNION:
+            return cls.union(working_set, resolved_set)
+
+        elif field_operaion in cls.OP_INTERSECTION:
+            return cls.intersection(working_set, resolved_set)
+
+        elif field_operaion in cls.OP_DIFFERENCE:
+            return cls.difference(working_set, resolved_set)
+
+        elif field_operaion in cls.OP_MIRRORED_DIFFERENCE:
+            return cls.mirrored_difference(working_set, resolved_set)
+
+        elif field_operaion in cls.OP_SYMMETRIC_DIFFERENCE:
+            return cls.symmetric_difference(working_set, resolved_set)
+
+    @classmethod
+    def resolve(cls, field, value, obj=None):
+        """
+        Resolve the (field, value) into an iterable of objects for the designated class
+        """
+        raise NotImplementedError()
+
+    @classmethod
+    def union(cls, working_set, resolved_set):
+        """
+        DO NOT IMPLEMENT UNLESS NEEDED, USE INDEAD cls.resolve()
+
+        Take the intersection of the (field, value) set and the current working_set.
+        This OP will merge the two sets and return all items found in either set.
+        Set union is symmetric and the order does not matter.
+
+        This function returns (A | B), where:
+            A = set(working_set)
+            B = set(resolved_set) = set(resolve(field, value))
+        """
+        return working_set | resolved_set
+
+    @classmethod
+    def intersection(cls, working_set, resolved_set):
+        """
+        DO NOT IMPLEMENT UNLESS NEEDED, USE INDEAD cls.resolve()
+
+        Take the intersection of the (field, value) set and the current working_set.
+        This OP will compare the two sets and return only the items found in both.
+        Set intersection is symmetric and the order does not matter.
+
+        This function returns (A & B), where:
+            A = set(working_set)
+            B = set(resolved_set) = set(resolve(field, value))
+        """
+        return working_set & resolved_set
+
+    @classmethod
+    def difference(cls, working_set, resolved_set):
+        """
+        DO NOT IMPLEMENT UNLESS NEEDED, USE INDEAD cls.resolve()
+
+        Take the difference of the (field, value) set and the current working_set.
+        Set difference is NOT symmetric and is directional (the order does matter).
+        This OP will compare the two sets and return only the items in A that are not in B.
+
+        This function returns (A - B), where:
+            A = set(working_set)
+            B = set(resolved_set) = set(resolve(field, value))
+        """
+        return working_set - resolved_set
+
+    @classmethod
+    def mirrored_difference(cls, working_set, resolved_set):
+        """
+        DO NOT IMPLEMENT UNLESS NEEDED, USE INDEAD cls.difference()
+
+        Take the difference of the (field, value) set and the current working_set.
+        Set difference is NOT symmetric and is directional (the order does matter).
+        This OP will compare the two sets and return only the items in B that are not in A.
+
+        This function returns (B - A), where:
+            A = set(working_set)
+            B = set(resolved_set) = set(resolve(field, value))
+        """
+        return cls.difference(resolved_set, working_set)
+
+    @classmethod
+    def symmetric_difference(cls, working_set, resolved_set):
+        """
+        DO NOT IMPLEMENT UNLESS NEEDED, USE INDEAD cls.union(), cls.intersection(), and cls.difference()
+
+        Take the symmetric difference of the (field, value) set and the current working_set.
+        Set difference is symmetric and the order does not matter.
+        This OP will compare the two sets and return only the items in A or B but not items in A and B.
+
+        This function returns (A ^ B) or (A | B) − (A & B), where:
+            A = set(working_set)
+            B = set(resolved_set) = set(resolve(field, value))
+        """
+        term_union = cls.union(working_set, resolved_set)
+        term_intersection = cls.intersection(working_set, resolved_set)
+        term_diff = cls.difference(term_union, term_intersection)
+        return term_diff

@@ -57,6 +57,7 @@ if is_extension_enabled('edm'):
             # Functions
             'organizations'         : '_process_edm_user_organization',
             'profileImageUrl'       : '_process_edm_user_profile_url',
+            'roles'                 : '_process_edm_user_roles',
         }
         # fmt: on
 
@@ -74,13 +75,28 @@ if is_extension_enabled('edm'):
                     password=password,
                     version=None,
                     is_active=True,
-                    in_alpha=True,
+                    in_alpha=False,
+                    # contributor assumed true for all migrated edm; rest are set based on roles later
+                    is_contributor=True,
+                    is_researcher=False,
+                    is_user_manager=False,
                 )
                 with db.session.begin():
                     db.session.add(user)
                 db.session.refresh(user)
 
             return user, is_new
+
+        def _process_edm_user_roles(self, roles):
+            if not roles or not isinstance(roles, list):
+                return
+            if 'researcher' in roles:
+                log.info('researcher role found, setting is_researcher')
+                self.is_researcher = True
+            if 'manager' in roles:
+                log.info('manager role found, setting is_user_manager, is_data_manager')
+                self.is_user_manager = True
+                self.is_data_manager = True
 
         def _process_edm_user_profile_url(self, url):
             # TODO is this actually needed
@@ -89,6 +105,7 @@ if is_extension_enabled('edm'):
         def _process_edm_user_organization(self, org):
             # TODO is this actually needed
             log.warning('User._process_edm_user_organization() not implemented yet')
+
 
 else:
     UserEDMMixin = object

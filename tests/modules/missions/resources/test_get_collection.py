@@ -28,10 +28,12 @@ def test_get_mission_collection_by_search(flask_app_client, data_manager_1, test
         flask_app_client, data_manager_1
     )
 
+    transaction_ids = []
     new_mission_collections = []
     for index in range(3):
         transaction_id = str(random_guid())
         tus_utils.prep_tus_dir(test_root, transaction_id=transaction_id)
+        transaction_ids.append(transaction_id)
 
         nonce = random_nonce(8)
         description = 'This is a test mission collection (%s), please ignore' % (nonce,)
@@ -124,3 +126,6 @@ def test_get_mission_collection_by_search(flask_app_client, data_manager_1, test
 
     # Delete mission
     mission_utils.delete_mission(flask_app_client, data_manager_1, temp_mission.guid)
+
+    for transaction_id in transaction_ids:
+        tus_utils.cleanup_tus_dir(transaction_id)

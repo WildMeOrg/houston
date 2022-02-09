@@ -22,7 +22,9 @@ def test_create_and_delete_mission_task(flask_app_client, data_manager_1, test_r
     )
 
     transaction_id, test_filename = tus_utils.prep_tus_dir(test_root)
-    mission_guid, mission_collection_guid = None, None
+    transaction_ids = []
+    transaction_ids.append(transaction_id)
+    mission_guid = None
 
     try:
         response = mission_utils.create_mission(
@@ -39,6 +41,7 @@ def test_create_and_delete_mission_task(flask_app_client, data_manager_1, test_r
         for index in range(3):
             transaction_id = str(random_guid())
             tus_utils.prep_tus_dir(test_root, transaction_id=transaction_id)
+            transaction_ids.append(transaction_id)
 
             nonce = random_nonce(8)
             description = 'This is a test mission collection (%s), please ignore' % (
@@ -109,13 +112,10 @@ def test_create_and_delete_mission_task(flask_app_client, data_manager_1, test_r
         ).all()
         assert len(read_mission_task) == 0
     finally:
-        if mission_collection_guid:
-            mission_utils.delete_mission_collection(
-                flask_app_client, data_manager_1, mission_collection_guid
-            )
         if mission_guid:
             mission_utils.delete_mission(flask_app_client, data_manager_1, mission_guid)
-        tus_utils.cleanup_tus_dir(transaction_id)
+        for transaction_id in transaction_ids:
+            tus_utils.cleanup_tus_dir(transaction_id)
 
 
 @pytest.mark.skipif(module_unavailable('missions'), reason='Missions module disabled')
@@ -134,7 +134,9 @@ def test_mission_task_permission(
     )
 
     transaction_id, test_filename = tus_utils.prep_tus_dir(test_root)
-    mission_guid, mission_collection_guid = None, None
+    transaction_ids = []
+    transaction_ids.append(transaction_id)
+    mission_guid = None
 
     try:
         response = mission_utils.create_mission(
@@ -151,6 +153,7 @@ def test_mission_task_permission(
         for index in range(3):
             transaction_id = str(random_guid())
             tus_utils.prep_tus_dir(test_root, transaction_id=transaction_id)
+            transaction_ids.append(transaction_id)
 
             nonce = random_nonce(8)
             description = 'This is a test mission collection (%s), please ignore' % (
@@ -234,10 +237,185 @@ def test_mission_task_permission(
             flask_app_client, data_manager_1, mission_task_guid
         )
     finally:
-        if mission_collection_guid:
-            mission_utils.delete_mission_collection(
-                flask_app_client, data_manager_1, mission_collection_guid
-            )
         if mission_guid:
             mission_utils.delete_mission(flask_app_client, data_manager_1, mission_guid)
-        tus_utils.cleanup_tus_dir(transaction_id)
+        for transaction_id in transaction_ids:
+            tus_utils.cleanup_tus_dir(transaction_id)
+
+
+@pytest.mark.skipif(module_unavailable('missions'), reason='Missions module disabled')
+def test_set_operation_permission(
+    flask_app_client,
+    admin_user,
+    staff_user,
+    regular_user,
+    data_manager_1,
+    data_manager_2,
+    test_root,
+):
+    from app.modules.missions.models import (
+        Mission,
+        MissionCollection,
+        MissionTask,
+    )
+
+    transaction_id, test_filename = tus_utils.prep_tus_dir(test_root)
+    transaction_ids = []
+    transaction_ids.append(transaction_id)
+    mission_guid_1, mission_guid_2 = None, None
+
+    try:
+        # Mission 1
+        nonce = random_nonce(8)
+        response = mission_utils.create_mission(
+            flask_app_client,
+            data_manager_1,
+            'This is a test mission (%s), please ignore' % (nonce,),
+        )
+        mission_guid_1 = response.json['guid']
+        temp_mission_1 = Mission.query.get(mission_guid_1)
+
+        previous_list = mission_utils.read_all_mission_collections(
+            flask_app_client, data_manager_1
+        )
+
+        new_mission_collections_1 = []
+        for index in range(3):
+            transaction_id = str(random_guid())
+            tus_utils.prep_tus_dir(test_root, transaction_id=transaction_id)
+            transaction_ids.append(transaction_id)
+
+            nonce = random_nonce(8)
+            description = 'This is a test mission collection (%s), please ignore' % (
+                nonce,
+            )
+            response = mission_utils.create_mission_collection_with_tus(
+                flask_app_client,
+                data_manager_1,
+                description,
+                transaction_id,
+                temp_mission_1.guid,
+            )
+            mission_collection_guid = response.json['guid']
+            temp_mission_collection = MissionCollection.query.get(mission_collection_guid)
+
+            new_mission_collections_1.append((nonce, temp_mission_collection))
+
+        current_list = mission_utils.read_all_mission_collections(
+            flask_app_client, data_manager_1
+        )
+        assert len(previous_list.json) + len(new_mission_collections_1) == len(
+            current_list.json
+        )
+
+        # Mission 2
+        nonce = random_nonce(8)
+        response = mission_utils.create_mission(
+            flask_app_client,
+            data_manager_1,
+            'This is a test mission (%s), please ignore' % (nonce,),
+        )
+        mission_guid_2 = response.json['guid']
+        temp_mission_2 = Mission.query.get(mission_guid_2)
+
+        previous_list = mission_utils.read_all_mission_collections(
+            flask_app_client, data_manager_1
+        )
+
+        new_mission_collections_2 = []
+        for index in range(3):
+            transaction_id = str(random_guid())
+            tus_utils.prep_tus_dir(test_root, transaction_id=transaction_id)
+            transaction_ids.append(transaction_id)
+
+            nonce = random_nonce(8)
+            description = 'This is a test mission collection (%s), please ignore' % (
+                nonce,
+            )
+            response = mission_utils.create_mission_collection_with_tus(
+                flask_app_client,
+                data_manager_1,
+                description,
+                transaction_id,
+                temp_mission_2.guid,
+            )
+            mission_collection_guid = response.json['guid']
+            temp_mission_collection = MissionCollection.query.get(mission_collection_guid)
+
+            new_mission_collections_2.append((nonce, temp_mission_collection))
+
+        current_list = mission_utils.read_all_mission_collections(
+            flask_app_client, data_manager_1
+        )
+        assert len(previous_list.json) + len(new_mission_collections_2) == len(
+            current_list.json
+        )
+
+        # Make a valid MissionTask
+        nonce, new_mission_collection1 = new_mission_collections_1[0]
+        nonce, new_mission_collection2 = new_mission_collections_1[1]
+        data = [
+            utils.set_union_op('search', 'does-not-work'),
+            utils.set_difference_op('collections', [str(new_mission_collection1.guid)]),
+            utils.set_difference_op(
+                'assets', [str(new_mission_collection2.assets[0].guid)]
+            ),
+        ]
+
+        response = mission_utils.create_mission_task(
+            flask_app_client, data_manager_1, mission_guid_1, data
+        )
+        mission_task_guid = response.json['guid']
+        mission_task = MissionTask.query.get(mission_task_guid)
+        assert mission_task.mission == temp_mission_1
+
+        # Ensure that a MissionTask cannot be created with another Mission's Collections
+        nonce, new_mission_collection1 = new_mission_collections_2[0]
+        nonce, new_mission_collection2 = new_mission_collections_2[1]
+        data = [
+            utils.set_union_op('collections', [str(new_mission_collection1.guid)]),
+        ]
+
+        response = mission_utils.create_mission_task(
+            flask_app_client,
+            data_manager_1,
+            mission_guid_1,
+            data,
+            expected_status_code=409,
+        )
+
+        # Ensure that a MissionTask cannot be created with another Mission's Assets
+        data = [
+            utils.set_union_op('assets', [str(new_mission_collection1.assets[0].guid)]),
+        ]
+        response = mission_utils.create_mission_task(
+            flask_app_client,
+            data_manager_1,
+            mission_guid_1,
+            data,
+            expected_status_code=409,
+        )
+
+        # Ensure that a MissionTask cannot be created with a copy from another Mission's Task
+        data = [
+            utils.set_union_op('tasks', [str(mission_task.guid)]),
+        ]
+        response = mission_utils.create_mission_task(
+            flask_app_client,
+            data_manager_1,
+            mission_guid_2,
+            data,
+            expected_status_code=409,
+        )
+
+        # delete it
+        mission_utils.delete_mission_task(
+            flask_app_client, data_manager_1, mission_task_guid
+        )
+    finally:
+        if mission_guid_1:
+            mission_utils.delete_mission(flask_app_client, data_manager_1, mission_guid_1)
+        if mission_guid_2:
+            mission_utils.delete_mission(flask_app_client, data_manager_1, mission_guid_2)
+        for transaction_id in transaction_ids:
+            tus_utils.cleanup_tus_dir(transaction_id)

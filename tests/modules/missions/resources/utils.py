@@ -236,6 +236,25 @@ def create_mission_task(
     return response
 
 
+def update_mission_task(
+    flask_app_client, user, mission_task_guid, data, expected_status_code=200
+):
+    with flask_app_client.login(user, auth_scopes=('missions:write',)):
+        response = flask_app_client.post(
+            '%s%s' % (PATH_MISSION_TASKS, mission_task_guid),
+            content_type='application/json',
+            data=json.dumps(data),
+        )
+
+    if expected_status_code == 200:
+        test_utils.validate_dict_response(response, 200, {'guid', 'title'})
+    else:
+        test_utils.validate_dict_response(
+            response, expected_status_code, {'status', 'message'}
+        )
+    return response
+
+
 def patch_mission_task(
     flask_app_client, mission_task_guid, user, data, expected_status_code=200
 ):

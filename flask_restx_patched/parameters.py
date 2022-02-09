@@ -398,8 +398,8 @@ class SetOperationsJSONParameters(Parameters):
     This implementation is designed to mirror the PATCH arguments according to RFC 6902.
     """
 
-    OP_UNION = ['union', 'and', '&']
-    OP_INTERSECTION = ['intersection', 'intersect', 'or', '|']
+    OP_UNION = ['union', 'or', '|']
+    OP_INTERSECTION = ['intersection', 'intersect', 'and', '&']
     OP_DIFFERENCE = ['difference', 'diff', '-', '->']
     OP_MIRRORED_DIFFERENCE = ['mirrored_difference', 'mirdiff', '--', '<-']
     OP_SYMMETRIC_DIFFERENCE = ['symmetric_difference', 'symmetric', 'symdiff', 'sym', '^']

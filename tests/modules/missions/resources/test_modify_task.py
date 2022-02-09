@@ -22,7 +22,9 @@ def test_modify_mission_task_users(
     )
 
     transaction_id, test_filename = tus_utils.prep_tus_dir(test_root)
-    mission_guid, mission_collection_guid = None, None
+    transaction_ids = []
+    transaction_ids.append(transaction_id)
+    mission_guid = None
 
     try:
         response = mission_utils.create_mission(
@@ -39,6 +41,7 @@ def test_modify_mission_task_users(
         for index in range(3):
             transaction_id = str(random_guid())
             tus_utils.prep_tus_dir(test_root, transaction_id=transaction_id)
+            transaction_ids.append(transaction_id)
 
             nonce = random_nonce(8)
             description = 'This is a test mission collection (%s), please ignore' % (
@@ -77,6 +80,7 @@ def test_modify_mission_task_users(
             flask_app_client, data_manager_1, mission_guid, data
         )
         mission_task_guid = response.json['guid']
+        assert len(response.json['assets']) == 1
 
         mission_task = MissionTask.query.get(mission_task_guid)
         assert len(mission_task.get_members()) == 1
@@ -99,17 +103,22 @@ def test_modify_mission_task_users(
         )
         assert len(mission_task.get_members()) == 1
 
+        data = [
+            utils.set_union_op('assets', [str(new_mission_collection2.assets[0].guid)]),
+        ]
+        response = mission_utils.update_mission_task(
+            flask_app_client, data_manager_1, mission_task_guid, data
+        )
+        assert len(response.json['assets']) == 2
+
         mission_utils.delete_mission_task(
             flask_app_client, data_manager_1, mission_task_guid
         )
     finally:
-        if mission_collection_guid:
-            mission_utils.delete_mission_collection(
-                flask_app_client, data_manager_1, mission_collection_guid
-            )
         if mission_guid:
             mission_utils.delete_mission(flask_app_client, data_manager_1, mission_guid)
-        tus_utils.cleanup_tus_dir(transaction_id)
+        for transaction_id in transaction_ids:
+            tus_utils.cleanup_tus_dir(transaction_id)
 
 
 @pytest.mark.skipif(module_unavailable('missions'), reason='Missions module disabled')
@@ -120,7 +129,9 @@ def test_owner_permission(flask_app_client, data_manager_1, data_manager_2, test
     )
 
     transaction_id, test_filename = tus_utils.prep_tus_dir(test_root)
-    mission_guid, mission_collection_guid = None, None
+    transaction_ids = []
+    transaction_ids.append(transaction_id)
+    mission_guid = None
 
     try:
         response = mission_utils.create_mission(
@@ -137,6 +148,7 @@ def test_owner_permission(flask_app_client, data_manager_1, data_manager_2, test
         for index in range(3):
             transaction_id = str(random_guid())
             tus_utils.prep_tus_dir(test_root, transaction_id=transaction_id)
+            transaction_ids.append(transaction_id)
 
             nonce = random_nonce(8)
             description = 'This is a test mission collection (%s), please ignore' % (
@@ -226,10 +238,7 @@ def test_owner_permission(flask_app_client, data_manager_1, data_manager_2, test
             flask_app_client, data_manager_1, mission_task_guid
         )
     finally:
-        if mission_collection_guid:
-            mission_utils.delete_mission_collection(
-                flask_app_client, data_manager_1, mission_collection_guid
-            )
         if mission_guid:
             mission_utils.delete_mission(flask_app_client, data_manager_1, mission_guid)
-        tus_utils.cleanup_tus_dir(transaction_id)
+        for transaction_id in transaction_ids:
+            tus_utils.cleanup_tus_dir(transaction_id)

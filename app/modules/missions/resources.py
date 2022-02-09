@@ -20,6 +20,7 @@ from app.modules.users.permissions.types import AccessOperation
 from app.modules.assets.schemas import DetailedAssetTableSchema
 from . import parameters, schemas
 from .models import Mission, MissionCollection, MissionTask
+from marshmallow import ValidationError
 import randomname
 
 from app.utils import HoustonException
@@ -327,9 +328,12 @@ class MissionTasksForMission(Resource):
         """
         from app.modules.assets.models import Asset
 
-        asset_set = parameters.CreateMissionTaskParameters.perform_set_operations(
-            args, obj=mission, obj_cls=Asset
-        )
+        try:
+            asset_set = parameters.CreateMissionTaskParameters.perform_set_operations(
+                args, obj=mission, obj_cls=Asset
+            )
+        except ValidationError as exception:
+            abort(409, message=str(exception))
 
         context = api.commit_or_abort(
             db.session, default_error_message='Failed to create a new MissionTask'
@@ -651,10 +655,13 @@ class MissionTaskByID(Resource):
         """
         from app.modules.assets.models import Asset
 
-        starting_set = mission_task.assets
-        asset_set = parameters.CreateMissionTaskParameters.perform_set_operations(
-            args, obj=mission_task.mission, obj_cls=Asset, starting_set=starting_set
-        )
+        starting_set = set(mission_task.assets)
+        try:
+            asset_set = parameters.CreateMissionTaskParameters.perform_set_operations(
+                args, obj=mission_task.mission, obj_cls=Asset, starting_set=starting_set
+            )
+        except ValidationError as exception:
+            abort(409, message=str(exception))
 
         context = api.commit_or_abort(
             db.session, default_error_message='Failed to create a new MissionTask'

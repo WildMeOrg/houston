@@ -23,7 +23,9 @@ def test_get_mission_task_by_search(flask_app_client, data_manager_1, test_root)
     )
 
     transaction_id, test_filename = tus_utils.prep_tus_dir(test_root)
-    mission_guid, mission_collection_guid = None, None
+    transaction_ids = []
+    transaction_ids.append(transaction_id)
+    mission_guid = None
 
     try:
         response = mission_utils.create_mission(
@@ -44,6 +46,7 @@ def test_get_mission_task_by_search(flask_app_client, data_manager_1, test_root)
         for index in range(3):
             transaction_id = str(random_guid())
             tus_utils.prep_tus_dir(test_root, transaction_id=transaction_id)
+            transaction_ids.append(transaction_id)
 
             nonce = random_nonce(8)
             description = 'This is a test mission collection (%s), please ignore' % (
@@ -151,10 +154,8 @@ def test_get_mission_task_by_search(flask_app_client, data_manager_1, test_root)
                 flask_app_client, data_manager_1, new_mission_task.guid
             )
     finally:
-        if mission_collection_guid:
-            mission_utils.delete_mission_collection(
-                flask_app_client, data_manager_1, mission_collection_guid
-            )
         if mission_guid:
             mission_utils.delete_mission(flask_app_client, data_manager_1, mission_guid)
-        tus_utils.cleanup_tus_dir(transaction_id)
+
+        for transaction_id in transaction_ids:
+            tus_utils.cleanup_tus_dir(transaction_id)

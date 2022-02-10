@@ -228,12 +228,24 @@ def test_new_user_creation_roles_admin(flask_app_client, admin_user, db):
             must_succeed=False,
         )
 
+    valid_roles = (
+        'is_interpreter, is_data_manager, is_user_manager, '
+        'is_contributor, is_researcher, is_exporter, is_admin, is_active, in_alpha, in_beta'
+    )
     assert response.status_code == 422
     assert response.content_type == 'application/json'
     assert response.json == {
         'status': 422,
-        'message': 'invalid roles: is_researcher2.  Valid roles are is_interpreter, is_data_manager, is_user_manager, is_contributor, is_researcher, is_exporter, is_internal, is_admin, is_staff, is_active, in_alpha, in_beta',
+        'message': f'invalid roles: is_researcher2.  Valid roles are {valid_roles}',
     }
+
+    data = {
+        'email': 'user1@localhost',
+        'password': 'password',
+        'roles': ['in_alpha', 'is_admin', 'is_researcher', 'is_staff'],
+    }
+    error = f'invalid roles: is_staff.  Valid roles are {valid_roles}'
+    user_utils.create_user(flask_app_client, admin_user, data, 422, error)
 
     with flask_app_client.login(admin_user):
         response = create_new_user(

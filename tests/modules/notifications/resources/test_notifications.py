@@ -198,7 +198,7 @@ def test_notification_preferences(
         ),
     ]
 
-    resp = user_utils.patch_user(flask_app_client, researcher_2, data)
+    resp = user_utils.patch_user(flask_app_client, researcher_2, researcher_2, data)
     assert set(resp.json['notification_preferences']) >= set(
         {'raw': {'restAPI': True, 'email': True}}
     )
@@ -220,7 +220,7 @@ def test_notification_preferences(
             'notification_preferences', {'all': {'restAPI': False, 'email': False}}
         )
     ]
-    user_utils.patch_user(flask_app_client, researcher_2, data)
+    user_utils.patch_user(flask_app_client, researcher_2, researcher_2, data)
     researcher_2_notifs = notif_utils.read_all_notifications(
         flask_app_client, researcher_2
     )
@@ -239,7 +239,7 @@ def test_notification_preferences(
             'notification_preferences', {'all': {'restAPI': True, 'email': False}}
         ),
     ]
-    user_utils.patch_user(flask_app_client, researcher_2, data)
+    user_utils.patch_user(flask_app_client, researcher_2, researcher_2, data)
     researcher_2_notifs = notif_utils.read_all_notifications(
         flask_app_client, researcher_2
     )

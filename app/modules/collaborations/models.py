@@ -162,7 +162,6 @@ class Collaboration(db.Model, HoustonModel):
             with db.session.begin(subtransactions=True):
                 db.session.add(collab_creator)
 
-
     def _get_association_for_user(self, user_guid):
         assoc = None
         for association in self.collaboration_user_associations:
@@ -233,7 +232,11 @@ class Collaboration(db.Model, HoustonModel):
                     )
 
     def _notify_user(self, sending_user_assoc, receiving_user_assoc, notification_type):
-        from app.modules.notifications.models import Notification, NotificationBuilder, NotificationType
+        from app.modules.notifications.models import (
+            Notification,
+            NotificationBuilder,
+            NotificationType,
+        )
 
         builder = NotificationBuilder(sending_user_assoc.user)
         builder.set_collaboration(self)
@@ -263,6 +266,7 @@ class Collaboration(db.Model, HoustonModel):
 
     def _resolve_notification(self, notification_guid):
         from app.modules.notifications.models import Notification
+
         notification = Notification.query.get(notification_guid)
         notification.is_resolved = True
         with db.session.begin():

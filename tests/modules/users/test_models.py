@@ -5,6 +5,7 @@ import pytest
 
 from app.modules.users import models
 from tests import utils
+from tests.utils import extension_unavailable
 
 
 def test_User_repr(user_instance):

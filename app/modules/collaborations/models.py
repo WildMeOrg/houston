@@ -92,11 +92,15 @@ class Collaboration(db.Model, HoustonModel):
     initiator_guid = db.Column(
         db.GUID, db.ForeignKey('user.guid'), index=True, nullable=False
     )
-    init_req_notification_guuid = db.Column(db.GUID, db.ForeignKey('notification.guid'), primary_key=True)
+    init_req_notification_guuid = db.Column(
+        db.GUID, db.ForeignKey('notification.guid'), primary_key=True
+    )
     edit_initiator_guid = db.Column(
         db.GUID, db.ForeignKey('user.guid'), index=True, nullable=True
     )
-    edit_req_notification_guuid = db.Column(db.GUID, db.ForeignKey('notification.guid'), primary_key=True)
+    edit_req_notification_guuid = db.Column(
+        db.GUID, db.ForeignKey('notification.guid'), primary_key=True
+    )
 
     def __init__(self, members, initiator_user, **kwargs):
 
@@ -229,11 +233,34 @@ class Collaboration(db.Model, HoustonModel):
         builder.set_collaboration(self)
         notif = Notification.create(notification_type, receiving_user_assoc.user, builder)
 
+        # in these notification states, every notification is considered to have been read/resolved
+        # if the state is just .collab_approved, edit might be pending so it isn't fully resolved
+        fully_resolved_notification_states = {
+            NotificationType.collab_edit_approved,
+            NotificationType.collab_edit_revoke,
+            NotificationType.collab_revoke,
+        }
+
         if notification_type is NotificationType.collab_request:
             self.read_req_notification_guuid = notif.guid
         elif notification_type is NotificationType.collab_edit_request:
             self.edit_req_notification_guuid = notif.guid
+        # set necessary notification.is_resolved fields
+        elif notification_type is NotificationType.collab_approved:
+            if self.read_req_notification_guuid:
+                self._resolve_notification(self, self.read_req_notification_guuid)
+        elif notification_type in fully_resolved_notification_states:
+            if self.read_req_notification_guuid:
+                self._resolve_notification(self, self.read_req_notification_guuid)
+            if self.edit_req_notification_guuid:
+                self._resolve_notification(self, self.edit_req_notification_guuid)
 
+    def _resolve_notification(self, notification_guid):
+        from app.modules.notifications.models import Notification
+        notification = Notification.query.get(notifaction_guid)
+        notification.is_resolved = True
+        with db.session.begin():
+            db.session.merge(notification)
 
     def get_user_data_as_json(self):
         from app.modules.users.schemas import BaseUserSchema

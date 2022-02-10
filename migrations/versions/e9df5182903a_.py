@@ -1,8 +1,8 @@
 """empty message
 
-Revision ID: 2530e554b6e3
-Revises: 3fc0b28658aa
-Create Date: 2022-02-08 15:46:40.905837
+Revision ID: e9df5182903a
+Revises: e492faa9e63a
+Create Date: 2022-02-10 00:46:18.247165
 
 """
 from alembic import op
@@ -16,8 +16,8 @@ import app.extensions
 
 
 # revision identifiers, used by Alembic.
-revision = '2530e554b6e3'
-down_revision = '3fc0b28658aa'
+revision = 'e9df5182903a'
+down_revision = 'e492faa9e63a'
 
 
 def upgrade():

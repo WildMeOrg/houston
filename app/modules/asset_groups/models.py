@@ -572,7 +572,9 @@ class AssetGroupSighting(db.Model, HoustonModel):
 
         job = self.jobs.get(str(job_id))
         if job is None:
-            raise HoustonException(log, f'job_id {job_id} not found')
+            raise HoustonException(
+                log, f'job_id {job_id} not found, self.jobs={self.jobs}'
+            )
 
         status = response.get('status')
         if not status:

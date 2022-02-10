@@ -9,8 +9,10 @@ import logging
 
 from flask_restx_patched import Resource
 from flask_restx._http import HTTPStatus
+from flask_login import current_user
 
 from app.extensions.api import Namespace
+from app.extensions.logging import Logging as AuditExt
 from app.modules.users import permissions
 from app.modules.users.permissions.types import AccessOperation
 
@@ -40,37 +42,56 @@ class AuditLogs(Resource):
     @api.parameters(GetAuditLogParameters())
     def get(self, args):
         """
-        List of AuditLog.
+        List of AuditLogs.
 
-        This is the list of module names and the guids for the module objects for which there are audit logs
+        This is the list of the last N audit logs
         """
+        from sqlalchemy import desc
+
         if 'module_name' in args:
             all_logs = (
                 AuditLog.query.filter_by(module_name=args['module_name'])
-                .order_by(AuditLog.created)
+                .order_by(desc(AuditLog.created))
+                .offset(args['offset'])
+                .limit(args['limit'])
                 .all()
             )
         else:
-            all_logs = AuditLog.query.order_by(AuditLog.created).all()
+            all_logs = (
+                AuditLog.query.order_by(desc(AuditLog.created))
+                .offset(args['offset'])
+                .limit(args['limit'])
+                .all()
+            )
 
-        # all_logs is now the logs of interest ordered by the time created, oldest first.
-        # What we actually want to return the 'limit' name and item uuid values for the most recently audited items.
-        # So we need to reverse all_logs first
-        unique_logs = []
-        for log_entry in reversed(all_logs):
+        # all_logs is now the logs of interest ordered by the time created, youngest first.
+        # What we actually want to return the data with oldest first so we need to reverse all_logs first
+        returned_data = []
+        for log_item in reversed(all_logs):
 
-            name_and_guid = {
-                'module_name': log_entry.module_name,
-                'item_guid': log_entry.item_guid,
+            # This means that non staff users will get less than limit each time
+            if (
+                log_item.audit_type == AuditExt.AuditType.HoustonFault
+                or log_item.audit_type == AuditExt.AuditType.BackEndFault
+                or log_item.audit_type == AuditExt.AuditType.FrontEndFault
+            ):
+                if not current_user.is_privileged:
+                    # Non privileged users don't see faults
+                    continue
+
+            data = {
+                'timestamp': log_item.created,
+                'type': log_item.audit_type,
+                'executor': log_item.user_email,
+                'duration': log_item.duration,
+                'module_name': log_item.module_name,
+                'item_guid': log_item.item_guid,
+                'message': log_item.message,
             }
-            if name_and_guid not in unique_logs and name_and_guid != {
-                'module_name': None,
-                'item_guid': None,
-            }:
-                unique_logs.append(name_and_guid)
 
-        # Need to manually apply offset and limit after the unique list is created
-        return unique_logs[args['offset'] : args['limit'] - args['offset']]
+            returned_data.append(data)
+
+        return returned_data
 
 
 @api.route('/<uuid:audit_log_guid>')

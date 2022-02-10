@@ -93,13 +93,13 @@ class Collaboration(db.Model, HoustonModel):
         db.GUID, db.ForeignKey('user.guid'), index=True, nullable=False
     )
     init_req_notification_guuid = db.Column(
-        db.GUID, db.ForeignKey('notification.guid'), primary_key=True
+        db.GUID, db.ForeignKey('notification.guid'), nullable=True
     )
     edit_initiator_guid = db.Column(
         db.GUID, db.ForeignKey('user.guid'), index=True, nullable=True
     )
     edit_req_notification_guuid = db.Column(
-        db.GUID, db.ForeignKey('notification.guid'), primary_key=True
+        db.GUID, db.ForeignKey('notification.guid'), nullable=True
     )
 
     def __init__(self, members, initiator_user, **kwargs):

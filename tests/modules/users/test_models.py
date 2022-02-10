@@ -168,6 +168,7 @@ def test_User_must_have_password():
         print(user)
 
 
+@pytest.mark.skipif(extension_unavailable('edm'), reason='EDM extension disabled')
 def test_edm_migration_roles(user_instance):
     assert not user_instance.is_researcher
     assert not user_instance.is_user_manager

@@ -166,3 +166,25 @@ def test_User_must_have_password():
     with pytest.raises(ValueError, match='User must have a password'):
         user = models.User(email='user1@localhost', full_name='Lord Lucan')
         print(user)
+
+
+def test_edm_migration_roles(user_instance):
+    assert not user_instance.is_researcher
+    assert not user_instance.is_user_manager
+    assert not user_instance.is_data_manager
+    user_instance._process_edm_user_roles(None)
+    assert not user_instance.is_researcher
+    assert not user_instance.is_user_manager
+    assert not user_instance.is_data_manager
+    user_instance._process_edm_user_roles(['fubar'])
+    assert not user_instance.is_researcher
+    assert not user_instance.is_user_manager
+    assert not user_instance.is_data_manager
+    user_instance._process_edm_user_roles(['researcher'])
+    assert user_instance.is_researcher
+    assert not user_instance.is_user_manager
+    assert not user_instance.is_data_manager
+    user_instance._process_edm_user_roles(['manager'])
+    assert user_instance.is_researcher
+    assert user_instance.is_user_manager
+    assert user_instance.is_data_manager

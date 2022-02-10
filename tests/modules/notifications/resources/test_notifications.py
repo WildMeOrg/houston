@@ -56,7 +56,7 @@ def test_get_notifications(
     # it has been told to send one
     notif_to_researcher_2_data = NotificationBuilder(researcher_1)
     members = [researcher_1, researcher_2]
-    basic_collab = Collaboration(members, researcher_2)
+    basic_collab = Collaboration(members, researcher_2, notify_users=False)
     request.addfinalizer(basic_collab.delete)
 
     notif_to_researcher_2_data.set_collaboration(basic_collab)
@@ -131,14 +131,10 @@ def test_patch_notification(
     notif_utils.mark_all_notifications_as_read(flask_app_client, researcher_2)
     notif_utils.mark_all_notifications_as_read(flask_app_client, user_manager_user)
 
-    # Create a dummy one
-    notif_1_data = NotificationBuilder(researcher_1)
     members = [researcher_1, researcher_2]
-    basic_collab = Collaboration(members, researcher_2)
+    # Collaboration takes the _sender_ as arg
+    basic_collab = Collaboration(members, researcher_1)
     request.addfinalizer(basic_collab.delete)
-    notif_1_data.set_collaboration(basic_collab)
-
-    Notification.create(NotificationType.collab_request, researcher_2, notif_1_data)
 
     researcher_2_unread_notifs = notif_utils.read_all_unread_notifications(
         flask_app_client, researcher_2
@@ -179,6 +175,12 @@ def test_patch_notification(
     # an approval _should_ automatically resolve on reading
     assert approved_notif.json['is_resolved']
 
+    # now that it's approved, the initial request
+    collab_request_notif = notif_utils.read_notification(
+        flask_app_client, researcher_2, notif_guid
+    )
+    assert collab_request_notif.json['is_resolved']
+
 
 @pytest.mark.skipif(
     module_unavailable('collaborations'), reason='Collaborations module disabled'
@@ -190,7 +192,7 @@ def test_notification_preferences(
 
     notif_1_data = NotificationBuilder(researcher_1)
     members = [researcher_1, researcher_2]
-    basic_collab = Collaboration(members, researcher_2)
+    basic_collab = Collaboration(members, researcher_2, notify_users=False)
     request.addfinalizer(basic_collab.delete)
     notif_1_data.set_collaboration(basic_collab)
 

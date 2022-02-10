@@ -226,6 +226,9 @@ def test_get_data_and_voting(
             'blocking_encounters',
         },
     )
+    # from tests.modules.notifications.resources import utils as notif_utils
+    # res1_notifs = notif_utils.read_all_notifications(flask_app_client, researcher_1)
+    # breakpoint()
     assert response['merge_request']
     assert response['blocking_encounters'] == [encounter1_id]
     request_id = response.get('request_id')

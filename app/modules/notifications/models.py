@@ -186,7 +186,8 @@ class NotificationBuilder(object):
     def set_individual_merge(self, individuals, encounters, request_data):
         self.data['individual_list'] = []
         for indiv in individuals:
-            self.data['individual_list'].append(indiv.guid)
+            ind_data = {'guid': indiv.guid, 'primaryName': indiv.get_primary_name()}
+            self.data['individual_list'].append(ind_data)
         self.data['encounter_list'] = []
         for enc in encounters:
             self.data['encounter_list'].append(enc.guid)

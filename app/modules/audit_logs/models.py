@@ -39,7 +39,7 @@ class AuditLog(db.Model, Timestamp):
     def __repr__(self):
         return (
             '<{class_name}('
-            'guid={self.guid}, '
+            'audit_type={self.audit_type}, '
             "module ='{self.module_name}', "
             'item_guid={self.item_guid}, '
             ')>'.format(class_name=self.__class__.__name__, self=self)

@@ -12,7 +12,7 @@ from tests.utils import module_unavailable
     module_unavailable('asset_groups'), reason='AssetGroups module disabled'
 )
 def test_audit_asset_group_creation(
-    flask_app_client, researcher_1, contributor_1, test_root, db
+    flask_app_client, researcher_1, contributor_1, admin_user, test_root, db
 ):
     # pylint: disable=invalid-name
     from tests.modules.asset_groups.resources.utils import AssetGroupCreationData
@@ -39,26 +39,32 @@ def test_audit_asset_group_creation(
         sighting = Sighting.query.get(sighting_uuid)
         audit_utils.read_all_audit_logs(flask_app_client, contributor_1, 403)
 
-        expected_sighting = {'module_name': 'Sighting', 'item_guid': sighting_uuid}
+        expected_sighting = {
+            'audit_type': 'User Create',
+            'module_name': 'Sighting',
+            'item_guid': sighting_uuid,
+            'user_email': researcher_1.email
+        }
         expected_encounter = {
+            'audit_type': 'User Create',
             'module_name': 'Encounter',
             'item_guid': str(sighting.encounters[0].guid),
+            'user_email': researcher_1.email
         }
 
         sighting_audit_items = audit_utils.read_all_audit_logs(
-            flask_app_client, researcher_1, module_name='Sighting'
+            flask_app_client, admin_user, module_name='Sighting'
         )
-        assert expected_sighting in sighting_audit_items.json
-        assert expected_encounter not in sighting_audit_items.json
+
+        assert set(expected_sighting) <= set(sighting_audit_items.json[-1])
         encounter_audit_items = audit_utils.read_all_audit_logs(
-            flask_app_client, researcher_1, module_name='Encounter'
+            flask_app_client, admin_user, module_name='Encounter'
         )
-        assert expected_sighting not in encounter_audit_items.json
-        assert expected_encounter in encounter_audit_items.json
+        assert set(expected_encounter) <= set(encounter_audit_items.json[-1])
 
         audit_utils.read_audit_log(flask_app_client, contributor_1, sighting_uuid, 403)
         sighting_audit = audit_utils.read_audit_log(
-            flask_app_client, researcher_1, sighting_uuid
+            flask_app_client, admin_user, sighting_uuid
         )
         assert len(sighting_audit.json) == 1
         log_entry = sighting_audit.json[0]
@@ -83,7 +89,7 @@ def test_most_ia_pipeline_audit_log(
     flask_app_client,
     researcher_1,
     regular_user,
-    staff_user,
+    admin_user,
     internal_user,
     test_root,
     db,
@@ -143,21 +149,27 @@ def test_most_ia_pipeline_audit_log(
     assert len(encounters) == 2
 
     # Everything up to here was setting the stage, now to start the test of the contents of the audit log.
-    expected_sighting = {'module_name': 'Sighting', 'item_guid': sighting_uuid}
+    expected_sighting = {
+        'audit_type': 'User Create',
+        'module_name': 'Sighting',
+        'item_guid': sighting_uuid,
+        'user_email': researcher_1.email
+    }
     expected_encounter = {
+        'audit_type': 'User Create',
         'module_name': 'Encounter',
         'item_guid': str(encounters[0].guid),
+        'user_email': researcher_1.email
     }
 
     sighting_audit_items = audit_utils.read_all_audit_logs(
-        flask_app_client, researcher_1, module_name='Sighting'
+        flask_app_client, admin_user, module_name='Sighting'
     )
     encounter_audit_items = audit_utils.read_all_audit_logs(
-        flask_app_client, researcher_1, module_name='Encounter'
+        flask_app_client, admin_user, module_name='Encounter'
     )
-
-    assert expected_sighting in sighting_audit_items.json
-    assert expected_encounter in encounter_audit_items.json
+    assert set(expected_sighting) <= set(sighting_audit_items.json[-1])
+    assert set(expected_encounter) <= set(encounter_audit_items.json[-1])
 
 
 @pytest.mark.skipif(
@@ -175,8 +187,10 @@ def test_audit_log_faults(
     audit_utils.read_all_faults(flask_app_client, researcher_1, 403)
     faults = audit_utils.read_all_faults(flask_app_client, admin_user)
 
-    # arbitrary choice but it must be at least this many from the test
-    expected_faults = 9
-    assert len(faults.json) >= expected_faults
-    for fault_no in range(0, expected_faults - 1):
-        assert faults.json[fault_no]['audit_type'] == 'Front End Fault'
+    # Make sure we have the same number of Houston and Frontend faults (each error in the above test creates
+    # one of each
+    assert len(faults.json) == 20
+    houston = [fault for fault in faults.json if fault['audit_type'] == 'Houston Fault']
+    front_end = [fault for fault in faults.json if fault['audit_type'] == 'Front End Fault']
+    assert len(houston) == len(front_end)
+

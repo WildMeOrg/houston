@@ -6,13 +6,11 @@ RESTful API Audit Logs resources
 """
 
 import logging
-
+from sqlalchemy import desc
 from flask_restx_patched import Resource
 from flask_restx._http import HTTPStatus
-from flask_login import current_user
 
 from app.extensions.api import Namespace
-from app.extensions.logging import Logging as AuditExt
 from app.modules.users import permissions
 from app.modules.users.permissions.types import AccessOperation
 
@@ -40,13 +38,13 @@ class AuditLogs(Resource):
         },
     )
     @api.parameters(GetAuditLogParameters())
+    @api.response(schemas.DetailedAuditLogSchema(many=True))
     def get(self, args):
         """
         List of AuditLogs.
 
-        This is the list of the last N audit logs
+        This is the list of the last 'limit' audit logs
         """
-        from sqlalchemy import desc
 
         if 'module_name' in args:
             all_logs = (
@@ -66,32 +64,8 @@ class AuditLogs(Resource):
 
         # all_logs is now the logs of interest ordered by the time created, youngest first.
         # What we actually want to return the data with oldest first so we need to reverse all_logs first
-        returned_data = []
-        for log_item in reversed(all_logs):
-
-            # This means that non staff users will get less than limit each time
-            if (
-                log_item.audit_type == AuditExt.AuditType.HoustonFault
-                or log_item.audit_type == AuditExt.AuditType.BackEndFault
-                or log_item.audit_type == AuditExt.AuditType.FrontEndFault
-            ):
-                if not current_user.is_privileged:
-                    # Non privileged users don't see faults
-                    continue
-
-            data = {
-                'timestamp': log_item.created,
-                'type': log_item.audit_type,
-                'executor': log_item.user_email,
-                'duration': log_item.duration,
-                'module_name': log_item.module_name,
-                'item_guid': log_item.item_guid,
-                'message': log_item.message,
-            }
-
-            returned_data.append(data)
-
-        return returned_data
+        all_logs.reverse()
+        return all_logs
 
 
 @api.route('/<uuid:audit_log_guid>')
@@ -117,8 +91,10 @@ class AuditLogByID(Resource):
         """
         Get AuditLog details by the ID of the item that is being logged about.
         """
-        audit_logs = AuditLog.query.filter_by(item_guid=audit_log_guid).all()
-        return audit_logs
+        return (
+            AuditLog.query.filter_by(item_guid=audit_log_guid)
+            .order_by(AuditLog.created)
+            .all())
 
 
 @api.route('/faults')
@@ -129,14 +105,14 @@ class AuditLogByID(Resource):
 )
 class AuditLogFault(Resource):
     """
-    Manipulations with the AuditLogs for a specific object.
+    Returns the last 'limit' faults
     """
 
     @api.permission_required(
         permissions.ModuleAccessPermission,
         kwargs_on_request=lambda kwargs: {
             'module': AuditLog,
-            'action': AccessOperation.READ_PRIVILEGED,
+            'action': AccessOperation.READ,
         },
     )
     @api.parameters(GetAuditLogFaultsParameters())
@@ -148,28 +124,27 @@ class AuditLogFault(Resource):
         import app.extensions.logging as AuditLogExtension  # NOQA
 
         if 'fault_type' in args:
-            all_logs = (
-                AuditLog.query.filter_by(AuditLog.module_name == args['fault_type'])
-                .order_by(AuditLog.created)
+            faults = (
+                AuditLog.query.filter_by(audit_type=args['fault_type'])
+                .order_by(desc(AuditLog.created))
+                .offset(args['offset'])
+                .limit(args['limit'])
                 .all()
             )
         else:
-            all_logs = (
-                AuditLog.query.filter_by(
-                    audit_type=(
-                        AuditLogExtension.AuditType.FrontEndFault
-                        or AuditLogExtension.AuditType.BackEndFault
-                        or AuditLogExtension.AuditType.HoustonFault
-                    )
+            faults = (
+                AuditLog.query.filter(
+                    (AuditLog.audit_type == AuditLogExtension.AuditType.HoustonFault.value)
+                    | (AuditLog.audit_type == AuditLogExtension.AuditType.BackEndFault.value)
+                    | (AuditLog.audit_type == AuditLogExtension.AuditType.FrontEndFault.value)
                 )
-                .order_by(AuditLog.created)
+                .order_by(desc(AuditLog.created))
+                .offset(args['offset'])
+                .limit(args['limit'])
                 .all()
             )
 
-        # all_logs is now the logs of interest ordered by the time created, oldest first.
-        # What we actually want to return the 'limit' type and message values for the most recently audited items.
-        # So we need to reverse all_logs first
-        all_logs.reverse()
-
-        # Need to manually apply offset and limit after the unique list is created
-        return all_logs[args['offset'] : args['limit'] - args['offset']]
+        # Need to be reversed as they're ordered by descending to read backwards through the faults but we
+        # want the list to be in order on the web page
+        faults.reverse()
+        return faults

@@ -356,6 +356,8 @@ def combine_customfields(result):
         custom_fields = {}
         # [{"5fda2b91-d4aa-4f5e-9479-9845402a9386":"Giraffe"}]
         for field_value_dict in json.loads(result['custom_fields']):
+            if not field_value_dict or not isinstance(field_value_dict, dict):
+                continue
             for field, value in field_value_dict.items():
                 if field in custom_fields:
                     if not isinstance(custom_fields[field], list):

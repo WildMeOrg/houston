@@ -921,5 +921,5 @@ class User(db.Model, FeatherModel, UserEDMMixin):
 USER_ROLES = [
     role.value[-1]
     for role in User.StaticRoles.__members__.values()
-    if role.value[-1] not in ('in_setup', 'in_reset')
+    if role.value[-1] not in ('in_setup', 'in_reset', 'is_internal', 'is_staff')
 ]

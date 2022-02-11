@@ -12,6 +12,7 @@ from app.modules.fileuploads.models import FileUpload
 from PIL import Image
 
 from tests.utils import TemporaryDirectoryGraceful
+import tests.modules.users.resources.utils as user_utils
 
 
 def test_user_id_not_found(flask_app_client, regular_user):
@@ -102,12 +103,10 @@ def test_modifying_user_info_by_admin(flask_app_client, admin_user, regular_user
                             'value': 'Modified Full Name',
                         },
                         {'op': 'replace', 'path': '/is_active', 'value': False},
-                        {'op': 'replace', 'path': '/is_staff', 'value': False},
                         {'op': 'replace', 'path': '/is_admin', 'value': True},
                         {'op': 'replace', 'path': '/is_contributor', 'value': True},
                         {'op': 'replace', 'path': '/is_researcher', 'value': True},
                         {'op': 'replace', 'path': '/is_user_manager', 'value': True},
-                        {'op': 'replace', 'path': '/is_internal', 'value': False},
                         {'op': 'replace', 'path': '/is_exporter', 'value': True},
                     ]
                 ),
@@ -146,6 +145,33 @@ def test_modifying_user_info_by_admin(flask_app_client, admin_user, regular_user
             db.session.merge(regular_user)
 
 
+def test_invalid_modifying_user_info_by_admin(
+    flask_app_client, admin_user, regular_user, db
+):
+    # pylint: disable=invalid-name
+    data = [
+        {
+            'op': 'test',
+            'path': '/current_password',
+            'value': admin_user.password_secret,
+        },
+        {'op': 'replace', 'path': '/is_staff', 'value': True},
+    ]
+    error = 'The request was well-formed but was unable to be followed due to semantic errors.'
+    user_utils.patch_user(flask_app_client, admin_user, regular_user, data, 422, error)
+
+    data = [
+        {
+            'op': 'test',
+            'path': '/current_password',
+            'value': admin_user.password_secret,
+        },
+        {'op': 'replace', 'path': '/is_internal', 'value': True},
+    ]
+
+    user_utils.patch_user(flask_app_client, admin_user, regular_user, data, 422, error)
+
+
 def test_modifying_user_info_admin_fields_by_not_admin(
     flask_app_client, regular_user, db
 ):
@@ -169,7 +195,6 @@ def test_modifying_user_info_admin_fields_by_not_admin(
                             'value': 'Modified Full Name',
                         },
                         {'op': 'replace', 'path': '/is_active', 'value': False},
-                        {'op': 'replace', 'path': '/is_staff', 'value': False},
                         {'op': 'replace', 'path': '/is_admin', 'value': True},
                     ]
                 ),

@@ -49,14 +49,15 @@ def read_user_path(flask_app_client, user, sub_path, expected_status_code=200):
 
 def patch_user(
     flask_app_client,
-    user,
+    running_user,
+    user_modified,
     data,
     expected_status_code=200,
     expected_error='',
 ):
-    with flask_app_client.login(user, auth_scopes=('users:write',)):
+    with flask_app_client.login(running_user, auth_scopes=('users:write',)):
         response = flask_app_client.patch(
-            '%s%s' % (PATH, user.guid),
+            '%s%s' % (PATH, user_modified.guid),
             content_type='application/json',
             data=json.dumps(data),
         )

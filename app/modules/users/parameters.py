@@ -145,8 +145,6 @@ class PatchUserDetailsParameters(PatchJSONParameters):
         User.notification_preferences.key,
         User.is_active.fget.__name__,
         User.is_exporter.fget.__name__,
-        User.is_internal.fget.__name__,
-        User.is_staff.fget.__name__,
         User.is_admin.fget.__name__,
         User.is_user_manager.fget.__name__,
         User.is_researcher.fget.__name__,
@@ -163,8 +161,6 @@ class PatchUserDetailsParameters(PatchJSONParameters):
     PRIVILEGED_FIELDS = (
         User.is_active.fget.__name__,
         User.is_exporter.fget.__name__,
-        User.is_internal.fget.__name__,
-        User.is_staff.fget.__name__,
         User.is_admin.fget.__name__,
         User.is_user_manager.fget.__name__,
         User.is_researcher.fget.__name__,

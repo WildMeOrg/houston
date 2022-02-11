@@ -107,12 +107,12 @@ jobs:
       - name: Show acm logs if failed
         if: failure()
         run: |
-          docker-compose logs acm
+          docker-compose logs --no-color acm
 
       - name: Show houston logs if failed
         if: failure()
         run: |
-          docker-compose logs houston
+          docker-compose logs --no-color houston | sed -e 's/\x1b\[[0-9;]*m//g' -e 's/\x1b\[[0-9;]*m//g' -e 's/\x1b\]8;\(id=[0-9]*\)\?;//g' -e 's/\x1b\\//g'
 
       - name: Upload codex.html and codex.png if failed
         if: failure()

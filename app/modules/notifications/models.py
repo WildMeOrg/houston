@@ -104,6 +104,7 @@ NOTIFICATION_CONFIG = {
         'email_template_name': 'collaboration_approved',
         'email_digest_content_template': 'collaboration_approved_digest.jinja2',
         'mandatory_fields': {'collaboration_guid'},
+        'resolve_on_read': True,
     },
     NotificationType.collab_edit_request: {
         'email_template_name': 'collaboration_edit_request',
@@ -114,28 +115,33 @@ NOTIFICATION_CONFIG = {
         'email_template_name': 'collaboration_edit_approved',
         'email_digest_content_template': 'collaboration_edit_approved_digest',
         'mandatory_fields': {'collaboration_guid'},
+        'resolve_on_read': True,
     },
     NotificationType.collab_edit_revoke: {
         'email_template_name': 'collaboration_edit_revoke',
         'email_digest_content_template': 'collaboration_edit_revoke_digest',
         'mandatory_fields': {'collaboration_guid'},
+        'resolve_on_read': True,
     },
     NotificationType.collab_revoke: {
         'email_template_name': 'collaboration_revoke',
         'email_digest_content_template': 'collaboration_revoke_digest',
         'mandatory_fields': {'collaboration_guid'},
+        'resolve_on_read': True,
     },
     NotificationType.collab_manager_create: {
         'email_template_name': 'collaboration_manager_create',  # Not yet written
         'email_digest_content_template': 'collaboration_manager_create_digest',
         'mandatory_fields': {'collaboration_guid', 'user1_name', 'user2_name'},
         'allow_multiple': True,
+        'resolve_on_read': True,
     },
     NotificationType.collab_manager_revoke: {
         'email_template_name': 'collaboration_manger_revoke',  # Not yet written
         'email_digest_content_template': 'collaboration_manager_revoke_digest',
         'mandatory_fields': {'collaboration_guid', 'user1_name', 'user2_name'},
         'allow_multiple': True,
+        'resolve_on_read': True,
     },
     NotificationType.individual_merge_request: {
         'email_template_name': 'individual_merge_request',
@@ -154,6 +160,7 @@ NOTIFICATION_CONFIG = {
             'individual_list',
             'encounter_list',
         },
+        'resolve_on_read': True,
     },
     NotificationType.raw: {
         'email_template_name': 'raw',
@@ -201,6 +208,7 @@ class Notification(db.Model, HoustonModel):
     )  # pylint: disable=invalid-name
 
     is_read = db.Column(db.Boolean, default=False, nullable=False)
+    is_resolved = db.Column(db.Boolean, default=False, nullable=False)
 
     message_type = db.Column(db.String, default=NotificationType.raw, nullable=False)
     message_values = db.Column(db.JSON, nullable=True)

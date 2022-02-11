@@ -131,6 +131,14 @@ class Individual(db.Model, FeatherModel):
     def get_names(self):
         return self.names
 
+    def get_primary_name(self):
+        if self.names:
+            # Placeholder, first created name to make sure it's always the same one
+            ordered_names = sorted(self.names, key=lambda name: name.created)
+            return ordered_names[0].value
+        else:
+            return None
+
     # should be only one of these
     def get_name_for_context(self, context):
         return Name.query.filter_by(individual_guid=self.guid, context=context).first()

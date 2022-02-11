@@ -186,7 +186,8 @@ class NotificationBuilder(object):
     def set_individual_merge(self, individuals, encounters, request_data):
         self.data['individual_list'] = []
         for indiv in individuals:
-            self.data['individual_list'].append(indiv.guid)
+            ind_data = {'guid': indiv.guid, 'primaryName': indiv.get_primary_name()}
+            self.data['individual_list'].append(ind_data)
         self.data['encounter_list'] = []
         for enc in encounters:
             self.data['encounter_list'].append(enc.guid)
@@ -300,10 +301,8 @@ class Notification(db.Model, HoustonModel):
 
         assert set(data.keys()) >= set(config['mandatory_fields'])
 
-        from app.modules.users.models import User
-
         sender_guid = None
-        if isinstance(builder.sender, User):
+        if builder.sender and not builder.sender.is_anonymous:
             sender_guid = builder.sender.guid
 
         # prevent creation of a new notification if there is already an unread one

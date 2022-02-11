@@ -301,10 +301,8 @@ class Notification(db.Model, HoustonModel):
 
         assert set(data.keys()) >= set(config['mandatory_fields'])
 
-        from app.modules.users.models import User
-
         sender_guid = None
-        if isinstance(builder.sender, User):
+        if builder.sender and not builder.sender.is_anonymous:
             sender_guid = builder.sender.guid
 
         # prevent creation of a new notification if there is already an unread one

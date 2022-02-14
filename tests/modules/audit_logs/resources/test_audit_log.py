@@ -162,6 +162,7 @@ def test_most_ia_pipeline_audit_log(
         'user_email': researcher_1.email,
     }
 
+    audit_utils.read_all_audit_logs(flask_app_client, admin_user)
     sighting_audit_items = audit_utils.read_all_audit_logs(
         flask_app_client, admin_user, module_name='Sighting'
     )
@@ -186,10 +187,15 @@ def test_audit_log_faults(
     test_create_asset_group(flask_app_client, researcher_1, readonly_user, test_root, db)
     audit_utils.read_all_faults(flask_app_client, researcher_1, 403)
     faults = audit_utils.read_all_faults(flask_app_client, admin_user)
+    houston_faults = audit_utils.read_all_faults(
+        flask_app_client, admin_user, fault_type='Houston Fault'
+    )
 
     # Make sure we have the same number of Houston and Frontend faults (each error in the above test creates
     # one of each
     assert len(faults.json) == 20
+    # may have been other Houston faults beforehand, just make sure we read something
+    assert len(houston_faults.json) > 10
     houston = [fault for fault in faults.json if fault['audit_type'] == 'Houston Fault']
     front_end = [
         fault for fault in faults.json if fault['audit_type'] == 'Front End Fault'

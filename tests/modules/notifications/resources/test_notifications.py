@@ -174,7 +174,6 @@ def test_patch_notification(
     assert approved_notif.json['is_resolved']
 
 
-
 @pytest.mark.skipif(
     module_unavailable('collaborations'), reason='Collaborations module disabled'
 )

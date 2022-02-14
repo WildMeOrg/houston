@@ -176,7 +176,6 @@ def test_notification_resolution(
 ):
     from app.modules.collaborations.models import Collaboration
 
-
     # Start with no unread notifications to ensure that they are always created here
     notif_utils.mark_all_notifications_as_read(flask_app_client, researcher_1)
     notif_utils.mark_all_notifications_as_read(flask_app_client, researcher_2)

@@ -53,5 +53,3 @@ def object_logs(context, guid):
 
     for log in AuditLog.query.filter_by(item_guid=guid).all():
         print(format_log_message(log))
-
-

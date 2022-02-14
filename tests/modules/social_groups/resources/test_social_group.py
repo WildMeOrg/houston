@@ -99,7 +99,7 @@ def test_basic_operation(
     assert len(groups_as_res_2.json) >= 1
 
     # get and validate the audit logs for the social group
-    audit = audit_utils.read_audit_log(flask_app_client, researcher_1, group_guid)
+    audit = audit_utils.read_audit_log(flask_app_client, admin_user, group_guid)
     assert len(audit.json) == 1
     create_log = audit.json[0]
     assert create_log['module_name'] == 'SocialGroup'

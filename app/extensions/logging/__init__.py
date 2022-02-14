@@ -149,29 +149,25 @@ class Logging(object):
         cls.audit_log_object(logger, obj, msg, cls.AuditType.Delete, *args, **kwargs)
 
     @classmethod
-    def patch_object(cls, logger, obj, patch_args, *args, **kwargs):
-
+    def _build_patch_message(cls, patch_args):
         msg = 'Patch:'
         for patch in patch_args:
-
+            if patch['field_name'] == 'current_password':
+                # Don't store password of user exercising the patch
+                continue
             msg += f" {patch['op']} {patch['field_name']}"
             if 'value' in patch:
                 msg += f", {patch['value']} "
             else:
                 msg += ' '
+        return msg
 
+    @classmethod
+    def patch_object(cls, logger, obj, patch_args, *args, **kwargs):
+        msg = cls._build_patch_message(patch_args)
         cls.audit_log_object(logger, obj, msg, cls.AuditType.Update, *args, **kwargs)
 
     @classmethod
     def patch(cls, logger, patch_args, *args, **kwargs):
-
-        msg = 'Patch:'
-        for patch in patch_args:
-
-            msg += f" {patch['op']} {patch['field_name']}"
-            if 'value' in patch:
-                msg += f", {patch['value']} "
-            else:
-                msg += ' '
-
+        msg = cls._build_patch_message(patch_args)
         cls.audit_log(logger, msg, cls.AuditType.Update, *args, **kwargs)

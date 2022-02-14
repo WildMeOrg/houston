@@ -151,6 +151,7 @@ NOTIFICATION_CONFIG = {
             'individual_list',
             'encounter_list',
         },
+        'allow_multiple': True,
     },
     NotificationType.individual_merge_complete: {
         'email_template_name': 'individual_merge_complete',
@@ -160,6 +161,7 @@ NOTIFICATION_CONFIG = {
             'individual_list',
             'encounter_list',
         },
+        'allow_multiple': True,
         'resolve_on_read': True,
     },
     NotificationType.raw: {

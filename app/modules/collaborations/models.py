@@ -241,6 +241,8 @@ class Collaboration(db.Model, HoustonModel):
         builder = NotificationBuilder(sending_user_assoc.user)
         builder.set_collaboration(self)
         notif = Notification.create(notification_type, receiving_user_assoc.user, builder)
+        # I expect this to be set by the builder but it sometimes does not, unsure why.
+        notif.sender_guid = sending_user_assoc.user.guid
 
         # in these states, every notification is considered to have been read/resolved
         fully_resolved_notification_states = {
@@ -269,7 +271,7 @@ class Collaboration(db.Model, HoustonModel):
 
         notification = Notification.query.get(notification_guid)
         notification.is_resolved = True
-        with db.session.begin():
+        with db.session.begin(subtransactions=True):
             db.session.merge(notification)
 
     def get_user_data_as_json(self):

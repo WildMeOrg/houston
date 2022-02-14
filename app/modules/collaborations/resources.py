@@ -127,8 +127,6 @@ class Collaborations(Resource):
             collaboration = Collaboration(users, current_user)
             db.session.add(collaboration)
 
-        # Once created notify the pending user to accept
-        collaboration.notify_pending_users()
         message = f'POST collaborations create collaboration between {users}'
         AuditLog.user_create_object(
             log, collaboration, msg=message, duration=timer.elapsed()

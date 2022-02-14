@@ -190,13 +190,10 @@ def test_notification_preferences(
 ):
     from app.modules.collaborations.models import Collaboration
 
-    notif_1_data = NotificationBuilder(researcher_1)
     members = [researcher_1, researcher_2]
-    basic_collab = Collaboration(members, researcher_2, notify_users=False)
+    # second arg in Collaboration is the *sender*.
+    basic_collab = Collaboration(members, researcher_1)
     request.addfinalizer(basic_collab.delete)
-    notif_1_data.set_collaboration(basic_collab)
-
-    Notification.create(NotificationType.collab_request, researcher_2, notif_1_data)
     researcher_2_notifs = notif_utils.read_all_notifications(
         flask_app_client, researcher_2
     )

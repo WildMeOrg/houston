@@ -13,11 +13,13 @@ from app.modules.site_settings.models import SiteSetting
 
 log = logging.getLogger(__name__)
 
+zero_uuid = '00000000-0000-0000-0000-000000000000'
+
 
 @celery.on_after_configure.connect
 def setup_periodic_tasks(sender, **kwargs):
     sender.add_periodic_task(
-        10.0 * 60, load_codex_indexes.s(), name='Load Elasticsearch Indexes'
+        2.0 * 60, load_codex_indexes.s(), name='Load Elasticsearch Indexes'
     )
 
 
@@ -109,6 +111,7 @@ def load_individuals_index(
     else:
         cutoff = update_incremental_cutoff('individual')
         where_clause = f"WHERE hind.updated >= '{cutoff}'"
+    last_guid = None
     wb_engine = create_wildbook_engine()
     with wb_engine.connect() as wb_conn:
         # Query for marked individual records
@@ -116,6 +119,7 @@ def load_individuals_index(
         sql = sql.replace('{where_clause}', where_clause)
         results = wb_conn.execute(text(sql))
         for result in results:
+            result = combine_names(result)
             # Create the document object
             indv = Individual(**result)
             # Assign the elasticsearch document identify
@@ -124,17 +128,14 @@ def load_individuals_index(
             pass
             # Save document to elasticsearch
             indv.save(using=current_app.elasticsearch)
+            last_guid = indv.id
+    return last_guid
 
 
 WILDBOOK_MARKEDINDIVIDUAL_SQL_QUERY = """\
 SELECT
   -- id = UUIDField(required=True)
   mi."ID" as id,
-  -- name = Keyword()
-  multv."VALUES"::json->'*'->>0 as name,
-  mi."NICKNAME" as nickname,
-  -- alias = Keyword()
-  multv."VALUES"::json->'Alternate ID'->>0 as alias,
   -- taxonomy = Keyword()
   tax."SCIENTIFICNAME" as taxonomy,
   -- last_sighting = Date()
@@ -145,6 +146,13 @@ SELECT
   mi."TIMEOFBIRTH" as birth,
   -- death = Date(required=False)
   mi."TIMEOFDEATH" as death,
+  -- this all_names is deprecated in favor of name_dict
+  -- array_to_json(array(select value from houston.name where individual_guid=hind.guid)) as all_names,
+  -- houston-based names
+  json_object(
+    array(select context from houston.name where individual_guid=hind.guid order by houston.name.guid),
+    array(select value from houston.name where individual_guid=hind.guid order by houston.name.guid)
+  ) as name_dict,
   -- encounters = []
   array_to_json(array(select row_to_json(enc_row) from(
     SELECT
@@ -174,8 +182,6 @@ SELECT
   ) as enc_row)) as encounters
 FROM
   "MARKEDINDIVIDUAL" as mi
-  -- join for name
-  left join "MULTIVALUE" as multv on (mi."NAMES_ID_OID" = multv."ID")
   -- join for genus and species
   left join "TAXONOMY" as tax on (mi."TAXONOMY_ID_OID" = tax."ID")
   JOIN houston.individual hind ON mi."ID" = hind.guid::text
@@ -266,6 +272,7 @@ def load_sightings_index(
         cutoff = update_incremental_cutoff('sighting')
         where_clause = f"WHERE si.updated >= '{cutoff}'"
         order_clause = ''
+    last_guid = None
     wb_engine = create_wildbook_engine()
     with wb_engine.connect() as wb_conn:
         sql = SIGHTINGS_INDEX_SQL
@@ -281,6 +288,8 @@ def load_sightings_index(
             sighting.meta.id = f'sighting_{sighting.id}'
             # Save document to elasticsearch
             sighting.save(using=current_app.elasticsearch)
+            last_guid = sighting.id
+    return last_guid
 
 
 SIGHTINGS_INDEX_SQL = """\
@@ -358,6 +367,25 @@ def combine_customfields(result):
     return result
 
 
+def combine_names(row):
+    result = dict(row)
+    if (
+        'name_dict' in result
+        and isinstance(result['name_dict'], dict)
+        and len(result['name_dict'])
+    ):
+        names = []
+        for context in result['name_dict']:
+            # old-world seems to favor 'default', but new-world uses 'defaultName',
+            #   so we let either of these get priority; if both exist, its luck of the draw
+            if context == 'default' or context == 'defaultName':
+                names.insert(0, result['name_dict'][context])
+            else:
+                names.append(result['name_dict'][context])
+            result['name'] = names
+    return result
+
+
 def update_incremental_cutoff(key_prefix):
     dt_now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     inc_key = f'elasticsearch_incremental_cutoff_{key_prefix}'
@@ -387,9 +415,9 @@ def catchup_index_get():
     def_conf = {
         'batch_size': 250,
         'batch_pause': 5,
-        'encounter_mark': '00000000-0000-0000-0000-000000000000',
-        'sighting_mark': '00000000-0000-0000-0000-000000000000',
-        'individual_mark': '00000000-0000-0000-0000-000000000000',
+        'encounter_mark': zero_uuid,
+        'sighting_mark': zero_uuid,
+        'individual_mark': zero_uuid,
     }
     def_conf.update(conf)
     return def_conf
@@ -406,13 +434,14 @@ def catchup_index_set(conf):
 def catchup_index_start():
     conf = catchup_index_get()
     if not conf:
+        log.info('catchup_index_start found no conf -- bailing.')
         return
     log.info(f'catchup index commencing with: {conf}')
 
     last_guid_encounter = load_encounters_index(
         catchup_index_before=conf['before'],
         catchup_index_batch_size=conf['batch_size'],
-        catchup_index_mark=conf['encounter_mark'],
+        catchup_index_mark=conf['encounter_mark'] or zero_uuid,
     )
     conf['encounter_mark'] = last_guid_encounter
     log.debug(
@@ -422,7 +451,7 @@ def catchup_index_start():
     last_guid_sighting = load_sightings_index(
         catchup_index_before=conf['before'],
         catchup_index_batch_size=conf['batch_size'],
-        catchup_index_mark=conf['sighting_mark'],
+        catchup_index_mark=conf['sighting_mark'] or zero_uuid,
     )
     conf['sighting_mark'] = last_guid_sighting
     log.debug(
@@ -432,17 +461,25 @@ def catchup_index_start():
     last_guid_individual = load_individuals_index(
         catchup_index_before=conf['before'],
         catchup_index_batch_size=conf['batch_size'],
-        catchup_index_mark=conf['individual_mark'],
+        catchup_index_mark=conf['individual_mark'] or zero_uuid,
     )
     conf['individual_mark'] = last_guid_individual
     log.debug(
         f"catchup index finished individuals batch (size={conf['batch_size']}) on guid {last_guid_individual}"
     )
 
-    if not last_guid_encounter and not last_guid_individual and not last_guid_sighting:
+    conf_check = catchup_index_get()  # if gone, means a reset() was submitted, so we bail
+    if not conf_check:
+        log.info(
+            'catchup index batch cycle finished, but no conf found -- assumed reset, so STOPPING.'
+        )
+        return
+    elif not last_guid_encounter and not last_guid_individual and not last_guid_sighting:
+        catchup_index_reset()
         log.info(
             'catchup index finished all batches with no results.  ENDING CATCHUP INDEX.'
         )
+        return
     else:
         log.info(
             f"catchup index finished all batches with more work to do; pausing {conf['batch_pause']} sec before next round"

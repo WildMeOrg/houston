@@ -95,7 +95,14 @@ class Users(Resource):
                 code=HTTPStatus.FORBIDDEN,
                 message='You must be an admin, user manager or privileged to set roles for a new user',
             )
+
         for role in roles:
+            if role == 'is_staff' or role == 'is_internal':
+                abort(
+                    HTTPStatus.FORBIDDEN,
+                    f'Not permitted to set {role} role for a new user',
+                )
+
             args[role] = True
 
         if user is not None:

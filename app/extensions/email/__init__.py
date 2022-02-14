@@ -291,8 +291,6 @@ class Email(Message):
             '</head>', '%s</head>' % (WEBFONTS_PLACEHOLDER_CODE,)
         )
         final_html = minified_html.replace(WEBFONTS_PLACEHOLDER_CODE, webfonts_html)
-        with open('email.latest.html', 'w') as temp:
-            temp.write(final_html)
         self.html = final_html
 
     def attach(self, filepath, atatchment_name, attachment_type='image/png'):

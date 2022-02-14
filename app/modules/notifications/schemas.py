@@ -40,6 +40,7 @@ class BaseNotificationSchema(ModelSchema):
         fields = (
             Notification.guid.key,
             Notification.is_read.key,
+            Notification.is_resolved.key,
             'sender_name',
             Notification.sender_guid.key,
             Notification.message_type.key,

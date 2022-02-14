@@ -187,11 +187,14 @@ def test_get_data_and_voting(
     )
 
     # now we need real data
+    ind1_name = 'Archibald'
+    ind1_data = {'names': [{'context': 'Top', 'value': ind1_name}]}
     individual1_uuids = individual_utils.create_individual_and_sighting(
         flask_app_client,
         researcher_1,
         request,
         test_root,
+        individual_data=ind1_data
     )
     # Second one owned by different researcher
     individual2_uuids = individual_utils.create_individual_and_sighting(
@@ -212,6 +215,9 @@ def test_get_data_and_voting(
     #    )
     # )
 
+    from tests.modules.notifications.resources import utils as notif_utils
+    notif_utils.mark_all_notifications_as_read(flask_app_client, researcher_1)
+
     # this tests as researcher_2, which should trigger a merge-request (owns just 1 encounter)
     data_in = [individual2_id]
     response = individual_utils.merge_individuals(
@@ -226,10 +232,24 @@ def test_get_data_and_voting(
             'blocking_encounters',
         },
     )
+
     assert response['merge_request']
     assert response['blocking_encounters'] == [encounter1_id]
     request_id = response.get('request_id')
     assert request_id
+
+    # Researcher 1 should have been notified
+    from tests.modules.notifications.resources import utils as notif_utils
+    res1_notifs = notif_utils.read_all_notifications(flask_app_client, researcher_1)
+    assert len(res1_notifs.json) == 1
+    notif_message = res1_notifs.json[0]
+    assert str(researcher_2.guid) == notif_message['sender_guid']
+    assert 'individual_merge_request' == notif_message['message_type']
+    assert len(notif_message['message_values']['individual_list']) == 1
+    individual_notif = notif_message['message_values']['individual_list'][0]
+    assert individual_notif['guid'] == individual1_id
+    assert individual_notif['primaryName'] == ind1_name
+
     # we should have a valid merge request now to test against
     #   also should have 1 auto-vote by researcher_2
     voters = IndividualMergeRequestVote.get_voters(request_id)

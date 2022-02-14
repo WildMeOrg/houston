@@ -253,6 +253,20 @@ def test_catchup_indexing():
     assert conf['encounter_mark'] == '00000000-0000-0000-0000-000000000000'
     assert conf['individual_mark'] == '00000000-0000-0000-0000-000000000000'
 
+    # test combine_names()
+    row = [('foo', 'bar'), ('test', True)]
+    res = tasks.combine_names(row)
+    assert 'name' not in res
+    row.append(('name_dict', {'context0': 'value0', 'context1': 'value1'}))
+    res = tasks.combine_names(row)
+    assert 'name' in res
+    assert len(res['name']) == 2
+    row = [('foo', 'bar'), ('test', True), ('name_dict', {'context0': 'value0', 'default': 'value1'})]
+    res = tasks.combine_names(row)
+    assert 'name' in res
+    assert len(res['name']) == 2
+    assert res['name'][0] == 'value1'
+
     # now blow away conf data
     tasks.catchup_index_reset()
     rtn = tasks.catchup_index_get()

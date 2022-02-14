@@ -43,13 +43,13 @@ def test_audit_asset_group_creation(
             'audit_type': 'User Create',
             'module_name': 'Sighting',
             'item_guid': sighting_uuid,
-            'user_email': researcher_1.email
+            'user_email': researcher_1.email,
         }
         expected_encounter = {
             'audit_type': 'User Create',
             'module_name': 'Encounter',
             'item_guid': str(sighting.encounters[0].guid),
-            'user_email': researcher_1.email
+            'user_email': researcher_1.email,
         }
 
         sighting_audit_items = audit_utils.read_all_audit_logs(
@@ -153,13 +153,13 @@ def test_most_ia_pipeline_audit_log(
         'audit_type': 'User Create',
         'module_name': 'Sighting',
         'item_guid': sighting_uuid,
-        'user_email': researcher_1.email
+        'user_email': researcher_1.email,
     }
     expected_encounter = {
         'audit_type': 'User Create',
         'module_name': 'Encounter',
         'item_guid': str(encounters[0].guid),
-        'user_email': researcher_1.email
+        'user_email': researcher_1.email,
     }
 
     sighting_audit_items = audit_utils.read_all_audit_logs(
@@ -191,6 +191,7 @@ def test_audit_log_faults(
     # one of each
     assert len(faults.json) == 20
     houston = [fault for fault in faults.json if fault['audit_type'] == 'Houston Fault']
-    front_end = [fault for fault in faults.json if fault['audit_type'] == 'Front End Fault']
+    front_end = [
+        fault for fault in faults.json if fault['audit_type'] == 'Front End Fault'
+    ]
     assert len(houston) == len(front_end)
-

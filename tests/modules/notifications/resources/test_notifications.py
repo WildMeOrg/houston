@@ -135,7 +135,6 @@ def test_patch_notification(
     # Collaboration takes the _sender_ as arg
     basic_collab = Collaboration(members, researcher_1)
     request.addfinalizer(basic_collab.delete)
-
     researcher_2_unread_notifs = notif_utils.read_all_unread_notifications(
         flask_app_client, researcher_2
     )
@@ -159,7 +158,7 @@ def test_patch_notification(
     )
     assert len(researcher_2_unread_notifs.json) <= len(researcher_2_notifs.json)
 
-    # test that reading a resolve_on_read notif also resolves it. We'll use the collab_approved notification for above collab.
+    # an approval should automatically resolve on reading based on NOTIFICATION_CONFIG
     basic_collab.set_read_approval_state_for_user(researcher_2.guid, 'approved')
     researcher_1_unread_notifs = notif_utils.read_all_unread_notifications(
         flask_app_client, researcher_1
@@ -172,14 +171,8 @@ def test_patch_notification(
         flask_app_client, researcher_1, approved_notif_guid
     )
     assert approved_notif.json['is_read']
-    # an approval _should_ automatically resolve on reading
     assert approved_notif.json['is_resolved']
 
-    # now that it's approved, the initial request
-    collab_request_notif = notif_utils.read_notification(
-        flask_app_client, researcher_2, notif_guid
-    )
-    assert collab_request_notif.json['is_resolved']
 
 
 @pytest.mark.skipif(

@@ -166,3 +166,42 @@ def test_multi_collaboration(
     # Manager should see all 6 notifications, researcher1 should only see those for themselves
     assert len(researcher_1_notifs.json) == 3
     assert len(notifs_manager.json) == 6
+
+
+@pytest.mark.skipif(
+    module_unavailable('collaborations'), reason='Collaborations module disabled'
+)
+def test_notification_resolution(
+    db, flask_app_client, researcher_1, researcher_2, user_manager_user, request
+):
+    from app.modules.collaborations.models import Collaboration
+
+
+    # Start with no unread notifications to ensure that they are always created here
+    notif_utils.mark_all_notifications_as_read(flask_app_client, researcher_1)
+    notif_utils.mark_all_notifications_as_read(flask_app_client, researcher_2)
+    notif_utils.mark_all_notifications_as_read(flask_app_client, user_manager_user)
+
+    members = [researcher_1, researcher_2]
+    basic_collab = Collaboration(members, researcher_1)
+    request.addfinalizer(basic_collab.delete)
+
+    researcher_2_unread_notifs = notif_utils.read_all_unread_notifications(
+        flask_app_client, researcher_2
+    )
+    notif_guid = researcher_2_unread_notifs.json[-1]['guid']
+    notif_utils.mark_notification_as_read(flask_app_client, researcher_2, notif_guid)
+
+    collab_request_notif = notif_utils.read_notification(
+        flask_app_client, researcher_2, notif_guid
+    )
+    assert collab_request_notif.json['is_read']
+    assert not collab_request_notif.json['is_resolved']
+
+    basic_collab.set_read_approval_state_for_user(researcher_2.guid, 'approved')
+
+    # now that it's approved, the initial request should be resolved.
+    collab_request_notif = notif_utils.read_notification(
+        flask_app_client, researcher_2, notif_guid
+    )
+    assert collab_request_notif.json['is_resolved']

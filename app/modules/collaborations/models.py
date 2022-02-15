@@ -92,13 +92,13 @@ class Collaboration(db.Model, HoustonModel):
     initiator_guid = db.Column(
         db.GUID, db.ForeignKey('user.guid'), index=True, nullable=False
     )
-    init_req_notification_guuid = db.Column(
+    init_req_notification_guid = db.Column(
         db.GUID, db.ForeignKey('notification.guid'), nullable=True
     )
     edit_initiator_guid = db.Column(
         db.GUID, db.ForeignKey('user.guid'), index=True, nullable=True
     )
-    edit_req_notification_guuid = db.Column(
+    edit_req_notification_guid = db.Column(
         db.GUID, db.ForeignKey('notification.guid'), nullable=True
     )
 
@@ -253,20 +253,19 @@ class Collaboration(db.Model, HoustonModel):
         }
 
         if notification_type is NotificationType.collab_request:
-            self.init_req_notification_guuid = notif.guid
+            self.init_req_notification_guid = notif.guid
         elif notification_type is NotificationType.collab_edit_request:
-            self.edit_req_notification_guuid = notif.guid
+            self.edit_req_notification_guid = notif.guid
 
         # set necessary notification.is_resolved fields
         elif notification_type is NotificationType.collab_approved:
-            if self.init_req_notification_guuid:
-                resolve_notification(self.init_req_notification_guuid)
+            if self.init_req_notification_guid:
+                resolve_notification(self.init_req_notification_guid)
         elif notification_type in fully_resolved_notification_states:
-            if self.init_req_notification_guuid:
-                resolve_notification(self.init_req_notification_guuid)
-            if self.edit_req_notification_guuid:
-                resolve_notification(self.edit_req_notification_guuid)
-
+            if self.init_req_notification_guid:
+                resolve_notification(self.init_req_notification_guid)
+            if self.edit_req_notification_guid:
+                resolve_notification(self.edit_req_notification_guid)
 
     def get_user_data_as_json(self):
         from app.modules.users.schemas import BaseUserSchema

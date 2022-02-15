@@ -343,8 +343,6 @@ class Notification(db.Model, HoustonModel):
             db.session.merge(notification)
 
 
-
-
 class NotificationPreferences(HoustonModel):
     """
     Notification Preferences database model.

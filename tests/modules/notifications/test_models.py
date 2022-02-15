@@ -73,7 +73,7 @@ def test_notification_message(db, researcher_1, researcher_2, flask_app, request
     }
     _prep_sending(flask_app)  # allows us to fake-send emails (enough for testing)
 
-    basic_collab.init_req_notification_guuid = (
+    basic_collab.init_req_notification_guid = (
         None  # allows us to delete below without violating foreign key constraint
     )
     Notification.query.delete()  # make sure no existing notifications (cuz multiple=false)

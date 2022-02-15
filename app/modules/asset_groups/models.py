@@ -100,6 +100,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
             except HoustonException as ex:
                 self.delete()
                 raise ex
+        AuditLog.user_create_object(log, self)
 
     def commit(self):
         from app.modules.utils import Cleanup
@@ -221,7 +222,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
                 new_encounter.set_time_from_data(req_data)
 
                 AuditLog.user_create_object(
-                    log, new_encounter, f' for owner {owner_guid}'
+                    log, new_encounter, f'for owner {owner_guid}'
                 )
 
                 annotations = req_data.get('annotations', [])
@@ -742,6 +743,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
             log.warning(f'job_id {job_id_str} not found in AssetGroupSighting')
 
     def delete(self):
+        AuditLog.delete_object(log, self)
         if self.sighting:
             self.sighting[0].delete_from_edm_and_houston()
 
@@ -915,6 +917,7 @@ class AssetGroup(GitStore):
             ags.asset_updated(asset)
 
     def delete(self):
+        AuditLog.delete_object(log, self)
         with db.session.begin(subtransactions=True):
             for sighting in self.asset_group_sightings:
                 sighting.delete()

@@ -335,6 +335,15 @@ class Notification(db.Model, HoustonModel):
             new_notification.send_if_required()
             return new_notification
 
+    @classmethod
+    def resolve_notification(self, notification_guid):
+        notification = Notification.query.get(notification_guid)
+        notification.is_resolved = True
+        with db.session.begin(subtransactions=True):
+            db.session.merge(notification)
+
+
+
 
 class NotificationPreferences(HoustonModel):
     """

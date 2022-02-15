@@ -236,6 +236,7 @@ class Collaboration(db.Model, HoustonModel):
             Notification,
             NotificationBuilder,
             NotificationType,
+            resolve_notification,
         )
 
         builder = NotificationBuilder(sending_user_assoc.user)
@@ -259,20 +260,13 @@ class Collaboration(db.Model, HoustonModel):
         # set necessary notification.is_resolved fields
         elif notification_type is NotificationType.collab_approved:
             if self.init_req_notification_guuid:
-                self._resolve_notification(self.init_req_notification_guuid)
+                resolve_notification(self.init_req_notification_guuid)
         elif notification_type in fully_resolved_notification_states:
             if self.init_req_notification_guuid:
-                self._resolve_notification(self.init_req_notification_guuid)
+                resolve_notification(self.init_req_notification_guuid)
             if self.edit_req_notification_guuid:
-                self._resolve_notification(self.edit_req_notification_guuid)
+                resolve_notification(self.edit_req_notification_guuid)
 
-    def _resolve_notification(self, notification_guid):
-        from app.modules.notifications.models import Notification
-
-        notification = Notification.query.get(notification_guid)
-        notification.is_resolved = True
-        with db.session.begin(subtransactions=True):
-            db.session.merge(notification)
 
     def get_user_data_as_json(self):
         from app.modules.users.schemas import BaseUserSchema

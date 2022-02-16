@@ -477,7 +477,6 @@ class Individual(db.Model, FeatherModel):
     # scrubs notifications etc, once a merge has completed
     @classmethod
     def merge_request_cleanup(cls, req_id):
-        print(f'merge_request_cleanup called on {req_id}')
         IndividualMergeRequestVote.resolve_sent_notifications(req_id)
         log.debug(
             f'[{req_id}] merge_request_cleanup (notifications, etc) not yet fully implemented'

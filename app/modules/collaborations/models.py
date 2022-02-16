@@ -92,11 +92,17 @@ class Collaboration(db.Model, HoustonModel):
     initiator_guid = db.Column(
         db.GUID, db.ForeignKey('user.guid'), index=True, nullable=False
     )
+    init_req_notification_guid = db.Column(
+        db.GUID, db.ForeignKey('notification.guid'), nullable=True
+    )
     edit_initiator_guid = db.Column(
         db.GUID, db.ForeignKey('user.guid'), index=True, nullable=True
     )
+    edit_req_notification_guid = db.Column(
+        db.GUID, db.ForeignKey('notification.guid'), nullable=True
+    )
 
-    def __init__(self, members, initiator_user, **kwargs):
+    def __init__(self, members, initiator_user, notify_users=True, **kwargs):
 
         num_users = len(members)
         if num_users != 2:
@@ -134,7 +140,11 @@ class Collaboration(db.Model, HoustonModel):
             else:
                 collab_user_assoc.read_approval_state = CollaborationUserState.PENDING
 
+        if notify_users and not manager_created:
+            self.notify_pending_users()
+
         if manager_created:
+
             # User manager created collaboration, store who the creator was
             collab_creator = CollaborationUserAssociations(
                 collaboration=self, user=initiator_user
@@ -143,11 +153,12 @@ class Collaboration(db.Model, HoustonModel):
 
             collab_creator.read_approval_state = CollaborationUserState.CREATOR
             collab_creator.edit_approval_state = CollaborationUserState.CREATOR
-            for user in members:
-                user_assoc = self._get_association_for_user(user.guid)
-                self._notify_user(
-                    collab_creator, user_assoc, NotificationType.collab_manager_create
-                )
+            if notify_users:
+                for user in members:
+                    user_assoc = self._get_association_for_user(user.guid)
+                    self._notify_user(
+                        collab_creator, user_assoc, NotificationType.collab_manager_create
+                    )
             with db.session.begin(subtransactions=True):
                 db.session.add(collab_creator)
 
@@ -221,11 +232,37 @@ class Collaboration(db.Model, HoustonModel):
                     )
 
     def _notify_user(self, sending_user_assoc, receiving_user_assoc, notification_type):
-        from app.modules.notifications.models import Notification, NotificationBuilder
+        from app.modules.notifications.models import (
+            Notification,
+            NotificationBuilder,
+            NotificationType,
+        )
 
         builder = NotificationBuilder(sending_user_assoc.user)
         builder.set_collaboration(self)
-        Notification.create(notification_type, receiving_user_assoc.user, builder)
+        notif = Notification.create(notification_type, receiving_user_assoc.user, builder)
+
+        # in these states, every notification is considered to have been read/resolved
+        fully_resolved_notification_states = {
+            NotificationType.collab_edit_approved,
+            NotificationType.collab_edit_revoke,
+            NotificationType.collab_revoke,
+        }
+
+        if notification_type is NotificationType.collab_request:
+            self.init_req_notification_guid = notif.guid
+        elif notification_type is NotificationType.collab_edit_request:
+            self.edit_req_notification_guid = notif.guid
+
+        # set necessary notification.is_resolved fields
+        elif notification_type is NotificationType.collab_approved:
+            if self.init_req_notification_guid:
+                Notification.resolve(self.init_req_notification_guid)
+        elif notification_type in fully_resolved_notification_states:
+            if self.init_req_notification_guid:
+                Notification.resolve(self.init_req_notification_guid)
+            if self.edit_req_notification_guid:
+                Notification.resolve(self.edit_req_notification_guid)
 
     def get_user_data_as_json(self):
         from app.modules.users.schemas import BaseUserSchema

@@ -56,7 +56,7 @@ def test_get_notifications(
     # it has been told to send one
     notif_to_researcher_2_data = NotificationBuilder(researcher_1)
     members = [researcher_1, researcher_2]
-    basic_collab = Collaboration(members, researcher_2)
+    basic_collab = Collaboration(members, researcher_2, notify_users=False)
     request.addfinalizer(basic_collab.delete)
 
     notif_to_researcher_2_data.set_collaboration(basic_collab)
@@ -131,15 +131,10 @@ def test_patch_notification(
     notif_utils.mark_all_notifications_as_read(flask_app_client, researcher_2)
     notif_utils.mark_all_notifications_as_read(flask_app_client, user_manager_user)
 
-    # Create a dummy one
-    notif_1_data = NotificationBuilder(researcher_1)
     members = [researcher_1, researcher_2]
-    basic_collab = Collaboration(members, researcher_2)
+    # Collaboration takes the _sender_ as arg
+    basic_collab = Collaboration(members, researcher_1)
     request.addfinalizer(basic_collab.delete)
-    notif_1_data.set_collaboration(basic_collab)
-
-    Notification.create(NotificationType.collab_request, researcher_2, notif_1_data)
-
     researcher_2_unread_notifs = notif_utils.read_all_unread_notifications(
         flask_app_client, researcher_2
     )
@@ -163,7 +158,7 @@ def test_patch_notification(
     )
     assert len(researcher_2_unread_notifs.json) <= len(researcher_2_notifs.json)
 
-    # test that reading a resolve_on_read notif also resolves it. We'll use the collab_approved notification for above collab.
+    # an approval should automatically resolve on reading based on NOTIFICATION_CONFIG
     basic_collab.set_read_approval_state_for_user(researcher_2.guid, 'approved')
     researcher_1_unread_notifs = notif_utils.read_all_unread_notifications(
         flask_app_client, researcher_1
@@ -176,7 +171,6 @@ def test_patch_notification(
         flask_app_client, researcher_1, approved_notif_guid
     )
     assert approved_notif.json['is_read']
-    # an approval _should_ automatically resolve on reading
     assert approved_notif.json['is_resolved']
 
 
@@ -188,13 +182,10 @@ def test_notification_preferences(
 ):
     from app.modules.collaborations.models import Collaboration
 
-    notif_1_data = NotificationBuilder(researcher_1)
     members = [researcher_1, researcher_2]
-    basic_collab = Collaboration(members, researcher_2)
+    # second arg in Collaboration is the *sender*.
+    basic_collab = Collaboration(members, researcher_1)
     request.addfinalizer(basic_collab.delete)
-    notif_1_data.set_collaboration(basic_collab)
-
-    Notification.create(NotificationType.collab_request, researcher_2, notif_1_data)
     researcher_2_notifs = notif_utils.read_all_notifications(
         flask_app_client, researcher_2
     )

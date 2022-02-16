@@ -68,6 +68,30 @@ class IndividualMergeRequestVote(db.Model):
         )
         return [User.query.get(uid) for uid in res]
 
+    @classmethod
+    def resolve_sent_notifications(cls, request_id):
+        """
+        Called when merge requests are approved/denied, this ensures any notifications sent about the request will be set to is_resolved=True
+        """
+        from app.modules.notifications.models import Notification, NotificationType
+        # mildly expensive query and iterating through sub-dict, OK because this doesn't happen often.
+        with db.session.begin(subtransactions=True):
+            unresolved_merge_req_notif_guids = (
+                db.session.query(Notification.guid)
+                .filter(Notification.message_type == NotificationType.individual_merge_request)
+                .filter(Notification.is_resolved == False)
+            )
+            unresolved_merge_req_notifs = [
+                Notification.query.get(guid) for guid in unresolved_merge_req_notif_guids
+            ]
+            this_req_notifs = [
+                notif for notif in unresolved_merge_req_notifs if notif.message_values and
+                notif.message_values.get('request_id') == str(request_id)
+            ]
+            for notification in this_req_notifs:
+                notification.is_resolved = True
+                db.session.merge(notification)
+
 
 class Individual(db.Model, FeatherModel):
     """
@@ -448,8 +472,10 @@ class Individual(db.Model, FeatherModel):
     # scrubs notifications etc, once a merge has completed
     @classmethod
     def merge_request_cleanup(cls, req_id):
+        print(f'merge_request_cleanup called on {req_id}')
+        IndividualMergeRequestVote.resolve_sent_notifications(req_id)
         log.debug(
-            f'[{req_id}] merge_request_cleanup (notifications, etc) not yet implemented'
+            f'[{req_id}] merge_request_cleanup (notifications, etc) not yet fully implemented'
         )
 
     @classmethod

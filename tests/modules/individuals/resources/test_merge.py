@@ -161,6 +161,7 @@ def test_get_data_and_voting(
     test_root,
 ):
     from app.modules.individuals.models import Individual, IndividualMergeRequestVote
+    from app.modules.notifications.models import NotificationType
 
     bad_id = '00000000-0000-0000-0000-000000002170'
     # first anon permission check (401)
@@ -240,9 +241,13 @@ def test_get_data_and_voting(
 
     # Researcher 1 should have been notified
     from tests.modules.notifications.resources import utils as notif_utils
+    # to check that reading does not resolve the merge request notif
+    notif_utils.mark_all_notifications_as_read(flask_app_client, researcher_1)
     res1_notifs = notif_utils.read_all_notifications(flask_app_client, researcher_1)
     assert len(res1_notifs.json) == 1
     notif_message = res1_notifs.json[0]
+    assert notif_message['is_read']
+    assert not notif_message['is_resolved']
     assert str(researcher_2.guid) == notif_message['sender_guid']
     assert 'individual_merge_request' == notif_message['message_type']
     assert len(notif_message['message_values']['individual_list']) == 1
@@ -307,4 +312,26 @@ def test_get_data_and_voting(
     voters = IndividualMergeRequestVote.get_voters(request_id)
     assert len(voters) == 2
     assert set(voters) == set([researcher_1, researcher_2])
+
+    # test the is_resolved field on merge notifications
+    res1_notifs = notif_utils.read_all_notifications(flask_app_client, researcher_1)
+    assert len(res1_notifs.json) == 2
+    merge_req_notif = notif_utils.filter_notif_type(
+        res1_notifs.json, NotificationType.individual_merge_request
+    )[0]
+    merge_approved_notif = notif_utils.filter_notif_type(
+        res1_notifs.json, NotificationType.individual_merge_complete
+    )[0]
+    # request is resolved now that the merge has occurred
+    assert merge_req_notif.get('is_resolved')
+    assert not merge_approved_notif.get('is_read')
+    assert not merge_approved_notif.get('is_resolved')
+    notif_utils.mark_all_notifications_as_read(flask_app_client, researcher_1)
+    res1_notifs = notif_utils.read_all_notifications(flask_app_client, researcher_1)
+    merge_approved_notif = notif_utils.filter_notif_type(
+        res1_notifs.json, NotificationType.individual_merge_complete
+    )[0]
+    assert merge_approved_notif.get('is_read')
+    assert merge_approved_notif.get('is_resolved')
+
     IndividualMergeRequestVote.query.delete()

@@ -191,11 +191,7 @@ def test_get_data_and_voting(
     ind1_name = 'Archibald'
     ind1_data = {'names': [{'context': 'Top', 'value': ind1_name}]}
     individual1_uuids = individual_utils.create_individual_and_sighting(
-        flask_app_client,
-        researcher_1,
-        request,
-        test_root,
-        individual_data=ind1_data
+        flask_app_client, researcher_1, request, test_root, individual_data=ind1_data
     )
     # Second one owned by different researcher
     individual2_uuids = individual_utils.create_individual_and_sighting(
@@ -217,6 +213,7 @@ def test_get_data_and_voting(
     # )
 
     from tests.modules.notifications.resources import utils as notif_utils
+
     notif_utils.mark_all_notifications_as_read(flask_app_client, researcher_1)
 
     # this tests as researcher_2, which should trigger a merge-request (owns just 1 encounter)
@@ -241,6 +238,7 @@ def test_get_data_and_voting(
 
     # Researcher 1 should have been notified
     from tests.modules.notifications.resources import utils as notif_utils
+
     # to check that reading does not resolve the merge request notif
     notif_utils.mark_all_notifications_as_read(flask_app_client, researcher_1)
     res1_notifs = notif_utils.read_all_notifications(flask_app_client, researcher_1)

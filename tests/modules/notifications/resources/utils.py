@@ -105,7 +105,8 @@ def read_all_notifications(flask_app_client, user, expected_status_code=200):
 
 def filter_notif_type(list_of_notif_dicts, notification_type):
     return [
-        notif for notif in list_of_notif_dicts
+        notif
+        for notif in list_of_notif_dicts
         if notif['message_type'] == notification_type
     ]
 

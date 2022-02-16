@@ -74,19 +74,24 @@ class IndividualMergeRequestVote(db.Model):
         Called when merge requests are approved/denied, this ensures any notifications sent about the request will be set to is_resolved=True
         """
         from app.modules.notifications.models import Notification, NotificationType
+
         # mildly expensive query and iterating through sub-dict, OK because this doesn't happen often.
         with db.session.begin(subtransactions=True):
             unresolved_merge_req_notif_guids = (
                 db.session.query(Notification.guid)
-                .filter(Notification.message_type == NotificationType.individual_merge_request)
-                .filter(Notification.is_resolved == False)
+                .filter(
+                    Notification.message_type == NotificationType.individual_merge_request
+                )
+                .filter(Notification.is_resolved == False)  # noqa
             )
             unresolved_merge_req_notifs = [
                 Notification.query.get(guid) for guid in unresolved_merge_req_notif_guids
             ]
             this_req_notifs = [
-                notif for notif in unresolved_merge_req_notifs if notif.message_values and
-                notif.message_values.get('request_id') == str(request_id)
+                notif
+                for notif in unresolved_merge_req_notifs
+                if notif.message_values
+                and notif.message_values.get('request_id') == str(request_id)
             ]
             for notification in this_req_notifs:
                 notification.is_resolved = True

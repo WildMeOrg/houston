@@ -248,6 +248,14 @@ class Annotation(db.Model, HoustonModel):
             assset_src = self.asset.src
         return assset_src
 
+    def get_matching_set(self, criteria=None):
+        if not self.encounter_guid:
+            raise ValueError(f'{self} has no Encounter so cannot be matched against')
+        if not criteria or not isinstance(criteria, dict):
+            criteria = {}
+        if 'viewpoint' not in criteria:
+            criteria['viewpoint'] = self.get_neighboring_viewpoints()
+
     def delete(self):
         with db.session.begin(subtransactions=True):
             while self.keyword_refs:
@@ -285,3 +293,78 @@ class Annotation(db.Model, HoustonModel):
         resp = {'rect': [xtl, ytl, width, height], 'theta': theta}
 
         return resp
+
+    def get_neighboring_viewpoints(self, include_self=True):
+        coord = Annotation.viewpoint_to_coord(self.viewpoint)
+        if not coord:
+            return None
+        vps = set()
+        for x in range(3):
+            for y in range(3):
+                for z in range(3):
+                    # skip ourself
+                    if x == y == z == 1:
+                        continue
+                    new_c = [
+                        coord[0] + x - 1,
+                        coord[1] + y - 1,
+                        coord[2] + z - 1,
+                    ]
+                    # must be co-planar (drop diagonal corners)
+                    if not (
+                        coord[0] == new_c[0]
+                        or coord[1] == new_c[1]
+                        or coord[2] == new_c[2]
+                    ):
+                        continue
+                    # this excludes neighbor center pieces when we are a center piece
+                    if coord.count(0) == 2 and new_c.count(0) == 2:
+                        continue
+                    try:
+                        vp = self.coord_to_viewpoint(new_c)
+                        if vp:
+                            vps.add(vp)
+                    except ValueError:
+                        # we just ignore out of range, as its floating in space
+                        pass
+        # corners have 6, the rest have 8
+        assert (coord.count(0) == 0 and len(vps) == 6) or len(vps) == 8
+        if include_self:
+            vps.add(self.viewpoint)
+        return vps
+
+    @classmethod
+    def coord_to_viewpoint(cls, c):
+        if not c or len(c) != 3:
+            return None
+        sub = [
+            ['down', '', 'up'],
+            ['back', '', 'front'],
+            ['left', '', 'right'],
+        ]
+        vp = ''
+        for i in range(3):
+            if c[i] < -1 or c[i] > 1:
+                raise ValueError(f'value at {i} out of range: {c[i]}')
+            vp += sub[i][c[i] + 1]
+        return vp
+
+    @classmethod
+    def viewpoint_to_coord(cls, vp):
+        c = [0, 0, 0]
+        if vp.startswith('up'):
+            c[0] = 1
+        elif vp.startswith('down'):
+            c[0] = -1
+        if 'front' in vp:
+            c[1] = 1
+        elif 'back' in vp:
+            c[1] = -1
+        if 'right' in vp:
+            c[2] = 1
+        elif 'left' in vp:
+            c[2] = -1
+        # this means it is not a direction-based viewpoint
+        if c == [0, 0, 0]:
+            return None
+        return c

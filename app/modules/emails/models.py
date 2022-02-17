@@ -1,14 +1,4 @@
 # -*- coding: utf-8 -*-
-"""
-OAuth2 provider models.
-
-It is based on the code from the example:
-https://github.com/lepture/example-oauth2-server
-
-More details are available here:
-* http://flask-oauthlib.readthedocs.org/en/latest/oauth2.html
-* http://lepture.com/en/2013/create-oauth-server
-"""
 import logging
 import enum
 
@@ -34,10 +24,6 @@ class EmailTypes(str, enum.Enum):
 
 
 class EmailRecord(db.Model, HoustonModel):
-    """
-    OAuth2 Access Tokens storage model.
-    """
-
     guid = db.Column(
         db.GUID, default=uuid.uuid4, primary_key=True
     )  # pylint: disable=invalid-name

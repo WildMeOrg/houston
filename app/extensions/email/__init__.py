@@ -1,20 +1,9 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=no-self-use
-"""
-OAuth2 provider setup.
-
-It is based on the code from the example:
-https://github.com/lepture/example-oauth2-server
-
-More details are available here:
-* http://flask-oauthlib.readthedocs.org/en/latest/oauth2.html
-* http://lepture.com/en/2013/create-oauth-server
-"""
 import logging
 
-from flask import current_app, request, session, render_template  # NOQA
-from flask_login import current_user  # NOQA
-from flask_mail import Mail, Message, email_dispatched  # NOQA
+from flask import current_app, render_template
+from flask_mail import Mail, Message, email_dispatched
 from jinja2 import TemplateNotFound
 from premailer import Premailer
 import cssutils
@@ -122,12 +111,6 @@ def _format_datetime(dt, verbose=False):
 
 
 class Email(Message):
-    # pylint: disable=abstract-method
-    """
-    A project-specific implementation of OAuth2RequestValidator, which connects
-    our User and OAuth2* implementations together.
-    """
-
     def __init__(self, *args, **kwargs):
         from app.modules.site_settings.models import SiteSetting
         from app.utils import site_url_prefix

@@ -5,6 +5,7 @@ job control module
 """
 
 from app.modules import is_module_enabled
+from app.extensions.api import api_v1
 
 if not is_module_enabled('job_control'):
     raise RuntimeError('Job Control is not enabled')
@@ -15,5 +16,11 @@ def init_app(app, **kwargs):
     """
     Init Job Control module.
     """
+
+    api_v1.add_oauth_scope('jobs:read', 'Provide access to Job details')
+    api_v1.add_oauth_scope('jobs:write', 'Provide write access to Job details')
+
     # Touch underlying modules
-    from . import models  # NOQA
+    from . import models, resources  # NOQA
+
+    api_v1.add_namespace(resources.api)

@@ -89,6 +89,22 @@ class Annotation(db.Model, HoustonModel):
             ')>'.format(class_name=self.__class__.__name__, self=self)
         )
 
+    @classmethod
+    def get_jobs_for_annotation(cls, annotation_guid, verbose):
+        annot = Annotation.query.get(annotation_guid)
+        if not annot:
+            raise HoustonException(log, f'Annotation {annotation_guid} not found')
+
+        return annot.get_job_debug(verbose)
+
+    def get_job_debug(self, verbose):
+        if self.encounter:
+            return self.encounter.sighting.get_job_debug(self.guid, verbose)
+        else:
+            raise HoustonException(
+                log, f'Annotation {self.guid} not connected to an encounter'
+            )
+
     @property
     def keywords(self):
         return self.get_keywords()

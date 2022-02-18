@@ -100,6 +100,7 @@ class AugmentedEdmSightingSchema(TimedSightingSchema):
     speciesDetectionModel = base_fields.Function(
         Sighting.config_field_getter('speciesDetectionModel', default=[])
     )
+    jobs = base_fields.Function(Sighting.get_jobs_json)
 
     class Meta(TimedSightingSchema.Meta):
         """
@@ -114,6 +115,7 @@ class AugmentedEdmSightingSchema(TimedSightingSchema):
             'assets',
             'featuredAssetGuid',
             'stage',
+            'jobs',
             'creator',
             'time',
             'timeSpecificity',
@@ -136,7 +138,7 @@ class DebugSightingSchema(AugmentedEdmSightingSchema):
         attribute='get_assets',
         many=True,
     )
-    jobs = base_fields.Function(Sighting.get_jobs_json)
+    jobs = base_fields.Function(Sighting.get_job_debug)
 
     class Meta(AugmentedEdmSightingSchema.Meta):
         fields = AugmentedEdmSightingSchema.Meta.fields + ('jobs',)

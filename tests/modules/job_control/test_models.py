@@ -35,18 +35,13 @@ def test_job_control(flask_app, researcher_1, test_root, db):
                 mock_datetime.utcnow.return_value = utc_now
                 sage_detection(str(ags.guid), 'african_terrestrial')
 
-            job_id = list(ags.jobs.keys())[0]
-
             # TODO asserts
             JobControl.check_jobs()
 
-            with mock.patch('app.modules.asset_groups.models.log') as log:
-                JobControl.print_jobs()
-                assert log.warning.call_args_list, [
-                    mock.call(
-                        f'AssetGroupSighting:{ags.guid} Job:{job_id} Model:Animal UTC Start:{utc_now}'
-                    ),
-                ]
+            jobs = JobControl.get_jobs(True)
+            assert len(jobs) == 1
+            assert jobs[0]['type'] == 'AssetGroupSighting'
+            assert jobs[0]['model'] == 'african_terrestrial'
     finally:
         if asset_group:
             asset_group.delete()

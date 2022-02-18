@@ -221,9 +221,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
                 )
                 new_encounter.set_time_from_data(req_data)
 
-                AuditLog.user_create_object(
-                    log, new_encounter, f'for owner {owner_guid}'
-                )
+                AuditLog.user_create_object(log, new_encounter, f'for owner {owner_guid}')
 
                 annotations = req_data.get('annotations', [])
                 for annot_uuid in annotations:
@@ -434,20 +432,6 @@ class AssetGroupSighting(db.Model, HoustonModel):
                 # TODO Process response
                 # TODO If UTC Start more than {arbitrary limit} ago.... do something
 
-    @classmethod
-    def print_jobs(cls):
-        for asset_group_sighting in AssetGroupSighting.query.all():
-            asset_group_sighting.print_active_jobs()
-
-    def print_active_jobs(self):
-        jobs = self.jobs
-        for job_id in jobs.keys():
-            job = jobs[job_id]
-            if job['active']:
-                log.warning(
-                    f"AssetGroupSighting:{self.guid} Job:{job_id} Model:{job['model']} UTC Start:{job['start']}"
-                )
-
     def any_jobs_active(self):
         jobs = self.jobs
         if not jobs:
@@ -458,19 +442,37 @@ class AssetGroupSighting(db.Model, HoustonModel):
                 return True
         return False
 
-    # Build up dict to print out status (calling function chooses what to collect and print)
-    def get_job_details(self, verbose):
-        from copy import deepcopy
+    @classmethod
+    def get_all_jobs_debug(cls, verbose):
+        jobs = []
+        for asset_group_sighting in AssetGroupSighting.query.all():
+            jobs.extend(asset_group_sighting.get_jobs_debug(verbose))
+        return jobs
 
-        details = deepcopy(self.jobs)
-        if verbose:
-            for job_id in self.jobs.keys():
-                details[job_id]['request'] = self.build_detection_request(
+    # Build up list to print out status (calling function chooses what to collect and print)
+    def get_jobs_debug(self, verbose):
+        details = []
+        for job_id in self.jobs.keys():
+            details.append(self.jobs[job_id])
+            details[-1]['type'] = 'AssetGroupSighting'
+            details[-1]['object_guid'] = self.guid
+            details[-1]['job_id'] = job_id
+
+            if verbose:
+                details[-1]['request'] = self.build_detection_request(
                     job_id, self.jobs[job_id]['model']
                 )
-                details[job_id]['response'] = current_app.acm.request_passthrough_result(
-                    'job.response', 'post', {}, job_id
-                )
+                try:
+                    sage_response = current_app.acm.request_passthrough_result(
+                        'job.response', 'post', {}, job_id
+                    )
+
+                    details[-1]['response'] = sage_response
+                except HoustonException as ex:
+                    # Sage seems particularly flaky with this API
+                    details[-1][
+                        'response'
+                    ] = f'Sage response caused HoustonException {ex.message}'
 
         return details
 

@@ -290,20 +290,6 @@ class Sighting(db.Model, FeatherModel):
                 # TODO Process response DEX-335
                 # TODO If UTC Start more than {arbitrary limit} ago.... do something
 
-    @classmethod
-    def print_jobs(cls):
-        for sighting in Sighting.query.all():
-            sighting.print_active_jobs()
-
-    def print_active_jobs(self):
-        for job_id in self.jobs.keys():
-            job = self.jobs[job_id]
-            if job['active']:
-                log.warning(
-                    f"Sighting:{self.guid} Job:{job_id} Matching_set:{job['matching_set']} "
-                    f"Algorithm:{job['algorithm']} Annotation:{job['annotation']} UTC Start:{job['start']}"
-                )
-
     def any_jobs_active(self):
         jobs = self.jobs
         if not jobs:
@@ -314,27 +300,63 @@ class Sighting(db.Model, FeatherModel):
                 return True
         return False
 
-    # Build up dict to print out status (calling function chooses what to collect and print)
-    def get_job_details(self, annotation_id, verbose):
+    @classmethod
+    def get_all_jobs_debug(cls, verbose):
+        jobs = []
 
-        details = {}
+        for sighting in Sighting.query.all():
+            jobs.extend(sighting.get_job_debug(annotation_id=None, verbose=verbose))
+        return jobs
+
+    # Build up dict to print out status (calling function chooses what to collect and print)
+    def get_job_debug(self, annotation_id=None, verbose=True):
+
+        details = []
         for job_id in self.jobs.keys():
-            if annotation_id == self.jobs[job_id]['annotation']:
-                details[job_id] = self.jobs[job_id]
-                if verbose:
-                    details[job_id]['request'] = self.build_identification_request(
-                        self.jobs[job_id]['matching_set'],
-                        self.jobs[job_id]['annotation'],
-                        job_id,
-                        self.jobs[job_id]['algorithm'],
-                    )
-                    details[job_id][
-                        'response'
-                    ] = current_app.acm.request_passthrough_result(
+            if annotation_id and str(annotation_id) != self.jobs[job_id]['annotation']:
+                continue
+            details.append(self.jobs[job_id])
+            details[-1]['type'] = 'Sighting'
+            details[-1]['object_guid'] = self.guid
+            details[-1]['job_id'] = job_id
+
+            if verbose:
+                details[-1]['request'] = self.build_identification_request(
+                    self.jobs[job_id]['matching_set'],
+                    self.jobs[job_id]['annotation'],
+                    job_id,
+                    self.jobs[job_id]['algorithm'],
+                )
+                try:
+                    acm_data = current_app.acm.request_passthrough_result(
                         'job.response', 'post', {}, job_id
                     )
+                    # cm_dict is enormous and as we don't use it in Houston, don't print it as debug
+                    if 'json_result' in acm_data and isinstance(
+                        acm_data['json_result'], dict
+                    ):
+                        acm_data['json_result'].pop('cm_dict', None)
+                    details[-1]['response'] = acm_data
+
+                except HoustonException as ex:
+                    # acm seems particularly flaky for getting the sighting data, if it fails, don't pass it back
+                    details[-1][
+                        'response'
+                    ] = f'Failed to read data from Sage {ex.message}'
 
         return details
+
+    def get_jobs_json(self):
+        job_data = []
+        for job in self.jobs:
+            from app.modules.sightings.schemas import DetailedSightingJobSchema
+
+            schema = DetailedSightingJobSchema()
+            this_job = schema.dump(self.jobs[job]).data
+            this_job['job_id'] = job
+            job_data.append(this_job)
+
+        return job_data
 
     def delete(self):
         AuditLog.delete_object(log, self)
@@ -427,18 +449,6 @@ class Sighting(db.Model, FeatherModel):
             guid,
             request_headers=request.headers,
         )
-
-    def get_jobs_json(self):
-        job_data = []
-        for job in self.jobs:
-            from app.modules.sightings.schemas import DetailedSightingJobSchema
-
-            schema = DetailedSightingJobSchema()
-            this_job = schema.dump(self.jobs[job]).data
-            this_job['job_id'] = job
-            job_data.append(this_job)
-
-        return job_data
 
     def get_debug_sighting_json(self):
         response = current_app.edm.get_dict('sighting.data_complete', self.guid)

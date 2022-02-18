@@ -128,6 +128,25 @@ class Asset(db.Model, HoustonModel):
     def tags(self):
         return self.get_tags()
 
+    @classmethod
+    def get_jobs_for_asset(cls, asset_guid, verbose):
+
+        asset = Asset.query.get(asset_guid)
+        if not asset:
+            raise HoustonException(log, f'Asset {asset_guid} not found')
+
+        return asset.get_jobs_debug(verbose)
+
+    @module_required('asset_groups', resolve='warn', default=False)
+    def get_jobs_debug(self, verbose):
+        asset_group_sightings = self.git_store.get_asset_group_sightings_for_asset(self)
+
+        jobs = []
+        for ags in asset_group_sightings:
+            jobs.extend(ags.get_jobs_debug(verbose))
+
+        return jobs
+
     def get_tags(self):
         return sorted([ref.tag for ref in self.tag_refs])
 

@@ -176,17 +176,26 @@ class Mission(db.Model, HoustonModel, Timestamp):
                 )
 
     @classmethod
-    def print_jobs(cls):
+    def get_all_jobs_debug(cls, verbose):
+        jobs = []
         for mission in Mission.query.all():
-            mission.print_active_jobs()
+            jobs.extend(mission.get_job_debug(verbose))
+        return jobs
 
-    def print_active_jobs(self):
+    def get_job_debug(self, verbose):
+        details = []
         for job_id in self.jobs.keys():
-            job = self.jobs[job_id]
-            if job['active']:
-                log.warning(
-                    f'Mission:{self.guid} Job:{job_id}' f"UTC Start:{job['start']}"
+            details.append(self.jobs[job_id])
+            details[-1]['type'] = 'Mission'
+            details[-1]['object_guid'] = self.guid
+            details[-1]['job_id'] = job_id
+
+            if verbose:
+                details[-1]['response'] = current_app.acm.request_passthrough_result(
+                    'job.response', 'post', {}, job_id
                 )
+
+        return details
 
     def any_jobs_active(self):
         jobs = self.jobs
@@ -197,14 +206,6 @@ class Mission(db.Model, HoustonModel, Timestamp):
             if job['active']:
                 return True
         return False
-
-    def get_job_details(self):
-
-        details = {}
-        for job_id in self.jobs.keys():
-            details[job_id] = self.jobs[job_id]
-
-        return details
 
     def send_mws_backend_operation(self):
         from datetime import datetime

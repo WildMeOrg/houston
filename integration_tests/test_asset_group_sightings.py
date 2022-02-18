@@ -322,6 +322,7 @@ def test_asset_group_sightings(session, login, codex_url, test_root):
         'detection_start_time': response.json()['detection_start_time'],
         'identification_start_time': None,
         'review_time': None,
+        'jobs': [],
         'speciesDetectionModel': ['african_terrestrial'],
         'unreviewed_start_time': response.json()['unreviewed_start_time'],
     }

@@ -191,10 +191,11 @@ services:
       retries: 60
     volumes:
       - .dockerfiles/dev-frontend/docker-entrypoint.sh:/docker-entrypoint.sh
-      - ./_frontend.mws:/code
+      - ./:/code
     networks:
       - intranet
     environment:
+      HOUSTON_APP_CONTEXT: mws
       # See port served by 'www' component (i.e. the reverse proxy)
       HOST: "0.0.0.0"
       PORT: "84"

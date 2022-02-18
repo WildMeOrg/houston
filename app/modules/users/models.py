@@ -624,31 +624,36 @@ class User(db.Model, FeatherModel, UserEDMMixin):
         return GitStore.filter_for(AssetGroup, self.git_stores)
 
     @module_required('asset_groups', resolve='warn', default=[])
-    def unprocessed_asset_groups(self):
+    def get_unprocessed_asset_groups(self):
         from app.modules.asset_groups.models import (
             AssetGroup,
             AssetGroupSighting,
             AssetGroupSightingStage,
         )
 
-        res = (
+        return (
             db.session.query(AssetGroup)
             .join(AssetGroupSighting)
             .filter(AssetGroup.owner_guid == self.guid)
             .filter(AssetGroupSighting.stage != AssetGroupSightingStage.processed)
         ).all()
+
+    # this is used for the users/me schema output
+    @module_required('asset_groups', resolve='warn', default=[])
+    def unprocessed_asset_groups(self):
+        unprocessed_groups = self.get_unprocessed_asset_groups()
         return [
             {
                 'uuid': str(asset_group.guid),
                 'uploadType': asset_group.get_config_field('uploadType'),
             }
-            for asset_group in res
+            for asset_group in unprocessed_groups
         ]
 
     @module_required('asset_groups', resolve='warn', default=[])
     def get_unprocessed_asset_group_sightings(self):
         ags = []
-        for group in self.get_asset_groups():
+        for group in self.get_unprocessed_asset_groups():
             new_ags = [ags for ags in group.get_unprocessed_asset_group_sightings()]
             ags.extend(new_ags)
         return ags

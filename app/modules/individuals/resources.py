@@ -782,3 +782,15 @@ class IndividualDebugByID(Resource):
             return {}
 
         return individual.get_debug_json()
+
+
+@api.route('/name_validate')
+class IndividualNameValidate(Resource):
+    def post(self):
+        from flask_login import current_user
+
+        if not current_user or current_user.is_anonymous:
+            abort(code=401)
+        if not isinstance(request.json, list):
+            abort(message='must be passed a list of individual names', code=500)
+

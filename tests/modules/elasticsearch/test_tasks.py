@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from contextlib import contextmanager
 import datetime
 import re
 from unittest import mock
@@ -132,8 +133,12 @@ def test_load_codex_indexes(monkeypatch, flask_app):
     from app.modules.elasticsearch import tasks
 
     # Mock the response from the wildbook database query
+    @contextmanager
+    def yield_mock_wildbook_engine():
+        yield mock_wildbook_engine
+
     mock_wildbook_engine = mock.MagicMock()
-    monkeypatch.setattr(tasks, 'create_wildbook_engine', lambda: mock_wildbook_engine)
+    monkeypatch.setattr(tasks, 'create_wildbook_engine', yield_mock_wildbook_engine)
     wildbook_create_stmts = []
 
     def mock_wildbook_connection_execute(text_clause, *args, **kwargs):
@@ -157,8 +162,12 @@ def test_load_codex_indexes(monkeypatch, flask_app):
         execute=mock_wildbook_connection_execute
     )
 
+    @contextmanager
+    def yield_mock_houston_engine():
+        yield mock_houston_engine
+
     mock_houston_engine = mock.MagicMock()
-    monkeypatch.setattr(tasks, 'create_houston_engine', lambda: mock_houston_engine)
+    monkeypatch.setattr(tasks, 'create_houston_engine', yield_mock_houston_engine)
 
     houston_create_stmts = []
 
@@ -261,7 +270,11 @@ def test_catchup_indexing():
     res = tasks.combine_names(row)
     assert 'name' in res
     assert len(res['name']) == 2
-    row = [('foo', 'bar'), ('test', True), ('name_dict', {'context0': 'value0', 'default': 'value1'})]
+    row = [
+        ('foo', 'bar'),
+        ('test', True),
+        ('name_dict', {'context0': 'value0', 'default': 'value1'}),
+    ]
     res = tasks.combine_names(row)
     assert 'name' in res
     assert len(res['name']) == 2

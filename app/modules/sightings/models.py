@@ -930,11 +930,14 @@ class Sighting(db.Model, FeatherModel):
                 ] = q_annot.encounter.individual_guid
             self._ensure_annot_data_in_response(q_annot, response)
 
-            q_annot_jobs = [
-                self.jobs[job]
-                for job in self.jobs
-                if self.jobs[job]['annotation'] == str(q_annot.guid)
-            ]
+            if not self.jobs:
+                q_annot_jobs = []
+            else:
+                q_annot_jobs = [
+                    self.jobs[job]
+                    for job in self.jobs
+                        if self.jobs[job]['annotation'] == str(q_annot.guid)
+                ]
             if len(q_annot_jobs) < 1:
                 # Not run is perfectly valid
                 continue

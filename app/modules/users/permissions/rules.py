@@ -52,6 +52,9 @@ MODULE_USER_MAP = {
     ('SocialGroup', AccessOperation.WRITE): ['is_researcher'],
     ('Relationship', AccessOperation.READ): ['is_researcher'],
     ('Relationship', AccessOperation.WRITE): ['is_researcher'],
+    ('JobControl', AccessOperation.READ): ['is_active'],
+    # Generally only staff can read debug information, this is the one exception
+    ('JobControl', AccessOperation.READ_DEBUG): ['is_admin'],
 }
 
 # Map of user permissions on the object. These permissions are not granted by collaboration
@@ -328,6 +331,9 @@ class ObjectActionRule(DenyAbortMixin, Rule):
             or self._action == AccessOperation.WRITE_PRIVILEGED
         ):
             return False
+        elif self._action == AccessOperation.READ_DEBUG:
+            # Only staff can read debug info, not owners
+            return user.is_privileged
         else:
             return owner_or_privileged(user, self._obj)
 

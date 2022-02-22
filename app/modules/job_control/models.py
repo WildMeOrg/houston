@@ -29,18 +29,21 @@ class JobControl(object):
 
     # Central point for all "job" related things to be accessed.
     @classmethod
-    def print_jobs(cls):
+    def get_jobs(cls, verbose):
+        jobs = []
         if is_module_enabled('asset_groups'):
             from app.modules.asset_groups.models import AssetGroupSighting
 
-            AssetGroupSighting.print_jobs()
+            jobs.extend(AssetGroupSighting.get_all_jobs_debug(verbose))
 
         if is_module_enabled('sightings'):
             from app.modules.sightings.models import Sighting
 
-            Sighting.print_jobs()
+            jobs.extend(Sighting.get_all_jobs_debug(verbose))
 
         if is_module_enabled('missions'):
             from app.modules.missions.models import Mission
 
-            Mission.check_jobs()
+            jobs.extend(Mission.get_all_jobs_debug(verbose))
+
+        return jobs

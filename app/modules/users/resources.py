@@ -286,7 +286,7 @@ class AdminUserInitialized(Resource):
             admin = User.ensure_user(
                 email,
                 password,
-                is_internal=True,
+                is_internal=False,
                 is_admin=True,
                 is_staff=False,
                 is_researcher=True,

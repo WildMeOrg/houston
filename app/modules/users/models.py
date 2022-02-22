@@ -106,7 +106,6 @@ if is_extension_enabled('edm'):
             # TODO is this actually needed
             log.warning('User._process_edm_user_organization() not implemented yet')
 
-
 else:
     UserEDMMixin = object
 
@@ -904,7 +903,7 @@ class User(db.Model, FeatherModel, UserEDMMixin):
             email=User.PUBLIC_USER_EMAIL,
             password=User.initial_random_password(),
             full_name='Public User',
-            is_internal=True,
+            is_internal=False,
         )
 
     @module_required('sightings', resolve='warn', default=[])

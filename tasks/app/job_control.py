@@ -1,117 +1,74 @@
 # -*- coding: utf-8 -*-
 """
-Application EDM related tasks for Invoke.
+Application Job_control related tasks for Invoke.
 """
 
 from tasks.utils import app_context_task
+from app.utils import HoustonException
+import pprint
 
 
 @app_context_task()
-def print_jobs(context):
+def print_jobs(context, verbose=True):
     """Print out all of the outstanding job status"""
     from app.modules.job_control.models import JobControl
 
-    JobControl.print_jobs()
+    pprint.pprint(JobControl.get_jobs(verbose))
 
 
-def get_jobs_for_asset(asset_guid, verbose):
+@app_context_task()
+def print_last_asset_job(context, asset_guid, verbose=True):
+    """Print out the job status for the last detection job for the asset"""
     from app.modules.assets.models import Asset
-    from app.modules.asset_groups.models import AssetGroup, AssetGroupSighting  # noqa
 
-    asset = Asset.query.get(asset_guid)
-    if not asset:
-        print(f'Asset {asset_guid} not found')
+    try:
+        jobs = Asset.get_jobs_for_asset(asset_guid, verbose)
+    except HoustonException as ex:
+        print(ex.message)
+
+    jobs.sort(key=lambda jb: jb['start'])
+
+    pprint.pprint(jobs[-1])
+
+
+@app_context_task()
+def print_all_asset_jobs(context, asset_guid, verbose=True):
+    """Print out the job status for all the detection jobs for the asset"""
+    from app.modules.assets.models import Asset
+
+    try:
+        jobs = Asset.get_jobs_for_asset(asset_guid, verbose)
+    except HoustonException as ex:
+        print(ex.message)
         return []
 
-    asset_group_sightings = asset.git_store.get_asset_group_sightings_for_asset(asset)
-
-    jobs = {}
-    for ags in asset_group_sightings:
-        jobs.update(ags.get_job_details(verbose))
-
-    return jobs
+    pprint.pprint(jobs)
 
 
 @app_context_task()
-def print_last_asset_job(context, asset_guid, verbose=False):
-    """Print out the job status for the last detection job for the asset"""
-
-    jobs = get_jobs_for_asset(asset_guid, verbose)
-
-    last_job_id = None
-    last_job = {}
-    for job_id in jobs.keys():
-        if not last_job_id or jobs[job_id]['start'] > last_job['start']:
-            last_job_id = job_id
-            last_job = jobs[job_id]
-
-    print(
-        f"Last Job {last_job_id} Active:{last_job['active']}"
-        f"Started (UTC):{last_job['start']} model:{last_job['model']}"
-    )
-    if verbose:
-        print(f"\n\tRequest:{last_job['request']}\n\tResponse:{last_job['response']}")
-
-
-@app_context_task()
-def print_all_asset_jobs(context, asset_guid, verbose=False):
-    """Print out the job status for all the detection jobs for the asset"""
-    jobs = get_jobs_for_asset(asset_guid, verbose)
-
-    for job_id in jobs.keys():
-        job = jobs[job_id]
-        print(
-            f"Job {job_id} Active:{job['active']} Started (UTC):{job['start']} model:{job['model']}"
-        )
-        if verbose:
-            print(f"\n\tRequest:{job['request']}\n\tResponse:{job['response']}")
-
-
-def get_jobs_for_annotation(annotation_guid, verbose):
+def print_last_annotation_job(context, annotation_guid, verbose=True):
+    """Print out the job status for the last identification job for the annotation"""
     from app.modules.annotations.models import Annotation
 
-    annot = Annotation.query.get(annotation_guid)
-    if not annot:
-        print(f'Annotation {annotation_guid} not found')
-        return {}
+    try:
+        jobs = Annotation.get_jobs_for_annotation(annotation_guid, verbose)
+    except HoustonException as ex:
+        print(ex.message)
+        return []
 
-    if annot.encounter:
-        return annot.encounter.sighting.get_job_details(annotation_guid, verbose)
-    else:
-        print(f'Annotation {annotation_guid} not connected to an encounter')
-        return {}
+    jobs.sort(key=lambda jb: jb['start'])
+    pprint.pprint(jobs[-1])
 
 
 @app_context_task()
-def print_last_annotation_job(context, annotation_guid, verbose=False):
-    """Print out the job status for the last identification job for the annotation"""
-
-    jobs = get_jobs_for_annotation(annotation_guid, verbose)
-
-    last_job_id = None
-    last_job = {}
-    for job_id in jobs.keys():
-        if not last_job_id or jobs[job_id]['start'] > last_job['start']:
-            last_job_id = job_id
-            last_job = jobs[job_id]
-
-    print(
-        f"Last Job {last_job_id} Active:{last_job['active']} "
-        f"Started (UTC):{last_job['start']} algorithm:{last_job['algorithm']}"
-    )
-    if verbose:
-        print(f"\n\tRequest:{last_job['request']}\n\tResponse:{last_job['response']}")
-
-
-@app_context_task()
-def print_all_annotation_jobs(context, annotation_guid, verbose=False):
+def print_all_annotation_jobs(context, annotation_guid, verbose=True):
     """Print out the job status for all the identification jobs for the annotation"""
-    jobs = get_jobs_for_annotation(annotation_guid, verbose)
+    from app.modules.annotations.models import Annotation
 
-    for job_id in jobs.keys():
-        job = jobs[job_id]
-        print(
-            f"Job {job_id} Active:{job['active']} Started (UTC):{job['start']} algorithm:{job['algorithm']}"
-        )
-        if verbose:
-            print(f"\n\tRequest:{job['request']}\n\tResponse:{job['response']}")
+    try:
+        jobs = Annotation.get_jobs_for_annotation(annotation_guid, verbose)
+    except HoustonException as ex:
+        print(ex.message)
+        return []
+
+    pprint.pprint(jobs)

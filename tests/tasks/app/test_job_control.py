@@ -45,9 +45,9 @@ def test_asset_group_detection_jobs(
                     MockContext(), resp.json['assets'][0]['guid']
                 )
                 job_output = stdout.getvalue()
-                assert 'Job ' in job_output
-                assert 'Active:True Started (UTC)' in job_output
-                assert 'model:african_terrestrial' in job_output
+                assert "'type': 'AssetGroupSighting'" in job_output
+                assert "'active': True" in job_output
+                assert "'model': 'african_terrestrial'" in job_output
 
                 # Simulate a valid response from Sage but don't actually send the request to Sage
                 with mock.patch.object(
@@ -59,13 +59,11 @@ def test_asset_group_detection_jobs(
                         MockContext(), resp.json['assets'][0]['guid'], verbose=True
                     )
                     job_output = stdout.getvalue()
-                    assert 'Job ' in job_output
-                    assert 'Active:True Started (UTC)' in job_output
-                    assert 'model:african_terrestrial' in job_output
-                    assert "Request:{'endpoint': '/api/engine/detect" in job_output
-                    assert (
-                        "Response:{'success': True, 'content': 'something'}" in job_output
-                    )
+                    assert "'type': 'AssetGroupSighting'" in job_output
+                    assert "'active': True" in job_output
+                    assert "'model': 'african_terrestrial'" in job_output
+                    assert "'endpoint': '/api/engine/detect/cnn/lightnet/'" in job_output
+
     finally:
         if asset_group_uuid:
             asset_group_utils.delete_asset_group(
@@ -162,9 +160,10 @@ def test_sighting_identification_jobs(
 
             job_control.print_all_annotation_jobs(MockContext(), str(annot_uuid))
             job_output = stdout.getvalue()
-            assert 'Job ' in job_output
-            assert 'Active:True Started (UTC)' in job_output
-            assert 'algorithm:hotspotter_nosv' in job_output
+            assert "'type': 'Sighting'" in job_output
+            assert "'active': True" in job_output
+            assert "'jobid':" in job_output
+            assert "'algorithm': 'hotspotter_nosv'," in job_output
 
             # Simulate a valid response from Sage but don't actually send the request to Sage
             with mock.patch.object(
@@ -176,8 +175,9 @@ def test_sighting_identification_jobs(
                     MockContext(), str(annot_uuid), verbose=True
                 )
                 job_output = stdout.getvalue()
-                assert 'Job ' in job_output
-                assert 'Active:True Started (UTC)' in job_output
-                assert 'algorithm:hotspotter_nosv' in job_output
-                assert "Request:{'jobid': " in job_output
-                assert "Response:{'success': True, 'content': 'something'}" in job_output
+                assert "'type': 'Sighting'" in job_output
+                assert "'active': True" in job_output
+                assert "'algorithm': 'hotspotter_nosv'," in job_output
+                assert (
+                    "'response': {'content': 'something', 'success': True}" in job_output
+                )

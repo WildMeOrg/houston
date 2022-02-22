@@ -11,8 +11,10 @@ import enum
 
 class AccessOperation(enum.Enum):
     READ = 1
+    # Debug generally only available to staff users so needs a separate category
+    READ_DEBUG = 2
     # Some information needs to be much more secure
-    READ_PRIVILEGED = 2
-    WRITE = 3
-    WRITE_PRIVILEGED = 4
-    DELETE = 5
+    READ_PRIVILEGED = 3
+    WRITE = 4
+    WRITE_PRIVILEGED = 5
+    DELETE = 6

@@ -74,6 +74,14 @@ def test_create_asset_group_identification(session, codex_url, test_root, login)
     login(session)
     zebra_guids = create_sighting(session, codex_url, test_root, 'zebra.jpg')
 
+    # Check jobs data for first AGS
+    zebra_ags = session.get(
+        codex_url(f"/api/v1/asset_groups/sighting/{zebra_guids['ags']}")
+    )
+    assert len(zebra_ags.json()['jobs']) == 1
+    job_data = zebra_ags.json()['jobs'][0]
+    assert not job_data['active']
+
     # the first one does not go for identification, so make it processed so that the next one can
     patch_response = session.post(
         codex_url(f"/api/v1/sightings/{zebra_guids['sighting']}/reviewed"),
@@ -106,7 +114,10 @@ def test_create_asset_group_identification(session, codex_url, test_root, login)
     query_annot = id_resp['query_annotations'][0]
     assert query_annot['status'] == 'complete'
     assert query_annot['guid'] in id_resp['annotation_data'].keys()
-    assert (
-        query_annot['algorithms']['hotspotter_nosv']['scores_by_annotation'][0]['guid']
-        in id_resp['annotation_data'].keys()
+
+    # Check that we got job data back
+    zebra_sighting = session.get(
+        codex_url(f"/api/v1/sightings/{zebra2_guids['sighting']}")
     )
+    id_job_data = zebra_sighting.json()['jobs'][0]
+    assert not id_job_data['active']

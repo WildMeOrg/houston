@@ -311,7 +311,7 @@ class AssetGroupByIDDebug(Resource):
         kwargs_on_request=lambda kwargs: {
             'module': AssetGroup,
             'obj': kwargs['asset_group'][0],
-            'action': AccessOperation.READ_PRIVILEGED,
+            'action': AccessOperation.READ_DEBUG,
         },
     )
     @api.response(schemas.DebugAssetGroupSchema())
@@ -389,6 +389,32 @@ class AssetGroupSightingByID(Resource):
             db.session.merge(asset_group_sighting)
         AuditLog.patch_object(log, asset_group_sighting, args, duration=timer.elapsed())
         return asset_group_sighting
+
+
+@api.route('/sighting/jobs/<uuid:asset_group_sighting_guid>')
+@api.response(
+    code=HTTPStatus.NOT_FOUND,
+    description='Asset_group_sighting not found.',
+)
+@api.resolve_object_by_model(AssetGroupSighting, 'asset_group_sighting')
+class AssetGroupSightingJobsByID(Resource):
+    """
+    The Asset Group Sighting jobs details
+    """
+
+    @api.permission_required(
+        permissions.ObjectAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'obj': kwargs['asset_group_sighting'],
+            'action': AccessOperation.READ_DEBUG,
+        },
+    )
+    @api.login_required(oauth_scopes=['asset_group_sightings:read'])
+    def get(self, asset_group_sighting):
+        """
+        Get Asset_group_sighting details by ID.
+        """
+        return asset_group_sighting.get_jobs_debug(verbose=True)
 
 
 @api.route('/sighting/as_sighting/<uuid:asset_group_sighting_guid>')

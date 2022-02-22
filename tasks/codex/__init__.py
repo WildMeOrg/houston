@@ -20,6 +20,7 @@ from tasks.codex import (
     projects,
     elasticsearch,
     sightings,
+    job_control,
 )
 
 
@@ -35,6 +36,7 @@ namespace = Collection(
     projects,
     elasticsearch,
     sightings,
+    job_control,
     run,
 )
 

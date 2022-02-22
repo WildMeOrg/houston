@@ -312,6 +312,8 @@ class Sighting(db.Model, FeatherModel):
     def get_job_debug(self, annotation_id=None, verbose=True):
 
         details = []
+        if not self.jobs:
+            return details
         for job_id in self.jobs.keys():
             if annotation_id and str(annotation_id) != self.jobs[job_id]['annotation']:
                 continue

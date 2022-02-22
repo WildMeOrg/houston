@@ -6,6 +6,11 @@ on:
       - main
     paths:
       - 'app/modules/**/models.py'
+      - 'scripts/docs/generate_models_graph.py'
+  pull_request:
+    paths:
+      - 'scripts/docs/generate_models_graph.py'
+
 
 jobs:
   generate-models-graph:
@@ -33,11 +38,17 @@ jobs:
       - name: Generate models graph
         run: ./scripts/docs/generate_models_graph.py
       - name: Commit and push to docs
+        if: github.ref == 'refs/heads/main'
         run: |
           bash -xe <<EOF
-          git add docs/${HOUSTON_APP_CONTEXT}-models-graph.png
-          git config user.name github-actions
-          git config user.email github-actions@github.com
-          git commit -am 'Update docs/models-graph.png'
-          git push origin HEAD
+          if ! git diff --quiet
+          then
+            git add docs/${HOUSTON_APP_CONTEXT}-models-graph.png
+            git config user.name github-actions
+            git config user.email github-actions@github.com
+            git commit -am 'Update docs/models-graph.png'
+            git push origin HEAD
+          else
+            echo nothing to commit
+          fi
           EOF

@@ -936,7 +936,7 @@ class Sighting(db.Model, FeatherModel):
                 q_annot_jobs = [
                     self.jobs[job]
                     for job in self.jobs
-                        if self.jobs[job]['annotation'] == str(q_annot.guid)
+                    if self.jobs[job]['annotation'] == str(q_annot.guid)
                 ]
             if len(q_annot_jobs) < 1:
                 # Not run is perfectly valid

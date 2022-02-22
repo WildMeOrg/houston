@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from contextlib import contextmanager
 import logging
 
 import json
@@ -23,24 +24,32 @@ def setup_periodic_tasks(sender, **kwargs):
     )
 
 
+@contextmanager
 def create_wildbook_engine() -> Engine:
     """Creates a SQLAlchemy Engine for connecting to the Wildbook database"""
-    return create_engine(current_app.config['WILDBOOK_DB_URI'])
+    engine = create_engine(current_app.config['WILDBOOK_DB_URI'])
+    try:
+        yield engine
+    finally:
+        engine.dispose()
 
 
+@contextmanager
 def create_houston_engine() -> Engine:
     """Creates a SQLAlchemy Engine for connecting to the houston database"""
-    return create_engine(current_app.config['SQLALCHEMY_DATABASE_URI'])
+    engine = create_engine(current_app.config['SQLALCHEMY_DATABASE_URI'])
+    try:
+        yield engine
+    finally:
+        engine.dispose()
 
 
-def set_up_houston_tables():
+def set_up_houston_tables(wb_engine, h_engine):
     # Fetch houston enum types
-    h_engine = create_houston_engine()
     with h_engine.connect() as h_conn:
         results = h_conn.execute(text(ENUM_TYPE_LIST_SQL_QUERY))
         enum_list = results.fetchall()
 
-    wb_engine = create_wildbook_engine()
     with wb_engine.connect() as wb_conn:
         # Create houston enum types
         results = wb_conn.execute(text(ENUM_TYPE_LIST_SQL_QUERY))
@@ -104,7 +113,10 @@ IMPORT FOREIGN SCHEMA public FROM SERVER houston INTO houston;
 
 
 def load_individuals_index(
-    catchup_index_before=None, catchup_index_batch_size=0, catchup_index_mark=None
+    wb_engine,
+    catchup_index_before=None,
+    catchup_index_batch_size=0,
+    catchup_index_mark=None,
 ):
     if catchup_index_before:
         where_clause = f"WHERE hind.updated < '{catchup_index_before}' AND hind.guid > '{catchup_index_mark}' ORDER BY hind.guid LIMIT {catchup_index_batch_size}"
@@ -112,7 +124,6 @@ def load_individuals_index(
         cutoff = update_incremental_cutoff('individual')
         where_clause = f"WHERE hind.updated >= '{cutoff}'"
     last_guid = None
-    wb_engine = create_wildbook_engine()
     with wb_engine.connect() as wb_conn:
         # Query for marked individual records
         sql = WILDBOOK_MARKEDINDIVIDUAL_SQL_QUERY
@@ -191,14 +202,16 @@ FROM
 
 
 def load_encounters_index(
-    catchup_index_before=None, catchup_index_batch_size=0, catchup_index_mark=None
+    wb_engine,
+    catchup_index_before=None,
+    catchup_index_batch_size=0,
+    catchup_index_mark=None,
 ):
     if catchup_index_before:
         where_clause = f"WHERE hen.updated < '{catchup_index_before}' AND hen.guid > '{catchup_index_mark}' ORDER BY hen.guid LIMIT {catchup_index_batch_size}"
     else:
         cutoff = update_incremental_cutoff('encounter')
         where_clause = f"WHERE hen.updated >= '{cutoff}'"
-    wb_engine = create_wildbook_engine()
     last_guid = None
     with wb_engine.connect() as wb_conn:
         sql = ENCOUNTERS_INDEX_SQL
@@ -263,7 +276,10 @@ FROM
 
 
 def load_sightings_index(
-    catchup_index_before=None, catchup_index_batch_size=0, catchup_index_mark=None
+    wb_engine,
+    catchup_index_before=None,
+    catchup_index_batch_size=0,
+    catchup_index_mark=None,
 ):
     if catchup_index_before:
         where_clause = f"WHERE si.updated < '{catchup_index_before}' AND si.guid > '{catchup_index_mark}'"
@@ -273,7 +289,6 @@ def load_sightings_index(
         where_clause = f"WHERE si.updated >= '{cutoff}'"
         order_clause = ''
     last_guid = None
-    wb_engine = create_wildbook_engine()
     with wb_engine.connect() as wb_conn:
         sql = SIGHTINGS_INDEX_SQL
         sql = sql.replace('{where_clause}', where_clause)
@@ -402,10 +417,12 @@ def update_incremental_cutoff(key_prefix):
 @celery.task
 def load_codex_indexes():
     log.info('incremental indexing started')
-    set_up_houston_tables()
-    load_individuals_index()
-    load_encounters_index()
-    load_sightings_index()
+    with create_wildbook_engine() as wb_engine:
+        with create_houston_engine() as h_engine:
+            set_up_houston_tables(wb_engine, h_engine)
+        load_individuals_index(wb_engine)
+        load_encounters_index(wb_engine)
+        load_sightings_index(wb_engine)
 
 
 def catchup_index_get():

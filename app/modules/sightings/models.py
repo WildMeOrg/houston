@@ -348,6 +348,8 @@ class Sighting(db.Model, FeatherModel):
 
     def get_jobs_json(self):
         job_data = []
+        if not self.jobs:
+            return job_data
         for job in self.jobs:
             from app.modules.sightings.schemas import DetailedSightingJobSchema
 

@@ -127,7 +127,6 @@ class Email(Message):
         # will attempt to discover via set_language() unless specifically set
         self.language = None
         self._transaction_id = str(uuid.uuid4())
-        self._original_recipients = None  # should only be set by resolve_recipients
         self.template_name = None
         self.template_kwargs = {
             'site_name': SiteSetting.get_value('site.name', default='Codex'),
@@ -139,11 +138,10 @@ class Email(Message):
         self.mail = mail
 
         # Debugging, override all email destinations
+        recipients, self.users = self._resolve_recipients(kwargs['recipients'])
+        kwargs['recipients'] = recipients
         override_recipients = current_app.config.get('MAIL_OVERRIDE_RECIPIENTS', None)
         if override_recipients is not None:
-            original_recipients = kwargs.get('recipients', None)
-            log.warning('Original recipients: %r' % (original_recipients,))
-            log.warning('Override recipients: %r' % (override_recipients,))
             kwargs['recipients'] = override_recipients
 
         super(Email, self).__init__(*args, **kwargs)
@@ -155,6 +153,8 @@ class Email(Message):
         self.extra_headers['X-Houston-Transaction-ID'] = self._transaction_id
         self.extra_headers['X-Houston-Version'] = app.version.version
         self.extra_headers['X-Houston-Git-Revision'] = app.version.git_revision
+        if override_recipients is not None:
+            self.extra_headers['X-Houston-Recipients'] = ', '.join(recipients)
 
     # note: in order to be able to use set_language(), recipients must be set first on the Email
     def template(self, template, **kwargs):
@@ -289,30 +289,25 @@ class Email(Message):
             return
 
         from app.modules.site_settings.models import SiteSetting
-        from app.modules.users.models import User
 
-        self.resolve_recipients()
-        for recip in self._original_recipients:
-            if isinstance(recip, User):
-                self.language = recip.get_preferred_langauge()
-                if self.language:
-                    return
+        for recip in self.users:
+            self.language = recip.get_preferred_langauge()
+            if self.language:
+                return
         self.language = SiteSetting.get_string('preferred_language', 'en_us')
 
-    def resolve_recipients(self):
-        if self._original_recipients:
-            return  # only do once
+    def _resolve_recipients(self, recipients):
         from app.modules.users.models import User
 
-        self._original_recipients = []
         addresses = []
-        for recip in self.recipients:
-            self._original_recipients.append(recip)
-            if isinstance(recip, User):
-                addresses.append(recip.email)
+        users = []
+        for recipient in recipients:
+            if isinstance(recipient, User):
+                users.append(recipient)
+                addresses.append(recipient.email)
             else:
-                addresses.append(recip)
-        self.recipients = addresses
+                addresses.append(recipient)
+        return addresses, users
 
     def send_message(self, *args, **kwargs):
         if _validate_settings():
@@ -322,7 +317,6 @@ class Email(Message):
                 )
             if not self.recipients:
                 raise ValueError(f'No recipients; not sending email ({self.subject})')
-            self.resolve_recipients()
             mail.init_app(
                 current_app
             )  # this initializes based on new MAIL_ values from _validate_settings

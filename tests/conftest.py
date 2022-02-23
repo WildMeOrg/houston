@@ -166,6 +166,25 @@ def cleanup_objects(db):
             db.session.delete(notif)
 
 
+@pytest.fixture(autouse=True)
+def email_setup(flask_app):
+    from app.modules.site_settings.models import SiteSetting
+
+    # this should only run in TESTING (non-sending) mode
+    assert flask_app.config['TESTING']
+    flask_app.config['MAIL_OVERRIDE_RECIPIENTS'] = None
+
+    # this mocks using mailchimp, but wont send since we are in TESTING
+    SiteSetting.set('email_service', string='mailchimp')
+    SiteSetting.set('email_service_username', string='testing_' + str(uuid.uuid4()))
+    SiteSetting.set('email_service_password', string='testing_' + str(uuid.uuid4()))
+
+    yield
+
+    # gets rid of system_guid as well (important for other tests)
+    SiteSetting.query.delete()
+
+
 @pytest.fixture(scope='session')
 def flask_app(gitlab_remote_login_pat):
     with tempfile.TemporaryDirectory() as td:

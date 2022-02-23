@@ -10,16 +10,6 @@ from flask_restx_patched import ModelSchema
 from .models import SocialGroup, SocialGroupIndividualMembership
 
 
-class SocialGroupMemberSchema(ModelSchema):
-    """
-    Data for members in the the SocialGroup
-    """
-
-    class Meta:
-        model = SocialGroupIndividualMembership
-        fields = (SocialGroupIndividualMembership.roles.key,)
-
-
 class BaseSocialGroupSchema(ModelSchema):
     """
     Base SocialGroup schema exposes only the most general fields.
@@ -53,3 +43,31 @@ class DetailedSocialGroupSchema(BaseSocialGroupSchema):
             SocialGroup.updated.key,
             'members',
         )
+
+
+class BaseSocialGroupMemberSchema(ModelSchema):
+    """
+    Data for members in the the SocialGroup
+    """
+
+    class Meta:
+        model = SocialGroupIndividualMembership
+        fields = (SocialGroupIndividualMembership.roles.key,)
+        dump_only = (
+            SocialGroupIndividualMembership.created.key,
+            SocialGroupIndividualMembership.updated.key,
+        )
+
+
+class DetailedSocialGroupMemberSchema(ModelSchema):
+    """
+    Data for members in the the SocialGroup
+    """
+
+    social_group = base_fields.Nested(DetailedSocialGroupSchema)
+
+    class Meta:
+        model = SocialGroupIndividualMembership
+        fields = BaseSocialGroupMemberSchema.Meta.fields + ('social_group',)
+        # you can edit social groups through the social group api, not this one
+        dump_only = BaseSocialGroupMemberSchema.Meta.dump_only + ('social_group',)

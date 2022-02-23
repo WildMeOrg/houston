@@ -10,7 +10,6 @@ from flask_marshmallow import base_fields
 from .models import Individual
 
 from app.modules.names.schemas import DetailedNameSchema
-from app.modules.social_groups.schemas import DetailedSocialGroupMemberSchema
 
 
 class BaseIndividualSchema(ModelSchema):
@@ -43,10 +42,7 @@ class DetailedIndividualSchema(BaseIndividualSchema):
         attribute='names',
         many=True,
     )
-    social_groups = base_fields.Nested(
-        DetailedSocialGroupMemberSchema,
-        many=True,
-    )
+    social_groups = base_fields.Function(Individual.get_social_groups_json)
 
     class Meta(BaseIndividualSchema.Meta):
         fields = BaseIndividualSchema.Meta.fields + (

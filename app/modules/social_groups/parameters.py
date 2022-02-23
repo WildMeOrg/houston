@@ -13,8 +13,8 @@ from . import schemas
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
 
-class SocialGroupMembers(Parameters, schemas.BaseSocialGroupMemberSchema):
-    class Meta(schemas.BaseSocialGroupMemberSchema.Meta):
+class SocialGroupMembers(Parameters, schemas.SocialGroupMemberSchema):
+    class Meta(schemas.SocialGroupMemberSchema.Meta):
         pass
 
 

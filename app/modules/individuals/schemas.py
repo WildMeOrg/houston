@@ -11,6 +11,7 @@ from .models import Individual
 
 from app.modules.names.schemas import DetailedNameSchema
 from app.modules.encounters.schemas import DetailedEncounterSchema
+from app.modules.social_groups.schemas import DetailedSocialGroupMemberSchema
 
 
 class BaseIndividualSchema(ModelSchema):
@@ -43,6 +44,10 @@ class DetailedIndividualSchema(BaseIndividualSchema):
         attribute='names',
         many=True,
     )
+    social_groups = base_fields.Nested(
+        DetailedSocialGroupMemberSchema,
+        many=True,
+    )
 
     class Meta(BaseIndividualSchema.Meta):
         fields = BaseIndividualSchema.Meta.fields + (
@@ -50,6 +55,7 @@ class DetailedIndividualSchema(BaseIndividualSchema):
             Individual.updated.key,
             'featuredAssetGuid',
             'names',
+            'social_groups',
         )
         dump_only = BaseIndividualSchema.Meta.dump_only + (
             Individual.created.key,

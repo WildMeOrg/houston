@@ -105,6 +105,15 @@ def test_basic_operation(
     assert create_log['module_name'] == 'SocialGroup'
     assert create_log['user_email'] == researcher_1.email
 
+    # validate that the individual GET includes the social group
+    individual_as_res1_json = individual_utils.read_individual(
+        flask_app_client, researcher_1, individuals[0]['id']
+    ).json
+    assert len(individual_as_res1_json['social_groups']) == 1
+    ind_social_group = individual_as_res1_json['social_groups'][0]['social_group']
+    assert individuals[0]['id'] in ind_social_group['members']
+    assert data['name'] == ind_social_group['name']
+
 
 # Test invalid configuration options. The API is via site settings but the validation is in SocialGroup so
 # this is a social group test

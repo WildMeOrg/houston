@@ -836,3 +836,15 @@ class Individual(db.Model, FeatherModel):
                 found_edm.update(edm_schema.dump(encounter).data)
 
         return edm_json
+
+    def get_social_groups_json(self):
+        from app.modules.social_groups.schemas import DetailedSocialGroupSchema
+
+        social_groups = {
+            soc_group_memship.social_group for soc_group_memship in self.social_groups
+        }
+        social_group_schema = DetailedSocialGroupSchema()
+        social_groups = [
+            social_group_schema.dump(social_group).data for social_group in social_groups
+        ]
+        return social_groups

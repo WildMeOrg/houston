@@ -44,10 +44,7 @@ class DetailedIndividualSchema(BaseIndividualSchema):
         attribute='names',
         many=True,
     )
-    social_groups = base_fields.Nested(
-        DetailedSocialGroupMemberSchema,
-        many=True,
-    )
+    social_groups = base_fields.Function(Individual.get_social_groups_json)
 
     class Meta(BaseIndividualSchema.Meta):
         fields = BaseIndividualSchema.Meta.fields + (

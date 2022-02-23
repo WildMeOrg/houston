@@ -110,7 +110,7 @@ def test_basic_operation(
         flask_app_client, researcher_1, individuals[0]['id']
     ).json
     assert len(individual_as_res1_json['social_groups']) == 1
-    ind_social_group = individual_as_res1_json['social_groups'][0]['social_group']
+    ind_social_group = individual_as_res1_json['social_groups'][0]
     assert individuals[0]['id'] in ind_social_group['members']
     assert data['name'] == ind_social_group['name']
 

@@ -544,7 +544,7 @@ class Sighting(db.Model, FeatherModel):
                     log.info(f'houston Encounter {enc.guid} removed')
                     enc.delete_cascade()
                 else:
-                    if edm_map[str(enc.guid)]['version'] > enc.version:
+                    if edm_map[str(enc.guid)].get('version', 0) > enc.version:
                         log.debug(
                             f'houston Encounter {enc.guid} VERSION UPDATED {edm_map[str(enc.guid)]} > {enc.version}'
                         )

@@ -11,7 +11,6 @@ from .models import Individual
 
 from app.modules.names.schemas import DetailedNameSchema
 from app.modules.encounters.schemas import DetailedEncounterSchema
-from app.modules.social_groups.schemas import DetailedSocialGroupMemberSchema
 
 
 class BaseIndividualSchema(ModelSchema):

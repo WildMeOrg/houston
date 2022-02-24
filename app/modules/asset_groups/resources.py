@@ -291,7 +291,7 @@ class AssetGroupByID(Resource):
 
 
 @api.login_required(oauth_scopes=['asset_groups:read'])
-@api.route('/<uuid:asset_group_guid>/debug', doc=False)
+@api.route('/debug/<uuid:asset_group_guid>', doc=False)
 @api.resolve_object_by_model(AssetGroup, 'asset_group', return_not_found=True)
 @api.response(
     code=HTTPStatus.NOT_FOUND,
@@ -331,6 +331,32 @@ class AssetGroupByIDDebug(Resource):
             raise werkzeug.exceptions.NotFound
 
         return asset_group
+
+
+@api.login_required(oauth_scopes=['asset_groups:read'])
+@api.route('/sighting')
+class AssetGroupSightings(Resource):
+    """
+    Manipulations with Asset_group sightings.
+    """
+
+    @api.permission_required(
+        permissions.ModuleAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'module': AssetGroupSighting,
+            'action': AccessOperation.READ,
+        },
+    )
+    @api.parameters(PaginationParameters())
+    @api.response(schemas.BaseAssetGroupSightingSchema(many=True))
+    def get(self, args):
+        """
+        List of Asset_group.
+
+        Returns a list of Asset_group starting from ``offset`` limited by ``limit``
+        parameter.
+        """
+        return AssetGroupSighting.query.offset(args['offset']).limit(args['limit'])
 
 
 @api.route('/sighting/<uuid:asset_group_sighting_guid>')
@@ -412,9 +438,36 @@ class AssetGroupSightingJobsByID(Resource):
     @api.login_required(oauth_scopes=['asset_group_sightings:read'])
     def get(self, asset_group_sighting):
         """
-        Get Asset_group_sighting details by ID.
+        Get Asset_group_sighting job details by ID.
         """
         return asset_group_sighting.get_jobs_debug(verbose=True)
+
+
+@api.route('/sighting/debug/<uuid:asset_group_sighting_guid>')
+@api.response(
+    code=HTTPStatus.NOT_FOUND,
+    description='Asset_group_sighting not found.',
+)
+@api.resolve_object_by_model(AssetGroupSighting, 'asset_group_sighting')
+class AssetGroupSightingDebugByID(Resource):
+    """
+    The Asset Group Sighting jobs details
+    """
+
+    @api.permission_required(
+        permissions.ObjectAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'obj': kwargs['asset_group_sighting'],
+            'action': AccessOperation.READ_DEBUG,
+        },
+    )
+    @api.login_required(oauth_scopes=['asset_group_sightings:read'])
+    @api.response(schemas.DebugAssetGroupSightingSchema())
+    def get(self, asset_group_sighting):
+        """
+        Get Asset_group_sighting debug details by ID.
+        """
+        return asset_group_sighting
 
 
 @api.route('/sighting/as_sighting/<uuid:asset_group_sighting_guid>')

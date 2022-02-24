@@ -747,7 +747,7 @@ class SightingImageByID(Resource):
             return send_file(image_path, attachment_filename='sighting_image.jpg')
 
 
-@api.route('/<uuid:sighting_guid>/debug', doc=False)
+@api.route('/debug/<uuid:sighting_guid>', doc=False)
 @api.login_required(oauth_scopes=['sightings:read'])
 @api.response(
     code=HTTPStatus.NOT_FOUND,
@@ -759,7 +759,7 @@ class SightingDebugByID(Resource):
         permissions.ObjectAccessPermission,
         kwargs_on_request=lambda kwargs: {
             'obj': kwargs['sighting'],
-            'action': AccessOperation.READ_PRIVILEGED,
+            'action': AccessOperation.READ_DEBUG,
         },
     )
     def get(self, sighting):

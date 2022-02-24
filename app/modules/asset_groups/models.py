@@ -264,6 +264,15 @@ class AssetGroupSighting(db.Model, HoustonModel):
             filename in self.config.get('assetReferences', []) if self.config else False
         )
 
+    def has_annotation(self, annot_guid):
+        ret_val = False
+        if self.config and self.config['encounters']:
+            for enc in self.config['encounters']:
+                if annot_guid in enc.get('annotations', []):
+                    ret_val = True
+                    break
+        return ret_val
+
     def get_owner(self):
         return self.asset_group.owner
 
@@ -866,6 +875,14 @@ class AssetGroup(GitStore):
 
     def is_processed(self):
         return self.is_completely_in_stage(AssetGroupSightingStage.processed)
+
+    def get_asset_group_sighting_for_annotation(self, annot):
+        ret_ags = None
+        for ags in self.asset_group_sightings:
+            if ags.has_annotation(str(annot.guid)):
+                ret_ags = ags
+                break
+        return ret_ags
 
     def get_asset_group_sightings_for_asset(self, asset):
         return [ags for ags in self.asset_group_sightings if ags.has_filename(asset.path)]

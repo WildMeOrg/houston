@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=missing-docstring
+from pathlib import Path
 import uuid
 
 from app.modules.emails.models import RecordedEmail, EmailTypes, EmailRecord
@@ -63,3 +64,18 @@ def test_template(flask_app):
     # now we just test a bad template to make sure it fails
     msg.template('fubar_' + str(uuid.uuid4()))
     assert not msg._template_found
+
+
+def test_email_templates():
+    email_root = Path('app/templates/email/en_us/')
+    for path in email_root.glob('*/*.jinja2'):
+        if '_subject.jinja2' in str(path) or path.stem.startswith('blank'):
+            continue
+        try:
+            msg = Email(recipients=[test_recipient])
+            template = str(path.relative_to(email_root)).replace('.jinja2', '')
+            msg.template(template)
+            assert '<html' in msg.html
+        except:  # NOQA
+            print(f'Email Template: {path}')
+            raise

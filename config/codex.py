@@ -85,7 +85,7 @@ class ProductionConfig(BaseCodexConfig):
 
     BASE_URL = os.environ.get('HOUSTON_URL')
 
-    MAIL_BASE_URL = BASE_URL
+    MAIL_BASE_URL = os.environ.get('MAIL_BASE_URL', BASE_URL)
     MAIL_OVERRIDE_RECIPIENTS = None
     MAIL_ERROR_RECIPIENTS = [
         'mail-errors@wildme.org',
@@ -99,7 +99,7 @@ class DevelopmentConfig(BaseCodexConfig):
 
     BASE_URL = os.environ.get('HOUSTON_URL', 'https://wildme.ngrok.io/')
 
-    MAIL_BASE_URL = BASE_URL
+    MAIL_BASE_URL = os.environ.get('MAIL_BASE_URL', BASE_URL)
     MAIL_OVERRIDE_RECIPIENTS = [
         'testing@wildme.org',
     ]

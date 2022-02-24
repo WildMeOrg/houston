@@ -1,6 +1,10 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=no-self-use
+import datetime
+from io import StringIO
 import logging
+import re
+from urllib.parse import urlparse
 
 from flask import current_app, render_template
 from flask_mail import Mail, Message, email_dispatched
@@ -10,12 +14,6 @@ import cssutils
 import htmlmin
 import app.version
 from app.utils import to_ascii
-
-from io import StringIO
-import re
-
-import datetime
-
 
 from flask_restx_patched import is_extension_enabled
 
@@ -133,6 +131,18 @@ class Email(Message):
             'site_url_prefix': site_url_prefix(),
             'year': now.year,
             'transaction_id': self._transaction_id,
+            'header_image_url': SiteSetting.get_value('email_header_image_url'),
+            'h1': SiteSetting.get_value('email_title_greeting'),
+            'secondary_title': SiteSetting.get_value('email_secondary_title'),
+            'secondary_text': SiteSetting.get_value('email_secondary_text'),
+            'legal_statement': SiteSetting.get_value('email_legal_statement'),
+            'unsubscribe_link': '/unsubscribe',
+            'site_url': '/',
+            'site_domain': urlparse(site_url_prefix()).netloc,
+            'instagram_url': SiteSetting.get_value('site.links.instagramLink'),
+            'twitter_url': SiteSetting.get_value('site.links.twitterLink'),
+            'facebook_url': SiteSetting.get_value('site.links.facebookLink'),
+            'adoption_button_text': SiteSetting.get_value('email_adoption_button_text'),
         }
         self.status = None
         self.mail = mail

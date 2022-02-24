@@ -47,6 +47,38 @@ class SiteSetting(db.Model, Timestamp):
         'email_service_password': {'type': str, 'public': False},
         'email_default_sender_email': {'type': str, 'public': False},
         'email_default_sender_name': {'type': str, 'public': False},
+        'email_header_image_url': {
+            'type': str,
+            'public': True,
+        },
+        'email_title_greeting': {
+            'type': str,
+            'public': True,
+            'default': 'Hello!',
+        },
+        'email_secondary_title': {
+            'type': str,
+            'public': True,
+            'default': 'Codex for everyone!',
+        },
+        'email_secondary_text': {
+            'type': list,
+            'public': True,
+            'default': [
+                'Can you help researchers study and protect animals?',
+                'Wild Me is a 501(c)(3) non-profit that develops the cutting edge technology for a global community of wildlife researchers. Are you interested in further supporting our mission?',
+            ],
+        },
+        'email_adoption_button_text': {
+            'type': str,
+            'public': True,
+            'default': 'Adopt an animal',
+        },
+        'email_legal_statement': {
+            'type': str,
+            'public': True,
+            'default': 'Wildbook is copyrighted 2022 by Wild Me.  Individual contributors to Wildbook retain copyrights for submitted images. No reproduction or usage of material in this library is permitted without the express permission of the copyright holders.',
+        },
         'social_group_roles': {'type': list, 'public': True},
         'relationship_type_roles': {
             'type': dict,
@@ -221,14 +253,17 @@ class SiteSetting(db.Model, Timestamp):
     #   as a way branch on _where_ to get the value to return here.  but as we ween ourselves off edm config,
     #   this can hopefully be backwards compatible
     @classmethod
-    def get_value(cls, key, **kwargs):
+    def get_value(cls, key, default=None, **kwargs):
         if not key:
             raise ValueError('key must not be None')
         if is_extension_enabled('edm') and key.startswith(EDM_PREFIX):
-            return cls.get_edm_configuration(key, **kwargs)
+            return cls.get_edm_configuration(key, default=default, **kwargs)
         setting = cls.query.get(key)
         if not setting:
-            return kwargs['default'] if 'default' in kwargs else None
+            setting_default = cls.HOUSTON_SETTINGS.get(key, {}).get('default')
+            if default is None and setting_default:
+                return setting_default
+            return default
         if setting.file_upload_guid:
             return setting.file_upload
         elif setting.data:
@@ -237,7 +272,7 @@ class SiteSetting(db.Model, Timestamp):
 
     @classmethod
     @extension_required('edm')
-    def get_edm_configuration(cls, key, **kwargs):
+    def get_edm_configuration(cls, key, default=None, **kwargs):
         res = current_app.edm.get_dict('configuration.data', key)
         if (
             not isinstance(res, dict)
@@ -249,12 +284,8 @@ class SiteSetting(db.Model, Timestamp):
                 f'invalid EDM configuration key {key} (status {res.status_code})'
             )
         # edm conf lets us know if there is no value set like this:
-        if (
-            'valueNotSet' in res['response']
-            and res['response']['valueNotSet']
-            and 'default' in kwargs
-        ):
-            return kwargs['default']
+        if 'valueNotSet' in res['response'] and res['response']['valueNotSet']:
+            return default
             # if no default= via kwargs it falls thru to below, which is fine (edm picks default value)
         return res['response']['value']
 

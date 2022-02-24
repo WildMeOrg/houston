@@ -151,6 +151,7 @@ class AssetGroupSightingEncounterSchema(ModelSchema):
     version = base_fields.String(default=None)
     annotations = base_fields.Dict()
     locationId = base_fields.String(default=None)
+    verbatimLocality = base_fields.String(default=None)
 
 
 class AssetGroupSightingAsSightingSchema(ModelSchema):

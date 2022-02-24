@@ -312,6 +312,8 @@ class Sighting(db.Model, FeatherModel):
     def get_job_debug(self, annotation_id=None, verbose=True):
 
         details = []
+        if not self.jobs:
+            return details
         for job_id in self.jobs.keys():
             if annotation_id and str(annotation_id) != self.jobs[job_id]['annotation']:
                 continue
@@ -348,6 +350,8 @@ class Sighting(db.Model, FeatherModel):
 
     def get_jobs_json(self):
         job_data = []
+        if not self.jobs:
+            return job_data
         for job in self.jobs:
             from app.modules.sightings.schemas import DetailedSightingJobSchema
 
@@ -926,11 +930,14 @@ class Sighting(db.Model, FeatherModel):
                 ] = q_annot.encounter.individual_guid
             self._ensure_annot_data_in_response(q_annot, response)
 
-            q_annot_jobs = [
-                self.jobs[job]
-                for job in self.jobs
-                if self.jobs[job]['annotation'] == str(q_annot.guid)
-            ]
+            if not self.jobs:
+                q_annot_jobs = []
+            else:
+                q_annot_jobs = [
+                    self.jobs[job]
+                    for job in self.jobs
+                    if self.jobs[job]['annotation'] == str(q_annot.guid)
+                ]
             if len(q_annot_jobs) < 1:
                 # Not run is perfectly valid
                 continue

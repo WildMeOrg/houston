@@ -150,6 +150,7 @@ class AssetGroupSightingEncounterSchema(ModelSchema):
     updatedHouston = base_fields.DateTime()
     version = base_fields.String(default=None)
     annotations = base_fields.Dict()
+    locationId = base_fields.String(default=None)
 
 
 class AssetGroupSightingAsSightingSchema(ModelSchema):
@@ -176,6 +177,10 @@ class AssetGroupSightingAsSightingSchema(ModelSchema):
     timeSpecificity = base_fields.Function(
         AssetGroupSighting.config_field_getter('timeSpecificity')
     )
+    locationId = base_fields.Function(
+        AssetGroupSighting.config_field_getter('locationId')
+    )
+
     encounters = base_fields.Nested(
         AssetGroupSightingEncounterSchema,
         attribute='get_encounters_json',

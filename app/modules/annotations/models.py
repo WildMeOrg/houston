@@ -368,3 +368,10 @@ class Annotation(db.Model, HoustonModel):
         if c == [0, 0, 0]:
             return None
         return c
+
+    @classmethod
+    def get_elasticsearch_schema(cls):
+        # from app.modules.assets.schemas import DetailedAssetTableSchema
+
+        # return DetailedAssetTableSchema
+        return

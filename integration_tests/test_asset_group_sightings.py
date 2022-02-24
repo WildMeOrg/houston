@@ -206,6 +206,7 @@ def test_asset_group_sightings(session, login, codex_url, test_root):
                 'guid': encounter_guids[0],
                 'hasEdit': True,
                 'hasView': True,
+                'locationId': None,
                 'individual': {},
                 'owner': creator_data,
                 'sex': 'male',

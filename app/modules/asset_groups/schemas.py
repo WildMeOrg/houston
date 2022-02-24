@@ -73,7 +73,10 @@ class BaseAssetGroupSightingSchema(ModelSchema):
     class Meta:
         # pylint: disable=missing-docstring
         model = AssetGroupSighting
-        fields = (AssetGroupSighting.guid.key,)
+        fields = (
+            AssetGroupSighting.guid.key,
+            AssetGroupSighting.stage.key,
+        )
         dump_only = (AssetGroupSighting.guid.key,)
 
 
@@ -114,7 +117,6 @@ class DetailedAssetGroupSightingSchema(BaseAssetGroupSightingSchema):
     class Meta(BaseAssetGroupSightingSchema.Meta):
 
         fields = BaseAssetGroupSightingSchema.Meta.fields + (
-            AssetGroupSighting.stage.key,
             AssetGroupSighting.config.key,
             'assets',
             'completion',

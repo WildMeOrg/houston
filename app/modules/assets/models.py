@@ -138,7 +138,7 @@ class Asset(db.Model, HoustonModel):
         return asset.get_jobs_debug(verbose)
 
     @module_required('asset_groups', resolve='warn', default=False)
-    def get_jobs_debug(self, verbose):
+    def get_jobs_debug(self, verbose=True):
         asset_group_sightings = self.git_store.get_asset_group_sightings_for_asset(self)
 
         jobs = []

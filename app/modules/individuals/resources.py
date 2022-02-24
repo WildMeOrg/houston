@@ -266,15 +266,14 @@ class IndividualByID(Resource):
             )
         else:
             log.error('GET passthrough called for nonexistent Individual')
-
-        from app.modules.individuals.schemas import DetailedIndividualSchema
+            return {}
 
         rtn_json = current_app.edm.get_dict('individual.data_complete', individual.guid)
 
         if not isinstance(rtn_json, dict) or not rtn_json.get('success', False):
             return rtn_json
 
-        schema = DetailedIndividualSchema()
+        schema = schemas.DetailedIndividualSchema()
         result_json = rtn_json['result']
         result_json.update(schema.dump(individual).data)
 
@@ -739,3 +738,46 @@ class IndividualMergeConflictCheck(Resource):
 
         conflicts = Individual.find_merge_conflicts(individuals)
         return conflicts
+
+
+@api.route('/debug/<uuid:individual_guid>')
+@api.response(
+    code=HTTPStatus.NOT_FOUND,
+    description='Individual not found.',
+)
+@api.resolve_object_by_model(Individual, 'individual')
+class IndividualDebugByID(Resource):
+    """
+    Manipulations with a specific Individual.
+    """
+
+    @api.permission_required(
+        permissions.ObjectAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'obj': kwargs['individual'],
+            'action': AccessOperation.READ_DEBUG,
+        },
+    )
+    def get(self, individual):
+        """
+        Get Individual details by ID.
+        """
+        if individual is not None:
+            log.info(f'GET passthrough called for Individual with GUID: {individual.guid}')
+        else:
+            log.error('GET passthrough called for nonexistent Individual')
+            return {}
+
+        rtn_json = current_app.edm.get_dict('individual.data_complete', individual.guid)
+
+        if not isinstance(rtn_json, dict) or not rtn_json.get('success', False):
+            return rtn_json
+
+        schema = schemas.DebugIndividualSchema()
+        result_json = rtn_json['result']
+        result_json.update(schema.dump(individual).data)
+
+        augmented_json = individual.augment_edm_json(result_json)
+
+        return augmented_json
+

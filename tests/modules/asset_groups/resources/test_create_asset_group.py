@@ -378,8 +378,14 @@ def test_create_asset_group_sim_detection(
         )
         read_resp = asset_group_utils.read_asset_group_sighting(
             flask_app_client, researcher_1, asset_group_sighting_uuid
-        )
-        assert read_resp.json['stage'] == 'curation'
+        ).json
+        assert read_resp['stage'] == 'curation'
+
+        from tests.modules.annotations.resources import utils as annot_utils
+        annot_guid = read_resp['assets'][0]['annotations'][0]['guid']
+        annot_debug = annot_utils.read_annotation(flask_app_client, staff_user, f'debug/{annot_guid}').json
+        assert annot_debug['asset_guid'] == read_resp['assets'][0]['guid']
+
     finally:
         if asset_group_uuid:
             asset_group_utils.delete_asset_group(
@@ -589,6 +595,7 @@ def test_create_asset_group_individual(
     flask_app_client,
     researcher_1,
     staff_user,
+    admin_user,
     test_root,
     db,
     empty_individual,
@@ -615,6 +622,15 @@ def test_create_asset_group_individual(
             flask_app_client, researcher_1, data.get()
         )
         asset_group_uuid = resp.json['guid']
+        asset_group_utils.read_all_asset_group_sightings(flask_app_client, researcher_1, 403)
+        all_ags = asset_group_utils.read_all_asset_group_sightings(flask_app_client, admin_user)
+        ags_guid = all_ags.json[0]['guid']
+        assert resp.json['asset_group_sightings'][0]['guid'] == all_ags.json[0]['guid']
+        ags_debug = asset_group_utils.read_asset_group_sighting_debug(flask_app_client, staff_user, ags_guid)
+        assert ags_debug.json['stage'] == 'curation'
+        ags_config = ags_debug.json['config']
+        assert 'encounters' in ags_config.keys()
+        assert ags_config['encounters'][0].get('individualUuid') is not None
 
     finally:
         with db.session.begin():

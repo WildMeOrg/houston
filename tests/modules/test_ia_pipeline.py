@@ -115,12 +115,14 @@ def test_ia_pipeline_sim_detect_response(
             flask_app_client, staff_user, f'debug/{asset_group_uuid}'
         )
         asset_group_utils.read_asset_group_sighting_debug(
-             flask_app_client, staff_user, asset_group_sighting1_guid
+            flask_app_client, staff_user, asset_group_sighting1_guid
         )
         sighting_utils.read_sighting_path(
             flask_app_client, staff_user, f'debug/{sighting_uuid}'
         )
-        enc_debug = enc_utils.read_encounter_debug(flask_app_client, staff_user, sighting_enc_guids[0])
+        enc_debug = enc_utils.read_encounter_debug(
+            flask_app_client, staff_user, sighting_enc_guids[0]
+        )
         assert enc_debug.json['guid'] == sighting_uuid
         annot_guids = []
         for enc in sighting_resp.json['encounters']:
@@ -130,7 +132,9 @@ def test_ia_pipeline_sim_detect_response(
         assert annot_debug.json['guid'] == sighting_uuid
 
         asset_guids = [asset['guid'] for asset in ag_resp.json['assets']]
-        asset_debug = asset_utils.read_asset(flask_app_client, staff_user, f'debug/{asset_guids[0]}').json
+        asset_debug = asset_utils.read_asset(
+            flask_app_client, staff_user, f'debug/{asset_guids[0]}'
+        ).json
         assert asset_debug['git_store']['guid'] == asset_group_uuid
 
     finally:

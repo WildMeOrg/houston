@@ -222,4 +222,3 @@ class AnnotationDebugByID(Resource):
         Get Annotation debug details by ID.
         """
         return annotation.get_debug_json()
-

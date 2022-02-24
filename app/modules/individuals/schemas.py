@@ -61,6 +61,7 @@ class DebugIndividualSchema(DetailedIndividualSchema):
     """
     Debug Individual schema exposes all fields.
     """
+
     houston_encounters = base_fields.Nested(
         DetailedEncounterSchema,
         attribute='encounters',
@@ -68,5 +69,4 @@ class DebugIndividualSchema(DetailedIndividualSchema):
     )
 
     class Meta(DetailedIndividualSchema.Meta):
-        fields = DetailedIndividualSchema.Meta.fields + ('houston_encounters', )
-
+        fields = DetailedIndividualSchema.Meta.fields + ('houston_encounters',)

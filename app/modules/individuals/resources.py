@@ -763,7 +763,9 @@ class IndividualDebugByID(Resource):
         Get Individual details by ID.
         """
         if individual is not None:
-            log.info(f'GET passthrough called for Individual with GUID: {individual.guid}')
+            log.info(
+                f'GET passthrough called for Individual with GUID: {individual.guid}'
+            )
         else:
             log.error('GET passthrough called for nonexistent Individual')
             return {}
@@ -780,4 +782,3 @@ class IndividualDebugByID(Resource):
         augmented_json = individual.augment_edm_json(result_json)
 
         return augmented_json
-

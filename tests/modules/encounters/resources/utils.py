@@ -75,6 +75,20 @@ def read_encounter(flask_app_client, user, enc_guid, expected_status_code=200):
     return response
 
 
+# This returns a sighting debug object so acn't reuse above method as expected fields are way different
+def read_encounter_debug(flask_app_client, user, enc_guid, expected_status_code=200):
+    response = test_utils.get_dict_via_flask(
+        flask_app_client,
+        user,
+        'encounters:read',
+        f'{PATH}debug/{enc_guid}',
+        expected_status_code,
+        response_200={'guid'},
+    )
+
+    return response
+
+
 def delete_encounter(
     flask_app_client, user, enc_guid, expected_status_code=204, headers=None
 ):

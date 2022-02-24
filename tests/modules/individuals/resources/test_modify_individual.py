@@ -14,7 +14,7 @@ from tests.utils import module_unavailable
     reason='Individuals module disabled',
 )
 def test_modify_individual_edm_fields(
-    db, flask_app_client, researcher_1, request, test_root
+    db, flask_app_client, researcher_1, staff_user, request, test_root
 ):
 
     from app.modules.encounters.models import Encounter
@@ -75,6 +75,11 @@ def test_modify_individual_edm_fields(
         patch_op_sex = [
             utils.patch_replace_op('sex', 'male'),
         ]
+        # Absolute bare minimum validation, this is a debug output so will change
+        debug_ind_data = individual_utils.read_individual(
+            flask_app_client, staff_user, f'debug/{individual_id}'
+        ).json
+        assert debug_ind_data['guid'] == individual_id
 
         patch_individual_response = individual_utils.patch_individual(
             flask_app_client, researcher_1, individual_id, patch_op_sex

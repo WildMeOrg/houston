@@ -196,3 +196,29 @@ class AnnotationJobByID(Resource):
         Get Annotation job details by ID.
         """
         return annotation.get_job_debug(verbose=True)
+
+
+@api.route('/debug/<uuid:annotation_guid>')
+@api.login_required(oauth_scopes=['annotations:read'])
+@api.response(
+    code=HTTPStatus.NOT_FOUND,
+    description='Annotation not found.',
+)
+@api.resolve_object_by_model(Annotation, 'annotation')
+class AnnotationDebugByID(Resource):
+    """
+    Jobs for a specific Annotation.
+    """
+
+    @api.permission_required(
+        permissions.ObjectAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'obj': kwargs['annotation'],
+            'action': AccessOperation.READ_DEBUG,
+        },
+    )
+    def get(self, annotation):
+        """
+        Get Annotation debug details by ID.
+        """
+        return annotation.get_debug_json()

@@ -116,6 +116,13 @@ class ExtendedAssetDetailedAnnotationsSchema(BaseAssetSchema):
         )
 
 
+class DebugAssetSchema(DetailedAssetSchema):
+    jobs = base_fields.Function(Asset.get_jobs_debug)
+
+    class Meta(DetailedAssetSchema.Meta):
+        fields = DetailedAssetSchema.Meta.fields + ('jobs', )
+
+
 def not_negative(value):
     if value < 0:
         raise ValidationError('Value must be greater than 0.')

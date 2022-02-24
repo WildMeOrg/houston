@@ -105,6 +105,26 @@ class Annotation(db.Model, HoustonModel):
                 log, f'Annotation {self.guid} not connected to an encounter'
             )
 
+    # Assumes that the caller actually wants the debug data for the context of where the annotation came from.
+    # Therefore returns the debug data for the sighting (if there is one), the ags if not.
+    # If neither Sighting or AGS (Annot created but not curated), returns the DetailedAnnot data
+    def get_debug_json(self):
+        if self.encounter:
+            return self.encounter.sighting.get_debug_sighting_json()
+
+        assert self.asset.git_store
+        ags = self.asset.git_store.get_asset_group_sighting_for_annotation(self)
+        if ags:
+            from app.modules.asset_groups.schemas import DebugAssetGroupSightingSchema
+
+            schema = DebugAssetGroupSightingSchema()
+            return schema.dump(ags).data
+        else:
+            # Annotation created but not curated into an AGS
+            from .schemas import DetailedAnnotationSchema
+            schema = DetailedAnnotationSchema()
+            return schema.dump(self).data
+
     @property
     def keywords(self):
         return self.get_keywords()

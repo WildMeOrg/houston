@@ -200,3 +200,30 @@ class AssetJobsByID(Resource):
         Get Asset job details by ID.
         """
         return asset.get_jobs_debug(verbose=True)
+
+
+@api.route('/debug/<uuid:asset_guid>')
+@api.response(
+    code=HTTPStatus.NOT_FOUND,
+    description='Asset not found.',
+)
+@api.resolve_object_by_model(Asset, 'asset')
+class AssetDebugByID(Resource):
+    """
+    Manipulations with a specific Asset.
+    """
+
+    @api.login_required(oauth_scopes=['assets:read'])
+    @api.permission_required(
+        permissions.ObjectAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'obj': kwargs['asset'],
+            'action': AccessOperation.READ_DEBUG,
+        },
+    )
+    @api.response(schemas.DebugAssetSchema())
+    def get(self, asset):
+        """
+        Get Asset debug details by ID.
+        """
+        return asset

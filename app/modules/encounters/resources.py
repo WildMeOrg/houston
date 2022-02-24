@@ -273,3 +273,22 @@ class EncounterByID(Resource):
 
             resp.headers['x-deletedIndividual-guids'] = ', '.join(deleted_ids)
         return resp
+
+
+@api.route('/debug/<uuid:encounter_guid>', doc=False)
+@api.login_required(oauth_scopes=['encounters:read'])
+@api.response(
+    code=HTTPStatus.NOT_FOUND,
+    description='Encounter not found.',
+)
+@api.resolve_object_by_model(Encounter, 'encounter')
+class EncounterDebugByID(Resource):
+    @api.permission_required(
+        permissions.ObjectAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'obj': kwargs['encounter'],
+            'action': AccessOperation.READ_DEBUG,
+        },
+    )
+    def get(self, encounter):
+        return encounter.sighting.get_debug_sighting_json()

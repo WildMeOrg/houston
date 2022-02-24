@@ -2,6 +2,10 @@
 # pylint: disable=missing-docstring
 import tests.modules.asset_groups.resources.utils as asset_group_utils
 import tests.modules.sightings.resources.utils as sighting_utils
+import tests.modules.encounters.resources.utils as enc_utils
+import tests.modules.annotations.resources.utils as annot_utils
+import tests.modules.assets.resources.utils as asset_utils
+
 import pytest
 from tests.utils import module_unavailable
 
@@ -36,11 +40,11 @@ def test_ia_pipeline_sim_detect_response(
     try:
 
         # and the sim_sage util to catch it
-        resp = asset_group_utils.create_asset_group_sim_sage_init_resp(
+        ag_resp = asset_group_utils.create_asset_group_sim_sage_init_resp(
             flask_app, flask_app_client, researcher_1, creation_data.get()
         )
-        asset_group_uuid = resp.json['guid']
-        asset_group_sighting1_guid = resp.json['asset_group_sightings'][0]['guid']
+        asset_group_uuid = ag_resp.json['guid']
+        asset_group_sighting1_guid = ag_resp.json['asset_group_sightings'][0]['guid']
 
         ags1 = AssetGroupSighting.query.get(asset_group_sighting1_guid)
         assert ags1
@@ -104,13 +108,35 @@ def test_ia_pipeline_sim_detect_response(
             flask_app_client, researcher_1, sighting_uuid
         )
         assert sighting_resp.json['speciesDetectionModel'] == ['african_terrestrial']
-        # Deliberately do not test the contents. This is fluid and for our debug only
+        sighting_enc_guids = [enc['guid'] for enc in sighting_resp.json['encounters']]
+        # Deliberately do not test the entire contents of the debug output.
+        # This is fluid and for our debug only
         asset_group_utils.read_asset_group(
-            flask_app_client, staff_user, f'{asset_group_uuid}/debug'
+            flask_app_client, staff_user, f'debug/{asset_group_uuid}'
+        )
+        asset_group_utils.read_asset_group_sighting_debug(
+            flask_app_client, staff_user, asset_group_sighting1_guid
         )
         sighting_utils.read_sighting_path(
-            flask_app_client, staff_user, f'{sighting_uuid}/debug'
+            flask_app_client, staff_user, f'debug/{sighting_uuid}'
         )
+        enc_debug = enc_utils.read_encounter_debug(
+            flask_app_client, staff_user, sighting_enc_guids[0]
+        )
+        assert enc_debug.json['guid'] == sighting_uuid
+        annot_guids = []
+        for enc in sighting_resp.json['encounters']:
+            for annot in enc['annotations']:
+                annot_guids.append(annot['guid'])
+        annot_debug = annot_utils.read_debug(flask_app_client, staff_user, annot_guids[0])
+        assert annot_debug.json['guid'] == sighting_uuid
+
+        asset_guids = [asset['guid'] for asset in ag_resp.json['assets']]
+        asset_debug = asset_utils.read_asset(
+            flask_app_client, staff_user, f'debug/{asset_guids[0]}'
+        ).json
+        assert asset_debug['git_store']['guid'] == asset_group_uuid
+
     finally:
         # Restore original state
         if asset_group_uuid:

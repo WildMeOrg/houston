@@ -10,6 +10,7 @@ from flask_marshmallow import base_fields
 from .models import Individual
 
 from app.modules.names.schemas import DetailedNameSchema
+from app.modules.encounters.schemas import DetailedEncounterSchema
 
 
 class BaseIndividualSchema(ModelSchema):
@@ -54,3 +55,18 @@ class DetailedIndividualSchema(BaseIndividualSchema):
             Individual.created.key,
             Individual.updated.key,
         )
+
+
+class DebugIndividualSchema(DetailedIndividualSchema):
+    """
+    Debug Individual schema exposes all fields.
+    """
+
+    houston_encounters = base_fields.Nested(
+        DetailedEncounterSchema,
+        attribute='encounters',
+        many=True,
+    )
+
+    class Meta(DetailedIndividualSchema.Meta):
+        fields = DetailedIndividualSchema.Meta.fields + ('houston_encounters',)

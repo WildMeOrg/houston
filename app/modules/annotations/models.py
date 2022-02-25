@@ -252,9 +252,59 @@ class Annotation(db.Model, HoustonModel):
         if not self.encounter_guid:
             raise ValueError(f'{self} has no Encounter so cannot be matched against')
         if not criteria or not isinstance(criteria, dict):
-            criteria = {}
-        if 'viewpoint' not in criteria:
-            criteria['viewpoint'] = self.get_neighboring_viewpoints()
+            criteria = self.get_matching_set_default_criteria()
+
+    def get_matching_set_default_criteria(self):
+        criteria = {
+            # n.b. default will not take any locationId or ownership into consideration
+            'viewpoint': self.get_neighboring_viewpoints(),
+            'taxonomy_guid': self.get_taxonomy_guid(sighting_fallback=True),
+            # going with most permissive include_null options for now
+            'viewpoint_include_null': True,
+            'taxonomy_guid_include_null': True,
+        }
+        if self.encounter_guid:
+            criteria['encounter_guid_not'] = str(self.encounter_guid)
+        return criteria
+
+    # this should be used with caution.  it grabs the related Encounter object, as well as
+    # the edm data related to both the encounter and sighting.  thus, it is expensive.  it also
+    # caches these things on the Annotation itself so has implications there.   it is primarily
+    # intended for successive calls to find edm-properties (e.g. Elasticsearch indexing schema)
+    # and may not be ideal for "general usage" cases
+    def get_related_extended_data(self):
+        if hasattr(self, '_enc'):
+            return self._enc, self._enc_edm, self._sight_edm
+        if not self.encounter_guid:
+            return None, None, None
+        from app.modules.encounters.models import Encounter
+        from flask import current_app
+
+        self._enc = Encounter.query.get(self.encounter_guid)
+        self._enc_edm = current_app.edm.get_dict(
+            'encounter.data_complete', self.encounter_guid
+        ).get('result')
+        self._sight_edm = current_app.edm.get_dict(
+            'sighting.data_complete', self._enc.sighting_guid
+        ).get('result')
+        return self._enc, self._enc_edm, self._sight_edm
+
+    # see notes on get_related_extended_data() above
+    def get_taxonomy_guid(self, sighting_fallback=False):
+        enc, enc_edm, sight_edm = self.get_related_extended_data()
+        if not enc or not enc_edm:
+            return None
+        if 'taxonomy' in enc_edm:
+            return enc_edm['taxonomy']
+        if sighting_fallback and sight_edm and 'taxonomy' in sight_edm:
+            return sight_edm['taxonomy']
+        return None
+
+    def get_owner_guid(self):
+        if not self.encounter_guid or not self.encounter:
+            return None
+        # owner is not-null on Encounter
+        return self.encounter.owner.guid
 
     def delete(self):
         with db.session.begin(subtransactions=True):
@@ -371,7 +421,11 @@ class Annotation(db.Model, HoustonModel):
 
     @classmethod
     def get_elasticsearch_schema(cls):
-        # from app.modules.assets.schemas import DetailedAssetTableSchema
+        from app.modules.annotations.schemas import AnnotationElasticsearchSchema
 
-        # return DetailedAssetTableSchema
-        return
+        return AnnotationElasticsearchSchema
+
+    # this might be a useful generic tool for Elasticsearch, automated to any object?
+    # https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl.html
+    def elasticsearch_criteria_to_query(criteria):
+        return {}

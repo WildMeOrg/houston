@@ -58,51 +58,27 @@ class DetailedAnnotationSchema(BaseAnnotationSchema):
         )
 
 
-# utility for other methods below (caches data on annot so only needs to fetch once)
-def get_enc(annot):
-    if hasattr(annot, '_enc'):
-        return annot._enc, annot._enc_edm, annot._sight_edm
-    if not annot.encounter_guid:
-        return None, None, None
-    from app.modules.encounters.models import Encounter
-    from flask import current_app
-
-    annot._enc = Encounter.query.get(annot.encounter_guid)
-    annot._enc_edm = current_app.edm.get_dict(
-        'encounter.data_complete', annot.encounter_guid
-    ).get('result')
-    annot._sight_edm = current_app.edm.get_dict(
-        'sighting.data_complete', annot._enc.sighting_guid
-    ).get('result')
-    return annot._enc, annot._enc_edm, annot._sight_edm
-
-
 def get_locationId(annot):
-    enc, enc_edm, sight_edm = get_enc(annot)
+    enc, enc_edm, sight_edm = annot.get_related_extended_data()
     if not enc or not enc_edm or not sight_edm:
         return None
     return enc_edm.get('locationId') or sight_edm.get('locationId')
 
 
 def get_taxonomy_guid(annot):
-    enc, enc_edm, sight_edm = get_enc(annot)
-    if not enc or not enc_edm:
-        return None
-    return enc_edm.get('taxonomy')
+    return annot.get_taxonomy_guid(sighting_fallback=True)
 
 
 def get_time(annot):
-    enc, enc_edm, sight_edm = get_enc(annot)
+    enc, enc_edm, sight_edm = annot.get_related_extended_data()
     if not enc:
         return None
     return enc.get_time_isoformat_in_timezone(sighting_fallback=True)
 
 
 def get_owner_guid(annot):
-    enc, enc_edm, sight_edm = get_enc(annot)
-    if not enc:
-        return None
-    return str(enc.owner_guid)
+    guid = annot.get_owner_guid()
+    return str(guid) if guid else None
 
 
 def get_keywords_flat(annot):

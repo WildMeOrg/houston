@@ -122,6 +122,7 @@ class Annotation(db.Model, HoustonModel):
         else:
             # Annotation created but not curated into an AGS
             from .schemas import DetailedAnnotationSchema
+
             schema = DetailedAnnotationSchema()
             return schema.dump(self).data
 
@@ -173,6 +174,12 @@ class Annotation(db.Model, HoustonModel):
         if self.encounter and self.encounter.individual:
             individual = self.encounter.individual
         return individual
+
+    def get_asset_src(self):
+        assset_src = None
+        if self.asset and self.asset.src:
+            assset_src = self.asset.src
+        return assset_src
 
     def delete(self):
         with db.session.begin(subtransactions=True):

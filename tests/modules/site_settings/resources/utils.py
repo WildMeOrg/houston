@@ -173,3 +173,32 @@ def delete_file(
 ):
     path = f'{SETTING_PATH}/file/{conf_key}'
     _delete_setting(flask_app_client, user, path, expected_status_code)
+
+
+# will create one if we dont have any (yet)
+def get_some_taxonomy_dict(flask_app_client, admin_user):
+    response = read_main_settings(flask_app_client, admin_user, 'site.species')
+    assert 'response' in response.json
+    if (
+        'value' in response.json['response']
+        and isinstance(response.json['response']['value'], list)
+        and len(response.json['response']['value']) > 0
+    ):
+        return response.json['response']['value'][0]
+    # need to make one
+    vals = [
+        {'commonNames': ['Example'], 'scientificName': 'Exempli gratia', 'itisTsn': -1234}
+    ]
+    response = modify_main_settings(
+        flask_app_client,
+        admin_user,
+        {'_value': vals},
+        'site.species',
+    )
+    response = read_main_settings(flask_app_client, admin_user, 'site.species')
+    assert (
+        'value' in response.json['response']
+        and isinstance(response.json['response']['value'], list)
+        and len(response.json['response']['value']) > 0
+    )
+    return response.json['response']['value'][0]

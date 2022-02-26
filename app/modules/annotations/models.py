@@ -427,5 +427,64 @@ class Annotation(db.Model, HoustonModel):
 
     # this might be a useful generic tool for Elasticsearch, automated to any object?
     # https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl.html
-    def elasticsearch_criteria_to_query(criteria):
-        return {}
+    # this is what should be used as the value to {'query': THIS } for ES queries
+    @classmethod
+    def elasticsearch_criteria_to_query(cls, criteria):
+        if not criteria or not isinstance(criteria, dict):
+            raise ValueError('must pass criteria dict')
+        parts = {
+            'must': [],
+            'filter': [],
+            'should': [],
+            'must_not': [],
+        }
+        if 'viewpoint' in criteria:
+            viewpoint_list = criteria['viewpoint']
+            if isinstance(viewpoint_list, set):
+                viewpoint_list = list(viewpoint_list)
+            elif not isinstance(viewpoint_list, list):  # single value
+                viewpoint_list = [viewpoint_list]
+            if len(viewpoint_list) > 0:
+                viewpoint_data = []
+                for vp in viewpoint_list:
+                    viewpoint_data.append({'term': {'viewpoint': vp}})
+                parts['filter'].append(
+                    {
+                        'bool': {
+                            'minimum_should_match': 1,
+                            'should': viewpoint_data,
+                        }
+                    }
+                )
+            # TODO handle _include_null
+            #'viewpoint_include_null': True,
+
+        if 'locationId' in criteria:
+            location_list = criteria['locationId']
+            if isinstance(location_list, set):
+                location_list = list(location_list)
+            elif not isinstance(location_list, list):  # single value
+                location_list = [location_list]
+            if len(location_list) > 0:
+                location_data = []
+                for loc in location_list:
+                    location_data.append({'term': {'locationId': loc}})
+                parts['filter'].append(
+                    {
+                        'bool': {
+                            'minimum_should_match': 1,
+                            'should': location_data,
+                        }
+                    }
+                )
+
+        if criteria.get('taxonomy_guid'):
+            parts['filter'].append(
+                {'match': {'taxonomy_guid': criteria['taxonomy_guid']}}
+            )
+        # TODO   'taxonomy_guid_include_null': True,
+
+        if criteria.get('owner_guid'):
+            parts['filter'].append({'match': {'owner_guid': criteria['owner_guid']}})
+
+        return {'bool': parts}

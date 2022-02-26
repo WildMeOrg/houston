@@ -142,7 +142,7 @@ def test_annotation_matching_set(
     assert regions.full_path(loc1) == [top_id, parent1, loc1]
     assert regions.full_path(loc2) == [top_id, parent2, parent3, loc2]
 
-    ancestors = regions.all_ancestors([loc1, loc2])
+    ancestors = regions.with_ancestors([loc1, loc2])
     assert ancestors == {top_id, parent1, parent2, parent3, loc1, loc2}
 
     criteria = {

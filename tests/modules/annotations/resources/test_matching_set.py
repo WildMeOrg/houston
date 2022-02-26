@@ -82,3 +82,7 @@ def test_annotation_matching_set(
     }
     assert criteria.get('taxonomy_guid') == taxonomy_guid
     assert criteria.get('encounter_guid_not') == enc_guid
+
+    es_query = Annotation.elasticsearch_criteria_to_query(criteria)
+    assert es_query
+    assert 'bool' in es_query

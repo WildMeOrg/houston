@@ -465,6 +465,13 @@ class Annotation(db.Model, HoustonModel):
                 location_list = list(location_list)
             elif not isinstance(location_list, list):  # single value
                 location_list = [location_list]
+            if criteria.get('locationId_include_ancestors', False):
+                from app.modules.site_settings.models import SiteSetting
+
+                location_list = sorted(
+                    list(SiteSetting.region_expand_ancestors(location_list)),
+                    key=str.casefold,
+                )
             if len(location_list) > 0:
                 location_data = []
                 for loc in location_list:

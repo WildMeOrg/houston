@@ -348,3 +348,14 @@ class SiteSetting(db.Model, Timestamp):
                 if sub_path:
                     return sub_path
         return None
+
+    @classmethod
+    def region_expand_ancestors(cls, loc_list):
+        ancestors = set()
+        if not loc_list or not isinstance(loc_list, list):
+            return ancestors
+        for loc in loc_list:
+            path = cls.region_path(loc)
+            if path:
+                ancestors.update(path)
+        return ancestors

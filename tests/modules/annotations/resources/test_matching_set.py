@@ -86,3 +86,36 @@ def test_annotation_matching_set(
     es_query = Annotation.elasticsearch_criteria_to_query(criteria)
     assert es_query
     assert 'bool' in es_query
+
+    loc1 = 'NGOA'
+    loc2 = 'Pyramid'
+    criteria = {
+        'locationId': loc1,  # test single value
+    }
+    es_query = Annotation.elasticsearch_criteria_to_query(criteria)
+    assert es_query
+    assert (
+        es_query['bool']['filter'][0]['bool']['should'][0]['term']['locationId'] == loc1
+    )
+
+    criteria = {
+        'locationId': [loc1, loc2],  # list of locations
+    }
+    es_query = Annotation.elasticsearch_criteria_to_query(criteria)
+    assert es_query
+    locs = [
+        term['term']['locationId']
+        for term in es_query['bool']['filter'][0]['bool']['should']
+    ]
+    assert set(locs) == {loc1, loc2}
+
+    from app.modules.site_settings.models import SiteSetting
+
+    rpath = SiteSetting.region_path('Pyramid_FAIL')
+    assert not rpath
+    rpath = SiteSetting.region_path(loc1)
+    assert rpath == ['PacificOcean', 'Eastern Pacific', 'SPLASH', loc1]
+    rpath = SiteSetting.region_path(loc2)
+    assert rpath == ['_unknown_', loc2]
+    exp = SiteSetting.region_expand_ancestors([loc1, loc2])
+    assert exp == {loc1, loc2, 'Eastern Pacific', 'PacificOcean', 'SPLASH', '_unknown_'}

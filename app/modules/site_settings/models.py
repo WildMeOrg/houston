@@ -315,3 +315,36 @@ class SiteSetting(db.Model, Timestamp):
             val = str(uuid.uuid4())
             cls.set('system_guid', string=val, public=True, override_readonly=True)
         return val
+
+    # this probably should live in some sort of Region class, but for now it is a one-off utility
+    @classmethod
+    def region_path(cls, loc, id_only=True):
+        reg = cls.get_edm_configuration('site.custom.regions')
+        if not reg:
+            raise ValueError('site.custom.regions appears to be unset')
+        return cls._region_path_find(reg, loc, [], id_only)
+
+    # as with any region-tree-traversal, this does not handle duplication of ids across nodes well.
+    # first come, first served   :(
+    @classmethod
+    def _region_path_find(cls, tree, loc, path, id_only):
+        if not loc:
+            raise ValueError('must pass loc')
+        if not tree or not isinstance(tree, dict):
+            return None
+        this_id = tree.get('id')
+        this_data = tree.copy()
+        if 'locationID' in this_data:
+            del this_data['locationID']
+        if this_id == loc:
+            path.append(this_id if id_only else this_data)
+            return path
+        if 'locationID' in tree and isinstance(tree['locationID'], list):
+            for sub in tree['locationID']:
+                continue_path = path
+                if this_id:  # skips nodes without id (e.g. top)
+                    continue_path = path + [this_id if id_only else this_data]
+                sub_path = cls._region_path_find(sub, loc, continue_path, id_only)
+                if sub_path:
+                    return sub_path
+        return None

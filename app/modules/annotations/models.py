@@ -466,10 +466,11 @@ class Annotation(db.Model, HoustonModel):
             elif not isinstance(location_list, list):  # single value
                 location_list = [location_list]
             if criteria.get('locationId_include_ancestors', False):
-                from app.modules.site_settings.models import SiteSetting
+                from app.modules.site_settings.models import Regions
 
+                regions = Regions()
                 location_list = sorted(
-                    list(SiteSetting.region_expand_ancestors(location_list)),
+                    list(regions.all_ancestors(location_list)),
                     key=str.casefold,
                 )
             if len(location_list) > 0:

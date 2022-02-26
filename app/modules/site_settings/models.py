@@ -316,18 +316,28 @@ class SiteSetting(db.Model, Timestamp):
             cls.set('system_guid', string=val, public=True, override_readonly=True)
         return val
 
-    # this probably should live in some sort of Region class, but for now it is a one-off utility
-    @classmethod
-    def region_path(cls, loc, id_only=True):
-        reg = cls.get_edm_configuration('site.custom.regions')
-        if not reg:
-            raise ValueError('site.custom.regions appears to be unset')
-        return cls._region_path_find(reg, loc, [], id_only)
+
+class Regions(dict):
+    def __init__(self, *args, **kwargs):
+        if 'data' in kwargs and isinstance(kwargs['data'], dict):
+            self.update(kwargs['data'])
+        else:
+            from app.modules.site_settings.models import SiteSetting
+
+            data = SiteSetting.get_edm_configuration('site.custom.regions')
+            if data:
+                self.update(data)
+        if not len(self):
+            raise ValueError('no region data available')
+        super().__init__(*args, **kwargs)
+
+    def full_path(self, loc, id_only=True):
+        return self._find_path(self, loc, [], id_only)
 
     # as with any region-tree-traversal, this does not handle duplication of ids across nodes well.
     # first come, first served   :(
     @classmethod
-    def _region_path_find(cls, tree, loc, path, id_only):
+    def _find_path(cls, tree, loc, path, id_only):
         if not loc:
             raise ValueError('must pass loc')
         if not tree or not isinstance(tree, dict):
@@ -344,18 +354,50 @@ class SiteSetting(db.Model, Timestamp):
                 continue_path = path
                 if this_id:  # skips nodes without id (e.g. top)
                     continue_path = path + [this_id if id_only else this_data]
-                sub_path = cls._region_path_find(sub, loc, continue_path, id_only)
+                sub_path = cls._find_path(sub, loc, continue_path, id_only)
                 if sub_path:
                     return sub_path
         return None
 
-    @classmethod
-    def region_expand_ancestors(cls, loc_list):
+    # also includes loc_list values too, so not just ancestors?
+    def all_ancestors(self, loc_list):
         ancestors = set()
         if not loc_list or not isinstance(loc_list, list):
             return ancestors
         for loc in loc_list:
-            path = cls.region_path(loc)
+            path = self.full_path(loc)
             if path:
                 ancestors.update(path)
         return ancestors
+
+    def find(self, locs=None, id_only=True):
+        found = self._find(self, locs, id_only)
+        return set(found) if id_only else found
+
+    @classmethod
+    def _find(cls, tree, locs, id_only):
+        if not locs:
+            locs = []
+        elif isinstance(locs, str):
+            locs = [locs]
+        elif not isinstance(locs, list):
+            raise ValueError('must pass string, list, or None')
+        found = []
+        if tree.get('id') and (not locs or tree['id'] in locs):
+            if id_only:
+                found.append(tree['id'])
+            else:
+                node_data = tree.copy()
+                if node_data.get('locationID'):
+                    del node_data['locationID']
+                found.append(node_data)
+        if 'locationID' in tree and isinstance(tree['locationID'], list):
+            for sub in tree['locationID']:
+                found = found + cls._find(sub, locs, id_only)
+        return found
+
+    def __repr__(self):
+        return (
+            f"<{self.__class__.__name__}(desc={self.get('description')} "
+            f'; unique_id_count={len(self.find())})>'
+        )

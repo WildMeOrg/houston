@@ -336,11 +336,10 @@ def test_annotation_in_asset_group(
     ]
 
 
-# specifically for DEX-660
 @pytest.mark.skipif(
     module_unavailable('asset_groups'), reason='AssetGroups module disabled'
 )
-def test_patch_time_ags_encounters(
+def test_patch_ags_encounters(
     flask_app_client, researcher_1, regular_user, test_root, db, empty_individual, request
 ):
 
@@ -363,7 +362,7 @@ def test_patch_time_ags_encounters(
     # patch time value on encounter
     encounter_path = f'{asset_group_sighting_guid}/encounter/{encounter_guid}'
     time_value = '2000-01-01T01:01:01+00:00'
-    patch_data = [
+    patch_time = [
         utils.patch_add_op('time', time_value),
         utils.patch_add_op('timeSpecificity', 'month'),
     ]
@@ -371,7 +370,7 @@ def test_patch_time_ags_encounters(
         flask_app_client,
         researcher_1,
         encounter_path,
-        patch_data,
+        patch_time,
     )
 
     # now verify change
@@ -385,6 +384,39 @@ def test_patch_time_ags_encounters(
         group_sighting_verify.json['config']['encounters'][0]['timeSpecificity']
         == 'month'
     )
+
+    # patch in a few encounter fields
+    locality = '42'
+    taxonomy = str(uuid.uuid4())
+    new_time_value = '2020-01-01T01:01:01+00:00'
+    patch_enc_data = [
+        utils.patch_add_op('verbatimLocality', locality),
+        utils.patch_add_op('time', new_time_value),
+        utils.patch_add_op('taxonomy', taxonomy),
+    ]
+    asset_group_utils.patch_asset_group_sighting(
+        flask_app_client,
+        researcher_1,
+        encounter_path,
+        patch_enc_data,
+    )
+
+    group_sighting_verify = asset_group_utils.read_asset_group_sighting(
+        flask_app_client,
+        researcher_1,
+        asset_group_sighting_guid,
+    ).json
+    gas = asset_group_utils.read_asset_group_sighting_as_sighting(
+        flask_app_client,
+        researcher_1,
+        asset_group_sighting_guid,
+    ).json
+    ags_enc = group_sighting_verify['config']['encounters'][0]
+    ags_as_sighting_enc = gas['encounters'][0]
+    assert ags_enc['verbatimLocality'] == locality
+    assert ags_enc['taxonomy'] == taxonomy
+    assert ags_as_sighting_enc['verbatimLocality'] == locality
+    assert ags_as_sighting_enc['taxonomy'] == taxonomy
 
 
 # moving annot from one encounter to the other

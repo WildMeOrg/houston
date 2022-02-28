@@ -207,6 +207,7 @@ def test_asset_group_sightings(session, login, codex_url, test_root):
                 'hasEdit': True,
                 'hasView': True,
                 'locationId': None,
+                'verbatimLocality': None,
                 'individual': {},
                 'owner': creator_data,
                 'sex': 'male',

@@ -183,6 +183,15 @@ class Collaboration(db.Model, HoustonModel):
             assoc = self._get_association_for_user(other_user_guids[0])
         return assoc
 
+    # note: returns manager *of this collaboration* (if applicable).  this user
+    #   may no longer be an active manager (role).
+    def get_manager(self):
+        if self.initiator_guid in self.user_guids():
+            return None
+        from app.modules.users.models import User
+
+        return User.query.get(self.initiator_guid)
+
     def get_users(self):
         users = []
         for association in self.collaboration_user_associations:

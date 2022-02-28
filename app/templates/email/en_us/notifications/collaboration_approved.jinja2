@@ -1,7 +1,10 @@
-{% extends 'email/en_us/base.jinja2' %}
-{% block title %}Collaboration Approved, {{ site_name }}{% endblock %}
-{% block main %}
-<p style="Margin:0;Margin-bottom:10px;color:#0a0a0a;font-family:Helvetica,Arial,sans-serif;font-size:16px;font-weight:400;line-height:1.3;margin:0;margin-bottom:10px;padding:0;text-align:left">Your collaboration request on {{ context_name }} was approved by {{ sender_name }}.</p>
+<html>
+        <body>
+                <p>Hello {{ site_name }} user,</p>
 
-<p style="Margin:0;Margin-bottom:10px;color:#0a0a0a;font-family:Helvetica,Arial,sans-serif;font-size:16px;font-weight:400;line-height:1.3;margin:0;margin-bottom:10px;padding:0;text-align:left">{{ sender_link }}</p>
-{% endblock %}
+                <p>{{ sender_name }} approved your collaboration request. You should now be able to view data on <a href="{{ site_url_prefix }}/users/{{ sender_guid }}">their profile</a>.</p>
+
+                <p>Happy collaborating,<br />
+                The {{ site_name }} team</p>
+        </body>
+</html>

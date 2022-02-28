@@ -1,6 +1,10 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" >
-	<body>
-		{{sender_name}} {{request_id}}
-	</body>
+<html>
+				<body>
+								<p>Hello {{ site_name }} user,</p>
+
+								<p>{{ sender_name }} wants to merge {{ target_individual_name }} and {{ source_names_list }}. To respond to their request, visit your <a href="{{ site_url_prefix }}">homepage</a>.</p>
+
+								<p>Best,<br />
+								The {{ site_name }} team</p>
+				</body>
 </html>

@@ -131,6 +131,7 @@ class Email(Message):
             'site_url_prefix': site_url_prefix(),
             'year': now.year,
             'transaction_id': self._transaction_id,
+            # some of these are leftover from PR512 and may need cleanup later
             'header_image_url': SiteSetting.get_value('email_header_image_url'),
             'h1': SiteSetting.get_value('email_title_greeting'),
             'secondary_title': SiteSetting.get_value('email_secondary_title'),

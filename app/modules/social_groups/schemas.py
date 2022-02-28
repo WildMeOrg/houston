@@ -18,6 +18,10 @@ class SocialGroupMemberSchema(ModelSchema):
     class Meta:
         model = SocialGroupIndividualMembership
         fields = (SocialGroupIndividualMembership.roles.key,)
+        dump_only = (
+            SocialGroupIndividualMembership.created.key,
+            SocialGroupIndividualMembership.updated.key,
+        )
 
 
 class BaseSocialGroupSchema(ModelSchema):

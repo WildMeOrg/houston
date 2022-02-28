@@ -43,6 +43,7 @@ class DetailedIndividualSchema(BaseIndividualSchema):
         attribute='names',
         many=True,
     )
+    social_groups = base_fields.Function(Individual.get_social_groups_json)
 
     class Meta(BaseIndividualSchema.Meta):
         fields = BaseIndividualSchema.Meta.fields + (
@@ -50,6 +51,7 @@ class DetailedIndividualSchema(BaseIndividualSchema):
             Individual.updated.key,
             'featuredAssetGuid',
             'names',
+            'social_groups',
         )
         dump_only = BaseIndividualSchema.Meta.dump_only + (
             Individual.created.key,

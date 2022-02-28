@@ -1,32 +1,19 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=no-self-use
-"""
-OAuth2 provider setup.
-
-It is based on the code from the example:
-https://github.com/lepture/example-oauth2-server
-
-More details are available here:
-* http://flask-oauthlib.readthedocs.org/en/latest/oauth2.html
-* http://lepture.com/en/2013/create-oauth-server
-"""
+import datetime
+from io import StringIO
 import logging
+import re
+from urllib.parse import urlparse
 
-from flask import current_app, request, session, render_template  # NOQA
-from flask_login import current_user  # NOQA
-from flask_mail import Mail, Message, email_dispatched  # NOQA
+from flask import current_app, render_template
+from flask_mail import Mail, Message, email_dispatched
 from jinja2 import TemplateNotFound
 from premailer import Premailer
 import cssutils
 import htmlmin
 import app.version
 from app.utils import to_ascii
-
-from io import StringIO
-import re
-
-import datetime
-
 
 from flask_restx_patched import is_extension_enabled
 
@@ -122,12 +109,6 @@ def _format_datetime(dt, verbose=False):
 
 
 class Email(Message):
-    # pylint: disable=abstract-method
-    """
-    A project-specific implementation of OAuth2RequestValidator, which connects
-    our User and OAuth2* implementations together.
-    """
-
     def __init__(self, *args, **kwargs):
         from app.modules.site_settings.models import SiteSetting
         from app.utils import site_url_prefix
@@ -144,23 +125,33 @@ class Email(Message):
         # will attempt to discover via set_language() unless specifically set
         self.language = None
         self._transaction_id = str(uuid.uuid4())
-        self._original_recipients = None  # should only be set by resolve_recipients
         self.template_name = None
         self.template_kwargs = {
             'site_name': SiteSetting.get_value('site.name', default='Codex'),
             'site_url_prefix': site_url_prefix(),
             'year': now.year,
             'transaction_id': self._transaction_id,
+            'header_image_url': SiteSetting.get_value('email_header_image_url'),
+            'h1': SiteSetting.get_value('email_title_greeting'),
+            'secondary_title': SiteSetting.get_value('email_secondary_title'),
+            'secondary_text': SiteSetting.get_value('email_secondary_text'),
+            'legal_statement': SiteSetting.get_value('email_legal_statement'),
+            'unsubscribe_link': '/unsubscribe',
+            'site_url': '/',
+            'site_domain': urlparse(site_url_prefix()).netloc,
+            'instagram_url': SiteSetting.get_value('site.links.instagramLink'),
+            'twitter_url': SiteSetting.get_value('site.links.twitterLink'),
+            'facebook_url': SiteSetting.get_value('site.links.facebookLink'),
+            'adoption_button_text': SiteSetting.get_value('email_adoption_button_text'),
         }
         self.status = None
         self.mail = mail
 
         # Debugging, override all email destinations
+        recipients, self.users = self._resolve_recipients(kwargs['recipients'])
+        kwargs['recipients'] = recipients
         override_recipients = current_app.config.get('MAIL_OVERRIDE_RECIPIENTS', None)
         if override_recipients is not None:
-            original_recipients = kwargs.get('recipients', None)
-            log.warning('Original recipients: %r' % (original_recipients,))
-            log.warning('Override recipients: %r' % (override_recipients,))
             kwargs['recipients'] = override_recipients
 
         super(Email, self).__init__(*args, **kwargs)
@@ -172,6 +163,8 @@ class Email(Message):
         self.extra_headers['X-Houston-Transaction-ID'] = self._transaction_id
         self.extra_headers['X-Houston-Version'] = app.version.version
         self.extra_headers['X-Houston-Git-Revision'] = app.version.git_revision
+        if override_recipients is not None:
+            self.extra_headers['X-Houston-Recipients'] = ', '.join(recipients)
 
     # note: in order to be able to use set_language(), recipients must be set first on the Email
     def template(self, template, **kwargs):
@@ -306,30 +299,25 @@ class Email(Message):
             return
 
         from app.modules.site_settings.models import SiteSetting
-        from app.modules.users.models import User
 
-        self.resolve_recipients()
-        for recip in self._original_recipients:
-            if isinstance(recip, User):
-                self.language = recip.get_preferred_langauge()
-                if self.language:
-                    return
+        for recip in self.users:
+            self.language = recip.get_preferred_langauge()
+            if self.language:
+                return
         self.language = SiteSetting.get_string('preferred_language', 'en_us')
 
-    def resolve_recipients(self):
-        if self._original_recipients:
-            return  # only do once
+    def _resolve_recipients(self, recipients):
         from app.modules.users.models import User
 
-        self._original_recipients = []
         addresses = []
-        for recip in self.recipients:
-            self._original_recipients.append(recip)
-            if isinstance(recip, User):
-                addresses.append(recip.email)
+        users = []
+        for recipient in recipients:
+            if isinstance(recipient, User):
+                users.append(recipient)
+                addresses.append(recipient.email)
             else:
-                addresses.append(recip)
-        self.recipients = addresses
+                addresses.append(recipient)
+        return addresses, users
 
     def send_message(self, *args, **kwargs):
         if _validate_settings():
@@ -339,7 +327,6 @@ class Email(Message):
                 )
             if not self.recipients:
                 raise ValueError(f'No recipients; not sending email ({self.subject})')
-            self.resolve_recipients()
             mail.init_app(
                 current_app
             )  # this initializes based on new MAIL_ values from _validate_settings

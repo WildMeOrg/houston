@@ -54,7 +54,6 @@ def test_get_notification_prefs(db, researcher_1):
 )
 def test_notification_message(db, researcher_1, researcher_2, flask_app, request):
     from app.modules.collaborations.models import Collaboration
-    from tests.modules.emails.test_email import _prep_sending, _cleanup_sending
 
     builder = NotificationBuilder(researcher_1)
 
@@ -71,7 +70,6 @@ def test_notification_message(db, researcher_1, researcher_2, flask_app, request
         NotificationType.collab_request.value: {'email': True, 'restAPI': True},
         NotificationType.all.value: {'email': True},
     }
-    _prep_sending(flask_app)  # allows us to fake-send emails (enough for testing)
 
     basic_collab.init_req_notification_guid = (
         None  # allows us to delete below without violating foreign key constraint
@@ -86,11 +84,13 @@ def test_notification_message(db, researcher_1, researcher_2, flask_app, request
 
     # check the email we (hopefully) (did not really) sent out
     assert 'email' in notification._channels_sent
-    assert 'collaboration request' in notification._channels_sent['email'].subject
-    assert researcher_2.email in notification._channels_sent['email'].recipients
+    sent_email = notification._channels_sent['email']
+    assert 'collaboration request' in sent_email.subject
+    assert researcher_2.email in sent_email.recipients
+    assert 'a request to collaborate on' in sent_email.html
+    assert '</table>' in sent_email.html
     with db.session.begin():
         db.session.delete(notification_preferences)
-    _cleanup_sending()
 
     try:
         chans = notification.channels_to_send()

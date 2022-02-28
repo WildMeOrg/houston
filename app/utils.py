@@ -49,7 +49,7 @@ def site_url_prefix():
     host = current_app.config.get('SERVER_NAME', 'codex.example.com')
     if not scheme or not host:
         scheme = 'http'
-        host = 'localhost'
+        host = 'localhost:84'  # development
     return f'{scheme}://{host}'.lower()
 
 

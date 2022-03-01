@@ -604,9 +604,33 @@ class User(db.Model, FeatherModel, UserEDMMixin):
         from app.modules.notifications.models import UserNotificationPreferences
 
         # User preferences are the system ones plus the ones stored in this class
-        # Return the combination to the REST API
+        # Return the combination
         preferences = UserNotificationPreferences.get_user_preferences(self)
         return preferences
+
+    def _apply_notification_preferences(self, all_notifications):
+        from app.modules.notifications.models import NotificationChannel
+
+        preferences = self.get_notification_preferences()
+        returned_notifications = [
+            notif
+            for notif in all_notifications
+            if preferences[notif.message_type][NotificationChannel.rest]
+        ]
+
+        return returned_notifications
+
+    def get_notifications(self):
+        return self._apply_notification_preferences(self.notifications)
+
+    def get_unread_notifications(self):
+        from app.modules.notifications.models import Notification
+
+        return self._apply_notification_preferences(
+            Notification.query.filter_by(recipient_guid=self.guid)
+            .filter_by(is_read=False)
+            .all()
+        )
 
     @module_required('individuals', resolve='warn', default=[])
     def get_individual_merge_requests(self):

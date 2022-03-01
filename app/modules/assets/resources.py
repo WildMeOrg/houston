@@ -168,7 +168,7 @@ class AssetSrcRawByID(Resource):
         permissions.ObjectAccessPermission,
         kwargs_on_request=lambda kwargs: {
             'obj': kwargs['asset'],
-            'action': AccessOperation.READ_PRIVILEGED,
+            'action': AccessOperation.READ_INTERNAL,
         },
     )
     def get(self, asset):

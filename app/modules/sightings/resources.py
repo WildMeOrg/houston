@@ -677,7 +677,7 @@ class SightingSageIdentified(Resource):
         permissions.ObjectAccessPermission,
         kwargs_on_request=lambda kwargs: {
             'obj': kwargs['sighting'],
-            'action': AccessOperation.WRITE_PRIVILEGED,
+            'action': AccessOperation.WRITE_INTERNAL,
         },
     )
     def post(self, sighting, job_guid):

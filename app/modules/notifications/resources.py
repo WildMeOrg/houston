@@ -21,12 +21,7 @@ from app.modules.users.permissions.types import AccessOperation
 
 
 from . import parameters, schemas
-from .models import (
-    Notification,
-    NotificationType,
-    NotificationChannel,
-    UserNotificationPreferences,
-)
+from .models import Notification
 
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
@@ -37,9 +32,9 @@ api = Namespace(
 
 @api.route('/')
 @api.login_required(oauth_scopes=['notifications:read'])
-class Notifications(Resource):
+class MyNotifications(Resource):
     """
-    Manipulations with Notifications.
+    Manipulations with Users own Notifications.
     """
 
     @api.permission_required(
@@ -53,54 +48,48 @@ class Notifications(Resource):
     @api.response(schemas.DetailedNotificationSchema(many=True))
     def get(self, args):
         """
-        List of Notification.
+        List of Notifications for the user after preferences applied.
 
         Returns a list of Notification starting from ``offset`` limited by ``limit``
         parameter.
         """
 
-        if current_user.is_user_manager:
-            returned_notifications = Notification.query.all()
-        else:
-            preferences = UserNotificationPreferences.get_user_preferences(current_user)
-            returned_notifications = [
-                notif
-                for notif in current_user.notifications
-                if preferences[notif.message_type][NotificationChannel.rest]
-            ]
+        returned_notifications = current_user.get_notifications()
 
         # Manually apply offset and limit after the unique list is created
         return returned_notifications[args['offset'] : args['limit'] - args['offset']]
 
-    @api.permission_required(
-        permissions.ModuleAccessPermission,
-        kwargs_on_request=lambda kwargs: {
-            'module': Notification,
-            'action': AccessOperation.WRITE,
-        },
-    )
-    @api.login_required(oauth_scopes=['notifications:write'])
-    @api.parameters(parameters.CreateNotificationParameters())
-    @api.response(schemas.DetailedNotificationSchema())
-    @api.response(code=HTTPStatus.CONFLICT)
-    def post(self, args):
-        """
-        Create a new instance of Notification.
-        """
-        context = api.commit_or_abort(
-            db.session, default_error_message='Failed to create a new Notification'
-        )
-        with context:
-            notification = Notification(**args)
-            db.session.add(notification)
-        return notification
+    # No reason we should allow the frontend to create an arbitrary notification and many security
+    # reasons that we should not. Code retained in case this decision is reversed.
+    # @api.permission_required(
+    #     permissions.ModuleAccessPermission,
+    #     kwargs_on_request=lambda kwargs: {
+    #         'module': Notification,
+    #         'action': AccessOperation.WRITE,
+    #     },
+    # )
+    # @api.login_required(oauth_scopes=['notifications:write'])
+    # @api.parameters(parameters.CreateNotificationParameters())
+    # @api.response(schemas.DetailedNotificationSchema())
+    # @api.response(code=HTTPStatus.CONFLICT)
+    # def post(self, args):
+    #     """
+    #     Create a new instance of Notification.
+    #     """
+    #     context = api.commit_or_abort(
+    #         db.session, default_error_message='Failed to create a new Notification'
+    #     )
+    #     with context:
+    #         notification = Notification(**args)
+    #         db.session.add(notification)
+    #     return notification
 
 
 @api.route('/unread')
 @api.login_required(oauth_scopes=['notifications:read'])
-class NotificationsUnread(Resource):
+class MyUnreadNotifications(Resource):
     """
-    Unread Notifications.
+    Manipulations with Users own Unread Notifications.
     """
 
     @api.permission_required(
@@ -114,26 +103,42 @@ class NotificationsUnread(Resource):
     @api.response(schemas.DetailedNotificationSchema(many=True))
     def get(self, args):
         """
-        List of unread Notification.
+        List of unread Notifications for the user after preferences applied.
 
-        Returns a list of unread Notifications starting from ``offset`` limited by ``limit``
+        Returns a list of Notification starting from ``offset`` limited by ``limit``
         parameter.
         """
+        unread_notifications = current_user.get_unread_notifications()
+        # Manually apply offset and limit after the list is created
+        return unread_notifications[args['offset'] : args['limit'] - args['offset']]
 
-        returned_notifications = []
-        preferences = UserNotificationPreferences.get_user_preferences(current_user)
-        if preferences[NotificationType.all][NotificationChannel.rest]:
-            returned_notifications = [
-                notif
-                for notif in current_user.notifications
-                if (
-                    notif.is_read is False
-                    and preferences[notif.message_type][NotificationChannel.rest]
-                )
-            ]
 
-        # Manually apply offset and limit after the unique list is created
-        return returned_notifications[args['offset'] : args['limit'] - args['offset']]
+@api.route('/all_unread')
+@api.login_required(oauth_scopes=['notifications:read'])
+class AllUnreadNotifications(Resource):
+    """
+    Manipulations with All Notifications.
+    """
+
+    @api.permission_required(
+        permissions.ModuleAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'module': Notification,
+            'action': AccessOperation.READ_PRIVILEGED,
+        },
+    )
+    @api.parameters(PaginationParameters())
+    @api.response(schemas.DetailedNotificationSchema(many=True))
+    def get(self, args):
+        """
+        List of Notifications for all users with no preferences applied.
+
+        Returns a list of Notification starting from ``offset`` limited by ``limit``
+        parameter.
+        """
+        notifications = Notification.query.all()
+        # Manually apply offset and limit after the list is created
+        return notifications[args['offset'] : args['limit'] - args['offset']]
 
 
 @api.route('/<uuid:notification_guid>')

@@ -35,6 +35,11 @@ def test_ia_pipeline_sim_detect_response(
     creation_data = asset_group_utils.get_bulk_creation_data(
         test_root, request, 'african_terrestrial'
     )
+    description = 'International names Þröstur Sélène cédric characters &%$* ¼ ©,® ™ m².'
+    location = 'Montréal'
+    creation_data.set_field('description', description)
+    creation_data.set_sighting_field(0, 'verbatimLocality', location)
+    creation_data.set_encounter_field(0, 0, 'verbatimLocality', location)
 
     asset_group_uuid = None
     try:

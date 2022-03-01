@@ -6,6 +6,7 @@ import redis
 import uuid
 from urllib.parse import urljoin
 from werkzeug.utils import secure_filename as werkzeug_secure_filename
+import logging
 
 # Find the stack on which we want to store the database connection.
 # Starting with Flask 0.9, the _app_ctx_stack is the correct one,
@@ -14,6 +15,9 @@ try:
     from flask import _app_ctx_stack as stack
 except ImportError:  # pragma: no cover
     from flask import _request_ctx_stack as stack
+
+
+log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
 
 class TusManager(object):
@@ -127,6 +131,8 @@ class TusManager(object):
         insecure_filename = metadata.get('filename', None)
         if insecure_filename is not None:
             secure_filename = werkzeug_secure_filename(insecure_filename)
+            if secure_filename != insecure_filename:
+                log.info(f'renamed {insecure_filename} to {secure_filename}')
             metadata['filename'] = secure_filename
 
         return metadata

@@ -108,6 +108,8 @@ def _tus_filepaths_from(
             return None
         for insecure_path in paths:
             secure_path = secure_filename(insecure_path)
+            if secure_path != insecure_path:
+                log.info(f'Tus renamed filename {insecure_path} to {secure_path}')
             want_path = os.path.join(upload_dir, secure_path)
             assert os.path.exists(want_path), f'{want_path} does not exist'
             filepaths.append(want_path)

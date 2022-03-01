@@ -19,6 +19,7 @@ def set_up_assets(flask_app, db, test_root, admin_user, request):
     from app.modules.asset_groups.models import AssetGroup
     from app.modules.asset_groups.metadata import AssetGroupMetadata
     from app.modules.sightings.models import Sighting, SightingAssets, SightingStage
+    from werkzeug.utils import secure_filename
 
     from tests.modules.asset_groups.resources.utils import AssetGroupCreationData
 
@@ -38,7 +39,8 @@ def set_up_assets(flask_app, db, test_root, admin_user, request):
     trans_dir.mkdir(parents=True)
     jpgs = list(test_root.glob('*.jpg'))
     for jpg in jpgs:
-        with (trans_dir / jpg.name).open('wb') as f:
+        secure_name = secure_filename(jpg.name)
+        with (trans_dir / secure_name).open('wb') as f:
             with jpg.open('rb') as g:
                 f.write(g.read())
 

@@ -788,7 +788,6 @@ class AssetGroupSighting(db.Model, HoustonModel):
                     'annotations' in encounter_metadata.keys()
                     and annot_guid in encounter_metadata['annotations']
                 ):
-                    breakpoint()
                     self.config['encounters'][encounter_num]['annotations'].remove(
                         annot_guid
                     )

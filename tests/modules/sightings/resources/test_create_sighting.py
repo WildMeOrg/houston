@@ -397,7 +397,6 @@ def test_edm_and_houston_encounter_data_within_sightings(
 ):
 
     json = None
-    individual_json = None
     try:
         uuids = sighting_utils.create_sighting(
             flask_app_client, researcher_1, request, test_root, saturn_data
@@ -444,38 +443,25 @@ def test_edm_and_houston_encounter_data_within_sightings(
 
         individual_id = individual_response.json['result']['id']
 
-        individual_json = individual_utils.read_individual(
-            flask_app_client, researcher_1, individual_id
-        ).json
-
-        assert len(individual_json['names']) == 2
-        assert individual_json['names'][0]['context'] == 'defaultName'
-        assert individual_json['names'][0]['value'] == 'Michael Aday'
-        assert individual_json['names'][1]['context'] == 'nickname'
-        assert individual_json['names'][1]['value'] == 'Meatloaf'
-
-        # some duplication, but I wanted to check the sighting/encounter data first before complexifying it
+        # now that individual exists, read individual data off *sighting*
         response = sighting_utils.read_sighting(
             flask_app_client,
             researcher_1,
-            response.json['guid'],
+            sighting_guid,
             expected_status_code=200,
         )
-        json = response.json
 
-        assert json['encounters'][0]['individual'] is not None
-        assert json['encounters'][0]['individual']['id'] == individual_id
-        # TODO FIXME need to somehow nest (houston) names inside encounter-individual when this comes from edm!
-        # assert len(json['encounters'][0]['individual']['names']) == 2
-        # assert json['encounters'][0]['individual']['names'][0]['context'] == 'defaultName'
-        # assert json['encounters'][0]['individual']['names'][0]['value'] == 'Michael Aday'
-        # assert json['encounters'][0]['individual']['names'][1]['context'] == 'nickname'
-        # assert json['encounters'][0]['individual']['names'][1]['value'] == 'Meatloaf'
+        sight_enc_individual = response.json['encounters'][0]['individual']
+        assert sight_enc_individual is not None
+        assert sight_enc_individual['guid'] == individual_id
+        assert len(sight_enc_individual['names']) == 2
+        assert sight_enc_individual['names'][0]['context'] == 'defaultName'
+        assert sight_enc_individual['names'][0]['value'] == 'Michael Aday'
+        assert sight_enc_individual['names'][1]['context'] == 'nickname'
+        assert sight_enc_individual['names'][1]['value'] == 'Meatloaf'
 
     finally:
-        individual_utils.delete_individual(
-            flask_app_client, staff_user, individual_json['id']
-        )
+        individual_utils.delete_individual(flask_app_client, staff_user, individual_id)
 
 
 # This is now disabled, so make sure that it is

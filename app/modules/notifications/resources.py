@@ -54,7 +54,7 @@ class MyNotifications(Resource):
         parameter.
         """
 
-        returned_notifications = current_user.get_notifications()
+        returned_notifications = Notification.get_notifications_for_user(current_user)
 
         # Manually apply offset and limit after the unique list is created
         return returned_notifications[args['offset'] : args['limit'] - args['offset']]
@@ -108,7 +108,9 @@ class MyUnreadNotifications(Resource):
         Returns a list of Notification starting from ``offset`` limited by ``limit``
         parameter.
         """
-        unread_notifications = current_user.get_unread_notifications()
+        unread_notifications = Notification.get_unread_notifications_for_user(
+            current_user
+        )
         # Manually apply offset and limit after the list is created
         return unread_notifications[args['offset'] : args['limit'] - args['offset']]
 

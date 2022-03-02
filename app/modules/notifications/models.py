@@ -234,24 +234,39 @@ class Notification(db.Model, HoustonModel):
         )
 
     @classmethod
+    def _apply_notification_preferences(cls, user, all_notifications):
+        from app.modules.notifications.models import NotificationChannel
+
+        preferences = user.get_notification_preferences()
+        returned_notifications = [
+            notif
+            for notif in all_notifications
+            if preferences[notif.message_type][NotificationChannel.rest]
+        ]
+
+        return returned_notifications
+
+    @classmethod
     def get_notifications_for_user(cls, user):
         from sqlalchemy import desc
 
-        return (
+        return cls._apply_notification_preferences(
+            user,
             Notification.query.filter_by(recipient_guid=user.guid)
             .order_by(desc(Notification.created))
-            .all()
+            .all(),
         )
 
     @classmethod
     def get_unread_notifications_for_user(cls, user):
         from sqlalchemy import desc
 
-        return (
+        return cls._apply_notification_preferences(
+            user,
             Notification.query.filter_by(recipient_guid=user.guid)
             .filter_by(is_read=False)
             .order_by(desc(Notification.created))
-            .all()
+            .all(),
         )
 
     @property

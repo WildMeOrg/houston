@@ -87,8 +87,8 @@ def test_notification_message(db, researcher_1, researcher_2, flask_app, request
     sent_email = notification._channels_sent['email']
     assert 'collaboration request' in sent_email.subject
     assert researcher_2.email in sent_email.recipients
-    assert 'a request to collaborate on' in sent_email.html
-    assert '</table>' in sent_email.html
+    assert 'sent you a collaboration request' in sent_email.html
+    assert '</body>' in sent_email.html
     with db.session.begin():
         db.session.delete(notification_preferences)
 

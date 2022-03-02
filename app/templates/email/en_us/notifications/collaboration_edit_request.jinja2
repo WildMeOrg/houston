@@ -1,7 +1,10 @@
-{% extends 'email/en_us/base.jinja2' %}
-{% block title %}Collaboration Request, {{ site_name }}{% endblock %}
-{% block main %}
-<p style="Margin:0;Margin-bottom:10px;color:#0a0a0a;font-family:Helvetica,Arial,sans-serif;font-size:16px;font-weight:400;line-height:1.3;margin:0;margin-bottom:10px;padding:0;text-align:left">You have a request to edit on your collaboration on {{ context_name }} with {{ sender_name }}.</p>
+<html>
+        <body>
+                <p>Hello {{ site_name }} user,</p>
 
-<p style="Margin:0;Margin-bottom:10px;color:#0a0a0a;font-family:Helvetica,Arial,sans-serif;font-size:16px;font-weight:400;line-height:1.3;margin:0;margin-bottom:10px;padding:0;text-align:left">{{ sender_link }}</p>
-{% endblock main %}
+                <p>{{ sender_name }} sent you a collaboration edit request. To respond to their request, visit your <a href="{{ site_url_prefix }}">homepage</a> on {{ site_name }}.</p>
+
+                <p>Happy collaborating,<br />
+                The {{ site_name }} team</p>
+        </body>
+</html>

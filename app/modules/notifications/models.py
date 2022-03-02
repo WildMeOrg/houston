@@ -130,16 +130,26 @@ NOTIFICATION_CONFIG = {
         'resolve_on_read': True,
     },
     NotificationType.collab_manager_create: {
-        'email_template_name': 'collaboration_manager_create',  # Not yet written
+        'email_template_name': 'collaboration_manager_create',
         'email_digest_content_template': 'collaboration_manager_create_digest',
-        'mandatory_fields': {'collaboration_guid', 'user1_name', 'user2_name'},
+        'mandatory_fields': {
+            'collaboration_guid',
+            'user1_name',
+            'user2_name',
+            'manager_name',
+        },
         'allow_multiple': True,
         'resolve_on_read': True,
     },
     NotificationType.collab_manager_revoke: {
-        'email_template_name': 'collaboration_manger_revoke',  # Not yet written
+        'email_template_name': 'collaboration_manger_revoke',
         'email_digest_content_template': 'collaboration_manager_revoke_digest',
-        'mandatory_fields': {'collaboration_guid', 'user1_name', 'user2_name'},
+        'mandatory_fields': {
+            'collaboration_guid',
+            'user1_name',
+            'user2_name',
+            'manager_name',
+        },
         'allow_multiple': True,
         'resolve_on_read': True,
     },
@@ -184,12 +194,24 @@ class NotificationBuilder(object):
         assert len(users) == 2
         self.data['user1_name'] = users[0].full_name
         self.data['user2_name'] = users[1].full_name
+        manager = collab.get_manager()
+        if manager:
+            self.data['manager_name'] = manager.full_name
+        else:  # snh
+            self.data['manager_name'] = 'a user manager'
 
     def set_individual_merge(self, individuals, encounters, request_data):
         self.data['individual_list'] = []
+        source_names = []
         for indiv in individuals:
             ind_data = {'guid': indiv.guid, 'primaryName': indiv.get_primary_name()}
             self.data['individual_list'].append(ind_data)
+            if 'target_individual_guid' not in self.data:
+                self.data['target_individual_guid'] = str(indiv.guid)
+                self.data['target_individual_name'] = indiv.get_primary_name()
+            else:
+                source_names.append(indiv.get_primary_name())
+        self.data['source_names_list'] = ', '.join(source_names)
         self.data['encounter_list'] = []
         for enc in encounters:
             self.data['encounter_list'].append(enc.guid)
@@ -277,6 +299,9 @@ class Notification(db.Model, HoustonModel):
     def sender_name(self):
         return self.get_sender_name()
 
+    def get_sender_guid(self):
+        return str(self.sender_guid) if self.sender_guid else None
+
     def get_sender_name(self):
         from app.modules.users.models import User
 
@@ -321,6 +346,7 @@ class Notification(db.Model, HoustonModel):
             email_message_values = {
                 'context_name': 'context not set',
                 'sender_name': self.get_sender_name(),
+                'sender_guid': self.get_sender_guid(),
                 'sender_link': 'TBD',  # TODO will be fixed after some SiteSetting hackery
             }
             email_message_values.update(self.message_values)

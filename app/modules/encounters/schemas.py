@@ -130,4 +130,6 @@ class AugmentedSightingApiEncounterSchema(BaseEncounterSchema):
             'hasView',
             'hasEdit',
             'individual',
+            'time',
+            'timeSpecificity',
         )

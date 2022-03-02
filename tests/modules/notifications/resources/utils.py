@@ -92,12 +92,12 @@ def read_notification(
     )
 
 
-def read_all_notifications(flask_app_client, user, expected_status_code=200):
+def read_all_notifications(flask_app_client, user, sub_path='', expected_status_code=200):
     return test_utils.get_list_via_flask(
         flask_app_client,
         user,
         scopes='notifications:read',
-        path=PATH,
+        path=f'{PATH}{sub_path}',
         expected_status_code=expected_status_code,
         expected_fields=EXPECTED_LIST_KEYS,
     )

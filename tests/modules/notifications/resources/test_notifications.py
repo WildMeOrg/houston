@@ -73,16 +73,29 @@ def test_get_notifications(
     researcher_1_notifs = notif_utils.read_all_notifications(
         flask_app_client, researcher_1
     )
+    researcher_1_unread_notifs = notif_utils.read_all_notifications(
+        flask_app_client, researcher_1, 'unread'
+    )
     researcher_2_notifs = notif_utils.read_all_notifications(
         flask_app_client, researcher_2
     )
+    researcher_2_unread_notifs = notif_utils.read_all_notifications(
+        flask_app_client, researcher_2
+    )
+
     user_manager_notifs = notif_utils.read_all_notifications(
         flask_app_client, user_manager_user
     )
+    user_manager_all_notifs = notif_utils.read_all_notifications(
+        flask_app_client, user_manager_user, 'all_unread'
+    )
 
     assert len(researcher_1_notifs.json) == len(prev_researcher_1_notifs.json) + 1
+    assert len(researcher_1_unread_notifs.json) == 1
     assert len(researcher_2_notifs.json) == len(prev_researcher_2_notifs.json) + 1
-    assert len(user_manager_notifs.json) == len(prev_user_manager_notifs.json) + 2
+    assert len(researcher_2_unread_notifs.json) == 1
+    assert len(user_manager_notifs.json) == len(prev_user_manager_notifs.json)
+    assert len(user_manager_all_notifs.json) == 2
 
     collab_reqs_from_researcher_1 = get_notifications_with_guid(
         researcher_2_notifs.json,

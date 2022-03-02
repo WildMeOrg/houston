@@ -604,7 +604,7 @@ class User(db.Model, FeatherModel, UserEDMMixin):
         from app.modules.notifications.models import UserNotificationPreferences
 
         # User preferences are the system ones plus the ones stored in this class
-        # Return the combination to the REST API
+        # Return the combination
         preferences = UserNotificationPreferences.get_user_preferences(self)
         return preferences
 

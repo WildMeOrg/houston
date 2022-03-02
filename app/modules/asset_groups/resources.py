@@ -719,7 +719,7 @@ class AssetGroupSightingDetected(Resource):
         permissions.ObjectAccessPermission,
         kwargs_on_request=lambda kwargs: {
             'obj': kwargs['asset_group_sighting'],
-            'action': AccessOperation.WRITE_PRIVILEGED,
+            'action': AccessOperation.WRITE_INTERNAL,
         },
     )
     def post(self, asset_group_sighting, job_guid):

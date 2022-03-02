@@ -46,6 +46,7 @@ MODULE_USER_MAP = {
     ('Collaboration', AccessOperation.WRITE): ['is_active'],
     ('Collaboration', AccessOperation.READ): ['is_user_manager'],
     ('Notification', AccessOperation.READ): ['is_active'],
+    ('Notification', AccessOperation.READ_PRIVILEGED): ['is_user_manager'],
     ('Keyword', AccessOperation.READ): ['is_active'],
     ('Keyword', AccessOperation.WRITE): ['is_active'],
     ('AuditLog', AccessOperation.READ): ['is_admin'],
@@ -76,7 +77,7 @@ OBJECT_USER_MAP = {
         'is_researcher',
     ],
     ('Individual', AccessOperation.READ): ['is_researcher'],
-    ('AssetGroupSighting', AccessOperation.WRITE_PRIVILEGED): ['is_internal'],
+    ('AssetGroupSighting', AccessOperation.WRITE_INTERNAL): ['is_internal'],
     ('Encounter', AccessOperation.READ): ['is_researcher'],
     ('User', AccessOperation.WRITE): [
         'is_user_manager',
@@ -91,7 +92,7 @@ OBJECT_USER_MAP = {
         'is_admin',
     ],
     ('Keyword', AccessOperation.READ): ['is_active'],
-    ('Sighting', AccessOperation.WRITE_PRIVILEGED): ['is_internal'],
+    ('Sighting', AccessOperation.WRITE_INTERNAL): ['is_internal'],
     ('Sighting', AccessOperation.READ_PRIVILEGED): ['is_staff'],
     ('SocialGroup', AccessOperation.READ): ['is_researcher'],
     ('SocialGroup', AccessOperation.WRITE): ['is_researcher'],
@@ -116,7 +117,7 @@ OBJECT_USER_METHOD_MAP = {
     ('Sighting', AccessOperation.READ): ['user_is_owner'],
     ('Sighting', AccessOperation.WRITE): ['user_owns_all_encounters'],
     ('Sighting', AccessOperation.DELETE): ['user_can_edit_all_encounters'],
-    ('Asset', AccessOperation.READ_PRIVILEGED): ['user_raw_read'],
+    ('Asset', AccessOperation.READ_INTERNAL): ['user_raw_read'],
     ('Asset', AccessOperation.WRITE): ['user_is_owner'],
     ('Annotation', AccessOperation.READ): ['user_is_owner'],
     ('Annotation', AccessOperation.WRITE): ['user_is_owner'],
@@ -327,15 +328,17 @@ class ObjectActionRule(DenyAbortMixin, Rule):
         return True, False
 
     def elevated_permission(self, user):
+        # internal access cannot be achieved by elevated permission
         if (
-            self._action == AccessOperation.READ_PRIVILEGED
-            or self._action == AccessOperation.WRITE_PRIVILEGED
+            self._action == AccessOperation.READ_INTERNAL
+            or self._action == AccessOperation.WRITE_INTERNAL
         ):
             return False
         elif self._action == AccessOperation.READ_DEBUG:
             # Only staff can read debug info, not owners
             return user.is_privileged
         else:
+            # Specifically also includes READ_PRIVILEGED
             return owner_or_privileged(user, self._obj)
 
     def check(self):

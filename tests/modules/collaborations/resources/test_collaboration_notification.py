@@ -160,7 +160,7 @@ def test_multi_collaboration(
         flask_app_client, researcher_1
     )
     notifs_manager = notif_utils.read_all_notifications(
-        flask_app_client, user_manager_user
+        flask_app_client, user_manager_user, 'all_unread'
     )
 
     # Manager should see all 6 notifications, researcher1 should only see those for themselves

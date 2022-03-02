@@ -233,6 +233,27 @@ class Notification(db.Model, HoustonModel):
             ')>'.format(class_name=self.__class__.__name__, self=self)
         )
 
+    @classmethod
+    def get_notifications_for_user(cls, user):
+        from sqlalchemy import desc
+
+        return (
+            Notification.query.filter_by(recipient_guid=user.guid)
+            .order_by(desc(Notification.created))
+            .all()
+        )
+
+    @classmethod
+    def get_unread_notifications_for_user(cls, user):
+        from sqlalchemy import desc
+
+        return (
+            Notification.query.filter_by(recipient_guid=user.guid)
+            .filter_by(is_read=False)
+            .order_by(desc(Notification.created))
+            .all()
+        )
+
     @property
     def owner(self):
         return self.recipient

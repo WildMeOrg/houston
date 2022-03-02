@@ -621,15 +621,17 @@ class User(db.Model, FeatherModel, UserEDMMixin):
         return returned_notifications
 
     def get_notifications(self):
-        return self._apply_notification_preferences(self.notifications)
+        from app.modules.notifications.models import Notification
+
+        return self._apply_notification_preferences(
+            Notification.get_notifications_for_user(self)
+        )
 
     def get_unread_notifications(self):
         from app.modules.notifications.models import Notification
 
         return self._apply_notification_preferences(
-            Notification.query.filter_by(recipient_guid=self.guid)
-            .filter_by(is_read=False)
-            .all()
+            Notification.get_unread_notifications_for_user(self)
         )
 
     @module_required('individuals', resolve='warn', default=[])

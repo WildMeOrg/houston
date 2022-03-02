@@ -136,7 +136,9 @@ class AllUnreadNotifications(Resource):
         Returns a list of Notification starting from ``offset`` limited by ``limit``
         parameter.
         """
-        notifications = Notification.query.all()
+        from sqlalchemy import desc
+
+        notifications = Notification.query.order_by(desc(Notification.created)).all()
         # Manually apply offset and limit after the list is created
         return notifications[args['offset'] : args['limit'] - args['offset']]
 

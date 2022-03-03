@@ -2,7 +2,12 @@
 import pytest
 
 from tests import utils
-from tests.utils import module_unavailable, random_nonce, random_guid
+from tests.utils import (
+    module_unavailable,
+    random_nonce,
+    random_guid,
+    wait_for_elasticsearch_status,
+)
 from tests.modules.missions.resources import utils as mission_utils
 import tests.extensions.tus.utils as tus_utils
 
@@ -28,8 +33,11 @@ def test_get_mission_task_by_search(flask_app_client, data_manager_1, test_root)
     mission_guid = None
 
     try:
+        nonce = random_nonce(8)
         response = mission_utils.create_mission(
-            flask_app_client, data_manager_1, 'This is a test mission, please ignore'
+            flask_app_client,
+            data_manager_1,
+            'This is a test mission (%s), please ignore' % (nonce,),
         )
         mission_guid = response.json['guid']
         temp_mission = Mission.query.get(mission_guid)
@@ -74,12 +82,15 @@ def test_get_mission_task_by_search(flask_app_client, data_manager_1, test_root)
         nonce, new_mission_collection1 = new_mission_collections[0]
         nonce, new_mission_collection2 = new_mission_collections[1]
         data = [
-            utils.set_union_op('search', 'does-not-work'),
+            utils.set_union_op('search', {}),
             utils.set_difference_op('collections', [str(new_mission_collection1.guid)]),
             utils.set_difference_op(
                 'assets', [str(new_mission_collection2.assets[0].guid)]
             ),
         ]
+
+        # Wait for elasticsearch to catch up
+        wait_for_elasticsearch_status(flask_app_client, data_manager_1)
 
         new_mission_tasks = []
         for index in range(3):

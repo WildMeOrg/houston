@@ -14,6 +14,7 @@ from flask.testing import FlaskClient
 from werkzeug.utils import cached_property
 from app.extensions.auth import security
 import redis
+import time
 import random
 import uuid
 import os
@@ -252,7 +253,8 @@ def get_dict_via_flask(
     else:
         response = flask_app_client.get(path)
     if expected_status_code == 200:
-        validate_dict_response(response, 200, response_200)
+        if response_200 is not None:
+            validate_dict_response(response, 200, response_200)
     elif expected_status_code == 404:
         validate_dict_response(response, expected_status_code, {'message'})
     elif expected_status_code:
@@ -467,8 +469,6 @@ def set_and_op(*args, **kwargs):
 
 
 def all_count(db):
-    from app.modules import is_module_enabled
-
     classes = []
     if is_module_enabled('sightings'):
         from app.modules.sightings.models import Sighting
@@ -641,3 +641,53 @@ def cleanup(request, func):
             pass
 
     request.addfinalizer(inner)
+
+
+def get_elasticsearch_status(flask_app_client, user, expected_status_code=200):
+    if not is_extension_enabled('elasticsearch'):
+        return {}
+
+    health = flask_app_client.application.es.cluster.health()
+    percentage = round(health.get('active_shards_percent_as_number', 0.0) / 100.0, 2)
+    if percentage < 1.0:
+        return health
+
+    response = get_dict_via_flask(
+        flask_app_client,
+        user,
+        scopes='search:read',
+        path='/api/v1/search/status',
+        expected_status_code=expected_status_code,
+        response_200=None,
+    )
+    status = response.json
+
+    return status
+
+
+def wait_for_elasticsearch_status(flask_app_client, user):
+    from app.extensions import elasticsearch as es
+
+    app = flask_app_client.application
+
+    counter = 0
+    status = [None]
+    while True:
+        try:
+            status = get_elasticsearch_status(flask_app_client, user)
+        except json.decoder.JSONDecodeError:
+            status = [None]
+        print('Elasticsearch status: %s' % (status,))
+
+        if len(status) == 0:
+            break
+
+        if counter > 10:
+            raise RuntimeError()
+
+        with es.session.begin(blocking=True):
+            es.init_elasticsearch_index(app=app, verbose=False, pit=False)
+
+        counter += 1
+        time.sleep(1)
+>>>>>>> 687e0ec5 (Mission tests)

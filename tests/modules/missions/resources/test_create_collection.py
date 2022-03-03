@@ -4,7 +4,7 @@ import tests.modules.missions.resources.utils as mission_utils
 import tests.extensions.tus.utils as tus_utils
 import pytest
 
-from tests.utils import module_unavailable
+from tests.utils import module_unavailable, random_nonce
 
 
 # Test a bunch of failure scenarios
@@ -19,8 +19,11 @@ def test_create_mission_collection(flask_app_client, data_manager_1, test_root):
     mission_guid, mission_collection_guid = None, None
 
     try:
+        nonce = random_nonce(8)
         response = mission_utils.create_mission(
-            flask_app_client, data_manager_1, 'This is a test mission, please ignore'
+            flask_app_client,
+            data_manager_1,
+            'This is a test mission (%s), please ignore' % (nonce,),
         )
         mission_guid = response.json['guid']
         temp_mission = Mission.query.get(mission_guid)

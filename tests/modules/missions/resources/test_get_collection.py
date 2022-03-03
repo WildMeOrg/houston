@@ -17,8 +17,11 @@ def test_get_mission_collection_not_found(flask_app_client):
 def test_get_mission_collection_by_search(flask_app_client, data_manager_1, test_root):
     from app.modules.missions.models import Mission, MissionCollection
 
+    nonce = random_nonce(8)
     response = mission_utils.create_mission(
-        flask_app_client, data_manager_1, 'This is a test mission, please ignore'
+        flask_app_client,
+        data_manager_1,
+        'This is a test mission (%s), please ignore' % (nonce,),
     )
     mission_guid = response.json['guid']
     temp_mission = Mission.query.get(mission_guid)

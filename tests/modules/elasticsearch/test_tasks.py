@@ -5,6 +5,7 @@ import re
 from unittest import mock
 
 import pytest
+from tests.utils import module_unavailable, extension_unavailable
 
 
 # Mark this module as only working for codex.
@@ -129,6 +130,9 @@ SIGHTINGS_INDEX_SQL_RESULTS = [
 ]
 
 
+@pytest.mark.skipif(
+    extension_unavailable('elasticsearch'), reason='Elasticsearch extension disabled'
+)
 def test_load_codex_indexes(monkeypatch, flask_app):
     from app.modules.elasticsearch import tasks
 
@@ -240,6 +244,9 @@ def test_load_codex_indexes(monkeypatch, flask_app):
     # rtn = tasks.load_individual_index()
 
 
+@pytest.mark.skipif(
+    module_unavailable('elasticsearch'), reason='Elasticsearch module disabled'
+)
 def test_catchup_indexing():
     from app.modules.elasticsearch import tasks
 

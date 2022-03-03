@@ -9,11 +9,19 @@ see the _gumby_ library.
 import gumby
 import pytest
 
+from app.extensions import is_extension_enabled
+from tests.utils import extension_unavailable
+
 
 # override gumby fixture definition
 @pytest.fixture
 def gumby_client(flask_app):
-    return flask_app.elasticsearch
+    if is_extension_enabled('elasticsearch'):
+        return flask_app.elasticsearch
+    else:
+        from gumby import Client
+
+        return Client(None)
 
 
 @pytest.fixture
@@ -22,10 +30,13 @@ def individuals(gumby_faux_index_data):
     return gumby_faux_index_data[gumby.Individual]
 
 
+@pytest.mark.skipif(
+    extension_unavailable('elasticsearch'), reason='Elasticsearch extension disabled'
+)
 class TestIndividualsSearchIndex:
     @pytest.fixture(autouse=True)
     def set_up(self, gumby_individual_index_name):
-        self.target_url = f'/api/v1/search/{gumby_individual_index_name}'
+        self.target_url = f'/api/v1/search/proxy/{gumby_individual_index_name}'
 
     def test_no_criteria(self, flask_app_client, individuals):
 
@@ -33,7 +44,7 @@ class TestIndividualsSearchIndex:
         resp = flask_app_client.post(self.target_url)
 
         # Check for search results
-        data = resp.get_json()
+        data = resp.json
         assert data['hits']['total']['value'] == 10
 
     def test_with_body(self, flask_app_client, individuals):

@@ -67,25 +67,13 @@ def test_annotation_matching_set(
         test_clone_asset_group_data['asset_uuids'][0]
     )
 
-    criteria = annotation.get_matching_set_default_criteria()
-    assert 'viewpoint' in criteria
-    assert criteria['viewpoint'] == {
-        'front',
-        'frontleft',
-        'frontright',
-        'up',
-        'upfront',
-        'upfrontleft',
-        'upfrontright',
-        'upleft',
-        'upright',
-    }
-    assert criteria.get('taxonomy_guid') == taxonomy_guid
-    assert criteria.get('encounter_guid_not') == enc_guid
-
-    es_query = Annotation.elasticsearch_criteria_to_query(criteria)
-    assert es_query
-    assert 'bool' in es_query
+    query = annotation.get_matching_set_default_query()
+    assert 'query' in query
+    assert 'bool' in query['query']
+    assert 'filter' in query['query']['bool']
+    # omg this is tedious so just cutting to the chase
+    assert len(query['query']['bool']['filter'][0]['bool']['should']) == 9
+    assert query['query']['bool']['must_not']['term']['encounter_guid'] == str(enc_guid)
 
     from app.modules.site_settings.models import Regions
 
@@ -144,23 +132,3 @@ def test_annotation_matching_set(
 
     ancestors = regions.with_ancestors([loc1, loc2])
     assert ancestors == {top_id, parent1, parent2, parent3, loc1, loc2}
-
-    criteria = {
-        'locationId': loc1,  # test single value
-    }
-    es_query = Annotation.elasticsearch_criteria_to_query(criteria)
-    assert es_query
-    assert (
-        es_query['bool']['filter'][0]['bool']['should'][0]['term']['locationId'] == loc1
-    )
-
-    criteria = {
-        'locationId': [loc1, loc2],  # list of locations
-    }
-    es_query = Annotation.elasticsearch_criteria_to_query(criteria)
-    assert es_query
-    locs = [
-        term['term']['locationId']
-        for term in es_query['bool']['filter'][0]['bool']['should']
-    ]
-    assert set(locs) == {loc1, loc2}

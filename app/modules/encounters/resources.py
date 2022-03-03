@@ -229,8 +229,8 @@ class EncounterByID(Resource):
             abort(
                 400,
                 'Delete failed',
-                vulnerableIndividualGuid=ex.get_val('vulnerableIndividual'),
-                vulnerableSightingGuid=ex.get_val('vulnerableSighting'),
+                vulnerableIndividualGuid=ex.get_val('vulnerableIndividual', None),
+                vulnerableSightingGuid=ex.get_val('vulnerableSighting', None),
             )
 
         # we have to roll our own response here (to return) as it seems the only way we can add a header

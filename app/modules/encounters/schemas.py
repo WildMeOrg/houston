@@ -30,6 +30,25 @@ class BaseEncounterSchema(ModelSchema):
         dump_only = (Encounter.guid.key,)
 
 
+class ElasticsearchEncounterSchema(ModelSchema):
+    """
+    Base Encounter schema exposes only the most general fields.
+    """
+
+    annotations = base_fields.Nested('BaseAnnotationSchema', many=True)
+    submitter = base_fields.Nested('PublicUserSchema', many=False)
+    hasView = base_fields.Function(Encounter.current_user_has_view_permission)
+    hasEdit = base_fields.Function(Encounter.current_user_has_edit_permission)
+    time = base_fields.Function(Encounter.get_time_isoformat_in_timezone)
+    timeSpecificity = base_fields.Function(Encounter.get_time_specificity)
+
+    class Meta:
+        # pylint: disable=missing-docstring
+        model = Encounter
+        fields = (Encounter.guid.key,)
+        dump_only = (Encounter.guid.key,)
+
+
 class DetailedEncounterSchema(BaseEncounterSchema):
     """
     Detailed Encounter schema exposes all useful fields.

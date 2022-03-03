@@ -196,10 +196,6 @@ class PatchMissionCollectionDetailsParameters(PatchJSONParameters):
         return ret_val
 
 
-class ListMissionAssetParameters(Parameters):
-    search = base_fields.String(description='Example: search@example.com', required=False)
-
-
 class ListMissionTaskParameters(PaginationParameters):
     search = base_fields.String(description='Example: search@example.com', required=False)
 
@@ -386,4 +382,17 @@ class PatchMissionTaskDetailsParameters(PatchJSONParametersWithPassword):
 
     @classmethod
     def replace(cls, obj, field, value, state):
-        raise NotImplementedError()
+        from app.modules.users.models import User
+
+        ret_val = False
+        # Permissions for all fields are the same so have one check
+        if rules.owner_or_privileged(current_user, obj) or current_user.is_admin:
+            if field == MissionTask.title.key:
+                obj.title = value
+                ret_val = True
+            elif field == 'owner':
+                user = User.query.get(value)
+                if user:
+                    obj.owner = user
+                    ret_val = True
+        return ret_val

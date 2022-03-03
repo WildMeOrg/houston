@@ -8,7 +8,7 @@ Input arguments (Parameters) for Notifications resources RESTful API
 from flask_restx_patched import Parameters, PatchJSONParameters
 
 from . import schemas
-from .models import Notification, NOTIFICATION_CONFIG # NOQA
+from .models import Notification, NOTIFICATION_CONFIG  # NOQA
 
 
 class CreateNotificationParameters(Parameters, schemas.DetailedNotificationSchema):
@@ -35,7 +35,9 @@ class PatchNotificationDetailsParameters(PatchJSONParameters):
         ret_val = False
 
         if field == 'is_read':
-            resolve_on_read = NOTIFICATION_CONFIG[obj.message_type].get('resolve_on_read', False)
+            resolve_on_read = NOTIFICATION_CONFIG[obj.message_type].get(
+                'resolve_on_read', False
+            )
             if isinstance(value, bool):
                 obj.is_read = value
                 ret_val = True

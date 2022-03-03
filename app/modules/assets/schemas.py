@@ -10,6 +10,7 @@ from app.extensions.git_store import GitStore
 
 from flask_restx_patched import ModelSchema
 from app.extensions import ExtraValidationSchema
+from app.modules import is_module_enabled
 
 from .models import Asset
 
@@ -38,10 +39,11 @@ class DetailedAssetTableSchema(BaseAssetSchema):
         many=True,
     )
 
-    tasks = base_fields.Nested(
-        'BaseMissionTaskTableSchema',
-        many=True,
-    )
+    if is_module_enabled('missions'):
+        tasks = base_fields.Nested(
+            'BaseMissionTaskTableSchema',
+            many=True,
+        )
 
     class Meta(BaseAssetSchema.Meta):
         fields = BaseAssetSchema.Meta.fields + (
@@ -52,8 +54,9 @@ class DetailedAssetTableSchema(BaseAssetSchema):
             'annotation_count',
             'classifications',
             'tags',
-            'tasks',
         )
+        if is_module_enabled('missions'):
+            fields = fields + ('tasks',)
 
         dump_only = BaseAssetSchema.Meta.dump_only + (
             Asset.created.key,
@@ -120,7 +123,7 @@ class DebugAssetSchema(DetailedAssetSchema):
     jobs = base_fields.Function(Asset.get_jobs_debug)
 
     class Meta(DetailedAssetSchema.Meta):
-        fields = DetailedAssetSchema.Meta.fields + ('jobs', )
+        fields = DetailedAssetSchema.Meta.fields + ('jobs',)
 
 
 def not_negative(value):

@@ -48,6 +48,7 @@ class UserListSchema(BaseUserSchema):
             User.is_staff.fget.__name__,
             User.is_researcher.fget.__name__,
             User.is_user_manager.fget.__name__,
+            User.is_data_manager.fget.__name__,
             User.is_admin.fget.__name__,
             User.in_alpha.fget.__name__,
             User.in_beta.fget.__name__,
@@ -96,10 +97,6 @@ class DetailedUserSchema(UserListSchema):
     notification_preferences = base_fields.Function(User.get_notification_preferences)
     individual_merge_requests = base_fields.Function(User.get_individual_merge_requests)
 
-    if is_module_enabled('missions'):
-        owned_missions = base_fields.Nested('DetailedMissionSchema', many=True)
-        owned_mission_tasks = base_fields.Nested('DetailedMissionTaskSchema', many=True)
-
     class Meta(UserListSchema.Meta):
         fields = UserListSchema.Meta.fields + (
             User.created.key,
@@ -113,12 +110,6 @@ class DetailedUserSchema(UserListSchema):
             'collaborations',
             'individual_merge_requests',
         )
-
-        if is_module_enabled('missions'):
-            fields = fields + (
-                'owned_missions',
-                'owned_mission_tasks',
-            )
 
 
 class PersonalUserSchema(DetailedUserSchema):

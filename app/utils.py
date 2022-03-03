@@ -141,3 +141,14 @@ def normalized_timezone_string(dt):
     if not dt or not isinstance(dt, datetime):
         raise ValueError('must pass datetime object')
     return dt.strftime('UTC%z')
+
+
+# As some filenames are problematic, may contain special chars ";&/." etc store all filenames as a hash of the
+# original filename but maintain the extension
+def get_stored_filename(input_filename):
+    import hashlib
+    import os
+
+    file_without_extension, extension = os.path.splitext(input_filename)
+    extension = extension.lower()
+    return f'{hashlib.sha256(file_without_extension.encode()).hexdigest()}{extension}'

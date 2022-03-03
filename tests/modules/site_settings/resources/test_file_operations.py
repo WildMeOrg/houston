@@ -4,7 +4,7 @@ from pathlib import Path
 from app.modules.fileuploads.models import FileUpload
 from app.modules.site_settings.models import SiteSetting
 
-from tests.utils import TemporaryDirectoryGraceful, module_unavailable
+from tests.utils import TemporaryDirectoryGraceful, module_unavailable, copy_uploaded_file, write_uploaded_file
 import pytest
 
 
@@ -76,10 +76,8 @@ def test_file_settings(admin_user, flask_app_client, flask_app, db, request, tes
         upload_dir = flask_app.config['UPLOADS_DATABASE_PATH']
         with TemporaryDirectoryGraceful(prefix='trans-', dir=upload_dir) as td:
             transaction_id = Path(td).name[len('trans-') :]
+            copy_uploaded_file(test_root, 'zebra.jpg', Path(td), 'image.jpg')
 
-            with (Path(td) / 'image.jpg').open('wb') as f:
-                with zebra_path.open('rb') as g:
-                    f.write(g.read())
             resp = flask_app_client.post(
                 '/api/v1/site-settings/file',
                 data={
@@ -94,10 +92,8 @@ def test_file_settings(admin_user, flask_app_client, flask_app, db, request, tes
         # Edit site setting using transactionId with 2 files
         with TemporaryDirectoryGraceful(prefix='trans-', dir=upload_dir) as td:
             transaction_id = Path(td).name[len('trans-') :]
-            with (Path(td) / 'a.txt').open('w') as f:
-                f.write('1234')
-            with (Path(td) / 'b.txt').open('w') as f:
-                f.write('5678')
+            write_uploaded_file('a.txt', Path(td), '1234')
+            write_uploaded_file('b.txt', Path(td), '5678')
             resp = flask_app_client.post(
                 '/api/v1/site-settings/file',
                 data={
@@ -114,10 +110,9 @@ def test_file_settings(admin_user, flask_app_client, flask_app, db, request, tes
         # Edit site setting using transactionId and transactionPath
         with TemporaryDirectoryGraceful(prefix='trans-', dir=upload_dir) as td:
             transaction_id = Path(td).name[len('trans-') :]
-            with (Path(td) / 'a.txt').open('w') as f:
-                f.write('1234')
-            with (Path(td) / 'b.txt').open('w') as f:
-                f.write('5678')
+            write_uploaded_file('a.txt', Path(td), '1234')
+            write_uploaded_file('b.txt', Path(td), '5678')
+
             resp = flask_app_client.post(
                 '/api/v1/site-settings/file',
                 data={

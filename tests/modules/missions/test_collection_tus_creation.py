@@ -5,7 +5,7 @@ import pathlib
 import pytest
 import shutil
 
-from tests.utils import module_unavailable
+from tests.utils import module_unavailable, get_stored_path
 from tests.extensions.tus import utils as tus_utils
 
 
@@ -58,7 +58,7 @@ def test_create_mission_collection_from_tus(flask_app, db, data_manager_1, test_
         'PYTEST', data_manager_1, tid, mission=temp_mission
     )
     assert len(sub.assets) == 1
-    assert sub.assets[0].path == valid_file
+    assert sub.assets[0].path == get_stored_path(valid_file)
     if os.path.exists(sub.get_absolute_path()):
         shutil.rmtree(sub.get_absolute_path())
     sub.delete()

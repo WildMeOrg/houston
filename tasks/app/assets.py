@@ -17,3 +17,10 @@ def list_all(context):
 
     for asset in assets:
         print('Asset : {} '.format(asset))
+
+
+@app_context_task
+def get_stored_filename(context, input_filename):
+    from app.utils import get_stored_filename
+
+    print(get_stored_filename(input_filename))

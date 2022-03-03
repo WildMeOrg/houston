@@ -11,7 +11,11 @@ from app.modules.users.models import User
 from app.modules.fileuploads.models import FileUpload
 from PIL import Image
 
-from tests.utils import TemporaryDirectoryGraceful
+from tests.utils import (
+    TemporaryDirectoryGraceful,
+    copy_uploaded_file,
+    write_uploaded_file,
+)
 import tests.modules.users.resources.utils as user_utils
 
 
@@ -299,8 +303,7 @@ def test_user_profile_fileupload(
     upload_dir = Path(flask_app.config['UPLOADS_DATABASE_PATH'])
     fileupload_dir = Path(flask_app.config['FILEUPLOAD_BASE_PATH'])
 
-    with (test_root / 'zebra.jpg').open('rb') as f:
-        zebra = f.read()
+    zebra_file = 'zebra.jpg'
 
     def cleanup_fileupload_dir(path):
         for c in path.glob('*'):
@@ -356,9 +359,7 @@ def test_user_profile_fileupload(
         # Create file upload
         file_contents = 'abcd\n'
         with TemporaryDirectoryGraceful() as td:
-            testfile = Path(td) / 'a.txt'
-            with testfile.open('w') as f:
-                f.write(file_contents)
+            testfile = write_uploaded_file('a.txt', Path(td), file_contents)
             fup = FileUpload.create_fileupload_from_path(str(testfile))
         with db.session.begin():
             db.session.add(fup)
@@ -455,11 +456,9 @@ def test_user_profile_fileupload(
         # PATCH replace /profile_fileupload_guid with transaction_id with 2 assets
         td = Path(tempfile.mkdtemp(prefix='trans-', dir=upload_dir))
         transaction_id = td.name[len('trans-') :]
-        transaction_id = td.name[len('trans-') :]
-        with (td / 'image.jpg').open('wb') as f:
-            f.write(zebra)
-        with (td / 'a.txt').open('w') as f:
-            f.write('abcd')
+        copy_uploaded_file(test_root, zebra_file, td, 'image.jpg')
+        write_uploaded_file('a.txt', td, 'abcd')
+
         kwargs = {
             'content_type': 'application/json',
             'data': json.dumps(
@@ -482,11 +481,9 @@ def test_user_profile_fileupload(
         # PATCH replace /profile_fileupload_guid with transaction_id with 2 assets with path
         td = Path(tempfile.mkdtemp(prefix='trans-', dir=upload_dir))
         transaction_id = td.name[len('trans-') :]
-        transaction_id = td.name[len('trans-') :]
-        with (td / 'image.jpg').open('wb') as f:
-            f.write(zebra)
-        with (td / 'a.txt').open('w') as f:
-            f.write('abcd')
+        copy_uploaded_file(test_root, zebra_file, td, 'image.jpg')
+        write_uploaded_file(td, 'a.txt', 'abcd')
+
         kwargs = {
             'content_type': 'application/json',
             'data': json.dumps(
@@ -505,15 +502,17 @@ def test_user_profile_fileupload(
         src_response = flask_app_client.get(fup.src)
         src_data = src_response.data
         src_response.close()  # h/t https://github.com/pallets/flask/issues/2468#issuecomment-517797518
-        assert src_data == zebra
+        with (test_root / 'zebra.jpg').open('rb') as f:
+            zebra = f.read()
+            assert src_data == zebra
         clean_up_objects.append(fup)
         clean_up_paths.append(td)
 
         # PATCH replace /profile_fileupload_guid with transaction_id
         td = Path(tempfile.mkdtemp(prefix='trans-', dir=upload_dir))
         transaction_id = td.name[len('trans-') :]
-        with (td / 'image.jpg').open('wb') as f:
-            f.write(zebra)
+        copy_uploaded_file(test_root, zebra_file, td, 'image.jpg')
+
         kwargs = {
             'content_type': 'application/json',
             'data': json.dumps(
@@ -548,9 +547,8 @@ def test_user_profile_fileupload(
 
         # Create file upload
         with TemporaryDirectoryGraceful() as td:
-            testfile = Path(td) / 'image.jpg'
-            with testfile.open('wb') as f:
-                f.write(zebra)
+            testfile = copy_uploaded_file(test_root, zebra_file, td, 'image.jpg')
+
             fup = FileUpload.create_fileupload_from_path(str(testfile))
         with db.session.begin():
             db.session.add(fup)
@@ -633,9 +631,8 @@ def test_user_profile_fileupload(
 
         # Create non image fileupload
         with TemporaryDirectoryGraceful() as td:
-            testfile = Path(td) / 'a.txt'
-            with testfile.open('w') as f:
-                f.write('abcd\n')
+            testfile = write_uploaded_file('a.txt', td, 'abcd\n')
+
             fup = FileUpload.create_fileupload_from_path(str(testfile))
         with db.session.begin():
             db.session.add(fup)

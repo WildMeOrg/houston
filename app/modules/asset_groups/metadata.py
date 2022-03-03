@@ -275,27 +275,16 @@ class AssetGroupMetadata(object):
             ('idConfigs', list, False),
         ]
         self._validate_fields(sighting, sighting_fields, sighting_debug)
-        from werkzeug.utils import secure_filename
+        from app.utils import get_stored_filename
 
         if 'assetReferences' in sighting:
-            import copy
-
-            # need a copy as modifying the list messes up the for loop
-            asset_refs = copy.deepcopy(sighting['assetReferences'])
-            for filename in asset_refs:
+            for filename in sighting['assetReferences']:
                 if not isinstance(filename, str):
                     raise AssetGroupMetadataError(
                         log, f'Invalid assetReference data {filename}'
                     )
-                # ensure it's secure
-                secure_fname = secure_filename(filename)
-                if filename != secure_fname:
-                    log.info(f'Changing {filename} to {secure_fname}')
-                    sighting['assetReferences'].remove(filename)
-                    sighting['assetReferences'].append(secure_fname)
-
-            for filename in sighting['assetReferences']:
-                file_path = os.path.join(file_dir, filename)
+                stored_filename = get_stored_filename(filename)
+                file_path = os.path.join(file_dir, stored_filename)
                 file_size = 0
                 try:
                     file_size = os.path.getsize(file_path)  # 2for1

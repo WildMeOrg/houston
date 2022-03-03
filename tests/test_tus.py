@@ -6,7 +6,7 @@ import urllib.parse
 
 import pytest
 
-from tests.utils import redis_unavailable
+from tests.utils import redis_unavailable, get_stored_path
 
 
 @pytest.fixture
@@ -113,7 +113,8 @@ def test_tus_upload_protocol(
     assert response.headers['Upload-Offset'] == str(len(a_txt))
     assert response.data == b''
 
-    with file_upload_path.open() as f:
+    stored_path = get_stored_path(file_upload_path)
+    with open(stored_path) as f:
         assert f.read() == a_txt
 
     # After file is uploaded, we cannot use the path anymore
@@ -253,7 +254,9 @@ def test_tus_corner_cases(flask_app, flask_app_client, file_upload_filename):
 
     upload_dir = pathlib.Path(flask_app.config['UPLOADS_DATABASE_PATH'])
     found_one = False
-    for fname in upload_dir.glob(f'session-*/{file_upload_filename}'):
+    from app.utils import get_stored_filename
+    stored_filename = get_stored_filename(file_upload_filename)
+    for fname in upload_dir.glob(f'session-*/{stored_filename}'):
         uploaded_file = pathlib.Path(fname)
         with uploaded_file.open('r') as f:
             if f.read() == a_txt:

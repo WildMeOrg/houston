@@ -5,8 +5,7 @@ import os
 import redis
 import uuid
 from urllib.parse import urljoin
-from werkzeug.utils import secure_filename as werkzeug_secure_filename
-import logging
+from app.utils import get_stored_filename
 
 # Find the stack on which we want to store the database connection.
 # Starting with Flask 0.9, the _app_ctx_stack is the correct one,
@@ -15,9 +14,6 @@ try:
     from flask import _app_ctx_stack as stack
 except ImportError:  # pragma: no cover
     from flask import _request_ctx_stack as stack
-
-
-log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
 
 class TusManager(object):
@@ -127,13 +123,6 @@ class TusManager(object):
             for kv in upload_metadata.split(','):
                 (key, value) = kv.split(' ')
                 metadata[key] = base64.b64decode(value).decode('utf-8')
-
-        insecure_filename = metadata.get('filename', None)
-        if insecure_filename is not None:
-            secure_filename = werkzeug_secure_filename(insecure_filename)
-            if secure_filename != insecure_filename:
-                log.info(f'renamed {insecure_filename} to {secure_filename}')
-            metadata['filename'] = secure_filename
 
         return metadata
 
@@ -334,15 +323,15 @@ class TusManager(object):
             file_size == new_offset
         ):  # file transfer complete, rename from resource id to actual filename
             try:
-                secure_filename = werkzeug_secure_filename(filename)
+                stored_filename = get_stored_filename(filename)
                 if self.upload_file_handler_cb is None:
                     os.rename(
                         upload_file_path,
-                        os.path.join(self.upload_folder, secure_filename),
+                        os.path.join(self.upload_folder, stored_filename),
                     )
                 else:
                     filename = self.upload_file_handler_cb(
-                        upload_file_path, secure_filename, request, self.app
+                        upload_file_path, stored_filename, request, self.app
                     )
             finally:
                 self._remove_resources(resource_id)

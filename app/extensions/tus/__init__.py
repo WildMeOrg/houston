@@ -10,7 +10,7 @@ import shutil
 from flask import current_app
 
 from flask_restx_patched import is_extension_enabled
-from werkzeug.utils import secure_filename
+from app.utils import get_stored_filename
 
 if not is_extension_enabled('tus'):
     raise RuntimeError('Tus is not enabled')
@@ -99,18 +99,17 @@ def _tus_filepaths_from(
     )
     log.debug('_tus_filepaths_from passed paths=%r' % (paths))
     filepaths = []
-    if paths is None:  # traverse who upload dir and take everything
+    if not paths:  # traverse whole upload dir and take everything
         for root, dirs, files in os.walk(upload_dir):
             for path in files:
                 filepaths.append(os.path.join(upload_dir, path))
     else:
         if len(paths) < 1:
-            return None
-        for insecure_path in paths:
-            secure_path = secure_filename(insecure_path)
-            if secure_path != insecure_path:
-                log.info(f'Tus renamed filename {insecure_path} to {secure_path}')
-            want_path = os.path.join(upload_dir, secure_path)
+            return []
+        for input_path in paths:
+            stored_path = get_stored_filename(input_path)
+
+            want_path = os.path.join(upload_dir, stored_path)
             assert os.path.exists(want_path), f'{want_path} does not exist'
             filepaths.append(want_path)
 

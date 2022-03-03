@@ -81,6 +81,18 @@ def get_owner_guid(annot):
     return str(guid) if guid else None
 
 
+def get_encounter_guid(annot):
+    return str(annot.encounter_guid) if annot.encounter_guid else None
+
+
+def get_sighting_guid(annot):
+    return (
+        str(annot.encounter.sighting.guid)
+        if annot.encounter and annot.encounter.sighting
+        else None
+    )
+
+
 def get_keywords_flat(annot):
     if not annot.keyword_refs:
         return []
@@ -99,6 +111,8 @@ class AnnotationElasticsearchSchema(BaseAnnotationSchema):
     locationId = base_fields.Function(get_locationId)
     taxonomy_guid = base_fields.Function(get_taxonomy_guid)
     owner_guid = base_fields.Function(get_owner_guid)
+    encounter_guid = base_fields.Function(get_encounter_guid)
+    sighting_guid = base_fields.Function(get_sighting_guid)
     time = base_fields.Function(get_time)
 
     class Meta(BaseAnnotationSchema.Meta):
@@ -110,6 +124,8 @@ class AnnotationElasticsearchSchema(BaseAnnotationSchema):
             'locationId',
             'owner_guid',
             'taxonomy_guid',
+            'encounter_guid',
+            'sighting_guid',
             'time',
         )
         dump_only = BaseAnnotationSchema.Meta.dump_only + (

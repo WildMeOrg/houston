@@ -296,6 +296,18 @@ class AssetsForMission(Resource):
         },
     )
     @api.response(DetailedAssetTableSchema(many=True))
+    def get(self, mission):
+        search = {}
+        return mission.asset_search(search)
+
+    @api.permission_required(
+        permissions.ObjectAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'obj': kwargs['mission'],
+            'action': AccessOperation.WRITE,
+        },
+    )
+    @api.response(DetailedAssetTableSchema(many=True))
     def post(self, mission):
         search = request.get_data()
 

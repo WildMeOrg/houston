@@ -98,7 +98,7 @@ class NotificationElasticsearch(Resource):
     )
     @api.response(schemas.DetailedNotificationSchema(many=True))
     def post(self):
-        search = request.get_data()
+        search = request.get_json()
 
         return Notification.elasticsearch(search)
 

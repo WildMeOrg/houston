@@ -94,7 +94,7 @@ class OrganizationElasticsearch(Resource):
     )
     @api.response(schemas.DetailedOrganizationSchema(many=True))
     def post(self):
-        search = request.get_data()
+        search = request.get_json()
 
         return Organization.elasticsearch(search)
 

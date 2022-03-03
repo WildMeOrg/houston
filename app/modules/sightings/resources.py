@@ -416,7 +416,7 @@ class SightingElasticsearch(Resource):
     )
     @api.response(schemas.BaseSightingSchema(many=True))
     def post(self):
-        search = request.get_data()
+        search = request.get_json()
 
         return Sighting.elasticsearch(search)
 

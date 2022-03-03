@@ -155,7 +155,7 @@ class AssetGroupElasticsearch(Resource):
     )
     @api.response(schemas.BaseAssetGroupSchema(many=True))
     def post(self):
-        search = request.get_data()
+        search = request.get_json()
 
         return AssetGroup.elasticsearch(search)
 
@@ -388,7 +388,7 @@ class AssetGroupSightingElasticsearch(Resource):
     )
     @api.response(schemas.BaseAssetGroupSightingSchema(many=True))
     def post(self):
-        search = request.get_data()
+        search = request.get_json()
 
         return AssetGroupSighting.elasticsearch(search)
 

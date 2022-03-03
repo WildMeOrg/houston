@@ -91,7 +91,7 @@ class AssetElasticsearch(Resource):
     )
     @api.response(schemas.BaseAssetSchema(many=True))
     def post(self):
-        search = request.get_data()
+        search = request.get_json()
 
         return Asset.elasticsearch(search)
 

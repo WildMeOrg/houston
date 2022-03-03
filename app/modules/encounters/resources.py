@@ -68,7 +68,7 @@ class EncounterElasticsearch(Resource):
     )
     @api.response(schemas.BaseEncounterSchema(many=True))
     def post(self):
-        search = request.get_data()
+        search = request.get_json()
 
         return Encounter.elasticsearch(search)
 

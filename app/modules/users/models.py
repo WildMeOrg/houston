@@ -429,7 +429,7 @@ class User(db.Model, FeatherModel, UserEDMMixin):
                 **kwargs,
             )
 
-            with db.session.begin(subtransactions=True):
+            with db.session.begin():
                 db.session.add(user)
 
             if send_verification:
@@ -449,12 +449,12 @@ class User(db.Model, FeatherModel, UserEDMMixin):
             user.in_beta = in_beta
             user.in_alpha = in_alpha
 
-            with db.session.begin(subtransactions=True):
+            with db.session.begin():
                 db.session.merge(user)
 
             log.info('Updated user: %r' % (user,))
 
-        # db.session.refresh(user)
+        db.session.refresh(user)
 
         return user
 

@@ -81,7 +81,7 @@ class AuditLogElasticsearch(Resource):
     )
     @api.response(schemas.DetailedAuditLogSchema(many=True))
     def post(self):
-        search = request.get_data()
+        search = request.get_json()
 
         return AuditLog.elasticsearch(search)
 

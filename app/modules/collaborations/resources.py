@@ -147,7 +147,7 @@ class CollaborationElasticsearch(Resource):
     )
     @api.response(schemas.DetailedCollaborationSchema(many=True))
     def post(self):
-        search = request.get_data()
+        search = request.get_json()
 
         return Collaboration.elasticsearch(search)
 

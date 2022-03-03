@@ -149,7 +149,7 @@ class SocialGroupElasticsearch(Resource):
     )
     @api.response(schemas.BaseSocialGroupSchema(many=True))
     def post(self):
-        search = request.get_data()
+        search = request.get_json()
 
         return SocialGroup.elasticsearch(search)
 

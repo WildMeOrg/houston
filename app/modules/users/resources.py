@@ -156,7 +156,7 @@ class UserElasticsearch(Resource):
     )
     @api.response(schemas.UserListSchema(many=True))
     def post(self):
-        search = request.get_data()
+        search = request.get_json()
 
         return User.elasticsearch(search)
 

@@ -14,6 +14,7 @@ PATH_MISSION_COLLECTIONS = '/api/v1/missions/collections/'
 PATH_MISSION_COLLECTIONS_FOR_MISSION = '/api/v1/missions/%s/collections/'
 PATH_MISSION_TASKS = '/api/v1/missions/tasks/'
 PATH_MISSION_TASKS_FOR_MISSION = '/api/v1/missions/%s/tasks/'
+PATH_MISSION_ASSET_FOR_MISSION = '/api/v1/missions/%s/assets/'
 
 
 ANNOTATION_UUIDS = [
@@ -81,6 +82,25 @@ def read_all_missions(flask_app_client, user, expected_status_code=200, **kwargs
         response = flask_app_client.get(
             PATH_MISSIONS,
             query_string=kwargs,
+        )
+
+    if expected_status_code == 200:
+        test_utils.validate_list_response(response, 200)
+    else:
+        test_utils.validate_dict_response(
+            response, expected_status_code, {'status', 'message'}
+        )
+    return response
+
+
+def elasticsearch_mission_assets(
+    flask_app_client, user, mission_task_guid, data, expected_status_code=200
+):
+    with flask_app_client.login(user, auth_scopes=('missions:read',)):
+        response = flask_app_client.post(
+            PATH_MISSION_ASSET_FOR_MISSION % (mission_task_guid,),
+            content_type='application/json',
+            data=json.dumps(data),
         )
 
     if expected_status_code == 200:

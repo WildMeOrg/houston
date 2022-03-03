@@ -14,7 +14,7 @@ from flask_restx_patched import Resource
 from flask_restx_patched._http import HTTPStatus
 from flask_login import current_user  # NOQA
 
-from app.extensions import db, elasticsearch_context
+from app.extensions import db
 from app.extensions.api import Namespace, abort
 from app.modules.users import permissions
 from app.modules.users.permissions.types import AccessOperation
@@ -127,7 +127,7 @@ class MissionElasticsearch(Resource):
     )
     @api.response(schemas.BaseMissionSchema(many=True))
     def post(self):
-        search = request.get_data()
+        search = request.get_json()
 
         return Mission.elasticsearch(search)
 
@@ -292,7 +292,7 @@ class AssetsForMission(Resource):
         permissions.ObjectAccessPermission,
         kwargs_on_request=lambda kwargs: {
             'obj': kwargs['mission'],
-            'action': AccessOperation.WRITE,
+            'action': AccessOperation.READ,
         },
     )
     @api.response(DetailedAssetTableSchema(many=True))
@@ -304,12 +304,12 @@ class AssetsForMission(Resource):
         permissions.ObjectAccessPermission,
         kwargs_on_request=lambda kwargs: {
             'obj': kwargs['mission'],
-            'action': AccessOperation.WRITE,
+            'action': AccessOperation.READ,
         },
     )
     @api.response(DetailedAssetTableSchema(many=True))
     def post(self, mission):
-        search = request.get_data()
+        search = request.get_json()
 
         return mission.asset_search(search)
 
@@ -361,7 +361,7 @@ class MissionTasksForMission(Resource):
         except ValidationError as exception:
             abort(409, message=str(exception))
 
-        db_context = api.commit_or_abort(
+        context = api.commit_or_abort(
             db.session, default_error_message='Failed to create a new MissionTask'
         )
 
@@ -399,12 +399,11 @@ class MissionTasksForMission(Resource):
         args['mission'] = mission
         mission_task = MissionTask(**args)
 
-        with elasticsearch_context():
-            with db_context:
-                db.session.add(mission_task)
-                mission_task.add_user_in_context(current_user)
-                for asset in tqdm.tqdm(asset_set, desc='Adding Assets to MissionTask'):
-                    mission_task.add_asset_in_context(asset)
+        with context:
+            db.session.add(mission_task)
+            mission_task.add_user_in_context(current_user)
+            for asset in tqdm.tqdm(asset_set, desc='Adding Assets to MissionTask'):
+                mission_task.add_asset_in_context(asset)
 
         db.session.refresh(mission_task)
 
@@ -457,7 +456,7 @@ class MissionCollectionElasticsearch(Resource):
     )
     @api.response(schemas.BaseMissionCollectionSchema(many=True))
     def post(self):
-        search = request.get_data()
+        search = request.get_json()
 
         return MissionCollection.elasticsearch(search)
 
@@ -662,7 +661,7 @@ class MissionTaskElasticsearch(Resource):
     )
     @api.response(schemas.BaseMissionTaskSchema(many=True))
     def post(self):
-        search = request.get_data()
+        search = request.get_json()
 
         return MissionTask.elasticsearch(search)
 

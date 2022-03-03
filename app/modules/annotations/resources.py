@@ -144,7 +144,7 @@ class AnnotationElasticsearch(Resource):
     )
     @api.response(schemas.BaseAnnotationSchema(many=True))
     def post(self):
-        search = request.get_data()
+        search = request.get_json()
 
         return Annotation.elasticsearch(search)
 

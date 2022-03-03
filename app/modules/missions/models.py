@@ -596,10 +596,9 @@ class MissionTask(db.Model, HoustonModel, Timestamp):
             db.session.delete(self.annotation_participations.pop())
 
     def delete_cascade(self):
-        with elasticsearch_context():
-            with db.session.begin(subtransactions=True):
-                self.delete_relationships()
-                self.delete()
+        with db.session.begin(subtransactions=True):
+            self.delete_relationships()
+            self.delete()
 
     def delete(self):
         db.session.delete(self)

@@ -250,7 +250,7 @@ class IndividualElasticsearch(Resource):
     )
     @api.response(schemas.BaseIndividualSchema(many=True))
     def post(self):
-        search = request.get_data()
+        search = request.get_json()
 
         return Individual.elasticsearch(search)
 

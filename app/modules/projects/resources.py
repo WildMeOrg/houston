@@ -92,7 +92,7 @@ class ProjectElasticsearch(Resource):
     )
     @api.response(schemas.BaseProjectSchema(many=True))
     def post(self):
-        search = request.get_data()
+        search = request.get_json()
 
         return Project.elasticsearch(search)
 

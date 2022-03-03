@@ -155,7 +155,7 @@ class RelationshipElasticsearch(Resource):
     )
     @api.response(schemas.BaseRelationshipSchema(many=True))
     def post(self):
-        search = request.get_data()
+        search = request.get_json()
 
         return Relationship.elasticsearch(search)
 

@@ -5,7 +5,7 @@ Audit Logs database models
 """
 
 from flask_login import current_user  # NOQA
-from app.extensions import db, Timestamp
+from app.extensions import db, Timestamp, ElasticsearchModel
 import logging
 
 import uuid
@@ -13,7 +13,7 @@ import uuid
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
 
-class AuditLog(db.Model, Timestamp):
+class AuditLog(db.Model, Timestamp, ElasticsearchModel):
     """
     Audit Logs database model.
     """
@@ -44,6 +44,12 @@ class AuditLog(db.Model, Timestamp):
             'item_guid={self.item_guid}, '
             ')>'.format(class_name=self.__class__.__name__, self=self)
         )
+
+    @classmethod
+    def get_elasticsearch_schema(cls):
+        from app.modules.audit_logs.schemas import DetailedAuditLogSchema
+
+        return DetailedAuditLogSchema
 
     @classmethod
     def create(

@@ -33,6 +33,10 @@ class Asset(db.Model, HoustonModel):
     Assets database model.
     """
 
+    __mapper_args__ = {
+        'confirm_deleted_rows': False,
+    }
+
     guid = db.Column(
         db.GUID, default=uuid.uuid4, primary_key=True
     )  # pylint: disable=invalid-name
@@ -102,6 +106,12 @@ class Asset(db.Model, HoustonModel):
             'git_store_guid="{self.git_store_guid}", '
             ')>'.format(class_name=self.__class__.__name__, self=self)
         )
+
+    @classmethod
+    def get_elasticsearch_schema(cls):
+        from app.modules.assets.schemas import DetailedAssetTableSchema
+
+        return DetailedAssetTableSchema
 
     def __eq__(self, other):
         return self.guid == other.guid
@@ -194,7 +204,7 @@ class Asset(db.Model, HoustonModel):
             for participation in self.mission_task_participations
         ]
 
-    @module_required('sightings', resolve='warn', default=[])
+    @module_required('sightings', resolve='quiet', default=[])
     def get_asset_sightings(self):
         return self.asset_sightings
 
@@ -280,7 +290,7 @@ class Asset(db.Model, HoustonModel):
         meta = self.meta if self.meta else {}
         meta['derived'] = dmeta
         self.meta = meta
-        log.debug(f'setting meta.derived to {dmeta}')
+        # log.debug(f'setting meta.derived to {dmeta}')
         return dmeta
 
     def get_image_url(self):
@@ -398,25 +408,41 @@ class Asset(db.Model, HoustonModel):
             rgb.save(target_path)
         return target_path
 
+    def delete_relationships(self, delete_unreferenced_tags=True):
+        for annotation in self.annotations:
+            annotation.delete()
+
+        for sighting in self.get_asset_sightings():
+            db.session.delete(sighting)
+
+        tags = []
+        while self.tag_refs:
+            ref = self.tag_refs.pop()
+            # this is actually removing the AssetTags refs (not actual Keywords)
+            db.session.delete(ref)
+            tags.append(ref.tag)
+
+        if delete_unreferenced_tags:
+            for tag in tags:
+                tag.delete_if_unreferenced()
+        else:
+            return tags
+
     # Delete of an asset as part of deletion of git_store
     def delete_cascade(self):
         with db.session.begin(subtransactions=True):
-            for annotation in self.annotations:
-                annotation.delete()
-            for sighting in self.get_asset_sightings():
-                db.session.delete(sighting)
-            while self.tag_refs:
-                ref = self.tag_refs.pop()
-                # this is actually removing the AssetTags refs (not actual Keywords)
-                db.session.delete(ref)
-                ref.tag.delete_if_unreferenced()
+            self.delete_relationships()
             db.session.delete(self)
 
     # delete not part of asset group deletion so must inform asset group that we're gone
-    def delete(self):
+    def delete(self, justify_git_store=True):
         self.delete_cascade()
-        db.session.refresh(self.git_store)
-        self.git_store.justify_existence()
+
+        if justify_git_store:
+            db.session.refresh(self.git_store)
+            self.git_store.justify_existence()
+        else:
+            return self.git_store
 
     @classmethod
     def find(cls, guid):

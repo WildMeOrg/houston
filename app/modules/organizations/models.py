@@ -52,6 +52,12 @@ class OrganizationEDMMixin(EDMObjectMixin):
     # fmt: on
 
     @classmethod
+    def get_elasticsearch_schema(cls):
+        from app.modules.organizations.schemas import DetailedOrganizationSchema
+
+        return DetailedOrganizationSchema
+
+    @classmethod
     def ensure_edm_obj(cls, guid, owner=None):
 
         if owner is None:

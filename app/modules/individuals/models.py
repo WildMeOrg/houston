@@ -125,6 +125,12 @@ class Individual(db.Model, FeatherModel):
 
     # there is a backref'd 'relationships' list of RelationshipIndividualMember accessible here
 
+    @classmethod
+    def get_elasticsearch_schema(cls):
+        from app.modules.individuals.schemas import DetailedIndividualSchema
+
+        return DetailedIndividualSchema
+
     def __repr__(self):
         return (
             '<{class_name}('

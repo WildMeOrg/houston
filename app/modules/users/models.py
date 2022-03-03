@@ -361,6 +361,12 @@ class User(db.Model, FeatherModel, UserEDMMixin):
         )
 
     @classmethod
+    def get_elasticsearch_schema(cls):
+        from app.modules.users.schemas import UserListSchema
+
+        return UserListSchema
+
+    @classmethod
     def get_admins(cls):
         # used for first run admin creation
         users = cls.query.all()  # NOQA
@@ -443,12 +449,12 @@ class User(db.Model, FeatherModel, UserEDMMixin):
             user.in_beta = in_beta
             user.in_alpha = in_alpha
 
-            with db.session.begin():
+            with db.session.begin(subtransactions=True):
                 db.session.merge(user)
 
             log.info('Updated user: %r' % (user,))
 
-        db.session.refresh(user)
+        # db.session.refresh(user)
 
         return user
 
@@ -606,6 +612,7 @@ class User(db.Model, FeatherModel, UserEDMMixin):
     def get_collaboration_associations(self):
         return self.user_collaboration_associations
 
+    @module_required('notifications', resolve='warn', default=[])
     def get_notification_preferences(self):
         from app.modules.notifications.models import UserNotificationPreferences
 

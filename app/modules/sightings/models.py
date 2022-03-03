@@ -96,6 +96,12 @@ class Sighting(db.Model, FeatherModel):
         db.DateTime, index=True, default=datetime.utcnow, nullable=False
     )
 
+    @classmethod
+    def get_elasticsearch_schema(cls):
+        from app.modules.sightings.schemas import TimedSightingSchema
+
+        return TimedSightingSchema
+
     def __repr__(self):
         return (
             '<{class_name}('

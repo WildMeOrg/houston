@@ -82,6 +82,12 @@ class SocialGroup(db.Model, HoustonModel):
         )
 
     @classmethod
+    def get_elasticsearch_schema(cls):
+        from app.modules.social_groups.schemas import DetailedSocialGroupSchema
+
+        return DetailedSocialGroupSchema
+
+    @classmethod
     def get_role_data(cls, role):
         from app.modules.site_settings.models import SiteSetting
 

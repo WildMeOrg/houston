@@ -43,6 +43,12 @@ class FileUpload(db.Model, HoustonModel):
     )  # pylint: disable=invalid-name
     mime_type = db.Column(db.String, index=True, nullable=False)
 
+    @classmethod
+    def get_elasticsearch_schema(cls):
+        from app.modules.fileuploads.schemas import DetailedFileUploadSchema
+
+        return DetailedFileUploadSchema
+
     def __repr__(self):
         return (
             '<{class_name}('

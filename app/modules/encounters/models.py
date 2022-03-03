@@ -92,6 +92,12 @@ class Encounter(db.Model, FeatherModel):
     )
     time = db.relationship('ComplexDateTime')
 
+    @classmethod
+    def get_elasticsearch_schema(cls):
+        from app.modules.encounters.schemas import ElasticsearchEncounterSchema
+
+        return ElasticsearchEncounterSchema
+
     def __repr__(self):
         return (
             '<{class_name}('

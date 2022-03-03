@@ -248,24 +248,47 @@ class Annotation(db.Model, HoustonModel):
             assset_src = self.asset.src
         return assset_src
 
-    def get_matching_set(self, criteria=None):
+    def get_matching_set(self, query=None):
         if not self.encounter_guid:
             raise ValueError(f'{self} has no Encounter so cannot be matched against')
-        if not criteria or not isinstance(criteria, dict):
-            criteria = self.get_matching_set_default_criteria()
+        if not query or not isinstance(query, dict):
+            query = self.get_matching_set_default_query()
+        # do ES query!   FIXME
 
-    def get_matching_set_default_criteria(self):
-        criteria = {
-            # n.b. default will not take any locationId or ownership into consideration
-            'viewpoint': self.get_neighboring_viewpoints(),
-            'taxonomy_guid': self.get_taxonomy_guid(sighting_fallback=True),
-            # going with most permissive include_null options for now
-            'viewpoint_include_null': True,
-            'taxonomy_guid_include_null': True,
-        }
+    def get_matching_set_default_query(self):
+        # n.b. default will not take any locationId or ownership into consideration
+        parts = {'filter': []}
+        enc, enc_edm, sight_edm = self.get_related_extended_data()
+
+        viewpoint_list = self.get_neighboring_viewpoints()
+        # TODO should we allow nulls?
+        if viewpoint_list:
+            viewpoint_data = []
+            for vp in viewpoint_list:
+                viewpoint_data.append({'term': {'viewpoint': vp}})
+            parts['filter'].append(
+                {
+                    'bool': {
+                        'minimum_should_match': 1,
+                        'should': viewpoint_data,
+                    }
+                }
+            )
+
+        # same, re: nulls
+        tx_guid = self.get_taxonomy_guid(sighting_fallback=True)
+        if tx_guid:
+            parts['filter'].append({'match': {'taxonomy_guid': str(tx_guid)}})
+
         if self.encounter_guid:
-            criteria['encounter_guid_not'] = str(self.encounter_guid)
-        return criteria
+            parts['must_not'] = {'term': {'encounter_guid': str(self.encounter_guid)}}
+
+        return {'query': {'bool': parts}}
+
+    # this is to allow for manipulation of a user-provided query prior to actually using it
+    #  e.g. we might want to _force_ criteria or remove certain filters, etc.
+    def resolve_matching_set_query(self, query):
+        return query
 
     # this should be used with caution.  it grabs the related Encounter object, as well as
     # the edm data related to both the encounter and sighting.  thus, it is expensive.  it also
@@ -424,75 +447,3 @@ class Annotation(db.Model, HoustonModel):
         from app.modules.annotations.schemas import AnnotationElasticsearchSchema
 
         return AnnotationElasticsearchSchema
-
-    # this might be a useful generic tool for Elasticsearch, automated to any object?
-    # https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl.html
-    # this is what should be used as the value to {'query': THIS } for ES queries
-    @classmethod
-    def elasticsearch_criteria_to_query(cls, criteria):
-        if not criteria or not isinstance(criteria, dict):
-            raise ValueError('must pass criteria dict')
-        parts = {
-            'must': [],
-            'filter': [],
-            'should': [],
-            'must_not': [],
-        }
-        if 'viewpoint' in criteria:
-            viewpoint_list = criteria['viewpoint']
-            if isinstance(viewpoint_list, set):
-                viewpoint_list = list(viewpoint_list)
-            elif not isinstance(viewpoint_list, list):  # single value
-                viewpoint_list = [viewpoint_list]
-            if len(viewpoint_list) > 0:
-                viewpoint_data = []
-                for vp in viewpoint_list:
-                    viewpoint_data.append({'term': {'viewpoint': vp}})
-                parts['filter'].append(
-                    {
-                        'bool': {
-                            'minimum_should_match': 1,
-                            'should': viewpoint_data,
-                        }
-                    }
-                )
-            # TODO handle _include_null
-            #'viewpoint_include_null': True,
-
-        if 'locationId' in criteria:
-            location_list = criteria['locationId']
-            if isinstance(location_list, set):
-                location_list = list(location_list)
-            elif not isinstance(location_list, list):  # single value
-                location_list = [location_list]
-            if criteria.get('locationId_include_children', False):
-                from app.modules.site_settings.models import Regions
-
-                regions = Regions()
-                location_list = sorted(
-                    list(regions.with_children(location_list)),
-                    key=str.casefold,
-                )
-            if len(location_list) > 0:
-                location_data = []
-                for loc in location_list:
-                    location_data.append({'term': {'locationId': loc}})
-                parts['filter'].append(
-                    {
-                        'bool': {
-                            'minimum_should_match': 1,
-                            'should': location_data,
-                        }
-                    }
-                )
-
-        if criteria.get('taxonomy_guid'):
-            parts['filter'].append(
-                {'match': {'taxonomy_guid': criteria['taxonomy_guid']}}
-            )
-        # TODO   'taxonomy_guid_include_null': True,
-
-        if criteria.get('owner_guid'):
-            parts['filter'].append({'match': {'owner_guid': criteria['owner_guid']}})
-
-        return {'bool': parts}

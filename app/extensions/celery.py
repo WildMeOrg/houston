@@ -2,7 +2,7 @@
 # This file is meant for celery command lines, for example:
 #    celery -A app.extensions.celery.celery worker
 from flask import current_app
-from flask_restx_patched import is_module_enabled
+from flask_restx_patched import is_extension_enabled, is_module_enabled
 from config import get_preliminary_config
 
 config = get_preliminary_config()
@@ -15,7 +15,6 @@ except RuntimeError:
 
     app = create_app()
     celery = app.celery
-
 
 # FIXME: This really needs to be a part of the app creation/loading procedure.
 #        As it stands we define modules to load in configuration,
@@ -40,3 +39,6 @@ if is_module_enabled('missions'):
 
 if is_module_enabled('elasticsearch'):
     import app.modules.elasticsearch.tasks  # noqa
+
+if is_extension_enabled('elasticsearch'):
+    import app.extensions.elasticsearch.tasks  # noqa

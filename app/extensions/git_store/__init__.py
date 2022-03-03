@@ -14,7 +14,7 @@ import utool as ut
 from app.version import version
 
 
-from app.extensions import HoustonModel, parallel
+from app.extensions import HoustonModel, parallel, elasticsearch_context
 import app.extensions.logging as AuditLog  # NOQA
 from app.modules.assets.models import Asset
 from app.modules.users.models import User
@@ -181,6 +181,12 @@ class GitStore(db.Model, HoustonModel):
     @classmethod
     def ensure_remote_delay(cls, obj):
         raise NotImplementedError()
+
+    @classmethod
+    def get_elasticsearch_schema(cls):
+        from app.modules.assets.schemas import DetailedGitStoreSchema
+
+        return DetailedGitStoreSchema
 
     def git_push_delay(self):
         raise NotImplementedError()
@@ -609,7 +615,7 @@ class GitStore(db.Model, HoustonModel):
         skipped = []
         errors = []
         walk_list = sorted(list(os.walk(local_name_path)))
-        for root, directories, filenames in tqdm.tqdm(walk_list):
+        for root, directories, filenames in tqdm.tqdm(walk_list, desc='Walking Assets'):
             filenames = sorted(filenames)
             for filename in filenames:
                 filepath = os.path.join(root, filename)
@@ -730,43 +736,67 @@ class GitStore(db.Model, HoustonModel):
         local_asset_filepath_list = [
             file_data.pop('filepath', None) for file_data in files
         ]
-        assets = []
-        # TODO: slim down this DB context
-        with db.session.begin(subtransactions=True):
-            for file_data, local_asset_filepath in zip(files, local_asset_filepath_list):
-                semantic_guid = file_data.get('semantic_guid', None)
-                asset = Asset.query.filter(Asset.semantic_guid == semantic_guid).first()
-                if asset is None:
-                    # Check if we can recycle existing GUID from symlink
-                    recycle_guid = existing_filepath_guid_mapping.get(
-                        local_asset_filepath, None
-                    )
-                    if recycle_guid is not None:
-                        file_data['guid'] = recycle_guid
-                    # Create record if asset is new
-                    asset = Asset(**file_data)
+        new_assets = []
+        updated_assets = []
+        for file_data, local_asset_filepath in zip(files, local_asset_filepath_list):
+            semantic_guid = file_data.get('semantic_guid', None)
+            asset = Asset.query.filter(Asset.semantic_guid == semantic_guid).first()
+            if asset is None:
+                # Check if we can recycle existing GUID from symlink
+                recycle_guid = existing_filepath_guid_mapping.get(
+                    local_asset_filepath, None
+                )
+                if recycle_guid is not None:
+                    file_data['guid'] = recycle_guid
+                # Create record if asset is new
+                asset = Asset(**file_data)
+                new_assets.append(asset)
+            else:
+                # Update record if Asset exists
+                search_keys = [
+                    'filesystem_guid',
+                    'semantic_guid',
+                    'git_store_guid',
+                ]
+
+                for key in file_data:
+                    if key in search_keys:
+                        continue
+                    value = file_data[key]
+                    setattr(asset, key, value)
+                updated_assets.append(asset)
+
+        with elasticsearch_context():
+            with db.session.begin(subtransactions=True):
+                for asset in new_assets:
                     db.session.add(asset)
-                else:
-                    # Update record if Asset exists
-                    search_keys = [
-                        'filesystem_guid',
-                        'semantic_guid',
-                        'git_store_guid',
-                    ]
-
-                    for key in file_data:
-                        if key in search_keys:
-                            continue
-                        value = file_data[key]
-                        setattr(asset, key, value)
+                for asset in updated_assets:
                     db.session.merge(asset)
-                assets.append(asset)
 
-        # Update all symlinks for each Asset
-        for asset, local_asset_filepath in zip(assets, local_asset_filepath_list):
-            db.session.refresh(asset)
-            asset.update_symlink(local_asset_filepath)
-            asset.set_derived_meta()
+            # combine for all assets, new and updated
+            assets = new_assets + updated_assets
+
+            # Update all symlinks for each Asset
+            for asset, local_asset_filepath in zip(assets, local_asset_filepath_list):
+                db.session.refresh(asset)
+                asset.update_symlink(local_asset_filepath)
+                asset.set_derived_meta()
+                if verbose:
+                    print(filepath)
+                    print('\tAsset         : %s' % (asset,))
+                    print('\tSemantic GUID : %s' % (asset.semantic_guid,))
+                    print('\tExtension     : %s' % (asset.extension,))
+                    print('\tMIME type     : %s' % (asset.mime_type,))
+                    print('\tSignature     : %s' % (asset.magic_signature,))
+                    print('\tSize bytes    : %s' % (asset.size_bytes,))
+                    print('\tFS xxHash64   : %s' % (asset.filesystem_xxhash64,))
+                    print('\tFS GUID       : %s' % (asset.filesystem_guid,))
+
+            # Get all historical and current Assets for this Git Store
+            db.session.refresh(self)
+
+            # Delete any historical Assets that have been deleted from this commit
+            deleted_assets = list(set(self.assets) - set(assets))
             if verbose:
                 print(filepath)
                 print('\tAsset         : %s' % (asset,))
@@ -777,17 +807,18 @@ class GitStore(db.Model, HoustonModel):
                 print('\tFS xxHash64   : %s' % (asset.filesystem_xxhash64,))
                 print('\tFS GUID       : %s' % (asset.filesystem_guid,))
 
-        # Get all historical and current Assets for this Git Store
-        db.session.refresh(self)
+            # Get all historical and current Assets for this Git Store
+            db.session.refresh(self)
 
-        # Delete any historical Assets that have been deleted from this commit
-        deleted_assets = list(set(self.assets) - set(assets))
-        if verbose:
-            print('Deleting %d orphaned Assets' % (len(deleted_assets),))
-        with db.session.begin(subtransactions=True):
-            for deleted_asset in deleted_assets:
-                deleted_asset.delete()
-        db.session.refresh(self)
+            # Delete any historical Assets that have been deleted from this commit
+            deleted_assets = list(set(self.assets) - set(assets))
+            if verbose:
+                print('Deleting %d orphaned Assets' % (len(deleted_assets),))
+            with db.session.begin(subtransactions=True):
+                for deleted_asset in deleted_assets:
+                    deleted_asset.delete()
+            db.session.refresh(self)
+
 
     def update_metadata_from_project(self, project):
         # Update any local metadata from sub

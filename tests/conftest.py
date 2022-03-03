@@ -4,12 +4,14 @@ import os
 import pathlib
 import tempfile
 import uuid
+import time
 from unittest import mock
 
+import logging
 import sqlalchemy
 import pytest
 from flask_login import current_user, login_user, logout_user
-from flask_restx_patched import is_module_enabled
+from flask_restx_patched import is_module_enabled, is_extension_enabled
 
 from app import create_app
 from config import CONTEXT_ENVIRONMENT_VARIABLE, VALID_CONTEXTS
@@ -19,6 +21,9 @@ from . import (
     TEST_ASSET_GROUP_UUID,
     TEST_EMPTY_ASSET_GROUP_UUID,
 )
+
+
+log = logging.getLogger('pytest.conftest')  # pylint: disable=invalid-name
 
 
 # Force FLASK_ENV to be testing instead of using what's defined in the environment
@@ -187,6 +192,7 @@ def email_setup(flask_app):
 
 @pytest.fixture(scope='session')
 def flask_app(gitlab_remote_login_pat):
+
     with tempfile.TemporaryDirectory() as td:
         config_override = {}
         if gitlab_remote_login_pat is not None:
@@ -224,6 +230,12 @@ def flask_app(gitlab_remote_login_pat):
                 else:
                     raise
 
+            # Delete all content in all tables (may be left over from previous tests after an error)
+            with db.session.begin():
+                for table in reversed(db.metadata.sorted_tables):
+                    log.info('Purge DB table %s' % table)
+                    db.session.execute(table.delete())
+
             if utils.redis_unavailable():
                 # Run code in foreground if redis not available
                 from app.modules.asset_groups import tasks
@@ -253,6 +265,14 @@ def flask_app(gitlab_remote_login_pat):
                 for patch in tasks_patch:
                     patch.start()
 
+            # initialize Elastic search indexes
+            if is_extension_enabled('elasticsearch'):
+                from app.extensions import elasticsearch as es
+
+                es.init_elasticsearch_listeners(app)
+                if app.config.get('ELASTICSEARCH_BUILD_INDEX_ON_STARTUP', False):
+                    es.init_elasticsearch_index(app, force=True)
+
             # This is necessary to make celery tasks work when calling
             # in the foreground.  Otherwise there's some weird error:
             #
@@ -262,8 +282,34 @@ def flask_app(gitlab_remote_login_pat):
             # at: http://sqlalche.me/e/13/bhk3)
             with mock.patch.object(app, 'app_context', return_value=ctx):
                 yield app
+
+            # Drop all data from elasticsearch
+            if is_extension_enabled('elasticsearch'):
+                from app.extensions import elasticsearch as es
+
+                # Ensure that any background Celery tasks have wrapped up
+                for count in range(10):
+                    num_active = es.check_celery()
+                    if num_active == 0:
+                        break
+                    time.sleep(1)
+
+                # Kill any jobs still pending after 10 seconds
+                es.shutdown_celery()
+
+                # Delete all content in all tables
+                # (we need to do this to know what data to delete out of elastic search)
+                with db.session.begin():
+                    for table in reversed(db.metadata.sorted_tables):
+                        log.info('Purge DB table %s' % table)
+                        db.session.execute(table.delete())
+
+                es.init_elasticsearch_index(app, pit=False, update=False)
+
+            # Drop all (empty) tables
             db.drop_all()
 
+            # Delete all patched tasks
             if utils.redis_unavailable():
                 for patch in tasks_patch:
                     patch.stop()

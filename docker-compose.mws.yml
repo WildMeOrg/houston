@@ -164,7 +164,7 @@ services:
     build: &houston-build
       context: .
       target: main
-    command: ["invoke", "app.run", "--host", "0.0.0.0" ]
+    command: ["invoke", "app.run"]
     depends_on:
       db:
         condition: service_healthy

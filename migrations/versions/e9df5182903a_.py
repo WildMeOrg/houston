@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """empty message
 
 Revision ID: e9df5182903a
@@ -7,12 +8,6 @@ Create Date: 2022-02-10 00:46:18.247165
 """
 from alembic import op
 import sqlalchemy as sa
-import sqlalchemy_utils
-
-import app
-import app.extensions
-
-
 
 
 # revision identifiers, used by Alembic.

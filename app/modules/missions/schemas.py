@@ -53,14 +53,14 @@ class DetailedMissionSchema(CreationMissionSchema):
 
     collections = base_fields.Nested('BaseMissionCollectionSchema', many=True)
 
-    # tasks = base_fields.Nested('BaseMissionTaskTableSchema', many=True)
+    tasks = base_fields.Nested('BaseMissionTaskTableSchema', many=True)
 
     class Meta(CreationMissionSchema.Meta):
         fields = CreationMissionSchema.Meta.fields + (
             # 'owner',
             'assigned_users',
             'collections',
-            # 'tasks',
+            'tasks',
             'asset_count',
         )
         dump_only = CreationMissionSchema.Meta.dump_only

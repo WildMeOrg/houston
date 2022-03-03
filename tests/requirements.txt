@@ -3,11 +3,16 @@ brunette
 codecov >= 2.0.15
 coverage >= 4.3.4
 IPython
+line_profiler
 mock
 
 pre-commit
 pytest >= 3.3.1
+pytest-benchmark[histogram]
 pytest-cov
+pytest-profiling
 pytest-random-order
+pytest-sugar
+pytest-xdist
 swagger_spec_validator
 xdoctest >= 0.3.0

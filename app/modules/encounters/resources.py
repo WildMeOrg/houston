@@ -226,7 +226,12 @@ class EncounterByID(Resource):
             log.warning(
                 f'Encounter.delete {encounter.guid} failed: ({ex.status_code} / edm={edm_status_code}) {ex.message}'
             )
-            abort(400, 'Delete failed')
+            abort(
+                400,
+                'Delete failed',
+                vulnerableIndividualGuid=ex.get_val('vulnerableIndividual'),
+                vulnerableSightingGuid=ex.get_val('vulnerableSighting'),
+            )
 
         # we have to roll our own response here (to return) as it seems the only way we can add a header
         #   (which we are using to denote the encounter DELETE also triggered a sighting DELETE, since

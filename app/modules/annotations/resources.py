@@ -6,10 +6,12 @@ RESTful API Annotations resources
 """
 
 import logging
+import json
 
 from flask import request
 from flask_restx_patched import Resource
 from flask_restx._http import HTTPStatus
+from flask import request
 
 from app.extensions import db
 from app.extensions.api import Namespace, abort
@@ -264,6 +266,43 @@ class AnnotationJobByID(Resource):
         Get Annotation job details by ID.
         """
         return annotation.get_job_debug(verbose=True)
+
+
+@api.route('/matching_set/query/<uuid:annotation_guid>')
+@api.login_required(oauth_scopes=['annotations:read'])
+@api.response(
+    code=HTTPStatus.NOT_FOUND,
+    description='Annotation not found.',
+)
+@api.resolve_object_by_model(Annotation, 'annotation')
+class AnnotationMatchingSetQueryByID(Resource):
+    """
+    Info about matching-set queries (the search criteria, not results)
+    for a given Annotation.
+    """
+
+    @api.permission_required(
+        permissions.ObjectAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'obj': kwargs['annotation'],
+            'action': AccessOperation.READ,
+        },
+    )
+    def get(self, annotation):
+        """
+        Returns the default query for the Annotation.
+        """
+        return annotation.get_matching_set_default_query()
+
+    def post(self, annotation):
+        """
+        Accepts a query via body, then returns the "resolved" query
+        as it would be used.  (which may include some modifications.)
+        """
+        request_in = json.loads(request.data)
+        if 'query' not in request_in:
+            abort(code=HTTPStatus.BAD_REQUEST, message='Must provide a "query" value.')
+        return annotation.resolve_matching_set_query(request_in)
 
 
 @api.route('/debug/<uuid:annotation_guid>')

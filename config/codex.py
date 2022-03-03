@@ -66,7 +66,6 @@ class BaseCodexConfig(
         'social_groups',
         'site_settings',
         'job_control',
-        'elasticsearch_proxy',
         'elasticsearch',
 
         'app_ui',

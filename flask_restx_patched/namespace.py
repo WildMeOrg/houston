@@ -72,10 +72,11 @@ def x_required(
                 )
             )
         else:
-            logging.warning(
-                'Function %r has missing %s %r, returning default value %r'
-                % (func, tag, missing_names, default)
-            )
+            if resolve not in ['quiet']:
+                logging.warning(
+                    'Function %r has missing %s %r, returning default value %r'
+                    % (func, tag, missing_names, default)
+                )
             if callable(default):
                 retval = default(*args, **kwargs)
             else:

@@ -5,6 +5,7 @@ Social Groups module
 """
 
 from app.extensions.api import api_v1
+from app.extensions import register_elasticsearch_model
 
 from app.modules import is_module_enabled
 
@@ -28,3 +29,6 @@ def init_app(app, **kwargs):
     from . import models, resources  # NOQA
 
     api_v1.add_namespace(resources.api)
+
+    # Register Models to use with Elasticsearch
+    register_elasticsearch_model(models.SocialGroup)

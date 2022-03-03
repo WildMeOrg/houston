@@ -7,6 +7,7 @@ RESTful API Annotations resources
 
 import logging
 
+from flask import request
 from flask_restx_patched import Resource
 from flask_restx._http import HTTPStatus
 
@@ -129,6 +130,23 @@ class Annotations(Resource):
             AuditLog.user_create_object(log, annotation, duration=timer.elapsed())
             db.session.add(annotation)
         return annotation
+
+
+@api.route('/search')
+@api.login_required(oauth_scopes=['annotations:read'])
+class AnnotationElasticsearch(Resource):
+    @api.permission_required(
+        permissions.ModuleAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'module': Annotation,
+            'action': AccessOperation.READ,
+        },
+    )
+    @api.response(schemas.BaseAnnotationSchema(many=True))
+    def post(self):
+        search = request.get_data()
+
+        return Annotation.elasticsearch(search)
 
 
 @api.route('/<uuid:annotation_guid>')

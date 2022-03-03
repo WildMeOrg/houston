@@ -7,7 +7,7 @@ RESTful API Assets resources
 
 import logging
 
-from flask import send_file
+from flask import send_file, request
 
 from flask_restx_patched import Resource
 from flask_restx_patched._http import HTTPStatus
@@ -77,6 +77,23 @@ class Assets(Resource):
             for asset in assets:
                 db.session.merge(asset)
         return assets
+
+
+@api.route('/search')
+@api.login_required(oauth_scopes=['assets:read'])
+class AssetElasticsearch(Resource):
+    @api.permission_required(
+        permissions.ModuleAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'module': Asset,
+            'action': AccessOperation.READ,
+        },
+    )
+    @api.response(schemas.BaseAssetSchema(many=True))
+    def post(self):
+        search = request.get_data()
+
+        return Asset.elasticsearch(search)
 
 
 @api.route('/<uuid:asset_guid>')

@@ -137,6 +137,23 @@ class SocialGroups(Resource):
         return social_group
 
 
+@api.route('/search')
+@api.login_required(oauth_scopes=['social-groups:read'])
+class SocialGroupElasticsearch(Resource):
+    @api.permission_required(
+        permissions.ModuleAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'module': SocialGroup,
+            'action': AccessOperation.READ,
+        },
+    )
+    @api.response(schemas.BaseSocialGroupSchema(many=True))
+    def post(self):
+        search = request.get_data()
+
+        return SocialGroup.elasticsearch(search)
+
+
 @api.route('/<uuid:social_group_guid>')
 @api.login_required(oauth_scopes=['social-groups:read'])
 @api.response(

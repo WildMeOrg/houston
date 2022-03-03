@@ -143,6 +143,23 @@ class AssetGroups(Resource):
         return asset_group
 
 
+@api.route('/search')
+@api.login_required(oauth_scopes=['asset_groups:read'])
+class AssetGroupElasticsearch(Resource):
+    @api.permission_required(
+        permissions.ModuleAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'module': AssetGroup,
+            'action': AccessOperation.READ,
+        },
+    )
+    @api.response(schemas.BaseAssetGroupSchema(many=True))
+    def post(self):
+        search = request.get_data()
+
+        return AssetGroup.elasticsearch(search)
+
+
 @api.login_required(oauth_scopes=['asset_groups:read'])
 @api.route('/<uuid:asset_group_guid>')
 @api.resolve_object_by_model(AssetGroup, 'asset_group', return_not_found=True)
@@ -357,6 +374,23 @@ class AssetGroupSightings(Resource):
         parameter.
         """
         return AssetGroupSighting.query.offset(args['offset']).limit(args['limit'])
+
+
+@api.route('/sighting/search')
+@api.login_required(oauth_scopes=['asset_group_sightings:read'])
+class AssetGroupSightingElasticsearch(Resource):
+    @api.permission_required(
+        permissions.ModuleAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'module': AssetGroupSighting,
+            'action': AccessOperation.READ,
+        },
+    )
+    @api.response(schemas.BaseAssetGroupSightingSchema(many=True))
+    def post(self):
+        search = request.get_data()
+
+        return AssetGroupSighting.elasticsearch(search)
 
 
 @api.route('/sighting/<uuid:asset_group_sighting_guid>')

@@ -10,6 +10,7 @@ from sqlalchemy import desc
 from flask_restx_patched import Resource
 from flask_restx._http import HTTPStatus
 
+from flask import request
 from app.extensions.api import Namespace
 from app.modules.users import permissions
 from app.modules.users.permissions.types import AccessOperation
@@ -68,6 +69,23 @@ class AuditLogs(Resource):
         return all_logs
 
 
+@api.route('/search')
+@api.login_required(oauth_scopes=['audit_logs:read'])
+class AuditLogElasticsearch(Resource):
+    @api.permission_required(
+        permissions.ModuleAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'module': AuditLog,
+            'action': AccessOperation.READ,
+        },
+    )
+    @api.response(schemas.DetailedAuditLogSchema(many=True))
+    def post(self):
+        search = request.get_data()
+
+        return AuditLog.elasticsearch(search)
+
+
 @api.route('/<uuid:audit_log_guid>')
 @api.login_required(oauth_scopes=['audit_logs:read'])
 @api.response(
@@ -94,7 +112,8 @@ class AuditLogByID(Resource):
         return (
             AuditLog.query.filter_by(item_guid=audit_log_guid)
             .order_by(AuditLog.created)
-            .all())
+            .all()
+        )
 
 
 @api.route('/faults')
@@ -134,9 +153,18 @@ class AuditLogFault(Resource):
         else:
             faults = (
                 AuditLog.query.filter(
-                    (AuditLog.audit_type == AuditLogExtension.AuditType.HoustonFault.value)
-                    | (AuditLog.audit_type == AuditLogExtension.AuditType.BackEndFault.value)
-                    | (AuditLog.audit_type == AuditLogExtension.AuditType.FrontEndFault.value)
+                    (
+                        AuditLog.audit_type
+                        == AuditLogExtension.AuditType.HoustonFault.value
+                    )
+                    | (
+                        AuditLog.audit_type
+                        == AuditLogExtension.AuditType.BackEndFault.value
+                    )
+                    | (
+                        AuditLog.audit_type
+                        == AuditLogExtension.AuditType.FrontEndFault.value
+                    )
                 )
                 .order_by(desc(AuditLog.created))
                 .offset(args['offset'])

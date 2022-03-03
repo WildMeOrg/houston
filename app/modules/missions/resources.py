@@ -9,11 +9,12 @@ import logging
 import werkzeug
 import uuid
 
+from flask import request
 from flask_restx_patched import Resource
 from flask_restx_patched._http import HTTPStatus
 from flask_login import current_user  # NOQA
 
-from app.extensions import db
+from app.extensions import db, elasticsearch_context
 from app.extensions.api import Namespace, abort
 from app.modules.users import permissions
 from app.modules.users.permissions.types import AccessOperation
@@ -22,6 +23,7 @@ from . import parameters, schemas
 from .models import Mission, MissionCollection, MissionTask
 from marshmallow import ValidationError
 import randomname
+import tqdm
 
 from app.utils import HoustonException
 
@@ -78,8 +80,6 @@ class Missions(Resource):
         parameter.
         """
         search = args.get('search', None)
-        if search is not None and len(search) == 0:
-            search = None
 
         missions = Mission.query_search(search)
 
@@ -113,6 +113,23 @@ class Missions(Resource):
         db.session.refresh(mission)
 
         return mission
+
+
+@api.route('/search')
+@api.login_required(oauth_scopes=['missions:read'])
+class MissionElasticsearch(Resource):
+    @api.permission_required(
+        permissions.ModuleAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'module': Mission,
+            'action': AccessOperation.READ,
+        },
+    )
+    @api.response(schemas.BaseMissionSchema(many=True))
+    def post(self):
+        search = request.get_data()
+
+        return Mission.elasticsearch(search)
 
 
 @api.route('/<uuid:mission_guid>')
@@ -278,12 +295,9 @@ class AssetsForMission(Resource):
             'action': AccessOperation.WRITE,
         },
     )
-    @api.parameters(parameters.ListMissionAssetParameters())
     @api.response(DetailedAssetTableSchema(many=True))
-    def get(self, args, mission):
-        search = args.get('search', None)
-        if search is not None and len(search) == 0:
-            search = None
+    def post(self, mission):
+        search = request.get_data()
 
         return mission.asset_search(search)
 
@@ -335,7 +349,7 @@ class MissionTasksForMission(Resource):
         except ValidationError as exception:
             abort(409, message=str(exception))
 
-        context = api.commit_or_abort(
+        db_context = api.commit_or_abort(
             db.session, default_error_message='Failed to create a new MissionTask'
         )
 
@@ -373,13 +387,12 @@ class MissionTasksForMission(Resource):
         args['mission'] = mission
         mission_task = MissionTask(**args)
 
-        # User who creates the mission gets added to it
-        mission_task.add_user(current_user)
-        for asset in asset_set:
-            mission_task.add_asset(asset)
-
-        with context:
-            db.session.add(mission_task)
+        with elasticsearch_context():
+            with db_context:
+                db.session.add(mission_task)
+                mission_task.add_user_in_context(current_user)
+                for asset in tqdm.tqdm(asset_set, desc='Adding Assets to MissionTask'):
+                    mission_task.add_asset_in_context(asset)
 
         db.session.refresh(mission_task)
 
@@ -410,8 +423,6 @@ class MissionCollections(Resource):
         parameter.
         """
         search = args.get('search', None)
-        if search is not None and len(search) == 0:
-            search = None
 
         mission_collections = MissionCollection.query_search(search)
 
@@ -420,6 +431,23 @@ class MissionCollections(Resource):
             .offset(args['offset'])
             .limit(args['limit'])
         )
+
+
+@api.route('/collections/search')
+@api.login_required(oauth_scopes=['missions:read'])
+class MissionCollectionElasticsearch(Resource):
+    @api.permission_required(
+        permissions.ModuleAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'module': MissionCollection,
+            'action': AccessOperation.READ,
+        },
+    )
+    @api.response(schemas.BaseMissionCollectionSchema(many=True))
+    def post(self):
+        search = request.get_data()
+
+        return MissionCollection.elasticsearch(search)
 
 
 @api.login_required(oauth_scopes=['missions:read'])
@@ -600,8 +628,6 @@ class MissionTasks(Resource):
         parameter.
         """
         search = args.get('search', None)
-        if search is not None and len(search) == 0:
-            search = None
 
         mission_tasks = MissionTask.query_search(search)
 
@@ -610,6 +636,23 @@ class MissionTasks(Resource):
             .offset(args['offset'])
             .limit(args['limit'])
         )
+
+
+@api.route('/tasks/search')
+@api.login_required(oauth_scopes=['missions:read'])
+class MissionTaskElasticsearch(Resource):
+    @api.permission_required(
+        permissions.ModuleAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'module': MissionTask,
+            'action': AccessOperation.READ,
+        },
+    )
+    @api.response(schemas.BaseMissionTaskSchema(many=True))
+    def post(self):
+        search = request.get_data()
+
+        return MissionTask.elasticsearch(search)
 
 
 @api.route('/tasks/<uuid:mission_task_guid>')
@@ -720,5 +763,9 @@ class MissionTaskByID(Resource):
         """
         Delete a MissionTask by ID.
         """
-        mission_task.delete()
+        context = api.commit_or_abort(
+            db.session, default_error_message='Failed to delete MissionTask'
+        )
+        with context:
+            mission_task.delete_cascade()
         return None

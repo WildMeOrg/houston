@@ -404,6 +404,23 @@ class Sightings(Resource):
         return rtn
 
 
+@api.route('/search')
+@api.login_required(oauth_scopes=['sightings:read'])
+class SightingElasticsearch(Resource):
+    @api.permission_required(
+        permissions.ModuleAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'module': Sighting,
+            'action': AccessOperation.READ,
+        },
+    )
+    @api.response(schemas.BaseSightingSchema(many=True))
+    def post(self):
+        search = request.get_data()
+
+        return Sighting.elasticsearch(search)
+
+
 @api.route('/<uuid:sighting_guid>')
 @api.response(
     code=HTTPStatus.NOT_FOUND,

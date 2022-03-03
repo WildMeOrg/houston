@@ -56,6 +56,23 @@ class Encounters(Resource):
         return Encounter.query.offset(args['offset']).limit(args['limit'])
 
 
+@api.route('/search')
+@api.login_required(oauth_scopes=['encounters:read'])
+class EncounterElasticsearch(Resource):
+    @api.permission_required(
+        permissions.ModuleAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'module': Encounter,
+            'action': AccessOperation.READ,
+        },
+    )
+    @api.response(schemas.BaseEncounterSchema(many=True))
+    def post(self):
+        search = request.get_data()
+
+        return Encounter.elasticsearch(search)
+
+
 @api.route('/<uuid:encounter_guid>')
 @api.response(
     code=HTTPStatus.NOT_FOUND,

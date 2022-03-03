@@ -7,6 +7,7 @@ RESTful API Projects resources
 
 import logging
 
+from flask import request
 from flask_restx_patched import Resource
 from flask_restx_patched._http import HTTPStatus
 from flask_login import current_user  # NOQA
@@ -77,6 +78,23 @@ class Projects(Resource):
         db.session.refresh(project)
 
         return project
+
+
+@api.route('/search')
+@api.login_required(oauth_scopes=['projects:read'])
+class ProjectElasticsearch(Resource):
+    @api.permission_required(
+        permissions.ModuleAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'module': Project,
+            'action': AccessOperation.READ,
+        },
+    )
+    @api.response(schemas.BaseProjectSchema(many=True))
+    def post(self):
+        search = request.get_data()
+
+        return Project.elasticsearch(search)
 
 
 @api.route('/<uuid:project_guid>')

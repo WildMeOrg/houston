@@ -53,8 +53,6 @@ class Users(Resource):
         parameter.
         """
         search = args.get('search', None)
-        if search is not None and len(search) == 0:
-            search = None
 
         users = User.query_search(search)
 
@@ -144,6 +142,23 @@ class Users(Resource):
                 log, new_user, msg=f'{new_user.email}', duration=timer.elapsed()
             )
         return new_user
+
+
+@api.route('/search')
+@api.login_required(oauth_scopes=['users:read'])
+class UserElasticsearch(Resource):
+    @api.permission_required(
+        permissions.ModuleAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'module': User,
+            'action': AccessOperation.READ,
+        },
+    )
+    @api.response(schemas.UserListSchema(many=True))
+    def post(self):
+        search = request.get_data()
+
+        return User.elasticsearch(search)
 
 
 @api.route('/<uuid:user_guid>')

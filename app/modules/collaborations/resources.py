@@ -135,6 +135,23 @@ class Collaborations(Resource):
         return collaboration
 
 
+@api.route('/search')
+@api.login_required(oauth_scopes=['collaborations:read'])
+class CollaborationElasticsearch(Resource):
+    @api.permission_required(
+        permissions.ModuleAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'module': Collaboration,
+            'action': AccessOperation.READ,
+        },
+    )
+    @api.response(schemas.DetailedCollaborationSchema(many=True))
+    def post(self):
+        search = request.get_data()
+
+        return Collaboration.elasticsearch(search)
+
+
 @api.route('/<uuid:collaboration_guid>')
 @api.login_required(oauth_scopes=['collaborations:read'])
 @api.response(

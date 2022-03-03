@@ -238,6 +238,23 @@ class Individuals(Resource):
         return names
 
 
+@api.route('/search')
+@api.login_required(oauth_scopes=['individuals:read'])
+class IndividualElasticsearch(Resource):
+    @api.permission_required(
+        permissions.ModuleAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'module': Individual,
+            'action': AccessOperation.READ,
+        },
+    )
+    @api.response(schemas.BaseIndividualSchema(many=True))
+    def post(self):
+        search = request.get_data()
+
+        return Individual.elasticsearch(search)
+
+
 @api.route('/<uuid:individual_guid>')
 @api.response(
     code=HTTPStatus.NOT_FOUND,

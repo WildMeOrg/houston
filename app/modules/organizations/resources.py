@@ -7,6 +7,7 @@ RESTful API Organizations resources
 
 import logging
 
+from flask import request
 from flask_login import current_user  # NOQA
 from flask_restx_patched import Resource
 from flask_restx_patched._http import HTTPStatus
@@ -79,6 +80,23 @@ class Organizations(Resource):
             organization.add_moderator_in_context(current_user)
             db.session.add(organization)
         return organization
+
+
+@api.route('/search')
+@api.login_required(oauth_scopes=['organizations:read'])
+class OrganizationElasticsearch(Resource):
+    @api.permission_required(
+        permissions.ModuleAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'module': Organization,
+            'action': AccessOperation.READ,
+        },
+    )
+    @api.response(schemas.DetailedOrganizationSchema(many=True))
+    def post(self):
+        search = request.get_data()
+
+        return Organization.elasticsearch(search)
 
 
 @api.route('/<uuid:organization_guid>')

@@ -67,6 +67,7 @@ def test_sightings(session, login, codex_url, test_root, admin_name):
             'uploadType': 'form',
         },
     )
+
     assert response.status_code == 200
     asset_group_guid = response.json()['guid']
     ags_guids = [s['guid'] for s in response.json()['asset_group_sightings']]

@@ -47,8 +47,6 @@ class DetailedMissionSchema(CreationMissionSchema):
     Detailed Mission schema exposes all useful fields.
     """
 
-    # owner = base_fields.Nested('BaseUserSchema', many=False)
-
     assigned_users = base_fields.Nested('BaseUserSchema', many=True)
 
     collections = base_fields.Nested('BaseMissionCollectionSchema', many=True)
@@ -57,7 +55,7 @@ class DetailedMissionSchema(CreationMissionSchema):
 
     class Meta(CreationMissionSchema.Meta):
         fields = CreationMissionSchema.Meta.fields + (
-            # 'owner',
+            'owner_guid',
             'assigned_users',
             'collections',
             'tasks',
@@ -168,8 +166,6 @@ class DetailedMissionTaskSchema(BaseMissionTaskSchema):
     Detailed MissionTask schema exposes all useful fields.
     """
 
-    # owner = base_fields.Nested('BaseUserSchema', many=False)
-
     assigned_users = base_fields.Nested('BaseUserSchema', many=True)
 
     assets = base_fields.Nested(
@@ -186,7 +182,7 @@ class DetailedMissionTaskSchema(BaseMissionTaskSchema):
         fields = BaseMissionTaskSchema.Meta.fields + (
             MissionTask.updated.key,
             MissionTask.type.key,
-            # 'owner',
+            'owner_guid',
             'assigned_users',
             'assets',
             'annotations',

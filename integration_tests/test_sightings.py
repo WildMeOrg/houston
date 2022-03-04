@@ -222,7 +222,7 @@ def test_sightings(session, login, codex_url, test_root, admin_name):
                 'annotations': [
                     {
                         'asset_guid': assets[0]['guid'],
-                        'asset_src': annots[0]['asset_src'],
+                        'asset_src': annots_0[0]['asset_src'],
                         'encounter_guid': None,
                         'guid': annots_0[0]['guid'],
                         'ia_class': 'zebra',

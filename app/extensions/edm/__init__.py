@@ -204,6 +204,7 @@ class EDMManager(RestManager):
                 message=message,
                 error=error,
                 edm_status_code=response.status_code,
+                response_data=response_data,
             )
 
         return response, response_data, result_data

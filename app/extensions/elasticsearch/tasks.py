@@ -12,10 +12,9 @@ log = logging.getLogger(__name__)
 
 @celery.on_after_configure.connect
 def elasticsearch_setup_periodic_tasks(sender, **kwargs):
-    if not current_app.config['TESTING']:
-        sender.add_periodic_task(
-            60, elasticsearch_refresh_index_all.s(), name='Refresh Elasticsearch'
-        )
+    sender.add_periodic_task(
+        60, elasticsearch_refresh_index_all.s(), name='Refresh Elasticsearch'
+    )
 
 
 @celery.task

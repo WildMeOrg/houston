@@ -29,6 +29,7 @@ if not is_extension_enabled('elasticsearch'):
     raise RuntimeError('Elastic Search is not enabled')
 
 
+TESTING_PREFIX = 'testing'
 CACHING_TIME_RESOLUTION = 10
 REGISTERED_MODELS = {}
 
@@ -552,9 +553,15 @@ def get_elasticsearch_index_name(cls):
     if cls not in REGISTERED_MODELS:
         logging.error('Model (%r) is not in Elasticsearch' % (cls,))
         return None
+
     index = ('%s.%s' % (cls.__module__, cls.__name__)).lower()
+
     if current_app.config['TESTING']:
-        index = 'testing.%s' % (index,)
+        index = '%s.%s' % (
+            TESTING_PREFIX,
+            index,
+        )
+
     return index
 
 
@@ -562,7 +569,15 @@ def get_elasticsearch_cls_from_index(index):
     import sys
     import inspect
 
-    index_ = index.strip().split('.')
+    index_ = index.strip().strip('.')
+
+    # Remove any testing prefixes
+    prefix = '%s.' % (TESTING_PREFIX,)
+    if index_.startswith(prefix):
+        index_ = index_[len(prefix) :]
+        index_ = index_.strip().strip('.')
+
+    index_ = index_.split('.')
     module_ = '.'.join(index_[:-1])
     class_ = index_[-1]
 

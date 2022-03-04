@@ -12,16 +12,17 @@ log = logging.getLogger(__name__)
 
 @celery.on_after_configure.connect
 def elasticsearch_setup_periodic_tasks(sender, **kwargs):
-    sender.add_periodic_task(
-        60, elasticsearch_refresh_index_all.s(), name='Refresh Elasticsearch'
-    )
+    if not current_app.config['TESTING']:
+        sender.add_periodic_task(
+            60, elasticsearch_refresh_index_all.s(), name='Refresh Elasticsearch'
+        )
 
 
 @celery.task
 def elasticsearch_refresh_index_all():
     # Re-index everything
     with es.session.begin(blocking=True):
-        es.init_elasticsearch_index(app=current_app, verbose=False, pit=False)
+        es.init_elasticsearch_index(app=current_app, verbose=False)
 
     # Check on the status of the DB relative to ES
     status = es.es_status(app=current_app)
@@ -33,14 +34,14 @@ def elasticsearch_refresh_index_all():
 
 
 @celery.task
-def elasticsearch_index_bulk(index, guids):
+def elasticsearch_index_bulk(index, items):
     app = current_app
     cls = es.get_elasticsearch_cls_from_index(index)
 
     log.info(
         'Restoring %d index objects for cls = %r, index = %r'
         % (
-            len(guids),
+            len(items),
             cls,
             index,
         )
@@ -48,15 +49,25 @@ def elasticsearch_index_bulk(index, guids):
 
     succeeded, total = -1, 0
     if cls is not None:
-        objs = []
-        for guid in guids:
+        items = []
+        for guid, force in items:
             guid_ = uuid.UUID(guid)
             obj = cls.query.get(guid_)
             if obj is not None:
-                objs.append(obj)
+                item = (obj, force)
+                items.append(item)
 
-        total = len(objs)
-        succeeded = es.session._es_index_bulk(cls, objs, app=app)
+        total = len(items)
+        succeeded = es.session._es_index_bulk(cls, items, app=app)
+
+    if succeeded < total:
+        log.warning(
+            'Bulk index had %d successful items out of %d'
+            % (
+                succeeded,
+                total,
+            )
+        )
 
     return succeeded == total
 
@@ -79,5 +90,14 @@ def elasticsearch_delete_guid_bulk(index, guids):
     if cls is not None:
         total = len(guids)
         succeeded = es.session._es_delete_guid_bulk(cls, guids, app=app)
+
+    if succeeded < total:
+        log.warning(
+            'Bulk delete had %d successful items out of %d'
+            % (
+                succeeded,
+                total,
+            )
+        )
 
     return succeeded == total

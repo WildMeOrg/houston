@@ -8,7 +8,9 @@ from elasticsearch import helpers
 
 import logging
 
+from flask import current_app
 import flask_sqlalchemy
+import utool as ut
 import sqlalchemy_utils
 import sqlalchemy
 import threading
@@ -66,7 +68,7 @@ class ElasticsearchModel(object):
         return get_elasticsearch_index_name(cls)
 
     @classmethod
-    def index_all(cls, app=None, prune=True, pit=True, update=True, force=False):
+    def index_all(cls, app=None, prune=True, pit=False, update=True, force=False):
         from app.extensions import elasticsearch as es
 
         index = cls._index()
@@ -95,17 +97,27 @@ class ElasticsearchModel(object):
                     )
 
                 guids = set([item[0] for item in guids])
-
+                log.info(
+                    'Elasticsearch Index All %r (%d items)'
+                    % (
+                        cls,
+                        len(guids),
+                    )
+                )
                 # Re-index all objects in our local database
                 for guid in guids:
                     obj = cls.query.get(guid)
-                    obj.index(app=app)
+                    obj.index(app=app, force=force)
 
     @classmethod
     def elasticsearch(cls, search, app=None, *args, **kwargs):
         from app.extensions.elasticsearch import elasticsearch_on_class
 
-        objs = elasticsearch_on_class(app, cls, search, *args, **kwargs)
+        body = {}
+        if len(search) > 0:
+            body['query'] = search
+
+        objs = elasticsearch_on_class(app, cls, body, *args, **kwargs)
         return objs
 
     @property
@@ -168,7 +180,7 @@ class ElasticSearchBulkOperation(object):
     def in_bulk_mode(self):
         return self.BULK_MODE in [True, None]
 
-    def track_bulk_action(self, action, item):
+    def track_bulk_action(self, action, item, force=False):
         if self.BULK_MODE in [None]:
             return 'skipped'
 
@@ -176,6 +188,7 @@ class ElasticSearchBulkOperation(object):
 
         if action == 'index':
             cls = item.__class__
+            item = (item, force)
         elif action == 'delete':
             cls, guid = item
             item = str(guid)
@@ -238,9 +251,7 @@ class ElasticSearchBulkOperation(object):
 
         return exists
 
-    def _es_index_bulk(self, cls, objs, app=None, level=0):
-        import utool as ut
-
+    def _es_index_bulk(self, cls, items, app=None, level=0):
         if app is None:
             app = self.app
 
@@ -251,8 +262,8 @@ class ElasticSearchBulkOperation(object):
 
         outdated = []
         skipped = 0
-        for obj in objs:
-            if obj.updated > obj.indexed:
+        for obj, force in items:
+            if force or obj.updated > obj.indexed:
                 outdated.append(obj)
             else:
                 skipped += 1
@@ -270,10 +281,8 @@ class ElasticSearchBulkOperation(object):
         for obj in tqdm.tqdm(outdated, desc=desc):
             index_, id_, body = build_elasticsearch_index_body(obj)
             assert index == index_
-            action = {
-                '_id': str(id_),
-                'doc': body,
-            }
+            action = body
+            action['_id'] = str(id_)
             actions.append(action)
 
         try:
@@ -283,20 +292,20 @@ class ElasticSearchBulkOperation(object):
             assert total == len(actions)
             assert len(errors) == 0
         except (AssertionError, helpers.errors.BulkIndexError):
-            if len(objs) == 1:
-                obj = objs[0]
+            if len(items) == 1:
+                obj, force = items[0]
                 return obj.updated <= obj.indexed
 
             total = 0
             new_level = level + 1
-            chunk_size = max(1, len(objs) // 2)
-            chunks = list(ut.ichunks(objs, chunk_size))
+            chunk_size = max(1, len(items) // 2)
+            chunks = list(ut.ichunks(items, chunk_size))
             for chunk in chunks:
                 success = self._es_index_bulk(cls, chunk, app=app, level=new_level)
                 total += success
 
             if level == 0:
-                failed = len(objs) - total
+                failed = len(items) - total
                 if failed > 0:
                     log.error('Bulk ES index failed for %d items' % (failed,))
 
@@ -313,8 +322,6 @@ class ElasticSearchBulkOperation(object):
         return total
 
     def _es_delete_guid_bulk(self, cls, guids, app=None, level=0):
-        import utool as ut
-
         if app is None:
             app = self.app
 
@@ -420,7 +427,18 @@ class ElasticSearchBulkOperation(object):
                     if es_index_exists(index, app=self.app):
                         del_items_ = list(del_items)
                         if blocking:
-                            self._es_delete_guid_bulk(cls, del_items_, app=self.app)
+                            total = len(del_items_)
+                            success = self._es_delete_guid_bulk(
+                                cls, del_items_, app=self.app
+                            )
+                            if success < total:
+                                log.warning(
+                                    'Bulk delete had %d successful items out of %d'
+                                    % (
+                                        success,
+                                        total,
+                                    )
+                                )
                         else:
                             signature = es_tasks.elasticsearch_delete_guid_bulk.s(
                                 index, del_items_
@@ -435,17 +453,27 @@ class ElasticSearchBulkOperation(object):
                 # Filter out any items that were just deleted
                 items = []
                 for item in idx_items:
-                    if str(item.guid) in del_items:
+                    obj, force = item
+                    if str(obj.guid) in del_items:
                         continue
                     items.append(item)
 
                 if len(items) > 0:
                     # Index all items
                     if blocking:
-                        self._es_index_bulk(cls, items, app=self.app)
+                        total = len(items)
+                        success = self._es_index_bulk(cls, items, app=self.app)
+                        if success < total:
+                            log.warning(
+                                'Bulk index had %d successful items out of %d'
+                                % (
+                                    success,
+                                    total,
+                                )
+                            )
                     else:
-                        guids = [str(item.guid) for item in items]
-                        signature = es_tasks.elasticsearch_index_bulk.s(index, guids)
+                        items = [(str(item.guid), force) for item, force in items]
+                        signature = es_tasks.elasticsearch_index_bulk.s(index, items)
                         signature.retries = 3
                         promise = signature.apply_async()
                         CELERY_ASYNC_PROMISES.append((signature, promise))
@@ -485,6 +513,7 @@ def check_celery(verbose=True):
                     log.error(
                         'Celery task ID %r failed (no reties left)' % (promise.task_id,)
                     )
+                    log.error(signature)
         else:
             active.append((signature, promise))
 
@@ -524,6 +553,8 @@ def get_elasticsearch_index_name(cls):
         logging.error('Model (%r) is not in Elasticsearch' % (cls,))
         return None
     index = ('%s.%s' % (cls.__module__, cls.__name__)).lower()
+    if current_app.config['TESTING']:
+        index = 'testing.%s' % (index,)
     return index
 
 
@@ -553,7 +584,7 @@ def es_index(obj, init=False, app=None, force=False):
         app = current_app
 
     if session.in_bulk_mode():
-        return session.track_bulk_action('index', obj)
+        return session.track_bulk_action('index', obj, force=force)
 
     try:
         index, id_, body = build_elasticsearch_index_body(obj)

@@ -328,3 +328,103 @@ def test_mission_scalability(flask_app_client, data_manager_1, test_root):
         assert len(missions) == 0
         assert len(mission_collections) == 0
         assert len(mission_tasks) == 0
+
+
+@pytest.mark.skipif(module_unavailable('missions'), reason='Missions module disabled')
+def test_get_mission_assets(flask_app_client, data_manager_1, test_root):
+    from app.modules.missions.models import (
+        Mission,
+        MissionCollection,
+    )
+
+    ASSETS = 1000
+    MISSION_COLLECTIONS = 2
+
+    transaction_id, test_filename = tus_utils.prep_tus_dir(test_root)
+    transaction_ids = []
+    transaction_ids.append(transaction_id)
+    mission_guid = None
+
+    try:
+        nonce = random_nonce(8)
+        response = mission_utils.create_mission(
+            flask_app_client,
+            data_manager_1,
+            'This is a test mission (%s), please ignore' % (nonce,),
+        )
+        mission_guid = response.json['guid']
+        temp_mission = Mission.query.get(mission_guid)
+
+        previous_list = mission_utils.read_all_mission_collections(
+            flask_app_client, data_manager_1
+        )
+
+        new_mission_collections = []
+        for index in tqdm.tqdm(list(range(MISSION_COLLECTIONS))):
+            transaction_id = str(random_guid())
+            tus_utils.prep_randomized_tus_dir(total=ASSETS, transaction_id=transaction_id)
+            transaction_ids.append(transaction_id)
+
+            nonce = random_nonce(8)
+            description = 'This is a test mission collection (%s), please ignore' % (
+                nonce,
+            )
+            response = mission_utils.create_mission_collection_with_tus(
+                flask_app_client,
+                data_manager_1,
+                description,
+                transaction_id,
+                temp_mission.guid,
+            )
+            mission_collection_guid = response.json['guid']
+            temp_mission_collection = MissionCollection.query.get(mission_collection_guid)
+
+            new_mission_collections.append((nonce, temp_mission_collection))
+
+        current_list = mission_utils.read_all_mission_collections(
+            flask_app_client, data_manager_1
+        )
+        assert len(previous_list.json) + len(new_mission_collections) == len(
+            current_list.json
+        )
+
+        # Wait for elasticsearch to catch up
+        wait_for_elasticsearch_status(flask_app_client, data_manager_1)
+
+        search = {}
+        # Check that the API for a mission's collections agrees
+        response = mission_utils.elasticsearch_mission_assets(
+            flask_app_client, data_manager_1, temp_mission.guid, search
+        )
+        assets = temp_mission.get_assets()
+        assert len(assets) == ASSETS * MISSION_COLLECTIONS
+        assert len(response.json) == len(assets)
+
+        search = {
+            'range': {
+                'size_bytes': {
+                    'lte': 10400,
+                }
+            }
+        }
+
+        # Check that the API for a mission's collections agrees
+        response = mission_utils.elasticsearch_mission_assets(
+            flask_app_client, data_manager_1, temp_mission.guid, search
+        )
+        assert len(response.json) < 100
+
+        missions = Mission.query.all()
+        mission_collections = MissionCollection.query.all()
+        assert len(missions) == 1
+        assert len(mission_collections) == MISSION_COLLECTIONS
+    finally:
+        if mission_guid:
+            mission_utils.delete_mission(flask_app_client, data_manager_1, mission_guid)
+        for transaction_id in transaction_ids:
+            tus_utils.cleanup_tus_dir(transaction_id)
+
+        missions = Mission.query.all()
+        mission_collections = MissionCollection.query.all()
+        assert len(missions) == 0
+        assert len(mission_collections) == 0

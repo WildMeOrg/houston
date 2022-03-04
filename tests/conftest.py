@@ -270,8 +270,8 @@ def flask_app(gitlab_remote_login_pat):
                 from app.extensions import elasticsearch as es
 
                 es.init_elasticsearch_listeners(app)
-                if app.config.get('ELASTICSEARCH_BUILD_INDEX_ON_STARTUP', False):
-                    es.init_elasticsearch_index(app, force=True)
+                update = app.config.get('ELASTICSEARCH_BUILD_INDEX_ON_STARTUP', False)
+                es.init_elasticsearch_index(app, pit=True, update=update, force=True)
 
             # This is necessary to make celery tasks work when calling
             # in the foreground.  Otherwise there's some weird error:
@@ -304,7 +304,7 @@ def flask_app(gitlab_remote_login_pat):
                         log.info('Purge DB table %s' % table)
                         db.session.execute(table.delete())
 
-                es.init_elasticsearch_index(app, pit=False, update=False)
+                es.init_elasticsearch_index(app, update=False)
 
             # Drop all (empty) tables
             db.drop_all()

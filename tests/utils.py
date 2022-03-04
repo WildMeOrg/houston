@@ -686,7 +686,7 @@ def wait_for_elasticsearch_status(flask_app_client, user):
             raise RuntimeError()
 
         with es.session.begin(blocking=True):
-            es.init_elasticsearch_index(app=app, verbose=False, pit=False)
+            es.init_elasticsearch_index(app=app, verbose=False)
 
         counter += 1
         time.sleep(1)

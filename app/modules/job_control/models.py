@@ -22,11 +22,6 @@ class JobControl(object):
 
             Sighting.check_jobs()
 
-        if is_module_enabled('missions'):
-            from app.modules.missions.models import Mission
-
-            Mission.check_jobs()
-
     # Central point for all "job" related things to be accessed.
     @classmethod
     def get_jobs(cls, verbose):
@@ -40,10 +35,5 @@ class JobControl(object):
             from app.modules.sightings.models import Sighting
 
             jobs.extend(Sighting.get_all_jobs_debug(verbose))
-
-        if is_module_enabled('missions'):
-            from app.modules.missions.models import Mission
-
-            jobs.extend(Mission.get_all_jobs_debug(verbose))
 
         return jobs

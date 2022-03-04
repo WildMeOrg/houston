@@ -71,8 +71,8 @@ def warmup(
         from app.extensions import elasticsearch as es
 
         es.init_elasticsearch_listeners(app)
-        if app.config.get('ELASTICSEARCH_BUILD_INDEX_ON_STARTUP', False):
-            es.init_elasticsearch_index(app, force=True)
+        update = app.config.get('ELASTICSEARCH_BUILD_INDEX_ON_STARTUP', False)
+        es.init_elasticsearch_index(app, pit=True, update=update, force=True)
 
     if print_routes or app.debug:
         log.info('Using route rules:')

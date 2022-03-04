@@ -190,11 +190,16 @@ class EDMManager(RestManager):
 
             message = {'unknown error'}
             error = None
+            vulnerable_sighting_guid = None
+            vulnerable_individual_guid = None
 
             if response_data is not None and 'message' in response_data:
                 message = response_data['message']
             if response_data is not None and 'errorFields' in response_data:
                 error = response_data['errorFields']
+            if response_data:
+                vulnerable_individual_guid = response_data.get('vulnerableIndividual')
+                vulnerable_sighting_guid = response_data.get('vulnerableSighting')
 
             raise HoustonException(
                 log,
@@ -204,6 +209,8 @@ class EDMManager(RestManager):
                 message=message,
                 error=error,
                 edm_status_code=response.status_code,
+                vulnerable_sighting_guid=vulnerable_sighting_guid,
+                vulnerable_individual_guid=vulnerable_individual_guid,
             )
 
         return response, response_data, result_data

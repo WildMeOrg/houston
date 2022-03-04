@@ -226,11 +226,12 @@ class EncounterByID(Resource):
             log.warning(
                 f'Encounter.delete {encounter.guid} failed: ({ex.status_code} / edm={edm_status_code}) {ex.message}'
             )
+            response_data = ex.get_val('response_data', {})
             abort(
                 400,
                 'Delete failed',
-                vulnerableIndividualGuid=ex.get_val('vulnerable_individual_guid', None),
-                vulnerableSightingGuid=ex.get_val('vulnerable_sighting_guid', None),
+                vulnerableIndividualGuid=response_data.get('vulnerableIndividual'),
+                vulnerableSightingGuid=response_data.get('vulnerableSighting'),
             )
 
         # we have to roll our own response here (to return) as it seems the only way we can add a header

@@ -4,21 +4,21 @@
 Auth resources
 --------------
 """
-
+import json
 import logging
 
-from flask import current_app
+from flask import current_app, request
 from flask_login import current_user, login_user, logout_user
 from flask_restx_patched import Resource
 from flask_restx_patched._http import HTTPStatus
 
 from app.extensions import oauth2
-from app.extensions.api import Namespace, api_v1
+from app.extensions.api import Namespace, api_v1, abort
 from app.extensions.api.parameters import PaginationParameters
 from app.modules.users.models import User
 
 from . import schemas, parameters
-from .models import db, OAuth2Client
+from .models import db, OAuth2Client, Code, CodeDecisions, CodeTypes
 from .utils import (
     create_session_oauth2_token,
     delete_session_oauth2_token,
@@ -207,3 +207,31 @@ class ReCaptchaPublicServerKey(Resource):
             'recaptcha_public_key': current_app.config.get('RECAPTCHA_PUBLIC_KEY', None),
         }
         return response
+
+
+@api.route('/code/<string:code_string>')
+class CodeReceived(Resource):
+    def post(self, code_string):
+        decision, code = Code.received(code_string)
+        if decision == CodeDecisions.expired:
+            abort(400, f'Code {repr(code_string)} is expired')
+        if decision == CodeDecisions.error or code is None:
+            abort(400, f'Code {repr(code_string)} not found')
+        if decision == CodeDecisions.dismiss:
+            abort(400, f'Code {repr(code_string)} already used')
+
+        try:
+            data = json.loads(request.data)
+        except json.decoder.JSONDecodeError:
+            data = {}
+
+        if code.code_type == CodeTypes.recover:
+            try:
+                code.user.set_password(data.get('password', ''))
+            except Exception as e:
+                code.response = None
+                with db.session.begin():
+                    db.session.merge(code)
+                abort(400, str(e))
+        else:
+            abort(400, f'Unrecognized code type: {code.code_type}')

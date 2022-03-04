@@ -722,7 +722,7 @@ class User(db.Model, FeatherModel, UserEDMMixin):
         return self.get_codes(CodeTypes.recover, replace=True, replace_ttl=None)
 
     def set_password(self, password):
-        if password is None:
+        if not password:
             # This function "sets" the password, it's the responsibility of the caller to ensure it's valid
             raise ValueError('Empty password not allowed')
 

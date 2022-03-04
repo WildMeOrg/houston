@@ -304,7 +304,8 @@ def flask_app(gitlab_remote_login_pat):
                         log.info('Purge DB table %s' % table)
                         db.session.execute(table.delete())
 
-                es.init_elasticsearch_index(app, update=False)
+                with es.session.begin(blocking=True):
+                    es.init_elasticsearch_index(app, update=False)
 
             # Drop all (empty) tables
             db.drop_all()

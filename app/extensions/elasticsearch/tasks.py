@@ -12,16 +12,24 @@ log = logging.getLogger(__name__)
 
 @celery.on_after_configure.connect
 def elasticsearch_setup_periodic_tasks(sender, **kwargs):
+    elasticsearch_refresh_index_all_force.s()
+
     sender.add_periodic_task(
-        60, elasticsearch_refresh_index_all.s(), name='Refresh Elasticsearch'
+        60,
+        elasticsearch_refresh_index_all_update.s(),
+        name='Refresh Elasticsearch',
+    )
+    sender.add_periodic_task(
+        60 * 60,
+        elasticsearch_refresh_index_all_force.s(),
+        name='Refresh Elasticsearch (FORCED)',
     )
 
 
-@celery.task
-def elasticsearch_refresh_index_all():
+def _elasticsearch_refresh_index_all(force=False):
     # Re-index everything
     with es.session.begin(blocking=True):
-        es.init_elasticsearch_index(app=current_app, verbose=False)
+        es.init_elasticsearch_index(app=current_app, verbose=False, force=force)
 
     # Check on the status of the DB relative to ES
     status = es.es_status(app=current_app)
@@ -30,6 +38,16 @@ def elasticsearch_refresh_index_all():
     # Ignore any active jobs
     status.pop('active', None)
     return len(status) == 0
+
+
+@celery.task
+def elasticsearch_refresh_index_all_update():
+    return _elasticsearch_refresh_index_all(force=False)
+
+
+@celery.task
+def elasticsearch_refresh_index_all_force():
+    return _elasticsearch_refresh_index_all(force=True)
 
 
 @celery.task

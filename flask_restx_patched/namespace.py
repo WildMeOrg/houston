@@ -9,6 +9,7 @@ from flask_restx._http import HTTPStatus
 from webargs.flaskparser import parser as webargs_parser
 from werkzeug import cached_property  # NOQA
 from werkzeug import exceptions as http_exceptions
+import elasticsearch
 import os
 
 from .model import Model, DefaultHTTPErrorSchema
@@ -511,6 +512,18 @@ class Namespace(OriginalNamespace):
                             with permission(**kwargs_on_request(kwargs)):
                                 try:
                                     return func(*args, **kwargs)
+                                except elasticsearch.RequestError as ex:
+                                    code = HTTPStatus.BAD_REQUEST
+                                    description = {
+                                        'status': code.value,
+                                        'message': 'Elasticsearch encountered an error with your request',
+                                    }
+                                    info = ex.info
+                                    error = info.get('error', None)
+                                    if error is not None:
+                                        description['details'] = error
+                                    response = flask.make_response(description, code)
+                                    return response
                                 except Exception as ex:
                                     import app.extensions.logging as AuditLog  # NOQA
 

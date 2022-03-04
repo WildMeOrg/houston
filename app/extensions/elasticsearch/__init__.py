@@ -115,10 +115,16 @@ class ElasticsearchModel(object):
         from app.extensions.elasticsearch import elasticsearch_on_class
 
         body = {}
+
+        if search is None:
+            search = {}
+
         if len(search) > 0:
             body['query'] = search
 
-        objs = elasticsearch_on_class(app, cls, body, *args, **kwargs)
+        with session.begin():
+            objs = elasticsearch_on_class(app, cls, body, *args, **kwargs)
+
         return objs
 
     @property

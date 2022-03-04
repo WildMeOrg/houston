@@ -690,4 +690,22 @@ def wait_for_elasticsearch_status(flask_app_client, user):
 
         counter += 1
         time.sleep(1)
->>>>>>> 687e0ec5 (Mission tests)
+
+
+def elasticsearch(flask_app_client, user, namespace, data=None, expected_status_code=200):
+    if data is None:
+        data = {}
+
+    scope = '%s:read' % (namespace,)
+    with flask_app_client.login(user, auth_scopes=(scope,)):
+        response = flask_app_client.post(
+            '/api/v1/%s/search/' % (namespace,),
+            content_type='application/json',
+            data=json.dumps(data),
+        )
+
+    if expected_status_code == 200:
+        validate_list_response(response, 200)
+    else:
+        validate_dict_response(response, expected_status_code, {'status', 'message'})
+    return response

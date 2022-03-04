@@ -76,6 +76,7 @@ def test_delete_method(
     response = enc_utils.delete_encounter(
         flask_app_client, staff_user, enc1_id, expected_status_code=400
     )
+    assert response.json['vulnerableSightingGuid'] == sighting_id
     ct = test_utils.all_count(db)
     assert ct['Encounter'] == orig_ct['Encounter'] + 1
 
@@ -84,6 +85,7 @@ def test_delete_method(
     response = enc_utils.delete_encounter(
         flask_app_client, staff_user, enc1_id, headers=headers, expected_status_code=400
     )
+    assert response.json['vulnerableIndividualGuid'] == individual_guid
 
     # now this should work but take the sighting and individual with it as well
     headers = (

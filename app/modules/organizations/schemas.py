@@ -21,6 +21,8 @@ class BaseOrganizationSchema(ModelSchema):
         fields = (
             Organization.guid.key,
             Organization.title.key,
+            'elasticsearchable',
+            Organization.indexed.key,
         )
         dump_only = (Organization.guid.key,)
 

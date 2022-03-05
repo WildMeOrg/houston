@@ -76,6 +76,8 @@ class BaseAssetGroupSightingSchema(ModelSchema):
         fields = (
             AssetGroupSighting.guid.key,
             AssetGroupSighting.stage.key,
+            'elasticsearchable',
+            AssetGroupSighting.indexed.key,
         )
         dump_only = (AssetGroupSighting.guid.key,)
 

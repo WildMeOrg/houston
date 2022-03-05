@@ -18,7 +18,11 @@ class BaseFileUploadSchema(ModelSchema):
     class Meta:
         # pylint: disable=missing-docstring
         model = FileUpload
-        fields = (FileUpload.guid.key,)
+        fields = (
+            FileUpload.guid.key,
+            'elasticsearchable',
+            FileUpload.indexed.key,
+        )
         dump_only = (FileUpload.guid.key,)
 
 

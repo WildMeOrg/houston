@@ -97,7 +97,7 @@ class ElasticsearchModel(object):
                         .all()
                     )
 
-                guids = set([item[0] for item in guids])
+                guids = sorted(set([item[0] for item in guids]))
                 log.info(
                     'Elasticsearch Index All %r (%d items)'
                     % (
@@ -130,6 +130,10 @@ class ElasticsearchModel(object):
     @property
     def index_name(self):
         return self.__class__._index()
+
+    @property
+    def elasticsearchable(self):
+        return self.indexed >= self.updated
 
     def index_hook_obj(self):
         return self.__class__.index_hook_cls()
@@ -270,7 +274,7 @@ class ElasticSearchBulkOperation(object):
         outdated = []
         skipped = 0
         for obj, force in items:
-            if force or obj.updated > obj.indexed:
+            if force or not obj.elasticsearchable:
                 outdated.append(obj)
             else:
                 skipped += 1
@@ -301,7 +305,7 @@ class ElasticSearchBulkOperation(object):
         except (AssertionError, helpers.errors.BulkIndexError):
             if len(items) == 1:
                 obj, force = items[0]
-                return obj.updated <= obj.indexed
+                return obj.elasticsearchable
 
             total = 0
             new_level = level + 1
@@ -631,6 +635,23 @@ def es_index(obj, init=False, app=None, force=False):
         return resp
 
 
+def es_all_indices(app=None):
+    from flask import current_app
+
+    if app is None:
+        app = current_app
+
+    stats = app.es.indices.stats()
+    indices = sorted(stats['indices'].keys())
+
+    response = []
+    for index in indices:
+        if not index.startswith('.'):
+            response.append(index)
+
+    return response
+
+
 def es_add(*args, **kwargs):
     return es_index(*args, **kwargs)
 
@@ -672,6 +693,18 @@ def es_index_exists(index, app=None):
     return app.es.indices.exists(index)
 
 
+def es_index_mappings(index, app=None):
+    from flask import current_app
+
+    if app is None:
+        app = current_app
+
+    resp = app.es.indices.get_mapping(index)
+    mappings = resp.get(index, {}).get('mappings', {}).get('properties', {})
+
+    return mappings
+
+
 def es_index_has_mapping(cls, key, app=None):
     from flask import current_app
 
@@ -683,8 +716,7 @@ def es_index_has_mapping(cls, key, app=None):
     if index is None:
         return False
 
-    resp = app.es.indices.get_mapping(index)
-    mappings = resp.get(index, {}).get('mappings', {}).get('properties', {})
+    mappings = es_index_mappings(index)
 
     return key in mappings
 
@@ -1029,6 +1061,9 @@ def elasticsearch_on_class(app, cls, body, load=True):
                 items.append(guid)
             else:
                 prune.append(guid)
+
+        # Sort the items
+        items = sorted(items)
 
     if len(prune) > 0:
         prune = list(set(prune))

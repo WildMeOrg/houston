@@ -24,6 +24,8 @@ class BaseUserSchema(ModelSchema):
             User.guid.key,
             User.email.key,
             User.full_name.key,
+            'elasticsearchable',
+            User.indexed.key,
         )
         dump_only = (User.guid.key,)
 

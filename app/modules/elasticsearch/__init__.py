@@ -17,7 +17,7 @@ def init_app(app, **kwargs):
     """
     Init elasticsearch module.
     """
-    # api_v1.add_oauth_scope('search:read', 'Provide access to search')
+    api_v1.add_oauth_scope('search:read', 'Provide access to search')
 
     # Touch underlying modules
     from . import resources  # NOQA

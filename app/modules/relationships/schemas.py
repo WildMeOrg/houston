@@ -19,7 +19,11 @@ class BaseRelationshipSchema(ModelSchema):
     class Meta:
         # pylint: disable=missing-docstring
         model = Relationship
-        fields = (Relationship.guid.key,)
+        fields = (
+            Relationship.guid.key,
+            'elasticsearchable',
+            Relationship.indexed.key,
+        )
         dump_only = (Relationship.guid.key,)
 
 

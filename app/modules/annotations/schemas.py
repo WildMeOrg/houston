@@ -26,6 +26,8 @@ class BaseAnnotationSchema(ModelSchema):
             else 'encounter_guid',
             Annotation.ia_class.key,
             Annotation.viewpoint.key,
+            'elasticsearchable',
+            Annotation.indexed.key,
         )
         dump_only = (Annotation.guid.key,)
 

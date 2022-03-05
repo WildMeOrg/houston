@@ -339,6 +339,7 @@ def test_get_mission_assets(flask_app_client, data_manager_1, test_root):
 
     ASSETS = 1000
     MISSION_COLLECTIONS = 2
+    TARGET_SIZE_BYTES = 10400
 
     transaction_id, test_filename = tus_utils.prep_tus_dir(test_root)
     transaction_ids = []
@@ -403,16 +404,21 @@ def test_get_mission_assets(flask_app_client, data_manager_1, test_root):
         search = {
             'range': {
                 'size_bytes': {
-                    'lte': 10400,
+                    'lte': TARGET_SIZE_BYTES,
                 }
             }
         }
+
+        counter = 0
+        for asset in assets:
+            if asset.size_bytes <= TARGET_SIZE_BYTES:
+                counter += 1
 
         # Check that the API for a mission's collections agrees
         response = mission_utils.elasticsearch_mission_assets(
             flask_app_client, data_manager_1, temp_mission.guid, search
         )
-        assert len(response.json) < 100
+        assert len(response.json) == counter
 
         missions = Mission.query.all()
         mission_collections = MissionCollection.query.all()

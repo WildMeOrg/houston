@@ -23,7 +23,11 @@ class BaseSightingSchema(ModelSchema):
     class Meta:
         # pylint: disable=missing-docstring
         model = Sighting
-        fields = (Sighting.guid.key,)
+        fields = (
+            Sighting.guid.key,
+            'elasticsearchable',
+            Sighting.indexed.key,
+        )
         dump_only = (Sighting.guid.key,)
 
 

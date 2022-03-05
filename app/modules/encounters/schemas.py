@@ -45,7 +45,11 @@ class ElasticsearchEncounterSchema(ModelSchema):
     class Meta:
         # pylint: disable=missing-docstring
         model = Encounter
-        fields = (Encounter.guid.key,)
+        fields = (
+            Encounter.guid.key,
+            'elasticsearchable',
+            Encounter.indexed.key,
+        )
         dump_only = (Encounter.guid.key,)
 
 

@@ -25,7 +25,13 @@ class BaseAssetSchema(ModelSchema):
     class Meta:
         # pylint: disable=missing-docstring
         model = Asset
-        fields = (Asset.guid.key, 'filename', 'src')
+        fields = (
+            Asset.guid.key,
+            'filename',
+            'src',
+            'elasticsearchable',
+            Asset.indexed.key,
+        )
         dump_only = (Asset.guid.key,)
 
 
@@ -151,6 +157,8 @@ class BaseGitStoreSchema(ModelSchema):
             GitStore.commit.key,
             GitStore.major_type.key,
             GitStore.description.key,
+            'elasticsearchable',
+            GitStore.indexed.key,
         )
         dump_only = (
             GitStore.guid.key,

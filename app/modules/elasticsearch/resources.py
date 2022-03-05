@@ -17,17 +17,28 @@ log = logging.getLogger(__name__)
 api = Namespace('search', description='Searching via Elasticsearch')
 
 
-@api.route('/proxy/<string:index>')
-# @api.login_required(oauth_scopes=['search:read'])
-class ElasticsearchProxy(Resource):
-    def post(self, index):
-        body = request.get_data()
-        resp = current_app.elasticsearch.search(index=index, body=body)
-        return resp
+@api.route('/')
+@api.login_required(oauth_scopes=['search:read'])
+class ElasticsearchListIndices(Resource):
+    def get(self):
+        from app.extensions import elasticsearch as es
+
+        indices = es.es_all_indices()
+        return indices
+
+
+@api.route('/<string:index>/mappings')
+@api.login_required(oauth_scopes=['search:read'])
+class ElasticsearchMappings(Resource):
+    def get(self, index):
+        from app.extensions import elasticsearch as es
+
+        mappings = es.es_index_mappings(index)
+        return mappings
 
 
 @api.route('/status')
-# @api.login_required(oauth_scopes=['search:read'])
+@api.login_required(oauth_scopes=['search:read'])
 class ElasticsearchStatus(Resource):
     """Check the search status of the elasticsearch backend service"""
 
@@ -40,3 +51,12 @@ class ElasticsearchStatus(Resource):
             status = {}
 
         return status
+
+
+@api.route('/proxy/<string:index>')
+# @api.login_required(oauth_scopes=['search:read'])
+class ElasticsearchProxy(Resource):
+    def post(self, index):
+        body = request.get_data()
+        resp = current_app.elasticsearch.search(index=index, body=body)
+        return resp

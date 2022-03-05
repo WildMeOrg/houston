@@ -26,10 +26,10 @@ def elasticsearch_setup_periodic_tasks(sender, **kwargs):
     )
 
 
-def _elasticsearch_refresh_index_all(force=False):
+def _elasticsearch_refresh_index_all(**kwargs):
     # Re-index everything
     with es.session.begin(blocking=True):
-        es.init_elasticsearch_index(app=current_app, verbose=False, force=force)
+        es.init_elasticsearch_index(app=current_app, verbose=False, **kwargs)
 
     # Check on the status of the DB relative to ES
     status = es.es_status(app=current_app)

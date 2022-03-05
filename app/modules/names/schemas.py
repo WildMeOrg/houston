@@ -23,6 +23,8 @@ class BaseNameSchema(ModelSchema):
             Name.guid.key,
             Name.context.key,
             Name.value.key,
+            'elasticsearchable',
+            Name.indexed.key,
         )
         dump_only = (Name.guid.key,)
 

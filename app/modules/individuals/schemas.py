@@ -28,6 +28,8 @@ class BaseIndividualSchema(ModelSchema):
             Individual.guid.key,
             'hasView',
             'hasEdit',
+            'elasticsearchable',
+            Individual.indexed.key,
         )
         dump_only = (Individual.guid.key,)
 

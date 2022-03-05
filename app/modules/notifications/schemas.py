@@ -44,7 +44,9 @@ class BaseNotificationSchema(ModelSchema):
             'sender_name',
             Notification.sender_guid.key,
             Notification.message_type.key,
-            'created',
+            Notification.created.key,
+            'elasticsearchable',
+            Notification.indexed.key,
         )
         dump_only = (Notification.guid.key,)
 

@@ -22,6 +22,8 @@ class BaseMissionSchema(ModelSchema):
             Mission.guid.key,
             Mission.title.key,
             Mission.created.key,
+            'elasticsearchable',
+            Mission.indexed.key,
         )
         dump_only = (Mission.guid.key,)
 
@@ -85,6 +87,8 @@ class BaseMissionCollectionSchema(ModelSchema):
             MissionCollection.major_type.key,
             MissionCollection.description.key,
             'asset_count',
+            'elasticsearchable',
+            MissionCollection.indexed.key,
         )
         dump_only = (
             MissionCollection.guid.key,
@@ -144,6 +148,8 @@ class BaseMissionTaskSchema(ModelSchema):
             MissionTask.guid.key,
             MissionTask.title.key,
             'mission',
+            'elasticsearchable',
+            MissionTask.indexed.key,
         )
         dump_only = (MissionTask.guid.key,)
 
@@ -157,6 +163,8 @@ class BaseMissionTaskTableSchema(ModelSchema):
             MissionTask.guid.key,
             MissionTask.title.key,
             'asset_count',
+            'elasticsearchable',
+            MissionTask.indexed.key,
         )
         dump_only = (MissionTask.guid.key,)
 

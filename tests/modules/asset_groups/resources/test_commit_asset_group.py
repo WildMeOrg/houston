@@ -133,6 +133,7 @@ def test_commit_asset_group_ia(
         flask_app_client, db, researcher_1, asset_group_sighting_guid, asset_uuid
     )
 
+    # TODO fix these -- no longer valid for matching_set options
     ia_configs = [
         {
             'algorithms': [

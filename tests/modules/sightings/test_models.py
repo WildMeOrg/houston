@@ -116,13 +116,13 @@ def test_sighting_jobs(db, request, researcher_1):
 
     ia_config1 = [
         {
-            'matchingSetDataOwners': 'mine',
+            'matching_set': {'test': 0},
             'algorithms': {'algorithm_id': 'algorithm1'},
         },
     ]
     ia_config2 = [
         {
-            'matchingSetDataOwners': 'extended',
+            'matching_set': {'test': 1},
             'algorithms': {'algorithm_id': 'algorithm2'},
         },
     ]
@@ -174,7 +174,7 @@ def test_sighting_jobs(db, request, researcher_1):
 
     assert Sighting.query.get(sighting1.guid).jobs == {
         str(job_id1): {
-            'matching_set': 'mine',
+            'matching_set': {'test': 0},
             'algorithm': 'algorithm1',
             'annotation': 'aid1',
             'active': True,
@@ -183,7 +183,7 @@ def test_sighting_jobs(db, request, researcher_1):
     }
     assert Sighting.query.get(sighting2.guid).jobs == {
         str(job_id2): {
-            'matching_set': 'extended',
+            'matching_set': {'test': 1},
             'algorithm': 'algorithm2',
             'annotation': 'aid2',
             'active': True,

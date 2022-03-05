@@ -340,7 +340,7 @@ class Sighting(db.Model, FeatherModel):
 
             if verbose:
                 details[-1]['request'] = self.build_identification_request(
-                    self.jobs[job_id]['matching_set'],
+                    self.jobs[job_id].get('matching_set'),
                     self.jobs[job_id]['annotation'],
                     job_id,
                     self.jobs[job_id]['algorithm'],
@@ -579,31 +579,22 @@ class Sighting(db.Model, FeatherModel):
             )
             self.add_encounter(encounter)
 
-    def _get_matching_set_annots(self, matching_set_option):
-        annots = []
+    # specifically to pass to Sage, so we dress it up accordingly
+    def get_matching_set_data(self, annotation_guid, matching_set_config=None):
+        from app.extensions.acm import to_acm_uuid
 
-        # Must match the options validated in the metadata.py
-        if matching_set_option == 'mine':
-            data_owner = self.single_encounter_owner()
-            assert data_owner
-            annots = data_owner.get_my_annotations()
-        elif matching_set_option == 'extended':
-            data_owner = self.single_encounter_owner()
-            assert data_owner
-            annots = data_owner.get_all_annotations()
-        elif matching_set_option == 'all':
-            annots = Annotation.query.all()
-        else:
-            # Should have been caught at the metadata validation
-            log.error(f'MatchingDataSet {matching_set_option} not supported')
+        annotation = Annotation.query.get(annotation_guid)
+        assert annotation
+        log.debug(
+            f'sighting {self} finding matching set for {annotation} using {matching_set_config}'
+        )
+        # may wish to run query through annotation.resolve_matching_set_query(query)
+        query_annotations = annotation.get_matching_set(matching_set_config)
+        return query_annotations
 
-        unique_annots = set(annots)
-        return unique_annots
-
-    def get_matching_set_data(self, matching_set_option):
-        from app.extensions.acm import to_acm_uuid, default_acm_individual_uuid
-
-        unique_annots = self._get_matching_set_annots(matching_set_option)
+        # TODO fix this......
+        return [], []
+        unique_annots = self._get_matching_set_annots(matching_set_config)
         matching_set_individual_uuids = []
         matching_set_annot_uuids = []
         for annot in unique_annots:
@@ -626,23 +617,19 @@ class Sighting(db.Model, FeatherModel):
         )
         return matching_set_individual_uuids, matching_set_annot_uuids
 
-    def _has_matching_set(self, matching_set_option):
-        unique_annots = self._get_matching_set_annots(matching_set_option)
-        for annot in unique_annots:
-            if annot.encounter:
-                if annot.encounter.sighting.stage == SightingStage.processed:
-                    return True
-        return False
+    def _has_matching_set(self, matching_set_config):
+        # TODO make me!
+        return True
 
     def build_identification_request(
-        self, config_id, annotation_uuid, job_uuid, algorithm
+        self, matching_set_config, annotation_uuid, job_uuid, algorithm
     ):
         from app.extensions.acm import default_acm_individual_uuid
 
         (
             matching_set_individual_uuids,
             matching_set_annot_uuids,
-        ) = self.get_matching_set_data(config_id)
+        ) = self.get_matching_set_data(annotation_uuid, matching_set_config)
 
         assert len(matching_set_individual_uuids) == len(matching_set_annot_uuids)
 
@@ -698,10 +685,10 @@ class Sighting(db.Model, FeatherModel):
 
         # Message construction has to be in the task as the jobId must be unique
         job_uuid = uuid.uuid4()
-        matching_set_data = self.id_configs[config_id].get('matchingSetDataOwners')
+        matching_set_config = self.id_configs[config_id].get('matching_set')
         algorithm = self.id_configs[config_id]['algorithms'][algorithm_id]
         id_request = self.build_identification_request(
-            matching_set_data, annotation_sage_uuid, job_uuid, algorithm
+            matching_set_config, annotation_sage_uuid, job_uuid, algorithm
         )
         if id_request != {}:
             encoded_request = encode_acm_request(id_request)
@@ -712,7 +699,7 @@ class Sighting(db.Model, FeatherModel):
 
                 log.info(f'Sent ID Request, creating job {job_uuid}')
                 self.jobs[str(job_uuid)] = {
-                    'matching_set': matching_set_data,
+                    'matching_set': matching_set_config,
                     'algorithm': algorithm,
                     'annotation': str(annotation_uuid),
                     'active': True,
@@ -1050,10 +1037,9 @@ class Sighting(db.Model, FeatherModel):
                 assert 'algorithms' in config
                 # Only one for MVP
                 assert len(config['algorithms']) == 1
-                assert 'matchingSetDataOwners' in config
 
                 # Only use the algorithm if there is a matching data set to ID against
-                if self._has_matching_set(config['matchingSetDataOwners']):
+                if self._has_matching_set(config.get('matching_set')):
                     num_algorithms += len(config['algorithms'])
 
                 # For now, regions are ignored

@@ -64,6 +64,9 @@ def test_sighting_identification(
     with db.session.begin(subtransactions=True):
         db.session.merge(target_annot)
         db.session.merge(query_annot)
+    print(
+        f'>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> {target_annot} {query_annot} <<<<<<<<<<<<<<<<<'
+    )
     # need to give both annots a sage content uuid
 
     # Here starts the test for real
@@ -73,7 +76,6 @@ def test_sighting_identification(
             'algorithms': [
                 'hotspotter_nosv',
             ],
-            'matchingSetDataOwners': 'mine',
         }
     ]
     patch_data = [test_utils.patch_replace_op('idConfigs', id_configs)]

@@ -253,6 +253,8 @@ class Annotation(db.Model, HoustonModel):
             raise ValueError(f'{self} has no Encounter so cannot be matched against')
         if not query or not isinstance(query, dict):
             query = self.get_matching_set_default_query()
+        log.info(f'finding matching set for {self} using query {query}')
+        return set()
         # do ES query!   FIXME
 
     def get_matching_set_default_query(self):

@@ -133,7 +133,6 @@ def test_sighting_identification_jobs(
             'algorithms': [
                 'hotspotter_nosv',
             ],
-            'matchingSetDataOwners': 'mine',
         }
     ]
 

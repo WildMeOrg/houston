@@ -97,6 +97,8 @@ def test_sightings(session, login, codex_url, test_root, admin_name):
         'assets': [
             {
                 'git_store': {
+                    'elasticsearchable': assets[0]['git_store']['elasticsearchable'],
+                    'indexed': assets[0]['git_store']['indexed'],
                     'guid': assets[0]['git_store']['guid'],
                     'commit': assets[0]['git_store']['commit'],
                     'description': assets[0]['git_store']['description'],
@@ -114,11 +116,15 @@ def test_sightings(session, login, codex_url, test_root, admin_name):
                         'encounter_guid': None,
                         'ia_class': 'zebra',
                         'viewpoint': 'right',
+                        'elasticsearchable': annots_0[0]['elasticsearchable'],
+                        'indexed': annots_0[0]['indexed'],
                     },
                 ],
                 # 2021-11-09T11:15:08.923895+00:00
                 'classifications': None,
                 'created': assets[0]['created'],
+                'indexed': assets[0]['indexed'],
+                'elasticsearchable': assets[0]['elasticsearchable'],
                 'dimensions': {'width': 1000, 'height': 664},
                 'filename': 'zebra.jpg',
                 'guid': assets[0]['guid'],
@@ -184,7 +190,9 @@ def test_sightings(session, login, codex_url, test_root, admin_name):
         },
         'created': response.json()['created'],
         'updated': response.json()['updated'],
+        'indexed': response.json()['indexed'],
         'detection_start_time': response.json()['detection_start_time'],
+        'elasticsearchable': response.json()['createdHouston'],
         'curation_start_time': response.json()['curation_start_time'],
         'identification_start_time': None,
         'unreviewed_start_time': response.json()['unreviewed_start_time'],

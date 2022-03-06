@@ -80,29 +80,37 @@ class ElasticsearchModel(object):
         with es.session.begin():
             if prune:
                 # Delete anything from the index that is not in the database
-                cls.elasticsearch(search={}, app=app, load=False)
+                indexed_guids = set(cls.elasticsearch(search={}, app=app, load=False))
 
             if pit:
                 # Establish a new point-in-time
                 cls.pit(app=app)
 
             if update:
+                all_guids = cls.query.with_entities(cls.guid).all()
+                all_guids = set([item[0] for item in all_guids])
+
+                missing_guids = all_guids - indexed_guids
+
                 # If not forcing, only update the items that are outdated
                 if force:
-                    guids = cls.query.with_entities(cls.guid).all()
+                    outdated_guids = all_guids
                 else:
-                    guids = (
+                    outdated_guids = (
                         cls.query.filter(cls.updated > cls.indexed)
                         .with_entities(cls.guid)
                         .all()
                     )
+                    outdated_guids = set([item[0] for item in outdated_guids])
 
-                guids = sorted(set([item[0] for item in guids]))
+                guids = list(missing_guids | outdated_guids)
                 log.info(
-                    'Elasticsearch Index All %r (%d items)'
+                    'Elasticsearch Index All %r into %r (%d items, force=%r)'
                     % (
                         cls,
+                        index,
                         len(guids),
+                        force,
                     )
                 )
                 # Re-index all objects in our local database
@@ -176,23 +184,32 @@ class ElasticsearchModel(object):
 class ElasticSearchBulkOperation(object):
     def __init__(self, app=None, blocking=None):
         self.app = app
-        self.depth = []
         self.config = {}
 
         if blocking is None:
             blocking = app.config.get('ELASTICSEARCH_BLOCKING', False)
         self.blocking = blocking
 
-        self.BULK_MODE = None
-        self.BULK_ACTIONS = {}
-
-        self._reset(False)
+        self.reset()
 
     def in_bulk_mode(self):
-        return self.BULK_MODE in [True, None]
+        return len(self.depth) > 0
+
+    def in_skip_mode(self):
+        return self.in_bulk_mode() and self.depth[0] is None
 
     def track_bulk_action(self, action, item, force=False):
-        if self.BULK_MODE in [None]:
+        log.debug(
+            'Tracking %r action for %r (force = %r)'
+            % (
+                action,
+                item,
+                force,
+            )
+        )
+
+        if self.in_skip_mode():
+            log.debug('...skipped')
             return 'skipped'
 
         action = action.lower().strip()
@@ -206,22 +223,23 @@ class ElasticSearchBulkOperation(object):
         else:
             raise RuntimeError()
 
-        if cls not in self.BULK_ACTIONS:
-            self.BULK_ACTIONS[cls] = {}
-        if action not in self.BULK_ACTIONS[cls]:
-            self.BULK_ACTIONS[cls][action] = []
+        if cls not in self.bulk_actions:
+            self.bulk_actions[cls] = {}
+        if action not in self.bulk_actions[cls]:
+            self.bulk_actions[cls][action] = []
 
-        self.BULK_ACTIONS[cls][action].append(item)
+        self.bulk_actions[cls][action].append(item)
+        log.debug('...tracked')
+
         return 'tracked'
 
     def begin(self, **kwargs):
         self.config = kwargs
         return self
 
-    def _reset(self, mode, purge=True):
-        self.BULK_MODE = mode
-        if purge and len(self.depth) == 0:
-            self.BULK_ACTIONS = {}
+    def reset(self):
+        self.depth = []
+        self.bulk_actions = {}
 
     def _es_exists_bulk(self, cls, guids, app=None):
         exists = set([])
@@ -272,15 +290,33 @@ class ElasticSearchBulkOperation(object):
             return 0
 
         outdated = []
-        skipped = 0
-        for obj, force in items:
-            if force or not obj.elasticsearchable:
+        forced = []
+        skipped = []
+        for item in items:
+            obj, force = item
+            if not obj.elasticsearchable:
                 outdated.append(obj)
+            elif force:
+                forced.append(obj)
             else:
-                skipped += 1
+                skipped.append(obj)
 
-        if len(outdated) == 0:
-            return skipped
+        log.info(
+            'Indexing (Bulk) %r into %r (%d items: %d outdated, %d forced, %d skipped)'
+            % (
+                cls,
+                index,
+                len(items),
+                len(outdated),
+                len(forced),
+                len(skipped),
+            )
+        )
+
+        pending = outdated + forced
+
+        if len(pending) == 0:
+            return len(skipped)
 
         level_str = '' if level == 0 else ' [retry=%d]' % (level,)
         desc = 'Indexing (Bulk) %s%s' % (
@@ -289,7 +325,7 @@ class ElasticSearchBulkOperation(object):
         )
 
         actions = []
-        for obj in tqdm.tqdm(outdated, desc=desc):
+        for obj in tqdm.tqdm(pending, desc=desc):
             index_, id_, body = build_elasticsearch_index_body(obj)
             assert index == index_
             action = body
@@ -325,11 +361,11 @@ class ElasticSearchBulkOperation(object):
         # We only update the indexed timestamps of the objects that succeded as a group
         log.info('Time-stamping (Bulk) %s' % (cls.__name__,))
         with db.session.begin(subtransactions=True):
-            for obj in outdated:
+            for obj in pending:
                 obj.indexed = datetime.datetime.utcnow()
                 db.session.merge(obj)
 
-        total = len(actions) + skipped
+        total = len(actions) + len(skipped)
         return total
 
     def _es_delete_guid_bulk(self, cls, guids, app=None, level=0):
@@ -344,7 +380,7 @@ class ElasticSearchBulkOperation(object):
         exists = self._es_exists_bulk(cls, guids, app=app)
 
         actions = []
-        skipped = 0
+        skipped = []
         for guid in guids:
             id_ = str(guid)
             if id_ in exists:
@@ -354,19 +390,23 @@ class ElasticSearchBulkOperation(object):
                 }
                 actions.append(action)
             else:
-                skipped += 1
-
-        if len(actions) == 0:
-            return skipped
+                skipped.append(guid)
 
         level_str = '' if level == 0 else ' [retry=%d]' % (level,)
         log.info(
-            'Pruning (Bulk) %s%s'
+            'Deleting (Bulk) %r into %r (%d guids: %d actions, %d skipped)%s'
             % (
-                cls.__name__,
+                cls,
+                index,
+                len(guids),
+                len(actions),
+                len(skipped),
                 level_str,
             )
         )
+
+        if len(actions) == 0:
+            return len(skipped)
 
         try:
             total, errors = helpers.bulk(
@@ -398,12 +438,26 @@ class ElasticSearchBulkOperation(object):
 
             return total
 
-        total = len(actions) + skipped
+        total = len(actions) + len(skipped)
         return total
 
     def enter(self):
-        if len(self.depth) == 0:
-            self._reset(True)
+        if self.in_bulk_mode():
+            if len(self.config) > 0:
+                top_config = self.depth[0]
+                new_config = self.config
+                top_json = json.dumps(top_config, sort_keys=True)
+                new_json = json.dumps(new_config, sort_keys=True)
+                if top_json != new_json:
+                    log.warning(
+                        'Nested ES sessions respect the config of the top-level context, ignoring config %r and using %r instead'
+                        % (
+                            new_json,
+                            top_config,
+                        )
+                    )
+        else:
+            self.reset()
         self.depth.append(self.config)
         self.config = {}
 
@@ -413,27 +467,46 @@ class ElasticSearchBulkOperation(object):
         global CELERY_ASYNC_PROMISES
 
         if len(self.depth) == 0:
+            self.reset()
             return
 
         config = self.depth.pop()
 
         if len(self.depth) == 0:
+            self.depth.append(
+                None
+            )  # Block any sessions that happen in this block from working
+
             blocking = config.get('blocking', self.blocking)
+            disabled = config.get('disabled', not config.get('enabled', True))
 
-            # Disable all bulk tracking for now
-            self._reset(None, purge=False)
+            keys = self.bulk_actions.keys()
+            log.debug('ES exit block with %r keys' % (keys,))
 
-            keys = self.BULK_ACTIONS.keys()
             for cls in keys:
                 index = get_elasticsearch_index_name(cls)
 
                 if index is None:
                     continue
 
-                bulk_actions = self.BULK_ACTIONS.get(cls, {})
+                cls_bulk_actions = self.bulk_actions.get(cls, {})
+                del_items = set(cls_bulk_actions.get('delete', []))
+                idx_items = list(set(cls_bulk_actions.get('index', [])))
+
+                log.debug(
+                    'Processing ES exit for %r (%d delete, %d index)'
+                    % (
+                        cls,
+                        len(del_items),
+                        len(idx_items),
+                    )
+                )
+
+                if disabled:
+                    log.debug('...disabled')
+                    continue
 
                 # Delete all of the delete items
-                del_items = set(bulk_actions.get('delete', []))
                 if len(del_items) > 0:
                     if es_index_exists(index, app=self.app):
                         del_items_ = list(del_items)
@@ -458,9 +531,6 @@ class ElasticSearchBulkOperation(object):
                             promise = signature.apply_async()
                             CELERY_ASYNC_PROMISES.append((signature, promise))
 
-                # Index everything that isn't deleted
-                idx_items = list(set(bulk_actions.get('index', [])))
-
                 # Filter out any items that were just deleted
                 items = []
                 for item in idx_items:
@@ -469,6 +539,7 @@ class ElasticSearchBulkOperation(object):
                         continue
                     items.append(item)
 
+                # Index everything that isn't deleted
                 if len(items) > 0:
                     # Index all items
                     if blocking:
@@ -492,7 +563,13 @@ class ElasticSearchBulkOperation(object):
                 # Refresh the index
                 es_refresh(index, app=self.app)
 
-            self._reset(False)
+            # Reset the depth back to zero now that we are done
+            assert len(self.depth) == 1
+            placeholder = self.depth.pop()
+            assert placeholder is None
+            assert len(self.depth) == 0
+
+            self.reset()
 
     def __enter__(self):
         return self.enter()
@@ -501,7 +578,9 @@ class ElasticSearchBulkOperation(object):
         return self.exit()
 
 
-def check_celery(verbose=True):
+def check_celery(verbose=True, revoke=False):
+    from app.extensions.celery import celery
+
     global CELERY_ASYNC_PROMISES
 
     active = []
@@ -509,7 +588,9 @@ def check_celery(verbose=True):
         if promise.ready():
             status = promise.result
             if not status:
-                if signature.retries > 0:
+                if revoke:
+                    log.warning('Celery task ID %r dropped' % (promise.task_id,))
+                elif signature.retries > 0:
                     log.warning(
                         'Celery task ID %r failed (retrying %d)'
                         % (
@@ -526,7 +607,10 @@ def check_celery(verbose=True):
                     )
                     log.error(signature)
         else:
-            active.append((signature, promise))
+            if revoke:
+                celery.control.revoke(promise.task_id, terminate=True)
+            else:
+                active.append((signature, promise))
 
     CELERY_ASYNC_PROMISES = active
 
@@ -650,6 +734,18 @@ def es_all_indices(app=None):
             response.append(index)
 
     return response
+
+
+def es_delete_index(index, app=None):
+    from flask import current_app
+
+    if app is None:
+        app = current_app
+
+    response = app.es.indices.delete(index)
+    acknowledged = response.get('acknowledged', False)
+
+    return acknowledged
 
 
 def es_add(*args, **kwargs):
@@ -963,6 +1059,9 @@ def build_elasticsearch_index_body(obj):
             )
     else:
         body = schema().dump(obj).data
+
+    body.pop('elasticsearchable', None)
+    body['indexed'] = f'{datetime.datetime.utcnow().isoformat()}+00:00'
 
     return index, obj.guid, body
 

@@ -665,7 +665,7 @@ def get_elasticsearch_status(flask_app_client, user, expected_status_code=200):
     return status
 
 
-def wait_for_elasticsearch_status(flask_app_client, user):
+def wait_for_elasticsearch_status(flask_app_client, user, force=True):
     from app.extensions import elasticsearch as es
 
     app = flask_app_client.application
@@ -673,6 +673,9 @@ def wait_for_elasticsearch_status(flask_app_client, user):
     counter = 0
     status = [None]
     while True:
+        with es.session.begin(blocking=True):
+            es.init_elasticsearch_index(app=app, force=force, verbose=False)
+
         try:
             status = get_elasticsearch_status(flask_app_client, user)
         except json.decoder.JSONDecodeError:
@@ -684,9 +687,6 @@ def wait_for_elasticsearch_status(flask_app_client, user):
 
         if counter > 10:
             raise RuntimeError()
-
-        with es.session.begin(blocking=True):
-            es.init_elasticsearch_index(app=app, verbose=False)
 
         counter += 1
         time.sleep(1)

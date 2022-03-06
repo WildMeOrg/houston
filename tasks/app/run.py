@@ -13,11 +13,6 @@ import platform
 import logging
 from flask_restx_patched import is_extension_enabled
 
-try:
-    from invoke import ctask as task
-except ImportError:  # Invoke 0.13 renamed ctask to task
-    from invoke import task
-
 from tasks.utils import app_context_task
 
 
@@ -82,8 +77,7 @@ def warmup(
     return app
 
 
-@task(default=True)
-@app_context_task()
+@app_context_task(default=True)
 def run(
     context,
     host=DEFAULT_HOST,

@@ -156,6 +156,19 @@ def check_cleanup_objects(db):
     ), 'Some objects created in the test need to be cleaned up'
 
 
+# @pytest.fixture(autouse=True)
+# def check_elasticsearch_jobs(flask_app_client, staff_user):
+#     log.info('Checking check_elasticsearch_jobs')
+#     if is_extension_enabled('elasticsearch'):
+#         try:
+#             from app.extensions import elasticsearch as es
+
+#             utils.wait_for_elasticsearch_status(flask_app_client, staff_user)
+#         except RuntimeError:
+#             es.check_celery(revoke=True)
+#             raise
+
+
 @pytest.fixture(autouse=True)
 def cleanup_objects(db):
     # This deletes all notifications in the system, the reason being that when many
@@ -233,7 +246,7 @@ def flask_app(gitlab_remote_login_pat):
             # Delete all content in all tables (may be left over from previous tests after an error)
             with db.session.begin():
                 for table in reversed(db.metadata.sorted_tables):
-                    log.info('Purge DB table %s' % table)
+                    log.info('Delete DB table %s' % table)
                     db.session.execute(table.delete())
 
             if utils.redis_unavailable():
@@ -288,6 +301,8 @@ def flask_app(gitlab_remote_login_pat):
                 from app.extensions import elasticsearch as es
 
                 # Ensure that any background Celery tasks have wrapped up
+                es.check_celery(revoke=True)
+
                 for count in range(10):
                     num_active = es.check_celery()
                     if num_active == 0:
@@ -301,11 +316,18 @@ def flask_app(gitlab_remote_login_pat):
                 # (we need to do this to know what data to delete out of elastic search)
                 with db.session.begin():
                     for table in reversed(db.metadata.sorted_tables):
-                        log.info('Purge DB table %s' % table)
+                        log.info('Delete DB table %s' % table)
                         db.session.execute(table.delete())
 
+                # Delete all content in elasticsearch
                 with es.session.begin(blocking=True):
                     es.init_elasticsearch_index(app, update=False)
+
+                indices = es.es_all_indices()
+                for index in indices:
+                    if index.startswith(es.TESTING_PREFIX):
+                        log.debug('Cleaning up test index %r' % (index,))
+                        es.es_delete_index(index, app=app)
 
             # Drop all (empty) tables
             db.drop_all()

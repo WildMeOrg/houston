@@ -271,13 +271,17 @@ def test_create_asset_group_2_assets(flask_app_client, researcher_1, test_root, 
         asset_guids = [a['guid'] for a in assets]
         assert assets == [
             {
+                'elasticsearchable': assets[0]['elasticsearchable'],
                 'filename': 'coelacanth.png',
                 'guid': asset_guids[0],
+                'indexed': assets[0]['indexed'],
                 'src': f'/api/v1/assets/src/{asset_guids[0]}',
             },
             {
+                'elasticsearchable': assets[1]['elasticsearchable'],
                 'filename': 'zebra.jpg',
                 'guid': asset_guids[1],
+                'indexed': assets[1]['indexed'],
                 'src': f'/api/v1/assets/src/{asset_guids[1]}',
             },
         ]
@@ -647,23 +651,31 @@ def test_create_bulk_asset_group(flask_app_client, researcher_1, test_root, db, 
         asset_guids = [a['guid'] for a in assets]
         assert assets == [
             {
+                'elasticsearchable': assets[0]['elasticsearchable'],
                 'filename': 'coelacanth.png',
                 'guid': asset_guids[0],
+                'indexed': assets[0]['indexed'],
                 'src': f'/api/v1/assets/src/{asset_guids[0]}',
             },
             {
+                'elasticsearchable': assets[1]['elasticsearchable'],
                 'filename': 'fluke.jpg',
                 'guid': asset_guids[1],
+                'indexed': assets[1]['indexed'],
                 'src': f'/api/v1/assets/src/{asset_guids[1]}',
             },
             {
+                'elasticsearchable': assets[2]['elasticsearchable'],
                 'filename': 'phoenix.jpg',
                 'guid': asset_guids[2],
+                'indexed': assets[2]['indexed'],
                 'src': f'/api/v1/assets/src/{asset_guids[2]}',
             },
             {
+                'elasticsearchable': assets[3]['elasticsearchable'],
                 'filename': 'zebra.jpg',
                 'guid': asset_guids[3],
+                'indexed': assets[3]['indexed'],
                 'src': f'/api/v1/assets/src/{asset_guids[3]}',
             },
         ]

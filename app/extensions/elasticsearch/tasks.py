@@ -5,6 +5,10 @@ import uuid
 from flask import current_app
 from app.extensions.celery import celery
 from app.extensions import elasticsearch as es
+from app.extensions import db
+from datetime import timedelta
+
+import tqdm
 
 
 log = logging.getLogger(__name__)
@@ -12,24 +16,29 @@ log = logging.getLogger(__name__)
 
 @celery.on_after_configure.connect
 def elasticsearch_setup_periodic_tasks(sender, **kwargs):
-    elasticsearch_refresh_index_all_force.s()
-
     sender.add_periodic_task(
         60,
-        elasticsearch_refresh_index_all_update.s(),
+        elasticsearch_refresh_index_all.s(),
         name='Refresh Elasticsearch',
     )
     sender.add_periodic_task(
-        60 * 60,
-        elasticsearch_refresh_index_all_force.s(),
-        name='Refresh Elasticsearch (FORCED)',
+        60 * 15,
+        elasticsearch_invalidate_indexed_timestamps.s(),
+        name='Clear Elasticsearch Indexed Timestamps',
     )
 
 
-def _elasticsearch_refresh_index_all(**kwargs):
+@celery.task
+def elasticsearch_refresh_index_all():
+    testing = current_app.config['TESTING']
+    log.info('Running Refresh Index All (testing = %r)' % (testing,))
+    if testing:
+        log.info('...skipping')
+        return True
+
     # Re-index everything
     with es.session.begin(blocking=True):
-        es.init_elasticsearch_index(app=current_app, verbose=False, **kwargs)
+        es.init_elasticsearch_index(app=current_app, verbose=False)
 
     # Check on the status of the DB relative to ES
     status = es.es_status(app=current_app)
@@ -41,13 +50,25 @@ def _elasticsearch_refresh_index_all(**kwargs):
 
 
 @celery.task
-def elasticsearch_refresh_index_all_update():
-    return _elasticsearch_refresh_index_all(force=False)
+def elasticsearch_invalidate_indexed_timestamps():
+    testing = current_app.config['TESTING']
+    log.info('Running Invalidate Indexed Timestamps (testing = %r)' % (testing,))
+    if testing:
+        log.info('...skipping')
+        return True
 
+    delta = timedelta(seconds=1)
+    with es.session.begin(disabled=True):
+        for cls in es.REGISTERED_MODELS:
+            log.info('Invalidating %r' % (cls,))
+            with db.session.begin():
+                objs = cls.query.all()
+                if len(objs) > 0:
+                    desc = 'Invalidating (Bulk) %s' % (cls.__name__,)
+                    for obj in tqdm.tqdm(objs, desc=desc):
+                        obj.indexed = obj.updated - delta
 
-@celery.task
-def elasticsearch_refresh_index_all_force():
-    return _elasticsearch_refresh_index_all(force=True)
+    return True
 
 
 @celery.task

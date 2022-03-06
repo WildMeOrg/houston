@@ -5,6 +5,7 @@ from tests import utils
 from tests.modules.missions.resources import utils as mission_utils
 from tests.utils import random_nonce, random_guid, wait_for_elasticsearch_status
 import tests.extensions.tus.utils as tus_utils
+import datetime
 import pytest
 
 from tests.utils import module_unavailable
@@ -20,6 +21,7 @@ def test_modify_mission_task_users(
         MissionCollection,
         MissionTask,
     )
+    from app.modules.assets.models import Asset
 
     transaction_id, test_filename = tus_utils.prep_tus_dir(test_root)
     transaction_ids = []
@@ -79,8 +81,20 @@ def test_modify_mission_task_users(
             ),
         ]
 
-        # Wait for elasticsearch to catch up
-        wait_for_elasticsearch_status(flask_app_client, data_manager_1)
+        now = datetime.datetime.utcnow()
+
+        while True:
+            # Wait for elasticsearch to catch up
+            wait_for_elasticsearch_status(flask_app_client, data_manager_1)
+
+            try:
+                assets = Asset.query.all()
+                for asset in assets:
+                    assert asset.elasticsearchable
+                    assert asset.indexed > now
+                break
+            except AssertionError:
+                continue
 
         response = mission_utils.create_mission_task(
             flask_app_client, data_manager_1, mission_guid, data

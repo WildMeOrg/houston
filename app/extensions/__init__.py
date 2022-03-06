@@ -339,6 +339,14 @@ def timestamp_before_update(mapper, connection, target):
         updated = indexed
 
     target.updated = updated
+    target._sa_instance_state.committed_state['updated'] = updated
+
+    if indexed is not None:
+        assert indexed == updated
+        assert (
+            target._sa_instance_state.committed_state['indexed']
+            == target._sa_instance_state.committed_state['updated']
+        )
 
 
 class TimestampViewed(Timestamp):

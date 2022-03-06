@@ -86,7 +86,9 @@ def test_asset_group_sightings(session, login, codex_url, test_root):
     assert response.json() == {
         'assets': [
             {
+                'elasticsearchable': asset['elasticsearchable'],
                 'guid': asset['guid'],
+                'indexed': asset['indexed'],
                 'filename': sighting_filename,
                 'src': f'/api/v1/assets/src/{asset["guid"]}',
             },
@@ -99,8 +101,10 @@ def test_asset_group_sightings(session, login, codex_url, test_root):
                         'annotations': [],
                         'created': ags_asset['created'],
                         'dimensions': {'height': 664, 'width': 1000},
+                        'elasticsearchable': ags_asset['elasticsearchable'],
                         'filename': sighting_filename,
                         'guid': asset['guid'],
+                        'indexed': ags_asset['indexed'],
                         'src': f"/api/v1/assets/src/{asset['guid']}",
                         'updated': ags_asset['updated'],
                     },
@@ -130,7 +134,9 @@ def test_asset_group_sightings(session, login, codex_url, test_root):
                 'creator': creator_data,
                 'curation_start_time': ags['curation_start_time'],
                 'detection_start_time': ags['detection_start_time'],
+                'elasticsearchable': ags['elasticsearchable'],
                 'guid': ags_guid,
+                'indexed': ags['indexed'],
                 'jobs': ags['jobs'],
                 'sighting_guid': None,
                 'stage': 'detection',
@@ -140,7 +146,9 @@ def test_asset_group_sightings(session, login, codex_url, test_root):
         # 2021-11-08T07:37:31.076636+00:00
         'created': response.json()['created'],
         'description': 'This is a test asset group, please ignore',
+        'elasticsearchable': response.json()['elasticsearchable'],
         'guid': asset_group_guid,
+        'indexed': response.json()['indexed'],
         'major_type': 'filesystem',
         'owner_guid': my_guid,
         'updated': response.json()['updated'],

@@ -27,24 +27,7 @@ import uuid
 log = logging.getLogger(__name__)
 
 
-CODE_VALID_CHARACTERS = [
-    '0',
-    '1',
-    '2',
-    '3',
-    '4',
-    '5',
-    '6',
-    '7',
-    '8',
-    '9',
-    'A',
-    'B',
-    'C',
-    'D',
-    'E',
-    'F',
-]
+CODE_VALID_CHARACTERS = '0123456789ABCDEF'
 
 
 class CodeTypes(str, enum.Enum):
@@ -312,6 +295,16 @@ class Code(db.Model, HoustonModel):
         return new_code
 
     @classmethod
+    def valid_codes(cls, user, code_type):
+        now = datetime.datetime.now(tz=pytz.utc)
+        return (
+            cls.query.filter_by(user=user, code_type=code_type, response=None)
+            .filter(Code.expires > now)  # NOQA
+            .order_by(cls.created.desc())
+            .all()
+        )
+
+    @classmethod
     def get(
         cls,
         user,
@@ -326,16 +319,7 @@ class Code(db.Model, HoustonModel):
         assert code_settings is not None, 'Code type was unrecognized: %r' % (code_type,)
 
         # Get any codes that fit this request
-        existing_codes = (
-            cls.query.filter_by(user=user, code_type=code_type)
-            .order_by(cls.created.desc())
-            .all()
-        )
-        valid_codes = [
-            code
-            for code in existing_codes
-            if not code.is_expired and not code.is_resolved
-        ]
+        valid_codes = cls.valid_codes(user, code_type)
 
         if replace:
             # Create a new code and delete any previous codes in the process
@@ -373,8 +357,8 @@ class Code(db.Model, HoustonModel):
             while True:
                 accept_code = cls.generate(code_settings.get('len'))
                 reject_code = cls.generate(code_settings.get('len'))
-                existing_accept_codes = cls.find(accept_code)
-                existing_reject_codes = cls.find(reject_code)
+                existing_accept_codes = cls.find_all(accept_code)
+                existing_reject_codes = cls.find_all(reject_code)
                 if len(existing_accept_codes) == 0 and len(existing_reject_codes) == 0:
                     # Found unique codes
                     break
@@ -427,7 +411,7 @@ class Code(db.Model, HoustonModel):
         return code
 
     @classmethod
-    def find(cls, code):
+    def find_all(cls, code):
         matched_codes = (
             Code.query.filter(
                 or_(
@@ -461,7 +445,7 @@ class Code(db.Model, HoustonModel):
         code_str = code_str.upper()
         code_str = ''.join([char for char in code_str if char in CODE_VALID_CHARACTERS])
 
-        code_list = Code.find(code_str)
+        code_list = Code.find_all(code_str)
         if len(code_list) == 0:
             decision = CodeDecisions.unknown
             code = None

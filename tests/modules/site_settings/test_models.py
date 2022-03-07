@@ -45,7 +45,16 @@ def test_create_string(db):
         db.session.delete(new_setting)
 
 
-def test_get_value(db):
+def test_get_value(db, flask_app):
+    if is_extension_enabled('edm'):
+        # Make sure site.name is set in edm
+        flask_app.edm.request_passthrough(
+            'configuration.data',
+            'post',
+            {'json': {'site.name': 'My Site'}},
+            '',
+            target='default',
+        )
     # this should grab from edm and return a string
     val = SiteSetting.get_value('site.name')
     if is_extension_enabled('edm'):
@@ -69,12 +78,32 @@ def test_get_value(db):
 
 
 @pytest.mark.skipif(extension_unavailable('edm'), reason='EDM extension disabled')
-def test_read_edm_configuration():
+def test_read_edm_configuration(flask_app):
+    flask_app.edm.request_passthrough(
+        'configuration.data',
+        'post',
+        {'json': {'site.name': 'My Site'}},
+        '',
+        target='default',
+    )
     val = SiteSetting.get_edm_configuration('site.name')
     assert isinstance(val, str)
     val = SiteSetting.get_edm_configuration('site.species')
+    if val is None:
+        flask_app.edm.request_passthrough(
+            'configuration.data',
+            'post',
+            {
+                'json': {
+                    'site.species': [
+                        {'commonNames': ['Example'], 'scientificName': 'Exempli gratia'}
+                    ]
+                }
+            },
+            '',
+            target='default',
+        )
+        val = SiteSetting.get_edm_configuration('site.species')
     assert isinstance(val, list)
-    try:
-        val = SiteSetting.get_edm_configuration('_fu_bar_')
-    except ValueError:
-        pass
+    with pytest.raises(ValueError):
+        SiteSetting.get_edm_configuration('_fu_bar_')

@@ -4,9 +4,11 @@
 RESTful API User resources
 --------------------------
 """
-
+import json
 import logging
-from flask import current_app, send_file
+from urllib.parse import urljoin
+
+from flask import current_app, send_file, request
 from flask_login import current_user
 from flask_restx_patched import Resource
 from flask_restx_patched._http import HTTPStatus
@@ -14,6 +16,8 @@ from app.extensions.api.parameters import PaginationParameters
 from app.extensions.api import Namespace, abort
 import app.extensions.logging as AuditLog
 from app.extensions import is_extension_enabled
+from app.extensions.email import Email
+from app.modules.auth.models import Code, CodeTypes
 
 from . import permissions, schemas, parameters
 from app.modules.users.permissions.types import AccessOperation
@@ -389,6 +393,28 @@ class UserProfileByID(Resource):
         else:
             profile_path = user.profile_fileupload.get_absolute_path()
             return send_file(profile_path, attachment_filename='profile_image.jpg')
+
+
+@api.route('/reset_password_email')
+class UserResetPasswordEmail(Resource):
+    def post(self):
+        try:
+            email = json.loads(request.data)['email']
+        except (json.decoder.JSONDecodeError, TypeError, KeyError):
+            abort(
+                400, 'JSON body needs to be in this format {"email": "user@example.org"}'
+            )
+        user = User.find(email=email)
+        if not user:
+            # Log for development purposes but do not show anything to the API user
+            log.warning('User with email address {repr(email)} not found')
+            return
+        code = Code.get(user, CodeTypes.recover, replace=True)
+        msg = Email(recipients=[user])
+        url_prefix = msg.template_kwargs['site_url_prefix']
+        reset_link = urljoin(url_prefix, f'/auth/code/{code.accept_code}')
+        msg.template('misc/password_reset', reset_link=reset_link)
+        msg.send_message()
 
 
 if is_module_enabled('asset_groups'):

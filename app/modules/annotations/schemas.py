@@ -39,6 +39,7 @@ class DetailedAnnotationSchema(BaseAnnotationSchema):
         'BaseKeywordSchema',
         many=True,
     )
+    asset_src = base_fields.Function(Annotation.get_asset_src)
 
     class Meta(BaseAnnotationSchema.Meta):
         fields = BaseAnnotationSchema.Meta.fields + (
@@ -46,8 +47,10 @@ class DetailedAnnotationSchema(BaseAnnotationSchema):
             Annotation.updated.key,
             Annotation.bounds.key,
             'keywords',
+            'asset_src',
         )
         dump_only = BaseAnnotationSchema.Meta.dump_only + (
             Annotation.created.key,
             Annotation.updated.key,
+            'asset_src',
         )

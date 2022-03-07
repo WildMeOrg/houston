@@ -79,10 +79,12 @@ class AugmentedIndividualApiEncounterSchema(BaseEncounterSchema):
     owner = base_fields.Nested('PublicUserSchema', many=False)
 
     encounters = base_fields.Nested('AugmentedSightingApiEncounterSchema', many=True)
+    annotations = base_fields.Nested('DetailedAnnotationSchema', many=True)
 
     class Meta(BaseEncounterSchema.Meta):
         fields = BaseEncounterSchema.Meta.fields + (
             Encounter.sighting.key,
+            'annotations',
             'submitter',
             'owner',
             'hasView',

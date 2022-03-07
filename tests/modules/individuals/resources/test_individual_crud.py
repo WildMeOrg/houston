@@ -7,6 +7,7 @@ import datetime
 
 from tests.modules.individuals.resources import utils as individual_utils
 from tests.modules.sightings.resources import utils as sighting_utils
+from tests.modules.annotations.resources import utils as annot_utils
 
 from tests import utils
 import pytest
@@ -250,10 +251,16 @@ def test_add_remove_encounters(db, flask_app_client, researcher_1, request, test
     module_unavailable('individuals'), reason='Individuals module disabled'
 )
 def test_individual_has_detailed_encounter_from_edm(
-    db, flask_app_client, researcher_1, request, test_root
+    db,
+    flask_app_client,
+    researcher_1,
+    request,
+    test_root,
+    test_asset_group_uuid,
 ):
     from app.modules.encounters.models import Encounter
     from app.modules.sightings.models import Sighting
+    from app.modules.asset_groups.models import AssetGroup
 
     data_in = {
         'encounters': [
@@ -281,8 +288,13 @@ def test_individual_has_detailed_encounter_from_edm(
 
         assert len(uuids['encounters']) == 1
         encounter_uuid = uuids['encounters'][0]
-
+        assets = AssetGroup.query.get(test_asset_group_uuid).assets
         enc = Encounter.query.get(encounter_uuid)
+        enc.sighting.add_assets(assets)
+        for asset in assets:
+            annot_utils.create_annotation(
+                flask_app_client, researcher_1, str(asset.guid), str(enc.guid)
+            )
 
         with db.session.begin():
             db.session.add(enc)
@@ -311,11 +323,14 @@ def test_individual_has_detailed_encounter_from_edm(
             flask_app_client, researcher_1, individual_id
         ).json
 
-        assert individual_json['encounters'][0]['decimalLatitude'] == '25.9999'
-        assert individual_json['encounters'][0]['decimalLongitude'] == '25.9999'
-        assert individual_json['encounters'][0]['verbatimLocality'] == 'Antarctica'
-        assert individual_json['encounters'][0]['locationId'] == 'Antarctica'
-        assert individual_json['encounters'][0]['time'] == '2010-01-01T01:01:01+00:00'
+        enc_json = individual_json['encounters'][0]
+        assert enc_json['decimalLatitude'] == '25.9999'
+        assert enc_json['decimalLongitude'] == '25.9999'
+        assert enc_json['verbatimLocality'] == 'Antarctica'
+        assert enc_json['locationId'] == 'Antarctica'
+        assert enc_json['time'] == '2010-01-01T01:01:01+00:00'
+        assert enc_json['annotations']
+        assert enc_json['annotations'][0]['asset_src']
 
     finally:
         individual_utils.delete_individual(flask_app_client, researcher_1, individual_id)

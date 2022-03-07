@@ -398,6 +398,10 @@ class RestManager(RestManagerUserMixin):
             data_ = passthrough_kwargs.pop('data', None)
             if data_ is not None:
                 passthrough_kwargs['json'] = data_
+        elif passthrough_kwargs.get('data'):
+            log.warning(
+                f'Data for tag={tag} is not sent as json: data={passthrough_kwargs["data"]}'
+            )
 
         response = self._request(
             method,

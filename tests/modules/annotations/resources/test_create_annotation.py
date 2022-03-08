@@ -3,7 +3,7 @@
 import uuid
 
 from tests.modules.annotations.resources import utils as annot_utils
-from tests.modules.asset_groups.resources import utils as sub_utils
+from tests.modules.asset_groups.resources import utils as ag_utils
 from tests.modules.encounters.resources import utils as enc_utils
 from tests.modules.assets.resources import utils as asset_utils
 import pytest
@@ -22,7 +22,7 @@ def test_get_annotation_not_found(flask_app_client):
 )
 def test_create_failures(flask_app_client, researcher_1, test_clone_asset_group_data, db):
     # pylint: disable=invalid-name
-    clone = sub_utils.clone_asset_group(
+    clone = ag_utils.clone_asset_group(
         flask_app_client,
         researcher_1,
         test_clone_asset_group_data['asset_group_uuid'],
@@ -60,7 +60,7 @@ def test_create_and_delete_annotation(
     # pylint: disable=invalid-name
     from app.modules.annotations.models import Annotation
 
-    clone = sub_utils.clone_asset_group(
+    clone = ag_utils.clone_asset_group(
         flask_app_client,
         researcher_1,
         test_clone_asset_group_data['asset_group_uuid'],
@@ -114,7 +114,7 @@ def test_annotation_permission(
 ):
     # Before we create any Annotations, find out how many are there already
     previous_annots = annot_utils.read_all_annotations(flask_app_client, staff_user)
-    clone = sub_utils.clone_asset_group(
+    clone = ag_utils.clone_asset_group(
         flask_app_client,
         researcher_1,
         test_clone_asset_group_data['asset_group_uuid'],
@@ -161,3 +161,70 @@ def test_annotation_permission(
 
     # delete it
     clone.cleanup()
+
+
+@pytest.mark.skipif(
+    module_unavailable('asset_groups'), reason='AssetGroups module disabled'
+)
+def test_create_annotation_no_ags(
+    flask_app_client, researcher_1, test_clone_asset_group_data, db
+):
+    # pylint: disable=invalid-name
+
+    clone = ag_utils.clone_asset_group(
+        flask_app_client,
+        researcher_1,
+        test_clone_asset_group_data['asset_group_uuid'],
+    )
+
+    response = annot_utils.create_annotation_simple(
+        flask_app_client,
+        researcher_1,
+        test_clone_asset_group_data['asset_uuids'][0],
+        expected_status_code=400,
+    )
+    assert (
+        response.json['message']
+        == 'cannot create encounter-less annotation on asset that does not have an asset group sighting'
+    )
+
+    # delete it
+    clone.cleanup()
+
+
+@pytest.mark.skipif(
+    module_unavailable('asset_groups'), reason='AssetGroups module disabled'
+)
+def test_create_annotation_stage(flask_app_client, researcher_1, db, request, test_root):
+    from app.modules.asset_groups.models import (
+        AssetGroupSighting,
+        AssetGroupSightingStage,
+    )
+
+    # pylint: disable=invalid-name
+    (
+        asset_group_uuid,
+        asset_group_sighting_guid,
+        asset_uuid,
+    ) = ag_utils.create_simple_asset_group(
+        flask_app_client, researcher_1, request, test_root
+    )
+
+    # manually check that the stage checking works by setting it to an incorrect value
+    ags = AssetGroupSighting.query.get(asset_group_sighting_guid)
+    ags.stage = AssetGroupSightingStage.detection
+    response = annot_utils.create_annotation_simple(
+        flask_app_client, researcher_1, asset_uuid, expected_status_code=400
+    )
+    assert (
+        response.json['message']
+        == 'cannot create encounter-less annotation on asset in asset group sighting that is not curating'
+    )
+    ags.stage = AssetGroupSightingStage.curation
+
+    # Should now work
+    annot_utils.create_annotation_simple(
+        flask_app_client,
+        researcher_1,
+        asset_uuid,
+    )

@@ -2,7 +2,7 @@
 # pylint: disable=missing-docstring
 from tests import utils
 from tests.modules.annotations.resources import utils as annot_utils
-from tests.modules.asset_groups.resources import utils as sub_utils
+from tests.modules.asset_groups.resources import utils as ag_utils
 from tests.modules.keywords.resources import utils as keyword_utils
 import pytest
 import logging
@@ -15,11 +15,8 @@ log = logging.getLogger(__name__)
 @pytest.mark.skipif(
     module_unavailable('asset_groups'), reason='AssetGroups module disabled'
 )
-def test_keywords_on_annotation(
-    flask_app_client, researcher_1, test_clone_asset_group_data, db
-):
+def test_keywords_on_annotation(flask_app_client, researcher_1, db, request, test_root):
     # pylint: disable=invalid-name
-    from app.modules.assets.models import Asset
     from app.modules.annotations.models import Annotation
     from app.modules.keywords.models import Keyword, KeywordSource
 
@@ -29,17 +26,18 @@ def test_keywords_on_annotation(
     with db.session.begin():
         db.session.add(keyword)
     assert keyword is not None
-
-    clone = sub_utils.clone_asset_group(
-        flask_app_client,
-        researcher_1,
-        test_clone_asset_group_data['asset_group_uuid'],
+    (
+        asset_group_uuid,
+        asset_group_sighting_guid,
+        asset_uuid,
+    ) = ag_utils.create_simple_asset_group(
+        flask_app_client, researcher_1, request, test_root
     )
 
     response = annot_utils.create_annotation_simple(
         flask_app_client,
         researcher_1,
-        test_clone_asset_group_data['asset_uuids'][0],
+        asset_uuid,
     )
 
     annotation_guid = response.json['guid']
@@ -228,16 +226,8 @@ def test_keywords_on_annotation(
     assert len(res.json) == kwct - 1
 
     with db.session.begin():
-        for asset in clone.asset_group.assets:
-            # Delete the asset
-            asset.delete_cascade()
-            read_asset = Asset.query.get(asset.guid)
-            assert read_asset is None
-
         for keyword in Keyword.query.all():
             if keyword.value.startswith('TEST_KEYWORD_VALUE_'):
                 db.session.delete(keyword)
                 read_keyword = Keyword.query.get(keyword.guid)
                 assert read_keyword is None
-
-    clone.cleanup()

@@ -140,9 +140,7 @@ class Users(Resource):
         else:
 
             with context:
-                new_user = User(**args)
-                db.session.add(new_user)
-            db.session.refresh(new_user)
+                new_user = User.ensure_user(**args)
             AuditLog.user_create_object(
                 log, new_user, msg=f'{new_user.email}', duration=timer.elapsed()
             )

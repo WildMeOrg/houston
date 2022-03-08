@@ -387,7 +387,7 @@ class User(db.Model, FeatherModel, UserEDMMixin):
         is_admin=False,
         is_staff=False,
         is_researcher=False,
-        is_contributor=True,
+        is_contributor=False,
         is_user_manager=False,
         is_exporter=False,
         is_active=True,
@@ -420,7 +420,7 @@ class User(db.Model, FeatherModel, UserEDMMixin):
                 **kwargs,
             )
 
-            with db.session.begin():
+            with db.session.begin(subtransactions=True):
                 db.session.add(user)
 
             log.info('New user created: %r' % (user,))

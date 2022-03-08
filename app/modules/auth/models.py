@@ -403,7 +403,7 @@ class Code(db.Model, HoustonModel):
                 'expires': expires_utc,
             }
             code = Code(**code_kwargs)
-            with db.session.begin():
+            with db.session.begin(subtransactions=True):
                 db.session.add(code)
             db.session.refresh(code)
             db.session.refresh(user)

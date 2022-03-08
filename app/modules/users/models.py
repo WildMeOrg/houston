@@ -5,6 +5,7 @@ User database models
 """
 import enum
 import logging
+from urllib.parse import urljoin
 import uuid
 
 from flask import current_app
@@ -15,6 +16,7 @@ from app.extensions import db, FeatherModel, is_extension_enabled
 from app.modules import module_required, is_module_enabled
 from app.extensions.auth import security
 from app.extensions.api.parameters import _get_is_static_role_property
+from app.extensions.email import Email
 import app.extensions.logging as AuditLog
 
 
@@ -394,6 +396,7 @@ class User(db.Model, FeatherModel, UserEDMMixin):
         in_beta=False,
         in_alpha=False,
         update=False,
+        send_verification=True,
         **kwargs,
     ):
         """
@@ -422,6 +425,9 @@ class User(db.Model, FeatherModel, UserEDMMixin):
 
             with db.session.begin(subtransactions=True):
                 db.session.add(user)
+
+            if send_verification:
+                user.send_verify_account_email()
 
             log.info('New user created: %r' % (user,))
         elif update:
@@ -720,6 +726,14 @@ class User(db.Model, FeatherModel, UserEDMMixin):
         from app.modules.auth.models import CodeTypes
 
         return self.get_codes(CodeTypes.recover, replace=True, replace_ttl=None)
+
+    def send_verify_account_email(self):
+        code = self.get_email_confirmation_code()
+        msg = Email(recipients=[self])
+        url_prefix = msg.template_kwargs['site_url_prefix']
+        verify_link = urljoin(url_prefix, f'/api/v1/auth/code/{code.accept_code}')
+        msg.template('misc/account_verify', verify_link=verify_link)
+        msg.send_message()
 
     def set_password(self, password):
         if not password:

@@ -68,7 +68,7 @@ def _ensure_oauth_user(config):
         from app.modules.users.models import User
 
         try:
-            user = User.ensure_user(**oauth_user)
+            user = User.ensure_user(send_verification=False, **oauth_user)
         except (sqlalchemy.exc.OperationalError, sqlalchemy.exc.ProgrammingError):
             # sqlite3.OperationalError no such table
             # sqlalchemy.exc.ProgrammingError: (psycopg2.errors.UndefinedTable) relation "user" does not exist

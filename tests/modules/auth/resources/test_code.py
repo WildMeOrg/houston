@@ -55,3 +55,43 @@ def test_reset_password(flask_app_client, researcher_1, request):
     )
     assert response.status_code == 404
     assert response.json['message'] == "Code '1234' not found"
+
+
+def test_verify_account(flask_app_client, researcher_1, request):
+    # Create a verify code
+    verify = Code.get(researcher_1, CodeTypes.email)
+    request.addfinalizer(verify.delete)
+
+    # Use the verify code
+    response = flask_app_client.post(f'/api/v1/auth/code/{verify.accept_code}')
+    assert response.status_code == 302
+    assert (
+        response.headers['Location']
+        == 'http://localhost/email_verified?message=Email+successfully+verified.'
+    )
+    assert researcher_1.is_email_confirmed is True
+
+    # Use the verify code again
+    response = flask_app_client.post(f'/api/v1/auth/code/{verify.accept_code}')
+    assert response.status_code == 302
+    assert (
+        response.headers['Location']
+        == 'http://localhost/email_verified?message=Code+already+used'
+    )
+
+    # Create a verify code that is expired
+    expired = Code.get(researcher_1, CodeTypes.email)
+    expired.expires -= datetime.timedelta(days=3650)
+
+    # Use an expired recover code
+    response = flask_app_client.post(f'/api/v1/auth/code/{expired.accept_code}')
+    assert response.status_code == 302
+    assert (
+        response.headers['Location']
+        == 'http://localhost/email_verified?message=Code+has+expired'
+    )
+
+    # Use a code that does not exist
+    response = flask_app_client.post('/api/v1/auth/code/1234')
+    assert response.status_code == 404
+    assert response.json['message'] == "Code '1234' not found"

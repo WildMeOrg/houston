@@ -228,6 +228,10 @@ class CodeReceived(Resource):
         url_args = {}
         if code.code_type == CodeTypes.recover:
             redirect_uri = '/reset_password'
+        elif code.code_type == CodeTypes.email:
+            # nothing to do because User.is_email_confirmed looks into Code for
+            # the user filtered by CodeTypes.email is_resolved
+            redirect_uri = '/email_verified'
         else:
             abort(404, f'Unrecognized code type: {code.code_type}')
 
@@ -258,6 +262,10 @@ class CodeReceived(Resource):
                     db.session.merge(code)
                 url_args['message'] = str(e)
                 url_args['status'] = 400
+        elif code.code_type == CodeTypes.email:
+            # nothing to do because User.is_email_confirmed looks into Code for
+            # the user filtered by CodeTypes.email is_resolved
+            url_args['message'] = 'Email successfully verified.'
         else:
             abort(404, f'Unrecognized code type: {code.code_type}')
 

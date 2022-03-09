@@ -89,11 +89,25 @@ class AssetElasticsearch(Resource):
             'action': AccessOperation.READ,
         },
     )
+    @api.parameters(PaginationParameters())
     @api.response(schemas.BaseAssetSchema(many=True))
-    def post(self):
+    def get(self, args):
+        search = {}
+        return Asset.elasticsearch(search, **args)
+
+    @api.permission_required(
+        permissions.ModuleAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'module': Asset,
+            'action': AccessOperation.READ,
+        },
+    )
+    @api.parameters(PaginationParameters())
+    @api.response(schemas.BaseAssetSchema(many=True))
+    def post(self, args):
         search = request.get_json()
 
-        return Asset.elasticsearch(search)
+        return Asset.elasticsearch(search, **args)
 
 
 @api.route('/<uuid:asset_guid>')

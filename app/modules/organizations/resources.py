@@ -92,11 +92,25 @@ class OrganizationElasticsearch(Resource):
             'action': AccessOperation.READ,
         },
     )
+    @api.parameters(PaginationParameters())
     @api.response(schemas.DetailedOrganizationSchema(many=True))
-    def post(self):
+    def get(self, args):
+        search = {}
+        return Organization.elasticsearch(search, **args)
+
+    @api.permission_required(
+        permissions.ModuleAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'module': Organization,
+            'action': AccessOperation.READ,
+        },
+    )
+    @api.parameters(PaginationParameters())
+    @api.response(schemas.DetailedOrganizationSchema(many=True))
+    def post(self, args):
         search = request.get_json()
 
-        return Organization.elasticsearch(search)
+        return Organization.elasticsearch(search, **args)
 
 
 @api.route('/<uuid:organization_guid>')

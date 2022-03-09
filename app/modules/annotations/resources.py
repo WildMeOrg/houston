@@ -142,11 +142,25 @@ class AnnotationElasticsearch(Resource):
             'action': AccessOperation.READ,
         },
     )
+    @api.parameters(PaginationParameters())
     @api.response(schemas.BaseAnnotationSchema(many=True))
-    def post(self):
+    def get(self, args):
+        search = {}
+        return Annotation.elasticsearch(search, **args)
+
+    @api.permission_required(
+        permissions.ModuleAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'module': Annotation,
+            'action': AccessOperation.READ,
+        },
+    )
+    @api.parameters(PaginationParameters())
+    @api.response(schemas.BaseAnnotationSchema(many=True))
+    def post(self, args):
         search = request.get_json()
 
-        return Annotation.elasticsearch(search)
+        return Annotation.elasticsearch(search, **args)
 
 
 @api.route('/<uuid:annotation_guid>')

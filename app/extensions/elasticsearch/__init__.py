@@ -70,14 +70,12 @@ class ElasticsearchModel(object):
 
     @classmethod
     def index_all(cls, app=None, prune=True, pit=False, update=True, force=False):
-        from app.extensions import elasticsearch as es
-
         index = cls._index()
 
         if index is None:
             return
 
-        with es.session.begin():
+        with session.begin():
             if prune:
                 # Delete anything from the index that is not in the database
                 indexed_guids = set(cls.elasticsearch(search={}, app=app, load=False))
@@ -1116,7 +1114,9 @@ def init_elasticsearch_index(app, verbose=True, **kwargs):
         cls.index_all(app=app, **kwargs)
 
 
-def elasticsearch_on_class(app, cls, body, load=True):
+def elasticsearch_on_class(
+    app, cls, body, load=True, limit=None, offset=0, sort='guid', reverse=False
+):
     index = get_elasticsearch_index_name(cls)
 
     if index is None:
@@ -1137,46 +1137,63 @@ def elasticsearch_on_class(app, cls, body, load=True):
         guid = uuid.UUID(hit['_id'])
         hit_guids.append(guid)
 
-    items = []
-    prune = []
-    if load:
-        for guid in tqdm.tqdm(hit_guids, desc='Loading Hits %s' % (cls.__name__,)):
-            try:
-                obj = cls.query.get(guid)
-            except sqlalchemy.exc.StatementError:
-                obj = None
+    # Get all possible corect matches
+    all_guids = cls.query.with_entities(cls.guid).all()
+    all_guids = set([item[0] for item in all_guids])
 
-            if obj is not None:
-                items.append(obj)
-            else:
-                prune.append(guid)
+    # Cross reference with ES hit GUIDs
+    search_guids = []
+    search_prune = []
+    for guid in hit_guids:
+        if guid in all_guids:
+            search_guids.append(guid)
+        else:
+            search_prune.append(guid)
+
+    # Get all table GUIDs
+    sort = sort.lower()
+    if sort == 'guid':
+        sort_column = cls.guid
     else:
-        # Get all current GUIDs
-        all_guids = cls.query.with_entities(cls.guid).all()
-        all_guids = set([item[0] for item in all_guids])
+        sort_column = None
+        for column in list(cls.__table__.columns):
+            if column.name.lower() == sort:
+                sort_column = column
+        if sort_column is None:
+            raise ValueError('The sort field %r is unrecognized' % (sort,))
 
-        for guid in hit_guids:
-            if guid in all_guids:
-                items.append(guid)
-            else:
-                prune.append(guid)
+    sort_func = sort_column.desc if reverse else sort_column.asc
+    guids = (
+        cls.query.filter(cls.guid.in_(search_guids))
+        .with_entities(cls.guid)
+        .order_by(sort_func())
+        .offset(offset)
+        .limit(limit)
+        .all()
+    )
+    guids = [item[0] for item in guids]
 
-        # Sort the items
-        items = sorted(items)
-
-    if len(prune) > 0:
-        prune = list(set(prune))
-        log.warning(
-            'Found %d ids to prune for class %r after search'
-            % (
-                len(prune),
-                cls,
+    if len(search_prune) > 0:
+        with session.begin():
+            search_prune = list(set(search_prune))
+            log.warning(
+                'Found %d ids to prune for class %r after search'
+                % (
+                    len(search_prune),
+                    cls,
+                )
             )
-        )
-        for guid in prune:
-            es_delete_guid(cls, guid, app=app)
+            for guid in search_prune:
+                es_delete_guid(cls, guid, app=app)
 
-    return items
+    if load:
+        objs = []
+        for guid in tqdm.tqdm(guids, desc='Loading Hits %s' % (cls.__name__,)):
+            obj = cls.query.get(guid)
+            objs.append(obj)
+        return objs
+    else:
+        return guids
 
 
 def init_app(app, **kwargs):

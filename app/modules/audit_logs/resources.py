@@ -11,6 +11,7 @@ from flask_restx_patched import Resource
 from flask_restx._http import HTTPStatus
 
 from flask import request
+from app.extensions.api.parameters import PaginationParameters
 from app.extensions.api import Namespace
 from app.modules.users import permissions
 from app.modules.users.permissions.types import AccessOperation
@@ -79,11 +80,25 @@ class AuditLogElasticsearch(Resource):
             'action': AccessOperation.READ,
         },
     )
+    @api.parameters(PaginationParameters())
     @api.response(schemas.DetailedAuditLogSchema(many=True))
-    def post(self):
+    def get(self, args):
+        search = {}
+        return AuditLog.elasticsearch(search, **args)
+
+    @api.permission_required(
+        permissions.ModuleAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'module': AuditLog,
+            'action': AccessOperation.READ,
+        },
+    )
+    @api.parameters(PaginationParameters())
+    @api.response(schemas.DetailedAuditLogSchema(many=True))
+    def post(self, args):
         search = request.get_json()
 
-        return AuditLog.elasticsearch(search)
+        return AuditLog.elasticsearch(search, **args)
 
 
 @api.route('/<uuid:audit_log_guid>')

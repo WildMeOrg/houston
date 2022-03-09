@@ -66,11 +66,25 @@ class EncounterElasticsearch(Resource):
             'action': AccessOperation.READ,
         },
     )
+    @api.parameters(PaginationParameters())
     @api.response(schemas.BaseEncounterSchema(many=True))
-    def post(self):
+    def get(self, args):
+        search = {}
+        return Encounter.elasticsearch(search, **args)
+
+    @api.permission_required(
+        permissions.ModuleAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'module': Encounter,
+            'action': AccessOperation.READ,
+        },
+    )
+    @api.parameters(PaginationParameters())
+    @api.response(schemas.BaseEncounterSchema(many=True))
+    def post(self, args):
         search = request.get_json()
 
-        return Encounter.elasticsearch(search)
+        return Encounter.elasticsearch(search, **args)
 
 
 @api.route('/<uuid:encounter_guid>')

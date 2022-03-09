@@ -414,11 +414,25 @@ class SightingElasticsearch(Resource):
             'action': AccessOperation.READ,
         },
     )
+    @api.parameters(PaginationParameters())
     @api.response(schemas.BaseSightingSchema(many=True))
-    def post(self):
+    def get(self, args):
+        search = {}
+        return Sighting.elasticsearch(search, **args)
+
+    @api.permission_required(
+        permissions.ModuleAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'module': Sighting,
+            'action': AccessOperation.READ,
+        },
+    )
+    @api.parameters(PaginationParameters())
+    @api.response(schemas.BaseSightingSchema(many=True))
+    def post(self, args):
         search = request.get_json()
 
-        return Sighting.elasticsearch(search)
+        return Sighting.elasticsearch(search, **args)
 
 
 @api.route('/<uuid:sighting_guid>')

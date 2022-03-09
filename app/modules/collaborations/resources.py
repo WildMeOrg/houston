@@ -145,11 +145,25 @@ class CollaborationElasticsearch(Resource):
             'action': AccessOperation.READ,
         },
     )
+    @api.parameters(PaginationParameters())
     @api.response(schemas.DetailedCollaborationSchema(many=True))
-    def post(self):
+    def get(self, args):
+        search = {}
+        return Collaboration.elasticsearch(search, **args)
+
+    @api.permission_required(
+        permissions.ModuleAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'module': Collaboration,
+            'action': AccessOperation.READ,
+        },
+    )
+    @api.parameters(PaginationParameters())
+    @api.response(schemas.DetailedCollaborationSchema(many=True))
+    def post(self, args):
         search = request.get_json()
 
-        return Collaboration.elasticsearch(search)
+        return Collaboration.elasticsearch(search, **args)
 
 
 @api.route('/<uuid:collaboration_guid>')

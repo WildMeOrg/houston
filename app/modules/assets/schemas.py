@@ -40,6 +40,8 @@ class DetailedAssetTableSchema(BaseAssetSchema):
     Detailed Asset schema exposes all useful fields.
     """
 
+    git_store = base_fields.Nested('BaseGitStoreSchema')
+
     tags = base_fields.Nested(
         'BaseKeywordSchema',
         many=True,
@@ -56,6 +58,7 @@ class DetailedAssetTableSchema(BaseAssetSchema):
             Asset.created.key,
             Asset.updated.key,
             Asset.size_bytes.key,
+            Asset.git_store.key,
             'dimensions',
             'annotation_count',
             'classifications',

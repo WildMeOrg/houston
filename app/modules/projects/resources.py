@@ -90,11 +90,25 @@ class ProjectElasticsearch(Resource):
             'action': AccessOperation.READ,
         },
     )
+    @api.parameters(PaginationParameters())
     @api.response(schemas.BaseProjectSchema(many=True))
-    def post(self):
+    def get(self, args):
+        search = {}
+        return Project.elasticsearch(search, **args)
+
+    @api.permission_required(
+        permissions.ModuleAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'module': Project,
+            'action': AccessOperation.READ,
+        },
+    )
+    @api.parameters(PaginationParameters())
+    @api.response(schemas.BaseProjectSchema(many=True))
+    def post(self, args):
         search = request.get_json()
 
-        return Project.elasticsearch(search)
+        return Project.elasticsearch(search, **args)
 
 
 @api.route('/<uuid:project_guid>')

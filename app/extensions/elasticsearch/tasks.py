@@ -85,18 +85,18 @@ def elasticsearch_index_bulk(index, items):
         )
     )
 
-    succeeded, total = -1, 0
+    succeeded, total = 0, len(items)
     if cls is not None:
-        items = []
+        restored_items = []
         for guid, force in items:
             guid_ = uuid.UUID(guid)
             obj = cls.query.get(guid_)
             if obj is not None:
                 item = (obj, force)
-                items.append(item)
+                restored_items.append(item)
 
-        total = len(items)
-        succeeded = es.session._es_index_bulk(cls, items, app=app)
+        total = len(restored_items)
+        succeeded = es.session._es_index_bulk(cls, restored_items, app=app)
 
     if succeeded < total:
         log.warning(
@@ -124,9 +124,8 @@ def elasticsearch_delete_guid_bulk(index, guids):
         )
     )
 
-    succeeded, total = -1, 0
+    succeeded, total = 0, len(guids)
     if cls is not None:
-        total = len(guids)
         succeeded = es.session._es_delete_guid_bulk(cls, guids, app=app)
 
     if succeeded < total:

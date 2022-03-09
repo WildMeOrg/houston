@@ -111,10 +111,10 @@ class Mission(db.Model, HoustonModel, Timestamp):
     def assets(self):
         return self.get_assets()
 
-    def asset_search(self, search):
+    def asset_search(self, search, *args, **kwargs):
         from app.modules.assets.models import Asset
 
-        search_guids = set(Asset.elasticsearch(search, load=False))
+        search_guids = set(Asset.elasticsearch(search, load=False, *args, **kwargs))
 
         valid_assets = []
         for asset in self.assets:

@@ -147,11 +147,25 @@ class SocialGroupElasticsearch(Resource):
             'action': AccessOperation.READ,
         },
     )
+    @api.parameters(PaginationParameters())
     @api.response(schemas.BaseSocialGroupSchema(many=True))
-    def post(self):
+    def get(self, args):
+        search = {}
+        return SocialGroup.elasticsearch(search, **args)
+
+    @api.permission_required(
+        permissions.ModuleAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'module': SocialGroup,
+            'action': AccessOperation.READ,
+        },
+    )
+    @api.parameters(PaginationParameters())
+    @api.response(schemas.BaseSocialGroupSchema(many=True))
+    def post(self, args):
         search = request.get_json()
 
-        return SocialGroup.elasticsearch(search)
+        return SocialGroup.elasticsearch(search, **args)
 
 
 @api.route('/<uuid:social_group_guid>')

@@ -248,11 +248,25 @@ class IndividualElasticsearch(Resource):
             'action': AccessOperation.READ,
         },
     )
+    @api.parameters(PaginationParameters())
     @api.response(schemas.BaseIndividualSchema(many=True))
-    def post(self):
+    def get(self, args):
+        search = {}
+        return Individual.elasticsearch(search, **args)
+
+    @api.permission_required(
+        permissions.ModuleAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'module': Individual,
+            'action': AccessOperation.READ,
+        },
+    )
+    @api.parameters(PaginationParameters())
+    @api.response(schemas.BaseIndividualSchema(many=True))
+    def post(self, args):
         search = request.get_json()
 
-        return Individual.elasticsearch(search)
+        return Individual.elasticsearch(search, **args)
 
 
 @api.route('/<uuid:individual_guid>')

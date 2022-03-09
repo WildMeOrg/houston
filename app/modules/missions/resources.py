@@ -16,6 +16,7 @@ from flask_login import current_user  # NOQA
 
 from app.extensions import db
 from app.extensions.api import Namespace, abort
+from app.extensions.api.parameters import PaginationParameters
 from app.modules.users import permissions
 from app.modules.users.permissions.types import AccessOperation
 from app.modules.assets.schemas import DetailedAssetTableSchema
@@ -125,11 +126,25 @@ class MissionElasticsearch(Resource):
             'action': AccessOperation.READ,
         },
     )
+    @api.parameters(PaginationParameters())
     @api.response(schemas.BaseMissionSchema(many=True))
-    def post(self):
+    def get(self, args):
+        search = {}
+        return Mission.elasticsearch(search, **args)
+
+    @api.permission_required(
+        permissions.ModuleAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'module': Mission,
+            'action': AccessOperation.READ,
+        },
+    )
+    @api.parameters(PaginationParameters())
+    @api.response(schemas.BaseMissionSchema(many=True))
+    def post(self, args):
         search = request.get_json()
 
-        return Mission.elasticsearch(search)
+        return Mission.elasticsearch(search, **args)
 
 
 @api.route('/<uuid:mission_guid>')
@@ -295,10 +310,11 @@ class AssetsForMission(Resource):
             'action': AccessOperation.READ,
         },
     )
+    @api.parameters(PaginationParameters())
     @api.response(DetailedAssetTableSchema(many=True))
-    def get(self, mission):
+    def get(self, args, mission):
         search = {}
-        return mission.asset_search(search)
+        return mission.asset_search(search, **args)
 
     @api.permission_required(
         permissions.ObjectAccessPermission,
@@ -307,11 +323,12 @@ class AssetsForMission(Resource):
             'action': AccessOperation.READ,
         },
     )
+    @api.parameters(PaginationParameters())
     @api.response(DetailedAssetTableSchema(many=True))
-    def post(self, mission):
+    def post(self, args, mission):
         search = request.get_json()
 
-        return mission.asset_search(search)
+        return mission.asset_search(search, **args)
 
 
 @api.route('/<uuid:mission_guid>/tasks')
@@ -454,11 +471,25 @@ class MissionCollectionElasticsearch(Resource):
             'action': AccessOperation.READ,
         },
     )
+    @api.parameters(PaginationParameters())
     @api.response(schemas.BaseMissionCollectionSchema(many=True))
-    def post(self):
+    def get(self, args):
+        search = {}
+        return MissionCollection.elasticsearch(search, **args)
+
+    @api.permission_required(
+        permissions.ModuleAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'module': MissionCollection,
+            'action': AccessOperation.READ,
+        },
+    )
+    @api.parameters(PaginationParameters())
+    @api.response(schemas.BaseMissionCollectionSchema(many=True))
+    def post(self, args):
         search = request.get_json()
 
-        return MissionCollection.elasticsearch(search)
+        return MissionCollection.elasticsearch(search, **args)
 
 
 @api.login_required(oauth_scopes=['missions:read'])
@@ -659,11 +690,25 @@ class MissionTaskElasticsearch(Resource):
             'action': AccessOperation.READ,
         },
     )
+    @api.parameters(PaginationParameters())
     @api.response(schemas.BaseMissionTaskSchema(many=True))
-    def post(self):
+    def get(self, args):
+        search = {}
+        return MissionTask.elasticsearch(search, **args)
+
+    @api.permission_required(
+        permissions.ModuleAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'module': MissionTask,
+            'action': AccessOperation.READ,
+        },
+    )
+    @api.parameters(PaginationParameters())
+    @api.response(schemas.BaseMissionTaskSchema(many=True))
+    def post(self, args):
         search = request.get_json()
 
-        return MissionTask.elasticsearch(search)
+        return MissionTask.elasticsearch(search, **args)
 
 
 @api.route('/tasks/<uuid:mission_task_guid>')

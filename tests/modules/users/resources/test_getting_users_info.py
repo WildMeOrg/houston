@@ -86,6 +86,7 @@ def test_getting_list_of_users_by_authorized_user(
         'is_admin': False,
         'in_alpha': True,
         'in_beta': False,
+        'is_email_confirmed': False,
         'profile_fileupload': {
             'created': f'{fup.created.isoformat()}+00:00',
             'updated': f'{fup.updated.isoformat()}+00:00',

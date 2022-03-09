@@ -280,6 +280,7 @@ def test_new_user_creation_roles_admin(flask_app_client, admin_user, db):
         'is_researcher': True,
         'is_staff': False,
         'is_user_manager': False,
+        'is_email_confirmed': False,
         'location': '',
         'profile_fileupload': None,
         'updated': response.json['updated'],

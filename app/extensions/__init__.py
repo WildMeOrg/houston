@@ -380,7 +380,7 @@ else:
     def elasticsearch_context(*args, **kwargs):
         from app.extensions import elasticsearch as es
 
-        context = es.session.begin()
+        context = es.session.begin(*args, **kwargs)
         return context
 
     ElasticsearchModel = elasticsearch.ElasticsearchModel

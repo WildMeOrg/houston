@@ -129,9 +129,9 @@ class ElasticsearchModel(object):
             body['query'] = search
 
         with session.begin():
-            objs = elasticsearch_on_class(app, cls, body, *args, **kwargs)
+            values = elasticsearch_on_class(app, cls, body, *args, **kwargs)
 
-        return objs
+        return values
 
     @property
     def index_name(self):
@@ -477,6 +477,7 @@ class ElasticSearchBulkOperation(object):
 
             blocking = config.get('blocking', self.blocking)
             disabled = config.get('disabled', not config.get('enabled', True))
+            forced = config.get('forced', False)
 
             keys = self.bulk_actions.keys()
             log.debug('ES exit block with %r keys' % (keys,))
@@ -535,6 +536,10 @@ class ElasticSearchBulkOperation(object):
                     obj, force = item
                     if str(obj.guid) in del_items:
                         continue
+                    item = (
+                        obj,
+                        force or forced,
+                    )
                     items.append(item)
 
                 # Index everything that isn't deleted
@@ -1115,7 +1120,15 @@ def init_elasticsearch_index(app, verbose=True, **kwargs):
 
 
 def elasticsearch_on_class(
-    app, cls, body, load=True, limit=None, offset=0, sort='guid', reverse=False
+    app,
+    cls,
+    body,
+    load=True,
+    limit=100,
+    offset=0,
+    sort='guid',
+    reverse=False,
+    total=False,
 ):
     index = get_elasticsearch_index_name(cls)
 
@@ -1149,6 +1162,8 @@ def elasticsearch_on_class(
             search_guids.append(guid)
         else:
             search_prune.append(guid)
+
+    total_hits = len(search_guids)
 
     # Get all table GUIDs
     sort = sort.lower()
@@ -1191,9 +1206,15 @@ def elasticsearch_on_class(
         for guid in tqdm.tqdm(guids, desc='Loading Hits %s' % (cls.__name__,)):
             obj = cls.query.get(guid)
             objs.append(obj)
-        return objs
+        if total:
+            return total_hits, objs
+        else:
+            return objs
     else:
-        return guids
+        if total:
+            return total_hits, guids
+        else:
+            return guids
 
 
 def init_app(app, **kwargs):

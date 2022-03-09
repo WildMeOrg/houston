@@ -7,6 +7,7 @@ from flask_login import current_user
 from flask_restx._http import HTTPStatus
 from flask_marshmallow import Schema, base_fields
 from marshmallow import validate, validates_schema, ValidationError
+import datetime
 
 import sqlalchemy as sa
 
@@ -182,7 +183,10 @@ class PatchJSONParameters(Parameters):
                 if obj is not None:
                     objs.append(obj)
 
-            if not cls._process_patch_operation(operation, obj=obj, state=state):
+            if cls._process_patch_operation(operation, obj=obj, state=state):
+                if obj is not None and hasattr(obj, 'updated'):
+                    obj.updated = datetime.datetime.utcnow()
+            else:
                 log.info(
                     '%s patching has been stopped because of unknown operation %s',
                     obj.__class__.__name__,

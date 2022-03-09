@@ -13,6 +13,12 @@ import platform
 import logging
 from flask_restx_patched import is_extension_enabled
 
+try:
+    from invoke import ctask as task
+except ImportError:  # Invoke 0.13 renamed ctask to task
+    from invoke import task
+
+
 from tasks.utils import app_context_task
 
 
@@ -38,6 +44,7 @@ def hide_noisy_endpoint_logs():
     serving.WSGIRequestHandler.log_request = log_request
 
 
+@task
 def warmup(
     context,
     app,

@@ -399,7 +399,7 @@ def test_get_mission_assets(flask_app_client, data_manager_1, test_root):
         )
         assets = temp_mission.get_assets()
         assert len(assets) == ASSETS * MISSION_COLLECTIONS
-        assert len(response.json) == len(assets)
+        assert len(response.json) == min(100, len(assets))
 
         search = {
             'range': {
@@ -418,7 +418,7 @@ def test_get_mission_assets(flask_app_client, data_manager_1, test_root):
         response = mission_utils.elasticsearch_mission_assets(
             flask_app_client, data_manager_1, temp_mission.guid, search
         )
-        assert len(response.json) == counter
+        assert len(response.json) == min(100, counter)
 
         missions = Mission.query.all()
         mission_collections = MissionCollection.query.all()

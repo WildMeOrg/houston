@@ -11,7 +11,7 @@ from flask import send_file, request
 
 from flask_restx_patched import Resource
 from flask_restx_patched._http import HTTPStatus
-from app.extensions import db
+from app.extensions import db, elasticsearch_context
 from app.extensions.api import Namespace
 from app.modules.users import permissions
 from app.modules.users.permissions.types import AccessOperation
@@ -69,13 +69,16 @@ class Assets(Resource):
         """
         Patch Assets' details by ID.
         """
-        context = api.commit_or_abort(
-            db.session, default_error_message='Failed to bulk update Asset details.'
-        )
-        with context:
-            assets = parameters.PatchAssetParameters.perform_patch(args, obj_cls=Asset)
-            for asset in assets:
-                db.session.merge(asset)
+        with elasticsearch_context(forced=True):
+            context = api.commit_or_abort(
+                db.session, default_error_message='Failed to bulk update Asset details.'
+            )
+            with context:
+                assets = parameters.PatchAssetParameters.perform_patch(
+                    args, obj_cls=Asset
+                )
+                for asset in assets:
+                    db.session.merge(asset)
         return assets
 
 

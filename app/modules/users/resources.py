@@ -17,7 +17,6 @@ from app.extensions.api import Namespace, abort
 import app.extensions.logging as AuditLog
 from app.extensions import is_extension_enabled
 from app.extensions.email import Email
-from app.modules.auth.models import Code, CodeTypes
 
 from . import permissions, schemas, parameters
 from app.modules.users.permissions.types import AccessOperation
@@ -140,9 +139,7 @@ class Users(Resource):
         else:
 
             with context:
-                new_user = User(**args)
-                db.session.add(new_user)
-            db.session.refresh(new_user)
+                new_user = User.ensure_user(**args)
             AuditLog.user_create_object(
                 log, new_user, msg=f'{new_user.email}', duration=timer.elapsed()
             )
@@ -409,12 +406,19 @@ class UserResetPasswordEmail(Resource):
             # Log for development purposes but do not show anything to the API user
             log.warning(f'User with email address {repr(email)} not found')
             return
-        code = Code.get(user, CodeTypes.recover, replace=True)
+        code = user.get_account_recovery_code()
         msg = Email(recipients=[user])
         url_prefix = msg.template_kwargs['site_url_prefix']
         reset_link = urljoin(url_prefix, f'/auth/code/{code.accept_code}')
         msg.template('misc/password_reset', reset_link=reset_link)
         msg.send_message()
+
+
+@api.route('/verify_account_email')
+@api.login_required(oauth_scopes=[])
+class UserVerifyAccountEmail(Resource):
+    def post(self):
+        current_user.send_verify_account_email()
 
 
 if is_module_enabled('asset_groups'):

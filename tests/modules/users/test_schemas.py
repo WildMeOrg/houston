@@ -51,6 +51,7 @@ def test_DetailedUserSchema_dump_user_instance(user_instance):
         'is_admin',
         'in_alpha',
         'in_beta',
+        'is_email_confirmed',
         'profile_fileupload',
         'affiliation',
         'location',

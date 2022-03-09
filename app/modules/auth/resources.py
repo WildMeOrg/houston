@@ -6,8 +6,9 @@ Auth resources
 """
 import json
 import logging
+from urllib.parse import urlencode
 
-from flask import current_app, request
+from flask import current_app, request, redirect
 from flask_login import current_user, login_user, logout_user
 from flask_restx_patched import Resource
 from flask_restx_patched._http import HTTPStatus
@@ -209,16 +210,42 @@ class ReCaptchaPublicServerKey(Resource):
         return response
 
 
-@api.route('/code/<string:code_string>')
+@api.route('/code/<string:code_string_dot_json>')
 class CodeReceived(Resource):
-    def post(self, code_string):
+    def post(self, code_string_dot_json):
+        if code_string_dot_json.endswith('.json'):
+            is_json = True
+            code_string = code_string_dot_json[:-5]
+        else:
+            is_json = False
+            code_string = code_string_dot_json
+
         decision, code = Code.received(code_string)
+        if code is None:
+            abort(404, f'Code {repr(code_string)} not found')
+
+        redirect_uri = None
+        url_args = {}
+        if code.code_type == CodeTypes.recover:
+            redirect_uri = '/reset_password'
+        elif code.code_type == CodeTypes.email:
+            # nothing to do because User.is_email_confirmed looks into Code for
+            # the user filtered by CodeTypes.email is_resolved
+            redirect_uri = '/email_verified'
+        else:
+            abort(404, f'Unrecognized code type: {code.code_type}')
+
         if decision == CodeDecisions.expired:
-            abort(400, f'Code {repr(code_string)} is expired')
-        if decision == CodeDecisions.error or code is None:
-            abort(400, f'Code {repr(code_string)} not found')
-        if decision == CodeDecisions.dismiss:
-            abort(400, f'Code {repr(code_string)} already used')
+            url_args['message'] = 'Code has expired'
+        elif decision == CodeDecisions.error:
+            url_args['message'] = 'Code not found'
+        elif decision == CodeDecisions.dismiss:
+            url_args['message'] = 'Code already used'
+
+        if url_args.get('message'):
+            if is_json:
+                abort(400, url_args['message'])
+            return redirect(f'{redirect_uri}?{urlencode(url_args)}')
 
         try:
             data = json.loads(request.data)
@@ -228,10 +255,22 @@ class CodeReceived(Resource):
         if code.code_type == CodeTypes.recover:
             try:
                 code.user.set_password(data.get('password', ''))
+                url_args['message'] = 'Password successfully set.'
             except Exception as e:
                 code.response = None
                 with db.session.begin():
                     db.session.merge(code)
-                abort(400, str(e))
+                url_args['message'] = str(e)
+                url_args['status'] = 400
+        elif code.code_type == CodeTypes.email:
+            # nothing to do because User.is_email_confirmed looks into Code for
+            # the user filtered by CodeTypes.email is_resolved
+            url_args['message'] = 'Email successfully verified.'
         else:
-            abort(400, f'Unrecognized code type: {code.code_type}')
+            abort(404, f'Unrecognized code type: {code.code_type}')
+
+        if is_json:
+            if url_args.get('status', 200) != 200:
+                abort(url_args['status'], url_args.get('message'))
+            return {'message': url_args.get('message')}
+        return redirect(f'{redirect_uri}?{urlencode(url_args)}')

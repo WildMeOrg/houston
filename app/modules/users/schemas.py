@@ -51,6 +51,7 @@ class UserListSchema(BaseUserSchema):
             User.is_admin.fget.__name__,
             User.in_alpha.fget.__name__,
             User.in_beta.fget.__name__,
+            User.is_email_confirmed.fget.__name__,
             User.profile_fileupload.key,
         )
 

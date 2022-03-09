@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=missing-docstring
+from unittest import mock
 import uuid
 import tests.modules.users.resources.utils as user_utils
 from app.modules import is_module_enabled
@@ -39,11 +40,16 @@ def create_new_user(flask_app_client, data, must_succeed=True):
 
 def test_new_user_creation(patch_User_password_scheme, flask_app_client, db):
     # pylint: disable=invalid-name,unused-argument
-    user_guid = create_new_user(
-        flask_app_client,
-        data={'email': 'user1@localhost', 'password': 'user1_password'},
-    )
+    with mock.patch('app.extensions.email.mail.send') as send:
+        user_guid = create_new_user(
+            flask_app_client,
+            data={'email': 'user1@localhost', 'password': 'user1_password'},
+        )
     assert isinstance(user_guid, uuid.UUID)
+    assert send.called
+    email = send.call_args[0][0]
+    assert email.recipients == ['user1@localhost']
+    assert 'verify' in email.html.lower()
 
     # Cleanup
     from app.modules.users.models import User
@@ -280,6 +286,7 @@ def test_new_user_creation_roles_admin(flask_app_client, admin_user, db):
         'is_researcher': True,
         'is_staff': False,
         'is_user_manager': False,
+        'is_email_confirmed': False,
         'location': '',
         'profile_fileupload': None,
         'updated': response.json['updated'],

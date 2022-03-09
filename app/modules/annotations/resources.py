@@ -67,6 +67,7 @@ class Annotations(Resource):
         Create a new instance of Annotation.
         """
         from app.modules.assets.models import Asset
+        from app.modules.asset_groups.models import AssetGroupSightingStage
         from app.modules.encounters.models import Encounter
         from app.extensions.elapsed_time import ElapsedTime
 
@@ -87,7 +88,26 @@ class Annotations(Resource):
             if not encounter:
                 abort(code=HTTPStatus.BAD_REQUEST, message='encounter_guid not found')
             args['encounter_guid'] = encounter_guid
+        elif hasattr(asset.git_store, 'get_asset_group_sightings_for_asset'):
+            # Asset groups have stages, missions do not
+            ags = asset.git_store.get_asset_group_sightings_for_asset(asset)
+            if not ags:
+                abort(
+                    code=HTTPStatus.BAD_REQUEST,
+                    message='cannot create encounter-less annotation on asset that does not have an asset group sighting',
+                )
+            if len(ags) != 1:
+                log.warning(f'Asset {asset_guid} is in {len(ags)} asset group sightings')
+                abort(
+                    code=HTTPStatus.BAD_REQUEST,
+                    message='asset erroneously in multiple asset group sightings',
+                )
 
+            if ags[0].stage != AssetGroupSightingStage.curation:
+                abort(
+                    code=HTTPStatus.BAD_REQUEST,
+                    message='cannot create encounter-less annotation on asset in asset group sighting that is not curating',
+                )
         context = api.commit_or_abort(
             db.session, default_error_message='Failed to create a new Annotation'
         )

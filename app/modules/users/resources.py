@@ -407,7 +407,7 @@ class UserResetPasswordEmail(Resource):
         user = User.find(email=email)
         if not user:
             # Log for development purposes but do not show anything to the API user
-            log.warning('User with email address {repr(email)} not found')
+            log.warning(f'User with email address {repr(email)} not found')
             return
         code = Code.get(user, CodeTypes.recover, replace=True)
         msg = Email(recipients=[user])

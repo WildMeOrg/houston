@@ -245,6 +245,7 @@ class CodeReceived(Resource):
         if url_args.get('message'):
             if is_json:
                 abort(400, url_args['message'])
+            url_args['status'] = 400
             return redirect(f'{redirect_uri}?{urlencode(url_args)}')
 
         try:
@@ -256,6 +257,7 @@ class CodeReceived(Resource):
             try:
                 code.user.set_password(data.get('password', ''))
                 url_args['message'] = 'Password successfully set.'
+                url_args['status'] = 200
             except Exception as e:
                 code.response = None
                 with db.session.begin():
@@ -266,6 +268,7 @@ class CodeReceived(Resource):
             # nothing to do because User.is_email_confirmed looks into Code for
             # the user filtered by CodeTypes.email is_resolved
             url_args['message'] = 'Email successfully verified.'
+            url_args['status'] = 200
         else:
             abort(404, f'Unrecognized code type: {code.code_type}')
 

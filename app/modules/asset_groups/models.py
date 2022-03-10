@@ -558,8 +558,8 @@ class AssetGroupSighting(db.Model, HoustonModel):
             log.warning(
                 f'Sage Detection on AssetGroupSighting({self.guid}) Job{job_id} failed to start'
             )
-            # TODO Celery will retry, do we want it to?
-            self.stage = AssetGroupSightingStage.failed
+            # TODO Will Celery retry, do we want it to?
+            self.stage = AssetGroupSightingStage.curation
 
     def check_job_status(self, job_id):
         if str(job_id) not in self.jobs:
@@ -593,7 +593,9 @@ class AssetGroupSighting(db.Model, HoustonModel):
             raise HoustonException(log, 'No status in response from Sage')
 
         if status != 'completed':
-            self.set_stage(AssetGroupSightingStage.failed)
+            # Job Failed on Sage but move to curation so that user can create anotations manually and commit
+            # Post MVP this may be a separate stage (that also permits annot creation and commit)
+            self.set_stage(AssetGroupSightingStage.curation)
             # This is not an exception as the message from Sage was valid
             msg = f'JobID {str(job_id)} failed with status: {status} exception: {response.get("json_result")}'
             AuditLog.backend_fault(log, msg, self)

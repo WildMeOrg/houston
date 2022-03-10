@@ -67,7 +67,7 @@ def test_verify_account(flask_app_client, researcher_1, request):
     assert response.status_code == 302
     assert (
         response.headers['Location']
-        == 'http://localhost/email_verified?message=Email+successfully+verified.'
+        == 'http://localhost/email_verified?message=Email+successfully+verified.&status=200'
     )
     assert researcher_1.is_email_confirmed is True
 
@@ -76,7 +76,7 @@ def test_verify_account(flask_app_client, researcher_1, request):
     assert response.status_code == 302
     assert (
         response.headers['Location']
-        == 'http://localhost/email_verified?message=Code+already+used'
+        == 'http://localhost/email_verified?message=Code+already+used&status=400'
     )
 
     # Create a verify code that is expired
@@ -88,7 +88,7 @@ def test_verify_account(flask_app_client, researcher_1, request):
     assert response.status_code == 302
     assert (
         response.headers['Location']
-        == 'http://localhost/email_verified?message=Code+has+expired'
+        == 'http://localhost/email_verified?message=Code+has+expired&status=400'
     )
 
     # Use a code that does not exist

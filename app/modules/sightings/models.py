@@ -589,23 +589,23 @@ class Sighting(db.Model, FeatherModel):
             f'sighting {self} finding matching set for {annotation} using {matching_set_config}'
         )
         # may wish to run query through annotation.resolve_matching_set_query(query)
-        query_annotations = annotation.get_matching_set(matching_set_config)
-        return query_annotations
+        matching_set_annotations = annotation.get_matching_set(matching_set_config)
 
-        # TODO fix this......
-        return [], []
-        unique_annots = self._get_matching_set_annots(matching_set_config)
         matching_set_individual_uuids = []
         matching_set_annot_uuids = []
-        for annot in unique_annots:
-            if annot.encounter:
+        for annot in matching_set_annotations:
+            # ideally the query on matching_set annots will exclude these, but in case someone got fancy:
+            if not annot.content_guid:
+                log.warning(f'skipping {annot} due to no content_guid')
+                continue
+            if annot.encounter and annot.encounter.sighting:
                 if annot.encounter.sighting.stage == SightingStage.processed:
                     acm_annot_uuid = to_acm_uuid(annot.content_guid)
                     if acm_annot_uuid not in matching_set_annot_uuids:
                         matching_set_annot_uuids.append(acm_annot_uuid)
-                        individual = annot.get_individual()
-                        if individual:
-                            individual_guid = str(individual.guid)
+                        individual_guid = annot.get_individual_guid()
+                        if individual_guid:
+                            individual_guid = str(individual_guid)
                         else:
                             # Use Sage default value
                             individual_guid = default_acm_individual_uuid()

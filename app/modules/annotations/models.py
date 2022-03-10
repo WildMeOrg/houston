@@ -229,6 +229,10 @@ class Annotation(db.Model, HoustonModel):
         return user is not None and user == self.asset.git_store.owner
 
     # Used for building matching set but abstract the annotation to name mapping
+    def get_individual_guid(self):
+        # i think this technically might save a db hit vs get_individual() if only guid is needed
+        return self.encounter.individual_guid if self.encounter else None
+
     def get_individual(self):
         individual = None
         if self.encounter and self.encounter.individual:

@@ -193,7 +193,7 @@ def test_audit_log_faults(
 
     # Make sure we have the same number of Houston and Frontend faults (each error in the above test creates
     # one of each
-    assert len(faults.json) == 20
+    assert len(faults.json) == len(houston_faults.json)
     # may have been other Houston faults beforehand, just make sure we read something
     assert len(houston_faults.json) > 10
     houston = [fault for fault in faults.json if fault['audit_type'] == 'Houston Fault']

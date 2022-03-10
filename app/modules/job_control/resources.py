@@ -43,7 +43,7 @@ class Jobs(Resource):
         """
 
         # TODO do we want to sort these in reverse date order so you get the last 'limit' jobs
-        jobs = JobControl.get_jobs(verbose=False)[args['offset'] : args['limit']]
+        jobs = JobControl.get_jobs(verbose=False)[args['offset'] :][: args['limit']]
         returned_jobs = []
         for job in jobs:
             returned_jobs.append(

@@ -16,7 +16,6 @@ from flask_restx_patched._http import HTTPStatus
 
 from app.extensions import db
 from app.extensions.api import Namespace, abort
-from app.extensions.api.parameters import PaginationParameters
 from app.modules.users import permissions
 from app.modules.users.permissions.types import AccessOperation
 from app.utils import HoustonException
@@ -65,16 +64,13 @@ class AssetGroups(Resource):
             'action': AccessOperation.READ,
         },
     )
-    @api.parameters(PaginationParameters())
     @api.response(schemas.BaseAssetGroupSchema(many=True))
+    @api.paginate()
     def get(self, args):
         """
         List of Asset_group.
-
-        Returns a list of Asset_group starting from ``offset`` limited by ``limit``
-        parameter.
         """
-        return AssetGroup.query.offset(args['offset']).limit(args['limit'])
+        return AssetGroup.query_search(args=args)
 
     @api.permission_required(
         permissions.ModuleAccessPermission,
@@ -153,8 +149,8 @@ class AssetGroupElasticsearch(Resource):
             'action': AccessOperation.READ,
         },
     )
-    @api.parameters(PaginationParameters())
     @api.response(schemas.BaseAssetGroupSchema(many=True))
+    @api.paginate()
     def get(self, args):
         search = {}
         return AssetGroup.elasticsearch(search, **args)
@@ -166,8 +162,8 @@ class AssetGroupElasticsearch(Resource):
             'action': AccessOperation.READ,
         },
     )
-    @api.parameters(PaginationParameters())
     @api.response(schemas.BaseAssetGroupSchema(many=True))
+    @api.paginate()
     def post(self, args):
         search = request.get_json()
 
@@ -378,16 +374,13 @@ class AssetGroupSightings(Resource):
             'action': AccessOperation.READ,
         },
     )
-    @api.parameters(PaginationParameters())
     @api.response(schemas.BaseAssetGroupSightingSchema(many=True))
+    @api.paginate()
     def get(self, args):
         """
         List of Asset_group.
-
-        Returns a list of Asset_group starting from ``offset`` limited by ``limit``
-        parameter.
         """
-        return AssetGroupSighting.query.offset(args['offset']).limit(args['limit'])
+        return AssetGroupSighting.query_search(args=args)
 
 
 @api.route('/sighting/search')
@@ -400,8 +393,8 @@ class AssetGroupSightingElasticsearch(Resource):
             'action': AccessOperation.READ,
         },
     )
-    @api.parameters(PaginationParameters())
     @api.response(schemas.BaseAssetGroupSightingSchema(many=True))
+    @api.paginate()
     def get(self, args):
         search = {}
         return AssetGroupSighting.elasticsearch(search, **args)
@@ -413,8 +406,8 @@ class AssetGroupSightingElasticsearch(Resource):
             'action': AccessOperation.READ,
         },
     )
-    @api.parameters(PaginationParameters())
     @api.response(schemas.BaseAssetGroupSightingSchema(many=True))
+    @api.paginate()
     def post(self, args):
         search = request.get_json()
 

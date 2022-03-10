@@ -189,7 +189,7 @@ def email_setup(flask_app):
     from app.modules.site_settings.models import SiteSetting
 
     # this should only run in TESTING (non-sending) mode
-    assert flask_app.config['TESTING']
+    assert flask_app.testing
     flask_app.config['MAIL_OVERRIDE_RECIPIENTS'] = None
 
     # this mocks using mailchimp, but wont send since we are in TESTING

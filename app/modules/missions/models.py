@@ -114,14 +114,25 @@ class Mission(db.Model, HoustonModel, Timestamp):
     def asset_search(self, search, *args, **kwargs):
         from app.modules.assets.models import Asset
 
-        search_guids = set(Asset.elasticsearch(search, load=False, *args, **kwargs))
+        response = Asset.elasticsearch(search, load=False, *args, **kwargs)
+
+        if kwargs.get('total', False):
+            assert len(response) == 2
+            total, search_guids = response
+        else:
+            total, search_guids = None, response
+
+        search_guids = set(search_guids)
 
         valid_assets = []
         for asset in self.assets:
             if asset.guid in search_guids:
                 valid_assets.append(asset)
 
-        return valid_assets
+        if total is None:
+            return valid_assets
+        else:
+            return total, valid_assets
 
     @property
     def asset_count(self):

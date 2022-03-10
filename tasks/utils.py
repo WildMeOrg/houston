@@ -48,11 +48,6 @@ def app_context_task(*wrapper_args, **wrapper_kwargs):
     ... def my_task(context, some_arg, some_option='default'):
     ...     print("Done")
     """
-    if 'uwsgi_extra_options' in wrapper_kwargs:
-        import utool as ut
-
-        ut.embed()
-
     if len(wrapper_args) == 1:
         func = wrapper_args[0]
 

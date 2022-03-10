@@ -9,6 +9,19 @@ from flask_restx_patched import Parameters, PatchJSONParameters
 
 from . import schemas
 from .models import Notification, NOTIFICATION_CONFIG  # NOQA
+from app.extensions.api.parameters import PaginationParameters
+from flask_marshmallow import base_fields
+
+
+class ListAllUnreadNotifications(PaginationParameters):
+    sort = base_fields.String(
+        description='the field to sort the results by, default is "created"',
+        missing='created',
+    )
+    reverse = base_fields.Boolean(
+        description='the field to reverse the sorted results (before paging has been performed), default is True',
+        missing=True,
+    )
 
 
 class CreateNotificationParameters(Parameters, schemas.DetailedNotificationSchema):

@@ -16,23 +16,37 @@ log = logging.getLogger(__name__)
 
 @celery.on_after_configure.connect
 def elasticsearch_setup_periodic_tasks(sender, **kwargs):
-    sender.add_periodic_task(
-        60,
-        elasticsearch_refresh_index_all.s(),
-        name='Refresh Elasticsearch',
-    )
-    sender.add_periodic_task(
-        60 * 15,
-        elasticsearch_invalidate_indexed_timestamps.s(),
-        name='Clear Elasticsearch Indexed Timestamps',
-    )
+    try:
+        update_freq = int(current_app.config['ELASTICSEARCH_UPDATE_FREQUENCY'])
+        assert update_freq >= 1
+    except Exception:
+        update_freq = None
+
+    try:
+        firewall_freq = int(current_app.config['ELASTICSEARCH_FIREWALL_FREQUENCY'])
+        assert firewall_freq >= 1
+    except Exception:
+        firewall_freq = None
+
+    if update_freq is not None:
+        sender.add_periodic_task(
+            update_freq,
+            elasticsearch_refresh_index_all.s(),
+            name='Refresh Elasticsearch',
+        )
+
+    if firewall_freq is not None:
+        sender.add_periodic_task(
+            firewall_freq,
+            elasticsearch_invalidate_indexed_timestamps.s(),
+            name='Clear Elasticsearch Indexed Timestamps',
+        )
 
 
 @celery.task
 def elasticsearch_refresh_index_all():
-    testing = current_app.config['TESTING']
-    log.info('Running Refresh Index All (testing = %r)' % (testing,))
-    if testing:
+    log.info('Running Refresh Index All (testing = %r)' % (current_app.testing,))
+    if current_app.testing:
         log.info('...skipping')
         return True
 
@@ -51,9 +65,10 @@ def elasticsearch_refresh_index_all():
 
 @celery.task
 def elasticsearch_invalidate_indexed_timestamps():
-    testing = current_app.config['TESTING']
-    log.info('Running Invalidate Indexed Timestamps (testing = %r)' % (testing,))
-    if testing:
+    log.info(
+        'Running Invalidate Indexed Timestamps (testing = %r)' % (current_app.testing,)
+    )
+    if current_app.testing:
         log.info('...skipping')
         return True
 

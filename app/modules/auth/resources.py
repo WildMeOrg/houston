@@ -15,7 +15,6 @@ from flask_restx_patched._http import HTTPStatus
 
 from app.extensions import oauth2
 from app.extensions.api import Namespace, api_v1, abort
-from app.extensions.api.parameters import PaginationParameters
 from app.modules.users.models import User
 
 from . import schemas, parameters
@@ -110,10 +109,8 @@ class OAuth2Clients(Resource):
     Manipulations with OAuth2 clients.
     """
 
-    # @api.parameters(parameters.ListOAuth2ClientsParameters())
-    @api.parameters(PaginationParameters())
     @api.response(schemas.DetailedOAuth2ClientSchema(many=True))
-    def get(self, args):
+    def get(self):
         """
         List of OAuth2 Clients.
 
@@ -136,7 +133,7 @@ class OAuth2Clients(Resource):
             _generate_new_client(args_)
             return self.get()
 
-        return oauth2_clients.offset(args['offset']).limit(args['limit'])
+        return oauth2_clients
 
     @api.login_required(oauth_scopes=['auth:write'])
     @api.parameters(parameters.CreateOAuth2ClientParameters())

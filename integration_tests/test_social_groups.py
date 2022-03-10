@@ -125,7 +125,12 @@ def test_social_groups(session, login, codex_url):
     response = session.get(codex_url('/api/v1/social-groups/'))
     assert response.status_code == 200
     assert len(response.json()) >= 1
-    assert {'name': 'Family', 'guid': social_group_id} in response.json()
+    assert response.json() == {
+        'name': 'Family',
+        'guid': social_group_id,
+        'elasticsearchable': social_group['elasticsearchable'],
+        'indexed': social_group['indexed'],
+    }
 
     # PATCH social group: remove member
     data = [

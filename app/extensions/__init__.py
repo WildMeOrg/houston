@@ -428,8 +428,11 @@ class FeatherModel(GhostModel, TimestampViewed, ElasticsearchModel):
     """
 
     @classmethod
-    def query_search(cls, search=None):
+    def query_search(cls, search=None, args=None):
         from sqlalchemy import or_, and_
+
+        if args is not None:
+            search = args.get('search', None)
 
         if search is not None and len(search) == 0:
             search = None

@@ -14,7 +14,6 @@ from flask_restx_patched._http import HTTPStatus
 
 from app.extensions import db
 from app.extensions.api import Namespace
-from app.extensions.api.parameters import PaginationParameters
 from app.modules.users import permissions
 from app.modules.users.permissions.types import AccessOperation
 
@@ -43,16 +42,13 @@ class Organizations(Resource):
             'action': AccessOperation.READ,
         },
     )
-    @api.parameters(PaginationParameters())
     @api.response(schemas.BaseOrganizationSchema(many=True))
+    @api.paginate()
     def get(self, args):
         """
         List of Organization.
-
-        Returns a list of Organization starting from ``offset`` limited by ``limit``
-        parameter.
         """
-        return Organization.query.offset(args['offset']).limit(args['limit'])
+        return Organization.query_search(args=args)
 
     @api.permission_required(
         permissions.ModuleAccessPermission,
@@ -92,8 +88,8 @@ class OrganizationElasticsearch(Resource):
             'action': AccessOperation.READ,
         },
     )
-    @api.parameters(PaginationParameters())
     @api.response(schemas.DetailedOrganizationSchema(many=True))
+    @api.paginate()
     def get(self, args):
         search = {}
         return Organization.elasticsearch(search, **args)
@@ -105,8 +101,8 @@ class OrganizationElasticsearch(Resource):
             'action': AccessOperation.READ,
         },
     )
-    @api.parameters(PaginationParameters())
     @api.response(schemas.DetailedOrganizationSchema(many=True))
+    @api.paginate()
     def post(self, args):
         search = request.get_json()
 

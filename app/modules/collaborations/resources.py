@@ -17,7 +17,6 @@ from marshmallow import ValidationError
 
 from app.extensions import db
 from app.extensions.api import Namespace
-from app.extensions.api.parameters import PaginationParameters
 from app.modules.users.permissions.types import AccessOperation
 from app.utils import HoustonException
 from app.modules.users import permissions
@@ -47,16 +46,13 @@ class Collaborations(Resource):
             'action': AccessOperation.READ,
         },
     )
-    @api.parameters(PaginationParameters())
     @api.response(schemas.BaseCollaborationSchema(many=True))
+    @api.paginate()
     def get(self, args):
         """
         List of Collaboration.
-
-        Returns a list of Collaboration starting from ``offset`` limited by ``limit``
-        parameter.
         """
-        return Collaboration.query.offset(args['offset']).limit(args['limit'])
+        return Collaboration.query_search(args=args)
 
     @api.permission_required(
         permissions.ModuleAccessPermission,
@@ -145,8 +141,8 @@ class CollaborationElasticsearch(Resource):
             'action': AccessOperation.READ,
         },
     )
-    @api.parameters(PaginationParameters())
     @api.response(schemas.DetailedCollaborationSchema(many=True))
+    @api.paginate()
     def get(self, args):
         search = {}
         return Collaboration.elasticsearch(search, **args)
@@ -158,8 +154,8 @@ class CollaborationElasticsearch(Resource):
             'action': AccessOperation.READ,
         },
     )
-    @api.parameters(PaginationParameters())
     @api.response(schemas.DetailedCollaborationSchema(many=True))
+    @api.paginate()
     def post(self, args):
         search = request.get_json()
 

@@ -59,6 +59,14 @@ class PaginationParameters(Parameters):
         missing='guid',
     )
     reverse = base_fields.Boolean(
-        description='the field to reverse the sorted results, default is False',
+        description='the field to reverse the sorted results (before paging has been performed), default is False',
         missing=False,
+    )
+    reverse_after = base_fields.Boolean(
+        description='the field to reverse the sorted results (after paging has been performed), default is False',
+        missing=False,
+    )
+    search = base_fields.String(
+        description='the field to filter the results by a search string, not required',
+        required=False,
     )

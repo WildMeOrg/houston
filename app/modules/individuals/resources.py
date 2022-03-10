@@ -12,7 +12,6 @@ from flask_restx._http import HTTPStatus
 from flask import request, current_app, send_file
 from app.extensions import db
 from app.extensions.api import Namespace, abort
-from app.extensions.api.parameters import PaginationParameters
 from app.modules.users import permissions
 from app.modules.users.permissions.types import AccessOperation
 from app.utils import HoustonException
@@ -76,16 +75,13 @@ class Individuals(Resource):
             'action': AccessOperation.READ,
         },
     )
-    @api.parameters(PaginationParameters())
     @api.response(schemas.BaseIndividualSchema(many=True))
+    @api.paginate()
     def get(self, args):
         """
         List of Individual.
-
-        Returns a list of Individual starting from ``offset`` limited by ``limit``
-        parameter.
         """
-        return Individual.query.offset(args['offset']).limit(args['limit'])
+        return Individual.query_search(args=args)
 
     @api.login_required(oauth_scopes=['individuals:write'])
     @api.parameters(parameters.CreateIndividualParameters())
@@ -248,8 +244,8 @@ class IndividualElasticsearch(Resource):
             'action': AccessOperation.READ,
         },
     )
-    @api.parameters(PaginationParameters())
     @api.response(schemas.BaseIndividualSchema(many=True))
+    @api.paginate()
     def get(self, args):
         search = {}
         return Individual.elasticsearch(search, **args)
@@ -261,8 +257,8 @@ class IndividualElasticsearch(Resource):
             'action': AccessOperation.READ,
         },
     )
-    @api.parameters(PaginationParameters())
     @api.response(schemas.BaseIndividualSchema(many=True))
+    @api.paginate()
     def post(self, args):
         search = request.get_json()
 

@@ -15,7 +15,6 @@ from app.extensions import db, elasticsearch_context
 from app.extensions.api import Namespace
 from app.modules.users import permissions
 from app.modules.users.permissions.types import AccessOperation
-from app.extensions.api.parameters import PaginationParameters
 import werkzeug
 
 from .models import Asset
@@ -43,17 +42,12 @@ class Assets(Resource):
     )
     @api.login_required(oauth_scopes=['assets:read'])
     @api.response(schemas.BaseAssetSchema(many=True))
-    @api.parameters(PaginationParameters())
+    @api.paginate()
     def get(self, args):
         """
         List of Assets.
-
-        Returns a list of Asset starting from ``offset`` limited by ``limit``
-        parameter.
         """
-        return (
-            Asset.query.order_by(Asset.guid).offset(args['offset']).limit(args['limit'])
-        )
+        return Asset.query_search(args=args)
 
     # @api.permission_required(
     #     permissions.ModuleAccessPermission,
@@ -92,8 +86,8 @@ class AssetElasticsearch(Resource):
             'action': AccessOperation.READ,
         },
     )
-    @api.parameters(PaginationParameters())
     @api.response(schemas.BaseAssetSchema(many=True))
+    @api.paginate()
     def get(self, args):
         search = {}
         return Asset.elasticsearch(search, **args)
@@ -105,8 +99,8 @@ class AssetElasticsearch(Resource):
             'action': AccessOperation.READ,
         },
     )
-    @api.parameters(PaginationParameters())
     @api.response(schemas.BaseAssetSchema(many=True))
+    @api.paginate()
     def post(self, args):
         search = request.get_json()
 

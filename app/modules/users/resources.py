@@ -42,23 +42,12 @@ class Users(Resource):
         },
     )
     @api.response(schemas.UserListSchema(many=True))
-    # turning off pagination as it defaults to only 20 shown  [DEX-729]
-    # @api.paginate(parameters.ListUserParameters())
-    @api.parameters(parameters.ListUserParameters())
+    @api.paginate()
     def get(self, args):
         """
         List of users.
-
-        Returns a list of users starting from ``offset`` limited by ``limit``
-        parameter.
         """
-        search = args.get('search', None)
-
-        users = User.query_search(search)
-
-        # TODO: re-enable pagination on listing users
-        # return users.order_by(User.guid).offset(args['offset']).limit(args['limit'])
-        return users.order_by(User.guid)
+        return User.query_search(args=args)
 
     @api.permission_required(
         permissions.ModuleAccessPermission,
@@ -154,8 +143,8 @@ class UserElasticsearch(Resource):
             'action': AccessOperation.READ,
         },
     )
-    @api.parameters(PaginationParameters())
     @api.response(schemas.UserListSchema(many=True))
+    @api.paginate()
     def get(self, args):
         search = {}
         return User.elasticsearch(search, **args)
@@ -167,8 +156,8 @@ class UserElasticsearch(Resource):
             'action': AccessOperation.READ,
         },
     )
-    @api.parameters(PaginationParameters())
     @api.response(schemas.UserListSchema(many=True))
+    @api.paginate()
     def post(self, args):
         search = request.get_json()
 

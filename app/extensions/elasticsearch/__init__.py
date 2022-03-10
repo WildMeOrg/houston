@@ -3,6 +3,7 @@
 from gumby import Client, initialize_indexes_by_model
 
 from app.extensions import is_extension_enabled, db
+
 import elasticsearch
 from elasticsearch import helpers
 
@@ -58,14 +59,10 @@ class ElasticsearchModel(object):
 
     @classmethod
     def pit(cls, *args, **kwargs):
-        from app.extensions.elasticsearch import es_pit
-
         return es_pit(cls, *args, **kwargs)
 
     @classmethod
     def _index(cls):
-        from app.extensions.elasticsearch import get_elasticsearch_index_name
-
         return get_elasticsearch_index_name(cls)
 
     @classmethod
@@ -117,9 +114,7 @@ class ElasticsearchModel(object):
                     obj.index(app=app, force=force)
 
     @classmethod
-    def elasticsearch(cls, search, app=None, *args, **kwargs):
-        from app.extensions.elasticsearch import elasticsearch_on_class
-
+    def elasticsearch(cls, search, app=None, total=False, *args, **kwargs):
         body = {}
 
         if search is None:
@@ -128,10 +123,13 @@ class ElasticsearchModel(object):
         if len(search) > 0:
             body['query'] = search
 
-        with session.begin():
-            values = elasticsearch_on_class(app, cls, body, *args, **kwargs)
+        if total:
+            kwargs['total'] = True
 
-        return values
+        with session.begin():
+            response = elasticsearch_on_class(app, cls, body, *args, **kwargs)
+
+        return response
 
     @property
     def index_name(self):
@@ -154,28 +152,18 @@ class ElasticsearchModel(object):
         return self._elasticsearch_delete(*args, **kwargs)
 
     def _elasticsearch_exists(self, *args, **kwargs):
-        from app.extensions.elasticsearch import es_exists
-
         return es_exists(self, *args, **kwargs)
 
     def _elasticsearch_index(self, *args, **kwargs):
-        from app.extensions.elasticsearch import es_index
-
         return es_index(self, *args, **kwargs)
 
     def _elasticsearch_get(self, *args, **kwargs):
-        from app.extensions.elasticsearch import es_get
-
         return es_get(self, *args, **kwargs)
 
     def _elasticsearch_update(self, *args, **kwargs):
-        from app.extensions.elasticsearch import es_update
-
         return es_update(self, *args, **kwargs)
 
     def _elasticsearch_delete(self, *args, **kwargs):
-        from app.extensions.elasticsearch import es_delete
-
         return es_delete(self, *args, **kwargs)
 
 
@@ -653,7 +641,7 @@ def get_elasticsearch_index_name(cls):
 
     index = ('%s.%s' % (cls.__module__, cls.__name__)).lower()
 
-    if current_app.config['TESTING']:
+    if current_app.testing:
         index = '%s.%s' % (
             TESTING_PREFIX,
             index,
@@ -687,6 +675,11 @@ def get_elasticsearch_cls_from_index(index):
                 cls = cls_
 
     return cls
+
+
+def es_invalidate(obj):
+    if obj is not None and hasattr(obj, 'updated'):
+        obj.updated = datetime.datetime.utcnow()
 
 
 def es_index(obj, init=False, app=None, force=False):

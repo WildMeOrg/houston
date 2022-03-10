@@ -116,7 +116,7 @@ class Email(Message):
 
         if 'recipients' not in kwargs:
             raise AttributeError('Email() must have recipients= argument')
-        if current_app.config['TESTING']:
+        if current_app.testing:
             log.info(
                 'Email is currently running with TESTING=True, so mail will not actually send.'
             )

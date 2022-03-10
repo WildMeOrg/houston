@@ -192,7 +192,7 @@ def test_sightings(session, login, codex_url, test_root, admin_name):
         'updated': response.json()['updated'],
         'indexed': response.json()['indexed'],
         'detection_start_time': response.json()['detection_start_time'],
-        'elasticsearchable': response.json()['createdHouston'],
+        'elasticsearchable': response.json()['elasticsearchable'],
         'curation_start_time': response.json()['curation_start_time'],
         'identification_start_time': None,
         'unreviewed_start_time': response.json()['unreviewed_start_time'],

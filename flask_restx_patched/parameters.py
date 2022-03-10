@@ -7,7 +7,6 @@ from flask_login import current_user
 from flask_restx._http import HTTPStatus
 from flask_marshmallow import Schema, base_fields
 from marshmallow import validate, validates_schema, ValidationError
-import datetime
 
 import sqlalchemy as sa
 
@@ -144,6 +143,7 @@ class PatchJSONParameters(Parameters):
         """
         from app.modules.users import permissions
         from app.modules.users.permissions.types import AccessOperation
+        from app.extensions import is_extension_enabled
 
         if state is None:
             state = {}
@@ -184,8 +184,10 @@ class PatchJSONParameters(Parameters):
                     objs.append(obj)
 
             if cls._process_patch_operation(operation, obj=obj, state=state):
-                if obj is not None and hasattr(obj, 'updated'):
-                    obj.updated = datetime.datetime.utcnow()
+                if is_extension_enabled('elasticsearch'):
+                    from app.extensions import elasticsearch as es
+
+                    es.es_invalidate(obj)
             else:
                 log.info(
                     '%s patching has been stopped because of unknown operation %s',

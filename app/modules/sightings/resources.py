@@ -14,7 +14,6 @@ from flask import request, current_app, send_file, make_response
 
 from app.extensions import db
 from app.extensions.api import Namespace
-from app.extensions.api.parameters import PaginationParameters
 from app.modules.users import permissions
 from app.modules.users.permissions.types import AccessOperation
 from app.utils import HoustonException
@@ -162,16 +161,13 @@ class Sightings(Resource):
             'action': AccessOperation.READ,
         },
     )
-    @api.parameters(PaginationParameters())
     @api.response(schemas.BaseSightingSchema(many=True))
+    @api.paginate()
     def get(self, args):
         """
         List of Sighting.
-
-        Returns a list of Sighting starting from ``offset`` limited by ``limit``
-        parameter.
         """
-        return Sighting.query.offset(args['offset']).limit(args['limit'])
+        return Sighting.query_search(args=args)
 
     @api.permission_required(
         permissions.ModuleAccessPermission,
@@ -414,8 +410,8 @@ class SightingElasticsearch(Resource):
             'action': AccessOperation.READ,
         },
     )
-    @api.parameters(PaginationParameters())
     @api.response(schemas.BaseSightingSchema(many=True))
+    @api.paginate()
     def get(self, args):
         search = {}
         return Sighting.elasticsearch(search, **args)
@@ -427,8 +423,8 @@ class SightingElasticsearch(Resource):
             'action': AccessOperation.READ,
         },
     )
-    @api.parameters(PaginationParameters())
     @api.response(schemas.BaseSightingSchema(many=True))
+    @api.paginate()
     def post(self, args):
         search = request.get_json()
 

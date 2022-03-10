@@ -11,7 +11,6 @@ from flask_restx_patched import Resource
 from flask_restx._http import HTTPStatus
 
 from flask import request
-from app.extensions.api.parameters import PaginationParameters
 from app.extensions.api import Namespace
 from app.modules.users import permissions
 from app.modules.users.permissions.types import AccessOperation
@@ -39,35 +38,18 @@ class AuditLogs(Resource):
             'action': AccessOperation.READ,
         },
     )
-    @api.parameters(GetAuditLogParameters())
     @api.response(schemas.DetailedAuditLogSchema(many=True))
+    @api.paginate(GetAuditLogParameters())
     def get(self, args):
         """
         List of AuditLogs.
-
-        This is the list of the last 'limit' audit logs
         """
+        query = AuditLog.query_search(args=args)
 
         if 'module_name' in args:
-            all_logs = (
-                AuditLog.query.filter_by(module_name=args['module_name'])
-                .order_by(desc(AuditLog.created))
-                .offset(args['offset'])
-                .limit(args['limit'])
-                .all()
-            )
-        else:
-            all_logs = (
-                AuditLog.query.order_by(desc(AuditLog.created))
-                .offset(args['offset'])
-                .limit(args['limit'])
-                .all()
-            )
+            query = query.filter_by(module_name=args['module_name'])
 
-        # all_logs is now the logs of interest ordered by the time created, youngest first.
-        # What we actually want to return the data with oldest first so we need to reverse all_logs first
-        all_logs.reverse()
-        return all_logs
+        return query
 
 
 @api.route('/search')
@@ -80,8 +62,8 @@ class AuditLogElasticsearch(Resource):
             'action': AccessOperation.READ,
         },
     )
-    @api.parameters(PaginationParameters())
     @api.response(schemas.DetailedAuditLogSchema(many=True))
+    @api.paginate()
     def get(self, args):
         search = {}
         return AuditLog.elasticsearch(search, **args)
@@ -93,8 +75,8 @@ class AuditLogElasticsearch(Resource):
             'action': AccessOperation.READ,
         },
     )
-    @api.parameters(PaginationParameters())
     @api.response(schemas.DetailedAuditLogSchema(many=True))
+    @api.paginate()
     def post(self, args):
         search = request.get_json()
 

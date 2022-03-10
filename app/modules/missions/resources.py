@@ -16,7 +16,6 @@ from flask_login import current_user  # NOQA
 
 from app.extensions import db
 from app.extensions.api import Namespace, abort
-from app.extensions.api.parameters import PaginationParameters
 from app.modules.users import permissions
 from app.modules.users.permissions.types import AccessOperation
 from app.modules.assets.schemas import DetailedAssetTableSchema
@@ -71,20 +70,13 @@ class Missions(Resource):
             'action': AccessOperation.READ,
         },
     )
-    @api.parameters(parameters.ListMissionParameters())
     @api.response(schemas.BaseMissionSchema(many=True))
+    @api.paginate()
     def get(self, args):
         """
         List of Mission.
-
-        Returns a list of Mission starting from ``offset`` limited by ``limit``
-        parameter.
         """
-        search = args.get('search', None)
-
-        missions = Mission.query_search(search)
-
-        return missions.order_by(Mission.guid).offset(args['offset']).limit(args['limit'])
+        return Mission.query_search(args=args)
 
     @api.permission_required(
         permissions.ModuleAccessPermission,
@@ -126,10 +118,11 @@ class MissionElasticsearch(Resource):
             'action': AccessOperation.READ,
         },
     )
-    @api.parameters(PaginationParameters())
     @api.response(schemas.BaseMissionSchema(many=True))
+    @api.paginate()
     def get(self, args):
         search = {}
+        args['total'] = True
         return Mission.elasticsearch(search, **args)
 
     @api.permission_required(
@@ -139,11 +132,12 @@ class MissionElasticsearch(Resource):
             'action': AccessOperation.READ,
         },
     )
-    @api.parameters(PaginationParameters())
     @api.response(schemas.BaseMissionSchema(many=True))
+    @api.paginate()
     def post(self, args):
         search = request.get_json()
 
+        args['total'] = True
         return Mission.elasticsearch(search, **args)
 
 
@@ -310,10 +304,11 @@ class AssetsForMission(Resource):
             'action': AccessOperation.READ,
         },
     )
-    @api.parameters(PaginationParameters())
     @api.response(DetailedAssetTableSchema(many=True))
+    @api.paginate()
     def get(self, args, mission):
         search = {}
+        args['total'] = True
         return mission.asset_search(search, **args)
 
     @api.permission_required(
@@ -323,11 +318,11 @@ class AssetsForMission(Resource):
             'action': AccessOperation.READ,
         },
     )
-    @api.parameters(PaginationParameters())
     @api.response(DetailedAssetTableSchema(many=True))
+    @api.paginate()
     def post(self, args, mission):
         search = request.get_json()
-
+        args['total'] = True
         return mission.asset_search(search, **args)
 
 
@@ -441,24 +436,13 @@ class MissionCollections(Resource):
             'action': AccessOperation.READ,
         },
     )
-    @api.parameters(parameters.ListMissionCollectionParameters())
     @api.response(schemas.BaseMissionCollectionSchema(many=True))
+    @api.paginate()
     def get(self, args):
         """
         List of Mission Collection.
-
-        Returns a list of Mission Collection starting from ``offset`` limited by ``limit``
-        parameter.
         """
-        search = args.get('search', None)
-
-        mission_collections = MissionCollection.query_search(search)
-
-        return (
-            mission_collections.order_by(MissionCollection.guid)
-            .offset(args['offset'])
-            .limit(args['limit'])
-        )
+        return MissionCollection.query_search(args=args)
 
 
 @api.route('/collections/search')
@@ -471,10 +455,11 @@ class MissionCollectionElasticsearch(Resource):
             'action': AccessOperation.READ,
         },
     )
-    @api.parameters(PaginationParameters())
     @api.response(schemas.BaseMissionCollectionSchema(many=True))
+    @api.paginate()
     def get(self, args):
         search = {}
+        args['total'] = True
         return MissionCollection.elasticsearch(search, **args)
 
     @api.permission_required(
@@ -484,11 +469,12 @@ class MissionCollectionElasticsearch(Resource):
             'action': AccessOperation.READ,
         },
     )
-    @api.parameters(PaginationParameters())
     @api.response(schemas.BaseMissionCollectionSchema(many=True))
+    @api.paginate()
     def post(self, args):
         search = request.get_json()
 
+        args['total'] = True
         return MissionCollection.elasticsearch(search, **args)
 
 
@@ -660,24 +646,13 @@ class MissionTasks(Resource):
             'action': AccessOperation.READ,
         },
     )
-    @api.parameters(parameters.ListMissionTaskParameters())
     @api.response(schemas.BaseMissionTaskSchema(many=True))
+    @api.paginate()
     def get(self, args):
         """
         List of Mission Task.
-
-        Returns a list of Mission Task starting from ``offset`` limited by ``limit``
-        parameter.
         """
-        search = args.get('search', None)
-
-        mission_tasks = MissionTask.query_search(search)
-
-        return (
-            mission_tasks.order_by(MissionTask.guid)
-            .offset(args['offset'])
-            .limit(args['limit'])
-        )
+        return MissionTask.query_search(args=args)
 
 
 @api.route('/tasks/search')
@@ -690,10 +665,11 @@ class MissionTaskElasticsearch(Resource):
             'action': AccessOperation.READ,
         },
     )
-    @api.parameters(PaginationParameters())
     @api.response(schemas.BaseMissionTaskSchema(many=True))
+    @api.paginate()
     def get(self, args):
         search = {}
+        args['total'] = True
         return MissionTask.elasticsearch(search, **args)
 
     @api.permission_required(
@@ -703,11 +679,12 @@ class MissionTaskElasticsearch(Resource):
             'action': AccessOperation.READ,
         },
     )
-    @api.parameters(PaginationParameters())
     @api.response(schemas.BaseMissionTaskSchema(many=True))
+    @api.paginate()
     def post(self, args):
         search = request.get_json()
 
+        args['total'] = True
         return MissionTask.elasticsearch(search, **args)
 
 

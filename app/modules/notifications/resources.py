@@ -96,8 +96,8 @@ class NotificationElasticsearch(Resource):
             'action': AccessOperation.READ,
         },
     )
-    @api.parameters(PaginationParameters())
     @api.response(schemas.DetailedNotificationSchema(many=True))
+    @api.paginate()
     def get(self, args):
         search = {}
         return Notification.elasticsearch(search, **args)
@@ -109,8 +109,8 @@ class NotificationElasticsearch(Resource):
             'action': AccessOperation.READ,
         },
     )
-    @api.parameters(PaginationParameters())
     @api.response(schemas.DetailedNotificationSchema(many=True))
+    @api.paginate()
     def post(self, args):
         search = request.get_json()
 
@@ -161,20 +161,13 @@ class AllUnreadNotifications(Resource):
             'action': AccessOperation.READ_PRIVILEGED,
         },
     )
-    @api.parameters(PaginationParameters())
     @api.response(schemas.DetailedNotificationSchema(many=True))
+    @api.paginate(parameters.ListAllUnreadNotifications())
     def get(self, args):
         """
         List of Notifications for all users with no preferences applied.
-
-        Returns a list of Notification starting from ``offset`` limited by ``limit``
-        parameter.
         """
-        from sqlalchemy import desc
-
-        notifications = Notification.query.order_by(desc(Notification.created)).all()
-        # Manually apply offset and limit after the list is created
-        return notifications[args['offset'] : args['limit'] - args['offset']]
+        return Notification.query_search(args=args)
 
 
 @api.route('/<uuid:notification_guid>')

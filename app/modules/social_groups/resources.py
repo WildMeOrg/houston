@@ -15,7 +15,6 @@ from flask_restx._http import HTTPStatus
 from app.utils import HoustonException
 from app.extensions import db
 from app.extensions.api import abort, Namespace
-from app.extensions.api.parameters import PaginationParameters
 from app.modules.users import permissions
 from app.modules.users.permissions.types import AccessOperation
 import app.extensions.logging as AuditLog
@@ -90,16 +89,13 @@ class SocialGroups(Resource):
             'action': AccessOperation.READ,
         },
     )
-    @api.parameters(PaginationParameters())
     @api.response(schemas.BaseSocialGroupSchema(many=True))
+    @api.paginate()
     def get(self, args):
         """
         List of SocialGroup.
-
-        Returns a list of SocialGroup starting from ``offset`` limited by ``limit``
-        parameter.
         """
-        return SocialGroup.query.offset(args['offset']).limit(args['limit'])
+        return SocialGroup.query_search(args=args)
 
     @api.permission_required(
         permissions.ModuleAccessPermission,
@@ -147,8 +143,8 @@ class SocialGroupElasticsearch(Resource):
             'action': AccessOperation.READ,
         },
     )
-    @api.parameters(PaginationParameters())
     @api.response(schemas.BaseSocialGroupSchema(many=True))
+    @api.paginate()
     def get(self, args):
         search = {}
         return SocialGroup.elasticsearch(search, **args)
@@ -160,8 +156,8 @@ class SocialGroupElasticsearch(Resource):
             'action': AccessOperation.READ,
         },
     )
-    @api.parameters(PaginationParameters())
     @api.response(schemas.BaseSocialGroupSchema(many=True))
+    @api.paginate()
     def post(self, args):
         search = request.get_json()
 

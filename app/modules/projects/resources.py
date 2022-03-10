@@ -14,7 +14,6 @@ from flask_login import current_user  # NOQA
 
 from app.extensions import db
 from app.extensions.api import Namespace
-from app.extensions.api.parameters import PaginationParameters
 from app.modules.users import permissions
 from app.modules.users.permissions.types import AccessOperation
 from . import parameters, schemas
@@ -39,16 +38,13 @@ class Projects(Resource):
             'action': AccessOperation.READ,
         },
     )
-    @api.parameters(PaginationParameters())
     @api.response(schemas.BaseProjectSchema(many=True))
+    @api.paginate()
     def get(self, args):
         """
         List of Project.
-
-        Returns a list of Project starting from ``offset`` limited by ``limit``
-        parameter.
         """
-        return Project.query.offset(args['offset']).limit(args['limit'])
+        return Project.query_search(args=args)
 
     @api.permission_required(
         permissions.ModuleAccessPermission,
@@ -90,8 +86,8 @@ class ProjectElasticsearch(Resource):
             'action': AccessOperation.READ,
         },
     )
-    @api.parameters(PaginationParameters())
     @api.response(schemas.BaseProjectSchema(many=True))
+    @api.paginate()
     def get(self, args):
         search = {}
         return Project.elasticsearch(search, **args)
@@ -103,8 +99,8 @@ class ProjectElasticsearch(Resource):
             'action': AccessOperation.READ,
         },
     )
-    @api.parameters(PaginationParameters())
     @api.response(schemas.BaseProjectSchema(many=True))
+    @api.paginate()
     def post(self, args):
         search = request.get_json()
 

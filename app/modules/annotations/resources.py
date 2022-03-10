@@ -13,7 +13,6 @@ from flask_restx._http import HTTPStatus
 
 from app.extensions import db
 from app.extensions.api import Namespace, abort
-from app.extensions.api.parameters import PaginationParameters
 from app.modules.users import permissions
 from app.modules.users.permissions.types import AccessOperation
 import app.extensions.logging as AuditLog
@@ -40,16 +39,13 @@ class Annotations(Resource):
             'action': AccessOperation.READ,
         },
     )
-    @api.parameters(PaginationParameters())
     @api.response(schemas.BaseAnnotationSchema(many=True))
+    @api.paginate()
     def get(self, args):
         """
         List of Annotation.
-
-        Returns a list of Annotation starting from ``offset`` limited by ``limit``
-        parameter.
         """
-        return Annotation.query.offset(args['offset']).limit(args['limit'])
+        return Annotation.query_search(args=args)
 
     @api.permission_required(
         permissions.ModuleAccessPermission,
@@ -142,8 +138,8 @@ class AnnotationElasticsearch(Resource):
             'action': AccessOperation.READ,
         },
     )
-    @api.parameters(PaginationParameters())
     @api.response(schemas.BaseAnnotationSchema(many=True))
+    @api.paginate()
     def get(self, args):
         search = {}
         return Annotation.elasticsearch(search, **args)
@@ -155,8 +151,8 @@ class AnnotationElasticsearch(Resource):
             'action': AccessOperation.READ,
         },
     )
-    @api.parameters(PaginationParameters())
     @api.response(schemas.BaseAnnotationSchema(many=True))
+    @api.paginate()
     def post(self, args):
         search = request.get_json()
 

@@ -129,6 +129,59 @@ class AssetGroupMetadata(object):
             raise AssetGroupMetadataError(log, f'{debug} owner {owner_email} not found')
 
     @classmethod
+    def _validate_lat_long(cls, dictionary, error_str):
+        if ('decimalLatitude' in dictionary and 'decimalLongitude' not in dictionary) or (
+            'decimalLatitude' not in dictionary and 'decimalLongitude' in dictionary
+        ):
+            raise AssetGroupMetadataError(
+                log,
+                f'Need both or neither of decimalLatitude and decimalLongitude in {error_str}',
+            )
+        MAX_LATITUDE = 90.0
+        MIN_LATITUDE = -90.0
+        MAX_LONGITUDE = 180.0
+        MIN_LONGITUDE = -180.0
+
+        # Strings are permitted on creation but must convert to valid floats
+        if isinstance(dictionary['decimalLatitude'], str):
+            try:
+                dictionary['decimalLatitude'] = float(dictionary['decimalLatitude'])
+            except ValueError:
+                raise AssetGroupMetadataError(
+                    log, f'decimalLatitude needs to be a float in {error_str}'
+                )
+        if isinstance(dictionary['decimalLongitude'], str):
+            try:
+                dictionary['decimalLongitude'] = float(dictionary['decimalLongitude'])
+            except ValueError:
+                raise AssetGroupMetadataError(
+                    log, f'decimalLongitude needs to be a float in {error_str}'
+                )
+        lat_val = dictionary['decimalLatitude']
+        long_val = dictionary['decimalLongitude']
+
+        # Check it worked
+        if not isinstance(lat_val, float):
+            raise AssetGroupMetadataError(
+                log, f'decimalLatitude needs to be a float in {error_str}'
+            )
+        if not isinstance(long_val, float):
+            raise AssetGroupMetadataError(
+                log, f'decimalLongitude needs to be a float in {error_str}'
+            )
+
+        # Validate range
+        if lat_val < MIN_LATITUDE or lat_val > MAX_LATITUDE:
+            raise AssetGroupMetadataError(
+                log, f'decimalLatitude {lat_val} out of range in {error_str}'
+            )
+
+        if long_val < MIN_LONGITUDE or long_val > MAX_LONGITUDE:
+            raise AssetGroupMetadataError(
+                log, f'decimalLongitude {long_val} out of range in {error_str}'
+            )
+
+    @classmethod
     def validate_individual(cls, individual_uuid, debug):
         from app.modules.individuals.models import Individual
 
@@ -195,6 +248,9 @@ class AssetGroupMetadata(object):
                 )
                 owner_assignment = True
 
+            if 'decimalLatitude' in encounter or 'decimalLongitude' in encounter:
+                cls._validate_lat_long(encounter, f'{debug}{encounter_num}')
+
         return owner_assignment
 
     def _validate_sighting(self, sighting, file_dir, sighting_debug, encounter_debug):
@@ -236,6 +292,9 @@ class AssetGroupMetadata(object):
 
         if 'idConfigs' in sighting:
             self.validate_id_configs(sighting['idConfigs'], sighting_debug)
+
+        if 'decimalLatitude' in sighting or 'decimalLongitude' in sighting:
+            self._validate_lat_long(sighting, sighting_debug)
 
         self.owner_assignment = self.validate_encounters(
             sighting['encounters'], f'{encounter_debug}'

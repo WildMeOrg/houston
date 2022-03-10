@@ -262,6 +262,15 @@ class Annotation(db.Model, HoustonModel):
         parts = {'filter': []}
         enc, enc_edm, sight_edm = self.get_related_extended_data()
 
+        # must have a content_guid (i.e. wbia guid)
+        parts['filter'].append(
+            {
+                'exists': {
+                    'field': 'content_guid',
+                }
+            }
+        )
+
         viewpoint_list = self.get_neighboring_viewpoints()
         # TODO should we allow nulls?
         if viewpoint_list:

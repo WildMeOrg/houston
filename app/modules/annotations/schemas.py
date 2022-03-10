@@ -120,6 +120,7 @@ class AnnotationElasticsearchSchema(BaseAnnotationSchema):
             Annotation.created.key,
             Annotation.updated.key,
             Annotation.bounds.key,
+            Annotation.content_guid.key,
             'keywords',
             'locationId',
             'owner_guid',

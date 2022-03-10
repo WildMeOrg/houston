@@ -152,6 +152,97 @@ def test_create_asset_group(flask_app_client, researcher_1, readonly_user, test_
         tus_utils.cleanup_tus_dir(transaction_id)
 
 
+# GPS Co-ordinate failure scenarios
+@pytest.mark.skipif(
+    module_unavailable('asset_groups'), reason='AssetGroups module disabled'
+)
+def test_create_asset_group_invalid_gps(
+    flask_app_client, researcher_1, readonly_user, test_root, request, db
+):
+    # pylint: disable=invalid-name
+    from tests.modules.asset_groups.resources.utils import AssetGroupCreationData
+
+    transaction_id, test_filename = tus_utils.prep_tus_dir(test_root)
+    request.addfinalizer(lambda: tus_utils.cleanup_tus_dir(transaction_id))
+    data = AssetGroupCreationData(transaction_id, test_filename)
+
+    # Sightings data used for testing bad longitude values
+    data.set_sighting_field(0, 'decimalLatitude', 25.999)
+    expected_error = (
+        'Need both or neither of decimalLatitude and decimalLongitude in Sighting 1'
+    )
+    asset_group_utils.create_asset_group(
+        flask_app_client, researcher_1, data.get(), 400, expected_error
+    )
+
+    # How confident is everyone that this doesn't exist anywhere in old world?
+    data.set_sighting_field(0, 'decimalLongitude', 'twenty five point nine nine nine')
+    expected_error = 'decimalLongitude needs to be a float in Sighting 1'
+    asset_group_utils.create_asset_group(
+        flask_app_client, researcher_1, data.get(), 400, expected_error
+    )
+
+    data.set_sighting_field(0, 'decimalLongitude', [25, 999])
+    asset_group_utils.create_asset_group(
+        flask_app_client, researcher_1, data.get(), 400, expected_error
+    )
+
+    # Yes this is how some people (the french) represent floating point values
+    data.set_sighting_field(0, 'decimalLongitude', '25,999')
+    asset_group_utils.create_asset_group(
+        flask_app_client, researcher_1, data.get(), 400, expected_error
+    )
+
+    # Out of range vals
+    data.set_sighting_field(0, 'decimalLongitude', '-180.01')
+    expected_error = 'decimalLongitude -180.01 out of range in Sighting 1'
+    asset_group_utils.create_asset_group(
+        flask_app_client, researcher_1, data.get(), 400, expected_error
+    )
+
+    data.set_sighting_field(0, 'decimalLongitude', '180.01')
+    expected_error = 'decimalLongitude 180.01 out of range in Sighting 1'
+    asset_group_utils.create_asset_group(
+        flask_app_client, researcher_1, data.get(), 400, expected_error
+    )
+
+    data.set_sighting_field(0, 'decimalLongitude', '25.999')
+
+    # Encounters data used for testing bad latitude values
+    data.set_encounter_field(0, 0, 'decimalLongitude', 25.999)
+
+    expected_error = (
+        'Need both or neither of decimalLatitude and decimalLongitude in Encounter 1.1'
+    )
+    asset_group_utils.create_asset_group(
+        flask_app_client, researcher_1, data.get(), 400, expected_error
+    )
+
+    data.set_encounter_field(0, 0, 'decimalLatitude', 'twenty five point nine nine nine')
+    expected_error = 'decimalLatitude needs to be a float in Encounter 1.1'
+    asset_group_utils.create_asset_group(
+        flask_app_client, researcher_1, data.get(), 400, expected_error
+    )
+
+    data.set_encounter_field(0, 0, 'decimalLatitude', None)
+    asset_group_utils.create_asset_group(
+        flask_app_client, researcher_1, data.get(), 400, expected_error
+    )
+
+    # Out of range vals
+    data.set_encounter_field(0, 0, 'decimalLatitude', '-90.01')
+    expected_error = 'decimalLatitude -90.01 out of range in Encounter 1.1'
+    asset_group_utils.create_asset_group(
+        flask_app_client, researcher_1, data.get(), 400, expected_error
+    )
+
+    data.set_encounter_field(0, 0, 'decimalLatitude', '90.01')
+    expected_error = 'decimalLatitude 90.01 out of range in Encounter 1.1'
+    asset_group_utils.create_asset_group(
+        flask_app_client, researcher_1, data.get(), 400, expected_error
+    )
+
+
 @pytest.mark.skipif(
     module_unavailable('asset_groups'), reason='AssetGroups module disabled'
 )
@@ -382,8 +473,11 @@ def test_create_asset_group_sim_detection(
         assert read_resp['stage'] == 'curation'
 
         from tests.modules.annotations.resources import utils as annot_utils
+
         annot_guid = read_resp['assets'][0]['annotations'][0]['guid']
-        annot_debug = annot_utils.read_annotation(flask_app_client, staff_user, f'debug/{annot_guid}').json
+        annot_debug = annot_utils.read_annotation(
+            flask_app_client, staff_user, f'debug/{annot_guid}'
+        ).json
         assert annot_debug['asset_guid'] == read_resp['assets'][0]['guid']
 
     finally:
@@ -622,11 +716,17 @@ def test_create_asset_group_individual(
             flask_app_client, researcher_1, data.get()
         )
         asset_group_uuid = resp.json['guid']
-        asset_group_utils.read_all_asset_group_sightings(flask_app_client, researcher_1, 403)
-        all_ags = asset_group_utils.read_all_asset_group_sightings(flask_app_client, admin_user)
+        asset_group_utils.read_all_asset_group_sightings(
+            flask_app_client, researcher_1, 403
+        )
+        all_ags = asset_group_utils.read_all_asset_group_sightings(
+            flask_app_client, admin_user
+        )
         ags_guid = all_ags.json[0]['guid']
         assert resp.json['asset_group_sightings'][0]['guid'] == all_ags.json[0]['guid']
-        ags_debug = asset_group_utils.read_asset_group_sighting_debug(flask_app_client, staff_user, ags_guid)
+        ags_debug = asset_group_utils.read_asset_group_sighting_debug(
+            flask_app_client, staff_user, ags_guid
+        )
         assert ags_debug.json['stage'] == 'curation'
         ags_config = ags_debug.json['config']
         assert 'encounters' in ags_config.keys()

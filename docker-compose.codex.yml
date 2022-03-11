@@ -256,7 +256,7 @@ services:
   celery_beat:
     image: wildme/houston:latest
     build: *houston-build
-    command: ["celery", "-A", "app.extensions.celery.celery", "beat", "-s", "/data/var/celerybeat-schedule"]
+    command: ["celery", "-A", "app.extensions.celery.celery", "beat", "-s", "/data/var/celerybeat-schedule", "-l", "INFO"]
     depends_on:
       houston:
         condition: service_healthy
@@ -273,7 +273,7 @@ services:
   celery_worker:
     image: wildme/houston:latest
     build: *houston-build
-    command: ["celery", "-A", "app.extensions.celery.celery", "worker"]
+    command: ["celery", "-A", "app.extensions.celery.celery", "worker", "-l", "INFO"]
     depends_on:
       houston:
         condition: service_healthy

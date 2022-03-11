@@ -83,7 +83,13 @@ def test_modify_mission_task_users(
 
         now = datetime.datetime.utcnow()
 
+        trial = 0
         while True:
+            trial += 1
+
+            if trial > 10:
+                raise RuntimeError
+
             # Wait for elasticsearch to catch up
             wait_for_elasticsearch_status(flask_app_client, data_manager_1)
 
@@ -92,15 +98,16 @@ def test_modify_mission_task_users(
                 for asset in assets:
                     assert asset.elasticsearchable
                     assert asset.indexed > now
+
+                response = mission_utils.create_mission_task(
+                    flask_app_client, data_manager_1, mission_guid, data
+                )
+                mission_task_guid = response.json['guid']
+                assert len(response.json['assets']) == 1
+
                 break
             except AssertionError:
                 continue
-
-        response = mission_utils.create_mission_task(
-            flask_app_client, data_manager_1, mission_guid, data
-        )
-        mission_task_guid = response.json['guid']
-        assert len(response.json['assets']) == 1
 
         mission_task = MissionTask.query.get(mission_task_guid)
         assert len(mission_task.get_members()) == 1

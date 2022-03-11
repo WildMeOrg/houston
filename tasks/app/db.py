@@ -513,6 +513,7 @@ def _reset(context, edm_authentication=None):
     Delete the database and initialize it with data from the EDM
     """
     from flask import current_app as app
+    from tasks.app.run import warmup
 
     delete_path_configs = [
         'SQLALCHEMY_DATABASE_PATH',
@@ -532,4 +533,4 @@ def _reset(context, edm_authentication=None):
                 os.remove(delete_filepath)
             assert not os.path.exists(delete_filepath)
 
-    context.invoke_execute(context, 'app.run.warmup', app=app)
+    warmup(context, app)

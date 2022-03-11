@@ -13,11 +13,6 @@ import platform
 import logging
 from flask_restx_patched import is_extension_enabled
 
-try:
-    from invoke import ctask as task
-except ImportError:  # Invoke 0.13 renamed ctask to task
-    from invoke import task
-
 
 from tasks.utils import app_context_task
 
@@ -44,7 +39,6 @@ def hide_noisy_endpoint_logs():
     serving.WSGIRequestHandler.log_request = log_request
 
 
-@task
 def warmup(
     context,
     app,
@@ -113,7 +107,9 @@ def run(
     # Turn off logging the access log for noisy endpoints (like the heartbeat)
     hide_noisy_endpoint_logs()
 
-    use_reloader = app.debug
+    # use_reloader = app.debug
+    use_reloader = False
+
     if uwsgi:
         uwsgi_args = [
             'uwsgi',

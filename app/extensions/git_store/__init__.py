@@ -203,8 +203,8 @@ class GitStore(db.Model, HoustonModel):
     def mime_type_whitelist(self):
         if getattr(self, '_mime_type_whitelist', None) is None:
             asset_mime_type_whitelist = current_app.config.get(
-                'ASSET_MIME_TYPE_WHITELIST', []
-            )
+                'ASSET_MIME_TYPE_WHITELIST_EXTENSION', {}
+            ).keys()
             asset_mime_type_whitelist = sorted(list(map(str, asset_mime_type_whitelist)))
 
             self._mime_type_whitelist = set(asset_mime_type_whitelist)
@@ -661,7 +661,6 @@ class GitStore(db.Model, HoustonModel):
                     file_data = {
                         'filepath': filepath,
                         'path': this_input_filename if this_input_filename else basename,
-                        'extension': extension,
                         'mime_type': mime_type,
                         'magic_signature': magic_signature,
                         'size_bytes': size_bytes,
@@ -772,7 +771,6 @@ class GitStore(db.Model, HoustonModel):
                 print(filepath)
                 print('\tAsset         : %s' % (asset,))
                 print('\tSemantic GUID : %s' % (asset.semantic_guid,))
-                print('\tExtension     : %s' % (asset.extension,))
                 print('\tMIME type     : %s' % (asset.mime_type,))
                 print('\tSignature     : %s' % (asset.magic_signature,))
                 print('\tSize bytes    : %s' % (asset.size_bytes,))

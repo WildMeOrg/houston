@@ -3,7 +3,7 @@
 Assets database models
 --------------------
 """
-# from flask import current_app
+from flask import current_app
 from functools import total_ordering
 import pathlib
 
@@ -37,7 +37,6 @@ class Asset(db.Model, HoustonModel):
         db.GUID, default=uuid.uuid4, primary_key=True
     )  # pylint: disable=invalid-name
 
-    extension = db.Column(db.String, index=True, nullable=False)
     path = db.Column(db.String, index=True, nullable=False)
 
     mime_type = db.Column(db.String, index=True, nullable=False)
@@ -201,25 +200,30 @@ class Asset(db.Model, HoustonModel):
     def get_asset_sightings(self):
         return self.asset_sightings
 
-    # this is actual (local) asset filename, not "original" (via user) filename (see: get_original_filename() below)
-    def get_filename(self):
-        return '%s.%s' % (
-            self.guid,
-            self.extension,
-        )
-
     # this property is so that schema can output { "filename": "original_filename.jpg" }
     @property
     def filename(self):
         return self.get_original_filename()
+
+    @property
+    def extension(self):
+        asset_mime_type_whitelist = current_app.config.get(
+            'ASSET_MIME_TYPE_WHITELIST_EXTENSION', []
+        )
+        if self.mime_type not in asset_mime_type_whitelist:
+            return 'unknown'
+        else:
+            return asset_mime_type_whitelist[self.mime_type]
 
     def get_original_filename(self):
         return pathlib.Path(self.path).name
 
     def get_symlink(self):
         git_store_path = pathlib.Path(self.git_store.get_absolute_path())
-        assets_path = git_store_path / '_assets'
-        return assets_path / self.get_filename()
+
+        # this is actual (local) asset filename, not "original" (via user) filename (see: get_original_filename())
+        local_asset_filename = f'{self.guid}.{self.extension}'
+        return git_store_path / '_assets' / local_asset_filename
 
     def get_derived_path(self, format):
         git_store_path = pathlib.Path(self.git_store.get_absolute_path())
@@ -358,7 +362,13 @@ class Asset(db.Model, HoustonModel):
         if not backup.exists():
             symlink.resolve().rename(backup)
         # Save the new image
-        image_object.save(symlink.resolve())
+        # As the source filename has no extension, we need to generate the format manually
+        format = Image.registered_extensions().get(f'.{self.extension}', None)
+        if not format:
+            raise HoustonException(
+                log, f'Unable to find valid format to save modified Asset {self.guid}'
+            )
+        image_object.save(symlink.resolve(), format=format)
         self.reset_derived_images()
         log.info(f'Rerunning detection, deleting annotations {self.annotations}')
         for annotation in self.annotations:

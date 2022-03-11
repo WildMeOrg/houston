@@ -203,7 +203,6 @@ def generate_asset_instance(git_store_guid):
 
     asset_instance = Asset(
         guid=uuid.uuid4(),
-        extension='None',
         path='FollowYourOwn',
         mime_type='Corporeal',
         magic_signature='42',

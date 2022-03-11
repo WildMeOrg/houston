@@ -82,47 +82,38 @@ class BaseConfig(FlaskConfigOverrides, RedisConfig):
     PROJECT_ROOT = PROJECT_ROOT
     PROJECT_DATABASE_PATH = str(DATA_ROOT)
 
-    ASSET_MIME_TYPE_WHITELIST = [
-        'application/json',
-        'application/ld+json',
-        'application/msword',
-        'application/octet-stream',
-        'application/ogg',
-        'application/pdf',
-        'application/rtf',
-        'application/vnd.ms-excel',
-        'application/vnd.oasis.opendocument.spreadsheet',
-        'application/vnd.oasis.opendocument.text',
-        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-        'application/xml',
-        'image/bmp',
-        'image/gif',
-        'image/jpeg',
-        'image/png',
-        'image/tiff',
-        'image/webp',
-        'text/csv',
-        'text/javascript',
-        'text/plain',
-        'text/xml',
-        'video/mpeg',
-        'video/ogg',
-        'video/webm',
-    ]
+    # Mapping to file type taken from
+    # https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/MIME_types/Common_types
+    ASSET_MIME_TYPE_WHITELIST_EXTENSION = {
+        'application/json': 'json',
+        'application/ld+json': 'jsonld',
+        'application/msword': 'doc',
+        'application/octet-stream': 'bin',
+        'application/ogg': 'ogx',
+        'application/pdf': 'pdf',
+        'application/rtf': 'rtf',
+        'application/vnd.ms-excel': 'xls',
+        'application/vnd.oasis.opendocument.spreadsheet': 'ods',
+        'application/vnd.oasis.opendocument.text': 'odt',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': 'xlsx',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'docx',
+        'application/xml': 'xml',
+        'image/bmp': 'bmp',
+        'image/gif': 'gif',
+        'image/jpeg': 'jpg',
+        'image/png': 'png',
+        'image/tiff': 'tif',
+        'image/webp': 'webp',
+        'text/csv': 'csv',
+        'text/javascript': 'js',
+        'text/plain': 'txt',
+        'text/xml': 'xml',
+        'video/mpeg': 'mpeg',
+        'video/ogg': 'ogv',
+        'video/webm': 'webm',
+    }
 
     ASSET_DATABASE_PATH = str(DATA_ROOT / 'assets')
-    ASSET_ALLOWED_EXTS = [
-        '.jpg',
-        '.jpe',
-        '.jpeg',
-        '.png',
-        '.gif',
-        '.svg',
-        '.bmp',
-        '.tif',
-        '.tiff',
-    ]
 
     # specifically this is where tus "temporary" files go
     UPLOADS_DATABASE_PATH = str(DATA_ROOT / 'uploads')

@@ -147,8 +147,5 @@ def normalized_timezone_string(dt):
 # original filename but maintain the extension
 def get_stored_filename(input_filename):
     import hashlib
-    import os
 
-    file_without_extension, extension = os.path.splitext(input_filename)
-    extension = extension.lower()
-    return f'{hashlib.sha256(file_without_extension.encode()).hexdigest()}{extension}'
+    return f'{hashlib.sha256(input_filename.encode()).hexdigest()}'

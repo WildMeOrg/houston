@@ -495,13 +495,16 @@ def ensure_asset_group_repo(flask_app, db, asset_group, file_data=[]):
             f'Gitlab unavailable, skip ensure_remote for asset group {asset_group.guid}'
         )
     filepath_guid_mapping = {}
+    input_files = []
     if len(asset_group.assets) == 0:
         for uuid_, path in file_data:
             repo_filepath = asset_group.git_copy_file_add(str(path))
             filepath_guid_mapping[repo_filepath] = uuid_
+            input_files.append(os.path.basename(path))
         asset_group.git_commit(
             'Initial commit for testing',
             existing_filepath_guid_mapping=filepath_guid_mapping,
+            input_filenames=input_files,
         )
         # Call git_push without .delay in tests to do it in the foreground
         try:

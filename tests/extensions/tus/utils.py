@@ -8,6 +8,7 @@ from flask import current_app
 import os
 import shutil
 from app.extensions.tus import tus_upload_dir
+from app.utils import get_stored_filename
 
 
 def get_transaction_id():
@@ -23,7 +24,12 @@ def prep_tus_dir(test_root, transaction_id=None, filename='zebra.jpg'):
     upload_dir = tus_upload_dir(current_app, transaction_id=transaction_id)
     if not os.path.isdir(upload_dir):
         os.mkdir(upload_dir)
-    shutil.copy(image_file, upload_dir)
+
+    # This is what the _tus_filepaths_from does so need to simulate it
+    path = os.path.normpath(image_file)
+    input_image = path.split(os.sep)[-1]
+    stored_image = get_stored_filename(input_image)
+    shutil.copy(image_file, f'{upload_dir}/{stored_image}')
     size = os.path.getsize(image_file)
     assert size > 0
     return transaction_id, filename

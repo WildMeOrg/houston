@@ -729,6 +729,86 @@ def test_create_asset_group_individual(
         all_ags = asset_group_utils.read_all_asset_group_sightings(
             flask_app_client, admin_user
         )
+        asset_group_utils.read_all_asset_group_sightings(
+            flask_app_client, researcher_1, 403
+        )
+        all_ags = asset_group_utils.read_all_asset_group_sightings(
+            flask_app_client, admin_user
+        )
+        ags_guid = all_ags.json[0]['guid']
+        assert resp.json['asset_group_sightings'][0]['guid'] == all_ags.json[0]['guid']
+        ags_debug = asset_group_utils.read_asset_group_sighting_debug(
+            flask_app_client, staff_user, ags_guid
+        )
+        assert ags_debug.json['stage'] == 'curation'
+        ags_config = ags_debug.json['config']
+        assert 'encounters' in ags_config.keys()
+        assert ags_config['encounters'][0].get('individualUuid') is not None
+
+    finally:
+        with db.session.begin():
+            db.session.delete(empty_individual)
+        if asset_group_uuid:
+            asset_group_utils.delete_asset_group(
+                flask_app_client, staff_user, asset_group_uuid
+            )
+        tus_utils.cleanup_tus_dir(transaction_id)
+
+
+@pytest.mark.skipif(
+    module_unavailable('asset_groups'), reason='AssetGroups module disabled'
+)
+def test_create_asset_group_international(
+    flask_app_client,
+    researcher_1,
+    staff_user,
+    admin_user,
+    test_root,
+    db,
+    empty_individual,
+):
+    # pylint: disable=invalid-name
+    from tests.modules.asset_groups.resources.utils import AssetGroupCreationData
+    import uuid
+
+    transaction_id, test_filename = tus_utils.prep_tus_dir(test_root)
+    second_filename = 'zebra_?_.jpg'
+    tus_utils.prep_tus_dir(test_root, filename=second_filename)
+
+    asset_group_uuid = None
+    try:
+        description = (
+            'International names Þröstur Sélène cédric characters &%$* ¼ ©,® ™ m².'
+        )
+        location = 'Montréal'
+        data = AssetGroupCreationData(transaction_id, test_filename)
+        data.set_field('description', description)
+        data.add_filename(0, second_filename)
+
+        data.set_sighting_field(0, 'verbatimLocality', location)
+        dummy_uuid = str(uuid.uuid4())
+        data.set_encounter_field(0, 0, 'individualUuid', dummy_uuid)
+        data.set_encounter_field(0, 0, 'verbatimLocality', location)
+        resp_msg = f'Encounter 1.1 individual {dummy_uuid} not found'
+        asset_group_utils.create_asset_group(
+            flask_app_client, None, data.get(), 400, resp_msg
+        )
+
+        with db.session.begin():
+            db.session.add(empty_individual)
+        data.set_encounter_field(0, 0, 'individualUuid', str(empty_individual.guid))
+        data.set_encounter_field(0, 0, 'verbatimLocality', location)
+
+        resp = asset_group_utils.create_asset_group(
+            flask_app_client, researcher_1, data.get()
+        )
+        asset_group_uuid = resp.json['guid']
+        asset_group_utils.read_all_asset_group_sightings(
+            flask_app_client, researcher_1, 403
+        )
+        all_ags = asset_group_utils.read_all_asset_group_sightings(
+            flask_app_client, admin_user
+        )
         ags_guid = all_ags.json[0]['guid']
         assert resp.json['asset_group_sightings'][0]['guid'] == all_ags.json[0]['guid']
         ags_debug = asset_group_utils.read_asset_group_sighting_debug(

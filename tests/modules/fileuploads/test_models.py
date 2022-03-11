@@ -9,7 +9,7 @@ from app.modules.fileuploads.models import FileUpload, modify_image
 from PIL import Image
 import pytest
 
-from tests.utils import TemporaryDirectoryGraceful
+from tests.utils import TemporaryDirectoryGraceful, create_transaction_dir, copy_uploaded_file, write_uploaded_file
 
 
 def cleanup_fileuploads_directory(fileuploads_directory):
@@ -58,26 +58,18 @@ def test_fileupload_create_delete(db, flask_app, test_root, request):
 
 
 def test_fileupload_from_tus(db, flask_app, test_root, request):
-    UPLOADS_DATABASE_PATH = pathlib.Path(flask_app.config.get('UPLOADS_DATABASE_PATH'))
     FILEUPLOAD_BASE_PATH = pathlib.Path(flask_app.config.get('FILEUPLOAD_BASE_PATH'))
     TRANSACTION_ID = 'transaction-id'
-    tus_dir = UPLOADS_DATABASE_PATH / f'trans-{TRANSACTION_ID}'
     fup_dir = None
 
     def cleanup():
-        if tus_dir.exists():
-            shutil.rmtree(tus_dir)
         if fup_dir and fup_dir.exists():
             shutil.rmtree(fup_dir)
         cleanup_fileuploads_directory(FILEUPLOAD_BASE_PATH)
 
     request.addfinalizer(cleanup)
-
-    tus_dir.mkdir(parents=True, exist_ok=True)
-    with (tus_dir / 'a.jpg').open('wb') as f:
-        source_file = os.path.join(test_root, 'zebra.jpg')
-        with pathlib.Path(source_file).open('rb') as g:
-            f.write(g.read())
+    tus_dir = create_transaction_dir(flask_app, TRANSACTION_ID)
+    copy_uploaded_file(test_root, 'zebra.jpg', tus_dir, 'a.jpg')
 
     # Create fileupload using file from tus
     fup = FileUpload.create_fileupload_from_tus(TRANSACTION_ID, 'a.jpg')
@@ -112,22 +104,13 @@ def test_fileuploads_from_tus(db, flask_app, test_root, request):
         cleanup_fileuploads_directory(FILEUPLOAD_BASE_PATH)
 
     request.addfinalizer(cleanup)
-
-    tus_dir.mkdir(parents=True, exist_ok=True)
+    tus_dir = create_transaction_dir(flask_app, TRANSACTION_ID)
 
     # Try creating file uploads with no files
     assert FileUpload.create_fileuploads_from_tus(TRANSACTION_ID) is None
 
-    with (tus_dir / 'a.jpg').open('wb') as f:
-        source_file = os.path.join(test_root, 'zebra.jpg')
-        with pathlib.Path(source_file).open('rb') as g:
-            f.write(g.read())
-
-    with (tus_dir / 'a.txt').open('w') as f:
-        f.write('abcd\n')
-
-    # Create file uploads with files but paths=[]
-    assert FileUpload.create_fileuploads_from_tus(TRANSACTION_ID, paths=[]) is None
+    copy_uploaded_file(test_root, 'zebra.jpg', tus_dir, 'a.jpg')
+    write_uploaded_file('a.txt', tus_dir, 'abcd\n')
 
     fups = FileUpload.create_fileuploads_from_tus(TRANSACTION_ID)
     with db.session.begin():
@@ -165,10 +148,7 @@ def test_fileuploads_get_src(flask_app, flask_app_client, db, test_root, request
 
 def test_modify_image(flask_app, test_root):
     with TemporaryDirectoryGraceful() as td:
-        test_file = pathlib.Path(td) / 'zebra.jpg'
-        with (test_root / 'zebra.jpg').open('rb') as f:
-            with test_file.open('wb') as g:
-                g.write(f.read())
+        test_file = copy_uploaded_file(test_root, 'zebra.jpg', pathlib.Path(td), 'zebra.jpg')
 
         with Image.open(test_file) as image:
             assert image.size == (1000, 664)

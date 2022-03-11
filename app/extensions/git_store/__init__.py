@@ -203,8 +203,8 @@ class GitStore(db.Model, HoustonModel):
     def mime_type_whitelist(self):
         if getattr(self, '_mime_type_whitelist', None) is None:
             asset_mime_type_whitelist = current_app.config.get(
-                'ASSET_MIME_TYPE_WHITELIST', []
-            )
+                'ASSET_MIME_TYPE_WHITELIST_EXTENSION', {}
+            ).keys()
             asset_mime_type_whitelist = sorted(list(map(str, asset_mime_type_whitelist)))
 
             self._mime_type_whitelist = set(asset_mime_type_whitelist)
@@ -321,6 +321,8 @@ class GitStore(db.Model, HoustonModel):
         shutil.copytree(absolute_path, repo_path)
 
     def git_copy_file_add(self, filepath):
+        from app.utils import get_stored_filename
+
         absolute_filepath = os.path.abspath(os.path.expanduser(filepath))
         if not os.path.exists(absolute_filepath):
             raise IOError('The filepath %r does not exist.' % (absolute_filepath,))
@@ -328,20 +330,23 @@ class GitStore(db.Model, HoustonModel):
         repo = self.ensure_repository()
         repo_path = os.path.join(repo.working_tree_dir, '_%s' % (self.GIT_STORE_NAME,))
         _, filename = os.path.split(absolute_filepath)
-        repo_filepath = os.path.join(repo_path, filename)
+        stored_filename = get_stored_filename(filename)
+        repo_filepath = os.path.join(repo_path, stored_filename)
 
         shutil.copyfile(absolute_filepath, repo_filepath)
 
         return repo_filepath
 
-    def git_commit(self, message, realize=True, update=True, **kwargs):
+    def git_commit(
+        self, message, realize=True, update=True, input_filenames=[], **kwargs
+    ):
         repo = self.ensure_repository()
 
         if realize:
             self.realize_local_store()
 
         if update:
-            self.update_asset_symlinks(**kwargs)
+            self.update_asset_symlinks(input_filenames=input_filenames, **kwargs)
 
         local_store_path = self.get_absolute_path()
         local_store_metadata_path = os.path.join(local_store_path, 'metadata.json')
@@ -488,7 +493,7 @@ class GitStore(db.Model, HoustonModel):
 
     @classmethod
     def create_from_tus(
-        cls, description, owner, transaction_id, paths=None, submitter=None, **kwargs
+        cls, description, owner, transaction_id, paths=[], submitter=None, **kwargs
     ):
         assert transaction_id is not None
         if owner is not None and not owner.is_anonymous:
@@ -545,7 +550,9 @@ class GitStore(db.Model, HoustonModel):
         assets_added = []
         if num_files > 0:
             log.debug('Tus collect for %d files moved' % (num_files))
-            self.git_commit('Tus collect commit for %d files.' % (num_files,))
+            self.git_commit(
+                'Tus collect commit for %d files.' % (num_files,), input_filenames=paths
+            )
 
             # Do git push to gitlab in the background (we won't wait for its
             # completion here)
@@ -578,7 +585,9 @@ class GitStore(db.Model, HoustonModel):
         ]
         pass
 
-    def update_asset_symlinks(self, verbose=True, existing_filepath_guid_mapping={}):
+    def update_asset_symlinks(
+        self, verbose=True, existing_filepath_guid_mapping={}, input_filenames=[]
+    ):
         """
         Traverse the files in the _<self.GIT_STORE_NAME>/ folder and add/update symlinks
         for any relevant files we identify
@@ -641,10 +650,17 @@ class GitStore(db.Model, HoustonModel):
                     magic_signature = magic.from_file(filepath)
                     size_bytes = os.path.getsize(filepath)
 
+                    this_input_filename = None
+                    for input_filename in input_filenames:
+                        from app.utils import get_stored_filename
+
+                        if get_stored_filename(input_filename) == basename:
+                            this_input_filename = input_filename
+                            break
+
                     file_data = {
                         'filepath': filepath,
-                        'path': basename,
-                        'extension': extension,
+                        'path': this_input_filename if this_input_filename else basename,
                         'mime_type': mime_type,
                         'magic_signature': magic_signature,
                         'size_bytes': size_bytes,
@@ -755,7 +771,6 @@ class GitStore(db.Model, HoustonModel):
                 print(filepath)
                 print('\tAsset         : %s' % (asset,))
                 print('\tSemantic GUID : %s' % (asset.semantic_guid,))
-                print('\tExtension     : %s' % (asset.extension,))
                 print('\tMIME type     : %s' % (asset.mime_type,))
                 print('\tSignature     : %s' % (asset.magic_signature,))
                 print('\tSize bytes    : %s' % (asset.size_bytes,))

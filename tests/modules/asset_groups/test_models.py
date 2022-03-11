@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 import datetime
-import pathlib
 from unittest import mock
 import uuid
 import tests.modules.asset_groups.resources.utils as asset_group_utils
@@ -15,25 +14,22 @@ from tests.utils import module_unavailable, extension_unavailable
 )
 def test_asset_group_sightings_jobs(flask_app, db, admin_user, test_root, request):
     from app.modules.asset_groups.models import AssetGroup, AssetGroupSighting
+    from tests.utils import copy_uploaded_file, create_transaction_dir
 
+    input_filename = 'zippy'
     transaction_id = str(uuid.uuid4())
-    trans_dir = (
-        pathlib.Path(flask_app.config['UPLOADS_DATABASE_PATH'])
-        / f'trans-{transaction_id}'
-    )
-    trans_dir.mkdir(parents=True)
-    with (trans_dir / 'zebra.jpg').open('wb') as f:
-        with (test_root / 'zebra.jpg').open('rb') as g:
-            f.write(g.read())
+    trans_dir = create_transaction_dir(flask_app, transaction_id)
+    copy_uploaded_file(test_root, input_filename, trans_dir, input_filename)
+
     asset_group = AssetGroup.create_from_tus(
-        'test asset group description', admin_user, transaction_id
+        'test asset group description', admin_user, transaction_id, paths=[input_filename]
     )
     with db.session.begin():
         db.session.add(asset_group)
     asset_group.config['speciesDetectionModel'] = test_utils.dummy_detection_info()
     request.addfinalizer(asset_group.delete)
     sighting_config1 = test_utils.dummy_sighting_info()
-    sighting_config1['assetReferences'] = ['zebra.jpg']
+    sighting_config1['assetReferences'] = [input_filename]
     ags1 = AssetGroupSighting(
         asset_group=asset_group,
         sighting_config=sighting_config1,

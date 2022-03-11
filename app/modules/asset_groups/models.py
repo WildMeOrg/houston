@@ -788,7 +788,6 @@ class AssetGroupSighting(db.Model, HoustonModel):
                     'annotations' in encounter_metadata.keys()
                     and annot_guid in encounter_metadata['annotations']
                 ):
-                    breakpoint()
                     self.config['encounters'][encounter_num]['annotations'].remove(
                         annot_guid
                     )
@@ -910,7 +909,9 @@ class AssetGroup(GitStore):
         self.config = dict(metadata.request)
         del self.config['sightings']
 
+        input_files = []
         for sighting_meta in metadata.request['sightings']:
+            input_files.extend(sighting_meta.get('assetReferences', []))
             # All encounters in the metadata need to be allocated a pseudo ID for later patching
             for encounter_num in range(len(sighting_meta['encounters'])):
                 sighting_meta['encounters'][encounter_num]['guid'] = str(uuid.uuid4())
@@ -931,7 +932,7 @@ class AssetGroup(GitStore):
         description = 'Adding Creation metadata'
         if metadata.description != '':
             description = metadata.description
-        self.git_commit(description)
+        self.git_commit(description, input_filenames=input_files)
 
     def asset_updated(self, asset):
         for ags in self.get_asset_group_sightings_for_asset(asset):

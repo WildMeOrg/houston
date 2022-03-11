@@ -45,7 +45,6 @@ class PatchSightingDetailsParameters(PatchJSONParameters):
 
     PATH_CHOICES_HOUSTON = (
         '/assetId',
-        '/newAssetGroup',
         '/featuredAssetGuid',
         '/name',
         '/time',
@@ -64,7 +63,6 @@ class PatchSightingDetailsParameters(PatchJSONParameters):
     def replace(cls, obj, field, value, state):
 
         from app.modules.assets.models import Asset
-        from app.modules.asset_groups.models import AssetGroup
         from app.modules.complex_date_time.models import ComplexDateTime
 
         if ('/' + field) not in PatchSightingDetailsParameters.COMPLEX_PATH_CHOICES:
@@ -83,16 +81,6 @@ class PatchSightingDetailsParameters(PatchJSONParameters):
                 ):
                     obj.add_asset(asset)
                     ret_val = True
-
-            elif field == 'newAssetGroup':
-
-                new_asset_group = AssetGroup.create_from_tus(
-                    'Sighting.patch' + value, current_user, value
-                )
-
-                for asset in new_asset_group.assets:
-                    obj.add_asset(asset)
-                ret_val = True
 
             elif field == 'featuredAssetGuid' and util.is_valid_uuid_string(value):
                 obj.set_featured_asset_guid(UUID(value, version=4))

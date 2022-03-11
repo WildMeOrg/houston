@@ -275,6 +275,7 @@ class AssetGroupMetadata(object):
             ('idConfigs', list, False),
         ]
         self._validate_fields(sighting, sighting_fields, sighting_debug)
+        from app.utils import get_stored_filename
 
         if 'assetReferences' in sighting:
             for filename in sighting['assetReferences']:
@@ -282,7 +283,8 @@ class AssetGroupMetadata(object):
                     raise AssetGroupMetadataError(
                         log, f'Invalid assetReference data {filename}'
                     )
-                file_path = os.path.join(file_dir, filename)
+                stored_filename = get_stored_filename(filename)
+                file_path = os.path.join(file_dir, stored_filename)
                 file_size = 0
                 try:
                     file_size = os.path.getsize(file_path)  # 2for1

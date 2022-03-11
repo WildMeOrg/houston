@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 import pathlib
-import shutil
 from unittest import mock
 import uuid
 
@@ -21,28 +20,15 @@ def set_up_assets(flask_app, db, test_root, admin_user, request):
     from app.modules.sightings.models import Sighting, SightingAssets, SightingStage
 
     from tests.modules.asset_groups.resources.utils import AssetGroupCreationData
-
-    def cleanup(func):
-        def inner():
-            try:
-                func()
-            except:  # noqa
-                pass
-
-        request.addfinalizer(inner)
+    from tests.utils import create_transaction_dir, copy_uploaded_file, cleanup
 
     # Add jpg files to tus transaction dir
     transaction_id = str(uuid.uuid4())
-    tus_dir = pathlib.Path(flask_app.config['UPLOADS_DATABASE_PATH'])
-    trans_dir = tus_dir / f'trans-{transaction_id}'
-    trans_dir.mkdir(parents=True)
+    trans_dir = create_transaction_dir(flask_app, transaction_id)
+
     jpgs = list(test_root.glob('*.jpg'))
     for jpg in jpgs:
-        with (trans_dir / jpg.name).open('wb') as f:
-            with jpg.open('rb') as g:
-                f.write(g.read())
-
-    cleanup(lambda: shutil.rmtree(trans_dir))
+        copy_uploaded_file(test_root, jpg.name, trans_dir, jpg.name)
 
     # Create asset group from metadata
     data = AssetGroupCreationData(transaction_id)
@@ -52,7 +38,7 @@ def set_up_assets(flask_app, db, test_root, admin_user, request):
         metadata.process_request()
     assert metadata.owner == admin_user
     asset_group = AssetGroup.create_from_metadata(metadata)
-    cleanup(lambda: db.session.delete(asset_group))
+    cleanup(request, lambda: db.session.delete(asset_group))
 
     # Create annotation and sighting and sighting assets for the first asset
     annotation = Annotation(
@@ -67,9 +53,9 @@ def set_up_assets(flask_app, db, test_root, admin_user, request):
         db.session.add(sighting)
         db.session.add(annotation)
         db.session.add(sighting_assets)
-    cleanup(lambda: db.session.delete(sighting_assets))
-    cleanup(lambda: db.session.delete(sighting))
-    cleanup(lambda: db.session.delete(annotation))
+    cleanup(request, lambda: db.session.delete(sighting_assets))
+    cleanup(request, lambda: db.session.delete(sighting))
+    cleanup(request, lambda: db.session.delete(annotation))
 
     return asset_group
 
@@ -132,7 +118,7 @@ def test_update_symlink(test_asset_group_uuid, request):
     assert symlink.is_symlink()
     actual = symlink.resolve()
     assert actual.is_file()
-    assert actual.name == zebra.get_original_filename()
+    assert actual.name == test_utils.get_stored_path(zebra.get_original_filename())
 
     (actual.parent / 'new.txt').touch()
     zebra.update_symlink(str(actual.parent / 'new.txt'))

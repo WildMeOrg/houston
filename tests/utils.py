@@ -203,7 +203,6 @@ def generate_asset_instance(git_store_guid):
 
     asset_instance = Asset(
         guid=uuid.uuid4(),
-        extension='None',
         path='FollowYourOwn',
         mime_type='Corporeal',
         magic_signature='42',
@@ -581,7 +580,52 @@ def dummy_detection_info():
     return ['None']
 
 
-def print_message(message):
-    import json
+def get_stored_path(full_path):
+    from app.utils import get_stored_filename
+    import os
 
-    print(json.dumps(message, indent=4, sort_keys=True))
+    dir, filename = os.path.split(full_path)
+    stored_filename = get_stored_filename(filename)
+    return os.path.join(dir, stored_filename)
+
+
+def create_transaction_dir(flask_app, transaction_id):
+    import pathlib
+
+    tus_dir = pathlib.Path(flask_app.config['UPLOADS_DATABASE_PATH'])
+    trans_dir = tus_dir / f'trans-{transaction_id}'
+    trans_dir.mkdir(parents=True, exist_ok=True)
+    return trans_dir
+
+
+def write_uploaded_file(initial_filename, input_dir, file_data, write_mode='w'):
+    if isinstance(input_dir, str):
+        stored_path = os.path.join(input_dir, get_stored_path(initial_filename))
+        with open(stored_path, write_mode) as out_file:
+            out_file.write(file_data)
+    else:
+        stored_path = (input_dir / get_stored_path(initial_filename))
+        with stored_path.open(write_mode) as out_file:
+            out_file.write(file_data)
+    return stored_path
+
+
+def copy_uploaded_file(input_dir, input_filename, trans_dir, output_filename, write_mode='wb'):
+    if isinstance(input_dir, str):
+        input_file_path = os.path.join(input_dir, input_filename)
+        with open(input_file_path, 'rb') as in_file:
+            return write_uploaded_file(output_filename, trans_dir, in_file.read(), write_mode)
+    else:
+        input_file_path = (input_dir / input_filename)
+        with input_file_path.open('rb') as in_file:
+            return write_uploaded_file(output_filename, trans_dir, in_file.read(), write_mode)
+
+
+def cleanup(request, func):
+    def inner():
+        try:
+            func()
+        except:  # noqa
+            pass
+
+    request.addfinalizer(inner)

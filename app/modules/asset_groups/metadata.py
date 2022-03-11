@@ -137,6 +137,22 @@ class AssetGroupMetadata(object):
                 log,
                 f'Need both or neither of decimalLatitude and decimalLongitude in {error_str}',
             )
+
+        # Both may be null but if only one is, it's a failure
+        if (
+            'null' == dictionary['decimalLatitude']
+            and 'null' == dictionary['decimalLongitude']
+        ):
+            return
+        if (
+            'null' == dictionary['decimalLatitude']
+            or 'null' == dictionary['decimalLongitude']
+        ):
+            raise AssetGroupMetadataError(
+                log,
+                f'Need both or neither of decimalLatitude and decimalLongitude in {error_str}',
+            )
+
         MAX_LATITUDE = 90.0
         MIN_LATITUDE = -90.0
         MAX_LONGITUDE = 180.0

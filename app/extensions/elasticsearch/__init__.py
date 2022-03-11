@@ -108,7 +108,8 @@ class ElasticsearchModel(object):
                     )
                 )
                 # Re-index all objects in our local database
-                for guid in guids:
+                quiet = len(guids) < 100
+                for guid in tqdm.tqdm(guids, disable=quiet):
                     obj = cls.query.get(guid)
                     obj.index(app=app, force=force)
 
@@ -347,7 +348,8 @@ class ElasticSearchBulkOperation(object):
         # We only update the indexed timestamps of the objects that succeded as a group
         log.info('Time-stamping (Bulk) %s' % (cls.__name__,))
         with db.session.begin(subtransactions=True):
-            for obj in pending:
+            quiet = len(pending) < 100
+            for obj in tqdm.tqdm(pending, disable=quiet):
                 obj.indexed = datetime.datetime.utcnow()
                 db.session.merge(obj)
 
@@ -566,30 +568,28 @@ class ElasticSearchBulkOperation(object):
             self.reset()
 
     def check(self, limit):
-        if self.in_bulk_mode():
-            limit_timestamp = datetime.datetime.utcnow() - datetime.timedelta(
-                seconds=limit
-            )
-            if self.timestamp < limit_timestamp:
-                delta = limit_timestamp - self.timestamp
-                self.abort(
-                    reason='Timestamp validation failure: timestamp = %r, limit = %r, delta = %r'
-                    % (
-                        self.timestamp,
-                        limit_timestamp,
-                        delta,
-                    )
+        limit_timestamp = datetime.datetime.utcnow() - datetime.timedelta(seconds=limit)
+        if self.timestamp < limit_timestamp:
+            delta = limit_timestamp - self.timestamp
+            self.abort(
+                reason='Timestamp validation failure: timestamp = %r, limit = %r, delta = %r'
+                % (
+                    self.timestamp,
+                    limit_timestamp,
+                    delta,
                 )
+            )
 
     def abort(self, reason=None):
-        log.warning('ELASTICSEARCH SESSION ABORT (%r)' % (reason,))
-        # Purge any None values in the depth stack
-        self.depth = [item for item in self.depth if item is not None]
-        # Take the highest-level non-None config
         if self.in_bulk_mode():
-            self.depth = self.depth[:1]
-        self.exit()
-        self.reset()
+            log.warning('ELASTICSEARCH SESSION ABORT (%r)' % (reason,))
+            # Purge any None values in the depth stack
+            self.depth = [item for item in self.depth if item is not None]
+            # Take the highest-level non-None config
+            if self.in_bulk_mode():
+                self.depth = self.depth[:1]
+            self.exit()
+            self.reset()
 
     def __enter__(self):
         return self.enter()
@@ -1245,7 +1245,8 @@ def elasticsearch_on_class(
                     cls,
                 )
             )
-            for guid in search_prune:
+            quiet = len(search_prune) < 100
+            for guid in tqdm.tqdm(search_prune, disable=quiet):
                 es_delete_guid(cls, guid, app=app)
 
     if load:

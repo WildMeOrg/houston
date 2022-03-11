@@ -130,8 +130,8 @@ class AuditLogFault(Resource):
             'action': AccessOperation.READ,
         },
     )
-    @api.paginate(GetAuditLogFaultsParameters())
     @api.response(schemas.DetailedAuditLogSchema(many=True))
+    @api.paginate(GetAuditLogFaultsParameters())
     def get(self, args):
         """
         Get AuditLog details by the ID of the item that is being logged about.

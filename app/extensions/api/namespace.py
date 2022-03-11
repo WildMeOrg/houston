@@ -137,7 +137,9 @@ class Namespace(BaseNamespace):
                     if query is None or len(query) == 0:
                         total_count, response = 0, []
                     else:
-                        assert len(query) == 2
+                        assert (
+                            len(query) == 2
+                        ), 'This may happen when @api.paginate is above @api.response'
                         total_count, response = query
                         assert isinstance(total_count, int)
                 else:

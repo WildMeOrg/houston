@@ -150,6 +150,8 @@ def test_social_groups(session, login, codex_url):
     assert response.json() == {
         'created': social_group['created'],
         'updated': social_group['updated'],
+        'indexed': social_group['indexed'],
+        'elasticsearchable': social_group['elasticsearchable'],
         'name': 'Family',
         'members': {
             individual_ids[0]: {'roles': ['Matriarch']},
@@ -176,6 +178,8 @@ def test_social_groups(session, login, codex_url):
     assert response.json() == {
         'created': social_group['created'],
         'updated': social_group['updated'],
+        'indexed': social_group['indexed'],
+        'elasticsearchable': social_group['elasticsearchable'],
         'name': 'Family',
         'members': {
             individual_ids[0]: {'roles': ['Matriarch']},
@@ -204,6 +208,8 @@ def test_social_groups(session, login, codex_url):
     assert response.json() == {
         'created': social_group['created'],
         'updated': social_group['updated'],
+        'indexed': social_group['indexed'],
+        'elasticsearchable': social_group['elasticsearchable'],
         'name': 'Family',
         'members': {
             individual_ids[0]: {'roles': ['Matriarch']},

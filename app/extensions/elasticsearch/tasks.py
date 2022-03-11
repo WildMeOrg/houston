@@ -2,10 +2,7 @@
 import logging
 
 import uuid
-from flask import current_app
 from app.extensions.celery import celery
-from app.extensions import elasticsearch as es
-from app.extensions import db
 import datetime
 
 import tqdm
@@ -38,6 +35,9 @@ def elasticsearch_setup_periodic_tasks(sender, **kwargs):
 
 @celery.task
 def elasticsearch_refresh_index_all():
+    from app.extensions import elasticsearch as es
+    from flask import current_app
+
     log.info('Running Refresh Index All (testing = %r)' % (current_app.testing,))
     if current_app.testing:
         log.info('...skipping')
@@ -61,6 +61,10 @@ def elasticsearch_refresh_index_all():
 
 @celery.task
 def elasticsearch_invalidate_indexed_timestamps():
+    from app.extensions import elasticsearch as es
+    from app.extensions import db
+    from flask import current_app
+
     log.info(
         'Running Invalidate Indexed Timestamps (testing = %r)' % (current_app.testing,)
     )
@@ -84,6 +88,9 @@ def elasticsearch_invalidate_indexed_timestamps():
 
 @celery.task
 def elasticsearch_index_bulk(index, items):
+    from app.extensions import elasticsearch as es
+    from flask import current_app
+
     app = current_app
     cls = es.get_elasticsearch_cls_from_index(index)
 
@@ -123,6 +130,9 @@ def elasticsearch_index_bulk(index, items):
 
 @celery.task
 def elasticsearch_delete_guid_bulk(index, guids):
+    from app.extensions import elasticsearch as es
+    from flask import current_app
+
     app = current_app
     cls = es.get_elasticsearch_cls_from_index(index)
 

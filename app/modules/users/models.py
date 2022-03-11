@@ -429,7 +429,7 @@ class User(db.Model, FeatherModel, UserEDMMixin):
                 **kwargs,
             )
 
-            with db.session.begin():
+            with db.session.begin(subtransactions=True):
                 db.session.add(user)
 
             if send_verification:

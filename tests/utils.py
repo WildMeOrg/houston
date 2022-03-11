@@ -644,13 +644,13 @@ def cleanup(request, func):
 
 
 def get_elasticsearch_status(flask_app_client, user, expected_status_code=200):
+    from app.extensions import elasticsearch as es
+
     if not is_extension_enabled('elasticsearch'):
         return {}
 
-    health = flask_app_client.application.es.cluster.health()
-    percentage = round(health.get('active_shards_percent_as_number', 0.0) / 100.0, 2)
-    if percentage < 1.0:
-        return health
+    if es.is_disabled():
+        return {}
 
     response = get_dict_via_flask(
         flask_app_client,
@@ -668,13 +668,11 @@ def get_elasticsearch_status(flask_app_client, user, expected_status_code=200):
 def wait_for_elasticsearch_status(flask_app_client, user, force=True):
     from app.extensions import elasticsearch as es
 
-    app = flask_app_client.application
-
-    counter = 0
+    trial = 0
     status = [None]
     while True:
-        with es.session.begin(blocking=True):
-            es.init_elasticsearch_index(app=app, force=force, verbose=False)
+        with es.session.begin(blocking=True, forced=force, verify=True):
+            es.es_index_all()
 
         try:
             status = get_elasticsearch_status(flask_app_client, user)
@@ -685,10 +683,10 @@ def wait_for_elasticsearch_status(flask_app_client, user, force=True):
         if len(status) == 0:
             break
 
-        if counter > 10:
+        if trial > 10:
             raise RuntimeError()
 
-        counter += 1
+        trial += 1
         time.sleep(1)
 
 

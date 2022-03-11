@@ -82,9 +82,9 @@ def test_create_and_delete_mission_task(flask_app_client, data_manager_1, test_r
         # Wait for elasticsearch to catch up
         wait_for_elasticsearch_status(flask_app_client, data_manager_1)
 
-        counter = 0
+        trial = 0
         while True:
-            counter += 1
+            trial += 1
 
             response = mission_utils.create_mission_task(
                 flask_app_client, data_manager_1, mission_guid, data
@@ -99,7 +99,7 @@ def test_create_and_delete_mission_task(flask_app_client, data_manager_1, test_r
             if len(mission_task_assets) != 0:
                 break
 
-            if counter >= 10:
+            if trial >= 10:
                 raise RuntimeError()
 
         assert len(mission_task_assets) == 1

@@ -9,7 +9,12 @@ from app.modules.fileuploads.models import FileUpload, modify_image
 from PIL import Image
 import pytest
 
-from tests.utils import TemporaryDirectoryGraceful, create_transaction_dir, copy_uploaded_file, write_uploaded_file
+from tests.utils import (
+    TemporaryDirectoryGraceful,
+    create_transaction_dir,
+    copy_uploaded_file,
+    write_uploaded_file,
+)
 
 
 def cleanup_fileuploads_directory(fileuploads_directory):
@@ -148,7 +153,9 @@ def test_fileuploads_get_src(flask_app, flask_app_client, db, test_root, request
 
 def test_modify_image(flask_app, test_root):
     with TemporaryDirectoryGraceful() as td:
-        test_file = copy_uploaded_file(test_root, 'zebra.jpg', pathlib.Path(td), 'zebra.jpg')
+        test_file = copy_uploaded_file(
+            test_root, 'zebra.jpg', pathlib.Path(td), 'zebra.jpg'
+        )
 
         with Image.open(test_file) as image:
             assert image.size == (1000, 664)

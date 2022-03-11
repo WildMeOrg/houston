@@ -55,6 +55,12 @@ def pytest_addoption(parser):
         default=[],
         help=('Specify additional config argument for GitLab'),
     )
+    parser.addoption(
+        '--no-elasticsearch',
+        action='store_true',
+        default=False,
+        help=('Disable Elasticsearch with tests'),
+    )
 
 
 def _skip_on_app_context(config, items):
@@ -146,6 +152,11 @@ def pytest_generate_tests(metafunc):
             raise ValueError
         metafunc.parametrize('gitlab_remote_login_pat', value, scope='session')
 
+    if 'disable_elasticsearch' in metafunc.fixturenames:
+        value = metafunc.config.option.no_elasticsearch
+        value = [value]
+        metafunc.parametrize('disable_elasticsearch', value, scope='session')
+
 
 @pytest.fixture(autouse=True)
 def check_cleanup_objects(db):
@@ -204,7 +215,7 @@ def email_setup(flask_app):
 
 
 @pytest.fixture(scope='session')
-def flask_app(gitlab_remote_login_pat):
+def flask_app(gitlab_remote_login_pat, disable_elasticsearch):
 
     with tempfile.TemporaryDirectory() as td:
         config_override = {}
@@ -282,9 +293,13 @@ def flask_app(gitlab_remote_login_pat):
             if is_extension_enabled('elasticsearch'):
                 from app.extensions import elasticsearch as es
 
-                es.init_elasticsearch_listeners(app)
+                # Selectively disable elasticsearch for tests
+                if disable_elasticsearch:
+                    es.off()
+
+                es.attach_listeners(app)
                 update = app.config.get('ELASTICSEARCH_BUILD_INDEX_ON_STARTUP', False)
-                es.init_elasticsearch_index(app, pit=True, update=update, force=True)
+                es.es_index_all(app, pit=True, update=update, force=True)
 
             # This is necessary to make celery tasks work when calling
             # in the foreground.  Otherwise there's some weird error:
@@ -299,6 +314,9 @@ def flask_app(gitlab_remote_login_pat):
             # Drop all data from elasticsearch
             if is_extension_enabled('elasticsearch'):
                 from app.extensions import elasticsearch as es
+
+                # Ensure that ES is turned on for cleanup
+                es.on()
 
                 # Ensure that any background Celery tasks have wrapped up
                 es.check_celery(revoke=True)
@@ -320,8 +338,8 @@ def flask_app(gitlab_remote_login_pat):
                         db.session.execute(table.delete())
 
                 # Delete all content in elasticsearch
-                with es.session.begin(blocking=True):
-                    es.init_elasticsearch_index(app, update=False)
+                with es.session.begin(blocking=True, verify=True):
+                    es.es_index_all(app, update=False)
 
                 indices = es.es_all_indices()
                 for index in indices:
@@ -563,6 +581,7 @@ def ensure_asset_group_repo(flask_app, db, asset_group, file_data=[]):
         print(
             f'Gitlab unavailable, skip ensure_remote for asset group {asset_group.guid}'
         )
+
     filepath_guid_mapping = {}
     input_files = []
     if len(asset_group.assets) == 0:

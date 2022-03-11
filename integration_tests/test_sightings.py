@@ -217,6 +217,8 @@ def test_sightings(session, login, codex_url, test_root, admin_name):
     )
     assert response.status_code == 200
     assert response.json()['version'] > sighting_version
+    assets = response.json()['assets']
+    annots_0 = response.json()['assets'][0]['annotations']
     sighting_version = response.json()['version']
     assert response.json() == {
         'assets': [

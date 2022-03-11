@@ -14,13 +14,13 @@ import flask_sqlalchemy
 import utool as ut
 import sqlalchemy_utils
 import sqlalchemy
-import threading
 import datetime
 import werkzeug
 import weakref
 
 import uuid
 import types
+import time
 import tqdm
 import json
 import enum
@@ -30,18 +30,17 @@ if not is_extension_enabled('elasticsearch'):
     raise RuntimeError('Elastic Search is not enabled')
 
 
+ENABLED = True
 TESTING_PREFIX = 'testing'
 REGISTERED_MODELS = {}
 
+CELERY_VERIFY_TIMEOUT = 60.0
 CELERY_ASYNC_PROMISES = []
-
-
-bulk_lock = threading.Lock()
 
 
 log = logging.getLogger('elasticsearch')  # pylint: disable=invalid-name
 
-
+# Global object session
 session = None
 
 
@@ -68,13 +67,16 @@ class ElasticsearchModel(object):
     def index_all(cls, app=None, prune=True, pit=False, update=True, force=False):
         index = cls._index()
 
+        session_forced = session.in_forced_mode()
+
         if index is None:
             return
 
         with session.begin():
-            if prune:
-                # Delete anything from the index that is not in the database
-                indexed_guids = set(cls.elasticsearch(search={}, app=app, load=False))
+            # If pruning, delete anything from the index that is not in the database
+            indexed_guids = set(
+                cls.elasticsearch(search={}, app=app, load=False, prune=prune)
+            )
 
             if pit:
                 # Establish a new point-in-time
@@ -98,20 +100,61 @@ class ElasticsearchModel(object):
                     outdated_guids = set([item[0] for item in outdated_guids])
 
                 guids = list(missing_guids | outdated_guids)
+                force_str = ' (by session)' if not force and session_forced else ''
+                if session_forced:
+                    force = True
+
                 log.info(
-                    'Elasticsearch Index All %r into %r (%d items, force=%r)'
+                    'Elasticsearch Index All %r into %r (%d items, force=%r%s)'
                     % (
                         cls,
                         index,
                         len(guids),
                         force,
+                        force_str,
                     )
                 )
+
                 # Re-index all objects in our local database
                 quiet = len(guids) < 100
                 for guid in tqdm.tqdm(guids, disable=quiet):
                     obj = cls.query.get(guid)
                     obj.index(app=app, force=force)
+
+    @classmethod
+    def prune_all(cls, app=None):
+        index = cls._index()
+
+        if index is None:
+            return
+
+        with session.begin():
+            guids = cls.query.with_entities(cls.guid).all()
+            guids = list(set([item[0] for item in guids]))
+
+            log.info(
+                'Pruning Index All %r into %r (%d items)'
+                % (
+                    cls,
+                    index,
+                    len(guids),
+                )
+            )
+
+            # Prune all objects in our local database
+            quiet = len(guids) < 100
+            for guid in tqdm.tqdm(guids, disable=quiet):
+                es_delete_guid(cls, guid, app=app)
+
+    @classmethod
+    def invalidate_all(cls, app=None):
+        with session.begin(disabled=True):
+            objs = cls.query.all()
+            if len(objs) > 0:
+                log.info('Invalidating %r' % (cls,))
+                desc = 'Invalidating (Bulk) %s' % (cls.__name__,)
+                for obj in tqdm.tqdm(objs, desc=desc):
+                    es_invalidate(obj)
 
     @classmethod
     def elasticsearch(cls, search, app=None, total=False, *args, **kwargs):
@@ -142,6 +185,9 @@ class ElasticsearchModel(object):
     def index_hook_obj(self):
         return self.__class__.index_hook_cls()
 
+    def available(self, *args, **kwargs):
+        return self._elasticsearch_exists(*args, **kwargs)
+
     def index(self, *args, **kwargs):
         return self._elasticsearch_index(*args, **kwargs)
 
@@ -159,9 +205,6 @@ class ElasticsearchModel(object):
 
     def _elasticsearch_get(self, *args, **kwargs):
         return es_get(self, *args, **kwargs)
-
-    def _elasticsearch_update(self, *args, **kwargs):
-        return es_update(self, *args, **kwargs)
 
     def _elasticsearch_delete(self, *args, **kwargs):
         return es_delete(self, *args, **kwargs)
@@ -184,7 +227,18 @@ class ElasticSearchBulkOperation(object):
     def in_skip_mode(self):
         return self.in_bulk_mode() and self.depth[0] is None
 
+    def in_forced_mode(self):
+        forced = False
+        if self.in_bulk_mode():
+            top_config = self.depth[0]
+            if top_config is not None:
+                forced = top_config.get('forced', False)
+        return forced
+
     def track_bulk_action(self, action, item, force=False):
+        if self.in_forced_mode():
+            force = True
+
         log.debug(
             'Tracking %r action for %r (force = %r)'
             % (
@@ -193,6 +247,10 @@ class ElasticSearchBulkOperation(object):
                 force,
             )
         )
+
+        if is_disabled():
+            log.debug('...disabled')
+            return 'disabled'
 
         if self.in_skip_mode():
             log.debug('...skipped')
@@ -206,7 +264,7 @@ class ElasticSearchBulkOperation(object):
         elif action == 'delete':
             cls, guid = item
             item = str(guid)
-        else:
+        else:  # pragma: no cover
             raise RuntimeError()
 
         if cls not in self.bulk_actions:
@@ -251,7 +309,7 @@ class ElasticSearchBulkOperation(object):
         all_guids = set(map(str, guids))
         try:
             total, errors = helpers.bulk(
-                app.es, actions, index=index, raise_on_error=False
+                app.es, actions, index=index, raise_on_error=False, max_retries=3
             )
             for error in errors:
                 create = error.get('create', {})
@@ -262,7 +320,7 @@ class ElasticSearchBulkOperation(object):
                     guid = create.get('_id', None)
                     if guid in all_guids:
                         exists.add(guid)
-        except (AssertionError, helpers.errors.BulkIndexError):
+        except (AssertionError, helpers.errors.BulkIndexError):  # pragma: no cover
             pass
 
         return exists
@@ -321,11 +379,11 @@ class ElasticSearchBulkOperation(object):
 
         try:
             total, errors = helpers.bulk(
-                app.es, actions, index=index, raise_on_error=False
+                app.es, actions, index=index, raise_on_error=False, max_retries=3
             )
             assert total == len(actions)
             assert len(errors) == 0
-        except (AssertionError, helpers.errors.BulkIndexError):
+        except (AssertionError, helpers.errors.BulkIndexError):  # pragma: no cover
             if len(items) == 1:
                 obj, force = items[0]
                 return obj.elasticsearchable
@@ -353,6 +411,9 @@ class ElasticSearchBulkOperation(object):
                 obj.indexed = datetime.datetime.utcnow()
                 db.session.merge(obj)
 
+        # Refresh the index
+        es_refresh_index(index, app=app)
+
         total = len(actions) + len(skipped)
         return total
 
@@ -367,18 +428,24 @@ class ElasticSearchBulkOperation(object):
 
         exists = self._es_exists_bulk(cls, guids, app=app)
 
-        actions = []
+        pending = []
         skipped = []
         for guid in guids:
-            id_ = str(guid)
-            if id_ in exists:
-                action = {
-                    '_id': id_,
-                    '_op_type': 'delete',
-                }
-                actions.append(action)
+            if str(guid) in exists:
+                pending.append(guid)
             else:
                 skipped.append(guid)
+
+        if len(pending) == 0:
+            return len(skipped)
+
+        actions = []
+        for guid in pending:
+            action = {
+                '_id': str(guid),
+                '_op_type': 'delete',
+            }
+            actions.append(action)
 
         level_str = '' if level == 0 else ' [retry=%d]' % (level,)
         log.info(
@@ -393,16 +460,13 @@ class ElasticSearchBulkOperation(object):
             )
         )
 
-        if len(actions) == 0:
-            return len(skipped)
-
         try:
             total, errors = helpers.bulk(
-                app.es, actions, index=index, raise_on_error=False
+                app.es, actions, index=index, raise_on_error=False, max_retries=3
             )
             assert total == len(actions)
             assert len(errors) == 0
-        except (AssertionError, helpers.errors.BulkIndexError):
+        except (AssertionError, helpers.errors.BulkIndexError):  # pragma: no cover
             if len(guids) == 1:
                 # Base case, check if the one ID exists
                 guid = guids[0]
@@ -426,6 +490,23 @@ class ElasticSearchBulkOperation(object):
 
             return total
 
+        # We only update the indexed timestamps of the objects that succeded as a group
+        all_guids = cls.query.with_entities(cls.guid).all()
+        all_guids = set([str(item[0]) for item in all_guids])
+
+        log.info('Invalidating (Bulk) %s' % (cls.__name__,))
+        with db.session.begin(subtransactions=True):
+            quiet = len(pending) < 100
+            for guid in tqdm.tqdm(pending, disable=quiet):
+                if guid in all_guids:
+                    obj = cls.query.get(guid)
+                    if obj is not None:
+                        es_invalidate(obj)
+                        db.session.merge(obj)
+
+        # Refresh the index
+        es_refresh_index(index, app=app)
+
         total = len(actions) + len(skipped)
         return total
 
@@ -440,7 +521,7 @@ class ElasticSearchBulkOperation(object):
                     log.warning(
                         'Nested ES sessions respect the config of the top-level context, ignoring config %r and using %r instead'
                         % (
-                            new_json,
+                            new_config,
                             top_config,
                         )
                     )
@@ -470,6 +551,7 @@ class ElasticSearchBulkOperation(object):
                 config = {}
 
             blocking = config.get('blocking', self.blocking)
+            verify = config.get('verify', False)
             disabled = config.get('disabled', not config.get('enabled', True))
             forced = config.get('forced', False)
 
@@ -495,7 +577,7 @@ class ElasticSearchBulkOperation(object):
                     )
                 )
 
-                if disabled:
+                if disabled or is_disabled():
                     log.debug('...disabled')
                     continue
 
@@ -508,7 +590,7 @@ class ElasticSearchBulkOperation(object):
                             success = self._es_delete_guid_bulk(
                                 cls, del_items_, app=self.app
                             )
-                            if success < total:
+                            if success < total:  # pragma: no cover
                                 log.warning(
                                     'Bulk delete had %d successful items out of %d'
                                     % (
@@ -542,7 +624,7 @@ class ElasticSearchBulkOperation(object):
                     if blocking:
                         total = len(items)
                         success = self._es_index_bulk(cls, items, app=self.app)
-                        if success < total:
+                        if success < total:  # pragma: no cover
                             log.warning(
                                 'Bulk index had %d successful items out of %d'
                                 % (
@@ -557,15 +639,43 @@ class ElasticSearchBulkOperation(object):
                         promise = signature.apply_async()
                         CELERY_ASYNC_PROMISES.append((signature, promise))
 
-                # Refresh the index
-                es_refresh(index, app=self.app)
-
             # Reset the depth back to zero now that we are done
             placeholder = self.depth.pop()
             assert placeholder is None
             assert not self.in_bulk_mode()
 
             self.reset()
+
+            if verify:
+                self.verify()
+
+    def verify(self, timeout=CELERY_VERIFY_TIMEOUT):
+        status = None
+        message = True
+        verify_timestamp = datetime.datetime.utcnow()
+        while True:
+            now = datetime.datetime.utcnow()
+            delta = now - verify_timestamp
+            waiting = delta.total_seconds()
+            if waiting >= timeout:
+                log.error(status)
+                log.error('ES session was unable to verify after %s seconds' % (timeout,))
+                raise RuntimeError('Could not verify')
+
+            status = es_status()
+            if len(status) == 0:
+                break
+
+            if message:
+                message = False
+                log.info('Waiting for ES session to verify...')
+
+            time.sleep(1.0)
+
+        if not message:
+            log.info('...verified')
+
+        return True
 
     def check(self, limit):
         limit_timestamp = datetime.datetime.utcnow() - datetime.timedelta(seconds=limit)
@@ -599,6 +709,30 @@ class ElasticSearchBulkOperation(object):
             self.abort(reason='Exception on __exit__()')
         else:
             return self.exit()
+
+
+def is_enabled():
+    return ENABLED
+
+
+def is_disabled():
+    return not is_enabled()
+
+
+def off():
+    global ENABLED
+
+    if is_enabled():
+        log.warning('DISABLING ELASTICSEARCH')
+        ENABLED = False
+
+
+def on():
+    global ENABLED
+
+    if is_disabled():
+        log.warning('ENABLING ELASTICSEARCH')
+        ENABLED = True
 
 
 def check_celery(verbose=True, revoke=False):
@@ -651,7 +785,7 @@ def shutdown_celery(verbose=False):
     # Clear out the current promises
     check_celery(verbose=verbose)
 
-    for signature, promise in CELERY_ASYNC_PROMISES:
+    for signature, promise in CELERY_ASYNC_PROMISES:  # pragma: no cover
         celery.control.revoke(promise.task_id, terminate=True)
 
     num_active = check_celery(verbose=verbose)
@@ -667,6 +801,9 @@ def register_elasticsearch_model(cls):
 
 
 def get_elasticsearch_index_name(cls):
+    if is_disabled():
+        return None
+
     if cls not in REGISTERED_MODELS:
         logging.error('Model (%r) is not in Elasticsearch' % (cls,))
         return None
@@ -685,6 +822,9 @@ def get_elasticsearch_index_name(cls):
 def get_elasticsearch_cls_from_index(index):
     import sys
     import inspect
+
+    if index is None:
+        return None
 
     index_ = index.strip().strip('.')
 
@@ -709,13 +849,33 @@ def get_elasticsearch_cls_from_index(index):
     return cls
 
 
-def es_invalidate(obj):
-    if obj is not None and hasattr(obj, 'updated'):
-        obj.updated = datetime.datetime.utcnow()
-
-
-def es_index(obj, init=False, app=None, force=False):
+def es_health_and_stats(app=None):
     from flask import current_app
+
+    if app is None:
+        app = current_app
+
+    health = app.es.cluster.health()
+    stats = app.es.indices.stats()
+
+    return health, stats
+
+
+def es_invalidate(obj):
+    if obj is not None:
+        if hasattr(obj, 'updated') and hasattr(obj, 'indexed'):
+            obj.updated = datetime.datetime.utcnow()
+            assert obj.indexed < obj.updated
+
+
+def es_index(obj, app=None, force=False):
+    from flask import current_app
+
+    cls = obj.__class__
+    index = get_elasticsearch_index_name(cls)
+
+    if index is None:
+        return None
 
     if app is None:
         app = current_app
@@ -726,7 +886,7 @@ def es_index(obj, init=False, app=None, force=False):
     try:
         index, id_, body = build_elasticsearch_index_body(obj)
         resp = app.es.index(index=index, id=id_, body=body)
-    except (elasticsearch.exceptions.RequestError, TypeError):
+    except (elasticsearch.exceptions.RequestError, TypeError):  # pragma: no cover
         log.error('Error indexing %r' % (obj,))
         raise
 
@@ -740,15 +900,17 @@ def es_index(obj, init=False, app=None, force=False):
     if hasattr(obj, 'index_hook_obj'):
         obj.index_hook_obj()
 
-    if init:
-        return resp, index
-    else:
-        es_refresh(index=index, app=app)
-        return resp
+    # Refresh the index
+    es_refresh_index(index, app=app)
+
+    return resp
 
 
 def es_all_indices(app=None):
     from flask import current_app
+
+    if is_disabled():
+        return []
 
     if app is None:
         app = current_app
@@ -767,13 +929,34 @@ def es_all_indices(app=None):
 def es_delete_index(index, app=None):
     from flask import current_app
 
+    if is_disabled():
+        return False
+
     if app is None:
         app = current_app
+
+    if not es_index_exists(index, app=app):
+        return None
 
     response = app.es.indices.delete(index)
     acknowledged = response.get('acknowledged', False)
 
     return acknowledged
+
+
+def es_refresh_index(index, app=None):
+    from flask import current_app
+
+    if is_disabled():
+        return False
+
+    if app is None:
+        app = current_app
+
+    if not es_index_exists(index, app=app):
+        return None
+
+    app.es.indices.refresh(index)
 
 
 def es_add(*args, **kwargs):
@@ -795,21 +978,30 @@ def es_update(*args, **kwargs):
 def es_exists(obj, app=None):
     from flask import current_app
 
-    if app is None:
-        app = current_app
-
     id_ = str(obj.guid)
     cls = obj.__class__
     index = get_elasticsearch_index_name(cls)
 
     if index is None:
+        es_invalidate(obj)
         return False
 
-    return app.es.exists(index, id=id_)
+    if app is None:
+        app = current_app
+
+    exists = app.es.exists(index, id=id_)
+
+    if not exists:
+        es_invalidate(obj)
+
+    return exists
 
 
 def es_index_exists(index, app=None):
     from flask import current_app
+
+    if is_disabled():
+        return False
 
     if app is None:
         app = current_app
@@ -820,8 +1012,14 @@ def es_index_exists(index, app=None):
 def es_index_mappings(index, app=None):
     from flask import current_app
 
+    if is_disabled():
+        return {}
+
     if app is None:
         app = current_app
+
+    if not es_index_exists(index, app=app):
+        return None
 
     resp = app.es.indices.get_mapping(index)
     mappings = resp.get(index, {}).get('mappings', {}).get('properties', {})
@@ -829,27 +1027,8 @@ def es_index_mappings(index, app=None):
     return mappings
 
 
-def es_index_has_mapping(cls, key, app=None):
-    from flask import current_app
-
-    if app is None:
-        app = current_app
-
-    index = get_elasticsearch_index_name(cls)
-
-    if index is None:
-        return False
-
-    mappings = es_index_mappings(index)
-
-    return key in mappings
-
-
 def es_get(obj, app=None):
     from flask import current_app
-
-    if app is None:
-        app = current_app
 
     id_ = str(obj.guid)
     cls = obj.__class__
@@ -857,6 +1036,9 @@ def es_get(obj, app=None):
 
     if index is None:
         return None
+
+    if app is None:
+        app = current_app
 
     if not app.es.exists(index, id=id_):
         return None
@@ -890,13 +1072,13 @@ def es_delete(obj, app=None):
 def es_delete_guid(cls, guid, app=None):
     from flask import current_app
 
-    if app is None:
-        app = current_app
-
     index = get_elasticsearch_index_name(cls)
 
     if index is None:
         return None
+
+    if app is None:
+        app = current_app
 
     if session.in_bulk_mode():
         return session.track_bulk_action('delete', (cls, guid))
@@ -911,22 +1093,17 @@ def es_delete_guid(cls, guid, app=None):
     resp = app.es.delete(index, id=id_)
 
     assert resp['_id'] == id_
-    if resp['result'] not in ('deleted'):
+    if resp['result'] in ('deleted',):
+        obj = cls.query.get(guid)
+        if obj is not None:
+            es_invalidate(obj)
+    else:
         log.error('Database delete on an ES model without ES index delete')
 
+    # Refresh the index
+    es_refresh_index(index, app=app)
+
     return resp
-
-
-def es_refresh(index, app=None):
-    # from flask import current_app
-
-    # if app is None:
-    #     app = current_app
-
-    # resp = app.es.indices.refresh(index=index)
-
-    # return resp
-    pass
 
 
 def es_pit(cls, app=None):
@@ -971,13 +1148,23 @@ def es_status(app=None):
         index = get_elasticsearch_index_name(cls)
         if index is None:
             continue
+
+        # Get outdated
         num_guids = cls.query.filter(cls.updated > cls.indexed).count()
         if num_guids > 0:
-            status[index] = num_guids
+            key = '%s:outdated' % (index,)
+            status[key] = num_guids
 
     num_active = check_celery(verbose=False)
     if num_active > 0:
-        status['active'] = num_active
+        status['celery:active'] = num_active
+
+    if is_disabled():
+        status['elasticsearch:enabled'] = False
+
+    health, stats = es_health_and_stats(app=app)
+    if health['status'] != 'green':
+        status['status'] = health['status']
 
     return status
 
@@ -1041,15 +1228,15 @@ def build_elasticsearch_index_body(obj, allow_schema=True):
     index = get_elasticsearch_index_name(cls)
     assert index is not None
 
-    if hasattr(cls, 'get_elasticsearch_schema'):
+    if allow_schema and hasattr(cls, 'get_elasticsearch_schema'):
         schema = cls.get_elasticsearch_schema()
     else:
         schema = None
 
-    if schema is not None and allow_schema:
+    if schema is not None:
         try:
             body = schema().dump(obj).data
-        except Exception as ex:
+        except Exception as ex:  # pragma: no cover
             _, _, body = build_elasticsearch_index_body(obj, allow_schema=False)
             body['guid'] = str(obj.guid)
             body['_schema'] = '%s (failed with %r: %s)' % (
@@ -1077,15 +1264,15 @@ def build_elasticsearch_index_body(obj, allow_schema=True):
                 value = getattr(obj, attr)
                 try:
                     value = _check_value(value)
-                except ValueError:
+                except ValueError:  # pragma: no cover
                     continue
-                except AttributeError:
+                except AttributeError:  # pragma: no cover
                     raise AttributeError('Could not check attr = %r' % (attr,))
 
                 # ensure that we can serlialize this information
                 try:
                     json.dumps(value)
-                except TypeError:
+                except TypeError:  # pragma: no cover
                     skipped.append(attr)
                     continue
 
@@ -1099,7 +1286,7 @@ def build_elasticsearch_index_body(obj, allow_schema=True):
                         cls,
                     )
                 )
-        except Exception as ex:
+        except Exception as ex:  # pragma: no cover
             body = {}
             body['guid'] = str(obj.guid)
             body['_schema'] = 'automatic (failed: %s)' % (ex,)
@@ -1116,7 +1303,7 @@ def build_elasticsearch_index_body(obj, allow_schema=True):
     return index, obj.guid, body
 
 
-def init_elasticsearch_listeners(app):
+def attach_listeners(app):
     from sqlalchemy.event import listen
 
     global REGISTERED_MODELS
@@ -1125,14 +1312,14 @@ def init_elasticsearch_listeners(app):
         try:
             if obj.guid is not None:
                 obj.index(app=app)
-        except Exception:
+        except Exception:  # pragma: no cover
             log.error('ES index update failed for %r' % (obj,))
             raise
 
     def _before_delete(mapper, connection, obj):
         try:
             obj.prune(app=app)
-        except Exception:
+        except Exception:  # pragma: no cover
             log.error('ES index delete failed for %r' % (obj,))
             raise
 
@@ -1146,7 +1333,7 @@ def init_elasticsearch_listeners(app):
         # Only register this hook once
         if not REGISTERED_MODELS[cls]['status']:
             name = '%s.%s' % (cls.__module__, cls.__name__)
-            log.info('Init ES listener model %r' % (name,))
+            log.info('Attach Elasticsearch listener for %r' % (name,))
             listen(cls, 'before_insert', _before_insert_or_update)
             listen(cls, 'before_update', _before_insert_or_update)
             listen(cls, 'before_delete', _before_delete)
@@ -1156,20 +1343,43 @@ def init_elasticsearch_listeners(app):
     listen(db.session, 'after_transaction_end', _end_transaction)
 
 
-def init_elasticsearch_index(app, verbose=True, **kwargs):
+def es_index_all(*args, **kwargs):
     for cls in REGISTERED_MODELS:
-        # re-index the database
-        if verbose:
-            name = '%s.%s' % (cls.__module__, cls.__name__)
-            log.info('Init ES index model %r' % (name,))
+        cls.index_all(*args, **kwargs)
 
-        cls.index_all(app=app, **kwargs)
+
+def es_prune_all(*args, **kwargs):
+    for cls in REGISTERED_MODELS:
+        cls.prune_all(*args, **kwargs)
+
+
+def es_invalidate_all(*args, **kwargs):
+    for cls in REGISTERED_MODELS:
+        cls.invalidate_all(*args, **kwargs)
+
+
+def es_checkpoint(*args, **kwargs):
+    timeout = kwargs.pop('timeout', CELERY_VERIFY_TIMEOUT)
+    session.verify(timeout=timeout)
+    es_refresh_all(*args, **kwargs)
+    session.verify(timeout=timeout)
+
+
+def es_refresh_all(*args, **kwargs):
+    for cls in REGISTERED_MODELS:
+        index = get_elasticsearch_index_name(cls)
+
+        if index is None:
+            continue
+
+        es_refresh_index(index, *args, **kwargs)
 
 
 def elasticsearch_on_class(
     app,
     cls,
     body,
+    prune=True,
     load=True,
     limit=100,
     offset=0,
@@ -1180,7 +1390,10 @@ def elasticsearch_on_class(
     index = get_elasticsearch_index_name(cls)
 
     if index is None:
-        return []
+        if total:
+            return 0, []
+        else:
+            return []
 
     # Don't return anything about the hits
     assert isinstance(body, dict)
@@ -1189,7 +1402,10 @@ def elasticsearch_on_class(
     hits = es_search(index, body, app=app)
 
     if hits is None or len(hits) == 0:
-        return []
+        if total:
+            return 0, []
+        else:
+            return []
 
     # Get all hits from the search
     hit_guids = []
@@ -1235,11 +1451,11 @@ def elasticsearch_on_class(
     )
     guids = [item[0] for item in guids]
 
-    if len(search_prune) > 0:
+    if prune and len(search_prune) > 0:
         with session.begin():
             search_prune = list(set(search_prune))
             log.warning(
-                'Found %d ids to prune for class %r after search'
+                'Found %d items to prune for class %r after search'
                 % (
                     len(search_prune),
                     cls,

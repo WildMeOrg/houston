@@ -255,6 +255,7 @@ def test_tus_corner_cases(flask_app, flask_app_client, file_upload_filename):
     upload_dir = pathlib.Path(flask_app.config['UPLOADS_DATABASE_PATH'])
     found_one = False
     from app.utils import get_stored_filename
+
     stored_filename = get_stored_filename(file_upload_filename)
     for fname in upload_dir.glob(f'session-*/{stored_filename}'):
         uploaded_file = pathlib.Path(fname)

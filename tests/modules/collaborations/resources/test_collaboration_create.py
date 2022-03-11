@@ -52,6 +52,9 @@ def test_create_collaboration(
         assert set(all_resp.json[0]['members'].keys()) == set(
             {str(readonly_user.guid), str(researcher_2.guid)}
         )
+        assert set(all_resp.json[1]['members'].keys()) == set(
+            {str(researcher_1.guid), str(researcher_2.guid)}
+        )
 
         user_resp = user_utils.read_user(flask_app_client, researcher_1, 'me')
         assert 'collaborations' in user_resp.json.keys()

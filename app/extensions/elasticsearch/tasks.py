@@ -3,9 +3,6 @@ import logging
 
 import uuid
 from app.extensions.celery import celery
-import datetime
-
-import tqdm
 
 
 ELASTICSEARCH_UPDATE_FREQUENCY = 60
@@ -34,12 +31,13 @@ def elasticsearch_setup_periodic_tasks(sender, **kwargs):
 
 
 @celery.task
-def elasticsearch_refresh_index_all():
+def elasticsearch_refresh_index_all(force=False):
     from app.extensions import elasticsearch as es
     from flask import current_app
 
-    log.info('Running Refresh Index All (testing = %r)' % (current_app.testing,))
-    if current_app.testing:
+    testing = current_app.testing and not force
+    log.info('Running Refresh Index All (testing = %r)' % (testing,))
+    if testing:
         log.info('...skipping')
         return True
 
@@ -47,8 +45,11 @@ def elasticsearch_refresh_index_all():
     es.session.check(ELASTICSEARCH_MAXIMUM_SESSION_LENGTH)
 
     # Re-index everything
-    with es.session.begin(blocking=True):
-        es.init_elasticsearch_index(app=current_app, verbose=False)
+    try:
+        with es.session.begin(blocking=True, verify=True):
+            es.es_index_all(app=current_app)
+    except Exception:
+        log.info('Elasticsearch Index All session failed to verify')
 
     # Check on the status of the DB relative to ES
     status = es.es_status(app=current_app)
@@ -60,28 +61,21 @@ def elasticsearch_refresh_index_all():
 
 
 @celery.task
-def elasticsearch_invalidate_indexed_timestamps():
+def elasticsearch_invalidate_indexed_timestamps(force=False):
     from app.extensions import elasticsearch as es
     from app.extensions import db
     from flask import current_app
 
-    log.info(
-        'Running Invalidate Indexed Timestamps (testing = %r)' % (current_app.testing,)
-    )
-    if current_app.testing:
+    testing = current_app.testing and not force
+    log.info('Running Invalidate Indexed Timestamps (testing = %r)' % (testing,))
+    if testing:
         log.info('...skipping')
         return True
 
-    delta = datetime.timedelta(seconds=1)
     with es.session.begin(disabled=True):
         for cls in es.REGISTERED_MODELS:
             with db.session.begin():
-                objs = cls.query.all()
-                if len(objs) > 0:
-                    log.info('Invalidating %r' % (cls,))
-                    desc = 'Invalidating (Bulk) %s' % (cls.__name__,)
-                    for obj in tqdm.tqdm(objs, desc=desc):
-                        obj.indexed = obj.updated - delta
+                cls.invalidate_all()
 
     return True
 

@@ -4,7 +4,12 @@ from pathlib import Path
 from app.modules.fileuploads.models import FileUpload
 from app.modules.site_settings.models import SiteSetting
 
-from tests.utils import TemporaryDirectoryGraceful, module_unavailable, copy_uploaded_file, write_uploaded_file
+from tests.utils import (
+    TemporaryDirectoryGraceful,
+    module_unavailable,
+    copy_uploaded_file,
+    write_uploaded_file,
+)
 import pytest
 
 

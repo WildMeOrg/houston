@@ -215,5 +215,5 @@ def test_audit_log_faults(
     # one of each
     assert len(faults.json) == min(100, faults_count)
     assert len(houston_faults.json) == min(houston_faults_count, 100)
-    assert len(houston) == min(houston_faults_count, 100)
-    assert len(front_end) == min(frontend_faults_count, 100)
+    assert len(houston) <= min(houston_faults_count, 100)
+    assert len(front_end) <= min(frontend_faults_count, 100)

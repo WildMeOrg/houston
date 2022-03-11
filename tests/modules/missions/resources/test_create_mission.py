@@ -409,16 +409,16 @@ def test_get_mission_assets(flask_app_client, data_manager_1, test_root):
             }
         }
 
-        counter = 0
+        total = 0
         for asset in assets:
             if asset.size_bytes <= TARGET_SIZE_BYTES:
-                counter += 1
+                total += 1
 
         # Check that the API for a mission's collections agrees
         response = mission_utils.elasticsearch_mission_assets(
             flask_app_client, data_manager_1, temp_mission.guid, search
         )
-        assert len(response.json) == min(100, counter)
+        assert len(response.json) == min(100, total)
 
         missions = Mission.query.all()
         mission_collections = MissionCollection.query.all()

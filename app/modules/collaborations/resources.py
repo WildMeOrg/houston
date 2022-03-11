@@ -47,7 +47,7 @@ class Collaborations(Resource):
         },
     )
     @api.response(schemas.BaseCollaborationSchema(many=True))
-    @api.paginate()
+    @api.paginate(parameters.GetCollaborationsParameters())
     def get(self, args):
         """
         List of Collaboration.

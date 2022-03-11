@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision = '19dd4e2c1e63'
-down_revision = 'ea69d76faa6b'
+down_revision = '634551347a44'
 
 
 def upgrade():

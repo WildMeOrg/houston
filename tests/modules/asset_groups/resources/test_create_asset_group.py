@@ -174,6 +174,10 @@ def test_create_asset_group_invalid_gps(
     asset_group_utils.create_asset_group(
         flask_app_client, researcher_1, data.get(), 400, expected_error
     )
+    data.set_sighting_field(0, 'decimalLongitude', None)
+    asset_group_utils.create_asset_group(
+        flask_app_client, researcher_1, data.get(), 400, expected_error
+    )
 
     # How confident is everyone that this doesn't exist anywhere in old world?
     data.set_sighting_field(0, 'decimalLongitude', 'twenty five point nine nine nine')
@@ -210,10 +214,13 @@ def test_create_asset_group_invalid_gps(
 
     # Encounters data used for testing bad latitude values
     data.set_encounter_field(0, 0, 'decimalLongitude', 25.999)
-
     expected_error = (
         'Need both or neither of decimalLatitude and decimalLongitude in Encounter 1.1'
     )
+    asset_group_utils.create_asset_group(
+        flask_app_client, researcher_1, data.get(), 400, expected_error
+    )
+    data.set_encounter_field(0, 0, 'decimalLatitude', None)
     asset_group_utils.create_asset_group(
         flask_app_client, researcher_1, data.get(), 400, expected_error
     )
@@ -224,7 +231,7 @@ def test_create_asset_group_invalid_gps(
         flask_app_client, researcher_1, data.get(), 400, expected_error
     )
 
-    data.set_encounter_field(0, 0, 'decimalLatitude', None)
+    data.set_encounter_field(0, 0, 'decimalLatitude', 'null')
     asset_group_utils.create_asset_group(
         flask_app_client, researcher_1, data.get(), 400, expected_error
     )

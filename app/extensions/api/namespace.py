@@ -134,9 +134,12 @@ class Namespace(BaseNamespace):
                 query = func(self_, parameters_args, *args, **kwargs)
 
                 if not isinstance(query, flask_sqlalchemy.BaseQuery):
-                    assert len(query) == 2
-                    total_count, response = query
-                    assert isinstance(total_count, int)
+                    if query is None or len(query) == 0:
+                        total_count, response = 0, []
+                    else:
+                        assert len(query) == 2
+                        total_count, response = query
+                        assert isinstance(total_count, int)
                 else:
                     cls = query.column_descriptions[0].get('entity')
 

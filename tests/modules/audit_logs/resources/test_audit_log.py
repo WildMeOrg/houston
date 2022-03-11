@@ -179,6 +179,9 @@ def test_most_ia_pipeline_audit_log(
 def test_audit_log_faults(
     flask_app_client, researcher_1, readonly_user, admin_user, test_root, db
 ):
+    from app.modules.audit_logs.models import AuditLog
+    import app.extensions.logging as AuditLogExtension
+
     # Reuse a different test that generates a truckload of faults
     from tests.modules.asset_groups.resources.test_create_asset_group import (
         test_create_asset_group,
@@ -191,13 +194,26 @@ def test_audit_log_faults(
         flask_app_client, admin_user, fault_type='Houston Fault'
     )
 
+    faults_count = AuditLog.query.filter(
+        (AuditLog.audit_type == AuditLogExtension.AuditType.HoustonFault.value)
+        | (AuditLog.audit_type == AuditLogExtension.AuditType.BackEndFault.value)
+        | (AuditLog.audit_type == AuditLogExtension.AuditType.FrontEndFault.value)
+    ).count()
+    houston_faults_count = AuditLog.query.filter(
+        AuditLog.audit_type == AuditLogExtension.AuditType.HoustonFault.value
+    ).count()
+    frontend_faults_count = AuditLog.query.filter(
+        AuditLog.audit_type == AuditLogExtension.AuditType.HoustonFault.value
+    ).count()
+
     # Make sure we have the same number of Houston and Frontend faults (each error in the above test creates
     # one of each
-    assert len(faults.json) == len(houston_faults.json)
-    # may have been other Houston faults beforehand, just make sure we read something
-    assert len(houston_faults.json) > 10
+    assert len(faults.json) == min(100, faults_count)
+    assert len(houston_faults.json) == min(houston_faults_count, 100)
+
     houston = [fault for fault in faults.json if fault['audit_type'] == 'Houston Fault']
     front_end = [
         fault for fault in faults.json if fault['audit_type'] == 'Front End Fault'
     ]
-    assert len(houston) == len(front_end)
+    assert len(houston) == min(houston_faults_count, 100)
+    assert len(front_end) == min(frontend_faults_count, 100)

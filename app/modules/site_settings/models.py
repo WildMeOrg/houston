@@ -112,6 +112,11 @@ class SiteSetting(db.Model, Timestamp):
         return self.public
 
     @classmethod
+    def query_search(cls, search=None, args=None):
+        query = cls.query
+        return query
+
+    @classmethod
     def set(
         cls,
         key,

@@ -5,7 +5,7 @@ Audit Logs database models
 """
 
 from flask_login import current_user  # NOQA
-from app.extensions import db, Timestamp, ElasticsearchModel
+from app.extensions import db, HoustonModel
 import logging
 
 import uuid
@@ -13,7 +13,7 @@ import uuid
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
 
-class AuditLog(db.Model, Timestamp, ElasticsearchModel):
+class AuditLog(db.Model, HoustonModel):
     """
     Audit Logs database model.
     """
@@ -43,6 +43,20 @@ class AuditLog(db.Model, Timestamp, ElasticsearchModel):
             "module ='{self.module_name}', "
             'item_guid={self.item_guid}, '
             ')>'.format(class_name=self.__class__.__name__, self=self)
+        )
+
+    @classmethod
+    def query_search_term_hook(cls, term):
+        from sqlalchemy_utils.functions import cast_if
+        from sqlalchemy import String
+
+        return (
+            cast_if(cls.guid, String).contains(term),
+            cls.module_name.contains(term),
+            cast_if(cls.item_guid, String).contains(term),
+            cls.user_email.contains(term),
+            cls.message.contains(term),
+            cls.audit_type.contains(term),
         )
 
     @classmethod

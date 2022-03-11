@@ -91,7 +91,15 @@ def upgrade():
                 sa.DateTime(),
                 nullable=False,
                 server_default=sa.func.current_timestamp(),
-            )
+            ),
+        )
+        batch_op.add_column(
+            sa.Column(
+                'viewed',
+                sa.DateTime(),
+                nullable=False,
+                server_default=sa.func.current_timestamp(),
+            ),
         )
         batch_op.create_index(
             batch_op.f('ix_audit_log_indexed'), ['indexed'], unique=False
@@ -744,6 +752,7 @@ def downgrade():
     with op.batch_alter_table('audit_log', schema=None) as batch_op:
         batch_op.drop_index(batch_op.f('ix_audit_log_indexed'))
         batch_op.drop_column('indexed')
+        batch_op.drop_column('viewed')
 
     with op.batch_alter_table('asset_tags', schema=None) as batch_op:
         batch_op.drop_index(batch_op.f('ix_asset_tags_indexed'))

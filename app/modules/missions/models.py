@@ -114,6 +114,7 @@ class Mission(db.Model, HoustonModel, Timestamp):
     def asset_search(self, search, *args, **kwargs):
         from app.modules.assets.models import Asset
 
+        # Get Elasticsearch GUIDs
         response = Asset.elasticsearch(search, load=False, *args, **kwargs)
 
         if kwargs.get('total', False):
@@ -122,17 +123,23 @@ class Mission(db.Model, HoustonModel, Timestamp):
         else:
             total, search_guids = None, response
 
-        search_guids = set(search_guids)
+        # Get all mission's GUIDs
+        mission_guids = self.get_assets(load=False)
 
-        valid_assets = []
-        for asset in self.assets:
-            if asset.guid in search_guids:
-                valid_assets.append(asset)
+        # Return only the mission's guids from the search guids
+        guids = set(search_guids) & set(mission_guids)
+
+        # Load assets from DB
+        assets = []
+        for guid in guids:
+            asset = Asset.query.get(guid)
+            if asset is not None:
+                assets.append(asset)
 
         if total is None:
-            return valid_assets
+            return assets
         else:
-            return total, valid_assets
+            return total, assets
 
     @property
     def asset_count(self):
@@ -172,10 +179,10 @@ class Mission(db.Model, HoustonModel, Timestamp):
                 db.session.delete(assignment)
                 break
 
-    def get_assets(self):
+    def get_assets(self, load=True):
         assets = []
         for collection in self.collections:
-            assets += collection.assets
+            assets += collection.get_assets(load=load)
         return assets
 
     def get_jobs_json(self):
@@ -318,7 +325,21 @@ class MissionCollection(GitStore):
 
     @property
     def asset_count(self):
-        return len(self.assets)
+        return len(self.get_assets(load=False))
+
+    def get_assets(self, load=True):
+        if load:
+            return self.assets
+        else:
+            from app.modules.assets.models import Asset
+
+            results = (
+                Asset.query.filter(Asset.git_store_guid == self.guid)
+                .with_entities(Asset.guid)
+                .all()
+            )
+            guids = [result[0] for result in results]
+            return guids
 
     @classmethod
     def query_search_term_hook(cls, term):

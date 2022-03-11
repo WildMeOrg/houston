@@ -518,7 +518,11 @@ class User(db.Model, FeatherModel, UserEDMMixin):
 
     @classmethod
     def query_search_term_hook(cls, term):
+        from sqlalchemy_utils.functions import cast_if
+        from sqlalchemy import String
+
         return (
+            cast_if(cls.guid, String).contains(term),
             cls.email.contains(term),
             cls.affiliation.contains(term),
             cls.forum_id.contains(term),

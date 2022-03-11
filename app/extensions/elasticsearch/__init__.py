@@ -31,7 +31,6 @@ if not is_extension_enabled('elasticsearch'):
 
 
 TESTING_PREFIX = 'testing'
-CACHING_TIME_RESOLUTION = 10
 REGISTERED_MODELS = {}
 
 CELERY_ASYNC_PROMISES = []
@@ -224,6 +223,7 @@ class ElasticSearchBulkOperation(object):
         return self
 
     def reset(self):
+        self.timestamp = datetime.datetime.utcnow()
         self.depth = []
         self.bulk_actions = {}
 
@@ -463,6 +463,10 @@ class ElasticSearchBulkOperation(object):
                 None
             )  # Block any sessions that happen in this block from working
 
+            # uh-oh, bad things
+            if config is None:
+                config = {}
+
             blocking = config.get('blocking', self.blocking)
             disabled = config.get('disabled', not config.get('enabled', True))
             forced = config.get('forced', False)
@@ -562,11 +566,37 @@ class ElasticSearchBulkOperation(object):
 
             self.reset()
 
+    def check(self, limit):
+        limit_timestamp = datetime.datetime.utcnow() - datetime.timedelta(seconds=limit)
+        if self.timestamp < limit_timestamp:
+            delta = limit_timestamp - self.timestamp
+            self.abort(
+                reason='Timestamp validation failure: timestamp = %r, limit = %r, delta = %r'
+                % (
+                    self.timestamp,
+                    limit_timestamp,
+                    delta,
+                )
+            )
+
+    def abort(self, reason=None):
+        log.warning('ELASTICSEARCH SESSION ABORT (%r)' % (reason,))
+        # Purge any None values in the depth stack
+        self.depth = [item for item in self.depth if item is not None]
+        # Take the highest-level non-None config
+        if len(self.depth) > 0:
+            self.depth = self.depth[:1]
+        self.exit()
+        self.reset()
+
     def __enter__(self):
         return self.enter()
 
     def __exit__(self, type_, value, traceback):
-        return self.exit()
+        if type_ is not None or value is not None or traceback is not None:
+            self.abort(reason='Exception on __exit__()')
+        else:
+            return self.exit()
 
 
 def check_celery(verbose=True, revoke=False):
@@ -950,7 +980,7 @@ def es_status(app=None):
     return status
 
 
-def build_elasticsearch_index_body(obj):
+def build_elasticsearch_index_body(obj, allow_schema=True):
     def _check_value(value):
 
         retval = RuntimeError
@@ -1014,50 +1044,72 @@ def build_elasticsearch_index_body(obj):
     else:
         schema = None
 
-    if schema is None:
-        body = {}
-        skipped = []
-        for attr in sorted(dir(obj)):
-            # Get rid of Python and SQLAlchemy specific attributes
-            if attr in (
-                '__dict__',
-                '__weakref__',
-                '__table_args__',
-                'query_class',
-                'password',  # explicitly do not send this to ES
-            ):
-                continue
-
-            value = getattr(obj, attr)
-            try:
-                value = _check_value(value)
-            except ValueError:
-                continue
-            except AttributeError:
-                raise AttributeError('Could not check attr = %r' % (attr,))
-
-            # ensure that we can serlialize this information
-            try:
-                json.dumps(value)
-            except TypeError:
-                skipped.append(attr)
-                continue
-
-            body[attr] = value
-
-        if len(skipped) > 0:
-            log.warning(
-                'Skipping Elasticsearch attributes %r for class %r'
-                % (
-                    skipped,
-                    cls,
-                )
+    if schema is not None and allow_schema:
+        try:
+            body = schema().dump(obj).data
+        except Exception as ex:
+            _, _, body = build_elasticsearch_index_body(obj, allow_schema=False)
+            body['guid'] = str(obj.guid)
+            body['_schema'] = '%s (failed with %r: %s)' % (
+                body['_schema'],
+                schema.__name__,
+                ex,
             )
+            body['indexed'] = f'{datetime.datetime.utcnow().isoformat()}+00:00'
+            return index, obj.guid, body
     else:
-        body = schema().dump(obj).data
+        try:
+            body = {}
+            skipped = []
+            for attr in sorted(dir(obj)):
+                # Get rid of Python and SQLAlchemy specific attributes
+                if attr in (
+                    '__dict__',
+                    '__weakref__',
+                    '__table_args__',
+                    'query_class',
+                    'password',  # explicitly do not send this to ES
+                ):
+                    continue
 
-    body.pop('elasticsearchable', None)
+                value = getattr(obj, attr)
+                try:
+                    value = _check_value(value)
+                except ValueError:
+                    continue
+                except AttributeError:
+                    raise AttributeError('Could not check attr = %r' % (attr,))
+
+                # ensure that we can serlialize this information
+                try:
+                    json.dumps(value)
+                except TypeError:
+                    skipped.append(attr)
+                    continue
+
+                body[attr] = value
+
+            if len(skipped) > 0:
+                log.warning(
+                    'Skipping Elasticsearch attributes %r for class %r'
+                    % (
+                        skipped,
+                        cls,
+                    )
+                )
+        except Exception as ex:
+            body = {}
+            body['guid'] = str(obj.guid)
+            body['_schema'] = 'automatic (failed: %s)' % (ex,)
+            body['indexed'] = f'{datetime.datetime.utcnow().isoformat()}+00:00'
+            return index, obj.guid, body
+
+    if schema is None:
+        body['_schema'] = 'automatic'
+    else:
+        body['_schema'] = schema.__name__
     body['indexed'] = f'{datetime.datetime.utcnow().isoformat()}+00:00'
+    body.pop('elasticsearchable', None)
 
     return index, obj.guid, body
 

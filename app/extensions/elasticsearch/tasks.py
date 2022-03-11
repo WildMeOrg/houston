@@ -6,9 +6,14 @@ from flask import current_app
 from app.extensions.celery import celery
 from app.extensions import elasticsearch as es
 from app.extensions import db
-from datetime import timedelta
+import datetime
 
 import tqdm
+
+
+ELASTICSEARCH_UPDATE_FREQUENCY = 60
+ELASTICSEARCH_MAXIMUM_SESSION_LENGTH = ELASTICSEARCH_UPDATE_FREQUENCY * 1
+ELASTICSEARCH_FIREWALL_FREQUENCY = ELASTICSEARCH_UPDATE_FREQUENCY * 10
 
 
 log = logging.getLogger(__name__)
@@ -16,28 +21,16 @@ log = logging.getLogger(__name__)
 
 @celery.on_after_configure.connect
 def elasticsearch_setup_periodic_tasks(sender, **kwargs):
-    try:
-        update_freq = int(current_app.config['ELASTICSEARCH_UPDATE_FREQUENCY'])
-        assert update_freq >= 1
-    except Exception:
-        update_freq = None
-
-    try:
-        firewall_freq = int(current_app.config['ELASTICSEARCH_FIREWALL_FREQUENCY'])
-        assert firewall_freq >= 1
-    except Exception:
-        firewall_freq = None
-
-    if update_freq is not None:
+    if ELASTICSEARCH_UPDATE_FREQUENCY is not None:
         sender.add_periodic_task(
-            update_freq,
+            ELASTICSEARCH_UPDATE_FREQUENCY,
             elasticsearch_refresh_index_all.s(),
             name='Refresh Elasticsearch',
         )
 
-    if firewall_freq is not None:
+    if ELASTICSEARCH_FIREWALL_FREQUENCY is not None:
         sender.add_periodic_task(
-            firewall_freq,
+            ELASTICSEARCH_FIREWALL_FREQUENCY,
             elasticsearch_invalidate_indexed_timestamps.s(),
             name='Clear Elasticsearch Indexed Timestamps',
         )
@@ -49,6 +42,9 @@ def elasticsearch_refresh_index_all():
     if current_app.testing:
         log.info('...skipping')
         return True
+
+    # Check if we have been in a session block too long
+    es.session.check(ELASTICSEARCH_MAXIMUM_SESSION_LENGTH)
 
     # Re-index everything
     with es.session.begin(blocking=True):
@@ -72,13 +68,13 @@ def elasticsearch_invalidate_indexed_timestamps():
         log.info('...skipping')
         return True
 
-    delta = timedelta(seconds=1)
+    delta = datetime.timedelta(seconds=1)
     with es.session.begin(disabled=True):
         for cls in es.REGISTERED_MODELS:
-            log.info('Invalidating %r' % (cls,))
             with db.session.begin():
                 objs = cls.query.all()
                 if len(objs) > 0:
+                    log.info('Invalidating %r' % (cls,))
                     desc = 'Invalidating (Bulk) %s' % (cls.__name__,)
                     for obj in tqdm.tqdm(objs, desc=desc):
                         obj.indexed = obj.updated - delta

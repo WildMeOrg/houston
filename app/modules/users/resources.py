@@ -147,6 +147,7 @@ class UserElasticsearch(Resource):
     @api.paginate()
     def get(self, args):
         search = {}
+        args['total'] = True
         return User.elasticsearch(search, **args)
 
     @api.permission_required(
@@ -161,6 +162,7 @@ class UserElasticsearch(Resource):
     def post(self, args):
         search = request.get_json()
 
+        args['total'] = True
         return User.elasticsearch(search, **args)
 
 

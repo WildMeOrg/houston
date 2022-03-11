@@ -834,6 +834,12 @@ class AssetGroup(GitStore):
     }
 
     @classmethod
+    def get_elasticsearch_schema(cls):
+        from app.modules.asset_groups.schemas import CreateAssetGroupSchema
+
+        return CreateAssetGroupSchema
+
+    @classmethod
     def ensure_remote_delay(cls, asset_group):
         from .tasks import ensure_remote
 

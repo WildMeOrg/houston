@@ -390,8 +390,11 @@ class UserSightings(Resource):
         """
         Get Sightings for user with EDM metadata
         """
+        offset = args['offset']
+        limit = args['limit']
 
-        start, end = args['offset'], args['offset'] + args['limit']
+        start = offset
+        end = offset + limit
         return user.get_sightings_json(start, end)
 
 

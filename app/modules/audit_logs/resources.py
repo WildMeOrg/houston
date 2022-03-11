@@ -6,7 +6,6 @@ RESTful API Audit Logs resources
 """
 
 import logging
-from sqlalchemy import desc
 from flask_restx_patched import Resource
 from flask_restx._http import HTTPStatus
 
@@ -131,7 +130,7 @@ class AuditLogFault(Resource):
             'action': AccessOperation.READ,
         },
     )
-    @api.parameters(GetAuditLogFaultsParameters())
+    @api.paginate(GetAuditLogFaultsParameters())
     @api.response(schemas.DetailedAuditLogSchema(many=True))
     def get(self, args):
         """
@@ -140,36 +139,12 @@ class AuditLogFault(Resource):
         import app.extensions.logging as AuditLogExtension  # NOQA
 
         if 'fault_type' in args:
-            faults = (
-                AuditLog.query.filter_by(audit_type=args['fault_type'])
-                .order_by(desc(AuditLog.created))
-                .offset(args['offset'])
-                .limit(args['limit'])
-                .all()
-            )
+            faults = AuditLog.query.filter_by(audit_type=args['fault_type'])
         else:
-            faults = (
-                AuditLog.query.filter(
-                    (
-                        AuditLog.audit_type
-                        == AuditLogExtension.AuditType.HoustonFault.value
-                    )
-                    | (
-                        AuditLog.audit_type
-                        == AuditLogExtension.AuditType.BackEndFault.value
-                    )
-                    | (
-                        AuditLog.audit_type
-                        == AuditLogExtension.AuditType.FrontEndFault.value
-                    )
-                )
-                .order_by(desc(AuditLog.created))
-                .offset(args['offset'])
-                .limit(args['limit'])
-                .all()
+            faults = AuditLog.query.filter(
+                (AuditLog.audit_type == AuditLogExtension.AuditType.HoustonFault.value)
+                | (AuditLog.audit_type == AuditLogExtension.AuditType.BackEndFault.value)
+                | (AuditLog.audit_type == AuditLogExtension.AuditType.FrontEndFault.value)
             )
 
-        # Need to be reversed as they're ordered by descending to read backwards through the faults but we
-        # want the list to be in order on the web page
-        faults.reverse()
         return faults

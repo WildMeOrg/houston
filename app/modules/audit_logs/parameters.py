@@ -20,6 +20,8 @@ class GetAuditLogParameters(PaginationParameters):
         description='the field to reverse the sorted results (before paging has been performed), default is True',
         missing=True,
     )
+    # Need to be reversed as they're ordered by descending to read backwards through the faults but we
+    # want the list to be in order on the web page
     reverse_after = base_fields.Boolean(
         description='the field to reverse the sorted results (after paging has been performed), default is True',
         missing=True,
@@ -29,4 +31,18 @@ class GetAuditLogParameters(PaginationParameters):
 class GetAuditLogFaultsParameters(PaginationParameters):
     fault_type = base_fields.String(
         description='Optional Fault Type Required', required=False
+    )
+    sort = base_fields.String(
+        description='the field to sort the results by, default is "created"',
+        missing='created',
+    )
+    reverse = base_fields.Boolean(
+        description='the field to reverse the sorted results (before paging has been performed), default is True',
+        missing=True,
+    )
+    # Need to be reversed as they're ordered by descending to read backwards through the faults but we
+    # want the list to be in order on the web page
+    reverse_after = base_fields.Boolean(
+        description='the field to reverse the sorted results (after paging has been performed), default is True',
+        missing=True,
     )

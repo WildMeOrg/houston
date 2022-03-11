@@ -429,7 +429,7 @@ class ElasticSearchBulkOperation(object):
 
     def enter(self):
         if self.in_bulk_mode():
-            if len(self.config) > 0:
+            if self.config is not None and len(self.config) > 0:
                 top_config = self.depth[0]
                 new_config = self.config
                 top_json = json.dumps(top_config, sort_keys=True)
@@ -452,13 +452,13 @@ class ElasticSearchBulkOperation(object):
 
         global CELERY_ASYNC_PROMISES
 
-        if len(self.depth) == 0:
+        if not self.in_bulk_mode():
             self.reset()
             return
 
         config = self.depth.pop()
 
-        if len(self.depth) == 0:
+        if not self.in_bulk_mode():
             self.depth.append(
                 None
             )  # Block any sessions that happen in this block from working
@@ -559,32 +559,34 @@ class ElasticSearchBulkOperation(object):
                 es_refresh(index, app=self.app)
 
             # Reset the depth back to zero now that we are done
-            assert len(self.depth) == 1
             placeholder = self.depth.pop()
             assert placeholder is None
-            assert len(self.depth) == 0
+            assert not self.in_bulk_mode()
 
             self.reset()
 
     def check(self, limit):
-        limit_timestamp = datetime.datetime.utcnow() - datetime.timedelta(seconds=limit)
-        if self.timestamp < limit_timestamp:
-            delta = limit_timestamp - self.timestamp
-            self.abort(
-                reason='Timestamp validation failure: timestamp = %r, limit = %r, delta = %r'
-                % (
-                    self.timestamp,
-                    limit_timestamp,
-                    delta,
-                )
+        if self.in_bulk_mode():
+            limit_timestamp = datetime.datetime.utcnow() - datetime.timedelta(
+                seconds=limit
             )
+            if self.timestamp < limit_timestamp:
+                delta = limit_timestamp - self.timestamp
+                self.abort(
+                    reason='Timestamp validation failure: timestamp = %r, limit = %r, delta = %r'
+                    % (
+                        self.timestamp,
+                        limit_timestamp,
+                        delta,
+                    )
+                )
 
     def abort(self, reason=None):
         log.warning('ELASTICSEARCH SESSION ABORT (%r)' % (reason,))
         # Purge any None values in the depth stack
         self.depth = [item for item in self.depth if item is not None]
         # Take the highest-level non-None config
-        if len(self.depth) > 0:
+        if self.in_bulk_mode():
             self.depth = self.depth[:1]
         self.exit()
         self.reset()

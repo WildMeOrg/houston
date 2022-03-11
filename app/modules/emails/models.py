@@ -39,6 +39,12 @@ class EmailRecord(db.Model, HoustonModel):
             ')>'.format(class_name=self.__class__.__name__, self=self)
         )
 
+    @classmethod
+    def get_elasticsearch_schema(cls):
+        from app.modules.emails.schemas import BaseEmailRecordSchema
+
+        return BaseEmailRecordSchema
+
 
 class RecordedEmail(Email):
     def __init__(self, *args, **kwargs):

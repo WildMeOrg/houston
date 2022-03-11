@@ -58,7 +58,9 @@ class MyNotifications(Resource):
         returned_notifications = Notification.get_notifications_for_user(current_user)
 
         # Manually apply offset and limit after the unique list is created
-        return returned_notifications[args['offset'] : args['limit'] - args['offset']]
+        offset = args['offset']
+        limit = args['limit']
+        return returned_notifications[offset : offset + limit]
 
     # No reason we should allow the frontend to create an arbitrary notification and many security
     # reasons that we should not. Code retained in case this decision is reversed.
@@ -144,7 +146,9 @@ class MyUnreadNotifications(Resource):
             current_user
         )
         # Manually apply offset and limit after the list is created
-        return unread_notifications[args['offset'] : args['limit'] - args['offset']]
+        offset = args['offset']
+        limit = args['limit']
+        return unread_notifications[offset : offset + limit]
 
 
 @api.route('/all_unread')

@@ -174,7 +174,7 @@ def test_create_asset_group_invalid_gps(
     asset_group_utils.create_asset_group(
         flask_app_client, researcher_1, data.get(), 400, expected_error
     )
-    data.set_sighting_field(0, 'decimalLongitude', 'null')
+    data.set_sighting_field(0, 'decimalLongitude', None)
     asset_group_utils.create_asset_group(
         flask_app_client, researcher_1, data.get(), 400, expected_error
     )
@@ -220,7 +220,7 @@ def test_create_asset_group_invalid_gps(
     asset_group_utils.create_asset_group(
         flask_app_client, researcher_1, data.get(), 400, expected_error
     )
-    data.set_encounter_field(0, 0, 'decimalLatitude', 'null')
+    data.set_encounter_field(0, 0, 'decimalLatitude', None)
     asset_group_utils.create_asset_group(
         flask_app_client, researcher_1, data.get(), 400, expected_error
     )
@@ -231,7 +231,7 @@ def test_create_asset_group_invalid_gps(
         flask_app_client, researcher_1, data.get(), 400, expected_error
     )
 
-    data.set_encounter_field(0, 0, 'decimalLatitude', None)
+    data.set_encounter_field(0, 0, 'decimalLatitude', 'null')
     asset_group_utils.create_asset_group(
         flask_app_client, researcher_1, data.get(), 400, expected_error
     )

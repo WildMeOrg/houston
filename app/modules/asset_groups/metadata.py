@@ -139,15 +139,9 @@ class AssetGroupMetadata(object):
             )
 
         # Both may be null but if only one is, it's a failure
-        if (
-            'null' == dictionary['decimalLatitude']
-            and 'null' == dictionary['decimalLongitude']
-        ):
+        if not dictionary['decimalLatitude'] and not dictionary['decimalLongitude']:
             return
-        if (
-            'null' == dictionary['decimalLatitude']
-            or 'null' == dictionary['decimalLongitude']
-        ):
+        if not dictionary['decimalLatitude'] or not dictionary['decimalLongitude']:
             raise AssetGroupMetadataError(
                 log,
                 f'Need both or neither of decimalLatitude and decimalLongitude in {error_str}',

@@ -177,6 +177,8 @@ def test_elasticsearch_utilities(flask_app_client, db, admin_user, staff_user):
         User.index_all()
     assert es.session.verify()  # verify manually
 
+    # Invalidate a specific user object
+    admin_user.invalidate()
     with es.session.begin(blocking=True, verify=True):
         User.index_all()
 

@@ -154,7 +154,7 @@ class ElasticsearchModel(object):
                 log.info('Invalidating %r' % (cls,))
                 desc = 'Invalidating (Bulk) %s' % (cls.__name__,)
                 for obj in tqdm.tqdm(objs, desc=desc):
-                    es_invalidate(obj)
+                    obj.invalidate()
 
     @classmethod
     def elasticsearch(cls, search, app=None, total=False, *args, **kwargs):
@@ -186,27 +186,18 @@ class ElasticsearchModel(object):
         return self.__class__.index_hook_cls()
 
     def available(self, *args, **kwargs):
-        return self._elasticsearch_exists(*args, **kwargs)
-
-    def index(self, *args, **kwargs):
-        return self._elasticsearch_index(*args, **kwargs)
-
-    def fetch(self, *args, **kwargs):
-        return self._elasticsearch_get(*args, **kwargs)
-
-    def prune(self, *args, **kwargs):
-        return self._elasticsearch_delete(*args, **kwargs)
-
-    def _elasticsearch_exists(self, *args, **kwargs):
         return es_exists(self, *args, **kwargs)
 
-    def _elasticsearch_index(self, *args, **kwargs):
+    def invalidate(self, *args, **kwargs):
+        return es_invalidate(self, *args, **kwargs)
+
+    def index(self, *args, **kwargs):
         return es_index(self, *args, **kwargs)
 
-    def _elasticsearch_get(self, *args, **kwargs):
+    def fetch(self, *args, **kwargs):
         return es_get(self, *args, **kwargs)
 
-    def _elasticsearch_delete(self, *args, **kwargs):
+    def prune(self, *args, **kwargs):
         return es_delete(self, *args, **kwargs)
 
 
@@ -501,7 +492,7 @@ class ElasticSearchBulkOperation(object):
                 if guid in all_guids:
                     obj = cls.query.get(guid)
                     if obj is not None:
-                        es_invalidate(obj)
+                        obj.invalidate()
                         db.session.merge(obj)
 
         # Refresh the index
@@ -983,7 +974,7 @@ def es_exists(obj, app=None):
     index = get_elasticsearch_index_name(cls)
 
     if index is None:
-        es_invalidate(obj)
+        obj.invalidate()
         return False
 
     if app is None:
@@ -992,7 +983,7 @@ def es_exists(obj, app=None):
     exists = app.es.exists(index, id=id_)
 
     if not exists:
-        es_invalidate(obj)
+        obj.invalidate()
 
     return exists
 
@@ -1096,7 +1087,7 @@ def es_delete_guid(cls, guid, app=None):
     if resp['result'] in ('deleted',):
         obj = cls.query.get(guid)
         if obj is not None:
-            es_invalidate(obj)
+            obj.invalidate()
     else:
         log.error('Database delete on an ES model without ES index delete')
 

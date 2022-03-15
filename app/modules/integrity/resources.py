@@ -22,7 +22,7 @@ from .models import Integrity
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 api = Namespace(
-    'integrity_checks', description='Integrity Checks'
+    'integrity-checks', description='Integrity Checks'
 )  # pylint: disable=invalid-name
 
 
@@ -60,7 +60,7 @@ class IntegrityChecks(Resource):
     )
     @api.login_required(oauth_scopes=['integrity:write'])
     @api.parameters(parameters.CreateIntegrityParameters())
-    @api.response(schemas.DetailedIntegritySchema())
+    @api.response(schemas.BaseIntegritySchema())
     @api.response(code=HTTPStatus.CONFLICT)
     def post(self, args):
         """
@@ -94,7 +94,7 @@ class IntegrityByID(Resource):
             'action': AccessOperation.READ,
         },
     )
-    @api.response(schemas.DetailedIntegritySchema())
+    @api.response(schemas.BaseIntegritySchema())
     def get(self, integrity):
         """
         Get Integrity details by ID.
@@ -105,7 +105,7 @@ class IntegrityByID(Resource):
         permissions.ObjectAccessPermission,
         kwargs_on_request=lambda kwargs: {
             'obj': kwargs['integrity'],
-            'action': AccessOperation.DELETE,
+            'action': AccessOperation.WRITE,
         },
     )
     @api.login_required(oauth_scopes=['integrity:write'])

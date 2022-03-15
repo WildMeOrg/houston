@@ -8,6 +8,12 @@ from app.extensions import db
 from app.modules.integrity.models import Integrity
 
 
+def print_result(result):
+    print(
+        f'Integrity check : GUID:{result.guid} created: {result.created} result: {result.result}'
+    )
+
+
 @app_context_task()
 def create_new(context):
     """
@@ -16,6 +22,7 @@ def create_new(context):
     integ = Integrity()
     with db.session.begin():
         db.session.add(integ)
+    print_result(integ)
 
 
 @app_context_task()
@@ -26,6 +33,4 @@ def all(context):
 
     integ_checks = Integrity.query.all()
     for check in integ_checks:
-        print(
-            f'Integrity check : GUID:{check.guid} created: {check.created} result: {check.result}'
-        )
+        print_result(check)

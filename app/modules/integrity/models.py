@@ -32,9 +32,9 @@ class Integrity(db.Model, HoustonModel):
         # Creating an Integrity entry runs the full integrity checks and generates and stores the result
         # for later analysis
         from app.modules.sightings.models import Sighting
-        from app.modules.encounters.models import Encounter
+        from app.modules.individuals.models import Individual
 
         self.result = {
             'sightings': Sighting.run_integrity(),
-            'encounters': Encounter.run_integrity(),
+            'individuals': Individual.run_integrity(),
         }

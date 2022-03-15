@@ -19,22 +19,7 @@ class BaseIntegritySchema(ModelSchema):
         model = Integrity
         fields = (
             Integrity.guid.key,
+            Integrity.created.key,
             Integrity.result.key,
         )
         dump_only = (Integrity.guid.key,)
-
-
-class DetailedIntegritySchema(BaseIntegritySchema):
-    """
-    Detailed Integrity schema exposes all useful fields.
-    """
-
-    class Meta(BaseIntegritySchema.Meta):
-        fields = BaseIntegritySchema.Meta.fields + (
-            Integrity.created.key,
-            Integrity.updated.key,
-        )
-        dump_only = BaseIntegritySchema.Meta.dump_only + (
-            Integrity.created.key,
-            Integrity.updated.key,
-        )

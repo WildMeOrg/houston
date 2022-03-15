@@ -27,5 +27,5 @@ def all(context):
     integ_checks = Integrity.query.all()
     for check in integ_checks:
         print(
-            f'AssetGroup : GUID:{check.guid} created: {check.created} result: {check.result}'
+            f'Integrity check : GUID:{check.guid} created: {check.created} result: {check.result}'
         )

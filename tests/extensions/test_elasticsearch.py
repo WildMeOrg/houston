@@ -32,7 +32,7 @@ def test_index_cls_conversion():
     from app.extensions import elasticsearch as es
     from app.modules.users.models import User
 
-    index = es.get_elasticsearch_index_name(User)
+    index = es.es_index_name(User)
     cls = es.get_elasticsearch_cls_from_index(index)
 
     if None in [index, cls]:
@@ -68,7 +68,7 @@ def test_elasticsearch_utilities(flask_app_client, db, admin_user, staff_user):
 
     # Check Point-in-Times (PITs)
     for cls in es.REGISTERED_MODELS:
-        index = es.get_elasticsearch_index_name(cls)
+        index = es.es_index_name(cls)
 
         data = es.REGISTERED_MODELS[cls]
         assert data.get('status', False)
@@ -82,19 +82,17 @@ def test_elasticsearch_utilities(flask_app_client, db, admin_user, staff_user):
     cls = User
     schema = cls.get_elasticsearch_schema()
     assert schema == UserListSchema
-    assert admin_user.index_name == es.get_elasticsearch_index_name(cls)
+    assert admin_user.index_name == es.es_index_name(cls)
     assert admin_user.index_hook_obj() is None
 
-    index, guid, body_schema = es.build_elasticsearch_index_body(admin_user)
+    index, guid, body_schema = es.es_serialize(admin_user)
     assert index == admin_user._index()
     assert guid == admin_user.guid
     assert len(body_schema) > 0
     assert body_schema.get('_schema') == schema.__name__
 
     # Force building
-    index, guid, body_automtic = es.build_elasticsearch_index_body(
-        admin_user, allow_schema=False
-    )
+    index, guid, body_automtic = es.es_serialize(admin_user, allow_schema=False)
     assert index == admin_user._index()
     assert guid == admin_user.guid
     assert len(body_automtic) > 0
@@ -159,7 +157,7 @@ def test_elasticsearch_utilities(flask_app_client, db, admin_user, staff_user):
     assert len(users1) <= 100
 
     # Check refresh and search
-    es.es_refresh_index(es.get_elasticsearch_index_name(User))
+    es.es_refresh_index(es.es_index_name(User))
 
     total2, users2 = User.elasticsearch({}, total=True, load=False)
     assert total1 == total2
@@ -264,7 +262,7 @@ def test_elasticsearch_utilities(flask_app_client, db, admin_user, staff_user):
         assert cdt
         db.session.add(cdt)
 
-    assert es.get_elasticsearch_index_name(cls) is None
+    assert es.es_index_name(cls) is None
     assert es.es_index(cdt) is None
     assert es.es_get(cdt) is None
 
@@ -285,7 +283,7 @@ def test_elasticsearch_utilities(flask_app_client, db, admin_user, staff_user):
     app = flask_app_client.application
     assert len(es.elasticsearch_on_class(app, cls, {})) == 0
     try:
-        es.build_elasticsearch_index_body(cdt)
+        es.es_serialize(cdt)
         raise RuntimeError()
     except AssertionError:
         # building the index body on a non-registered object should fail

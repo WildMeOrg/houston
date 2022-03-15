@@ -61,7 +61,7 @@ class ElasticsearchModel(object):
 
     @classmethod
     def _index(cls):
-        return get_elasticsearch_index_name(cls)
+        return es_index_name(cls)
 
     @classmethod
     def index_all(cls, app=None, prune=True, pit=False, update=True, force=False):
@@ -283,7 +283,7 @@ class ElasticSearchBulkOperation(object):
         if app is None:
             app = self.app
 
-        index = get_elasticsearch_index_name(cls)
+        index = es_index_name(cls)
 
         if index is None:
             return exists
@@ -320,7 +320,7 @@ class ElasticSearchBulkOperation(object):
         if app is None:
             app = self.app
 
-        index = get_elasticsearch_index_name(cls)
+        index = es_index_name(cls)
 
         if index is None:
             return 0
@@ -362,7 +362,7 @@ class ElasticSearchBulkOperation(object):
 
         actions = []
         for obj in tqdm.tqdm(pending, desc=desc):
-            index_, id_, body = build_elasticsearch_index_body(obj)
+            index_, id_, body = es_serialize(obj)
             assert index == index_
             action = body
             action['_id'] = str(id_)
@@ -412,7 +412,7 @@ class ElasticSearchBulkOperation(object):
         if app is None:
             app = self.app
 
-        index = get_elasticsearch_index_name(cls)
+        index = es_index_name(cls)
 
         if index is None:
             return 0
@@ -550,7 +550,7 @@ class ElasticSearchBulkOperation(object):
             log.debug('ES exit block with %r keys' % (keys,))
 
             for cls in keys:
-                index = get_elasticsearch_index_name(cls)
+                index = es_index_name(cls)
 
                 if index is None:
                     continue
@@ -791,7 +791,7 @@ def register_elasticsearch_model(cls):
     }
 
 
-def get_elasticsearch_index_name(cls):
+def es_index_name(cls):
     if is_disabled():
         return None
 
@@ -863,7 +863,7 @@ def es_index(obj, app=None, force=False):
     from flask import current_app
 
     cls = obj.__class__
-    index = get_elasticsearch_index_name(cls)
+    index = es_index_name(cls)
 
     if index is None:
         return None
@@ -875,7 +875,7 @@ def es_index(obj, app=None, force=False):
         return session.track_bulk_action('index', obj, force=force)
 
     try:
-        index, id_, body = build_elasticsearch_index_body(obj)
+        index, id_, body = es_serialize(obj)
         resp = app.es.index(index=index, id=id_, body=body)
     except (elasticsearch.exceptions.RequestError, TypeError):  # pragma: no cover
         log.error('Error indexing %r' % (obj,))
@@ -971,7 +971,7 @@ def es_exists(obj, app=None):
 
     id_ = str(obj.guid)
     cls = obj.__class__
-    index = get_elasticsearch_index_name(cls)
+    index = es_index_name(cls)
 
     if index is None:
         obj.invalidate()
@@ -1023,7 +1023,7 @@ def es_get(obj, app=None):
 
     id_ = str(obj.guid)
     cls = obj.__class__
-    index = get_elasticsearch_index_name(cls)
+    index = es_index_name(cls)
 
     if index is None:
         return None
@@ -1063,7 +1063,7 @@ def es_delete(obj, app=None):
 def es_delete_guid(cls, guid, app=None):
     from flask import current_app
 
-    index = get_elasticsearch_index_name(cls)
+    index = es_index_name(cls)
 
     if index is None:
         return None
@@ -1102,7 +1102,7 @@ def es_pit(cls, app=None):
 
     global REGISTERED_MODELS
 
-    index = get_elasticsearch_index_name(cls)
+    index = es_index_name(cls)
 
     if index is None:
         return None
@@ -1136,7 +1136,7 @@ def es_status(app=None):
 
     status = {}
     for cls in REGISTERED_MODELS:
-        index = get_elasticsearch_index_name(cls)
+        index = es_index_name(cls)
         if index is None:
             continue
 
@@ -1160,7 +1160,7 @@ def es_status(app=None):
     return status
 
 
-def build_elasticsearch_index_body(obj, allow_schema=True):
+def es_serialize(obj, allow_schema=True):
     def _check_value(value):
 
         retval = RuntimeError
@@ -1216,7 +1216,7 @@ def build_elasticsearch_index_body(obj, allow_schema=True):
 
     cls = obj.__class__
 
-    index = get_elasticsearch_index_name(cls)
+    index = es_index_name(cls)
     assert index is not None
 
     if allow_schema and hasattr(cls, 'get_elasticsearch_schema'):
@@ -1228,7 +1228,7 @@ def build_elasticsearch_index_body(obj, allow_schema=True):
         try:
             body = schema().dump(obj).data
         except Exception as ex:  # pragma: no cover
-            _, _, body = build_elasticsearch_index_body(obj, allow_schema=False)
+            _, _, body = es_serialize(obj, allow_schema=False)
             body['guid'] = str(obj.guid)
             body['_schema'] = '%s (failed with %r: %s)' % (
                 body['_schema'],
@@ -1358,7 +1358,7 @@ def es_checkpoint(*args, **kwargs):
 
 def es_refresh_all(*args, **kwargs):
     for cls in REGISTERED_MODELS:
-        index = get_elasticsearch_index_name(cls)
+        index = es_index_name(cls)
 
         if index is None:
             continue
@@ -1378,7 +1378,7 @@ def elasticsearch_on_class(
     reverse=False,
     total=False,
 ):
-    index = get_elasticsearch_index_name(cls)
+    index = es_index_name(cls)
 
     if index is None:
         if total:

@@ -34,5 +34,7 @@ class Integrity(db.Model, HoustonModel):
         from app.modules.sightings.models import Sighting
         from app.modules.encounters.models import Encounter
 
-        self.result['sightings'] = Sighting.run_integrity()
-        self.result['encounters'] = Encounter.run_integrity()
+        self.result = {
+            'sightings': Sighting.run_integrity(),
+            'encounters': Encounter.run_integrity(),
+        }

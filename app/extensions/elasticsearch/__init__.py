@@ -1302,7 +1302,7 @@ def attach_listeners(app):
     def _before_insert_or_update(mapper, connection, obj):
         try:
             if obj.guid is not None:
-                obj.index(app=app)
+                obj.index(app=app, force=True)
         except Exception:  # pragma: no cover
             log.error('ES index update failed for %r' % (obj,))
             raise
@@ -1429,13 +1429,14 @@ def elasticsearch_on_class(
             if column.name.lower() == sort:
                 sort_column = column
         if sort_column is None:
-            raise ValueError('The sort field %r is unrecognized' % (sort,))
+            log.warning('The sort field %r is unrecognized, defaulting to GUID' % (sort,))
+            sort_column = cls.guid
 
     sort_func = sort_column.desc if reverse else sort_column.asc
     guids = (
         cls.query.filter(cls.guid.in_(search_guids))
-        .with_entities(cls.guid)
         .order_by(sort_func())
+        .with_entities(cls.guid)
         .offset(offset)
         .limit(limit)
         .all()

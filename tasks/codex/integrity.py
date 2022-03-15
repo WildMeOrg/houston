@@ -5,7 +5,6 @@ Application AssetGroup management related tasks for Invoke.
 
 from tasks.utils import app_context_task
 from app.extensions import db
-from app.modules.integrity.models import Integrity
 
 
 def print_result(result):
@@ -19,6 +18,8 @@ def create_new(context):
     """
     Create new integity check.
     """
+    from app.modules.integrity.models import Integrity
+
     integ = Integrity()
     with db.session.begin():
         db.session.add(integ)
@@ -30,6 +31,7 @@ def all(context):
     """
     Show existing integity results.
     """
+    from app.modules.integrity.models import Integrity
 
     integ_checks = Integrity.query.all()
     for check in integ_checks:

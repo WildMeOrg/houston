@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import pytest
 
-from tests.utils import module_unavailable, random_nonce, random_guid
+from tests.utils import module_unavailable, random_guid
 from tests.modules.missions.resources import utils as mission_utils
 import tests.extensions.tus.utils as tus_utils
 
@@ -17,11 +17,10 @@ def test_get_mission_collection_not_found(flask_app_client):
 def test_get_mission_collection_by_search(flask_app_client, data_manager_1, test_root):
     from app.modules.missions.models import Mission, MissionCollection
 
-    nonce = random_nonce(8)
     response = mission_utils.create_mission(
         flask_app_client,
         data_manager_1,
-        'This is a test mission (%s), please ignore' % (nonce,),
+        mission_utils.make_name('mission')[1],
     )
     mission_guid = response.json['guid']
     temp_mission = Mission.query.get(mission_guid)
@@ -38,8 +37,7 @@ def test_get_mission_collection_by_search(flask_app_client, data_manager_1, test
         tus_utils.prep_tus_dir(test_root, transaction_id=transaction_id)
         transaction_ids.append(transaction_id)
 
-        nonce = random_nonce(8)
-        description = 'This is a test mission collection (%s), please ignore' % (nonce,)
+        nonce, description = mission_utils.make_name('mission collection')
         response = mission_utils.create_mission_collection_with_tus(
             flask_app_client,
             data_manager_1,

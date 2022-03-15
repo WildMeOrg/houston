@@ -154,9 +154,12 @@ class Namespace(BaseNamespace):
                             if column.name.lower() == sort:
                                 sort_column = column
                         if sort_column is None:
-                            raise ValueError(
-                                'The sort field %r is unrecognized' % (sort,)
+                            log.warning(
+                                'The sort field %r is unrecognized, defaulting to GUID'
+                                % (sort,)
                             )
+                            sort_column = cls.guid
+
                     sort_func = sort_column.desc if reverse else sort_column.asc
 
                     total_count = query.count()

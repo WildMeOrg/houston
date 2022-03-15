@@ -97,15 +97,33 @@ def elasticsearch_index_bulk(index, items):
         )
     )
 
+    all_guids = cls.query.with_entities(cls.guid).all()
+
     succeeded, total = 0, len(items)
     if cls is not None:
         restored_items = []
-        for guid, force in items:
+        missing_items = []
+        for item in items:
+            guid, force = item
             guid_ = uuid.UUID(guid)
             obj = cls.query.get(guid_)
             if obj is not None:
                 item = (obj, force)
                 restored_items.append(item)
+            else:
+                missing_items.append(item)
+
+        if len(missing_items) > 0:
+            log.warning(
+                'Missing %d restored items for %r (index = %r, app.testing = %r, %d items in DB)'
+                % (
+                    len(missing_items),
+                    cls,
+                    index,
+                    app.testing,
+                    len(all_guids),
+                )
+            )
 
         total = len(restored_items)
         succeeded = es.session._es_index_bulk(cls, restored_items, app=app)

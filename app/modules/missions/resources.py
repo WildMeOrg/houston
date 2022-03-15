@@ -683,8 +683,8 @@ class MissionTaskElasticsearch(Resource):
     @api.paginate()
     def post(self, args):
         search = request.get_json()
-
         args['total'] = True
+
         return MissionTask.elasticsearch(search, **args)
 
 

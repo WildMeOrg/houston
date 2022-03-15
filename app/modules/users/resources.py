@@ -161,7 +161,6 @@ class UserElasticsearch(Resource):
     @api.paginate()
     def post(self, args):
         search = request.get_json()
-
         args['total'] = True
         return User.elasticsearch(search, **args)
 

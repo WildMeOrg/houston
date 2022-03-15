@@ -5,7 +5,7 @@ from tests import utils
 from tests.modules.missions.resources import utils as mission_utils
 import pytest
 
-from tests.utils import module_unavailable, random_nonce
+from tests.utils import module_unavailable
 
 
 @pytest.mark.skipif(module_unavailable('missions'), reason='Missions module disabled')
@@ -14,11 +14,10 @@ def test_modify_mission_users(db, flask_app_client, data_manager_1, data_manager
     # pylint: disable=invalid-name
     from app.modules.missions.models import Mission
 
-    nonce = random_nonce(8)
     response = mission_utils.create_mission(
         flask_app_client,
         data_manager_1,
-        'This is a test mission (%s), please ignore' % (nonce,),
+        mission_utils.make_name('mission')[1],
     )
     mission_guid = response.json['guid']
 
@@ -45,11 +44,10 @@ def test_modify_mission_users(db, flask_app_client, data_manager_1, data_manager
 @pytest.mark.skipif(module_unavailable('missions'), reason='Missions module disabled')
 def test_owner_permission(flask_app_client, data_manager_1, data_manager_2):
 
-    nonce = random_nonce(8)
     response = mission_utils.create_mission(
         flask_app_client,
         data_manager_1,
-        'This is a test mission (%s), please ignore' % (nonce,),
+        mission_utils.make_name('mission')[1],
     )
     mission_guid = response.json['guid']
 

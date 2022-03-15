@@ -27,6 +27,15 @@ ANNOTATION_UUIDS = [
 ###################################################################################################################
 
 
+def make_name(class_name='mission'):
+    nonce = test_utils.random_nonce(8)
+    name = 'This is a test %s (%s), please ignore' % (
+        class_name,
+        nonce,
+    )
+    return nonce, name
+
+
 def create_mission(flask_app_client, user, title, expected_status_code=200):
     with flask_app_client.login(user, auth_scopes=('missions:write',)):
         response = flask_app_client.post(

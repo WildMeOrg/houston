@@ -145,6 +145,7 @@ class CollaborationElasticsearch(Resource):
     @api.paginate()
     def get(self, args):
         search = {}
+        args['total'] = True
         return Collaboration.elasticsearch(search, **args)
 
     @api.permission_required(
@@ -159,6 +160,7 @@ class CollaborationElasticsearch(Resource):
     def post(self, args):
         search = request.get_json()
 
+        args['total'] = True
         return Collaboration.elasticsearch(search, **args)
 
 

@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision = '19dd4e2c1e63'
-down_revision = '634551347a44'
+down_revision = '03cf788ac8f8'
 
 
 def upgrade():
@@ -582,6 +582,12 @@ def upgrade():
             unique=False,
         )
 
+    with op.batch_alter_table('integrity', schema=None) as batch_op:
+        batch_op.add_column(sa.Column('indexed', sa.DateTime(), nullable=False))
+        batch_op.create_index(
+            batch_op.f('ix_integrity_indexed'), ['indexed'], unique=False
+        )
+
     # ### end Alembic commands ###
 
 
@@ -774,4 +780,7 @@ def downgrade():
         batch_op.drop_index(batch_op.f('ix_annotation_indexed'))
         batch_op.drop_column('indexed')
 
+    with op.batch_alter_table('integrity', schema=None) as batch_op:
+        batch_op.drop_index(batch_op.f('ix_integrity_indexed'))
+        batch_op.drop_column('indexed')
     # ### end Alembic commands ###

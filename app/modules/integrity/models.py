@@ -38,3 +38,9 @@ class Integrity(db.Model, HoustonModel):
             'sightings': Sighting.run_integrity(),
             'individuals': Individual.run_integrity(),
         }
+
+    @classmethod
+    def get_elasticsearch_schema(cls):
+        from app.modules.integrity.schemas import BaseIntegritySchema
+
+        return BaseIntegritySchema

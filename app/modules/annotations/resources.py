@@ -142,6 +142,7 @@ class AnnotationElasticsearch(Resource):
     @api.paginate()
     def get(self, args):
         search = {}
+        args['total'] = True
         return Annotation.elasticsearch(search, **args)
 
     @api.permission_required(
@@ -155,7 +156,7 @@ class AnnotationElasticsearch(Resource):
     @api.paginate()
     def post(self, args):
         search = request.get_json()
-
+        args['total'] = True
         return Annotation.elasticsearch(search, **args)
 
 

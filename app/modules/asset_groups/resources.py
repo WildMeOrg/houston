@@ -153,6 +153,7 @@ class AssetGroupElasticsearch(Resource):
     @api.paginate()
     def get(self, args):
         search = {}
+        args['total'] = True
         return AssetGroup.elasticsearch(search, **args)
 
     @api.permission_required(
@@ -167,6 +168,7 @@ class AssetGroupElasticsearch(Resource):
     def post(self, args):
         search = request.get_json()
 
+        args['total'] = True
         return AssetGroup.elasticsearch(search, **args)
 
 
@@ -397,6 +399,7 @@ class AssetGroupSightingElasticsearch(Resource):
     @api.paginate()
     def get(self, args):
         search = {}
+        args['total'] = True
         return AssetGroupSighting.elasticsearch(search, **args)
 
     @api.permission_required(
@@ -411,6 +414,7 @@ class AssetGroupSightingElasticsearch(Resource):
     def post(self, args):
         search = request.get_json()
 
+        args['total'] = True
         return AssetGroupSighting.elasticsearch(search, **args)
 
 

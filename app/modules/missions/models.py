@@ -126,12 +126,11 @@ class Mission(db.Model, HoustonModel, Timestamp):
         # Get all mission's GUIDs
         mission_guids = self.get_assets(load=False)
 
-        # Return only the mission's guids from the search guids
-        guids = set(search_guids) & set(mission_guids)
-
         # Load assets from DB
         assets = []
-        for guid in guids:
+        for guid in search_guids:
+            if guid not in mission_guids:
+                continue
             asset = Asset.query.get(guid)
             if asset is not None:
                 assets.append(asset)

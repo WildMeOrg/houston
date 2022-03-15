@@ -90,6 +90,7 @@ class AssetElasticsearch(Resource):
     @api.paginate()
     def get(self, args):
         search = {}
+        args['total'] = True
         return Asset.elasticsearch(search, **args)
 
     @api.permission_required(
@@ -104,6 +105,7 @@ class AssetElasticsearch(Resource):
     def post(self, args):
         search = request.get_json()
 
+        args['total'] = True
         return Asset.elasticsearch(search, **args)
 
 

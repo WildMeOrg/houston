@@ -113,6 +113,16 @@ class SiteSetting(db.Model, Timestamp):
 
     @classmethod
     def query_search(cls, search=None, args=None):
+        """
+        This function is added to replicate the functionality in FeatherModel,
+        which is missing because SiteSetting does not inherit from it like other
+        database models.
+
+        A query search will allow the listing functionality to work as all other
+        models in Houston.
+
+        Ref: https://github.com/WildMeOrg/houston/pull/521#discussion_r827444934
+        """
         query = cls.query
         return query
 

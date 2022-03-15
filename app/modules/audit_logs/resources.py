@@ -65,6 +65,7 @@ class AuditLogElasticsearch(Resource):
     @api.paginate()
     def get(self, args):
         search = {}
+        args['total'] = True
         return AuditLog.elasticsearch(search, **args)
 
     @api.permission_required(
@@ -79,6 +80,7 @@ class AuditLogElasticsearch(Resource):
     def post(self, args):
         search = request.get_json()
 
+        args['total'] = True
         return AuditLog.elasticsearch(search, **args)
 
 

@@ -28,7 +28,10 @@ def hide_noisy_endpoint_logs():
     from werkzeug import serving
     import re
 
-    disabled_endpoints = ('/api/v1/site-settings/heartbeat',)
+    disabled_endpoints = (
+        '/api/v1/site-settings/heartbeat',
+        '/api/v1/tus',
+    )
 
     parent_log_request = serving.WSGIRequestHandler.log_request
 

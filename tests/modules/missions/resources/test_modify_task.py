@@ -3,7 +3,7 @@
 
 from tests import utils
 from tests.modules.missions.resources import utils as mission_utils
-from tests.utils import random_nonce, random_guid, wait_for_elasticsearch_status
+from tests.utils import random_guid, wait_for_elasticsearch_status
 import tests.extensions.tus.utils as tus_utils
 import datetime
 import pytest
@@ -29,11 +29,10 @@ def test_modify_mission_task_users(
     mission_guid = None
 
     try:
-        nonce = random_nonce(8)
         response = mission_utils.create_mission(
             flask_app_client,
             data_manager_1,
-            'This is a test mission (%s), please ignore' % (nonce,),
+            mission_utils.make_name('mission')[1],
         )
         mission_guid = response.json['guid']
         temp_mission = Mission.query.get(mission_guid)
@@ -48,10 +47,7 @@ def test_modify_mission_task_users(
             tus_utils.prep_tus_dir(test_root, transaction_id=transaction_id)
             transaction_ids.append(transaction_id)
 
-            nonce = random_nonce(8)
-            description = 'This is a test mission collection (%s), please ignore' % (
-                nonce,
-            )
+            nonce, description = mission_utils.make_name('mission collection')
             response = mission_utils.create_mission_collection_with_tus(
                 flask_app_client,
                 data_manager_1,
@@ -161,11 +157,10 @@ def test_owner_permission(flask_app_client, data_manager_1, data_manager_2, test
     mission_guid = None
 
     try:
-        nonce = random_nonce(8)
         response = mission_utils.create_mission(
             flask_app_client,
             data_manager_1,
-            'This is a test mission (%s), please ignore' % (nonce,),
+            mission_utils.make_name('mission')[1],
         )
         mission_guid = response.json['guid']
         temp_mission = Mission.query.get(mission_guid)
@@ -180,10 +175,7 @@ def test_owner_permission(flask_app_client, data_manager_1, data_manager_2, test
             tus_utils.prep_tus_dir(test_root, transaction_id=transaction_id)
             transaction_ids.append(transaction_id)
 
-            nonce = random_nonce(8)
-            description = 'This is a test mission collection (%s), please ignore' % (
-                nonce,
-            )
+            nonce, description = mission_utils.make_name('mission collection')
             response = mission_utils.create_mission_collection_with_tus(
                 flask_app_client,
                 data_manager_1,

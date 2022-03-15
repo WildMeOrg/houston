@@ -92,6 +92,7 @@ class OrganizationElasticsearch(Resource):
     @api.paginate()
     def get(self, args):
         search = {}
+        args['total'] = True
         return Organization.elasticsearch(search, **args)
 
     @api.permission_required(
@@ -106,6 +107,7 @@ class OrganizationElasticsearch(Resource):
     def post(self, args):
         search = request.get_json()
 
+        args['total'] = True
         return Organization.elasticsearch(search, **args)
 
 

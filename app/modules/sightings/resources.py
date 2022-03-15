@@ -414,6 +414,7 @@ class SightingElasticsearch(Resource):
     @api.paginate()
     def get(self, args):
         search = {}
+        args['total'] = True
         return Sighting.elasticsearch(search, **args)
 
     @api.permission_required(
@@ -428,6 +429,7 @@ class SightingElasticsearch(Resource):
     def post(self, args):
         search = request.get_json()
 
+        args['total'] = True
         return Sighting.elasticsearch(search, **args)
 
 

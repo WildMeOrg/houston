@@ -148,4 +148,7 @@ def normalized_timezone_string(dt):
 def get_stored_filename(input_filename):
     import hashlib
 
+    if input_filename is None:
+        return None
+
     return f'{hashlib.sha256(input_filename.encode()).hexdigest()}'

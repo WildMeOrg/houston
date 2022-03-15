@@ -153,6 +153,7 @@ class RelationshipElasticsearch(Resource):
     @api.paginate()
     def get(self, args):
         search = {}
+        args['total'] = True
         return Relationship.elasticsearch(search, **args)
 
     @api.permission_required(
@@ -166,7 +167,7 @@ class RelationshipElasticsearch(Resource):
     @api.paginate()
     def post(self, args):
         search = request.get_json()
-
+        args['total'] = True
         return Relationship.elasticsearch(search, **args)
 
 

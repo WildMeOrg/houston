@@ -290,7 +290,7 @@ class Asset(db.Model, HoustonModel):
         meta = self.meta if self.meta else {}
         meta['derived'] = dmeta
         self.meta = meta
-        # log.debug(f'setting meta.derived to {dmeta}')
+        log.debug(f'setting meta.derived to {dmeta}')
         return dmeta
 
     def get_image_url(self):

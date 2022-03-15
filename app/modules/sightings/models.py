@@ -105,6 +105,11 @@ class Sighting(db.Model, FeatherModel):
         )
 
     @classmethod
+    def run_integrity(cls):
+        # TODO populate with any Sightings with bad GPS data, missing stuff
+        return []
+
+    @classmethod
     def get_matching_set_options(cls):
         # If you extend this, update the method below that uses them
         return ['mine', 'extended', 'all']

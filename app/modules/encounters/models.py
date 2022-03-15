@@ -103,11 +103,6 @@ class Encounter(db.Model, FeatherModel):
             ')>'.format(class_name=self.__class__.__name__, self=self)
         )
 
-    @classmethod
-    def run_integrity(cls):
-        # TODO populate with any Encounters with bad GPS data, missing stuff
-        return []
-
     def get_owner(self):
         return self.owner
 

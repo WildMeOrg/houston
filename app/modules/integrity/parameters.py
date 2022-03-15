@@ -9,6 +9,6 @@ from flask_restx_patched import Parameters
 from . import schemas
 
 
-class CreateIntegrityParameters(Parameters, schemas.DetailedIntegritySchema):
-    class Meta(schemas.DetailedIntegritySchema.Meta):
+class CreateIntegrityParameters(Parameters, schemas.BaseIntegritySchema):
+    class Meta(schemas.BaseIntegritySchema.Meta):
         pass

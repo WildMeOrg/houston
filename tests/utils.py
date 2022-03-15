@@ -379,7 +379,7 @@ def delete_via_flask(
         response = flask_app_client.delete(path)
 
     if expected_status_code == 204:
-        assert response.status_code == 204
+        assert response.status_code == 204, response.status_code
     else:
         validate_dict_response(response, expected_status_code, {'status', 'message'})
         if expected_error:
@@ -604,21 +604,27 @@ def write_uploaded_file(initial_filename, input_dir, file_data, write_mode='w'):
         with open(stored_path, write_mode) as out_file:
             out_file.write(file_data)
     else:
-        stored_path = (input_dir / get_stored_path(initial_filename))
+        stored_path = input_dir / get_stored_path(initial_filename)
         with stored_path.open(write_mode) as out_file:
             out_file.write(file_data)
     return stored_path
 
 
-def copy_uploaded_file(input_dir, input_filename, trans_dir, output_filename, write_mode='wb'):
+def copy_uploaded_file(
+    input_dir, input_filename, trans_dir, output_filename, write_mode='wb'
+):
     if isinstance(input_dir, str):
         input_file_path = os.path.join(input_dir, input_filename)
         with open(input_file_path, 'rb') as in_file:
-            return write_uploaded_file(output_filename, trans_dir, in_file.read(), write_mode)
+            return write_uploaded_file(
+                output_filename, trans_dir, in_file.read(), write_mode
+            )
     else:
-        input_file_path = (input_dir / input_filename)
+        input_file_path = input_dir / input_filename
         with input_file_path.open('rb') as in_file:
-            return write_uploaded_file(output_filename, trans_dir, in_file.read(), write_mode)
+            return write_uploaded_file(
+                output_filename, trans_dir, in_file.read(), write_mode
+            )
 
 
 def cleanup(request, func):

@@ -19,7 +19,7 @@ class BaseIntegritySchema(ModelSchema):
         model = Integrity
         fields = (
             Integrity.guid.key,
-            Integrity.title.key,
+            Integrity.result.key,
         )
         dump_only = (Integrity.guid.key,)
 

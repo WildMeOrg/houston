@@ -18,9 +18,8 @@ class Integrity(db.Model, HoustonModel):
         db.GUID, default=uuid.uuid4, primary_key=True
     )  # pylint: disable=invalid-name
 
-    # type specific result data
-    sightings = db.Column(db.JSON, nullable=True)
-    encounters = db.Column(db.JSON, nullable=True)
+    # result data. Indexed on top level entity
+    result = db.Column(db.JSON, nullable=True)
 
     def __repr__(self):
         return (
@@ -35,5 +34,5 @@ class Integrity(db.Model, HoustonModel):
         from app.modules.sightings.models import Sighting
         from app.modules.encounters.models import Encounter
 
-        self.sightings = Sighting.run_integrity()
-        self.encounters = Encounter.run_integrity()
+        self.result['sightings'] = Sighting.run_integrity()
+        self.result['encounters'] = Encounter.run_integrity()

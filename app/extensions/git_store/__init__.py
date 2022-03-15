@@ -184,7 +184,7 @@ class GitStore(db.Model, HoustonModel):
 
     @classmethod
     def get_elasticsearch_schema(cls):
-        from app.modules.assets.schemas import DetailedGitStoreSchema
+        from app.extensions.git_store.schemas import DetailedGitStoreSchema
 
         return DetailedGitStoreSchema
 

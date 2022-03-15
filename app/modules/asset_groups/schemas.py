@@ -6,8 +6,8 @@ Serialization schemas for Asset_groups resources RESTful API
 
 from flask_marshmallow import base_fields
 from flask_restx_patched import ModelSchema
-from app.modules.assets.schemas import (
-    ExtendedAssetDetailedAnnotationsSchema,
+from app.modules.assets.schemas import ExtendedAssetDetailedAnnotationsSchema
+from app.extensions.git_store.schemas import (
     BaseGitStoreSchema,
     CreateGitStoreSchema,
     DetailedGitStoreSchema,

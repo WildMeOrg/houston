@@ -53,6 +53,25 @@ class ElasticsearchStatus(Resource):
         return status
 
 
+@api.route('/sync')
+@api.login_required(oauth_scopes=['search:read'])
+class ElasticsearchSync(Resource):
+    """Force a re-indexing with Elasticsearch"""
+
+    def get(self):
+        if is_extension_enabled('elasticsearch'):
+            from app.extensions import elasticsearch as es
+
+            with es.session.begin(blocking=True, forced=True, verify=True):
+                es.es_index_all()
+
+            status = es.es_status()
+        else:
+            status = {}
+
+        return status
+
+
 @api.route('/proxy/<string:index>')
 # @api.login_required(oauth_scopes=['search:read'])
 class ElasticsearchProxy(Resource):

@@ -167,19 +167,6 @@ def check_cleanup_objects(db):
     ), 'Some objects created in the test need to be cleaned up'
 
 
-# @pytest.fixture(autouse=True)
-# def check_elasticsearch_jobs(flask_app_client, staff_user):
-#     log.info('Checking check_elasticsearch_jobs')
-#     if is_extension_enabled('elasticsearch'):
-#         try:
-#             from app.extensions import elasticsearch as es
-
-#             utils.wait_for_elasticsearch_status(flask_app_client, staff_user)
-#         except RuntimeError:
-#             es.check_celery(revoke=True)
-#             raise
-
-
 @pytest.fixture(autouse=True)
 def cleanup_objects(db):
     # This deletes all notifications in the system, the reason being that when many

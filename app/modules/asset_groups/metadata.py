@@ -218,9 +218,19 @@ class AssetGroupMetadata(object):
             )
 
         for annot_uuid in annotations:
-            if not Annotation.query.get(annot_uuid):
+            annot = Annotation.query.get(annot_uuid)
+            if not annot:
                 raise AssetGroupMetadataError(
                     log, f'{debug} annotation:{str(annot_uuid)} not found'
+                )
+            ags_s = annot.asset.get_asset_group_sightings()
+            # There should be only one
+            if len(ags_s) != 1:
+                log.warning(f'Asset {annot.asset.guid} has {len(ags_s)} AGS')
+            # and it should be this one
+            if asset_group_sighting not in ags_s:
+                raise AssetGroupMetadataError(
+                    log, f'{debug} Asset cannot be in multiple sightings'
                 )
 
     @classmethod
@@ -487,6 +497,7 @@ class AssetGroupMetadata(object):
 
         file_dir = tus_upload_dir(current_app, transaction_id=self.tus_transaction_id)
 
+        asset_refs = []
         sighting_num = 0
         # validate sightings content
         for sighting in self.request['sightings']:
@@ -504,3 +515,10 @@ class AssetGroupMetadata(object):
                 f'Sighting {sighting_num}',
                 f'Encounter {sighting_num}.',
             )
+            sighting_asset_refs = sighting.get('asset_references', [])
+            for ref in sighting_asset_refs:
+                if ref in asset_refs:
+                    raise AssetGroupMetadataError(
+                        log, f'{ref} can be in at most one Sighting'
+                    )
+            asset_refs.extend(sighting_asset_refs)

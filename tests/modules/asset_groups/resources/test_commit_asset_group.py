@@ -207,14 +207,16 @@ def test_commit_individual_asset_group(
             flask_app_client, researcher_1, data.get()
         )
         asset_group_uuid = resp.json['guid']
-        asset_group_sighting_guid = resp.json['asset_group_sightings'][0]['guid']
+        ags_data = asset_group_utils.extract_ags_data(resp.json, 0)
+        asset_group_sighting_guid = ags_data['guid']
         asset_group_sighting = AssetGroupSighting.query.get(asset_group_sighting_guid)
 
         # Ensure we have the correct asset_group_sighting guid
         if 'individualUuid' not in str(asset_group_sighting.config):
-            asset_group_sighting_guid = resp.json['asset_group_sightings'][1]['guid']
+            ags_data = asset_group_utils.extract_ags_data(resp.json, 1)
+            asset_group_sighting_guid = ags_data['guid']
 
-        asset_uuid = resp.json['assets'][0]['guid']
+        asset_uuid = ags_data['assets'][0]['guid']
         asset_group_utils.patch_in_dummy_annotation(
             flask_app_client, db, researcher_1, asset_group_sighting_guid, asset_uuid
         )

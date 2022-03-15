@@ -67,7 +67,7 @@ class Annotations(Resource):
         Create a new instance of Annotation.
         """
         from app.modules.assets.models import Asset
-        from app.modules.asset_groups.models import AssetGroupSightingStage
+        from app.modules.asset_groups.models import AssetGroup, AssetGroupSightingStage
         from app.modules.encounters.models import Encounter
         from app.extensions.elapsed_time import ElapsedTime
 
@@ -88,7 +88,20 @@ class Annotations(Resource):
             if not encounter:
                 abort(code=HTTPStatus.BAD_REQUEST, message='encounter_guid not found')
             args['encounter_guid'] = encounter_guid
-        elif hasattr(asset.git_store, 'get_asset_group_sightings_for_asset'):
+            if isinstance(asset.git_store, AssetGroup):
+                sighting_assets = asset.get_asset_sightings()
+                other_sighting_assets = [
+                    sa
+                    for sa in sighting_assets
+                    if sa.sighting_guid != encounter.sighting.guid
+                ]
+                if len(sighting_assets) != 0 and len(other_sighting_assets) != 0:
+                    abort(
+                        code=HTTPStatus.BAD_REQUEST,
+                        message='Cannot add Annotation with Encounter on different Sighting',
+                    )
+
+        elif isinstance(asset.git_store, AssetGroup):
             # Asset groups have stages, missions do not
             ags = asset.git_store.get_asset_group_sightings_for_asset(asset)
             if not ags:

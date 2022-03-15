@@ -138,10 +138,8 @@ class Asset(db.Model, HoustonModel):
 
     @module_required('asset_groups', resolve='warn', default=False)
     def get_jobs_debug(self, verbose=True):
-        asset_group_sightings = self.git_store.get_asset_group_sightings_for_asset(self)
-
         jobs = []
-        for ags in asset_group_sightings:
+        for ags in self.get_asset_group_sightings():
             jobs.extend(ags.get_jobs_debug(verbose))
 
         return jobs
@@ -199,6 +197,10 @@ class Asset(db.Model, HoustonModel):
     @module_required('sightings', resolve='warn', default=[])
     def get_asset_sightings(self):
         return self.asset_sightings
+
+    @module_required('asset_groups', resolve='warn', default=[])
+    def get_asset_group_sightings(self):
+        return self.git_store.get_asset_group_sightings_for_asset(self)
 
     # this property is so that schema can output { "filename": "original_filename.jpg" }
     @property

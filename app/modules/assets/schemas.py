@@ -10,6 +10,8 @@ from marshmallow import ValidationError
 from flask_restx_patched import ModelSchema
 from app.extensions import ExtraValidationSchema
 from app.modules import is_module_enabled
+from app.extensions.git_store.schemas import BaseGitStoreSchema
+
 
 from .models import Asset
 
@@ -39,7 +41,7 @@ class DetailedAssetTableSchema(BaseAssetSchema):
     Detailed Asset schema exposes all useful fields.
     """
 
-    git_store = base_fields.Nested('BaseGitStoreSchema')
+    git_store = base_fields.Nested(BaseGitStoreSchema)
 
     tags = base_fields.Nested(
         'BaseKeywordSchema',
@@ -77,7 +79,7 @@ class DetailedAssetSchema(BaseAssetSchema):
     Detailed Asset schema exposes all useful fields.
     """
 
-    git_store = base_fields.Nested('BaseGitStoreSchema')
+    git_store = base_fields.Nested(BaseGitStoreSchema)
 
     annotations = base_fields.Nested('DetailedAnnotationSchema', many=True)
 

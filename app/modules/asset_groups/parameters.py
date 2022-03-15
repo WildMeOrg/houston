@@ -97,7 +97,21 @@ class PatchAssetGroupSightingDetailsParameters(PatchJSONParameters):
             # force write
             obj.config = obj.config
             return True
+        elif field == 'assetReferences':
+            # Raises AssetGroupMetadataError on error which is intentionally unnhandled
+            cls.validate_asset_references(obj, [value])
+            if value in obj.config.get('assetReferences', []):
+                raise AssetGroupMetadataError(
+                    log, f'{value} already in Group for assetGroupSighting {obj.guid}'
+                )
+            if 'assetReferences' in obj.config.keys():
+                obj.config[field].append(value)
+            else:
+                obj.config[field] = [value]
 
+            # force write
+            obj.config = obj.config
+            return True
         else:
             # Add and replace are the same operation for all other fields so reuse the one method
             return cls.replace(obj, field, value, state)
@@ -107,11 +121,23 @@ class PatchAssetGroupSightingDetailsParameters(PatchJSONParameters):
     @classmethod
     def validate_asset_references(cls, obj, asset_refs):
         for filename in asset_refs:
+
             # asset must exist and must be part of the group
-            if not obj.asset_group.get_asset_for_file(filename):
+            asset = obj.asset_group.get_asset_for_file(filename)
+            if not asset:
                 raise AssetGroupMetadataError(
                     log, f'{filename} not in Group for assetGroupSighting {obj.guid}'
                 )
+            # and must not be associated with another sighting
+            ags_s = obj.asset_group.get_asset_group_sightings_for_asset(asset)
+            if ags_s:
+                if len(ags_s) != 1:
+                    log.warning(f'Asset {asset.guid} already in multiple AGS')
+                if obj not in ags_s:
+                    raise AssetGroupMetadataError(
+                        log,
+                        f'{filename} already in assetGroupSighting {ags_s[0].guid}, remove from this first.',
+                    )
 
     @classmethod
     def replace(cls, obj, field, value, state):
@@ -141,7 +167,8 @@ class PatchAssetGroupSightingDetailsParameters(PatchJSONParameters):
             ret_val = True
 
         # Force the DB write
-        obj.config = obj.config
+        if ret_val:
+            obj.config = obj.config
 
         return ret_val
 
@@ -162,6 +189,12 @@ class PatchAssetGroupSightingDetailsParameters(PatchJSONParameters):
                         if config_encounter['guid'] == value:
                             obj.config['encounters'].remove(config_encounter)
                             changed = True
+        elif field == 'assetReferences':
+            # always succeed. reference is remove or wasn't there. Either way it's not there anymore
+            ret_val = True
+            if value in obj.config.get('assetReferences', []):
+                obj.config['assetReferences'].remove(value)
+                changed = True
         if changed:
             # Force the DB write
             obj.config = obj.config

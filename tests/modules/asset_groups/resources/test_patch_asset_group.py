@@ -428,65 +428,173 @@ def test_patch_asset_group_annots(
 ):
     # pylint: disable=invalid-name
 
+    def get_encounter_path(ags_guid, encounter_guid):
+        return f'{ags_guid}/encounter/{encounter_guid}'
+
+    def create_and_add_annot(ags_data, asset_num, encounter_num):
+        annot_resp = annot_utils.create_annotation_simple(
+            flask_app_client,
+            researcher_1,
+            ags_data['assets'][asset_num]['guid'],
+        ).json
+        annotation_guid = annot_resp['guid']
+
+        # Add annot, should succeed
+        annot_add_resp = asset_group_utils.patch_asset_group_sighting(
+            flask_app_client,
+            researcher_1,
+            get_encounter_path(
+                ags_data['guid'], ags_data['encounters'][encounter_num]['guid']
+            ),
+            [utils.patch_add_op('annotations', annotation_guid)],
+        ).json
+        enc_annots = annot_add_resp['config']['encounters'][encounter_num]['annotations']
+
+        assert annotation_guid in enc_annots
+        return annotation_guid
+
     # Using bulk creation data means we get an AGS with two encounters which is what we need to add the annot to
     # the first one and then move it to the second
     data = asset_group_utils.get_bulk_creation_data(test_root, request)
-    resp = asset_group_utils.create_asset_group(
+    group_resp = asset_group_utils.create_asset_group(
         flask_app_client, researcher_1, data.get()
-    )
-    asset_group_uuid = resp.json['guid']
-
+    ).json
+    asset_group_uuid = group_resp['guid']
     request.addfinalizer(
         lambda: asset_group_utils.delete_asset_group(
             flask_app_client, researcher_1, asset_group_uuid
         )
     )
-    ags_guid = resp.json['asset_group_sightings'][0]['guid']
-    encounter_guids = [
-        enc['guid']
-        for enc in resp.json['asset_group_sightings'][0]['config']['encounters']
-    ]
-    assert len(encounter_guids) == 2
-    encounter1_path = f'{ags_guid}/encounter/{encounter_guids[0]}'
-    encounter2_path = f'{ags_guid}/encounter/{encounter_guids[1]}'
 
-    ags_asset_name = resp.json['asset_group_sightings'][0]['config']['assetReferences'][0]
-    asset_guids = [
-        asset['guid']
-        for asset in resp.json['assets']
-        if asset['filename'] == ags_asset_name
-    ]
-    assert len(asset_guids) == 1
+    ags1 = asset_group_utils.extract_ags_data(group_resp, 0)
+    assert len(ags1['encounters']) == 2
 
-    response = annot_utils.create_annotation_simple(
-        flask_app_client,
-        researcher_1,
-        asset_guids[0],
-    )
-
-    annotation_guid = response.json['guid']
-
-    # Add annot, should succeed
-    annot_add_resp = asset_group_utils.patch_asset_group_sighting(
-        flask_app_client,
-        researcher_1,
-        encounter1_path,
-        [utils.patch_add_op('annotations', annotation_guid)],
-    )
-    enc1_annots = annot_add_resp.json['config']['encounters'][0]['annotations']
-    assert len(enc1_annots) == 1
-    assert enc1_annots[0] == annotation_guid
+    annotation1_guid = create_and_add_annot(ags1, asset_num=0, encounter_num=0)
 
     # Add annot to enc 2, should remove it from enc 1
     annot_add_resp = asset_group_utils.patch_asset_group_sighting(
         flask_app_client,
         researcher_1,
-        encounter2_path,
-        [utils.patch_add_op('annotations', annotation_guid)],
-    )
+        get_encounter_path(ags1['guid'], ags1['encounters'][1]['guid']),
+        [utils.patch_add_op('annotations', annotation1_guid)],
+    ).json
 
-    enc1_annots = annot_add_resp.json['config']['encounters'][0]['annotations']
-    enc2_annots = annot_add_resp.json['config']['encounters'][1]['annotations']
+    enc1_annots = annot_add_resp['config']['encounters'][0]['annotations']
+    enc2_annots = annot_add_resp['config']['encounters'][1]['annotations']
     assert len(enc1_annots) == 0
     assert len(enc2_annots) == 1
-    assert enc2_annots[0] == annotation_guid
+    assert enc2_annots[0] == annotation1_guid
+
+    # Add second annot, should succeed
+    annotation2_guid = create_and_add_annot(ags1, asset_num=0, encounter_num=1)
+
+    # Try forbidden operation
+    ags2 = asset_group_utils.extract_ags_data(group_resp, 1)
+    assert len(ags2['encounters']) == 2
+    # Add annot2 to enc 1 in ags 2, should fail
+    asset_group_utils.patch_asset_group_sighting(
+        flask_app_client,
+        researcher_1,
+        get_encounter_path(ags2['guid'], ags2['encounters'][0]['guid']),
+        [utils.patch_add_op('annotations', annotation2_guid)],
+        400,
+        f"Encounter {ags2['encounters'][0]['guid']} Asset cannot be in multiple sightings",
+    )
+
+
+# tweaking the asset references in the sighting
+@pytest.mark.skipif(
+    module_unavailable('asset_groups'), reason='AssetGroups module disabled'
+)
+def test_patch_asset_group_assets(
+    flask_app_client, researcher_1, regular_user, test_root, db, empty_individual, request
+):
+    # pylint: disable=invalid-name
+
+    # Using bulk creation data means we get an AGS with two encounters which is what we need be able to shuffle
+    # assets around
+    data = asset_group_utils.get_bulk_creation_data(test_root, request)
+    group_resp = asset_group_utils.create_asset_group(
+        flask_app_client, researcher_1, data.get()
+    ).json
+    asset_group_uuid = group_resp['guid']
+    request.addfinalizer(
+        lambda: asset_group_utils.delete_asset_group(
+            flask_app_client, researcher_1, asset_group_uuid
+        )
+    )
+
+    ags1 = asset_group_utils.extract_ags_data(group_resp, 0)
+    ags2 = asset_group_utils.extract_ags_data(group_resp, 1)
+    assert len(ags1['assets']) == 2
+    assert len(ags2['assets']) == 2
+
+    # add a non existent file
+    expected_resp = f'absent_file.jpg not in Group for assetGroupSighting {ags1["guid"]}'
+    asset_group_utils.patch_asset_group_sighting(
+        flask_app_client,
+        researcher_1,
+        ags1['guid'],
+        [{'op': 'add', 'path': '/assetReferences', 'value': 'absent_file.jpg'}],
+        400,
+        expected_resp,
+    )
+
+    expected_resp = f"{ags2['assets'][0]['filename']} already in assetGroupSighting {ags2['guid']}, remove from this first."
+    # Add file that's in a different AGS
+    asset_group_utils.patch_asset_group_sighting(
+        flask_app_client,
+        researcher_1,
+        ags1['guid'],
+        [
+            {
+                'op': 'add',
+                'path': '/assetReferences',
+                'value': ags2['assets'][0]['filename'],
+            }
+        ],
+        400,
+        expected_resp,
+    )
+
+    # remove valid one
+    asset_group_utils.patch_asset_group_sighting(
+        flask_app_client,
+        researcher_1,
+        ags2['guid'],
+        [
+            {
+                'op': 'remove',
+                'path': '/assetReferences',
+                'value': ags2['assets'][0]['filename'],
+            }
+        ],
+    )
+
+    # remove one that wasn't there anyway
+    asset_group_utils.patch_asset_group_sighting(
+        flask_app_client,
+        researcher_1,
+        ags2['guid'],
+        [
+            {
+                'op': 'remove',
+                'path': '/assetReferences',
+                'value': ags1['assets'][0]['filename'],
+            }
+        ],
+    )
+
+    # Add removed one back
+    asset_group_utils.patch_asset_group_sighting(
+        flask_app_client,
+        researcher_1,
+        ags2['guid'],
+        [
+            {
+                'op': 'add',
+                'path': '/assetReferences',
+                'value': ags2['assets'][0]['filename'],
+            }
+        ],
+    )

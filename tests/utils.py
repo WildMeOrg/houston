@@ -546,6 +546,12 @@ def random_uuid():
     return uuid.uuid4()
 
 
+def timestamp():
+    import datetime
+
+    return datetime.datetime.now().isoformat() + '+00:00'
+
+
 def random_guid():
     return random_uuid()
 

@@ -57,6 +57,8 @@ MODULE_USER_MAP = {
     ('JobControl', AccessOperation.READ): ['is_active'],
     # Generally only staff can read debug information, this is the one exception
     ('JobControl', AccessOperation.READ_DEBUG): ['is_admin'],
+    ('Integrity', AccessOperation.READ): ['is_admin'],
+    ('Integrity', AccessOperation.WRITE): ['is_admin'],
 }
 
 # Map of user permissions on the object. These permissions are not granted by collaboration
@@ -109,6 +111,8 @@ OBJECT_USER_MAP = {
     ('Relationship', AccessOperation.READ): ['is_researcher'],
     ('Relationship', AccessOperation.WRITE): ['is_researcher'],
     ('Collaboration', AccessOperation.WRITE): ['is_user_manager'],
+    ('Integrity', AccessOperation.READ): ['is_admin'],
+    ('Integrity', AccessOperation.WRITE): ['is_admin'],
 }
 
 # Map of methods (that are passed the current user as a param) on the object.

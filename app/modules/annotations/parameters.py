@@ -132,10 +132,14 @@ class PatchAnnotationDetailsParameters(PatchJSONParameters):
             rules.owner_or_privileged(current_user, obj.asset.git_store)
             or current_user.is_admin
         ):
-            # only can assign encounter if have privileges there
+            # only can assign encounter if have privileges there and the sighting doesn't change
             if field == Annotation.encounter_guid.key:
                 encounter = Encounter.query.get(value)
-                if encounter and rules.owner_or_privileged(current_user, encounter):
+                if (
+                    encounter
+                    and rules.owner_or_privileged(current_user, encounter)
+                    and obj.encounter.sighting == encounter.sighting
+                ):
                     obj.encounter_guid = value
                     ret_val = True
             else:  # any other field

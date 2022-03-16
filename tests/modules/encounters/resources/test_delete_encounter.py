@@ -5,13 +5,9 @@ from tests.modules.sightings.resources import utils as sighting_utils
 from tests.modules.encounters.resources import utils as enc_utils
 from tests.modules.individuals.resources import utils as indiv_utils
 from tests import utils as test_utils
-import datetime
 import pytest
 
 from tests.utils import module_unavailable
-
-
-timestamp = datetime.datetime.now().isoformat() + '+00:00'
 
 
 @pytest.mark.skipif(module_unavailable('encounters'), reason='Encounters module disabled')
@@ -24,7 +20,7 @@ def test_delete_method(
     orig_ct = test_utils.all_count(db)
 
     data_in = {
-        'time': timestamp,
+        'time': test_utils.timestamp(),
         'timeSpecificity': 'time',
         'locationId': 'test_delete_method',
         'encounters': [

@@ -208,7 +208,7 @@ def patch_asset_group_sighting(
         test_utils.validate_dict_response(
             response, expected_status_code, {'status', 'message'}
         )
-        assert response.json['message'] == expected_resp
+        assert response.json['message'] == expected_resp, response.json['message']
     else:
         test_utils.validate_dict_response(
             response, expected_status_code, {'status', 'message'}
@@ -342,6 +342,29 @@ def read_asset_group_sighting_as_sighting(
     print('Asset Group Sighting As Sighting: ')
     print(json.dumps(response.json, indent=4, sort_keys=True))
     return response
+
+
+# Extract datta from AGS response in a format useful for testing
+def extract_ags_data(group_data, ags_num):
+    ags_data = {
+        'guid': group_data['asset_group_sightings'][ags_num]['guid'],
+        'encounters': group_data['asset_group_sightings'][ags_num]['config'][
+            'encounters'
+        ],
+        'assets': [],
+    }
+    for filename in group_data['asset_group_sightings'][ags_num]['config'][
+        'assetReferences'
+    ]:
+        asset_guids = [
+            asset['guid']
+            for asset in group_data['assets']
+            if asset['filename'] == filename
+        ]
+        assert len(asset_guids) == 1
+        ags_data['assets'].append({'guid': asset_guids[0], 'filename': filename})
+
+    return ags_data
 
 
 ###################################################################################################################

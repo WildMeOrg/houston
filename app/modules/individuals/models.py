@@ -132,6 +132,17 @@ class Individual(db.Model, FeatherModel):
             ')>'.format(class_name=self.__class__.__name__, self=self)
         )
 
+    @classmethod
+    def run_integrity(cls):
+        result = {}
+
+        # Individuals without encounters are an error that should never really happen
+        no_encounters = Individual.query.filter(~Individual.encounters.any()).all()
+        if no_encounters:
+            result['no_encounters'] = [ind.guid for ind in no_encounters]
+
+        return result
+
     def get_encounters(self):
         return self.encounters
 

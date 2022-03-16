@@ -105,6 +105,17 @@ class Sighting(db.Model, FeatherModel):
         )
 
     @classmethod
+    def run_integrity(cls):
+        result = {}
+
+        # Sightings without encounters are an error that should never really happen
+        no_encounters = Sighting.query.filter(~Sighting.encounters.any()).all()
+        if no_encounters:
+            result['no_encounters'] = [sight.guid for sight in no_encounters]
+
+        return result
+
+    @classmethod
     def get_matching_set_options(cls):
         # If you extend this, update the method below that uses them
         return ['mine', 'extended', 'all']

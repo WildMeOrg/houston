@@ -12,7 +12,6 @@ from flask_restx._http import HTTPStatus
 
 from app.extensions import db
 from app.extensions.api import Namespace
-from app.extensions.api.parameters import PaginationParameters
 from app.modules.users import permissions
 from app.modules.users.permissions.types import AccessOperation
 
@@ -40,8 +39,8 @@ class IntegrityChecks(Resource):
             'action': AccessOperation.READ,
         },
     )
-    @api.parameters(PaginationParameters())
     @api.response(schemas.BaseIntegritySchema(many=True))
+    @api.paginate()
     def get(self, args):
         """
         List of Integrity.

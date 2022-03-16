@@ -167,7 +167,7 @@ class BaseConfig(FlaskConfigOverrides, RedisConfig):
     PREMAILER_CACHE_MAXSIZE = 1024
     CONFIG_MODEL = 'zebra'
 
-    MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # Maximum size of 16MB
+    MAX_CONTENT_LENGTH = 30 * 1024 * 1024  # Maximum size of 30MB
 
     PERMANENT_SESSION_LIFETIME = datetime.timedelta(days=7)
     SESSION_COOKIE_SECURE = False

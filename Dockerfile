@@ -35,6 +35,8 @@ RUN apt update \
         libmagic1 \
         #: tool to setuid+setgid+setgroups+exec at execution time
         gosu \
+        # Needed for profiling
+        graphviz \
         #: required by wait-for
         netcat \
         #: required for downloading 'wait-for'

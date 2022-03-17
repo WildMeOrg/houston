@@ -69,6 +69,12 @@ class AssetGroupSighting(db.Model, HoustonModel):
         db.DateTime, index=True, default=datetime.utcnow, nullable=False
     )
 
+    @classmethod
+    def get_elasticsearch_schema(cls):
+        from app.modules.asset_groups.schemas import BaseAssetGroupSightingSchema
+
+        return BaseAssetGroupSightingSchema
+
     def __init__(self, asset_group, sighting_config, detection_configs):
         self.asset_group = asset_group
         self.config = sighting_config
@@ -826,6 +832,12 @@ class AssetGroup(GitStore):
     __mapper_args__ = {
         'polymorphic_identity': 'asset_group',
     }
+
+    @classmethod
+    def get_elasticsearch_schema(cls):
+        from app.modules.asset_groups.schemas import CreateAssetGroupSchema
+
+        return CreateAssetGroupSchema
 
     @classmethod
     def ensure_remote_delay(cls, asset_group):

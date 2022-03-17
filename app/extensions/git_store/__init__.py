@@ -182,6 +182,12 @@ class GitStore(db.Model, HoustonModel):
     def ensure_remote_delay(cls, obj):
         raise NotImplementedError()
 
+    @classmethod
+    def get_elasticsearch_schema(cls):
+        from app.extensions.git_store.schemas import DetailedGitStoreSchema
+
+        return DetailedGitStoreSchema
+
     def git_push_delay(self):
         raise NotImplementedError()
 
@@ -536,22 +542,27 @@ class GitStore(db.Model, HoustonModel):
         sub_id = None if transaction_id is not None else self.guid
         local_store_path = self.get_absolute_path()
         local_name_path = os.path.join(local_store_path, '_%s' % (self.GIT_STORE_NAME,))
-        paths_added = []
-        num_files = 0
 
-        for path in _tus_filepaths_from(
+        filepaths, metadatas = _tus_filepaths_from(
             git_store_guid=sub_id, transaction_id=transaction_id, paths=paths
-        ):
+        )
+
+        paths_added = []
+        original_filenames = []
+        for path, metadata in zip(filepaths, metadatas):
             name = pathlib.Path(path).name
             paths_added.append(name)
-            num_files += 1
             os.rename(path, os.path.join(local_name_path, name))
+            original_filename = metadata.get('filename', None)
+            original_filenames.append(original_filename)
 
         assets_added = []
+        num_files = len(paths_added)
         if num_files > 0:
             log.debug('Tus collect for %d files moved' % (num_files))
             self.git_commit(
-                'Tus collect commit for %d files.' % (num_files,), input_filenames=paths
+                'Tus collect commit for %d files.' % (num_files,),
+                input_filenames=original_filenames,
             )
 
             # Do git push to gitlab in the background (we won't wait for its
@@ -565,6 +576,7 @@ class GitStore(db.Model, HoustonModel):
         if purge_dir:
             # may have some unclaimed files in it
             _tus_purge(git_store_guid=sub_id, transaction_id=transaction_id)
+
         return assets_added
 
     def realize_local_store(self):
@@ -609,7 +621,7 @@ class GitStore(db.Model, HoustonModel):
         skipped = []
         errors = []
         walk_list = sorted(list(os.walk(local_name_path)))
-        for root, directories, filenames in tqdm.tqdm(walk_list):
+        for root, directories, filenames in tqdm.tqdm(walk_list, desc='Walking Assets'):
             filenames = sorted(filenames)
             for filename in filenames:
                 filepath = os.path.join(root, filename)
@@ -743,6 +755,7 @@ class GitStore(db.Model, HoustonModel):
                     )
                     if recycle_guid is not None:
                         file_data['guid'] = recycle_guid
+
                     # Create record if asset is new
                     asset = Asset(**file_data)
                     db.session.add(asset)

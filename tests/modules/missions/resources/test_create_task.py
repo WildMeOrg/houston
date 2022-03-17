@@ -3,7 +3,7 @@
 
 from tests import utils
 from tests.modules.missions.resources import utils as mission_utils
-from tests.utils import random_nonce, random_guid
+from tests.utils import random_guid, wait_for_elasticsearch_status
 import tests.extensions.tus.utils as tus_utils
 import pytest
 
@@ -11,7 +11,7 @@ from tests.utils import module_unavailable
 
 
 @pytest.mark.skipif(module_unavailable('missions'), reason='Missions module disabled')
-def test_create_and_delete_mission_task(flask_app_client, data_manager_1, test_root):
+def test_create_and_delete_mission_task(flask_app_client, data_manager_1, test_root, db):
     # pylint: disable=invalid-name
     from app.modules.missions.models import (
         Mission,
@@ -28,7 +28,9 @@ def test_create_and_delete_mission_task(flask_app_client, data_manager_1, test_r
 
     try:
         response = mission_utils.create_mission(
-            flask_app_client, data_manager_1, 'This is a test mission, please ignore'
+            flask_app_client,
+            data_manager_1,
+            mission_utils.make_name('mission')[1],
         )
         mission_guid = response.json['guid']
         temp_mission = Mission.query.get(mission_guid)
@@ -43,10 +45,7 @@ def test_create_and_delete_mission_task(flask_app_client, data_manager_1, test_r
             tus_utils.prep_tus_dir(test_root, transaction_id=transaction_id)
             transaction_ids.append(transaction_id)
 
-            nonce = random_nonce(8)
-            description = 'This is a test mission collection (%s), please ignore' % (
-                nonce,
-            )
+            nonce, description = mission_utils.make_name('mission collection')
             response = mission_utils.create_mission_collection_with_tus(
                 flask_app_client,
                 data_manager_1,
@@ -69,22 +68,36 @@ def test_create_and_delete_mission_task(flask_app_client, data_manager_1, test_r
         nonce, new_mission_collection1 = new_mission_collections[0]
         nonce, new_mission_collection2 = new_mission_collections[1]
         data = [
-            utils.set_union_op('search', 'does-not-work'),
+            utils.set_union_op('search', {}),
             utils.set_difference_op('collections', [str(new_mission_collection1.guid)]),
             utils.set_difference_op(
                 'assets', [str(new_mission_collection2.assets[0].guid)]
             ),
         ]
 
-        response = mission_utils.create_mission_task(
-            flask_app_client, data_manager_1, mission_guid, data
-        )
+        # Wait for elasticsearch to catch up
+        wait_for_elasticsearch_status(flask_app_client, data_manager_1)
 
-        mission_task_guid = response.json['guid']
-        read_mission_task = MissionTask.query.get(response.json['guid'])
-        assert 'New Task: ' in read_mission_task.title
-        assert read_mission_task.owner == data_manager_1
-        mission_task_assets = read_mission_task.get_assets()
+        trial = 0
+        while True:
+            trial += 1
+
+            response = mission_utils.create_mission_task(
+                flask_app_client, data_manager_1, mission_guid, data
+            )
+
+            mission_task_guid = response.json['guid']
+            read_mission_task = MissionTask.query.get(response.json['guid'])
+            assert 'New Task: ' in read_mission_task.title
+            assert read_mission_task.owner == data_manager_1
+            mission_task_assets = read_mission_task.get_assets()
+
+            if len(mission_task_assets) != 0:
+                break
+
+            if trial >= 10:
+                raise RuntimeError()
+
         assert len(mission_task_assets) == 1
         nonce, new_mission_collection3 = new_mission_collections[2]
         assert mission_task_assets[0].git_store == new_mission_collection3
@@ -98,7 +111,6 @@ def test_create_and_delete_mission_task(flask_app_client, data_manager_1, test_r
         mission_utils.delete_mission_task(
             flask_app_client, data_manager_1, mission_task_guid
         )
-
         read_mission_task = MissionTask.query.get(mission_task_guid)
         assert read_mission_task is None
 
@@ -140,7 +152,9 @@ def test_mission_task_permission(
 
     try:
         response = mission_utils.create_mission(
-            flask_app_client, data_manager_1, 'This is a test mission, please ignore'
+            flask_app_client,
+            data_manager_1,
+            mission_utils.make_name('mission')[1],
         )
         mission_guid = response.json['guid']
         temp_mission = Mission.query.get(mission_guid)
@@ -155,10 +169,7 @@ def test_mission_task_permission(
             tus_utils.prep_tus_dir(test_root, transaction_id=transaction_id)
             transaction_ids.append(transaction_id)
 
-            nonce = random_nonce(8)
-            description = 'This is a test mission collection (%s), please ignore' % (
-                nonce,
-            )
+            nonce, description = mission_utils.make_name('mission collection')
             response = mission_utils.create_mission_collection_with_tus(
                 flask_app_client,
                 data_manager_1,
@@ -181,12 +192,15 @@ def test_mission_task_permission(
         nonce, new_mission_collection1 = new_mission_collections[0]
         nonce, new_mission_collection2 = new_mission_collections[1]
         data = [
-            utils.set_union_op('search', 'does-not-work'),
+            utils.set_union_op('search', {}),
             utils.set_difference_op('collections', [str(new_mission_collection1.guid)]),
             utils.set_difference_op(
                 'assets', [str(new_mission_collection2.assets[0].guid)]
             ),
         ]
+
+        # Wait for elasticsearch to catch up
+        wait_for_elasticsearch_status(flask_app_client, data_manager_1)
 
         response = mission_utils.create_mission_task(
             flask_app_client, data_manager_1, mission_guid, data
@@ -266,11 +280,10 @@ def test_set_operation_permission(
 
     try:
         # Mission 1
-        nonce = random_nonce(8)
         response = mission_utils.create_mission(
             flask_app_client,
             data_manager_1,
-            'This is a test mission (%s), please ignore' % (nonce,),
+            mission_utils.make_name('mission')[1],
         )
         mission_guid_1 = response.json['guid']
         temp_mission_1 = Mission.query.get(mission_guid_1)
@@ -285,10 +298,7 @@ def test_set_operation_permission(
             tus_utils.prep_tus_dir(test_root, transaction_id=transaction_id)
             transaction_ids.append(transaction_id)
 
-            nonce = random_nonce(8)
-            description = 'This is a test mission collection (%s), please ignore' % (
-                nonce,
-            )
+            nonce, description = mission_utils.make_name('mission collection')
             response = mission_utils.create_mission_collection_with_tus(
                 flask_app_client,
                 data_manager_1,
@@ -309,11 +319,10 @@ def test_set_operation_permission(
         )
 
         # Mission 2
-        nonce = random_nonce(8)
         response = mission_utils.create_mission(
             flask_app_client,
             data_manager_1,
-            'This is a test mission (%s), please ignore' % (nonce,),
+            mission_utils.make_name('mission')[1],
         )
         mission_guid_2 = response.json['guid']
         temp_mission_2 = Mission.query.get(mission_guid_2)
@@ -328,10 +337,7 @@ def test_set_operation_permission(
             tus_utils.prep_tus_dir(test_root, transaction_id=transaction_id)
             transaction_ids.append(transaction_id)
 
-            nonce = random_nonce(8)
-            description = 'This is a test mission collection (%s), please ignore' % (
-                nonce,
-            )
+            nonce, description = mission_utils.make_name('mission collection')
             response = mission_utils.create_mission_collection_with_tus(
                 flask_app_client,
                 data_manager_1,
@@ -355,12 +361,15 @@ def test_set_operation_permission(
         nonce, new_mission_collection1 = new_mission_collections_1[0]
         nonce, new_mission_collection2 = new_mission_collections_1[1]
         data = [
-            utils.set_union_op('search', 'does-not-work'),
+            utils.set_union_op('search', {}),
             utils.set_difference_op('collections', [str(new_mission_collection1.guid)]),
             utils.set_difference_op(
                 'assets', [str(new_mission_collection2.assets[0].guid)]
             ),
         ]
+
+        # Wait for elasticsearch to catch up
+        wait_for_elasticsearch_status(flask_app_client, data_manager_1)
 
         response = mission_utils.create_mission_task(
             flask_app_client, data_manager_1, mission_guid_1, data

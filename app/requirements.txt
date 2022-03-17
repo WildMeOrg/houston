@@ -9,6 +9,8 @@ blinker
 
 celery
 
+elasticsearch
+
 Flask>=1.1,<2
 Flask-Caching>=1.8.0
 
@@ -24,6 +26,7 @@ Flask-Paranoid
 
 flask-restx>=0.2.0
 Flask-SQLAlchemy>=2.4,<3
+gevent
 
 gitpython
 gumby @ git+https://github.com/WildMeOrg/gumby.git
@@ -35,6 +38,7 @@ jsonschema==3.2.0
 MarkupSafe<2.1.0
 marshmallow>=2.13.5,<3
 marshmallow-sqlalchemy>=0.12,<0.13
+numpy
 
 passlib>=1.7.1,<2
 permission>=0.4.1,<0.5

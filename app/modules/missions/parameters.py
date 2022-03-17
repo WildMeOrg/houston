@@ -12,7 +12,6 @@ from flask_restx_patched import (
     PatchJSONParametersWithPassword,
     SetOperationsJSONParameters,
 )
-from app.extensions.api.parameters import PaginationParameters
 from marshmallow import ValidationError
 
 from . import schemas
@@ -22,14 +21,6 @@ import logging
 
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
-
-
-class ListMissionParameters(PaginationParameters):
-    """
-    New user creation (sign up) parameters.
-    """
-
-    search = base_fields.String(description='Example: search@example.com', required=False)
 
 
 class CreateMissionParameters(Parameters, schemas.CreationMissionSchema):
@@ -145,10 +136,6 @@ class PatchMissionDetailsParameters(PatchJSONParametersWithPassword):
         return ret_val
 
 
-class ListMissionCollectionParameters(PaginationParameters):
-    search = base_fields.String(description='Example: search@example.com', required=False)
-
-
 class CreateMissionCollectionParameters(Parameters):
     description = base_fields.String(
         description='The description for the Mission Collection', required=True
@@ -194,14 +181,6 @@ class PatchMissionCollectionDetailsParameters(PatchJSONParameters):
                     obj.owner = user
                     ret_val = True
         return ret_val
-
-
-class ListMissionAssetParameters(Parameters):
-    search = base_fields.String(description='Example: search@example.com', required=False)
-
-
-class ListMissionTaskParameters(PaginationParameters):
-    search = base_fields.String(description='Example: search@example.com', required=False)
 
 
 class CreateMissionTaskParameters(SetOperationsJSONParameters):
@@ -386,4 +365,17 @@ class PatchMissionTaskDetailsParameters(PatchJSONParametersWithPassword):
 
     @classmethod
     def replace(cls, obj, field, value, state):
-        raise NotImplementedError()
+        from app.modules.users.models import User
+
+        ret_val = False
+        # Permissions for all fields are the same so have one check
+        if rules.owner_or_privileged(current_user, obj) or current_user.is_admin:
+            if field == MissionTask.title.key:
+                obj.title = value
+                ret_val = True
+            elif field == 'owner':
+                user = User.query.get(value)
+                if user:
+                    obj.owner = user
+                    ret_val = True
+        return ret_val

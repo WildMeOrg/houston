@@ -341,6 +341,11 @@ class ElasticsearchConfig:
     # - for multiple hosts use a comma to separate each host
     # - to specify a port use a colon and port number (e.g. `elasticsearch:9200`)
     ELASTICSEARCH_HOSTS = _parse_elasticsearch_hosts(os.getenv('ELASTICSEARCH_HOSTS'))
+    ELASTICSEARCH_BUILD_INDEX_ON_STARTUP = True
+    ELASTICSEARCH_BLOCKING = False
+
+    CACHE_TYPE = 'SimpleCache'
+    CACHE_DEFAULT_TIMEOUT = 60
 
 
 class WildbookDatabaseConfig:

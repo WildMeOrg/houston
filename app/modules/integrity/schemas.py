@@ -21,5 +21,7 @@ class BaseIntegritySchema(ModelSchema):
             Integrity.guid.key,
             Integrity.created.key,
             Integrity.result.key,
+            'elasticsearchable',
+            Integrity.indexed.key,
         )
         dump_only = (Integrity.guid.key,)

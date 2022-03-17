@@ -3,6 +3,7 @@
 
 from tests.utils import module_unavailable
 import pytest
+import uuid
 
 
 @pytest.mark.skipif(
@@ -23,8 +24,8 @@ def test_relationship_instantiation(db, staff_user, flask_app_client, request, t
         flask_app_client, staff_user, request, test_root
     )
 
-    individual_1_guid = response_1['individual']
-    individual_2_guid = response_2['individual']
+    individual_1_guid = uuid.UUID(response_1['individual'])
+    individual_2_guid = uuid.UUID(response_2['individual'])
 
     relationship_role_1 = 'Mother'
     relationship_role_2 = 'Calf'

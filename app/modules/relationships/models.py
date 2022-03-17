@@ -57,6 +57,12 @@ class Relationship(db.Model, HoustonModel):
 
     type = db.Column(db.String, nullable=True)
 
+    @classmethod
+    def get_elasticsearch_schema(cls):
+        from app.modules.relationships.schemas import DetailedRelationshipSchema
+
+        return DetailedRelationshipSchema
+
     def __init__(
         self,
         individual_1_guid,
@@ -98,7 +104,7 @@ class Relationship(db.Model, HoustonModel):
         membership = self._get_membership_for_guid(individual_guid)
         if membership:
             for individual_member in self.individual_members:
-                if str(individual_member.individual_guid) == individual_guid:
+                if individual_member.individual_guid == individual_guid:
                     return individual_member.individual_role
         return None
 
@@ -106,8 +112,10 @@ class Relationship(db.Model, HoustonModel):
         found_individual_members = [
             individual_member
             for individual_member in self.individual_members
-            if str(individual_member.individual_guid) == individual_guid
+            if individual_member.individual_guid == individual_guid
         ]
+        if len(found_individual_members) == 0:
+            return None
         return found_individual_members[0]
 
     def __repr__(self):

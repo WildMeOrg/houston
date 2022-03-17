@@ -35,6 +35,8 @@ class BaseSocialGroupSchema(ModelSchema):
         fields = (
             SocialGroup.guid.key,
             SocialGroup.name.key,
+            'elasticsearchable',
+            SocialGroup.indexed.key,
         )
         dump_only = (SocialGroup.guid.key,)
 

@@ -54,7 +54,7 @@ def test_create_patch_mission_collection(
         # reassign ownership
         patch_data = [
             test_utils.patch_add_op(
-                'description', 'This is a test mission_collection, kindly ignore'
+                'description', mission_utils.make_name('mission collection')[1]
             ),
         ]
 

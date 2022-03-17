@@ -7,6 +7,7 @@ RESTful API Integrity resources
 
 import logging
 
+from flask import request
 from flask_restx_patched import Resource
 from flask_restx._http import HTTPStatus
 
@@ -44,11 +45,8 @@ class IntegrityChecks(Resource):
     def get(self, args):
         """
         List of Integrity.
-
-        Returns a list of Integrity starting from ``offset`` limited by ``limit``
-        parameter.
         """
-        return Integrity.query.offset(args['offset']).limit(args['limit'])
+        return Integrity.query
 
     @api.permission_required(
         permissions.ModuleAccessPermission,
@@ -72,6 +70,39 @@ class IntegrityChecks(Resource):
             integrity = Integrity(**args)
             db.session.add(integrity)
         return integrity
+
+
+@api.route('/search')
+@api.login_required(oauth_scopes=['integrity:read'])
+class IntegrityElasticsearch(Resource):
+    @api.permission_required(
+        permissions.ModuleAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'module': Integrity,
+            'action': AccessOperation.READ,
+        },
+    )
+    @api.response(schemas.BaseIntegritySchema(many=True))
+    @api.paginate()
+    def get(self, args):
+        search = {}
+        args['total'] = True
+        return Integrity.elasticsearch(search, **args)
+
+    @api.permission_required(
+        permissions.ModuleAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'module': Integrity,
+            'action': AccessOperation.READ,
+        },
+    )
+    @api.response(schemas.BaseIntegritySchema(many=True))
+    @api.paginate()
+    def post(self, args):
+        search = request.get_json()
+
+        args['total'] = True
+        return Integrity.elasticsearch(search, **args)
 
 
 @api.route('/<uuid:integrity_guid>')

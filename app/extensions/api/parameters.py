@@ -45,12 +45,28 @@ class PaginationParameters(Parameters):
     """
 
     limit = base_fields.Integer(
-        description='limit a number of items (allowed range is 1-100), default is 20.',
-        missing=20,
+        description='limit a number of items (allowed range is 1-100), default is 100.',
+        missing=100,
         validate=validate.Range(min=1, max=100),
     )
     offset = base_fields.Integer(
         description='a number of items to skip, default is 0.',
         missing=0,
         validate=validate.Range(min=0),
+    )
+    sort = base_fields.String(
+        description='the field to sort the results by, default is "guid"',
+        missing='guid',
+    )
+    reverse = base_fields.Boolean(
+        description='the field to reverse the sorted results (before paging has been performed), default is False',
+        missing=False,
+    )
+    reverse_after = base_fields.Boolean(
+        description='the field to reverse the sorted results (after paging has been performed), default is False',
+        missing=False,
+    )
+    search = base_fields.String(
+        description='the field to filter the results by a search string, not required',
+        required=False,
     )

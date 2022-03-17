@@ -11,11 +11,8 @@ except ImportError:  # pragma: no cover
 import os
 import platform
 import logging
+from flask_restx_patched import is_extension_enabled
 
-try:
-    from invoke import ctask as task
-except ImportError:  # Invoke 0.13 renamed ctask to task
-    from invoke import task
 
 from tasks.utils import app_context_task
 
@@ -31,7 +28,10 @@ def hide_noisy_endpoint_logs():
     from werkzeug import serving
     import re
 
-    disabled_endpoints = ('/api/v1/site-settings/heartbeat',)
+    disabled_endpoints = (
+        '/api/v1/site-settings/heartbeat',
+        '/api/v1/tus',
+    )
 
     parent_log_request = serving.WSGIRequestHandler.log_request
 
@@ -42,9 +42,9 @@ def hide_noisy_endpoint_logs():
     serving.WSGIRequestHandler.log_request = log_request
 
 
-@app_context_task()
 def warmup(
     context,
+    app,
     host=DEFAULT_HOST,
     install_dependencies=False,
     build_frontend=True,
@@ -57,10 +57,6 @@ def warmup(
     if install_dependencies:
         context.invoke_execute(context, 'dependencies.install-python-dependencies')
 
-    from app import create_app
-
-    app = create_app()
-
     if upgrade_db:
         # After the installed dependencies the app.db.* tasks might need to be
         # reloaded to import all necessary dependencies.
@@ -70,6 +66,13 @@ def warmup(
 
         context.invoke_execute(context, 'app.db.upgrade', app=app, backup=False)
 
+    if is_extension_enabled('elasticsearch'):
+        from app.extensions import elasticsearch as es
+
+        es.attach_listeners(app)
+        update = app.config.get('ELASTICSEARCH_BUILD_INDEX_ON_STARTUP', False)
+        es.es_index_all(app, pit=True, update=update, force=True)
+
     if print_routes or app.debug:
         log.info('Using route rules:')
         for rule in app.url_map.iter_rules():
@@ -78,7 +81,7 @@ def warmup(
     return app
 
 
-@task(default=True)
+@app_context_task(default=True)
 def run(
     context,
     host=DEFAULT_HOST,
@@ -93,9 +96,12 @@ def run(
     """
     Run Houston API Server.
     """
-    app = warmup(
+    from flask import current_app as app
+
+    warmup(
         context,
-        host,
+        app=app,
+        host=host,
         install_dependencies=install_dependencies,
         build_frontend=build_frontend,
         upgrade_db=upgrade_db,
@@ -104,7 +110,9 @@ def run(
     # Turn off logging the access log for noisy endpoints (like the heartbeat)
     hide_noisy_endpoint_logs()
 
-    use_reloader = app.debug
+    # use_reloader = app.debug
+    use_reloader = False
+
     if uwsgi:
         uwsgi_args = [
             'uwsgi',
@@ -129,4 +137,11 @@ def run(
             # )
             use_reloader = False
 
-        return app.run(host=host, port=port, use_reloader=use_reloader)
+        exit_code = app.run(host=host, port=port, use_reloader=use_reloader)
+
+        if is_extension_enabled('elasticsearch'):
+            from app.extensions import elasticsearch as es
+
+            es.shutdown_celery()
+
+        return exit_code

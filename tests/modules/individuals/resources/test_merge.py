@@ -240,11 +240,10 @@ def test_get_data_and_voting(
     from tests.modules.notifications.resources import utils as notif_utils
 
     # to check that reading does not resolve the merge request notif
-    notif_utils.mark_all_notifications_as_read(flask_app_client, researcher_1)
     res1_notifs = notif_utils.read_all_notifications(flask_app_client, researcher_1)
     assert len(res1_notifs.json) == 1
     notif_message = res1_notifs.json[0]
-    assert notif_message['is_read']
+    assert not notif_message['is_read']
     assert not notif_message['is_resolved']
     assert str(researcher_2.guid) == notif_message['sender_guid']
     assert 'individual_merge_request' == notif_message['message_type']

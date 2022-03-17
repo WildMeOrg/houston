@@ -32,7 +32,7 @@ class Task(BaseTask):
         return super(Task, self).argspec(body)
 
 
-def app_context_task(*args, **kwargs):
+def app_context_task(*wrapper_args, **wrapper_kwargs):
     """
     A helper Invoke Task decorator with auto app context activation.
 
@@ -48,8 +48,8 @@ def app_context_task(*args, **kwargs):
     ... def my_task(context, some_arg, some_option='default'):
     ...     print("Done")
     """
-    if len(args) == 1:
-        func = args[0]
+    if len(wrapper_args) == 1:
+        func = wrapper_args[0]
 
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
@@ -112,9 +112,9 @@ def app_context_task(*args, **kwargs):
         # compatible with Python 2
         if not hasattr(wrapper, '__wrapped__'):
             wrapper.__wrapped__ = func
-        return Task(wrapper, **kwargs)
+        return Task(wrapper, **wrapper_kwargs)
 
-    return lambda func: app_context_task(func, **kwargs)
+    return lambda func: app_context_task(func, **wrapper_kwargs)
 
 
 def download_file(

@@ -15,7 +15,6 @@ from flask_restx._http import HTTPStatus
 from app.utils import HoustonException
 from app.extensions import db
 from app.extensions.api import abort, Namespace
-from app.extensions.api.parameters import PaginationParameters
 from app.modules.users import permissions
 from app.modules.users.permissions.types import AccessOperation
 import app.extensions.logging as AuditLog
@@ -90,16 +89,13 @@ class SocialGroups(Resource):
             'action': AccessOperation.READ,
         },
     )
-    @api.parameters(PaginationParameters())
     @api.response(schemas.BaseSocialGroupSchema(many=True))
+    @api.paginate()
     def get(self, args):
         """
         List of SocialGroup.
-
-        Returns a list of SocialGroup starting from ``offset`` limited by ``limit``
-        parameter.
         """
-        return SocialGroup.query.offset(args['offset']).limit(args['limit'])
+        return SocialGroup.query_search(args=args)
 
     @api.permission_required(
         permissions.ModuleAccessPermission,
@@ -135,6 +131,39 @@ class SocialGroups(Resource):
             db.session.add(social_group)
         AuditLog.user_create_object(log, social_group, duration=timer.elapsed())
         return social_group
+
+
+@api.route('/search')
+@api.login_required(oauth_scopes=['social-groups:read'])
+class SocialGroupElasticsearch(Resource):
+    @api.permission_required(
+        permissions.ModuleAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'module': SocialGroup,
+            'action': AccessOperation.READ,
+        },
+    )
+    @api.response(schemas.BaseSocialGroupSchema(many=True))
+    @api.paginate()
+    def get(self, args):
+        search = {}
+        args['total'] = True
+        return SocialGroup.elasticsearch(search, **args)
+
+    @api.permission_required(
+        permissions.ModuleAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'module': SocialGroup,
+            'action': AccessOperation.READ,
+        },
+    )
+    @api.response(schemas.BaseSocialGroupSchema(many=True))
+    @api.paginate()
+    def post(self, args):
+        search = request.get_json()
+
+        args['total'] = True
+        return SocialGroup.elasticsearch(search, **args)
 
 
 @api.route('/<uuid:social_group_guid>')

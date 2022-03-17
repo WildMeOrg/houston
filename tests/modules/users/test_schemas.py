@@ -23,6 +23,8 @@ def test_BaseUserSchema_dump_user_instance(user_instance):
         'guid',
         'email',
         'full_name',
+        'indexed',
+        'elasticsearchable',
     }
 
 
@@ -36,6 +38,7 @@ def test_DetailedUserSchema_dump_user_instance(user_instance):
 
     desired_keys = {
         'guid',
+        'elasticsearchable',
         'email',
         'full_name',
         'created',
@@ -48,7 +51,9 @@ def test_DetailedUserSchema_dump_user_instance(user_instance):
         'is_staff',
         'is_researcher',
         'is_user_manager',
+        'is_data_manager',
         'is_admin',
+        'indexed',
         'in_alpha',
         'in_beta',
         'is_email_confirmed',

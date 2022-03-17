@@ -102,6 +102,12 @@ class Collaboration(db.Model, HoustonModel):
         db.GUID, db.ForeignKey('notification.guid'), nullable=True
     )
 
+    @classmethod
+    def get_elasticsearch_schema(cls):
+        from app.modules.collaborations.schemas import DetailedCollaborationSchema
+
+        return DetailedCollaborationSchema
+
     def __init__(self, members, initiator_user, notify_users=True, **kwargs):
 
         num_users = len(members)

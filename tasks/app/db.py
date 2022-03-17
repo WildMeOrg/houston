@@ -239,7 +239,7 @@ def upgrade(
     x_arg=None,
     app=None,
     backup=True,
-    force_disable_extensions=SKIP_EXTENSIONS,
+    force_disable_extensions=SKIP_EXTENSIONS + ('config',),
     force_disable_modules=SKIP_MODULES,
 ):
     """Upgrade to a later version"""
@@ -299,7 +299,7 @@ def downgrade(
     x_arg=None,
     app=None,
     backup=True,
-    force_disable_extensions=SKIP_EXTENSIONS,
+    force_disable_extensions=SKIP_EXTENSIONS + ('config',),
     force_disable_modules=SKIP_MODULES,
 ):
     """Revert to a previous version"""
@@ -512,7 +512,8 @@ def _reset(context, edm_authentication=None):
     """
     Delete the database and initialize it with data from the EDM
     """
-    from config import get_preliminary_config
+    from flask import current_app as app
+    from tasks.app.run import warmup
 
     delete_path_configs = [
         'SQLALCHEMY_DATABASE_PATH',
@@ -532,9 +533,4 @@ def _reset(context, edm_authentication=None):
                 os.remove(delete_filepath)
             assert not os.path.exists(delete_filepath)
 
-    config = get_preliminary_config()
-
-    if config.PROJECT_NAME in ['Codex']:
-        context.invoke_execute(context, 'codex.run.warmup')
-    elif config.PROJECT_NAME in ['MWS']:
-        context.invoke_execute(context, 'mws.run.warmup')
+    warmup(context, app)

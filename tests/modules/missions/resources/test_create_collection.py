@@ -20,7 +20,9 @@ def test_create_mission_collection(flask_app_client, data_manager_1, test_root):
 
     try:
         response = mission_utils.create_mission(
-            flask_app_client, data_manager_1, 'This is a test mission, please ignore'
+            flask_app_client,
+            data_manager_1,
+            mission_utils.make_name('mission')[1],
         )
         mission_guid = response.json['guid']
         temp_mission = Mission.query.get(mission_guid)

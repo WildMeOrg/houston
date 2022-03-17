@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import pytest
 
-from tests.utils import module_unavailable, random_nonce
+from tests.utils import module_unavailable
 from tests.modules.missions.resources import utils as mission_utils
 
 
@@ -20,8 +20,7 @@ def test_get_mission_by_search(flask_app_client, data_manager_1):
 
     new_missions = []
     for index in range(3):
-        nonce = random_nonce(8)
-        title = 'This is a test mission (%s), please ignore' % (nonce,)
+        nonce, title = mission_utils.make_name('mission')
         response = mission_utils.create_mission(flask_app_client, data_manager_1, title)
         mission_guid = response.json['guid']
         mission = Mission.query.get(mission_guid)

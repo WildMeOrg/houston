@@ -16,7 +16,6 @@ from flask_restx._http import HTTPStatus
 from app.extensions import db, is_extension_enabled
 import app.extensions.logging as AuditLog  # NOQA
 from app.extensions.api import abort, Namespace
-from app.extensions.api.parameters import PaginationParameters
 from app.modules.users.models import User
 from app.modules.users import permissions
 from app.modules.users.permissions.types import AccessOperation
@@ -48,21 +47,15 @@ class SiteSettingFile(Resource):
             'action': AccessOperation.READ,
         },
     )
-    @api.parameters(PaginationParameters())
     @api.response(schemas.BaseSiteSettingFileSchema(many=True))
+    @api.paginate(parameters.ListSiteSettingsFile())
     def get(self, args):
         """
         List of Files.
-
-        Returns a list of Files starting from ``offset`` limited by ``limit``
-        parameter.
         """
-        return (
-            SiteSetting.query.filter(SiteSetting.file_upload_guid.isnot(None))
-            .order_by('key')
-            .offset(args['offset'])
-            .limit(args['limit'])
-        )
+        query = SiteSetting.query_search(args=args)
+        query = query.filter(SiteSetting.file_upload_guid.isnot(None))
+        return query
 
     @api.permission_required(
         permissions.ModuleAccessPermission,

@@ -89,3 +89,6 @@ docker_local_config.py
 config.py
 docker-compose.yml
 docker-compose.override.yml
+
+# line profiler
+prof/

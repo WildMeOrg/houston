@@ -9,6 +9,7 @@ import logging
 import werkzeug
 import uuid
 
+from flask import request
 from flask_restx_patched import Resource
 from flask_restx_patched._http import HTTPStatus
 from flask_login import current_user  # NOQA
@@ -22,6 +23,7 @@ from . import parameters, schemas
 from .models import Mission, MissionCollection, MissionTask
 from marshmallow import ValidationError
 import randomname
+import tqdm
 
 from app.utils import HoustonException
 
@@ -68,22 +70,13 @@ class Missions(Resource):
             'action': AccessOperation.READ,
         },
     )
-    @api.parameters(parameters.ListMissionParameters())
     @api.response(schemas.BaseMissionSchema(many=True))
+    @api.paginate()
     def get(self, args):
         """
         List of Mission.
-
-        Returns a list of Mission starting from ``offset`` limited by ``limit``
-        parameter.
         """
-        search = args.get('search', None)
-        if search is not None and len(search) == 0:
-            search = None
-
-        missions = Mission.query_search(search)
-
-        return missions.order_by(Mission.guid).offset(args['offset']).limit(args['limit'])
+        return Mission.query_search(args=args)
 
     @api.permission_required(
         permissions.ModuleAccessPermission,
@@ -113,6 +106,39 @@ class Missions(Resource):
         db.session.refresh(mission)
 
         return mission
+
+
+@api.route('/search')
+@api.login_required(oauth_scopes=['missions:read'])
+class MissionElasticsearch(Resource):
+    @api.permission_required(
+        permissions.ModuleAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'module': Mission,
+            'action': AccessOperation.READ,
+        },
+    )
+    @api.response(schemas.BaseMissionSchema(many=True))
+    @api.paginate()
+    def get(self, args):
+        search = {}
+        args['total'] = True
+        return Mission.elasticsearch(search, **args)
+
+    @api.permission_required(
+        permissions.ModuleAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'module': Mission,
+            'action': AccessOperation.READ,
+        },
+    )
+    @api.response(schemas.BaseMissionSchema(many=True))
+    @api.paginate()
+    def post(self, args):
+        search = request.get_json()
+
+        args['total'] = True
+        return Mission.elasticsearch(search, **args)
 
 
 @api.route('/<uuid:mission_guid>')
@@ -275,17 +301,29 @@ class AssetsForMission(Resource):
         permissions.ObjectAccessPermission,
         kwargs_on_request=lambda kwargs: {
             'obj': kwargs['mission'],
-            'action': AccessOperation.WRITE,
+            'action': AccessOperation.READ,
         },
     )
-    @api.parameters(parameters.ListMissionAssetParameters())
     @api.response(DetailedAssetTableSchema(many=True))
+    @api.paginate()
     def get(self, args, mission):
-        search = args.get('search', None)
-        if search is not None and len(search) == 0:
-            search = None
+        search = {}
+        args['total'] = True
+        return mission.asset_search(search, **args)
 
-        return mission.asset_search(search)
+    @api.permission_required(
+        permissions.ObjectAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'obj': kwargs['mission'],
+            'action': AccessOperation.READ,
+        },
+    )
+    @api.response(DetailedAssetTableSchema(many=True))
+    @api.paginate()
+    def post(self, args, mission):
+        search = request.get_json()
+        args['total'] = True
+        return mission.asset_search(search, **args)
 
 
 @api.route('/<uuid:mission_guid>/tasks')
@@ -373,13 +411,11 @@ class MissionTasksForMission(Resource):
         args['mission'] = mission
         mission_task = MissionTask(**args)
 
-        # User who creates the mission gets added to it
-        mission_task.add_user(current_user)
-        for asset in asset_set:
-            mission_task.add_asset(asset)
-
         with context:
             db.session.add(mission_task)
+            mission_task.add_user_in_context(current_user)
+            for asset in tqdm.tqdm(asset_set, desc='Adding Assets to MissionTask'):
+                mission_task.add_asset_in_context(asset)
 
         db.session.refresh(mission_task)
 
@@ -400,26 +436,46 @@ class MissionCollections(Resource):
             'action': AccessOperation.READ,
         },
     )
-    @api.parameters(parameters.ListMissionCollectionParameters())
     @api.response(schemas.BaseMissionCollectionSchema(many=True))
+    @api.paginate()
     def get(self, args):
         """
         List of Mission Collection.
-
-        Returns a list of Mission Collection starting from ``offset`` limited by ``limit``
-        parameter.
         """
-        search = args.get('search', None)
-        if search is not None and len(search) == 0:
-            search = None
+        return MissionCollection.query_search(args=args)
 
-        mission_collections = MissionCollection.query_search(search)
 
-        return (
-            mission_collections.order_by(MissionCollection.guid)
-            .offset(args['offset'])
-            .limit(args['limit'])
-        )
+@api.route('/collections/search')
+@api.login_required(oauth_scopes=['missions:read'])
+class MissionCollectionElasticsearch(Resource):
+    @api.permission_required(
+        permissions.ModuleAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'module': MissionCollection,
+            'action': AccessOperation.READ,
+        },
+    )
+    @api.response(schemas.BaseMissionCollectionSchema(many=True))
+    @api.paginate()
+    def get(self, args):
+        search = {}
+        args['total'] = True
+        return MissionCollection.elasticsearch(search, **args)
+
+    @api.permission_required(
+        permissions.ModuleAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'module': MissionCollection,
+            'action': AccessOperation.READ,
+        },
+    )
+    @api.response(schemas.BaseMissionCollectionSchema(many=True))
+    @api.paginate()
+    def post(self, args):
+        search = request.get_json()
+
+        args['total'] = True
+        return MissionCollection.elasticsearch(search, **args)
 
 
 @api.login_required(oauth_scopes=['missions:read'])
@@ -590,26 +646,46 @@ class MissionTasks(Resource):
             'action': AccessOperation.READ,
         },
     )
-    @api.parameters(parameters.ListMissionTaskParameters())
     @api.response(schemas.BaseMissionTaskSchema(many=True))
+    @api.paginate()
     def get(self, args):
         """
         List of Mission Task.
-
-        Returns a list of Mission Task starting from ``offset`` limited by ``limit``
-        parameter.
         """
-        search = args.get('search', None)
-        if search is not None and len(search) == 0:
-            search = None
+        return MissionTask.query_search(args=args)
 
-        mission_tasks = MissionTask.query_search(search)
 
-        return (
-            mission_tasks.order_by(MissionTask.guid)
-            .offset(args['offset'])
-            .limit(args['limit'])
-        )
+@api.route('/tasks/search')
+@api.login_required(oauth_scopes=['missions:read'])
+class MissionTaskElasticsearch(Resource):
+    @api.permission_required(
+        permissions.ModuleAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'module': MissionTask,
+            'action': AccessOperation.READ,
+        },
+    )
+    @api.response(schemas.BaseMissionTaskSchema(many=True))
+    @api.paginate()
+    def get(self, args):
+        search = {}
+        args['total'] = True
+        return MissionTask.elasticsearch(search, **args)
+
+    @api.permission_required(
+        permissions.ModuleAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'module': MissionTask,
+            'action': AccessOperation.READ,
+        },
+    )
+    @api.response(schemas.BaseMissionTaskSchema(many=True))
+    @api.paginate()
+    def post(self, args):
+        search = request.get_json()
+        args['total'] = True
+
+        return MissionTask.elasticsearch(search, **args)
 
 
 @api.route('/tasks/<uuid:mission_task_guid>')
@@ -720,5 +796,9 @@ class MissionTaskByID(Resource):
         """
         Delete a MissionTask by ID.
         """
-        mission_task.delete()
+        context = api.commit_or_abort(
+            db.session, default_error_message='Failed to delete MissionTask'
+        )
+        with context:
+            mission_task.delete_cascade()
         return None

@@ -20,6 +20,8 @@ class BaseProjectSchema(ModelSchema):
         fields = (
             Project.guid.key,
             Project.title.key,
+            'elasticsearchable',
+            Project.indexed.key,
         )
         dump_only = (Project.guid.key,)
 

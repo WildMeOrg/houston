@@ -16,7 +16,6 @@ from flask_restx_patched._http import HTTPStatus
 
 from app.extensions import db
 from app.extensions.api import Namespace, abort
-from app.extensions.api.parameters import PaginationParameters
 from app.modules.users import permissions
 from app.modules.users.permissions.types import AccessOperation
 from app.utils import HoustonException
@@ -65,16 +64,13 @@ class AssetGroups(Resource):
             'action': AccessOperation.READ,
         },
     )
-    @api.parameters(PaginationParameters())
     @api.response(schemas.BaseAssetGroupSchema(many=True))
+    @api.paginate()
     def get(self, args):
         """
         List of Asset_group.
-
-        Returns a list of Asset_group starting from ``offset`` limited by ``limit``
-        parameter.
         """
-        return AssetGroup.query.offset(args['offset']).limit(args['limit'])
+        return AssetGroup.query_search(args=args)
 
     @api.permission_required(
         permissions.ModuleAccessPermission,
@@ -141,6 +137,39 @@ class AssetGroups(Resource):
 
         AuditLog.user_create_object(log, asset_group, duration=timer.elapsed())
         return asset_group
+
+
+@api.route('/search')
+@api.login_required(oauth_scopes=['asset_groups:read'])
+class AssetGroupElasticsearch(Resource):
+    @api.permission_required(
+        permissions.ModuleAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'module': AssetGroup,
+            'action': AccessOperation.READ,
+        },
+    )
+    @api.response(schemas.BaseAssetGroupSchema(many=True))
+    @api.paginate()
+    def get(self, args):
+        search = {}
+        args['total'] = True
+        return AssetGroup.elasticsearch(search, **args)
+
+    @api.permission_required(
+        permissions.ModuleAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'module': AssetGroup,
+            'action': AccessOperation.READ,
+        },
+    )
+    @api.response(schemas.BaseAssetGroupSchema(many=True))
+    @api.paginate()
+    def post(self, args):
+        search = request.get_json()
+
+        args['total'] = True
+        return AssetGroup.elasticsearch(search, **args)
 
 
 @api.login_required(oauth_scopes=['asset_groups:read'])
@@ -347,16 +376,46 @@ class AssetGroupSightings(Resource):
             'action': AccessOperation.READ,
         },
     )
-    @api.parameters(PaginationParameters())
     @api.response(schemas.BaseAssetGroupSightingSchema(many=True))
+    @api.paginate()
     def get(self, args):
         """
         List of Asset_group.
-
-        Returns a list of Asset_group starting from ``offset`` limited by ``limit``
-        parameter.
         """
-        return AssetGroupSighting.query.offset(args['offset']).limit(args['limit'])
+        return AssetGroupSighting.query_search(args=args)
+
+
+@api.route('/sighting/search')
+@api.login_required(oauth_scopes=['asset_group_sightings:read'])
+class AssetGroupSightingElasticsearch(Resource):
+    @api.permission_required(
+        permissions.ModuleAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'module': AssetGroupSighting,
+            'action': AccessOperation.READ,
+        },
+    )
+    @api.response(schemas.BaseAssetGroupSightingSchema(many=True))
+    @api.paginate()
+    def get(self, args):
+        search = {}
+        args['total'] = True
+        return AssetGroupSighting.elasticsearch(search, **args)
+
+    @api.permission_required(
+        permissions.ModuleAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'module': AssetGroupSighting,
+            'action': AccessOperation.READ,
+        },
+    )
+    @api.response(schemas.BaseAssetGroupSightingSchema(many=True))
+    @api.paginate()
+    def post(self, args):
+        search = request.get_json()
+
+        args['total'] = True
+        return AssetGroupSighting.elasticsearch(search, **args)
 
 
 @api.route('/sighting/<uuid:asset_group_sighting_guid>')

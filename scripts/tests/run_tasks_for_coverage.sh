@@ -53,9 +53,6 @@ then
   coverage run --append `which invoke` app.swagger.codegen --language python --version 1.0.0
 fi
 
-# warm-ups
-coverage run --append `which invoke` app.run.warmup --print-routes
-
 # test integrations check
 if [ "$HOUSTON_APP_CONTEXT" == 'codex' ]; then
     # `|| true` is used to ignore integration fail with gitlab

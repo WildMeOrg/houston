@@ -143,6 +143,7 @@ class PatchJSONParameters(Parameters):
         """
         from app.modules.users import permissions
         from app.modules.users.permissions.types import AccessOperation
+        from app.extensions import is_extension_enabled
 
         if state is None:
             state = {}
@@ -182,7 +183,12 @@ class PatchJSONParameters(Parameters):
                 if obj is not None:
                     objs.append(obj)
 
-            if not cls._process_patch_operation(operation, obj=obj, state=state):
+            if cls._process_patch_operation(operation, obj=obj, state=state):
+                if is_extension_enabled('elasticsearch'):
+                    from app.extensions import elasticsearch as es
+
+                    es.es_invalidate(obj)
+            else:
                 log.info(
                     '%s patching has been stopped because of unknown operation %s',
                     obj.__class__.__name__,

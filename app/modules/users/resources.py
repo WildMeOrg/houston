@@ -42,25 +42,12 @@ class Users(Resource):
         },
     )
     @api.response(schemas.UserListSchema(many=True))
-    # turning off pagination as it defaults to only 20 shown  [DEX-729]
-    # @api.paginate(parameters.ListUserParameters())
-    @api.parameters(parameters.ListUserParameters())
+    @api.paginate()
     def get(self, args):
         """
         List of users.
-
-        Returns a list of users starting from ``offset`` limited by ``limit``
-        parameter.
         """
-        search = args.get('search', None)
-        if search is not None and len(search) == 0:
-            search = None
-
-        users = User.query_search(search)
-
-        # TODO: re-enable pagination on listing users
-        # return users.order_by(User.guid).offset(args['offset']).limit(args['limit'])
-        return users.order_by(User.guid)
+        return User.query_search(args=args)
 
     @api.permission_required(
         permissions.ModuleAccessPermission,
@@ -144,6 +131,38 @@ class Users(Resource):
                 log, new_user, msg=f'{new_user.email}', duration=timer.elapsed()
             )
         return new_user
+
+
+@api.route('/search')
+@api.login_required(oauth_scopes=['users:read'])
+class UserElasticsearch(Resource):
+    @api.permission_required(
+        permissions.ModuleAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'module': User,
+            'action': AccessOperation.READ,
+        },
+    )
+    @api.response(schemas.UserListSchema(many=True))
+    @api.paginate()
+    def get(self, args):
+        search = {}
+        args['total'] = True
+        return User.elasticsearch(search, **args)
+
+    @api.permission_required(
+        permissions.ModuleAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'module': User,
+            'action': AccessOperation.READ,
+        },
+    )
+    @api.response(schemas.UserListSchema(many=True))
+    @api.paginate()
+    def post(self, args):
+        search = request.get_json()
+        args['total'] = True
+        return User.elasticsearch(search, **args)
 
 
 @api.route('/<uuid:user_guid>')
@@ -293,6 +312,7 @@ class AdminUserInitialized(Resource):
                 is_researcher=True,
                 is_contributor=True,
                 is_user_manager=True,
+                is_data_manager=True,
                 is_exporter=True,
                 is_active=True,
                 in_beta=True,
@@ -369,8 +389,11 @@ class UserSightings(Resource):
         """
         Get Sightings for user with EDM metadata
         """
+        offset = args['offset']
+        limit = args['limit']
 
-        start, end = args['offset'], args['offset'] + args['limit']
+        start = offset
+        end = offset + limit
         return user.get_sightings_json(start, end)
 
 

@@ -6,8 +6,11 @@ Logging adapter
 import logging
 import os
 import shutil
+import json
 
 from flask import current_app
+
+# from werkzeug.utils import secure_filename, escape
 
 from flask_restx_patched import is_extension_enabled
 from app.utils import get_stored_filename
@@ -35,7 +38,7 @@ def init_app(app, **kwargs):
     tm.upload_file_handler(_tus_file_handler)
 
 
-def _tus_file_handler(upload_file_path, filename, req, app):
+def _tus_file_handler(upload_file_path, filename, original_filename, req, app):
     from uuid import UUID
 
     # these are two alternate methods: organize by asset_group, or (arbitrary/random) transaction id
@@ -65,10 +68,26 @@ def _tus_file_handler(upload_file_path, filename, req, app):
 
     if not os.path.exists(dir):
         os.makedirs(dir)
-    log.info('Tus finished uploading: %r in dir %r.' % (filename, dir))
-    os.rename(upload_file_path, os.path.join(dir, filename))
+    log.debug('Tus finished uploading: %r in dir %r.' % (filename, dir))
+    filepath = os.path.join(dir, filename)
+    os.rename(upload_file_path, filepath)
+
+    # Store the original filename as metadata next to the file
+    metadata_filepath = tus_get_metadata_filepath(filepath)
+    with open(metadata_filepath, 'w') as metadata_file:
+        metadata = {
+            'filename': original_filename,
+            # 'filename': escape(secure_filename(original_filename)),
+        }
+        json.dump(metadata, metadata_file)
 
     return filename
+
+
+def tus_get_metadata_filepath(filepath):
+    path, filename = os.path.split(filepath)
+    metadata_filepath = os.path.join(path, '.%s.meta.json' % (filename,))
+    return metadata_filepath
 
 
 def tus_upload_dir(app, git_store_guid=None, transaction_id=None, session_id=None):
@@ -97,12 +116,14 @@ def _tus_filepaths_from(
         session_id=session_id,
         transaction_id=transaction_id,
     )
+
     log.debug('_tus_filepaths_from passed paths=%r' % (paths))
     filepaths = []
     if not paths:  # traverse whole upload dir and take everything
         for root, dirs, files in os.walk(upload_dir):
             for path in files:
-                filepaths.append(os.path.join(upload_dir, path))
+                if not path.startswith('.'):
+                    filepaths.append(os.path.join(upload_dir, path))
     else:
         if len(paths) < 1:
             return []
@@ -113,7 +134,26 @@ def _tus_filepaths_from(
             assert os.path.exists(want_path), f'{want_path} does not exist'
             filepaths.append(want_path)
 
-    return filepaths
+            metadata_filepath = tus_get_metadata_filepath(want_path)
+            with open(metadata_filepath, 'w') as metadata_file:
+                metadata = {
+                    'filename': input_path,
+                    # 'filename': escape(secure_filename(original_filename)),
+                }
+                json.dump(metadata, metadata_file)
+
+    metadatas = []
+    for filepath in filepaths:
+        assert os.path.exists(filepath)
+        metadata_filepath = tus_get_metadata_filepath(filepath)
+        if os.path.exists(metadata_filepath):
+            with open(metadata_filepath, 'r') as metadata_file:
+                metadata = json.load(metadata_file)
+        else:
+            metadata = {}
+        metadatas.append(metadata)
+
+    return filepaths, metadatas
 
 
 def _tus_purge(git_store_guid=None, session_id=None, transaction_id=None):

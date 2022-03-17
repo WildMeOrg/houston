@@ -6,10 +6,12 @@ Serialization schemas for Assets resources RESTful API
 
 from flask_marshmallow import base_fields
 from marshmallow import ValidationError
-from app.extensions.git_store import GitStore
 
 from flask_restx_patched import ModelSchema
 from app.extensions import ExtraValidationSchema
+from app.modules import is_module_enabled
+from app.extensions.git_store.schemas import BaseGitStoreSchema
+
 
 from .models import Asset
 
@@ -24,7 +26,13 @@ class BaseAssetSchema(ModelSchema):
     class Meta:
         # pylint: disable=missing-docstring
         model = Asset
-        fields = (Asset.guid.key, 'filename', 'src')
+        fields = (
+            Asset.guid.key,
+            'filename',
+            'src',
+            'elasticsearchable',
+            Asset.indexed.key,
+        )
         dump_only = (Asset.guid.key,)
 
 
@@ -33,27 +41,32 @@ class DetailedAssetTableSchema(BaseAssetSchema):
     Detailed Asset schema exposes all useful fields.
     """
 
+    git_store = base_fields.Nested(BaseGitStoreSchema)
+
     tags = base_fields.Nested(
         'BaseKeywordSchema',
         many=True,
     )
 
-    tasks = base_fields.Nested(
-        'BaseMissionTaskTableSchema',
-        many=True,
-    )
+    if is_module_enabled('missions'):
+        tasks = base_fields.Nested(
+            'BaseMissionTaskTableSchema',
+            many=True,
+        )
 
     class Meta(BaseAssetSchema.Meta):
         fields = BaseAssetSchema.Meta.fields + (
             Asset.created.key,
             Asset.updated.key,
             Asset.size_bytes.key,
+            Asset.git_store.key,
             'dimensions',
             'annotation_count',
             'classifications',
             'tags',
-            'tasks',
         )
+        if is_module_enabled('missions'):
+            fields = fields + ('tasks',)
 
         dump_only = BaseAssetSchema.Meta.dump_only + (
             Asset.created.key,
@@ -66,7 +79,7 @@ class DetailedAssetSchema(BaseAssetSchema):
     Detailed Asset schema exposes all useful fields.
     """
 
-    git_store = base_fields.Nested('BaseGitStoreSchema')
+    git_store = base_fields.Nested(BaseGitStoreSchema)
 
     annotations = base_fields.Nested('DetailedAnnotationSchema', many=True)
 
@@ -120,7 +133,7 @@ class DebugAssetSchema(DetailedAssetSchema):
     jobs = base_fields.Function(Asset.get_jobs_debug)
 
     class Meta(DetailedAssetSchema.Meta):
-        fields = DetailedAssetSchema.Meta.fields + ('jobs', )
+        fields = DetailedAssetSchema.Meta.fields + ('jobs',)
 
 
 def not_negative(value):
@@ -133,59 +146,3 @@ class PatchAssetSchema(ExtraValidationSchema):
         angle = base_fields.Integer(validate=not_negative)
 
     rotate = base_fields.Nested(AssetRotateSchema)
-
-
-class BaseGitStoreSchema(ModelSchema):
-    """
-    Base Git Store schema exposes only the most general fields.
-    """
-
-    class Meta:
-        # pylint: disable=missing-docstring
-        model = GitStore
-        fields = (
-            GitStore.guid.key,
-            GitStore.commit.key,
-            GitStore.major_type.key,
-            GitStore.description.key,
-        )
-        dump_only = (
-            GitStore.guid.key,
-            GitStore.commit.key,
-        )
-
-
-class CreateGitStoreSchema(BaseGitStoreSchema):
-    """
-    Detailed Git Store schema exposes all useful fields.
-    """
-
-    class Meta(BaseGitStoreSchema.Meta):
-        fields = BaseGitStoreSchema.Meta.fields + (
-            GitStore.owner_guid.key,
-            GitStore.created.key,
-            GitStore.updated.key,
-        )
-        dump_only = BaseGitStoreSchema.Meta.dump_only + (
-            GitStore.owner_guid.key,
-            GitStore.created.key,
-            GitStore.updated.key,
-        )
-
-
-class DetailedGitStoreSchema(CreateGitStoreSchema):
-    """
-    Detailed Git Store schema exposes all useful fields.
-    """
-
-    from app.modules.assets.models import Asset
-
-    assets = base_fields.Nested(
-        'BaseAssetSchema',
-        exclude=Asset.git_store_guid.key,
-        many=True,
-    )
-
-    class Meta(CreateGitStoreSchema.Meta):
-        fields = CreateGitStoreSchema.Meta.fields + ('assets',)
-        dump_only = CreateGitStoreSchema.Meta.dump_only

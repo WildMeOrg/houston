@@ -14,7 +14,6 @@ from flask import request, current_app, make_response
 
 from app.extensions import db
 from app.extensions.api import Namespace
-from app.extensions.api.parameters import PaginationParameters
 from app.modules.users import permissions
 from app.modules.users.permissions.types import AccessOperation
 from app.utils import HoustonException
@@ -44,16 +43,46 @@ class Encounters(Resource):
         },
     )
     @api.login_required(oauth_scopes=['encounters:read'])
-    @api.parameters(PaginationParameters())
     @api.response(schemas.BaseEncounterSchema(many=True))
+    @api.paginate()
     def get(self, args):
         """
         List of Encounter.
-
-        Returns a list of Encounter starting from ``offset`` limited by ``limit``
-        parameter.
         """
-        return Encounter.query.offset(args['offset']).limit(args['limit'])
+        return Encounter.query_search(args=args)
+
+
+@api.route('/search')
+@api.login_required(oauth_scopes=['encounters:read'])
+class EncounterElasticsearch(Resource):
+    @api.permission_required(
+        permissions.ModuleAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'module': Encounter,
+            'action': AccessOperation.READ,
+        },
+    )
+    @api.response(schemas.BaseEncounterSchema(many=True))
+    @api.paginate()
+    def get(self, args):
+        search = {}
+        args['total'] = True
+        return Encounter.elasticsearch(search, **args)
+
+    @api.permission_required(
+        permissions.ModuleAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'module': Encounter,
+            'action': AccessOperation.READ,
+        },
+    )
+    @api.response(schemas.BaseEncounterSchema(many=True))
+    @api.paginate()
+    def post(self, args):
+        search = request.get_json()
+
+        args['total'] = True
+        return Encounter.elasticsearch(search, **args)
 
 
 @api.route('/<uuid:encounter_guid>')

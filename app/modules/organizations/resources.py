@@ -7,13 +7,13 @@ RESTful API Organizations resources
 
 import logging
 
+from flask import request
 from flask_login import current_user  # NOQA
 from flask_restx_patched import Resource
 from flask_restx_patched._http import HTTPStatus
 
 from app.extensions import db
 from app.extensions.api import Namespace
-from app.extensions.api.parameters import PaginationParameters
 from app.modules.users import permissions
 from app.modules.users.permissions.types import AccessOperation
 
@@ -42,16 +42,13 @@ class Organizations(Resource):
             'action': AccessOperation.READ,
         },
     )
-    @api.parameters(PaginationParameters())
     @api.response(schemas.BaseOrganizationSchema(many=True))
+    @api.paginate()
     def get(self, args):
         """
         List of Organization.
-
-        Returns a list of Organization starting from ``offset`` limited by ``limit``
-        parameter.
         """
-        return Organization.query.offset(args['offset']).limit(args['limit'])
+        return Organization.query_search(args=args)
 
     @api.permission_required(
         permissions.ModuleAccessPermission,
@@ -79,6 +76,39 @@ class Organizations(Resource):
             organization.add_moderator_in_context(current_user)
             db.session.add(organization)
         return organization
+
+
+@api.route('/search')
+@api.login_required(oauth_scopes=['organizations:read'])
+class OrganizationElasticsearch(Resource):
+    @api.permission_required(
+        permissions.ModuleAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'module': Organization,
+            'action': AccessOperation.READ,
+        },
+    )
+    @api.response(schemas.DetailedOrganizationSchema(many=True))
+    @api.paginate()
+    def get(self, args):
+        search = {}
+        args['total'] = True
+        return Organization.elasticsearch(search, **args)
+
+    @api.permission_required(
+        permissions.ModuleAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'module': Organization,
+            'action': AccessOperation.READ,
+        },
+    )
+    @api.response(schemas.DetailedOrganizationSchema(many=True))
+    @api.paginate()
+    def post(self, args):
+        search = request.get_json()
+
+        args['total'] = True
+        return Organization.elasticsearch(search, **args)
 
 
 @api.route('/<uuid:organization_guid>')

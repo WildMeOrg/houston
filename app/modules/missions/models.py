@@ -6,10 +6,16 @@ Missions database models
 import uuid
 import enum
 
-from app.extensions import db, HoustonModel, Timestamp
+from app.extensions import (
+    db,
+    HoustonModel,
+    Timestamp,
+    elasticsearch_context,
+)
 from app.extensions.git_store import GitStore
 
 from flask import current_app
+import tqdm
 import logging
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
@@ -81,6 +87,12 @@ class Mission(db.Model, HoustonModel, Timestamp):
         return title
 
     @classmethod
+    def get_elasticsearch_schema(cls):
+        from app.modules.missions.schemas import DetailedMissionSchema
+
+        return DetailedMissionSchema
+
+    @classmethod
     def query_search_term_hook(cls, term):
         from sqlalchemy_utils.functions import cast_if
         from sqlalchemy import String
@@ -99,9 +111,34 @@ class Mission(db.Model, HoustonModel, Timestamp):
     def assets(self):
         return self.get_assets()
 
-    def asset_search(self, search):
-        log.warning('Ignoring search string %r' % (search,))
-        return self.get_assets()
+    def asset_search(self, search, *args, **kwargs):
+        from app.modules.assets.models import Asset
+
+        # Get Elasticsearch GUIDs
+        response = Asset.elasticsearch(search, load=False, *args, **kwargs)
+
+        if kwargs.get('total', False):
+            assert len(response) == 2
+            total, search_guids = response
+        else:
+            total, search_guids = None, response
+
+        # Get all mission's GUIDs
+        mission_guids = self.get_assets(load=False)
+
+        # Load assets from DB
+        assets = []
+        for guid in search_guids:
+            if guid not in mission_guids:
+                continue
+            asset = Asset.query.get(guid)
+            if asset is not None:
+                assets.append(asset)
+
+        if total is None:
+            return assets
+        else:
+            return total, assets
 
     @property
     def asset_count(self):
@@ -120,7 +157,7 @@ class Mission(db.Model, HoustonModel, Timestamp):
         return list(set([self.owner] + self.get_assigned_users()))
 
     def add_user(self, user):
-        with db.session.begin():
+        with db.session.begin(subtransactions=True):
             self.add_user_in_context(user)
 
     def add_user_in_context(self, user):
@@ -141,10 +178,10 @@ class Mission(db.Model, HoustonModel, Timestamp):
                 db.session.delete(assignment)
                 break
 
-    def get_assets(self):
+    def get_assets(self, load=True):
         assets = []
         for collection in self.collections:
-            assets += collection.assets
+            assets += collection.get_assets(load=load)
         return assets
 
     def get_jobs_json(self):
@@ -223,27 +260,34 @@ class Mission(db.Model, HoustonModel, Timestamp):
             db.session.merge(self)
 
     def delete_cascade(self):
-        with db.session.no_autoflush:
-            while self.tasks:
-                task = self.tasks.pop()
-                task.delete()
+        with elasticsearch_context():
+            with db.session.no_autoflush:
+                while self.tasks:
+                    task = self.tasks.pop()
+                    task.delete_relationships()
+                    task.delete()
 
-        with db.session.begin(subtransactions=True):
-            while self.assets:
-                asset = self.assets.pop()
-                asset.delete()
+            with db.session.begin(subtransactions=True):
+                tags = []
+                for asset in tqdm.tqdm(self.assets):
+                    new_tags = asset.delete_relationships(delete_unreferenced_tags=False)
+                    tags += new_tags
+                    asset.delete(justify_git_store=False)
 
-            while self.collections:
-                collection = self.collections.pop()
-                collection.delete()
+                tags = list(set(tags))
+                for tag in tags:
+                    tag.delete_if_unreferenced()
+                while self.collections:
+                    collection = self.collections.pop()
+                    collection.delete()
 
-            while self.user_assignments:
-                db.session.delete(self.user_assignments.pop())
-            db.session.delete(self)
+                while self.user_assignments:
+                    db.session.delete(self.user_assignments.pop())
+
+                self.delete()
 
     def delete(self):
-        with db.session.begin():
-            db.session.delete(self)
+        db.session.delete(self)
 
 
 class MissionCollection(GitStore):
@@ -272,9 +316,29 @@ class MissionCollection(GitStore):
         'polymorphic_identity': 'mission_collection',
     }
 
+    @classmethod
+    def get_elasticsearch_schema(cls):
+        from app.modules.missions.schemas import CreateMissionCollectionSchema
+
+        return CreateMissionCollectionSchema
+
     @property
     def asset_count(self):
-        return len(self.assets)
+        return len(self.get_assets(load=False))
+
+    def get_assets(self, load=True):
+        if load:
+            return self.assets
+        else:
+            from app.modules.assets.models import Asset
+
+            results = (
+                Asset.query.filter(Asset.git_store_guid == self.guid)
+                .with_entities(Asset.guid)
+                .all()
+            )
+            guids = [result[0] for result in results]
+            return guids
 
     @classmethod
     def query_search_term_hook(cls, term):
@@ -437,6 +501,12 @@ class MissionTask(db.Model, HoustonModel, Timestamp):
         )
 
     @classmethod
+    def get_elasticsearch_schema(cls):
+        from app.modules.missions.schemas import BaseMissionTaskTableSchema
+
+        return BaseMissionTaskTableSchema
+
+    @classmethod
     def query_search_term_hook(cls, term):
         from sqlalchemy_utils.functions import cast_if
         from sqlalchemy import String
@@ -484,7 +554,7 @@ class MissionTask(db.Model, HoustonModel, Timestamp):
         return list(set([self.owner] + self.get_assigned_users()))
 
     def add_user(self, user):
-        with db.session.begin():
+        with db.session.begin(subtransactions=True):
             self.add_user_in_context(user)
 
     def add_user_in_context(self, user):
@@ -506,7 +576,7 @@ class MissionTask(db.Model, HoustonModel, Timestamp):
         return [participation.asset for participation in self.asset_participations]
 
     def add_asset(self, asset):
-        with db.session.begin():
+        with db.session.begin(subtransactions=True):
             self.add_asset_in_context(asset)
 
     def add_asset_in_context(self, asset):
@@ -530,7 +600,7 @@ class MissionTask(db.Model, HoustonModel, Timestamp):
         ]
 
     def add_annotation(self, annotation):
-        with db.session.begin():
+        with db.session.begin(subtransactions=True):
             self.add_annotation_in_context(annotation)
 
     def add_annotation_in_context(self, annotation):
@@ -548,11 +618,18 @@ class MissionTask(db.Model, HoustonModel, Timestamp):
                 db.session.delete(participation)
                 break
 
-    def delete(self):
+    def delete_relationships(self):
         while self.user_assignments:
             db.session.delete(self.user_assignments.pop())
         while self.asset_participations:
             db.session.delete(self.asset_participations.pop())
         while self.annotation_participations:
             db.session.delete(self.annotation_participations.pop())
+
+    def delete_cascade(self):
+        with db.session.begin(subtransactions=True):
+            self.delete_relationships()
+            self.delete()
+
+    def delete(self):
         db.session.delete(self)

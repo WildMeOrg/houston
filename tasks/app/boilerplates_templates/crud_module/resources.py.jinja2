@@ -13,7 +13,6 @@ from flask_restx._http import HTTPStatus
 
 from app.extensions import db
 from app.extensions.api import Namespace
-from app.extensions.api.parameters import PaginationParameters
 from app.modules.users import permissions
 from app.modules.users.permissions.types import AccessOperation
 
@@ -38,8 +37,8 @@ class {{ module_title.replace(' ', '') }}(Resource):
             'action': AccessOperation.READ,
         },
     )
-    @api.parameters(PaginationParameters())
     @api.response(schemas.Base{{ model_name }}Schema(many=True))
+    @api.paginate()
     def get(self, args):
         """
         List of {{ model_name }}.
@@ -47,7 +46,7 @@ class {{ module_title.replace(' ', '') }}(Resource):
         Returns a list of {{ model_name }} starting from ``offset`` limited by ``limit``
         parameter.
         """
-        return {{ model_name }}.query.offset(args['offset']).limit(args['limit'])
+        return {{ model_name }}.query
 
     @api.permission_required(
         permissions.ModuleAccessPermission,

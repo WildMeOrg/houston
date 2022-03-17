@@ -43,6 +43,12 @@ class FileUpload(db.Model, HoustonModel):
     )  # pylint: disable=invalid-name
     mime_type = db.Column(db.String, index=True, nullable=False)
 
+    @classmethod
+    def get_elasticsearch_schema(cls):
+        from app.modules.fileuploads.schemas import DetailedFileUploadSchema
+
+        return DetailedFileUploadSchema
+
     def __repr__(self):
         return (
             '<{class_name}('
@@ -72,7 +78,7 @@ class FileUpload(db.Model, HoustonModel):
 
         assert transaction_id is not None
         assert path is not None
-        source_paths = _tus_filepaths_from(transaction_id=transaction_id, paths=[path])
+        source_paths, _ = _tus_filepaths_from(transaction_id=transaction_id, paths=[path])
         fup = FileUpload.create_fileupload_from_path(source_paths[0])
         _tus_purge(transaction_id=transaction_id)
         return fup
@@ -83,7 +89,7 @@ class FileUpload(db.Model, HoustonModel):
         from app.extensions.tus import _tus_filepaths_from, _tus_purge
 
         assert transaction_id is not None
-        source_paths = _tus_filepaths_from(transaction_id=transaction_id, paths=paths)
+        source_paths, _ = _tus_filepaths_from(transaction_id=transaction_id, paths=paths)
         if source_paths is None or len(source_paths) < 1:
             return None
         fups = []

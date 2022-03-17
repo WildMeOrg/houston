@@ -106,6 +106,8 @@ def test_social_groups(session, login, codex_url):
     assert response.json() == {
         'created': social_group['created'],
         'updated': social_group['updated'],
+        'indexed': response.json()['indexed'],
+        'elasticsearchable': social_group['elasticsearchable'],
         'name': 'Family',
         'members': {
             individual_ids[0]: {'roles': ['Matriarch']},
@@ -123,7 +125,14 @@ def test_social_groups(session, login, codex_url):
     response = session.get(codex_url('/api/v1/social-groups/'))
     assert response.status_code == 200
     assert len(response.json()) >= 1
-    assert {'name': 'Family', 'guid': social_group_id} in response.json()
+    assert response.json() == [
+        {
+            'name': 'Family',
+            'guid': social_group_id,
+            'elasticsearchable': social_group['elasticsearchable'],
+            'indexed': response.json()[0]['indexed'],
+        }
+    ]
 
     # PATCH social group: remove member
     data = [
@@ -141,6 +150,8 @@ def test_social_groups(session, login, codex_url):
     assert response.json() == {
         'created': social_group['created'],
         'updated': social_group['updated'],
+        'indexed': response.json()['indexed'],
+        'elasticsearchable': social_group['elasticsearchable'],
         'name': 'Family',
         'members': {
             individual_ids[0]: {'roles': ['Matriarch']},
@@ -167,6 +178,8 @@ def test_social_groups(session, login, codex_url):
     assert response.json() == {
         'created': social_group['created'],
         'updated': social_group['updated'],
+        'indexed': response.json()['indexed'],
+        'elasticsearchable': social_group['elasticsearchable'],
         'name': 'Family',
         'members': {
             individual_ids[0]: {'roles': ['Matriarch']},
@@ -195,6 +208,8 @@ def test_social_groups(session, login, codex_url):
     assert response.json() == {
         'created': social_group['created'],
         'updated': social_group['updated'],
+        'indexed': response.json()['indexed'],
+        'elasticsearchable': social_group['elasticsearchable'],
         'name': 'Family',
         'members': {
             individual_ids[0]: {'roles': ['Matriarch']},

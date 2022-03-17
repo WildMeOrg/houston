@@ -65,6 +65,12 @@ class Project(db.Model, HoustonModel, Timestamp):
         ),
     )
 
+    @classmethod
+    def get_elasticsearch_schema(cls):
+        from app.modules.projects.schemas import BaseProjectSchema
+
+        return BaseProjectSchema
+
     def __repr__(self):
         return (
             '<{class_name}('

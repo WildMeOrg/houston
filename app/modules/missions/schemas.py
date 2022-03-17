@@ -22,6 +22,8 @@ class BaseMissionSchema(ModelSchema):
             Mission.guid.key,
             Mission.title.key,
             Mission.created.key,
+            'elasticsearchable',
+            Mission.indexed.key,
         )
         dump_only = (Mission.guid.key,)
 
@@ -47,9 +49,7 @@ class DetailedMissionSchema(CreationMissionSchema):
     Detailed Mission schema exposes all useful fields.
     """
 
-    owner = base_fields.Nested('PublicUserSchema', many=False)
-
-    assigned_users = base_fields.Nested('PublicUserSchema', many=True)
+    assigned_users = base_fields.Nested('BaseUserSchema', many=True)
 
     collections = base_fields.Nested('BaseMissionCollectionSchema', many=True)
 
@@ -57,7 +57,7 @@ class DetailedMissionSchema(CreationMissionSchema):
 
     class Meta(CreationMissionSchema.Meta):
         fields = CreationMissionSchema.Meta.fields + (
-            'owner',
+            'owner_guid',
             'assigned_users',
             'collections',
             'tasks',
@@ -87,6 +87,8 @@ class BaseMissionCollectionSchema(ModelSchema):
             MissionCollection.major_type.key,
             MissionCollection.description.key,
             'asset_count',
+            'elasticsearchable',
+            MissionCollection.indexed.key,
         )
         dump_only = (
             MissionCollection.guid.key,
@@ -146,6 +148,8 @@ class BaseMissionTaskSchema(ModelSchema):
             MissionTask.guid.key,
             MissionTask.title.key,
             'mission',
+            'elasticsearchable',
+            MissionTask.indexed.key,
         )
         dump_only = (MissionTask.guid.key,)
 
@@ -159,6 +163,8 @@ class BaseMissionTaskTableSchema(ModelSchema):
             MissionTask.guid.key,
             MissionTask.title.key,
             'asset_count',
+            'elasticsearchable',
+            MissionTask.indexed.key,
         )
         dump_only = (MissionTask.guid.key,)
 
@@ -168,9 +174,7 @@ class DetailedMissionTaskSchema(BaseMissionTaskSchema):
     Detailed MissionTask schema exposes all useful fields.
     """
 
-    owner = base_fields.Nested('PublicUserSchema', many=False)
-
-    assigned_users = base_fields.Nested('PublicUserSchema', many=True)
+    assigned_users = base_fields.Nested('BaseUserSchema', many=True)
 
     assets = base_fields.Nested(
         'BaseAssetSchema',
@@ -186,7 +190,7 @@ class DetailedMissionTaskSchema(BaseMissionTaskSchema):
         fields = BaseMissionTaskSchema.Meta.fields + (
             MissionTask.updated.key,
             MissionTask.type.key,
-            'owner',
+            'owner_guid',
             'assigned_users',
             'assets',
             'annotations',

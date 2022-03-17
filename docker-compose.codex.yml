@@ -44,7 +44,7 @@ services:
 
   elasticsearch:
     # https://www.elastic.co/guide/en/elasticsearch/reference/current/docker.html
-    image: docker.elastic.co/elasticsearch/elasticsearch-oss:7.10.1
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.17.0
     depends_on:
       redis:
         condition: service_healthy
@@ -53,8 +53,12 @@ services:
       interval: 10s
       timeout: 5s
       retries: 60
-    # volumes:
-    #   - es-var:/usr/share/elasticsearch/data
+    volumes:
+      - es-var1:/usr/share/elasticsearch/data
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
     networks:
       - intranet
     ports:
@@ -62,7 +66,76 @@ services:
       - 9200:9200
       - 9300:9300
     environment:
-      "discovery.type": single-node
+      - node.name=elasticsearch
+      - discovery.seed_hosts=elasticsearch2,elasticsearch3
+      - cluster.initial_master_nodes=elasticsearch,elasticsearch2,elasticsearch3
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+
+  elasticsearch2:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.17.0
+    depends_on:
+      - elasticsearch
+    healthcheck:
+      test: ["CMD-SHELL", "curl --silent --fail localhost:9200/_cluster/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 60
+    volumes:
+      - es-var2:/usr/share/elasticsearch/data
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    networks:
+      - intranet
+    environment:
+      - node.name=elasticsearch2
+      - discovery.seed_hosts=elasticsearch,elasticsearch3
+      - cluster.initial_master_nodes=elasticsearch,elasticsearch2,elasticsearch3
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+
+  elasticsearch3:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.17.0
+    depends_on:
+      - elasticsearch2
+    healthcheck:
+      test: ["CMD-SHELL", "curl --silent --fail localhost:9200/_cluster/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 60
+    volumes:
+      - es-var3:/usr/share/elasticsearch/data
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    networks:
+      - intranet
+    environment:
+      - node.name=elasticsearch3
+      - discovery.seed_hosts=elasticsearch,elasticsearch2
+      - cluster.initial_master_nodes=elasticsearch,elasticsearch2,elasticsearch3
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:7.17.0
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl --silent --fail localhost:5601/status || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 60
+    networks:
+      - intranet
+    ports:
+      - 5601:5601
+    environment:
+      ELASTICSEARCH_HOSTS: "http://${ELASTICSEARCH_HOSTS}"
 
   acm:
     # https://github.com/WildMeOrg/wildbook-ia
@@ -122,7 +195,7 @@ services:
     build: &houston-build
       context: .
       target: main
-    command: ["invoke", "app.run", "--host", "0.0.0.0"]
+    command: ["invoke", "app.run"]
     depends_on:
       db:
         condition: service_healthy
@@ -183,7 +256,7 @@ services:
   celery_beat:
     image: wildme/houston:latest
     build: *houston-build
-    command: ["celery", "-A", "app.extensions.celery.celery", "beat", "-s", "/data/var/celerybeat-schedule", "-l", "DEBUG"]
+    command: ["celery", "-A", "app.extensions.celery.celery", "beat", "-s", "/data/var/celerybeat-schedule", "-l", "INFO"]
     depends_on:
       houston:
         condition: service_healthy
@@ -200,7 +273,7 @@ services:
   celery_worker:
     image: wildme/houston:latest
     build: *houston-build
-    command: ["celery", "-A", "app.extensions.celery.celery", "worker", "-l", "DEBUG"]
+    command: ["celery", "-A", "app.extensions.celery.celery", "worker", "-l", "INFO", "--pool=gevent"]
     depends_on:
       houston:
         condition: service_healthy
@@ -266,7 +339,9 @@ networks:
 volumes:
   db-pgdata-var:
   edm-var:
-  # es-var:
+  es-var1:
+  es-var2:
+  es-var3:
   redis-var:
   acm-database-var:
   acm-cache-var:

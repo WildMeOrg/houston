@@ -12,10 +12,10 @@ from flask_restx_patched import Resource
 from flask_restx._http import HTTPStatus
 from datetime import datetime  # NOQA
 import dateutil
+import uuid
 
 from app.extensions import db
 from app.extensions.api import Namespace
-from app.extensions.api.parameters import PaginationParameters
 from app.modules.users import permissions
 from app.modules.users.permissions.types import AccessOperation
 
@@ -43,16 +43,13 @@ class Relationships(Resource):
         },
     )
     @api.login_required(oauth_scopes=['relationships:read'])
-    @api.parameters(PaginationParameters())
     @api.response(schemas.BaseRelationshipSchema(many=True))
+    @api.paginate()
     def get(self, args):
         """
         List of Relationship.
-
-        Returns a list of Relationship starting from ``offset`` limited by ``limit``
-        parameter.
         """
-        return Relationship.query.offset(args['offset']).limit(args['limit'])
+        return Relationship.query_search(args=args)
 
     @api.permission_required(
         permissions.ModuleAccessPermission,
@@ -99,8 +96,8 @@ class Relationships(Resource):
             ):
                 with context:
                     relationship = Relationship(
-                        request_in['individual_1_guid'],
-                        request_in['individual_2_guid'],
+                        uuid.UUID(request_in['individual_1_guid']),
+                        uuid.UUID(request_in['individual_2_guid']),
                         request_in['individual_1_role'],
                         request_in['individual_2_role'],
                     )
@@ -140,6 +137,38 @@ class Relationships(Resource):
                     self,
                 )
             return relationship
+
+
+@api.route('/search')
+@api.login_required(oauth_scopes=['relationships:read'])
+class RelationshipElasticsearch(Resource):
+    @api.permission_required(
+        permissions.ModuleAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'module': Relationship,
+            'action': AccessOperation.READ,
+        },
+    )
+    @api.response(schemas.BaseRelationshipSchema(many=True))
+    @api.paginate()
+    def get(self, args):
+        search = {}
+        args['total'] = True
+        return Relationship.elasticsearch(search, **args)
+
+    @api.permission_required(
+        permissions.ModuleAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'module': Relationship,
+            'action': AccessOperation.READ,
+        },
+    )
+    @api.response(schemas.BaseRelationshipSchema(many=True))
+    @api.paginate()
+    def post(self, args):
+        search = request.get_json()
+        args['total'] = True
+        return Relationship.elasticsearch(search, **args)
 
 
 @api.route('/<uuid:relationship_guid>')

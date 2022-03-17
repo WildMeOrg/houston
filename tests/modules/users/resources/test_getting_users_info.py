@@ -74,6 +74,7 @@ def test_getting_list_of_users_by_authorized_user(
 
     desired_user_data = {
         'guid': str(user_manager_user.guid),
+        'elasticsearchable': user_manager_user.elasticsearchable,
         'email': user_manager_user.email,
         'full_name': user_manager_user.full_name,
         'is_active': True,
@@ -83,14 +84,18 @@ def test_getting_list_of_users_by_authorized_user(
         'is_staff': False,
         'is_researcher': False,
         'is_user_manager': True,
+        'is_data_manager': False,
         'is_admin': False,
+        'indexed': f'{user_manager_user.indexed.isoformat()}+00:00',
         'in_alpha': True,
         'in_beta': False,
         'is_email_confirmed': False,
         'profile_fileupload': {
             'created': f'{fup.created.isoformat()}+00:00',
+            'elasticsearchable': fup.elasticsearchable,
             'updated': f'{fup.updated.isoformat()}+00:00',
             'guid': str(fup.guid),
+            'indexed': f'{fup.indexed.isoformat()}+00:00',
             'mime_type': 'image/jpeg',
             'src': f'/api/v1/fileuploads/src/{fup.guid}',
         },

@@ -245,6 +245,12 @@ class Notification(db.Model, HoustonModel):
 
     created = db.Column(db.DateTime, index=True, default=datetime.utcnow, nullable=False)
 
+    @classmethod
+    def get_elasticsearch_schema(cls):
+        from app.modules.notifications.schemas import BaseNotificationSchema
+
+        return BaseNotificationSchema
+
     def __repr__(self):
         return (
             '<{class_name}('
@@ -495,5 +501,7 @@ class UserNotificationPreferences(db.Model, NotificationPreferences):
     def get_user_preferences(cls, user):
         prefs = SystemNotificationPreferences.get().preferences
         if user.notification_preferences:
-            prefs.update(user.notification_preferences[0].preferences)
+            user_prefs = user.notification_preferences[0].preferences
+            if user_prefs is not None:
+                prefs.update(user_prefs)
         return prefs

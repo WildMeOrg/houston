@@ -17,7 +17,6 @@ from marshmallow import ValidationError
 
 from app.extensions import db
 from app.extensions.api import Namespace
-from app.extensions.api.parameters import PaginationParameters
 from app.modules.users.permissions.types import AccessOperation
 from app.utils import HoustonException
 from app.modules.users import permissions
@@ -47,16 +46,13 @@ class Collaborations(Resource):
             'action': AccessOperation.READ,
         },
     )
-    @api.parameters(PaginationParameters())
     @api.response(schemas.BaseCollaborationSchema(many=True))
+    @api.paginate(parameters.GetCollaborationsParameters())
     def get(self, args):
         """
         List of Collaboration.
-
-        Returns a list of Collaboration starting from ``offset`` limited by ``limit``
-        parameter.
         """
-        return Collaboration.query.offset(args['offset']).limit(args['limit'])
+        return Collaboration.query_search(args=args)
 
     @api.permission_required(
         permissions.ModuleAccessPermission,
@@ -133,6 +129,39 @@ class Collaborations(Resource):
         )
 
         return collaboration
+
+
+@api.route('/search')
+@api.login_required(oauth_scopes=['collaborations:read'])
+class CollaborationElasticsearch(Resource):
+    @api.permission_required(
+        permissions.ModuleAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'module': Collaboration,
+            'action': AccessOperation.READ,
+        },
+    )
+    @api.response(schemas.DetailedCollaborationSchema(many=True))
+    @api.paginate()
+    def get(self, args):
+        search = {}
+        args['total'] = True
+        return Collaboration.elasticsearch(search, **args)
+
+    @api.permission_required(
+        permissions.ModuleAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'module': Collaboration,
+            'action': AccessOperation.READ,
+        },
+    )
+    @api.response(schemas.DetailedCollaborationSchema(many=True))
+    @api.paginate()
+    def post(self, args):
+        search = request.get_json()
+
+        args['total'] = True
+        return Collaboration.elasticsearch(search, **args)
 
 
 @api.route('/<uuid:collaboration_guid>')

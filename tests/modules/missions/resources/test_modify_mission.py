@@ -15,7 +15,9 @@ def test_modify_mission_users(db, flask_app_client, data_manager_1, data_manager
     from app.modules.missions.models import Mission
 
     response = mission_utils.create_mission(
-        flask_app_client, data_manager_1, 'This is a test mission, please ignore'
+        flask_app_client,
+        data_manager_1,
+        mission_utils.make_name('mission')[1],
     )
     mission_guid = response.json['guid']
 
@@ -43,7 +45,9 @@ def test_modify_mission_users(db, flask_app_client, data_manager_1, data_manager
 def test_owner_permission(flask_app_client, data_manager_1, data_manager_2):
 
     response = mission_utils.create_mission(
-        flask_app_client, data_manager_1, 'This is a test mission, please ignore'
+        flask_app_client,
+        data_manager_1,
+        mission_utils.make_name('mission')[1],
     )
     mission_guid = response.json['guid']
 

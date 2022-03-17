@@ -361,6 +361,12 @@ class User(db.Model, FeatherModel, UserEDMMixin):
         )
 
     @classmethod
+    def get_elasticsearch_schema(cls):
+        from app.modules.users.schemas import UserListSchema
+
+        return UserListSchema
+
+    @classmethod
     def get_admins(cls):
         # used for first run admin creation
         users = cls.query.all()  # NOQA
@@ -512,7 +518,11 @@ class User(db.Model, FeatherModel, UserEDMMixin):
 
     @classmethod
     def query_search_term_hook(cls, term):
+        from sqlalchemy_utils.functions import cast_if
+        from sqlalchemy import String
+
         return (
+            cast_if(cls.guid, String).contains(term),
             cls.email.contains(term),
             cls.affiliation.contains(term),
             cls.forum_id.contains(term),
@@ -606,6 +616,7 @@ class User(db.Model, FeatherModel, UserEDMMixin):
     def get_collaboration_associations(self):
         return self.user_collaboration_associations
 
+    @module_required('notifications', resolve='warn', default=[])
     def get_notification_preferences(self):
         from app.modules.notifications.models import UserNotificationPreferences
 

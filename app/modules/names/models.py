@@ -68,6 +68,12 @@ class Name(db.Model, HoustonModel, Timestamp):
     # this will ensure individual+context is unique (one context per individual)
     __table_args__ = (db.UniqueConstraint(context, individual_guid),)
 
+    @classmethod
+    def get_elasticsearch_schema(cls):
+        from app.modules.names.schemas import DetailedNameSchema
+
+        return DetailedNameSchema
+
     def __repr__(self):
         return (
             '<{class_name}('

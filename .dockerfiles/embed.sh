@@ -2,6 +2,10 @@
 
 set -ex
 
+mkdir -p ${DATA_ROOT}
+
+chown nobody ${DATA_ROOT}
+
 source /docker-entrypoint.sh
 
 docker_setup_env

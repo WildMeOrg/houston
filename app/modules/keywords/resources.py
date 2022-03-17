@@ -12,7 +12,6 @@ from flask_restx._http import HTTPStatus
 
 from app.extensions import db
 from app.extensions.api import Namespace
-from app.extensions.api.parameters import PaginationParameters
 from app.modules.users import permissions
 from app.modules.users.permissions.types import AccessOperation
 
@@ -31,16 +30,13 @@ class Keywords(Resource):
     Manipulations with Keywords.
     """
 
-    @api.parameters(PaginationParameters())
     @api.response(schemas.BaseKeywordSchema(many=True))
+    @api.paginate()
     def get(self, args):
         """
         List of Keyword.
-
-        Returns a list of Keyword starting from ``offset`` limited by ``limit``
-        parameter.
         """
-        return Keyword.query.all()
+        return Keyword.query_search(args=args)
 
     @api.permission_required(
         permissions.ModuleAccessPermission,

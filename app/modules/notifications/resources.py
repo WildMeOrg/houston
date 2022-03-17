@@ -7,6 +7,7 @@ RESTful API Notifications resources
 
 import logging
 
+from flask import request
 from flask_login import current_user  # NOQA
 from flask_restx_patched import Resource
 from flask_restx_patched._http import HTTPStatus
@@ -57,7 +58,9 @@ class MyNotifications(Resource):
         returned_notifications = Notification.get_notifications_for_user(current_user)
 
         # Manually apply offset and limit after the unique list is created
-        return returned_notifications[args['offset'] : args['limit'] - args['offset']]
+        offset = args['offset']
+        limit = args['limit']
+        return returned_notifications[offset : offset + limit]
 
     # No reason we should allow the frontend to create an arbitrary notification and many security
     # reasons that we should not. Code retained in case this decision is reversed.
@@ -83,6 +86,39 @@ class MyNotifications(Resource):
     #         notification = Notification(**args)
     #         db.session.add(notification)
     #     return notification
+
+
+@api.route('/search')
+@api.login_required(oauth_scopes=['notifications:read'])
+class NotificationElasticsearch(Resource):
+    @api.permission_required(
+        permissions.ModuleAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'module': Notification,
+            'action': AccessOperation.READ,
+        },
+    )
+    @api.response(schemas.DetailedNotificationSchema(many=True))
+    @api.paginate()
+    def get(self, args):
+        search = {}
+        args['total'] = True
+        return Notification.elasticsearch(search, **args)
+
+    @api.permission_required(
+        permissions.ModuleAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'module': Notification,
+            'action': AccessOperation.READ,
+        },
+    )
+    @api.response(schemas.DetailedNotificationSchema(many=True))
+    @api.paginate()
+    def post(self, args):
+        search = request.get_json()
+
+        args['total'] = True
+        return Notification.elasticsearch(search, **args)
 
 
 @api.route('/unread')
@@ -112,7 +148,9 @@ class MyUnreadNotifications(Resource):
             current_user
         )
         # Manually apply offset and limit after the list is created
-        return unread_notifications[args['offset'] : args['limit'] - args['offset']]
+        offset = args['offset']
+        limit = args['limit']
+        return unread_notifications[offset : offset + limit]
 
 
 @api.route('/all_unread')
@@ -129,20 +167,13 @@ class AllUnreadNotifications(Resource):
             'action': AccessOperation.READ_PRIVILEGED,
         },
     )
-    @api.parameters(PaginationParameters())
     @api.response(schemas.DetailedNotificationSchema(many=True))
+    @api.paginate(parameters.ListAllUnreadNotifications())
     def get(self, args):
         """
         List of Notifications for all users with no preferences applied.
-
-        Returns a list of Notification starting from ``offset`` limited by ``limit``
-        parameter.
         """
-        from sqlalchemy import desc
-
-        notifications = Notification.query.order_by(desc(Notification.created)).all()
-        # Manually apply offset and limit after the list is created
-        return notifications[args['offset'] : args['limit'] - args['offset']]
+        return Notification.query_search(args=args)
 
 
 @api.route('/<uuid:notification_guid>')

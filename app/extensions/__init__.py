@@ -9,8 +9,10 @@ Extensions provide access to common resources of the application.
 Please, put new extension instantiations and initializations here.
 """
 import re  # NOQA
+import sys  # NOQA
 import uuid  # NOQA
 import json  # NOQA
+import tqdm  # NOQA
 from datetime import datetime  # NOQA
 import logging as logging_native  # NOQA
 from .logging import Logging  # NOQA
@@ -20,13 +22,17 @@ logging = Logging()
 import flask.json  # NOQA
 
 from .flask_sqlalchemy import SQLAlchemy  # NOQA
+import sqlalchemy as sa  # NOQA
 from sqlalchemy.ext import mutable  # NOQA
+from flask_caching import Cache  # NOQA
 from sqlalchemy.types import TypeDecorator, CHAR  # NOQA
 from sqlalchemy.sql import elements  # NOQA
 from sqlalchemy.dialects.postgresql import UUID  # NOQA
 from sqlalchemy_utils import types as column_types  # NOQA
 
 db = SQLAlchemy()
+
+cache = Cache()
 
 from sqlalchemy_utils import force_auto_coercion, force_instant_defaults  # NOQA
 
@@ -317,6 +323,30 @@ class Timestamp(object):
 
     created = db.Column(db.DateTime, index=True, default=datetime.utcnow, nullable=False)
     updated = db.Column(db.DateTime, index=True, default=datetime.utcnow, nullable=False)
+    indexed = db.Column(db.DateTime, index=True, default=datetime.utcnow, nullable=False)
+
+
+@sa.event.listens_for(Timestamp, 'before_update', propagate=True)
+def timestamp_before_update(mapper, connection, target):
+    # When a model with a timestamp is updated; force update the updated
+    # timestamp.
+
+    # We are about to update the timestamp of the object, but first check if the update effects the indexed time
+    indexed = target._sa_instance_state.committed_state.get('indexed', None)
+    if indexed is None:
+        updated = datetime.utcnow()
+    else:
+        updated = indexed
+
+    target.updated = updated
+    target._sa_instance_state.committed_state['updated'] = updated
+
+    if indexed is not None:
+        assert indexed == updated
+        assert (
+            target._sa_instance_state.committed_state['indexed']
+            == target._sa_instance_state.committed_state['updated']
+        )
 
 
 class TimestampViewed(Timestamp):
@@ -326,6 +356,34 @@ class TimestampViewed(Timestamp):
 
     def view(self):
         self.viewed = datetime.utcnow()
+
+
+if elasticsearch is None:
+
+    def register_elasticsearch_model(*args, **kwargs):
+        pass
+
+    def elasticsearch_context(*args, **kwargs):
+        import contextlib
+
+        context = contextlib.nullcontext()
+        return context
+
+    class ElasticsearchModel(object):
+        pass
+
+else:
+
+    def register_elasticsearch_model(*args, **kwargs):
+        return elasticsearch.register_elasticsearch_model(*args, **kwargs)
+
+    def elasticsearch_context(*args, **kwargs):
+        from app.extensions import elasticsearch as es
+
+        context = es.session.begin(*args, **kwargs)
+        return context
+
+    ElasticsearchModel = elasticsearch.ElasticsearchModel
 
 
 class GhostModel(object):
@@ -340,7 +398,7 @@ class GhostModel(object):
     """
 
 
-class FeatherModel(GhostModel, TimestampViewed):
+class FeatherModel(GhostModel, TimestampViewed, ElasticsearchModel):
     """
     A light-weight model that 1) stores critical information concerning security
     and permissions or 2) gives Houston insight on frequently-cached information
@@ -369,26 +427,15 @@ class FeatherModel(GhostModel, TimestampViewed):
     Houston Read Access  : YES
     """
 
-    def is_public(self):
-        return False
-
-    def current_user_has_view_permission(self):
-        from app.modules.users.permissions.rules import ObjectActionRule
-        from app.modules.users.permissions.types import AccessOperation
-
-        rule = ObjectActionRule(obj=self, action=AccessOperation.READ)
-        return rule.check()
-
-    def current_user_has_edit_permission(self):
-        from app.modules.users.permissions.rules import ObjectActionRule
-        from app.modules.users.permissions.types import AccessOperation
-
-        rule = ObjectActionRule(obj=self, action=AccessOperation.WRITE)
-        return rule.check()
-
     @classmethod
-    def query_search(cls, search=None):
+    def query_search(cls, search=None, args=None):
         from sqlalchemy import or_, and_
+
+        if args is not None:
+            search = args.get('search', None)
+
+        if search is not None and len(search) == 0:
+            search = None
 
         if search is not None:
             search = search.strip().replace(',', ' ').split(' ')
@@ -418,6 +465,23 @@ class FeatherModel(GhostModel, TimestampViewed):
             return []
         return cls.query.filter(cls.guid.in_(guids)).all()
 
+    def is_public(self):
+        return False
+
+    def current_user_has_view_permission(self):
+        from app.modules.users.permissions.rules import ObjectActionRule
+        from app.modules.users.permissions.types import AccessOperation
+
+        rule = ObjectActionRule(obj=self, action=AccessOperation.READ)
+        return rule.check()
+
+    def current_user_has_edit_permission(self):
+        from app.modules.users.permissions.rules import ObjectActionRule
+        from app.modules.users.permissions.types import AccessOperation
+
+        rule = ObjectActionRule(obj=self, action=AccessOperation.WRITE)
+        return rule.check()
+
 
 class HoustonModel(FeatherModel):
     """
@@ -444,10 +508,11 @@ db.JSON = JSON
 ##########################################################################################
 
 
-def parallel(worker_func, args_list, kwargs_list=None, thread=True, workers=None):
+def parallel(
+    worker_func, args_list, kwargs_list=None, thread=True, workers=None, desc=None
+):
     from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
     import multiprocessing
-    import tqdm
 
     args_list = list(args_list)
 
@@ -456,6 +521,9 @@ def parallel(worker_func, args_list, kwargs_list=None, thread=True, workers=None
 
     if kwargs_list is None:
         kwargs_list = [{}] * len(args_list)
+
+    if desc is None:
+        desc = worker_func.__name__
 
     executor = ThreadPoolExecutor if thread else ProcessPoolExecutor
 
@@ -503,6 +571,7 @@ def init_app(app, force_enable=False, force_disable=None):
         'logging': logging,
         'sentry': sentry,
         'db': db,
+        'cache': cache,
         'api': api,
         'config': config,
         'oauth2': oauth2,

@@ -17,7 +17,11 @@ class BaseAuditLogSchema(ModelSchema):
     class Meta:
         # pylint: disable=missing-docstring
         model = AuditLog
-        fields = (AuditLog.guid.key,)
+        fields = (
+            AuditLog.guid.key,
+            'elasticsearchable',
+            AuditLog.indexed.key,
+        )
         dump_only = (AuditLog.guid.key,)
 
 

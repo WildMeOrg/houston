@@ -23,6 +23,8 @@ class BaseCollaborationSchema(ModelSchema):
         fields = (
             Collaboration.guid.key,
             'members',
+            'elasticsearchable',
+            Collaboration.indexed.key,
         )
         dump_only = (Collaboration.guid.key,)
 

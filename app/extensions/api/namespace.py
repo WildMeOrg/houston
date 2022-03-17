@@ -8,6 +8,7 @@ from functools import wraps
 import logging
 
 import flask_marshmallow
+import flask_sqlalchemy
 import sqlalchemy
 
 from flask_restx_patched.namespace import Namespace as BaseNamespace
@@ -95,7 +96,11 @@ class Namespace(BaseNamespace):
                 name = name[: -len('Schema')]
         return super(Namespace, self).model(name=name, model=model, **kwargs)
 
-    def paginate(self, parameters=None, locations=None):
+    def paginate(
+        self,
+        parameters=None,
+        locations=None,
+    ):
         """
         Endpoint parameters registration decorator special for pagination.
         If ``parameters`` is not provided default PaginationParameters will be
@@ -120,12 +125,53 @@ class Namespace(BaseNamespace):
         def decorator(func):
             @wraps(func)
             def wrapper(self_, parameters_args, *args, **kwargs):
-                queryset = func(self_, parameters_args, *args, **kwargs)
-                total_count = queryset.count()
+                offset = parameters_args['offset']
+                limit = parameters_args['limit']
+                sort = parameters_args['sort']
+                reverse = parameters_args['reverse']
+                reverse_after = parameters_args.pop('reverse_after', False)
+
+                query = func(self_, parameters_args, *args, **kwargs)
+
+                if not isinstance(query, flask_sqlalchemy.BaseQuery):
+                    if query is None or len(query) == 0:
+                        total_count, response = 0, []
+                    else:
+                        assert (
+                            len(query) == 2
+                        ), 'This may happen when @api.paginate is above @api.response'
+                        total_count, response = query
+                        assert isinstance(total_count, int)
+                else:
+                    cls = query.column_descriptions[0].get('entity')
+
+                    sort = sort.lower()
+                    if sort == 'guid':
+                        sort_column = cls.guid
+                    else:
+                        sort_column = None
+                        for column in list(cls.__table__.columns):
+                            if column.name.lower() == sort:
+                                sort_column = column
+                        if sort_column is None:
+                            log.warning(
+                                'The sort field %r is unrecognized, defaulting to GUID'
+                                % (sort,)
+                            )
+                            sort_column = cls.guid
+
+                    sort_func = sort_column.desc if reverse else sort_column.asc
+
+                    total_count = query.count()
+                    query = query.order_by(sort_func()).offset(offset).limit(limit)
+                    if reverse_after:
+                        after_sort_func = sort_column.asc if reverse else sort_column.desc
+                        query = query.from_self().order_by(after_sort_func())
+
+                    response = query
+
                 return (
-                    queryset.offset(parameters_args['offset']).limit(
-                        parameters_args['limit']
-                    ),
+                    response,
                     HTTPStatus.OK,
                     {'X-Total-Count': total_count},
                 )

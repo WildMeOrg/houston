@@ -54,10 +54,12 @@ def test_create_asset_group_detection(session, codex_url, test_root, login):
                 'annotations': response_json['assets'][0]['annotations'],
                 'created': response_json['assets'][0]['created'],
                 'updated': response_json['assets'][0]['updated'],
+                'indexed': response_json['assets'][0]['indexed'],
                 'dimensions': {
                     'height': 664,
                     'width': 1000,
                 },
+                'elasticsearchable': response_json['assets'][0]['elasticsearchable'],
             }
         ],
         'completion': 10,
@@ -81,6 +83,8 @@ def test_create_asset_group_detection(session, codex_url, test_root, login):
         'guid': ags_guid,
         'curation_start_time': response.json()['curation_start_time'],
         'detection_start_time': response.json()['detection_start_time'],
+        'elasticsearchable': response.json()['elasticsearchable'],
+        'indexed': response.json()['indexed'],
         'asset_group_guid': asset_group_guid,
         'sighting_guid': None,
         'creator': {

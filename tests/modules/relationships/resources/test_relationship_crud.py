@@ -6,6 +6,8 @@ import logging
 from tests.utils import module_unavailable
 from datetime import datetime, timedelta  # NOQA
 import pytest
+import uuid
+
 
 log = logging.getLogger(__name__)
 
@@ -104,6 +106,9 @@ def test_create_read_delete_relationship(
     )
 
     relationship_1 = Relationship.query.get(relationship_guid)
+
+    individual_1_guid = uuid.UUID(individual_1_guid)
+    individual_2_guid = uuid.UUID(individual_2_guid)
 
     assert relationship_1.has_individual(individual_1_guid)
     assert relationship_1.has_individual(individual_2_guid)

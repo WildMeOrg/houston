@@ -7,15 +7,14 @@ RESTful API Assets resources
 
 import logging
 
-from flask import send_file
+from flask import send_file, request
 
 from flask_restx_patched import Resource
 from flask_restx_patched._http import HTTPStatus
-from app.extensions import db
+from app.extensions import db, elasticsearch_context
 from app.extensions.api import Namespace
 from app.modules.users import permissions
 from app.modules.users.permissions.types import AccessOperation
-from app.extensions.api.parameters import PaginationParameters
 import werkzeug
 
 from .models import Asset
@@ -43,17 +42,12 @@ class Assets(Resource):
     )
     @api.login_required(oauth_scopes=['assets:read'])
     @api.response(schemas.BaseAssetSchema(many=True))
-    @api.parameters(PaginationParameters())
+    @api.paginate()
     def get(self, args):
         """
         List of Assets.
-
-        Returns a list of Asset starting from ``offset`` limited by ``limit``
-        parameter.
         """
-        return (
-            Asset.query.order_by(Asset.guid).offset(args['offset']).limit(args['limit'])
-        )
+        return Asset.query_search(args=args)
 
     # @api.permission_required(
     #     permissions.ModuleAccessPermission,
@@ -69,14 +63,50 @@ class Assets(Resource):
         """
         Patch Assets' details by ID.
         """
-        context = api.commit_or_abort(
-            db.session, default_error_message='Failed to bulk update Asset details.'
-        )
-        with context:
-            assets = parameters.PatchAssetParameters.perform_patch(args, obj_cls=Asset)
-            for asset in assets:
-                db.session.merge(asset)
+        with elasticsearch_context(forced=True):
+            context = api.commit_or_abort(
+                db.session, default_error_message='Failed to bulk update Asset details.'
+            )
+            with context:
+                assets = parameters.PatchAssetParameters.perform_patch(
+                    args, obj_cls=Asset
+                )
+                for asset in assets:
+                    db.session.merge(asset)
         return assets
+
+
+@api.route('/search')
+@api.login_required(oauth_scopes=['assets:read'])
+class AssetElasticsearch(Resource):
+    @api.permission_required(
+        permissions.ModuleAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'module': Asset,
+            'action': AccessOperation.READ,
+        },
+    )
+    @api.response(schemas.BaseAssetSchema(many=True))
+    @api.paginate()
+    def get(self, args):
+        search = {}
+        args['total'] = True
+        return Asset.elasticsearch(search, **args)
+
+    @api.permission_required(
+        permissions.ModuleAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'module': Asset,
+            'action': AccessOperation.READ,
+        },
+    )
+    @api.response(schemas.BaseAssetSchema(many=True))
+    @api.paginate()
+    def post(self, args):
+        search = request.get_json()
+
+        args['total'] = True
+        return Asset.elasticsearch(search, **args)
 
 
 @api.route('/<uuid:asset_guid>')

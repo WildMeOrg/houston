@@ -131,6 +131,16 @@ def test_configure_app_from_env_vars(monkeypatch):
 
 
 @pytest.mark.only_for_codex
+def test_max_content_length_codex(flask_app):
+    assert flask_app.config['MAX_CONTENT_LENGTH'] == 30 * 1024 * 1024
+
+
+@pytest.mark.only_for_mws
+def test_max_content_length_mws(flask_app):
+    assert flask_app.config['MAX_CONTENT_LENGTH'] == 100 * 1024 * 1024
+
+
+@pytest.mark.only_for_codex
 class TestAssetGroupConfig:
     @property
     def target_cls(self):

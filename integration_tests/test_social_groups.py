@@ -130,7 +130,7 @@ def test_social_groups(session, login, codex_url):
             'name': 'Family',
             'guid': social_group_id,
             'elasticsearchable': social_group['elasticsearchable'],
-            'indexed': response.json()['indexed'],
+            'indexed': response.json()[0]['indexed'],
         }
     ]
 

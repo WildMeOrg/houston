@@ -101,14 +101,6 @@ def configure_from_cli(app, config_override):
         )
 
 
-def configure_using_houston_flask_config(app):
-    from app.extensions.config import HoustonFlaskConfig
-
-    houston_flask_config = HoustonFlaskConfig(app.root_path)
-    houston_flask_config.from_mapping(app.config)
-    app.config = houston_flask_config
-
-
 def create_app(
     config_override={},
     testing=False,
@@ -136,9 +128,6 @@ def create_app(
 
     # Update app config from create_app arguments (passed from CLI)
     configure_from_cli(app, config_override)
-
-    # Replace app.config (flask.Config) with our HoustonFlaskConfig version
-    configure_using_houston_flask_config(app)
 
     # Set up celery using redis as the broker and result backend
     # Use the same redis instance as tus but use database "1"

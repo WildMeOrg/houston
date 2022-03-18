@@ -132,14 +132,7 @@ class EDMManager(RestManager):
             target=target,
         )
         if data.get('success', False):
-            edm_auth = current_app.config.get('EDM_AUTHENTICATIONS', {})
-            edm_auth[target] = {'username': email, 'password': password}
-            from app.extensions.config.models import HoustonConfig
-
-            HoustonConfig.set('EDM_AUTHENTICATIONS', edm_auth)
-            log.info(
-                f'Success creating startup (edm) admin user via API: {email}. (saved credentials in HoustonConfig)'
-            )
+            log.info(f'Success creating startup (edm) admin user via API: {email}.')
             return True
         else:
             log.warning(

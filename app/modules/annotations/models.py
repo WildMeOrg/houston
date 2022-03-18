@@ -118,12 +118,6 @@ class Annotation(db.Model, HoustonModel):
 
         return annot.get_job_debug(verbose)
 
-    @classmethod
-    def get_elasticsearch_schema(cls):
-        from app.modules.annotations.schemas import DetailedAnnotationSchema
-
-        return DetailedAnnotationSchema
-
     def get_job_debug(self, verbose):
         if self.encounter:
             return self.encounter.sighting.get_job_debug(self.guid, verbose)

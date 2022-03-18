@@ -66,6 +66,8 @@ class BaseMWSConfig(
     )
     # fmt: on
 
+    MAX_CONTENT_LENGTH = 100 * 1024 * 1024  # Maximum size of 100MB
+
 
 class ProductionConfig(BaseMWSConfig):
     TESTING = False

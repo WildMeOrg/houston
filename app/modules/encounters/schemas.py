@@ -81,6 +81,7 @@ class AugmentedEdmEncounterSchema(BaseEncounterSchema):
 
     createdHouston = base_fields.DateTime(attribute='created')
     updatedHouston = base_fields.DateTime(attribute='updated')
+    individual = base_fields.Nested('NamedIndividualSchema', many=False)
 
     class Meta(BaseEncounterSchema.Meta):
         fields = BaseEncounterSchema.Meta.fields + (
@@ -93,6 +94,7 @@ class AugmentedEdmEncounterSchema(BaseEncounterSchema):
             'annotations',
             'time',
             'timeSpecificity',
+            'individual',
         )
 
 
@@ -130,6 +132,4 @@ class AugmentedSightingApiEncounterSchema(BaseEncounterSchema):
             'hasView',
             'hasEdit',
             'individual',
-            'time',
-            'timeSpecificity',
         )

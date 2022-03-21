@@ -536,11 +536,11 @@ class Sighting(db.Model, FeatherModel):
                 )
                 raise ValueError('imbalanced encounter count between edm/feather')
 
-            from app.modules.encounters.schemas import AugmentedSightingApiEncounterSchema
+            from app.modules.encounters.schemas import AugmentedEdmEncounterSchema
 
             for encounter in self.encounters:  # now we augment each encounter
                 found_edm = id_to_encounter[str(encounter.guid)]
-                edm_schema = AugmentedSightingApiEncounterSchema()
+                edm_schema = AugmentedEdmEncounterSchema()
                 found_edm.update(edm_schema.dump(encounter).data)
 
         return edm_json

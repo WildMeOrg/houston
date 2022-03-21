@@ -17,14 +17,14 @@ log = logging.getLogger(__name__)
 
 class CollaborationUserState:
     ALLOWED_STATES = [
-        'declined',
+        'denied',
         'approved',
         'pending',
         'not_initiated',
         'revoked',
         'creator',
     ]
-    DECLINED = ALLOWED_STATES[0]
+    DENIED = ALLOWED_STATES[0]
     APPROVED = ALLOWED_STATES[1]
     PENDING = ALLOWED_STATES[2]
     NOT_INITIATED = ALLOWED_STATES[3]
@@ -256,20 +256,21 @@ class Collaboration(db.Model, HoustonModel):
         builder.set_collaboration(self)
         notif = Notification.create(notification_type, receiving_user_assoc.user, builder)
 
-        # in these states, every notification is considered to have been read/resolved
-        fully_resolved_notification_states = {
-            NotificationType.collab_edit_approved,
-            NotificationType.collab_edit_revoke,
-            NotificationType.collab_revoke,
-        }
-
         if notification_type is NotificationType.collab_request:
             self.init_req_notification_guid = notif.guid
         elif notification_type is NotificationType.collab_edit_request:
             self.edit_req_notification_guid = notif.guid
 
+        # in these states, every notification has been read/resolved
+        fully_resolved_notification_states = {
+            NotificationType.collab_edit_approved,
+            NotificationType.collab_edit_revoke,
+            NotificationType.collab_revoke,
+            NotificationType.collab_denied,
+        }
+
         # set necessary notification.is_resolved fields
-        elif notification_type is NotificationType.collab_approved:
+        if notification_type == NotificationType.collab_approved:
             if self.init_req_notification_guid:
                 Notification.resolve(self.init_req_notification_guid)
         elif notification_type in fully_resolved_notification_states:
@@ -304,11 +305,11 @@ class Collaboration(db.Model, HoustonModel):
         elif old_state == CollaborationUserState.PENDING:
             ret_val = new_state in [
                 CollaborationUserState.APPROVED,
-                CollaborationUserState.DECLINED,
+                CollaborationUserState.DENIED,
             ]
         elif old_state == CollaborationUserState.APPROVED:
             ret_val = new_state == CollaborationUserState.REVOKED
-        elif old_state == CollaborationUserState.DECLINED:
+        elif old_state == CollaborationUserState.DENIED:
             ret_val = new_state == CollaborationUserState.APPROVED
         elif old_state == CollaborationUserState.REVOKED:
             ret_val = new_state == CollaborationUserState.APPROVED
@@ -356,6 +357,12 @@ class Collaboration(db.Model, HoustonModel):
                                 association,
                                 self._get_association_for_other_user(user_guid),
                                 NotificationType.collab_approved,
+                            )
+                        elif state == CollaborationUserState.DENIED:
+                            self._notify_user(
+                                association,
+                                self._get_association_for_other_user(user_guid),
+                                NotificationType.collab_denied,
                             )
                         with db.session.begin(subtransactions=True):
                             db.session.merge(association)

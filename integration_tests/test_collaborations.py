@@ -74,7 +74,7 @@ def test_collaboration(session, codex_url, login, logout, admin_email):
     assert response.status_code == 409
     assert (
         response.json()['message']
-        == 'State "True" not in allowed states: declined, approved, pending, not_initiated, revoked, creator'
+        == 'State "True" not in allowed states: denied, approved, pending, not_initiated, revoked, creator'
     )
 
     # Approve collaboration
@@ -108,17 +108,17 @@ def test_collaboration(session, codex_url, login, logout, admin_email):
     assert response.status_code == 409
     assert (
         response.json()['message']
-        == 'State "False" not in allowed states: declined, approved, pending, not_initiated, revoked, creator'
+        == 'State "False" not in allowed states: denied, approved, pending, not_initiated, revoked, creator'
     )
 
     # Reject collaboration for edit
     response = session.patch(
         codex_url(f'/api/v1/collaborations/{collaboration_guid}'),
-        json=[{'op': 'replace', 'path': '/edit_permission', 'value': 'declined'}],
+        json=[{'op': 'replace', 'path': '/edit_permission', 'value': 'denied'}],
     )
     assert response.status_code == 200
     assert response.json()['members'][my_guid]['viewState'] == 'approved'
-    assert response.json()['members'][my_guid]['editState'] == 'declined'
+    assert response.json()['members'][my_guid]['editState'] == 'denied'
     assert response.json()['members'][new_user_guid]['viewState'] == 'approved'
     assert response.json()['members'][new_user_guid]['editState'] == 'approved'
 

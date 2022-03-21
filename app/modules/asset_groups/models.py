@@ -10,6 +10,7 @@ from flask_login import current_user  # NOQA
 from datetime import datetime  # NOQA
 from app.extensions import db, HoustonModel
 import app.extensions.logging as AuditLog  # NOQA
+from app.extensions.acm import from_acm_uuid
 from app.extensions.git_store import GitStore
 from app.modules.annotations.models import Annotation
 from app.modules.assets.models import Asset
@@ -522,8 +523,11 @@ class AssetGroupSighting(db.Model, HoustonModel):
                 asset = self.asset_group.get_asset_for_file(filename)
                 assert asset
                 if asset.guid not in asset_guids:
-                    asset_guids.append(asset.guid)
+                    asset_guids.append(str(asset.guid))
 
+        # Sort the Asset GUIDS so that when processing the response we know which
+        # content guid relates to which asset guid
+        asset_guids.sort()
         model_config['image_uuid_list'] = json.dumps(
             [
                 f'houston+{urljoin(asset_url, str(asset_guid))}'
@@ -641,16 +645,26 @@ class AssetGroupSighting(db.Model, HoustonModel):
             )
 
         annotations = []
-        for i, asset_id in enumerate(job['asset_ids']):
+        # Populate Asset Content guids, ordered by Asset Guids as that is the order they were sent in
+        sorted_asset_ids = job['asset_ids']
+        sorted_asset_ids.sort()
+        log.debug(f'Received Image UUIDs {sage_image_uuids} in detection response')
+        all_images = current_app.acm.request_passthrough_result('assets.list', 'get', {})
+        log.debug(f'Sage thinks the images it has are {all_images}')
+
+        for i, asset_id in enumerate(sorted_asset_ids):
             asset = Asset.find(asset_id)
             if not asset:
                 raise HoustonException(log, f'Asset Id {asset_id} not found')
-
+            asset.content_guid = from_acm_uuid(sage_image_uuids[i])
+            log.debug(
+                f'Asset {asset.guid} now has content guid {asset.content_guid} from {sage_image_uuids[i]}'
+            )
             results = results_list[i]
 
             for annot_id in range(len(results)):
                 annot_data = results[annot_id]
-                content_guid = annot_data.get('uuid', {}).get('__UUID__')
+                content_guid = from_acm_uuid(annot_data.get('uuid', {}))
                 ia_class = annot_data.get('class', None)
                 # TODO sage returns "null" as the viewpoint, when it always
                 # returns a viewpoint, we can remove the "or 'unknown'" part

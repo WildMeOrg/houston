@@ -306,6 +306,20 @@ def test_asset_group_sightings(session, login, codex_url, test_root):
         },
     )
 
+    # Create a manual annotation on one of the assets
+    asset_guid = assets[0]['guid']
+    annot_create_response = session.post(
+        codex_url('/api/v1/annotations/'),
+        json={
+            'asset_guid': asset_guid,
+            'ia_class': 'noddy',
+            'viewpoint': 'underneath',
+            'bounds': {'rect': [45, 23, 233, 112]},
+        },
+    )
+    assert annot_create_response.status_code == 200
+    assert len(annot_create_response.json()['assets']) == 1
+
     # Commit asset group sighting (becomes sighting)
     response = session.post(codex_url(f'/api/v1/asset_groups/sighting/{ags_guid}/commit'))
     assert response.status_code == 200

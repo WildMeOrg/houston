@@ -35,6 +35,20 @@ def from_acm_uuid(uuid_str):
     return uuid.UUID(uuid_str['__UUID__'])
 
 
+def default_acm_individual_uuid():
+    return '____'
+
+
+# all requests to ACM need to be fieldwise json encoded
+def encode_acm_request(request_in):
+    import json
+
+    encoded_request = {}
+    for key in request_in:
+        encoded_request[key] = json.dumps(request_in[key])
+    return encoded_request
+
+
 class ACMManager(RestManager):
     # pylint: disable=abstract-method
     """"""
@@ -47,6 +61,7 @@ class ACMManager(RestManager):
         'annotations': {
             'list': '//annot/json/',
             'data': '//annot/name/uuid/json/?annot_uuid_list=[{"__UUID__": "%s"}]',
+            'create': '//annot/json/',
         },
         'assets': {
             'list': '//image/json/',
@@ -84,7 +99,7 @@ class ACMManager(RestManager):
             message = (f'{tag} {method} failed to parse json response from Sage',)
             raise HoustonException(
                 log,
-                f'{message} Sage Status:{response.status_code} Sage Reason: {response.reason}',
+                f'{message} Sage Status:{response.status_code} Reason: {response.reason}, headers: {response.headers} Text: {response.text}',
                 AuditLog.AuditType.BackEndFault,
                 message=message,
             )

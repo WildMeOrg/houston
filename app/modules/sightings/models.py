@@ -6,7 +6,6 @@ Sightings database models
 import enum
 import logging
 import uuid
-import json
 from datetime import datetime  # NOQA
 from flask import current_app
 
@@ -602,7 +601,7 @@ class Sighting(db.Model, FeatherModel):
         return unique_annots
 
     def get_matching_set_data(self, matching_set_option):
-        from app.extensions.acm import to_acm_uuid
+        from app.extensions.acm import to_acm_uuid, default_acm_individual_uuid
 
         unique_annots = self._get_matching_set_annots(matching_set_option)
         matching_set_individual_uuids = []
@@ -618,7 +617,7 @@ class Sighting(db.Model, FeatherModel):
                             individual_guid = str(individual.guid)
                         else:
                             # Use Sage default value
-                            individual_guid = '____'
+                            individual_guid = default_acm_individual_uuid()
                         matching_set_individual_uuids.append(individual_guid)
 
         log.debug(
@@ -638,6 +637,8 @@ class Sighting(db.Model, FeatherModel):
     def build_identification_request(
         self, config_id, annotation_uuid, job_uuid, algorithm
     ):
+        from app.extensions.acm import default_acm_individual_uuid
+
         (
             matching_set_individual_uuids,
             matching_set_annot_uuids,
@@ -668,7 +669,7 @@ class Sighting(db.Model, FeatherModel):
             'callback_url': f'houston+{callback_url}',
             'callback_detailed': True,
             'matching_state_list': [],
-            'query_annot_name_list': ['____'],
+            'query_annot_name_list': [default_acm_individual_uuid()],
             'query_annot_uuid_list': [
                 to_acm_uuid(annotation_uuid),
             ],
@@ -684,6 +685,7 @@ class Sighting(db.Model, FeatherModel):
         self, config_id, algorithm_id, annotation_uuid, annotation_sage_uuid
     ):
         from datetime import datetime
+        from app.extensions.acm import encode_acm_request
 
         if not self.id_configs:
             log.warning('send_identification called without id_configs')
@@ -702,9 +704,7 @@ class Sighting(db.Model, FeatherModel):
             matching_set_data, annotation_sage_uuid, job_uuid, algorithm
         )
         if id_request != {}:
-            encoded_request = {}
-            for key in id_request:
-                encoded_request[key] = json.dumps(id_request[key])
+            encoded_request = encode_acm_request(id_request)
             try:
                 current_app.acm.request_passthrough_result(
                     'job.identification_request', 'post', {'params': encoded_request}

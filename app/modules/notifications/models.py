@@ -58,7 +58,7 @@ NOTIFICATION_DEFAULTS = {
         NotificationChannel.email: False,
     },
     NotificationType.collab_denied: {
-        NotificationChannel.rest: True,
+        NotificationChannel.rest: False,
         NotificationChannel.email: False,
     },
     NotificationType.collab_edit_request: {

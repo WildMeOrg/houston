@@ -11,7 +11,6 @@ import json
 from flask import request
 from flask_restx_patched import Resource
 from flask_restx._http import HTTPStatus
-from flask import request
 
 from app.extensions import db
 from app.extensions.api import Namespace, abort
@@ -303,6 +302,46 @@ class AnnotationMatchingSetQueryByID(Resource):
         if 'query' not in request_in:
             abort(code=HTTPStatus.BAD_REQUEST, message='Must provide a "query" value.')
         return annotation.resolve_matching_set_query(request_in)
+
+
+@api.route('/matching_set/<uuid:annotation_guid>')
+@api.login_required(oauth_scopes=['annotations:read'])
+@api.response(
+    code=HTTPStatus.NOT_FOUND,
+    description='Annotation not found.',
+)
+@api.resolve_object_by_model(Annotation, 'annotation')
+# right now load=False is default behavior, so this only returns guids.
+# however, in the event this is desired to be full Annotations, uncomment:
+# @api.response(schemas.BaseAnnotationSchema(many=True))
+class AnnotationMatchingSetByID(Resource):
+    """
+    Returns actual matching set (Annotations) for a given Annotation.
+    """
+
+    @api.permission_required(
+        permissions.ObjectAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'obj': kwargs['annotation'],
+            'action': AccessOperation.READ,
+        },
+    )
+    def get(self, annotation):
+        """
+        Returns the set based on default query for the Annotation.
+        """
+        return annotation.get_matching_set(load=False)
+
+    def post(self, annotation):
+        """
+        Accepts a query via body, then returns matching set based on the "resolved" query
+        as it would be used.  (which may include some modifications.)
+        """
+        request_in = json.loads(request.data)
+        if 'query' not in request_in:
+            abort(code=HTTPStatus.BAD_REQUEST, message='Must provide a "query" value.')
+        resolved_query = annotation.resolve_matching_set_query(request_in)
+        return annotation.get_matching_set(resolved_query, load=False)
 
 
 @api.route('/debug/<uuid:annotation_guid>')

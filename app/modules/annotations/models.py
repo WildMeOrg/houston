@@ -289,7 +289,7 @@ class Annotation(db.Model, HoustonModel):
             parts['filter'].append({'match': {'taxonomy_guid': str(tx_guid)}})
 
         if self.encounter_guid:
-            parts['must_not'] = {'term': {'encounter_guid': str(self.encounter_guid)}}
+            parts['must_not'] = {'match': {'encounter_guid': str(self.encounter_guid)}}
 
         return {'bool': parts}
 

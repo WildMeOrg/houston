@@ -49,7 +49,7 @@ class NamedIndividualSchema(BaseIndividualSchema):
         fields = BaseIndividualSchema.Meta.fields + ('names',)
 
 
-class DetailedIndividualSchema(BaseIndividualSchema):
+class DetailedIndividualSchema(NamedIndividualSchema):
     """
     Detailed Individual schema exposes all useful fields.
     """

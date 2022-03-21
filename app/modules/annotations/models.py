@@ -246,14 +246,13 @@ class Annotation(db.Model, HoustonModel):
             assset_src = self.asset.src
         return assset_src
 
-    def get_matching_set(self, query=None):
+    def get_matching_set(self, query=None, load=True):
         if not self.encounter_guid:
             raise ValueError(f'{self} has no Encounter so cannot be matched against')
         if not query or not isinstance(query, dict):
             query = self.get_matching_set_default_query()
         log.info(f'finding matching set for {self} using query {query}')
-        return set()
-        # do ES query!   FIXME
+        return self.elasticsearch(query, load=load)
 
     def get_matching_set_default_query(self):
         # n.b. default will not take any locationId or ownership into consideration
@@ -292,7 +291,7 @@ class Annotation(db.Model, HoustonModel):
         if self.encounter_guid:
             parts['must_not'] = {'term': {'encounter_guid': str(self.encounter_guid)}}
 
-        return {'query': {'bool': parts}}
+        return {'bool': parts}
 
     # this is to allow for manipulation of a user-provided query prior to actually using it
     #  e.g. we might want to _force_ criteria or remove certain filters, etc.

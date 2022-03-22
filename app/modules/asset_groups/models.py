@@ -834,6 +834,33 @@ class AssetGroup(GitStore):
     }
 
     @classmethod
+    def run_integrity(cls):
+        result = {'assets_without_annots': []}
+
+        # Processed groups should have no assets without annots
+        under_processed_groups = (
+            db.session.query(AssetGroup)
+            .join(AssetGroupSighting)
+            .join(Asset)
+            .filter(AssetGroupSighting.stage == AssetGroupSightingStage.processed)
+            .filter(~Asset.annotations.any())
+        ).all()
+
+        if under_processed_groups:
+            for group in under_processed_groups:
+                hanging_assets = [
+                    asset.guid for asset in group.assets if len(asset.annotations) == 0
+                ]
+                result['assets_without_annots'].append(
+                    {
+                        'group_guid': group.guid,
+                        'asset_guids': hanging_assets,
+                    }
+                )
+
+        return result
+
+    @classmethod
     def get_elasticsearch_schema(cls):
         from app.modules.asset_groups.schemas import CreateAssetGroupSchema
 

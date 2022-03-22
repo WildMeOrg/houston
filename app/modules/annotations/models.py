@@ -90,6 +90,17 @@ class Annotation(db.Model, HoustonModel):
         )
 
     @classmethod
+    def run_integrity(cls):
+        result = {'no_content_guid': []}
+
+        # Annots must always have a content guid
+        no_contents = Annotation.query.filter(Annotation.content_guid.is_(None)).all()
+        if no_contents:
+            result['no_content_guid'] = [annot.guid for annot in no_contents]
+
+        return result
+
+    @classmethod
     def get_jobs_for_annotation(cls, annotation_guid, verbose):
         annot = Annotation.query.get(annotation_guid)
         if not annot:
@@ -180,6 +191,13 @@ class Annotation(db.Model, HoustonModel):
         if self.encounter and self.encounter.individual:
             individual = self.encounter.individual
         return individual
+
+    def get_sighting(self):
+        sighting = None
+        if self.encounter:
+            sighting = self.encounter.sighting
+
+        return sighting
 
     def get_asset_src(self):
         assset_src = None

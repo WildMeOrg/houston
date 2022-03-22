@@ -140,7 +140,7 @@ class Individual(db.Model, FeatherModel):
 
     @classmethod
     def run_integrity(cls):
-        result = {}
+        result = {'no_encounters': []}
 
         # Individuals without encounters are an error that should never really happen
         no_encounters = Individual.query.filter(~Individual.encounters.any()).all()

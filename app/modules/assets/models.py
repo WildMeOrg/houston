@@ -108,6 +108,45 @@ class Asset(db.Model, HoustonModel):
         )
 
     @classmethod
+    def run_integrity(cls):
+        from app.modules.asset_groups.models import AssetGroup
+
+        result = {
+            'no_content_guid': [],
+            'multiple_sightings': [],
+        }
+
+        # Assets must have a content guid unless they are in an AGS that is still detecting
+        no_contents = Asset.query.filter(Asset.content_guid.is_(None)).all()
+        for asset in no_contents:
+            if isinstance(asset.git_store, AssetGroup):
+                if not asset.is_detection():
+                    result['no_content_guid'].append(asset.guid)
+            else:
+                result['no_content_guid'].append(asset.guid)
+
+        # This will be glacial as all assets should have annots right?
+        # but if there's a query foo that can give this, it's a mystery.
+        # First filter should be assets with multi annots that have an encounter
+        has_annots = Asset.query.filter(Asset.annotations.any()).all()
+        for asset in has_annots:
+            if len(asset.annotations) > 1:
+                sighting = None
+                for annot in asset.annotations:
+                    annot_sighting = annot.get_sighting()
+                    if not annot_sighting:
+                        continue
+
+                    if sighting:
+                        if sighting != annot_sighting:
+                            result['multiple_sightings'].append(asset.guid)
+                            break
+                    else:
+                        sighting = annot_sighting
+
+        return result
+
+    @classmethod
     def get_elasticsearch_schema(cls):
         from app.modules.assets.schemas import DetailedAssetTableSchema
 

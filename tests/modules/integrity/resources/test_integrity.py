@@ -15,7 +15,7 @@ log = logging.getLogger(__name__)
 def test_basic_operation(
     db, flask_app_client, researcher_1, researcher_2, admin_user, request, test_root
 ):
-    ind_utils.create_individual_and_sighting(
+    uuids = ind_utils.create_individual_and_sighting(
         flask_app_client, researcher_1, request, test_root
     )
     integ_utils.create(
@@ -26,7 +26,17 @@ def test_basic_operation(
     )
     integ_resp = integ_utils.create(flask_app_client, admin_user, request=request).json
     integ_guid = integ_resp['guid']
-    assert set({'individuals', 'sightings'}) <= set(integ_resp['result'].keys())
+    assert integ_resp['result'] == {
+        'annotations': {'no_content_guid': []},
+        'asset_groups': {
+            'assets_without_annots': [
+                {'asset_guids': [uuids['assets'][0]], 'group_guid': uuids['asset_group']}
+            ]
+        },
+        'assets': {'multiple_sightings': [], 'no_content_guid': [uuids['assets'][0]]},
+        'individuals': {'no_encounters': []},
+        'sightings': {'no_encounters': []},
+    }
 
     integ_utils.read_all(flask_app_client, researcher_1, 403)
     all_integs = integ_utils.read_all(flask_app_client, admin_user).json

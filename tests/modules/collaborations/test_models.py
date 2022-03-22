@@ -70,17 +70,17 @@ def test_collaboration_read_state_changes(db, collab_user_a, collab_user_b, requ
 
     set_read_approval_state(
         (collab_user_a.guid, CollaborationUserState.APPROVED),
-        (collab_user_b.guid, CollaborationUserState.DECLINED),
+        (collab_user_b.guid, CollaborationUserState.DENIED),
     )
 
     set_read_approval_state(
         (collab_user_a.guid, CollaborationUserState.APPROVED),
-        (collab_user_b.guid, CollaborationUserState.DECLINED),
+        (collab_user_b.guid, CollaborationUserState.DENIED),
     )
 
     set_read_approval_state(
         (collab_user_a.guid, CollaborationUserState.REVOKED),
-        (collab_user_b.guid, CollaborationUserState.DECLINED),
+        (collab_user_b.guid, CollaborationUserState.DENIED),
     )
 
     set_read_approval_state(

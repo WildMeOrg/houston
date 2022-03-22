@@ -22,6 +22,7 @@ class NotificationType(str, enum.Enum):
     collab_request = 'collaboration_request'  # a user requests collaboration with you
     # other user approved collaboration request
     collab_approved = 'collaboration_approved'
+    collab_denied = 'collaboration_denied'
     # other user requests edit collaboration with you
     collab_edit_request = 'collaboration_edit_request'
     # other user approved edit request
@@ -54,6 +55,10 @@ NOTIFICATION_DEFAULTS = {
     },
     NotificationType.collab_approved: {
         NotificationChannel.rest: True,
+        NotificationChannel.email: False,
+    },
+    NotificationType.collab_denied: {
+        NotificationChannel.rest: False,
         NotificationChannel.email: False,
     },
     NotificationType.collab_edit_request: {
@@ -103,6 +108,12 @@ NOTIFICATION_CONFIG = {
     NotificationType.collab_approved: {
         'email_template_name': 'collaboration_approved',
         'email_digest_content_template': 'collaboration_approved_digest.jinja2',
+        'mandatory_fields': {'collaboration_guid'},
+        'resolve_on_read': True,
+    },
+    NotificationType.collab_denied: {
+        'email_template_name': 'collaboration_denied',
+        'email_digest_content_template': 'collaboration_denied_digest.jinja2',
         'mandatory_fields': {'collaboration_guid'},
         'resolve_on_read': True,
     },

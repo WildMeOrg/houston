@@ -22,7 +22,7 @@ def test_patch_collaboration(flask_app_client, researcher_1, researcher_2, reque
 
     # should not work
     patch_data = [utils.patch_replace_op('view_permission', 'ambivalence')]
-    resp = 'State "ambivalence" not in allowed states: declined, approved, pending, not_initiated, revoked, creator'
+    resp = 'State "ambivalence" not in allowed states: denied, approved, pending, not_initiated, revoked, creator'
     collab_utils.patch_collaboration(
         flask_app_client, collab_guid, researcher_2, patch_data, 409, resp
     )
@@ -51,6 +51,36 @@ def test_patch_collaboration(flask_app_client, researcher_1, researcher_2, reque
     collab_utils.revoke_view_on_collaboration(
         flask_app_client, collab_guid, researcher_1, researcher_2, was_edit=True
     )
+
+
+@pytest.mark.skipif(
+    module_unavailable('collaborations'), reason='Collaborations module disabled'
+)
+def test_deny_collaboration(flask_app_client, researcher_1, researcher_2, request):
+    import tests.modules.notifications.resources.utils as notif_utils
+
+    create_resp = collab_utils.create_simple_collaboration(
+        flask_app_client, researcher_1, researcher_2
+    )
+    collab_guid = create_resp.json['guid']
+    collab = collab_utils.get_collab_object_for_user(researcher_1, collab_guid)
+    request.addfinalizer(collab.delete)
+
+    researcher_2_unread_notifs = notif_utils.read_all_unread_notifications(
+        flask_app_client, researcher_2
+    )
+    request_notif = researcher_2_unread_notifs.json[-1]
+    request_notif_guid = request_notif['guid']
+    assert not request_notif['is_resolved']
+
+    # Should work
+    collab_utils.deny_view_on_collaboration(
+        flask_app_client, collab_guid, researcher_2, researcher_1
+    )
+    request_notif = notif_utils.read_notification(
+        flask_app_client, researcher_2, request_notif_guid
+    ).json
+    assert request_notif['is_resolved']
 
 
 # As for above but validate that revoking view also revokes edit
@@ -111,7 +141,7 @@ def test_patch_collaboration_states(
 
     # also should not
     patch_data = [utils.patch_replace_op('view_permission', 'ambivalence')]
-    resp = 'State "ambivalence" not in allowed states: declined, approved, pending, not_initiated, revoked, creator'
+    resp = 'State "ambivalence" not in allowed states: denied, approved, pending, not_initiated, revoked, creator'
     collab_utils.patch_collaboration(
         flask_app_client, collab_guid, researcher_2, patch_data, 409, resp
     )
@@ -128,8 +158,8 @@ def test_patch_collaboration_states(
     )
     collab_utils.validate_read_only(collab_guid, researcher_1, researcher_2)
 
-    patch_data = [utils.patch_replace_op('view_permission', 'declined')]
-    resp = 'unable to set /view_permission to declined'
+    patch_data = [utils.patch_replace_op('view_permission', 'denied')]
+    resp = 'unable to set /view_permission to denied'
     collab_utils.patch_collaboration(
         flask_app_client, collab_guid, researcher_2, patch_data, 400, resp
     )

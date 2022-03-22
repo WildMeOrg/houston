@@ -210,6 +210,24 @@ def approve_view_on_collaboration(
     return patch_resp
 
 
+def deny_view_on_collaboration(flask_app_client, collab_guid, approving_user, other_user):
+    patch_data = [test_utils.patch_replace_op('view_permission', 'denied')]
+
+    patch_resp = patch_collaboration(
+        flask_app_client,
+        collab_guid,
+        approving_user,
+        patch_data,
+    )
+    expected_states = {
+        approving_user.guid: {'viewState': 'denied', 'editState': 'not_initiated'},
+        other_user.guid: {'viewState': 'approved', 'editState': 'not_initiated'},
+    }
+    validate_expected_states(patch_resp.json, expected_states)
+
+    return patch_resp
+
+
 def request_edit_simple_collaboration(
     flask_app_client, collab_guid, requesting_user, other_user
 ):

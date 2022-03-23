@@ -66,15 +66,66 @@ def test_annotation_matching_set(
     assert annotation.asset_guid == uuid.UUID(
         test_clone_asset_group_data['asset_uuids'][0]
     )
+    # must have this for matching
+    annotation.content_guid = uuid.uuid4()
+
+    # now we need a few other annots to see how they fair in matching_set creation
+    uuids = enc_utils.create_encounter(flask_app_client, researcher_1, request, test_root)
+    enc2_guid = uuids['encounters'][0]
+    patch_data = [
+        utils.patch_replace_op('taxonomy', taxonomy_guid),
+        utils.patch_replace_op('locationId', locationId),
+    ]
+    enc_utils.patch_encounter(
+        flask_app_client,
+        enc2_guid,
+        researcher_1,
+        patch_data,
+    )
+    response = annot_utils.create_annotation(
+        flask_app_client,
+        researcher_1,
+        asset_guid,
+        enc_guid,  # same enc as target, so should be skipped
+        viewpoint='frontright',
+    )
+    response = annot_utils.create_annotation(
+        flask_app_client,
+        researcher_1,
+        asset_guid,
+        enc2_guid,
+        viewpoint='back',  # not neighbor
+    )
+    response = annot_utils.create_annotation(
+        flask_app_client,
+        researcher_1,
+        asset_guid,
+        enc2_guid,
+        viewpoint='frontright',
+    )
+    # this one should match
+    annotation_match_guid = response.json['guid']
+    annotation_match = Annotation.query.get(annotation_match_guid)
+    annotation_match.content_guid = uuid.uuid4()
+
+    # first lets query *all* annots
+    annots = Annotation.elasticsearch({})
+    assert len(annots) == 4
 
     query = annotation.get_matching_set_default_query()
-    assert 'query' in query
-    assert 'bool' in query['query']
-    assert 'filter' in query['query']['bool']
-    # omg this is tedious so just cutting to the chase
-    assert len(query['query']['bool']['filter'][0]['bool']['should']) == 9
-    assert query['query']['bool']['must_not']['term']['encounter_guid'] == str(enc_guid)
+    assert 'bool' in query
+    assert 'filter' in query['bool']
+    # omg this is tedious so just cutting to the chase (9 viewpoint/neighbors)
+    assert len(query['bool']['filter'][1]['bool']['should']) == 9
+    assert query['bool']['must_not']['match']['encounter_guid'] == str(enc_guid)
 
+    # will just use default (as above)
+    matching_set = annotation.get_matching_set()
+    assert len(matching_set) == 1
+    assert str(matching_set[0].guid) == annotation_match_guid
+
+
+def test_region_utils():
     from app.modules.site_settings.models import Regions
 
     top_id = 'top'

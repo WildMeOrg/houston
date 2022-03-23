@@ -252,6 +252,8 @@ services:
       WILDBOOK_DB_USER: "${WILDBOOK_DB_USER}"
       WILDBOOK_DB_PASSWORD: "${WILDBOOK_DB_PASSWORD}"
       LOG_WIDTH: ${LOG_WIDTH}
+      FLOWER_USER: "${FLOWER_USER}"
+      FLOWER_PASSWORD: "${FLOWER_PASSWORD}"
 
   celery_beat:
     image: wildme/houston:latest
@@ -286,6 +288,25 @@ services:
     networks:
       - intranet
     environment: *houston-environment
+
+  flower:
+    image: wildme/houston:latest
+    build: *houston-build
+    command: ["celery", "-A", "app.extensions.celery.celery", "flower", "--basic_auth=${FLOWER_USER}:${FLOWER_PASSWORD}"]
+    depends_on:
+      houston:
+        condition: service_healthy
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://${FLOWER_USER}:${FLOWER_PASSWORD}@localhost:5555/metrics"]
+      interval: 10s
+      timeout: 5s
+      retries: 60
+    volumes: *houston-volumes
+    networks:
+      - intranet
+    environment: *houston-environment
+    ports:
+      - "86:5555"
 
   dev-frontend:
     # this component is intended to only be used in development

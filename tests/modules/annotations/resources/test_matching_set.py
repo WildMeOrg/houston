@@ -183,3 +183,74 @@ def test_region_utils():
 
     ancestors = regions.with_ancestors([loc1, loc2])
     assert ancestors == {top_id, parent1, parent2, parent3, loc1, loc2}
+
+
+@pytest.mark.skipif(
+    module_unavailable('asset_groups'), reason='AssetGroups module disabled'
+)
+def test_annotation_elasticsearch(
+    flask_app_client,
+    researcher_1,
+    admin_user,
+    test_clone_asset_group_data,
+    request,
+    test_root,
+):
+    # pylint: disable=invalid-name
+    from app.modules.annotations.models import Annotation
+    from app.modules.annotations.schemas import AnnotationElasticsearchSchema
+
+    sub_utils.clone_asset_group(
+        flask_app_client,
+        researcher_1,
+        test_clone_asset_group_data['asset_group_uuid'],
+    )
+    asset_guid = test_clone_asset_group_data['asset_uuids'][0]
+
+    uuids = enc_utils.create_encounter(flask_app_client, researcher_1, request, test_root)
+    enc_guid = uuids['encounters'][0]
+
+    tx = setting_utils.get_some_taxonomy_dict(flask_app_client, admin_user)
+    assert tx
+    assert 'id' in tx
+    taxonomy_guid = tx['id']
+    locationId = 'erehwon'
+    patch_data = [
+        utils.patch_replace_op('taxonomy', taxonomy_guid),
+        utils.patch_replace_op('locationId', locationId),
+    ]
+    enc_utils.patch_encounter(
+        flask_app_client,
+        enc_guid,
+        researcher_1,
+        patch_data,
+    )
+
+    viewpoint = 'upfront'
+    response = annot_utils.create_annotation(
+        flask_app_client,
+        researcher_1,
+        asset_guid,
+        enc_guid,
+        viewpoint=viewpoint,
+    )
+
+    annotation_guid = response.json['guid']
+    annotation = Annotation.query.get(annotation_guid)
+    annotation.content_guid = uuid.uuid4()
+
+    # make sure the schema contains what we need
+    schema = AnnotationElasticsearchSchema()
+    sdump = schema.dump(annotation)
+    assert sdump
+    assert sdump.data
+    assert sdump.data.get('owner_guid') == str(researcher_1.guid)
+    assert sdump.data.get('asset_guid') == asset_guid
+    assert sdump.data.get('content_guid') == str(annotation.content_guid)
+    assert sdump.data.get('taxonomy_guid') == taxonomy_guid
+    assert sdump.data.get('locationId') == locationId
+    assert sdump.data.get('guid') == str(annotation.guid)
+    assert sdump.data.get('bounds') == {'rect': [0, 1, 2, 3]}
+    assert sdump.data.get('viewpoint') == viewpoint
+    assert sdump.data.get('encounter_guid') == enc_guid
+    assert sdump.data.get('sighting_guid') == uuids['sighting']

@@ -90,6 +90,18 @@ def test_create_and_delete_annotation(
     assert annotation_guid in [annot['guid'] for annot in asset_res.json['annotations']]
     assert asset_res.json['annotations'][0]['bounds']['rect'] == [0, 1, 2, 3]
 
+    # some misc tests
+    assert read_annotation.get_location_id() == 'test'
+    assert read_annotation.get_time_isoformat_in_timezone() == '2000-01-01T01:01:01+00:00'
+    assert not read_annotation.get_taxonomy_guid()
+    assert read_annotation.get_owner_guid() == researcher_1.guid
+    assert str(read_annotation.get_sighting_guid()) == uuids['sighting']
+
+    # owner_guid = base_fields.Function(get_owner_guid_str)
+    # encounter_guid = base_fields.Function(get_encounter_guid_str)
+    # sighting_guid = base_fields.Function(get_sighting_guid_str)
+    # time = base_fields.Function(Annotation.get_time_isoformat_in_timezone)
+
     # And deleting it
     annot_utils.delete_annotation(flask_app_client, researcher_1, annotation_guid)
 

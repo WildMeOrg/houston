@@ -298,44 +298,43 @@ class Annotation(db.Model, HoustonModel):
     def resolve_matching_set_query(self, query):
         return query
 
-    # this should be used with caution.  it grabs the related Encounter object, as well as
-    # the edm data related to both the encounter and sighting.  thus, it is expensive.  it also
-    # caches these things on the Annotation itself so has implications there.   it is primarily
-    # intended for successive calls to find edm-properties (e.g. Elasticsearch indexing schema)
-    # and may not be ideal for "general usage" cases
-    def get_related_extended_data(self):
-        if hasattr(self, '_enc'):
-            return self._enc, self._enc_edm, self._sight_edm
+    # first tries encounter.locationId, but will use sighting.locationId if none on encounter,
+    #   unless sighting_fallback=False
+    def get_location_id(self, sighting_fallback=True):
         if not self.encounter_guid:
-            return None, None, None
-        from app.modules.encounters.models import Encounter
-        from flask import current_app
-
-        self._enc = Encounter.query.get(self.encounter_guid)
-        self._enc_edm = current_app.edm.get_dict(
-            'encounter.data_complete', self.encounter_guid
-        ).get('result')
-        self._sight_edm = current_app.edm.get_dict(
-            'sighting.data_complete', self._enc.sighting_guid
-        ).get('result')
-        return self._enc, self._enc_edm, self._sight_edm
-
-    # see notes on get_related_extended_data() above
-    def get_taxonomy_guid(self, sighting_fallback=False):
-        enc, enc_edm, sight_edm = self.get_related_extended_data()
-        if not enc or not enc_edm:
             return None
-        if 'taxonomy' in enc_edm:
-            return enc_edm['taxonomy']
-        if sighting_fallback and sight_edm and 'taxonomy' in sight_edm:
-            return sight_edm['taxonomy']
-        return None
+        enc_edm_data = self.encounter.get_edm_complete_data()
+        if enc_edm_data and enc_edm_data.get('locationId'):
+            return enc_edm_data['locationId']
+        if not sighting_fallback or not self.encounter.sighting_guid:
+            return None
+        sight_edm_data = self.encounter.sighting.get_edm_complete_data()
+        return sight_edm_data and sight_edm_data.get('locationId')
+
+    def get_taxonomy_guid(self, sighting_fallback=True):
+        if not self.encounter_guid:
+            return None
+        enc_edm_data = self.encounter.get_edm_complete_data()
+        if enc_edm_data and enc_edm_data.get('taxonomy'):
+            return enc_edm_data['taxonomy']
+        if not sighting_fallback or not self.encounter.sighting_guid:
+            return None
+        sight_edm_data = self.encounter.sighting.get_edm_complete_data()
+        return sight_edm_data and sight_edm_data.get('taxonomy')
+
+    def get_time_isoformat_in_timezone(self, sighting_fallback=True):
+        return self.encounter and self.encounter.get_time_isoformat_in_timezone(
+            sighting_fallback
+        )
 
     def get_owner_guid(self):
         if not self.encounter_guid or not self.encounter:
             return None
         # owner is not-null on Encounter
         return self.encounter.owner.guid
+
+    def get_sighting_guid(self):
+        return self.encounter and self.encounter.sighting_guid
 
     def delete(self):
         with db.session.begin(subtransactions=True):

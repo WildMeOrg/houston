@@ -360,6 +360,7 @@ if elasticsearch is None:
         elasticsearchable = False
         index_name = None
 
+
 else:
 
     def register_elasticsearch_model(*args, **kwargs):
@@ -469,6 +470,27 @@ class FeatherModel(GhostModel, TimestampViewed, ElasticsearchModel):
 
         rule = ObjectActionRule(obj=self, action=AccessOperation.WRITE)
         return rule.check()
+
+    # will grab edm representation of this object
+    # cache allows minimal calls to edm for same object, but has the potential
+    #   to return stale data
+    def get_edm_complete_data(self, use_cache=True):
+        from app.extensions import is_extension_enabled
+        from flask import current_app
+
+        # this will prevent HoustonModel objects from using this
+        if FeatherModel not in self.__class__.__bases__:
+            raise NotImplementedError('only available on FeatherModels')
+        if not is_extension_enabled('edm'):
+            return None
+        edm_data = current_app.edm.get_dict(
+            f'{self.get_class_name().lower()}.data_complete',
+            self.guid,
+        ).get('result')
+        return edm_data
+
+    def get_class_name(self):
+        return self.__class__.__name__
 
 
 class HoustonModel(FeatherModel):

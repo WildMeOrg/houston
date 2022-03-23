@@ -333,8 +333,24 @@ class Annotation(db.Model, HoustonModel):
         # owner is not-null on Encounter
         return self.encounter.owner.guid
 
+    def get_owner_guid_str(self):
+        guid = self.get_owner_guid()
+        return str(guid) if guid else None
+
+    def get_encounter_guid_str(self):
+        return str(self.encounter_guid) if self.encounter_guid else None
+
     def get_sighting_guid(self):
         return self.encounter and self.encounter.sighting_guid
+
+    def get_sighting_guid_str(self):
+        guid = self.get_sighting_guid()
+        return str(guid) if guid else None
+
+    def get_keyword_values(self):
+        if not self.keyword_refs:
+            return []
+        return sorted([ref.keyword.value for ref in self.keyword_refs])
 
     def delete(self):
         with db.session.begin(subtransactions=True):

@@ -58,29 +58,6 @@ class DetailedAnnotationSchema(BaseAnnotationSchema):
         )
 
 
-def get_keyword_values(annot):
-    if not annot.keyword_refs:
-        return []
-    return sorted([ref.keyword.value for ref in annot.keyword_refs])
-
-
-# these just handle string conversion basically
-
-
-def get_owner_guid_str(annot):
-    guid = annot.get_owner_guid()
-    return str(guid) if guid else None
-
-
-def get_encounter_guid_str(annot):
-    return str(annot.encounter_guid) if annot.encounter_guid else None
-
-
-def get_sighting_guid_str(annot):
-    guid = annot.get_sighting_guid()
-    return str(guid) if guid else None
-
-
 class AnnotationElasticsearchSchema(BaseAnnotationSchema):
     """
     Schema for indexing by Elasticsearch
@@ -89,12 +66,12 @@ class AnnotationElasticsearchSchema(BaseAnnotationSchema):
     for purposes other than ES indexing.
     """
 
-    keywords = base_fields.Function(get_keyword_values)
+    keywords = base_fields.Function(Annotation.get_keyword_values)
     locationId = base_fields.Function(Annotation.get_location_id)
     taxonomy_guid = base_fields.Function(Annotation.get_taxonomy_guid)
-    owner_guid = base_fields.Function(get_owner_guid_str)
-    encounter_guid = base_fields.Function(get_encounter_guid_str)
-    sighting_guid = base_fields.Function(get_sighting_guid_str)
+    owner_guid = base_fields.Function(Annotation.get_owner_guid_str)
+    encounter_guid = base_fields.Function(Annotation.get_encounter_guid_str)
+    sighting_guid = base_fields.Function(Annotation.get_sighting_guid_str)
     time = base_fields.Function(Annotation.get_time_isoformat_in_timezone)
 
     class Meta(BaseAnnotationSchema.Meta):

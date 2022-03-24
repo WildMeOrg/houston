@@ -3,6 +3,7 @@
 from gumby import Client, initialize_indexes_by_model
 
 from app.extensions import is_extension_enabled, db, executor
+from app.utils import HoustonException
 
 import elasticsearch
 from elasticsearch import helpers
@@ -156,12 +157,11 @@ class ElasticsearchModel(object):
     @classmethod
     def invalidate_all(cls, app=None):
         log.info('Invalidating %r' % (cls,))
-        with db.session.begin():
-            from app.extensions.git_store import GitStore
-
-            cls_table = GitStore if issubclass(cls, GitStore) else cls
+        with db.session.begin(subtransactions=True):
             db.session.execute(
-                cls_table.__table__.update().values(updated=datetime.datetime.utcnow())
+                cls.bulk_class()
+                .__table__.update()
+                .values(updated=datetime.datetime.utcnow())
             )
         objs = cls.query.all()
 
@@ -186,6 +186,13 @@ class ElasticsearchModel(object):
             response = es_elasticsearch(app, cls, body, *args, **kwargs)
 
         return response
+
+    @classmethod
+    def bulk_class(cls):
+        from app.extensions.git_store import GitStore
+
+        bulk_cls = GitStore if issubclass(cls, GitStore) else cls
+        return bulk_cls
 
     @property
     def index_name(self):
@@ -444,14 +451,12 @@ class ElasticSearchBulkOperation(object):
         # We only update the indexed timestamps of the objects that succeded as a group
         pending_guids = [item.guid for item in pending]
         log.info('Time-stamping (Bulk) %s' % (cls.__name__,))
-        with db.session.begin():
-            from app.extensions.git_store import GitStore
-
-            cls_table = GitStore if issubclass(cls, GitStore) else cls
+        with db.session.begin(subtransactions=True):
             db.session.execute(
-                cls_table.__table__.update()
+                cls.bulk_class()
+                .__table__.update()
                 .values(indexed=datetime.datetime.utcnow())
-                .where(cls_table.guid.in_(pending_guids))
+                .where(cls.bulk_class().guid.in_(pending_guids))
             )
 
         # Refresh the index
@@ -550,14 +555,12 @@ class ElasticSearchBulkOperation(object):
         invalid_guids = set(pending) & all_guids
         if len(invalid_guids) > 0:
             log.info('Invalidating (Bulk) %s' % (cls.__name__,))
-            with db.session.begin():
-                from app.extensions.git_store import GitStore
-
-                cls_table = GitStore if issubclass(cls, GitStore) else cls
+            with db.session.begin(subtransactions=True):
                 db.session.execute(
-                    cls_table.__table__.update()
+                    cls.bulk_class()
+                    .__table__.update()
                     .values(updated=datetime.datetime.utcnow())
-                    .where(cls_table.guid.in_(invalid_guids))
+                    .where(cls.bulk_class().guid.in_(invalid_guids))
                 )
 
         # Refresh the index
@@ -718,7 +721,7 @@ class ElasticSearchBulkOperation(object):
                 log.error('ES session was unable to verify after %s seconds' % (timeout,))
                 raise RuntimeError('Could not verify')
 
-            status = es_status()
+            status = es_status(outdated=False)
             if len(status) == 0:
                 break
 
@@ -766,9 +769,9 @@ class ElasticSearchBulkOperation(object):
         else:
             try:
                 return self.exit()
-            except Exception:
+            except (Exception, sqlalchemy.exc.InvalidRequestError):
                 self.abort(reason='Exception on exit()')
-                raise
+                raise HoustonException(log, 'Elasticsearch context failure')
 
 
 def is_enabled():
@@ -928,20 +931,28 @@ def es_health_and_stats(app=None):
 
 def es_invalidate(obj):
     if obj is not None:
-        if hasattr(obj, 'updated') and hasattr(obj, 'indexed'):
-            with db.session.begin():
-                obj.updated = datetime.datetime.utcnow()
-                assert obj.indexed < obj.updated
-                db.session.merge(obj)
+        with session.begin(disabled=True):
+            with db.session.begin(subtransactions=True):
+                cls = obj.__class__
+                db.session.execute(
+                    cls.bulk_class()
+                    .__table__.update()
+                    .values(updated=datetime.datetime.utcnow())
+                    .where(cls.bulk_class().guid == obj.guid)
+                )
 
 
 def es_validate(obj):
     if obj is not None:
-        if hasattr(obj, 'updated') and hasattr(obj, 'indexed'):
-            with db.session.begin():
-                obj.indexed = datetime.datetime.utcnow()
-                assert obj.indexed > obj.updated
-                db.session.merge(obj)
+        with session.begin(disabled=True):
+            with db.session.begin(subtransactions=True):
+                cls = obj.__class__
+                db.session.execute(
+                    cls.bulk_class()
+                    .__table__.update()
+                    .values(indexed=datetime.datetime.utcnow())
+                    .where(cls.bulk_class().guid == obj.guid)
+                )
 
 
 def es_index(obj, app=None, force=False):
@@ -1150,7 +1161,12 @@ def es_delete_guid(cls, guid, app=None):
 
     index = es_index_name(cls)
 
+    obj = cls.query.get(guid)
+
     if index is None:
+        if obj is not None:
+            if hasattr(obj, 'invalidate'):
+                obj.invalidate()
         return None
 
     if app is None:
@@ -1160,17 +1176,20 @@ def es_delete_guid(cls, guid, app=None):
         return session.track_bulk_action('delete', (cls, guid))
 
     if not es_index_exists(index, app=app):
+        if obj is not None:
+            obj.invalidate()
         return None
 
     id_ = str(guid)
     if not app.es.exists(index, id=id_):
+        if obj is not None:
+            obj.invalidate()
         return None
 
     resp = app.es.delete(index, id=id_)
 
     assert resp['_id'] == id_
     if resp['result'] in ('deleted',):
-        obj = cls.query.get(guid)
         if obj is not None:
             obj.invalidate()
     else:
@@ -1213,34 +1232,38 @@ def es_pit(cls, app=None):
     return pit_id
 
 
-def es_status(app=None):
+def es_status(app=None, outdated=True, active=True, health=True):
     from flask import current_app
 
     if app is None:
         app = current_app
 
     status = {}
-    for cls in REGISTERED_MODELS:
-        index = es_index_name(cls)
-        if index is None:
-            continue
 
-        # Get outdated
-        num_guids = cls.query.filter(cls.updated > cls.indexed).count()
-        if num_guids > 0:
-            key = '%s:outdated' % (index,)
-            status[key] = num_guids
+    if outdated:
+        for cls in REGISTERED_MODELS:
+            index = es_index_name(cls)
+            if index is None:
+                continue
 
-    num_active = check_celery(verbose=False)
-    if num_active > 0:
-        status['celery:active'] = num_active
+            # Get outdated
+            num_guids = cls.query.filter(cls.updated > cls.indexed).count()
+            if num_guids > 0:
+                key = '%s:outdated' % (index,)
+                status[key] = num_guids
 
-    if is_disabled():
-        status['elasticsearch:enabled'] = False
+    if active:
+        num_active = check_celery(verbose=False)
+        if num_active > 0:
+            status['celery:active'] = num_active
 
-    health, stats = es_health_and_stats(app=app)
-    if health['status'] != 'green':
-        status['status'] = health['status']
+    if health:
+        if is_disabled():
+            status['elasticsearch:enabled'] = False
+
+        health_data, stats_data = es_health_and_stats(app=app)
+        if health_data['status'] != 'green':
+            status['status'] = health_data['status']
 
     return status
 
@@ -1446,13 +1469,13 @@ def attach_listeners(app):
         if not REGISTERED_MODELS[cls]['status']:
             name = '%s.%s' % (cls.__module__, cls.__name__)
             log.info('Attach Elasticsearch listener for %r' % (name,))
-            listen(cls, 'before_insert', _before_insert_or_update)
-            listen(cls, 'before_update', _before_insert_or_update)
-            listen(cls, 'before_delete', _before_delete)
+            listen(cls, 'before_insert', _before_insert_or_update, propagate=True)
+            listen(cls, 'before_update', _before_insert_or_update, propagate=True)
+            listen(cls, 'before_delete', _before_delete, propagate=True)
             REGISTERED_MODELS[cls]['status'] = True
 
-    listen(db.session, 'after_transaction_create', _create_transaction)
-    listen(db.session, 'after_transaction_end', _end_transaction)
+    listen(db.session, 'after_transaction_create', _create_transaction, propagate=True)
+    listen(db.session, 'after_transaction_end', _end_transaction, propagate=True)
 
 
 def es_index_all(*args, **kwargs):
@@ -1547,10 +1570,11 @@ def es_elasticsearch(
         with session.begin():
             search_prune = list(set(search_prune))
             log.warning(
-                'Found %d items to prune for class %r after search'
+                'Found %d items to prune for class %r after search in %r'
                 % (
                     len(search_prune),
                     cls,
+                    index,
                 )
             )
             desc = 'Pruning %s' % (cls.__name__,)
@@ -1585,6 +1609,10 @@ def es_elasticsearch(
         query = query.with_entities(cls.guid)
 
     results = query.all()
+
+    if not load:
+        # Strip column 0
+        results = [result[0] for result in results]
 
     if total:
         return total_hits, results

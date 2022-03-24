@@ -59,7 +59,15 @@ def test_elasticsearch_utilities(flask_app_client, db, admin_user, staff_user):
 
     es.check_celery(revoke=True)
     es.es_checkpoint()
-    assert len(es.es_status()) == 0
+    trial = 0
+    while True:
+        trial += 1
+        try:
+            assert len(es.es_status()) == 0
+            break
+        except AssertionError:
+            if trial >= 10:
+                raise
     assert es.check_celery() == 0
 
     # Check if we can turn off ES globally
@@ -88,7 +96,12 @@ def test_elasticsearch_utilities(flask_app_client, db, admin_user, staff_user):
     assert admin_user.index_name == es.es_index_name(cls)
     assert admin_user.index_hook_obj() is None
 
-    index, guid, body_schema = es.es_serialize(admin_user)
+    data = es.es_serialize(admin_user)
+    data2 = admin_user.serialize()
+    data[-1].pop('indexed')
+    data2[-1].pop('indexed')
+    assert data == data2
+    index, guid, body_schema = data
     assert index == admin_user._index()
     assert guid == admin_user.guid
     assert len(body_schema) > 0
@@ -167,8 +180,9 @@ def test_elasticsearch_utilities(flask_app_client, db, admin_user, staff_user):
     assert users1 == users2
 
     # Check if we can prune objects
-    with es.session.begin(blocking=True, verify=True):
+    with es.session.begin(blocking=True):
         User.prune_all()
+    es.es_checkpoint()
 
     users = User.elasticsearch(None, load=False)
     assert len(users) == 0
@@ -238,18 +252,18 @@ def test_elasticsearch_utilities(flask_app_client, db, admin_user, staff_user):
     assert not admin_user.available()
 
     # Test global indexing, invalidating, pruning
-    with es.session.begin(blocking=True, forced=True, verify=True):
+    with es.session.begin(blocking=True, forced=True):
         es.es_index_all()
-    with es.session.begin(blocking=True, forced=True, verify=True):
+    with es.session.begin(blocking=True, forced=True):
         es.es_invalidate_all()
-    with es.session.begin(blocking=True, forced=True, verify=True):
+    with es.session.begin(blocking=True, forced=True):
         es.es_prune_all()
 
-    with es.session.begin(blocking=False, forced=True, verify=True):
+    with es.session.begin(blocking=False, forced=True):
         es.es_index_all()
-    with es.session.begin(blocking=False, forced=True, verify=True):
+    with es.session.begin(blocking=False, forced=True):
         es.es_invalidate_all()
-    with es.session.begin(blocking=False, forced=True, verify=True):
+    with es.session.begin(blocking=False, forced=True):
         es.es_prune_all()
 
     # Assert empty

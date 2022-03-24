@@ -72,7 +72,7 @@ def es_task_invalidate_indexed_timestamps(force=False):
         return True
 
     es.es_invalidate_all()
-    es.es_pit_all()
+    # es.es_pit_all()
 
     return True
 

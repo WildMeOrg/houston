@@ -333,23 +333,7 @@ class Timestamp(object):
 def timestamp_before_update(mapper, connection, target):
     # When a model with a timestamp is updated; force update the updated
     # timestamp.
-
-    # We are about to update the timestamp of the object, but first check if the update effects the indexed time
-    indexed = target._sa_instance_state.committed_state.get('indexed', None)
-    if indexed is None:
-        updated = datetime.utcnow()
-    else:
-        updated = indexed
-
-    target.updated = updated
-    target._sa_instance_state.committed_state['updated'] = updated
-
-    if indexed is not None:
-        assert indexed == updated
-        assert (
-            target._sa_instance_state.committed_state['indexed']
-            == target._sa_instance_state.committed_state['updated']
-        )
+    target.updated = datetime.utcnow()
 
 
 class TimestampViewed(Timestamp):
@@ -373,7 +357,8 @@ if elasticsearch is None:
         return context
 
     class ElasticsearchModel(object):
-        elasticsearchable = True
+        elasticsearchable = False
+        index_name = None
 
 else:
 

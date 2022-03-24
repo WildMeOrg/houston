@@ -272,7 +272,7 @@ def test_new_user_creation_roles_admin(flask_app_client, admin_user, db):
     desired_schema = {
         'affiliation': '',
         'created': response.json['created'],
-        'elasticsearchable': True,
+        'elasticsearchable': response.json['elasticsearchable'],
         'email': 'user1@localhost',
         'forum_id': '',
         'full_name': '',

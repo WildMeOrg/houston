@@ -5,33 +5,33 @@ import uuid
 from app.extensions.celery import celery
 
 
-ELASTICSEARCH_UPDATE_FREQUENCY = 60
-ELASTICSEARCH_MAXIMUM_SESSION_LENGTH = ELASTICSEARCH_UPDATE_FREQUENCY * 1
-ELASTICSEARCH_FIREWALL_FREQUENCY = ELASTICSEARCH_UPDATE_FREQUENCY * 10
+ELASTICSEARCH_MAXIMUM_SESSION_LENGTH = 60 * 15
+ELASTICSEARCH_UPDATE_FREQUENCY = 60 * 60 * 1
+ELASTICSEARCH_FIREWALL_FREQUENCY = 60 * 60 * 12
 
 
 log = logging.getLogger(__name__)
 
 
 @celery.on_after_configure.connect
-def elasticsearch_setup_periodic_tasks(sender, **kwargs):
+def es_task_setup_periodic_tasks(sender, **kwargs):
     if ELASTICSEARCH_UPDATE_FREQUENCY is not None:
         sender.add_periodic_task(
             ELASTICSEARCH_UPDATE_FREQUENCY,
-            elasticsearch_refresh_index_all.s(),
+            es_task_refresh_index_all.s(),
             name='Refresh Elasticsearch',
         )
 
     if ELASTICSEARCH_FIREWALL_FREQUENCY is not None:
         sender.add_periodic_task(
             ELASTICSEARCH_FIREWALL_FREQUENCY,
-            elasticsearch_invalidate_indexed_timestamps.s(),
+            es_task_invalidate_indexed_timestamps.s(),
             name='Clear Elasticsearch Indexed Timestamps',
         )
 
 
 @celery.task
-def elasticsearch_refresh_index_all(force=False):
+def es_task_refresh_index_all(force=False):
     from app.extensions import elasticsearch as es
     from flask import current_app
 
@@ -61,9 +61,8 @@ def elasticsearch_refresh_index_all(force=False):
 
 
 @celery.task
-def elasticsearch_invalidate_indexed_timestamps(force=False):
+def es_task_invalidate_indexed_timestamps(force=False):
     from app.extensions import elasticsearch as es
-    from app.extensions import db
     from flask import current_app
 
     testing = current_app.testing and not force
@@ -72,21 +71,19 @@ def elasticsearch_invalidate_indexed_timestamps(force=False):
         log.info('...skipping')
         return True
 
-    with es.session.begin(disabled=True):
-        for cls in es.REGISTERED_MODELS:
-            with db.session.begin():
-                cls.invalidate_all()
+    es.es_invalidate_all()
+    es.es_pit_all()
 
     return True
 
 
 @celery.task
-def elasticsearch_index_bulk(index, items):
+def es_task_index_bulk(index, items):
     from app.extensions import elasticsearch as es
     from flask import current_app
 
     app = current_app
-    cls = es.get_elasticsearch_cls_from_index(index)
+    cls = es.es_index_class(index)
 
     log.info(
         'Restoring %d index objects for cls = %r, index = %r'
@@ -104,9 +101,9 @@ def elasticsearch_index_bulk(index, items):
         restored_items = []
         missing_items = []
         for item in items:
-            guid, force = item
-            guid_ = uuid.UUID(guid)
-            obj = cls.query.get(guid_)
+            guid_str, force = item
+            guid = uuid.UUID(guid_str)
+            obj = cls.query.get(guid)
             if obj is not None:
                 item = (obj, force)
                 restored_items.append(item)
@@ -141,12 +138,12 @@ def elasticsearch_index_bulk(index, items):
 
 
 @celery.task
-def elasticsearch_delete_guid_bulk(index, guids):
+def es_task_delete_guid_bulk(index, guids):
     from app.extensions import elasticsearch as es
     from flask import current_app
 
     app = current_app
-    cls = es.get_elasticsearch_cls_from_index(index)
+    cls = es.es_index_class(index)
 
     log.info(
         'Deleting %d items for cls = %r, index = %r'

@@ -8,12 +8,13 @@ from tests.modules.encounters.resources import utils as enc_utils
 from tests.modules.site_settings.resources import utils as setting_utils
 import pytest
 
-from tests.utils import module_unavailable
+from tests.utils import module_unavailable, wait_for_elasticsearch_status
 from tests import utils
 
 
 @pytest.mark.skipif(
-    module_unavailable('asset_groups'), reason='AssetGroups module disabled'
+    module_unavailable('asset_groups', 'elasticsearch'),
+    reason='AssetGroups/Elasticsearch module disabled',
 )
 def test_annotation_matching_set(
     flask_app_client,
@@ -115,6 +116,7 @@ def test_annotation_matching_set(
     annotation_match.content_guid = uuid.uuid4()
 
     # first lets query *all* annots
+    wait_for_elasticsearch_status(flask_app_client, researcher_1)
     annots = Annotation.elasticsearch({})
     assert len(annots) == 4
 
@@ -192,7 +194,8 @@ def test_region_utils():
 
 
 @pytest.mark.skipif(
-    module_unavailable('asset_groups'), reason='AssetGroups module disabled'
+    module_unavailable('asset_groups', 'elasticsearch'),
+    reason='AssetGroups/Elasticsearch module disabled',
 )
 def test_annotation_elasticsearch(
     flask_app_client,

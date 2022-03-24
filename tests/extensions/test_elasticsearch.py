@@ -5,6 +5,7 @@ import datetime
 
 from tests.utils import (
     extension_unavailable,
+    module_unavailable,
     wait_for_elasticsearch_status,
     elasticsearch,
 )
@@ -26,7 +27,8 @@ def test_indexing_with_elasticsearch():
 
 
 @pytest.mark.skipif(
-    extension_unavailable('elasticsearch'), reason='Elasticsearch extension disabled'
+    extension_unavailable('elasticsearch') or module_unavailable('elasticsearch'),
+    reason='Elasticsearch extension or module disabled',
 )
 def test_index_cls_conversion():
     from app.extensions import elasticsearch as es
@@ -45,7 +47,8 @@ def test_index_cls_conversion():
 
 
 @pytest.mark.skipif(
-    extension_unavailable('elasticsearch'), reason='Elasticsearch extension disabled'
+    extension_unavailable('elasticsearch') or module_unavailable('elasticsearch'),
+    reason='Elasticsearch extension or module disabled',
 )
 def test_elasticsearch_utilities(flask_app_client, db, admin_user, staff_user):
     from app.extensions.elasticsearch import tasks as es_tasks
@@ -323,7 +326,8 @@ def test_elasticsearch_utilities(flask_app_client, db, admin_user, staff_user):
 
 
 @pytest.mark.skipif(
-    extension_unavailable('elasticsearch'), reason='Elasticsearch extension disabled'
+    extension_unavailable('elasticsearch') or module_unavailable('elasticsearch'),
+    reason='Elasticsearch extension or module disabled',
 )
 def test_model_search(flask_app_client, staff_user):
     from app.extensions import elasticsearch as es

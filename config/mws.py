@@ -35,7 +35,7 @@ class BaseMWSConfig(
     ENABLED_EXTENSIONS = (
         'acm',
         'cors',
-        # 'elasticsearch',
+        'elasticsearch',
         'tus',
         'mail',
         'gitlab',

@@ -131,7 +131,8 @@ SIGHTINGS_INDEX_SQL_RESULTS = [
 
 
 @pytest.mark.skipif(
-    extension_unavailable('elasticsearch'), reason='Elasticsearch extension disabled'
+    extension_unavailable('elasticsearch') or module_unavailable('elasticsearch'),
+    reason='Elasticsearch extension or module disabled',
 )
 def test_load_codex_indexes(monkeypatch, flask_app):
     from app.modules.elasticsearch import tasks

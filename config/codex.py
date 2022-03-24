@@ -36,7 +36,7 @@ class BaseCodexConfig(
         'acm',
         'edm',
         'cors',
-        # 'elasticsearch',
+        'elasticsearch',
         'gitlab',
         'tus',
         'mail',

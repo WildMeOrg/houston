@@ -342,6 +342,7 @@ class Sighting(db.Model, FeatherModel):
                 details[-1]['request'] = self.build_identification_request(
                     self.jobs[job_id].get('matching_set'),
                     self.jobs[job_id]['annotation'],
+                    self.jobs[job_id]['annotation_sage_uuid'],
                     job_id,
                     self.jobs[job_id]['algorithm'],
                 )
@@ -622,7 +623,12 @@ class Sighting(db.Model, FeatherModel):
         return True
 
     def build_identification_request(
-        self, matching_set_config, annotation_uuid, job_uuid, algorithm
+        self,
+        matching_set_config,
+        annotation_uuid,
+        annotation_sage_uuid,
+        job_uuid,
+        algorithm,
     ):
         from app.extensions.acm import default_acm_individual_uuid
 
@@ -658,7 +664,7 @@ class Sighting(db.Model, FeatherModel):
             'matching_state_list': [],
             'query_annot_name_list': [default_acm_individual_uuid()],
             'query_annot_uuid_list': [
-                to_acm_uuid(annotation_uuid),
+                to_acm_uuid(annotation_sage_uuid),
             ],
             'database_annot_name_list': matching_set_individual_uuids,
             'database_annot_uuid_list': matching_set_annot_uuids,
@@ -694,7 +700,11 @@ class Sighting(db.Model, FeatherModel):
             self.stage = SightingStage.failed
             return
         id_request = self.build_identification_request(
-            matching_set_config, annotation_sage_uuid, job_uuid, algorithm
+            matching_set_config,
+            annotation_uuid,
+            annotation_sage_uuid,
+            job_uuid,
+            algorithm,
         )
         if id_request != {}:
             encoded_request = encode_acm_request(id_request)
@@ -708,6 +718,7 @@ class Sighting(db.Model, FeatherModel):
                     'matching_set': matching_set_config,
                     'algorithm': algorithm,
                     'annotation': str(annotation_uuid),
+                    'annotation_sage_uuid': str(annotation_sage_uuid),
                     'active': True,
                     'start': datetime.utcnow(),
                 }

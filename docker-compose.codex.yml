@@ -276,6 +276,8 @@ services:
     image: wildme/houston:latest
     build: *houston-build
     command: ["celery", "-A", "app.extensions.celery.celery", "worker", "-l", "INFO", "--pool=gevent"]
+    deploy:
+      replicas: 3
     depends_on:
       houston:
         condition: service_healthy

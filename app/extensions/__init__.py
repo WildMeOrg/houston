@@ -370,7 +370,7 @@ if elasticsearch is None:
         return context
 
     class ElasticsearchModel(object):
-        pass
+        elasticsearchable = True
 
 else:
 

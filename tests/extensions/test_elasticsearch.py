@@ -33,7 +33,7 @@ def test_index_cls_conversion():
     from app.modules.users.models import User
 
     index = es.es_index_name(User)
-    cls = es.get_elasticsearch_cls_from_index(index)
+    cls = es.es_index_class(index)
 
     if None in [index, cls]:
         assert index is None
@@ -53,6 +53,9 @@ def test_elasticsearch_utilities(flask_app_client, db, admin_user, staff_user):
     from app.modules.complex_date_time.models import ComplexDateTime, Specificities
     from app.modules.users.models import User
     from app.modules.users.schemas import UserListSchema
+
+    if es.is_disabled():
+        return
 
     es.check_celery(revoke=True)
     es.es_checkpoint()
@@ -281,7 +284,7 @@ def test_elasticsearch_utilities(flask_app_client, db, admin_user, staff_user):
 
     # Searching on a non-registered class should return an empty list
     app = flask_app_client.application
-    assert len(es.elasticsearch_on_class(app, cls, {})) == 0
+    assert len(es.es_elasticsearch(app, cls, {})) == 0
     try:
         es.es_serialize(cdt)
         raise RuntimeError()
@@ -301,8 +304,8 @@ def test_elasticsearch_utilities(flask_app_client, db, admin_user, staff_user):
         es.es_index_all()
 
     # Test tasks
-    assert es_tasks.elasticsearch_refresh_index_all.s(True).apply().result
-    assert es_tasks.elasticsearch_invalidate_indexed_timestamps.s(True).apply().result
+    assert es_tasks.es_task_refresh_index_all.s(True).apply().result
+    assert es_tasks.es_task_invalidate_indexed_timestamps.s(True).apply().result
 
 
 @pytest.mark.skipif(

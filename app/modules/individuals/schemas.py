@@ -70,6 +70,39 @@ class DetailedIndividualSchema(NamedIndividualSchema):
         )
 
 
+class ElasticsearchIndividualSchema(ModelSchema):
+    """
+    Base Individual schema exposes only the most general fields.
+    """
+
+    featuredAssetGuid = base_fields.Function(Individual.get_featured_asset_guid)
+    names = base_fields.Nested(
+        DetailedNameSchema,
+        attribute='names',
+        many=True,
+    )
+    social_groups = base_fields.Function(Individual.get_social_groups_json)
+
+    class Meta:
+        # pylint: disable=missing-docstring
+        model = Individual
+        fields = (
+            Individual.guid.key,
+            'elasticsearchable',
+            Individual.indexed.key,
+            Individual.created.key,
+            Individual.updated.key,
+            'featuredAssetGuid',
+            'names',
+            'social_groups',
+        )
+        dump_only = (
+            Individual.guid.key,
+            Individual.created.key,
+            Individual.updated.key,
+        )
+
+
 class DebugIndividualSchema(DetailedIndividualSchema):
     """
     Debug Individual schema exposes all fields.

@@ -98,9 +98,9 @@ class Sighting(db.Model, FeatherModel):
 
     @classmethod
     def get_elasticsearch_schema(cls):
-        from app.modules.sightings.schemas import TimedSightingSchema
+        from app.modules.sightings.schemas import ElasticsearchSightingSchema
 
-        return TimedSightingSchema
+        return ElasticsearchSightingSchema
 
     def __repr__(self):
         return (

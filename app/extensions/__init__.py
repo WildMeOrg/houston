@@ -477,16 +477,27 @@ class FeatherModel(GhostModel, TimestampViewed, ElasticsearchModel):
     def get_edm_complete_data(self, use_cache=True):
         from app.extensions import is_extension_enabled
         from flask import current_app
+        import time
 
         # this will prevent HoustonModel objects from using this
         if FeatherModel not in self.__class__.__bases__:
             raise NotImplementedError('only available on FeatherModels')
         if not is_extension_enabled('edm'):
             return None
+        # going to give cache a life of 5 min kinda arbitrarily
+        time_now = int(time.time())
+        if (
+            use_cache
+            and hasattr(self, '_edm_cached_data')
+            and time_now - self._edm_cached_data.get('_edm_cache_created', 0) < 300
+        ):
+            return self._edm_cached_data
         edm_data = current_app.edm.get_dict(
             f'{self.get_class_name().lower()}.data_complete',
             self.guid,
         ).get('result')
+        self._edm_cached_data = edm_data
+        self._edm_cached_data['_edm_cache_created'] = time_now
         return edm_data
 
     def get_class_name(self):

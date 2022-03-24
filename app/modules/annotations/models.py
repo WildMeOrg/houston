@@ -257,7 +257,6 @@ class Annotation(db.Model, HoustonModel):
     def get_matching_set_default_query(self):
         # n.b. default will not take any locationId or ownership into consideration
         parts = {'filter': []}
-        enc, enc_edm, sight_edm = self.get_related_extended_data()
 
         # must have a content_guid (i.e. wbia guid)
         parts['filter'].append(
@@ -284,9 +283,9 @@ class Annotation(db.Model, HoustonModel):
             )
 
         # same, re: nulls
-        tx_guid = self.get_taxonomy_guid(sighting_fallback=True)
+        tx_guid = self.get_taxonomy_guid()
         if tx_guid:
-            parts['filter'].append({'match': {'taxonomy_guid': str(tx_guid)}})
+            parts['filter'].append({'match': {'taxonomy_guid': tx_guid}})
 
         if self.encounter_guid:
             parts['must_not'] = {'match': {'encounter_guid': str(self.encounter_guid)}}

@@ -66,6 +66,7 @@ def test_annotation_matching_set(
     assert annotation.asset_guid == uuid.UUID(
         test_clone_asset_group_data['asset_uuids'][0]
     )
+    request.addfinalizer(annotation.delete)
     # must have this for matching
     annotation.content_guid = uuid.uuid4()
 
@@ -89,6 +90,8 @@ def test_annotation_matching_set(
         enc_guid,  # same enc as target, so should be skipped
         viewpoint='frontright',
     )
+    annot0 = Annotation.query.get(response.json['guid'])
+    request.addfinalizer(annot0.delete)
     response = annot_utils.create_annotation(
         flask_app_client,
         researcher_1,
@@ -96,6 +99,8 @@ def test_annotation_matching_set(
         enc2_guid,
         viewpoint='back',  # not neighbor
     )
+    annot1 = Annotation.query.get(response.json['guid'])
+    request.addfinalizer(annot1.delete)
     response = annot_utils.create_annotation(
         flask_app_client,
         researcher_1,
@@ -106,6 +111,7 @@ def test_annotation_matching_set(
     # this one should match
     annotation_match_guid = response.json['guid']
     annotation_match = Annotation.query.get(annotation_match_guid)
+    request.addfinalizer(annotation_match.delete)
     annotation_match.content_guid = uuid.uuid4()
 
     # first lets query *all* annots
@@ -237,6 +243,7 @@ def test_annotation_elasticsearch(
 
     annotation_guid = response.json['guid']
     annotation = Annotation.query.get(annotation_guid)
+    request.addfinalizer(annotation.delete)
     annotation.content_guid = uuid.uuid4()
 
     # make sure the schema contains what we need

@@ -680,13 +680,19 @@ class Sighting(db.Model, FeatherModel):
             return
 
         log.debug(
-            f'In send_identification for cnf:{config_id}  algo:{algorithm_id}  Ann UUID:{annotation_uuid}'
+            f'In send_identification for cnf:{config_id}  algo:{algorithm_id}  Ann UUID:{annotation_uuid}  Ann content_guid:{annotation_sage_uuid}'
         )
 
         # Message construction has to be in the task as the jobId must be unique
         job_uuid = uuid.uuid4()
         matching_set_config = self.id_configs[config_id].get('matching_set')
         algorithm = self.id_configs[config_id]['algorithms'][algorithm_id]
+        if not annotation_sage_uuid:
+            log.warning(
+                f'Sage Identification on Sighting({self.guid}) Job({job_uuid}) aborted due to no content_guid on Annotation {annotation_uuid}'
+            )
+            self.stage = SightingStage.failed
+            return
         id_request = self.build_identification_request(
             matching_set_config, annotation_sage_uuid, job_uuid, algorithm
         )
@@ -712,7 +718,7 @@ class Sighting(db.Model, FeatherModel):
                     db.session.merge(self)
             except HoustonException:
                 log.warning(
-                    f'Sage Identification on Sighting({self.guid}) Job{job_uuid} failed to start'
+                    f'Sage Identification on Sighting({self.guid}) Job({job_uuid}) failed to start'
                 )
                 # TODO Celery will retry, do we want it to?
                 self.stage = SightingStage.failed

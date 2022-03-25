@@ -299,8 +299,6 @@ class AnnotationMatchingSetQueryByID(Resource):
         as it would be used.  (which may include some modifications.)
         """
         request_in = json.loads(request.data)
-        if 'query' not in request_in:
-            abort(code=HTTPStatus.BAD_REQUEST, message='Must provide a "query" value.')
         return annotation.resolve_matching_set_query(request_in)
 
 
@@ -338,10 +336,7 @@ class AnnotationMatchingSetByID(Resource):
         as it would be used.  (which may include some modifications.)
         """
         request_in = json.loads(request.data)
-        if 'query' not in request_in:
-            abort(code=HTTPStatus.BAD_REQUEST, message='Must provide a "query" value.')
-        resolved_query = annotation.resolve_matching_set_query(request_in)
-        return annotation.get_matching_set(resolved_query, load=False)
+        return annotation.get_matching_set(request_in, load=False)
 
 
 @api.route('/debug/<uuid:annotation_guid>')

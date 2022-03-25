@@ -251,6 +251,8 @@ class Annotation(db.Model, HoustonModel):
             raise ValueError(f'{self} has no Encounter so cannot be matched against')
         if not query or not isinstance(query, dict):
             query = self.get_matching_set_default_query()
+        else:
+            query = self.resolve_matching_set_query(query)
         log.info(f'finding matching set for {self} using query {query}')
         return self.elasticsearch(query, load=load)
 
@@ -295,6 +297,30 @@ class Annotation(db.Model, HoustonModel):
     # this is to allow for manipulation of a user-provided query prior to actually using it
     #  e.g. we might want to _force_ criteria or remove certain filters, etc.
     def resolve_matching_set_query(self, query):
+        if not query or not isinstance(query, dict):
+            raise ValueError('must be passed a dict ES query')
+        if not self.encounter_guid:
+            raise ValueError('cannot resolve query on Annotation with no Encounter')
+        # we just punt on stuff we dont understand and accept as-is
+        if (
+            'bool' not in query
+            or not isinstance(query['bool'], dict)
+            or 'filter' not in query['bool']
+        ):
+            log.debug(f'not resolving atypical query: {query}')
+            return query
+        # handle case where we have {bool: {filter: {...}} to make filter an array
+        if not isinstance(query['bool']['filter'], list):
+            query['bool']['filter'] = [query['bool']['filter']]
+        # i guess to be *extra-thorough* this should *update* an existing `must_not` ?
+        # we do not match within our own encounter
+        if 'must_not' not in query['bool']:
+            query['bool']['must_not'] = {
+                'match': {'encounter_guid': str(self.encounter_guid)}
+            }
+        # (going with the theory that if these are *redundant* its not a big deal to ES.)
+        # we MUST have a content_guid
+        query['bool']['filter'].append({'exists': {'field': 'content_guid'}})
         return query
 
     # first tries encounter.locationId, but will use sighting.locationId if none on encounter,

@@ -38,6 +38,8 @@ class UserListSchema(BaseUserSchema):
     if is_module_enabled('missions'):
         owned_missions = base_fields.Nested('BaseMissionSchema', many=True)
         owned_mission_tasks = base_fields.Nested('BaseMissionTaskSchema', many=True)
+        assigned_missions = base_fields.Nested('BaseMissionSchema', many=True)
+        assigned_mission_tasks = base_fields.Nested('BaseMissionTaskSchema', many=True)
 
     class Meta(BaseUserSchema.Meta):
         # pylint: disable=missing-docstring
@@ -62,6 +64,8 @@ class UserListSchema(BaseUserSchema):
             fields = fields + (
                 'owned_missions',
                 'owned_mission_tasks',
+                'assigned_missions',
+                'assigned_mission_tasks',
             )
 
         dump_only = (User.guid.key,)

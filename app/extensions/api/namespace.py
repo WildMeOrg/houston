@@ -147,7 +147,7 @@ class Namespace(BaseNamespace):
                     cls = query.column_descriptions[0].get('entity')
 
                     prmiary_columns = list(cls.__table__.primary_key.columns)
-                    if len(prmiary_columns) > 1:
+                    if len(prmiary_columns) == 1:
                         default_column = prmiary_columns[0]
                     else:
                         log.warning(

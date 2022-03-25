@@ -132,6 +132,35 @@ def test_annotation_matching_set(
     assert len(matching_set) == 1
     assert str(matching_set[0].guid) == annotation_match_guid
 
+    # test resolving of non-default queries
+    try:
+        annotation.resolve_matching_set_query('fail')
+    except ValueError as ve:
+        assert str(ve) == 'must be passed a dict ES query'
+
+    # unknown/atypical/untouched
+    query_in = {'foo': 'bar'}
+    resolved = annotation.resolve_matching_set_query(query_in)
+    assert resolved == query_in
+
+    query_in = {'bool': {'filter': {'a', 0}}}
+    resolved = annotation.resolve_matching_set_query(query_in)
+    assert isinstance(resolved['bool']['filter'], list)
+    assert len(resolved['bool']['filter']) == 2
+    assert 'exists' in resolved['bool']['filter'][1]
+    assert 'must_not' in resolved['bool']
+
+    query_in = {'bool': {'filter': [{'a', 0}]}}
+    resolved = annotation.resolve_matching_set_query(query_in)
+    assert isinstance(resolved['bool']['filter'], list)
+    assert len(resolved['bool']['filter']) == 2
+
+    annotation.encounter_guid = None
+    try:
+        annotation.resolve_matching_set_query(query_in)
+    except ValueError as ve:
+        assert str(ve) == 'cannot resolve query on Annotation with no Encounter'
+
 
 def test_region_utils():
     from app.modules.site_settings.models import Regions

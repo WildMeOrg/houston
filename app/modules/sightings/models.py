@@ -1043,7 +1043,6 @@ class Sighting(db.Model, FeatherModel):
         from .tasks import send_identification
 
         assert self.stage == SightingStage.identification
-        num_algorithms = 0
 
         num_configs = len(self.id_configs)
         if num_configs > 0:
@@ -1055,21 +1054,60 @@ class Sighting(db.Model, FeatherModel):
                 # Only one for MVP
                 assert len(config['algorithms']) == 1
 
-                # Only use the algorithm if there is a matching data set to ID against
-                if self._has_matching_set(config.get('matching_set')):
-                    num_algorithms += len(config['algorithms'])
-
-                # For now, regions are ignored
-
         encounters_with_annotations = [
             encounter for encounter in self.encounters if len(encounter.annotations) != 0
         ]
 
-        # No annotations to identify or no algorithms, go straight to un-reviewed
-        if len(encounters_with_annotations) == 0 or num_algorithms == 0:
+        num_jobs = 0
+        if encounters_with_annotations:
+            # Use task to send ID req with retries
+            # Once we support multiple IA configs and algorithms, the number of jobs is going to grow....rapidly
+            for config_id in range(len(self.id_configs)):
+                for algorithm_id in range(len(self.id_configs[config_id]['algorithms'])):
+                    for encounter in self.encounters:
+                        for annotation in encounter.annotations:
+                            log.debug(
+                                f'Processing ID for Sighting:{self.guid}, config:{config_id}, algo:{algorithm_id} '
+                                f'annot:{annotation.guid}, sage_annot:{annotation.content_guid} enc:{annotation.encounter_guid}'
+                            )
+                            if (
+                                not annotation.content_guid
+                                or not annotation.encounter_guid
+                            ):
+                                log.warning(
+                                    f'Skipping {annotation} due to lack of content_guid or encounter'
+                                )
+                                continue
+                            # load=False should get us this response quickly, cuz we just want a count
+                            matching_set = annotation.get_matching_set(
+                                self.id_configs[config_id].get('matching_set'), load=False
+                            )
+                            if not matching_set:
+                                log.info(
+                                    f'Skipping {annotation} due to empty matching set'
+                                )
+                                continue
+                            log.debug(
+                                f'[{num_jobs}] queueing up ID job for config_id={config_id} {annotation}: matching_set size={len(matching_set)} algo {algorithm_id}'
+                            )
+                            send_identification.delay(
+                                str(self.guid),
+                                config_id,
+                                algorithm_id,
+                                annotation.guid,
+                                annotation.content_guid,
+                            )
+                            num_jobs += 1
+
+        if num_jobs > 0:
+            log.info(
+                f'Started Identification for Sighting:{self.guid} using {num_jobs} jobs'
+            )
+
+        else:
             self.stage = SightingStage.un_reviewed
             log.info(
-                f'Sighting {self.guid} un-reviewed, {num_algorithms} algoirithms, '
+                f'Sighting {self.guid} un-reviewed, identification not needed or not possible (jobs=0); '
                 f'{len(encounters_with_annotations)} encounters with annotations'
             )
             for encounter in self.encounters:
@@ -1083,26 +1121,3 @@ class Sighting(db.Model, FeatherModel):
                         )
                         assert individual
                         encounter.set_individual(individual)
-        else:
-            num_jobs = 0
-            # Use task to send ID req with retries
-            # Once we support multiple IA configs and algorithms, the number of jobs is going to grow....rapidly
-            for config_id in range(len(self.id_configs)):
-                for algorithm_id in range(len(self.id_configs[config_id]['algorithms'])):
-                    for encounter in self.encounters:
-                        for annotation in encounter.annotations:
-                            log.debug(
-                                f'Sending ID for Sighting:{self.guid}, config:{config_id}, algo:{algorithm_id}'
-                                f'annot:{annotation.guid}, sage_annot:{annotation.content_guid}'
-                            )
-                            send_identification.delay(
-                                str(self.guid),
-                                config_id,
-                                algorithm_id,
-                                annotation.guid,
-                                annotation.content_guid,
-                            )
-                            num_jobs += 1
-            log.info(
-                f'Starting Identification for Sighting:{self.guid} using {num_jobs} jobs'
-            )

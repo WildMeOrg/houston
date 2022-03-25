@@ -2,6 +2,7 @@
 import pytest
 import time
 import datetime
+import tqdm
 
 from tests.utils import (
     extension_unavailable,
@@ -50,27 +51,34 @@ def test_index_cls_conversion():
     extension_unavailable('elasticsearch') or module_unavailable('elasticsearch'),
     reason='Elasticsearch extension or module disabled',
 )
-def test_elasticsearch_utilities(flask_app_client, db, admin_user, staff_user):
+def test_elasticsearch_utilities(
+    flask_app_client,
+    db,
+    admin_user,
+    staff_user,
+    readonly_user,
+    user_manager_user,
+    regular_user,
+    internal_user,
+    temp_user,
+    collab_user_a,
+    collab_user_b,
+):
     from app.extensions.elasticsearch import tasks as es_tasks
     from app.extensions import elasticsearch as es
     from app.modules.complex_date_time.models import ComplexDateTime, Specificities
     from app.modules.users.models import User
     from app.modules.users.schemas import UserListSchema
+    from tests.modules.users.resources.utils import read_all_users_pagination
 
     if es.is_disabled():
         return
 
+    body = {}
+
     es.check_celery(revoke=True)
     es.es_checkpoint()
-    trial = 0
-    while True:
-        trial += 1
-        try:
-            assert len(es.es_status()) == 0
-            break
-        except AssertionError:
-            if trial >= 10:
-                raise
+    assert len(es.es_status(outdated=False)) == 0
     assert es.check_celery() == 0
 
     # Check if we can turn off ES globally
@@ -171,14 +179,14 @@ def test_elasticsearch_utilities(flask_app_client, db, admin_user, staff_user):
     assert admin_user.guid in guids
     assert staff_user.guid in guids
 
-    total1, users1 = User.elasticsearch({}, total=True, load=False)
+    total1, users1 = User.elasticsearch(body, total=True, load=False)
     assert total1 >= len(users1)
     assert len(users1) <= 100
 
     # Check refresh and search
     es.es_refresh_index(es.es_index_name(User))
 
-    total2, users2 = User.elasticsearch({}, total=True, load=False)
+    total2, users2 = User.elasticsearch(body, total=True, load=False)
     assert total1 == total2
     assert users1 == users2
 
@@ -200,12 +208,178 @@ def test_elasticsearch_utilities(flask_app_client, db, admin_user, staff_user):
     with es.session.begin(blocking=True, verify=True):
         User.index_all()
 
-    total1, users1 = User.elasticsearch({}, total=True, sort='guid')
-    total2, users2 = User.elasticsearch({}, total=True, sort='indexed')
-    total3, users3 = User.elasticsearch({}, total=True, sort='indexed', reverse=True)
+    es.es_checkpoint()
+
+    # Test sorting
+    users = User.elasticsearch(body)
+    vals = [user.guid for user in users]
+    assert vals == sorted(vals)
+    users = User.elasticsearch(body, sort='indexed')
+    vals = [user.indexed for user in users]
+    assert vals == sorted(vals)
+    users = User.elasticsearch(body, sort='indexed', reverse=True)
+    vals = [user.indexed for user in users]
+    assert vals == sorted(vals, reverse=True)
+
+    _, users = User.elasticsearch(body, total=True)
+    vals = [user.guid for user in users]
+    assert vals == sorted(vals)
+    _, users = User.elasticsearch(body, total=True, sort='indexed')
+    vals = [user.indexed for user in users]
+    assert vals == sorted(vals)
+    _, users = User.elasticsearch(body, total=True, sort='indexed', reverse=True)
+    vals = [user.indexed for user in users]
+    assert vals == sorted(vals, reverse=True)
+
+    # Test indexing
+    total1, users1 = User.elasticsearch(body, total=True, sort='guid')
+    total2, users2 = User.elasticsearch(body, total=True, sort='indexed')
+    total3, users3 = User.elasticsearch(body, total=True, sort='indexed', reverse=True)
+
+    vals2 = [user.indexed for user in users2]
+    assert vals2 == sorted(vals2)
+    vals3 = [user.indexed for user in users3]
+    assert vals3 == sorted(vals3, reverse=True)
+    assert vals2 == vals3[::-1]
     assert total1 == total2 and total2 == total3
-    assert users2 == users3[::-1]
     assert set(users1) == set(users2) and set(users1) == set(users3)
+
+    # Check pagination
+    reference = User.elasticsearch(body)
+
+    # Build all possible configurations
+    configs = []
+    for load in [True, False]:
+        for limit in [None, 1, 5, 10, 100]:
+            for offset in [None, 0, 1, 5, 10]:
+                for sort in ['guid', 'indexed', 'full_name', 'email']:
+                    for reverse in [True, False]:
+                        for total in [True, False]:
+                            config = (load, limit, offset, sort, reverse, total)
+                            configs.append(config)
+
+    # Test pagination for Elasticsearch
+    failures = []
+    for config in tqdm.tqdm(configs):
+        load, limit, offset, sort, reverse, total = config
+        config_str = (
+            'load=%r, limit=%r, offset=%r, sort=%r, reverse=%r, total=%r' % config
+        )
+        print(config_str)
+        try:
+            results = User.elasticsearch(
+                body,
+                load=load,
+                limit=limit,
+                offset=offset,
+                sort=sort,
+                reverse=reverse,
+                total=total,
+            )
+
+            if total:
+                total_, users = results
+                assert total_ == len(reference)
+            else:
+                users = results
+
+            compare = reference[:]
+
+            if sort == 'guid':
+                compare.sort(key=lambda user: user.guid, reverse=reverse)
+            elif sort == 'indexed':
+                compare.sort(key=lambda user: (user.indexed, user.guid), reverse=reverse)
+            elif sort == 'full_name':
+                compare.sort(
+                    key=lambda user: (user.full_name, user.guid), reverse=reverse
+                )
+            elif sort == 'email':
+                compare.sort(key=lambda user: (user.email, user.guid), reverse=reverse)
+            else:
+                raise ValueError()
+
+            if offset is not None:
+                compare = compare[offset:]
+            if limit is not None:
+                compare = compare[:limit]
+
+            if not load:
+                compare = [user.guid for user in compare]
+
+            assert users == compare
+        except AssertionError:
+            failures.append(config_str)
+
+    print(failures)
+    assert len(failures) == 0
+
+    # Build all possible configurations
+    configs = []
+    for limit in [None, 1, 5, 10, 100]:
+        for offset in [None, 0, 1, 5, 10]:
+            for sort in ['guid', 'indexed', 'full_name', 'email']:
+                for reverse in [True, False]:
+                    for reverse_after in [True, False]:
+                        config = (limit, offset, sort, reverse, reverse_after)
+                        configs.append(config)
+
+    # Make one request to ensure the oauth user has been createda
+    response = read_all_users_pagination(flask_app_client, staff_user)
+
+    # Check pagination
+    reference = User.query.all()
+
+    # Test pagination for listing APIs
+    failures = []
+    for config in tqdm.tqdm(configs):
+        limit, offset, sort, reverse, reverse_after = config
+        config_str = 'limit=%r, offset=%r, sort=%r, reverse=%r, reverse_after=%r' % config
+        print(config_str)
+        try:
+            response = read_all_users_pagination(
+                flask_app_client,
+                staff_user,
+                limit=limit,
+                offset=offset,
+                sort=sort,
+                reverse=reverse,
+                reverse_after=reverse_after,
+            )
+
+            users = response.json
+            users = [user['guid'] for user in users]
+
+            compare = reference[:]
+
+            if sort == 'guid':
+                compare.sort(key=lambda user: user.guid, reverse=reverse)
+            elif sort == 'indexed':
+                compare.sort(key=lambda user: (user.indexed, user.guid), reverse=reverse)
+            elif sort == 'full_name':
+                compare.sort(
+                    key=lambda user: (user.full_name, user.guid), reverse=reverse
+                )
+            elif sort == 'email':
+                compare.sort(key=lambda user: (user.email, user.guid), reverse=reverse)
+            else:
+                raise ValueError()
+
+            if offset is not None:
+                compare = compare[offset:]
+            if limit is not None:
+                compare = compare[:limit]
+
+            if reverse_after:
+                compare = compare[::-1]
+
+            compare = [str(user.guid) for user in compare]
+
+            assert users == compare
+        except AssertionError:
+            failures.append(config_str)
+
+    print(failures)
+    assert len(failures) == 0
 
     # Check if timestamps are updating
     before_updated = admin_user.updated
@@ -301,7 +475,7 @@ def test_elasticsearch_utilities(flask_app_client, db, admin_user, staff_user):
 
     # Searching on a non-registered class should return an empty list
     app = flask_app_client.application
-    assert len(es.es_elasticsearch(app, cls, {})) == 0
+    assert len(es.es_elasticsearch(app, cls, body)) == 0
     try:
         es.es_serialize(cdt)
         raise RuntimeError()

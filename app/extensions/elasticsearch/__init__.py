@@ -1597,10 +1597,11 @@ def es_elasticsearch(
             log.warning('The sort field %r is unrecognized, defaulting to GUID' % (sort,))
             sort_column = cls.guid
 
-    sort_func = sort_column.desc if reverse else sort_column.asc
+    sort_func_1 = sort_column.desc if reverse else sort_column.asc
+    sort_func_2 = cls.guid.desc if reverse else cls.guid.asc
     query = (
         cls.query.filter(cls.guid.in_(search_guids))
-        .order_by(sort_func())
+        .order_by(sort_func_1(), sort_func_2())
         .offset(offset)
         .limit(limit)
     )

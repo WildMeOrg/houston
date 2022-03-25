@@ -143,6 +143,7 @@ class Namespace(BaseNamespace):
                         total_count, response = query
                         assert isinstance(total_count, int)
                 else:
+                    total_count = query.count()
                     cls = query.column_descriptions[0].get('entity')
 
                     sort = sort.lower()
@@ -160,13 +161,22 @@ class Namespace(BaseNamespace):
                             )
                             sort_column = cls.guid
 
-                    sort_func = sort_column.desc if reverse else sort_column.asc
+                    sort_func_1 = sort_column.desc if reverse else sort_column.asc
+                    sort_func_2 = cls.guid.desc if reverse else cls.guid.asc
+                    query = (
+                        query.order_by(sort_func_1(), sort_func_2())
+                        .offset(offset)
+                        .limit(limit)
+                    )
 
-                    total_count = query.count()
-                    query = query.order_by(sort_func()).offset(offset).limit(limit)
                     if reverse_after:
-                        after_sort_func = sort_column.asc if reverse else sort_column.desc
-                        query = query.from_self().order_by(after_sort_func())
+                        after_sort_func_1 = (
+                            sort_column.asc if reverse else sort_column.desc
+                        )
+                        after_sort_func_2 = cls.guid.asc if reverse else cls.guid.desc
+                        query = query.from_self().order_by(
+                            after_sort_func_1(), after_sort_func_2()
+                        )
 
                     response = query
 

@@ -118,7 +118,7 @@ class BaseConfig(FlaskConfigOverrides, RedisConfig):
     # specifically this is where tus "temporary" files go
     UPLOADS_DATABASE_PATH = str(DATA_ROOT / 'uploads')
 
-    FILEUPLOAD_BASE_PATH = os.path.join(PROJECT_DATABASE_PATH, 'fileuploads')
+    FILEUPLOAD_BASE_PATH = str(DATA_ROOT / 'fileuploads')
 
     SQLALCHEMY_DATABASE_PATH = str(DATA_ROOT / 'database.sqlite3')
     SQLALCHEMY_DATABASE_URI = os.getenv('SQLALCHEMY_DATABASE_URI') or 'sqlite:///%s' % (

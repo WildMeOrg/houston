@@ -113,8 +113,6 @@ class BaseConfig(FlaskConfigOverrides, RedisConfig):
         'video/webm': 'webm',
     }
 
-    ASSET_DATABASE_PATH = str(DATA_ROOT / 'assets')
-
     # specifically this is where tus "temporary" files go
     UPLOADS_DATABASE_PATH = str(DATA_ROOT / 'uploads')
 

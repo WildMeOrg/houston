@@ -518,7 +518,6 @@ def _reset(context, edm_authentication=None):
     delete_path_configs = [
         'SQLALCHEMY_DATABASE_PATH',
         'ASSET_GROUP_DATABASE_PATH',
-        'ASSET_DATABASE_PATH',
         'MISSION_COLLECTION_DATABASE_PATH',
     ]
 

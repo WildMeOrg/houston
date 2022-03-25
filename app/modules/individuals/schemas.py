@@ -34,28 +34,37 @@ class BaseIndividualSchema(ModelSchema):
         dump_only = (Individual.guid.key,)
 
 
-class DetailedIndividualSchema(BaseIndividualSchema):
+class NamedIndividualSchema(BaseIndividualSchema):
     """
     Detailed Individual schema exposes all useful fields.
     """
 
-    featuredAssetGuid = base_fields.Function(Individual.get_featured_asset_guid)
     names = base_fields.Nested(
         DetailedNameSchema,
         attribute='names',
         many=True,
     )
-    social_groups = base_fields.Function(Individual.get_social_groups_json)
 
     class Meta(BaseIndividualSchema.Meta):
-        fields = BaseIndividualSchema.Meta.fields + (
+        fields = BaseIndividualSchema.Meta.fields + ('names',)
+
+
+class DetailedIndividualSchema(NamedIndividualSchema):
+    """
+    Detailed Individual schema exposes all useful fields.
+    """
+
+    featuredAssetGuid = base_fields.Function(Individual.get_featured_asset_guid)
+    social_groups = base_fields.Function(Individual.get_social_groups_json)
+
+    class Meta(NamedIndividualSchema.Meta):
+        fields = NamedIndividualSchema.Meta.fields + (
             Individual.created.key,
             Individual.updated.key,
             'featuredAssetGuid',
-            'names',
             'social_groups',
         )
-        dump_only = BaseIndividualSchema.Meta.dump_only + (
+        dump_only = NamedIndividualSchema.Meta.dump_only + (
             Individual.created.key,
             Individual.updated.key,
         )

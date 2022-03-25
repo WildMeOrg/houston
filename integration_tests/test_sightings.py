@@ -151,7 +151,7 @@ def test_sightings(session, login, codex_url, test_root, admin_name):
                 'guid': encounters[0]['guid'],
                 'hasEdit': True,
                 'hasView': True,
-                'individual': {},
+                'individual': None,
                 'owner': {
                     'full_name': my_name,
                     'guid': my_guid,
@@ -275,7 +275,7 @@ def test_sightings(session, login, codex_url, test_root, admin_name):
                 'guid': encounters[0]['guid'],
                 'hasEdit': True,
                 'hasView': True,
-                'individual': {},
+                'individual': None,
                 'owner': {
                     'full_name': my_name,
                     'guid': my_guid,

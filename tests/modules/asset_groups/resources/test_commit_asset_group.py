@@ -133,45 +133,19 @@ def test_commit_asset_group_ia(
         flask_app_client, db, researcher_1, asset_group_sighting_guid, asset_uuid
     )
 
-    # TODO fix these -- no longer valid for matching_set options
+    matching_set_es_query = {'bool': {'filter': {'must': {'term': {'viewpoint': 'up'}}}}}
     ia_configs = [
         {
             'algorithms': [
                 'hotspotter_nosv',
             ],
+            'matching_set': matching_set_es_query,
         }
     ]
-    patch_data = [test_utils.patch_replace_op('idConfigs', ia_configs)]
-    resp = (
-        f'matchingSetDataOwners field missing from Sighting {asset_group_sighting_guid}'
-    )
-    asset_group_utils.patch_asset_group_sighting(
-        flask_app_client,
-        researcher_1,
-        asset_group_sighting_guid,
-        patch_data,
-        400,
-        resp,
-    )
-    ia_configs[0]['matchingSetDataOwners'] = 'someone_elses'
-    patch_data = [test_utils.patch_replace_op('idConfigs', ia_configs)]
-    resp = (
-        "dataOwners someone_elses not supported, only support ['mine', 'extended', 'all']"
-    )
-    asset_group_utils.patch_asset_group_sighting(
-        flask_app_client,
-        researcher_1,
-        asset_group_sighting_guid,
-        patch_data,
-        400,
-        resp,
-    )
-    ia_configs[0]['matchingSetDataOwners'] = 'mine'
     patch_data = [test_utils.patch_replace_op('idConfigs', ia_configs)]
     asset_group_utils.patch_asset_group_sighting(
         flask_app_client, researcher_1, asset_group_sighting_guid, patch_data, 200
     )
-
     response = asset_group_utils.commit_asset_group_sighting(
         flask_app_client, researcher_1, asset_group_sighting_guid
     )

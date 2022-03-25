@@ -254,16 +254,26 @@ def test_elasticsearch_utilities(
             for offset in [None, 0, 1, 5, 10]:
                 for sort in ['guid', 'indexed', 'full_name', 'email']:
                     for reverse in [True, False]:
-                        for total in [True, False]:
-                            config = (load, limit, offset, sort, reverse, total)
-                            configs.append(config)
+                        for reverse_after in [True, False]:
+                            for total in [True, False]:
+                                config = (
+                                    load,
+                                    limit,
+                                    offset,
+                                    sort,
+                                    reverse,
+                                    reverse_after,
+                                    total,
+                                )
+                                configs.append(config)
 
     # Test pagination for Elasticsearch
     failures = []
     for config in tqdm.tqdm(configs):
-        load, limit, offset, sort, reverse, total = config
+        load, limit, offset, sort, reverse, reverse_after, total = config
         config_str = (
-            'load=%r, limit=%r, offset=%r, sort=%r, reverse=%r, total=%r' % config
+            'load=%r, limit=%r, offset=%r, sort=%r, reverse=%r, reverse_after=%r, total=%r'
+            % config
         )
         print(config_str)
         try:
@@ -274,6 +284,7 @@ def test_elasticsearch_utilities(
                 offset=offset,
                 sort=sort,
                 reverse=reverse,
+                reverse_after=reverse_after,
                 total=total,
             )
 
@@ -302,6 +313,9 @@ def test_elasticsearch_utilities(
                 compare = compare[offset:]
             if limit is not None:
                 compare = compare[:limit]
+
+            if reverse_after:
+                compare = compare[::-1]
 
             if not load:
                 compare = [user.guid for user in compare]

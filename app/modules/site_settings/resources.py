@@ -48,7 +48,7 @@ class SiteSettingFile(Resource):
         },
     )
     @api.response(schemas.BaseSiteSettingFileSchema(many=True))
-    @api.paginate(parameters.ListSiteSettingsFile())
+    @api.paginate()
     def get(self, args):
         """
         List of Files.

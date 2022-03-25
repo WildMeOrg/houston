@@ -66,14 +66,16 @@ class RedisConfig:
 
 class BaseConfig(FlaskConfigOverrides, RedisConfig):
     # This class is expected to be initialized to enable the `@property`
-    # based settings. Because the configuration of this application is divided
+    # based settings. The configuration of this application is divided
     # into variants based on context and environment,
     # we capture these two items at initialization.
     # But please do not use the __init__ for anything else.
 
     def __init__(self, context, environment):
         # Do not add to this initialization method.
-        # If you need a computeded value, use the `@property` method decorator.
+        # If you need a computed value,
+        # use the `@property` method decorator.
+
         self.PROJECT_CONTEXT = context
         self.PROJECT_ENVIRONMENT = environment
 

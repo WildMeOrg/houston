@@ -217,3 +217,22 @@ def merge_conflicts(
         response_200=set(),
     )
     return resp.json
+
+
+def validate_names(
+    flask_app_client,
+    user,
+    name_list,
+    auth_scopes=('individuals:read',),
+    expected_status_code=200,
+):
+    resp = test_utils.post_via_flask(
+        flask_app_client,
+        user,
+        scopes=auth_scopes,
+        path=f'/api/v1/individuals/validate',
+        data={name_list},
+        expected_status_code=expected_status_code,
+        response_200=set(),
+    )
+    return resp

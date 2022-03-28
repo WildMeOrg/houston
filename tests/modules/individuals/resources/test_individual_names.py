@@ -365,3 +365,36 @@ def test_get_set_individual_names(
         flask_app_client, researcher_1, individual_id
     ).json
     assert len(individual_json['names'][2]['preferring_users']) == 0
+
+
+@pytest.mark.skipif(
+    module_unavailable('individuals'), reason='Individuals module disabled'
+)
+def test_name_validation(
+    db, flask_app_client, researcher_1, researcher_2, request, test_root
+):
+    from app.modules.names.models import DEFAULT_NAME_CONTEXT
+
+    uuids = sighting_utils.create_sighting(
+        flask_app_client, researcher_1, request, test_root
+    )
+    sighting_guid = uuids['sighting']
+    from app.modules.sightings.models import Sighting
+    sighting = Sighting.query.get(sighting_guid)
+    enc = sighting.encounters[0]
+
+    individual_data_in = {
+        'names': [
+            {'context': DEFAULT_NAME_CONTEXT, 'value': 'Zorgulon'},
+            {'context': 'nickname', 'value': 'Zorgie'},
+        ],
+        'encounters': [{'id': str(enc.guid)}],
+    }
+    individual_response = individual_utils.create_individual(
+        flask_app_client, researcher_1, 200, individual_data_in
+    )
+
+    query_names = ['Zorgulon', 'Zorgerelda', 'Zorgie']
+    validation_resp = individual_utils.validate_names(query_names)
+
+

@@ -680,6 +680,9 @@ def wait_for_elasticsearch_status(flask_app_client, user, force=True):
             status = [None]
         print('Elasticsearch status: %s' % (status,))
 
+        # Remove any disabled flags
+        status.pop('elasticsearch:enabled', None)
+
         if len(status) == 0:
             break
 

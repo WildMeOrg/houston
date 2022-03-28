@@ -721,7 +721,7 @@ class ElasticSearchBulkOperation(object):
                 log.error('ES session was unable to verify after %s seconds' % (timeout,))
                 raise RuntimeError('Could not verify')
 
-            status = es_status(outdated=False)
+            status = es_status(outdated=False, health=False)
             if len(status) == 0:
                 break
 

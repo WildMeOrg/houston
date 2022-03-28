@@ -104,6 +104,8 @@ def test_getting_list_of_users_by_authorized_user(
     if is_module_enabled('missions'):
         desired_user_data['owned_missions'] = []
         desired_user_data['owned_mission_tasks'] = []
+        desired_user_data['assigned_missions'] = []
+        desired_user_data['assigned_mission_tasks'] = []
 
     assert user[0] == desired_user_data
 

@@ -326,6 +326,10 @@ def test_get_mission_assets(flask_app_client, data_manager_1, test_root):
         Mission,
         MissionCollection,
     )
+    from app.extensions import elasticsearch as es
+
+    if es.is_disabled():
+        return
 
     ASSETS = 1000
     MISSION_COLLECTIONS = 2

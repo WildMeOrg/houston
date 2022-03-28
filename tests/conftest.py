@@ -216,7 +216,6 @@ def flask_app(gitlab_remote_login_pat, disable_elasticsearch):
         config_override['MISSION_COLLECTION_DATABASE_PATH'] = str(
             pathlib.Path(td) / 'mission_collection'
         )
-        config_override['ASSET_DATABASE_PATH'] = str(pathlib.Path(td) / 'assets')
         config_override['UPLOADS_DATABASE_PATH'] = str(pathlib.Path(td) / 'uploads')
         config_override['FILEUPLOAD_BASE_PATH'] = str(pathlib.Path(td) / 'fileuploads')
         config_override['SQLALCHEMY_DATABASE_PATH'] = str(

@@ -66,14 +66,16 @@ class RedisConfig:
 
 class BaseConfig(FlaskConfigOverrides, RedisConfig):
     # This class is expected to be initialized to enable the `@property`
-    # based settings. Because the configuration of this application is divided
+    # based settings. The configuration of this application is divided
     # into variants based on context and environment,
     # we capture these two items at initialization.
     # But please do not use the __init__ for anything else.
 
     def __init__(self, context, environment):
         # Do not add to this initialization method.
-        # If you need a computeded value, use the `@property` method decorator.
+        # If you need a computed value,
+        # use the `@property` method decorator.
+
         self.PROJECT_CONTEXT = context
         self.PROJECT_ENVIRONMENT = environment
 
@@ -113,12 +115,10 @@ class BaseConfig(FlaskConfigOverrides, RedisConfig):
         'video/webm': 'webm',
     }
 
-    ASSET_DATABASE_PATH = str(DATA_ROOT / 'assets')
-
     # specifically this is where tus "temporary" files go
     UPLOADS_DATABASE_PATH = str(DATA_ROOT / 'uploads')
 
-    FILEUPLOAD_BASE_PATH = os.path.join(PROJECT_DATABASE_PATH, 'fileuploads')
+    FILEUPLOAD_BASE_PATH = str(DATA_ROOT / 'fileuploads')
 
     SQLALCHEMY_DATABASE_PATH = str(DATA_ROOT / 'database.sqlite3')
     SQLALCHEMY_DATABASE_URI = os.getenv('SQLALCHEMY_DATABASE_URI') or 'sqlite:///%s' % (
@@ -341,8 +341,10 @@ class ElasticsearchConfig:
     # - for multiple hosts use a comma to separate each host
     # - to specify a port use a colon and port number (e.g. `elasticsearch:9200`)
     ELASTICSEARCH_HOSTS = _parse_elasticsearch_hosts(os.getenv('ELASTICSEARCH_HOSTS'))
-    ELASTICSEARCH_BUILD_INDEX_ON_STARTUP = True
-    ELASTICSEARCH_BLOCKING = False
+    ELASTICSEARCH_BUILD_INDEX_ON_STARTUP = bool(
+        os.getenv('ELASTICSEARCH_BUILD_INDEX_ON_STARTUP', True)
+    )
+    ELASTICSEARCH_BLOCKING = bool(os.getenv('ELASTICSEARCH_BLOCKING', False))
 
     CACHE_TYPE = 'SimpleCache'
     CACHE_DEFAULT_TIMEOUT = 60

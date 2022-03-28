@@ -262,10 +262,10 @@ services:
     depends_on:
       houston:
         condition: service_healthy
-    healthcheck:
-      test: [ "CMD", "celery", "-A", "app.extensions.celery.celery", "status"]
+    healthcheck: &celery-healthcheck
+      test: [ "CMD", "celery", "-A", "app.extensions.celery.celery", "status", "--timeout", "2"]
       interval: 10s
-      timeout: 5s
+      timeout: 8s
       retries: 60
     volumes: *houston-volumes
     networks:
@@ -279,11 +279,7 @@ services:
     depends_on:
       houston:
         condition: service_healthy
-    healthcheck:
-      test: [ "CMD", "celery", "-A", "app.extensions.celery.celery", "status"]
-      interval: 10s
-      timeout: 5s
-      retries: 60
+    healthcheck: *celery-healthcheck
     volumes: *houston-volumes
     networks:
       - intranet

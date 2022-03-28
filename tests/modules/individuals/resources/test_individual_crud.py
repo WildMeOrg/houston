@@ -413,3 +413,31 @@ def test_individual_mixed_edm_houston_patch(
     # EDM patch should have succeeded, Houston failed
     assert individual_json['timeOfBirth'] == '1445410800000'
     assert individual_json['names'] == []
+
+
+@pytest.mark.skipif(
+    module_unavailable('individuals'), reason='Individuals module disabled'
+)
+def test_individual_edm_patch_add(db, flask_app_client, researcher_1, request, test_root):
+    uuids = individual_utils.create_individual_and_sighting(
+        flask_app_client,
+        researcher_1,
+        request,
+        test_root,
+    )
+    individual_id = uuids['individual']
+    time_of_death = 1445410803000  # I feel incredible power setting this var
+
+    individual_utils.patch_individual(
+        flask_app_client,
+        researcher_1,
+        individual_id,
+        [
+            {'op': 'add', 'path': '/timeOfDeath', 'value': time_of_death},
+        ],
+    )
+    individual_json = individual_utils.read_individual(
+        flask_app_client, researcher_1, individual_id
+    ).json
+
+    assert individual_json['timeOfDeath'] == time_of_death

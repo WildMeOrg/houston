@@ -140,7 +140,7 @@ class ElasticsearchModel(object):
             guids = list(set([item[0] for item in guids]))
 
             log.info(
-                'Pruning Index All %r into %r (%d items)'
+                'Pruning Index All %r from %r (%d items)'
                 % (
                     cls,
                     index,
@@ -339,7 +339,11 @@ class ElasticSearchBulkOperation(object):
                     guid = create.get('_id', None)
                     if guid in all_guids:
                         exists.add(guid)
-        except (AssertionError, helpers.errors.BulkIndexError):  # pragma: no cover
+        except (
+            AssertionError,
+            helpers.errors.BulkIndexError,
+            elasticsearch.exceptions.ElasticsearchException,
+        ):  # pragma: no cover
             pass
 
         return exists
@@ -413,7 +417,7 @@ class ElasticSearchBulkOperation(object):
         try:
             responses = list(
                 helpers.parallel_bulk(
-                    app.es, actions, index=index, chunk_size=10000, raise_on_error=False
+                    app.es, actions, index=index, chunk_size=1000, raise_on_error=False
                 )
             )
             total = 0
@@ -426,7 +430,11 @@ class ElasticSearchBulkOperation(object):
 
             assert total == len(actions)
             assert len(errors) == 0
-        except (AssertionError, helpers.errors.BulkIndexError):  # pragma: no cover
+        except (
+            AssertionError,
+            helpers.errors.BulkIndexError,
+            elasticsearch.exceptions.ElasticsearchException,
+        ):  # pragma: no cover
             if len(items) == 1:
                 obj, force = items[0]
                 return obj.elasticsearchable
@@ -524,7 +532,11 @@ class ElasticSearchBulkOperation(object):
 
             assert total == len(actions)
             assert len(errors) == 0
-        except (AssertionError, helpers.errors.BulkIndexError):  # pragma: no cover
+        except (
+            AssertionError,
+            helpers.errors.BulkIndexError,
+            elasticsearch.exceptions.ElasticsearchException,
+        ):  # pragma: no cover
             if len(guids) == 1:
                 # Base case, check if the one ID exists
                 guid = guids[0]
@@ -1161,6 +1173,12 @@ def es_delete_guid(cls, guid, app=None):
 
     index = es_index_name(cls)
 
+    if app is None:
+        app = current_app
+
+    if session.in_bulk_mode():
+        return session.track_bulk_action('delete', (cls, guid))
+
     obj = cls.query.get(guid)
 
     if index is None:
@@ -1168,12 +1186,6 @@ def es_delete_guid(cls, guid, app=None):
             if hasattr(obj, 'invalidate'):
                 obj.invalidate()
         return None
-
-    if app is None:
-        app = current_app
-
-    if session.in_bulk_mode():
-        return session.track_bulk_action('delete', (cls, guid))
 
     if not es_index_exists(index, app=app):
         if obj is not None:
@@ -1232,7 +1244,7 @@ def es_pit(cls, app=None):
     return pit_id
 
 
-def es_status(app=None, outdated=True, active=True, health=True):
+def es_status(app=None, outdated=True, missing=False, active=True, health=True):
     from flask import current_app
 
     if app is None:
@@ -1247,10 +1259,47 @@ def es_status(app=None, outdated=True, active=True, health=True):
                 continue
 
             # Get outdated
-            num_guids = cls.query.filter(cls.updated > cls.indexed).count()
-            if num_guids > 0:
+            num_outdated = cls.query.filter(cls.updated > cls.indexed).count()
+            if num_outdated > 0:
                 key = '%s:outdated' % (index,)
-                status[key] = num_guids
+                status[key] = num_outdated
+
+    if missing:
+        for cls in REGISTERED_MODELS:
+            index = es_index_name(cls)
+            if index is None:
+                continue
+
+            local_guids = cls.query.with_entities(cls.guid).all()
+            local_guids = set([item[0] for item in local_guids])
+
+            outdated_guids = (
+                cls.query.filter(cls.updated > cls.indexed).with_entities(cls.guid).all()
+            )
+            outdated_guids = set([item[0] for item in outdated_guids])
+
+            es_guids = es_elasticsearch(app, cls, {}, load=False, limit=None)
+            es_guids = set(es_guids)
+
+            missing_guids = local_guids - es_guids
+            extra_guids = es_guids - local_guids
+
+            num_missing = len(missing_guids)
+            if num_missing > 0:
+                key = '%s:missing' % (index,)
+                status[key] = num_missing
+
+            num_extra = len(extra_guids)
+            if num_extra > 0:
+                key = '%s:extra' % (index,)
+                status[key] = num_extra
+
+            # Update outdated number to remove any that are missing
+            key = '%s:outdated' % (index,)
+            status.pop(key, None)
+            num_outdated = len(outdated_guids - missing_guids)
+            if num_outdated > 0:
+                status[key] = num_outdated
 
     if active:
         num_active = check_celery(verbose=False)

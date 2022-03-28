@@ -44,6 +44,10 @@ class PaginationParameters(Parameters):
     Helper Parameters class to reuse pagination.
     """
 
+    search = base_fields.String(
+        description='the field to filter the results by a search string, not required',
+        required=False,
+    )
     limit = base_fields.Integer(
         description='limit a number of items (allowed range is 1-100), default is 100.',
         missing=100,
@@ -55,8 +59,8 @@ class PaginationParameters(Parameters):
         validate=validate.Range(min=0),
     )
     sort = base_fields.String(
-        description='the field to sort the results by, default is "guid"',
-        missing='guid',
+        description='the field to sort the results by, default is the primary key column',
+        missing='primary',
     )
     reverse = base_fields.Boolean(
         description='the field to reverse the sorted results (before paging has been performed), default is False',
@@ -65,8 +69,4 @@ class PaginationParameters(Parameters):
     reverse_after = base_fields.Boolean(
         description='the field to reverse the sorted results (after paging has been performed), default is False',
         missing=False,
-    )
-    search = base_fields.String(
-        description='the field to filter the results by a search string, not required',
-        required=False,
     )

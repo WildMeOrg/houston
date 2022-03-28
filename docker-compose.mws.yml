@@ -248,6 +248,32 @@ services:
       - intranet
     environment: *houston-environment
 
+  celery_worker_2:
+    image: wildme/houston:latest
+    build: *houston-build
+    command: ["celery", "-A", "app.extensions.celery.celery", "worker", "-l", "INFO", "--pool=gevent"]
+    depends_on:
+      houston:
+        condition: service_healthy
+    healthcheck: *celery-healthcheck
+    volumes: *houston-volumes
+    networks:
+      - intranet
+    environment: *houston-environment
+
+  celery_worker_3:
+    image: wildme/houston:latest
+    build: *houston-build
+    command: ["celery", "-A", "app.extensions.celery.celery", "worker", "-l", "INFO", "--pool=gevent"]
+    depends_on:
+      houston:
+        condition: service_healthy
+    healthcheck: *celery-healthcheck
+    volumes: *houston-volumes
+    networks:
+      - intranet
+    environment: *houston-environment
+
   flower:
     image: wildme/houston:latest
     build: *houston-build

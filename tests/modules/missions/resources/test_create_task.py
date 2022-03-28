@@ -20,6 +20,10 @@ def test_create_and_delete_mission_task(flask_app_client, data_manager_1, test_r
         MissionTaskUserAssignment,
         MissionTaskAssetParticipation,
     )
+    from app.extensions import elasticsearch as es
+
+    if es.is_disabled():
+        return
 
     transaction_id, test_filename = tus_utils.prep_tus_dir(test_root)
     transaction_ids = []

@@ -22,6 +22,10 @@ def test_modify_mission_task_users(
         MissionTask,
     )
     from app.modules.assets.models import Asset
+    from app.extensions import elasticsearch as es
+
+    if es.is_disabled():
+        return
 
     transaction_id, test_filename = tus_utils.prep_tus_dir(test_root)
     transaction_ids = []

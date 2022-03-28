@@ -2,14 +2,14 @@
 """ Client initialization for Elasticsearch """
 from gumby import Client, initialize_indexes_by_model
 
-from app.extensions import is_extension_enabled, db
+from app.extensions import is_extension_enabled, db, executor
+from app.utils import HoustonException
 
 import elasticsearch
 from elasticsearch import helpers
 
 import logging
 
-from flask import current_app
 import flask_sqlalchemy
 import utool as ut
 import sqlalchemy_utils
@@ -116,9 +116,16 @@ class ElasticsearchModel(object):
                 )
 
                 # Re-index all objects in our local database
+                desc_action = 'Tracking' if session.in_bulk_mode() else 'Indexing'
+                desc = '%s %s' % (
+                    desc_action,
+                    cls.__name__,
+                )
                 quiet = len(guids) < 100
-                for guid in tqdm.tqdm(guids, disable=quiet):
-                    obj = cls.query.get(guid)
+
+                # Load all objects and index
+                objs = cls.query.filter(cls.guid.in_(guids)).order_by(cls.guid).all()
+                for obj in tqdm.tqdm(objs, desc=desc, disable=quiet):
                     obj.index(app=app, force=force)
 
     @classmethod
@@ -142,19 +149,25 @@ class ElasticsearchModel(object):
             )
 
             # Prune all objects in our local database
+            desc = 'Pruning %s' % (cls.__name__,)
             quiet = len(guids) < 100
-            for guid in tqdm.tqdm(guids, disable=quiet):
+            for guid in tqdm.tqdm(guids, desc=desc, disable=quiet):
                 es_delete_guid(cls, guid, app=app)
 
     @classmethod
     def invalidate_all(cls, app=None):
-        with session.begin(disabled=True):
-            objs = cls.query.all()
-            if len(objs) > 0:
-                log.info('Invalidating %r' % (cls,))
-                desc = 'Invalidating (Bulk) %s' % (cls.__name__,)
-                for obj in tqdm.tqdm(objs, desc=desc):
-                    obj.invalidate()
+        log.info('Invalidating %r' % (cls,))
+        with db.session.begin(subtransactions=True):
+            db.session.execute(
+                cls.bulk_class()
+                .__table__.update()
+                .values(updated=datetime.datetime.utcnow())
+            )
+        objs = cls.query.all()
+
+        if len(objs) > 0:
+            for obj in objs:
+                assert not obj.elasticsearchable
 
     @classmethod
     def elasticsearch(cls, search, app=None, total=False, *args, **kwargs):
@@ -170,9 +183,16 @@ class ElasticsearchModel(object):
             kwargs['total'] = True
 
         with session.begin():
-            response = elasticsearch_on_class(app, cls, body, *args, **kwargs)
+            response = es_elasticsearch(app, cls, body, *args, **kwargs)
 
         return response
+
+    @classmethod
+    def bulk_class(cls):
+        from app.extensions.git_store import GitStore
+
+        bulk_cls = GitStore if issubclass(cls, GitStore) else cls
+        return bulk_cls
 
     @property
     def index_name(self):
@@ -190,6 +210,12 @@ class ElasticsearchModel(object):
 
     def invalidate(self, *args, **kwargs):
         return es_invalidate(self, *args, **kwargs)
+
+    def validate(self, *args, **kwargs):
+        return es_validate(self, *args, **kwargs)
+
+    def serialize(self, *args, **kwargs):
+        return es_serialize(self, *args, **kwargs)
 
     def index(self, *args, **kwargs):
         return es_index(self, *args, **kwargs)
@@ -299,11 +325,13 @@ class ElasticSearchBulkOperation(object):
 
         all_guids = set(map(str, guids))
         try:
-            total, errors = helpers.bulk(
-                app.es, actions, index=index, raise_on_error=False, max_retries=3
+            responses = list(
+                helpers.parallel_bulk(
+                    app.es, actions, index=index, chunk_size=10000, raise_on_error=False
+                )
             )
-            for error in errors:
-                create = error.get('create', {})
+            for success, response in responses:
+                create = response.get('create', {})
                 flag = 'document already exists' in create.get('error', {}).get(
                     'reason', ''
                 )
@@ -316,7 +344,7 @@ class ElasticSearchBulkOperation(object):
 
         return exists
 
-    def _es_index_bulk(self, cls, items, app=None, level=0):
+    def _es_index_bulk(self, cls, items, app=None, level=0, parallel=True):
         if app is None:
             app = self.app
 
@@ -355,23 +383,47 @@ class ElasticSearchBulkOperation(object):
             return len(skipped)
 
         level_str = '' if level == 0 else ' [retry=%d]' % (level,)
-        desc = 'Indexing (Bulk) %s%s' % (
+        desc = 'Serializing (Bulk) %s%s' % (
             cls.__name__,
             level_str,
         )
 
+        datas = None
+        if parallel:
+            try:
+                datas = es_serialize_parallel(pending, desc, app=app)
+            except Exception:
+                datas = None
+
+        if datas is None:
+            # Compute datas in serial
+            datas = []
+            for obj in tqdm.tqdm(pending, desc=desc):
+                data = obj.serialize()
+                datas.append(data)
+
         actions = []
-        for obj in tqdm.tqdm(pending, desc=desc):
-            index_, id_, body = es_serialize(obj)
+        for obj, data in zip(pending, datas):
+            index_, id_, body = data
             assert index == index_
             action = body
             action['_id'] = str(id_)
             actions.append(action)
 
         try:
-            total, errors = helpers.bulk(
-                app.es, actions, index=index, raise_on_error=False, max_retries=3
+            responses = list(
+                helpers.parallel_bulk(
+                    app.es, actions, index=index, chunk_size=10000, raise_on_error=False
+                )
             )
+            total = 0
+            errors = []
+            for success, response in responses:
+                if success:
+                    total += 1
+                else:
+                    errors.append(response)
+
             assert total == len(actions)
             assert len(errors) == 0
         except (AssertionError, helpers.errors.BulkIndexError):  # pragma: no cover
@@ -384,7 +436,9 @@ class ElasticSearchBulkOperation(object):
             chunk_size = max(1, len(items) // 2)
             chunks = list(ut.ichunks(items, chunk_size))
             for chunk in chunks:
-                success = self._es_index_bulk(cls, chunk, app=app, level=new_level)
+                success = self._es_index_bulk(
+                    cls, chunk, app=app, level=new_level, parallel=parallel
+                )
                 total += success
 
             if level == 0:
@@ -395,12 +449,15 @@ class ElasticSearchBulkOperation(object):
             return total
 
         # We only update the indexed timestamps of the objects that succeded as a group
+        pending_guids = [item.guid for item in pending]
         log.info('Time-stamping (Bulk) %s' % (cls.__name__,))
         with db.session.begin(subtransactions=True):
-            quiet = len(pending) < 100
-            for obj in tqdm.tqdm(pending, disable=quiet):
-                obj.indexed = datetime.datetime.utcnow()
-                db.session.merge(obj)
+            db.session.execute(
+                cls.bulk_class()
+                .__table__.update()
+                .values(indexed=datetime.datetime.utcnow())
+                .where(cls.bulk_class().guid.in_(pending_guids))
+            )
 
         # Refresh the index
         es_refresh_index(index, app=app)
@@ -452,9 +509,19 @@ class ElasticSearchBulkOperation(object):
         )
 
         try:
-            total, errors = helpers.bulk(
-                app.es, actions, index=index, raise_on_error=False, max_retries=3
+            responses = list(
+                helpers.parallel_bulk(
+                    app.es, actions, index=index, chunk_size=10000, raise_on_error=False
+                )
             )
+            total = 0
+            errors = []
+            for success, response in responses:
+                if success:
+                    total += 1
+                else:
+                    errors.append(response)
+
             assert total == len(actions)
             assert len(errors) == 0
         except (AssertionError, helpers.errors.BulkIndexError):  # pragma: no cover
@@ -485,15 +552,16 @@ class ElasticSearchBulkOperation(object):
         all_guids = cls.query.with_entities(cls.guid).all()
         all_guids = set([str(item[0]) for item in all_guids])
 
-        log.info('Invalidating (Bulk) %s' % (cls.__name__,))
-        with db.session.begin(subtransactions=True):
-            quiet = len(pending) < 100
-            for guid in tqdm.tqdm(pending, disable=quiet):
-                if guid in all_guids:
-                    obj = cls.query.get(guid)
-                    if obj is not None:
-                        obj.invalidate()
-                        db.session.merge(obj)
+        invalid_guids = set(pending) & all_guids
+        if len(invalid_guids) > 0:
+            log.info('Invalidating (Bulk) %s' % (cls.__name__,))
+            with db.session.begin(subtransactions=True):
+                db.session.execute(
+                    cls.bulk_class()
+                    .__table__.update()
+                    .values(updated=datetime.datetime.utcnow())
+                    .where(cls.bulk_class().guid.in_(invalid_guids))
+                )
 
         # Refresh the index
         es_refresh_index(index, app=app)
@@ -590,7 +658,7 @@ class ElasticSearchBulkOperation(object):
                                     )
                                 )
                         else:
-                            signature = es_tasks.elasticsearch_delete_guid_bulk.s(
+                            signature = es_tasks.es_task_delete_guid_bulk.s(
                                 index, del_items_
                             )
                             signature.retries = 3
@@ -625,7 +693,7 @@ class ElasticSearchBulkOperation(object):
                             )
                     else:
                         items = [(str(item.guid), force) for item, force in items]
-                        signature = es_tasks.elasticsearch_index_bulk.s(index, items)
+                        signature = es_tasks.es_task_index_bulk.s(index, items)
                         signature.retries = 3
                         promise = signature.apply_async()
                         CELERY_ASYNC_PROMISES.append((signature, promise))
@@ -653,7 +721,7 @@ class ElasticSearchBulkOperation(object):
                 log.error('ES session was unable to verify after %s seconds' % (timeout,))
                 raise RuntimeError('Could not verify')
 
-            status = es_status()
+            status = es_status(outdated=False, health=False)
             if len(status) == 0:
                 break
 
@@ -699,7 +767,11 @@ class ElasticSearchBulkOperation(object):
         if type_ is not None or value is not None or traceback is not None:
             self.abort(reason='Exception on __exit__()')
         else:
-            return self.exit()
+            try:
+                return self.exit()
+            except (Exception, sqlalchemy.exc.InvalidRequestError):
+                self.abort(reason='Exception on exit()')
+                raise HoustonException(log, 'Elasticsearch context failure')
 
 
 def is_enabled():
@@ -791,7 +863,12 @@ def register_elasticsearch_model(cls):
     }
 
 
-def es_index_name(cls):
+def es_index_name(cls, app=None):
+    from flask import current_app
+
+    if app is None:
+        app = current_app
+
     if is_disabled():
         return None
 
@@ -801,7 +878,7 @@ def es_index_name(cls):
 
     index = ('%s.%s' % (cls.__module__, cls.__name__)).lower()
 
-    if current_app.testing:
+    if app.testing:
         index = '%s.%s' % (
             TESTING_PREFIX,
             index,
@@ -810,7 +887,7 @@ def es_index_name(cls):
     return index
 
 
-def get_elasticsearch_cls_from_index(index):
+def es_index_class(index):
     import sys
     import inspect
 
@@ -854,9 +931,28 @@ def es_health_and_stats(app=None):
 
 def es_invalidate(obj):
     if obj is not None:
-        if hasattr(obj, 'updated') and hasattr(obj, 'indexed'):
-            obj.updated = datetime.datetime.utcnow()
-            assert obj.indexed < obj.updated
+        with session.begin(disabled=True):
+            with db.session.begin(subtransactions=True):
+                cls = obj.__class__
+                db.session.execute(
+                    cls.bulk_class()
+                    .__table__.update()
+                    .values(updated=datetime.datetime.utcnow())
+                    .where(cls.bulk_class().guid == obj.guid)
+                )
+
+
+def es_validate(obj):
+    if obj is not None:
+        with session.begin(disabled=True):
+            with db.session.begin(subtransactions=True):
+                cls = obj.__class__
+                db.session.execute(
+                    cls.bulk_class()
+                    .__table__.update()
+                    .values(indexed=datetime.datetime.utcnow())
+                    .where(cls.bulk_class().guid == obj.guid)
+                )
 
 
 def es_index(obj, app=None, force=False):
@@ -875,7 +971,7 @@ def es_index(obj, app=None, force=False):
         return session.track_bulk_action('index', obj, force=force)
 
     try:
-        index, id_, body = es_serialize(obj)
+        index, id_, body = obj.serialize()
         resp = app.es.index(index=index, id=id_, body=body)
     except (elasticsearch.exceptions.RequestError, TypeError):  # pragma: no cover
         log.error('Error indexing %r' % (obj,))
@@ -884,7 +980,7 @@ def es_index(obj, app=None, force=False):
     # Update the object's indexed timestamp
     assert resp['_id'] == str(obj.guid)
     if resp['result'] in ('created', 'updated'):
-        obj.indexed = datetime.datetime.utcnow()
+        obj.validate()
     else:
         log.error('Database update on an ES model without ES index update')
 
@@ -1050,7 +1146,7 @@ def es_search(index, body, app=None):
     if not es_index_exists(index, app=app):
         return None
 
-    resp = list(helpers.scan(app.es, query=body, index=index, scroll='1d'))
+    resp = list(helpers.scan(app.es, query=body, index=index, scroll='1d', size=10000))
 
     return resp
 
@@ -1065,7 +1161,12 @@ def es_delete_guid(cls, guid, app=None):
 
     index = es_index_name(cls)
 
+    obj = cls.query.get(guid)
+
     if index is None:
+        if obj is not None:
+            if hasattr(obj, 'invalidate'):
+                obj.invalidate()
         return None
 
     if app is None:
@@ -1075,17 +1176,20 @@ def es_delete_guid(cls, guid, app=None):
         return session.track_bulk_action('delete', (cls, guid))
 
     if not es_index_exists(index, app=app):
+        if obj is not None:
+            obj.invalidate()
         return None
 
     id_ = str(guid)
     if not app.es.exists(index, id=id_):
+        if obj is not None:
+            obj.invalidate()
         return None
 
     resp = app.es.delete(index, id=id_)
 
     assert resp['_id'] == id_
     if resp['result'] in ('deleted',):
-        obj = cls.query.get(guid)
         if obj is not None:
             obj.invalidate()
     else:
@@ -1128,39 +1232,79 @@ def es_pit(cls, app=None):
     return pit_id
 
 
-def es_status(app=None):
+def es_status(app=None, outdated=True, active=True, health=True):
     from flask import current_app
 
     if app is None:
         app = current_app
 
     status = {}
-    for cls in REGISTERED_MODELS:
-        index = es_index_name(cls)
-        if index is None:
-            continue
 
-        # Get outdated
-        num_guids = cls.query.filter(cls.updated > cls.indexed).count()
-        if num_guids > 0:
-            key = '%s:outdated' % (index,)
-            status[key] = num_guids
+    if outdated:
+        for cls in REGISTERED_MODELS:
+            index = es_index_name(cls)
+            if index is None:
+                continue
 
-    num_active = check_celery(verbose=False)
-    if num_active > 0:
-        status['celery:active'] = num_active
+            # Get outdated
+            num_guids = cls.query.filter(cls.updated > cls.indexed).count()
+            if num_guids > 0:
+                key = '%s:outdated' % (index,)
+                status[key] = num_guids
 
-    if is_disabled():
-        status['elasticsearch:enabled'] = False
+    if active:
+        num_active = check_celery(verbose=False)
+        if num_active > 0:
+            status['celery:active'] = num_active
 
-    health, stats = es_health_and_stats(app=app)
-    if health['status'] != 'green':
-        status['status'] = health['status']
+    if health:
+        if is_disabled():
+            status['elasticsearch:enabled'] = False
+
+        health_data, stats_data = es_health_and_stats(app=app)
+        if health_data['status'] != 'green':
+            status['status'] = health_data['status']
 
     return status
 
 
-def es_serialize(obj, allow_schema=True):
+def es_serialize_parallel_worker(obj):
+    from flask import current_app
+
+    app = current_app
+
+    try:
+        data = obj.serialize(app=app)
+    except Exception:  # pragma: no cover
+        data = None
+    return data
+
+
+def es_serialize_parallel(objs, desc=None, app=None):
+    from flask import current_app
+
+    if app is None:
+        app = current_app
+
+    failures = []
+    with app.test_request_context():
+        results = executor.map(es_serialize_parallel_worker, objs)
+        datas = []
+        for obj, data in tqdm.tqdm(zip(objs, results), total=len(objs), desc=desc):
+            if data is None:
+                failures.append(obj)
+                data = obj.serialize(app=app)
+            datas.append(data)
+
+    if len(failures) > 0:
+        log.warning(
+            'Parallel had to use serial fallback for %d images' % (len(failures),)
+        )
+
+    return datas
+
+
+def es_serialize(obj, allow_schema=True, app=None):
     def _check_value(value):
 
         retval = RuntimeError
@@ -1216,7 +1360,7 @@ def es_serialize(obj, allow_schema=True):
 
     cls = obj.__class__
 
-    index = es_index_name(cls)
+    index = es_index_name(cls, app=app)
     assert index is not None
 
     if allow_schema and hasattr(cls, 'get_elasticsearch_schema'):
@@ -1228,7 +1372,7 @@ def es_serialize(obj, allow_schema=True):
         try:
             body = schema().dump(obj).data
         except Exception as ex:  # pragma: no cover
-            _, _, body = es_serialize(obj, allow_schema=False)
+            _, _, body = es_serialize(obj, allow_schema=False, app=app)
             body['guid'] = str(obj.guid)
             body['_schema'] = '%s (failed with %r: %s)' % (
                 body['_schema'],
@@ -1273,7 +1417,7 @@ def es_serialize(obj, allow_schema=True):
                 log.warning(
                     'Skipping Elasticsearch attributes %r for class %r'
                     % (
-                        skipped,
+                        len(skipped),
                         cls,
                     )
                 )
@@ -1325,13 +1469,13 @@ def attach_listeners(app):
         if not REGISTERED_MODELS[cls]['status']:
             name = '%s.%s' % (cls.__module__, cls.__name__)
             log.info('Attach Elasticsearch listener for %r' % (name,))
-            listen(cls, 'before_insert', _before_insert_or_update)
-            listen(cls, 'before_update', _before_insert_or_update)
-            listen(cls, 'before_delete', _before_delete)
+            listen(cls, 'before_insert', _before_insert_or_update, propagate=True)
+            listen(cls, 'before_update', _before_insert_or_update, propagate=True)
+            listen(cls, 'before_delete', _before_delete, propagate=True)
             REGISTERED_MODELS[cls]['status'] = True
 
-    listen(db.session, 'after_transaction_create', _create_transaction)
-    listen(db.session, 'after_transaction_end', _end_transaction)
+    listen(db.session, 'after_transaction_create', _create_transaction, propagate=True)
+    listen(db.session, 'after_transaction_end', _end_transaction, propagate=True)
 
 
 def es_index_all(*args, **kwargs):
@@ -1347,6 +1491,11 @@ def es_prune_all(*args, **kwargs):
 def es_invalidate_all(*args, **kwargs):
     for cls in REGISTERED_MODELS:
         cls.invalidate_all(*args, **kwargs)
+
+
+def es_pit_all(*args, **kwargs):
+    for cls in REGISTERED_MODELS:
+        cls.pit(*args, **kwargs)
 
 
 def es_checkpoint(*args, **kwargs):
@@ -1366,7 +1515,7 @@ def es_refresh_all(*args, **kwargs):
         es_refresh_index(index, *args, **kwargs)
 
 
-def elasticsearch_on_class(
+def es_elasticsearch(
     app,
     cls,
     body,
@@ -1376,6 +1525,7 @@ def elasticsearch_on_class(
     offset=0,
     sort='guid',
     reverse=False,
+    reverse_after=False,
     total=False,
 ):
     index = es_index_name(cls)
@@ -1417,12 +1567,35 @@ def elasticsearch_on_class(
         else:
             search_prune.append(guid)
 
+    if prune and len(search_prune) > 0:
+        with session.begin():
+            search_prune = list(set(search_prune))
+            log.warning(
+                'Found %d items to prune for class %r after search in %r'
+                % (
+                    len(search_prune),
+                    cls,
+                    index,
+                )
+            )
+            desc = 'Pruning %s' % (cls.__name__,)
+            quiet = len(search_prune) < 100
+            for guid in tqdm.tqdm(search_prune, desc=desc, disable=quiet):
+                es_delete_guid(cls, guid, app=app)
+
     total_hits = len(search_guids)
 
     # Get all table GUIDs
+    prmiary_columns = list(cls.__table__.primary_key.columns)
+    if len(prmiary_columns) > 1:
+        default_column = prmiary_columns[0]
+    else:
+        log.warning('Multiple columns specified as the primary key, defaulting to GUID')
+        default_column = cls.guid
+
     sort = sort.lower()
-    if sort == 'guid':
-        sort_column = cls.guid
+    if sort in ['default', 'primary']:
+        sort_column = default_column
     else:
         sort_column = None
         for column in list(cls.__table__.columns):
@@ -1430,47 +1603,35 @@ def elasticsearch_on_class(
                 sort_column = column
         if sort_column is None:
             log.warning('The sort field %r is unrecognized, defaulting to GUID' % (sort,))
-            sort_column = cls.guid
+            sort_column = default_column
 
-    sort_func = sort_column.desc if reverse else sort_column.asc
-    guids = (
+    sort_func_1 = sort_column.desc if reverse else sort_column.asc
+    sort_func_2 = default_column.desc if reverse else default_column.asc
+    query = (
         cls.query.filter(cls.guid.in_(search_guids))
-        .order_by(sort_func())
-        .with_entities(cls.guid)
+        .order_by(sort_func_1(), sort_func_2())
         .offset(offset)
         .limit(limit)
-        .all()
     )
-    guids = [item[0] for item in guids]
 
-    if prune and len(search_prune) > 0:
-        with session.begin():
-            search_prune = list(set(search_prune))
-            log.warning(
-                'Found %d items to prune for class %r after search'
-                % (
-                    len(search_prune),
-                    cls,
-                )
-            )
-            quiet = len(search_prune) < 100
-            for guid in tqdm.tqdm(search_prune, disable=quiet):
-                es_delete_guid(cls, guid, app=app)
+    if reverse_after:
+        after_sort_func_1 = sort_column.asc if reverse else sort_column.desc
+        after_sort_func_2 = default_column.asc if reverse else default_column.desc
+        query = query.from_self().order_by(after_sort_func_1(), after_sort_func_2())
 
-    if load:
-        objs = []
-        for guid in tqdm.tqdm(guids, desc='Loading Hits %s' % (cls.__name__,)):
-            obj = cls.query.get(guid)
-            objs.append(obj)
-        if total:
-            return total_hits, objs
-        else:
-            return objs
+    if not load:
+        query = query.with_entities(cls.guid)
+
+    results = query.all()
+
+    if not load:
+        # Strip column 0
+        results = [result[0] for result in results]
+
+    if total:
+        return total_hits, results
     else:
-        if total:
-            return total_hits, guids
-        else:
-            return guids
+        return results
 
 
 def init_app(app, **kwargs):

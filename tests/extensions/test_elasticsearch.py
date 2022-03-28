@@ -2,9 +2,11 @@
 import pytest
 import time
 import datetime
+import tqdm
 
 from tests.utils import (
     extension_unavailable,
+    module_unavailable,
     wait_for_elasticsearch_status,
     elasticsearch,
 )
@@ -26,14 +28,15 @@ def test_indexing_with_elasticsearch():
 
 
 @pytest.mark.skipif(
-    extension_unavailable('elasticsearch'), reason='Elasticsearch extension disabled'
+    extension_unavailable('elasticsearch') or module_unavailable('elasticsearch'),
+    reason='Elasticsearch extension or module disabled',
 )
 def test_index_cls_conversion():
     from app.extensions import elasticsearch as es
     from app.modules.users.models import User
 
     index = es.es_index_name(User)
-    cls = es.get_elasticsearch_cls_from_index(index)
+    cls = es.es_index_class(index)
 
     if None in [index, cls]:
         assert index is None
@@ -45,18 +48,43 @@ def test_index_cls_conversion():
 
 
 @pytest.mark.skipif(
-    extension_unavailable('elasticsearch'), reason='Elasticsearch extension disabled'
+    extension_unavailable('elasticsearch')
+    or module_unavailable('elasticsearch')
+    or module_unavailable('asset_groups'),
+    reason='Elasticsearch extension or module disabled, or Asset Groups module is disabled',
 )
-def test_elasticsearch_utilities(flask_app_client, db, admin_user, staff_user):
+def test_elasticsearch_utilities(
+    flask_app_client,
+    db,
+    admin_user,
+    staff_user,
+    readonly_user,
+    user_manager_user,
+    regular_user,
+    internal_user,
+    temp_user,
+    collab_user_a,
+    collab_user_b,
+    test_clone_asset_group_data,
+):
     from app.extensions.elasticsearch import tasks as es_tasks
     from app.extensions import elasticsearch as es
     from app.modules.complex_date_time.models import ComplexDateTime, Specificities
     from app.modules.users.models import User
     from app.modules.users.schemas import UserListSchema
+    from app.modules.assets.models import Asset
+    from tests.modules.users.resources.utils import read_all_users_pagination
+    from tests.modules.assets.resources.utils import read_all_assets_pagination
+    import tests.modules.asset_groups.resources.utils as asset_group_utils
+
+    if es.is_disabled():
+        return
+
+    body = {}
 
     es.check_celery(revoke=True)
     es.es_checkpoint()
-    assert len(es.es_status()) == 0
+    assert len(es.es_status(outdated=False)) == 0
     assert es.check_celery() == 0
 
     # Check if we can turn off ES globally
@@ -85,7 +113,12 @@ def test_elasticsearch_utilities(flask_app_client, db, admin_user, staff_user):
     assert admin_user.index_name == es.es_index_name(cls)
     assert admin_user.index_hook_obj() is None
 
-    index, guid, body_schema = es.es_serialize(admin_user)
+    data = es.es_serialize(admin_user)
+    data2 = admin_user.serialize()
+    data[-1].pop('indexed')
+    data2[-1].pop('indexed')
+    assert data == data2
+    index, guid, body_schema = data
     assert index == admin_user._index()
     assert guid == admin_user.guid
     assert len(body_schema) > 0
@@ -152,20 +185,21 @@ def test_elasticsearch_utilities(flask_app_client, db, admin_user, staff_user):
     assert admin_user.guid in guids
     assert staff_user.guid in guids
 
-    total1, users1 = User.elasticsearch({}, total=True, load=False)
+    total1, users1 = User.elasticsearch(body, total=True, load=False)
     assert total1 >= len(users1)
     assert len(users1) <= 100
 
     # Check refresh and search
     es.es_refresh_index(es.es_index_name(User))
 
-    total2, users2 = User.elasticsearch({}, total=True, load=False)
+    total2, users2 = User.elasticsearch(body, total=True, load=False)
     assert total1 == total2
     assert users1 == users2
 
     # Check if we can prune objects
-    with es.session.begin(blocking=True, verify=True):
+    with es.session.begin(blocking=True):
         User.prune_all()
+    es.es_checkpoint()
 
     users = User.elasticsearch(None, load=False)
     assert len(users) == 0
@@ -180,12 +214,354 @@ def test_elasticsearch_utilities(flask_app_client, db, admin_user, staff_user):
     with es.session.begin(blocking=True, verify=True):
         User.index_all()
 
-    total1, users1 = User.elasticsearch({}, total=True, sort='guid')
-    total2, users2 = User.elasticsearch({}, total=True, sort='indexed')
-    total3, users3 = User.elasticsearch({}, total=True, sort='indexed', reverse=True)
+    es.es_checkpoint()
+
+    # Test sorting
+    users = User.elasticsearch(body)
+    vals = [user.guid for user in users]
+    assert vals == sorted(vals)
+    users = User.elasticsearch(body, sort='indexed')
+    vals = [user.indexed for user in users]
+    assert vals == sorted(vals)
+    users = User.elasticsearch(body, sort='indexed', reverse=True)
+    vals = [user.indexed for user in users]
+    assert vals == sorted(vals, reverse=True)
+
+    _, users = User.elasticsearch(body, total=True)
+    vals = [user.guid for user in users]
+    assert vals == sorted(vals)
+    _, users = User.elasticsearch(body, total=True, sort='indexed')
+    vals = [user.indexed for user in users]
+    assert vals == sorted(vals)
+    _, users = User.elasticsearch(body, total=True, sort='indexed', reverse=True)
+    vals = [user.indexed for user in users]
+    assert vals == sorted(vals, reverse=True)
+
+    # Test indexing
+    total1, users1 = User.elasticsearch(body, total=True, sort='guid')
+    total2, users2 = User.elasticsearch(body, total=True, sort='indexed')
+    total3, users3 = User.elasticsearch(body, total=True, sort='indexed', reverse=True)
+
+    vals2 = [user.indexed for user in users2]
+    assert vals2 == sorted(vals2)
+    vals3 = [user.indexed for user in users3]
+    assert vals3 == sorted(vals3, reverse=True)
+    assert vals2 == vals3[::-1]
     assert total1 == total2 and total2 == total3
-    assert users2 == users3[::-1]
     assert set(users1) == set(users2) and set(users1) == set(users3)
+
+    # Check pagination
+    reference = User.elasticsearch(body)
+
+    # Build all possible configurations
+    configs = []
+    for load in [True, False]:
+        for total in [True, False]:
+            for limit in [None, 1, 5, 100]:
+                for offset in [None, 0, 5, 100]:
+                    for sort in [None, 'guid', 'indexed', 'full_name']:
+                        for reverse in [True, False]:
+                            for reverse_after in [True, False]:
+                                config = (
+                                    load,
+                                    total,
+                                    limit,
+                                    offset,
+                                    sort,
+                                    reverse,
+                                    reverse_after,
+                                )
+                                configs.append(config)
+
+    # Test pagination for Elasticsearch
+    failures = []
+    for config in tqdm.tqdm(configs):
+        load, total, limit, offset, sort, reverse, reverse_after = config
+        config_str = (
+            'load=%r, total=%r, limit=%r, offset=%r, sort=%r, reverse=%r, reverse_after=%r'
+            % config
+        )
+        print(config_str)
+        try:
+            kwargs = {
+                'load': load,
+                'total': total,
+                'reverse': reverse,
+                'reverse_after': reverse_after,
+            }
+            if limit is not None:
+                kwargs['limit'] = limit
+            if offset is not None:
+                kwargs['offset'] = offset
+            if sort is not None:
+                kwargs['sort'] = sort
+
+            results = User.elasticsearch(body, **kwargs)
+
+            if total:
+                total_, users = results
+                assert total_ == len(reference)
+            else:
+                users = results
+
+            compare = reference[:]
+
+            if sort in [None, 'guid']:
+                compare.sort(key=lambda user: user.guid, reverse=reverse)
+            elif sort == 'indexed':
+                compare.sort(key=lambda user: (user.indexed, user.guid), reverse=reverse)
+            elif sort == 'full_name':
+                compare.sort(
+                    key=lambda user: (user.full_name, user.guid), reverse=reverse
+                )
+            else:
+                raise ValueError()
+
+            if offset is not None:
+                compare = compare[offset:]
+            if limit is not None:
+                compare = compare[:limit]
+
+            if reverse_after:
+                compare = compare[::-1]
+
+            if not load:
+                compare = [user.guid for user in compare]
+
+            assert users == compare
+        except AssertionError:
+            failures.append(config_str)
+
+    print(failures)
+    assert len(failures) == 0
+
+    # Build all possible configurations
+    configs = []
+    for limit in [None, 1, 5, 100]:
+        for offset in [None, 0, 5, 100]:
+            for sort in [None, 'guid', 'indexed', 'full_name']:
+                for reverse in [True, False]:
+                    for reverse_after in [True, False]:
+                        config = (limit, offset, sort, reverse, reverse_after)
+                        configs.append(config)
+
+    # Make one request to ensure the oauth user has been createda
+    response = read_all_users_pagination(flask_app_client, staff_user)
+
+    # Check pagination
+    reference = User.query.all()
+
+    # Test pagination for listing APIs
+    failures = []
+    for config in tqdm.tqdm(configs):
+        limit, offset, sort, reverse, reverse_after = config
+        config_str = 'limit=%r, offset=%r, sort=%r, reverse=%r, reverse_after=%r' % config
+        print(config_str)
+        try:
+            kwargs = {
+                'reverse': reverse,
+                'reverse_after': reverse_after,
+            }
+            if limit is not None:
+                kwargs['limit'] = limit
+            if offset is not None:
+                kwargs['offset'] = offset
+            if sort is not None:
+                kwargs['sort'] = sort
+            response = read_all_users_pagination(flask_app_client, staff_user, **kwargs)
+
+            users = response.json
+            users = [user['guid'] for user in users]
+
+            compare = reference[:]
+
+            if sort in [None, 'guid']:
+                compare.sort(key=lambda user: user.guid, reverse=reverse)
+            elif sort == 'indexed':
+                compare.sort(key=lambda user: (user.indexed, user.guid), reverse=reverse)
+            elif sort == 'full_name':
+                compare.sort(
+                    key=lambda user: (user.full_name, user.guid), reverse=reverse
+                )
+            else:
+                raise ValueError()
+
+            if offset is not None:
+                compare = compare[offset:]
+            if limit is not None:
+                compare = compare[:limit]
+
+            if reverse_after:
+                compare = compare[::-1]
+
+            compare = [str(user.guid) for user in compare]
+
+            assert users == compare
+        except AssertionError:
+            failures.append(config_str)
+
+    clone = asset_group_utils.clone_asset_group(
+        flask_app_client,
+        staff_user,
+        test_clone_asset_group_data['asset_group_uuid'],
+    )
+    with es.session.begin(blocking=True, verify=True):
+        Asset.index_all()
+
+    es.es_checkpoint()
+
+    # Check pagination
+    reference = Asset.elasticsearch(body)
+
+    # Build all possible configurations
+    configs = []
+    for load in [True, False]:
+        for total in [True, False]:
+            for limit in [None, 1, 10]:
+                for offset in [None, 0, 1, 10]:
+                    for sort in [None, 'magic_signature', 'path']:
+                        for reverse in [True, False]:
+                            for reverse_after in [True, False]:
+                                config = (
+                                    load,
+                                    total,
+                                    limit,
+                                    offset,
+                                    sort,
+                                    reverse,
+                                    reverse_after,
+                                )
+                                configs.append(config)
+
+    # Test pagination for Elasticsearch
+    failures = []
+    for config in tqdm.tqdm(configs):
+        load, total, limit, offset, sort, reverse, reverse_after = config
+        config_str = (
+            'load=%r, total=%r, limit=%r, offset=%r, sort=%r, reverse=%r, reverse_after=%r'
+            % config
+        )
+        print(config_str)
+        try:
+            kwargs = {
+                'load': load,
+                'total': total,
+                'reverse': reverse,
+                'reverse_after': reverse_after,
+            }
+            if limit is not None:
+                kwargs['limit'] = limit
+            if offset is not None:
+                kwargs['offset'] = offset
+            if sort is not None:
+                kwargs['sort'] = sort
+
+            results = Asset.elasticsearch(body, **kwargs)
+
+            if total:
+                total_, assets = results
+                assert total_ == len(reference)
+            else:
+                assets = results
+
+            compare = reference[:]
+
+            if sort in [None, 'guid']:
+                compare.sort(key=lambda asset: asset.guid, reverse=reverse)
+            elif sort == 'magic_signature':
+                compare.sort(
+                    key=lambda asset: (asset.magic_signature, asset.guid), reverse=reverse
+                )
+            elif sort == 'path':
+                compare.sort(key=lambda asset: (asset.path, asset.guid), reverse=reverse)
+            else:
+                raise ValueError()
+
+            if offset is not None:
+                compare = compare[offset:]
+            if limit is not None:
+                compare = compare[:limit]
+
+            if reverse_after:
+                compare = compare[::-1]
+
+            if not load:
+                compare = [asset.guid for asset in compare]
+
+            assert assets == compare
+        except AssertionError:
+            failures.append(config_str)
+
+    print(failures)
+    assert len(failures) == 0
+
+    # Build all possible configurations
+    configs = []
+    for limit in [None, 1, 10]:
+        for offset in [None, 0, 1, 10]:
+            for sort in [None, 'magic_signature', 'path']:
+                for reverse in [True, False]:
+                    for reverse_after in [True, False]:
+                        config = (limit, offset, sort, reverse, reverse_after)
+                        configs.append(config)
+
+    # Make one request to ensure the oauth user has been createda
+    response = read_all_assets_pagination(flask_app_client, staff_user)
+
+    # Check pagination
+    reference = Asset.query.all()
+
+    # Test pagination for listing APIs
+    failures = []
+    for config in tqdm.tqdm(configs):
+        limit, offset, sort, reverse, reverse_after = config
+        config_str = 'limit=%r, offset=%r, sort=%r, reverse=%r, reverse_after=%r' % config
+        print(config_str)
+        try:
+            kwargs = {
+                'reverse': reverse,
+                'reverse_after': reverse_after,
+            }
+            if limit is not None:
+                kwargs['limit'] = limit
+            if offset is not None:
+                kwargs['offset'] = offset
+            if sort is not None:
+                kwargs['sort'] = sort
+            response = read_all_assets_pagination(flask_app_client, staff_user, **kwargs)
+
+            assets = response.json
+            assets = [asset['guid'] for asset in assets]
+
+            compare = reference[:]
+
+            if sort in [None, 'guid']:
+                compare.sort(key=lambda asset: asset.guid, reverse=reverse)
+            elif sort == 'magic_signature':
+                compare.sort(
+                    key=lambda asset: (asset.magic_signature, asset.guid), reverse=reverse
+                )
+            elif sort == 'path':
+                compare.sort(key=lambda asset: (asset.path, asset.guid), reverse=reverse)
+            else:
+                raise ValueError()
+
+            if offset is not None:
+                compare = compare[offset:]
+            if limit is not None:
+                compare = compare[:limit]
+
+            if reverse_after:
+                compare = compare[::-1]
+
+            compare = [str(asset.guid) for asset in compare]
+
+            assert assets == compare
+        except AssertionError:
+            failures.append(config_str)
+
+    print(failures)
+    assert len(failures) == 0
 
     # Check if timestamps are updating
     before_updated = admin_user.updated
@@ -235,18 +611,18 @@ def test_elasticsearch_utilities(flask_app_client, db, admin_user, staff_user):
     assert not admin_user.available()
 
     # Test global indexing, invalidating, pruning
-    with es.session.begin(blocking=True, forced=True, verify=True):
+    with es.session.begin(blocking=True, forced=True):
         es.es_index_all()
-    with es.session.begin(blocking=True, forced=True, verify=True):
+    with es.session.begin(blocking=True, forced=True):
         es.es_invalidate_all()
-    with es.session.begin(blocking=True, forced=True, verify=True):
+    with es.session.begin(blocking=True, forced=True):
         es.es_prune_all()
 
-    with es.session.begin(blocking=False, forced=True, verify=True):
+    with es.session.begin(blocking=False, forced=True):
         es.es_index_all()
-    with es.session.begin(blocking=False, forced=True, verify=True):
+    with es.session.begin(blocking=False, forced=True):
         es.es_invalidate_all()
-    with es.session.begin(blocking=False, forced=True, verify=True):
+    with es.session.begin(blocking=False, forced=True):
         es.es_prune_all()
 
     # Assert empty
@@ -281,7 +657,7 @@ def test_elasticsearch_utilities(flask_app_client, db, admin_user, staff_user):
 
     # Searching on a non-registered class should return an empty list
     app = flask_app_client.application
-    assert len(es.elasticsearch_on_class(app, cls, {})) == 0
+    assert len(es.es_elasticsearch(app, cls, body)) == 0
     try:
         es.es_serialize(cdt)
         raise RuntimeError()
@@ -301,12 +677,15 @@ def test_elasticsearch_utilities(flask_app_client, db, admin_user, staff_user):
         es.es_index_all()
 
     # Test tasks
-    assert es_tasks.elasticsearch_refresh_index_all.s(True).apply().result
-    assert es_tasks.elasticsearch_invalidate_indexed_timestamps.s(True).apply().result
+    assert es_tasks.es_task_refresh_index_all.s(True).apply().result
+    assert es_tasks.es_task_invalidate_indexed_timestamps.s(True).apply().result
+
+    clone.cleanup()
 
 
 @pytest.mark.skipif(
-    extension_unavailable('elasticsearch'), reason='Elasticsearch extension disabled'
+    extension_unavailable('elasticsearch') or module_unavailable('elasticsearch'),
+    reason='Elasticsearch extension or module disabled',
 )
 def test_model_search(flask_app_client, staff_user):
     from app.extensions import elasticsearch as es

@@ -10,7 +10,7 @@ import gumby
 import pytest
 
 from app.extensions import is_extension_enabled
-from tests.utils import extension_unavailable
+from tests.utils import extension_unavailable, module_unavailable
 
 
 # override gumby fixture definition
@@ -31,7 +31,8 @@ def individuals(gumby_faux_index_data):
 
 
 @pytest.mark.skipif(
-    extension_unavailable('elasticsearch'), reason='Elasticsearch extension disabled'
+    extension_unavailable('elasticsearch') or module_unavailable('elasticsearch'),
+    reason='Elasticsearch extension or module disabled',
 )
 class TestIndividualsSearchIndex:
     @pytest.fixture(autouse=True)

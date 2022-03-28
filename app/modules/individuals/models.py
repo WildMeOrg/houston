@@ -127,9 +127,9 @@ class Individual(db.Model, FeatherModel):
 
     @classmethod
     def get_elasticsearch_schema(cls):
-        from app.modules.individuals.schemas import DetailedIndividualSchema
+        from app.modules.individuals.schemas import ElasticsearchIndividualSchema
 
-        return DetailedIndividualSchema
+        return ElasticsearchIndividualSchema
 
     def __repr__(self):
         return (

@@ -143,11 +143,21 @@ class Namespace(BaseNamespace):
                         total_count, response = query
                         assert isinstance(total_count, int)
                 else:
+                    total_count = query.count()
                     cls = query.column_descriptions[0].get('entity')
 
+                    prmiary_columns = list(cls.__table__.primary_key.columns)
+                    if len(prmiary_columns) == 1:
+                        default_column = prmiary_columns[0]
+                    else:
+                        log.warning(
+                            'Multiple columns specified as the primary key, defaulting to GUID'
+                        )
+                        default_column = cls.guid
+
                     sort = sort.lower()
-                    if sort == 'guid':
-                        sort_column = cls.guid
+                    if sort in ['default', 'primary']:
+                        sort_column = default_column
                     else:
                         sort_column = None
                         for column in list(cls.__table__.columns):
@@ -158,15 +168,26 @@ class Namespace(BaseNamespace):
                                 'The sort field %r is unrecognized, defaulting to GUID'
                                 % (sort,)
                             )
-                            sort_column = cls.guid
+                            sort_column = default_column
 
-                    sort_func = sort_column.desc if reverse else sort_column.asc
+                    sort_func_1 = sort_column.desc if reverse else sort_column.asc
+                    sort_func_2 = default_column.desc if reverse else default_column.asc
+                    query = (
+                        query.order_by(sort_func_1(), sort_func_2())
+                        .offset(offset)
+                        .limit(limit)
+                    )
 
-                    total_count = query.count()
-                    query = query.order_by(sort_func()).offset(offset).limit(limit)
                     if reverse_after:
-                        after_sort_func = sort_column.asc if reverse else sort_column.desc
-                        query = query.from_self().order_by(after_sort_func())
+                        after_sort_func_1 = (
+                            sort_column.asc if reverse else sort_column.desc
+                        )
+                        after_sort_func_2 = (
+                            default_column.asc if reverse else default_column.desc
+                        )
+                        query = query.from_self().order_by(
+                            after_sort_func_1(), after_sort_func_2()
+                        )
 
                     response = query
 

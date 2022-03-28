@@ -92,3 +92,7 @@ docker-compose.override.yml
 
 # line profiler
 prof/
+
+# Development files
+db-edm-*.sql
+db-houston-*.sql

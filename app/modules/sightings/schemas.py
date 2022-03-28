@@ -51,6 +51,33 @@ class CreateSightingSchema(BaseSightingSchema):
         )
 
 
+class ElasticsearchSightingSchema(BaseSightingSchema):
+    """
+    Base Sighting schema exposes only the most general fields.
+    """
+
+    time = base_fields.Function(Sighting.get_time_isoformat_in_timezone)
+    timeSpecificity = base_fields.Function(Sighting.get_time_specificity)
+
+    class Meta:
+        # pylint: disable=missing-docstring
+        model = Sighting
+        fields = (
+            Sighting.guid.key,
+            'elasticsearchable',
+            Sighting.indexed.key,
+            Sighting.created.key,
+            Sighting.updated.key,
+            'time',
+            'timeSpecificity',
+        )
+        dump_only = (
+            Sighting.guid.key,
+            Sighting.created.key,
+            Sighting.updated.key,
+        )
+
+
 class TimedSightingSchema(CreateSightingSchema):
     """
     Timed Sighting schema adds the stage times

@@ -4,6 +4,7 @@ import os
 import random
 import string
 from pathlib import Path
+import multiprocessing
 
 import flask
 import pytz
@@ -342,12 +343,15 @@ class ElasticsearchConfig:
     # - to specify a port use a colon and port number (e.g. `elasticsearch:9200`)
     ELASTICSEARCH_HOSTS = _parse_elasticsearch_hosts(os.getenv('ELASTICSEARCH_HOSTS'))
     ELASTICSEARCH_BUILD_INDEX_ON_STARTUP = bool(
-        os.getenv('ELASTICSEARCH_BUILD_INDEX_ON_STARTUP', True)
+        os.getenv('ELASTICSEARCH_BUILD_INDEX_ON_STARTUP', False)
     )
     ELASTICSEARCH_BLOCKING = bool(os.getenv('ELASTICSEARCH_BLOCKING', False))
 
     CACHE_TYPE = 'SimpleCache'
     CACHE_DEFAULT_TIMEOUT = 60
+
+    EXECUTOR_TYPE = 'thread'
+    EXECUTOR_MAX_WORKERS = multiprocessing.cpu_count()
 
 
 class WildbookDatabaseConfig:

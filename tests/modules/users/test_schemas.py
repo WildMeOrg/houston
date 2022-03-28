@@ -68,7 +68,14 @@ def test_DetailedUserSchema_dump_user_instance(user_instance):
     }
 
     if is_module_enabled('missions'):
-        desired_keys = desired_keys | set(['owned_missions', 'owned_mission_tasks'])
+        desired_keys = desired_keys | set(
+            [
+                'owned_missions',
+                'owned_mission_tasks',
+                'assigned_missions',
+                'assigned_mission_tasks',
+            ]
+        )
 
     assert set(dumped_result.data.keys()) == desired_keys
 

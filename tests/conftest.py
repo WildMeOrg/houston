@@ -204,6 +204,16 @@ def email_setup(flask_app):
 @pytest.fixture(scope='session')
 def flask_app(gitlab_remote_login_pat, disable_elasticsearch):
 
+    if is_extension_enabled('elasticsearch'):
+        from app.extensions import elasticsearch as es
+    else:
+        es = None
+
+    if disable_elasticsearch:
+        if es is not None:
+            es.off()
+        es = None
+
     with tempfile.TemporaryDirectory() as td:
         config_override = {}
         if gitlab_remote_login_pat is not None:
@@ -241,10 +251,11 @@ def flask_app(gitlab_remote_login_pat, disable_elasticsearch):
                     raise
 
             # Delete all content in all tables (may be left over from previous tests after an error)
-            with db.session.begin():
-                for table in reversed(db.metadata.sorted_tables):
-                    log.info('Delete DB table %s' % table)
-                    db.session.execute(table.delete())
+            if es is not None:
+                with db.session.begin():
+                    for table in reversed(db.metadata.sorted_tables):
+                        log.info('Delete DB table %s' % table)
+                        db.session.execute(table.delete())
 
             if utils.redis_unavailable():
                 # Run code in foreground if redis not available
@@ -276,14 +287,10 @@ def flask_app(gitlab_remote_login_pat, disable_elasticsearch):
                     patch.start()
 
             # initialize Elastic search indexes
-            if is_extension_enabled('elasticsearch'):
-                from app.extensions import elasticsearch as es
-
-                # Selectively disable elasticsearch for tests
-                if disable_elasticsearch:
-                    es.off()
-
+            if es is not None:
                 es.attach_listeners(app)
+
+                # Update indices
                 update = app.config.get('ELASTICSEARCH_BUILD_INDEX_ON_STARTUP', False)
                 es.es_index_all(app, pit=True, update=update, force=True)
 
@@ -298,10 +305,8 @@ def flask_app(gitlab_remote_login_pat, disable_elasticsearch):
                 yield app
 
             # Drop all data from elasticsearch
-            if is_extension_enabled('elasticsearch'):
-                from app.extensions import elasticsearch as es
-
-                # Ensure that ES is turned on for cleanup
+            if es is not None:
+                # Ensure that Elasticsearch is enabled
                 es.on()
 
                 # Ensure that any background Celery tasks have wrapped up
@@ -333,7 +338,7 @@ def flask_app(gitlab_remote_login_pat, disable_elasticsearch):
                         log.debug('Cleaning up test index %r' % (index,))
                         es.es_delete_index(index, app=app)
 
-            # Drop all (empty) tables
+            # Drop all tables
             db.drop_all()
 
             # Delete all patched tasks

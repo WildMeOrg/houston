@@ -783,14 +783,83 @@ class IndividualDebugByID(Resource):
 
         return individual.get_debug_json()
 
+@api.route('/validation')
+class FlatfileNameValidation(Resource):
+# values passed in from flatfile are val/index pairs:
+# [
+#   ["Zebulon", 1],
+#   ["Zebrucifer", 2],
+#   ["Zebrelda", 3],
+#   ["Zesus", 4]
+# ]
 
-@api.route('/name_validate')
-class IndividualNameValidate(Resource):
-    def post(self):
+    from app.modules.names.models import DEFAULT_NAME_CONTEXT
+
+    def get(self):
         from flask_login import current_user
 
         if not current_user or current_user.is_anonymous:
             abort(code=401)
         if not isinstance(request.json, list):
-            abort(message='must be passed a list of individual names', code=500)
+            abort(message='Must be passed a list of flatfile-formatted name-index pairs', code=500)
+
+        # keeping this dict in case they are sent in a weird order, which is allowed by flatfile
+        query_index_dict = {val_id_pair[0]: val_id_pair[1] for val_id_pair in request.json}
+        # want to preserve order here
+        query_names = [val_id_pair[0] for val_id_pair in request.json]
+
+        db_names = Name.query.filter(
+            Name.value.in_(query_names), Name.context == DEFAULT_NAME_CONTEXT
+        )
+        db_name_lookup = {name.value: name.individual_guid for name in db_names}
+
+        rtn_json = []
+        for name in query_names:
+            if name in db_name_lookup:
+                name_resp = {
+                    "message": f"Corresponds to existing individual {db_name_lookup(name)}",
+                    "level": "info",
+                }
+            else:
+                name_resp = {
+                    "message": f"This is a new name and submission will create a new individual",
+                    "level": "warning",
+                }
+            rtn_json.append([name_resp, query_index_dict[name]])
+
+        return rtn_json
+
+# // what should be passed back in this case
+# [
+#   [
+#     {
+#       value: "john@doe.com", // not required if not changing value
+#       info: [
+#         {
+#           message: "Error message goes here",
+#           level: "info" // should be 'info', 'warning' or 'error'
+#         }
+#       ]
+#     },
+#     1
+#   ],
+#   [
+#     {
+#       value: "steve@something.com", // not required if not changing value
+#       info: [
+#         {
+#           message: "Error message goes here",
+#           level: "info" // should be 'info', 'warning' or 'error'
+#         }
+#       ]
+#     },
+#     3
+#   ]
+# ]
+
+
+
+
+
+
 

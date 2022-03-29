@@ -116,7 +116,6 @@ def test_file_settings(admin_user, flask_app_client, flask_app, db, request, tes
         with TemporaryDirectoryGraceful(prefix='trans-', dir=upload_dir) as td:
             transaction_id = Path(td).name[len('trans-') :]
             write_uploaded_file('a.txt', Path(td), '1234')
-            write_uploaded_file('b.txt', Path(td), '5678')
 
             resp = flask_app_client.post(
                 '/api/v1/site-settings/file',

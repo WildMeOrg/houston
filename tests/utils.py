@@ -605,14 +605,17 @@ def create_transaction_dir(flask_app, transaction_id):
 
 
 def write_uploaded_file(initial_filename, input_dir, file_data, write_mode='w'):
-    if isinstance(input_dir, str):
-        stored_path = os.path.join(input_dir, get_stored_path(initial_filename))
-        with open(stored_path, write_mode) as out_file:
-            out_file.write(file_data)
-    else:
-        stored_path = input_dir / get_stored_path(initial_filename)
-        with stored_path.open(write_mode) as out_file:
-            out_file.write(file_data)
+    from app.extensions.tus import tus_write_file_metadata
+
+    if not isinstance(input_dir, str):
+        input_dir = str(input_dir)
+    if not isinstance(initial_filename, str):
+        initial_filename = str(initial_filename)
+    stored_path = os.path.join(input_dir, get_stored_path(initial_filename))
+    with open(stored_path, write_mode) as out_file:
+        out_file.write(file_data)
+
+    tus_write_file_metadata(stored_path, initial_filename)
     return stored_path
 
 

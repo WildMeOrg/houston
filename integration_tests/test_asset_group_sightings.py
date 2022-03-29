@@ -491,14 +491,14 @@ def test_delete_asset_group_sightings(session, login, codex_url, test_root, requ
             'transactionId': transaction_id,
             'sightings': [
                 {
-                    'assetReferences': ['turtle1.jpg'],
+                    'assetReferences': ['turtle1.jpg', 'turtle5.jpg'],
                     'locationId': 'PYTEST',
                     'time': '2014-01-01T09:00:00.000+00:00',
                     'timeSpecificity': 'time',
                     'encounters': [{}],
                 },
                 {
-                    'assetReferences': ['turtle2.jpg', 'turtle3.jpg'],
+                    'assetReferences': ['turtle2.jpg', 'turtle3.jpg', 'turtle4.jpg'],
                     'locationId': 'PYTEST too',
                     'time': '2014-01-01T09:00:00.000+00:00',
                     'timeSpecificity': 'time',

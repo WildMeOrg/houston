@@ -73,21 +73,26 @@ def _tus_file_handler(upload_file_path, filename, original_filename, req, app):
     os.rename(upload_file_path, filepath)
 
     # Store the original filename as metadata next to the file
-    metadata_filepath = tus_get_metadata_filepath(filepath)
-    with open(metadata_filepath, 'w') as metadata_file:
-        metadata = {
-            'filename': original_filename,
-            # 'filename': escape(secure_filename(original_filename)),
-        }
-        json.dump(metadata, metadata_file)
+    tus_write_file_metadata(filepath, original_filename)
 
     return filename
 
 
 def tus_get_metadata_filepath(filepath):
     path, filename = os.path.split(filepath)
-    metadata_filepath = os.path.join(path, '.%s.meta.json' % (filename,))
-    return metadata_filepath
+    return os.path.join(path, '.%s.meta.json' % (filename,))
+
+
+def tus_write_file_metadata(stored_path, input_path):
+
+    # Store the original filename as metadata next to the file
+    metadata_filepath = tus_get_metadata_filepath(stored_path)
+    with open(metadata_filepath, 'w') as metadata_file:
+        metadata = {
+            'saved_filename': stored_path,
+            'filename': input_path,
+        }
+        json.dump(metadata, metadata_file)
 
 
 def tus_upload_dir(app, git_store_guid=None, transaction_id=None, session_id=None):
@@ -107,9 +112,11 @@ def tus_upload_dir(app, git_store_guid=None, transaction_id=None, session_id=Non
     return os.path.join(base_path, '-'.join(['session', h.hexdigest()]))
 
 
-def _tus_filepaths_from(
+def tus_filepaths_from(
     git_store_guid=None, session_id=None, transaction_id=None, paths=None
 ):
+    from app.utils import HoustonException
+
     upload_dir = tus_upload_dir(
         current_app,
         git_store_guid=git_store_guid,
@@ -117,30 +124,24 @@ def _tus_filepaths_from(
         transaction_id=transaction_id,
     )
 
-    log.debug('_tus_filepaths_from passed paths=%r' % (paths))
+    log.debug(f'_tus_filepaths_from passed paths: {paths}')
     filepaths = []
-    if not paths:  # traverse whole upload dir and take everything
-        for root, dirs, files in os.walk(upload_dir):
-            for path in files:
-                if not path.startswith('.'):
-                    filepaths.append(os.path.join(upload_dir, path))
-    else:
-        if len(paths) < 1:
-            return []
+    # traverse whole upload dir and take everything
+    for root, dirs, files in os.walk(upload_dir):
+        for path in files:
+            if not path.startswith('.'):
+                filepaths.append(os.path.join(upload_dir, path))
+
+    missing_paths = []
+    if paths:
         for input_path in paths:
             stored_path = get_stored_filename(input_path)
 
             want_path = os.path.join(upload_dir, stored_path)
-            assert os.path.exists(want_path), f'{want_path} does not exist'
-            filepaths.append(want_path)
-
-            metadata_filepath = tus_get_metadata_filepath(want_path)
-            with open(metadata_filepath, 'w') as metadata_file:
-                metadata = {
-                    'filename': input_path,
-                    # 'filename': escape(secure_filename(original_filename)),
-                }
-                json.dump(metadata, metadata_file)
+            if not os.path.exists(want_path):
+                missing_paths.append(input_path)
+    if missing_paths:
+        raise HoustonException(log, f'{missing_paths} missing from upload')
 
     metadatas = []
     for filepath in filepaths:
@@ -156,7 +157,7 @@ def _tus_filepaths_from(
     return filepaths, metadatas
 
 
-def _tus_purge(git_store_guid=None, session_id=None, transaction_id=None):
+def tus_purge(git_store_guid=None, session_id=None, transaction_id=None):
     upload_dir = tus_upload_dir(
         current_app,
         git_store_guid=git_store_guid,

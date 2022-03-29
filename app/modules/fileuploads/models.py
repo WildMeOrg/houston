@@ -74,28 +74,28 @@ class FileUpload(db.Model, HoustonModel):
     #   note: this is 'path' from { transaction_id, path } in tus args.  sorry so many things called path.
     @classmethod
     def create_fileupload_from_tus(cls, transaction_id, path):
-        from app.extensions.tus import _tus_filepaths_from, _tus_purge
+        from app.extensions.tus import tus_filepaths_from, tus_purge
 
         assert transaction_id is not None
         assert path is not None
-        source_paths, _ = _tus_filepaths_from(transaction_id=transaction_id, paths=[path])
+        source_paths, _ = tus_filepaths_from(transaction_id=transaction_id, paths=[path])
         fup = FileUpload.create_fileupload_from_path(source_paths[0])
-        _tus_purge(transaction_id=transaction_id)
+        tus_purge(transaction_id=transaction_id)
         return fup
 
     # plural paths is optional (will do all files in dir if skipped)
     @classmethod
     def create_fileuploads_from_tus(cls, transaction_id, paths=None):
-        from app.extensions.tus import _tus_filepaths_from, _tus_purge
+        from app.extensions.tus import tus_filepaths_from, tus_purge
 
         assert transaction_id is not None
-        source_paths, _ = _tus_filepaths_from(transaction_id=transaction_id, paths=paths)
+        source_paths, _ = tus_filepaths_from(transaction_id=transaction_id, paths=paths)
         if source_paths is None or len(source_paths) < 1:
             return None
         fups = []
         for source_path in source_paths:
             fups.append(FileUpload.create_fileupload_from_path(source_path))
-        _tus_purge(transaction_id=transaction_id)
+        tus_purge(transaction_id=transaction_id)
         return fups
 
     @classmethod

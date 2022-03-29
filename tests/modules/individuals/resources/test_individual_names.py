@@ -375,26 +375,105 @@ def test_name_validation(
 ):
     from app.modules.names.models import DEFAULT_NAME_CONTEXT
 
-    uuids = sighting_utils.create_sighting(
-        flask_app_client, researcher_1, request, test_root
-    )
-    sighting_guid = uuids['sighting']
-    from app.modules.sightings.models import Sighting
-    sighting = Sighting.query.get(sighting_guid)
-    enc = sighting.encounters[0]
+    individual_1_id = individual_utils.create_individual_and_sighting(
+        flask_app_client,
+        researcher_1,
+        request,
+        test_root,
+        individual_data={
+            'names': [
+                {'context': DEFAULT_NAME_CONTEXT, 'value': 'Zebra Prime'},
+                {'context': 'nickname', 'value': 'Big Dog'},
+            ],
+        },
+    )['individual']
+    individual_2_id = individual_utils.create_individual_and_sighting(
+        flask_app_client,
+        researcher_1,
+        request,
+        test_root,
+        individual_data={
+            'names': [
+                {'context': DEFAULT_NAME_CONTEXT, 'value': 'Zebra Omega'},
+            ],
+        },
+    )['individual']
+    individual_3_id = individual_utils.create_individual_and_sighting(
+        flask_app_client,
+        researcher_1,
+        request,
+        test_root,
+        individual_data={
+            'names': [
+                {'context': DEFAULT_NAME_CONTEXT, 'value': 'Zebra Omega'},
+            ],
+        },
+    )['individual']
 
-    individual_data_in = {
-        'names': [
-            {'context': DEFAULT_NAME_CONTEXT, 'value': 'Zorgulon'},
-            {'context': 'nickname', 'value': 'Zorgie'},
+    flatfile_query = [
+        ['Zebra Prime', 0],
+        ['Prim', 1],
+        ['Zebra Omega', 4],
+        ['Jennifer', 100],
+    ]
+
+    individual_utils.validate_names(
+        flask_app_client, researcher_1, {'bad_data': 100}, expected_status_code=500
+    )
+
+    validation_resp = individual_utils.validate_names(
+        flask_app_client, researcher_1, flatfile_query
+    )
+
+    desired_resp = [
+        [
+            {
+                'value': 'Zebra Prime',
+                'info': [
+                    {
+                        'message': f'Corresponds to existing individual {individual_1_id}.',
+                        'level': 'info',
+                    }
+                ],
+            },
+            0,
         ],
-        'encounters': [{'id': str(enc.guid)}],
-    }
-    individual_response = individual_utils.create_individual(
-        flask_app_client, researcher_1, 200, individual_data_in
-    )
+        [
+            {
+                'value': 'Prim',
+                'info': [
+                    {
+                        'message': 'This is a new name and submission will create a new individual',
+                        'level': 'warning',
+                    }
+                ],
+            },
+            1,
+        ],
+        [
+            {
+                'value': 'Zebra Omega',
+                'info': [
+                    {
+                        'message': f"ERROR: cannot resolve this name to a unique individual. Individuals sharing this name are ['{individual_2_id}', '{individual_3_id}'].",
+                        'level': 'error',
+                    }
+                ],
+            },
+            4,
+        ],
+        [
+            {
+                'value': 'Jennifer',
+                'info': [
+                    {
+                        'message': 'This is a new name and submission will create a new individual',
+                        'level': 'warning',
+                    }
+                ],
+            },
+            100,
+        ],
+    ]
 
-    query_names = ['Zorgulon', 'Zorgerelda', 'Zorgie']
-    validation_resp = individual_utils.validate_names(query_names)
-
-
+    assert validation_resp.json == desired_resp

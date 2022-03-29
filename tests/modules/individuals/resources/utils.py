@@ -222,7 +222,7 @@ def merge_conflicts(
 def validate_names(
     flask_app_client,
     user,
-    name_list,
+    names_flatfile,
     auth_scopes=('individuals:read',),
     expected_status_code=200,
 ):
@@ -230,9 +230,10 @@ def validate_names(
         flask_app_client,
         user,
         scopes=auth_scopes,
-        path=f'/api/v1/individuals/validate',
-        data={name_list},
+        path='/api/v1/individuals/validate',
+        data=names_flatfile,
         expected_status_code=expected_status_code,
         response_200=set(),
+        returns_list=True,
     )
     return resp

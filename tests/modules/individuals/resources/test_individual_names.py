@@ -412,7 +412,7 @@ def test_name_validation(
 
     flatfile_query = [
         ['Zebra Prime', 0],
-        ['Prim', 1],
+        ['Big Dog', 1],
         ['Zebra Omega', 4],
         ['Jennifer', 100],
     ]
@@ -440,7 +440,7 @@ def test_name_validation(
         ],
         [
             {
-                'value': 'Prim',
+                'value': 'Big Dog',
                 'info': [
                     {
                         'message': 'This is a new name and submission will create a new individual',

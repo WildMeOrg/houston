@@ -224,9 +224,12 @@ class Namespace(BaseNamespace):
         ...     db.session.add(family)
         ...     return family
         """
+        from app.extensions import elasticsearch_context
+
         try:
-            with session.begin():
-                yield
+            with elasticsearch_context(forced=True):
+                with session.begin():
+                    yield
         except (ValueError, ValidationError) as exception:
             log.info('Database transaction was rolled back due to: %r', exception)
             http_exceptions.abort(code=code, message=str(exception), **kwargs)

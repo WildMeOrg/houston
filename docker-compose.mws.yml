@@ -226,9 +226,9 @@ services:
       houston:
         condition: service_healthy
     healthcheck: &celery-healthcheck
-      test: [ "CMD", "celery", "-A", "app.extensions.celery.celery", "status", "--timeout", "2"]
-      interval: 10s
-      timeout: 8s
+      test: [ "CMD", "celery", "-A", "app.extensions.celery.celery", "status"]
+      interval: 30s
+      timeout: 15s
       retries: 60
     volumes: *houston-volumes
     networks:
@@ -238,7 +238,7 @@ services:
   celery_worker:
     image: wildme/houston:latest
     build: *houston-build
-    command: ["celery", "-A", "app.extensions.celery.celery", "worker", "-l", "INFO", "--pool=gevent"]
+    command: ["celery", "-A", "app.extensions.celery.celery", "worker", "-l", "INFO", "--pool=gevent", "--task-events", "--without-heartbeat", "--without-gossip", "--without-mingle"]
     depends_on:
       houston:
         condition: service_healthy
@@ -251,7 +251,7 @@ services:
   celery_worker_2:
     image: wildme/houston:latest
     build: *houston-build
-    command: ["celery", "-A", "app.extensions.celery.celery", "worker", "-l", "INFO", "--pool=gevent"]
+    command: ["celery", "-A", "app.extensions.celery.celery", "worker", "-l", "INFO", "--pool=gevent", "--task-events", "--without-heartbeat", "--without-gossip", "--without-mingle"]
     depends_on:
       houston:
         condition: service_healthy
@@ -264,7 +264,7 @@ services:
   celery_worker_3:
     image: wildme/houston:latest
     build: *houston-build
-    command: ["celery", "-A", "app.extensions.celery.celery", "worker", "-l", "INFO", "--pool=gevent"]
+    command: ["celery", "-A", "app.extensions.celery.celery", "worker", "-l", "INFO", "--pool=gevent", "--task-events", "--without-heartbeat", "--without-gossip", "--without-mingle"]
     depends_on:
       houston:
         condition: service_healthy

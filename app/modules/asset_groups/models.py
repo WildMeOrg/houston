@@ -649,17 +649,13 @@ class AssetGroupSighting(db.Model, HoustonModel):
         sorted_asset_ids = job['asset_ids']
         sorted_asset_ids.sort()
         log.debug(f'Received Image UUIDs {sage_image_uuids} in detection response')
-        all_images = current_app.acm.request_passthrough_result('assets.list', 'get', {})
-        log.debug(f'Sage thinks the images it has are {all_images}')
 
         for i, asset_id in enumerate(sorted_asset_ids):
             asset = Asset.find(asset_id)
             if not asset:
                 raise HoustonException(log, f'Asset Id {asset_id} not found')
             asset.content_guid = from_acm_uuid(sage_image_uuids[i])
-            log.debug(
-                f'Asset {asset.guid} now has content guid {asset.content_guid} from {sage_image_uuids[i]}'
-            )
+
             results = results_list[i]
 
             for annot_id in range(len(results)):

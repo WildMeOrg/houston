@@ -177,10 +177,6 @@ class Annotation(db.Model, HoustonModel):
         if self.encounter and self.encounter.individual:
             sage_req['annot_name_list'][0] = to_acm_uuid(self.encounter.individual.guid)
 
-        # Curiously, this results in an unprocessable response being received from Sage
-        all_images = current_app.acm.request_passthrough_result('assets.list', 'get', {})
-        log.debug(f'Sage thinks the images it has are {all_images}')
-
         encoded_request = encode_acm_request(sage_req)
         # as does this
         sage_response = current_app.acm.request_passthrough_result(
@@ -188,8 +184,7 @@ class Annotation(db.Model, HoustonModel):
             'post',
             {'params': encoded_request},
         )
-
-        self.content_guid = from_acm_uuid(sage_response['uuid'])
+        self.content_guid = from_acm_uuid(sage_response[0])
 
     @property
     def keywords(self):

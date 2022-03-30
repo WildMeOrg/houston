@@ -42,7 +42,10 @@ def set_up_assets(flask_app, db, test_root, admin_user, request):
 
     # Create annotation and sighting and sighting assets for the first asset
     annotation = Annotation(
-        asset_guid=asset_group.assets[0].guid, ia_class='test', viewpoint='test'
+        asset_guid=asset_group.assets[0].guid,
+        ia_class='test',
+        viewpoint='test',
+        bounds={'rect': [2, 4, 6, 8]},
     )
     sighting = Sighting(stage=SightingStage.identification)
     sighting.time = test_utils.complex_date_time_now()

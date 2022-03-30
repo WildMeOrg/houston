@@ -1575,6 +1575,7 @@ def es_elasticsearch(
     sort='guid',
     reverse=False,
     reverse_after=False,
+    filter_guids=None,
     total=False,
 ):
     index = es_index_name(cls)
@@ -1607,12 +1608,17 @@ def es_elasticsearch(
     all_guids = cls.query.with_entities(cls.guid).all()
     all_guids = set([item[0] for item in all_guids])
 
+    if filter_guids is None:
+        filter_guids = all_guids
+    filter_guids = set(filter_guids)
+
     # Cross reference with ES hit GUIDs
     search_guids = []
     search_prune = []
     for guid in hit_guids:
         if guid in all_guids:
-            search_guids.append(guid)
+            if guid in filter_guids:
+                search_guids.append(guid)
         else:
             search_prune.append(guid)
 

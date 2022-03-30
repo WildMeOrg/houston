@@ -687,6 +687,8 @@ def commit_asset_group_sighting_sage_identification(
     expected_status_code=200,
 ):
     from app.modules.sightings import tasks
+    from app.modules.annotations.models import Annotation
+    from app.extensions import elasticsearch as es
 
     # Start ID simulating success response from Sage
     with mock.patch.object(
@@ -701,6 +703,8 @@ def commit_asset_group_sighting_sage_identification(
                 *args, **kwargs
             ),
         ):
+            with es.session.begin(blocking=True, forced=True):
+                Annotation.index_all()
             response = commit_asset_group_sighting(
                 flask_app_client, user, asset_group_sighting_guid, expected_status_code
             )

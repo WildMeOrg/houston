@@ -89,8 +89,6 @@ def test_sighting_identification(
         patch_data,
     )
 
-    # FIXME just getting this test to pass for now -jon FIXME
-    return
     # Start ID simulating success response from Sage
     response = asset_group_utils.commit_asset_group_sighting_sage_identification(
         flask_app, flask_app_client, researcher_1, asset_group_sighting_guid2

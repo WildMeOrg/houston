@@ -1074,6 +1074,8 @@ class Sighting(db.Model, FeatherModel):
                                     f'Skipping {annotation} due to lack of content_guid or encounter'
                                 )
                                 continue
+                            # force this to be up-to-date in index, just to be safe
+                            annotation.index()
                             # load=False should get us this response quickly, cuz we just want a count
                             matching_set = annotation.get_matching_set(
                                 self.id_configs[config_id].get('matching_set'), load=False

@@ -875,7 +875,7 @@ def register_elasticsearch_model(cls):
     }
 
 
-def es_index_name(cls, app=None):
+def es_index_name(cls, app=None, quiet=False):
     from flask import current_app
 
     if app is None:
@@ -885,7 +885,8 @@ def es_index_name(cls, app=None):
         return None
 
     if cls not in REGISTERED_MODELS:
-        logging.error('Model (%r) is not in Elasticsearch' % (cls,))
+        if not quiet:
+            log.error('Model (%r) is not in Elasticsearch' % (cls,))
         return None
 
     index = ('%s.%s' % (cls.__module__, cls.__name__)).lower()
@@ -967,11 +968,11 @@ def es_validate(obj):
                 )
 
 
-def es_index(obj, app=None, force=False):
+def es_index(obj, app=None, force=False, quiet=False):
     from flask import current_app
 
     cls = obj.__class__
-    index = es_index_name(cls)
+    index = es_index_name(cls, quiet=quiet)
 
     if index is None:
         return None

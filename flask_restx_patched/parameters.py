@@ -197,7 +197,7 @@ class PatchJSONParameters(Parameters):
         for obj in objs:
             if obj is not None:
                 if hasattr(obj, 'index'):
-                    obj.index(force=True)
+                    obj.index(force=True, quiet=True)
 
         if obj_cls is not None:
             return objs

@@ -7,6 +7,7 @@ Annotations database models
 from app.extensions import db, HoustonModel
 from app.modules import is_module_enabled
 from app.utils import HoustonException
+from flask import current_app
 
 import uuid
 import logging
@@ -89,6 +90,15 @@ class Annotation(db.Model, HoustonModel):
             ')>'.format(class_name=self.__class__.__name__, self=self)
         )
 
+    def __init__(self, *args, **kwargs):
+        if 'bounds' not in kwargs:
+            raise ValueError('bounds are mandatory')
+        if 'rect' not in kwargs['bounds']:
+            raise ValueError('rect in bounds is mandatory')
+        if 'theta' not in kwargs['bounds']:
+            kwargs['bounds']['theta'] = 0
+        super().__init__(*args, **kwargs)
+
     @classmethod
     def run_integrity(cls):
         result = {'no_content_guid': []}
@@ -142,6 +152,39 @@ class Annotation(db.Model, HoustonModel):
 
             schema = DetailedAnnotationSchema()
             return schema.dump(self).data
+
+    def ensure_sage(self):
+        assert self.asset
+        if not self.asset.content_guid:
+            log.warning(
+                f'Not adding Annot {self.guid} to Sage as its asset has no content guid'
+            )
+            return
+        from app.extensions.acm import (
+            to_acm_uuid,
+            from_acm_uuid,
+            default_acm_individual_uuid,
+            encode_acm_request,
+        )
+
+        sage_req = {
+            'image_uuid_list': [to_acm_uuid(self.asset.content_guid)],
+            'annot_species_list': [self.ia_class],
+            'annot_bbox_list': [self.bounds['rect']],
+            'annot_name_list': [default_acm_individual_uuid()],
+            'annot_theta_list': [self.bounds['theta']],
+        }
+        if self.encounter and self.encounter.individual:
+            sage_req['annot_name_list'][0] = to_acm_uuid(self.encounter.individual.guid)
+
+        encoded_request = encode_acm_request(sage_req)
+        # as does this
+        sage_response = current_app.acm.request_passthrough_result(
+            'annotations.create',
+            'post',
+            {'params': encoded_request},
+        )
+        self.content_guid = from_acm_uuid(sage_response[0])
 
     @property
     def keywords(self):

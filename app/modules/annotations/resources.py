@@ -16,6 +16,7 @@ from app.extensions.api import Namespace, abort
 from app.modules.users import permissions
 from app.modules.users.permissions.types import AccessOperation
 import app.extensions.logging as AuditLog
+from app.utils import HoustonException
 
 from . import parameters, schemas
 from .models import Annotation
@@ -125,6 +126,11 @@ class Annotations(Resource):
             annotation = Annotation(**args)
             AuditLog.user_create_object(log, annotation, duration=timer.elapsed())
             db.session.add(annotation)
+        try:
+            # needs to be after the add to ensure asset is valid
+            annotation.ensure_sage()
+        except HoustonException as ex:
+            abort(400, ex.message)
         return annotation
 
 

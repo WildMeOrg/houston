@@ -155,6 +155,15 @@ def test_annotation_matching_set(
     assert isinstance(resolved['bool']['filter'], list)
     assert len(resolved['bool']['filter']) == 2
 
+    # test hook that indexes annotation when encounter is indexed
+    was_indexed = annotation.indexed
+    annotation.encounter.index()
+    assert annotation.indexed > was_indexed
+    # test same for sighting
+    was_indexed = annotation.indexed
+    annotation.encounter.sighting.index()
+    assert annotation.indexed > was_indexed
+
     annotation.encounter_guid = None
     try:
         annotation.resolve_matching_set_query(query_in)

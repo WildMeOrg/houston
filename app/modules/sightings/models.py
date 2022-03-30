@@ -101,6 +101,12 @@ class Sighting(db.Model, FeatherModel):
 
         return ElasticsearchSightingSchema
 
+    # when we index this sighting, lets (re-)index annotations
+    def index_hook_obj(self):
+        for enc in self.encounters:
+            for annot in enc.annotations:
+                annot.index(force=True)
+
     def __repr__(self):
         return (
             '<{class_name}('

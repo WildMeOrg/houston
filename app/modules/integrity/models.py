@@ -33,10 +33,16 @@ class Integrity(db.Model, HoustonModel):
         # for later analysis
         from app.modules.sightings.models import Sighting
         from app.modules.individuals.models import Individual
+        from app.modules.asset_groups.models import AssetGroup
+        from app.modules.annotations.models import Annotation
+        from app.modules.assets.models import Asset
 
         self.result = {
+            'asset_groups': AssetGroup.run_integrity(),
             'sightings': Sighting.run_integrity(),
             'individuals': Individual.run_integrity(),
+            'annotations': Annotation.run_integrity(),
+            'assets': Asset.run_integrity(),
         }
 
     @classmethod

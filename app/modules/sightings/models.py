@@ -112,7 +112,7 @@ class Sighting(db.Model, FeatherModel):
 
     @classmethod
     def run_integrity(cls):
-        result = {}
+        result = {'no_encounters': []}
 
         # Sightings without encounters are an error that should never really happen
         no_encounters = Sighting.query.filter(~Sighting.encounters.any()).all()

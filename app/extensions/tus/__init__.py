@@ -106,6 +106,10 @@ def tus_upload_dir(app, git_store_guid=None, transaction_id=None, session_id=Non
     if git_store_guid is not None:
         return os.path.join(base_path, '-'.join(['sub', str(git_store_guid)]))
     if transaction_id is not None:
+        from uuid import UUID
+
+        # this is just to test it is a valid uuid - will throw ValueError if not! (500 response)
+        UUID(transaction_id, version=4)
         return os.path.join(base_path, '-'.join(['trans', transaction_id]))
     # must be session_id
     h = hashlib.sha256(session_id)

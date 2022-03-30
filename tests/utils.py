@@ -111,10 +111,32 @@ class JSONResponse(Response):
         return json.loads(self.get_data(as_text=True))
 
 
-class TemporaryDirectoryGraceful(tempfile.TemporaryDirectory):
+class RandomUUIDSequence:
+    """An instance of _RandomUUIDSequence generates an endless
+    sequence of unpredictable strings which can safely be incorporated
+    into file names.  Each string is eight characters long.  Multiple
+    threads can safely use the same instance at the same time.
+
+    _RandomUUIDSequence is an iterator."""
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        import uuid
+
+        return str(uuid.uuid4())
+
+
+class TemporaryDirectoryUUID(tempfile.TemporaryDirectory):
+    def __init__(self, *args, **kwargs):
+        tempfile._name_sequence = RandomUUIDSequence()
+
+        super(TemporaryDirectoryUUID, self).__init__(*args, **kwargs)
+
     def __exit__(self, *args, **kwargs):
         try:
-            super(TemporaryDirectoryGraceful, self).__exit__(*args, **kwargs)
+            super(TemporaryDirectoryUUID, self).__exit__(*args, **kwargs)
         except FileNotFoundError:
             assert not os.path.exists(self.name)
 

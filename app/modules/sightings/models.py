@@ -126,11 +126,6 @@ class Sighting(db.Model, FeatherModel):
 
         return result
 
-    @classmethod
-    def get_matching_set_options(cls):
-        # If you extend this, update the method below that uses them
-        return ['mine', 'extended', 'all']
-
     def get_owners(self):
         owners = []
         for encounter in self.get_encounters():
@@ -595,7 +590,6 @@ class Sighting(db.Model, FeatherModel):
         log.debug(
             f'sighting {self} finding matching set for {annotation} using {matching_set_config}'
         )
-        # may wish to run query through annotation.resolve_matching_set_query(query)
         matching_set_annotations = annotation.get_matching_set(matching_set_config)
 
         matching_set_individual_uuids = []
@@ -623,10 +617,6 @@ class Sighting(db.Model, FeatherModel):
             f'annots {matching_set_annot_uuids}'
         )
         return matching_set_individual_uuids, matching_set_annot_uuids
-
-    def _has_matching_set(self, matching_set_config):
-        # TODO make me!
-        return True
 
     def build_identification_request(
         self,

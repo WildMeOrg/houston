@@ -62,7 +62,7 @@ class ElasticsearchSync(Resource):
         if is_extension_enabled('elasticsearch'):
             from app.extensions import elasticsearch as es
 
-            with es.session.begin(blocking=True, forced=True, verify=True):
+            with es.session.begin(blocking=True, forced=False, verify=True):
                 es.es_index_all()
 
             status = es.es_status()

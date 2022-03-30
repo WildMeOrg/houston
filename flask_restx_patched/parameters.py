@@ -179,8 +179,8 @@ class PatchJSONParameters(Parameters):
                             % (obj.__class__.__name__, operation)
                         )
 
-                if obj is not None:
-                    objs.append(obj)
+            if obj is not None:
+                objs.append(obj)
 
             if not cls._process_patch_operation(operation, obj=obj, state=state):
                 log.info(
@@ -192,6 +192,12 @@ class PatchJSONParameters(Parameters):
                     'Failed to update %s details. Operation %s could not succeed.'
                     % (obj.__class__.__name__, operation)
                 )
+
+        # Refresh the index for any patched object
+        for obj in objs:
+            if obj is not None:
+                if hasattr(obj, 'index'):
+                    obj.index(force=True)
 
         if obj_cls is not None:
             return objs

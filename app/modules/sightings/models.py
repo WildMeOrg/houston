@@ -583,7 +583,7 @@ class Sighting(db.Model, FeatherModel):
 
     # specifically to pass to Sage, so we dress it up accordingly
     def get_matching_set_data(self, annotation_guid, matching_set_config=None):
-        from app.extensions.acm import to_acm_uuid
+        from app.extensions.acm import to_acm_uuid, default_acm_individual_uuid
 
         annotation = Annotation.query.get(annotation_guid)
         assert annotation

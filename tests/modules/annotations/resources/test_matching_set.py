@@ -298,7 +298,7 @@ def test_annotation_elasticsearch(
     assert sdump.data.get('taxonomy_guid') == taxonomy_guid
     assert sdump.data.get('locationId') == locationId
     assert sdump.data.get('guid') == str(annotation.guid)
-    assert sdump.data.get('bounds') == {'rect': [0, 1, 2, 3]}
+    assert sdump.data.get('bounds') == {'rect': [0, 1, 2, 3], 'theta': 0}
     assert sdump.data.get('viewpoint') == viewpoint
     assert sdump.data.get('encounter_guid') == enc_guid
     assert sdump.data.get('sighting_guid') == uuids['sighting']

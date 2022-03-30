@@ -47,7 +47,7 @@ def test_viewpoint_utils():
 
     assert not Annotation.viewpoint_to_coord('unknown')
 
-    annot = Annotation()
+    annot = Annotation(bounds={'rect': [0, 1, 2, 3]})
     for vp in all_viewpoints:
         annot.viewpoint = vp
         n = annot.get_neighboring_viewpoints()

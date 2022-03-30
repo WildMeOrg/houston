@@ -27,7 +27,7 @@ def test_annotation_matching_set(
     # pylint: disable=invalid-name
     from app.modules.annotations.models import Annotation
 
-    sub_utils.clone_asset_group(
+    clone = sub_utils.clone_asset_group(
         flask_app_client,
         researcher_1,
         test_clone_asset_group_data['asset_group_uuid'],
@@ -170,6 +170,8 @@ def test_annotation_matching_set(
     except ValueError as ve:
         assert str(ve) == 'cannot resolve query on Annotation with no Encounter'
 
+    clone.cleanup()
+
 
 def test_region_utils():
     from app.modules.site_settings.models import Regions
@@ -247,7 +249,7 @@ def test_annotation_elasticsearch(
     from app.modules.annotations.models import Annotation
     from app.modules.annotations.schemas import AnnotationElasticsearchSchema
 
-    sub_utils.clone_asset_group(
+    clone = sub_utils.clone_asset_group(
         flask_app_client,
         researcher_1,
         test_clone_asset_group_data['asset_group_uuid'],
@@ -302,3 +304,5 @@ def test_annotation_elasticsearch(
     assert sdump.data.get('viewpoint') == viewpoint
     assert sdump.data.get('encounter_guid') == enc_guid
     assert sdump.data.get('sighting_guid') == uuids['sighting']
+
+    clone.cleanup()

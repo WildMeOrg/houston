@@ -479,17 +479,19 @@ class FeatherModel(GhostModel, TimestampViewed, ElasticsearchModel):
         from flask import current_app
         import time
 
+        # going to give cache a life of 5 min kinda arbitrarily
+        cache_lifespan_seconds = 300
         # this will prevent HoustonModel objects from using this
         if FeatherModel not in self.__class__.__bases__:
             raise NotImplementedError('only available on FeatherModels')
         if not is_extension_enabled('edm'):
             return None
-        # going to give cache a life of 5 min kinda arbitrarily
         time_now = int(time.time())
         if (
             use_cache
             and hasattr(self, '_edm_cached_data')
-            and time_now - self._edm_cached_data.get('_edm_cache_created', 0) < 300
+            and time_now - self._edm_cached_data.get('_edm_cache_created', 0)
+            < cache_lifespan_seconds
         ):
             return self._edm_cached_data
         edm_data = current_app.edm.get_dict(

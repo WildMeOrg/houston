@@ -133,7 +133,7 @@ def test_commit_asset_group_ia(
         flask_app_client, db, researcher_1, asset_group_sighting_guid, asset_uuid
     )
 
-    matching_set_es_query = {'bool': {'filter': {'must': {'term': {'viewpoint': 'up'}}}}}
+    matching_set_es_query = {'bool': {'filter': {'term': {'viewpoint': 'up'}}}}
     ia_configs = [
         {
             'algorithms': [

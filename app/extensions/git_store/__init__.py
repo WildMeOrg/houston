@@ -535,7 +535,7 @@ class GitStore(db.Model, HoustonModel):
         return git_store
 
     def import_tus_files(self, transaction_id=None, paths=None, purge_dir=True):
-        from app.extensions.tus import _tus_filepaths_from, _tus_purge
+        from app.extensions.tus import tus_filepaths_from, tus_purge
 
         self.ensure_repository()
 
@@ -543,9 +543,15 @@ class GitStore(db.Model, HoustonModel):
         local_store_path = self.get_absolute_path()
         local_name_path = os.path.join(local_store_path, '_%s' % (self.GIT_STORE_NAME,))
 
-        filepaths, metadatas = _tus_filepaths_from(
+        filepaths, metadatas = tus_filepaths_from(
             git_store_guid=sub_id, transaction_id=transaction_id, paths=paths
         )
+        uploaded_files = [meta['filename'] for meta in metadatas]
+        unprocessed_files = [
+            filename for filename in uploaded_files if filename not in paths
+        ]
+        if paths and unprocessed_files:
+            raise HoustonException(log, f'Asset(s) {unprocessed_files} are not used')
 
         paths_added = []
         original_filenames = []
@@ -575,7 +581,7 @@ class GitStore(db.Model, HoustonModel):
 
         if purge_dir:
             # may have some unclaimed files in it
-            _tus_purge(git_store_guid=sub_id, transaction_id=transaction_id)
+            tus_purge(git_store_guid=sub_id, transaction_id=transaction_id)
 
         return assets_added
 

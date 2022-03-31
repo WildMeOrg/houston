@@ -12,7 +12,7 @@ from app.modules.fileuploads.models import FileUpload
 from PIL import Image
 
 from tests.utils import (
-    TemporaryDirectoryGraceful,
+    TemporaryDirectoryUUID,
     copy_uploaded_file,
     write_uploaded_file,
 )
@@ -358,7 +358,7 @@ def test_user_profile_fileupload(
 
         # Create file upload
         file_contents = 'abcd\n'
-        with TemporaryDirectoryGraceful() as td:
+        with TemporaryDirectoryUUID() as td:
             testfile = write_uploaded_file('a.txt', Path(td), file_contents)
             fup = FileUpload.create_fileupload_from_path(str(testfile))
         with db.session.begin():
@@ -546,7 +546,7 @@ def test_user_profile_fileupload(
         assert updated_user.profile_fileupload_guid is None
 
         # Create file upload
-        with TemporaryDirectoryGraceful() as td:
+        with TemporaryDirectoryUUID() as td:
             testfile = copy_uploaded_file(test_root, zebra_file, td, 'image.jpg')
 
             fup = FileUpload.create_fileupload_from_path(str(testfile))
@@ -630,7 +630,7 @@ def test_user_profile_fileupload(
         response.close()
 
         # Create non image fileupload
-        with TemporaryDirectoryGraceful() as td:
+        with TemporaryDirectoryUUID() as td:
             testfile = write_uploaded_file('a.txt', td, 'abcd\n')
 
             fup = FileUpload.create_fileupload_from_path(str(testfile))

@@ -4,13 +4,14 @@
 import os
 import pathlib
 import shutil
+import uuid
 
 from app.modules.fileuploads.models import FileUpload, modify_image
 from PIL import Image
 import pytest
 
 from tests.utils import (
-    TemporaryDirectoryGraceful,
+    TemporaryDirectoryUUID,
     create_transaction_dir,
     copy_uploaded_file,
     write_uploaded_file,
@@ -64,7 +65,7 @@ def test_fileupload_create_delete(db, flask_app, test_root, request):
 
 def test_fileupload_from_tus(db, flask_app, test_root, request):
     FILEUPLOAD_BASE_PATH = pathlib.Path(flask_app.config.get('FILEUPLOAD_BASE_PATH'))
-    TRANSACTION_ID = 'transaction-id'
+    TRANSACTION_ID = str(uuid.uuid4())
     fup_dir = None
 
     def cleanup():
@@ -93,7 +94,7 @@ def test_fileupload_from_tus(db, flask_app, test_root, request):
 def test_fileuploads_from_tus(db, flask_app, test_root, request):
     UPLOADS_DATABASE_PATH = pathlib.Path(flask_app.config.get('UPLOADS_DATABASE_PATH'))
     FILEUPLOAD_BASE_PATH = pathlib.Path(flask_app.config.get('FILEUPLOAD_BASE_PATH'))
-    TRANSACTION_ID = 'transaction-id'
+    TRANSACTION_ID = str(uuid.uuid4())
     tus_dir = UPLOADS_DATABASE_PATH / f'trans-{TRANSACTION_ID}'
     fup_dirs = []
     fups = []
@@ -152,7 +153,7 @@ def test_fileuploads_get_src(flask_app, flask_app_client, db, test_root, request
 
 
 def test_modify_image(flask_app, test_root):
-    with TemporaryDirectoryGraceful() as td:
+    with TemporaryDirectoryUUID() as td:
         test_file = copy_uploaded_file(
             test_root, 'zebra.jpg', pathlib.Path(td), 'zebra.jpg'
         )

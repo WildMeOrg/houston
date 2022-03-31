@@ -5,7 +5,7 @@ import pathlib
 import pytest
 import shutil
 
-from tests.utils import module_unavailable, get_stored_path
+from tests.utils import module_unavailable
 from tests.extensions.tus import utils as tus_utils
 
 
@@ -13,6 +13,7 @@ from tests.extensions.tus import utils as tus_utils
 def test_create_mission_collection_from_tus(flask_app, db, data_manager_1, test_root):
 
     from app.modules.missions.models import Mission, MissionCollection
+    from app.utils import HoustonException
 
     temp_mission = Mission(
         title='Temp Mission',
@@ -37,7 +38,7 @@ def test_create_mission_collection_from_tus(flask_app, db, data_manager_1, test_
 
     # now with a file dir+files but ask for wrong one
     tid, valid_file = tus_utils.prep_tus_dir(test_root)
-    with pytest.raises(AssertionError):
+    with pytest.raises(HoustonException):
         sub = MissionCollection.create_from_tus(
             'PYTEST', data_manager_1, tid, mission=temp_mission, paths={'fail.jpg'}
         )
@@ -58,7 +59,7 @@ def test_create_mission_collection_from_tus(flask_app, db, data_manager_1, test_
         'PYTEST', data_manager_1, tid, mission=temp_mission
     )
     assert len(sub.assets) == 1
-    assert sub.assets[0].path == get_stored_path(valid_file)
+    assert sub.assets[0].path == valid_file
     if os.path.exists(sub.get_absolute_path()):
         shutil.rmtree(sub.get_absolute_path())
     sub.delete()

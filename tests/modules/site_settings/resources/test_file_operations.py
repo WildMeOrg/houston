@@ -5,7 +5,7 @@ from app.modules.fileuploads.models import FileUpload
 from app.modules.site_settings.models import SiteSetting
 
 from tests.utils import (
-    TemporaryDirectoryGraceful,
+    TemporaryDirectoryUUID,
     module_unavailable,
     copy_uploaded_file,
     write_uploaded_file,
@@ -79,7 +79,7 @@ def test_file_settings(admin_user, flask_app_client, flask_app, db, request, tes
 
         # Edit site setting using transactionId
         upload_dir = flask_app.config['UPLOADS_DATABASE_PATH']
-        with TemporaryDirectoryGraceful(prefix='trans-', dir=upload_dir) as td:
+        with TemporaryDirectoryUUID(prefix='trans-', dir=upload_dir) as td:
             transaction_id = Path(td).name[len('trans-') :]
             copy_uploaded_file(test_root, 'zebra.jpg', Path(td), 'image.jpg')
 
@@ -95,7 +95,7 @@ def test_file_settings(admin_user, flask_app_client, flask_app, db, request, tes
             assert resp.json['file_upload_guid'] != str(fup.guid)
 
         # Edit site setting using transactionId with 2 files
-        with TemporaryDirectoryGraceful(prefix='trans-', dir=upload_dir) as td:
+        with TemporaryDirectoryUUID(prefix='trans-', dir=upload_dir) as td:
             transaction_id = Path(td).name[len('trans-') :]
             write_uploaded_file('a.txt', Path(td), '1234')
             write_uploaded_file('b.txt', Path(td), '5678')
@@ -113,10 +113,9 @@ def test_file_settings(admin_user, flask_app_client, flask_app, db, request, tes
             )
 
         # Edit site setting using transactionId and transactionPath
-        with TemporaryDirectoryGraceful(prefix='trans-', dir=upload_dir) as td:
+        with TemporaryDirectoryUUID(prefix='trans-', dir=upload_dir) as td:
             transaction_id = Path(td).name[len('trans-') :]
             write_uploaded_file('a.txt', Path(td), '1234')
-            write_uploaded_file('b.txt', Path(td), '5678')
 
             resp = flask_app_client.post(
                 '/api/v1/site-settings/file',

@@ -5,7 +5,7 @@ import pathlib
 import pytest
 import shutil
 
-from tests.utils import module_unavailable, get_stored_path
+from tests.utils import module_unavailable
 from tests.extensions.tus import utils as tus_utils
 
 
@@ -13,7 +13,7 @@ from tests.extensions.tus import utils as tus_utils
     module_unavailable('asset_groups'), reason='AssetGroups module disabled'
 )
 def test_create_asset_group_from_tus(flask_app, db, researcher_1, test_root):
-
+    from app.utils import HoustonException
     from app.modules.asset_groups.models import AssetGroup
 
     tid = tus_utils.get_transaction_id()  # '11111111-1111-1111-1111-111111111111'
@@ -29,7 +29,7 @@ def test_create_asset_group_from_tus(flask_app, db, researcher_1, test_root):
 
     # now with a file dir+files but ask for wrong one
     tid, valid_file = tus_utils.prep_tus_dir(test_root)
-    with pytest.raises(AssertionError):
+    with pytest.raises(HoustonException):
         sub = AssetGroup.create_from_tus('PYTEST', researcher_1, tid, paths=['fail.jpg'])
 
     # test with explicit paths (should succeed)
@@ -44,7 +44,7 @@ def test_create_asset_group_from_tus(flask_app, db, researcher_1, test_root):
     tid, valid_file = tus_utils.prep_tus_dir(test_root)
     sub = AssetGroup.create_from_tus('PYTEST', researcher_1, tid)
     assert len(sub.assets) == 1
-    assert sub.assets[0].path == get_stored_path(valid_file)
+    assert sub.assets[0].path == valid_file
     if os.path.exists(sub.get_absolute_path()):
         shutil.rmtree(sub.get_absolute_path())
     sub.delete()

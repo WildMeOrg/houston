@@ -632,6 +632,23 @@ def test_create_bulk_asset_group_dup_asset(
 @pytest.mark.skipif(
     module_unavailable('asset_groups'), reason='AssetGroups module disabled'
 )
+def test_create_bulk_asset_group_missing_asset(
+    flask_app_client, researcher_1, test_root, db, request
+):
+    # pylint: disable=invalid-name
+
+    data = asset_group_utils.get_bulk_creation_data(test_root, request)
+    raw_data = data.get()
+    raw_data['sightings'][0]['assetReferences'].remove('coelacanth.png')
+    expected_err = "Asset(s) ['coelacanth.png'] are not used"
+    asset_group_utils.create_asset_group(
+        flask_app_client, researcher_1, data.get(), 400, expected_err
+    )
+
+
+@pytest.mark.skipif(
+    module_unavailable('asset_groups'), reason='AssetGroups module disabled'
+)
 def test_create_bulk_asset_group(flask_app_client, researcher_1, test_root, db, request):
     # pylint: disable=invalid-name
     import uuid

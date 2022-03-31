@@ -10,7 +10,7 @@ import shutil
 import tqdm
 from PIL import Image
 import numpy as np
-from app.extensions.tus import tus_upload_dir
+from app.extensions.tus import tus_upload_dir, tus_write_file_metadata
 from app.utils import get_stored_filename
 from tests.utils import random_nonce
 
@@ -34,6 +34,8 @@ def prep_tus_dir(test_root, transaction_id=None, filename='zebra.jpg'):
     input_image = path.split(os.sep)[-1]
     stored_image = get_stored_filename(input_image)
     shutil.copy(image_file, f'{upload_dir}/{stored_image}')
+    tus_write_file_metadata(f'{upload_dir}/{stored_image}', input_image)
+
     size = os.path.getsize(image_file)
     assert size > 0
     return transaction_id, filename
@@ -53,6 +55,9 @@ def prep_randomized_tus_dir(total=100, transaction_id=None):
         numpy_image = np.around(np.random.rand(128, 128, 3) * 255.0).astype(np.uint8)
         Image.fromarray(numpy_image, 'RGB').save(image_file)
         size = os.path.getsize(image_file)
+        stored_image = get_stored_filename(filename)
+        os.rename(image_file, f'{upload_dir}/{stored_image}')
+        tus_write_file_metadata(f'{upload_dir}/{stored_image}', filename)
         assert size > 0
 
     return transaction_id

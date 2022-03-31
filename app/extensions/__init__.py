@@ -360,7 +360,6 @@ if elasticsearch is None:
         elasticsearchable = False
         index_name = None
 
-
 else:
 
     def register_elasticsearch_model(*args, **kwargs):
@@ -470,6 +469,24 @@ class FeatherModel(GhostModel, TimestampViewed, ElasticsearchModel):
 
         rule = ObjectActionRule(obj=self, action=AccessOperation.WRITE)
         return rule.check()
+
+    def get_augmented_edm_json_with_schema(self, schema):
+        from flask import current_app
+
+        rtn_json = current_app.edm.get_dict(
+            f'{self.__class__.__name__.lower()}.data_complete', self.guid
+        )
+
+        if not isinstance(rtn_json, dict) or not rtn_json.get('success', False):
+            return rtn_json
+
+        result_json = rtn_json['result']
+        result_json.update(schema.dump(self).data)
+        assert hasattr(self, 'augment_edm_json')
+
+        augmented_json = self.augment_edm_json(result_json)
+
+        return augmented_json
 
     # will grab edm representation of this object
     # cache allows minimal calls to edm for same object, but has the potential

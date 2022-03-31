@@ -48,7 +48,7 @@ def test_delete_method(
         staff_user,
         data_in=indiv_enc_json,
     )
-    individual_guid = response.json['result']['id']
+    individual_guid = response.json['guid']
     assert individual_guid is not None
 
     ct = test_utils.all_count(db)

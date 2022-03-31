@@ -687,8 +687,7 @@ class User(db.Model, FeatherModel, UserEDMMixin):
     @module_required('sightings', resolve='warn', default=[])
     def get_sightings_json(self, start, end):
         return [
-            sighting.get_augmented_sighting_json()
-            for sighting in self.get_sightings()[start:end]
+            sighting.get_detailed_json() for sighting in self.get_sightings()[start:end]
         ]
 
     def get_id(self):

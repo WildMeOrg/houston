@@ -326,4 +326,4 @@ class EncounterDebugByID(Resource):
         },
     )
     def get(self, encounter):
-        return encounter.sighting.get_debug_sighting_json()
+        return encounter.sighting.get_debug_json()

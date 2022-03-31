@@ -826,10 +826,31 @@ class Individual(db.Model, FeatherModel):
         )
         return response
 
-    def get_augmented_encounter_schema(self):
+    def get_debug_json(self):
         from app.modules.encounters.schemas import AugmentedIndividualApiEncounterSchema
 
-        return AugmentedIndividualApiEncounterSchema()
+        result_json = self.get_edm_data_with_enc_schema(
+            AugmentedIndividualApiEncounterSchema()
+        )
+
+        from .schemas import DebugIndividualSchema
+
+        sighting_schema = DebugIndividualSchema()
+        result_json.update(sighting_schema.dump(self).data)
+        return result_json
+
+    def get_detailed_json(self):
+        from app.modules.encounters.schemas import AugmentedIndividualApiEncounterSchema
+
+        result_json = self.get_edm_data_with_enc_schema(
+            AugmentedIndividualApiEncounterSchema()
+        )
+
+        from .schemas import DetailedIndividualSchema
+
+        individual_schema = DetailedIndividualSchema()
+        result_json.update(individual_schema.dump(self).data)
+        return result_json
 
     def get_social_groups_json(self):
         from app.modules.social_groups.schemas import DetailedSocialGroupSchema

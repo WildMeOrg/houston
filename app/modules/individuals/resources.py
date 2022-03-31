@@ -179,9 +179,7 @@ class Individuals(Resource):
             db.session.add(individual)
         db.session.refresh(individual)
 
-        return individual.get_augmented_edm_json_with_schema(
-            schemas.DetailedIndividualSchema()
-        )
+        return individual.get_detailed_json()
 
     def _parse_names(self, names_data, cleanup):
         names = []
@@ -290,9 +288,7 @@ class IndividualByID(Resource):
             log.error('GET passthrough called for nonexistent Individual')
             return {}
 
-        return individual.get_augmented_edm_json_with_schema(
-            schemas.DetailedIndividualSchema()
-        )
+        return individual.get_detailed_json()
 
     @api.permission_required(
         permissions.ObjectAccessPermission,
@@ -783,6 +779,4 @@ class IndividualDebugByID(Resource):
             log.error('GET passthrough called for nonexistent Individual')
             return {}
 
-        return individual.get_augmented_edm_json_with_schema(
-            schemas.DebugIndividualSchema()
-        )
+        return individual.get_debug_json()

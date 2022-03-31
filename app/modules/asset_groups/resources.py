@@ -731,7 +731,7 @@ class AssetGroupSightingCommit(Resource):
         except HoustonException as ex:
             abort(ex.status_code, ex.message, errorFields=ex.get_val('error', 'Error'))
 
-        return sighting.get_augmented_sighting_json()
+        return sighting.get_detailed_json()
 
 
 @api.route('/sighting/<uuid:asset_group_sighting_guid>/detect')

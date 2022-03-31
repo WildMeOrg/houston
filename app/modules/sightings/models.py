@@ -9,7 +9,7 @@ import uuid
 from datetime import datetime  # NOQA
 from flask import current_app
 
-from app.extensions import FeatherModel, HoustonModel, db, is_extension_enabled
+from app.extensions import FeatherModel, HoustonModel, db
 from app.modules.annotations.models import Annotation
 from app.modules.encounters.models import Encounter
 from app.modules.individuals.models import Individual
@@ -472,79 +472,27 @@ class Sighting(db.Model, FeatherModel):
             request_headers=request.headers,
         )
 
-    def get_debug_sighting_json(self):
-        response = current_app.edm.get_dict('sighting.data_complete', self.guid)
-        if not isinstance(response, dict):  # some non-200 thing, incl 404
-            return response
-        if not response.get('success', False):
-            return response
+    def get_debug_json(self):
+        from app.modules.encounters.schemas import AugmentedEdmEncounterSchema
 
-        from app.modules.sightings.schemas import DebugSightingSchema
+        result_json = self.get_edm_data_with_enc_schema(AugmentedEdmEncounterSchema())
 
-        schema = DebugSightingSchema()
-        edm_response = response['result']
-        for encounter in edm_response.get('encounters') or []:
-            # EDM returns strings for decimalLatitude and decimalLongitude
-            if encounter.get('decimalLongitude'):
-                encounter['decimalLongitude'] = float(encounter['decimalLongitude'])
-            if encounter.get('decimalLatitude'):
-                encounter['decimalLatitude'] = float(encounter['decimalLatitude'])
-            encounter['guid'] = encounter.pop('id', None)
-        edm_response.update(schema.dump(self).data)
-        edm_response.pop('id', None)
-        return self._augment_edm_json(edm_response)
+        from .schemas import DebugSightingSchema
 
-    def get_augmented_sighting_json(self):
-        if is_extension_enabled('edm'):
-            response = current_app.edm.get_dict('sighting.data_complete', self.guid)
+        sighting_schema = DebugSightingSchema()
+        result_json.update(sighting_schema.dump(self).data)
+        return result_json
 
-        if not isinstance(response, dict):  # some non-200 thing, incl 404
-            return response
-        if not response.get('success', False):
-            return response
+    def get_detailed_json(self):
+        from app.modules.encounters.schemas import AugmentedEdmEncounterSchema
 
-        from app.modules.sightings.schemas import AugmentedEdmSightingSchema
+        result_json = self.get_edm_data_with_enc_schema(AugmentedEdmEncounterSchema())
 
-        schema = AugmentedEdmSightingSchema()
-        edm_response = response['result']
-        for encounter in edm_response.get('encounters') or []:
-            # EDM returns strings for decimalLatitude and decimalLongitude
-            if encounter.get('decimalLongitude'):
-                encounter['decimalLongitude'] = float(encounter['decimalLongitude'])
-            if encounter.get('decimalLatitude'):
-                encounter['decimalLatitude'] = float(encounter['decimalLatitude'])
-            encounter['guid'] = encounter.pop('id', None)
-        edm_response.update(schema.dump(self).data)
-        edm_response.pop('id', None)
+        from .schemas import AugmentedEdmSightingSchema
 
-        return self._augment_edm_json(edm_response)
-
-    # given edm_json (verbose json from edm) will populate with houston-specific data from feather object
-    # note: this modifies the passed in edm_json, so not sure how legit that is?
-    def _augment_edm_json(self, edm_json):
-
-        if (self.encounters is not None and edm_json['encounters'] is None) or (
-            self.encounters is None and edm_json['encounters'] is not None
-        ):
-            log.warning('Only one None encounters value between edm/feather objects!')
-        if self.encounters is not None and edm_json['encounters'] is not None:
-            id_to_encounter = {e['guid']: e for e in edm_json['encounters']}
-            if set(str(e.guid) for e in self.encounters) != set(id_to_encounter):
-                log.warning(
-                    'Imbalanced encounters between edm/feather objects on sighting '
-                    + str(self.guid)
-                    + '!'
-                )
-                raise ValueError('imbalanced encounter count between edm/feather')
-
-            from app.modules.encounters.schemas import AugmentedEdmEncounterSchema
-
-            for encounter in self.encounters:  # now we augment each encounter
-                found_edm = id_to_encounter[str(encounter.guid)]
-                edm_schema = AugmentedEdmEncounterSchema()
-                found_edm.update(edm_schema.dump(encounter).data)
-
-        return edm_json
+        sighting_schema = AugmentedEdmSightingSchema()
+        result_json.update(sighting_schema.dump(self).data)
+        return result_json
 
     # pass results-json for sighting.encounters from changes made (e.g. PATCH) and update houston encounters accordingly
     def rectify_edm_encounters(self, edm_encs_json, user=None):

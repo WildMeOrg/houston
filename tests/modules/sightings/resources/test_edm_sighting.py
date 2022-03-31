@@ -26,6 +26,7 @@ def test_sighting_edm_patch_add(db, flask_app_client, researcher_1, request, tes
 
     sighting_id = uuids['sighting']
     longitude = 24.9999
+    latitude = 45.9999
 
     sighting_utils.patch_sighting(
         flask_app_client,
@@ -33,9 +34,10 @@ def test_sighting_edm_patch_add(db, flask_app_client, researcher_1, request, tes
         sighting_id,
         patch_data=[
             {'op': 'add', 'path': '/decimalLongitude', 'value': longitude},
+            {'op': 'replace', 'path': '/decimalLatitude', 'value': latitude},
         ],
     )
 
     response = sighting_utils.read_sighting(flask_app_client, researcher_1, sighting_id)
-
     assert response.json['decimalLongitude'] == longitude
+    assert response.json['decimalLatitude'] == latitude

@@ -20,7 +20,6 @@ def create_sighting(session, codex_url, test_root, filename, group_data=None):
                     'assetReferences': [filename],
                     'idConfigs': [
                         {
-                            'matchingSetDataOwners': 'all',
                             'algorithms': ['hotspotter_nosv'],
                         }
                     ],
@@ -160,7 +159,6 @@ def test_identification_international(session, codex_url, test_root, login):
                 'assetReferences': [filename],
                 'idConfigs': [
                     {
-                        'matchingSetDataOwners': 'all',
                         'algorithms': ['hotspotter_nosv'],
                     }
                 ],

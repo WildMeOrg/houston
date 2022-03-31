@@ -74,6 +74,7 @@ def patch_in_dummy_annotation(
     # Create a dummy annotation for this Sighting
     new_annot = Annotation(
         guid=uuid.uuid4(),
+        content_guid=uuid.uuid4(),
         asset=asset,
         ia_class='none',
         viewpoint='test',

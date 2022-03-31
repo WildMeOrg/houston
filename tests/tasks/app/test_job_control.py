@@ -84,7 +84,6 @@ def test_sighting_identification_jobs(
 ):
     # pylint: disable=invalid-name
     from app.modules.sightings.models import Sighting, SightingStage
-    from app.modules.annotations.models import Annotation
 
     # Create two sightings so that there will be a valid annotation when doing ID for the second one.
     # Otherwise the get_matching_set_data in sightings will return an empty list
@@ -95,7 +94,7 @@ def test_sighting_identification_jobs(
     ) = asset_group_utils.create_simple_asset_group(
         flask_app_client, researcher_1, request, test_root
     )
-    annot_match_uuid = asset_group_utils.patch_in_dummy_annotation(
+    asset_group_utils.patch_in_dummy_annotation(
         flask_app_client, db, researcher_1, asset_group_sighting_guid1, asset_uuid1
     )
     commit_response = asset_group_utils.commit_asset_group_sighting(
@@ -122,16 +121,6 @@ def test_sighting_identification_jobs(
         flask_app, flask_app_client, researcher_1, asset_group_sighting_guid2
     )
     sighting_uuid = response.json['guid']
-
-    # FIXME  this is a hack to fake the content_guid for these, as
-    #  a bug is preventing these from being added;  will be fixed by PR537
-    annot = Annotation.query.get(annot_uuid)
-    annot.content_guid = '9b23c355-5b0e-4d41-83be-dc8bf2a0cad8'
-    annot.index()
-    annot_match = Annotation.query.get(annot_match_uuid)
-    annot_match.content_guid = 'f67fcd57-b747-4aea-87c0-426901d10d2a'
-    annot_match.index()
-    # END FIXME
     wait_for_elasticsearch_status(flask_app_client, researcher_1)
 
     # Here starts the test for real

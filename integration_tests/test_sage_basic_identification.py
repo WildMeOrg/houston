@@ -20,7 +20,6 @@ def create_sighting(session, codex_url, test_root, filename, group_data=None):
                     'assetReferences': [filename],
                     'idConfigs': [
                         {
-                            'matchingSetDataOwners': 'all',
                             'algorithms': ['hotspotter_nosv'],
                         }
                     ],
@@ -76,7 +75,7 @@ def create_sighting(session, codex_url, test_root, filename, group_data=None):
 
 def test_create_asset_group_identification(session, codex_url, test_root, login):
     login(session)
-    zebra_guids = create_sighting(session, codex_url, test_root, 'zebra.jpg')
+    zebra_guids = create_sighting(session, codex_url, test_root, 'zebra-flopped.jpg')
 
     # Check jobs data for first AGS
     zebra_ags = session.get(
@@ -129,7 +128,7 @@ def test_create_asset_group_identification(session, codex_url, test_root, login)
 
 def test_identification_international(session, codex_url, test_root, login):
     login(session)
-    zebra_guids = create_sighting(session, codex_url, test_root, 'zebra.jpg')
+    zebra_guids = create_sighting(session, codex_url, test_root, 'zebra-flopped.jpg')
 
     # the first one does not go for identification, so make it processed so that the next one can
     patch_response = session.post(
@@ -160,7 +159,6 @@ def test_identification_international(session, codex_url, test_root, login):
                 'assetReferences': [filename],
                 'idConfigs': [
                     {
-                        'matchingSetDataOwners': 'all',
                         'algorithms': ['hotspotter_nosv'],
                     }
                 ],

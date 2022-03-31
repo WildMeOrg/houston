@@ -113,7 +113,7 @@ jobs:
       - name: Run tests
         run: |
           set -ex
-          docker-compose exec -T -e TEST_DATABASE_URI=$TEST_DATABASE_URI houston pytest -s -v --cov=./ --cov-append --random-order-seed=1
+          docker-compose exec -T -e TEST_DATABASE_URI=$TEST_DATABASE_URI houston pytest --cov=./ --cov-append --random-order-seed=1
 
       - name: Check DB migrations (sqlite)
         if: matrix.db-uri == 'sqlite://' && matrix.app-context == 'codex'

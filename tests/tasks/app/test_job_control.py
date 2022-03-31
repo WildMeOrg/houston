@@ -7,7 +7,7 @@ import tests.modules.asset_groups.resources.utils as asset_group_utils
 from invoke import MockContext
 import pytest
 
-from tests.utils import module_unavailable
+from tests.utils import module_unavailable, wait_for_elasticsearch_status
 
 
 # Check that the task methods for the asset control job tasks print the correct output
@@ -121,6 +121,7 @@ def test_sighting_identification_jobs(
         flask_app, flask_app_client, researcher_1, asset_group_sighting_guid2
     )
     sighting_uuid = response.json['guid']
+    wait_for_elasticsearch_status(flask_app_client, researcher_1)
 
     # Here starts the test for real
     sighting = Sighting.query.get(sighting_uuid)
@@ -133,7 +134,6 @@ def test_sighting_identification_jobs(
             'algorithms': [
                 'hotspotter_nosv',
             ],
-            'matchingSetDataOwners': 'mine',
         }
     ]
 

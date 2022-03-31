@@ -98,6 +98,11 @@ class Encounter(db.Model, FeatherModel):
 
         return ElasticsearchEncounterSchema
 
+    # index of encounter must trigger index of its annotations (so they can update)
+    def index_hook_obj(self):
+        for annot in self.annotations:
+            annot.index(force=True)
+
     def __repr__(self):
         return (
             '<{class_name}('
@@ -125,8 +130,12 @@ class Encounter(db.Model, FeatherModel):
                 location_id = edm_json['locationId']
         return location_id
 
-    def get_time_isoformat_in_timezone(self):
-        return self.time.isoformat_in_timezone() if self.time else None
+    def get_time_isoformat_in_timezone(self, sighting_fallback=False):
+        if self.time:
+            return self.time.isoformat_in_timezone()
+        if self.sighting and sighting_fallback:
+            return self.sighting.get_time_isoformat_in_timezone()
+        return None
 
     def get_time_specificity(self):
         return self.time.specificity if self.time else None

@@ -86,9 +86,8 @@ class AssetGroupMetadata(object):
     def validate_id_configs(cls, id_configs, debug):
         id_config_fields = [
             ('algorithms', list, True),
-            ('matchingSetDataOwners', str, True),
-            ('matchingSetRegions', list, False),
         ]
+        # 'matching_set' is now optional here, but would not be validated here anyway
 
         num_configs = len(id_configs)
         if num_configs > 1:
@@ -97,19 +96,10 @@ class AssetGroupMetadata(object):
             )
 
         for config_id in range(num_configs):
-            from app.modules.sightings.models import Sighting
             from app.modules.ia_config_reader import IaConfig
 
             id_config = id_configs[config_id]
             cls._validate_fields(id_config, id_config_fields, debug)
-
-            owners = id_config['matchingSetDataOwners']
-            supported_owners = Sighting.get_matching_set_options()
-            if owners not in supported_owners:
-                raise AssetGroupMetadataError(
-                    log,
-                    f'dataOwners {owners} not supported, only support {supported_owners}',
-                )
 
             ia_config_reader = IaConfig(current_app.config.get('CONFIG_MODEL'))
             for algorithm in id_config['algorithms']:

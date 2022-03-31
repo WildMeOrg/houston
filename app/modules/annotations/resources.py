@@ -6,6 +6,7 @@ RESTful API Annotations resources
 """
 
 import logging
+import json
 
 from flask import request
 from flask_restx_patched import Resource
@@ -264,6 +265,78 @@ class AnnotationJobByID(Resource):
         Get Annotation job details by ID.
         """
         return annotation.get_job_debug(verbose=True)
+
+
+@api.route('/matching_set/query/<uuid:annotation_guid>')
+@api.login_required(oauth_scopes=['annotations:read'])
+@api.response(
+    code=HTTPStatus.NOT_FOUND,
+    description='Annotation not found.',
+)
+@api.resolve_object_by_model(Annotation, 'annotation')
+class AnnotationMatchingSetQueryByID(Resource):
+    """
+    Info about matching-set queries (the search criteria, not results)
+    for a given Annotation.
+    """
+
+    @api.permission_required(
+        permissions.ObjectAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'obj': kwargs['annotation'],
+            'action': AccessOperation.READ,
+        },
+    )
+    def get(self, annotation):
+        """
+        Returns the default query for the Annotation.
+        """
+        return annotation.get_matching_set_default_query()
+
+    def post(self, annotation):
+        """
+        Accepts a query via body, then returns the "resolved" query
+        as it would be used.  (which may include some modifications.)
+        """
+        request_in = json.loads(request.data)
+        return annotation.resolve_matching_set_query(request_in)
+
+
+@api.route('/matching_set/<uuid:annotation_guid>')
+@api.login_required(oauth_scopes=['annotations:read'])
+@api.response(
+    code=HTTPStatus.NOT_FOUND,
+    description='Annotation not found.',
+)
+@api.resolve_object_by_model(Annotation, 'annotation')
+# right now load=False is default behavior, so this only returns guids.
+# however, in the event this is desired to be full Annotations, uncomment:
+# @api.response(schemas.BaseAnnotationSchema(many=True))
+class AnnotationMatchingSetByID(Resource):
+    """
+    Returns actual matching set (Annotations) for a given Annotation.
+    """
+
+    @api.permission_required(
+        permissions.ObjectAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'obj': kwargs['annotation'],
+            'action': AccessOperation.READ,
+        },
+    )
+    def get(self, annotation):
+        """
+        Returns the set based on default query for the Annotation.
+        """
+        return annotation.get_matching_set(load=False)
+
+    def post(self, annotation):
+        """
+        Accepts a query via body, then returns matching set based on the "resolved" query
+        as it would be used.  (which may include some modifications.)
+        """
+        request_in = json.loads(request.data)
+        return annotation.get_matching_set(request_in, load=False)
 
 
 @api.route('/debug/<uuid:annotation_guid>')

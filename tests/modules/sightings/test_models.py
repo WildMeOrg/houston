@@ -116,13 +116,13 @@ def test_sighting_jobs(db, request, researcher_1):
 
     ia_config1 = [
         {
-            'matchingSetDataOwners': 'mine',
+            'matching_set': {'test': 0},
             'algorithms': {'algorithm_id': 'algorithm1'},
         },
     ]
     ia_config2 = [
         {
-            'matchingSetDataOwners': 'extended',
+            'matching_set': {'test': 1},
             'algorithms': {'algorithm_id': 'algorithm2'},
         },
     ]
@@ -164,28 +164,34 @@ def test_sighting_jobs(db, request, researcher_1):
     request.addfinalizer(mock_uuid.stop)
 
     now = datetime.datetime(2021, 7, 7, 23, 43, 55)
+    aid1 = '00000000-0000-0000-0000-000000000001'
+    sage1 = '00000000-0000-0000-0000-000000000002'
+    aid2 = '00000000-0000-0000-0000-000000000003'
+    sage2 = '00000000-0000-0000-0000-000000000004'
     with mock.patch('datetime.datetime') as mock_datetime:
         mock_datetime.utcnow.return_value = now
         with mock.patch.object(sighting1, 'build_identification_request'):
-            sighting1.send_identification(0, 'algorithm_id', 'aid1', 'sage_aid1')
+            sighting1.send_identification(0, 'algorithm_id', aid1, sage1)
             # sighting1.send_identification('config2', 'algorithm_id', 'aid1', 'sage_aid1')
         with mock.patch.object(sighting2, 'build_identification_request'):
-            sighting2.send_identification(0, 'algorithm_id', 'aid2', 'sage_aid2')
+            sighting2.send_identification(0, 'algorithm_id', aid2, sage2)
 
     assert Sighting.query.get(sighting1.guid).jobs == {
         str(job_id1): {
-            'matching_set': 'mine',
+            'matching_set': {'test': 0},
             'algorithm': 'algorithm1',
-            'annotation': 'aid1',
+            'annotation': aid1,
+            'annotation_sage_uuid': sage1,
             'active': True,
             'start': now,
         },
     }
     assert Sighting.query.get(sighting2.guid).jobs == {
         str(job_id2): {
-            'matching_set': 'extended',
+            'matching_set': {'test': 1},
             'algorithm': 'algorithm2',
-            'annotation': 'aid2',
+            'annotation': aid2,
+            'annotation_sage_uuid': sage2,
             'active': True,
             'start': now,
         },

@@ -64,6 +64,12 @@ def test_modify_encounter(
         patch_data,
     )
 
+    # bonus test to check that FeatherModel get_edm_complete_data() is working
+    edm_data = new_encounter_1.get_edm_complete_data()
+    assert edm_data
+    assert edm_data.get('id') == str(new_encounter_1.guid)
+    assert edm_data.get('locationId') == 'FAIL'
+
     # non Owner cannot make themselves the owner
     new_owner_as_res_2 = [
         utils.patch_replace_op('owner', str(researcher_2.guid)),

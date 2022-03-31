@@ -74,7 +74,7 @@ def test_asset_meta_and_delete(flask_app, db, test_root, admin_user, request):
 
     asset_group = set_up_assets(flask_app, db, test_root, admin_user, request)
 
-    assert len(asset_group.assets) == 9
+    assert len(asset_group.assets) == 10
     assert len(asset_group.assets[0].annotations) == 1
     assert len(asset_group.assets[0].asset_sightings) == 1
     dim = asset_group.assets[0].get_dimensions()
@@ -90,7 +90,7 @@ def test_asset_meta_and_delete(flask_app, db, test_root, admin_user, request):
 
     # Assets should be deleted
     assert len(list(asset_group.assets)) == 1
-    assert [Asset.query.get(guid) for guid in asset_guids][:-1] == [None] * 8
+    assert [Asset.query.get(guid) for guid in asset_guids][:-1] == [None] * 9
     # Annotations and sighting assets should be deleted
     assert list(SightingAssets.query.filter_by(asset_guid=asset_guids[0])) == []
     assert Annotation.query.get(annotation.guid) is None

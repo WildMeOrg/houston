@@ -315,3 +315,121 @@ class SiteSetting(db.Model, Timestamp):
             val = str(uuid.uuid4())
             cls.set('system_guid', string=val, public=True, override_readonly=True)
         return val
+
+
+class Regions(dict):
+    def __init__(self, *args, **kwargs):
+        if 'data' in kwargs and isinstance(kwargs['data'], dict):
+            self.update(kwargs['data'])
+            del kwargs['data']
+        else:
+            from app.modules.site_settings.models import SiteSetting
+
+            data = SiteSetting.get_edm_configuration('site.custom.regions')
+            if data:
+                self.update(data)
+        if not len(self):
+            raise ValueError('no region data available')
+        super().__init__(*args, **kwargs)
+
+    def full_path(self, loc, id_only=True):
+        return self._find_path(self, loc, [], id_only)
+
+    # as with any region-tree-traversal, this does not handle duplication of ids across nodes well.
+    # first come, first served   :(
+    @classmethod
+    def _find_path(cls, tree, loc, path, id_only):
+        if not loc:
+            raise ValueError('must pass loc')
+        if not tree or not isinstance(tree, dict):
+            return None
+        this_id = tree.get('id')
+        this_data = tree.copy()
+        if 'locationID' in this_data:
+            del this_data['locationID']
+        if this_id == loc:
+            path.append(this_id if id_only else this_data)
+            return path
+        if 'locationID' in tree and isinstance(tree['locationID'], list):
+            for sub in tree['locationID']:
+                continue_path = path
+                if this_id:  # skips nodes without id (e.g. top)
+                    continue_path = path + [this_id if id_only else this_data]
+                sub_path = cls._find_path(sub, loc, continue_path, id_only)
+                if sub_path:
+                    return sub_path
+        return None
+
+    def with_ancestors(self, loc_list):
+        ancestors = set()
+        if not loc_list or not isinstance(loc_list, list):
+            return ancestors
+        for loc in loc_list:
+            path = self.full_path(loc)
+            if path:
+                ancestors.update(path)
+        return ancestors
+
+    def with_children(self, loc_list):
+        if not loc_list or not isinstance(loc_list, list):
+            return set()
+        found = self.find(loc_list, id_only=False, full_tree=True)
+        if not found:
+            return set()
+        children = set(loc_list)
+        for match in found:
+            children = set.union(children, self.node_children(match))
+        return children
+
+    @classmethod
+    # note this will *not* include root node of tree
+    def node_children(cls, tree):
+        children = set()
+        if (
+            not tree
+            or 'locationID' not in tree
+            or not isinstance(tree['locationID'], list)
+        ):
+            return children
+        for sub in tree['locationID']:
+            if sub.get('id'):
+                children.add(sub['id'])
+            kid_nodes = sub.get('locationID') or []
+            for kid_node in kid_nodes:
+                if kid_node.get('id'):
+                    children.add(kid_node['id'])
+                children = set.union(children, cls.node_children(kid_node))
+        return children
+
+    def find(self, locs=None, id_only=True, full_tree=False):
+        found = self._find(self, locs, id_only, full_tree)
+        return set(found) if id_only else found
+
+    @classmethod
+    # full_tree only matters when id_only=False -- it will not prune subtree from node
+    def _find(cls, tree, locs, id_only, full_tree):
+        if not locs:
+            locs = []
+        elif isinstance(locs, str):
+            locs = [locs]
+        elif not isinstance(locs, list):
+            raise ValueError('must pass string, list, or None')
+        found = []
+        if tree.get('id') and (not locs or tree['id'] in locs):
+            if id_only:
+                found.append(tree['id'])
+            else:
+                node_data = tree.copy()
+                if not full_tree and node_data.get('locationID'):
+                    del node_data['locationID']
+                found.append(node_data)
+        if 'locationID' in tree and isinstance(tree['locationID'], list):
+            for sub in tree['locationID']:
+                found = found + cls._find(sub, locs, id_only, full_tree)
+        return found
+
+    def __repr__(self):
+        return (
+            f"<{self.__class__.__name__}(desc={self.get('description')} "
+            f'; unique_id_count={len(self.find())})>'
+        )

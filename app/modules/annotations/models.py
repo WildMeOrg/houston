@@ -118,12 +118,6 @@ class Annotation(db.Model, HoustonModel):
 
         return annot.get_job_debug(verbose)
 
-    @classmethod
-    def get_elasticsearch_schema(cls):
-        from app.modules.annotations.schemas import DetailedAnnotationSchema
-
-        return DetailedAnnotationSchema
-
     def get_job_debug(self, verbose):
         if self.encounter:
             return self.encounter.sighting.get_job_debug(self.guid, verbose)
@@ -229,6 +223,10 @@ class Annotation(db.Model, HoustonModel):
         return user is not None and user == self.asset.git_store.owner
 
     # Used for building matching set but abstract the annotation to name mapping
+    def get_individual_guid(self):
+        # i think this technically might save a db hit vs get_individual() if only guid is needed
+        return self.encounter.individual_guid if self.encounter else None
+
     def get_individual(self):
         individual = None
         if self.encounter and self.encounter.individual:
@@ -247,6 +245,137 @@ class Annotation(db.Model, HoustonModel):
         if self.asset and self.asset.src:
             assset_src = self.asset.src
         return assset_src
+
+    def get_matching_set(self, query=None, load=True):
+        if not self.encounter_guid:
+            raise ValueError(f'{self} has no Encounter so cannot be matched against')
+        if not query or not isinstance(query, dict):
+            query = self.get_matching_set_default_query()
+        else:
+            query = self.resolve_matching_set_query(query)
+        log.info(f'finding matching set for {self} using query {query}')
+        return self.elasticsearch(query, load=load)
+
+    def get_matching_set_default_query(self):
+        # n.b. default will not take any locationId or ownership into consideration
+        parts = {'filter': []}
+
+        # must have a content_guid (i.e. wbia guid)
+        parts['filter'].append(
+            {
+                'exists': {
+                    'field': 'content_guid',
+                }
+            }
+        )
+
+        viewpoint_list = self.get_neighboring_viewpoints()
+        # TODO should we allow nulls?
+        if viewpoint_list:
+            viewpoint_data = []
+            for vp in viewpoint_list:
+                viewpoint_data.append({'term': {'viewpoint': vp}})
+            parts['filter'].append(
+                {
+                    'bool': {
+                        'minimum_should_match': 1,
+                        'should': viewpoint_data,
+                    }
+                }
+            )
+
+        # same, re: nulls
+        tx_guid = self.get_taxonomy_guid()
+        if tx_guid:
+            parts['filter'].append({'match': {'taxonomy_guid': tx_guid}})
+
+        if self.encounter_guid:
+            parts['must_not'] = {'match': {'encounter_guid': str(self.encounter_guid)}}
+
+        return {'bool': parts}
+
+    # this is to allow for manipulation of a user-provided query prior to actually using it
+    #  e.g. we might want to _force_ criteria or remove certain filters, etc.
+    def resolve_matching_set_query(self, query):
+        if not query or not isinstance(query, dict):
+            raise ValueError('must be passed a dict ES query')
+        if not self.encounter_guid:
+            raise ValueError('cannot resolve query on Annotation with no Encounter')
+        # we just punt on stuff we dont understand and accept as-is
+        if (
+            'bool' not in query
+            or not isinstance(query['bool'], dict)
+            or 'filter' not in query['bool']
+        ):
+            log.debug(f'not resolving atypical query: {query}')
+            return query
+        # handle case where we have {bool: {filter: {...}} to make filter an array
+        if not isinstance(query['bool']['filter'], list):
+            query['bool']['filter'] = [query['bool']['filter']]
+        # i guess to be *extra-thorough* this should *update* an existing `must_not` ?
+        # we do not match within our own encounter
+        if 'must_not' not in query['bool']:
+            query['bool']['must_not'] = {
+                'match': {'encounter_guid': str(self.encounter_guid)}
+            }
+        # (going with the theory that if these are *redundant* its not a big deal to ES.)
+        # we MUST have a content_guid
+        query['bool']['filter'].append({'exists': {'field': 'content_guid'}})
+        return query
+
+    # first tries encounter.locationId, but will use sighting.locationId if none on encounter,
+    #   unless sighting_fallback=False
+    def get_location_id(self, sighting_fallback=True):
+        if not self.encounter_guid:
+            return None
+        enc_edm_data = self.encounter.get_edm_complete_data()
+        if enc_edm_data and enc_edm_data.get('locationId'):
+            return enc_edm_data['locationId']
+        if not sighting_fallback or not self.encounter.sighting_guid:
+            return None
+        sight_edm_data = self.encounter.sighting.get_edm_complete_data()
+        return sight_edm_data and sight_edm_data.get('locationId')
+
+    def get_taxonomy_guid(self, sighting_fallback=True):
+        if not self.encounter_guid:
+            return None
+        enc_edm_data = self.encounter.get_edm_complete_data()
+        if enc_edm_data and enc_edm_data.get('taxonomy'):
+            return enc_edm_data['taxonomy']
+        if not sighting_fallback or not self.encounter.sighting_guid:
+            return None
+        sight_edm_data = self.encounter.sighting.get_edm_complete_data()
+        return sight_edm_data and sight_edm_data.get('taxonomy')
+
+    def get_time_isoformat_in_timezone(self, sighting_fallback=True):
+        return self.encounter and self.encounter.get_time_isoformat_in_timezone(
+            sighting_fallback
+        )
+
+    def get_owner_guid(self):
+        if not self.encounter_guid or not self.encounter:
+            return None
+        # owner is not-null on Encounter
+        return self.encounter.owner.guid
+
+    def get_owner_guid_str(self):
+        guid = self.get_owner_guid()
+        return str(guid) if guid else None
+
+    def get_encounter_guid_str(self):
+        return str(self.encounter_guid) if self.encounter_guid else None
+
+    def get_sighting_guid(self):
+        return self.encounter and self.encounter.sighting_guid
+
+    def get_sighting_guid_str(self):
+        guid = self.get_sighting_guid()
+        return str(guid) if guid else None
+
+    def get_keyword_values(self):
+        if not self.keyword_refs:
+            return []
+        return sorted([ref.keyword.value for ref in self.keyword_refs])
 
     def delete(self):
         with db.session.begin(subtransactions=True):
@@ -285,3 +414,84 @@ class Annotation(db.Model, HoustonModel):
         resp = {'rect': [xtl, ytl, width, height], 'theta': theta}
 
         return resp
+
+    def get_neighboring_viewpoints(self, include_self=True):
+        coord = Annotation.viewpoint_to_coord(self.viewpoint)
+        if not coord:
+            return None
+        vps = set()
+        for x in range(3):
+            for y in range(3):
+                for z in range(3):
+                    # skip ourself
+                    if x == y == z == 1:
+                        continue
+                    new_c = [
+                        coord[0] + x - 1,
+                        coord[1] + y - 1,
+                        coord[2] + z - 1,
+                    ]
+                    # must be co-planar (drop diagonal corners)
+                    if not (
+                        coord[0] == new_c[0]
+                        or coord[1] == new_c[1]
+                        or coord[2] == new_c[2]
+                    ):
+                        continue
+                    # this excludes neighbor center pieces when we are a center piece
+                    if coord.count(0) == 2 and new_c.count(0) == 2:
+                        continue
+                    try:
+                        vp = self.coord_to_viewpoint(new_c)
+                        if vp:
+                            vps.add(vp)
+                    except ValueError:
+                        # we just ignore out of range, as its floating in space
+                        pass
+        # corners have 6, the rest have 8
+        assert (coord.count(0) == 0 and len(vps) == 6) or len(vps) == 8
+        if include_self:
+            vps.add(self.viewpoint)
+        return vps
+
+    @classmethod
+    def coord_to_viewpoint(cls, c):
+        if not c or len(c) != 3:
+            return None
+        sub = [
+            ['down', '', 'up'],
+            ['back', '', 'front'],
+            ['left', '', 'right'],
+        ]
+        vp = ''
+        for i in range(3):
+            if c[i] < -1 or c[i] > 1:
+                raise ValueError(f'value at {i} out of range: {c[i]}')
+            vp += sub[i][c[i] + 1]
+        return vp
+
+    @classmethod
+    def viewpoint_to_coord(cls, vp):
+        c = [0, 0, 0]
+        if vp.startswith('up'):
+            c[0] = 1
+        elif vp.startswith('down'):
+            c[0] = -1
+        if 'front' in vp:
+            c[1] = 1
+        elif 'back' in vp:
+            c[1] = -1
+        if 'right' in vp:
+            c[2] = 1
+        elif 'left' in vp:
+            c[2] = -1
+        # this means it is not a direction-based viewpoint
+        if c == [0, 0, 0]:
+            return None
+        return c
+
+    @classmethod
+    def get_elasticsearch_schema(cls):
+        from app.modules.annotations.schemas import AnnotationElasticsearchSchema
+
+        return AnnotationElasticsearchSchema

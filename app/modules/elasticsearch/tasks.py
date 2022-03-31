@@ -457,35 +457,42 @@ def catchup_index_start():
         return
     log.info(f'catchup index commencing with: {conf}')
 
-    last_guid_encounter = load_encounters_index(
-        catchup_index_before=conf['before'],
-        catchup_index_batch_size=conf['batch_size'],
-        catchup_index_mark=conf['encounter_mark'] or zero_uuid,
-    )
-    conf['encounter_mark'] = last_guid_encounter
-    log.debug(
-        f"catchup index finished encounters batch (size={conf['batch_size']}) on guid {last_guid_encounter}"
-    )
+    with create_wildbook_engine() as wb_engine:
+        with create_houston_engine() as h_engine:
+            set_up_houston_tables(wb_engine, h_engine)
 
-    last_guid_sighting = load_sightings_index(
-        catchup_index_before=conf['before'],
-        catchup_index_batch_size=conf['batch_size'],
-        catchup_index_mark=conf['sighting_mark'] or zero_uuid,
-    )
-    conf['sighting_mark'] = last_guid_sighting
-    log.debug(
-        f"catchup index finished sightings batch (size={conf['batch_size']}) on guid {last_guid_sighting}"
-    )
+            last_guid_encounter = load_encounters_index(
+                wb_engine,
+                catchup_index_before=conf['before'],
+                catchup_index_batch_size=conf['batch_size'],
+                catchup_index_mark=conf['encounter_mark'] or zero_uuid,
+            )
+            conf['encounter_mark'] = last_guid_encounter
+            log.debug(
+                f"catchup index finished encounters batch (size={conf['batch_size']}) on guid {last_guid_encounter}"
+            )
 
-    last_guid_individual = load_individuals_index(
-        catchup_index_before=conf['before'],
-        catchup_index_batch_size=conf['batch_size'],
-        catchup_index_mark=conf['individual_mark'] or zero_uuid,
-    )
-    conf['individual_mark'] = last_guid_individual
-    log.debug(
-        f"catchup index finished individuals batch (size={conf['batch_size']}) on guid {last_guid_individual}"
-    )
+            last_guid_sighting = load_sightings_index(
+                wb_engine,
+                catchup_index_before=conf['before'],
+                catchup_index_batch_size=conf['batch_size'],
+                catchup_index_mark=conf['sighting_mark'] or zero_uuid,
+            )
+            conf['sighting_mark'] = last_guid_sighting
+            log.debug(
+                f"catchup index finished sightings batch (size={conf['batch_size']}) on guid {last_guid_sighting}"
+            )
+
+            last_guid_individual = load_individuals_index(
+                wb_engine,
+                catchup_index_before=conf['before'],
+                catchup_index_batch_size=conf['batch_size'],
+                catchup_index_mark=conf['individual_mark'] or zero_uuid,
+            )
+            conf['individual_mark'] = last_guid_individual
+            log.debug(
+                f"catchup index finished individuals batch (size={conf['batch_size']}) on guid {last_guid_individual}"
+            )
 
     conf_check = catchup_index_get()  # if gone, means a reset() was submitted, so we bail
     if not conf_check:

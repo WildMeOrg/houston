@@ -360,6 +360,7 @@ if elasticsearch is None:
         elasticsearchable = False
         index_name = None
 
+
 else:
 
     def register_elasticsearch_model(*args, **kwargs):
@@ -469,6 +470,40 @@ class FeatherModel(GhostModel, TimestampViewed, ElasticsearchModel):
 
         rule = ObjectActionRule(obj=self, action=AccessOperation.WRITE)
         return rule.check()
+
+    # will grab edm representation of this object
+    # cache allows minimal calls to edm for same object, but has the potential
+    #   to return stale data
+    def get_edm_complete_data(self, use_cache=True):
+        from app.extensions import is_extension_enabled
+        from flask import current_app
+        import time
+
+        # going to give cache a life of 5 min kinda arbitrarily
+        cache_lifespan_seconds = 300
+        # this will prevent HoustonModel objects from using this
+        if FeatherModel not in self.__class__.__bases__:
+            raise NotImplementedError('only available on FeatherModels')
+        if not is_extension_enabled('edm'):
+            return None
+        time_now = int(time.time())
+        if (
+            use_cache
+            and hasattr(self, '_edm_cached_data')
+            and time_now - self._edm_cached_data.get('_edm_cache_created', 0)
+            < cache_lifespan_seconds
+        ):
+            return self._edm_cached_data
+        edm_data = current_app.edm.get_dict(
+            f'{self.get_class_name().lower()}.data_complete',
+            self.guid,
+        ).get('result')
+        self._edm_cached_data = edm_data
+        self._edm_cached_data['_edm_cache_created'] = time_now
+        return edm_data
+
+    def get_class_name(self):
+        return self.__class__.__name__
 
 
 class HoustonModel(FeatherModel):

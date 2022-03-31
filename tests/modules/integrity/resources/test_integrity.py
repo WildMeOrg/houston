@@ -27,16 +27,11 @@ def test_basic_operation(
     integ_resp = integ_utils.create(flask_app_client, admin_user, request=request).json
     integ_guid = integ_resp['guid']
 
-    assets_without_annots = integ_resp['result']['asset_groups']['assets_without_annots']
-    asset_guids_without_annots = []
-    groups_with_assets_without_annots = []
-    for awa in assets_without_annots:
-        asset_guids_without_annots.extend(awa['asset_guids'])
-        groups_with_assets_without_annots.append(awa['group_guid'])
-    assets_without_content = integ_resp['result']['assets']['no_content_guid']
-    assert uuids['assets'][0] in asset_guids_without_annots
-    assert uuids['asset_group'] in groups_with_assets_without_annots
-    assert uuids['assets'][0] in assets_without_content
+    assert {
+        'asset_guids': [uuids['assets'][0]],
+        'group_guid': uuids['asset_group'],
+    } in integ_resp['result']['asset_groups']['assets_without_annots']
+    assert uuids['assets'][0] in integ_resp['result']['assets']['no_content_guid']
 
     integ_utils.read_all(flask_app_client, researcher_1, 403)
     all_integs = integ_utils.read_all(flask_app_client, admin_user).json

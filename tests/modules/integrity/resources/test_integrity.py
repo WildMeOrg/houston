@@ -26,17 +26,17 @@ def test_basic_operation(
     )
     integ_resp = integ_utils.create(flask_app_client, admin_user, request=request).json
     integ_guid = integ_resp['guid']
-    assert integ_resp['result'] == {
-        'annotations': {'no_content_guid': []},
-        'asset_groups': {
-            'assets_without_annots': [
-                {'asset_guids': [uuids['assets'][0]], 'group_guid': uuids['asset_group']}
-            ]
-        },
-        'assets': {'multiple_sightings': [], 'no_content_guid': [uuids['assets'][0]]},
-        'individuals': {'no_encounters': []},
-        'sightings': {'no_encounters': []},
-    }
+
+    assets_without_annots = integ_resp['result']['asset_groups']['assets_without_annots']
+    asset_guids_without_annots = []
+    groups_with_assets_without_annots = []
+    for awa in assets_without_annots:
+        asset_guids_without_annots.extend(awa['asset_guids'])
+        groups_with_assets_without_annots.append(awa['group_guid'])
+    assets_without_content = integ_resp['result']['assets']['no_content_guid']
+    assert uuids['assets'][0] in asset_guids_without_annots
+    assert uuids['asset_group'] in groups_with_assets_without_annots
+    assert uuids['assets'][0] in assets_without_content
 
     integ_utils.read_all(flask_app_client, researcher_1, 403)
     all_integs = integ_utils.read_all(flask_app_client, admin_user).json
@@ -58,7 +58,7 @@ def test_errors(
     indy.encounters = []
 
     integ_resp = integ_utils.create(flask_app_client, admin_user, request=request).json
-    assert integ_resp['result']['individuals']['no_encounters'][0] == guids['individual']
+    assert guids['individual'] in integ_resp['result']['individuals']['no_encounters']
 
     # Need to restore old encounters as without them, researcher_1 (who owns the encounters)
     # cannot delete the individual
@@ -70,7 +70,7 @@ def test_errors(
     old_encounters = sight.encounters
     sight.encounters = []
     integ_resp = integ_utils.create(flask_app_client, admin_user, request=request).json
-    assert integ_resp['result']['sightings']['no_encounters'][0] == guids['sighting']
+    assert guids['sighting'] in integ_resp['result']['sightings']['no_encounters'][0]
 
     # encounters not cleared up unless this is restored
     sight.encounters = old_encounters

@@ -47,7 +47,7 @@ def test_create_read_delete_individual(db, flask_app_client):
     response = individual_utils.create_individual(
         flask_app_client, temp_owner, expected_status_code=200, data_in=encounter_json
     )
-    individual_guid = response.json['result']['id']
+    individual_guid = response.json['guid']
 
     assert individual_guid is not None
 
@@ -87,13 +87,13 @@ def test_read_encounter_from_edm(db, flask_app_client):
         flask_app_client, temp_owner, expected_status_code=200, data_in=encounter_json
     )
 
-    individual_guid = response.json['result']['id']
+    individual_guid = response.json['guid']
 
     read_response = individual_utils.read_individual(
         flask_app_client, temp_owner, individual_guid, expected_status_code=200
     )
 
-    read_guid = read_response.json['id']
+    read_guid = read_response.json['guid']
     assert read_guid is not None
 
     read_individual = Individual.query.get(read_guid)
@@ -163,7 +163,7 @@ def test_add_remove_encounters(db, flask_app_client, researcher_1, request, test
     response = individual_utils.create_individual(
         flask_app_client, researcher_1, 200, {'encounters': [{'id': str(enc_1.guid)}]}
     )
-    individual_1 = Individual.query.get(response.json['result']['id'])
+    individual_1 = Individual.query.get(response.json['guid'])
 
     # # let's start with one
     # individual_1.add_encounter(enc_1)
@@ -315,17 +315,17 @@ def test_individual_has_detailed_encounter_from_edm(
             flask_app_client, researcher_1, 200, individual_data_in
         )
 
-        assert individual_response.json['result']['id'] is not None
+        assert individual_response.json['guid'] is not None
 
-        individual_id = individual_response.json['result']['id']
+        individual_id = individual_response.json['guid']
 
         individual_json = individual_utils.read_individual(
             flask_app_client, researcher_1, individual_id
         ).json
 
         enc_json = individual_json['encounters'][0]
-        assert enc_json['decimalLatitude'] == '25.9999'
-        assert enc_json['decimalLongitude'] == '25.9999'
+        assert enc_json['decimalLatitude'] == 25.9999
+        assert enc_json['decimalLongitude'] == 25.9999
         assert enc_json['verbatimLocality'] == 'Antarctica'
         assert enc_json['locationId'] == 'Antarctica'
         assert enc_json['time'] == '2010-01-01T01:01:01+00:00'

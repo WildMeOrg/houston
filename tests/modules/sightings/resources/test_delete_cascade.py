@@ -132,8 +132,8 @@ def test_individual_cascade(flask_app_client, test_root, researcher_1, request, 
     individual_response = individual_utils.create_individual(
         flask_app_client, researcher_1, 200, individual_data_in
     )
-    assert individual_response.json['result']['id'] is not None
-    individual_id = individual_response.json['result']['id']
+    assert individual_response.json['guid'] is not None
+    individual_id = individual_response.json['guid']
     ct = test_utils.all_count(db)
     assert ct['Encounter'] == orig_ct['Encounter'] + 1
     assert ct['Individual'] == orig_ct['Individual'] + 1
@@ -191,8 +191,8 @@ def test_multi_cascade(flask_app_client, test_root, researcher_1, request, db):
     individual_response = individual_utils.create_individual(
         flask_app_client, researcher_1, 200, individual_data_in
     )
-    assert individual_response.json['result']['id'] is not None
-    individual2_id = individual_response.json['result']['id']
+    assert individual_response.json['guid'] is not None
+    individual2_id = individual_response.json['guid']
     ct = test_utils.all_count(db)
     assert ct['Individual'] == orig_ct['Individual'] + 2
 

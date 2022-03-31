@@ -179,16 +179,9 @@ class Individuals(Resource):
             db.session.add(individual)
         db.session.refresh(individual)
 
-        rtn = {
-            'success': True,
-            'result': {
-                'id': str(individual.guid),
-                'version': individual.version,
-                'encounters': result_data['encounters'],
-            },
-        }
-
-        return rtn
+        return individual.get_augmented_edm_json_with_schema(
+            schemas.DetailedIndividualSchema()
+        )
 
     def _parse_names(self, names_data, cleanup):
         names = []

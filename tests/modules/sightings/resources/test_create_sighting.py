@@ -439,9 +439,9 @@ def test_edm_and_houston_encounter_data_within_sightings(
             flask_app_client, researcher_1, 200, individual_data_in
         )
 
-        assert individual_response.json['result']['id'] is not None
+        assert individual_response.json['guid'] is not None
 
-        individual_id = individual_response.json['result']['id']
+        individual_id = individual_response.json['guid']
 
         # now that individual exists, read individual data off *sighting*
         response = sighting_utils.read_sighting(

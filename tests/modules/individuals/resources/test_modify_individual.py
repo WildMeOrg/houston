@@ -55,9 +55,9 @@ def test_modify_individual_edm_fields(
             flask_app_client, researcher_1, 200, individual_data_in
         )
 
-        assert individual_response.json['result']['id'] is not None
+        assert individual_response.json['guid'] is not None
 
-        individual_id = individual_response.json['result']['id']
+        individual_id = individual_response.json['guid']
 
         individual_json = individual_utils.read_individual(
             flask_app_client, researcher_1, individual_id
@@ -100,13 +100,13 @@ def test_modify_individual_edm_fields(
             flask_app_client, researcher_1, patch_individual_response.json['guid']
         ).json
 
-        assert individual_json['id'] is not None
+        assert individual_json['guid'] is not None
         assert individual_json['sex'] == 'male'
         assert individual_json['timeOfBirth'] == '1445410800000'
 
     finally:
         individual_utils.delete_individual(
-            flask_app_client, researcher_1, individual_json['id']
+            flask_app_client, researcher_1, individual_json['guid']
         )
         sighting.delete_cascade()
         enc.delete_cascade()

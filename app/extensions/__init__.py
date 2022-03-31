@@ -16,8 +16,10 @@ import tqdm  # NOQA
 from datetime import datetime  # NOQA
 import logging as logging_native  # NOQA
 from .logging import Logging  # NOQA
+from app.utils import HoustonException
 
 logging = Logging()
+log = logging_native.getLogger(__name__)  # pylint: disable=invalid-name
 
 import flask.json  # NOQA
 
@@ -473,20 +475,56 @@ class FeatherModel(GhostModel, TimestampViewed, ElasticsearchModel):
     def get_augmented_edm_json_with_schema(self, schema):
         from flask import current_app
 
-        rtn_json = current_app.edm.get_dict(
-            f'{self.__class__.__name__.lower()}.data_complete', self.guid
-        )
+        class_name = self.__class__.__name__.lower()
+        if is_extension_enabled('edm'):
+            rtn_json = current_app.edm.get_dict(f'{class_name}.data_complete', self.guid)
 
-        if not isinstance(rtn_json, dict) or not rtn_json.get('success', False):
-            return rtn_json
+            if not isinstance(rtn_json, dict) or not rtn_json.get('success', False):
+                return rtn_json
 
-        result_json = rtn_json['result']
+            edm_json = rtn_json['result']
+
+            # Sightings and Individuals both have encounter data that needs checking and correcting
+            if hasattr(self, 'encounters'):
+                if (self.encounters is not None and edm_json['encounters'] is None) or (
+                    self.encounters is None and edm_json['encounters'] is not None
+                ):
+                    raise HoustonException(
+                        log,
+                        f'Only one None encounters value between {class_name} edm/feather objects!',
+                    )
+                for encounter in edm_json.get('encounters') or []:
+                    # EDM returns strings for decimalLatitude and decimalLongitude
+                    if encounter.get('decimalLongitude'):
+                        encounter['decimalLongitude'] = float(
+                            encounter['decimalLongitude']
+                        )
+                    if encounter.get('decimalLatitude'):
+                        encounter['decimalLatitude'] = float(encounter['decimalLatitude'])
+                    encounter['guid'] = encounter.pop('id', None)
+
+                if self.encounters is not None and edm_json['encounters'] is not None:
+                    guid_to_encounter = {e['guid']: e for e in edm_json['encounters']}
+                    if set(str(e.guid) for e in self.encounters) != set(
+                        guid_to_encounter
+                    ):
+                        raise HoustonException(
+                            log,
+                            f'Imbalanced encounters between edm/feather objects on {class_name} {str(self.guid)}!',
+                        )
+                    for encounter in self.encounters:  # now we augment each encounter
+                        found_edm = guid_to_encounter[str(encounter.guid)]
+                        encounter_schema = self.get_augmented_encounter_schema()
+                        found_edm.update(encounter_schema.dump(encounter).data)
+
+            result_json = edm_json
+        else:
+            # No EDM, not sure how possible this is with a feather model object
+            result_json = {}
+
         result_json.update(schema.dump(self).data)
-        assert hasattr(self, 'augment_edm_json')
 
-        augmented_json = self.augment_edm_json(result_json)
-
-        return augmented_json
+        return result_json
 
     # will grab edm representation of this object
     # cache allows minimal calls to edm for same object, but has the potential

@@ -179,16 +179,7 @@ class Individuals(Resource):
             db.session.add(individual)
         db.session.refresh(individual)
 
-        rtn = {
-            'success': True,
-            'result': {
-                'id': str(individual.guid),
-                'version': individual.version,
-                'encounters': result_data['encounters'],
-            },
-        }
-
-        return rtn
+        return individual.get_detailed_json()
 
     def _parse_names(self, names_data, cleanup):
         names = []
@@ -297,18 +288,7 @@ class IndividualByID(Resource):
             log.error('GET passthrough called for nonexistent Individual')
             return {}
 
-        rtn_json = current_app.edm.get_dict('individual.data_complete', individual.guid)
-
-        if not isinstance(rtn_json, dict) or not rtn_json.get('success', False):
-            return rtn_json
-
-        schema = schemas.DetailedIndividualSchema()
-        result_json = rtn_json['result']
-        result_json.update(schema.dump(individual).data)
-
-        augmented_json = individual.augment_edm_json(result_json)
-
-        return augmented_json
+        return individual.get_detailed_json()
 
     @api.permission_required(
         permissions.ObjectAccessPermission,
@@ -369,6 +349,8 @@ class IndividualByID(Resource):
                 abort(ex.status_code, message)
 
             # TODO handle individual deletion if last encounter removed
+            # changed something on EDM, remove the cache
+            individual.remove_cached_edm_data()
 
         if houston_args:
             if not edm_args:
@@ -799,15 +781,4 @@ class IndividualDebugByID(Resource):
             log.error('GET passthrough called for nonexistent Individual')
             return {}
 
-        rtn_json = current_app.edm.get_dict('individual.data_complete', individual.guid)
-
-        if not isinstance(rtn_json, dict) or not rtn_json.get('success', False):
-            return rtn_json
-
-        schema = schemas.DebugIndividualSchema()
-        result_json = rtn_json['result']
-        result_json.update(schema.dump(individual).data)
-
-        augmented_json = individual.augment_edm_json(result_json)
-
-        return augmented_json
+        return individual.get_debug_json()

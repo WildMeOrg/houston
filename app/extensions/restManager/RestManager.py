@@ -275,8 +275,8 @@ class RestManager(RestManagerUserMixin):
             from app.extensions.elapsed_time import ElapsedTime
 
             timer = ElapsedTime()
-            log.debug(f'Sending {method} request to {self.NAME}: {endpoint_encoded}')
-            log.debug(f'Contents {passthrough_kwargs}')
+            # log.debug(f'Sending {method} request to {self.NAME}: {endpoint_encoded}'
+            #          f'Contents {passthrough_kwargs}')
 
         session_ = target_session or self.sessions[target]
 
@@ -315,7 +315,7 @@ class RestManager(RestManagerUserMixin):
             )
         if verbose:
             log.info(
-                f'{self.NAME} {method} of {endpoint_encoded} took {timer.elapsed()} seconds'
+                f'{self.NAME} {method} of {endpoint_encoded} sent {passthrough_kwargs} took {timer.elapsed()} seconds'
             )
         return response
 

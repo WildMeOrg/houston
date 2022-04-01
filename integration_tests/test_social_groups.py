@@ -75,20 +75,9 @@ def test_social_groups(session, login, codex_url):
         responses.append(session.post(codex_url('/api/v1/individuals/'), json=data))
         assert responses[-1].status_code == 200
 
-    individual_ids = [r.json()['result']['id'] for r in responses]
-    assert responses[0].json() == {
-        'success': True,
-        'result': {
-            'id': individual_ids[0],  # 7934b1db-6d5f-405a-9502-88f754fa9179
-            'version': None,
-            'encounters': [
-                {
-                    'id': encounter_ids[0],
-                    'version': responses[0].json()['result']['encounters'][0]['version'],
-                }
-            ],
-        },
-    }
+    individual_ids = [r.json()['guid'] for r in responses]
+
+    assert responses[0].json().keys() >= {'guid', 'encounters', 'social_groups'}
 
     # Create social group
     data = {

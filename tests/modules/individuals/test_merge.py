@@ -54,7 +54,7 @@ def test_merge(db, flask_app_client, researcher_1, request, test_root):
     individual_response = individual_utils.create_individual(
         flask_app_client, researcher_1, 200, individual_data_in
     )
-    indiv1_guid = individual_response.json['result']['id']
+    indiv1_guid = individual_response.json['guid']
 
     # now same for 2nd indiv
     individual_data_in['names'][0]['value'] = 'name-2'
@@ -63,7 +63,7 @@ def test_merge(db, flask_app_client, researcher_1, request, test_root):
     individual_response = individual_utils.create_individual(
         flask_app_client, researcher_1, 200, individual_data_in
     )
-    indiv2_guid = individual_response.json['result']['id']
+    indiv2_guid = individual_response.json['guid']
 
     indiv1 = Individual.query.get(indiv1_guid)
     indiv2 = Individual.query.get(indiv2_guid)

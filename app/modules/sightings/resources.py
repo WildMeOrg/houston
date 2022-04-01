@@ -459,7 +459,7 @@ class SightingByID(Resource):
 
         # note: should probably _still_ check edm for: stale cache, deletion!
         #      user.edm_sync(version)
-        return sighting.get_augmented_sighting_json()
+        return sighting.get_detailed_json()
 
     @api.login_required(oauth_scopes=['sightings:write'])
     @api.permission_required(
@@ -534,6 +534,9 @@ class SightingByID(Resource):
                     message = ex.message
                 abort(ex.status_code, message)
 
+            # changed something on EDM, remove the cache
+            sighting.remove_cached_edm_data()
+
             if 'deletedSighting' in result:
                 log.warning(f'EDM triggered self-deletion of {sighting} result={result}')
                 response_data['threatened_sighting_id'] = str(sighting.guid)
@@ -597,7 +600,7 @@ class SightingByID(Resource):
 
         AuditLog.patch_object(log, sighting, args, duration=timer.elapsed())
 
-        sighting_response = sighting.get_augmented_sighting_json()
+        sighting_response = sighting.get_detailed_json()
         if isinstance(sighting_response, dict):
             return sighting_response
         else:
@@ -792,7 +795,7 @@ class SightingDebugByID(Resource):
         },
     )
     def get(self, sighting):
-        return sighting.get_debug_sighting_json()
+        return sighting.get_debug_json()
 
 
 @api.route('/<uuid:sighting_guid>/reviewed', doc=False)

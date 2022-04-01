@@ -64,8 +64,8 @@ def test_get_set_individual_names(
     individual_response = individual_utils.create_individual(
         flask_app_client, researcher_1, 200, individual_data_in
     )
-    assert individual_response.json['result']['id'] is not None
-    individual_id = individual_response.json['result']['id']
+    assert individual_response.json['guid'] is not None
+    individual_id = individual_response.json['guid']
     request.addfinalizer(
         lambda: individual_utils.delete_individual(
             flask_app_client, researcher_1, individual_id

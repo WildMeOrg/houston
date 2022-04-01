@@ -58,7 +58,7 @@ def test_patch_featured_asset_guid_on_individual(
 
     from app.modules.individuals.models import Individual
 
-    individual = Individual.query.get(individual_response.json['result']['id'])
+    individual = Individual.query.get(individual_response.json['guid'])
 
     assert individual is not None
     assert new_asset_1.guid is not None

@@ -131,7 +131,7 @@ class Annotation(db.Model, HoustonModel):
     # If neither Sighting or AGS (Annot created but not curated), returns the DetailedAnnot data
     def get_debug_json(self):
         if self.encounter:
-            return self.encounter.sighting.get_debug_sighting_json()
+            return self.encounter.sighting.get_debug_json()
 
         assert self.asset.git_store
         ags = self.asset.git_store.get_asset_group_sighting_for_annotation(self)

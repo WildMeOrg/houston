@@ -26,10 +26,10 @@ def add_individual(flask_app_client, user, request, enc_id):
 
     request.addfinalizer(
         lambda: individual_utils.delete_individual(
-            flask_app_client, user, resp.json['result']['id']
+            flask_app_client, user, resp.json['guid']
         )
     )
-    return resp.json['result']
+    return resp.json
 
 
 def create_individuals(flask_app_client, user, request, test_root, num_individuals=3):

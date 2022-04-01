@@ -826,33 +826,31 @@ class Individual(db.Model, FeatherModel):
         )
         return response
 
-    # this is basically identical to the method in Sighting, maybe can make generic util and just feed in a Schema?
-    def augment_edm_json(self, edm_json):
+    def get_debug_json(self):
+        from app.modules.encounters.schemas import AugmentedIndividualApiEncounterSchema
 
-        if (self.encounters is not None and edm_json['encounters'] is None) or (
-            self.encounters is None and edm_json['encounters'] is not None
-        ):
-            log.warning('Only one None encounters value between edm/feather objects!')
-        if self.encounters is not None and edm_json['encounters'] is not None:
-            id_to_encounter = {e['id']: e for e in edm_json['encounters']}
-            if set(str(e.guid) for e in self.encounters) != set(id_to_encounter):
-                log.warning(
-                    'Imbalanced encounters between edm/feather objects on sighting '
-                    + str(self.guid)
-                    + '!'
-                )
-                raise ValueError('imbalanced encounter count between edm/feather')
+        result_json = self.get_edm_data_with_enc_schema(
+            AugmentedIndividualApiEncounterSchema()
+        )
 
-            from app.modules.encounters.schemas import (
-                AugmentedIndividualApiEncounterSchema,
-            )
+        from .schemas import DebugIndividualSchema
 
-            for encounter in self.encounters:  # now we augment each encounter
-                found_edm = id_to_encounter[str(encounter.guid)]
-                edm_schema = AugmentedIndividualApiEncounterSchema()
-                found_edm.update(edm_schema.dump(encounter).data)
+        sighting_schema = DebugIndividualSchema()
+        result_json.update(sighting_schema.dump(self).data)
+        return result_json
 
-        return edm_json
+    def get_detailed_json(self):
+        from app.modules.encounters.schemas import AugmentedIndividualApiEncounterSchema
+
+        result_json = self.get_edm_data_with_enc_schema(
+            AugmentedIndividualApiEncounterSchema()
+        )
+
+        from .schemas import DetailedIndividualSchema
+
+        individual_schema = DetailedIndividualSchema()
+        result_json.update(individual_schema.dump(self).data)
+        return result_json
 
     def get_social_groups_json(self):
         from app.modules.social_groups.schemas import DetailedSocialGroupSchema

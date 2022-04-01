@@ -178,6 +178,8 @@ class EncounterByID(Resource):
                     message,
                     error=ex.get_val('error', 'Error'),
                 )
+            # changed something on EDM, remove the cache
+            encounter.remove_cached_edm_data()
         else:
             # this mimics output format of edm-patching
             result_data = {
@@ -326,4 +328,4 @@ class EncounterDebugByID(Resource):
         },
     )
     def get(self, encounter):
-        return encounter.sighting.get_debug_sighting_json()
+        return encounter.sighting.get_debug_json()

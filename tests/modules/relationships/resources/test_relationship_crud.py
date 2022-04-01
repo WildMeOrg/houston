@@ -51,7 +51,7 @@ def test_create_read_delete_relationship(
     response = individual_utils.create_individual(
         flask_app_client, researcher_1, expected_status_code=200, data_in=enc_1_json
     )
-    individual_1_guid = response.json['result']['id']
+    individual_1_guid = response.json['guid']
     request.addfinalizer(
         lambda: individual_utils.delete_individual(
             flask_app_client, researcher_1, individual_1_guid
@@ -75,7 +75,7 @@ def test_create_read_delete_relationship(
     response = individual_utils.create_individual(
         flask_app_client, researcher_1, expected_status_code=200, data_in=enc_2_json
     )
-    individual_2_guid = response.json['result']['id']
+    individual_2_guid = response.json['guid']
     request.addfinalizer(
         lambda: individual_utils.delete_individual(
             flask_app_client, researcher_1, individual_2_guid

@@ -9,7 +9,20 @@ from tests import utils as test_utils
 from tests.modules.sightings.resources import utils as sighting_utils
 
 PATH = '/api/v1/individuals/'
-
+EXPECTED_KEYS = {
+    'names',
+    'timeOfBirth',
+    'social_groups',
+    'sex',
+    'hasView',
+    'hasEdit',
+    'timeOfDeath',
+    'customFields',
+    'guid',
+    'featuredAssetGuid',
+    'encounters',
+    'comments',
+}
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
 
@@ -25,7 +38,7 @@ def create_individual(flask_app_client, user, expected_status_code=200, data_in=
     assert isinstance(response.json, dict)
     assert response.status_code == expected_status_code, response.status_code
     if response.status_code == 200:
-        test_utils.validate_dict_response(response, 200, {'result'})
+        test_utils.validate_dict_response(response, 200, EXPECTED_KEYS)
 
     return response
 
@@ -61,7 +74,7 @@ def create_individual_and_sighting(
 
     individual_response = create_individual(flask_app_client, user, 200, individual_data)
 
-    individual_guid = individual_response.json['result']['id']
+    individual_guid = individual_response.json['guid']
     request.addfinalizer(
         lambda: delete_individual(flask_app_client, user, individual_guid)
     )
@@ -78,26 +91,7 @@ def read_individual(
 
     assert response.status_code == expected_status_code
     if response.status_code == 200:
-        test_utils.validate_dict_response(
-            response,
-            200,
-            {
-                'encounters',
-                'guid',
-                'id',
-                'featuredAssetGuid',
-                'hasEdit',
-                'hasView',
-                'names',
-                'timeOfBirth',
-                'sex',
-                'created',
-                'comments',
-                'updated',
-                'timeOfDeath',
-                'customFields',
-            },
-        )
+        test_utils.validate_dict_response(response, 200, EXPECTED_KEYS)
     return response
 
 

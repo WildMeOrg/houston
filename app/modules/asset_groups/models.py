@@ -432,12 +432,28 @@ class AssetGroupSighting(db.Model, HoustonModel):
 
     @classmethod
     def check_jobs(cls):
-        for asset_group_sighting in AssetGroupSighting.query.all():
-            asset_group_sighting.check_all_job_status()
+        # get scheduled celery tasks only once and use for all AGS
+        from app.utils import get_celery_tasks_scheduled
 
-    def check_all_job_status(self):
+        all_scheduled = get_celery_tasks_scheduled(
+            'app.modules.asset_groups.tasks.sage_detection'
+        )
+        for asset_group_sighting in AssetGroupSighting.query.filter(
+            AssetGroupSighting.stage == AssetGroupSightingStage.detection
+        ).all():
+            asset_group_sighting.check_all_job_status(all_scheduled)
+
+    def check_all_job_status(self, all_scheduled):
         jobs = self.jobs
         if not jobs:
+            if not all_scheduled:
+                # TODO it would be nice to know if the scheduled tasks were for other AGS than this one
+                # but at the moment, it's not clear how we could detect this
+                log.warning(
+                    f'{self.guid} is detecting but no detection jobs are running, '
+                    'assuming Celery error and starting them again'
+                )
+            self.rerun_detection()
             return
         for job_id in jobs.keys():
             job = jobs[job_id]

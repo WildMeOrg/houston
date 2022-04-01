@@ -291,13 +291,30 @@ class Sighting(db.Model, FeatherModel):
 
     @classmethod
     def check_jobs(cls):
-        for sighting in Sighting.query.all():
-            sighting.check_all_job_status()
+        # get scheduled celery tasks only once and use for all AGS
+        from app.utils import get_celery_tasks_scheduled
 
-    def check_all_job_status(self):
+        all_scheduled = get_celery_tasks_scheduled(
+            'app.modules.sightings.tasks.send_identification'
+        )
+        for sighting in Sighting.query.filter(
+            Sighting.stage == SightingStage.identification
+        ).all():
+            sighting.check_all_job_status(all_scheduled)
+
+    def check_all_job_status(self, all_scheduled):
         jobs = self.jobs
         if not jobs:
+            if not all_scheduled:
+                # TODO it would be nice to know if the scheduled tasks were for other Sightings than this one
+                # but at the moment, it's not clear how we could detect this
+                log.warning(
+                    f'{self.guid} is identifying but no identification jobs are running, '
+                    'assuming Celery error and starting them all again'
+                )
+            self.ia_pipeline()
             return
+
         for job_id in jobs.keys():
             job = jobs[job_id]
             if job['active']:

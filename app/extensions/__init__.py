@@ -515,6 +515,7 @@ class FeatherModel(CommonHoustonModel):
     def get_edm_complete_data(self, use_cache=True):
         from flask import current_app
         import time
+        from copy import deepcopy
 
         # going to give cache a life of 5 min kinda arbitrarily
         cache_lifespan_seconds = 300
@@ -524,24 +525,27 @@ class FeatherModel(CommonHoustonModel):
         if not is_extension_enabled('edm'):
             return None
         time_now = int(time.time())
-        if (
+        if not (
             use_cache
             and hasattr(self, '_edm_cached_data')
             and self._edm_cached_data is not {}
             and time_now - self._edm_cached_data.get('_edm_cache_created', 0)
             < cache_lifespan_seconds
         ):
-            return self._edm_cached_data
-        edm_data = current_app.edm.request_passthrough_result(
-            f'{self.get_class_name().lower()}.data_complete',
-            'get',
-            {},
-            self.guid,
-        )
+            edm_data = current_app.edm.request_passthrough_result(
+                f'{self.get_class_name().lower()}.data_complete',
+                'get',
+                {},
+                self.guid,
+            )
 
-        self._edm_cached_data = edm_data
-        self._edm_cached_data['_edm_cache_created'] = time_now
-        return edm_data
+            self._edm_cached_data = edm_data
+            self._edm_cached_data['_edm_cache_created'] = time_now
+
+        returned_edm_data = deepcopy(self._edm_cached_data)
+        # but don't return the creation time
+        returned_edm_data.pop('_edm_cache_created', None)
+        return returned_edm_data
 
     def remove_cached_edm_data(self):
         self._edm_cached_data = {}

@@ -194,6 +194,7 @@ class Encounter(db.Model, FeatherModel):
             request_headers=request.headers,
         )
         # changed something on EDM, remove the cache for anything that may have had this encounter
+        self.remove_cached_edm_data()
         self.sighting.remove_cached_edm_data()
         if self.individual:
             self.individual.remove_cached_edm_data()

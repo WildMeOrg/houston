@@ -75,7 +75,7 @@ class Individuals(Resource):
             'action': AccessOperation.READ,
         },
     )
-    @api.response(schemas.BaseIndividualSchema(many=True))
+    @api.response(schemas.DetailedIndividualSchema(many=True))
     @api.paginate()
     def get(self, args):
         """
@@ -235,7 +235,7 @@ class IndividualElasticsearch(Resource):
             'action': AccessOperation.READ,
         },
     )
-    @api.response(schemas.BaseIndividualSchema(many=True))
+    @api.response(schemas.DetailedIndividualSchema(many=True))
     @api.paginate()
     def get(self, args):
         search = {}
@@ -249,7 +249,7 @@ class IndividualElasticsearch(Resource):
             'action': AccessOperation.READ,
         },
     )
-    @api.response(schemas.BaseIndividualSchema(many=True))
+    @api.response(schemas.DetailedIndividualSchema(many=True))
     @api.paginate()
     def post(self, args):
         search = request.get_json()
@@ -414,7 +414,7 @@ class IndividualByID(Resource):
     description='Individual not found.',
 )
 @api.resolve_object_by_model(Individual, 'individual')
-@api.response(schemas.BaseIndividualSchema(many=True))
+@api.response(schemas.DetailedIndividualSchema(many=True))
 class IndividualByIDCoOccurence(Resource):
     """
     List co-occurring individuals

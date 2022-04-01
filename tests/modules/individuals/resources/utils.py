@@ -13,7 +13,6 @@ EXPECTED_KEYS = {
     'names',
     'timeOfBirth',
     'social_groups',
-    'sex',
     'hasView',
     'hasEdit',
     'timeOfDeath',

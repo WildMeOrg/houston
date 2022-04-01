@@ -534,6 +534,9 @@ class SightingByID(Resource):
                     message = ex.message
                 abort(ex.status_code, message)
 
+            # changed something on EDM, remove the cache
+            sighting.remove_cached_edm_data()
+
             if 'deletedSighting' in result:
                 log.warning(f'EDM triggered self-deletion of {sighting} result={result}')
                 response_data['threatened_sighting_id'] = str(sighting.guid)

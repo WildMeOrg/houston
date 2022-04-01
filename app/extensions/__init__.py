@@ -375,7 +375,7 @@ else:
     ElasticsearchModel = elasticsearch.ElasticsearchModel
 
 
-class GhostModel(object):
+class CommonHoustonModel(TimestampViewed, ElasticsearchModel):
     """
     A completely transient model that allows for Houston to wrap EDM or ACM
     responses into a model and allows for serialization of results with
@@ -384,36 +384,6 @@ class GhostModel(object):
     REST API Read Access : YES
     Houston Exists Check : NO
     Houston Read Access  : NO
-    """
-
-
-class FeatherModel(GhostModel, TimestampViewed, ElasticsearchModel):
-    """
-    A light-weight model that 1) stores critical information concerning security
-    and permissions or 2) gives Houston insight on frequently-cached information
-    so that it can quickly resolve requests itself without needing to query the
-    EDM or ACM.
-
-    A FeatherModel inherits from SQLAlchemy.Model and creates a local SQL* table
-    in the local Houston database.  All models in Houston also derive from the
-    TimestampViewed class, which is an extension of sqlalchemy_utils.models.Timestamp
-    to add an additional `viewed` attribute to complement `created` and`updated`.
-
-    A FeatherModel is required to have external metadata and information that is
-    stored in a different component.  In general, FeatherModels must be kept
-    up-to-date with their responsible external component (e.g. with a version).
-
-    This external component shall be the "constructor" of new objects, such that
-    houston will wait for confirmation/creation of new objects from its external
-    component prior to the creation of the corresponding FeatherModel object (which
-    will then be built using the provided guid and other properties).
-
-    IMPORTANT: If all of the information for a FeatherModel lives inside
-    Houston's database, it should be converted into a HoustonModel.
-
-    REST API Read Access : YES
-    Houston Exists Check : YES
-    Houston Read Access  : YES
     """
 
     @classmethod
@@ -471,23 +441,45 @@ class FeatherModel(GhostModel, TimestampViewed, ElasticsearchModel):
         rule = ObjectActionRule(obj=self, action=AccessOperation.WRITE)
         return rule.check()
 
+
+class FeatherModel(CommonHoustonModel):
+    """
+    A light-weight model that 1) stores critical information concerning security
+    and permissions or 2) gives Houston insight on frequently-cached information
+    so that it can quickly resolve requests itself without needing to query the
+    EDM or ACM.
+
+    A FeatherModel inherits from SQLAlchemy.Model and creates a local SQL* table
+    in the local Houston database.  All models in Houston also derive from the
+    TimestampViewed class, which is an extension of sqlalchemy_utils.models.Timestamp
+    to add an additional `viewed` attribute to complement `created` and`updated`.
+
+    A FeatherModel is required to have external metadata and information that is
+    stored in a different component.  In general, FeatherModels must be kept
+    up-to-date with their responsible external component (e.g. with a version).
+
+    This external component shall be the "constructor" of new objects, such that
+    houston will wait for confirmation/creation of new objects from its external
+    component prior to the creation of the corresponding FeatherModel object (which
+    will then be built using the provided guid and other properties).
+
+    IMPORTANT: If all of the information for a FeatherModel lives inside
+    Houston's database, it should be converted into a HoustonModel.
+
+    REST API Read Access : YES
+    Houston Exists Check : YES
+    Houston Read Access  : YES
+    """
+
     def get_edm_data_with_enc_schema(self, encounter_schema):
-        from flask import current_app
         from app.utils import HoustonException
+        from copy import deepcopy
 
         # Only for FeatherModels that have encounters (Sighting/Individual)
         assert hasattr(self, 'encounters')
-        if not is_extension_enabled('edm'):
-            # No EDM, not sure how possible this is with a feather model object
-            return {}
-
         class_name = self.__class__.__name__.lower()
-        rtn_json = current_app.edm.get_dict(f'{class_name}.data_complete', self.guid)
 
-        if not isinstance(rtn_json, dict) or not rtn_json.get('success', False):
-            return rtn_json
-
-        edm_json = rtn_json['result']
+        edm_json = deepcopy(self.get_edm_complete_data())
 
         if (self.encounters is not None and edm_json['encounters'] is None) or (
             self.encounters is None and edm_json['encounters'] is not None
@@ -521,7 +513,6 @@ class FeatherModel(GhostModel, TimestampViewed, ElasticsearchModel):
     # cache allows minimal calls to edm for same object, but has the potential
     #   to return stale data
     def get_edm_complete_data(self, use_cache=True):
-        from app.extensions import is_extension_enabled
         from flask import current_app
         import time
 
@@ -536,23 +527,30 @@ class FeatherModel(GhostModel, TimestampViewed, ElasticsearchModel):
         if (
             use_cache
             and hasattr(self, '_edm_cached_data')
+            and self._edm_cached_data is not {}
             and time_now - self._edm_cached_data.get('_edm_cache_created', 0)
             < cache_lifespan_seconds
         ):
             return self._edm_cached_data
-        edm_data = current_app.edm.get_dict(
+        edm_data = current_app.edm.request_passthrough_result(
             f'{self.get_class_name().lower()}.data_complete',
+            'get',
+            {},
             self.guid,
-        ).get('result')
+        )
+
         self._edm_cached_data = edm_data
         self._edm_cached_data['_edm_cache_created'] = time_now
         return edm_data
+
+    def remove_cached_edm_data(self):
+        self._edm_cached_data = {}
 
     def get_class_name(self):
         return self.__class__.__name__
 
 
-class HoustonModel(FeatherModel):
+class HoustonModel(CommonHoustonModel):
     """
     A permanent model that stores information for objects in Houston only.  A
     HoustonModel is a fully-fledged database ORM object that has full CRUD

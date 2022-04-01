@@ -178,6 +178,8 @@ class EncounterByID(Resource):
                     message,
                     error=ex.get_val('error', 'Error'),
                 )
+            # changed something on EDM, remove the cache
+            encounter.remove_cached_edm_data()
         else:
             # this mimics output format of edm-patching
             result_data = {
@@ -262,6 +264,8 @@ class EncounterByID(Resource):
                 vulnerableIndividualGuid=ex_response_data.get('vulnerableIndividual'),
                 vulnerableSightingGuid=ex_response_data.get('vulnerableSighting'),
             )
+        # changed something on EDM, remove the cache
+        encounter.remove_cached_edm_data()
 
         # we have to roll our own response here (to return) as it seems the only way we can add a header
         #   (which we are using to denote the encounter DELETE also triggered a sighting DELETE, since

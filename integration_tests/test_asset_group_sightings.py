@@ -326,7 +326,6 @@ def test_asset_group_sightings(session, login, codex_url, test_root):
     sighting_guid = response.json()['guid']
     assert response.json() == {
         'guid': sighting_guid,
-        'id': sighting_guid,
         'created': response.json()['created'],
         'encounters': response.json()['encounters'],
         'assets': response.json()['assets'],

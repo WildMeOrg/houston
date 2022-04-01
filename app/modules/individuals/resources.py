@@ -349,6 +349,8 @@ class IndividualByID(Resource):
                 abort(ex.status_code, message)
 
             # TODO handle individual deletion if last encounter removed
+            # changed something on EDM, remove the cache
+            individual.remove_cached_edm_data()
 
         if houston_args:
             if not edm_args:

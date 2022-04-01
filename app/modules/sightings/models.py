@@ -477,6 +477,9 @@ class Sighting(db.Model, FeatherModel):
 
         result_json = self.get_edm_data_with_enc_schema(AugmentedEdmEncounterSchema())
 
+        # Strip out old EDM ID
+        result_json.pop('id', None)
+
         from .schemas import DebugSightingSchema
 
         sighting_schema = DebugSightingSchema()
@@ -487,6 +490,8 @@ class Sighting(db.Model, FeatherModel):
         from app.modules.encounters.schemas import AugmentedEdmEncounterSchema
 
         result_json = self.get_edm_data_with_enc_schema(AugmentedEdmEncounterSchema())
+        # Strip out old EDM ID
+        result_json.pop('id', None)
 
         from .schemas import AugmentedEdmSightingSchema
 

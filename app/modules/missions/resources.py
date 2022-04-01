@@ -308,7 +308,6 @@ class AssetsForMission(Resource):
     @api.paginate()
     def get(self, args, mission):
         search = {}
-        args['total'] = True
         return mission.asset_search(search, **args)
 
     @api.permission_required(
@@ -322,7 +321,6 @@ class AssetsForMission(Resource):
     @api.paginate()
     def post(self, args, mission):
         search = request.get_json()
-        args['total'] = True
         return mission.asset_search(search, **args)
 
 

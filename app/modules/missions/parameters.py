@@ -208,7 +208,7 @@ class CreateMissionTaskParameters(SetOperationsJSONParameters):
                 )
 
         if field == 'search':
-            return obj.asset_search(value)
+            return obj.asset_search(value, total=False, limit=None)
         elif field == 'collections':
             assets = []
 

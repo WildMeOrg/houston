@@ -111,34 +111,38 @@ class Mission(db.Model, HoustonModel, Timestamp):
     def assets(self):
         return self.get_assets()
 
-    def asset_search(self, search, *args, **kwargs):
+    def asset_search(self, search, total=True, **pagination_kwargs):
         from app.modules.assets.models import Asset
-
-        # Get Elasticsearch GUIDs
-        response = Asset.elasticsearch(search, load=False, *args, **kwargs)
-
-        if kwargs.get('total', False):
-            assert len(response) == 2
-            total, search_guids = response
-        else:
-            total, search_guids = None, response
 
         # Get all mission's GUIDs
         mission_guids = self.get_assets(load=False)
 
+        # Get Elasticsearch GUIDs
+        response = Asset.elasticsearch(
+            search,
+            load=False,
+            total=total,
+            filter_guids=mission_guids,
+            **pagination_kwargs
+        )
+
+        if total:
+            assert len(response) == 2
+            num_total, search_guids = response
+        else:
+            num_total, search_guids = None, response
+
         # Load assets from DB
         assets = []
         for guid in search_guids:
-            if guid not in mission_guids:
-                continue
             asset = Asset.query.get(guid)
             if asset is not None:
                 assets.append(asset)
 
-        if total is None:
+        if num_total is None:
             return assets
         else:
-            return total, assets
+            return num_total, assets
 
     @property
     def asset_count(self):

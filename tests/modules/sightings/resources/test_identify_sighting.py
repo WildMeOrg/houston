@@ -7,10 +7,21 @@ import tests.utils as test_utils
 
 import pytest
 
-from tests.utils import module_unavailable, wait_for_elasticsearch_status
+from tests.utils import (
+    module_unavailable,
+    extension_unavailable,
+    wait_for_elasticsearch_status,
+)
 
 
-@pytest.mark.skipif(module_unavailable('sightings'), reason='Sightings module disabled')
+@pytest.mark.skipif(
+    module_unavailable('sightings'),
+    reason='Sighting module disabled',
+)
+@pytest.mark.skipif(
+    extension_unavailable('elasticsearch'),
+    reason='Elasticsearch extension disabled',
+)
 def test_sighting_identification(
     flask_app,
     flask_app_client,
@@ -23,6 +34,10 @@ def test_sighting_identification(
     # pylint: disable=invalid-name
     from app.modules.sightings.models import Sighting, SightingStage
     from app.modules.annotations.models import Annotation
+    from app.extensions import elasticsearch as es
+
+    if es.is_disabled():
+        pytest.skip('Elasticsearch disabled (via command-line)')
 
     # Create two sightings so that there will be a valid annotation when doing ID for the second one.
     # Otherwise the get_matching_set_data in sightings will return an empty list

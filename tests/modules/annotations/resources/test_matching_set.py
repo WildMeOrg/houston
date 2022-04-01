@@ -8,13 +8,21 @@ from tests.modules.encounters.resources import utils as enc_utils
 from tests.modules.site_settings.resources import utils as setting_utils
 import pytest
 
-from tests.utils import module_unavailable, wait_for_elasticsearch_status
+from tests.utils import (
+    module_unavailable,
+    extension_unavailable,
+    wait_for_elasticsearch_status,
+)
 from tests import utils
 
 
 @pytest.mark.skipif(
-    module_unavailable('asset_groups', 'elasticsearch'),
-    reason='AssetGroups/Elasticsearch module disabled',
+    module_unavailable('asset_groups'),
+    reason='AssetGroups module disabled',
+)
+@pytest.mark.skipif(
+    extension_unavailable('elasticsearch'),
+    reason='Elasticsearch extension disabled',
 )
 def test_annotation_matching_set(
     flask_app_client,
@@ -26,6 +34,10 @@ def test_annotation_matching_set(
 ):
     # pylint: disable=invalid-name
     from app.modules.annotations.models import Annotation
+    from app.extensions import elasticsearch as es
+
+    if es.is_disabled():
+        pytest.skip('Elasticsearch disabled (via command-line)')
 
     clone = sub_utils.clone_asset_group(
         flask_app_client,
@@ -233,9 +245,11 @@ def test_region_utils():
     assert ancestors == {top_id, parent1, parent2, parent3, loc1, loc2}
 
 
+# note: despite the name of this test, it can run without elasticsearch enabled,
+#   as it only is testing the schema content/construction
 @pytest.mark.skipif(
-    module_unavailable('asset_groups', 'elasticsearch'),
-    reason='AssetGroups/Elasticsearch module disabled',
+    module_unavailable('asset_groups'),
+    reason='AssetGroups module disabled',
 )
 def test_annotation_elasticsearch(
     flask_app_client,

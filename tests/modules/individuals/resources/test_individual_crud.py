@@ -447,3 +447,37 @@ def test_individual_edm_patch_add(db, flask_app_client, researcher_1, request, t
     assert individual_json['timeOfDeath'] == str(time_of_death)
     assert individual_json['timeOfBirth'] == time_of_birth_str
     assert individual_json['sex'] == sex
+
+
+@pytest.mark.skipif(
+    module_unavailable('individuals'), reason='Individuals module disabled'
+)
+def test_edm_custom_field_patch(db, flask_app_client, researcher_1, request, test_root):
+    uuids = individual_utils.create_individual_and_sighting(
+        flask_app_client,
+        researcher_1,
+        request,
+        test_root,
+    )
+    individual_id = uuids['individual']
+    custom_field_val = {
+        "personality": "magnanimous"
+    }
+    # print('individual custom field embed')
+    # from IPython import embed
+    # embed()
+    individual_utils.patch_individual(
+        flask_app_client,
+        researcher_1,
+        individual_id,
+        [
+            # either of the below fail in the same place. EDM callstack is MarkedIndividual.patch...-> ApiCustomFields.trySettingCustomFields -> CustomFieldDefinition.fetch(<the value key below>), which returns null.
+            {"op": "replace", "path": "/customFields", "value": {"31ba2487-d657-4b21-a6fe-d56536a28f28": "new"}}
+            # {"op": "replace", "path": "/customFields", "value": custom_field_val}
+        ],
+    )
+    individual_json = individual_utils.read_individual(
+        flask_app_client, researcher_1, individual_id
+    ).json
+
+    assert individual_json['custom_field'] == custom_field_val

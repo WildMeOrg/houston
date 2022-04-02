@@ -57,6 +57,7 @@ fi
 if [ "$HOUSTON_APP_CONTEXT" == 'codex' ]; then
     # `|| true` is used to ignore integration fail with gitlab
     coverage run --append `which invoke` codex.integrations.check || true
+    coverage run --append `which invoke` codex.integrations.check-celery || true
 fi
 
 # test app.users.*

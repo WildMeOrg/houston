@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import logging
+import pprint
 import sys
 
 from tasks.utils import app_context_task
@@ -120,3 +121,11 @@ def check(context, verbose=True):
 
     if not overall_status:
         sys.exit(1)
+
+
+@app_context_task()
+def check_celery(context, type=None):
+    from app.utils import get_celery_tasks_scheduled
+
+    print('Scheduled Tasks:')
+    pprint.pprint(get_celery_tasks_scheduled(type=type))

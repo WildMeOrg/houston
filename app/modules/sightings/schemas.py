@@ -60,6 +60,7 @@ class ElasticsearchSightingSchema(BaseSightingSchema):
     timeSpecificity = base_fields.Function(Sighting.get_time_specificity)
     comments = base_fields.Function(Sighting.get_comments)
     taxonomy = base_fields.Function(Sighting.get_taxonomy_guid)
+    customFields = base_fields.Function(Sighting.get_custom_fields)
 
     class Meta:
         # pylint: disable=missing-docstring
@@ -74,6 +75,7 @@ class ElasticsearchSightingSchema(BaseSightingSchema):
             'timeSpecificity',
             'comments',
             'taxonomy',
+            'customFields',
         )
         dump_only = (
             Sighting.guid.key,

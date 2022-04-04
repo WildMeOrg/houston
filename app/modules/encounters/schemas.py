@@ -45,6 +45,7 @@ class ElasticsearchEncounterSchema(ModelSchema):
     locationId = base_fields.Function(Encounter.get_location)
     taxonomy = base_fields.Function(Encounter.get_taxonomy_guid)
     point = base_fields.Function(Encounter.get_point)
+    customFields = base_fields.Function(Encounter.get_custom_fields)
 
     class Meta:
         # pylint: disable=missing-docstring
@@ -62,6 +63,7 @@ class ElasticsearchEncounterSchema(ModelSchema):
             'locationId',
             'taxonomy',
             'point',
+            'customFields',
         )
         dump_only = (Encounter.guid.key,)
 

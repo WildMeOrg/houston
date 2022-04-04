@@ -154,6 +154,9 @@ class Sighting(db.Model, FeatherModel):
     def get_comments(self):
         return self.get_edm_data_field('comments')
 
+    def get_custom_fields(self):
+        return self.get_edm_data_field('customFields')
+
     # will return None if not a single owner of all encounters (otherwise that user)
     def single_encounter_owner(self):
         single = None

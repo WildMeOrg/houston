@@ -158,6 +158,12 @@ class Individual(db.Model, FeatherModel):
     def get_time_of_death(self):
         return self.get_edm_data_field('timeOfDeath')
 
+    def get_comments(self):
+        return self.get_edm_data_field('comments')
+
+    def get_custom_fields(self):
+        return self.get_edm_data_field('customFields')
+
     def get_encounters(self):
         return self.encounters
 

@@ -89,6 +89,8 @@ class ElasticsearchIndividualSchema(ModelSchema):
     sex = base_fields.Function(Individual.get_sex)
     birth = base_fields.Function(Individual.get_time_of_birth)
     death = base_fields.Function(Individual.get_time_of_death)
+    comments = base_fields.Function(Individual.get_comments)
+    customFields = base_fields.Function(Individual.get_custom_fields)
 
     class Meta:
         # pylint: disable=missing-docstring
@@ -106,6 +108,8 @@ class ElasticsearchIndividualSchema(ModelSchema):
             'encounters',
             'birth',
             'death',
+            'comments',
+            'customFields',
         )
         dump_only = (
             Individual.guid.key,

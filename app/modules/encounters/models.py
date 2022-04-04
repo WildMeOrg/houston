@@ -125,6 +125,9 @@ class Encounter(db.Model, FeatherModel):
     def get_sighting_guid_str(self):
         return str(self.sighting.guid)
 
+    def get_custom_fields(self):
+        return self.get_edm_data_field('customFields')
+
     # first tries encounter.locationId, but will use sighting.locationId if none on encounter,
     #   unless sighting_fallback=False
     def get_location_id(self, sighting_fallback=True):

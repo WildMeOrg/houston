@@ -339,6 +339,37 @@ class AnnotationMatchingSetByID(Resource):
         return annotation.get_matching_set(request_in, load=False)
 
 
+@api.route('/identify/<uuid:annotation_guid>')
+@api.login_required(oauth_scopes=['annotations:read'])
+@api.response(
+    code=HTTPStatus.NOT_FOUND,
+    description='Annotation not found.',
+)
+@api.resolve_object_by_model(Annotation, 'annotation')
+# right now load=False is default behavior, so this only returns guids.
+# however, in the event this is desired to be full Annotations, uncomment:
+# @api.response(schemas.BaseAnnotationSchema(many=True))
+class AnnotationIdentifyByID(Resource):
+    """
+    Initiate identification on an Annotation (with optional matching-set Elasticsearch query passed via body).
+    """
+
+    @api.permission_required(
+        permissions.ObjectAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'obj': kwargs['annotation'],
+            'action': AccessOperation.READ,
+        },
+    )
+    def post(self, annotation):
+        """
+        Accepts an optional query via body.  Uses default matching-set if none provided.
+        """
+        request_in = json.loads(request.data)
+        job_count = annotation.ia_pipeline(request_in)
+        return {'sent': True, 'job_count': job_count}
+
+
 @api.route('/debug/<uuid:annotation_guid>')
 @api.login_required(oauth_scopes=['annotations:read'])
 @api.response(

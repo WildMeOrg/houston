@@ -1093,6 +1093,7 @@ class Sighting(db.Model, FeatherModel):
     def ia_pipeline(self):
         assert self.stage == SightingStage.identification
 
+    def validate_id_configs(self):
         num_configs = len(self.id_configs)
         if num_configs > 0:
             # Only one for MVP
@@ -1103,6 +1104,11 @@ class Sighting(db.Model, FeatherModel):
                 # Only one for MVP
                 assert len(config['algorithms']) == 1
 
+    def ia_pipeline(self):
+        from .tasks import send_identification
+
+        assert self.stage == SightingStage.identification
+        self.validate_id_configs()
         encounters_with_annotations = [
             encounter for encounter in self.encounters if len(encounter.annotations) != 0
         ]
@@ -1113,12 +1119,38 @@ class Sighting(db.Model, FeatherModel):
             # Once we support multiple IA configs and algorithms, the number of jobs is going to grow....rapidly
             for config_id in range(len(self.id_configs)):
                 for algorithm_id in range(len(self.id_configs[config_id]['algorithms'])):
-                    for encounter in self.encounters:
+                    for encounter in encounters_with_annotations:
                         for annotation in encounter.annotations:
                             if self.send_annot_for_detection(
                                 annotation, config_id, algorithm_id
                             ):
-                                num_jobs += 1
+                                log.warning(
+                                    f'Skipping {annotation} due to lack of content_guid or encounter'
+                                )
+                                continue
+                            # force this to be up-to-date in index, just to be safe
+                            if config_id == 0:
+                                annotation.index()
+                            # load=False should get us this response quickly, cuz we just want a count
+                            matching_set = annotation.get_matching_set(
+                                self.id_configs[config_id].get('matching_set'), load=False
+                            )
+                            if not matching_set:
+                                log.info(
+                                    f'Skipping {annotation} due to empty matching set'
+                                )
+                                continue
+                            log.debug(
+                                f'[{num_jobs}] queueing up ID job for config_id={config_id} {annotation}: matching_set size={len(matching_set)} algo {algorithm_id}'
+                            )
+                            send_identification.delay(
+                                str(self.guid),
+                                config_id,
+                                algorithm_id,
+                                annotation.guid,
+                                annotation.content_guid,
+                            )
+                            num_jobs += 1
 
         if num_jobs > 0:
             log.info(

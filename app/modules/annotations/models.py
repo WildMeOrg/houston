@@ -480,3 +480,43 @@ class Annotation(db.Model, HoustonModel):
         from app.modules.annotations.schemas import AnnotationElasticsearchSchema
 
         return AnnotationElasticsearchSchema
+
+    # this initiates ID pipeline *for this single* annotation.  it is roughly analogous to sighting.ia_pipeline()
+    def ia_pipeline(self, matching_set_query=None):
+        sighting = self.get_sighting()
+        if not sighting:
+            raise HoustonException(
+                log, f'{self} requires a sighting to run ia_pipeline()'
+            )
+        if not self.content_guid:
+            raise HoustonException(
+                log, f'{self} requires a content_guid to run ia_pipeline()'
+            )
+        # assert self.stage == SightingStage.identification  #????
+        sighting.validate_id_configs()
+        self.index()
+        # load=False should get us this response quickly, cuz we just want a count
+        matching_set_guids = self.get_matching_set(matching_set_query, load=False)
+        if len(matching_set_guids) < 1:
+            raise HoustonException(
+                log,
+                f'{self} has empty matching set for ia_pipeline() with query {matching_set_query}',
+            )
+
+        # go ahead and send it
+        job_count = 0
+        for config_id in range(len(sighting.id_configs)):
+            for algorithm_id in range(len(sighting.id_configs[config_id]['algorithms'])):
+                log.debug(
+                    f'queueing up ID job for config_id={config_id} {self}: matching_set size={len(matching_set_guids)} algo {algorithm_id}'
+                )
+                sighting.send_identification.delay(
+                    str(sighting.guid),
+                    config_id,
+                    algorithm_id,
+                    self.guid,
+                    self.content_guid,
+                )
+                job_count += 1
+        # TODO should we twiddle sighting.stage???  other stuff?
+        return job_count

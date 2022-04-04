@@ -10,7 +10,10 @@ from flask_marshmallow import base_fields
 from .models import Individual
 
 from app.modules.names.schemas import DetailedNameSchema
-from app.modules.encounters.schemas import DetailedEncounterSchema
+from app.modules.encounters.schemas import (
+    DetailedEncounterSchema,
+    ElasticsearchEncounterSchema,
+)
 
 
 class BaseIndividualSchema(ModelSchema):
@@ -81,7 +84,11 @@ class ElasticsearchIndividualSchema(ModelSchema):
         attribute='names',
         many=True,
     )
+    encounters = base_fields.Nested(ElasticsearchEncounterSchema, many=True)
     social_groups = base_fields.Function(Individual.get_social_groups_json)
+    sex = base_fields.Function(Individual.get_sex)
+    birth = base_fields.Function(Individual.get_time_of_birth)
+    death = base_fields.Function(Individual.get_time_of_death)
 
     class Meta:
         # pylint: disable=missing-docstring
@@ -95,6 +102,10 @@ class ElasticsearchIndividualSchema(ModelSchema):
             'featuredAssetGuid',
             'names',
             'social_groups',
+            'sex',
+            'encounters',
+            'birth',
+            'death',
         )
         dump_only = (
             Individual.guid.key,

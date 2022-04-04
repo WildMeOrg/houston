@@ -5,7 +5,6 @@ Encounters database models
 """
 import uuid
 import logging
-from flask import current_app
 from app.extensions import db, FeatherModel
 import app.extensions.logging as AuditLog
 
@@ -117,18 +116,38 @@ class Encounter(db.Model, FeatherModel):
     def get_owner(self):
         return self.owner
 
+    def get_owner_guid_str(self):
+        return str(self.owner.guid)
+
     def get_sighting(self):
         return self.sighting
 
-    def get_location(self):
-        edm_data = current_app.edm.get_dict('encounter.data_complete', self.guid)
-        location_id = None
-        if isinstance(edm_data, dict) and edm_data.get('success', False):
-            edm_json = edm_data['result']
+    def get_sighting_guid_str(self):
+        return str(self.sighting.guid)
 
-            if 'locationId' in edm_json.keys():
-                location_id = edm_json['locationId']
+    # first tries encounter.locationId, but will use sighting.locationId if none on encounter,
+    #   unless sighting_fallback=False
+    def get_location_id(self, sighting_fallback=True):
+        location_id = self.get_edm_data_field('locationId')
+        if not location_id and sighting_fallback and self.sighting:
+            location_id = self.sighting.get_location_id()
         return location_id
+
+    def get_location(self):
+        return self.get_edm_data_field('locationId')
+
+    def get_point(self):
+        lat = self.get_edm_data_field('decimalLatitude')
+        long = self.get_edm_data_field('decimalLongitude')
+        return f'{lat},{long}' if lat and long else None
+
+    # first tries encounter.locationId, but will use sighting.locationId if none on encounter,
+    #   unless sighting_fallback=False
+    def get_taxonomy_guid(self, sighting_fallback=True):
+        taxonomy_guid = self.get_edm_data_field('taxonomy')
+        if not taxonomy_guid and sighting_fallback and self.sighting:
+            taxonomy_guid = self.sighting.get_taxonomy_guid()
+        return taxonomy_guid
 
     def get_time_isoformat_in_timezone(self, sighting_fallback=False):
         if self.time:

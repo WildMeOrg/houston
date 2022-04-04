@@ -149,6 +149,15 @@ class Individual(db.Model, FeatherModel):
 
         return result
 
+    def get_sex(self):
+        return self.get_edm_data_field('sex')
+
+    def get_time_of_birth(self):
+        return self.get_edm_data_field('timeOfBirth')
+
+    def get_time_of_death(self):
+        return self.get_edm_data_field('timeOfDeath')
+
     def get_encounters(self):
         return self.encounters
 

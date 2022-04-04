@@ -65,10 +65,8 @@ def test_modify_encounter(
     )
 
     # bonus test to check that FeatherModel get_edm_complete_data() is working
-    edm_data = new_encounter_1.get_edm_complete_data()
-    assert edm_data
-    assert edm_data.get('id') == str(new_encounter_1.guid)
-    assert edm_data.get('locationId') == 'FAIL'
+    assert new_encounter_1.get_edm_data_field('id') == str(new_encounter_1.guid)
+    assert new_encounter_1.get_location_id() == 'FAIL'
 
     # non Owner cannot make themselves the owner
     new_owner_as_res_2 = [

@@ -13,6 +13,7 @@ from flask import Response
 from flask.testing import FlaskClient
 from werkzeug.utils import cached_property
 from app.extensions.auth import security
+import logging
 import redis
 import time
 import random
@@ -693,6 +694,8 @@ def get_elasticsearch_status(flask_app_client, user, expected_status_code=200):
 def wait_for_elasticsearch_status(flask_app_client, user, force=True):
     from app.extensions import elasticsearch as es
 
+    log = logging.getLogger('elasticsearch')  # pylint: disable=invalid-name
+
     trial = 0
     status = [None]
     while True:
@@ -703,10 +706,17 @@ def wait_for_elasticsearch_status(flask_app_client, user, force=True):
             status = get_elasticsearch_status(flask_app_client, user)
         except json.decoder.JSONDecodeError:
             status = [None]
-        print('Elasticsearch status: %s' % (status,))
+        log.info('Elasticsearch status: %s' % (status,))
 
-        # Remove any disabled flags
-        status.pop('elasticsearch:enabled', None)
+        # Remove any outdated, disabled, health flags
+        remove_keys = [
+            'elasticsearch:enabled',
+            'status',
+        ]
+        keys = list(status.keys())
+        for key in keys:
+            if key.endswith(':outdated') or key in remove_keys:
+                status.pop(key, None)
 
         if len(status) == 0:
             break

@@ -84,7 +84,7 @@ def test_elasticsearch_utilities(
 
     es.check_celery(revoke=True)
     es.es_checkpoint()
-    assert len(es.es_status(outdated=False)) == 0
+    assert len(es.es_status(outdated=False, health=False)) == 0
     assert es.check_celery() == 0
 
     # Check if we can turn off ES globally
@@ -677,8 +677,8 @@ def test_elasticsearch_utilities(
         es.es_index_all()
 
     # Test tasks
-    assert es_tasks.es_task_refresh_index_all.s(True).apply().result
-    assert es_tasks.es_task_invalidate_indexed_timestamps.s(True).apply().result
+    es_tasks.es_task_refresh_index_all.s(True).apply().result
+    es_tasks.es_task_invalidate_indexed_timestamps.s(True).apply().result
 
     clone.cleanup()
 

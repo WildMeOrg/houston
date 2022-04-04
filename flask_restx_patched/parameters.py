@@ -3,10 +3,11 @@
 import logging
 
 from six import itervalues
+from flask import request
 from flask_login import current_user
 from flask_restx._http import HTTPStatus
 from flask_marshmallow import Schema, base_fields
-from marshmallow import validate, validates_schema, ValidationError
+from marshmallow import validate, validates_schema, pre_load, ValidationError
 
 import sqlalchemy as sa
 
@@ -105,7 +106,19 @@ class PatchJSONParameters(Parameters):
             validate.OneOf(self.PATH_CHOICES)
         ]
 
-    @validates_schema
+    @pre_load(pass_many=True)
+    def pass_load(self, data, many, **kwargs):
+        if many and len(data) == 0:
+            try:
+                raw = request.json
+            except Exception:
+                raw = {}
+            if not isinstance(raw, list):
+                raise ValidationError(
+                    'PATCH input data must be a list of operations (JSON objects)'
+                )
+
+    @validates_schema()
     def validate_patch_structure(self, data):
         """
         Common validation of PATCH structure
@@ -117,6 +130,9 @@ class PatchJSONParameters(Parameters):
         is prepended with '/'.
         Removing '/' in the beginning to simplify usage in resource.
         """
+        if data is None or not isinstance(data, dict):
+            raise ValidationError('Individual PATCH operations must be JSON objects')
+
         if 'op' not in data:
             raise ValidationError('operation not supported')
 

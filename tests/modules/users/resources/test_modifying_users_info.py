@@ -239,6 +239,74 @@ def test_modifying_user_info_with_invalid_format_must_fail(
     assert set(response.json.keys()) >= {'status', 'message'}
 
 
+def test_modifying_user_info_with_misformatted_data_must_fail(
+    flask_app_client, regular_user
+):
+    with flask_app_client.login(regular_user, auth_scopes=('users:write',)):
+        response = flask_app_client.patch(
+            '/api/v1/users/%s' % regular_user.guid,
+            content_type='application/json',
+            data=json.dumps(
+                [
+                    {
+                        'op': 'remove',
+                        'path': '/profile_fileupload_guid',
+                    },
+                ],
+            ),
+        )
+        assert response.status_code == 200, response.data
+
+    # pylint: disable=invalid-name
+    with flask_app_client.login(regular_user, auth_scopes=('users:write',)):
+        response = flask_app_client.patch(
+            '/api/v1/users/%s' % regular_user.guid,
+            content_type='application/json',
+            data=json.dumps(
+                {'op': 'test', 'path': '/full_name', 'value': ''},
+            ),
+        )
+        assert response.status_code == 422, response.data
+        assert (
+            response.json['messages']['_schema'][0]
+            == 'PATCH input data must be a list of operations (JSON objects)'
+        )
+
+    with flask_app_client.login(regular_user, auth_scopes=('users:write',)):
+        response = flask_app_client.patch(
+            '/api/v1/users/%s' % regular_user.guid,
+            content_type='application/json',
+            data=json.dumps([1, 2, 3]),
+        )
+        assert response.status_code == 422, response.data
+        assert (
+            response.json['messages']['0']['_schema'][0]
+            == 'Individual PATCH operations must be JSON objects'
+        )
+
+    index, guid, body = regular_user.serialize()
+    with flask_app_client.login(regular_user, auth_scopes=('users:write',)):
+        response = flask_app_client.patch(
+            '/api/v1/users/%s' % regular_user.guid,
+            content_type='application/json',
+            data=json.dumps(body),
+        )
+        assert response.status_code == 422, response.data
+        assert (
+            response.json['messages']['_schema'][0]
+            == 'PATCH input data must be a list of operations (JSON objects)'
+        )
+
+    with flask_app_client.login(regular_user, auth_scopes=('users:write',)):
+        response = flask_app_client.patch(
+            '/api/v1/users/%s' % regular_user.guid,
+            content_type='application/json',
+            data=json.dumps([body]),
+        )
+        assert response.status_code == 422, response.data
+        assert response.json['messages']['0']['_schema'][0] == 'operation not supported'
+
+
 def test_modifying_user_info_with_invalid_password_must_fail(
     flask_app_client, regular_user
 ):

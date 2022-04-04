@@ -43,7 +43,7 @@ class ElasticsearchEncounterSchema(ModelSchema):
     owner_guid = base_fields.Function(Encounter.get_owner_guid_str)
     sighting_guid = base_fields.Function(Encounter.get_sighting_guid_str)
     locationId = base_fields.Function(Encounter.get_location)
-    taxonomy = base_fields.Function(Encounter.get_taxonomy_guid)
+    taxonomy_guid = base_fields.Function(Encounter.get_taxonomy_guid)
     point = base_fields.Function(Encounter.get_point)
     customFields = base_fields.Function(Encounter.get_custom_fields)
 
@@ -61,7 +61,7 @@ class ElasticsearchEncounterSchema(ModelSchema):
             'owner_guid',
             'sighting_guid',
             'locationId',
-            'taxonomy',
+            'taxonomy_guid',
             'point',
             'customFields',
         )

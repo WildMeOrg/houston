@@ -79,11 +79,9 @@ class ElasticsearchIndividualSchema(ModelSchema):
     """
 
     featuredAssetGuid = base_fields.Function(Individual.get_featured_asset_guid)
-    names = base_fields.Nested(
-        DetailedNameSchema,
-        attribute='names',
-        many=True,
-    )
+    names = base_fields.Function(Individual.get_name_values)
+    firstName = base_fields.Function(Individual.get_first_name)
+    adoptionName = base_fields.Function(Individual.get_adoption_name)
     encounters = base_fields.Nested(ElasticsearchEncounterSchema, many=True)
     social_groups = base_fields.Function(Individual.get_social_groups_json)
     sex = base_fields.Function(Individual.get_sex)
@@ -91,6 +89,7 @@ class ElasticsearchIndividualSchema(ModelSchema):
     death = base_fields.Function(Individual.get_time_of_death)
     comments = base_fields.Function(Individual.get_comments)
     customFields = base_fields.Function(Individual.get_custom_fields)
+    taxonomy_guid = base_fields.Function(Individual.get_taxonomy_guid)
 
     class Meta:
         # pylint: disable=missing-docstring
@@ -103,6 +102,9 @@ class ElasticsearchIndividualSchema(ModelSchema):
             Individual.updated.key,
             'featuredAssetGuid',
             'names',
+            'firstName',
+            'adoptionName',
+            'taxonomy_guid',
             'social_groups',
             'sex',
             'encounters',

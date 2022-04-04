@@ -783,6 +783,7 @@ class IndividualDebugByID(Resource):
 
         return individual.get_debug_json()
 
+
 @api.route('/validate')
 class FlatfileNameValidation(Resource):
     # values passed in from flatfile are val/index pairs:

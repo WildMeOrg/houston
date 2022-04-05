@@ -613,7 +613,7 @@ class Sighting(db.Model, FeatherModel):
         annotation = Annotation.query.get(annotation_guid)
         assert annotation
         log.debug(
-            f'sighting {self} finding matching set for {annotation} using {matching_set_config}'
+            f'sighting.get_matching_set_data(): sighting {self} finding matching set for {annotation} using {matching_set_config}'
         )
         matching_set_annotations = annotation.get_matching_set(matching_set_config)
 
@@ -638,8 +638,8 @@ class Sighting(db.Model, FeatherModel):
                         matching_set_individual_uuids.append(individual_guid)
 
         log.debug(
-            f'Built matching set individuals {matching_set_individual_uuids}, '
-            f'annots {matching_set_annot_uuids}'
+            f'sighting.get_matching_set_data(): Built matching set individuals {matching_set_individual_uuids}, '
+            f'annots {matching_set_annot_uuids} for Annot {annotation_guid} on {self}'
         )
         return matching_set_individual_uuids, matching_set_annot_uuids
 

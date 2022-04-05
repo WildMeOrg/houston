@@ -867,6 +867,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
             ):
                 self.config['encounters'][encounter_num]['annotations'].remove(annot_guid)
 
+    # will default to hotspotter if no idConfigs provided by AGS
     def get_id_configs(self):
         return self.config.get(
             'idConfigs',

@@ -68,9 +68,8 @@ def test_get_identifiers_zebras(flask_app_client):
     identifiers = ia_config_reader.get_identifiers_dict(species, ia_class)
 
     # copy/pasted from the config and pythonified (vs json)
-    # also '_identifiers.' prefix added to algo names
     desired_identifiers = {
-        '_identifiers.hotspotter_nosv': {
+        'hotspotter_nosv': {
             'sage': {'query_config_dict': {'sv_on': False}},
             'frontend': {'description': 'HotSpotter pattern-matcher'},
         }
@@ -136,9 +135,7 @@ def test_get_detect_model_frontend_data(flask_app_client):
                     'itis_id': 202400,
                     'ia_classes': ['zebra_grevys', 'zebra'],
                     'id_algos': {
-                        '_identifiers.hotspotter_nosv': {
-                            'description': 'HotSpotter pattern-matcher'
-                        }
+                        'hotspotter_nosv': {'description': 'HotSpotter pattern-matcher'}
                     },
                 },
                 {
@@ -147,9 +144,7 @@ def test_get_detect_model_frontend_data(flask_app_client):
                     'itis_id': 624996,
                     'ia_classes': ['zebra_grevys', 'zebra'],
                     'id_algos': {
-                        '_identifiers.hotspotter_nosv': {
-                            'description': 'HotSpotter pattern-matcher'
-                        }
+                        'hotspotter_nosv': {'description': 'HotSpotter pattern-matcher'}
                     },
                 },
             ],

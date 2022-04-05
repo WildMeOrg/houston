@@ -72,3 +72,12 @@ def print_all_annotation_jobs(context, annotation_guid, verbose=True):
         return []
 
     pprint.pprint(jobs)
+
+
+@app_context_task()
+def print_scheduled_celery_tasks(context, type=None, verbose=True):
+    """Print out the status for all the scheduled celery tasks"""
+    from app.utils import get_celery_tasks_scheduled
+
+    scheduled_tasks = get_celery_tasks_scheduled(type)
+    pprint.pprint(scheduled_tasks)

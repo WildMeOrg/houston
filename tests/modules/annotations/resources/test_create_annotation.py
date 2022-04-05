@@ -94,8 +94,8 @@ def test_create_and_delete_annotation(
     assert read_annotation.get_location_id() == 'test'
     assert read_annotation.get_time_isoformat_in_timezone() == '2000-01-01T01:01:01+00:00'
     assert not read_annotation.get_taxonomy_guid()
-    assert read_annotation.get_owner_guid() == researcher_1.guid
-    assert str(read_annotation.get_sighting_guid()) == uuids['sighting']
+    assert read_annotation.get_owner_guid_str() == str(researcher_1.guid)
+    assert read_annotation.get_sighting_guid_str() == uuids['sighting']
 
     # And deleting it
     annot_utils.delete_annotation(flask_app_client, researcher_1, annotation_guid)

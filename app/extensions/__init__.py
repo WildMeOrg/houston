@@ -547,6 +547,12 @@ class FeatherModel(CommonHoustonModel):
         returned_edm_data.pop('_edm_cache_created', None)
         return returned_edm_data
 
+    def get_edm_data_field(self, field):
+        edm_json = self.get_edm_complete_data()
+        if edm_json:
+            return edm_json.get(field, None)
+        return None
+
     def remove_cached_edm_data(self):
         self._edm_cached_data = {}
 

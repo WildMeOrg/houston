@@ -323,54 +323,39 @@ class Annotation(db.Model, HoustonModel):
         query['bool']['filter'].append({'exists': {'field': 'content_guid'}})
         return query
 
-    # first tries encounter.locationId, but will use sighting.locationId if none on encounter,
+    # first tries encounter fields, but will use field on sighting if none on encounter,
     #   unless sighting_fallback=False
     def get_location_id(self, sighting_fallback=True):
-        if not self.encounter_guid:
-            return None
-        enc_edm_data = self.encounter.get_edm_complete_data()
-        if enc_edm_data and enc_edm_data.get('locationId'):
-            return enc_edm_data['locationId']
-        if not sighting_fallback or not self.encounter.sighting_guid:
-            return None
-        sight_edm_data = self.encounter.sighting.get_edm_complete_data()
-        return sight_edm_data and sight_edm_data.get('locationId')
+        return (
+            self.encounter.get_location_id(sighting_fallback)
+            if self.encounter_guid
+            else None
+        )
 
     def get_taxonomy_guid(self, sighting_fallback=True):
-        if not self.encounter_guid:
-            return None
-        enc_edm_data = self.encounter.get_edm_complete_data()
-        if enc_edm_data and enc_edm_data.get('taxonomy'):
-            return enc_edm_data['taxonomy']
-        if not sighting_fallback or not self.encounter.sighting_guid:
-            return None
-        sight_edm_data = self.encounter.sighting.get_edm_complete_data()
-        return sight_edm_data and sight_edm_data.get('taxonomy')
+        return (
+            self.encounter.get_taxonomy_guid(sighting_fallback)
+            if self.encounter_guid
+            else None
+        )
 
     def get_time_isoformat_in_timezone(self, sighting_fallback=True):
         return self.encounter and self.encounter.get_time_isoformat_in_timezone(
             sighting_fallback
         )
 
-    def get_owner_guid(self):
+    def get_owner_guid_str(self):
         if not self.encounter_guid or not self.encounter:
             return None
-        # owner is not-null on Encounter
-        return self.encounter.owner.guid
-
-    def get_owner_guid_str(self):
-        guid = self.get_owner_guid()
-        return str(guid) if guid else None
+        return self.encounter.get_owner_guid_str()
 
     def get_encounter_guid_str(self):
         return str(self.encounter_guid) if self.encounter_guid else None
 
-    def get_sighting_guid(self):
-        return self.encounter and self.encounter.sighting_guid
-
     def get_sighting_guid_str(self):
-        guid = self.get_sighting_guid()
-        return str(guid) if guid else None
+        if not self.encounter_guid or not self.encounter:
+            return None
+        return self.encounter.get_sighting_guid_str()
 
     def get_keyword_values(self):
         if not self.keyword_refs:

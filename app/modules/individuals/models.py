@@ -149,6 +149,46 @@ class Individual(db.Model, FeatherModel):
 
         return result
 
+    def get_sex(self):
+        return self.get_edm_data_field('sex')
+
+    def get_time_of_birth(self):
+        return self.get_edm_data_field('timeOfBirth')
+
+    def get_time_of_death(self):
+        return self.get_edm_data_field('timeOfDeath')
+
+    def get_comments(self):
+        return self.get_edm_data_field('comments')
+
+    def get_custom_fields(self):
+        return self.get_edm_data_field('customFields')
+
+    def get_taxonomy_guid(self):
+        return self.get_edm_data_field('taxonomy')
+
+    def get_name_values(self):
+        name_vals = ''
+        for name in self.names:
+            name_vals += f'{name.value}, '
+        return name_vals
+
+    def get_first_name(self):
+        first_name = None
+        for name in self.names:
+            if name.context == 'FirstName':
+                first_name = name.value
+                break
+        return first_name
+
+    def get_adoption_name(self):
+        adoption_name = None
+        for name in self.names:
+            if name.context == 'AdoptionName':
+                adoption_name = name.value
+                break
+        return adoption_name
+
     def get_encounters(self):
         return self.encounters
 

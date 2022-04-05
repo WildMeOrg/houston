@@ -868,7 +868,14 @@ class AssetGroupSighting(db.Model, HoustonModel):
                 self.config['encounters'][encounter_num]['annotations'].remove(annot_guid)
 
     def get_id_configs(self):
-        return self.config.get('idConfigs', [])
+        return self.config.get(
+            'idConfigs',
+            [
+                {
+                    'algorithms': ['hotspotter_nosv'],
+                }
+            ],
+        )
 
 
 class AssetGroup(GitStore):

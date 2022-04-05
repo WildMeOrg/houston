@@ -365,3 +365,115 @@ def test_get_set_individual_names(
         flask_app_client, researcher_1, individual_id
     ).json
     assert len(individual_json['names'][2]['preferring_users']) == 0
+
+
+@pytest.mark.skipif(
+    module_unavailable('individuals'), reason='Individuals module disabled'
+)
+def test_name_validation(
+    db, flask_app_client, researcher_1, researcher_2, request, test_root
+):
+    from app.modules.names.models import DEFAULT_NAME_CONTEXT
+
+    individual_1_id = individual_utils.create_individual_and_sighting(
+        flask_app_client,
+        researcher_1,
+        request,
+        test_root,
+        individual_data={
+            'names': [
+                {'context': DEFAULT_NAME_CONTEXT, 'value': 'Zebra Prime'},
+                {'context': 'nickname', 'value': 'Big Dog'},
+            ],
+        },
+    )['individual']
+    individual_2_id = individual_utils.create_individual_and_sighting(
+        flask_app_client,
+        researcher_1,
+        request,
+        test_root,
+        individual_data={
+            'names': [
+                {'context': DEFAULT_NAME_CONTEXT, 'value': 'Zebra Omega'},
+            ],
+        },
+    )['individual']
+    individual_3_id = individual_utils.create_individual_and_sighting(
+        flask_app_client,
+        researcher_1,
+        request,
+        test_root,
+        individual_data={
+            'names': [
+                {'context': DEFAULT_NAME_CONTEXT, 'value': 'Zebra Omega'},
+            ],
+        },
+    )['individual']
+
+    flatfile_query = [
+        ['Zebra Prime', 0],
+        ['Big Dog', 1],
+        ['Zebra Omega', 4],
+        ['Jennifer', 100],
+    ]
+
+    individual_utils.validate_names(
+        flask_app_client, researcher_1, {'bad_data': 100}, expected_status_code=500
+    )
+
+    validation_resp = individual_utils.validate_names(
+        flask_app_client, researcher_1, flatfile_query
+    )
+
+    desired_resp = [
+        [
+            {
+                'value': 'Zebra Prime',
+                'info': [
+                    {
+                        'message': f'Corresponds to existing individual {individual_1_id}.',
+                        'level': 'info',
+                    }
+                ],
+            },
+            0,
+        ],
+        [
+            {
+                'value': 'Big Dog',
+                'info': [
+                    {
+                        'message': 'This is a new name and submission will create a new individual',
+                        'level': 'warning',
+                    }
+                ],
+            },
+            1,
+        ],
+        [
+            {
+                'value': 'Zebra Omega',
+                'info': [
+                    {
+                        'message': f"ERROR: cannot resolve this name to a unique individual. Individuals sharing this name are ['{individual_2_id}', '{individual_3_id}'].",
+                        'level': 'error',
+                    }
+                ],
+            },
+            4,
+        ],
+        [
+            {
+                'value': 'Jennifer',
+                'info': [
+                    {
+                        'message': 'This is a new name and submission will create a new individual',
+                        'level': 'warning',
+                    }
+                ],
+            },
+            100,
+        ],
+    ]
+
+    assert validation_resp.json == desired_resp

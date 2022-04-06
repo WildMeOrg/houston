@@ -419,40 +419,6 @@ def test_individual_mixed_edm_houston_patch(
 @pytest.mark.skipif(
     module_unavailable('individuals'), reason='Individuals module disabled'
 )
-def test_individual_edm_patch_add(db, flask_app_client, researcher_1, request, test_root):
-    uuids = individual_utils.create_individual_and_sighting(
-        flask_app_client,
-        researcher_1,
-        request,
-        test_root,
-    )
-    individual_id = uuids['individual']
-    time_of_death = 1445410803000  # I feel incredible power setting this var
-    time_of_birth_str = '1445410800000'
-    sex = 'female'
-
-    individual_utils.patch_individual(
-        flask_app_client,
-        researcher_1,
-        individual_id,
-        [
-            {'op': 'add', 'path': '/timeOfDeath', 'value': time_of_death},
-            {'op': 'add', 'path': '/timeOfBirth', 'value': time_of_birth_str},
-            {'op': 'add', 'path': '/sex', 'value': sex},
-        ],
-    )
-    individual_json = individual_utils.read_individual(
-        flask_app_client, researcher_1, individual_id
-    ).json
-
-    assert individual_json['timeOfDeath'] == str(time_of_death)
-    assert individual_json['timeOfBirth'] == time_of_birth_str
-    assert individual_json['sex'] == sex
-
-
-@pytest.mark.skipif(
-    module_unavailable('individuals'), reason='Individuals module disabled'
-)
 def test_edm_custom_field_patch(
     db, flask_app_client, researcher_1, admin_user, request, test_root
 ):

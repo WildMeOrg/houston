@@ -776,8 +776,9 @@ class AssetGroupSighting(db.Model, HoustonModel):
             return assets
         for filename in self.config.get('assetReferences'):
             asset = self.asset_group.get_asset_for_file(filename)
-            assert asset
-            assets.append(asset)
+            if asset:
+                assets.append(asset)
+            # If there is no asset this is a data integrity error which should be handled elsewhere, not here
         assets.sort(key=lambda ast: ast.guid)
         return assets
 
@@ -890,7 +891,13 @@ class AssetGroup(GitStore):
 
     @classmethod
     def run_integrity(cls):
-        result = {'assets_without_annots': []}
+        result = {
+            'assets_without_annots': [],
+            'failed_sightings': [],
+            'unknown_stage_sightings': [],
+            'sightings_missing_assets': [],
+            'jobless_detecting_sightings': [],
+        }
 
         # Processed groups should have no assets without annots
         under_processed_groups = (
@@ -912,6 +919,49 @@ class AssetGroup(GitStore):
                         'asset_guids': hanging_assets,
                     }
                 )
+        result['failed_sightings'] = [
+            sight.guid
+            for sight in (
+                db.session.query(AssetGroupSighting).filter(
+                    AssetGroupSighting.stage == AssetGroupSightingStage.failed
+                )
+            ).all()
+        ]
+
+        result['unknown_stage_sightings'] = [
+            sight.guid
+            for sight in (
+                db.session.query(AssetGroupSighting).filter(
+                    AssetGroupSighting.stage == AssetGroupSightingStage.unknown
+                )
+            ).all()
+        ]
+
+        # Having detecting sightings is perfectly valid but there may be reasons why they're
+        # stuck in detecting. Only look at ones that are at least an hour old to avoid false positives
+        import datetime
+
+        an_hour_ago = datetime.datetime.utcnow() - datetime.timedelta(hours=1)
+        detecting_sightings = (
+            db.session.query(AssetGroupSighting)
+            .filter(AssetGroupSighting.stage == AssetGroupSightingStage.detection)
+            .filter(AssetGroupSighting.created < an_hour_ago)
+        ).all()
+
+        # look for some possible reasons we're stuck in detection
+        for sighting in detecting_sightings:
+            missing_files = []
+            for filename in sighting.config.get('assetReferences'):
+                asset = sighting.asset_group.get_asset_for_file(filename)
+                if not asset:
+                    missing_files.append(filename)
+
+            if missing_files:
+                result['sightings_missing_assets'].append(
+                    {'sighting_guid': sighting.guid, 'missing_files': missing_files}
+                )
+            if not sighting.jobs:
+                result['jobless_detecting_sightings'].append(sighting.guid)
 
         return result
 

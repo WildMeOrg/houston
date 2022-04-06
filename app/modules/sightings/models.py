@@ -132,12 +132,40 @@ class Sighting(db.Model, FeatherModel):
 
     @classmethod
     def run_integrity(cls):
-        result = {'no_encounters': []}
+        result = {
+            'no_encounters': [],
+            'failed_sightings': [],
+            'jobless_identifying_sightings': [],
+        }
 
         # Sightings without encounters are an error that should never really happen
-        no_encounters = Sighting.query.filter(~Sighting.encounters.any()).all()
-        if no_encounters:
-            result['no_encounters'] = [sight.guid for sight in no_encounters]
+        result['no_encounters'] = [
+            sight.guid
+            for sight in Sighting.query.filter(~Sighting.encounters.any()).all()
+        ]
+
+        # As are failed sightings
+        result['failed_sightings'] = [
+            sight.guid
+            for sight in (
+                db.session.query(Sighting).filter(Sighting.stage == SightingStage.failed)
+            ).all()
+        ]
+
+        # any sighting that has been identifying for over an hour looks suspicious. The only fault we know of at
+        # the moment is if there are no jobs,
+        import datetime
+
+        an_hour_ago = datetime.datetime.utcnow() - datetime.timedelta(hours=1)
+        result['jobless_identifying_sightings'] = [
+            sight.guid
+            for sight in (
+                db.session.query(Sighting)
+                .filter(Sighting.stage == SightingStage.identification)
+                .filter(Sighting.created < an_hour_ago)
+                .filter(Sighting.jobs.is_(None))
+            ).all()
+        ]
 
         return result
 

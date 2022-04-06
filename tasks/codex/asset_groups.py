@@ -148,3 +148,43 @@ def details(context, guid):
     import json
 
     print(json.dumps(schema.dump(asset_group).data, indent=4, sort_keys=True))
+
+
+@app_context_task
+def list_all_sightings_in_stage(context, stage):
+    """
+    Show all asset_group_sightings in the stage, options are unknown, detection, curation, processed, failed.
+    """
+    from app.modules.asset_groups.models import AssetGroupSighting
+
+    asset_group_sightings = AssetGroupSighting.query.filter(
+        AssetGroupSighting.stage == stage
+    ).all()
+
+    for ags in asset_group_sightings:
+        print(f'AssetGroupSighting : {ags}')
+
+
+@app_context_task
+def ags_details(context, guid):
+    """
+    Show full existing of a specific asset_grousighting.
+
+    Command Line:
+    > invoke codex.asset_groups.ags_details 00000000-0000-0000-0000-000000000002
+    """
+    from app.modules.asset_groups.models import AssetGroupSighting
+
+    ags = AssetGroupSighting.query.get(guid)
+
+    if ags is None:
+        print(f'AssetGroup {guid} not found')
+        return
+
+    # Just reuse the debug schema
+    from app.modules.asset_groups.schemas import DebugAssetGroupSightingSchema
+
+    schema = DebugAssetGroupSightingSchema()
+    import pprint
+
+    pprint.pprint(schema.dump(ags).data)

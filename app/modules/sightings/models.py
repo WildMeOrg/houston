@@ -697,7 +697,12 @@ class Sighting(db.Model, FeatherModel):
         return id_request
 
     def send_identification(
-        self, config_id, algorithm_id, annotation_uuid, annotation_sage_uuid
+        self,
+        config_id,
+        algorithm_id,
+        annotation_uuid,
+        annotation_sage_uuid,
+        matching_set_query_override=None,
     ):
         from datetime import datetime
         from app.extensions.acm import encode_acm_request
@@ -714,7 +719,9 @@ class Sighting(db.Model, FeatherModel):
 
         # Message construction has to be in the task as the jobId must be unique
         job_uuid = uuid.uuid4()
-        matching_set_config = self.id_configs[config_id].get('matching_set')
+        matching_set_query = matching_set_query_override or self.id_configs[
+            config_id
+        ].get('matching_set')
         algorithm = self.id_configs[config_id]['algorithms'][algorithm_id]
         if not annotation_sage_uuid:
             log.warning(
@@ -724,7 +731,7 @@ class Sighting(db.Model, FeatherModel):
             self.stage = SightingStage.failed
             return
         id_request = self.build_identification_request(
-            matching_set_config,
+            matching_set_query,
             annotation_uuid,
             annotation_sage_uuid,
             job_uuid,
@@ -739,7 +746,7 @@ class Sighting(db.Model, FeatherModel):
 
                 log.info(f'Sent ID Request, creating job {job_uuid}')
                 self.jobs[str(job_uuid)] = {
-                    'matching_set': matching_set_config,
+                    'matching_set': matching_set_query,
                     'algorithm': algorithm,
                     'annotation': str(annotation_uuid),
                     'annotation_sage_uuid': str(annotation_sage_uuid),
@@ -1090,9 +1097,6 @@ class Sighting(db.Model, FeatherModel):
             identifiers = ia_config_reader.get('_identifiers')
             self.id_configs = [{'algorithms': [list(identifiers.keys())[0]]}]
 
-    def ia_pipeline(self):
-        assert self.stage == SightingStage.identification
-
     def validate_id_configs(self):
         num_configs = len(self.id_configs)
         if num_configs > 0:
@@ -1105,8 +1109,6 @@ class Sighting(db.Model, FeatherModel):
                 assert len(config['algorithms']) == 1
 
     def ia_pipeline(self):
-        from .tasks import send_identification
-
         assert self.stage == SightingStage.identification
         self.validate_id_configs()
         encounters_with_annotations = [
@@ -1117,6 +1119,8 @@ class Sighting(db.Model, FeatherModel):
         if encounters_with_annotations:
             # Use task to send ID req with retries
             # Once we support multiple IA configs and algorithms, the number of jobs is going to grow....rapidly
+            #  also: once we have > 1 config, some annot-level checks will be redundante (e.g. matching_set) so may
+            #    require a rethink on how these loops are nested
             for config_id in range(len(self.id_configs)):
                 for algorithm_id in range(len(self.id_configs[config_id]['algorithms'])):
                     for encounter in encounters_with_annotations:
@@ -1124,33 +1128,7 @@ class Sighting(db.Model, FeatherModel):
                             if self.send_annot_for_detection(
                                 annotation, config_id, algorithm_id
                             ):
-                                log.warning(
-                                    f'Skipping {annotation} due to lack of content_guid or encounter'
-                                )
-                                continue
-                            # force this to be up-to-date in index, just to be safe
-                            if config_id == 0:
-                                annotation.index()
-                            # load=False should get us this response quickly, cuz we just want a count
-                            matching_set = annotation.get_matching_set(
-                                self.id_configs[config_id].get('matching_set'), load=False
-                            )
-                            if not matching_set:
-                                log.info(
-                                    f'Skipping {annotation} due to empty matching set'
-                                )
-                                continue
-                            log.debug(
-                                f'[{num_jobs}] queueing up ID job for config_id={config_id} {annotation}: matching_set size={len(matching_set)} algo {algorithm_id}'
-                            )
-                            send_identification.delay(
-                                str(self.guid),
-                                config_id,
-                                algorithm_id,
-                                annotation.guid,
-                                annotation.content_guid,
-                            )
-                            num_jobs += 1
+                                num_jobs += 1
 
         if num_jobs > 0:
             log.info(
@@ -1176,7 +1154,12 @@ class Sighting(db.Model, FeatherModel):
                         encounter.set_individual(individual)
 
     def send_annot_for_detection(
-        self, annotation, config_id, algorithm_id, restart=False
+        self,
+        annotation,
+        config_id,
+        algorithm_id,
+        restart=False,
+        matching_set_query_override=None,
     ):
         from .tasks import send_identification
 
@@ -1187,13 +1170,15 @@ class Sighting(db.Model, FeatherModel):
         if not annotation.content_guid or not annotation.encounter_guid:
             log.warning(f'Skipping {annotation} due to lack of content_guid or encounter')
             return False
-        # force this to be up-to-date in index, just to be safe
-        annotation.index()
+        # force this to be up-to-date in index, just to be safe (only do once, hence config_id==0)
+        if config_id == 0:
+            annotation.index()
 
+        matching_set_query = matching_set_query_override or self.id_configs[
+            config_id
+        ].get('matching_set')
         # load=False should get us this response quickly, cuz we just want a count
-        matching_set = annotation.get_matching_set(
-            self.id_configs[config_id].get('matching_set'), load=False
-        )
+        matching_set = annotation.get_matching_set(matching_set_query, load=False)
         if not matching_set:
             log.info(f'Skipping {annotation.guid} due to empty matching set')
             return False
@@ -1214,6 +1199,7 @@ class Sighting(db.Model, FeatherModel):
             algorithm_id,
             annotation.guid,
             annotation.content_guid,
+            matching_set_query_override,
         )
 
         # store that we sent it (handles retry counts)

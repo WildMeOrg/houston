@@ -363,11 +363,11 @@ class AnnotationIdentifyByID(Resource):
     )
     def post(self, annotation):
         """
-        Accepts an optional query via body.  Uses default matching-set if none provided.
+        Accepts an optional matching-set query via body.  Uses default matching-set if none provided.
         """
         request_in = json.loads(request.data)
-        job_count = annotation.ia_pipeline(request_in)
-        return {'sent': True, 'job_count': job_count}
+        job_count = annotation.send_to_annotation(request_in)
+        return {'job_count': job_count}
 
 
 @api.route('/debug/<uuid:annotation_guid>')

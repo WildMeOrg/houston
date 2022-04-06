@@ -484,42 +484,23 @@ class Annotation(db.Model, HoustonModel):
 
         return AnnotationElasticsearchSchema
 
-    # this initiates ID pipeline *for this single* annotation.  it is roughly analogous to sighting.ia_pipeline()
-    def ia_pipeline(self, matching_set_query=None):
+    def send_to_identification(self, matching_set_query=None):
         sighting = self.get_sighting()
+        sighting.validate_id_configs()
         if not sighting:
             raise HoustonException(
-                log, f'{self} requires a sighting to run ia_pipeline()'
+                log, f'{self} requires a sighting to run send_to_identification()'
             )
-        if not self.content_guid:
-            raise HoustonException(
-                log, f'{self} requires a content_guid to run ia_pipeline()'
-            )
-        # assert self.stage == SightingStage.identification  #????
-        sighting.validate_id_configs()
-        self.index()
-        # load=False should get us this response quickly, cuz we just want a count
-        matching_set_guids = self.get_matching_set(matching_set_query, load=False)
-        if len(matching_set_guids) < 1:
-            raise HoustonException(
-                log,
-                f'{self} has empty matching set for ia_pipeline() with query {matching_set_query}',
-            )
-
-        # go ahead and send it
+        # now we attempt to send it
         job_count = 0
         for config_id in range(len(sighting.id_configs)):
             for algorithm_id in range(len(sighting.id_configs[config_id]['algorithms'])):
+                sent = sighting.send_annot_for_detection(
+                    self, config_id, algorithm_id, matching_set_query
+                )
                 log.debug(
-                    f'queueing up ID job for config_id={config_id} {self}: matching_set size={len(matching_set_guids)} algo {algorithm_id}'
+                    f'annot.send_to_identification() success={sent} queueing up ID job for config_id={config_id} {self}: algo {algorithm_id}'
                 )
-                sighting.send_identification.delay(
-                    str(sighting.guid),
-                    config_id,
-                    algorithm_id,
-                    self.guid,
-                    self.content_guid,
-                )
-                job_count += 1
-        # TODO should we twiddle sighting.stage???  other stuff?
+                if sent:
+                    job_count += 1
         return job_count

@@ -8,6 +8,7 @@ from app.extensions.celery import celery
 log = logging.getLogger(__name__)
 
 
+# RequestException is a base class for all sorts of errors, inc timeouts so this handles them all
 @celery.task(
     autoretry_for=(requests.exceptions.RequestException,),
     default_retry_delay=600,

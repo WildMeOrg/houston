@@ -8,6 +8,7 @@ import logging
 import uuid
 from datetime import datetime  # NOQA
 from flask import current_app
+from flask_restx_patched._http import HTTPStatus
 
 from app.extensions import FeatherModel, HoustonModel, db
 from app.modules.annotations.models import Annotation
@@ -17,6 +18,8 @@ from app.utils import HoustonException
 import app.extensions.logging as AuditLog
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
+
+MAX_IDENTIFICATION_ATTEMPTS = 10
 
 
 class SightingAssets(db.Model, HoustonModel):
@@ -63,8 +66,20 @@ class Sighting(db.Model, FeatherModel):
     featured_asset_guid = db.Column(db.GUID, default=None, nullable=True)
 
     # May have multiple jobs outstanding, store as Json obj dictionary, uuid_str is key,
-    # Content = {'algorithm': model, 'active': Bool}
+    # Content = jobId : {
+    #                'algorithm': algorithm,
+    #                'annotation': str(annotation_uuid),
+    #                'annotation_sage_uuid': str(annotation_sage_uuid),
+    #                'active': True,
+    #           }
     jobs = db.Column(db.JSON, default=lambda: {}, nullable=True)
+
+    # Used for managing retries. The above is for jobs that were successfully created, this is for jobs that have
+    # been requested but not yet created
+    # Content =  [
+    #     { 'configId': config, algorithmId': algorithm, 'annotation': str(annotation_uuid), num_tries: 1 },
+    # ]
+    job_configs = db.Column(db.JSON, default=lambda: [], nullable=True)
 
     asset_group_sighting_guid = db.Column(
         db.GUID,
@@ -664,7 +679,8 @@ class Sighting(db.Model, FeatherModel):
             return
 
         log.debug(
-            f'In send_identification for cnf:{config_id}  algo:{algorithm_id}  Ann UUID:{annotation_uuid}  Ann content_guid:{annotation_sage_uuid}'
+            f'In send_identification for cnf:{config_id}  algo:{algorithm_id} '
+            f'Ann UUID:{annotation_uuid}  Ann content_guid:{annotation_sage_uuid}'
         )
 
         # Message construction has to be in the task as the jobId must be unique
@@ -673,7 +689,8 @@ class Sighting(db.Model, FeatherModel):
         algorithm = self.id_configs[config_id]['algorithms'][algorithm_id]
         if not annotation_sage_uuid:
             log.warning(
-                f'Sage Identification on Sighting({self.guid}) Job({job_uuid}) aborted due to no content_guid on Annotation {annotation_uuid}'
+                f'Sage Identification on Sighting({self.guid}) Job({job_uuid}) '
+                f'aborted due to no content_guid on Annotation {annotation_uuid}'
             )
             self.stage = SightingStage.failed
             return
@@ -705,12 +722,31 @@ class Sighting(db.Model, FeatherModel):
                 self.jobs = self.jobs
                 with db.session.begin(subtransactions=True):
                     db.session.merge(self)
-            except HoustonException:
-                log.warning(
-                    f'Sage Identification on Sighting({self.guid}) Job({job_uuid}) failed to start'
-                )
-                # TODO Celery will retry, do we want it to?
-                self.stage = SightingStage.failed
+            except HoustonException as ex:
+                acm_status_code = ex.get_val('acm_status_code', None)
+                if (
+                    ex.status_code == HTTPStatus.SERVICE_UNAVAILABLE
+                    or ex.status_code == HTTPStatus.INTERNAL_SERVER_ERROR
+                ):
+                    if (
+                        self._get_attempts_for_config(
+                            config_id, algorithm_id, str(annotation_uuid)
+                        )
+                        < MAX_IDENTIFICATION_ATTEMPTS
+                    ):
+                        log.warning(
+                            f'Sage Identification on Sighting({self.guid}) Job({job_uuid}) failed to start '
+                            f'code: {ex.status_code}, acm_status_code: {acm_status_code}, retrying'
+                        )
+                        annotation = Annotation.find(annotation_uuid)
+                        assert annotation
+                        self.send_annot_for_detection(annotation, config_id, algorithm_id)
+                    else:
+                        log.warning(
+                            f'Sage Identification on Sighting({self.guid}) Job({job_uuid}) failed to start '
+                            f'code: {ex.status_code}, acm_status_code: {acm_status_code}, giving up'
+                        )
+                        self.stage = SightingStage.failed
 
         else:
             # TODO, this is correct for MVP as there is only one id per Sighting but this will need
@@ -1016,10 +1052,16 @@ class Sighting(db.Model, FeatherModel):
     def set_asset_group_sighting(self, ags):
         self.asset_group_sighting = ags
         self.id_configs = ags.get_id_configs()
+        if not self.id_configs:
+            # If no configs passed by the user, use the first one from the IA Config
+            from app.modules.ia_config_reader import IaConfig
+
+            ia_config_reader = IaConfig(current_app.config.get('CONFIG_MODEL'))
+
+            identifiers = ia_config_reader.get('_identifiers')
+            self.id_configs = [{'algorithms': [list(identifiers.keys())[0]]}]
 
     def ia_pipeline(self):
-        from .tasks import send_identification
-
         assert self.stage == SightingStage.identification
 
         num_configs = len(self.id_configs)
@@ -1044,40 +1086,10 @@ class Sighting(db.Model, FeatherModel):
                 for algorithm_id in range(len(self.id_configs[config_id]['algorithms'])):
                     for encounter in self.encounters:
                         for annotation in encounter.annotations:
-                            log.debug(
-                                f'Processing ID for Sighting:{self.guid}, config:{config_id}, algo:{algorithm_id} '
-                                f'annot:{annotation.guid}, sage_annot:{annotation.content_guid} enc:{annotation.encounter_guid}'
-                            )
-                            if (
-                                not annotation.content_guid
-                                or not annotation.encounter_guid
+                            if self.send_annot_for_detection(
+                                annotation, config_id, algorithm_id
                             ):
-                                log.warning(
-                                    f'Skipping {annotation} due to lack of content_guid or encounter'
-                                )
-                                continue
-                            # force this to be up-to-date in index, just to be safe
-                            annotation.index()
-                            # load=False should get us this response quickly, cuz we just want a count
-                            matching_set = annotation.get_matching_set(
-                                self.id_configs[config_id].get('matching_set'), load=False
-                            )
-                            if not matching_set:
-                                log.info(
-                                    f'Skipping {annotation} due to empty matching set'
-                                )
-                                continue
-                            log.debug(
-                                f'[{num_jobs}] queueing up ID job for config_id={config_id} {annotation}: matching_set size={len(matching_set)} algo {algorithm_id}'
-                            )
-                            send_identification.delay(
-                                str(self.guid),
-                                config_id,
-                                algorithm_id,
-                                annotation.guid,
-                                annotation.content_guid,
-                            )
-                            num_jobs += 1
+                                num_jobs += 1
 
         if num_jobs > 0:
             log.info(
@@ -1101,3 +1113,93 @@ class Sighting(db.Model, FeatherModel):
                         )
                         assert individual
                         encounter.set_individual(individual)
+
+    def send_annot_for_detection(
+        self, annotation, config_id, algorithm_id, restart=False
+    ):
+        from .tasks import send_identification
+
+        log.debug(
+            f'Processing ID for Sighting:{self.guid}, config:{config_id}, algo:{algorithm_id} '
+            f'annot:{annotation.guid}, sage_annot:{annotation.content_guid} enc:{annotation.encounter_guid}'
+        )
+        if not annotation.content_guid or not annotation.encounter_guid:
+            log.warning(f'Skipping {annotation} due to lack of content_guid or encounter')
+            return False
+        # force this to be up-to-date in index, just to be safe
+        annotation.index()
+
+        # load=False should get us this response quickly, cuz we just want a count
+        matching_set = annotation.get_matching_set(
+            self.id_configs[config_id].get('matching_set'), load=False
+        )
+        if not matching_set:
+            log.info(f'Skipping {annotation.guid} due to empty matching set')
+            return False
+
+        if self._has_active_jobs(algorithm_id, str(annotation.guid)):
+            log.info(
+                f'Skipping {annotation.guid} as already an active job for {algorithm_id}'
+            )
+            return False
+
+        log.debug(
+            f'Queueing up ID job for config_id={config_id} {annotation}: '
+            f'matching_set size={len(matching_set)} algo {algorithm_id}'
+        )
+        send_identification.delay(
+            str(self.guid),
+            config_id,
+            algorithm_id,
+            annotation.guid,
+            annotation.content_guid,
+        )
+
+        # store that we sent it (handles retry counts)
+        self._update_job_config(config_id, algorithm_id, str(annotation.guid), restart)
+        return True
+
+    def _get_job_config(self, config_id, algorithm_id, annotation_guid_str):
+        for job_cnf in self.job_configs:
+            # { 'configId': config, 'algorithmId': algorithm, 'annotation': str(annotation_uuid), 'num_tries': 1 }
+            if (
+                job_cnf['configId'] == config_id
+                and job_cnf['algorithmId'] == algorithm_id
+                and job_cnf['annotation'] == annotation_guid_str
+            ):
+                return job_cnf
+            return {}
+
+    def _update_job_config(self, config_id, algorithm_id, annotation_guid_str, restart):
+        job_cnf = self._get_job_config(config_id, algorithm_id, annotation_guid_str)
+        if job_cnf:
+            job_cnf['num_tries'] = 1 if restart else job_cnf['num_tries'] + 1
+        else:
+            # doesn't exist, need to create a new one
+            new_cnf = {
+                'configId': config_id,
+                'algorithmId': algorithm_id,
+                'annotation': annotation_guid_str,
+                'num_tries': 1,
+            }
+            self.job_configs.append(new_cnf)
+
+        self.job_configs = self.job_configs
+        with db.session.begin(subtransactions=True):
+            db.session.merge(self)
+
+    def _get_attempts_for_config(self, config_id, algorithm_id, annotation_guid_str):
+        job_cnf = self._get_job_config(config_id, algorithm_id, annotation_guid_str)
+        if job_cnf:
+            return job_cnf['num_tries']
+        else:
+            return 0
+
+    def _has_active_jobs(self, algorithm_id, annotation_guid_str):
+        for job in self.jobs:
+            if (
+                job['algorithmId'] == algorithm_id
+                and job['annotation'] == annotation_guid_str
+            ):
+                return job['active']
+        return False

@@ -15,7 +15,12 @@ log = logging.getLogger(__name__)
     max_retries=10,
 )
 def send_identification(
-    sighting_guid, config_id, algorithm_id, annotation_uuid, annotation_sage_guid
+    sighting_guid,
+    config_id,
+    algorithm_id,
+    annotation_uuid,
+    annotation_sage_guid,
+    matching_set_query_override=None,
 ):
     from .models import Sighting
 
@@ -23,7 +28,11 @@ def send_identification(
 
     if sighting:
         sighting.send_identification(
-            config_id, algorithm_id, annotation_uuid, annotation_sage_guid
+            config_id,
+            algorithm_id,
+            annotation_uuid,
+            annotation_sage_guid,
+            matching_set_query_override,
         )
     else:
         log.warning('Failed to find the sighting to perform Identification on')

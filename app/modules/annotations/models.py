@@ -496,7 +496,10 @@ class Annotation(db.Model, HoustonModel):
         for config_id in range(len(sighting.id_configs)):
             for algorithm_id in range(len(sighting.id_configs[config_id]['algorithms'])):
                 sent = sighting.send_annot_for_detection(
-                    self, config_id, algorithm_id, matching_set_query
+                    self,
+                    config_id,
+                    algorithm_id,
+                    matching_set_query_override=matching_set_query,
                 )
                 log.debug(
                     f'annot.send_to_identification() success={sent} queueing up ID job for config_id={config_id} {self}: algo {algorithm_id}'

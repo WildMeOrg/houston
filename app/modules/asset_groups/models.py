@@ -869,14 +869,17 @@ class AssetGroupSighting(db.Model, HoustonModel):
 
     # will default to hotspotter if no idConfigs provided by AGS
     def get_id_configs(self):
-        return self.config.get(
-            'idConfigs',
-            [
-                {
-                    'algorithms': ['hotspotter_nosv'],
-                }
-            ],
-        )
+        configs = self.config.get('idConfigs')
+        if configs:
+            return configs
+
+        from app.modules.ia_config_reader import IaConfig
+
+        ia_config_reader = IaConfig(current_app.config.get('CONFIG_MODEL'))
+        identifiers = ia_config_reader.get('_identifiers')
+        if identifiers:
+            return [{'algorithms': [list(identifiers.keys())[0]]}]
+        return None
 
 
 class AssetGroup(GitStore):

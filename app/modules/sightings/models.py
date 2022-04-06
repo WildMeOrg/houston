@@ -1198,8 +1198,8 @@ class Sighting(db.Model, FeatherModel):
     def _has_active_jobs(self, algorithm_id, annotation_guid_str):
         for job in self.jobs:
             if (
-                job['algorithmId'] == algorithm_id
-                and job['annotation'] == annotation_guid_str
+                self.jobs[job]['algorithm'] == algorithm_id
+                and self.jobs[job]['annotation'] == annotation_guid_str
             ):
-                return job['active']
+                return self.jobs[job]['active']
         return False

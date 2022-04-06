@@ -6,4 +6,3 @@ spotty history.  It is does the backend work of the Tus transfer.
 We needed to make a couple of customizations:
 
 * adding `request` and `app` as args to the call to `filename = self.upload_file_handler_cb()`
-* helping `create_url()` understand **X-Forwarded-Proto** so that *https* did not turn into *http*

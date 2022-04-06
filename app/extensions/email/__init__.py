@@ -4,9 +4,9 @@ import datetime
 from io import StringIO
 import logging
 import re
-from urllib.parse import urlparse
+from urllib.parse import urljoin
 
-from flask import current_app, render_template
+from flask import current_app, render_template, url_for
 from flask_mail import Mail, Message, email_dispatched
 from jinja2 import TemplateNotFound
 from premailer import Premailer
@@ -111,7 +111,6 @@ def _format_datetime(dt, verbose=False):
 class Email(Message):
     def __init__(self, *args, **kwargs):
         from app.modules.site_settings.models import SiteSetting
-        from app.utils import site_url_prefix
         import uuid
 
         if 'recipients' not in kwargs:
@@ -128,7 +127,6 @@ class Email(Message):
         self.template_name = None
         self.template_kwargs = {
             'site_name': SiteSetting.get_value('site.name', default='Codex'),
-            'site_url_prefix': site_url_prefix(),
             'year': now.year,
             'transaction_id': self._transaction_id,
             # some of these are leftover from PR512 and may need cleanup later
@@ -139,7 +137,7 @@ class Email(Message):
             'legal_statement': SiteSetting.get_value('email_legal_statement'),
             'unsubscribe_link': '/unsubscribe',
             'site_url': '/',
-            'site_domain': urlparse(site_url_prefix()).netloc,
+            'site_domain': current_app.config['SERVER_NAME'],
             'instagram_url': SiteSetting.get_value('site.links.instagramLink'),
             'twitter_url': SiteSetting.get_value('site.links.twitterLink'),
             'facebook_url': SiteSetting.get_value('site.links.facebookLink'),
@@ -172,9 +170,7 @@ class Email(Message):
         self.set_language()
         global pmail
         if pmail is None:
-            base_url = current_app.config.get('MAIL_BASE_URL', None)
-            if base_url is not None:
-                pmail_kwargs['base_url'] = base_url
+            pmail_kwargs['base_url'] = urljoin(url_for('api.root', _external=True), '/')
             pmail = Premailer(**pmail_kwargs)  # REF: https://pypi.org/project/premailer/
         log.info('Using premailer = %r' % (pmail))
 

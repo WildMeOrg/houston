@@ -305,9 +305,11 @@ class MainConfiguration(Resource):
             ss_json = {}
             for ss in houston_settings:
                 if ss.file_upload is not None:
-                    ss_json[
-                        ss.key
-                    ] = f'/api/v1/fileuploads/src/{str(ss.file_upload.guid)}'
+                    ss_json[ss.key] = url_for(
+                        'api.fileuploads_file_upload_src_u_by_id_2',
+                        fileupload_guid=str(ss.file_upload.guid),
+                        _external=False,
+                    )
             data['response']['configuration']['site.images'] = ss_json
 
             for key in SiteSetting.get_setting_keys():

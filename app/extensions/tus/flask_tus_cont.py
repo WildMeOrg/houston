@@ -1,10 +1,9 @@
 # -*- coding: utf-8 -*-
-from flask import Blueprint, request, make_response
+from flask import Blueprint, request, make_response, url_for
 import base64
 import os
 import redis
 import uuid
-from urllib.parse import urljoin
 from app.utils import get_stored_filename
 
 # Find the stack on which we want to store the database connection.
@@ -151,17 +150,6 @@ class TusManager(object):
     def create_resource_id(self):
         return str(uuid.uuid4())
 
-    def create_url(self, resource_id):
-        url_root = request.url_root
-        # assuming(!) we only ever want to upgrade from http to https, not the other way around
-        if (
-            'X-Forwarded-Proto' in request.headers
-            and request.headers.get('X-Forwarded-Proto') == 'https'
-            and url_root.lower().startswith('http:')
-        ):
-            url_root = 'https://' + url_root[7:]
-        return urljoin(url_root, f'{self.upload_url}/{resource_id}')
-
     def tus_creation_1_create(self):
         """Implements POST to create file according to Tus protocol Creation extension"""
         # print('begin tus_creation_1_create')
@@ -216,7 +204,9 @@ class TusManager(object):
             return response
 
         response.status_code = 201
-        response.headers['Location'] = self.create_url(resource_id)
+        response.headers['Location'] = url_for(
+            'tus-manager.tus-1-upload-chunk', resource_id=resource_id, _external=True
+        )
         response.headers['Tus-Temp-Filename'] = resource_id
         response.autocorrect_location_header = False
 

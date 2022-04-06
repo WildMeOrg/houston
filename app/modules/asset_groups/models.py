@@ -5,7 +5,7 @@ AssetGroups database models
 """
 import copy
 import enum
-from flask import current_app
+from flask import current_app, url_for
 from flask_login import current_user  # NOQA
 from datetime import datetime  # NOQA
 from flask_restx_patched._http import HTTPStatus
@@ -23,7 +23,6 @@ from app.utils import HoustonException
 import logging
 import uuid
 import json
-from urllib.parse import urljoin
 
 from .metadata import AssetGroupMetadata
 
@@ -515,10 +514,11 @@ class AssetGroupSighting(db.Model, HoustonModel):
     def build_detection_request(self, job_uuid, model):
         from app.modules.ia_config_reader import IaConfig
 
-        base_url = current_app.config.get('BASE_URL')
-        callback_url = urljoin(
-            base_url,
-            f'/api/v1/asset_groups/sighting/{str(self.guid)}/sage_detected/{str(job_uuid)}',
+        callback_url = url_for(
+            'api.asset_groups_asset_group_sighting_detected',
+            asset_group_sighting_guid=str(self.guid),
+            job_guid=str(job_uuid),
+            _external=True,
         )
 
         ia_config_reader = IaConfig(current_app.config.get('CONFIG_MODEL'))
@@ -533,26 +533,30 @@ class AssetGroupSighting(db.Model, HoustonModel):
             'callback_detailed': True,
         }
         model_config.update(detector_config)
-        asset_url = urljoin(base_url, '/api/v1/assets/src_raw/')
 
-        asset_guids = []
+        asset_urls = []
         if 'updatedAssets' in self.config:
-            asset_guids = self.config['updatedAssets']
+            asset_urls = [
+                url_for('api.assets_asset_src_raw_by_id', asset_guid=guid, _external=True)
+                for guid in self.config['updatedAssets']
+            ]
         else:
             for filename in self.config.get('assetReferences'):
                 asset = self.asset_group.get_asset_for_file(filename)
                 assert asset
-                if asset.guid not in asset_guids:
-                    asset_guids.append(str(asset.guid))
+                asset_url = url_for(
+                    'api.assets_asset_src_raw_by_id',
+                    asset_guid=str(asset.guid),
+                    _external=True,
+                )
+                if asset_url not in asset_urls:
+                    asset_urls.append(asset_url)
 
-        # Sort the Asset GUIDS so that when processing the response we know which
+        # Sort the Asset URLs so that when processing the response we know which
         # content guid relates to which asset guid
-        asset_guids.sort()
+        asset_urls.sort()
         model_config['image_uuid_list'] = json.dumps(
-            [
-                f'houston+{urljoin(asset_url, str(asset_guid))}'
-                for asset_guid in asset_guids
-            ]
+            [f'houston+{asset_url}' for asset_url in asset_urls]
         )
         return model_config
 

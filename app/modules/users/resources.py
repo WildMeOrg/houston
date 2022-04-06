@@ -8,7 +8,7 @@ import json
 import logging
 from urllib.parse import urljoin
 
-from flask import current_app, send_file, request
+from flask import current_app, send_file, request, url_for
 from flask_login import current_user
 from flask_restx_patched import Resource
 from flask_restx_patched._http import HTTPStatus
@@ -431,8 +431,11 @@ class UserResetPasswordEmail(Resource):
             return
         code = user.get_account_recovery_code()
         msg = Email(recipients=[user])
-        url_prefix = msg.template_kwargs['site_url_prefix']
-        reset_link = urljoin(url_prefix, f'/auth/code/{code.accept_code}')
+        # /auth/code/ instead of /api/v1/auth/code/ because we want the user to
+        # go to the frontend page
+        reset_link = urljoin(
+            url_for('api.root', _external=True), f'/auth/code/{code.accept_code}'
+        )
         msg.template('misc/password_reset', reset_link=reset_link)
         msg.send_message()
 

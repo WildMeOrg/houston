@@ -34,9 +34,9 @@ coverage run --append `which invoke` app.boilerplates.crud-module --module-name=
 coverage run --append `which invoke` app.boilerplates.crud-module --module-name=testapp
 
 # test app.config.*
-coverage run --append `which invoke` app.config.set --key=BASE_URL --value=http://localhost/
+coverage run --append `which invoke` app.config.set --key=MAX_CONTENT_LENGTH --value=1000000
 coverage run --append `which invoke` app.config.list
-coverage run --append `which invoke` app.config.forget --key=BASE_URL
+coverage run --append `which invoke` app.config.forget --key=MAX_CONTENT_LENGTH
 coverage run --append `which invoke` app.config.show
 
 # test interpreter shells

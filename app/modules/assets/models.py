@@ -3,7 +3,7 @@
 Assets database models
 --------------------
 """
-from flask import current_app
+from flask import current_app, url_for
 from functools import total_ordering
 import pathlib
 
@@ -228,7 +228,9 @@ class Asset(db.Model, HoustonModel):
 
     @property
     def src(self):
-        return '/api/v1/assets/src/%s' % (str(self.guid),)
+        return url_for(
+            'api.assets_asset_src_u_by_id_2', asset_guid=str(self.guid), _external=False
+        )
 
     @property
     @module_required('annotations', resolve='warn', default=-1)
@@ -333,9 +335,9 @@ class Asset(db.Model, HoustonModel):
         return dmeta
 
     def get_image_url(self):
-        from app.utils import site_url_prefix
-
-        return f'{site_url_prefix()}/api/v1/assets/src/{self.guid}'
+        return url_for(
+            'api.assets_asset_src_u_by_id_2', asset_guid=self.guid, _external=True
+        )
 
     # right now we _only_ use `derived` values, so not much logic here
     # TODO alter when we allow ways to override derived (or have more complex logic based on orientation)

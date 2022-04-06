@@ -5,7 +5,7 @@ Individuals database models
 """
 
 from app.extensions import FeatherModel, db
-from flask import current_app
+from flask import current_app, url_for
 import uuid
 import logging
 import app.extensions.logging as AuditLog
@@ -293,13 +293,17 @@ class Individual(db.Model, FeatherModel):
         return last_enc.created
 
     def get_featured_image_url(self):
-        from app.utils import site_url_prefix
-
         featured_image_url = None
         featured_asset_guid = self.get_featured_asset_guid()
         if featured_asset_guid:
+            # FIXME Does this route exist?
             featured_image_url = (
-                f'{site_url_prefix()}/api/v1/annotations/{featured_asset_guid}/image'
+                url_for(
+                    'api.annotations_annotation_by_id',
+                    annotation_guid=str(featured_asset_guid),
+                    _external=True,
+                )
+                + '/image'
             )
         return featured_image_url
 

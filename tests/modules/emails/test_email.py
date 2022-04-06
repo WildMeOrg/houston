@@ -4,7 +4,9 @@ from pathlib import Path
 import uuid
 
 from app.modules.emails.models import RecordedEmail, EmailTypes, EmailRecord
+from app.modules.site_settings.models import SiteSetting
 from app.extensions.email import Email
+import pytest
 
 
 test_recipient = str(uuid.uuid4()) + '-test@example.com'
@@ -12,7 +14,7 @@ test_recipient = str(uuid.uuid4()) + '-test@example.com'
 
 def test_basic_send():
     test_subject = 'test subject'
-    msg = RecordedEmail(test_subject, recipients=[test_recipient])
+    msg = RecordedEmail(subject=test_subject, recipients=[test_recipient])
     msg.email_type = EmailTypes.invite
     msg.body = 'body'
 
@@ -32,11 +34,11 @@ def test_basic_send():
 
 
 def test_validity():
-    msg = Email('test subject', recipients=[test_recipient])
-    try:
+    msg = Email(subject='test subject', recipients=[test_recipient])
+    with pytest.raises(ValueError) as ve:
         msg.send_message()
-    except ValueError as ve:
         assert 'body' in str(ve)
+    assert msg.subject == 'test subject'
     msg.body = 'test content'
     try:
         msg.recipients = None
@@ -79,3 +81,16 @@ def test_email_templates():
         except:  # NOQA
             print(f'Email Template: {path}')
             raise
+
+
+def test_sender():
+    msg = Email(recipients=[test_recipient])
+    assert msg.sender == 'Do Not Reply <do-not-reply@localhost>'
+
+    SiteSetting.set_key_value('email_default_sender_name', 'Site Admin')
+    SiteSetting.set_key_value('email_default_sender_email', 'admin@example.org')
+    msg = Email(recipients=[test_recipient])
+    assert msg.sender == 'Site Admin <admin@example.org>'
+
+    msg = Email(recipients=[test_recipient], sender='User One <user1@example.org>')
+    assert msg.sender == 'User One <user1@example.org>'

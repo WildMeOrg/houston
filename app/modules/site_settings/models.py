@@ -45,8 +45,16 @@ class SiteSetting(db.Model, Timestamp):
         },
         'email_service_username': {'type': str, 'public': False},
         'email_service_password': {'type': str, 'public': False},
-        'email_default_sender_email': {'type': str, 'public': False},
-        'email_default_sender_name': {'type': str, 'public': False},
+        'email_default_sender_email': {
+            'type': str,
+            'public': False,
+            'default': lambda: current_app.config['MAIL_DEFAULT_SENDER'][1],
+        },
+        'email_default_sender_name': {
+            'type': str,
+            'public': False,
+            'default': lambda: current_app.config['MAIL_DEFAULT_SENDER'][0],
+        },
         'email_header_image_url': {
             'type': str,
             'public': True,
@@ -208,7 +216,13 @@ class SiteSetting(db.Model, Timestamp):
     @classmethod
     def _get_default_value(cls, key):
         def_val = ''
-        assert key in cls.HOUSTON_SETTINGS.keys()
+        if key not in cls.HOUSTON_SETTINGS:
+            return def_val
+        default_value = cls.HOUSTON_SETTINGS[key].get('default')
+        if callable(default_value):
+            return default_value()
+        if default_value:
+            return default_value
         if cls.HOUSTON_SETTINGS[key]['type'] == dict:
             def_val = {}
         return def_val
@@ -257,11 +271,15 @@ class SiteSetting(db.Model, Timestamp):
     @classmethod
     def get_string(cls, key, default=None):
         setting = cls.query.get(key)
+        if not setting and default is None:
+            return cls._get_default_value(key)
         return setting.string if setting else default
 
     @classmethod
     def get_json(cls, key, default=None):
         setting = cls.query.get(key)
+        if not setting and default is None:
+            return cls._get_default_value(key)
         return setting.data if setting else default
 
     # a bit of hackery.  right now *all* keys in edm-configuration are of the form `site.foo` so we use
@@ -275,8 +293,10 @@ class SiteSetting(db.Model, Timestamp):
             return cls.get_edm_configuration(key, default=default, **kwargs)
         setting = cls.query.get(key)
         if not setting:
-            setting_default = cls.HOUSTON_SETTINGS.get(key, {}).get('default')
+            setting_default = cls._get_default_value(key)
             if default is None and setting_default:
+                if callable(setting_default):
+                    setting_default = setting_default()
                 return setting_default
             return default
         if setting.file_upload_guid:

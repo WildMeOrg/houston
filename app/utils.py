@@ -39,17 +39,6 @@ def to_ascii(val):
     return unicodedata.normalize('NFKD', val).encode('ascii', 'ignore').decode()
 
 
-def site_email_hostname():
-    from flask import current_app
-
-    dom = current_app.config.get('SERVER_NAME', None)
-    if not dom:
-        dom = 'mail.example.com'
-    if dom.startswith('www.'):
-        dom = dom[4:]
-    return dom.lower()
-
-
 # optionally filter on type
 def get_celery_tasks_scheduled(type=None):
     from flask import current_app

@@ -18,6 +18,17 @@ def list_all(context):
 
 
 @app_context_task
+def list_all_sightings_in_stage(context, stage):
+    """
+    Show all sightings in the stage, options are identification, un_reviewed, processed, failed.
+    """
+    from app.modules.sightings.models import Sighting
+
+    for sighting in Sighting.query.filter(Sighting.stage == stage).all():
+        print(f'Sighting : {sighting}')
+
+
+@app_context_task
 def details(context, guid):
     """
     Show full existing of a specific sighting.

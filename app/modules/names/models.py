@@ -25,7 +25,7 @@ class NamePreferringUsersJoin(db.Model, HoustonModel):
     user = db.relationship('User')
 
 
-DEFAULT_NAME_CONTEXT = 'default_name'
+DEFAULT_NAME_CONTEXT = 'FirstName'
 
 
 class Name(db.Model, HoustonModel, Timestamp):

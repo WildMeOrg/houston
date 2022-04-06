@@ -8,6 +8,7 @@ import enum
 from flask import current_app
 from flask_login import current_user  # NOQA
 from datetime import datetime  # NOQA
+from flask_restx_patched._http import HTTPStatus
 from app.extensions import db, HoustonModel
 import app.extensions.logging as AuditLog  # NOQA
 from app.extensions.acm import from_acm_uuid
@@ -27,6 +28,8 @@ from urllib.parse import urljoin
 from .metadata import AssetGroupMetadata
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
+
+MAX_DETECTION_ATTEMPTS = 10
 
 
 class AssetGroupSightingStage(str, enum.Enum):
@@ -69,6 +72,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
     curation_start = db.Column(
         db.DateTime, index=True, default=datetime.utcnow, nullable=False
     )
+    detection_attempts = db.Column(db.Integer, default=0, nullable=False)
 
     @classmethod
     def get_elasticsearch_schema(cls):
@@ -580,11 +584,28 @@ class AssetGroupSighting(db.Model, HoustonModel):
 
             with db.session.begin(subtransactions=True):
                 db.session.merge(self)
-        except HoustonException:
+        except HoustonException as ex:
+            acm_status_code = ex.get_val('acm_status_code', None)
+
+            # Celery has done it's job and called the function to generate the request and will not retry as it
+            # only does that for RequestException, which includes various timeouts ec, not HoustonException
+
+            if (
+                ex.status_code == HTTPStatus.SERVICE_UNAVAILABLE
+                or ex.status_code == HTTPStatus.INTERNAL_SERVER_ERROR
+            ):
+                if self.detection_attempts < MAX_DETECTION_ATTEMPTS:
+                    log.warning(
+                        f'Sage Detection on AssetGroupSighting({self.guid}) Job{job_id} failed to start, '
+                        f'code: {ex.status_code}, acm_status_code: {acm_status_code}, retrying'
+                    )
+                    self.rerun_detection()
+
             log.warning(
-                f'Sage Detection on AssetGroupSighting({self.guid}) Job{job_id} failed to start'
+                f'Sage Detection on AssetGroupSighting({self.guid}) Job{job_id} failed to start, '
+                f'code: {ex.status_code}, acm_status_code: {acm_status_code}, giving up'
             )
-            # TODO Will Celery retry, do we want it to?
+            # Assuming some sort of persisten error in Sage
             self.stage = AssetGroupSightingStage.curation
 
     def check_job_status(self, job_id):
@@ -623,7 +644,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
             # Post MVP this may be a separate stage (that also permits annot creation and commit)
             self.set_stage(AssetGroupSightingStage.curation)
             # This is not an exception as the message from Sage was valid
-            msg = f'JobID {str(job_id)} failed with status: {status} exception: {response.get("json_result")}'
+            msg = f'JobID {str(job_id)} failed with status: {status}, Sage result: {response.get("json_result")}'
             AuditLog.backend_fault(log, msg, self)
             return
 
@@ -719,6 +740,13 @@ class AssetGroupSighting(db.Model, HoustonModel):
         if self.stage == AssetGroupSightingStage.curation:
             self.stage = AssetGroupSightingStage.detection
             self.start_detection()
+        elif self.stage == AssetGroupSightingStage.detection:
+            if self.any_jobs_active():
+                raise HoustonException(
+                    log,
+                    'Cannot rerun detection on AssetGroupSighting in detection stage with active jobs',
+                )
+            self.start_detection()
         else:
             raise HoustonException(
                 log, f'Cannot rerun detection on AssetGroupSighting in {self.stage} stage'
@@ -737,6 +765,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
             log.info(
                 f'ia pipeline starting detection {config} on AssetGroupSighting {self.guid}'
             )
+            self.detection_attempts += 1
             # Call sage_detection in the background by doing .delay()
             sage_detection.delay(str(self.guid), config)
 

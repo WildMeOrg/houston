@@ -74,6 +74,7 @@ def git_push(asset_group_guid):
     log.debug(f'...pushed to {repo.head.ref}')
 
 
+# RequestException is a base class for all sorts of errors, inc timeouts so this handles them all
 @celery.task(
     autoretry_for=(requests.exceptions.RequestException, sqlalchemy.exc.SQLAlchemyError),
     default_retry_delay=10,

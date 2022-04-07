@@ -210,7 +210,7 @@ def test_notification_resolution(
 @pytest.mark.skipif(
     module_unavailable('collaborations'), reason='Collaborations module disabled'
 )
-def test_manager_creator_revoke(
+def test_manager_creator_read_revoke(
     db, flask_app_client, researcher_1, researcher_2, user_manager_user, request
 ):
     from app.modules.collaborations.models import Collaboration
@@ -238,7 +238,7 @@ def test_manager_creator_revoke(
 @pytest.mark.skipif(
     module_unavailable('collaborations'), reason='Collaborations module disabled'
 )
-def test_manager_revoke(
+def test_manager_read_revoke(
     db, flask_app_client, researcher_1, researcher_2, user_manager_user, request
 ):
     from app.modules.collaborations.models import Collaboration
@@ -259,4 +259,39 @@ def test_manager_revoke(
     assert researcher_1_notifs[1]['message_type'] == NotificationType.collab_approved
     assert (
         researcher_1_notifs[0]['message_type'] == NotificationType.collab_manager_revoke
+    )
+
+
+@pytest.mark.skipif(
+    module_unavailable('collaborations'), reason='Collaborations module disabled'
+)
+def test_manager_edit_revoke(
+    db, flask_app_client, researcher_1, researcher_2, user_manager_user, request
+):
+    # Researcher 2 requests to collaborate with researcher1
+    from app.modules.collaborations.models import Collaboration
+    from app.modules.notifications.models import NotificationType
+
+    members = [researcher_1, researcher_2]
+    basic_collab = Collaboration(members, researcher_1)
+    request.addfinalizer(basic_collab.delete)
+    # approve collab request
+    basic_collab.set_read_approval_state_for_user(researcher_2.guid, 'approved')
+    # r1 requests edit
+    basic_collab.set_edit_approval_state_for_user(researcher_1.guid, 'approved')
+    # r2 approves edit
+    basic_collab.set_edit_approval_state_for_user(researcher_2.guid, 'approved')
+    # manager revokes edit
+    basic_collab.set_edit_approval_state_for_user(user_manager_user.guid, 'revoked')
+
+    researcher_1_notifs = notif_utils.read_all_notifications(
+        flask_app_client, researcher_1
+    ).json
+
+    assert len(researcher_1_notifs) == 3
+    assert researcher_1_notifs[2]['message_type'] == NotificationType.collab_approved
+    assert researcher_1_notifs[1]['message_type'] == NotificationType.collab_edit_approved
+    assert (
+        researcher_1_notifs[0]['message_type']
+        == NotificationType.collab_manager_edit_revoke
     )

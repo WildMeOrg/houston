@@ -6,8 +6,9 @@ import uuid
 import datetime
 
 from tests.modules.individuals.resources import utils as individual_utils
-from tests.modules.sightings.resources import utils as sighting_utils
 from tests.modules.annotations.resources import utils as annot_utils
+from tests.modules.sightings.resources import utils as sighting_utils
+from tests.modules.site_settings.resources import utils as setting_utils
 
 from tests import utils
 import pytest
@@ -413,3 +414,41 @@ def test_individual_mixed_edm_houston_patch(
     # EDM patch should have succeeded, Houston failed
     assert individual_json['timeOfBirth'] == '1445410800000'
     assert individual_json['names'] == []
+
+
+@pytest.mark.skipif(
+    module_unavailable('individuals'), reason='Individuals module disabled'
+)
+def test_edm_custom_field_patch(
+    db, flask_app_client, researcher_1, admin_user, request, test_root
+):
+    uuids = individual_utils.create_individual_and_sighting(
+        flask_app_client,
+        researcher_1,
+        request,
+        test_root,
+    )
+    individual_id = uuids['individual']
+
+    custom_field_id = setting_utils.custom_field_create(
+        flask_app_client,
+        admin_user,
+        'personality (test custom field)',
+        cls='MarkedIndividual',
+    )
+    assert custom_field_id is not None
+
+    custom_field_val = 'magnanimous'
+    custom_fields = {custom_field_id: custom_field_val}
+
+    individual_utils.patch_individual(
+        flask_app_client,
+        researcher_1,
+        individual_id,
+        [{'op': 'replace', 'path': '/customFields', 'value': custom_fields}],
+    )
+    individual_json = individual_utils.read_individual(
+        flask_app_client, researcher_1, individual_id
+    ).json
+
+    assert individual_json['customFields'] == custom_fields

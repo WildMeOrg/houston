@@ -41,6 +41,7 @@ class PatchIndividualDetailsParameters(PatchJSONParameters):
         '/timeOfBirth',
         '/timeOfDeath',
         '/comments',
+        '/customFields',
     )
 
     PATH_CHOICES_HOUSTON = ('/featuredAssetGuid', '/encounters', '/names')

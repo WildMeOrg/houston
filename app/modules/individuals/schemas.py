@@ -90,6 +90,9 @@ class ElasticsearchIndividualSchema(ModelSchema):
     comments = base_fields.Function(Individual.get_comments)
     customFields = base_fields.Function(Individual.get_custom_fields)
     taxonomy_guid = base_fields.Function(Individual.get_taxonomy_guid)
+    has_annotations = base_fields.Function(Individual.has_annotations)
+    last_seen = base_fields.Function(Individual.get_last_seen_time)
+    taxonomy_names = base_fields.Function(Individual.get_taxonomy_names)
 
     class Meta:
         # pylint: disable=missing-docstring
@@ -112,6 +115,9 @@ class ElasticsearchIndividualSchema(ModelSchema):
             'death',
             'comments',
             'customFields',
+            'has_annotations',
+            'last_seen',
+            'taxonomy_names',
         )
         dump_only = (
             Individual.guid.key,

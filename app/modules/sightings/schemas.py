@@ -58,6 +58,12 @@ class ElasticsearchSightingSchema(BaseSightingSchema):
 
     time = base_fields.Function(Sighting.get_time_isoformat_in_timezone)
     timeSpecificity = base_fields.Function(Sighting.get_time_specificity)
+    location = base_fields.Function(Sighting.get_locality)
+    owners = base_fields.Nested(
+        'PublicUserSchema',
+        attribute='get_owners',
+        many=True,
+    )
     comments = base_fields.Function(Sighting.get_comments)
     taxonomy_guid = base_fields.Function(Sighting.get_taxonomy_guid)
     customFields = base_fields.Function(Sighting.get_custom_fields)
@@ -74,6 +80,8 @@ class ElasticsearchSightingSchema(BaseSightingSchema):
             'time',
             'timeSpecificity',
             'comments',
+            'location',
+            'owners',
             'taxonomy_guid',
             'customFields',
         )

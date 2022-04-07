@@ -167,6 +167,10 @@ class Individual(db.Model, FeatherModel):
     def get_taxonomy_guid(self):
         return self.get_edm_data_field('taxonomy')
 
+    def get_taxonomy_names(self):
+        # taxonomy_guid = self.get_edm_data_field('taxonomy')
+        return []
+
     def get_name_values(self):
         name_vals = ''
         for name in self.names:
@@ -291,6 +295,12 @@ class Individual(db.Model, FeatherModel):
                 last_enc = enc
 
         return last_enc.created
+
+    def has_annotations(self):
+        for enc in self.encounters:
+            if enc.annotations and len(enc.annotations) > 0:
+                return True
+        return False
 
     def get_featured_image_url(self):
         featured_image_url = None

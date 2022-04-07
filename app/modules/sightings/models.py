@@ -191,6 +191,9 @@ class Sighting(db.Model, FeatherModel):
     def get_location_id(self):
         return self.get_edm_data_field('locationId')
 
+    def get_locality(self):
+        return self.get_edm_data_field('verbatimLocality')
+
     def get_taxonomy_guid(self):
         return self.get_edm_data_field('taxonomy')
 

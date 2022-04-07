@@ -85,7 +85,14 @@ class IaConfig:
     def get_identifiers_dict(self, genus_species, ia_class):
         identifiers = self.get_identifiers_with_links(genus_species, ia_class)
         identifiers_dict = self._resolve_links_to_dict(identifiers)
-        return identifiers_dict
+        # trim the '_identifiers.' prefix off the keys
+        trimmed = dict()
+        for key in identifiers_dict:
+            algo = key
+            if key.startswith('_identifiers.'):
+                algo = key[13:]
+            trimmed[algo] = identifiers_dict[key]
+        return trimmed
 
     def _resolve_links_in_value_list(self, value_list):
         resolved_list = [

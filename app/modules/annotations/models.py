@@ -253,8 +253,11 @@ class Annotation(db.Model, HoustonModel):
             query = self.get_matching_set_default_query()
         else:
             query = self.resolve_matching_set_query(query)
-        log.info(f'finding matching set for {self} using query {query}')
-        return self.elasticsearch(query, load=load)
+        matching_set = self.elasticsearch(query, load=load)
+        log.info(
+            f'annot.get_matching_set(): finding matching set for {self} using (resolved) query {query} => {len(matching_set)} annots'
+        )
+        return matching_set
 
     def get_matching_set_default_query(self):
         # n.b. default will not take any locationId or ownership into consideration
@@ -480,3 +483,13 @@ class Annotation(db.Model, HoustonModel):
         from app.modules.annotations.schemas import AnnotationElasticsearchSchema
 
         return AnnotationElasticsearchSchema
+
+    def send_to_identification(self, matching_set_query=None):
+        sighting = self.get_sighting()
+        if not sighting:
+            raise HoustonException(
+                log, f'{self} requires a sighting to run send_to_identification()'
+            )
+        sighting.validate_id_configs()
+        job_count = sighting.send_annotation_for_identification(self, matching_set_query)
+        return job_count

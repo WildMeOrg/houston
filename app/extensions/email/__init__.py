@@ -48,20 +48,17 @@ def status(message, app):
 email_dispatched.connect(status)
 
 
+def get_default_sender():
+    from app.modules.site_settings.models import SiteSetting
+
+    sender_name = SiteSetting.get_string('email_default_sender_name')
+    sender_email = SiteSetting.get_string('email_default_sender_email')
+
+    return (sender_name, sender_email)
+
+
 def _validate_settings():
     from app.modules.site_settings.models import SiteSetting
-    from app.utils import site_email_hostname
-
-    host_name = site_email_hostname()
-    default_sender = ('Do Not Reply', f'do-not-reply@{host_name}')
-    # default_sender = current_app.config.get(
-    #    'MAIL_DEFAULT_SENDER', ('Do Not Reply', f'do-not-reply@{host_name}')
-    # )
-    sender_name = SiteSetting.get_string('email_default_sender_name', default_sender[0])
-    sender_email = SiteSetting.get_string('email_default_sender_email', default_sender[1])
-    current_app.config['MAIL_DEFAULT_SENDER_EMAIL'] = sender_email
-    current_app.config['MAIL_DEFAULT_SENDER_NAME'] = sender_name
-    current_app.config['MAIL_DEFAULT_SENDER'] = (sender_name, sender_email)
 
     email_service = SiteSetting.get_string('email_service')
     valid = False
@@ -109,12 +106,14 @@ def _format_datetime(dt, verbose=False):
 
 
 class Email(Message):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, **kwargs):
         from app.modules.site_settings.models import SiteSetting
         import uuid
 
         if 'recipients' not in kwargs:
             raise AttributeError('Email() must have recipients= argument')
+        if not kwargs.get('sender'):
+            kwargs['sender'] = get_default_sender()
         if current_app.testing:
             log.info(
                 'Email is currently running with TESTING=True, so mail will not actually send.'
@@ -153,7 +152,7 @@ class Email(Message):
         if override_recipients is not None:
             kwargs['recipients'] = override_recipients
 
-        super(Email, self).__init__(*args, **kwargs)
+        super(Email, self).__init__(**kwargs)
         self.extra_headers = kwargs.get('extra_headers', {})
         self.extra_headers['X-Houston-Site-Name'] = to_ascii(
             SiteSetting.get_value('site.name', default='[UNKNOWN]')
@@ -327,9 +326,6 @@ class Email(Message):
             mail.init_app(
                 current_app
             )  # this initializes based on new MAIL_ values from _validate_settings
-            # no matter what, it seems MAIL_DEFAULT_SENDER being reset by us is not be respected/used as sender here!
-            #   so we forcibly override.  this may cause trouble in the future where we *want to* set .sender explicitely.  :(
-            self.sender = current_app.config['MAIL_DEFAULT_SENDER']
             log.debug(
                 f'Attempting to send email from {self.sender} to {self.recipients}: {self.subject} [{self._transaction_id}]'
             )

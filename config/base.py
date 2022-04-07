@@ -207,10 +207,16 @@ class EmailConfig(object):
     MAIL_USE_SSL = bool(os.getenv('MAIL_USE_SSL', False))
     MAIL_USERNAME = os.getenv('MAIL_USERNAME', 'dev@wildme.org')
     MAIL_PASSWORD = os.getenv('MAIL_PASSWORD', 'XXX')
-    MAIL_DEFAULT_SENDER = (
-        os.getenv('MAIL_DEFAULT_SENDER_NAME', 'Codex Mailbot'),
-        os.getenv('MAIL_DEFAULT_SENDER_EMAIL', 'changeme@example.com'),
-    )
+
+    @property
+    def MAIL_DEFAULT_SENDER(self):
+        return (
+            os.getenv('MAIL_DEFAULT_SENDER_NAME', 'Do Not Reply'),
+            os.getenv(
+                'MAIL_DEFAULT_SENDER_EMAIL',
+                f'do-not-reply@{self.SERVER_NAME.replace("www.", "", 1)}',
+            ),
+        )
 
 
 class ReCaptchaConfig(object):

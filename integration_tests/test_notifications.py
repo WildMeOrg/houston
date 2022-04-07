@@ -26,6 +26,7 @@ def test_notification_preferences(session, login, logout, codex_url):
         'collaboration_edit_revoke': {'email': False, 'restAPI': True},
         'collaboration_manager_create': {'email': False, 'restAPI': True},
         'collaboration_manager_revoke': {'email': False, 'restAPI': True},
+        'collaboration_manager_edit_revoke': {'email': False, 'restAPI': True},
         'individual_merge_request': {'restAPI': True, 'email': False},
         'individual_merge_complete': {'restAPI': True, 'email': False},
     }
@@ -63,6 +64,7 @@ def test_notification_preferences(session, login, logout, codex_url):
         'collaboration_edit_revoke': {'email': False, 'restAPI': True},
         'collaboration_manager_create': {'email': False, 'restAPI': True},
         'collaboration_manager_revoke': {'email': False, 'restAPI': True},
+        'collaboration_manager_edit_revoke': {'email': False, 'restAPI': True},
         'individual_merge_request': {'restAPI': False, 'email': False},
         'individual_merge_complete': {'restAPI': True, 'email': False},
     }

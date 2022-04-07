@@ -186,3 +186,28 @@ def test_create_read_delete_relationship(
         relationship_1.start_date.date()
         == (relationship_1.end_date - timedelta(days=1)).date()
     )
+
+    response = individual_utils.read_individual(
+        flask_app_client, researcher_1, individual_1_guid
+    )
+    for relationship in response.json['relationships']:
+        relationship['individual_members'].sort(key=lambda a: a['individual_role_guid'])
+    assert response.json['relationships'] == [
+        {
+            'guid': str(relationship_1.guid),
+            'type_label': 'Family',
+            'type_guid': family_type_guid,
+            'individual_members': [
+                {
+                    'individual_role_label': 'Mother',
+                    'individual_role_guid': mother_role_guid,
+                    'individual_guid': str(individual_1_guid),
+                },
+                {
+                    'individual_role_label': 'Calf',
+                    'individual_role_guid': calf_role_guid,
+                    'individual_guid': str(individual_2_guid),
+                },
+            ],
+        }
+    ]

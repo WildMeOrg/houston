@@ -27,7 +27,9 @@ class RelationshipIndividualMember(db.Model, HoustonModel):
     )
 
     individual_guid = db.Column(db.GUID, db.ForeignKey('individual.guid'))
-    individual = db.relationship('Individual', backref=db.backref('relationships'))
+    individual = db.relationship(
+        'Individual', backref=db.backref('relationship_memberships')
+    )
 
     individual_role_guid = db.Column(db.GUID, nullable=False)
 

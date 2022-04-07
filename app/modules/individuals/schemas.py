@@ -14,6 +14,7 @@ from app.modules.encounters.schemas import (
     DetailedEncounterSchema,
     ElasticsearchEncounterSchema,
 )
+from app.modules.relationships.schemas import DetailedRelationshipSchema
 
 
 class BaseIndividualSchema(ModelSchema):
@@ -52,6 +53,20 @@ class NamedIndividualSchema(BaseIndividualSchema):
         fields = BaseIndividualSchema.Meta.fields + ('names',)
 
 
+class IndividualRelationshipSchema(DetailedRelationshipSchema):
+    """
+    Relationship schema used in the individual API
+    """
+
+    class Meta(DetailedRelationshipSchema.Meta):
+        fields = (
+            'guid',
+            'type_label',
+            'type_guid',
+            'individual_members',
+        )
+
+
 class DetailedIndividualSchema(NamedIndividualSchema):
     """
     Detailed Individual schema exposes all useful fields.
@@ -59,6 +74,7 @@ class DetailedIndividualSchema(NamedIndividualSchema):
 
     featuredAssetGuid = base_fields.Function(Individual.get_featured_asset_guid)
     social_groups = base_fields.Function(Individual.get_social_groups_json)
+    relationships = base_fields.Nested(IndividualRelationshipSchema, many=True)
 
     class Meta(NamedIndividualSchema.Meta):
         fields = NamedIndividualSchema.Meta.fields + (
@@ -66,10 +82,12 @@ class DetailedIndividualSchema(NamedIndividualSchema):
             Individual.updated.key,
             'featuredAssetGuid',
             'social_groups',
+            'relationships',
         )
         dump_only = NamedIndividualSchema.Meta.dump_only + (
             Individual.created.key,
             Individual.updated.key,
+            'relationships',
         )
 
 

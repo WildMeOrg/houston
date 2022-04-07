@@ -160,33 +160,33 @@ def invalidate(context, model=None):
     _invalidate_worker(model=model)
 
 
-# @app_context_task(
-#     help={
-#         'model': 'The name of the model to index',
-#     }
-# )
-# def delete_index(context, model=None):
-#     """
-#     Delete the index for a given model, if specified, otherwise all models
-#     """
-#     from app.extensions import elasticsearch as es
-#
-#     indices = []
-#
-#     if model is None:
-#         indices += es.es_all_indices()
-#     else:
-#         available = _get_available_model_mappings()
-#
-#         model = model.strip()
-#         model_cls = available.get(model, None)
-#
-#         if model_cls is None:
-#             print('Model must be one of %r' % (set(available.keys()),))
-#         else:
-#             indices.append(model_cls._index()
-#
-#     if len(indices) > 0:
-#         for index in indices:
-#             print('Deleting ES index %r' % (index,))
-#             es.es_delete_index(index)
+@app_context_task(
+    help={
+        'model': 'The name of the model to index',
+    }
+)
+def delete_index(context, model=None):
+    """
+    Delete the index for a given model, if specified, otherwise all models
+    """
+    from app.extensions import elasticsearch as es
+
+    indices = []
+
+    if model is None:
+        indices += es.es_all_indices()
+    else:
+        available = _get_available_model_mappings()
+
+        model = model.strip()
+        model_cls = available.get(model, None)
+
+        if model_cls is None:
+            print('Model must be one of %r' % (set(available.keys()),))
+        else:
+            indices.append(model_cls._index())
+
+    if len(indices) > 0:
+        for index in indices:
+            print('Deleting ES index %r' % (index,))
+            es.es_delete_index(index)

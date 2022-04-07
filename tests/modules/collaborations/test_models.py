@@ -43,7 +43,7 @@ def test_collaboration_create_with_members(
     for association in manager_collab.collaboration_user_associations:
 
         if association.user == user_manager_user:
-            assert association.read_approval_state == 'creator'
+            assert association.read_approval_state == 'manager_creator'
         else:
             assert association.read_approval_state == 'approved'
 

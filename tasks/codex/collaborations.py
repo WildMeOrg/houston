@@ -35,7 +35,7 @@ def list_user_collabs(context, email):
 
     for collab_assoc in user.get_collaboration_associations():
         users = collab_assoc.collaboration.get_users()
-        if collab_assoc.read_approval_state == CollaborationUserState.CREATOR:
+        if collab_assoc.read_approval_state == CollaborationUserState.MANAGER_CREATOR:
             print(f'Created Collaboration: {collab_assoc.collaboration} Users: {users}')
         else:
             print(f'Collaboration : {collab_assoc.collaboration} Users: {users} ')

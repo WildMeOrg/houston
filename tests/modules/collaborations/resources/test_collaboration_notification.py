@@ -227,10 +227,10 @@ def test_manager_creator_revoke(
 
     assert len(researcher_1_notifs) == 2
     assert (
-        researcher_1_notifs[0]['message_type'] == NotificationType.collab_manager_create
+        researcher_1_notifs[1]['message_type'] == NotificationType.collab_manager_create
     )
     assert (
-        researcher_1_notifs[1]['message_type'] == NotificationType.collab_manager_revoke
+        researcher_1_notifs[0]['message_type'] == NotificationType.collab_manager_revoke
     )
 
 
@@ -256,7 +256,7 @@ def test_manager_revoke(
 
     # should have collab_approved *and* collab_revoked
     assert len(researcher_1_notifs) == 2
-    assert researcher_1_notifs[0]['message_type'] == NotificationType.collab_approved
+    assert researcher_1_notifs[1]['message_type'] == NotificationType.collab_approved
     assert (
-        researcher_1_notifs[1]['message_type'] == NotificationType.collab_manager_revoke
+        researcher_1_notifs[0]['message_type'] == NotificationType.collab_manager_revoke
     )

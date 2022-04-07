@@ -420,7 +420,7 @@ class ObjectActionRule(DenyAbortMixin, Rule):
         )
 
         for collab_assoc in user.get_collaboration_associations():
-            if collab_assoc.read_approval_state != CollaborationUserState.CREATOR:
+            if collab_assoc.read_approval_state != CollaborationUserState.MANAGER_CREATOR:
                 collab_users = collab_assoc.collaboration.get_users()
                 for other_user in collab_users:
                     if other_user not in tried_users:

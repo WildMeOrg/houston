@@ -381,8 +381,7 @@ class Collaboration(db.Model, HoustonModel):
             association.read_approval_state, state
         ):
             association.read_approval_state = state
-            # If a user revokes view and previously allowed edit, they automatically
-            # revoke edit too
+            # If a user revokes view and previously allowed edit, revoke edit too
             if (
                 state == CollaborationUserState.REVOKED
                 and association.edit_approval_state == CollaborationUserState.APPROVED

@@ -22,14 +22,16 @@ class CollaborationUserState:
         'pending',
         'not_initiated',
         'revoked',
-        'creator',
+        'manager_creator',
+        'manager_revoked',
     ]
     DENIED = ALLOWED_STATES[0]
     APPROVED = ALLOWED_STATES[1]
     PENDING = ALLOWED_STATES[2]
     NOT_INITIATED = ALLOWED_STATES[3]
     REVOKED = ALLOWED_STATES[4]
-    CREATOR = ALLOWED_STATES[5]
+    MANAGER_CREATOR = ALLOWED_STATES[5]
+    MANAGER_REVOKED = ALLOWED_STATES[6]
 
 
 class CollaborationUserAssociations(db.Model, HoustonModel):
@@ -157,8 +159,8 @@ class Collaboration(db.Model, HoustonModel):
             )
             from app.modules.notifications.models import NotificationType
 
-            collab_creator.read_approval_state = CollaborationUserState.CREATOR
-            collab_creator.edit_approval_state = CollaborationUserState.CREATOR
+            collab_creator.read_approval_state = CollaborationUserState.MANAGER_CREATOR
+            collab_creator.edit_approval_state = CollaborationUserState.MANAGER_CREATOR
             if notify_users:
                 for user in members:
                     user_assoc = self._get_association_for_user(user.guid)
@@ -182,32 +184,50 @@ class Collaboration(db.Model, HoustonModel):
                 association.user_guid
                 for association in self.collaboration_user_associations
                 if (association.user_guid != user_guid)
-                & (association.read_approval_state != CollaborationUserState.CREATOR)
+                & (
+                    association.read_approval_state
+                    != CollaborationUserState.MANAGER_CREATOR
+                )
             ]
             assert len(other_user_guids) == 1
 
             assoc = self._get_association_for_user(other_user_guids[0])
         return assoc
 
+    # used by manager
+    def _get_other_associations(self, association):
+        other_associations = [
+            other_assoc
+            for other_assoc in self.collaboration_user_associations
+            if other_assoc != association
+        ]
+        return other_associations
+
     # note: returns manager *of this collaboration* (if applicable).  this user
     #   may no longer be an active manager (role).
     def get_manager(self):
         for association in self.collaboration_user_associations:
-            if association.read_approval_state == CollaborationUserState.CREATOR:
+            if association.read_approval_state == CollaborationUserState.MANAGER_CREATOR:
                 return association.user
         return None
 
     def get_users(self):
         users = []
-        for association in self.collaboration_user_associations:
-            if association.read_approval_state != CollaborationUserState.CREATOR:
-                users.append(association.user)
+        manager_states = {
+            CollaborationUserState.MANAGER_CREATOR,
+            CollaborationUserState.MANAGER_REVOKED,
+        }
+        users = [
+            association.user
+            for association in self.collaboration_user_associations
+            if association.read_approval_state not in manager_states
+        ]
         return users
 
     def user_guids(self):
         user_guids = []
         for association in self.collaboration_user_associations:
-            if association.read_approval_state != CollaborationUserState.CREATOR:
+            if association.read_approval_state != CollaborationUserState.MANAGER_CREATOR:
                 user_guids.append(association.user_guid)
         return user_guids
 
@@ -267,6 +287,7 @@ class Collaboration(db.Model, HoustonModel):
             NotificationType.collab_edit_revoke,
             NotificationType.collab_revoke,
             NotificationType.collab_denied,
+            NotificationType.collab_manager_revoke,
         }
 
         # set necessary notification.is_resolved fields
@@ -284,7 +305,7 @@ class Collaboration(db.Model, HoustonModel):
 
         user_data = {}
         for association in self.collaboration_user_associations:
-            if association.read_approval_state == CollaborationUserState.CREATOR:
+            if association.read_approval_state == CollaborationUserState.MANAGER_CREATOR:
                 continue
             assoc_data = BaseUserSchema().dump(association.user).data
             assoc_data['viewState'] = association.read_approval_state
@@ -298,7 +319,7 @@ class Collaboration(db.Model, HoustonModel):
         # Only certain transitions are permitted
         if old_state == CollaborationUserState.NOT_INITIATED:
             ret_val = new_state in [
-                CollaborationUserState.CREATOR,
+                CollaborationUserState.MANAGER_CREATOR,
                 CollaborationUserState.APPROVED,
                 CollaborationUserState.PENDING,
             ]
@@ -307,6 +328,8 @@ class Collaboration(db.Model, HoustonModel):
                 CollaborationUserState.APPROVED,
                 CollaborationUserState.DENIED,
             ]
+        elif old_state == CollaborationUserState.MANAGER_CREATOR:
+            ret_val = new_state == CollaborationUserState.MANAGER_REVOKED
         elif old_state == CollaborationUserState.APPROVED:
             ret_val = new_state == CollaborationUserState.REVOKED
         elif old_state == CollaborationUserState.DENIED:
@@ -329,7 +352,31 @@ class Collaboration(db.Model, HoustonModel):
         if user_guid is None:
             raise ValueError('user_guid is required')
         assert isinstance(user_guid, uuid.UUID)
+
+        is_manager = self._user_is_manager(user_guid)
+        # this check is required to respect the "api freeze"; frontend can still send "revoke" for a manager
+        # however the manager_revoked class is needed to allow non-creator managers to revoke a collab
+        if is_manager and state == CollaborationUserState.REVOKED:
+            state = CollaborationUserState.MANAGER_REVOKED
+
         association = self._get_association_for_user(user_guid)
+        # this means a manager who did not create the collab wants to revoke it.
+        # we must make a new association to record their status as revoker
+        if is_manager and association is None:
+            from app.modules.users.models import User
+
+            user = User.query.get(user_guid)
+            association = CollaborationUserAssociations(
+                collaboration=self,
+                user=user,
+                read_approval_state=CollaborationUserState.MANAGER_REVOKED,
+            )
+            with db.session.begin(subtransactions=True):
+                db.session.add(association)
+
+        # print(f"EMBED for set_read_approval_state_for_user({state})")
+        # from IPython import embed
+        # embed()
         if self._is_approval_state_transition_valid(
             association.read_approval_state, state
         ):
@@ -339,8 +386,11 @@ class Collaboration(db.Model, HoustonModel):
             if (
                 state == CollaborationUserState.REVOKED
                 and association.edit_approval_state == CollaborationUserState.APPROVED
+            ) or (
+                state == CollaborationUserState.MANAGER_REVOKED
+                and association.edit_approval_state
+                == CollaborationUserState.MANAGER_CREATOR
             ):
-
                 association.edit_approval_state = state
 
             from app.modules.notifications.models import NotificationType
@@ -351,6 +401,14 @@ class Collaboration(db.Model, HoustonModel):
                     self._get_association_for_other_user(user_guid),
                     NotificationType.collab_revoke,
                 )
+            elif state == CollaborationUserState.MANAGER_REVOKED:
+                other_assocs = self._get_other_associations(association)
+                for other_association in other_assocs:
+                    self._notify_user(
+                        association,
+                        other_association,
+                        NotificationType.collab_manager_revoke,
+                    )
             elif state == CollaborationUserState.APPROVED:
                 self._notify_user(
                     association,
@@ -366,7 +424,19 @@ class Collaboration(db.Model, HoustonModel):
             with db.session.begin(subtransactions=True):
                 db.session.merge(association)
             success = True
+        # in this case a user_manager with no prior association to this collab wants to revoke it
+        elif is_manager:
+            # TODO
+            pass
+
         return success
+
+    def _user_is_manager(self, user_guid):
+        from app.modules.users.models import User
+
+        user = User.query.get(user_guid)
+        # if they're one of the get_users users (ie one of the two parties in the collab), they are acting as a user here
+        return user.is_user_manager and user not in self.get_users()
 
     def user_has_read_access(self, user_guid):
         ret_val = False
@@ -473,7 +543,7 @@ class Collaboration(db.Model, HoustonModel):
         )
 
     def user_deleted(self, user_association):
-        if user_association.read_approval_state == CollaborationUserState.CREATOR:
+        if user_association.read_approval_state == CollaborationUserState.MANAGER_CREATOR:
             # Collaboration creator removal is an odd case, we have to have an initiator so chose an arbitrary member
             new_creator = (
                 self.collaboration_user_associations[0]

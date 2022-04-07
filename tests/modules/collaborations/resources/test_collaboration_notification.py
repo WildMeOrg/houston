@@ -204,3 +204,59 @@ def test_notification_resolution(
         flask_app_client, researcher_2, notif_guid
     )
     assert collab_request_notif.json['is_resolved']
+
+
+# below test differs from the above in that the manager created the collab
+@pytest.mark.skipif(
+    module_unavailable('collaborations'), reason='Collaborations module disabled'
+)
+def test_manager_creator_revoke(
+    db, flask_app_client, researcher_1, researcher_2, user_manager_user, request
+):
+    from app.modules.collaborations.models import Collaboration
+    from app.modules.notifications.models import NotificationType
+
+    members = [researcher_1, researcher_2]
+    manager_collab = Collaboration(members, user_manager_user)
+    request.addfinalizer(manager_collab.delete)
+    manager_collab.set_read_approval_state_for_user(user_manager_user.guid, 'revoked')
+
+    researcher_1_notifs = notif_utils.read_all_notifications(
+        flask_app_client, researcher_1
+    ).json
+
+    assert len(researcher_1_notifs) == 2
+    assert (
+        researcher_1_notifs[0]['message_type'] == NotificationType.collab_manager_create
+    )
+    assert (
+        researcher_1_notifs[1]['message_type'] == NotificationType.collab_manager_revoke
+    )
+
+
+# unlike test_manager_creator_revoke, here the manager did not create the collab (different code path)
+@pytest.mark.skipif(
+    module_unavailable('collaborations'), reason='Collaborations module disabled'
+)
+def test_manager_revoke(
+    db, flask_app_client, researcher_1, researcher_2, user_manager_user, request
+):
+    from app.modules.collaborations.models import Collaboration
+    from app.modules.notifications.models import NotificationType
+
+    members = [researcher_1, researcher_2]
+    basic_collab = Collaboration(members, researcher_1)
+    request.addfinalizer(basic_collab.delete)
+    basic_collab.set_read_approval_state_for_user(researcher_2.guid, 'approved')
+    basic_collab.set_read_approval_state_for_user(user_manager_user.guid, 'revoked')
+
+    researcher_1_notifs = notif_utils.read_all_notifications(
+        flask_app_client, researcher_1
+    ).json
+
+    # should have collab_approved *and* collab_revoked
+    assert len(researcher_1_notifs) == 2
+    assert researcher_1_notifs[0]['message_type'] == NotificationType.collab_approved
+    assert (
+        researcher_1_notifs[1]['message_type'] == NotificationType.collab_manager_revoke
+    )

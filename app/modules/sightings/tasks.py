@@ -20,7 +20,7 @@ def send_identification(
     algorithm_id,
     annotation_uuid,
     annotation_sage_guid,
-    matching_set_query_override=None,
+    matching_set_query=None,
 ):
     from .models import Sighting
 
@@ -32,7 +32,7 @@ def send_identification(
             algorithm_id,
             annotation_uuid,
             annotation_sage_guid,
-            matching_set_query_override,
+            matching_set_query,
         )
     else:
         log.warning('Failed to find the sighting to perform Identification on')

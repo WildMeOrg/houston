@@ -486,24 +486,10 @@ class Annotation(db.Model, HoustonModel):
 
     def send_to_identification(self, matching_set_query=None):
         sighting = self.get_sighting()
-        sighting.validate_id_configs()
         if not sighting:
             raise HoustonException(
                 log, f'{self} requires a sighting to run send_to_identification()'
             )
-        # now we attempt to send it
-        job_count = 0
-        for config_id in range(len(sighting.id_configs)):
-            for algorithm_id in range(len(sighting.id_configs[config_id]['algorithms'])):
-                sent = sighting.send_annot_for_detection(
-                    self,
-                    config_id,
-                    algorithm_id,
-                    matching_set_query_override=matching_set_query,
-                )
-                log.debug(
-                    f'annot.send_to_identification() success={sent} queueing up ID job for config_id={config_id} {self}: algo {algorithm_id}'
-                )
-                if sent:
-                    job_count += 1
+        sighting.validate_id_configs()
+        job_count = sighting.send_annot_for_identification(self, matching_set_query)
         return job_count

@@ -366,7 +366,7 @@ class AnnotationIdentifyByID(Resource):
         Accepts an optional matching-set query via body.  Uses default matching-set if none provided.
         """
         request_in = json.loads(request.data)
-        job_count = annotation.send_to_annotation(request_in)
+        job_count = annotation.send_to_identification(request_in)
         return {'job_count': job_count}
 
 

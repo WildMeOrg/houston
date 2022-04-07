@@ -34,6 +34,7 @@ class NotificationType(str, enum.Enum):
     collab_manager_create = 'collaboration_manager_create'
     # A user manager has revoked a collaboration for you with another user
     collab_manager_revoke = 'collaboration_manager_revoke'
+    collab_manager_edit_revoke = 'collaboration_manager_edit_revoke'
     individual_merge_request = 'individual_merge_request'
     individual_merge_complete = 'individual_merge_complete'
 
@@ -82,6 +83,10 @@ NOTIFICATION_DEFAULTS = {
         NotificationChannel.email: False,
     },
     NotificationType.collab_manager_revoke: {
+        NotificationChannel.rest: True,
+        NotificationChannel.email: False,
+    },
+    NotificationType.collab_manager_edit_revoke: {
         NotificationChannel.rest: True,
         NotificationChannel.email: False,
     },
@@ -155,6 +160,18 @@ NOTIFICATION_CONFIG = {
     NotificationType.collab_manager_revoke: {
         'email_template_name': 'collaboration_manger_revoke',
         'email_digest_content_template': 'collaboration_manager_revoke_digest',
+        'mandatory_fields': {
+            'collaboration_guid',
+            'user1_name',
+            'user2_name',
+            'manager_name',
+        },
+        'allow_multiple': True,
+        'resolve_on_read': True,
+    },
+    NotificationType.collab_manager_edit_revoke: {
+        'email_template_name': 'collaboration_manger_edit_revoke',
+        'email_digest_content_template': 'collaboration_manager_edit_revoke_digest',
         'mandatory_fields': {
             'collaboration_guid',
             'user1_name',

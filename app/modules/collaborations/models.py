@@ -221,6 +221,7 @@ class Collaboration(db.Model, HoustonModel):
             association.user
             for association in self.collaboration_user_associations
             if association.read_approval_state not in manager_states
+            and association.edit_approval_state not in manager_states
         ]
         return users
 
@@ -478,31 +479,62 @@ class Collaboration(db.Model, HoustonModel):
             raise ValueError(
                 f'State "{state}" not in allowed states: {", ".join(CollaborationUserState.ALLOWED_STATES)}'
             )
-        if user_guid is not None:
-            assert isinstance(user_guid, uuid.UUID)
-            for association in self.collaboration_user_associations:
-                if association.user_guid == user_guid:
-                    if self._is_approval_state_transition_valid(
-                        association.edit_approval_state, state
-                    ):
-                        association.edit_approval_state = state
-                        with db.session.begin(subtransactions=True):
-                            db.session.merge(association)
-                        from app.modules.notifications.models import NotificationType
 
-                        if state == CollaborationUserState.REVOKED:
-                            self._notify_user(
-                                association,
-                                self._get_association_for_other_user(user_guid),
-                                NotificationType.collab_edit_revoke,
-                            )
-                        elif state == CollaborationUserState.APPROVED:
-                            self._notify_user(
-                                association,
-                                self._get_association_for_other_user(user_guid),
-                                NotificationType.collab_edit_approved,
-                            )
-                        success = True
+        if user_guid is None or not isinstance(user_guid, uuid.UUID):
+            raise ValueError(
+                'user_guid is required, and it must be an instance of uuid.UUID'
+            )
+
+        is_manager = self._user_is_manager(user_guid)
+        # this check is required to respect the "api freeze"; frontend can still send "revoke" for a manager
+        # however the manager_revoked class is needed to allow non-creator managers to revoke a collab
+        if is_manager and state == CollaborationUserState.REVOKED:
+            state = CollaborationUserState.MANAGER_REVOKED
+
+        association = self._get_association_for_user(user_guid)
+        # this means a manager who did not create the collab wants to revoke it.
+        # we must make a new association to record their status as revoker
+        if is_manager and association is None:
+            from app.modules.users.models import User
+
+            user = User.query.get(user_guid)
+            association = CollaborationUserAssociations(
+                collaboration=self,
+                user=user,
+                edit_approval_state=CollaborationUserState.MANAGER_REVOKED,
+            )
+            with db.session.begin(subtransactions=True):
+                db.session.add(association)
+
+        if self._is_approval_state_transition_valid(
+            association.edit_approval_state, state
+        ):
+            association.edit_approval_state = state
+            with db.session.begin(subtransactions=True):
+                db.session.merge(association)
+            from app.modules.notifications.models import NotificationType
+
+            if state == CollaborationUserState.REVOKED:
+                self._notify_user(
+                    association,
+                    self._get_association_for_other_user(user_guid),
+                    NotificationType.collab_edit_revoke,
+                )
+            elif state == CollaborationUserState.MANAGER_REVOKED:
+                other_assocs = self._get_other_associations(association)
+                for other_association in other_assocs:
+                    self._notify_user(
+                        association,
+                        other_association,
+                        NotificationType.collab_manager_edit_revoke,
+                    )
+            elif state == CollaborationUserState.APPROVED:
+                self._notify_user(
+                    association,
+                    self._get_association_for_other_user(user_guid),
+                    NotificationType.collab_edit_approved,
+                )
+            success = True
         return success
 
     def initiate_edit_with_other_user(self):

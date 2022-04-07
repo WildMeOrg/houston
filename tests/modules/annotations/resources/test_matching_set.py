@@ -39,6 +39,8 @@ def test_annotation_matching_set(
     if es.is_disabled():
         pytest.skip('Elasticsearch disabled (via command-line)')
 
+    # make sure we dont have stray annots around
+    Annotation.query.delete()
     clone = sub_utils.clone_asset_group(
         flask_app_client,
         researcher_1,

@@ -1186,7 +1186,7 @@ class Sighting(db.Model, FeatherModel):
         if not annotation.content_guid or not annotation.encounter_guid:
             log.warning(f'Skipping {annotation} due to lack of content_guid or encounter')
             return False
-        # force this to be up-to-date in index, just to be safe (only do once, hence config_id==0)
+        # force this to be up-to-date in index
         annotation.index()
 
         matching_set_query = matching_set_query or self.id_configs[config_id].get(

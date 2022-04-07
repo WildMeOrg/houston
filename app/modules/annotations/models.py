@@ -491,5 +491,5 @@ class Annotation(db.Model, HoustonModel):
                 log, f'{self} requires a sighting to run send_to_identification()'
             )
         sighting.validate_id_configs()
-        job_count = sighting.send_annot_for_identification(self, matching_set_query)
+        job_count = sighting.send_annotation_for_identification(self, matching_set_query)
         return job_count

@@ -108,7 +108,7 @@ def create_sighting(
         group_data['uploadType'] = 'bulk'
 
     # Use shared helper to create the asset group and extract the uuids
-    asset_group_uuids = _create_asset_group_extract_uuids(
+    asset_group_uuids = asset_group_utils.create_asset_group_extract_uuids(
         flask_app_client,
         user,
         group_data,
@@ -134,58 +134,9 @@ def create_sighting(
 
 # Helper that does what the above method does but for multiple files and multiple encounters in the sighting
 def create_large_sighting(flask_app_client, user, request, test_root):
-    import tests.extensions.tus.utils as tus_utils
-    from tests import utils as test_utils
-
-    transaction_id, filenames = asset_group_utils.create_bulk_tus_transaction(test_root)
-    uuids = {'transaction': transaction_id}
-    request.addfinalizer(lambda: tus_utils.cleanup_tus_dir(transaction_id))
-    import random
-
-    locationId = random.randrange(10000)
-    sighting_data = {
-        'time': '2000-01-01T01:01:01+00:00',
-        'timeSpecificity': 'time',
-        'locationId': f'Location {locationId}',
-        'encounters': [
-            {
-                'decimalLatitude': test_utils.random_decimal_latitude(),
-                'decimalLongitude': test_utils.random_decimal_longitude(),
-                'verbatimLocality': 'Tiddleywink',
-                'locationId': f'Location {locationId}',
-            },
-            {
-                'decimalLatitude': test_utils.random_decimal_latitude(),
-                'decimalLongitude': test_utils.random_decimal_longitude(),
-                'verbatimLocality': 'Tiddleywink',
-                'locationId': f'Location {locationId}',
-            },
-        ],
-        'assetReferences': [
-            filenames[0],
-            filenames[1],
-            filenames[2],
-            filenames[3],
-        ],
-    }
-
-    group_data = {
-        'description': 'This is a test asset_group, please ignore',
-        'uploadType': 'bulk',
-        'speciesDetectionModel': [
-            'None',
-        ],
-        'transactionId': transaction_id,
-        'sightings': [
-            sighting_data,
-        ],
-    }
-
-    # Use shared helper to create the asset group and extract the uuids
-    asset_group_uuids = _create_asset_group_extract_uuids(
-        flask_app_client, user, group_data, request
+    uuids = asset_group_utils.create_large_asset_group_uuids(
+        flask_app_client, user, request, test_root
     )
-    uuids.update(asset_group_uuids)
 
     # Shared helper to extract the sighting data
     if 'asset_group_sighting' in uuids.keys():
@@ -193,36 +144,6 @@ def create_large_sighting(flask_app_client, user, request, test_root):
             flask_app_client, user, uuids['asset_group_sighting']
         )
         uuids.update(sighting_uuids)
-
-    return uuids
-
-
-# Local helper for the two create functions above that creates the asset group and extracts the uuids
-def _create_asset_group_extract_uuids(
-    flask_app_client,
-    user,
-    group_data,
-    request,
-    expected_status_code=200,
-    expected_error=None,
-):
-    create_resp = asset_group_utils.create_asset_group(
-        flask_app_client, user, group_data, expected_status_code, expected_error
-    )
-    uuids = {}
-    if expected_status_code == 200:
-        asset_group_uuid = create_resp.json['guid']
-        request.addfinalizer(
-            lambda: asset_group_utils.delete_asset_group(
-                flask_app_client, user, asset_group_uuid
-            )
-        )
-        assert len(create_resp.json['asset_group_sightings']) == 1
-        uuids['asset_group'] = asset_group_uuid
-        uuids['asset_group_sighting'] = create_resp.json['asset_group_sightings'][0][
-            'guid'
-        ]
-        uuids['assets'] = [asset['guid'] for asset in create_resp.json['assets']]
 
     return uuids
 

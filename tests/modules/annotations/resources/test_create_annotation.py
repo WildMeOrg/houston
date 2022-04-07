@@ -20,19 +20,17 @@ def test_get_annotation_not_found(flask_app_client):
 @pytest.mark.skipif(
     module_unavailable('asset_groups'), reason='AssetGroups module disabled'
 )
-def test_create_failures(flask_app_client, researcher_1, test_clone_asset_group_data, db):
-    # pylint: disable=invalid-name
-    clone = ag_utils.clone_asset_group(
-        flask_app_client,
-        researcher_1,
-        test_clone_asset_group_data['asset_group_uuid'],
+def test_create_failures(flask_app_client, researcher_1, db, request, test_root):
+    uuids = ag_utils.create_simple_asset_group_uuids(
+        flask_app_client, researcher_1, request, test_root
     )
+    asset_guid = uuids['assets'][0]
 
     # invalid ia_class
     response = annot_utils.create_annotation_simple(
         flask_app_client,
         researcher_1,
-        test_clone_asset_group_data['asset_uuids'][0],
+        asset_guid,
         ia_class=None,
         expected_status_code=422,
     )
@@ -42,33 +40,23 @@ def test_create_failures(flask_app_client, researcher_1, test_clone_asset_group_
     response = annot_utils.create_annotation_simple(
         flask_app_client,
         researcher_1,
-        test_clone_asset_group_data['asset_uuids'][0],
+        asset_guid,
         bounds={'rect': [0, 1, 2, 3, 4, 5]},
         expected_status_code=422,
     )
     assert response.json['message'] == 'bounds value is invalid'
 
-    clone.cleanup()
-
 
 @pytest.mark.skipif(
     module_unavailable('asset_groups'), reason='AssetGroups module disabled'
 )
-def test_create_and_delete_annotation(
-    flask_app_client, researcher_1, test_clone_asset_group_data, request, test_root
-):
+def test_create_and_delete_annotation(flask_app_client, researcher_1, request, test_root):
     # pylint: disable=invalid-name
     from app.modules.annotations.models import Annotation
 
-    clone = ag_utils.clone_asset_group(
-        flask_app_client,
-        researcher_1,
-        test_clone_asset_group_data['asset_group_uuid'],
-    )
-    asset_guid = test_clone_asset_group_data['asset_uuids'][0]
-
     uuids = enc_utils.create_encounter(flask_app_client, researcher_1, request, test_root)
     enc_guid = uuids['encounters'][0]
+    asset_guid = uuids['assets'][0]
     response = annot_utils.create_annotation(
         flask_app_client,
         researcher_1,
@@ -78,9 +66,7 @@ def test_create_and_delete_annotation(
 
     annotation_guid = response.json['guid']
     read_annotation = Annotation.query.get(response.json['guid'])
-    assert read_annotation.asset_guid == uuid.UUID(
-        test_clone_asset_group_data['asset_uuids'][0]
-    )
+    assert read_annotation.asset_guid == uuid.UUID(asset_guid)
 
     # Try reading it back
     annot_utils.read_annotation(flask_app_client, researcher_1, annotation_guid)
@@ -103,8 +89,6 @@ def test_create_and_delete_annotation(
     read_annotation = Annotation.query.get(annotation_guid)
     assert read_annotation is None
 
-    clone.cleanup()
-
 
 @pytest.mark.skipif(
     module_unavailable('asset_groups'), reason='AssetGroups module disabled'
@@ -115,24 +99,18 @@ def test_annotation_permission(
     staff_user,
     researcher_1,
     researcher_2,
-    test_clone_asset_group_data,
     request,
     test_root,
 ):
     # Before we create any Annotations, find out how many are there already
     previous_annots = annot_utils.read_all_annotations(flask_app_client, staff_user)
-    clone = ag_utils.clone_asset_group(
-        flask_app_client,
-        researcher_1,
-        test_clone_asset_group_data['asset_group_uuid'],
-    )
 
     uuids = enc_utils.create_encounter(flask_app_client, researcher_1, request, test_root)
     enc_guid = uuids['encounters'][0]
     response = annot_utils.create_annotation(
         flask_app_client,
         researcher_1,
-        test_clone_asset_group_data['asset_uuids'][0],
+        uuids['assets'][0],
         enc_guid,
     )
 
@@ -166,15 +144,12 @@ def test_annotation_permission(
     annot_utils.read_annotation(flask_app_client, researcher_2, annotation_guid, 403)
     annot_utils.read_all_annotations(flask_app_client, researcher_2)
 
-    # delete it
-    clone.cleanup()
-
 
 @pytest.mark.skipif(
     module_unavailable('asset_groups'), reason='AssetGroups module disabled'
 )
 def test_create_annotation_no_ags(
-    flask_app_client, researcher_1, test_clone_asset_group_data, db
+    flask_app_client, researcher_1, test_clone_asset_group_data, db, request
 ):
     # pylint: disable=invalid-name
 
@@ -183,6 +158,7 @@ def test_create_annotation_no_ags(
         researcher_1,
         test_clone_asset_group_data['asset_group_uuid'],
     )
+    request.addfinalizer(lambda: clone.cleanup())
 
     response = annot_utils.create_annotation_simple(
         flask_app_client,
@@ -194,9 +170,6 @@ def test_create_annotation_no_ags(
         response.json['message']
         == 'cannot create encounter-less annotation on asset that does not have an asset group sighting'
     )
-
-    # delete it
-    clone.cleanup()
 
 
 @pytest.mark.skipif(

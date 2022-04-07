@@ -13,7 +13,6 @@ from config import get_preliminary_config
 
 import tests.extensions.tus.utils as tus_utils
 from tests import utils as test_utils
-from tests import TEST_ASSET_GROUP_UUID, TEST_EMPTY_ASSET_GROUP_UUID
 
 
 PATH = '/api/v1/asset_groups/'
@@ -58,6 +57,79 @@ def create_simple_asset_group(flask_app_client, user, request, test_root):
     assert len(asset_guids) == 1
     request.addfinalizer(lambda: delete_asset_group(flask_app_client, user, group_guid))
     return group_guid, ags_guids[0], asset_guids[0]
+
+
+# as for above but returns uuids as a dict
+def create_simple_asset_group_uuids(flask_app_client, user, request, test_root):
+    transaction_id, test_filename = tus_utils.prep_tus_dir(test_root)
+    request.addfinalizer(lambda: tus_utils.cleanup_tus_dir(transaction_id))
+
+    data = AssetGroupCreationData(transaction_id, test_filename)
+    # Use shared helper to create the asset group and extract the uuids
+    uuids = create_asset_group_extract_uuids(flask_app_client, user, data.get(), request)
+
+    # Add these two, OK yes they're not uuids but they're useful
+    uuids['transaction'] = transaction_id
+    uuids['filename'] = test_filename
+    return uuids
+
+
+# Helper that does what the above method does but for multiple files and multiple encounters in the sighting
+def create_large_asset_group_uuids(flask_app_client, user, request, test_root):
+    import tests.extensions.tus.utils as tus_utils
+    from tests import utils as test_utils
+
+    transaction_id, filenames = create_bulk_tus_transaction(test_root)
+    uuids = {'transaction': transaction_id}
+    request.addfinalizer(lambda: tus_utils.cleanup_tus_dir(transaction_id))
+    import random
+
+    locationId = random.randrange(10000)
+    sighting_data = {
+        'time': '2000-01-01T01:01:01+00:00',
+        'timeSpecificity': 'time',
+        'locationId': f'Location {locationId}',
+        'encounters': [
+            {
+                'decimalLatitude': test_utils.random_decimal_latitude(),
+                'decimalLongitude': test_utils.random_decimal_longitude(),
+                'verbatimLocality': 'Tiddleywink',
+                'locationId': f'Location {locationId}',
+            },
+            {
+                'decimalLatitude': test_utils.random_decimal_latitude(),
+                'decimalLongitude': test_utils.random_decimal_longitude(),
+                'verbatimLocality': 'Tiddleywink',
+                'locationId': f'Location {locationId}',
+            },
+        ],
+        'assetReferences': [
+            filenames[0],
+            filenames[1],
+            filenames[2],
+            filenames[3],
+        ],
+    }
+
+    group_data = {
+        'description': 'This is a test asset_group, please ignore',
+        'uploadType': 'bulk',
+        'speciesDetectionModel': [
+            'None',
+        ],
+        'transactionId': transaction_id,
+        'sightings': [
+            sighting_data,
+        ],
+    }
+
+    # Use shared helper to create the asset group and extract the uuids
+    asset_group_uuids = create_asset_group_extract_uuids(
+        flask_app_client, user, group_data, request
+    )
+    uuids.update(asset_group_uuids)
+
+    return uuids
 
 
 # Helper as used across multiple tests
@@ -368,6 +440,35 @@ def extract_ags_data(group_data, ags_num):
     return ags_data
 
 
+# Helper for create functions that creates the asset group and extracts the uuids
+def create_asset_group_extract_uuids(
+    flask_app_client,
+    user,
+    group_data,
+    request,
+    expected_status_code=200,
+    expected_error=None,
+):
+    create_resp = create_asset_group(
+        flask_app_client, user, group_data, expected_status_code, expected_error
+    )
+    uuids = {}
+    if expected_status_code == 200:
+        asset_group_uuid = create_resp.json['guid']
+        request.addfinalizer(
+            lambda: delete_asset_group(flask_app_client, user, asset_group_uuid)
+        )
+
+        assert len(create_resp.json['asset_group_sightings']) == 1
+        uuids['asset_group'] = asset_group_uuid
+        uuids['asset_group_sighting'] = create_resp.json['asset_group_sightings'][0][
+            'guid'
+        ]
+        uuids['assets'] = [asset['guid'] for asset in create_resp.json['assets']]
+
+    return uuids
+
+
 ###################################################################################################################
 # Complexity that is only required for the specific testing of edge cases in the Asset group code
 ###################################################################################################################
@@ -464,6 +565,7 @@ def create_asset_group(
         test_utils.validate_dict_response(
             response, 200, {'guid', 'description', 'major_type'}
         )
+        assert response.json['description'] == data['description']
     elif 400 <= expected_status_code < 500:
         test_utils.validate_dict_response(
             response, expected_status_code, {'status', 'message'}
@@ -806,12 +908,11 @@ class CloneAssetGroup(object):
             shutil.rmtree(asset_group_path)
 
     def cleanup(self):
-        # Restore original state if not one of the asset group fixtures
-        if str(self.guid) not in (TEST_ASSET_GROUP_UUID, TEST_EMPTY_ASSET_GROUP_UUID):
-            if self.asset_group is not None:
-                self.asset_group.delete()
-                self.asset_group = None
-            self.remove_files()
+        # Restore original state
+        if self.asset_group is not None:
+            self.asset_group.delete()
+            self.asset_group = None
+        self.remove_files()
 
 
 # Clone the asset_group

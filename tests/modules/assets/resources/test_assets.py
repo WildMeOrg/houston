@@ -1,11 +1,9 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=missing-docstring
 import hashlib
-import json
 
 import tests.modules.asset_groups.resources.utils as asset_group_utils
 import tests.modules.assets.resources.utils as asset_utils
-import tests.utils as test_utils
 import pytest
 
 from tests.utils import module_unavailable
@@ -38,24 +36,20 @@ def test_get_asset_not_found(flask_app_client, researcher_1):
 def test_find_asset(
     flask_app_client,
     researcher_1,
-    test_clone_asset_group_data,
+    request,
+    test_root,
 ):
-    # Clone the known asset_group so that the asset data is in the database
-    clone = asset_group_utils.clone_asset_group(
-        flask_app_client,
-        researcher_1,
-        test_clone_asset_group_data['asset_group_uuid'],
+    uuids = asset_group_utils.create_simple_asset_group_uuids(
+        flask_app_client, researcher_1, request, test_root
     )
+    asset_guid = uuids['assets'][0]
 
     src_response = None
-    try:
-        asset_guid = test_clone_asset_group_data['asset_uuids'][3]
-        asset_response = asset_utils.read_asset(
-            flask_app_client, researcher_1, asset_guid
-        )
-        assert asset_response.json['filename'] == 'coelacanth.png'
-        assert asset_response.json['src'] == f'/api/v1/assets/src/{asset_guid}'
 
+    asset_response = asset_utils.read_asset(flask_app_client, researcher_1, asset_guid)
+    assert asset_response.json['filename'] == 'zebra.jpg'
+    assert asset_response.json['src'] == f'/api/v1/assets/src/{asset_guid}'
+    try:
         src_response = asset_utils.read_src_asset(
             flask_app_client, researcher_1, asset_guid
         )
@@ -65,7 +59,6 @@ def test_find_asset(
         # Force the server to release the file handler
         if src_response is not None:
             src_response.close()
-        clone.cleanup()
 
 
 @pytest.mark.skipif(
@@ -85,7 +78,7 @@ def test_find_deleted_asset(
     )
 
     try:
-        # As for the test above but now remove the files so that Houston knows about the asset but does not have the files
+        # remove the files so that Houston knows about the asset but does not have the files
         clone.remove_files()
 
         asset_guid = test_clone_asset_group_data['asset_uuids'][0]
@@ -118,38 +111,32 @@ def test_find_raw_asset(
     researcher_1,
     internal_user,
     db,
-    test_clone_asset_group_data,
+    request,
+    test_root,
 ):
-    # Clone the known asset_group so that the asset data is in the database
-    clone = asset_group_utils.clone_asset_group(
-        flask_app_client,
-        researcher_1,
-        test_clone_asset_group_data['asset_group_uuid'],
+    uuids = asset_group_utils.create_simple_asset_group_uuids(
+        flask_app_client, researcher_1, request, test_root
     )
+    asset_guid = uuids['assets'][0]
+
+    # Only internal, not even uploader can read the raw src for the file
+    asset_utils.read_raw_src_asset(flask_app_client, researcher_1, asset_guid, 403)
+    asset_utils.read_raw_src_asset(flask_app_client, admin_user, asset_guid, 403)
+
+    # Even internal is not allowed to access it if it's not in the detecting stage
+    asset_utils.read_raw_src_asset(flask_app_client, internal_user, asset_guid, 403)
+    from app.modules.asset_groups.models import (
+        AssetGroupSightingStage,
+        AssetGroupSighting,
+    )
+
+    new_sighting = AssetGroupSighting.query.get(uuids['asset_group_sighting'])
+
+    # now force it back to 'detection' stage to permit testing
+    new_sighting.stage = AssetGroupSightingStage.detection
+
     raw_src_response = None
     try:
-        asset_guid = test_clone_asset_group_data['asset_uuids'][0]
-
-        # Only internal, not even uploader can read the raw src for the file
-        asset_utils.read_raw_src_asset(flask_app_client, researcher_1, asset_guid, 403)
-        asset_utils.read_raw_src_asset(flask_app_client, admin_user, asset_guid, 403)
-
-        # Even internal is not allowed to access it if it's not in the detecting stage
-        asset_utils.read_raw_src_asset(flask_app_client, internal_user, asset_guid, 403)
-        from app.modules.asset_groups.models import (
-            AssetGroupSightingStage,
-            AssetGroupSighting,
-        )
-
-        new_sighting = AssetGroupSighting(
-            asset_group=clone.asset_group,
-            sighting_config=test_utils.dummy_sighting_info(),
-            detection_configs=test_utils.dummy_detection_info(),
-        )
-
-        # now force it back to 'detection' stage to permit testing
-        new_sighting.stage = AssetGroupSightingStage.detection
-
         raw_src_response = asset_utils.read_raw_src_asset(
             flask_app_client, internal_user, asset_guid
         )
@@ -160,17 +147,10 @@ def test_find_raw_asset(
         # Force the server to release the file handler
         raw_src_response.close()
 
-        raw_src_response = asset_utils.read_raw_src_asset(
-            flask_app_client, internal_user, test_clone_asset_group_data['asset_uuids'][3]
-        )
-
-        assert raw_src_response.content_type == 'image/png'
     finally:
         # Force the server to release the file handler
         if raw_src_response:
             raw_src_response.close()
-        clone.cleanup()
-        new_sighting.delete()
 
 
 @pytest.mark.skipif(
@@ -181,20 +161,16 @@ def test_user_asset_permissions(
     researcher_1,
     readonly_user,
     db,
-    test_clone_asset_group_data,
+    request,
+    test_root,
 ):
-    # Clone the known asset_group so that the asset data is in the database
-    clone = asset_group_utils.clone_asset_group(
-        flask_app_client,
-        researcher_1,
-        test_clone_asset_group_data['asset_group_uuid'],
+    uuids = asset_group_utils.create_simple_asset_group_uuids(
+        flask_app_client, researcher_1, request, test_root
     )
+    asset_guid = uuids['assets'][0]
 
     # Try reading it as a different user and check this fails
-    asset_guid = test_clone_asset_group_data['asset_uuids'][0]
     asset_utils.read_asset(flask_app_client, readonly_user, asset_guid, 403)
-
-    clone.cleanup()
 
 
 @pytest.mark.skipif(
@@ -204,75 +180,52 @@ def test_read_all_assets(
     flask_app_client,
     admin_user,
     researcher_1,
-    test_clone_asset_group_data,
+    request,
+    test_root,
 ):
-    # Clone the known asset_group so that the asset data is in the database
-    clone = asset_group_utils.clone_asset_group(
-        flask_app_client,
-        researcher_1,
-        test_clone_asset_group_data['asset_group_uuid'],
+    uuids = asset_group_utils.create_large_asset_group_uuids(
+        flask_app_client, researcher_1, request, test_root
     )
 
     admin_response = asset_utils.read_all_assets(flask_app_client, admin_user)
     asset_utils.read_all_assets(flask_app_client, researcher_1, 403)
 
     # both of these lists should be lexical order
-    assert admin_response.json[0]['guid'] == test_clone_asset_group_data['asset_uuids'][0]
-    assert admin_response.json[1]['guid'] == test_clone_asset_group_data['asset_uuids'][1]
-
-    clone.cleanup()
+    asset_guids = [entry['guid'] for entry in admin_response.json]
+    assert asset_guids == uuids['assets']
 
 
 @pytest.mark.skipif(
     module_unavailable('asset_groups'), reason='AssetGroups module disabled'
 )
-def test_patch_image_rotate(
-    flask_app_client, researcher_1, test_clone_asset_group_data, request
-):
-    clone = asset_group_utils.clone_asset_group(
-        flask_app_client,
-        researcher_1,
-        test_clone_asset_group_data['asset_group_uuid'],
+def test_patch_image_rotate(flask_app_client, researcher_1, request, test_root):
+    uuids = asset_group_utils.create_simple_asset_group_uuids(
+        flask_app_client, researcher_1, request, test_root
     )
-    request.addfinalizer(clone.cleanup)
-    asset = clone.asset_group.assets[0]
+    asset_guid = uuids['assets'][0]
 
-    def asset_cleanup():
-        original = asset.get_original_path()
-        original.rename(asset.get_symlink().resolve())
-        asset.reset_derived_images()
+    patch_data = [
+        {
+            'op': 'replace',
+            'path': '/image',
+            'value': {'rotate': {'angle': -90}},
+        },
+    ]
+    error_msg = '"rotate.angle": Value must be greater than 0.'
+    asset_utils.patch_asset(
+        flask_app_client, asset_guid, researcher_1, patch_data, 422, error_msg
+    )
 
-    with flask_app_client.login(researcher_1, auth_scopes=('assets:write',)):
-        response = flask_app_client.patch(
-            f'/api/v1/assets/{asset.guid}',
-            content_type='application/json',
-            data=json.dumps(
-                [
-                    {
-                        'op': 'replace',
-                        'path': '/image',
-                        'value': {'rotate': {'angle': -90}},
-                    },
-                ],
-            ),
-        )
-        assert response.status_code == 422
-        assert response.json['message'] == '"rotate.angle": Value must be greater than 0.'
+    patch_data = [
+        {
+            'op': 'replace',
+            'path': '/image',
+            'value': {'rotate': {'angle': 90}},
+        },
+    ]
+    response = asset_utils.patch_asset(
+        flask_app_client, asset_guid, researcher_1, patch_data
+    )
 
-        response = flask_app_client.patch(
-            f'/api/v1/assets/{asset.guid}',
-            content_type='application/json',
-            data=json.dumps(
-                [
-                    {
-                        'op': 'replace',
-                        'path': '/image',
-                        'value': {'rotate': {'angle': 90}},
-                    },
-                ],
-            ),
-        )
-        request.addfinalizer(asset_cleanup)
-        assert response.status_code == 200
-        assert response.json['filename'] == 'zebra.jpg'
-        assert response.json['dimensions'] == {'width': 664, 'height': 1000}
+    assert response.json['filename'] == uuids['filename']
+    assert response.json['dimensions'] == {'width': 664, 'height': 1000}

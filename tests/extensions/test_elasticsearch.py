@@ -65,7 +65,8 @@ def test_elasticsearch_utilities(
     temp_user,
     collab_user_a,
     collab_user_b,
-    test_clone_asset_group_data,
+    request,
+    test_root,
 ):
     from app.extensions.elasticsearch import tasks as es_tasks
     from app.extensions import elasticsearch as es
@@ -400,11 +401,10 @@ def test_elasticsearch_utilities(
         except AssertionError:
             failures.append(config_str)
 
-    clone = asset_group_utils.clone_asset_group(
-        flask_app_client,
-        staff_user,
-        test_clone_asset_group_data['asset_group_uuid'],
+    asset_group_utils.create_simple_asset_group_uuids(
+        flask_app_client, staff_user, request, test_root
     )
+
     with es.session.begin(blocking=True, verify=True):
         Asset.index_all()
 
@@ -679,8 +679,6 @@ def test_elasticsearch_utilities(
     # Test tasks
     es_tasks.es_task_refresh_index_all.s(True).apply().result
     es_tasks.es_task_invalidate_indexed_timestamps.s(True).apply().result
-
-    clone.cleanup()
 
 
 @pytest.mark.skipif(

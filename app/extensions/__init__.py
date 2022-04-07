@@ -361,6 +361,12 @@ if elasticsearch is None:
         elasticsearchable = False
         index_name = None
 
+        def index(self, *args, **kwargs):
+            pass
+
+        def elasticsearch(self, *args, **kwargs):
+            return []
+
 else:
 
     def register_elasticsearch_model(*args, **kwargs):

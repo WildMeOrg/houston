@@ -326,47 +326,46 @@ class Collaboration(db.Model, HoustonModel):
             raise ValueError(
                 f'State "{state}" not in allowed states: {", ".join(CollaborationUserState.ALLOWED_STATES)}'
             )
-        if user_guid is not None:
-            assert isinstance(user_guid, uuid.UUID)
-            for association in self.collaboration_user_associations:
-                if association.user_guid == user_guid:
-                    if self._is_approval_state_transition_valid(
-                        association.read_approval_state, state
-                    ):
-                        association.read_approval_state = state
-                        # If a user revokes view and previously allowed edit, they automatically
-                        # revoke edit too
-                        if (
-                            state == CollaborationUserState.REVOKED
-                            and association.edit_approval_state
-                            == CollaborationUserState.APPROVED
-                        ):
+        if user_guid is None:
+            raise ValueError('user_guid is required')
+        assert isinstance(user_guid, uuid.UUID)
+        association = self._get_association_for_user(user_guid)
+        if self._is_approval_state_transition_valid(
+            association.read_approval_state, state
+        ):
+            association.read_approval_state = state
+            # If a user revokes view and previously allowed edit, they automatically
+            # revoke edit too
+            if (
+                state == CollaborationUserState.REVOKED
+                and association.edit_approval_state == CollaborationUserState.APPROVED
+            ):
 
-                            association.edit_approval_state = state
+                association.edit_approval_state = state
 
-                        from app.modules.notifications.models import NotificationType
+            from app.modules.notifications.models import NotificationType
 
-                        if state == CollaborationUserState.REVOKED:
-                            self._notify_user(
-                                association,
-                                self._get_association_for_other_user(user_guid),
-                                NotificationType.collab_revoke,
-                            )
-                        elif state == CollaborationUserState.APPROVED:
-                            self._notify_user(
-                                association,
-                                self._get_association_for_other_user(user_guid),
-                                NotificationType.collab_approved,
-                            )
-                        elif state == CollaborationUserState.DENIED:
-                            self._notify_user(
-                                association,
-                                self._get_association_for_other_user(user_guid),
-                                NotificationType.collab_denied,
-                            )
-                        with db.session.begin(subtransactions=True):
-                            db.session.merge(association)
-                        success = True
+            if state == CollaborationUserState.REVOKED:
+                self._notify_user(
+                    association,
+                    self._get_association_for_other_user(user_guid),
+                    NotificationType.collab_revoke,
+                )
+            elif state == CollaborationUserState.APPROVED:
+                self._notify_user(
+                    association,
+                    self._get_association_for_other_user(user_guid),
+                    NotificationType.collab_approved,
+                )
+            elif state == CollaborationUserState.DENIED:
+                self._notify_user(
+                    association,
+                    self._get_association_for_other_user(user_guid),
+                    NotificationType.collab_denied,
+                )
+            with db.session.begin(subtransactions=True):
+                db.session.merge(association)
+            success = True
         return success
 
     def user_has_read_access(self, user_guid):

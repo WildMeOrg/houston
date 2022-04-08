@@ -3,8 +3,10 @@
 Serialization schemas for Site Settings resources RESTful API
 ----------------------------------------------------
 """
+from flask_marshmallow import base_fields
 
 from flask_restx_patched import ModelSchema
+from app.extensions import ExtraValidationSchema
 
 from .models import SiteSetting
 
@@ -41,3 +43,13 @@ class DetailedSiteSettingFileSchema(BaseSiteSettingFileSchema):
             SiteSetting.created.key,
             SiteSetting.updated.key,
         )
+
+
+class RelationshipTypeSchema(ExtraValidationSchema):
+    class RelationshipTypeRolesSchema(ExtraValidationSchema):
+        guid = base_fields.UUID(required=True)
+        label = base_fields.String(required=True)
+
+    guid = base_fields.UUID(required=True)
+    label = base_fields.String(required=True)
+    roles = base_fields.Nested(RelationshipTypeRolesSchema, required=True, many=True)

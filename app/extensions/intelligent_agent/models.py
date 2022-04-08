@@ -101,13 +101,41 @@ class TwitterBot(IntelligentAgent):
             return {'success': False, 'message': 'Not ready.'}
         if not self.api:
             return {'success': False, 'message': 'api unset.'}
-        twitter_settings = self.api.get_settings()
-        log.debug(f'TwitterBot.test_setup() got: {twitter_settings}')
-        return {'success': True, 'message': 'OK'}
+        try:
+            twitter_settings = self.api.get_settings()
+        except Exception as ex:
+            log.warning(f'TwitterBot.test_setup() api call got exception: {str(ex)}')
+            return {'success': False, 'message': f'api exception: {str(ex)}'}
+        assert twitter_settings
+        log.debug(
+            f'TwitterBot.test_setup() api.get_settings successfully returned: {twitter_settings}'
+        )
+        return {
+            'success': True,
+            'message': f"Success: Twitter screen name is '{twitter_settings.get('screen_name', 'UNKNOWN')}'",
+            'screen_name': twitter_settings.get('screen_name'),
+        }
 
+    # get_settings() [currently] returns:
+    # {'allow_contributor_request': 'all',
+    #  'allow_dm_groups_from': 'following',
+    #  'allow_dms_from': 'following',
+    #  'always_use_https': True,
+    #  'discoverable_by_email': True,
+    #  'discoverable_by_mobile_phone': False,
+    #  'display_sensitive_media': False,
+    #  'geo_enabled': False,
+    #  'language': 'en',
+    #  'protected': False,
+    #  'screen_name': 'TweetABruce',
+    #  'sleep_time': {'enabled': False, 'end_time': None, 'start_time': None},
+    #  'translator_type': 'none',
+    #  'use_cookie_personalization': False}
     def get_screen_name(self):
-        # twitter_settings = api.get_settings()
-        return None
+        # could possibly set this as a (read-only) SiteSetting so we dont have to hit api every time
+        twitter_settings = self.api.get_settings()
+        assert twitter_settings
+        return twitter_settings.get('screen_name', 'ERROR-SCREEN-NAME')
 
     @classmethod
     def is_ready(cls):

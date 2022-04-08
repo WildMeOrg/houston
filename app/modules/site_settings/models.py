@@ -9,6 +9,7 @@ from flask_login import current_user  # NOQA
 
 from app.modules import is_module_enabled
 from app.utils import HoustonException
+from app.extensions.intelligent_agent import IntelligentAgent
 
 import logging
 
@@ -105,6 +106,8 @@ class SiteSetting(db.Model, Timestamp):
             },
         },
     }
+
+    HOUSTON_SETTINGS.update(IntelligentAgent.site_setting_config_all())
 
     key = db.Column(db.String, primary_key=True, nullable=False)
 

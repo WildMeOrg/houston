@@ -79,6 +79,7 @@ stripe
 sutime
 
 tqdm
+tweepy
 utool
 webargs==5.5.3
 werkzeug>=0.15,<0.16

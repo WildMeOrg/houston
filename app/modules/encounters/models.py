@@ -161,6 +161,13 @@ class Encounter(db.Model, FeatherModel):
             return self.sighting.get_time_isoformat_in_timezone()
         return None
 
+    def get_time(self, sighting_fallback=True):
+        if self.time:
+            return self.time
+        if self.sighting and sighting_fallback:
+            return self.sighting.get_time()
+        return None
+
     def get_time_specificity(self):
         return self.time.specificity if self.time else None
 

@@ -168,8 +168,19 @@ class Individual(db.Model, FeatherModel):
         return self.get_edm_data_field('taxonomy')
 
     def get_taxonomy_names(self):
-        # taxonomy_guid = self.get_edm_data_field('taxonomy')
-        return []
+        taxonomy_guid = self.get_edm_data_field('taxonomy')
+        taxonomy_names = []
+        # Taxonomy guid is optional in the response from EDM
+        if taxonomy_guid:
+            from app.modules.site_settings.models import SiteSetting
+
+            site_species = SiteSetting.get_value('site.species')
+            for species in site_species:
+                if site_species[species]['id'] == taxonomy_guid:
+                    taxonomy_names = site_species[species]['commonNames']
+                    break
+
+        return taxonomy_names
 
     def get_name_values(self):
         name_vals = ''
@@ -289,7 +300,7 @@ class Individual(db.Model, FeatherModel):
         last_enc = None
         for enc in self.encounters:
             if last_enc:
-                if enc.created > last_enc.created:
+                if enc.get_time() > last_enc.get_time():
                     last_enc = enc
             else:
                 last_enc = enc

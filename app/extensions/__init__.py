@@ -69,8 +69,6 @@ from . import sentry  # NOQA
 
 from . import api  # NOQA
 
-from . import config  # NOQA
-
 from flask_restx_patched import is_extension_enabled, extension_required  # NOQA
 
 if is_extension_enabled('cors'):
@@ -631,21 +629,12 @@ def parallel(
 ##########################################################################################
 
 
-# This global is updated dynamically before the config extension is loaded.
-# When the config extension is loaded, it instantiates PatchHoustonConfigParameters,
-# which expects the global variable below to be configured correctly for all config keys
-_CONFIG_PATH_CHOICES = None
-
-
 def init_app(app, force_enable=False, force_disable=None):
     """
     Application extensions initialization.
     """
     if force_disable is None:
         force_disable = []
-
-    global _CONFIG_PATH_CHOICES
-    _CONFIG_PATH_CHOICES = sorted(app.config.keys())
 
     log = logging_native.getLogger(__name__)
 
@@ -657,7 +646,6 @@ def init_app(app, force_enable=False, force_disable=None):
         'cache': cache,
         'executor': executor,
         'api': api,
-        'config': config,
         'oauth2': oauth2,
         'login': login_manager,
         'marshmallow': marshmallow,

@@ -49,6 +49,7 @@ jobs:
       matrix:
         # Use the same Python version used the Dockerfile
         python-version: [3.9]
+        db-uri: ["postgresql://houston:development@db/houston_test"]
         app-context: ["codex", "mws"]
     env:
       OS: ubuntu-latest

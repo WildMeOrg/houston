@@ -514,3 +514,39 @@ class SiteHeartbeat(Resource):
             'version': app.version.version,
             'git_version': app.version.git_revision,
         }
+
+
+# api path to do some general "is it working?" testing of site configuration, if desired
+#   testing restricted to users with SiteSetting WRITE priveleges to protect abuse/leaks
+@api.route('/test/<path:path>')
+class TestSettings(Resource):
+    @api.permission_required(
+        permissions.ModuleAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'module': SiteSetting,
+            'action': AccessOperation.WRITE,
+        },
+    )
+    @api.login_required(oauth_scopes=['site-settings:write'])
+    def get(self, path):
+
+        if path.startswith('intelligent_agent_'):
+            from app.extensions.intelligent_agent import IntelligentAgent
+
+            name = path[18:]
+            agent_cls = IntelligentAgent.get_agent_class_by_short_name(name)
+            if not agent_cls:
+                abort(400, f'Invalid Agent class {name}')
+            try:
+                agent = agent_cls()
+                res = agent.test_setup()
+            except Exception as ex:
+                log.warning(f'test_setup() on {name} raised exception: {str(ex)}')
+                abort(400, f'Test failure: {str(ex)}')
+            log.info(f'/site-settings/test/{path} yielded {res}')
+            if not res.get('success', False):
+                abort(400, res.get('message', 'Unknown testing error'))
+            # 200 only if we get success:True in response
+            return res
+
+        abort(400, 'Invalid test')

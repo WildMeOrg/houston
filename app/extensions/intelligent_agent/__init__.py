@@ -32,9 +32,8 @@ class IntelligentAgent:
     Intelligent Agent base class
     """
 
-    def __init__(self, *args, **kwargs):
-        log.warning(f'enabled? {self.is_enabled()}')
-        log.warning(f'><><><><><><><><>< INIT {self}')
+    # def __init__(self, *args, **kwargs):
+    # log.debug(f'{self} enabled={self.is_enabled()}')
 
     def collect(self):
         raise NotImplementedError('collect() must be overridden')
@@ -119,6 +118,13 @@ class IntelligentAgent:
             TwitterBot,
             DummyTest,
         ]
+
+    @classmethod
+    def get_agent_class_by_short_name(cls, short_name):
+        for agent_cls in cls.get_agent_classes():
+            if agent_cls.short_name() == short_name:
+                return agent_cls
+        return None
 
 
 class IntelligentAgentContent(db.Model, HoustonModel):

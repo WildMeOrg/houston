@@ -9,6 +9,7 @@ import uuid
 
 from app.modules.users.models import User
 from app.modules.fileuploads.models import FileUpload
+from flask_restx_patched import is_extension_enabled
 from PIL import Image
 
 from tests.utils import (
@@ -283,6 +284,10 @@ def test_modifying_user_info_with_misformatted_data_must_fail(
             response.json['messages']['0']['_schema'][0]
             == 'Individual PATCH operations must be JSON objects'
         )
+
+    if not is_extension_enabled('elasticsearch'):
+        # Skip the rest of the test if elasticsearch is not enabled
+        return
 
     index, guid, body = regular_user.serialize()
     with flask_app_client.login(regular_user, auth_scopes=('users:write',)):

@@ -110,8 +110,7 @@ def run(
     # Turn off logging the access log for noisy endpoints (like the heartbeat)
     hide_noisy_endpoint_logs()
 
-    # use_reloader = app.debug
-    use_reloader = False
+    use_reloader = app.debug
 
     if uwsgi:
         uwsgi_args = [

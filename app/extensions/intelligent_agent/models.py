@@ -86,11 +86,13 @@ class TwitterBot(IntelligentAgent):
     """
 
     api = None
+    client = None
 
     def __init__(self, *args, **kwargs):
         if not self.is_ready():
             raise ValueError('TwitterBot not ready for usage.')
         self.api = self.get_api()
+        self.client = self.get_client()
         log.debug(f'TwitterBot() obtained {self.api}')
         super().__init__(*args, **kwargs)
 
@@ -115,6 +117,14 @@ class TwitterBot(IntelligentAgent):
             'message': f"Success: Twitter screen name is '{twitter_settings.get('screen_name', 'UNKNOWN')}'",
             'screen_name': twitter_settings.get('screen_name'),
         }
+
+    # def collect(self):
+    # since =
+
+    # right now we search tweets for only "@HANDLE" references, but this
+    #    could be expanded to include some site-setting customizations
+    def search_string(self):
+        return f'@{self.get_screen_name()}'
 
     # get_settings() [currently] returns:
     # {'allow_contributor_request': 'all',
@@ -149,6 +159,7 @@ class TwitterBot(IntelligentAgent):
             'consumer_secret',
             'access_token',
             'access_token_secret',
+            'bearer_token',
         ]
         missing = []
         for key in required:
@@ -184,10 +195,17 @@ class TwitterBot(IntelligentAgent):
                     'default': None,
                     'public': False,
                 },
+                cls.site_setting_id('bearer_token'): {
+                    'type': str,
+                    'default': None,
+                    'public': False,
+                },
             }
         )
         return config
 
+    # uses Twitter API v1
+    # https://docs.tweepy.org/en/latest/api.html
     def get_api(self):
         if not self.is_ready():
             raise ValueError('TwitterBot get_api(): not ready for usage.')
@@ -201,6 +219,22 @@ class TwitterBot(IntelligentAgent):
             settings.get('access_token_secret'),
         )
         return tweepy.API(auth)
+
+    # preferred(?) Twitter API v2 Client
+    # https://docs.tweepy.org/en/latest/client.html
+    def get_client(self):
+        if not self.is_ready():
+            raise ValueError('TwitterBot get_api(): not ready for usage.')
+        import tweepy
+
+        settings = self.get_all_setting_values()
+        return tweepy.Client(
+            settings.get('bearer_token'),
+            settings.get('consumer_key'),
+            settings.get('consumer_secret'),
+            settings.get('access_token'),
+            settings.get('access_token_secret'),
+        )
 
 
 class TwitterTweet(IntelligentAgentContent):

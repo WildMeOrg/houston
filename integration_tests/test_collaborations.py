@@ -75,7 +75,7 @@ def test_collaboration(session, codex_url, login, logout, admin_email):
     assert response.status_code == 409
     assert (
         response.json()['message']
-        == f'State "True" not in allowed states: {", ".join(CollaborationUserState.ALLOWED_STATES)}'
+        == f'State "True" not in allowed states: denied, approved, pending, not_initiated, revoked, manager_creator, manager_revoked'
     )
 
     # Approve collaboration
@@ -109,7 +109,7 @@ def test_collaboration(session, codex_url, login, logout, admin_email):
     assert response.status_code == 409
     assert (
         response.json()['message']
-        == f'State "False" not in allowed states: {", ".join(CollaborationUserState.ALLOWED_STATES)}'
+        == 'State "False" not in allowed states: denied, approved, pending, not_initiated, revoked, manager_creator, manager_revoked'
     )
 
     # Reject collaboration for edit

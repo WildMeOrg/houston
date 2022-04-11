@@ -11,23 +11,24 @@ SRC_PATH = '/api/v1/assets/src/'
 RAW_SRC_PATH = 'api/v1/assets/src_raw/'
 
 
-def patch_asset(flask_app_client, asset_guid, user, data, expected_status_code=200):
-    with flask_app_client.login(user, auth_scopes=('assets:write',)):
-        response = flask_app_client.patch(
-            '%s%s' % (PATH, asset_guid),
-            content_type='application/json',
-            data=json.dumps(data),
-        )
-
-    if expected_status_code == 200:
-        test_utils.validate_dict_response(
-            response, 200, {'git_store', 'src', 'guid', 'filename'}
-        )
-    else:
-        test_utils.validate_dict_response(
-            response, expected_status_code, {'status', 'message'}
-        )
-    return response
+def patch_asset(
+    flask_app_client,
+    asset_guid,
+    user,
+    data,
+    expected_status_code=200,
+    expected_error=None,
+):
+    return test_utils.patch_via_flask(
+        flask_app_client,
+        user,
+        scopes='assets:write',
+        path=f'{PATH}{asset_guid}',
+        data=data,
+        expected_status_code=expected_status_code,
+        response_200={'git_store', 'src', 'guid', 'filename'},
+        expected_error=expected_error,
+    )
 
 
 def patch_asset_bulk(flask_app_client, user, data, expected_status_code=200):

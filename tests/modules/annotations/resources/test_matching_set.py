@@ -3,7 +3,6 @@
 import uuid
 
 from tests.modules.annotations.resources import utils as annot_utils
-from tests.modules.asset_groups.resources import utils as sub_utils
 from tests.modules.encounters.resources import utils as enc_utils
 from tests.modules.site_settings.resources import utils as setting_utils
 import pytest
@@ -28,7 +27,6 @@ def test_annotation_matching_set(
     flask_app_client,
     researcher_1,
     admin_user,
-    test_clone_asset_group_data,
     request,
     test_root,
 ):
@@ -41,15 +39,17 @@ def test_annotation_matching_set(
 
     # make sure we dont have stray annots around
     Annotation.query.delete()
-    clone = sub_utils.clone_asset_group(
-        flask_app_client,
-        researcher_1,
-        test_clone_asset_group_data['asset_group_uuid'],
-    )
-    asset_guid = test_clone_asset_group_data['asset_uuids'][0]
 
-    uuids = enc_utils.create_encounter(flask_app_client, researcher_1, request, test_root)
-    enc_guid = uuids['encounters'][0]
+    enc1_uuids = enc_utils.create_encounter(
+        flask_app_client, researcher_1, request, test_root
+    )
+    enc1_guid = enc1_uuids['encounters'][0]
+    enc1_asset_guid = enc1_uuids['assets'][0]
+    enc1_uuids = enc_utils.create_encounter(
+        flask_app_client, researcher_1, request, test_root
+    )
+    enc1_guid = enc1_uuids['encounters'][0]
+    enc1_asset_guid = enc1_uuids['assets'][0]
 
     tx = setting_utils.get_some_taxonomy_dict(flask_app_client, admin_user)
     assert tx
@@ -62,7 +62,7 @@ def test_annotation_matching_set(
     ]
     enc_utils.patch_encounter(
         flask_app_client,
-        enc_guid,
+        enc1_guid,
         researcher_1,
         patch_data,
     )
@@ -71,23 +71,25 @@ def test_annotation_matching_set(
     response = annot_utils.create_annotation(
         flask_app_client,
         researcher_1,
-        asset_guid,
-        enc_guid,
+        enc1_asset_guid,
+        enc1_guid,
         viewpoint=viewpoint,
     )
 
     annotation_guid = response.json['guid']
     annotation = Annotation.query.get(annotation_guid)
-    assert annotation.asset_guid == uuid.UUID(
-        test_clone_asset_group_data['asset_uuids'][0]
-    )
+    assert annotation.asset_guid == uuid.UUID(enc1_asset_guid)
+
     request.addfinalizer(annotation.delete)
     # must have this for matching
     annotation.content_guid = uuid.uuid4()
 
     # now we need a few other annots to see how they fair in matching_set creation
-    uuids = enc_utils.create_encounter(flask_app_client, researcher_1, request, test_root)
-    enc2_guid = uuids['encounters'][0]
+    enc2_uuids = enc_utils.create_encounter(
+        flask_app_client, researcher_1, request, test_root
+    )
+    enc2_guid = enc2_uuids['encounters'][0]
+    enc2_asset_guid = enc2_uuids['assets'][0]
     patch_data = [
         utils.patch_replace_op('taxonomy', taxonomy_guid),
         utils.patch_replace_op('locationId', locationId),
@@ -101,8 +103,8 @@ def test_annotation_matching_set(
     response = annot_utils.create_annotation(
         flask_app_client,
         researcher_1,
-        asset_guid,
-        enc_guid,  # same enc as target, so should be skipped
+        enc2_asset_guid,
+        enc2_guid,  # same enc as target, so should be skipped
         viewpoint='frontright',
     )
     annot0 = Annotation.query.get(response.json['guid'])
@@ -110,7 +112,7 @@ def test_annotation_matching_set(
     response = annot_utils.create_annotation(
         flask_app_client,
         researcher_1,
-        asset_guid,
+        enc2_asset_guid,
         enc2_guid,
         viewpoint='back',  # not neighbor
     )
@@ -119,7 +121,7 @@ def test_annotation_matching_set(
     response = annot_utils.create_annotation(
         flask_app_client,
         researcher_1,
-        asset_guid,
+        enc2_asset_guid,
         enc2_guid,
         viewpoint='frontright',
     )
@@ -139,7 +141,7 @@ def test_annotation_matching_set(
     assert 'filter' in query['bool']
     # omg this is tedious so just cutting to the chase (9 viewpoint/neighbors)
     assert len(query['bool']['filter'][1]['bool']['should']) == 9
-    assert query['bool']['must_not']['match']['encounter_guid'] == str(enc_guid)
+    assert query['bool']['must_not']['match']['encounter_guid'] == str(enc1_guid)
 
     # will just use default (as above)
     matching_set = annotation.get_matching_set()
@@ -183,8 +185,6 @@ def test_annotation_matching_set(
         annotation.resolve_matching_set_query(query_in)
     except ValueError as ve:
         assert str(ve) == 'cannot resolve query on Annotation with no Encounter'
-
-    clone.cleanup()
 
 
 def test_region_utils():
@@ -257,7 +257,6 @@ def test_annotation_elasticsearch(
     flask_app_client,
     researcher_1,
     admin_user,
-    test_clone_asset_group_data,
     request,
     test_root,
 ):
@@ -265,15 +264,9 @@ def test_annotation_elasticsearch(
     from app.modules.annotations.models import Annotation
     from app.modules.annotations.schemas import AnnotationElasticsearchSchema
 
-    clone = sub_utils.clone_asset_group(
-        flask_app_client,
-        researcher_1,
-        test_clone_asset_group_data['asset_group_uuid'],
-    )
-    asset_guid = test_clone_asset_group_data['asset_uuids'][0]
-
     uuids = enc_utils.create_encounter(flask_app_client, researcher_1, request, test_root)
     enc_guid = uuids['encounters'][0]
+    asset_guid = uuids['assets'][0]
 
     tx = setting_utils.get_some_taxonomy_dict(flask_app_client, admin_user)
     assert tx
@@ -320,5 +313,3 @@ def test_annotation_elasticsearch(
     assert sdump.data.get('viewpoint') == viewpoint
     assert sdump.data.get('encounter_guid') == enc_guid
     assert sdump.data.get('sighting_guid') == uuids['sighting']
-
-    clone.cleanup()

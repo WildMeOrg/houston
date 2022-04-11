@@ -2,6 +2,7 @@
 import uuid
 
 from .utils import create_new_user
+from app.modules.collaborations.models import CollaborationUserState
 
 
 def test_collaboration(session, codex_url, login, logout, admin_email):
@@ -74,7 +75,7 @@ def test_collaboration(session, codex_url, login, logout, admin_email):
     assert response.status_code == 409
     assert (
         response.json()['message']
-        == 'State "True" not in allowed states: denied, approved, pending, not_initiated, revoked, creator'
+        == f'State "True" not in allowed states: {", ".join(CollaborationUserState.ALLOWED_STATES)}'
     )
 
     # Approve collaboration
@@ -108,7 +109,7 @@ def test_collaboration(session, codex_url, login, logout, admin_email):
     assert response.status_code == 409
     assert (
         response.json()['message']
-        == 'State "False" not in allowed states: denied, approved, pending, not_initiated, revoked, creator'
+        == f'State "False" not in allowed states: {", ".join(CollaborationUserState.ALLOWED_STATES)}'
     )
 
     # Reject collaboration for edit

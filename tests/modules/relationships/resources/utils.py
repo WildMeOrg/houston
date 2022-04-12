@@ -25,7 +25,7 @@ def create_relationship(flask_app_client, user, expected_status_code=200, data_i
     assert response.status_code == expected_status_code
     if response.status_code == 200:
         test_utils.validate_dict_response(
-            response, 200, {'start_date', 'guid', 'type', 'individual_members'}
+            response, 200, {'start_date', 'guid', 'type_guid', 'individual_members'}
         )
 
     return response
@@ -43,7 +43,7 @@ def read_relationship(
         test_utils.validate_dict_response(
             response,
             200,
-            {'guid', 'individual_members', 'start_date', 'end_date', 'type'},
+            {'guid', 'individual_members', 'start_date', 'end_date', 'type_guid'},
         )
     return response
 

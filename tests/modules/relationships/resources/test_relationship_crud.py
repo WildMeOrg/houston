@@ -17,12 +17,33 @@ log = logging.getLogger(__name__)
     reason='Individuals or Relationships module disabled',
 )
 def test_create_read_delete_relationship(
-    flask_app_client, researcher_1, request, test_root
+    flask_app_client, admin_user, researcher_1, request, test_root
 ):
     from tests.modules.individuals.resources import utils as individual_utils
     from tests.modules.encounters.resources import utils as encounter_utils
     from tests.modules.relationships.resources import utils as relationship_utils
+    from tests.modules.site_settings.resources import utils as site_settings_utils
     from app.modules.relationships.models import Relationship
+
+    family_type_guid = '49e85f81-c11a-42be-9097-d22c61345ed8'
+    mother_role_guid = '1b62eb1a-0b80-4c2d-b914-923beba8863c'
+    calf_role_guid = 'ea5dbbb3-cc47-4d44-b460-2518a25dcb13'
+    relationship_type_roles = {
+        family_type_guid: {
+            'guid': family_type_guid,
+            'label': 'Family',
+            'roles': [
+                {'guid': mother_role_guid, 'label': 'Mother'},
+                {'guid': calf_role_guid, 'label': 'Calf'},
+            ],
+        },
+    }
+    site_settings_utils.modify_main_settings(
+        flask_app_client,
+        admin_user,
+        {'_value': relationship_type_roles},
+        conf_key='relationship_type_roles',
+    )
 
     temp_enc_1 = None
     temp_enc_2 = None
@@ -85,9 +106,9 @@ def test_create_read_delete_relationship(
     relationship_json = {
         'individual_1_guid': individual_1_guid,
         'individual_2_guid': individual_2_guid,
-        'individual_1_role': 'Mother',
-        'individual_2_role': 'Calf',
-        'type': 'Family',
+        'individual_1_role_guid': mother_role_guid,
+        'individual_2_role_guid': calf_role_guid,
+        'type_guid': family_type_guid,
         'start_date': str(datetime.utcnow()),
         'end_date': str(datetime.utcnow() + timedelta(days=1)),
     }
@@ -104,6 +125,41 @@ def test_create_read_delete_relationship(
             flask_app_client, researcher_1, relationship_guid
         )
     )
+    assert sorted(
+        response.json['individual_members'], key=lambda a: a['individual_role_guid']
+    ) == [
+        {
+            'individual_guid': individual_1_guid,
+            'individual_role_label': 'Mother',
+            'individual_role_guid': mother_role_guid,
+        },
+        {
+            'individual_guid': individual_2_guid,
+            'individual_role_label': 'Calf',
+            'individual_role_guid': calf_role_guid,
+        },
+    ]
+
+    response = relationship_utils.read_relationship(
+        flask_app_client,
+        researcher_1,
+        relationship_guid,
+        expected_status_code=200,
+    )
+    assert sorted(
+        response.json['individual_members'], key=lambda a: a['individual_role_guid']
+    ) == [
+        {
+            'individual_guid': individual_1_guid,
+            'individual_role_label': 'Mother',
+            'individual_role_guid': mother_role_guid,
+        },
+        {
+            'individual_guid': individual_2_guid,
+            'individual_role_label': 'Calf',
+            'individual_role_guid': calf_role_guid,
+        },
+    ]
 
     relationship_1 = Relationship.query.get(relationship_guid)
 
@@ -114,13 +170,16 @@ def test_create_read_delete_relationship(
     assert relationship_1.has_individual(individual_2_guid)
 
     assert (
-        relationship_1.get_relationship_role_for_individual(individual_1_guid) == 'Mother'
+        relationship_1.get_relationship_role_for_individual(individual_1_guid)[0]
+        == 'Mother'
     )
     assert (
-        relationship_1.get_relationship_role_for_individual(individual_2_guid) == 'Calf'
+        relationship_1.get_relationship_role_for_individual(individual_2_guid)[0]
+        == 'Calf'
     )
 
-    assert relationship_1.type == 'Family'
+    assert str(relationship_1.type_guid) == family_type_guid
+    assert relationship_1.type_label == 'Family'
 
     # one day time delta for this test
     assert (

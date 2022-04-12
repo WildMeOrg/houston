@@ -32,15 +32,19 @@ class BaseRelationshipIndividualMemberSchema(ModelSchema):
     BaseRelationshipIndividualMemberSchema exposes useful fields about a relationships members..
     """
 
+    individual_role_label = base_fields.String()
+
     class Meta:
         # pylint: disable=missing-docstring
         model = RelationshipIndividualMember
         fields = (
-            RelationshipIndividualMember.individual_role.key,
+            RelationshipIndividualMember.individual_role_guid.key,
+            'individual_role_label',
             RelationshipIndividualMember.individual_guid.key,
         )
         dump_only = (
-            RelationshipIndividualMember.individual_role.key,
+            RelationshipIndividualMember.individual_role_guid.key,
+            'individual_role_label',
             RelationshipIndividualMember.individual_guid.key,
         )
 
@@ -53,7 +57,7 @@ class DetailedRelationshipSchema(BaseRelationshipSchema):
     individual_members = base_fields.Nested(
         'BaseRelationshipIndividualMemberSchema',
         many=True,
-        only=('guid', 'individual_guid', 'individual_role'),
+        only=('guid', 'individual_guid', 'individual_role_label', 'individual_role_guid'),
     )
 
     class Meta(BaseRelationshipSchema.Meta):
@@ -62,7 +66,8 @@ class DetailedRelationshipSchema(BaseRelationshipSchema):
             Relationship.updated.key,
             Relationship.start_date.key,
             Relationship.end_date.key,
-            Relationship.type.key,
+            Relationship.type_guid.key,
+            'type_label',
             'individual_members',
         )
         dump_only = BaseRelationshipSchema.Meta.dump_only + (
@@ -70,6 +75,7 @@ class DetailedRelationshipSchema(BaseRelationshipSchema):
             Relationship.updated.key,
             Relationship.start_date.key,
             Relationship.end_date.key,
-            Relationship.type.key,
+            Relationship.type_guid.key,
+            'type_label',
             'individual_members',
         )

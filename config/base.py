@@ -123,7 +123,15 @@ class BaseConfig(FlaskConfigOverrides, RedisConfig):
 
     FILEUPLOAD_BASE_PATH = str(DATA_ROOT / 'fileuploads')
 
-    SQLALCHEMY_DATABASE_URI = os.getenv('SQLALCHEMY_DATABASE_URI')
+    @property
+    def SQLALCHEMY_DATABASE_URI(self):
+        try:
+            uri = os.environ['SQLALCHEMY_DATABASE_URI']
+        except KeyError:
+            raise RuntimeError('Undefined SQLALCHEMY_DATABASE_URI')
+        if not uri:
+            raise RuntimeError('Defined but blank database uri')
+        return uri
 
     DEBUG = False
     RESTX_ERROR_404_HELP = False

@@ -140,6 +140,45 @@ def test_max_content_length_mws(flask_app):
     assert flask_app.config['MAX_CONTENT_LENGTH'] == 100 * 1024 * 1024
 
 
+class TestBaseConfig:
+    @property
+    def target_cls(self):
+        from config.base import BaseConfig
+
+        return BaseConfig
+
+    def make_target_instance(self):
+        return self.target_cls('codex', 'production')
+
+    def test_fail_on_undefined_SQLALCHEMY_DATABASE_URI(self, monkeypatch):
+        # Set the sceario where the SQLALCHEMY_DATABASE_URI variable
+        # is not defined
+        monkeypatch.delenv('SQLALCHEMY_DATABASE_URI')
+
+        # Target
+        with pytest.raises(RuntimeError) as exc_info:
+            # Note, the property would be called by flask internals
+            # under normal usage.
+            self.make_target_instance().SQLALCHEMY_DATABASE_URI
+
+        # Check the property is the default
+        assert 'Undefined SQLALCHEMY_DATABASE_URI' in exc_info.value.args[0]
+
+    def test_fail_on_blank_SQLALCHEMY_DATABASE_URI(self, monkeypatch):
+        # Set the sceario where the SQLALCHEMY_DATABASE_URI variable
+        # is not defined
+        monkeypatch.setenv('SQLALCHEMY_DATABASE_URI', '')
+
+        # Target
+        with pytest.raises(RuntimeError) as exc_info:
+            # Note, the property would be called by flask internals
+            # under normal usage.
+            self.make_target_instance().SQLALCHEMY_DATABASE_URI
+
+        # Check the property is the default
+        assert 'Defined but blank database uri' in exc_info.value.args[0]
+
+
 @pytest.mark.only_for_codex
 class TestAssetGroupConfig:
     @property

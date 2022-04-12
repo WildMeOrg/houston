@@ -228,9 +228,6 @@ def flask_app(gitlab_remote_login_pat, disable_elasticsearch):
         )
         config_override['UPLOADS_DATABASE_PATH'] = str(pathlib.Path(td) / 'uploads')
         config_override['FILEUPLOAD_BASE_PATH'] = str(pathlib.Path(td) / 'fileuploads')
-        config_override['SQLALCHEMY_DATABASE_PATH'] = str(
-            pathlib.Path(td) / 'database.sqlite3'
-        )
 
         app = create_app(config_override=config_override)
         from app.extensions import db

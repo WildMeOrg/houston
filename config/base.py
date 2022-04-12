@@ -123,10 +123,7 @@ class BaseConfig(FlaskConfigOverrides, RedisConfig):
 
     FILEUPLOAD_BASE_PATH = str(DATA_ROOT / 'fileuploads')
 
-    SQLALCHEMY_DATABASE_PATH = str(DATA_ROOT / 'database.sqlite3')
-    SQLALCHEMY_DATABASE_URI = os.getenv('SQLALCHEMY_DATABASE_URI') or 'sqlite:///%s' % (
-        SQLALCHEMY_DATABASE_PATH
-    )
+    SQLALCHEMY_DATABASE_URI = os.getenv('SQLALCHEMY_DATABASE_URI')
 
     DEBUG = False
     RESTX_ERROR_404_HELP = False

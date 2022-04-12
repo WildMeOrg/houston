@@ -6,13 +6,9 @@ Application database related tasks for Invoke.
 Forked from flask-migrate
 """
 import argparse
-
-# import functools
 import logging
-import shutil
 import os
-
-from flask import current_app
+import shutil
 
 from tasks.utils import app_context_task
 
@@ -243,42 +239,16 @@ def upgrade(
     force_disable_modules=SKIP_MODULES,
 ):
     """Upgrade to a later version"""
-    db_uri = current_app.config.get('SQLALCHEMY_DATABASE_URI')
-    sqlite = db_uri.startswith('sqlite://')
-
-    if sqlite:
-        _db_filepath = current_app.config.get('SQLALCHEMY_DATABASE_PATH', None)
-        _db_filepath_backup = '%s.backup' % (_db_filepath,)
-
     if backup:
-        if not sqlite:
-            log.warning('No backup code implemented for non SQLite3 databases')
-        else:
-            if os.path.exists(_db_filepath):
-                log.warning('Creating database backup %r' % (_db_filepath_backup,))
-                log.info('Pre-upgrade Sqlite3 database backup')
-                log.info('\tDatabase : %r' % (_db_filepath,))
-                log.info('\tBackup   : %r' % (_db_filepath_backup,))
-                shutil.copy2(_db_filepath, _db_filepath_backup)
-            else:
-                log.warning('Cannot backup missing database %r' % (_db_filepath,))
+        log.warning('No backup code implemented')
 
     config = _get_config(directory, x_arg=x_arg)
     try:
         command.upgrade(config, revision, sql=sql, tag=tag)
         command.current(config)
     except Exception:  # pragma: no cover
-        if sqlite and os.path.exists(_db_filepath_backup):
-            log.error('Rolling back Sqlite3 database to backup')
-            shutil.copy2(_db_filepath_backup, _db_filepath)
-            log.error('...restored')
         log.critical('Database upgrade failed')
         raise
-    finally:
-        if sqlite and os.path.exists(_db_filepath_backup):
-            log.info('Deleting database backup %r' % (_db_filepath_backup,))
-            os.remove(_db_filepath_backup)
-            log.info('...deleted')
 
 
 @app_context_task(
@@ -303,24 +273,8 @@ def downgrade(
     force_disable_modules=SKIP_MODULES,
 ):
     """Revert to a previous version"""
-    db_uri = current_app.config.get('SQLALCHEMY_DATABASE_URI')
-    sqlite = db_uri.startswith('sqlite://')
-    if sqlite:
-        _db_filepath = current_app.config.get('SQLALCHEMY_DATABASE_PATH', None)
-        _db_filepath_backup = '%s.backup' % (_db_filepath,)
-
     if backup:
-        if not sqlite:
-            log.warning('No backup code implemented for non SQLite3 databases')
-        else:
-            log.warning('Creating database backup %r' % (_db_filepath_backup,))
-            if os.path.exists(_db_filepath):
-                log.info('Pre-downgrade Sqlite3 database backup')
-                log.info('\tDatabase : %r' % (_db_filepath,))
-                log.info('\tBackup   : %r' % (_db_filepath_backup,))
-                shutil.copy2(_db_filepath, _db_filepath_backup)
-            else:
-                log.warning('Cannot backup missing database %r' % (_db_filepath,))
+        log.warning('No backup code implemented')
 
     config = _get_config(directory, x_arg=x_arg)
 
@@ -331,17 +285,8 @@ def downgrade(
         command.downgrade(config, revision, sql=sql, tag=tag)
         command.current(config)
     except Exception:  # pragma: no cover
-        if sqlite and os.path.exists(_db_filepath_backup):
-            log.error('Rolling back Sqlite3 database to backup')
-            shutil.copy2(_db_filepath_backup, _db_filepath)
-            log.error('...restored')
         log.critical('Database upgrade failed')
         raise
-    finally:
-        if sqlite and os.path.exists(_db_filepath_backup):
-            log.info('Deleting database backup %r' % (_db_filepath_backup,))
-            os.remove(_db_filepath_backup)
-            log.info('...deleted')
 
 
 @app_context_task(
@@ -503,20 +448,15 @@ def init_development_data(context, upgrade_db=True, skip_on_failure=False):
         log.info('Fixtures have been successfully applied.')
 
 
-@app_context_task(
-    help={
-        'edm_authentication': 'A configuration string for the EDM authentication',
-    }
-)
-def _reset(context, edm_authentication=None):
+@app_context_task
+def _reset(context):
     """
-    Delete the database and initialize it with data from the EDM
+    Delete the filesystem database and re-initialize
     """
-    from flask import current_app as app
+    from flask import current_app
     from tasks.app.run import warmup
 
     delete_path_configs = [
-        'SQLALCHEMY_DATABASE_PATH',
         'ASSET_GROUP_DATABASE_PATH',
         'MISSION_COLLECTION_DATABASE_PATH',
     ]
@@ -532,4 +472,4 @@ def _reset(context, edm_authentication=None):
                 os.remove(delete_filepath)
             assert not os.path.exists(delete_filepath)
 
-    warmup(context, app)
+    warmup(context, current_app)

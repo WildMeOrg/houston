@@ -3,29 +3,10 @@
 Flask-SQLAlchemy adapter
 ------------------------
 """
-import sqlite3
-
-from sqlalchemy import engine, MetaData
-
-from flask_sqlalchemy import SQLAlchemy as BaseSQLAlchemy
-
 import uuid
 
-
-def set_sqlite_pragma(dbapi_connection, connection_record):
-    # pylint: disable=unused-argument
-    """
-    SQLite supports FOREIGN KEY syntax when emitting CREATE statements for
-    tables, however by default these constraints have no effect on the
-    operation of the table.
-
-    http://docs.sqlalchemy.org/en/latest/dialects/sqlite.html#foreign-key-support
-    """
-    if not isinstance(dbapi_connection, sqlite3.Connection):
-        return
-    cursor = dbapi_connection.cursor()
-    cursor.execute('PRAGMA foreign_keys=ON')
-    cursor.close()
+from sqlalchemy import MetaData
+from flask_sqlalchemy import SQLAlchemy as BaseSQLAlchemy
 
 
 class AlembicDatabaseMigrationConfig(object):
@@ -43,7 +24,7 @@ class AlembicDatabaseMigrationConfig(object):
 class SQLAlchemy(BaseSQLAlchemy):
     """
     Customized Flask-SQLAlchemy adapter with enabled autocommit, constraints
-    auto-naming conventions and ForeignKey constraints for SQLite.
+    auto-naming conventions and ForeignKey constraints.
     """
 
     def __init__(self, *args, **kwargs):
@@ -76,8 +57,6 @@ class SQLAlchemy(BaseSQLAlchemy):
 
         database_uri = app.config['SQLALCHEMY_DATABASE_URI']
         assert database_uri, 'SQLALCHEMY_DATABASE_URI must be configured!'
-        if database_uri.startswith('sqlite:'):
-            self.event.listens_for(engine.Engine, 'connect')(set_sqlite_pragma)
 
         app.extensions['migrate'] = AlembicDatabaseMigrationConfig(
             self, compare_type=True

@@ -1,12 +1,6 @@
 #!/bin/bash
 
 set -xe
-# We need to have a persistent sqlite database to run these tasks
-if [ "$SQLALCHEMY_DATABASE_URI" == "sqlite://" ]
-then
-    SQLALCHEMY_DATABASE_URI=''
-    rm -f _db/database.sqlite3
-fi
 
 # test app.db.*
 coverage run --append `which invoke` app.db.upgrade --no-backup

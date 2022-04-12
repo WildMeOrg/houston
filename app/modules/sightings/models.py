@@ -191,6 +191,19 @@ class Sighting(db.Model, FeatherModel):
     def get_location_id(self):
         return self.get_edm_data_field('locationId')
 
+    def get_location_id_value(self):
+        location_id_value = None
+        location_id = self.get_location_id()
+
+        from app.modules.site_settings.models import Regions
+
+        regions = Regions()
+        region_data = regions.find(location_id, id_only=False)
+        if region_data:
+            location_id_value = region_data.get('name', location_id)
+
+        return location_id_value
+
     def get_locality(self):
         return self.get_edm_data_field('verbatimLocality')
 

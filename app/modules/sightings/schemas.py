@@ -84,7 +84,8 @@ class ElasticsearchSightingSchema(BaseSightingSchema):
             'comments',
             'verbatimLocality',
             'locationId_id',
-            'locationId_value' 'owners',
+            'locationId_value',
+            'owners',
             'taxonomy_guid',
             'customFields',
         )

@@ -42,7 +42,7 @@ class ElasticsearchEncounterSchema(ModelSchema):
     timeSpecificity = base_fields.Function(Encounter.get_time_specificity)
     owner_guid = base_fields.Function(Encounter.get_owner_guid_str)
     sighting_guid = base_fields.Function(Encounter.get_sighting_guid_str)
-    locationId = base_fields.Function(Encounter.get_location)
+    locationId = base_fields.Function(Encounter.get_location_id)
     taxonomy_guid = base_fields.Function(Encounter.get_taxonomy_guid)
     point = base_fields.Function(Encounter.get_point)
     customFields = base_fields.Function(Encounter.get_custom_fields)

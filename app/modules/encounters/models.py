@@ -136,9 +136,6 @@ class Encounter(db.Model, FeatherModel):
             location_id = self.sighting.get_location_id()
         return location_id
 
-    def get_location(self):
-        return self.get_edm_data_field('locationId')
-
     def get_point(self):
         dec_lat = self.get_edm_data_field('decimalLatitude')
         dec_lon = self.get_edm_data_field('decimalLongitude')

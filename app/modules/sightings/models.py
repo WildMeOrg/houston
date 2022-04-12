@@ -954,7 +954,7 @@ class Sighting(db.Model, FeatherModel):
 
         if annot.guid not in response['annotation_data'].keys():
             encounter_location = (
-                annot.encounter.get_location() if annot.encounter else None
+                annot.encounter.get_location_id() if annot.encounter else None
             )
             # add annot data
             response['annotation_data'][str(annot.guid)] = {

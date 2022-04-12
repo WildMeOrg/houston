@@ -85,6 +85,8 @@ class TwitterBot(IntelligentAgent):
     TwitterBot intelligent Agent
     """
 
+    # note, `api` is for V1 Twitter API and `client` if for V2; we obtain both, but probably should
+    #   only use V2 unless we have no choice. i think?  more notes at get_api() and get_client()
     api = None
     client = None
 
@@ -93,29 +95,34 @@ class TwitterBot(IntelligentAgent):
             raise ValueError('TwitterBot not ready for usage.')
         self.api = self.get_api()
         self.client = self.get_client()
-        log.debug(f'TwitterBot() obtained {self.api}')
+        log.debug(f'TwitterBot() obtained {self.api} and {self.client}')
         super().__init__(*args, **kwargs)
 
+    # this is uses only V2 calls
     def test_setup(self):
         if not self.is_enabled():
             return {'success': False, 'message': 'Not enabled.'}
         if not self.is_ready():
             return {'success': False, 'message': 'Not ready.'}
-        if not self.api:
-            return {'success': False, 'message': 'api unset.'}
+        if not self.client:
+            return {'success': False, 'message': 'client unset.'}
         try:
-            twitter_settings = self.api.get_settings()
+            # twitter_settings = self.api.get_settings()
+            me_data = self.client.get_me()
+            assert me_data
+            assert me_data.data
+            assert me_data.data.username
         except Exception as ex:
-            log.warning(f'TwitterBot.test_setup() api call got exception: {str(ex)}')
-            return {'success': False, 'message': f'api exception: {str(ex)}'}
-        assert twitter_settings
+            log.warning(f'TwitterBot.test_setup() client call got exception: {str(ex)}')
+            return {'success': False, 'message': f'client exception: {str(ex)}'}
         log.debug(
-            f'TwitterBot.test_setup() api.get_settings successfully returned: {twitter_settings}'
+            f'TwitterBot.test_setup() client.get_me() successfully returned: {me_data.data}'
         )
         return {
             'success': True,
-            'message': f"Success: Twitter screen name is '{twitter_settings.get('screen_name', 'UNKNOWN')}'",
-            'screen_name': twitter_settings.get('screen_name'),
+            'message': f"Success: Twitter username is '{me_data.data.username}', name is '{me_data.data.name}'.",
+            'username': me_data.data.username,
+            'name': me_data.data.name,
         }
 
     # def collect(self):
@@ -124,28 +131,15 @@ class TwitterBot(IntelligentAgent):
     # right now we search tweets for only "@HANDLE" references, but this
     #    could be expanded to include some site-setting customizations
     def search_string(self):
-        return f'@{self.get_screen_name()}'
+        return f'@{self.get_username()}'
 
-    # get_settings() [currently] returns:
-    # {'allow_contributor_request': 'all',
-    #  'allow_dm_groups_from': 'following',
-    #  'allow_dms_from': 'following',
-    #  'always_use_https': True,
-    #  'discoverable_by_email': True,
-    #  'discoverable_by_mobile_phone': False,
-    #  'display_sensitive_media': False,
-    #  'geo_enabled': False,
-    #  'language': 'en',
-    #  'protected': False,
-    #  'screen_name': 'TweetABruce',
-    #  'sleep_time': {'enabled': False, 'end_time': None, 'start_time': None},
-    #  'translator_type': 'none',
-    #  'use_cookie_personalization': False}
-    def get_screen_name(self):
+    def get_username(self):
         # could possibly set this as a (read-only) SiteSetting so we dont have to hit api every time
-        twitter_settings = self.api.get_settings()
-        assert twitter_settings
-        return twitter_settings.get('screen_name', 'ERROR-SCREEN-NAME')
+        assert self.client
+        me_data = self.client.get_me()
+        assert me_data
+        assert me_data.data
+        return me_data.data.username
 
     @classmethod
     def is_ready(cls):

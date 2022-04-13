@@ -143,7 +143,7 @@ jobs:
         if: matrix.db-uri != 'sqlite://' && matrix.app-context == 'codex'
         run: |
           set -ex
-          docker-compose exec -T -e LOG_WIDTH=$LOG_WIDTH -e SQLALCHEMY_DATABASE_URI=$TEST_DATABASE_URI houston coverage run /usr/local/bin/invoke app.db.upgrade
+          docker-compose exec -T -e LOG_WIDTH=$LOG_WIDTH -e SQLALCHEMY_DATABASE_URI=$TEST_DATABASE_URI houston coverage run --append /usr/local/bin/invoke app.db.upgrade
           docker-compose exec -T -e LOG_WIDTH=$LOG_WIDTH -e SQLALCHEMY_DATABASE_URI=$TEST_DATABASE_URI houston coverage run --append /usr/local/bin/invoke app.db.downgrade
           docker-compose exec -T -e LOG_WIDTH=$LOG_WIDTH -e SQLALCHEMY_DATABASE_URI=$TEST_DATABASE_URI houston coverage run --append /usr/local/bin/invoke app.db.upgrade
           docker-compose exec -T -e LOG_WIDTH=$LOG_WIDTH -e SQLALCHEMY_DATABASE_URI=$TEST_DATABASE_URI houston coverage run --append /usr/local/bin/invoke app.db.downgrade --revision base

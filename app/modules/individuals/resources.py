@@ -789,7 +789,8 @@ class FlatfileNameValidation(Resource):
     # values passed in from flatfile are val/index pairs:
     # [
     #   ["Zebulon", 1],
-    #   ["Zebrucifer", 2],
+    #   ["Zebulon", 2],
+    #   ["Zebrandon", 3],
     #   ["Zebrelda", 300],
     #   ["Zesus", 46]
     # ]
@@ -807,11 +808,9 @@ class FlatfileNameValidation(Resource):
                 code=500,
             )
 
-        query_index_dict = {
-            val_id_pair[0]: val_id_pair[1] for val_id_pair in request.json
-        }
         # want to preserve order here
         query_name_vals = [val_id_pair[0] for val_id_pair in request.json]
+        query_indices = [val_id_pair[1] for val_id_pair in request.json]
 
         db_names = Name.query.filter(
             Name.value.in_(query_name_vals), Name.context == DEFAULT_NAME_CONTEXT
@@ -822,7 +821,7 @@ class FlatfileNameValidation(Resource):
             db_name_lookup[name.value].append(str(name.individual_guid))
 
         rtn_json = []
-        for name_val in query_name_vals:
+        for name_val, index in zip(query_name_vals, query_indices):
             if name_val in db_name_lookup and len(db_name_lookup[name_val]) == 1:
                 name_info = {
                     'message': f'Corresponds to existing individual {db_name_lookup[name_val][0]}.',
@@ -840,6 +839,6 @@ class FlatfileNameValidation(Resource):
                 }
 
             name_json = {'value': name_val, 'info': [name_info]}
-            rtn_json.append([name_json, query_index_dict[name_val]])
+            rtn_json.append([name_json, index])
 
         return rtn_json

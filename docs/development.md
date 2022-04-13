@@ -1,5 +1,28 @@
 # Development
 
+## Automatically reloading flask when code changes
+
+This is useful during development so houston is always serving the most
+up to date code.  The alternative is to manually restart the houston
+server by doing `docker-compose restart houston`.
+
+By default, reloading is turned off.  To turn this on, you can do this
+in your `docker-compose.override.yml`:
+
+```yaml
+services:
+  houston:
+    environment: &houston-environment
+      USE_RELOADER: "true"
+```
+
+After this change you would need to recreate the houston container:
+
+```
+docker-compose rm -f --stop houston
+docker-compose up -d houston
+```
+
 ## Module Structure
 
 Once you added a module name into `config.ENABLED_MODULES`, it is required to

@@ -85,6 +85,8 @@ class BaseConfig(FlaskConfigOverrides, RedisConfig):
     PROJECT_ROOT = PROJECT_ROOT
     PROJECT_DATABASE_PATH = str(DATA_ROOT)
 
+    USE_RELOADER = os.getenv('USE_RELOADER', 'false').lower() != 'false'
+
     # Mapping to file type taken from
     # https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/MIME_types/Common_types
     ASSET_MIME_TYPE_WHITELIST_EXTENSION = {

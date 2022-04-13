@@ -170,6 +170,7 @@ def test_create_annotation_no_ags(
         response.json['message']
         == 'cannot create encounter-less annotation on asset that does not have an asset group sighting'
     )
+    clone.cleanup()
 
 
 @pytest.mark.skipif(

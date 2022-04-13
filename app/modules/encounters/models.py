@@ -136,13 +136,12 @@ class Encounter(db.Model, FeatherModel):
             location_id = self.sighting.get_location_id()
         return location_id
 
-    def get_location(self):
-        return self.get_edm_data_field('locationId')
-
     def get_point(self):
-        lat = self.get_edm_data_field('decimalLatitude')
-        long = self.get_edm_data_field('decimalLongitude')
-        return f'{lat},{long}' if lat and long else None
+        dec_lat = self.get_edm_data_field('decimalLatitude')
+        dec_lon = self.get_edm_data_field('decimalLongitude')
+        if dec_lat is None or dec_lon is None:
+            return None
+        return {'lat': float(dec_lat), 'lon': float(dec_lon)}
 
     # first tries encounter.locationId, but will use sighting.locationId if none on encounter,
     #   unless sighting_fallback=False
@@ -157,6 +156,13 @@ class Encounter(db.Model, FeatherModel):
             return self.time.isoformat_in_timezone()
         if self.sighting and sighting_fallback:
             return self.sighting.get_time_isoformat_in_timezone()
+        return None
+
+    def get_time(self, sighting_fallback=True):
+        if self.time:
+            return self.time
+        if self.sighting and sighting_fallback:
+            return self.sighting.get_time()
         return None
 
     def get_time_specificity(self):

@@ -157,8 +157,8 @@ For development purposes, this setup exposes each of the services as follows:
 - EDM - http://localhost:81/
 - Sage (Wildbook-IA) - http://localhost:82/
 - Houston - http://localhost:83/houston/
-- CODEX (frontend) - http://localhost:84/
-- CODEX (api docs) - http://localhost:84/api/v1/
+- CODEX (frontend) - http://localhost/
+- CODEX (api docs) - http://localhost/api/v1/
 - GitLab - http://localhost:85
 
 See also the results of `docker-compose ps -a`, which will list the services and the ports exposed on those services.
@@ -338,7 +338,7 @@ There are some environment variables you can set for the integration tests:
 
 | Variable           | Default value          |                           |
 |--------------------|------------------------|---------------------------|
-| `CODEX_URL`        | `http://localhost:84/` | The url of the site to test |
+| `CODEX_URL`        | `http://localhost/`    | The url of the site to test |
 | `ADMIN_EMAIL`      | `root@example.org`     | The email of the first admin user |
 | `ADMIN_PASSWORD`   | `password`             | The password of the first admin user |
 | `ADMIN_NAME`       | `Test admin`           | The name of the first admin user |

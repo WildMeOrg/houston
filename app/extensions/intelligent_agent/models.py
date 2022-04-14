@@ -10,9 +10,13 @@ AssetGroups database models
 from datetime import datetime  # NOQA
 
 # from flask_restx_patched._http import HTTPStatus
-# from app.extensions import db, HoustonModel
+from app.extensions import db
 import app.extensions.logging as AuditLog  # NOQA
-from app.extensions.intelligent_agent import IntelligentAgent, IntelligentAgentContent
+from app.extensions.intelligent_agent import (
+    IntelligentAgent,
+    IntelligentAgentContent,
+    IntelligentAgentContentState,
+)
 import random
 
 # from app.utils import HoustonException
@@ -71,7 +75,11 @@ class DummyMessage(IntelligentAgentContent):
                 get_stored_filename(str(random.random())),
             ]
         }
+        self.state = IntelligentAgentContentState.complete
         super().__init__(*args, **kwargs)
+
+    def respond_to(self, message):
+        log.info(f'responding to {self}: {message}')
 
     def content_as_string(self):
         return ' / '.join(self.raw_content['content'])
@@ -125,10 +133,39 @@ class TwitterBot(IntelligentAgent):
             'name': me_data.data.name,
         }
 
-    # def collect(self):
-    # since =
+    def collect(self, since=None):
+        assert self.client
+        query = self.search_string()
+        res = self.client.search_recent_tweets(
+            query,
+            start_time=since,
+            tweet_fields=['created_at', 'author_id', 'entities', 'attachments'],
+            expansions=['attachments.media_keys'],
+            media_fields=['url', 'height', 'width', 'alt_text'],
+        )
+        tweets = []
+        if not res.data or len(res.data) < 1:
+            log.debug(f'collect() on {self} retrieved no tweets with query "{query}"')
+            return tweets
+        log.info(
+            f'collect() on {self} retrieved {len(res.data)} tweet(s) with query "{query}"'
+        )
+        for twt in res.data:
+            try:
+                tt = TwitterTweet(twt, res.includes)
+            except Exception as ex:
+                log.warning(f'failed to process_tweet for {twt} due to: {str(ex)}')
+            ok, err = tt.validate()
+            if ok:
+                tweets.append(tt)
+            else:
+                # handle error, tell user etc
+                self.state = IntelligentAgentContentState.rejected
+            with db.session.begin():
+                db.session.add(tt)
+        return tweets
 
-    # right now we search tweets for only "@HANDLE" references, but this
+    # right now we search tweets for only "@USERNAME" references, but this
     #    could be expanded to include some site-setting customizations
     def search_string(self):
         return f'@{self.get_username()}'
@@ -233,4 +270,54 @@ class TwitterBot(IntelligentAgent):
 
 class TwitterTweet(IntelligentAgentContent):
     AGENT_CLASS = TwitterBot
-    pass
+
+    # https://docs.tweepy.org/en/latest/v2_models.html#tweet
+    def __init__(self, tweet=None, response_includes=None, *args, **kwargs):
+        # from app.utils import get_stored_filename
+        super().__init__(*args, **kwargs)
+        if not tweet:
+            return
+        self._tweet = tweet
+        self._resinc = response_includes
+        self.source = {
+            'id': tweet.id,
+            'author_id': tweet.author_id,
+        }
+        self.raw_content = tweet.data
+        if tweet.attachments:
+            media_data = []
+            if not response_includes:
+                log.error(f'attachments with no response_includes: tweet {tweet.id}')
+            elif 'media' not in response_includes or not response_includes['media']:
+                log.error(
+                    f'attachments with no media in response_includes: tweet {tweet.id}'
+                )
+            elif 'media_keys' not in tweet.attachments:
+                log.error(f'attachments with no media_keys: tweet {tweet.id}')
+            else:  # try to map attachments to media
+                for media in response_includes['media']:
+                    if media.media_key in tweet.attachments['media_keys']:
+                        log.debug(
+                            f'{media.media_key} FOUND in attachments on tweet {tweet.id}: {media.data}'
+                        )
+                        media_data.append(media.data)
+                    else:
+                        log.debug(
+                            f'{media.media_key} not in attachments on tweet {tweet.id}'
+                        )
+            try:
+                ag = TwitterBot.generate_asset_group(media_data)
+                self.asset_group = ag
+            except Exception as ex:
+                log.warning(
+                    f'failed to generate AssetGroup on tweet {tweet.id}: {str(ex)}'
+                )
+
+    def validate(self):
+        return True, None
+
+    def respond_to(self, text_key, text_values=None):
+        # TODO make this duh
+        pass
+
+    # def has_media

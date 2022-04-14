@@ -6,6 +6,7 @@ Base Intelligent Agent
 """
 import logging
 import uuid
+import enum
 
 # from flask import current_app, request, session, render_template  # NOQA
 # from flask_login import current_user  # NOQA
@@ -126,6 +127,41 @@ class IntelligentAgent:
                 return agent_cls
         return None
 
+    # media_data is currently a list of dicts, that must have a url
+    #   likely this will be expanded later?
+    @classmethod
+    def generate_asset_group(cls, media_data):
+        if not isinstance(media_data, list) or not media_data:
+            raise ValueError('invalid or empty media_data')
+        for md in media_data:
+            if not isinstance(md, dict):
+                raise ValueError('media_data element is not a dict')
+            url = md.get('url')
+            if not url:
+                raise ValueError(f'no url in {md}')
+            log.debug(f'>>>>>>>>>>>>>>>>> fake-get {url}')
+        return None
+
+    # THESE MAY BE DEPRECATING
+    @classmethod
+    def full_text_key(cls, short_key):
+        return f'intelligent_agent_{cls.short_name()}_{short_key}'
+
+    # this will/should point to a global translation library, but this is
+    #  the bottleneck for it now
+    @classmethod
+    def translate_text(cls, key, vals=None, lang_code='en_US'):
+        full_key = cls.full_text_key(key)
+        return f'NOT YET IMPLEMENTED key={full_key}'
+
+
+class IntelligentAgentContentState(str, enum.Enum):
+    intake = 'intake'
+    rejected = 'rejected'
+    active = 'active'
+    complete = 'complete'
+    error = 'error'
+
 
 class IntelligentAgentContent(db.Model, HoustonModel):
     """
@@ -137,28 +173,42 @@ class IntelligentAgentContent(db.Model, HoustonModel):
     guid = db.Column(
         db.GUID, default=uuid.uuid4, primary_key=True
     )  # pylint: disable=invalid-name
-
-    agent_type = db.Column(db.String(length=128), index=True)
-
+    agent_type = db.Column(db.String(length=128), index=True, nullable=False)
+    state = db.Column(
+        db.Enum(IntelligentAgentContentState),
+        default=IntelligentAgentContentState.intake,
+        nullable=False,
+        index=True,
+    )
+    owner_guid = db.Column(
+        db.GUID,
+        db.ForeignKey('user.guid'),
+        index=True,
+        nullable=True,
+    )
+    owner = db.relationship(
+        'User',
+        foreign_keys=[owner_guid],
+    )
     source = db.Column(db.JSON, default=lambda: {}, nullable=False)
-
     raw_content = db.Column(db.JSON, default=lambda: {}, nullable=False)
-
+    # data derived from raw_content, etc
+    data = db.Column(db.JSON, default=lambda: {}, nullable=True)
     asset_group_guid = db.Column(
         db.GUID,
         db.ForeignKey('asset_group.guid'),
         index=True,
         nullable=True,
     )
-    # asset_group = db.relationship(
-    #'AssetGroup',
-    # backref=db.backref(
-    #'agent_content',
-    # primaryjoin='AssetGroup.guid == IntelligentAgentContent.asset_group_guid',
-    # order_by='AssetGroup.guid',
-    # ),
-    # foreign_keys='IntelligentAgentContent.asset_group_guid',
-    # )
+    asset_group = db.relationship(
+        'AssetGroup',
+        # backref=db.backref(
+        #'agent_content',
+        # primaryjoin='AssetGroup.guid == IntelligentAgentContent.asset_group_guid',
+        # order_by='AssetGroup.guid',
+        # ),
+        foreign_keys='IntelligentAgentContent.asset_group_guid',
+    )
 
     def __init__(self, *args, **kwargs):
         self.agent_type = self.AGENT_CLASS.short_name()
@@ -171,16 +221,19 @@ class IntelligentAgentContent(db.Model, HoustonModel):
             ')>'.format(class_name=self.__class__.__name__, self=self)
         )
 
+    def respond_to(self, text_key, text_values=None):
+        raise NotImplementedError('respond_to() must be overridden')
+
     def get_assets(self):
         if not self.asset_group_guid:
             return None
         return self.asset_group.assets
-
-    def validate(self):
-        pass
 
     def content_as_string(self):
         return str(self.raw_content)
 
     def source_as_string(self):
         return str(self.source)
+
+    def validate(self):
+        return True, None

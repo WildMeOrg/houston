@@ -284,6 +284,25 @@ class Sighting(db.Model, FeatherModel):
             with db.session.begin(subtransactions=True):
                 self.add_asset_in_context(asset)
 
+    @classmethod
+    def get_unsupported_fields(cls, fields):
+        from .parameters import PatchSightingDetailsParameters
+        from app.modules.site_settings.models import SiteSetting
+
+        unsupported_fields = []
+
+        path_choices = PatchSightingDetailsParameters.PATH_CHOICES
+        custom_fields = SiteSetting.get_value('site.custom.customFields.Sighting')
+        for field in fields:
+            if f'/{field}' in path_choices:
+                # supported
+                continue
+            if field in custom_fields:
+                # supported
+                continue
+            unsupported_fields.append(field)
+        return unsupported_fields
+
     def add_assets(self, asset_list):
         with db.session.begin():
             for asset in asset_list:

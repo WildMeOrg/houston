@@ -20,7 +20,6 @@ valid_long = 25.9999
 saturn_data = {
     'time': timestamp,
     'timeSpecificity': 'time',
-    'context': 'test',
     'locationId': 'test',
     'encounters': [
         {
@@ -66,7 +65,6 @@ def test_create_failures(flask_app_client, test_root, researcher_1, request):
         'time': timestamp,
         'timeSpecificity': 'time',
         'assetReferences': [{'fail': 'fail'}],
-        'context': 'test',
         'locationId': 'test',
     }
     expected_error = "Invalid assetReference data {'fail': 'fail'}"
@@ -97,7 +95,6 @@ def test_create_and_modify_and_delete_sighting(
         'encounters': [{}, {}],
         'time': timestamp,
         'timeSpecificity': 'time',
-        'context': 'test',
         'locationId': 'test',
     }
     uuids = sighting_utils.create_sighting(
@@ -324,7 +321,6 @@ def test_create_anon_and_delete_sighting(
     sighting_data = {
         'time': timestamp,
         'timeSpecificity': 'time',
-        'context': 'test',
         'locationId': 'test',
         'encounters': [{}],
         'assetReferences': [test_filename, 'fluke.jpg'],

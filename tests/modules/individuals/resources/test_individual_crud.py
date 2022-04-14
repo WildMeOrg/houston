@@ -122,7 +122,6 @@ def test_add_remove_encounters(db, flask_app_client, researcher_1, request, test
     data_in = {
         'time': datetime.datetime.now().isoformat() + '+00:00',
         'timeSpecificity': 'time',
-        'context': 'test',
         'locationId': 'test',
         'encounters': [
             {},

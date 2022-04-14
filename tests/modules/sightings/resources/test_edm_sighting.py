@@ -17,7 +17,6 @@ def test_sighting_edm_patch_add(db, flask_app_client, researcher_1, request, tes
         'encounters': [{}, {}],
         'time': timestamp,
         'timeSpecificity': 'time',
-        'context': 'test',
         'locationId': 'test',
     }
     uuids = sighting_utils.create_sighting(

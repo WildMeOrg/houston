@@ -87,8 +87,8 @@ class Relationships(Resource):
         if (
             request_in['individual_1_guid']
             and request_in['individual_2_guid']
-            and request_in['individual_1_role']
-            and request_in['individual_2_role']
+            and request_in['individual_1_role_guid']
+            and request_in['individual_2_role_guid']
         ):
 
             if _user_has_write_permission_on_both_individuals(
@@ -98,11 +98,10 @@ class Relationships(Resource):
                     relationship = Relationship(
                         uuid.UUID(request_in['individual_1_guid']),
                         uuid.UUID(request_in['individual_2_guid']),
-                        request_in['individual_1_role'],
-                        request_in['individual_2_role'],
+                        request_in['individual_1_role_guid'],
+                        request_in['individual_2_role_guid'],
+                        type_guid=request_in.get('type_guid'),
                     )
-                    if 'type' in request_in:
-                        relationship.type = request_in['type']
                     if 'start_date' in request_in:
                         try:
                             relationship.start_date = dateutil.parser.parse(

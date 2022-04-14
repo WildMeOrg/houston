@@ -27,14 +27,47 @@ class RelationshipIndividualMember(db.Model, HoustonModel):
     )
 
     individual_guid = db.Column(db.GUID, db.ForeignKey('individual.guid'))
-    individual = db.relationship('Individual', backref=db.backref('relationships'))
+    individual = db.relationship(
+        'Individual', backref=db.backref('relationship_memberships')
+    )
 
-    individual_role = db.Column(db.String, nullable=False)
+    individual_role_guid = db.Column(db.GUID, nullable=False)
 
-    def __init__(self, individual, individual_role, **kwargs):
+    def __init__(self, individual, individual_role_guid, type_guid=None, **kwargs):
         self.individual = individual
-        self.individual_role = individual_role
+        self.individual_role_guid = individual_role_guid
         self.individual_guid = individual.guid
+
+        from app.modules.site_settings.models import SiteSetting
+
+        relationship_type_roles = SiteSetting.get_value(
+            'relationship_type_roles', {}
+        ).values()
+
+        valid_role_guids = []
+        for relationship_type in relationship_type_roles:
+            if type_guid is None or relationship_type.get('guid') == type_guid:
+                for role in relationship_type.get('roles', []):
+                    if role.get('guid'):
+                        valid_role_guids.append(role['guid'])
+
+        if individual_role_guid not in valid_role_guids:
+            raise ValueError(
+                f'Role guid "{individual_role_guid}" not found in site setting "relationship_type_roles" for relationship type guid "{type_guid}"'
+            )
+
+    @property
+    def individual_role_label(self):
+        from app.modules.site_settings.models import SiteSetting
+
+        relationship_type_roles = SiteSetting.get_value(
+            'relationship_type_roles', {}
+        ).values()
+
+        for relationship_type in relationship_type_roles:
+            for role in relationship_type.get('roles', []):
+                if role.get('guid') == str(self.individual_role_guid):
+                    return role.get('label')
 
     def delete(self):
         relationship = Relationship.query.get(self.relationship_guid)
@@ -55,7 +88,7 @@ class Relationship(db.Model, HoustonModel):
     )
     end_date = db.Column(db.DateTime, index=True, default=datetime.utcnow, nullable=True)
 
-    type = db.Column(db.String, nullable=True)
+    type_guid = db.Column(db.GUID, nullable=True)
 
     @classmethod
     def get_elasticsearch_schema(cls):
@@ -67,15 +100,16 @@ class Relationship(db.Model, HoustonModel):
         self,
         individual_1_guid,
         individual_2_guid,
-        individual_1_role,
-        individual_2_role,
-        **kwargs
+        individual_1_role_guid,
+        individual_2_role_guid,
+        type_guid=None,
+        **kwargs,
     ):
         if (
             individual_1_guid
             and individual_2_guid
-            and individual_1_role
-            and individual_2_role
+            and individual_1_role_guid
+            and individual_2_role_guid
         ):
 
             from app.modules.individuals.models import Individual
@@ -84,16 +118,33 @@ class Relationship(db.Model, HoustonModel):
             individual_2 = Individual.query.get(individual_2_guid)
 
             if individual_1 and individual_2:
-                member_1 = RelationshipIndividualMember(individual_1, individual_1_role)
-                member_2 = RelationshipIndividualMember(individual_2, individual_2_role)
+                member_1 = RelationshipIndividualMember(
+                    individual_1, individual_1_role_guid, type_guid=type_guid
+                )
+                member_2 = RelationshipIndividualMember(
+                    individual_2, individual_2_role_guid, type_guid=type_guid
+                )
                 self.individual_members.append(member_1)
                 self.individual_members.append(member_2)
             else:
                 raise ValueError(
                     'One of the Individual guids used to attempt Relationship creation was invalid.'
                 )
+            self.type_guid = type_guid
         else:
-            raise ValueError('Relationship needs two individuals, each with a role.')
+            raise ValueError('Relationship needs two individuals, each with a role guid.')
+
+    @property
+    def type_label(self):
+        from app.modules.site_settings.models import SiteSetting
+
+        relationship_type_roles = SiteSetting.get_value(
+            'relationship_type_roles', {}
+        ).values()
+
+        for relationship_type in relationship_type_roles:
+            if relationship_type.get('guid') == str(self.type_guid):
+                return relationship_type.get('label')
 
     def has_individual(self, individual_guid):
         if self._get_membership_for_guid(individual_guid):
@@ -105,7 +156,10 @@ class Relationship(db.Model, HoustonModel):
         if membership:
             for individual_member in self.individual_members:
                 if individual_member.individual_guid == individual_guid:
-                    return individual_member.individual_role
+                    return (
+                        individual_member.individual_role_label,
+                        individual_member.individual_role_guid,
+                    )
         return None
 
     def _get_membership_for_guid(self, individual_guid):

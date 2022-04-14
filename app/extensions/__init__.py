@@ -134,7 +134,13 @@ class ExtraValidationSchema(Schema):
         if cleaned_data is None:  # Wrong type given, nothing to validate
             return
         valid_fields = sorted(self.fields.keys())
-        unknown = set(original_data) - set(valid_fields)
+        if isinstance(original_data, list):
+            original_data_keys = set(
+                sum((list(data.keys()) for data in original_data), start=[])
+            )
+        else:
+            original_data_keys = set(original_data)
+        unknown = original_data_keys - set(valid_fields)
         if unknown:
             raise ValidationError(
                 f'Unknown field(s): {", ".join(unknown)}, options are {", ".join(valid_fields)}.'
@@ -172,10 +178,10 @@ class ExtraValidationSchema(Schema):
                 if isinstance(errors[key], dict):
                     if key == '_schema':
                         get_error(errors[key], results, _keys)
-                    get_error(errors[key], results, _keys + [key])
+                    get_error(errors[key], results, _keys + [str(key)])
                 else:
                     if key != '_schema':
-                        _keys.append(key)
+                        _keys.append(str(key))
                     message = ' '.join(errors[key])
                     if not _keys:
                         results.append(message)

@@ -14,14 +14,14 @@ from .models import Notification, NotificationType, NotificationChannel
 class NotificationChannelSchema(ExtraValidationSchema):
     def __new__(cls, *args, **kwargs):
         for notification_channel in NotificationChannel.__members__.values():
-            cls._declared_fields[notification_channel] = base_fields.Bool()
+            cls._declared_fields[notification_channel.value] = base_fields.Bool()
         return super().__new__(cls)
 
 
 class NotificationPreferenceSchema(ExtraValidationSchema):
     def __new__(cls, *args, **kwargs):
         for notification_type in NotificationType.__members__.values():
-            cls._declared_fields[notification_type] = base_fields.Nested(
+            cls._declared_fields[notification_type.value] = base_fields.Nested(
                 NotificationChannelSchema
             )
         return super().__new__(cls)

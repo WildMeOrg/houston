@@ -228,12 +228,32 @@ class SiteSetting(db.Model, Timestamp):
         return def_val
 
     @classmethod
-    def set_key_value(cls, key, value):
-        if key == 'social_group_roles' and is_module_enabled('social_groups'):
+    def validate_social_group_roles(cls, value):
+        if is_module_enabled('social_groups'):
             from app.modules.social_groups.models import SocialGroup
 
-            # raises houston exception on failure
             SocialGroup.validate_roles(value)
+
+    @classmethod
+    def validate_relationship_type_roles(cls, value):
+        if not isinstance(value, dict):
+            raise HoustonException(
+                log, 'relationship_type_roles needs to be a dictionary'
+            )
+
+        from .schemas import RelationshipTypeSchema
+
+        schema = RelationshipTypeSchema()
+        for relationship_object in value.values():
+            errors = schema.validate(relationship_object)
+            if errors:
+                raise HoustonException(log, schema.get_error_message(errors))
+
+    @classmethod
+    def set_key_value(cls, key, value):
+        if callable(getattr(cls, f'validate_{key}', None)):
+            # should raise HoustonException if validation fails
+            getattr(cls, f'validate_{key}')(value)
 
         assert key in cls.HOUSTON_SETTINGS.keys()
         if not isinstance(value, cls.HOUSTON_SETTINGS[key]['type']):

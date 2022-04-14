@@ -123,7 +123,18 @@ class Individual(db.Model, FeatherModel):
     #     order_by='SocialGroupIndividualMembership.individual_guid',
     # )
 
-    # there is a backref'd 'relationships' list of RelationshipIndividualMember accessible here
+    # there is a backref'd 'relationship_memberships' list of RelationshipIndividualMember accessible here
+
+    @property
+    def relationships(self):
+        from app.modules.relationships.models import (
+            Relationship,
+            RelationshipIndividualMember,
+        )
+
+        return Relationship.query.join(Relationship.individual_members).filter(
+            RelationshipIndividualMember.individual == self
+        )
 
     @classmethod
     def get_elasticsearch_schema(cls):
@@ -876,8 +887,8 @@ class Individual(db.Model, FeatherModel):
             while self.social_groups:
                 db.session.delete(self.social_groups.pop())
 
-            if self.relationships:
-                for relationship_membership in self.relationships:
+            if self.relationship_memberships:
+                for relationship_membership in self.relationship_memberships:
                     relationship_membership.delete()
 
             db.session.delete(self)

@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=missing-docstring
+import uuid
+
 from tests.modules.site_settings.resources import utils as conf_utils
 import pytest
 
@@ -91,6 +93,132 @@ def test_alter_settings(flask_app_client, admin_user):
     )
 
 
+@pytest.mark.skipif(extension_unavailable('edm'), reason='EDM extension disabled')
+def test_alter_custom_fields(flask_app_client, admin_user):
+
+    categories = conf_utils.read_main_settings(
+        flask_app_client, admin_user, 'site.custom.customFieldCategories'
+    )
+    assert 'value' in categories.json['response']
+    cats = categories.json['response']['value']
+    cats.append(
+        {
+            'label': 'sighting_category 1',
+            'id': '252ef07f-252d-495c-ab97-4e9a15cd9aa7',
+            'type': 'sighting',
+            'timeCreated': 1649764520424,
+            'required': 'false',
+        }
+    )
+    conf_utils.modify_main_settings(
+        flask_app_client,
+        admin_user,
+        {'_value': cats},
+        'site.custom.customFieldCategories',
+    )
+
+    occ_cf_rsp = conf_utils.read_main_settings(
+        flask_app_client, admin_user, 'site.custom.customFields.Occurrence'
+    )
+
+    assert 'value' in occ_cf_rsp.json['response']
+    occ_cfs = occ_cf_rsp.json['response']['value']
+    occ_cfs['definitions'].append(
+        {
+            'className': 'org.ecocean.Occurrence',
+            'default': 'woo',
+            'id': str(uuid.uuid4()),
+            'multiple': False,
+            'name': 'field_name',
+            'required': False,
+            'schema': {
+                'category': '252ef07f-252d-495c-ab97-4e9a15cd9aa7',
+                'description': 'wibble de woo',
+                'displayType': 'string',
+                'label': 'Wibble',
+            },
+            'timeCreated': 1649765490770,
+            'type': 'string',
+        }
+    )
+    occ_cfs['definitions'].append(
+        {
+            'className': 'org.ecocean.Occurrence',
+            'default': 'wobble',
+            'id': str(uuid.uuid4()),
+            'multiple': False,
+            'name': 'field_name',
+            'required': False,
+            'schema': {
+                'category': '252ef07f-252d-495c-ab97-4e9a15cd9aa7',
+                'description': "They don't fall down",
+                'displayType': 'string',
+                'label': 'Weeble',
+            },
+            'timeCreated': 1649765490770,
+            'type': 'string',
+        }
+    )
+
+    conf_utils.modify_main_settings(
+        flask_app_client,
+        admin_user,
+        {'_value': occ_cfs},
+        'site.custom.customFields.Sighting',
+    )
+    occ_cf_rsp = conf_utils.read_main_settings(
+        flask_app_client, admin_user, 'site.custom.customFields.Occurrence'
+    )
+
+    defaults = [
+        definit['default']
+        for definit in occ_cf_rsp.json['response']['value']['definitions']
+        if 'default' in definit
+    ]
+    assert 'woo' in defaults
+    assert 'wobble' in defaults
+
+    conf_utils.modify_main_settings(
+        flask_app_client,
+        admin_user,
+        {'_value': cats},
+        'site.custom.customFieldCategories',
+    )
+
+    first = occ_cf_rsp.json['response']['value']['definitions'].pop(0)
+    second = occ_cf_rsp.json['response']['value']['definitions'].pop(0)
+
+    conf_utils.delete_main_setting(
+        flask_app_client, admin_user, f'site.custom.customFields.Sighting/{first["id"]}'
+    )
+    # Try via the patch API too
+    conf_utils.delete_main_setting(
+        flask_app_client,
+        admin_user,
+        f'site.custom.customFields.Occurrence/{second["id"]}',
+    )
+    patch_data = [
+        {
+            'op': 'remove',
+            'path': f'/site.custom.customFields.Occurrence/{first["id"]}',
+        },
+    ]
+    conf_utils.patch_main_setting(
+        flask_app_client,
+        admin_user,
+        'block',
+        patch_data,
+    )
+    # check if they're gone
+    sight_cf_rsp = conf_utils.read_main_settings(
+        flask_app_client, admin_user, 'site.custom.customFields.Sighting'
+    ).json
+    definitions = sight_cf_rsp['response']['value']['definitions']
+    def_ids = [defi['id'] for defi in definitions]
+    assert first['id'] not in def_ids
+    assert second['id'] not in def_ids
+
+
 def test_dict_write(flask_app_client, admin_user):
     # Create json site setting
     data = [
@@ -128,13 +256,13 @@ def test_alter_houston_settings(flask_app_client, admin_user, researcher_1):
         'email_service_password',
     )
     config_def_response_admin = conf_utils.read_main_settings_definition(
-        flask_app_client, admin_user, '__bundle_setup'
+        flask_app_client, admin_user, 'block'
     )
     config_def_response_researcher = conf_utils.read_main_settings_definition(
         flask_app_client, researcher_1, '__bundle_setup'
     )
     config_response_admin = conf_utils.read_main_settings(
-        flask_app_client, admin_user, '__bundle_setup'
+        flask_app_client, admin_user, 'block'
     )
     config_response_researcher = conf_utils.read_main_settings(
         flask_app_client, researcher_1, '__bundle_setup'

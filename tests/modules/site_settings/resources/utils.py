@@ -78,7 +78,7 @@ def _modify_setting(
         expected_error=expected_error,
     )
     if expected_status_code == 200:
-        assert res.json['success']
+        assert res.json['success'], res.json
     elif expected_status_code:
         if 'success' in res.json.keys():
             assert not res.json['success']
@@ -133,6 +133,29 @@ def custom_field_create(
     cfd_list = response.json.get('updatedCustomFieldDefinitionIds', None)
     assert cfd_list
     return cfd_list[0]
+
+
+def patch_main_setting(
+    flask_app_client,
+    user,
+    conf_key,
+    data,
+    expected_status_code=200,
+):
+    if conf_key == 'block':
+        path = f'{SETTING_PATH}/main'
+    else:
+        path = f'{SETTING_PATH}/main/{conf_key}'
+
+    return test_utils.patch_via_flask(
+        flask_app_client,
+        user,
+        scopes='site-settings:write',
+        path=path,
+        data=data,
+        expected_status_code=expected_status_code,
+        response_200={'success'},
+    )
 
 
 def _delete_setting(

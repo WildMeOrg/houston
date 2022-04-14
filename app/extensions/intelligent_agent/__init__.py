@@ -8,7 +8,8 @@ import logging
 import uuid
 import enum
 
-# from flask import current_app, request, session, render_template  # NOQA
+from flask import current_app
+
 # from flask_login import current_user  # NOQA
 from app.extensions import db
 
@@ -127,21 +128,6 @@ class IntelligentAgent:
                 return agent_cls
         return None
 
-    # media_data is currently a list of dicts, that must have a url
-    #   likely this will be expanded later?
-    @classmethod
-    def generate_asset_group(cls, media_data):
-        if not isinstance(media_data, list) or not media_data:
-            raise ValueError('invalid or empty media_data')
-        for md in media_data:
-            if not isinstance(md, dict):
-                raise ValueError('media_data element is not a dict')
-            url = md.get('url')
-            if not url:
-                raise ValueError(f'no url in {md}')
-            log.debug(f'>>>>>>>>>>>>>>>>> fake-get {url}')
-        return None
-
     # THESE MAY BE DEPRECATING
     @classmethod
     def full_text_key(cls, short_key):
@@ -237,3 +223,38 @@ class IntelligentAgentContent(db.Model, HoustonModel):
 
     def validate(self):
         return True, None
+
+    # can (should?) be overridden to be agent-specific if desired
+    #   used for things like filename prefixes etc, so should be fairly "filename-friendly"
+    def id_string(self):
+        return self.guid
+
+    # media_data is currently a list of dicts, that must have a url and optionally `id`
+    #   likely this will be expanded later?
+    def generate_asset_group(self, media_data):
+        if not isinstance(media_data, list) or not media_data:
+            raise ValueError('invalid or empty media_data')
+        import requests
+        import uuid
+        import os
+        from app.extensions.tus import tus_upload_dir
+
+        # basically replicate tus transaction dir, to drop files in
+        tid = uuid.uuid4()
+        target_dir = tus_upload_dir(current_app, transaction_id=str(tid))
+        if not os.path.exists(target_dir):
+            os.makedirs(target_dir)
+        ct = 0
+        for md in media_data:
+            if not isinstance(md, dict):
+                raise ValueError('media_data element is not a dict')
+            url = md.get('url')
+            if not url:
+                raise ValueError(f'no url in {md}')
+            target_filename = f"{self.id_string()}-{md.get('id', 'unknown')}-{ct}"
+            target_path = os.path.join(target_dir, target_filename)
+            log.debug(f'trying get {url} -> {target_path}')
+            resp = requests.get(url)
+            open(target_path, 'wb').write(resp.content)
+            ct += 1
+        return None

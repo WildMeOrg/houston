@@ -300,13 +300,15 @@ class TwitterTweet(IntelligentAgentContent):
                         log.debug(
                             f'{media.media_key} FOUND in attachments on tweet {tweet.id}: {media.data}'
                         )
+                        # so generate_asset_group() can use media_key as media "id"
+                        media.data['id'] = media.media_key
                         media_data.append(media.data)
                     else:
                         log.debug(
                             f'{media.media_key} not in attachments on tweet {tweet.id}'
                         )
             try:
-                ag = TwitterBot.generate_asset_group(media_data)
+                ag = self.generate_asset_group(media_data)
                 self.asset_group = ag
             except Exception as ex:
                 log.warning(
@@ -315,6 +317,11 @@ class TwitterTweet(IntelligentAgentContent):
 
     def validate(self):
         return True, None
+
+    def id_string(self):
+        if self.source:
+            return f"tweetmedia-{self.source.get('id', 'unknown')}-{self.guid}"
+        return f'tweetmedia-unknown-{self.guid}'
 
     def respond_to(self, text_key, text_values=None):
         # TODO make this duh

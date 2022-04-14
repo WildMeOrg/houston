@@ -372,8 +372,6 @@ def upgrade():
     try:
         with op.batch_alter_table('asset_group', schema=None) as batch_op:
             batch_op.drop_column('major_type')
-            if 'sqlite' in op.get_bind().dialect.dialect_description:
-                batch_op.drop_constraint('ck_asset_group_assetgroupmajortype')
     except Exception:
         op.execute('COMMIT')
         with op.batch_alter_table('asset_group', schema=None) as batch_op:
@@ -551,10 +549,6 @@ def downgrade():
             ['commit_houston_api_version'],
             unique=False,
         )
-
-    with op.batch_alter_table('asset_group', schema=None) as batch_op:
-        if 'sqlite' in op.get_bind().dialect.dialect_description:
-            batch_op.drop_constraint('assetgroupmajortype')
 
     with op.batch_alter_table('asset', schema=None) as batch_op:
         batch_op.add_column(

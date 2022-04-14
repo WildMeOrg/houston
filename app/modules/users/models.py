@@ -107,6 +107,7 @@ if is_extension_enabled('edm'):
             # TODO is this actually needed
             log.warning('User._process_edm_user_organization() not implemented yet')
 
+
 else:
     UserEDMMixin = object
 
@@ -672,6 +673,29 @@ class User(db.Model, FeatherModel, UserEDMMixin):
             new_ags = [ags for ags in group.get_unprocessed_asset_group_sightings()]
             ags.extend(new_ags)
         return ags
+
+    @module_required('asset_groups', resolve='warn', default=[])
+    def get_bulk_asset_group_sighting(self):
+        bulk_agses = [
+            ags
+            for ags in self.get_unprocessed_asset_group_sightings()
+            if ags.config and ags.config.bulk_upload
+        ]
+        assert len(bulk_agses) < 2, f'multiple bulk uploads in progress for user {self}'
+        if len(bulk_agses) == 0:
+            bulk_ags = None
+        else:
+            bulk_ags = bulk_agses[0]
+        return bulk_ags
+
+    @module_required('asset_groups', resolve='warn', default=[])
+    def get_bulk_tus_transaction_id(self):
+        bulk_ags = self.get_bulk_asset_group_sighting()
+        if bulk_ags:
+            transaction_id = bulk_ags.transaction_id
+        else:
+            transaction_id = None
+        return transaction_id
 
     @module_required('sightings', resolve='warn', default=[])
     def unprocessed_sightings(self):

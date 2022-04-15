@@ -822,7 +822,9 @@ class FlatfileNameValidation(Resource):
 
         rtn_json = []
         for name_val, index in zip(query_name_vals, query_indices):
-            if name_val in db_name_lookup and len(db_name_lookup[name_val]) == 1:
+            if not name_val or name_val.strip() == '':
+                continue
+            elif name_val in db_name_lookup and len(db_name_lookup[name_val]) == 1:
                 name_info = {
                     'message': f'Corresponds to existing individual {db_name_lookup[name_val][0]}.',
                     'level': 'info',
@@ -834,10 +836,9 @@ class FlatfileNameValidation(Resource):
                 }
             else:
                 name_info = {
-                    'message': 'This is a new name and submission will create a new individual',
-                    'level': 'warning',
+                    'message': 'ERROR: cannot resolve this name to an existing individual. New name creation is not yet supported in bulk upload.',
+                    'level': 'error',
                 }
-
             name_json = {'value': name_val, 'info': [name_info]}
             rtn_json.append([name_json, index])
 

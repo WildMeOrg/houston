@@ -200,7 +200,7 @@ class Sighting(db.Model, FeatherModel):
         regions = Regions()
         region_data = regions.find(location_id, id_only=False)
         if region_data:
-            location_id_value = region_data.get('name', location_id)
+            location_id_value = region_data[0].get('name', location_id)
 
         return location_id_value
 

@@ -641,7 +641,14 @@ class Sighting(db.Model, FeatherModel):
                 log.warning(f'skipping {annot} due to no content_guid')
                 continue
             if annot.encounter and annot.encounter.sighting:
-                if annot.encounter.sighting.stage == SightingStage.processed:
+                log.debug(
+                    f'get_matching_set_data() at {annot.encounter.sighting} vs {self}'
+                )
+                # is not annot.encounter.sighting == self at this point????
+                if (
+                    annot.encounter.sighting.stage == SightingStage.processed
+                    or annot.encounter.sighting.stage == SightingStage.identification
+                ):
                     acm_annot_uuid = to_acm_uuid(annot.content_guid)
                     if acm_annot_uuid not in matching_set_annot_uuids:
                         matching_set_annot_uuids.append(acm_annot_uuid)

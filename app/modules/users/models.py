@@ -107,6 +107,7 @@ if is_extension_enabled('edm'):
             # TODO is this actually needed
             log.warning('User._process_edm_user_organization() not implemented yet')
 
+
 else:
     UserEDMMixin = object
 
@@ -527,6 +528,13 @@ class User(db.Model, FeatherModel, UserEDMMixin):
             cls.forum_id.contains(term),
             cls.full_name.contains(term),
         )
+
+    # FIXME not yet implemented
+    #   this should find a user based on the tuple (key, id); like ('twitter','xxxxxx')
+    @classmethod
+    def find_user_by_social(cls, social_key, id):
+        log.debug(f'User.find_user_by_social({social_key}, {id}) -> NOT YET IMPLEMENTED')
+        return None
 
     @property
     def is_authenticated(self):

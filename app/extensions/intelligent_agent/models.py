@@ -18,12 +18,15 @@ from app.extensions.intelligent_agent import (
     IntelligentAgentContentState,
 )
 import random
+import gettext
+
 
 # from app.utils import HoustonException
 
 import logging
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
+_ = gettext.gettext
 
 
 class DummyTest(IntelligentAgent):
@@ -155,15 +158,23 @@ class TwitterBot(IntelligentAgent):
                 tt = TwitterTweet(twt, res.includes)
             except Exception as ex:
                 log.warning(f'failed to process_tweet for {twt} due to: {str(ex)}')
+                # TODO can we still reply to user without tt?
+                continue
             ok, err = tt.validate()
             if ok:
+                self.state = IntelligentAgentContentState.active
+                tt.respond_to(_('Thank you!  We are processing your tweet.'))
                 tweets.append(tt)
             else:
-                # handle error, tell user etc
                 self.state = IntelligentAgentContentState.rejected
+                tt.respond_to(_('Sorry, we cannot process this tweet because: ') + err)
             with db.session.begin():
                 db.session.add(tt)
         return tweets
+
+    @classmethod
+    def social_account_key(cls):
+        return 'twitter_username'
 
     # right now we search tweets for only "@USERNAME" references, but this
     #    could be expanded to include some site-setting customizations
@@ -284,6 +295,8 @@ class TwitterTweet(IntelligentAgentContent):
             'author_id': tweet.author_id,
         }
         self.raw_content = tweet.data
+        self.owner = self.find_author_user()
+
         if tweet.attachments:
             media_data = []
             if not response_includes:
@@ -316,6 +329,9 @@ class TwitterTweet(IntelligentAgentContent):
                 )
 
     def validate(self):
+        ok, msg = super().validate()
+        if not ok:
+            return ok, msg
         return True, None
 
     def id_string(self):
@@ -323,8 +339,12 @@ class TwitterTweet(IntelligentAgentContent):
             return f"tweetmedia-{self.source.get('id', 'unknown')}-{self.guid}"
         return f'tweetmedia-unknown-{self.guid}'
 
-    def respond_to(self, text_key, text_values=None):
-        # TODO make this duh
-        pass
+    def get_author_id(self):
+        return self.source.get('author_id') if self.source else None
+
+    # FIXME implement
+    def respond_to(self, message):
+        log.info(f'responding to {self}: {message}')
+        return
 
     # def has_media

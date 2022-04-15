@@ -7,6 +7,7 @@ Base Intelligent Agent
 import logging
 import uuid
 import enum
+import gettext
 
 from flask import current_app
 
@@ -27,6 +28,7 @@ import app.extensions.logging as AuditLog  # NOQA
 
 
 log = logging.getLogger(__name__)
+_ = gettext.gettext
 
 
 class IntelligentAgent:
@@ -76,6 +78,11 @@ class IntelligentAgent:
     @classmethod
     def short_name(cls):
         return cls.__name__.lower()
+
+    # probably want to override with something more general, like just 'twitter' etc
+    @classmethod
+    def social_account_key(cls):
+        return cls.short_name()
 
     @classmethod
     def site_setting_id(cls, setting):
@@ -210,6 +217,11 @@ class IntelligentAgentContent(db.Model, HoustonModel):
     def respond_to(self, text_key, text_values=None):
         raise NotImplementedError('respond_to() must be overridden')
 
+    # override
+    # this should be what links to User via social_account_key()
+    def get_author_id(self):
+        return None
+
     def get_assets(self):
         if not self.asset_group_guid:
             return None
@@ -221,7 +233,17 @@ class IntelligentAgentContent(db.Model, HoustonModel):
     def source_as_string(self):
         return str(self.source)
 
+    def find_author_user(self):
+        from app.modules.users.models import User
+
+        return User.find_user_by_social(
+            self.AGENT_CLASS.social_account_key(),
+            self.get_author_id(),
+        )
+
     def validate(self):
+        if not self.get_assets():
+            return False, _('You must include at least one image.')
         return True, None
 
     # can (should?) be overridden to be agent-specific if desired

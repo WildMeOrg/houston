@@ -77,9 +77,6 @@ def downgrade():
 
     with op.batch_alter_table('sighting', schema=None) as batch_op:
         batch_op.drop_column('stage')
-        if 'sqlite' in op.get_bind().dialect.dialect_description:
-            batch_op.drop_constraint('sightingstage')
-            batch_op.drop_constraint('ck_sighting_sightingstage')
 
     sa.Enum(name='sightingstage').drop(op.get_bind(), checkfirst=False)
 

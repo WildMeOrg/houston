@@ -49,12 +49,11 @@ jobs:
       matrix:
         # Use the same Python version used the Dockerfile
         python-version: [3.9]
-        db-uri: ["postgresql://houston:development@db/houston_test"]
         app-context: ["codex", "mws"]
     env:
       OS: ubuntu-latest
       PYTHON: ${{ matrix.python-version }}
-      TEST_DATABASE_URI: ${{ matrix.db-uri }}
+      TEST_DATABASE_URI: "postgresql://houston:development@db/houston_test"
       DOCKER_BUILDKIT: 1
       HOUSTON_APP_CONTEXT: ${{ matrix.app-context }}
     steps:
@@ -115,32 +114,8 @@ jobs:
           set -ex
           docker-compose exec -T -e TEST_DATABASE_URI=$TEST_DATABASE_URI houston pytest --cov=./ --cov-append --random-order-seed=1
 
-      - name: Check DB migrations (sqlite)
-        if: matrix.db-uri == 'sqlite://' && matrix.app-context == 'codex'
-        run: |
-          # initialize the database
-          docker-compose exec -T -e LOG_WIDTH=$LOG_WIDTH -e SQLALCHEMY_DATABASE_URI=$SQLALCHEMY_DATABASE_URI houston invoke app.db.upgrade --no-backup
-          # downgrade to the previous migration step
-          docker-compose exec -T -e LOG_WIDTH=$LOG_WIDTH -e SQLALCHEMY_DATABASE_URI=$SQLALCHEMY_DATABASE_URI houston invoke app.db.downgrade
-          # upgrade to the latest version
-          docker-compose exec -T -e LOG_WIDTH=$LOG_WIDTH -e SQLALCHEMY_DATABASE_URI=$SQLALCHEMY_DATABASE_URI houston invoke app.db.upgrade
-          # downgrade all the way down to the base database version
-          docker-compose exec -T -e LOG_WIDTH=$LOG_WIDTH -e SQLALCHEMY_DATABASE_URI=$SQLALCHEMY_DATABASE_URI houston invoke app.db.downgrade --revision base
-          # upgrade to the latest version
-          docker-compose exec -T -e LOG_WIDTH=$LOG_WIDTH -e SQLALCHEMY_DATABASE_URI=$SQLALCHEMY_DATABASE_URI houston invoke app.db.upgrade
-          # Check if there is a missiong database migration
-          docker-compose exec -T -e LOG_WIDTH=$LOG_WIDTH -e SQLALCHEMY_DATABASE_URI=$SQLALCHEMY_DATABASE_URI houston invoke app.db.migrate
-          # Check if there is a new migration revision file that was generated (this shouldn't happen)
-          docker-compose exec -T -e LOG_WIDTH=$LOG_WIDTH -e SQLALCHEMY_DATABASE_URI=$SQLALCHEMY_DATABASE_URI houston /bin/bash -c 'if [ -n "$(git ls-files --others --exclude-standard migrations/versions/)" ]; then echo Missing database migration; exit 1; fi'
-          # reset database
-          docker-compose exec -T -e LOG_WIDTH=$LOG_WIDTH -e SQLALCHEMY_DATABASE_URI=$SQLALCHEMY_DATABASE_URI houston invoke app.db._reset
-        env:
-          # Don't use in memory sqlite database for database migration
-          SQLALCHEMY_DATABASE_URI: ''
-          LOG_WIDTH: 120
-
       - name: Check DB migrations (postgresql)
-        if: matrix.db-uri != 'sqlite://' && matrix.app-context == 'codex'
+        if: matrix.app-context == 'codex'
         run: |
           set -ex
           docker-compose exec -T -e LOG_WIDTH=$LOG_WIDTH -e SQLALCHEMY_DATABASE_URI=$TEST_DATABASE_URI houston coverage run --append /usr/local/bin/invoke app.db.upgrade

@@ -69,7 +69,6 @@ def _ensure_oauth_user(config):
         try:
             user = User.ensure_user(send_verification=False, **oauth_user)
         except (sqlalchemy.exc.OperationalError, sqlalchemy.exc.ProgrammingError):
-            # sqlite3.OperationalError no such table
             # sqlalchemy.exc.ProgrammingError: (psycopg2.errors.UndefinedTable) relation "user" does not exist
             # skip oauth user creation if table doesn't exist
             # (happens in app.swagger.export task)

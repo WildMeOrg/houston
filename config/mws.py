@@ -97,11 +97,9 @@ class DevelopmentConfig(BaseMWSConfig):
 class TestingConfig(DevelopmentConfig):
     TESTING = True
 
-    # Use in-memory SQLite database for testing if SQLALCHEMY_DATABASE_URI and TEST_DATABASE_URI are not specified
-    SQLALCHEMY_DATABASE_URI = (
-        os.getenv('TEST_DATABASE_URI')
-        or os.getenv('SQLALCHEMY_DATABASE_URI')
-        or 'sqlite://'
+    # Use in-memory database for testing if SQLALCHEMY_DATABASE_URI and TEST_DATABASE_URI are not specified
+    SQLALCHEMY_DATABASE_URI = os.getenv('TEST_DATABASE_URI') or os.getenv(
+        'SQLALCHEMY_DATABASE_URI'
     )
 
     MAIL_SUPPRESS_SEND = True

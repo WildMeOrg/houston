@@ -413,7 +413,11 @@ def test_name_validation(
     flatfile_query = [
         ['Zebra Prime', 0],
         ['Big Dog', 1],
-        ['Zebra Omega', 4],
+        ['Big Dog', 2],
+        ['', 3],
+        [None, 4],
+        ['  ', 5],
+        ['Zebra Omega', 6],
         ['Jennifer', 100],
     ]
 
@@ -443,12 +447,24 @@ def test_name_validation(
                 'value': 'Big Dog',
                 'info': [
                     {
-                        'message': 'This is a new name and submission will create a new individual',
-                        'level': 'warning',
+                        'message': 'ERROR: cannot resolve this name to an existing individual. New name creation is not yet supported in bulk upload.',
+                        'level': 'error',
                     }
                 ],
             },
             1,
+        ],
+        [
+            {
+                'value': 'Big Dog',
+                'info': [
+                    {
+                        'message': 'ERROR: cannot resolve this name to an existing individual. New name creation is not yet supported in bulk upload.',
+                        'level': 'error',
+                    }
+                ],
+            },
+            2,
         ],
         [
             {
@@ -460,15 +476,15 @@ def test_name_validation(
                     }
                 ],
             },
-            4,
+            6,
         ],
         [
             {
                 'value': 'Jennifer',
                 'info': [
                     {
-                        'message': 'This is a new name and submission will create a new individual',
-                        'level': 'warning',
+                        'message': 'ERROR: cannot resolve this name to an existing individual. New name creation is not yet supported in bulk upload.',
+                        'level': 'error',
                     }
                 ],
             },

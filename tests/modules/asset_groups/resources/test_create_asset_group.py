@@ -721,6 +721,54 @@ def test_create_bulk_asset_group(flask_app_client, researcher_1, test_root, db, 
 @pytest.mark.skipif(
     module_unavailable('asset_groups'), reason='AssetGroups module disabled'
 )
+def test_validate_bulk_asset_group(
+    flask_app, flask_app_client, researcher_1, test_root, db, request
+):
+    data = asset_group_utils.get_bulk_creation_data(test_root, request)
+    asset_group_utils.create_asset_group(flask_app_client, researcher_1, data.get())
+    ag_id = researcher_1.get_bulk_asset_group().guid
+    request.addfinalizer(
+        lambda: asset_group_utils.delete_asset_group(
+            flask_app_client, researcher_1, ag_id
+        )
+    )
+
+    valid_data_in = [
+        ['coelacanth.png,   fluke.jpg', 0],
+        ['phoenix.jpg', 1],
+        ['  zebra.jpg,sasquatch.png', 4],
+        ['nessie.jpg,elvis.png', 10],
+    ]
+
+    resp = asset_group_utils.validate_image_endpoint(
+        flask_app_client, researcher_1, valid_data_in
+    )
+
+    expected_response = [
+        [{'message': 'uploaded successfully', 'level': 'info'}, 0],
+        [{'message': 'uploaded successfully', 'level': 'info'}, 1],
+        [
+            {
+                'message': 'missing image: sasquatch.png. Please return to image upload stage and upload this image.',
+                'level': 'error',
+            },
+            4,
+        ],
+        [
+            {
+                'message': "missing images: ['nessie.jpg', 'elvis.png']. Please return to image upload stage and upload these images.",
+                'level': 'error',
+            },
+            10,
+        ],
+    ]
+
+    assert resp.json == expected_response
+
+
+@pytest.mark.skipif(
+    module_unavailable('asset_groups'), reason='AssetGroups module disabled'
+)
 def test_create_asset_group_individual(
     flask_app_client,
     researcher_1,

@@ -18,7 +18,6 @@ from app.extensions.api.parameters import _get_is_static_role_property
 from app.extensions.email import Email
 import app.extensions.logging as AuditLog
 
-
 log = logging.getLogger(__name__)
 
 
@@ -675,24 +674,24 @@ class User(db.Model, FeatherModel, UserEDMMixin):
         return ags
 
     @module_required('asset_groups', resolve='warn', default=[])
-    def get_bulk_asset_group_sighting(self):
-        bulk_agses = [
-            ags
-            for ags in self.get_unprocessed_asset_group_sightings()
-            if ags.config and ags.config.bulk_upload
+    def get_bulk_asset_group(self):
+        ags = [
+            group
+            for group in self.get_unprocessed_asset_groups()
+            if group.get_config_field('uploadType') == 'bulk'
         ]
-        assert len(bulk_agses) < 2, f'multiple bulk uploads in progress for user {self}'
-        if len(bulk_agses) == 0:
-            bulk_ags = None
+        assert len(ags) < 2, f'multiple bulk asset groups found for user {self}'
+        if len(ags) == 0:
+            group = None
         else:
-            bulk_ags = bulk_agses[0]
-        return bulk_ags
+            group = ags[0]
+        return group
 
     @module_required('asset_groups', resolve='warn', default=[])
     def get_bulk_tus_transaction_id(self):
-        bulk_ags = self.get_bulk_asset_group_sighting()
-        if bulk_ags:
-            transaction_id = bulk_ags.transaction_id
+        bulk_ag = self.get_bulk_asset_group()
+        if bulk_ag and bulk_ag.config and 'transactionId' in bulk_ag.config:
+            transaction_id = bulk_ag.config['transactionId']
         else:
             transaction_id = None
         return transaction_id

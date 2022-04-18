@@ -578,6 +578,19 @@ def create_asset_group(
     return response
 
 
+def validate_image_endpoint(
+    flask_app_client, user, valid_data_in, expected_status_code=200, expected_error=''
+):
+
+    with flask_app_client.login(user, auth_scopes=('asset_groups:write',)):
+        response = flask_app_client.post(
+            '/api/v1/fileuploads/image_validate/',
+            content_type='application/json',
+            data=json.dumps(valid_data_in),
+        )
+    return response
+
+
 # As for method above but simulate a successful initial response from Sage and do some minimal validation
 # Note this is just the ack to say that Sage has received the request, not the detection response itself
 def create_asset_group_sim_sage_init_resp(

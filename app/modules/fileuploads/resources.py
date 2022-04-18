@@ -43,11 +43,11 @@ class FlatfileImageNameValidate(Resource):
     # [
     #   ["1.jpg", 1],
     #   ["86.jpg,zebra.jpg", 2],
-    #   ["55.jpg, giraffe.jpg", ", 15],
+    #   ["55.jpg, giraffe.jpg", 15],
     # ]
     def post(self):
         from app.utils import get_stored_filename
-        from os.path import is_file
+        from os import path
 
         if not current_user or current_user.is_anonymous:
             abort(code=401)
@@ -62,15 +62,30 @@ class FlatfileImageNameValidate(Resource):
         fnames_strs = [val_id_pair[0] for val_id_pair in request.json]
         fnames_ids = [val_id_pair[1] for val_id_pair in request.json]
 
-        transaction_id = current_user.get_bulk_tus_transaction_id
-        assert (
-            transaction_id
-        ), f'could not find an active bulk transaction_id for {current_user}'
-
         fileupload_base_path = pathlib.Path(
             current_app.config.get('FILEUPLOAD_BASE_PATH')
         )
-        user_dir = f'{fileupload_base_path}/trans-{transaction_id}'
+
+        # wrote below logic before testing. it's odd to me that transaction_id isn't used.
+        # transaction_id = current_user.get_bulk_tus_transaction_id()
+        # assert (
+        #     transaction_id
+        # ), f'could not find an active bulk transaction_id for {current_user}'
+        # upload_dir = f'{fileupload_base_path}/trans-{transaction_id}'
+
+        # the files we're looking for are in a sister dir to the config.get output
+        fileupload_base_path = str(fileupload_base_path).replace(
+            '/fileuploads', '/asset_group'
+        )
+        bulk_asset_group = current_user.get_bulk_asset_group()
+        assert (
+            bulk_asset_group
+        ), f'could not locate an active bulk asset_group for user {current_user}'
+        ag_subdir = str(bulk_asset_group.guid)
+        upload_dir = f'{fileupload_base_path}/{ag_subdir}/_asset_groups'
+        assert path.isdir(
+            upload_dir
+        ), f'could not locate active upload dir for user {current_user}'
 
         rtn_json = []
         for fnames_str, index in zip(fnames_strs, fnames_ids):
@@ -83,22 +98,22 @@ class FlatfileImageNameValidate(Resource):
             missing_images = [
                 fname
                 for fname, hashed_fname in zip(fname_list, hashed_fnames)
-                if not is_file(f'{user_dir}/{hashed_fname}')
+                if not path.isfile(f'{upload_dir}/{hashed_fname}')
             ]
 
             if len(missing_images) == 0:
                 row_json = {
-                    'message': 'images uploaded successfully.',
+                    'message': 'uploaded successfully',
                     'level': 'info',
                 }
             elif len(missing_images) == 1:
                 row_json = {
-                    'message': f'missing image: {missing_images[0]}. please return to image upload stage and upload this image.',
+                    'message': f'missing image: {missing_images[0]}. Please return to image upload stage and upload this image.',
                     'level': 'error',
                 }
             else:
                 row_json = {
-                    'message': f'missing images: {missing_images}. please return to image upload stage and upload these images.',
+                    'message': f'missing images: {missing_images}. Please return to image upload stage and upload these images.',
                     'level': 'error',
                 }
 

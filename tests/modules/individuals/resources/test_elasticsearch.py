@@ -4,8 +4,14 @@
 from tests import utils as test_utils
 from tests.modules.elasticsearch.resources import utils as es_utils
 from tests.modules.individuals.resources import utils as individual_utils
+from tests.utils import module_unavailable
+
+import pytest
 
 
+@pytest.mark.skipif(
+    module_unavailable('individuals'), reason='Individuals module disabled'
+)
 def test_individual_elasticsearch_mappings(
     flask_app_client, researcher_1, request, test_root
 ):

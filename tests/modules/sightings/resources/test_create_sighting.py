@@ -193,10 +193,6 @@ def test_create_and_modify_and_delete_sighting(
     assert test_sight.time.timezone == 'UTC-0700'
     assert test_sight.time.isoformat_in_timezone() == test_dt
 
-    import utool as ut
-
-    ut.embed()
-
     # now update just the specificity
     patch_data = [
         test_utils.patch_replace_op('timeSpecificity', 'day'),

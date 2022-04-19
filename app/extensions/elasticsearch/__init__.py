@@ -348,7 +348,7 @@ class ElasticSearchBulkOperation(object):
 
         return exists
 
-    def _es_index_bulk(self, cls, items, app=None, level=0, parallel=True):
+    def _es_index_bulk(self, cls, items, app=None, level=0, parallel=False):
         if app is None:
             app = self.app
 

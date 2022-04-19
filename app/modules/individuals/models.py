@@ -187,8 +187,10 @@ class Individual(db.Model, FeatherModel):
 
             site_species = SiteSetting.get_value('site.species')
             for species in site_species:
-                if site_species[species]['id'] == taxonomy_guid:
-                    taxonomy_names = site_species[species]['commonNames']
+                if species.get('id') == taxonomy_guid:
+                    taxonomy_names = species.get('commonNames', []) + [
+                        species.get('scientificName')
+                    ]
                     break
 
         return taxonomy_names

@@ -223,7 +223,7 @@ class IntelligentAgentContent(db.Model, HoustonModel):
         return None
 
     def get_assets(self):
-        if not self.asset_group_guid:
+        if not self.asset_group:
             return None
         return self.asset_group.assets
 
@@ -259,7 +259,8 @@ class IntelligentAgentContent(db.Model, HoustonModel):
         import requests
         import uuid
         import os
-        from app.extensions.tus import tus_upload_dir
+        from app.extensions.tus import tus_upload_dir, tus_write_file_metadata
+        from app.utils import get_stored_filename
 
         # basically replicate tus transaction dir, to drop files in
         tid = uuid.uuid4()
@@ -267,16 +268,32 @@ class IntelligentAgentContent(db.Model, HoustonModel):
         if not os.path.exists(target_dir):
             os.makedirs(target_dir)
         ct = 0
+        ag_description = (
+            f'{self.AGENT_CLASS.short_name()}: [{self.guid}] {self.content_as_string()}'
+        )
+        ag_paths = []
         for md in media_data:
             if not isinstance(md, dict):
                 raise ValueError('media_data element is not a dict')
             url = md.get('url')
             if not url:
                 raise ValueError(f'no url in {md}')
-            target_filename = f"{self.id_string()}-{md.get('id', 'unknown')}-{ct}"
-            target_path = os.path.join(target_dir, target_filename)
+            original_filename = f"{self.id_string()}-{md.get('id', 'unknown')}-{ct}"
+            ag_paths.append(original_filename)
+            target_path = os.path.join(target_dir, get_stored_filename(original_filename))
             log.debug(f'trying get {url} -> {target_path}')
             resp = requests.get(url)
             open(target_path, 'wb').write(resp.content)
+            tus_write_file_metadata(target_path, original_filename)
             ct += 1
-        return None
+        group = None
+        if ct:
+            from app.modules.asset_groups.models import AssetGroup
+
+            group = AssetGroup.create_from_tus(
+                ag_description[0:255], self.owner, str(tid), paths=ag_paths
+            )
+            log.info(f'{group} created for {self}')
+        else:
+            log.warning(f'no valid assets generated for {self}; no AssetGroup')
+        return group

@@ -19,6 +19,7 @@ from app.extensions.intelligent_agent import (
 )
 import random
 import gettext
+import traceback
 
 
 # from app.utils import HoustonException
@@ -327,6 +328,7 @@ class TwitterTweet(IntelligentAgentContent):
                 log.warning(
                     f'failed to generate AssetGroup on tweet {tweet.id}: {str(ex)}'
                 )
+                log.debug(traceback.format_exc())
 
     def validate(self):
         ok, msg = super().validate()
@@ -341,6 +343,9 @@ class TwitterTweet(IntelligentAgentContent):
 
     def get_author_id(self):
         return self.source.get('author_id') if self.source else None
+
+    def content_as_string(self):
+        return self.raw_content.get('text')
 
     # FIXME implement
     def respond_to(self, message):

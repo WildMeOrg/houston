@@ -10,6 +10,7 @@ import pathlib
 from app.extensions import db, HoustonModel
 from app.modules import module_required
 from app.utils import HoustonException
+from app.modules.users.models import User
 
 from PIL import Image
 
@@ -491,6 +492,10 @@ class Asset(db.Model, HoustonModel):
             return None
         return cls.query.get(guid)
 
-    def user_is_owner(self, user):
+    def user_is_owner(self, user: User) -> bool:
         # Asset has no owner, but it has one git_store that has an owner
         return user is not None and user == self.git_store.owner
+
+    def is_public(self) -> bool:
+        # Assume public if _owned_ by the public user
+        return self.user_is_owner(User.get_public_user())

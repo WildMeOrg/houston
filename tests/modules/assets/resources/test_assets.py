@@ -2,6 +2,7 @@
 # pylint: disable=missing-docstring
 import hashlib
 
+import tests.extensions.tus.utils as tus_utils
 import tests.modules.asset_groups.resources.utils as asset_group_utils
 import tests.modules.assets.resources.utils as asset_utils
 import pytest
@@ -44,11 +45,11 @@ def test_find_asset(
     )
     asset_guid = uuids['assets'][0]
 
-    src_response = None
-
     asset_response = asset_utils.read_asset(flask_app_client, researcher_1, asset_guid)
     assert asset_response.json['filename'] == 'zebra.jpg'
     assert asset_response.json['src'] == f'/api/v1/assets/src/{asset_guid}'
+
+    src_response = None
     try:
         src_response = asset_utils.read_src_asset(
             flask_app_client, researcher_1, asset_guid
@@ -59,6 +60,50 @@ def test_find_asset(
         # Force the server to release the file handler
         if src_response is not None:
             src_response.close()
+
+
+@pytest.mark.skipif(
+    module_unavailable('asset_groups'), reason='AssetGroups module disabled'
+)
+def test_access_asset_src_by_different_roles(
+    flask_app_client,
+    admin_user,
+    staff_user,
+    request,
+    test_root,
+):
+    """Test that an anonymous sighting upload's assets can be viewed by anyone
+    See also, https://wildme.atlassian.net/browse/DEX-895
+
+    """
+    tus_transaction_id, test_filename = tus_utils.prep_tus_dir(test_root)
+
+    asset_group_uuid = None
+    try:
+        # Create an "anonymous sighting"
+        data = asset_group_utils.AssetGroupCreationData(tus_transaction_id, test_filename)
+        user = None  # anonymous
+        resp = asset_group_utils.create_asset_group(flask_app_client, user, data.get())
+
+        asset_group_uuid = resp.json['guid']
+        asset_guid = resp.json['assets'][0]['guid']
+
+        # Access the asset src as the admin user
+        asset_utils.read_src_asset(flask_app_client, admin_user, asset_guid)
+
+        # Access the asset src as the staff user
+        asset_utils.read_src_asset(flask_app_client, staff_user, asset_guid)
+
+        # Access the asset src as an anonymous user
+        asset_utils.read_src_asset(
+            flask_app_client, None, asset_guid, expected_status_code=401
+        )
+    finally:
+        if asset_group_uuid:
+            asset_group_utils.delete_asset_group(
+                flask_app_client, staff_user, asset_group_uuid
+            )
+        tus_utils.cleanup_tus_dir(tus_transaction_id)
 
 
 @pytest.mark.skipif(

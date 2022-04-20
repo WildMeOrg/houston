@@ -135,18 +135,6 @@ class IntelligentAgent:
                 return agent_cls
         return None
 
-    # THESE MAY BE DEPRECATING
-    @classmethod
-    def full_text_key(cls, short_key):
-        return f'intelligent_agent_{cls.short_name()}_{short_key}'
-
-    # this will/should point to a global translation library, but this is
-    #  the bottleneck for it now
-    @classmethod
-    def translate_text(cls, key, vals=None, lang_code='en_US'):
-        full_key = cls.full_text_key(key)
-        return f'NOT YET IMPLEMENTED key={full_key}'
-
 
 class IntelligentAgentContentState(str, enum.Enum):
     intake = 'intake'
@@ -240,6 +228,15 @@ class IntelligentAgentContent(db.Model, HoustonModel):
             self.AGENT_CLASS.social_account_key(),
             self.get_author_id(),
         )
+
+    def derive_time(self):
+        raise NotImplementedError('must be overridden')
+
+    def derive_taxonomy(self):
+        raise NotImplementedError('must be overridden')
+
+    def derive_location(self):
+        raise NotImplementedError('must be overridden')
 
     def validate(self):
         if not self.get_assets():

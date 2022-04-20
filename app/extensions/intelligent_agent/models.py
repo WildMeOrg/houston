@@ -144,7 +144,7 @@ class TwitterBot(IntelligentAgent):
             query,
             start_time=since,
             tweet_fields=['created_at', 'author_id', 'entities', 'attachments'],
-            expansions=['attachments.media_keys'],
+            expansions=['attachments.media_keys', 'author_id'],
             media_fields=['url', 'height', 'width', 'alt_text'],
         )
         tweets = []
@@ -159,6 +159,11 @@ class TwitterBot(IntelligentAgent):
                 tt = TwitterTweet(twt, res.includes)
             except Exception as ex:
                 log.warning(f'failed to process_tweet for {twt} due to: {str(ex)}')
+                self.create_tweet_queued(
+                    None,  # FIXME
+                    _('We could not process your tweet: ') + str(ex),
+                    in_reply_to=None,
+                )
                 # TODO can we still reply to user without tt?
                 continue
             ok, err = tt.validate()
@@ -172,6 +177,20 @@ class TwitterBot(IntelligentAgent):
             with db.session.begin():
                 db.session.add(tt)
         return tweets
+
+    # this should be used with caution -- use create_tweet_queued() to be safer
+    def create_tweet_direct(self, text, in_reply_to=None):
+        # FIXME implement
+        log.info(f'{self} tweeting [re: {in_reply_to}] >>> {text}')
+        # Client.create_tweet(*, direct_message_deep_link=None, for_super_followers_only=None, place_id=None, media_ids=None, media_tagged_user_ids=None, poll_duration_minutes=None, poll_options=None, quote_tweet_id=None, exclude_reply_user_ids=None, in_reply_to_tweet_id=None, reply_settings=None, text=None, user_auth=True)
+        return
+
+    # preferred usage (vs create_tweet_direct()) as it will throttle outgoing rate to
+    #   hopefully keep twitter guards happy
+    def create_tweet_queued(self, text, in_reply_to=None):
+        # FIXME implement
+        self.create_tweet_direct(text, in_reply_to=in_reply_to)
+        return
 
     @classmethod
     def social_account_key(cls):
@@ -291,9 +310,12 @@ class TwitterTweet(IntelligentAgentContent):
             return
         self._tweet = tweet
         self._resinc = response_includes
+        author_data = {'id': tweet.author_id}
+        if 'users' in response_includes and len(response_includes['users']):
+            author_data = response_includes['users'][0].data
         self.source = {
             'id': tweet.id,
-            'author_id': tweet.author_id,
+            'author': author_data,
         }
         self.raw_content = tweet.data
         self.owner = self.find_author_user()
@@ -330,7 +352,11 @@ class TwitterTweet(IntelligentAgentContent):
                 )
                 log.debug(traceback.format_exc())
 
+    # (Pdb) abc[0].raw_content
+    # {'id': '1516841133871038464', 'entities': {'mentions': [{'start': 7, 'end': 19, 'username': 'TweetABruce', 'id': '986683924905521152'}], 'urls': [{'start': 88, 'end': 111, 'url': 'https://t.co/eGDgc8FkVI', 'expanded_url': 'https://twitter.com/CitSciBot/status/1516841133871038464/photo/1', 'display_url': 'pic.twitter.com/eGDgc8FkVI'}], 'hashtags': [{'start': 44, 'end': 51, 'tag': 'grevys'}], 'annotations': [{'start': 82, 'end': 86, 'probability': 0.9708, 'type': 'Place', 'normalized_text': 'kenya'}]}, 'attachments': {'media_keys': ['3_1516841098055802880']}, 'text': 'ugh ok @TweetABruce lemme try some hashtags #grevys from my sighting yesterday in kenya https://t.co/eGDgc8FkVI', 'created_at': '2022-04-20T18:08:02.000Z', 'author_id': '989923960295866368'}
+
     def validate(self):
+        # super handles must-have-media
         ok, msg = super().validate()
         if not ok:
             return ok, msg
@@ -342,14 +368,33 @@ class TwitterTweet(IntelligentAgentContent):
         return f'tweetmedia-unknown-{self.guid}'
 
     def get_author_id(self):
-        return self.source.get('author_id') if self.source else None
+        return self.source.get('author', {}).get('id') if self.source else None
+
+    def get_author_username(self):
+        return self.source.get('author', {}).get('username') if self.source else None
 
     def content_as_string(self):
         return self.raw_content.get('text')
 
-    # FIXME implement
-    def respond_to(self, message):
-        log.info(f'responding to {self}: {message}')
-        return
+    def respond_to(self, text):
+        log.debug(f'responding to {self} from {self.get_author_username()}: {text}')
+        assert self.source and self.source.get('id')
+        tb = TwitterBot()
+        tb.create_tweet_queued(text, in_reply_to=self.source.get('id'))
 
-    # def has_media
+    def derive_time(self):
+        # FIXME real implementation
+        from app.modules.complex_data_time.models import ComplexDateTime, Specificities
+
+        return ComplexDateTime.from_data(
+            {
+                'time': self.raw_content.get('created_at'),
+                'timeSpecificity': Specificities.time,
+            }
+        )
+
+    def derive_taxonomy(self):
+        raise NotImplementedError('must be overridden')
+
+    def derive_location(self):
+        raise NotImplementedError('must be overridden')

@@ -639,3 +639,74 @@ class Regions(dict):
             f"<{self.__class__.__name__}(desc={self.get('description')} "
             f'; unique_id_count={len(self.find())})>'
         )
+
+
+# constructor can take guid, scientificName, or itisTsn
+class Taxonomy:
+    def __init__(self, id, *args, **kwargs):
+        if isinstance(id, dict):  # special case from conf value
+            if not id.get('id') or not id.get('scientificName'):
+                raise ValueError('dict passed with no id/scientificName')
+            self.guid = id.get('id')
+            self.scientificName = id.get('scientificName')
+            self.itisTsn = id.get('itisTsn')
+            self.commonNames = id.get('commonNames', [])
+            return
+        import uuid
+
+        conf = self.get_configuration_value()
+        match_value = id
+        match_key = 'scientificName'
+        try:
+            match_value = int(id)
+            match_key = 'itisTsn'
+        except ValueError:
+            pass
+        try:
+            # str() will allow us to pass in true uuid or string-representation
+            uuid.UUID(str(id))
+            match_value = str(id)
+            match_key = 'id'
+        except Exception:
+            pass
+        for tx in conf:
+            if tx.get(match_key) == match_value:
+                self.guid = tx.get('id')
+                self.scientificName = tx.get('scientificName')
+                self.itisTsn = tx.get('itisTsn')
+                self.commonNames = tx.get('commonNames', [])
+                return
+        raise ValueError('unknown id')
+
+    @classmethod
+    def get_configuration_value(cls):
+        from app.modules.site_settings.models import SiteSetting
+
+        conf = SiteSetting.get_edm_configuration('site.species')
+        if not conf or not isinstance(conf, list):
+            raise ValueError('site.species not configured')
+        return conf
+
+    @classmethod
+    def find_fuzzy(cls, match):
+        conf = cls.get_configuration_value()
+        from fuzzywuzzy import fuzz
+
+        # TODO this _could_ find all matches and return best, rather than first
+        for tx in conf:
+            data = ' '.join(
+                tx.get('commonNames', []) + [tx.get('scientificName')]
+            ).lower()
+            pr = fuzz.partial_ratio(match.lower(), data)
+            log.debug(f'pr={pr} for {tx} vs {match}')
+            if pr > 75:  # just made this up; 100 is perfect (sub-)match
+                return Taxonomy(tx)
+        return None
+
+    def get_all_names(self):
+        return self.commonNames + [self.scientificName]
+
+    def __repr__(self):
+        return (
+            f'<{self.__class__.__name__}({self.scientificName} ' f'/ guid={self.guid})>'
+        )

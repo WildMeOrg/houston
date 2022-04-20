@@ -67,7 +67,10 @@ def test_create_read_delete_relationship(
 
     temp_enc_1 = Encounter.query.get(temp_enc_1_guid)
 
-    enc_1_json = {'encounters': [{'id': str(temp_enc_1_guid)}]}
+    enc_1_json = {
+        'names': [{'context': 'FirstName', 'value': 'Mommy'}],
+        'encounters': [{'id': str(temp_enc_1_guid)}],
+    }
     temp_enc_1.owner = researcher_1
     response = individual_utils.create_individual(
         flask_app_client, researcher_1, expected_status_code=200, data_in=enc_1_json
@@ -202,11 +205,13 @@ def test_create_read_delete_relationship(
                     'individual_role_label': 'Mother',
                     'individual_role_guid': mother_role_guid,
                     'individual_guid': str(individual_1_guid),
+                    'individual_first_name': 'Mommy',
                 },
                 {
                     'individual_role_label': 'Calf',
                     'individual_role_guid': calf_role_guid,
                     'individual_guid': str(individual_2_guid),
+                    'individual_first_name': None,
                 },
             ],
         }

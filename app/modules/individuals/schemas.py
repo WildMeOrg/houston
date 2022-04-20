@@ -14,7 +14,10 @@ from app.modules.encounters.schemas import (
     DetailedEncounterSchema,
     ElasticsearchEncounterSchema,
 )
-from app.modules.relationships.schemas import DetailedRelationshipSchema
+from app.modules.relationships.schemas import (
+    DetailedRelationshipSchema,
+    BaseRelationshipIndividualMemberSchema,
+)
 
 
 class BaseIndividualSchema(ModelSchema):
@@ -57,6 +60,29 @@ class IndividualRelationshipSchema(DetailedRelationshipSchema):
     """
     Relationship schema used in the individual API
     """
+
+    class RelationshipIndividualMemberSchema(BaseRelationshipIndividualMemberSchema):
+        individual_first_name = base_fields.String()
+
+        class Meta(BaseRelationshipIndividualMemberSchema.Meta):
+            fields = BaseRelationshipIndividualMemberSchema.Meta.fields + (
+                'individual_first_name',
+            )
+            dump_only = BaseRelationshipIndividualMemberSchema.Meta.dump_only + (
+                'individual_first_name',
+            )
+
+    individual_members = base_fields.Nested(
+        RelationshipIndividualMemberSchema,
+        many=True,
+        only=(
+            'guid',
+            'individual_guid',
+            'individual_role_label',
+            'individual_role_guid',
+            'individual_first_name',
+        ),
+    )
 
     class Meta(DetailedRelationshipSchema.Meta):
         fields = (

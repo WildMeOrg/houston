@@ -57,6 +57,16 @@ class RelationshipIndividualMember(db.Model, HoustonModel):
             )
 
     @property
+    def individual_first_name(self):
+        from app.modules.names.models import Name
+
+        first_name = Name.query.filter_by(
+            individual=self.individual, context='FirstName'
+        ).first()
+        if first_name:
+            return first_name.value
+
+    @property
     def individual_role_label(self):
         from app.modules.site_settings.models import SiteSetting
 

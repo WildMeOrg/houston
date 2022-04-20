@@ -456,7 +456,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
                     f'{self.guid} is detecting but no detection jobs are running, '
                     'assuming Celery error and starting them again'
                 )
-            self.rerun_detection()
+            self.rerun_detection(background=False)
             return
         for job_id in jobs.keys():
             job = jobs[job_id]
@@ -739,11 +739,11 @@ class AssetGroupSighting(db.Model, HoustonModel):
         # Ensure it's written to DB
         self.config = self.config
 
-    def rerun_detection(self):
+    def rerun_detection(self, background=True):
         log.info('Rerunning Sage detection')
         if self.stage == AssetGroupSightingStage.curation:
             self.stage = AssetGroupSightingStage.detection
-            self.start_detection()
+            self.start_detection(background=background)
         elif self.stage == AssetGroupSightingStage.detection:
             if self.any_jobs_active():
                 raise HoustonException(
@@ -756,7 +756,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
                 log, f'Cannot rerun detection on AssetGroupSighting in {self.stage} stage'
             )
 
-    def start_detection(self):
+    def start_detection(self, background=True):
         from app.modules.asset_groups.tasks import sage_detection
 
         asset_group_config = self.asset_group.config
@@ -770,8 +770,11 @@ class AssetGroupSighting(db.Model, HoustonModel):
                 f'ia pipeline starting detection {config} on AssetGroupSighting {self.guid}'
             )
             self.detection_attempts += 1
-            # Call sage_detection in the background by doing .delay()
-            sage_detection.delay(str(self.guid), config)
+            if background:
+                # Call sage_detection in the background by doing .delay()
+                sage_detection.delay(str(self.guid), config)
+            else:
+                sage_detection(str(self.guid), config)
 
     # Used to build the response to AssetGroupSighting GET
     def get_assets(self):

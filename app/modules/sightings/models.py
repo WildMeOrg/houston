@@ -383,7 +383,7 @@ class Sighting(db.Model, FeatherModel):
                     f'{self.guid} is identifying but no identification jobs are running, '
                     'assuming Celery error and starting them all again'
                 )
-            self.ia_pipeline()
+            self.ia_pipeline(background=False)
             return
 
         for job_id in jobs.keys():
@@ -678,6 +678,9 @@ class Sighting(db.Model, FeatherModel):
 
         # Sage doesn't support an empty database set, so if no annotations, don't send the request
         if len(matching_set_individual_uuids) == 0:
+            log.debug(
+                f'No matching individuals for sighting guid={self.guid} annotation_uuid={annotation_uuid} annotation_sage_uuid={annotation_sage_uuid} algorithm={algorithm}, don\'t send request to sage'
+            )
             return {}
 
         from app.extensions.acm import to_acm_uuid
@@ -1126,7 +1129,7 @@ class Sighting(db.Model, FeatherModel):
                 # Only one for MVP
                 assert len(config['algorithms']) == 1
 
-    def ia_pipeline(self):
+    def ia_pipeline(self, background=True):
         assert self.stage == SightingStage.identification
         self.validate_id_configs()
         encounters_with_annotations = [
@@ -1140,7 +1143,9 @@ class Sighting(db.Model, FeatherModel):
         #    require a rethink on how these loops are nested
         for encounter in encounters_with_annotations:
             for annotation in encounter.annotations:
-                num_jobs_sent = self.send_annotation_for_identification(annotation)
+                num_jobs_sent = self.send_annotation_for_identification(
+                    annotation, background=background
+                )
                 num_jobs += num_jobs_sent
 
         if num_jobs > 0:
@@ -1168,7 +1173,9 @@ class Sighting(db.Model, FeatherModel):
 
     # this iterates over configs and algorithms
     # note: self.validate_id_configs() should be called before this (once)
-    def send_annotation_for_identification(self, annotation, matching_set_query=None):
+    def send_annotation_for_identification(
+        self, annotation, matching_set_query=None, background=True
+    ):
         num_jobs = 0
         for config_id in range(len(self.id_configs)):
             # note: we could test matching_set here and prevent duplicate testing within specific()
@@ -1179,6 +1186,7 @@ class Sighting(db.Model, FeatherModel):
                     config_id,
                     algorithm_id,
                     matching_set_query,
+                    background=background,
                 ):
                     num_jobs += 1
         return num_jobs
@@ -1191,6 +1199,7 @@ class Sighting(db.Model, FeatherModel):
         algorithm_id,
         matching_set_query=None,
         restart=True,
+        background=True,
     ):
         from .tasks import send_identification
 
@@ -1224,14 +1233,24 @@ class Sighting(db.Model, FeatherModel):
             f'Queueing up ID job for config_id={config_id} {annotation}: '
             f'matching_set size={len(matching_set)} algo {algorithm_id}'
         )
-        send_identification.delay(
-            str(self.guid),
-            config_id,
-            algorithm_id,
-            annotation.guid,
-            annotation.content_guid,
-            matching_set_query,
-        )
+        if background:
+            send_identification.delay(
+                str(self.guid),
+                config_id,
+                algorithm_id,
+                annotation.guid,
+                annotation.content_guid,
+                matching_set_query,
+            )
+        else:
+            send_identification(
+                str(self.guid),
+                config_id,
+                algorithm_id,
+                annotation.guid,
+                annotation.content_guid,
+                matching_set_query,
+            )
 
         # store that we sent it (handles retry counts)
         self._update_job_config(config_id, algorithm_id, str(annotation.guid), restart)

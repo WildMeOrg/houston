@@ -4,21 +4,29 @@
 from tests import utils as test_utils
 from tests.modules.elasticsearch.resources import utils as es_utils
 from tests.modules.individuals.resources import utils as individual_utils
+from tests.utils import module_unavailable
+
+import pytest
 
 
-# OK I don't understand why this does not guarantee that the mapping is generated JP??
-def no_test_individual_elasticsearch_mappings(
+@pytest.mark.skipif(
+    module_unavailable('individuals'), reason='Individuals module disabled'
+)
+def test_individual_elasticsearch_mappings(
     flask_app_client, researcher_1, request, test_root
 ):
     from app.modules.individuals.models import Individual
+    from app.extensions import elasticsearch as es
 
     individual1_uuids = individual_utils.create_individual_and_sighting(
         flask_app_client, researcher_1, request, test_root
     )
 
     individual_1 = Individual.query.get(individual1_uuids['individual'])
-    individual_1.index()
-    test_utils.wait_for_elasticsearch_status(flask_app_client, researcher_1)
+
+    es.es_delete_index(individual_1._index())
+    with es.session.begin(blocking=True, forced=True):
+        individual_1.index()
 
     EXPECTED_KEYS = {
         'created',
@@ -28,7 +36,7 @@ def no_test_individual_elasticsearch_mappings(
         'encounters',
         'has_annotations',
         'updated',
-        'social_groups',
+        # 'social_groups',
         'indexed',
         'names',
         'last_seen',

@@ -313,8 +313,12 @@ class Individual(db.Model, FeatherModel):
         last_enc = None
         for enc in self.encounters:
             if last_enc:
-                if enc.get_time() > last_enc.get_time():
-                    last_enc = enc
+                # comparing ComplexDateTime values can throw exception; if so, we ignore
+                try:
+                    if enc.get_time() > last_enc.get_time():
+                        last_enc = enc
+                except Exception:
+                    pass
             else:
                 last_enc = enc
 

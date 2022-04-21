@@ -196,9 +196,7 @@ class Individual(db.Model, FeatherModel):
         return taxonomy_names
 
     def get_name_values(self):
-        name_vals = ''
-        for name in self.names:
-            name_vals += f'{name.value}, '
+        name_vals = [name.value for name in self.names]
         return name_vals
 
     def get_first_name(self):

@@ -238,9 +238,25 @@ class IntelligentAgentContent(db.Model, HoustonModel):
     def derive_location(self):
         raise NotImplementedError('must be overridden')
 
-    def validate(self):
+    def validate_and_set_data(self):
+        data = {}
         if not self.get_assets():
             return False, _('You must include at least one image.')
+        tx = self.derive_taxonomy()
+        if not tx:
+            return False, _('You must include the species as a hashtag.')
+        data['taxonomy_guid'] = tx.guid
+        loc = self.derive_location()
+        if not loc:
+            return False, _('You must include the location ID as a hashtag.')
+        data['location_id'] = loc
+        cdt = self.derive_time()
+        if not cdt:
+            return False, _('You must tell us when this occurred.')
+        data['time'] = cdt.isoformat_in_timezone()
+        data['time_specificity'] = cdt.specificity.value
+        data.update(self.data or {})
+        self.data = data
         return True, None
 
     # can (should?) be overridden to be agent-specific if desired

@@ -166,7 +166,7 @@ class TwitterBot(IntelligentAgent):
                 )
                 # TODO can we still reply to user without tt?
                 continue
-            ok, err = tt.validate()
+            ok, err = tt.validate_and_set_data()
             if ok:
                 self.state = IntelligentAgentContentState.active
                 tt.respond_to(_('Thank you!  We are processing your tweet.'))
@@ -355,13 +355,6 @@ class TwitterTweet(IntelligentAgentContent):
     # (Pdb) abc[0].raw_content
     # {'id': '1516841133871038464', 'entities': {'mentions': [{'start': 7, 'end': 19, 'username': 'TweetABruce', 'id': '986683924905521152'}], 'urls': [{'start': 88, 'end': 111, 'url': 'https://t.co/eGDgc8FkVI', 'expanded_url': 'https://twitter.com/CitSciBot/status/1516841133871038464/photo/1', 'display_url': 'pic.twitter.com/eGDgc8FkVI'}], 'hashtags': [{'start': 44, 'end': 51, 'tag': 'grevys'}], 'annotations': [{'start': 82, 'end': 86, 'probability': 0.9708, 'type': 'Place', 'normalized_text': 'kenya'}]}, 'attachments': {'media_keys': ['3_1516841098055802880']}, 'text': 'ugh ok @TweetABruce lemme try some hashtags #grevys from my sighting yesterday in kenya https://t.co/eGDgc8FkVI', 'created_at': '2022-04-20T18:08:02.000Z', 'author_id': '989923960295866368'}
 
-    def validate(self):
-        # super handles must-have-media
-        ok, msg = super().validate()
-        if not ok:
-            return ok, msg
-        return True, None
-
     def id_string(self):
         if self.source:
             return f"tweetmedia-{self.source.get('id', 'unknown')}-{self.guid}"
@@ -382,19 +375,38 @@ class TwitterTweet(IntelligentAgentContent):
         tb = TwitterBot()
         tb.create_tweet_queued(text, in_reply_to=self.source.get('id'))
 
+    def hashtag_values(self):
+        if not self.raw_content.get('entities') or not isinstance(
+            self.raw_content['entities'].get('hashtags'), list
+        ):
+            return []
+        values = []
+        for ht in self.raw_content['entities']['hashtags']:
+            values.append(ht.get('tag'))
+        return values
+
     def derive_time(self):
         # FIXME real implementation
-        from app.modules.complex_data_time.models import ComplexDateTime, Specificities
+        from app.modules.complex_date_time.models import ComplexDateTime, Specificities
 
         return ComplexDateTime.from_data(
             {
-                'time': self.raw_content.get('created_at'),
+                'time': self.raw_content.get('created_at').replace('Z', '+00:00'),
                 'timeSpecificity': Specificities.time,
             }
         )
 
+    # these could have a default behavior if not provided.  also they could look thru
+    #   *whole* text (word-by-word), not just hashtags
     def derive_taxonomy(self):
-        raise NotImplementedError('must be overridden')
+        from app.modules.site_settings.models import Taxonomy
+
+        for ht in self.hashtag_values():
+            tx = Taxonomy.find_fuzzy(ht)
+            log.debug(f'hashtag "{ht}" matched {tx}')
+            return tx
+        return None
 
     def derive_location(self):
-        raise NotImplementedError('must be overridden')
+        # FIXME implement using find_fuzzy on Regions
+        return 'not-implemented'

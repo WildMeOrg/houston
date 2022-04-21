@@ -184,3 +184,43 @@ def fuzzy_match(match, candidates):
     for c in res:
         c['score'] = fuzz.partial_ratio(lmatch, c['text']) + fuzz.ratio(lmatch, c['text'])
     return sorted(res, key=lambda d: -d['score'])
+
+
+def get_redis_connection():
+    import redis
+    from flask import current_app
+
+    # this is cribbed from tus usage of redis - i guess its trying to reycle
+    #   a previous connection rather than always reconnecting.  ymmv?
+    #
+    # Find the stack on which we want to store the database connection.
+    # Starting with Flask 0.9, the _app_ctx_stack is the correct one,
+    # before that we need to use the _request_ctx_stack.
+    try:
+        from flask import _app_ctx_stack as stack
+    except ImportError:  # pragma: no cover
+        from flask import _request_ctx_stack as stack
+
+    redis_connection_string = current_app.config['REDIS_CONNECTION_STRING']
+    if not redis_connection_string:
+        raise ValueError('missing REDIS_CONNECTION_STRING')
+    ctx = stack.top
+    if not ctx:
+        raise ValueError('could not get ctx')
+    if not hasattr(ctx, 'codex_persisted_values_redis'):
+        ctx.codex_persisted_values_redis = redis.from_url(redis_connection_string)
+    conn = ctx.codex_persisted_values_redis
+    if not conn:
+        raise ValueError('unable to obtain redis connection')
+    return conn
+
+
+def set_persisted_value(key, value):
+    conn = get_redis_connection()
+    return conn.set(key, value)
+
+
+def get_persisted_value(key):
+    conn = get_redis_connection()
+    val = conn.get(key)
+    return val.decode('utf-8') if val else None

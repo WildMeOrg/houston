@@ -523,6 +523,8 @@ class SiteSetting(db.Model, Timestamp):
         return val
 
 
+# most find-based methods reference *ids* which will be guids in new-world data
+# to search on name, try find_fuzzy()
 class Regions(dict):
     def __init__(self, *args, **kwargs):
         if 'data' in kwargs and isinstance(kwargs['data'], dict):
@@ -634,6 +636,30 @@ class Regions(dict):
                 found = found + cls._find(sub, locs, id_only, full_tree)
         return found
 
+    def traverse(self, node=None):
+        if not node:
+            return self.traverse(self)
+        nodes = []
+        if 'id' in node:
+            nodes.append(node)
+        if 'locationID' in node and isinstance(node['locationID'], list):
+            for n in node['locationID']:
+                nodes.extend(self.traverse(n))
+        return nodes
+
+    def find_fuzzy(self, match):
+        from app.utils import fuzzy_match
+
+        candidates = {}
+        nodes = self.traverse()
+        for reg in nodes:
+            candidates[reg['id']] = reg.get('name')
+        fzm = fuzzy_match(match, candidates)
+        # 75 may need some tweakage here based on experience
+        if not fzm or fzm[0]['score'] < 75:
+            return None
+        return fzm[0]
+
     def __repr__(self):
         return (
             f"<{self.__class__.__name__}(desc={self.get('description')} "
@@ -690,18 +716,18 @@ class Taxonomy:
     @classmethod
     def find_fuzzy(cls, match):
         conf = cls.get_configuration_value()
-        from fuzzywuzzy import fuzz
+        from app.utils import fuzzy_match
 
-        # TODO this _could_ find all matches and return best, rather than first
+        candidates = {}
         for tx in conf:
-            data = ' '.join(
+            candidates[tx['id']] = ' '.join(
                 tx.get('commonNames', []) + [tx.get('scientificName')]
-            ).lower()
-            pr = fuzz.partial_ratio(match.lower(), data)
-            log.debug(f'pr={pr} for {tx} vs {match}')
-            if pr > 75:  # just made this up; 100 is perfect (sub-)match
-                return Taxonomy(tx)
-        return None
+            )
+        fzm = fuzzy_match(match, candidates)
+        # 75 may need some tweakage here based on experience
+        if not fzm or fzm[0]['score'] < 75:
+            return None
+        return Taxonomy(fzm[0]['id'])
 
     def get_all_names(self):
         return self.commonNames + [self.scientificName]

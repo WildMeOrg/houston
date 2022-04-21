@@ -166,3 +166,21 @@ def nlp_parse_complex_date_time(
         )
 
     raise ValueError(f'unknown type in results: {res}')
+
+
+# match is a string, and candidates can be one of:
+#   * list (of text strings)
+#   * dict with { id0: text0, id1: text1, ... }
+# this will return a list (ordered by best match to worst) of how well match fuzzy-matched the candidates.
+#   the list contains dicts like: { id: xxx, text: yyy, score: zzz } (id will be omitted if only a list is passed in)
+def fuzzy_match(match, candidates):
+    from fuzzywuzzy import fuzz
+
+    lmatch = match.lower()
+    if isinstance(candidates, list):
+        res = [{'text': i.lower()} for i in candidates]
+    else:
+        res = [{'id': i, 'text': candidates[i].lower()} for i in candidates]
+    for c in res:
+        c['score'] = fuzz.partial_ratio(lmatch, c['text']) + fuzz.ratio(lmatch, c['text'])
+    return sorted(res, key=lambda d: -d['score'])

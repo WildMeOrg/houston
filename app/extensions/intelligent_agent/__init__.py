@@ -135,6 +135,21 @@ class IntelligentAgent:
                 return agent_cls
         return None
 
+    @classmethod
+    def set_persisted_value(cls, key, value):
+        from app.utils import set_persisted_value
+
+        full_key = f'intelligent_agent_{cls.short_name()}_{key}'
+        log.debug(f'set_persisted_value({full_key}, {value})')
+        return set_persisted_value(full_key, value)
+
+    @classmethod
+    def get_persisted_value(cls, key):
+        from app.utils import get_persisted_value
+
+        full_key = f'intelligent_agent_{cls.short_name()}_{key}'
+        return get_persisted_value(full_key)
+
 
 class IntelligentAgentContentState(str, enum.Enum):
     intake = 'intake'

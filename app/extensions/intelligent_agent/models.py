@@ -137,24 +137,36 @@ class TwitterBot(IntelligentAgent):
             'name': me_data.data.name,
         }
 
-    def collect(self, since=None):
+    # since_id=None will trigger finding tweets *since last attempt*
+    #   a since_id value must be set to change this behavior
+    #   (a negative number will disable since_id)
+    def collect(self, since_id=None):
         assert self.client
         query = self.search_string()
+        if not since_id:
+            since_id = self.get_persisted_value('since_id')
+        elif since_id < 0:
+            since_id = None
         res = self.client.search_recent_tweets(
             query,
-            start_time=since,
+            since_id=since_id,
             tweet_fields=['created_at', 'author_id', 'entities', 'attachments'],
             expansions=['attachments.media_keys', 'author_id'],
             media_fields=['url', 'height', 'width', 'alt_text'],
         )
         tweets = []
         if not res.data or len(res.data) < 1:
-            log.debug(f'collect() on {self} retrieved no tweets with query "{query}"')
+            log.debug(
+                f'collect(since_id={since_id}) on {self} retrieved no tweets with query "{query}"'
+            )
             return tweets
         log.info(
-            f'collect() on {self} retrieved {len(res.data)} tweet(s) with query "{query}"'
+            f'collect(since_id={since_id}) on {self} retrieved {len(res.data)} tweet(s) with query "{query}"'
         )
+        latest_id = 0
         for twt in res.data:
+            if twt.id > latest_id:
+                latest_id = twt.id
             try:
                 tt = TwitterTweet(twt, res.includes)
             except Exception as ex:
@@ -176,14 +188,18 @@ class TwitterBot(IntelligentAgent):
                 tt.respond_to(_('Sorry, we cannot process this tweet because: ') + err)
             with db.session.begin():
                 db.session.add(tt)
+        self.set_persisted_value('since_id', latest_id)
         return tweets
 
     # this should be used with caution -- use create_tweet_queued() to be safer
     def create_tweet_direct(self, text, in_reply_to=None):
-        # FIXME implement
+        assert self.client
         log.info(f'{self} tweeting [re: {in_reply_to}] >>> {text}')
-        # Client.create_tweet(*, direct_message_deep_link=None, for_super_followers_only=None, place_id=None, media_ids=None, media_tagged_user_ids=None, poll_duration_minutes=None, poll_options=None, quote_tweet_id=None, exclude_reply_user_ids=None, in_reply_to_tweet_id=None, reply_settings=None, text=None, user_auth=True)
-        return
+        if True:
+            log.warning('DISABLED OUTGOING for testing purposes')
+            return
+        tweet = self.client.create_tweet(text=text, in_reply_to_tweet_id=in_reply_to)
+        return tweet
 
     # preferred usage (vs create_tweet_direct()) as it will throttle outgoing rate to
     #   hopefully keep twitter guards happy
@@ -194,7 +210,7 @@ class TwitterBot(IntelligentAgent):
 
     @classmethod
     def social_account_key(cls):
-        return 'twitter_username'
+        return 'twitter_user_id'
 
     # right now we search tweets for only "@USERNAME" references, but this
     #    could be expanded to include some site-setting customizations
@@ -304,7 +320,8 @@ class TwitterTweet(IntelligentAgentContent):
 
     # https://docs.tweepy.org/en/latest/v2_models.html#tweet
     def __init__(self, tweet=None, response_includes=None, *args, **kwargs):
-        # from app.utils import get_stored_filename
+        from app.modules.users.models import User
+
         super().__init__(*args, **kwargs)
         if not tweet:
             return
@@ -318,6 +335,10 @@ class TwitterTweet(IntelligentAgentContent):
             'author': author_data,
         }
         self.raw_content = tweet.data
+        owner = self.find_author_user()
+        if not owner:
+            owner = User.get_public_user()
+            log.info(f'{tweet.id}: {author_data} no match in users; assigned public')
         self.owner = self.find_author_user()
 
         if tweet.attachments:

@@ -261,7 +261,7 @@ class IntelligentAgentContent(db.Model, HoustonModel):
     def find_author_user(self):
         from app.modules.users.models import User
 
-        return User.find_user_by_social(
+        return User.find_by_linked_account(
             self.AGENT_CLASS.social_account_key(),
             self.get_author_id(),
         )

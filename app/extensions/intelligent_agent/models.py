@@ -235,7 +235,7 @@ class TwitterBot(IntelligentAgent):
 
     @classmethod
     def social_account_key(cls):
-        return 'twitter_user_id'
+        return 'twitter'
 
     # right now we search tweets for only "@USERNAME" references, but this
     #    could be expanded to include some site-setting customizations

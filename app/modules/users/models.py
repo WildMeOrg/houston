@@ -169,6 +169,9 @@ class User(db.Model, FeatherModel, UserEDMMixin):
         db.GUID, nullable=True
     )  # this may just be a string, however EDM wants to do ID catalogues
 
+    # these are to connect social accounts and the like
+    linked_accounts = db.Column(db.JSON, nullable=True)
+
     profile_fileupload_guid = db.Column(
         db.GUID, db.ForeignKey('file_upload.guid'), nullable=True
     )
@@ -529,12 +532,25 @@ class User(db.Model, FeatherModel, UserEDMMixin):
             cls.full_name.contains(term),
         )
 
-    # FIXME not yet implemented
-    #   this should find a user based on the tuple (key, id); like ('twitter','xxxxxx')
     @classmethod
-    def find_user_by_social(cls, social_key, id):
-        log.debug(f'User.find_user_by_social({social_key}, {id}) -> NOT YET IMPLEMENTED')
+    def find_by_linked_account(cls, account_key, value, id_key='id'):
+        possible = User.query.filter(User.linked_accounts.isnot(None)).all()
+        for user in possible:
+            if user.linked_accounts.get(account_key, {}).get(id_key) == value:
+                return user
         return None
+
+    def link_account(self, social_key, data):
+        if not isinstance(data, dict):
+            raise ValueError('must pass data as dict')
+        if not self.linked_accounts:
+            self.linked_accounts = {social_key: data}
+        else:
+            self.linked_accounts[social_key] = data
+            self.linked_accounts = self.linked_accounts
+        with db.session.begin():
+            db.session.merge(self)
+        db.session.refresh(self)
 
     @property
     def is_authenticated(self):

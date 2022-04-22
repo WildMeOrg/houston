@@ -36,3 +36,45 @@ def twitterbot_collect():
         tb.collect()
     except Exception as ex:
         log.warning(f'twitterbot_collect() failed: {str(ex)}')
+
+
+@celery.task(
+    autoretry_for=(Exception,),
+    # seconds until try to send again (including if throttled)
+    #  i _think_ this should never be less than minimum_gap?
+    default_retry_delay=3,
+    max_retries=None,  # keep trying forever
+)
+def twitterbot_create_tweet_queued(text, in_reply_to):
+    from app.extensions.intelligent_agent.models import TwitterBot
+    import time
+
+    if not TwitterBot.is_enabled():
+        log.info(
+            f'twitterbot_create_tweet_queue(): TwitterBot disabled, bailing on tweet "{text}"'
+        )
+        return
+
+    # the fastest tweets can go out (seconds)
+    minimum_gap = 2.0
+    last_created = 0.0
+    try:
+        last_created = float(TwitterBot.get_persisted_value('create_tweet_queued_last'))
+    except (ValueError, TypeError):
+        last_created = -1.0
+    now = time.time()
+    if now - last_created > minimum_gap:
+        log.debug(
+            f'twitterbot_create_tweet_queue(): sufficient gap ({now}:{last_created}), creating tweet'
+        )
+        tb = TwitterBot()  # can raise exception
+        # slight potential for race condition here of course, but hopefully slim and not catastrophic
+        TwitterBot.set_persisted_value('create_tweet_queued_last', str(now))
+        tweet = tb.create_tweet_direct(text, in_reply_to)
+        log.info(f'twitterbot_create_tweet_queue(): {tweet} created')
+        return
+
+    log.info(
+        f'twitterbot_create_tweet_queue(): insufficient gap ({now}:{last_created}), holding tweet for retry [{text}]'
+    )
+    raise Exception('too soon, delayed for retry')

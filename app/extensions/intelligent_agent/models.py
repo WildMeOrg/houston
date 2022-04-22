@@ -204,9 +204,13 @@ class TwitterBot(IntelligentAgent):
     # preferred usage (vs create_tweet_direct()) as it will throttle outgoing rate to
     #   hopefully keep twitter guards happy
     def create_tweet_queued(self, text, in_reply_to=None):
-        # FIXME implement
-        self.create_tweet_direct(text, in_reply_to=in_reply_to)
-        return
+        from app.extensions.intelligent_agent.tasks import twitterbot_create_tweet_queued
+
+        log.debug(f'{self} queueing tweet [re: {in_reply_to}] -- {text}')
+        args = (text, in_reply_to)
+        async_res = twitterbot_create_tweet_queued.apply_async(args)
+        log.debug(f'{self} async_res => {async_res}')
+        return async_res
 
     @classmethod
     def start(cls):

@@ -641,17 +641,16 @@ class Sighting(db.Model, FeatherModel):
                 log.warning(f'skipping {annot} due to no content_guid')
                 continue
             if annot.encounter and annot.encounter.sighting:
-                if annot.encounter.sighting.stage == SightingStage.processed:
-                    acm_annot_uuid = to_acm_uuid(annot.content_guid)
-                    if acm_annot_uuid not in matching_set_annot_uuids:
-                        matching_set_annot_uuids.append(acm_annot_uuid)
-                        individual_guid = annot.get_individual_guid()
-                        if individual_guid:
-                            individual_guid = str(individual_guid)
-                        else:
-                            # Use Sage default value
-                            individual_guid = default_acm_individual_uuid()
-                        matching_set_individual_uuids.append(individual_guid)
+                acm_annot_uuid = to_acm_uuid(annot.content_guid)
+                if acm_annot_uuid not in matching_set_annot_uuids:
+                    matching_set_annot_uuids.append(acm_annot_uuid)
+                    individual_guid = annot.get_individual_guid()
+                    if individual_guid:
+                        individual_guid = str(individual_guid)
+                    else:
+                        # Use Sage default value
+                        individual_guid = default_acm_individual_uuid()
+                    matching_set_individual_uuids.append(individual_guid)
 
         log.debug(
             f'sighting.get_matching_set_data(): Built matching set individuals {matching_set_individual_uuids}, '

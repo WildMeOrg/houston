@@ -179,6 +179,8 @@ class DetailedSightingJobSchema(ModelSchema):
     start = base_fields.DateTime()
     algorithm = base_fields.String()
     annotation = base_fields.String()
+    complete_time = base_fields.DateTime()
+    result = base_fields.Dict()
 
 
 class DebugSightingSchema(AugmentedEdmSightingSchema):

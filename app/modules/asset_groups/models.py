@@ -750,7 +750,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
                     log,
                     'Cannot rerun detection on AssetGroupSighting in detection stage with active jobs',
                 )
-            self.start_detection()
+            self.start_detection(background=background)
         else:
             raise HoustonException(
                 log, f'Cannot rerun detection on AssetGroupSighting in {self.stage} stage'

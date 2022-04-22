@@ -230,10 +230,11 @@ class TwitterBot(IntelligentAgent):
 
     @classmethod
     def get_periodic_interval(cls):
-        seconds = 60
+        seconds = 30
         try:
             seconds = int(cls.get_site_setting_value('polling_interval'))
-        except Exception:
+        except Exception as ex:
+            log.warning(f'unable to get polling_interval: {str(ex)}')
             pass
         return seconds
 
@@ -312,10 +313,11 @@ class TwitterBot(IntelligentAgent):
                     'default': None,
                     'public': False,
                     'edm_definition': {
-                        'defaultValue': '60',
+                        'defaultValue': '30',
                         'displayType': 'select',
                         'schema': {
                             'choices': [
+                                {'label': '30 seconds', 'value': '30'},
                                 {'label': '1 minute', 'value': '60'},
                                 {'label': '3 minutes', 'value': '180'},
                                 {'label': '10 minutes', 'value': '600'},

@@ -12,12 +12,14 @@ log = logging.getLogger(__name__)
 def intelligent_agent_setup_periodic_tasks(sender, **kwargs):
     from app.extensions.intelligent_agent.models import TwitterBot
 
-    seconds = TwitterBot.get_periodic_interval()
-    log.warning(
-        f'>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> SETUP_PERIODIC {sender} (sec={seconds})'
+    # FIXME upon startup this seems to not be reading this from db and falling back to default
+    #   seems related to no app context yet:   https://stackoverflow.com/q/46540664
+    interval_seconds = TwitterBot.get_periodic_interval()
+    log.debug(
+        f'intelligent_agent_setup_periodic_tasks() starting via {sender} with interval_sconds={interval_seconds}'
     )
     sender.add_periodic_task(
-        10,
+        interval_seconds,
         twitterbot_collect.s(),
     )
 
@@ -29,6 +31,8 @@ def twitterbot_collect():
     if not TwitterBot.is_enabled():
         # TODO this arguably should *remove* the period task
         # also (related) we need to figure out how to stop/restart/reset periodic task if/when interval changes
+        # there seems to be some bugs/problems with alterting beat/periodic tasks.  :(
+        #    https://github.com/celery/django-celery-beat/issues/126
         log.info('TwitterBot disabled; skipping periodic task')
         return
     try:

@@ -209,6 +209,31 @@ class TwitterBot(IntelligentAgent):
         return
 
     @classmethod
+    def start(cls):
+        log.info(f'{cls} default start: NOP')
+        return None
+
+    @classmethod
+    def restart(cls):
+        log.info(f'{cls} default restart (calling stop/start)')
+        cls.stop()
+        return cls.start()
+
+    @classmethod
+    def stop(cls):
+        log.info(f'{cls} default stop: NOP')
+        return None
+
+    @classmethod
+    def get_periodic_interval(cls):
+        seconds = 60
+        try:
+            seconds = int(cls.get_site_setting_value('polling_interval'))
+        except Exception:
+            pass
+        return seconds
+
+    @classmethod
     def social_account_key(cls):
         return 'twitter_user_id'
 
@@ -277,6 +302,23 @@ class TwitterBot(IntelligentAgent):
                     'type': str,
                     'default': None,
                     'public': False,
+                },
+                cls.site_setting_id('polling_interval'): {
+                    'type': str,
+                    'default': None,
+                    'public': False,
+                    'edm_definition': {
+                        'defaultValue': '60',
+                        'displayType': 'select',
+                        'schema': {
+                            'choices': [
+                                {'label': '1 minute', 'value': '60'},
+                                {'label': '3 minutes', 'value': '180'},
+                                {'label': '10 minutes', 'value': '600'},
+                                {'label': '1 hour', 'value': '3600'},
+                            ]
+                        },
+                    },
                 },
             }
         )

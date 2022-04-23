@@ -655,10 +655,29 @@ class Regions(dict):
         for reg in nodes:
             candidates[reg['id']] = reg.get('name')
         fzm = fuzzy_match(match, candidates)
-        # 75 may need some tweakage here based on experience
-        if not fzm or fzm[0]['score'] < 75:
+        # cutoff may need some tweakage here based on experience
+        if not fzm or fzm[0]['score'] < 150:
             return None
         return fzm[0]
+
+    # pass a list, returns ordered by score all fuzzy-matches
+    def find_fuzzy_list(self, possible):
+        matches = []
+        # reduces to unique (and lowercase first)
+        for p in set([a.lower() for a in possible]):
+            fz = self.find_fuzzy(p)
+            if fz:
+                matches.append(fz)
+        if not matches:
+            return []
+        # this way highest score (of duplicates) gets put in as only one
+        once = []
+        already = set()
+        for m in sorted(matches, key=lambda d: -d['score']):
+            if m['id'] not in already:
+                once.append(m)
+                already.add(m['id'])
+        return once
 
     def __repr__(self):
         return (
@@ -724,13 +743,38 @@ class Taxonomy:
                 tx.get('commonNames', []) + [tx.get('scientificName')]
             )
         fzm = fuzzy_match(match, candidates)
-        # 75 may need some tweakage here based on experience
-        if not fzm or fzm[0]['score'] < 75:
+        # cutoff may need some tweakage here based on experience
+        if not fzm or fzm[0]['score'] < 120:
             return None
-        return Taxonomy(fzm[0]['id'])
+        tx = Taxonomy(fzm[0]['id'])
+        tx._fuzz_score = fzm[0]['score']
+        return tx
+
+    # pass a list, returns ordered by score all fuzzy-matches
+    @classmethod
+    def find_fuzzy_list(cls, possible):
+        matches = []
+        # reduces to unique (and lowercase first)
+        for p in set([a.lower() for a in possible]):
+            fz = cls.find_fuzzy(p)
+            if fz:
+                matches.append(fz)
+        if not matches:
+            return []
+        # this way highest score (of duplicates) gets put in as only one
+        once = []
+        for m in sorted(matches, key=lambda d: -d._fuzz_score):
+            if m not in once:
+                once.append(m)
+        return once
 
     def get_all_names(self):
         return self.commonNames + [self.scientificName]
+
+    def __eq__(self, other):
+        if not isinstance(other, Taxonomy):
+            return False
+        return self.guid == other.guid
 
     def __repr__(self):
         return (

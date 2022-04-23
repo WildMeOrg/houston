@@ -476,7 +476,3 @@ class TwitterTweet(IntelligentAgentContent):
             log.debug(f'hashtag "{ht}" matched {tx}')
             return tx
         return None
-
-    def derive_location(self):
-        # FIXME implement using find_fuzzy on Regions
-        return 'not-implemented'

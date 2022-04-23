@@ -274,11 +274,26 @@ class IntelligentAgentContent(db.Model, HoustonModel):
     def derive_time(self):
         raise NotImplementedError('must be overridden')
 
+    # these search whole text, but can be overriden (e.g. with hashtags)
+    #  wants a Taxonomy object
     def derive_taxonomy(self):
-        raise NotImplementedError('must be overridden')
+        from app.modules.site_settings.models import Taxonomy
 
-    def derive_location(self):
-        raise NotImplementedError('must be overridden')
+        matches = Taxonomy.find_fuzzy_list(self.content_as_string().split())
+        if not matches:
+            return None
+        return matches[0]
+
+    # wants just a location_id as string
+    def derive_location_id(self):
+        from app.modules.site_settings.models import Regions
+
+        reg = Regions()
+        matches = reg.find_fuzzy_list(self.content_as_string().split())
+        if not matches:
+            return None
+        log.debug(f'derive_location_id() found {matches}')
+        return matches[0]['id']
 
     def get_species_detection_models(self):
         # FIXME some magic to derive via taxonomy (on .data)
@@ -321,7 +336,7 @@ class IntelligentAgentContent(db.Model, HoustonModel):
         if not tx:
             return False, _('You must include the species as a hashtag.')
         data['taxonomy_guid'] = tx.guid
-        loc = self.derive_location()
+        loc = self.derive_location_id()
         if not loc:
             return False, _('You must include the location ID as a hashtag.')
         data['location_id'] = loc

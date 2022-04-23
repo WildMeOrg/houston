@@ -12,6 +12,10 @@ import pytest
 @pytest.mark.skipif(
     module_unavailable('individuals'), reason='Individuals module disabled'
 )
+@pytest.mark.skipif(
+    test_utils.extension_unavailable('elasticsearch'),
+    reason='Elasticsearch extension disabled',
+)
 def test_individual_elasticsearch_mappings(
     flask_app_client, researcher_1, request, test_root
 ):

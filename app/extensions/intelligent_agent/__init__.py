@@ -266,6 +266,11 @@ class IntelligentAgentContent(db.Model, HoustonModel):
             self.get_author_id(),
         )
 
+    # can (should?) be overridden to be agent-specific if desired
+    #   used for things like filename prefixes etc, so should be fairly "filename-friendly"
+    def id_string(self):
+        return self.guid
+
     def derive_time(self):
         raise NotImplementedError('must be overridden')
 
@@ -275,10 +280,43 @@ class IntelligentAgentContent(db.Model, HoustonModel):
     def derive_location(self):
         raise NotImplementedError('must be overridden')
 
+    def get_species_detection_models(self):
+        # FIXME some magic to derive via taxonomy (on .data)
+        return ['african_terrestrial']
+
+    # this validates and sets data, and creates AssetGroup
+    #   will return (success, error-message)
+    # probably want to use these rather than the pieces below (which are separate
+    #   to allow for overriding if needed)
+    def assemble(self):
+        import traceback
+
+        ok, err = self.validate_and_set_data()
+        if not ok:
+            return ok, err
+        try:
+            ag_metadata = self.generate_asset_group_metadata()
+        except Exception as ex:
+            log.error(
+                f'assemble() on {self} had problems generating AssetGroup metadata: {str(ex)}'
+            )
+            log.debug(traceback.format_exc())
+            return False, _('Problem preparing data')
+        try:
+            self.generate_asset_group(ag_metadata)
+        except Exception as ex:
+            log.error(
+                f'assemble() on {self} had problems generating AssetGroup: {str(ex)}'
+            )
+            log.debug(traceback.format_exc())
+            return False, _('Problem processing images')
+        return True, None
+
+    # see assemble()
     def validate_and_set_data(self):
-        data = {}
-        if not self.get_assets():
+        if not hasattr(self, '_transaction_paths') or not self._transaction_paths:
             return False, _('You must include at least one image.')
+        data = {}
         tx = self.derive_taxonomy()
         if not tx:
             return False, _('You must include the species as a hashtag.')
@@ -296,14 +334,42 @@ class IntelligentAgentContent(db.Model, HoustonModel):
         self.data = data
         return True, None
 
-    # can (should?) be overridden to be agent-specific if desired
-    #   used for things like filename prefixes etc, so should be fairly "filename-friendly"
-    def id_string(self):
-        return self.guid
+    # see assemble()
+    # this assumes validate_and_set_data() is run
+    def generate_asset_group_metadata(self):
+        assert self._transaction_id
+        assert self._transaction_paths
+        meta = {
+            'speciesDetectionModel': self.get_species_detection_models(),
+            'uploadType': 'form',
+            'description': f'{self.AGENT_CLASS.short_name()}: [{self.guid}] {self.content_as_string()}',
+            'transactionId': self._transaction_id,
+            'sightings': [
+                {
+                    'assetReferences': self._transaction_paths,
+                    'comments': self.content_as_string(),
+                    'speciesDetectionModel': self.get_species_detection_models(),
+                    'locationId': self.data.get('location_id'),
+                    'taxonomy': self.data.get('taxonomy_guid'),
+                    'time': self.data.get('time'),
+                    'timeSpecificity': self.data.get('time_specificity'),
+                    'encounters': [
+                        {
+                            'locationId': self.data.get('location_id'),
+                            'taxonomy': self.data.get('taxonomy_guid'),
+                            'time': self.data.get('time'),
+                            'timeSpecificity': self.data.get('time_specificity'),
+                        }
+                    ],
+                }
+            ],
+        }
+        log.debug(f'###### metadata = {meta}')
+        return meta
 
     # media_data is currently a list of dicts, that must have a url and optionally `id`
     #   likely this will be expanded later?
-    def generate_asset_group(self, media_data):
+    def generate_asset_group_DEPRECATED(self, media_data):
         if not isinstance(media_data, list) or not media_data:
             raise ValueError('invalid or empty media_data')
         import requests
@@ -347,3 +413,56 @@ class IntelligentAgentContent(db.Model, HoustonModel):
         else:
             log.warning(f'no valid assets generated for {self}; no AssetGroup')
         return group
+
+    # media_data is currently a list of dicts, that must have a url and optionally `id`
+    #   this gets them to the transaction dir so they can be used by generate_asset_group
+    #   sets self._transaction_paths for this purpose -- which is validated by validate_and_set_data()
+    def prepare_media_transaction(self, media_data):
+        if not isinstance(media_data, list) or not media_data:
+            raise ValueError('invalid or empty media_data')
+        import requests
+        import uuid
+        import os
+        from app.extensions.tus import tus_upload_dir, tus_write_file_metadata
+        from app.utils import get_stored_filename
+
+        # basically replicate tus transaction dir, to drop files in
+        self._transaction_id = str(uuid.uuid4())
+        target_dir = tus_upload_dir(current_app, transaction_id=self._transaction_id)
+        if not os.path.exists(target_dir):
+            os.makedirs(target_dir)
+        ct = 0
+        self._transaction_paths = []
+        for md in media_data:
+            if not isinstance(md, dict):
+                raise ValueError('media_data element is not a dict')
+            url = md.get('url')
+            if not url:
+                raise ValueError(f'no url in {md}')
+            original_filename = f"{self.id_string()}-{md.get('id', 'unknown')}-{ct}"
+            self._transaction_paths.append(original_filename)
+            target_path = os.path.join(target_dir, get_stored_filename(original_filename))
+            log.debug(f'trying get {url} -> {target_path}')
+            resp = requests.get(url)
+            open(target_path, 'wb').write(resp.content)
+            tus_write_file_metadata(target_path, original_filename)
+            ct += 1
+        log.debug(f'prepare_media_transaction() processed {self._transaction_paths}')
+        return self._transaction_paths
+
+    # this has all sorts of exceptions one might get
+    def generate_asset_group(self, metadata_json):
+        import app.extensions.logging as AuditLog  # NOQA
+        from app.extensions.elapsed_time import ElapsedTime
+        from app.modules.asset_groups.models import AssetGroup, AssetGroupMetadata
+
+        assert isinstance(metadata_json, dict)
+        timer = ElapsedTime()
+        metadata = AssetGroupMetadata(metadata_json)
+        metadata.process_request()
+        metadata.owner = self.owner  # override!
+        self.asset_group = AssetGroup.create_from_metadata(metadata)
+        # do we always want to do this?
+        self.asset_group.begin_ia_pipeline(metadata)
+        AuditLog.user_create_object(log, self.asset_group, duration=timer.elapsed())
+        return self.asset_group

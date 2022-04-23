@@ -172,19 +172,20 @@ class TwitterBot(IntelligentAgent):
             except Exception as ex:
                 log.warning(f'failed to process_tweet for {twt} due to: {str(ex)}')
                 self.create_tweet_queued(
-                    None,  # FIXME
                     _('We could not process your tweet: ') + str(ex),
-                    in_reply_to=None,
+                    in_reply_to=twt.id,
                 )
-                # TODO can we still reply to user without tt?
                 continue
-            ok, err = tt.validate_and_set_data()
+
+            # validates and creates tt.asset_group
+            ok, err = tt.assemble()
             if ok:
-                self.state = IntelligentAgentContentState.active
+                tt.state = IntelligentAgentContentState.active
                 tt.respond_to(_('Thank you!  We are processing your tweet.'))
                 tweets.append(tt)
             else:
-                self.state = IntelligentAgentContentState.rejected
+                tt.state = IntelligentAgentContentState.rejected
+                tt.data['_rejection_error'] = err
                 tt.respond_to(_('Sorry, we cannot process this tweet because: ') + err)
             with db.session.begin():
                 db.session.add(tt)
@@ -383,12 +384,12 @@ class TwitterTweet(IntelligentAgentContent):
             'author': author_data,
         }
         self.raw_content = tweet.data
-        owner = self.find_author_user()
-        if not owner:
-            owner = User.get_public_user()
-            log.info(f'{tweet.id}: {author_data} no match in users; assigned public')
         self.owner = self.find_author_user()
+        if not self.owner:
+            self.owner = User.get_public_user()
+            log.info(f'{tweet.id}: {author_data} no match in users; assigned public')
 
+        # we prep the attachments for being made into AssetGroup if everything is successful
         if tweet.attachments:
             media_data = []
             if not response_includes:
@@ -413,11 +414,11 @@ class TwitterTweet(IntelligentAgentContent):
                             f'{media.media_key} not in attachments on tweet {tweet.id}'
                         )
             try:
-                ag = self.generate_asset_group(media_data)
-                self.asset_group = ag
+                # this sets self._transaction_paths (if all good)
+                self.prepare_media_transaction(media_data)
             except Exception as ex:
                 log.warning(
-                    f'failed to generate AssetGroup on tweet {tweet.id}: {str(ex)}'
+                    f'failed prepare_media_transaction() on tweet {tweet.id}: {str(ex)}'
                 )
                 log.debug(traceback.format_exc())
 

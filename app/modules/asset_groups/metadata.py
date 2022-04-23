@@ -429,7 +429,7 @@ class AssetGroupMetadata(object):
 
         from app.modules.users.models import User
 
-        if current_user is not None and not current_user.is_anonymous:
+        if current_user and not current_user.is_anonymous:
             self.owner = current_user
         else:
             self.owner = User.get_public_user()

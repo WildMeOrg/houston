@@ -611,7 +611,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
                 f'code: {ex.status_code}, acm_status_code: {acm_status_code}, giving up'
             )
             # Assuming some sort of persisten error in Sage
-            self.stage = AssetGroupSightingStage.curation
+            self.set_stage(AssetGroupSightingStage.curation)
 
     def check_job_status(self, job_id):
         if str(job_id) not in self.jobs:
@@ -743,7 +743,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
     def rerun_detection(self, background=True):
         log.info('Rerunning Sage detection')
         if self.stage == AssetGroupSightingStage.curation:
-            self.stage = AssetGroupSightingStage.detection
+            self.set_stage(AssetGroupSightingStage.detection)
             self.start_detection(background=background)
         elif self.stage == AssetGroupSightingStage.detection:
             if self.any_jobs_active():

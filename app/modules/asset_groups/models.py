@@ -295,7 +295,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
     # Don't store detection start time directly. It's either the creation time if we ever had detection
     # jobs or None if no detection was done (and hence no jobs exist)
     def get_detection_start_time(self):
-        if self.jobs:
+        if self.jobs or self.stage == AssetGroupSightingStage.detection:
             return self.created.isoformat() + 'Z'
         return None
 
@@ -303,7 +303,8 @@ class AssetGroupSighting(db.Model, HoustonModel):
     # Either detection has completed or no detection jobs were run
     def get_curation_start_time(self):
         if (
-            not self.any_jobs_active()
+            self.stage != AssetGroupSightingStage.detection
+            and not self.any_jobs_active()
             and 'assetReferences' in self.config.keys()
             and len(self.config['assetReferences']) != 0
         ):

@@ -31,6 +31,11 @@ log = logging.getLogger(__name__)
 _ = gettext.gettext
 
 
+class IntelligentAgentException(Exception):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+
 class IntelligentAgent:
     """
     Intelligent Agent base class
@@ -433,3 +438,22 @@ class IntelligentAgentContent(db.Model, HoustonModel):
         self.asset_group.begin_ia_pipeline(metadata)
         AuditLog.user_create_object(log, self.asset_group, duration=timer.elapsed())
         return self.asset_group
+
+    def wait_for_detection_results(self):
+        from app.extensions.intelligent_agent.tasks import (
+            intelligent_agent_wait_for_detection_results,
+        )
+
+        log.debug(f'{self} awaiting detection results')
+        args = (self.guid,)
+        async_res = intelligent_agent_wait_for_detection_results.apply_async(args)
+        log.debug(f'{self} async_res => {async_res}')
+        return async_res
+
+    def detection_complete_on_asset(self, asset, jobs):
+        log.info(f'>>>>>>>>>>>>>> detection complete on {asset} with {jobs} for {self}')
+
+    def detection_complete(self):
+        log.info(
+            f'>>>>>>>>>>>>>> detection totally complete on {self} <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<'
+        )

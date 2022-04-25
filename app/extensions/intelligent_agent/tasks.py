@@ -2,8 +2,7 @@
 import logging
 
 from app.extensions.celery import celery
-
-# from app.extensions.intelligent_agent import IntelligentAgent
+from app.extensions.intelligent_agent import IntelligentAgentException
 
 log = logging.getLogger(__name__)
 
@@ -43,7 +42,7 @@ def twitterbot_collect():
 
 
 @celery.task(
-    autoretry_for=(Exception,),
+    autoretry_for=(IntelligentAgentException,),
     # seconds until try to send again (including if throttled)
     #  i _think_ this should never be less than minimum_gap?
     default_retry_delay=3,
@@ -81,4 +80,45 @@ def twitterbot_create_tweet_queued(text, in_reply_to):
     log.info(
         f'twitterbot_create_tweet_queue(): insufficient gap ({now}:{last_created}), holding tweet for retry [{text}]'
     )
-    raise Exception('too soon, delayed for retry')
+    raise IntelligentAgentException('too soon, delayed for retry')
+
+
+DETECTION_RETRIES = 100
+
+
+@celery.task(
+    bind=True,
+    autoretry_for=(IntelligentAgentException,),
+    default_retry_delay=2,
+    max_retries=DETECTION_RETRIES,
+)
+def intelligent_agent_wait_for_detection_results(self, content_guid):
+    from app.extensions.intelligent_agent import IntelligentAgentContent
+    from app.modules.assets.models import Asset
+
+    iacontent = IntelligentAgentContent.query.get(content_guid)
+    assert iacontent, f'could not get guid={str(content_guid)}'
+    assets = iacontent.get_assets()
+    if not assets:
+        log.info(
+            f'intelligent_agent_wait_for_detection_results() no assets in {iacontent}; bailing'
+        )
+        return
+    incomplete = len(assets)
+    count = 0
+    if hasattr(self, '_count'):
+        count = self._count
+    for asset in assets:
+        jobs = Asset.get_jobs_for_asset(asset.guid, False)
+        log.debug(
+            f'[{count}/{DETECTION_RETRIES}] wait for detection, {len(jobs) if jobs else 0} jobs for {asset} on {str(iacontent.guid)}'
+        )
+        if jobs:
+            incomplete -= 1
+            iacontent.detection_complete_on_asset(asset, jobs)
+    if incomplete > 0:
+        self._count = count + 1
+        raise IntelligentAgentException(
+            f'detection still pending on {incomplete} assets'
+        )  # will retry
+    iacontent.detection_complete()

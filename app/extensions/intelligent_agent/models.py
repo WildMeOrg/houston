@@ -189,6 +189,7 @@ class TwitterBot(IntelligentAgent):
                 tt.respond_to(_('Sorry, we cannot process this tweet because: ') + err)
             with db.session.begin():
                 db.session.add(tt)
+            tt.wait_for_detection_results()
         self.set_persisted_value('since_id', latest_id)
         return tweets
 
@@ -475,4 +476,9 @@ class TwitterTweet(IntelligentAgentContent):
             tx = Taxonomy.find_fuzzy(ht)
             log.debug(f'hashtag "{ht}" matched {tx}')
             return tx
+        return None
+
+    # this override is only to satisify the deadline hack of not using real user.linked_account process FIXME
+    def find_author_user(self):
+        # FIXME EEEEEEEEEEEEEEEEEEEEEEEEEE
         return None

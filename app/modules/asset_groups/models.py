@@ -457,7 +457,10 @@ class AssetGroupSighting(db.Model, HoustonModel):
                     f'{self.guid} is detecting but no detection jobs are running, '
                     'assuming Celery error and starting them again'
                 )
-            self.rerun_detection(background=False)
+            try:
+                self.rerun_detection(background=False)
+            except Exception:
+                log.exception('{self} rerun_detection failed')
             return
         for job_id in jobs.keys():
             job = jobs[job_id]

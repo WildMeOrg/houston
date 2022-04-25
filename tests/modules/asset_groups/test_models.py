@@ -13,7 +13,11 @@ from tests.utils import module_unavailable, extension_unavailable
     module_unavailable('asset_groups'), reason='AssetGroups module disabled'
 )
 def test_asset_group_sightings_jobs(flask_app, db, admin_user, test_root, request):
-    from app.modules.asset_groups.models import AssetGroup, AssetGroupSighting
+    from app.modules.asset_groups.models import (
+        AssetGroup,
+        AssetGroupSighting,
+        AssetGroupSightingStage,
+    )
     from tests.utils import copy_uploaded_file, create_transaction_dir
 
     input_filename = 'zippy'
@@ -24,17 +28,22 @@ def test_asset_group_sightings_jobs(flask_app, db, admin_user, test_root, reques
     asset_group = AssetGroup.create_from_tus(
         'test asset group description', admin_user, transaction_id, paths=[input_filename]
     )
+    asset_group.config['speciesDetectionModel'] = test_utils.dummy_detection_info()
+    # Make sure config changes are saved
+    asset_group.config = asset_group.config
     with db.session.begin():
         db.session.add(asset_group)
-    asset_group.config['speciesDetectionModel'] = test_utils.dummy_detection_info()
     request.addfinalizer(asset_group.delete)
     sighting_config1 = test_utils.dummy_sighting_info()
     sighting_config1['assetReferences'] = [input_filename]
     ags1 = AssetGroupSighting(
         asset_group=asset_group,
         sighting_config=sighting_config1,
-        detection_configs=test_utils.dummy_detection_info(),
+        detection_configs=['african_terrestrial'],
     )
+    assert ags1.stage == AssetGroupSightingStage.detection
+    assert ags1.get_detection_start_time() == ags1.created.isoformat() + 'Z'
+    assert ags1.get_curation_start_time() is None
     sighting_config2 = test_utils.dummy_sighting_info()
     sighting_config2['assetReferences'] = []
     ags2 = AssetGroupSighting(
@@ -42,6 +51,10 @@ def test_asset_group_sightings_jobs(flask_app, db, admin_user, test_root, reques
         sighting_config=sighting_config2,
         detection_configs=test_utils.dummy_detection_info(),
     )
+    # no assets => processed
+    assert ags2.stage == AssetGroupSightingStage.processed
+    assert ags2.get_detection_start_time() is None
+    assert ags2.get_curation_start_time() is None
 
     now = datetime.datetime(2021, 7, 7, 17, 55, 34)
     job_id1 = uuid.UUID('53ea04e0-1e87-412d-aa17-0ff5e05db78d')
@@ -147,11 +160,17 @@ def test_asset_group_sighting_get_completion(
     asset_group_sighting = AssetGroupSighting.query.get(asset_group_sighting_guid)
     # In "detection" stage
     assert asset_group_sighting.stage == AssetGroupSightingStage.detection
+    detection_time = asset_group_sighting.created.isoformat() + 'Z'
+    assert asset_group_sighting.get_detection_start_time() == detection_time
+    assert asset_group_sighting.get_curation_start_time() is None
     assert asset_group_sighting.get_completion() == 0
     # Mark job as completed -> "curation" stage
     asset_group_sighting.job_complete(list(asset_group_sighting.jobs.keys())[0])
     assert all(not job['active'] for job in asset_group_sighting.jobs.values())
     assert asset_group_sighting.stage == AssetGroupSightingStage.curation
+    assert asset_group_sighting.get_detection_start_time() == detection_time
+    curation_time = asset_group_sighting.curation_start.isoformat() + 'Z'
+    assert asset_group_sighting.get_curation_start_time() == curation_time
     assert asset_group_sighting.get_completion() == 10
 
     # Call commit to move to "processed" stage
@@ -167,6 +186,8 @@ def test_asset_group_sighting_get_completion(
     ):
         asset_group_sighting.commit()
     assert asset_group_sighting.stage == AssetGroupSightingStage.processed
+    assert asset_group_sighting.get_detection_start_time() == detection_time
+    assert asset_group_sighting.get_curation_start_time() == curation_time
     assert asset_group_sighting.get_completion() == 76
 
     # Check unknown and failed by manually setting them

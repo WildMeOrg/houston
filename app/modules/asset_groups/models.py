@@ -295,7 +295,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
     # Don't store detection start time directly. It's either the creation time if we ever had detection
     # jobs or None if no detection was done (and hence no jobs exist)
     def get_detection_start_time(self):
-        if self.jobs:
+        if self.jobs or self.stage == AssetGroupSightingStage.detection:
             return self.created.isoformat() + 'Z'
         return None
 
@@ -303,7 +303,8 @@ class AssetGroupSighting(db.Model, HoustonModel):
     # Either detection has completed or no detection jobs were run
     def get_curation_start_time(self):
         if (
-            not self.any_jobs_active()
+            self.stage != AssetGroupSightingStage.detection
+            and not self.any_jobs_active()
             and 'assetReferences' in self.config.keys()
             and len(self.config['assetReferences']) != 0
         ):
@@ -610,7 +611,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
                 f'code: {ex.status_code}, acm_status_code: {acm_status_code}, giving up'
             )
             # Assuming some sort of persisten error in Sage
-            self.stage = AssetGroupSightingStage.curation
+            self.set_stage(AssetGroupSightingStage.curation)
 
     def check_job_status(self, job_id):
         if str(job_id) not in self.jobs:
@@ -742,7 +743,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
     def rerun_detection(self, background=True):
         log.info('Rerunning Sage detection')
         if self.stage == AssetGroupSightingStage.curation:
-            self.stage = AssetGroupSightingStage.detection
+            self.set_stage(AssetGroupSightingStage.detection)
             self.start_detection(background=background)
         elif self.stage == AssetGroupSightingStage.detection:
             if self.any_jobs_active():

@@ -233,6 +233,12 @@ class IntelligentAgentContent(db.Model, HoustonModel):
         foreign_keys='IntelligentAgentContent.asset_group_guid',
     )
 
+    __mapper_args__ = {
+        'confirm_deleted_rows': False,
+        'polymorphic_identity': 'intelligent_agent',
+        'polymorphic_on': agent_type,
+    }
+
     def __init__(self, *args, **kwargs):
         self.agent_type = self.AGENT_CLASS.short_name()
         super().__init__(*args, **kwargs)

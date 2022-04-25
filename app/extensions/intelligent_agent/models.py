@@ -368,6 +368,10 @@ class TwitterBot(IntelligentAgent):
 class TwitterTweet(IntelligentAgentContent):
     AGENT_CLASS = TwitterBot
 
+    __mapper_args__ = {
+        'polymorphic_identity': 'twitterbot',
+    }
+
     # https://docs.tweepy.org/en/latest/v2_models.html#tweet
     def __init__(self, tweet=None, response_includes=None, *args, **kwargs):
         from app.modules.users.models import User

@@ -382,7 +382,7 @@ class TwitterTweet(IntelligentAgentContent):
         return self.raw_content.get('text')
 
     def author_as_string(self):
-        return super().author_as_string() + ':TWITTER_USERNAME'
+        return super().author_as_string() + ':' + self.get_author_username()
 
     def respond_to(self, text):
         log.debug(f'responding to {self} from {self.get_author_username()}: {text}')
@@ -423,6 +423,15 @@ class TwitterTweet(IntelligentAgentContent):
         return None
 
     # this override is only to satisify the deadline hack of not using real user.linked_account process FIXME
+    #   remove it (to let baseclass method run) when hack is gone
     def find_author_user(self):
-        # FIXME EEEEEEEEEEEEEEEEEEEEEEEEEE
-        return None
+        from app.modules.users.models import User
+        from sqlalchemy import func
+
+        username = self.get_author_username()
+        if not username:
+            log.warning(f'cannot find author user: username not found for {self}')
+            return None
+        return User.query.filter(
+            func.lower(User.twitter_username) == username.lower()
+        ).first()

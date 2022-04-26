@@ -173,7 +173,7 @@ class User(db.Model, FeatherModel, UserEDMMixin):
     linked_accounts = db.Column(db.JSON, nullable=True)
 
     # twitter_username is *temporary* way we link to twitter
-    twitter_username = db.Column(db.String, default='', nullable=True, unique=True)
+    twitter_username = db.Column(db.String, default=None, nullable=True, unique=True)
 
     profile_fileupload_guid = db.Column(
         db.GUID, db.ForeignKey('file_upload.guid'), nullable=True

@@ -195,12 +195,12 @@ def test_create_approved_collaboration_remove_creator(
     ]
     collab = researcher_1_assocs[0].collaboration
 
-    assert collab.initiator_guid == temp_user_manager.guid
+    assert collab.initiator_guid is None
     assert len(researcher_1_assocs) == 1
-    assert len(collab.collaboration_user_associations) == 3
+    assert len(collab.collaboration_user_associations) == 2
 
     # Now delete the user
     temp_user_manager.delete()
 
-    assert collab.initiator_guid in {researcher_1.guid, researcher_2.guid}
+    assert collab.initiator_guid is None
     assert len(collab.collaboration_user_associations) == 2

@@ -23,7 +23,7 @@ from app.modules.users import permissions
 import app.extensions.logging as AuditLog
 
 from . import parameters, schemas
-from .models import Collaboration, CollaborationUserState
+from .models import Collaboration
 
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
@@ -105,9 +105,6 @@ class Collaborations(Resource):
             users = [other_user, second_user]
 
         for collab_assoc in users[0].get_collaboration_associations():
-            if collab_assoc.read_approval_state == CollaborationUserState.CREATOR:
-                # Dont check associations where the current user is the creator
-                continue
             if users[1] in collab_assoc.collaboration.get_users():
                 log.warning(
                     f'Collaboration between {users[0].email} and {users[1].email} already exists '

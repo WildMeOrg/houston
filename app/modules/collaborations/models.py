@@ -22,14 +22,12 @@ class CollaborationUserState:
         'pending',
         'not_initiated',
         'revoked',
-        'creator',
     ]
     DENIED = ALLOWED_STATES[0]
     APPROVED = ALLOWED_STATES[1]
     PENDING = ALLOWED_STATES[2]
     NOT_INITIATED = ALLOWED_STATES[3]
     REVOKED = ALLOWED_STATES[4]
-    CREATOR = ALLOWED_STATES[5]
 
 
 class CollaborationUserAssociations(db.Model, HoustonModel):
@@ -61,7 +59,7 @@ class CollaborationUserAssociations(db.Model, HoustonModel):
     )
 
     def delete(self):
-        self.collaboration.user_deleted(self)
+        self.collaboration.user_deleted()
 
     def has_read(self):
         return self.collaboration.user_has_read_access(self.user_guid)
@@ -90,7 +88,7 @@ class Collaboration(db.Model, HoustonModel):
         'CollaborationUserAssociations', back_populates='collaboration'
     )
     initiator_guid = db.Column(
-        db.GUID, db.ForeignKey('user.guid'), index=True, nullable=False
+        db.GUID, db.ForeignKey('user.guid'), index=True, nullable=True
     )
     init_req_notification_guid = db.Column(
         db.GUID, db.ForeignKey('notification.guid'), nullable=True
@@ -124,7 +122,7 @@ class Collaboration(db.Model, HoustonModel):
                 f'Attempted creation of a collaboration by a non manager {initiator_user.email}.'
             )
 
-        self.initiator_guid = initiator_user.guid
+        self.initiator_guid = None if manager_created else initiator_user.guid
         self.edit_initiator_guid = None
 
         for user in members:
@@ -151,24 +149,16 @@ class Collaboration(db.Model, HoustonModel):
 
         if manager_created:
 
-            # User manager created collaboration, store who the creator was
-            collab_creator = CollaborationUserAssociations(
-                collaboration=self, user=initiator_user
-            )
             from app.modules.notifications.models import NotificationType
 
-            collab_creator.read_approval_state = CollaborationUserState.CREATOR
-            collab_creator.edit_approval_state = CollaborationUserState.CREATOR
             if notify_users:
                 for user in members:
                     user_assoc = self._get_association_for_user(user.guid)
                     self._notify_user(
-                        collab_creator.user,
+                        current_user,
                         user_assoc.user,
                         NotificationType.collab_manager_create,
                     )
-            with db.session.begin(subtransactions=True):
-                db.session.add(collab_creator)
 
     def _get_association_for_user(self, user_guid):
         assoc = None
@@ -184,34 +174,17 @@ class Collaboration(db.Model, HoustonModel):
                 association.user_guid
                 for association in self.collaboration_user_associations
                 if (association.user_guid != user_guid)
-                & (association.read_approval_state != CollaborationUserState.CREATOR)
             ]
             assert len(other_user_guids) == 1
 
             assoc = self._get_association_for_user(other_user_guids[0])
         return assoc
 
-    # note: returns manager *of this collaboration* (if applicable).  this user
-    #   may no longer be an active manager (role).
-    def get_manager(self):
-        for association in self.collaboration_user_associations:
-            if association.read_approval_state == CollaborationUserState.CREATOR:
-                return association.user
-        return None
-
     def get_users(self):
-        users = []
-        for association in self.collaboration_user_associations:
-            if association.read_approval_state != CollaborationUserState.CREATOR:
-                users.append(association.user)
-        return users
+        return [assoc.user for assoc in self.collaboration_user_associations]
 
     def user_guids(self):
-        user_guids = []
-        for association in self.collaboration_user_associations:
-            if association.read_approval_state != CollaborationUserState.CREATOR:
-                user_guids.append(association.user_guid)
-        return user_guids
+        return [assoc.user_guid for assoc in self.collaboration_user_associations]
 
     def notify_pending_users(self):
         # Once created notify the pending user to accept
@@ -247,7 +220,7 @@ class Collaboration(db.Model, HoustonModel):
                         NotificationType.collab_edit_request,
                     )
 
-    def _notify_user(self, sending_user, receiving_user, notification_type):
+    def _notify_user(self, sending_user, receiving_user, notification_type, manager=None):
         from app.modules.notifications.models import (
             Notification,
             NotificationBuilder,
@@ -255,7 +228,7 @@ class Collaboration(db.Model, HoustonModel):
         )
 
         builder = NotificationBuilder(sending_user)
-        builder.set_collaboration(self)
+        builder.set_collaboration(self, manager)
         notif = Notification.create(notification_type, receiving_user, builder)
 
         if notification_type is NotificationType.collab_request:
@@ -287,8 +260,6 @@ class Collaboration(db.Model, HoustonModel):
 
         user_data = {}
         for association in self.collaboration_user_associations:
-            if association.read_approval_state == CollaborationUserState.CREATOR:
-                continue
             assoc_data = BaseUserSchema().dump(association.user).data
             assoc_data['viewState'] = association.read_approval_state
             assoc_data['editState'] = association.edit_approval_state
@@ -301,7 +272,6 @@ class Collaboration(db.Model, HoustonModel):
         # Only certain transitions are permitted
         if old_state == CollaborationUserState.NOT_INITIATED:
             ret_val = new_state in [
-                CollaborationUserState.CREATOR,
                 CollaborationUserState.APPROVED,
                 CollaborationUserState.PENDING,
             ]
@@ -518,25 +488,8 @@ class Collaboration(db.Model, HoustonModel):
             ')>'.format(class_name=self.__class__.__name__, self=self)
         )
 
-    def user_deleted(self, user_association):
-        if user_association.read_approval_state == CollaborationUserState.CREATOR:
-            # Collaboration creator removal is an odd case, we have to have an initiator so chose an arbitrary member
-            new_creator = (
-                self.collaboration_user_associations[0]
-                if self.collaboration_user_associations[0] != user_association
-                else self.collaboration_user_associations[1]
-            )
-            message = (
-                f'Initiator user removed, assigning {new_creator.user_guid} as initiator'
-            )
-            AuditLog.audit_log_object(log, self, message)
-            self.initiator_guid = new_creator.user_guid
-            with db.session.begin(subtransactions=True):
-                db.session.merge(self)
-                db.session.delete(user_association)
-        else:
-            # If the user is a member and are removed then the collaboration is removed entirely
-            self.delete()
+    def user_deleted(self):
+        self.delete()
 
     def delete(self):
         AuditLog.delete_object(log, self)

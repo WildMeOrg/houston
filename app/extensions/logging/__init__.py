@@ -66,10 +66,7 @@ class Logging(object):
         if audit_type == cls.AuditType.SystemCreate:
             # Just leave message as is for system create, no user created this
             pass
-        elif current_user and not current_user.is_anonymous:
-            msg = f'{msg} executed by {current_user.email}({current_user.guid})'
-        else:
-            msg += ' executed by anonymous user'
+
         log_kwargs = kwargs
         if 'duration' in kwargs:
             msg += f" in {kwargs['duration']} seconds"
@@ -83,8 +80,11 @@ class Logging(object):
     # logger for calling file needed as a parameter to ensure that the file and line numbers are correct in logs
     @classmethod
     def audit_log(cls, logger, msg, audit_type=AuditType.Other, *args, **kwargs):
-        assert object
 
+        if current_user and not current_user.is_anonymous:
+            msg = f'{msg} executed by {current_user.email}({current_user.guid})'
+        else:
+            msg += ' executed by anonymous user'
         cls._log_message(logger, msg, audit_type, *args, **kwargs)
 
         from app.modules.audit_logs.models import AuditLog
@@ -98,6 +98,11 @@ class Logging(object):
         assert obj
         assert hasattr(obj, 'guid')
         assert isinstance(audit_type, cls.AuditType)
+
+        if current_user and not current_user.is_anonymous:
+            msg = f'{msg} executed by {current_user.email}({current_user.guid})'
+        else:
+            msg += ' executed by anonymous user'
 
         module_name = obj.__class__.__name__
         log_msg = f'{module_name} {audit_type} {obj.guid} {msg}'

@@ -39,7 +39,7 @@ def test_collaboration_create_with_members(
     request.addfinalizer(manager_collab.delete)
 
     request.addfinalizer(manager_collab.delete)
-    assert manager_collab.initiator_guid == user_manager_user.guid
+    assert manager_collab.initiator_guid is None
     for association in manager_collab.collaboration_user_associations:
 
         if association.user == user_manager_user:

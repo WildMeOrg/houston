@@ -22,7 +22,7 @@ def test_patch_collaboration(flask_app_client, researcher_1, researcher_2, reque
 
     # should not work
     patch_data = [utils.patch_replace_op('view_permission', 'ambivalence')]
-    resp = 'State "ambivalence" not in allowed states: denied, approved, pending, not_initiated, revoked, creator'
+    resp = 'State "ambivalence" not in allowed states: denied, approved, pending, not_initiated, revoked'
     collab_utils.patch_collaboration(
         flask_app_client, collab_guid, researcher_2, patch_data, 409, resp
     )
@@ -132,8 +132,8 @@ def test_patch_collaboration_states(
     request.addfinalizer(collab.delete)
 
     # should not work
-    patch_data = [utils.patch_replace_op('view_permission', 'creator')]
-    resp = 'unable to set /view_permission to creator'
+    patch_data = [utils.patch_replace_op('view_permission', 'not_initiated')]
+    resp = 'unable to set /view_permission to not_initiated'
     collab_utils.patch_collaboration(
         flask_app_client, collab_guid, researcher_2, patch_data, 400, resp
     )
@@ -141,7 +141,7 @@ def test_patch_collaboration_states(
 
     # also should not
     patch_data = [utils.patch_replace_op('view_permission', 'ambivalence')]
-    resp = 'State "ambivalence" not in allowed states: denied, approved, pending, not_initiated, revoked, creator'
+    resp = 'State "ambivalence" not in allowed states: denied, approved, pending, not_initiated, revoked'
     collab_utils.patch_collaboration(
         flask_app_client, collab_guid, researcher_2, patch_data, 409, resp
     )

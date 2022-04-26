@@ -52,10 +52,12 @@ def test_collaboration(session, codex_url, login, logout, admin_email):
     assert response.json()['members'][new_user_guid_2]['editState'] == 'not_initiated'
     collaboration_guid_2 = response.json()['guid']
 
-    # Check collaboration is in /users/me
+    # Check collaboration is not in /users/me
     response = session.get(codex_url('/api/v1/users/me'))
     assert response.status_code == 200
-    assert collaboration_guid_2 in [c['guid'] for c in response.json()['collaborations']]
+    assert collaboration_guid_2 not in [
+        c['guid'] for c in response.json()['collaborations']
+    ]
     logout(session)
 
     # Log in as new user and check collaboration request
@@ -74,7 +76,7 @@ def test_collaboration(session, codex_url, login, logout, admin_email):
     assert response.status_code == 409
     assert (
         response.json()['message']
-        == 'State "True" not in allowed states: denied, approved, pending, not_initiated, revoked, creator'
+        == 'State "True" not in allowed states: denied, approved, pending, not_initiated, revoked'
     )
 
     # Approve collaboration
@@ -108,7 +110,7 @@ def test_collaboration(session, codex_url, login, logout, admin_email):
     assert response.status_code == 409
     assert (
         response.json()['message']
-        == 'State "False" not in allowed states: denied, approved, pending, not_initiated, revoked, creator'
+        == 'State "False" not in allowed states: denied, approved, pending, not_initiated, revoked'
     )
 
     # Reject collaboration for edit

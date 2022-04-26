@@ -146,13 +146,13 @@ class IntelligentAgent:
     def is_ready(cls):
         return cls.is_enabled()
 
+    # TODO is there a programmatic way to do this?
     @classmethod
     def get_agent_classes(cls):
-        from app.extensions.intelligent_agent.models import TwitterBot, DummyTest
+        from app.extensions.intelligent_agent.models import TwitterBot
 
         return [
             TwitterBot,
-            DummyTest,
         ]
 
     @classmethod

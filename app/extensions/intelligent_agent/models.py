@@ -17,7 +17,6 @@ from app.extensions.intelligent_agent import (
     IntelligentAgentContent,
     IntelligentAgentContentState,
 )
-import random
 import gettext
 import traceback
 
@@ -28,68 +27,6 @@ import logging
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 _ = gettext.gettext
-
-
-class DummyTest(IntelligentAgent):
-    """
-    A test intelligent Agent
-    """
-
-    def test_setup(self):
-        return {'success': True, 'message': 'DummyTest is always ready.'}
-
-    @classmethod
-    def site_setting_config(cls):
-        return {
-            cls.site_setting_id('dummy_secret'): {
-                'type': str,
-                'default': None,
-                'public': False,
-            },
-            cls.site_setting_id('greeting'): {
-                'type': str,
-                'default': None,
-                'public': False,
-            },
-        }
-
-    def collect(self):
-        return [DummyMessage() for x in range(int(random.random() * 10) + 4)]
-
-    # always on! (for now?)
-    @classmethod
-    def is_enabled(self):
-        return True
-
-
-class DummyMessage(IntelligentAgentContent):
-    AGENT_CLASS = DummyTest
-
-    def __init__(self, *args, **kwargs):
-        from app.utils import get_stored_filename
-
-        self.source = {
-            'created': datetime.utcnow().isoformat() + '+00:00',
-            'author': get_stored_filename(str(random.random())),
-        }
-        self.raw_content = {
-            'content': [
-                get_stored_filename(str(random.random())),
-                get_stored_filename(str(random.random())),
-                get_stored_filename(str(random.random())),
-            ]
-        }
-        self.state = IntelligentAgentContentState.complete
-        super().__init__(*args, **kwargs)
-
-    def respond_to(self, message):
-        log.info(f'responding to {self}: {message}')
-
-    def content_as_string(self):
-        return ' / '.join(self.raw_content['content'])
-
-    def source_as_string(self):
-        return f"by {self.source['author']} on {self.source['created']}"
 
 
 class TwitterBot(IntelligentAgent):

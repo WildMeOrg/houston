@@ -22,7 +22,7 @@ def test_raising_faults():
         .all()
     )
     houston_faults.reverse()
-    assert houston_faults[0].message == houston_fault_msg
+    assert houston_fault_msg in houston_faults[0].message
     backend_fault_msg = (
         'ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff'
         'ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff'
@@ -42,4 +42,4 @@ def test_raising_faults():
         .all()
     )
     backend_faults.reverse()
-    assert backend_faults[0].message == backend_fault_msg
+    assert backend_fault_msg in backend_faults[0].message

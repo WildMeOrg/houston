@@ -2,6 +2,7 @@
 # pylint: disable=missing-docstring
 import tests.modules.collaborations.resources.utils as collab_utils
 import tests.modules.notifications.resources.utils as notif_utils
+import tests.utils as utils
 import pytest
 
 from tests.utils import module_unavailable
@@ -204,3 +205,28 @@ def test_notification_resolution(
         flask_app_client, researcher_2, notif_guid
     )
     assert collab_request_notif.json['is_resolved']
+
+    # Now validate that the manager can revoke it for one user and both users get the Notification
+    patch_data = [utils.patch_replace_op('view_permission', 'revoked')]
+    collab_guid = str(basic_collab.guid)
+    collab_utils.patch_collaboration(
+        flask_app_client, collab_guid, user_manager_user, patch_data
+    )
+    res1_notifs = notif_utils.read_all_unread_notifications(
+        flask_app_client, researcher_1
+    ).json
+    res2_notifs = notif_utils.read_all_unread_notifications(
+        flask_app_client, researcher_2
+    ).json
+    res1_mgr_revokes = [
+        msg
+        for msg in res1_notifs
+        if msg['message_type'] == 'collaboration_manager_revoke'
+    ]
+    res2_mgr_revokes = [
+        msg
+        for msg in res2_notifs
+        if msg['message_type'] == 'collaboration_manager_revoke'
+    ]
+    assert len(res1_mgr_revokes) == 1
+    assert len(res2_mgr_revokes) == 1

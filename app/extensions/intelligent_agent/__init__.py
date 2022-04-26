@@ -182,6 +182,8 @@ class IntelligentAgentContentState(str, enum.Enum):
     intake = 'intake'
     rejected = 'rejected'
     active = 'active'
+    active_detection = 'active_detection'
+    active_identification = 'active_identification'
     complete = 'complete'
     error = 'error'
 
@@ -456,7 +458,8 @@ class IntelligentAgentContent(db.Model, HoustonModel):
         metadata.process_request()
         metadata.owner = self.owner  # override!
         self.asset_group = AssetGroup.create_from_metadata(metadata)
-        # do we always want to do this?
+        # this should kick off detection
+        self.state = IntelligentAgentContentState.active_detection
         self.asset_group.begin_ia_pipeline(metadata)
         AuditLog.user_create_object(log, self.asset_group, duration=timer.elapsed())
         return self.asset_group
@@ -491,6 +494,7 @@ class IntelligentAgentContent(db.Model, HoustonModel):
 
     def detection_complete(self):
         from app.modules.assets.models import Asset
+        import traceback
 
         annots = []
         jobs = []
@@ -548,8 +552,30 @@ class IntelligentAgentContent(db.Model, HoustonModel):
                     )
                 )
         else:  # must be exactly 1 annot - on to identification!
-            # note: state stays as active
-            self.commit_to_sighting(annots[0])
+            try:
+                # will make real sighting/encounter and kick off identification
+                self.commit_to_sighting(annots[0])
+            except Exception as ex:
+                log.error(
+                    f'detection_complete() commit_to_sighting failed on {self} with: {str(ex)}'
+                )
+                trace = traceback.format_exc()
+                log.debug(trace)
+                self.state = IntelligentAgentContentState.error
+                self.data['_error'] = 'commit_to_sighting error: ' + str(ex)
+                self.data['_trace'] = trace
+                self.data = self.data
+                with db.session.begin():
+                    db.session.merge(self)
+                db.session.refresh(self)
+                self.respond_to(_('We had a problem processing your submission, sorry.'))
+                return
+
+            self.state = IntelligentAgentContentState.active_identification
+            with db.session.begin():
+                db.session.merge(self)
+            db.session.refresh(self)
+            self.wait_for_identification_results()
 
     def commit_to_sighting(self, annot):
         assert self.asset_group and self.asset_group.asset_group_sightings
@@ -563,7 +589,9 @@ class IntelligentAgentContent(db.Model, HoustonModel):
         with db.session.begin():
             db.session.merge(ags)
         db.session.refresh(ags)
-        ags.commit()
+        sighting = ags.commit()
+        log.debug(f'{sighting} created via ags.commit() on {self}')
+        return sighting
 
     def wait_for_identification_results(self):
         from app.extensions.intelligent_agent.tasks import (

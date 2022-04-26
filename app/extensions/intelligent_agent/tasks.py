@@ -157,6 +157,7 @@ def intelligent_agent_wait_for_identification_results(self, content_guid):
     log.debug(
         f'[{self.request.retries}/{IDENTIFICATION_RETRIES}] wait for identification? {len(sighting.jobs)} jobs for {sighting} on {str(iacontent.guid)}'
     )
+
     if not sighting.jobs:
         if self.request.retries >= IDENTIFICATION_RETRIES:
             iacontent.identification_timed_out()
@@ -166,5 +167,19 @@ def intelligent_agent_wait_for_identification_results(self, content_guid):
             f'identification found no jobs on {sighting} for {iacontent}'
         )
 
-    log.warning(f'>>>>>>> fell thru on {iacontent} with jobs: {sighting.jobs}')
-    iacontent.identiication_complete()
+    active_job = None
+    for job_id in sighting.jobs:
+        if sighting.jobs[job_id].get('active', False):
+            active_job = sighting.jobs[job_id]
+            active_job['job_id'] = job_id
+    if active_job:
+        log.debug(
+            f'intelligent_agent_wait_for_identification_results() found active job on {sighting} for {iacontent}: {active_job}'
+        )
+        # this will cause retry
+        raise IntelligentAgentException(
+            f"identification found active job {active_job['job_id']} on {sighting} for {iacontent}"
+        )
+
+    log.debug(f'>>>>>>>>>>>>>>>>> fell thru on {iacontent} with jobs: {sighting.jobs}')
+    iacontent.identification_complete()

@@ -588,4 +588,18 @@ class IntelligentAgentContent(db.Model, HoustonModel):
         db.session.refresh(self)
 
     def identification_complete(self):
-        pass
+        from app.utils import full_api_url
+
+        sighting = self.get_sighting()
+        assert sighting, f'no sighting for {self}'
+        url = full_api_url(f'sightings/{str(sighting.guid)}')
+        log.warning(
+            f'intelligent_agent: completed identification for {sighting} on {self}'
+        )
+        self.state = IntelligentAgentContentState.complete
+        self.respond_to(
+            _('We finished processing your submission. Check it out here: ') + url
+        )
+        with db.session.begin():
+            db.session.merge(self)
+        db.session.refresh(self)

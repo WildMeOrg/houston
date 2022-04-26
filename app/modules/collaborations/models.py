@@ -163,7 +163,9 @@ class Collaboration(db.Model, HoustonModel):
                 for user in members:
                     user_assoc = self._get_association_for_user(user.guid)
                     self._notify_user(
-                        collab_creator, user_assoc, NotificationType.collab_manager_create
+                        collab_creator.user,
+                        user_assoc.user,
+                        NotificationType.collab_manager_create,
                     )
             with db.session.begin(subtransactions=True):
                 db.session.add(collab_creator)
@@ -230,8 +232,8 @@ class Collaboration(db.Model, HoustonModel):
                     == CollaborationUserState.PENDING
                 ):
                     self._notify_user(
-                        other_user_assoc,
-                        collab_user_assoc,
+                        other_user_assoc.user,
+                        collab_user_assoc.user,
                         NotificationType.collab_request,
                     )
 
@@ -240,21 +242,21 @@ class Collaboration(db.Model, HoustonModel):
                     == CollaborationUserState.PENDING
                 ):
                     self._notify_user(
-                        other_user_assoc,
-                        collab_user_assoc,
+                        other_user_assoc.user,
+                        collab_user_assoc.user,
                         NotificationType.collab_edit_request,
                     )
 
-    def _notify_user(self, sending_user_assoc, receiving_user_assoc, notification_type):
+    def _notify_user(self, sending_user, receiving_user, notification_type):
         from app.modules.notifications.models import (
             Notification,
             NotificationBuilder,
             NotificationType,
         )
 
-        builder = NotificationBuilder(sending_user_assoc.user)
+        builder = NotificationBuilder(sending_user)
         builder.set_collaboration(self)
-        notif = Notification.create(notification_type, receiving_user_assoc.user, builder)
+        notif = Notification.create(notification_type, receiving_user, builder)
 
         if notification_type is NotificationType.collab_request:
             self.init_req_notification_guid = notif.guid
@@ -266,6 +268,7 @@ class Collaboration(db.Model, HoustonModel):
             NotificationType.collab_edit_approved,
             NotificationType.collab_edit_revoke,
             NotificationType.collab_revoke,
+            NotificationType.collab_manager_revoke,
             NotificationType.collab_denied,
         }
 
@@ -321,6 +324,8 @@ class Collaboration(db.Model, HoustonModel):
         return ret_val
 
     def set_read_approval_state_for_user(self, user_guid, state):
+        from app.modules.notifications.models import NotificationType
+
         success = False
         if state not in CollaborationUserState.ALLOWED_STATES:
             raise ValueError(
@@ -344,29 +349,69 @@ class Collaboration(db.Model, HoustonModel):
 
                             association.edit_approval_state = state
 
-                        from app.modules.notifications.models import NotificationType
-
                         if state == CollaborationUserState.REVOKED:
                             self._notify_user(
-                                association,
-                                self._get_association_for_other_user(user_guid),
+                                association.user,
+                                self._get_association_for_other_user(user_guid).user,
                                 NotificationType.collab_revoke,
                             )
                         elif state == CollaborationUserState.APPROVED:
                             self._notify_user(
-                                association,
-                                self._get_association_for_other_user(user_guid),
+                                association.user,
+                                self._get_association_for_other_user(user_guid).user,
                                 NotificationType.collab_approved,
                             )
                         elif state == CollaborationUserState.DENIED:
                             self._notify_user(
-                                association,
-                                self._get_association_for_other_user(user_guid),
+                                association.user,
+                                self._get_association_for_other_user(user_guid).user,
                                 NotificationType.collab_denied,
                             )
                         with db.session.begin(subtransactions=True):
                             db.session.merge(association)
                         success = True
+
+            # user managers can set the states too, but only valid transitions
+            if not success and current_user.is_user_manager:
+                assocs = self.collaboration_user_associations
+                if self._is_approval_state_transition_valid(
+                    assocs[0].read_approval_state, state
+                ) and self._is_approval_state_transition_valid(
+                    assocs[1].read_approval_state, state
+                ):
+                    for assoc in assocs:
+                        assoc.read_approval_state = state
+
+                        if state == CollaborationUserState.REVOKED:
+                            # If the user manager revokes view and edit was previously allowed, they automatically
+                            # revoke edit too
+                            if (
+                                assoc.edit_approval_state
+                                == CollaborationUserState.APPROVED
+                            ):
+                                assoc.edit_approval_state = state
+
+                            self._notify_user(
+                                current_user,
+                                assoc.user,
+                                NotificationType.collab_manager_revoke,
+                            )
+                        elif state == CollaborationUserState.APPROVED:
+                            self._notify_user(
+                                current_user,
+                                assoc.user,
+                                NotificationType.collab_approved,
+                            )
+                        elif state == CollaborationUserState.DENIED:
+                            self._notify_user(
+                                current_user,
+                                assoc.user,
+                                NotificationType.collab_denied,
+                            )
+                        with db.session.begin(subtransactions=True):
+                            db.session.merge(assoc)
+                        success = True
+
         return success
 
     def user_has_read_access(self, user_guid):
@@ -424,14 +469,14 @@ class Collaboration(db.Model, HoustonModel):
 
                         if state == CollaborationUserState.REVOKED:
                             self._notify_user(
-                                association,
-                                self._get_association_for_other_user(user_guid),
+                                association.user,
+                                self._get_association_for_other_user(user_guid).user,
                                 NotificationType.collab_edit_revoke,
                             )
                         elif state == CollaborationUserState.APPROVED:
                             self._notify_user(
-                                association,
-                                self._get_association_for_other_user(user_guid),
+                                association.user,
+                                self._get_association_for_other_user(user_guid).user,
                                 NotificationType.collab_edit_approved,
                             )
                         success = True

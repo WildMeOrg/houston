@@ -123,6 +123,9 @@ def test_alter_custom_fields(flask_app_client, admin_user):
 
     assert 'value' in occ_cf_rsp.json['response']
     occ_cfs = occ_cf_rsp.json['response']['value']
+    if 'definitions' not in occ_cfs:
+        occ_cfs['definitions'] = []
+
     occ_cfs['definitions'].append(
         {
             'className': 'org.ecocean.Occurrence',

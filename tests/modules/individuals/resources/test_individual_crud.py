@@ -468,7 +468,7 @@ def test_edm_custom_field_patch(
         flask_app_client,
         admin_user,
         'personality (test custom field)',
-        cls='MarkedIndividual',
+        cls='Individual',
     )
     assert custom_field_id is not None
 

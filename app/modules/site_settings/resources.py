@@ -23,7 +23,7 @@ from app.utils import HoustonException
 import app.version
 
 from . import schemas, parameters
-from .models import SiteSetting, EDM_PREFIX
+from .models import SiteSetting
 import json
 
 
@@ -185,16 +185,14 @@ class MainConfigurationDefinition(Resource):
             data = {'response': {'configuration': {}}}
             return self._insert_houston_definitions(data)
 
-        edm_path = '__bundle_setup' if path == 'block' else path
-        data = current_app.edm.get_dict(
-            'configurationDefinition.data',
-            edm_path,
-            target='default',
+        data = SiteSetting.get_edm_configuration_as_edm_format(
+            'configurationDefinition.data', path
         )
+
         from app.modules.ia_config_reader import IaConfig
 
         species_json = None
-        if path == '__bundle_setup' or path == 'block':
+        if SiteSetting.is_block_key(path):
             species_json = data['response']['configuration']['site.species']
         elif path == 'site.species':
             species_json = data['response']
@@ -223,7 +221,7 @@ class MainConfigurationDefinition(Resource):
                         },
                     )
 
-        if path == '__bundle_setup' or path == 'block':
+        if SiteSetting.is_block_key(path):
             data = self._insert_houston_definitions(data)
 
         # TODO also traverse private here FIXME
@@ -281,11 +279,8 @@ class MainConfiguration(Resource):
             return data
 
         if is_extension_enabled('edm'):
-            edm_path = '__bundle_setup' if path == 'block' else path
-            data = current_app.edm.get_dict(
-                'configuration.data',
-                edm_path,
-                target='default',
+            data = SiteSetting.get_edm_configuration_as_edm_format(
+                'configuration.data', path
             )
         else:
             # If tried to set EDM value and we have no EDM, it's a failure
@@ -297,7 +292,7 @@ class MainConfiguration(Resource):
             and current_user.is_admin
         )
 
-        if path == '__bundle_setup' or path == 'block':
+        if SiteSetting.is_block_key(path):
             data['response']['configuration'][
                 'site.adminUserInitialized'
             ] = User.admin_user_initialized()
@@ -370,14 +365,7 @@ class MainConfiguration(Resource):
             passthrough_kwargs['files'] = files
 
         if is_extension_enabled('edm'):
-            edm_path = '' if path == 'block' else path
-            response = current_app.edm.request_passthrough(
-                'configuration.data',
-                'post',
-                passthrough_kwargs,
-                edm_path,
-                target='default',
-            )
+            response = SiteSetting.post_edm_configuration(path, passthrough_kwargs)
             if not response.ok:
                 return response
             res = response.json()
@@ -390,16 +378,45 @@ class MainConfiguration(Resource):
         AuditLog.audit_log(log, message, duration=timer.elapsed())
         return res
 
+    @api.permission_required(
+        permissions.ModuleAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'module': SiteSetting,
+            'action': AccessOperation.WRITE,
+        },
+    )
+    @api.login_required(oauth_scopes=['site-settings:write'])
+    def patch(self, **kwargs):
+        """
+        Patch SiteSetting details.
+        """
+        from app.extensions.elapsed_time import ElapsedTime
+
+        timer = ElapsedTime()
+        request_in_ = json.loads(request.data)
+        for arg in request_in_:
+            if arg['op'] == 'remove':
+                try:
+                    SiteSetting.forget_key_value(arg['path'])
+                except HoustonException as ex:
+                    abort(ex.status_code, ex.message)
+            else:
+                abort(400, f'op {arg["op"]} not supported on {arg["path"]}')
+
+        message = f'Patching path:{kwargs["path"]} to {request_in_}'
+        AuditLog.audit_log(log, message, duration=timer.elapsed())
+        return {'success': True}
+
     @api.login_required(oauth_scopes=['site-settings:write'])
     @api.response(code=HTTPStatus.NO_CONTENT)
     def delete(self, path):
-        if path == 'block':
+        if SiteSetting.is_block_key(path):
             abort(400, 'Not permitted to delete entire config')
-
-        elif path in SiteSetting.get_setting_keys():
-            AuditLog.audit_log(log, f'Deleting {path}')
+        AuditLog.audit_log(log, f'Deleting {path}')
+        try:
             SiteSetting.forget_key_value(path)
-
+        except HoustonException as ex:
+            abort(ex.status_code, ex.message)
         return None
 
 
@@ -408,7 +425,7 @@ def _process_houston_data(data):
     delete_keys = []
     success_keys = []
     for key in data.keys():
-        if key.startswith(EDM_PREFIX):
+        if SiteSetting.is_edm_key(key):
             continue
 
         delete_keys.append(key)

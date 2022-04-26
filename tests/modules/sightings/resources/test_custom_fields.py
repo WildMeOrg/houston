@@ -22,7 +22,9 @@ def test_custom_fields_on_sighting(
     from app.modules.sightings.models import Sighting
     import datetime
 
-    cfd_id = setting_utils.custom_field_create(flask_app_client, admin_user, 'test_cfd')
+    cfd_id = setting_utils.custom_field_create(
+        flask_app_client, admin_user, 'test_cfd', cls='Sighting'
+    )
     assert cfd_id is not None
     cfd_multi_id = setting_utils.custom_field_create(
         flask_app_client, admin_user, 'test_multi_cfd', multiple=True

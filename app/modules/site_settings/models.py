@@ -14,10 +14,6 @@ import logging
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
-# these will be disallowed to be set via api (must be done elsewhere in code by using override_readonly)
-READ_ONLY = 'system_guid'
-EDM_PREFIX = 'site.'
-
 
 class SiteSetting(db.Model, Timestamp):
     """
@@ -27,6 +23,7 @@ class SiteSetting(db.Model, Timestamp):
     __mapper_args__ = {
         'confirm_deleted_rows': False,
     }
+    EDM_PREFIX = 'site.'
 
     HOUSTON_SETTINGS = {
         'email_service': {
@@ -97,6 +94,16 @@ class SiteSetting(db.Model, Timestamp):
                 'required': False,
             },
         },
+        # setting this will be disallowed to be set via api (must be done elsewhere in code by using override_readonly)
+        'system_guid': {
+            'type': str,
+            'public': True,
+            'read_only': True,
+            'edm_definition': {
+                'readOnly': True,
+                'settable': False,
+            },
+        },
     }
 
     key = db.Column(db.String, primary_key=True, nullable=False)
@@ -144,12 +151,14 @@ class SiteSetting(db.Model, Timestamp):
         data=None,
         override_readonly=False,
     ):
-        if is_extension_enabled('edm') and key.startswith(EDM_PREFIX):
+        if is_extension_enabled('edm') and cls.is_edm_key(key):
             raise ValueError(
-                f'forbidden to directly set key with prefix "{EDM_PREFIX}" via (key={key})'
+                f'forbidden to directly set key with prefix "{cls.EDM_PREFIX}" via (key={key})'
             )
-        if key in READ_ONLY and not override_readonly:
+        key_conf = cls._get_houston_setting_conf(key)
+        if key_conf.get('read_only', False) and not override_readonly:
             raise ValueError(f'read-only key {key}')
+
         kwargs = {
             'key': key,
             'file_upload_guid': file_upload_guid,
@@ -167,19 +176,25 @@ class SiteSetting(db.Model, Timestamp):
         return cls.HOUSTON_SETTINGS.keys()
 
     @classmethod
+    def _get_houston_setting_conf(cls, key):
+        if key in cls.get_setting_keys():
+            return cls.HOUSTON_SETTINGS[key]
+        else:
+            return {}
+
+    @classmethod
     def _get_value_for_edm_formats(cls, key):
-        assert key in cls.HOUSTON_SETTINGS.keys()
         value = cls.get_value(key)
+        key_conf = cls._get_houston_setting_conf(key)
 
         # Only admin can read private data
-        if not cls.HOUSTON_SETTINGS[key]['public']:
+        if not key_conf.get('public', True):
             if not current_user or current_user.is_anonymous or not current_user.is_admin:
                 value = None
         return value
 
     @classmethod
     def get_as_edm_format(cls, key):
-        assert key in cls.HOUSTON_SETTINGS.keys()
         value = cls._get_value_for_edm_formats(key)
 
         data = {
@@ -192,25 +207,26 @@ class SiteSetting(db.Model, Timestamp):
 
     @classmethod
     def get_as_edm_definition_format(cls, key):
-        assert key in cls.HOUSTON_SETTINGS.keys()
-        value = cls._get_value_for_edm_formats(key)
-
+        key_conf = cls._get_houston_setting_conf(key)
+        is_public = key_conf.get('public', True)
         data = {
             'descriptionId': f'CONFIGURATION_{key.upper()}_DESCRIPTION',
             'labelId': f'CONFIGURATION_{key.upper()}_LABEL',
             'defaultValue': '',
-            'isPrivate': not cls.HOUSTON_SETTINGS[key]['public'],
+            'isPrivate': not is_public,
             'settable': True,
             'required': True,
             'fieldType': 'string',
             'displayType': 'string',
         }
+        value = cls._get_value_for_edm_formats(key)
         if value:
             data['currentValue'] = value
 
         # Some variables have specific values so incorporate those as required
-        if 'edm_definition' in cls.HOUSTON_SETTINGS[key].keys():
-            data.update(cls.HOUSTON_SETTINGS[key]['edm_definition'])
+        edm_definition = key_conf.get('edm_definition', None)
+        if edm_definition:
+            data.update(edm_definition)
         return data
 
     @classmethod
@@ -278,15 +294,44 @@ class SiteSetting(db.Model, Timestamp):
 
     @classmethod
     def forget_key_value(cls, key):
-        setting = cls.query.get(key)
-        if setting:
-            with db.session.begin(subtransactions=True):
-                db.session.delete(setting)
+        if cls.is_edm_key(key) and is_extension_enabled('edm'):
+            # Only support removal of EDM keys that start with 'site.custom.customFields' and end with '/{guid}'
 
-            if key == 'social_group_roles' and is_module_enabled('social_groups'):
-                from app.modules.social_groups.models import SocialGroup
+            edm_path_parts = key.split('/')
+            if len(edm_path_parts) != 2:
+                raise HoustonException(log, f'removal of {key} not supported')
 
-                SocialGroup.site_settings_updated()
+            name = edm_path_parts[0]
+            guid = edm_path_parts[1]
+            try:
+                # this is just to test it is a valid uuid - will throw ValueError if not
+                from uuid import UUID
+
+                UUID(guid, version=4)
+            except ValueError:
+                raise HoustonException(
+                    log, f'removal of {key} not supported, guid not valid'
+                )
+            if not name.startswith('site.custom.customFields'):
+                raise HoustonException(
+                    log, 'Ony support removal of EDM site.custom.customFields entries'
+                )
+            changed, name = cls._map_to_deprecated_edm_key(name)
+            if changed:
+                key = f'{name}/{guid}'
+            patch_data = {'force': False, 'op': 'remove', 'path': key}
+            cls._patch_edm_configuration({'json': patch_data})
+
+        else:
+            setting = cls.query.get(key)
+            if setting:
+                with db.session.begin(subtransactions=True):
+                    db.session.delete(setting)
+
+                if key == 'social_group_roles' and is_module_enabled('social_groups'):
+                    from app.modules.social_groups.models import SocialGroup
+
+                    SocialGroup.site_settings_updated()
 
     @classmethod
     def get_string(cls, key, default=None):
@@ -304,12 +349,16 @@ class SiteSetting(db.Model, Timestamp):
 
     # a bit of hackery.  right now *all* keys in edm-configuration are of the form `site.foo` so we use
     #   as a way branch on _where_ to get the value to return here.  but as we ween ourselves off edm config,
-    #   this can hopefully be backwards compatible
+    #   either gradually or forklift, this can be extended to allow that
+    @classmethod
+    def is_edm_key(cls, key):
+        return key.startswith(cls.EDM_PREFIX)
+
     @classmethod
     def get_value(cls, key, default=None, **kwargs):
         if not key:
             raise ValueError('key must not be None')
-        if is_extension_enabled('edm') and key.startswith(EDM_PREFIX):
+        if is_extension_enabled('edm') and cls.is_edm_key(key):
             return cls.get_edm_configuration(key, default=default, **kwargs)
         setting = cls.query.get(key)
         if not setting:
@@ -325,9 +374,41 @@ class SiteSetting(db.Model, Timestamp):
             return setting.data
         return setting.string
 
+    # MainConfiguration and MainConfigurationDefinition resources code needs to behave differently if it's
+    # accessing a block of data or a single value, so have one place that does this check
+    @classmethod
+    def is_block_key(cls, key):
+        changed, new_key = cls._map_to_deprecated_edm_key(key)
+        return new_key == '__bundle_setup'
+
+    # Deprecating the support opf the old Occurrence and MarkedIndividual fields to replace with Sighting and
+    # Individual but support both until EDM is retired, mapping the new names to the old names
+    @classmethod
+    def _map_to_deprecated_edm_key(cls, key):
+        if key == 'block':
+            return True, '__bundle_setup'
+        elif key == 'site.custom.customFields.Sighting':
+            return True, 'site.custom.customFields.Occurrence'
+        elif key == 'site.custom.customFields.Individual':
+            return True, 'site.custom.customFields.MarkedIndividual'
+        return False, key
+
+    # mapping backwards
+    @classmethod
+    def _map_to_new_key(cls, key):
+        if key == 'site.custom.customFields.Occurrence':
+            return True, 'site.custom.customFields.Sighting'
+        elif key == 'site.custom.customFields.MarkedIndividual':
+            return True, 'site.custom.customFields.Individual'
+        return False, key
+
     @classmethod
     @extension_required('edm')
     def get_edm_configuration(cls, key, default=None, **kwargs):
+        # There are certain fields that are Old Wildbook specific that we still support for the moment but
+        # will be deprecated so allow gets of both old and new (and map the new to the old here)
+        changed, key = cls._map_to_deprecated_edm_key(key)
+
         res = current_app.edm.get_dict('configuration.data', key)
         if (
             not isinstance(res, dict)
@@ -343,6 +424,88 @@ class SiteSetting(db.Model, Timestamp):
             return default
             # if no default= via kwargs it falls thru to below, which is fine (edm picks default value)
         return res['response']['value']
+
+    @classmethod
+    def get_edm_configuration_as_edm_format(cls, dict_name, path):
+        changed, edm_key = cls._map_to_deprecated_edm_key(path)
+        data = current_app.edm.get_dict(
+            dict_name,
+            edm_key,
+            target='default',
+        )
+
+        # For the deprecated fields from EDM, also add the new names if it's the block get
+        if (
+            cls.is_block_key(path)
+            and isinstance(data, dict)
+            and data['success']
+            and 'response' in data
+            and 'configuration' in data['response']
+        ):
+            import copy
+
+            config = copy.deepcopy(data['response']['configuration'])
+            data['response']['configuration'].keys()
+            for key in data['response']['configuration'].keys():
+                changed, new_key = cls._map_to_new_key(key)
+                if changed:
+                    config[new_key] = config[key]
+                    config[new_key]['id'] = new_key
+            data['response']['configuration'] = config
+
+        return data
+
+    @classmethod
+    def post_edm_configuration(cls, path, kwargs):
+        if path == 'block' or path == '':
+            # Use edm value for block
+            path = ''
+            if isinstance(kwargs, dict) and 'data' in kwargs:
+                import copy
+
+                config = copy.deepcopy(kwargs['data'])
+            for key in kwargs['data']:
+                changed, edm_key = cls._map_to_deprecated_edm_key(key)
+                if changed:
+                    config[edm_key] = config[key]
+                    config.pop(key)
+            kwargs['data'] = config
+        else:
+            changed, path = cls._map_to_deprecated_edm_key(path)
+
+        response = current_app.edm.request_passthrough(
+            'configuration.data',
+            'post',
+            kwargs,
+            path,
+            target='default',
+        )
+
+        if not response.ok or response.status_code != 200:
+            raise HoustonException(
+                log,
+                f'non-OK ({response.status_code}) response from edm: {response.json()}',
+            )
+
+        return response
+
+    @classmethod
+    def _patch_edm_configuration(cls, kwargs):
+        response = current_app.edm.request_passthrough(
+            'configuration.data',
+            'patch',
+            kwargs,
+            '',
+            target='default',
+        )
+
+        if not response.ok or response.status_code != 200:
+            raise HoustonException(
+                log,
+                f'non-OK ({response.status_code}) response from edm: {response.json()}',
+            )
+
+        return response
 
     # the idea here is to have a unique uuid for each installation
     #   this should be used to read this value, as it will create it if it does not exist

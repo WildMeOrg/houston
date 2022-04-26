@@ -444,6 +444,9 @@ class TwitterTweet(IntelligentAgentContent):
     def content_as_string(self):
         return self.raw_content.get('text')
 
+    def author_as_string(self):
+        return super().author_as_string() + ':TWITTER_USERNAME'
+
     def respond_to(self, text):
         log.debug(f'responding to {self} from {self.get_author_username()}: {text}')
         assert self.source and self.source.get('id')

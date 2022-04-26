@@ -89,7 +89,7 @@ DETECTION_RETRIES = 100
 @celery.task(
     bind=True,
     autoretry_for=(IntelligentAgentException,),
-    default_retry_delay=2,
+    default_retry_delay=3,
     max_retries=DETECTION_RETRIES,
 )
 def intelligent_agent_wait_for_detection_results(self, content_guid):
@@ -105,20 +105,30 @@ def intelligent_agent_wait_for_detection_results(self, content_guid):
         )
         return
     incomplete = len(assets)
-    count = 0
-    if hasattr(self, '_count'):
-        count = self._count
     for asset in assets:
         jobs = Asset.get_jobs_for_asset(asset.guid, False)
         log.debug(
-            f'[{count}/{DETECTION_RETRIES}] wait for detection, {len(jobs) if jobs else 0} jobs for {asset} on {str(iacontent.guid)}'
+            f'[{self.request.retries}/{DETECTION_RETRIES}] wait for detection? {len(jobs) if jobs else 0} jobs for {asset} on {str(iacontent.guid)}'
         )
         if jobs:
-            incomplete -= 1
-            iacontent.detection_complete_on_asset(asset, jobs)
+            active_job = False
+            for j in jobs:
+                if j.get('active', False):
+                    active_job = True
+                    j_id = j.get('job_id')
+                    resp_status = j.get('response', {}).get('status')
+                    log.info(
+                        f'detection job {j_id} still active, status={resp_status} on {asset}'
+                    )
+            if not active_job:
+                incomplete -= 1
+                iacontent.detection_complete_on_asset(asset, jobs)
     if incomplete > 0:
-        self._count = count + 1
-        raise IntelligentAgentException(
-            f'detection still pending on {incomplete} assets'
-        )  # will retry
+        # we actually catch when we have reached the end and bail ourselves,
+        #   so we can notify the user detection never came back
+        if self.request.retries >= DETECTION_RETRIES:
+            iacontent.detection_timed_out()
+            return
+        # this will cause retry
+        raise IntelligentAgentException(f'detection still pending on {incomplete} assets')
     iacontent.detection_complete()

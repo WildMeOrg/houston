@@ -246,11 +246,12 @@ class IntelligentAgentContent(db.Model, HoustonModel):
     def __repr__(self):
         return (
             '<{class_name}('
-            'guid={self.guid}, agent={self.agent_type}'
+            'guid={self.guid}, state={self.state}, agent={self.agent_type}, '
+            f'author={self.author_as_string()}'
             ')>'.format(class_name=self.__class__.__name__, self=self)
         )
 
-    def respond_to(self, text_key, text_values=None):
+    def respond_to(self, text):
         raise NotImplementedError('respond_to() must be overridden')
 
     # override
@@ -268,6 +269,10 @@ class IntelligentAgentContent(db.Model, HoustonModel):
 
     def source_as_string(self):
         return str(self.source)
+
+    # should override with specifics to each agent (add twitter handle etc)
+    def author_as_string(self):
+        return f'{self.owner.guid}:{self.owner.full_name}' if self.owner else '[None]'
 
     def find_author_user(self):
         from app.modules.users.models import User
@@ -450,16 +455,88 @@ class IntelligentAgentContent(db.Model, HoustonModel):
             intelligent_agent_wait_for_detection_results,
         )
 
-        log.debug(f'{self} awaiting detection results')
         args = (self.guid,)
         async_res = intelligent_agent_wait_for_detection_results.apply_async(args)
-        log.debug(f'{self} async_res => {async_res}')
+        log.debug(
+            f'kicked off background wait_for_detection {self} async_res => {async_res}'
+        )
         return async_res
 
     def detection_complete_on_asset(self, asset, jobs):
-        log.info(f'>>>>>>>>>>>>>> detection complete on {asset} with {jobs} for {self}')
+        log.debug(
+            f'intelligent_agent: detection complete on {asset} with {jobs} for {self}'
+        )
+
+    def detection_timed_out(self):
+        log.warning(f'intelligent_agent: never received detection results on {self}')
+        self.state = IntelligentAgentContentState.error
+        self.respond_to(
+            _('We are sorry, there was a problem in finding something in your image.')
+        )
+        self.data['_error'] = 'detection timed out'
+        with db.session.begin():
+            db.session.merge(self)
+        db.session.refresh(self)
 
     def detection_complete(self):
-        log.info(
-            f'>>>>>>>>>>>>>> detection totally complete on {self} <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<'
+        from app.modules.assets.models import Asset
+
+        annots = []
+        jobs = []
+        found_exception = False
+        for asset in self.get_assets():
+            annots += asset.annotations
+            # in a perfect world, there is only 1 job per asset, but lets not assume that. :(
+            ajobs = Asset.get_jobs_for_asset(asset.guid, True)
+            assert ajobs, 'Very weird; jobs empty on completed detection'
+            for j in ajobs:
+                resp_status = j.get('response', {}).get('status')
+                j_id = j.get('job_id')
+                log.debug(f'job id={j_id} status={resp_status}')
+                if resp_status == 'exception':
+                    log.warning(
+                        f"exception in detection response for {asset}: {j.get('response')}"
+                    )
+                    found_exception = True
+            # this will be array of arrays
+            jobs.append(ajobs)
+        log.debug(
+            f'intelligent_agent: detection fully completed on {self} with {len(annots)} annotations (found_exception={found_exception})'
         )
+        if found_exception:
+            self.state = IntelligentAgentContentState.error
+            self.respond_to(
+                _('We are sorry, there was a problem in finding something in your image.')
+            )
+            self.data['_error'] = 'detection timed out'
+            self.data = self.data
+            with db.session.begin():
+                db.session.merge(self)
+            db.session.refresh(self)
+        elif len(annots) < 1:
+            self.state = IntelligentAgentContentState.rejected
+            self.respond_to(_('We could not find anything in your image, sorry.'))
+            self.data['_rejection_error'] = 'no annotations found by detection'
+            self.data = self.data
+            with db.session.begin():
+                db.session.merge(self)
+            db.session.refresh(self)
+        elif len(annots) > 1:
+            self.state = IntelligentAgentContentState.complete
+            if self.owner:
+                # FIXME spec says we should provide link and image with annotations!?
+                self.respond_to(
+                    _(
+                        'We found more than one animal. You must login and curate this data.'
+                    )
+                )
+            else:
+                self.respond_to(
+                    _(
+                        'We found more than one animal. This submission will be curated by a researcher.'
+                    )
+                )
+        else:  # must be exactly 1 annot - on to identification!
+            # note: state stays as active
+            #   "commit" to real sighting/encounter
+            log.warning(f'>>>>>>>>!!!!!!!!!!! we got ONE {self}')

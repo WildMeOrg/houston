@@ -975,7 +975,7 @@ class Sighting(db.Model, FeatherModel):
             response['annotation_data'][str(annot.guid)] = {
                 'viewpoint': annot.viewpoint,
                 'encounter_location': encounter_location,
-                'individual_guid': individual_guid,
+                'individual_guid': str(individual_guid),
                 'image_url': annot.asset.get_image_url(),
                 'asset_dimensions': annot.asset.get_dimensions(),
                 'bounds': annot.bounds,
@@ -989,7 +989,14 @@ class Sighting(db.Model, FeatherModel):
             assert individual
             # add individual data
             response['individual_data'][str(individual_guid)] = {
-                'names': individual.get_names(),
+                'names': [
+                    {
+                        'guid': str(name.guid),
+                        'context': name.context,
+                        'value': name.value,
+                    }
+                    for name in individual.get_names()
+                ],
                 'last_seen': str(individual.get_last_seen_time()),
                 'image': individual.get_featured_image_url(),
             }

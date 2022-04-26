@@ -460,7 +460,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
             try:
                 self.rerun_detection(background=False)
             except Exception:
-                log.exception('{self} rerun_detection failed')
+                log.exception(f'{self} rerun_detection failed')
             return
         for job_id in jobs.keys():
             job = jobs[job_id]

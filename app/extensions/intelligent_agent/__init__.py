@@ -264,6 +264,17 @@ class IntelligentAgentContent(db.Model, HoustonModel):
             return None
         return self.asset_group.assets
 
+    def get_asset_group_sighting(self):
+        if not self.asset_group or not self.asset_group.asset_group_sightings:
+            return None
+        return self.asset_group.asset_group_sightings[0]
+
+    def get_sighting(self):
+        ags = self.get_asset_group_sighting()
+        if not ags or not ags.sighting:
+            return None
+        return ags.sighting[0]
+
     def content_as_string(self):
         return str(self.raw_content)
 
@@ -553,3 +564,28 @@ class IntelligentAgentContent(db.Model, HoustonModel):
             db.session.merge(ags)
         db.session.refresh(ags)
         ags.commit()
+
+    def wait_for_identification_results(self):
+        from app.extensions.intelligent_agent.tasks import (
+            intelligent_agent_wait_for_identification_results,
+        )
+
+        args = (self.guid,)
+        async_res = intelligent_agent_wait_for_identification_results.apply_async(args)
+        log.debug(
+            f'kicked off background wait_for_identification {self} async_res => {async_res}'
+        )
+        return async_res
+
+    def identification_timed_out(self):
+        log.warning(f'intelligent_agent: never received identification results on {self}')
+        self.state = IntelligentAgentContentState.error
+        # could send them link to see it anyway?
+        self.respond_to(_('We are sorry, there was a problem matching your image.'))
+        self.data['_error'] = 'identification timed out'
+        with db.session.begin():
+            db.session.merge(self)
+        db.session.refresh(self)
+
+    def identification_complete(self):
+        pass

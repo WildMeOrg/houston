@@ -132,3 +132,39 @@ def intelligent_agent_wait_for_detection_results(self, content_guid):
         # this will cause retry
         raise IntelligentAgentException(f'detection still pending on {incomplete} assets')
     iacontent.detection_complete()
+
+
+IDENTIFICATION_RETRIES = 100
+
+
+@celery.task(
+    bind=True,
+    autoretry_for=(IntelligentAgentException,),
+    default_retry_delay=3,
+    max_retries=IDENTIFICATION_RETRIES,
+)
+def intelligent_agent_wait_for_identification_results(self, content_guid):
+    from app.extensions.intelligent_agent import IntelligentAgentContent
+
+    iacontent = IntelligentAgentContent.query.get(content_guid)
+    assert iacontent, f'could not get guid={str(content_guid)}'
+    sighting = iacontent.get_sighting()
+    if not sighting:
+        log.info(
+            f'intelligent_agent_wait_for_identification_results() no sighting in {iacontent}; bailing'
+        )
+        return
+    log.debug(
+        f'[{self.request.retries}/{IDENTIFICATION_RETRIES}] wait for identification? {len(sighting.jobs)} jobs for {sighting} on {str(iacontent.guid)}'
+    )
+    if not sighting.jobs:
+        if self.request.retries >= IDENTIFICATION_RETRIES:
+            iacontent.identification_timed_out()
+            return
+        # this will cause retry
+        raise IntelligentAgentException(
+            f'identification found no jobs on {sighting} for {iacontent}'
+        )
+
+    log.warning(f'>>>>>>> fell thru on {iacontent} with jobs: {sighting.jobs}')
+    iacontent.identiication_complete()

@@ -523,7 +523,7 @@ class IntelligentAgentContent(db.Model, HoustonModel):
             db.session.refresh(self)
         elif len(annots) > 1:
             self.state = IntelligentAgentContentState.complete
-            if self.owner:
+            if self.owner and not self.owner.is_public_user():
                 # FIXME spec says we should provide link and image with annotations!?
                 self.respond_to(
                     _(
@@ -538,5 +538,18 @@ class IntelligentAgentContent(db.Model, HoustonModel):
                 )
         else:  # must be exactly 1 annot - on to identification!
             # note: state stays as active
-            #   "commit" to real sighting/encounter
-            log.warning(f'>>>>>>>>!!!!!!!!!!! we got ONE {self}')
+            self.commit_to_sighting(annots[0])
+
+    def commit_to_sighting(self, annot):
+        assert self.asset_group and self.asset_group.asset_group_sightings
+        ags = self.asset_group.asset_group_sightings[0]
+        assert ags.config['encounters']
+        log.debug(
+            f'setting single annot {annot} into encounter on AssetGroupSighting {str(ags.guid)} in {self}'
+        )
+        ags.config['encounters'][0]['annotations'] = [str(annot.guid)]
+        ags.config = ags.config
+        with db.session.begin():
+            db.session.merge(ags)
+        db.session.refresh(ags)
+        ags.commit()

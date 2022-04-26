@@ -959,6 +959,9 @@ class User(db.Model, FeatherModel, UserEDMMixin):
             is_internal=False,
         )
 
+    def is_public_user(self):
+        return self.email == User.PUBLIC_USER_EMAIL
+
     @module_required('sightings', resolve='warn', default=[])
     def get_sightings(self):
         from app.modules.sightings.models import Sighting

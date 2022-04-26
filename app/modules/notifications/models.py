@@ -199,17 +199,17 @@ class NotificationBuilder(object):
         self.sender = sender
         self.data = {}
 
-    def set_collaboration(self, collab):
+    def set_collaboration(self, collab, manager=None):
         self.data['collaboration_guid'] = collab.guid
         users = collab.get_users()
         assert len(users) == 2
         self.data['user1_name'] = users[0].full_name
         self.data['user2_name'] = users[1].full_name
-        manager = collab.get_manager()
+
         if manager:
             self.data['manager_name'] = manager.full_name
         else:  # snh
-            self.data['manager_name'] = 'a user manager'
+            self.data['manager_name'] = 'no user manager'
 
     def set_individual_merge(self, individuals, encounters, request_data):
         self.data['individual_list'] = []

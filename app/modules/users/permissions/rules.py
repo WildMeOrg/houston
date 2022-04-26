@@ -412,7 +412,6 @@ class ObjectActionRule(DenyAbortMixin, Rule):
 
     @module_required('collaborations', resolve='warn', default=False)
     def _permitted_via_collaboration(self, user):
-        from app.modules.collaborations.models import CollaborationUserState
 
         tried_users = [user]
         object_user_methods = OBJECT_USER_METHOD_MAP.get(
@@ -420,35 +419,34 @@ class ObjectActionRule(DenyAbortMixin, Rule):
         )
 
         for collab_assoc in user.get_collaboration_associations():
-            if collab_assoc.read_approval_state != CollaborationUserState.CREATOR:
-                collab_users = collab_assoc.collaboration.get_users()
-                for other_user in collab_users:
-                    if other_user not in tried_users:
-                        tried_users.append(other_user)
+            collab_users = collab_assoc.collaboration.get_users()
+            for other_user in collab_users:
+                if other_user not in tried_users:
+                    tried_users.append(other_user)
 
-                        if other_user.owns_object(self._obj):
-                            if (
-                                self._action == AccessOperation.READ
-                            ) & collab_assoc.collaboration.user_has_read_access(
-                                current_user.guid
-                            ):
-                                return True
-                            elif (
-                                self._action == AccessOperation.WRITE
-                            ) & collab_assoc.collaboration.user_has_edit_access(
-                                current_user.guid
-                            ):
-                                return True
-                            break
+                    if other_user.owns_object(self._obj):
+                        if (
+                            self._action == AccessOperation.READ
+                        ) & collab_assoc.collaboration.user_has_read_access(
+                            current_user.guid
+                        ):
+                            return True
+                        elif (
+                            self._action == AccessOperation.WRITE
+                        ) & collab_assoc.collaboration.user_has_edit_access(
+                            current_user.guid
+                        ):
+                            return True
+                        break
 
-                    if object_user_methods is not None:
-                        for method in object_user_methods:
-                            if not hasattr(self._obj, method):
-                                log.warning(
-                                    f'{self._obj.__class__.__name__} object does not have accessor {method}'
-                                )
-                            elif getattr(self._obj, method)(other_user):
-                                return True
+                if object_user_methods is not None:
+                    for method in object_user_methods:
+                        if not hasattr(self._obj, method):
+                            log.warning(
+                                f'{self._obj.__class__.__name__} object does not have accessor {method}'
+                            )
+                        elif getattr(self._obj, method)(other_user):
+                            return True
 
         return False
 

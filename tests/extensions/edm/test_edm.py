@@ -41,7 +41,9 @@ def test_edm_version(flask_app):
 def test_reauthentication(flask_app):
     flask_app.edm._ensure_initialized()
     original_get = flask_app.edm.sessions['default'].get
-    mock_401 = mock.Mock(status_code=401, ok=False, content=b'')
+    mock_401 = mock.Mock(
+        status_code=401, ok=False, content=b'', is_redirect=False, headers={}
+    )
     edm_uri = flask_app.config['EDM_URIS']['default']
 
     def mock_get(url, *args, call_count=[], **kwargs):
@@ -65,7 +67,9 @@ def test_reauthentication(flask_app):
 @pytest.mark.skipif(extension_unavailable('edm'), reason='EDM extension disabled')
 def test_reauthentication_fails(flask_app):
     flask_app.edm._ensure_initialized()
-    mock_401 = mock.Mock(status_code=401, ok=False, content=b'')
+    mock_401 = mock.Mock(
+        status_code=401, ok=False, content=b'', is_redirect=False, headers={}
+    )
 
     def mock_get(url, *args, **kwargs):
         return mock_401

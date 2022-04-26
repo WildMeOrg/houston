@@ -6,6 +6,8 @@ system using REST API
 
 """
 import logging
+from urllib.parse import urlparse, urlunparse
+
 from werkzeug.exceptions import BadRequest
 from flask import current_app, request, session, render_template  # NOQA
 from flask_login import current_user  # NOQA
@@ -287,7 +289,18 @@ class RestManager(RestManagerUserMixin):
             request_func = getattr(session_, method, None)
             assert request_func is not None
 
-            response = request_func(endpoint_encoded, **passthrough_kwargs)
+            # Avoid https redirecting to http
+            location = endpoint_encoded
+            is_https = urlparse(endpoint_encoded).scheme == 'https'
+            while location:
+                response = request_func(
+                    location, allow_redirects=False, **passthrough_kwargs
+                )
+                location = session_.get_redirect_target(response)
+                if is_https:
+                    url_args = urlparse(location)
+                    if url_args.scheme == 'http':
+                        location = urlunparse(('https',) + url_args[1:])
 
         if response.ok:
             if decode_as_object:

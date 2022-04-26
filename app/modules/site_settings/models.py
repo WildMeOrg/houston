@@ -653,7 +653,7 @@ class Regions(dict):
         candidates = {}
         nodes = self.traverse()
         for reg in nodes:
-            candidates[reg['id']] = reg.get('name')
+            candidates[reg['id']] = reg.get('name', reg['id'])
         fzm = fuzzy_match(match, candidates)
         # cutoff may need some tweakage here based on experience
         if not fzm or fzm[0]['score'] < 150:

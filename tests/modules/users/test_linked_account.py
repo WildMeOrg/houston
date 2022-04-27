@@ -20,3 +20,5 @@ def test_linked_account(researcher_1):
     assert found == researcher_1
     found = User.find_by_linked_account('foo', 456, 'other_key')
     assert found == researcher_1
+    # bonus unrelated test
+    assert not researcher_1.is_public_user()

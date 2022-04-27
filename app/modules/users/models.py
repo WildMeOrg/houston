@@ -539,7 +539,11 @@ class User(db.Model, FeatherModel, UserEDMMixin):
     def find_by_linked_account(cls, account_key, value, id_key='id'):
         possible = User.query.filter(User.linked_accounts.isnot(None)).all()
         for user in possible:
-            if user.linked_accounts.get(account_key, {}).get(id_key) == value:
+            if (
+                user.linked_accounts
+                and account_key in user.linked_accounts
+                and user.linked_accounts[account_key].get(id_key) == value
+            ):
                 return user
         return None
 

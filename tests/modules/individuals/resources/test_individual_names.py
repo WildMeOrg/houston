@@ -493,3 +493,30 @@ def test_name_validation(
     ]
 
     assert validation_resp.json == desired_resp
+
+
+def test_elasticsearch_name_schema(
+    db, flask_app_client, researcher_1, request, test_root
+):
+    from app.modules.individuals.models import Individual
+    from app.modules.individuals.schemas import ElasticsearchIndividualSchema
+
+    individual_utils.create_individual_and_sighting(
+        flask_app_client,
+        researcher_1,
+        request,
+        test_root,
+        individual_data={
+            'names': [
+                {'context': 'firstName', 'value': 'Z432'},
+                {'context': 'Christian name', 'value': 'Zachariah'},
+            ],
+        },
+    )
+    body = {}
+    indy = Individual.elasticsearch(body)[0]
+    # actually load the ES schema
+    es_schema = ElasticsearchIndividualSchema()
+    es_indy = es_schema.dump(indy).data
+    assert type(es_indy['names']) is list
+    assert es_indy['names'] == ['Z432', 'Zachariah']

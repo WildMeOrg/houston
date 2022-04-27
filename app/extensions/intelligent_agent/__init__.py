@@ -41,31 +41,6 @@ class IntelligentAgent:
     Intelligent Agent base class
     """
 
-    # def __init__(self, *args, **kwargs):
-    # log.debug(f'{self} enabled={self.is_enabled()}')
-
-    @classmethod
-    def start(cls):
-        log.info(f'{cls} default start: NOP')
-        return None
-
-    @classmethod
-    def restart(cls):
-        log.info(f'{cls} default restart (calling stop/start)')
-        cls.stop()
-        return cls.start()
-
-    @classmethod
-    def stop(cls):
-        log.info(f'{cls} default stop: NOP')
-        return None
-
-    @classmethod
-    def start_all_agents(cls):
-        for agent_cls in cls.get_agent_classes():
-            rtn = agent_cls.start()
-            log.debug(f'start_all_agents() {agent_cls.short_name()}: {rtn}')
-
     def collect(self):
         raise NotImplementedError('collect() must be overridden')
 

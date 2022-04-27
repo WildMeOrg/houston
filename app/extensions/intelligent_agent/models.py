@@ -108,6 +108,7 @@ class TwitterBot(IntelligentAgent):
                 tt = TwitterTweet(twt, res.includes)
             except Exception as ex:
                 log.warning(f'failed to process_tweet for {twt} due to: {str(ex)}')
+                log.debug(traceback.format_exc())
                 self.create_tweet_queued(
                     _('We could not process your tweet: ') + str(ex),
                     in_reply_to=twt.id,
@@ -126,7 +127,8 @@ class TwitterBot(IntelligentAgent):
                 tt.respond_to(_('Sorry, we cannot process this tweet because: ') + err)
             with db.session.begin():
                 db.session.add(tt)
-            tt.wait_for_detection_results()
+            if ok:
+                tt.wait_for_detection_results()
         self.set_persisted_value('since_id', latest_id)
         return tweets
 
@@ -150,22 +152,6 @@ class TwitterBot(IntelligentAgent):
         async_res = twitterbot_create_tweet_queued.apply_async(args)
         log.debug(f'{self} async_res => {async_res}')
         return async_res
-
-    @classmethod
-    def start(cls):
-        log.info(f'{cls} default start: NOP')
-        return None
-
-    @classmethod
-    def restart(cls):
-        log.info(f'{cls} default restart (calling stop/start)')
-        cls.stop()
-        return cls.start()
-
-    @classmethod
-    def stop(cls):
-        log.info(f'{cls} default stop: NOP')
-        return None
 
     @classmethod
     def get_periodic_interval(cls):
@@ -382,7 +368,9 @@ class TwitterTweet(IntelligentAgentContent):
         return self.raw_content.get('text')
 
     def author_as_string(self):
-        return super().author_as_string() + ':' + self.get_author_username()
+        author = super().author_as_string()
+        uname = self.get_author_username()
+        return f'{author}:{uname}' if uname else author
 
     def respond_to(self, text):
         log.debug(f'responding to {self} from {self.get_author_username()}: {text}')

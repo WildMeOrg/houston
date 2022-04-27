@@ -500,8 +500,9 @@ def test_elasticsearch_name_schema(
 ):
     from app.modules.individuals.models import Individual
     from app.modules.individuals.schemas import ElasticsearchIndividualSchema
+    from app.extensions import elasticsearch as es
 
-    individual_utils.create_individual_and_sighting(
+    create_resp = individual_utils.create_individual_and_sighting(
         flask_app_client,
         researcher_1,
         request,
@@ -513,6 +514,9 @@ def test_elasticsearch_name_schema(
             ],
         },
     )
+    ind = Individual.query.get(create_resp['individual'])
+    with es.session.begin(blocking=True, forced=True):
+        ind.index()
     body = {}
     indy = Individual.elasticsearch(body)[0]
     # actually load the ES schema

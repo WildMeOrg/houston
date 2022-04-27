@@ -42,7 +42,7 @@ def test_individual_elasticsearch_mappings(
         'updated',
         # 'social_groups',
         'indexed',
-        'names',
+        # 'names',
         'last_seen',
         'death',
         'comments',

@@ -29,3 +29,4 @@ def test_taxonomy(flask_app_client, admin_user):
     tx = Taxonomy.find_fuzzy_list(['cow', 'zebraa', 'cat'])
     assert len(tx) == 1
     assert tx[0].scientificName == 'Equus quagga'
+    assert set(tx[0].get_all_names()) == {'Equus quagga', 'plains zebra'}

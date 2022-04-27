@@ -188,7 +188,7 @@ def test_asset_group_sighting_get_completion(
     assert asset_group_sighting.stage == AssetGroupSightingStage.processed
     assert asset_group_sighting.get_detection_start_time() == detection_time
     assert asset_group_sighting.get_curation_start_time() == curation_time
-    assert asset_group_sighting.get_completion() == 76
+    assert asset_group_sighting.get_completion() == 30
 
     # Check unknown and failed by manually setting them
     asset_group_sighting.stage = AssetGroupSightingStage.unknown

@@ -115,7 +115,7 @@ def test_create_asset_group_identification(session, codex_url, test_root, login)
     assert 'query_annotations' in id_resp.keys()
     assert len(id_resp['query_annotations']) == 1
     query_annot = id_resp['query_annotations'][0]
-    assert query_annot['status'] == 'complete'
+    assert query_annot['status'] == 'pending'
     assert query_annot['guid'] in id_resp['annotation_data'].keys()
 
     # Check that we got job data back

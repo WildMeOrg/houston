@@ -368,10 +368,10 @@ class Sighting(db.Model, FeatherModel):
         all_scheduled = get_celery_tasks_scheduled(
             'app.modules.sightings.tasks.send_identification'
         )
-        for sighting in Sighting.query.filter(
+        for (sighting_guid,) in Sighting.query.filter(
             Sighting.stage == SightingStage.identification
-        ).all():
-            sighting.check_all_job_status(all_scheduled)
+        ).values(Sighting.guid):
+            Sighting.query.get(sighting_guid).check_all_job_status(all_scheduled)
 
     def check_all_job_status(self, all_scheduled):
         jobs = self.jobs
@@ -1138,21 +1138,24 @@ class Sighting(db.Model, FeatherModel):
     def ia_pipeline(self, background=True):
         assert self.stage == SightingStage.identification
         self.validate_id_configs()
-        encounters_with_annotations = [
-            encounter for encounter in self.encounters if len(encounter.annotations) != 0
-        ]
 
+        sighting_guid = str(self.guid)
         num_jobs = 0
         # Use task to send ID req with retries
         # Once we support multiple IA configs and algorithms, the number of jobs is going to grow....rapidly
         #  also: once we have > 1 config, some annot-level checks will be redundant (e.g. matching_set) so may
         #    require a rethink on how these loops are nested
-        for encounter in encounters_with_annotations:
-            for annotation in encounter.annotations:
-                num_jobs_sent = self.send_annotation_for_identification(
-                    annotation, background=background
-                )
-                num_jobs += num_jobs_sent
+        for (annotation_guid,) in (
+            Annotation.query.join(Annotation.encounter)
+            .join(Encounter.sighting)
+            .filter(Sighting.guid == sighting_guid)
+            .values(Annotation.guid)
+        ):
+            num_jobs_sent = self.send_annotation_for_identification(
+                Annotation.query.get(annotation_guid), background=background
+            )
+            num_jobs += num_jobs_sent
+            self = Sighting.query.get(sighting_guid)
 
         if num_jobs > 0:
             log.info(
@@ -1160,6 +1163,11 @@ class Sighting(db.Model, FeatherModel):
             )
 
         else:
+            encounters_with_annotations = [
+                encounter
+                for encounter in self.encounters
+                if len(encounter.annotations) != 0
+            ]
             self.stage = SightingStage.un_reviewed
             log.info(
                 f'Sighting {self.guid} un-reviewed, identification not needed or not possible (jobs=0); '
@@ -1183,12 +1191,13 @@ class Sighting(db.Model, FeatherModel):
         self, annotation, matching_set_query=None, background=True
     ):
         num_jobs = 0
+        annotation_guid = str(annotation.guid)
         for config_id in range(len(self.id_configs)):
             # note: we could test matching_set here and prevent duplicate testing within specific()
             #  but we would have to be careful of code calling specific *directly*
             for algorithm_id in range(len(self.id_configs[config_id]['algorithms'])):
                 if self.send_annotation_for_identification_specific(
-                    annotation,
+                    Annotation.query.get(annotation_guid),
                     config_id,
                     algorithm_id,
                     matching_set_query,
@@ -1239,6 +1248,7 @@ class Sighting(db.Model, FeatherModel):
             f'Queueing up ID job for config_id={config_id} {annotation}: '
             f'matching_set size={len(matching_set)} algo {algorithm_id}'
         )
+        annotation_guid = str(annotation.guid)
         if background:
             send_identification.delay(
                 str(self.guid),
@@ -1249,17 +1259,19 @@ class Sighting(db.Model, FeatherModel):
                 matching_set_query,
             )
         else:
+            sighting_guid = str(self.guid)
             send_identification(
-                str(self.guid),
+                sighting_guid,
                 config_id,
                 algorithm_id,
                 annotation.guid,
                 annotation.content_guid,
                 matching_set_query,
             )
+            self = Sighting.query.get(sighting_guid)
 
         # store that we sent it (handles retry counts)
-        self._update_job_config(config_id, algorithm_id, str(annotation.guid), restart)
+        self._update_job_config(config_id, algorithm_id, annotation_guid, restart)
         return True
 
     def _get_job_config(self, config_id, algorithm_id, annotation_guid_str):

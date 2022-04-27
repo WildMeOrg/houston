@@ -4,6 +4,7 @@ Application AssetGroup management related tasks for Invoke.
 """
 
 from tasks.utils import app_context_task
+import pprint
 
 
 @app_context_task
@@ -52,3 +53,14 @@ def details(context, guid):
     import json
 
     print(json.dumps(schema.dump(sighting).data, indent=4, sort_keys=True))
+
+
+@app_context_task()
+def print_sighting_id_resullt(context, sighting_guid):
+    """Print out the job status for all the identification jobs for the sighting"""
+    from app.modules.sightings.models import Sighting
+
+    sighting = Sighting.query.get(sighting_guid)
+    if not sighting:
+        print(f'Sighting {sighting_guid} not found')
+    pprint.pprint(sighting.get_id_result())

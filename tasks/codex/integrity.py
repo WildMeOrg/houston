@@ -5,10 +5,11 @@ Application AssetGroup management related tasks for Invoke.
 
 from tasks.utils import app_context_task
 from app.extensions import db
+import pprint
 
 
 def print_result(result):
-    print(
+    pprint.pprint(
         f'Integrity check : GUID:{result.guid} created: {result.created} result: {result.result}'
     )
 

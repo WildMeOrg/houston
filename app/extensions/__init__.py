@@ -113,6 +113,11 @@ if is_extension_enabled('stripe'):
 else:
     stripe = None
 
+if is_extension_enabled('intelligent_agent'):
+    from . import intelligent_agent  # NOQA
+else:
+    intelligent_agent = None
+
 
 ##########################################################################################
 
@@ -370,6 +375,7 @@ if elasticsearch is None:
 
         def elasticsearch(self, *args, **kwargs):
             return []
+
 
 else:
 
@@ -676,6 +682,7 @@ def init_app(app, force_enable=False, force_disable=None):
         'elasticsearch': elasticsearch,
         'mail': mail,
         'stripe': stripe,
+        'intelligent_agent': intelligent_agent,
     }
 
     executor.EXECUTOR_TYPE = app.config['EXECUTOR_TYPE']

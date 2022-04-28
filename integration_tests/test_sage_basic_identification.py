@@ -103,10 +103,14 @@ def test_create_asset_group_identification(session, codex_url, test_root, login)
     zebra2_sighting_guid = zebra2_guids['sighting']
 
     sight_url = codex_url(f'/api/v1/sightings/{zebra2_sighting_guid}')
-    response = utils.wait_for(
+    utils.wait_for(
         session.get, sight_url, lambda response: response.json()['stage'] == 'un_reviewed'
     )
-
+    utils.wait_for(
+        session.get,
+        sight_url,
+        lambda response: response.json()['query_annotations'][0]['status'] == 'complete',
+    )
     id_result = session.get(
         codex_url(f"/api/v1/sightings/{zebra2_guids['sighting']}/id_result")
     )
@@ -179,7 +183,11 @@ def test_identification_international(session, codex_url, test_root, login):
     response = utils.wait_for(
         session.get, sight_url, lambda response: response.json()['stage'] == 'un_reviewed'
     )
-
+    utils.wait_for(
+        session.get,
+        sight_url,
+        lambda response: response.json()['query_annotations'][0]['status'] == 'complete',
+    )
     # Check internationalisation data
     zebra2_group = session.get(
         codex_url(f"/api/v1/asset_groups/{zebra2_guids['asset_group']}")

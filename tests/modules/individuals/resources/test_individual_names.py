@@ -370,6 +370,65 @@ def test_get_set_individual_names(
 @pytest.mark.skipif(
     module_unavailable('individuals'), reason='Individuals module disabled'
 )
+def test_get_by_name(db, flask_app_client, researcher_1, request, test_root):
+    from app.modules.names.models import DEFAULT_NAME_CONTEXT
+    from app.modules.individuals.models import Individual
+    from app.utils import HoustonException
+
+    individual_1_id = individual_utils.create_individual_and_sighting(
+        flask_app_client,
+        researcher_1,
+        request,
+        test_root,
+        individual_data={
+            'names': [
+                {'context': DEFAULT_NAME_CONTEXT, 'value': 'Zebra 1'},
+                {'context': 'nickname', 'value': 'Nick'},
+            ],
+        },
+    )['individual']
+    individual_utils.create_individual_and_sighting(
+        flask_app_client,
+        researcher_1,
+        request,
+        test_root,
+        individual_data={
+            'names': [
+                {'context': 'nickname', 'value': 'Nick'},
+            ],
+        },
+    )['individual']
+    individual_3_id = individual_utils.create_individual_and_sighting(
+        flask_app_client,
+        researcher_1,
+        request,
+        test_root,
+        individual_data={
+            'names': [
+                {'context': 'nickname', 'value': 'Nick Jr.'},
+            ],
+        },
+    )['individual']
+
+    ind1 = Individual.get_by_name('Zebra 1')
+    assert str(ind1.guid) == individual_1_id
+
+    try:
+        Individual.get_by_name('Nick', context='nickname')
+        assert False, 'error not thrown on duplicate names'
+    except HoustonException:
+        pass
+
+    ind3 = Individual.get_by_name('Nick Jr.', context='nickname')
+    assert str(ind3.guid) == individual_3_id
+
+    none_ind = Individual.get_by_name('Nick Jr.')
+    assert not none_ind
+
+
+@pytest.mark.skipif(
+    module_unavailable('individuals'), reason='Individuals module disabled'
+)
 def test_name_validation(
     db, flask_app_client, researcher_1, researcher_2, request, test_root
 ):

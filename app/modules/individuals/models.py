@@ -10,7 +10,8 @@ import uuid
 import logging
 import app.extensions.logging as AuditLog
 from datetime import datetime
-from app.modules.names.models import Name
+from app.modules.names.models import Name, DEFAULT_NAME_CONTEXT
+from app.utils import HoustonException
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
@@ -206,6 +207,22 @@ class Individual(db.Model, FeatherModel):
                 first_name = name.value
                 break
         return first_name
+
+    @classmethod
+    def get_by_name(cls, name_value, context=DEFAULT_NAME_CONTEXT):
+        matching_names = Name.query.filter(
+            Name.value == name_value, Name.context == context
+        )
+        individuals = [name.individual for name in list(matching_names)]
+        if len(individuals) > 1:
+            raise HoustonException(
+                log,
+                f'Multiple individuals have name {name_value} in context {context}. Offending individuals: {[ind.guid for ind in individuals]}]',
+            )
+        individual = None
+        if len(individuals) > 0:
+            individual = individuals[0]
+        return individual
 
     def get_adoption_name(self):
         adoption_name = None

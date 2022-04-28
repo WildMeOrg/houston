@@ -86,6 +86,12 @@ def test_sightings(session, login, codex_url, test_root, admin_name):
     sighting_id = response.json()['guid']
     # No need to validate the contents, that's tested as part of the asset group sighting tests
 
+    # but do need to wait for it to be un-reviewed
+    sight_url = codex_url(f'/api/v1/sightings/{sighting_id}')
+    response = utils.wait_for(
+        session.get, sight_url, lambda response: response.json()['stage'] == 'un_reviewed'
+    )
+
     # GET sighting
     response = session.get(codex_url(f'/api/v1/sightings/{sighting_id}'))
     assert response.status_code == 200

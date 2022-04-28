@@ -2,7 +2,9 @@
 import datetime
 
 from . import utils
-from app.modules.names.models import DEFAULT_NAME_CONTEXT
+
+# conforms with app.modules.names.models.DEFAULT_NAME_CONTEXT
+DEFAULT_NAME_CONTEXT = 'firstName'
 
 
 def test_asset_group_sightings(session, login, codex_url, test_root):
@@ -431,7 +433,7 @@ def test_bulk_upload(session, login, codex_url, test_root, request):
 
     # bulk upload needs existing individuals for encounter assignment
     test_ind_name = 'test zebra'
-    test_name_context = 'firstName'
+    test_name_context = DEFAULT_NAME_CONTEXT
     create_individual(session, codex_url, test_ind_name, test_name_context)
 
     # Create asset group sighting

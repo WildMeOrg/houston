@@ -230,7 +230,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
                 new_encounter = Encounter(
                     guid=res_data['id'],
                     version=res_data.get('version', 2),
-                    individual = individual,
+                    individual=individual,
                     owner_guid=owner_guid,
                     asset_group_sighting_encounter_guid=req_data['guid'],
                     submitter_guid=self.asset_group.submitter_guid,

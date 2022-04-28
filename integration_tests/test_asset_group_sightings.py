@@ -413,7 +413,6 @@ def create_individual(
     )
     sight_json = session.get(sight_url).json()
     assert sight_json['stage'] in ['identification', 'un_reviewed']
-    assert len(sight_json['encounters']) == 3
 
     encounter_guid = [enc['guid'] for enc in sight_json['encounters']][0]
     indiv_data = {

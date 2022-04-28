@@ -106,9 +106,11 @@ def test_create_asset_group_identification(session, codex_url, test_root, login)
     utils.wait_for(
         session.get, sight_url, lambda response: response.json()['stage'] == 'un_reviewed'
     )
+
+    id_result_url = codex_url(f"/api/v1/sightings/{zebra2_guids['sighting']}/id_result")
     utils.wait_for(
         session.get,
-        sight_url,
+        id_result_url,
         lambda response: response.json()['query_annotations'][0]['status'] == 'complete',
     )
     id_result = session.get(
@@ -183,11 +185,7 @@ def test_identification_international(session, codex_url, test_root, login):
     response = utils.wait_for(
         session.get, sight_url, lambda response: response.json()['stage'] == 'un_reviewed'
     )
-    utils.wait_for(
-        session.get,
-        sight_url,
-        lambda response: response.json()['query_annotations'][0]['status'] == 'complete',
-    )
+
     # Check internationalisation data
     zebra2_group = session.get(
         codex_url(f"/api/v1/asset_groups/{zebra2_guids['asset_group']}")
@@ -200,6 +198,12 @@ def test_identification_international(session, codex_url, test_root, login):
     assert zebra2_ags['config']['verbatimLocation'] == location
     assert zebra2_ags['config']['encounters'][0]['verbatimLocation'] == location
 
+    id_result_url = codex_url(f"/api/v1/sightings/{zebra2_guids['sighting']}/id_result")
+    utils.wait_for(
+        session.get,
+        id_result_url,
+        lambda response: response.json()['query_annotations'][0]['status'] == 'complete',
+    )
     id_result = session.get(
         codex_url(f"/api/v1/sightings/{zebra2_guids['sighting']}/id_result")
     )

@@ -108,6 +108,7 @@ def test_sighting_identification(
     response = asset_group_utils.commit_asset_group_sighting_sage_identification(
         flask_app, flask_app_client, researcher_1, asset_group_sighting_guid2
     )
+
     sighting_uuid = response.json['guid']
     wait_for_elasticsearch_status(flask_app_client, researcher_1)
 

@@ -2,6 +2,7 @@
 import datetime
 
 from . import utils
+from app.modules.names.models import DEFAULT_NAME_CONTEXT
 
 
 def test_asset_group_sightings(session, login, codex_url, test_root):
@@ -369,8 +370,69 @@ def test_asset_group_sightings(session, login, codex_url, test_root):
     assert response.status_code == 204
 
 
+# bulk upload needs existing individuals for encounter assignment
+def create_individual(
+    session,
+    codex_url,
+    default_name_val='test zebra',
+    default_name_context=DEFAULT_NAME_CONTEXT,
+):
+    group_data = {
+        'description': 'This is a test asset_group, please ignore',
+        'uploadType': 'bulk',
+        'speciesDetectionModel': ['None'],
+        'sightings': [
+            {
+                'time': '2000-01-01T01:01:01+00:00',
+                'timeSpecificity': 'time',
+                'locationId': 'PYTEST-SIGHTING',
+                'encounters': [{}],
+            },
+        ],
+    }
+    asset_group_guid, asset_group_sighting_guids, asset_guids = utils.create_asset_group(
+        session, codex_url, group_data
+    )
+    assert len(asset_group_sighting_guids) == 1
+    ags_guid = asset_group_sighting_guids[0]
+
+    # Should not need a wait, should be just a get
+    ags_url = codex_url(f'/api/v1/asset_groups/sighting/{ags_guid}')
+    ags_json = session.get(ags_url).json()
+    assert len(ags_json['assets']) == 0
+    assert ags_json['stage'] == 'processed'
+    assert 'sighting_guid' in ags_json.keys()
+
+    sighting_guid = ags_json['sighting_guid']
+    sight_url = codex_url(f'/api/v1/sightings/{sighting_guid}')
+    # but do need to wait for it to be un-reviewed
+    utils.wait_for(
+        session.get, sight_url, lambda response: response.json()['stage'] == 'un_reviewed'
+    )
+    sight_json = session.get(sight_url).json()
+    assert sight_json['stage'] in ['identification', 'un_reviewed']
+    assert len(sight_json['encounters']) == 3
+
+    encounter_guid = [enc['guid'] for enc in sight_json['encounters']][0]
+    indiv_data = {
+        'encounters': [{'id': encounter_guid}],
+        'names': [
+            {'context': default_name_context, 'value': default_name_val},
+        ],
+    }
+
+    response = session.post(codex_url('/api/v1/individuals/'), json=indiv_data)
+    assert response.status_code == 200
+    return response
+
+
 def test_bulk_upload(session, login, codex_url, test_root, request):
     login(session)
+
+    # bulk upload needs existing individuals for encounter assignment
+    test_ind_name = 'test zebra'
+    test_name_context = 'firstName'
+    create_individual(session, codex_url, test_ind_name, test_name_context)
 
     # Create asset group sighting
     transaction_id = utils.upload_to_tus(
@@ -404,6 +466,7 @@ def test_bulk_upload(session, login, codex_url, test_root, request):
                             #'taxonomy': 'ace5e17c-e74a-423f-8bd2-ecc3d7a78f4c',
                             'time': '2014-01-01T09:00:00.000+00:00',
                             'timeSpecificity': 'time',
+                            test_name_context: test_ind_name,
                         }
                     ],
                 },

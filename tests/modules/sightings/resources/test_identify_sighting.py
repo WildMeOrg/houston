@@ -113,7 +113,7 @@ def test_sighting_identification(
     wait_for_elasticsearch_status(flask_app_client, researcher_1)
 
     sighting = Sighting.query.get(sighting_uuid)
-    assert sighting.stage == SightingStage.un_reviewed
+    assert sighting.stage == SightingStage.identification
 
     # Make sure the correct job is created and get ID
     job_uuids = [guid for guid in sighting.jobs.keys()]

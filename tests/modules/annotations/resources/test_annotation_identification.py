@@ -111,7 +111,7 @@ def test_annotation_identification(
     wait_for_elasticsearch_status(flask_app_client, researcher_1)
 
     sighting = Sighting.query.get(sighting_uuid)
-    assert sighting.stage == SightingStage.un_reviewed
+    assert sighting.stage == SightingStage.identification
     annotation = sighting.encounters[0].annotations[0]
     num_sent = annotation.send_to_identification()
     # must be 0 as there will already be one outstanding id job from the commit

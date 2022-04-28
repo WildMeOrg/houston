@@ -760,12 +760,8 @@ class Sighting(db.Model, FeatherModel):
 
         if num_jobs > 0:
             log.info(
-                f'Starting Identification for Sighting:{self.guid} using {num_jobs} jobs'
+                f'Started Identification for Sighting:{self.guid} using {num_jobs} jobs'
             )
-            from .tasks import send_all_identification
-
-            send_all_identification.delay(str(self.guid))
-
         else:
             self.stage = SightingStage.un_reviewed
             log.info(

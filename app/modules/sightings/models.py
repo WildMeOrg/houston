@@ -200,7 +200,13 @@ class Sighting(db.Model, FeatherModel):
 
         from app.modules.site_settings.models import Regions
 
-        regions = Regions()
+        try:
+            regions = Regions()
+        except ValueError as e:
+            if str(e) == 'no region data available':
+                log.warning(str(e))
+                return None
+            raise
         region_data = regions.find(location_id, id_only=False)
         if region_data:
             location_id_value = region_data[0].get('name', location_id)

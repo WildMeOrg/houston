@@ -7,7 +7,7 @@ from tests.modules.sightings.resources import utils as sighting_utils
 
 import pytest
 
-from tests.utils import module_unavailable
+from tests.utils import module_unavailable, extension_unavailable
 
 
 @pytest.mark.skipif(
@@ -493,6 +493,7 @@ def test_name_validation(
     ]
 
     assert validation_resp.json == desired_resp
+
 
 @pytest.mark.skipif(
     module_unavailable('individuals'), reason='Individuals module disabled'

@@ -18,8 +18,10 @@ from app.extensions import db
 
 from app.extensions import HoustonModel
 
-# import app.extensions.logging as AuditLog  # NOQA
-# from app.modules.users.models import User
+from flask_restx_patched import is_extension_enabled
+
+if not is_extension_enabled('intelligent_agent'):
+    raise RuntimeError('IntelligentAgent is not enabled')
 
 
 import app.extensions.logging as AuditLog  # NOQA
@@ -202,11 +204,6 @@ class IntelligentAgentContent(db.Model, HoustonModel):
     )
     asset_group = db.relationship(
         'AssetGroup',
-        # backref=db.backref(
-        #'agent_content',
-        # primaryjoin='AssetGroup.guid == IntelligentAgentContent.asset_group_guid',
-        # order_by='AssetGroup.guid',
-        # ),
         foreign_keys='IntelligentAgentContent.asset_group_guid',
     )
 

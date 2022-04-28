@@ -1117,7 +1117,9 @@ class Sighting(db.Model, FeatherModel):
             if q_annot_job['active']:
                 response['query_annotations'][-1]['status'] = 'pending'
                 continue
-            if not q_annot_job['result'] or not q_annot_job.get('success', False):
+            if not q_annot_job.get('result', False) or not q_annot_job.get(
+                'success', False
+            ):
                 response['query_annotations'][-1]['status'] = 'failed'
                 continue
 

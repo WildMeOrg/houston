@@ -10,11 +10,6 @@ import time
 
 # from app.extensions.intelligent_agent import IntelligentAgent, IntelligentAgentContent
 from app.modules.site_settings.models import SiteSetting
-from app.extensions.intelligent_agent import (
-    IntelligentAgent,
-    IntelligentAgentContentState,
-)
-from app.extensions.intelligent_agent.models import TwitterBot, TwitterTweet
 
 
 # manipulate into whatever fake twitter response we want
@@ -40,6 +35,8 @@ def get_fake_tweet():
 
 
 def set_keys():
+    from app.extensions.intelligent_agent.models import TwitterBot
+
     SiteSetting.set(TwitterBot.site_setting_id('enabled'), string='true')
     for req in req_keys:
         SiteSetting.set(TwitterBot.site_setting_id(req), string='TEST_VALUE')
@@ -50,6 +47,9 @@ def set_keys():
     reason='Intelligent Agent extension disabled',
 )
 def test_twitter_basics(flask_app):
+    from app.extensions.intelligent_agent import IntelligentAgent
+    from app.extensions.intelligent_agent.models import TwitterBot
+
     assert not TwitterBot.is_enabled()
     SiteSetting.set(TwitterBot.site_setting_id('enabled'), string='true')
     assert TwitterBot.is_enabled()
@@ -75,6 +75,8 @@ def test_twitter_basics(flask_app):
     reason='Intelligent Agent extension disabled',
 )
 def test_twitter_connectivity(flask_app_client):
+    from app.extensions.intelligent_agent.models import TwitterBot
+
     set_keys()
     tb = TwitterBot()
 
@@ -108,6 +110,9 @@ def test_twitter_connectivity(flask_app_client):
     reason='Intelligent Agent extension disabled',
 )
 def test_twitter_tweet_io(flask_app_client):
+    from app.extensions.intelligent_agent import IntelligentAgentContentState
+    from app.extensions.intelligent_agent.models import TwitterBot, TwitterTweet
+
     set_keys()
     tb = TwitterBot()
     fake_tweet = Dummy()

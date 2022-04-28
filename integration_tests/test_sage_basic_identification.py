@@ -99,7 +99,7 @@ def test_create_asset_group_identification(session, codex_url, test_root, login)
     assert response.status_code == 200
 
     assert 'stage' in response.json().keys()
-    assert response.json()['stage'] == 'identification'
+    assert response.json()['stage'] in ['identification', 'un_reviewed']
     zebra2_sighting_guid = zebra2_guids['sighting']
 
     sight_url = codex_url(f'/api/v1/sightings/{zebra2_sighting_guid}')
@@ -115,7 +115,7 @@ def test_create_asset_group_identification(session, codex_url, test_root, login)
     assert 'query_annotations' in id_resp.keys()
     assert len(id_resp['query_annotations']) == 1
     query_annot = id_resp['query_annotations'][0]
-    assert query_annot['status'] == 'pending'
+    assert query_annot['status'] == 'complete'
     assert query_annot['guid'] in id_resp['annotation_data'].keys()
 
     # Check that we got job data back
@@ -172,7 +172,7 @@ def test_identification_international(session, codex_url, test_root, login):
     assert response.status_code == 200
 
     assert 'stage' in response.json().keys()
-    assert response.json()['stage'] == 'identification'
+    assert response.json()['stage'] in ['identification', 'un_reviewed']
     zebra2_sighting_guid = zebra2_guids['sighting']
 
     sight_url = codex_url(f'/api/v1/sightings/{zebra2_sighting_guid}')

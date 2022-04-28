@@ -331,7 +331,7 @@ def test_asset_group_sightings(session, login, codex_url, test_root):
         'assets': response.json()['assets'],
         'hasEdit': True,
         'hasView': True,
-        'stage': 'un_reviewed',
+        'stage': response.json()['stage'],
         'updated': response.json()['updated'],
         'comments': 'None',
         'creator': creator_data,
@@ -357,6 +357,8 @@ def test_asset_group_sightings(session, login, codex_url, test_root):
         'speciesDetectionModel': ['african_terrestrial'],
         'unreviewed_start_time': response.json()['unreviewed_start_time'],
     }
+    # due to task timing, both are valid
+    assert response.json()['stage'] in ['identification', 'un_reviewed']
 
     # GET sighting
     response = session.get(codex_url(f'/api/v1/sightings/{sighting_guid}'))

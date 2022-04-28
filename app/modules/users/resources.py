@@ -445,6 +445,9 @@ class UserResetPasswordEmail(Resource):
 @api.login_required(oauth_scopes=[])
 class UserSocialCallback(Resource):
     def get(self, service):
+        # this is true for now, but this might be more general later
+        if not is_module_enabled('intelligent_agent'):
+            abort(400, 'invalid')
         if not service or service != 'twitter':
             abort(400, 'invalid service')
 

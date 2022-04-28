@@ -410,7 +410,7 @@ class SightingElasticsearch(Resource):
             'action': AccessOperation.READ,
         },
     )
-    @api.response(schemas.BaseSightingSchema(many=True))
+    @api.response(Sighting.get_elasticsearch_schema()(many=True))
     @api.paginate()
     def get(self, args):
         search = {}
@@ -424,7 +424,7 @@ class SightingElasticsearch(Resource):
             'action': AccessOperation.READ,
         },
     )
-    @api.response(schemas.BaseSightingSchema(many=True))
+    @api.response(Sighting.get_elasticsearch_schema()(many=True))
     @api.paginate()
     def post(self, args):
         search = request.get_json()

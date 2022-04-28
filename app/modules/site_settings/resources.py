@@ -530,7 +530,9 @@ class TestSettings(Resource):
     @api.login_required(oauth_scopes=['site-settings:write'])
     def get(self, path):
 
-        if path.startswith('intelligent_agent_'):
+        if path.startswith('intelligent_agent_') and is_extension_enabled(
+            'intelligent_agent'
+        ):
             from app.extensions.intelligent_agent import IntelligentAgent
 
             name = path[18:]

@@ -126,4 +126,7 @@ def downgrade():
         batch_op.drop_index(batch_op.f('ix_intelligent_agent_content_agent_type'))
 
     op.drop_table('intelligent_agent_content')
+
+    # Remove the enums created as part of the upgrade above
+    sa.Enum(name='intelligentagentcontentstate').drop(op.get_bind(), checkfirst=False)
     # ### end Alembic commands ###

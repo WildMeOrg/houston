@@ -800,9 +800,9 @@ def commit_asset_group_sighting_sage_identification(
         return_value={'success': True},
     ):
         with mock.patch.object(
-            tasks.send_identification,
+            tasks.send_all_identification,
             'delay',
-            side_effect=lambda *args, **kwargs: tasks.send_identification(
+            side_effect=lambda *args, **kwargs: tasks.send_all_identification(
                 *args, **kwargs
             ),
         ):

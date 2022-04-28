@@ -484,7 +484,7 @@ class GitStore(db.Model, HoustonModel):
         if metadata.tus_transaction_id:
             try:
                 added = git_store.import_tus_files(
-                    transaction_id=metadata.tus_transaction_id, paths=metadata.files
+                    transaction_id=metadata.tus_transaction_id
                 )
             except Exception:  # pragma: no cover
                 log.exception(
@@ -547,11 +547,12 @@ class GitStore(db.Model, HoustonModel):
             git_store_guid=sub_id, transaction_id=transaction_id, paths=paths
         )
         uploaded_files = [meta['filename'] for meta in metadatas]
-        unprocessed_files = [
-            filename for filename in uploaded_files if filename not in paths
-        ]
-        if paths and unprocessed_files:
-            raise HoustonException(log, f'Asset(s) {unprocessed_files} are not used')
+        if paths:
+            unprocessed_files = [
+                filename for filename in uploaded_files if filename not in paths
+            ]
+            if unprocessed_files:
+                raise HoustonException(log, f'Asset(s) {unprocessed_files} are not used')
 
         paths_added = []
         original_filenames = []

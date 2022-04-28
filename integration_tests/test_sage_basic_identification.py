@@ -99,7 +99,7 @@ def test_create_asset_group_identification(session, codex_url, test_root, login)
     assert response.status_code == 200
 
     assert 'stage' in response.json().keys()
-    assert response.json()['stage'] in ['identification', 'un_reviewed']
+    assert response.json()['stage'] == 'identification'
     zebra2_sighting_guid = zebra2_guids['sighting']
 
     sight_url = codex_url(f'/api/v1/sightings/{zebra2_sighting_guid}')

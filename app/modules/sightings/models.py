@@ -771,6 +771,8 @@ class Sighting(db.Model, FeatherModel):
             log.info(
                 f'Sighting {self.guid} un-reviewed, identification not needed or not possible (jobs=0)'
             )
+            with db.session.begin(subtransactions=True):
+                db.session.merge(self)
 
     def send_identification(
         self,

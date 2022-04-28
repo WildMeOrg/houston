@@ -494,7 +494,13 @@ def test_name_validation(
 
     assert validation_resp.json == desired_resp
 
-
+@pytest.mark.skipif(
+    module_unavailable('individuals'), reason='Individuals module disabled'
+)
+@pytest.mark.skipif(
+    extension_unavailable('elasticsearch') or module_unavailable('elasticsearch'),
+    reason='Elasticsearch extension or module disabled',
+)
 def test_elasticsearch_name_schema(
     db, flask_app_client, researcher_1, request, test_root
 ):

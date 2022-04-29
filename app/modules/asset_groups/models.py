@@ -16,6 +16,8 @@ from app.extensions.git_store import GitStore
 from app.modules.annotations.models import Annotation
 from app.modules.assets.models import Asset
 from app.modules.encounters.models import Encounter
+from app.modules.individuals.models import Individual
+from app.modules.names.models import DEFAULT_NAME_CONTEXT
 from app.modules.sightings.models import Sighting, SightingStage
 from app.modules.users.models import User
 from app.utils import HoustonException
@@ -220,10 +222,15 @@ class AssetGroupSighting(db.Model, HoustonModel):
                     assert encounter_owner
                     owner_guid = encounter_owner.guid
 
+                individual = None
+                if DEFAULT_NAME_CONTEXT in req_data:
+                    individual = Individual.get_by_name(req_data[DEFAULT_NAME_CONTEXT])
+
                 assert 'guid' in req_data
                 new_encounter = Encounter(
                     guid=res_data['id'],
                     version=res_data.get('version', 2),
+                    individual=individual,
                     owner_guid=owner_guid,
                     asset_group_sighting_encounter_guid=req_data['guid'],
                     submitter_guid=self.asset_group.submitter_guid,

@@ -125,7 +125,7 @@ def test_create_asset_group_identification(session, codex_url, test_root, login)
     assert query_annot['guid'] in id_resp['annotation_data'].keys()
 
     # look for additional annotation metadata
-    first_annot_key = next(iter(id_data['annotation_data']))
+    first_annot_key = next(iter(id_resp['annotation_data']))
     first_annot = id_resp['annotation_data'][first_annot_key]
 
     assert 'sighting_guid' in first_annot

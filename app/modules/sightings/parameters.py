@@ -41,6 +41,7 @@ class PatchSightingDetailsParameters(PatchJSONParameters):
         '/locationId',
         '/taxonomies',
         '/verbatimLocality',
+        '/verbatimEventDate',
     )
 
     PATH_CHOICES_HOUSTON = (

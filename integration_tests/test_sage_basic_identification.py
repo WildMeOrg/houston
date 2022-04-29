@@ -156,10 +156,10 @@ def test_identification_international(session, codex_url, test_root, login):
                 'time': '2000-01-01T01:01:01+00:00',
                 'timeSpecificity': 'time',
                 'locationId': 'Tiddleywink',
-                'verbatimLocation': location,
+                'verbatimLocality': location,
                 'encounters': [
                     {
-                        'verbatimLocation': location,
+                        'verbatimLocality': location,
                     }
                 ],
                 'assetReferences': [filename],
@@ -195,8 +195,8 @@ def test_identification_international(session, codex_url, test_root, login):
     zebra2_ags = session.get(
         codex_url(f"/api/v1/asset_groups/sighting/{zebra2_guids['ags']}")
     ).json()
-    assert zebra2_ags['config']['verbatimLocation'] == location
-    assert zebra2_ags['config']['encounters'][0]['verbatimLocation'] == location
+    assert zebra2_ags['config']['verbatimLocality'] == location
+    assert zebra2_ags['config']['encounters'][0]['verbatimLocality'] == location
 
     id_result_url = codex_url(f"/api/v1/sightings/{zebra2_guids['sighting']}/id_result")
     utils.wait_for(

@@ -314,9 +314,10 @@ class AssetGroupMetadata(object):
         from app.modules.sightings.models import Sighting
 
         unsupported_fields = Sighting.get_unsupported_fields(sighting.keys())
-        # AssetReferences are not valid on a Sighting but are perfectly correct on an AGS
+        # AssetReferences and idConfigs are not valid on a Sighting but are perfectly correct on an AGS
         try:
             unsupported_fields.remove('assetReferences')
+            unsupported_fields.remove('idConfigs')
         except ValueError:
             pass
         if unsupported_fields:

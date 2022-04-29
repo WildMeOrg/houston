@@ -103,6 +103,12 @@ def test_create_asset_group(flask_app_client, researcher_1, readonly_user, test_
         )
 
         data.set_field('uploadType', 'form')
+        data.set_sighting_field(0, 'ambiguity', 'not a valid field')
+        resp_msg = "['ambiguity'] are not valid field name(s)"
+        asset_group_utils.create_asset_group(
+            flask_app_client, researcher_1, data.get(), 400, resp_msg
+        )
+        data.content['sightings'][0].pop('ambiguity')
 
         resp = asset_group_utils.create_asset_group(
             flask_app_client, researcher_1, data.get()

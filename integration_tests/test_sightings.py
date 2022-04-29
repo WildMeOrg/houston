@@ -68,7 +68,7 @@ def test_sightings(session, login, codex_url, test_root, admin_name):
         },
     )
 
-    assert response.status_code == 200
+    assert response.status_code == 200, response.json()
     asset_group_guid = response.json()['guid']
     ags_guids = [s['guid'] for s in response.json()['asset_group_sightings']]
 
@@ -82,7 +82,7 @@ def test_sightings(session, login, codex_url, test_root, admin_name):
     response = session.post(
         codex_url(f'/api/v1/asset_groups/sighting/{ags_guids[0]}/commit')
     )
-    assert response.status_code == 200
+    assert response.status_code == 200, response.json()
     sighting_id = response.json()['guid']
     # No need to validate the contents, that's tested as part of the asset group sighting tests
 
@@ -94,7 +94,7 @@ def test_sightings(session, login, codex_url, test_root, admin_name):
 
     # GET sighting
     response = session.get(codex_url(f'/api/v1/sightings/{sighting_id}'))
-    assert response.status_code == 200
+    assert response.status_code == 200, response.json()
     sighting_version = response.json()['version']
     assets = response.json()['assets']
     annots_0 = response.json()['assets'][0]['annotations']

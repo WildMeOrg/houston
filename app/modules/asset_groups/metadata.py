@@ -311,6 +311,21 @@ class AssetGroupMetadata(object):
         self.owner_assignment = self.validate_encounters(
             sighting['encounters'], f'{encounter_debug}'
         )
+        from app.modules.sightings.models import Sighting
+
+        unsupported_fields = Sighting.get_unsupported_fields(sighting.keys())
+        # These are not valid on a Sighting but are perfectly correct on an AGS
+        if 'assetReferences' in unsupported_fields:
+            unsupported_fields.remove('assetReferences')
+        if 'idConfigs' in unsupported_fields:
+            unsupported_fields.remove('idConfigs')
+        if 'speciesDetectionModel' in unsupported_fields:
+            unsupported_fields.remove('speciesDetectionModel')
+
+        if unsupported_fields:
+            raise AssetGroupMetadataError(
+                log, f'{unsupported_fields} are not valid field name(s)'
+            )
 
     @property
     def bulk_upload(self):

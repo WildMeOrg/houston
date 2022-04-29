@@ -76,6 +76,12 @@ def test_asset_group_sightings(session, login, codex_url, test_root):
             'uploadType': 'form',
         },
     )
+    # Much more useful for debugging issues
+    if response.status_code != 200:
+        import pprint
+
+        pprint.pprint(response.json())
+
     assert response.status_code == 200
     assert len(response.json()['assets']) == 1
     asset = response.json()['assets'][0]
@@ -514,6 +520,12 @@ def test_bulk_upload(session, login, codex_url, test_root, request):
             ],
         },
     )
+    # Much more useful for debugging issues
+    if response.status_code != 200:
+        import pprint
+
+        pprint.pprint(response.json())
+
     asset_group_guid = response.json()['guid']
     # Delete asset group after test
     request.addfinalizer(

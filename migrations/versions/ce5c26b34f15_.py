@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 """empty message
 
-Revision ID: aa17b88d4744
-Revises: ed7b9eb99d21
-Create Date: 2022-04-27 23:47:59.183346
+Revision ID: ce5c26b34f15
+Revises: b58abf228d55
+Create Date: 2022-04-29 17:33:52.397614
 
 """
 from alembic import op
@@ -15,8 +15,8 @@ import app.extensions
 
 
 # revision identifiers, used by Alembic.
-revision = 'aa17b88d4744'
-down_revision = 'ed7b9eb99d21'
+revision = 'ce5c26b34f15'
+down_revision = 'b58abf228d55'
 
 
 def upgrade():

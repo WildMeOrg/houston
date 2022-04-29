@@ -156,6 +156,19 @@ def test_twitter_tweet_io(flask_app_client):
     assert failed
     assert failed.state == IntelligentAgentContentState.rejected
 
+    # exception during collect()
+    with pytest.raises(Exception):
+        with patch.object(
+            tweepy.client.Client,
+            'search_recent_tweets',
+            return_value=fake_res,
+            side_effect=Exception('ouch'),
+        ):
+            with patch.object(tweepy.client.Client, 'get_me', return_value=me_value):
+                res = tb.collect()
+                assert isinstance(res, list)
+                assert len(res) == 0
+
 
 @pytest.mark.skipif(
     extension_unavailable('intelligent_agent'),
@@ -228,4 +241,28 @@ def test_linked_tweet_and_misc(researcher_1, flask_app_client, admin_user):
     tt = TwitterTweet(tweet, rinc)
     # note, we cant seem to actually GET from urls while testing; will have to mock
 
+    # check some validate_and_set_data() directly
+    ok, msg = tt.validate_and_set_data()
+    assert not ok
+    assert 'species as a hashtag' in msg
+
+    meta = tt.generate_asset_group_metadata()
+    assert meta
+    assert meta.get('transactionId') == tt._transaction_id
+
+    with pytest.raises(ValueError):
+        tt.prepare_media_transaction(['fail'])
+
+    with pytest.raises(ValueError):
+        tt.prepare_media_transaction([{}])
+
+    tt._transaction_paths = None
+    with pytest.raises(AssertionError):
+        tt.generate_asset_group_metadata()
+
+    tt._transaction_ids = None
+    with pytest.raises(AssertionError):
+        tt.generate_asset_group_metadata()
+
+    # cleanup
     researcher_1.linked_accounts = None

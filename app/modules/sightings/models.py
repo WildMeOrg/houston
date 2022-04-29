@@ -1059,7 +1059,9 @@ class Sighting(db.Model, FeatherModel):
     # Helper to ensure that the required annot and individual data is present
     def _ensure_annot_data_in_response(self, annot, response):
 
+        # will populate individual_first_name in next block to save a database hit
         individual_guid = annot.encounter.individual_guid if annot.encounter else None
+        individual = Individual.query.get(individual_guid) if individual_guid else None
 
         if annot.guid not in response['annotation_data'].keys():
             encounter_location = (
@@ -1078,6 +1080,7 @@ class Sighting(db.Model, FeatherModel):
                 'sighting_time_specificity': self.get_edm_data_field('timeSpecificity'),
                 'encounter_guid': annot.encounter.guid if annot.encounter else None,
                 'asset_filename': annot.asset.filename,
+                'individual_first_name': individual.names[0] if individual else None,
             }
 
         if (
@@ -1086,6 +1089,7 @@ class Sighting(db.Model, FeatherModel):
         ):
             individual = Individual.query.get(individual_guid)
             assert individual
+
             # add individual data
             response['individual_data'][str(individual_guid)] = {
                 'names': [

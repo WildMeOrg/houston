@@ -297,7 +297,7 @@ class Sighting(db.Model, FeatherModel):
             if f'/{field}' in path_choices:
                 # supported
                 continue
-            if field in custom_fields:
+            if custom_fields and field in custom_fields:
                 # supported
                 continue
             unsupported_fields.append(field)

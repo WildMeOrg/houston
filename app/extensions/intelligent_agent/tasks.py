@@ -9,11 +9,14 @@ log = logging.getLogger(__name__)
 
 @celery.on_after_configure.connect
 def intelligent_agent_setup_periodic_tasks(sender, **kwargs):
-    from app.extensions.intelligent_agent.models import TwitterBot
+    # from app.extensions.intelligent_agent.models import TwitterBot
 
     # FIXME upon startup this seems to not be reading this from db and falling back to default
     #   seems related to no app context yet:   https://stackoverflow.com/q/46540664
-    interval_seconds = TwitterBot.get_periodic_interval()
+    #  also, sometimes(???) celery seems to load before tweepy is loaded or something so TwitterBot fails
+    #    maybe read directly from utils.get_persisted_value() ???
+    # interval_seconds = TwitterBot.get_periodic_interval()
+    interval_seconds = 30
     log.debug(
         f'intelligent_agent_setup_periodic_tasks() starting via {sender} with interval_sconds={interval_seconds}'
     )

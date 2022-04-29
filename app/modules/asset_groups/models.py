@@ -554,7 +554,10 @@ class AssetGroupSighting(db.Model, HoustonModel):
         else:
             for filename in self.config.get('assetReferences'):
                 asset = self.asset_group.get_asset_for_file(filename)
-                assert asset
+                if not asset:
+                    logging.warning(f'Asset ref {filename}, cannot find asset, skipping')
+                    continue
+
                 asset_url = url_for(
                     'api.assets_asset_src_raw_by_id',
                     asset_guid=str(asset.guid),

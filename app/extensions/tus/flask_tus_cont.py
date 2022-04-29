@@ -205,7 +205,10 @@ class TusManager(object):
 
         response.status_code = 201
         response.headers['Location'] = url_for(
-            'tus-manager.tus-1-upload-chunk', resource_id=resource_id, _external=True
+            'tus-manager.tus-1-upload-chunk',
+            resource_id=resource_id,
+            _external=True,
+            _scheme=self.app.config['PREFERRED_URL_SCHEME'],
         )
         response.headers['Tus-Temp-Filename'] = resource_id
         response.autocorrect_location_header = False

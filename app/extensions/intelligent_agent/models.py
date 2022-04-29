@@ -13,7 +13,7 @@ from app.extensions.intelligent_agent import (
 )
 import gettext
 import traceback
-
+import uuid
 import logging
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
@@ -126,11 +126,19 @@ class TwitterBot(IntelligentAgent):
     # this should be used with caution -- use create_tweet_queued() to be safer
     def create_tweet_direct(self, text, in_reply_to=None):
         assert self.client
-        log.info(f'{self} tweeting [re: {in_reply_to}] >>> {text}')
-        if True:
-            log.warning('DISABLED OUTGOING for testing purposes')
+        assert text
+        # this helps prevent sending identical outgoing (and may help dbugging?)
+        stamp = str(uuid.uuid4())[0:4]
+        text += '   ' + stamp
+        log.info(f'create_tweet_direct(): {self} tweeting [re: {in_reply_to}] >>> {text}')
+        if (
+            not self.is_enabled()
+            or self.get_persisted_value('twitter_outgoing_disabled') == 'true'
+        ):
+            log.warning('create_tweet_direct(): OUTGOING DISABLED')
             return
         tweet = self.client.create_tweet(text=text, in_reply_to_tweet_id=in_reply_to)
+        log.debug(f'create_tweet_direct(): success tweeting {tweet}')
         return tweet
 
     # preferred usage (vs create_tweet_direct()) as it will throttle outgoing rate to

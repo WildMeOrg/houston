@@ -160,6 +160,40 @@ class Collaboration(db.Model, HoustonModel):
                         NotificationType.collab_manager_create,
                     )
 
+    @classmethod
+    def get_users_for_read(cls, user):
+        return cls.get_users_for_approval_state(
+            user, CollaborationUserAssociations.read_approval_state
+        )
+
+    @classmethod
+    def get_users_for_write(cls, user):
+        return cls.get_users_for_approval_state(
+            user, CollaborationUserAssociations.edit_approval_state
+        )
+
+    @classmethod
+    def get_users_for_approval_state(cls, user, approval_state_field):
+        # First find all the collaborations approved by the user
+        collab_guids = [
+            cua[0]
+            for cua in CollaborationUserAssociations.query.filter(
+                CollaborationUserAssociations.user_guid == user.guid
+            )
+            .filter(approval_state_field == CollaborationUserState.APPROVED)
+            .values('collaboration_guid')
+        ]
+        # Then find all the users associated to the collaborations
+        # approved by the other users
+        return [
+            cua.user
+            for cua in CollaborationUserAssociations.query.filter(
+                CollaborationUserAssociations.collaboration_guid.in_(collab_guids)
+            )
+            .filter(CollaborationUserAssociations.user_guid != user.guid)
+            .filter(approval_state_field == CollaborationUserState.APPROVED)
+        ]
+
     def _get_association_for_user(self, user_guid):
         assoc = None
         for association in self.collaboration_user_associations:

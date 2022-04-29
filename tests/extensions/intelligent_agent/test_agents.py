@@ -8,7 +8,6 @@ from tests.utils import extension_unavailable
 import tweepy
 import time
 
-# from app.extensions.intelligent_agent import IntelligentAgent, IntelligentAgentContent
 from app.modules.site_settings.models import SiteSetting
 
 
@@ -30,6 +29,7 @@ def get_fake_tweet():
     tweet = Dummy()
     tweet.id = time.time()
     tweet.author_id = 'author'
+    tweet.attachments = False
     tweet.data = {}
     return tweet
 
@@ -68,6 +68,9 @@ def test_twitter_basics(flask_app):
     assert set(settings.keys()) >= set(req_keys)
 
     assert IntelligentAgent.get_agent_class_by_short_name('twitterbot') == TwitterBot
+    assert not IntelligentAgent.get_agent_class_by_short_name('XXXFOOOOOOXXXX')
+    assert IntelligentAgent.social_account_key() == 'intelligentagent'
+    assert TwitterBot.site_setting_id_short('intelligent_agent_twitterbot_foo') == 'foo'
 
 
 @pytest.mark.skipif(
@@ -140,7 +143,6 @@ def test_twitter_tweet_io(flask_app_client):
 
     # one tweet no image
     tweet = get_fake_tweet()
-    tweet.attachments = False
     fake_res.data.append(tweet)
     fake_res.includes = []
     with patch.object(
@@ -153,3 +155,75 @@ def test_twitter_tweet_io(flask_app_client):
     failed = TwitterTweet.query.first()
     assert failed
     assert failed.state == IntelligentAgentContentState.rejected
+
+
+@pytest.mark.skipif(
+    extension_unavailable('intelligent_agent'),
+    reason='Intelligent Agent extension disabled',
+)
+def test_linked_tweet_and_misc(researcher_1, flask_app_client, admin_user):
+    from app.extensions.intelligent_agent.models import TwitterBot, TwitterTweet
+    from tests.modules.site_settings.resources import utils as setting_utils
+    from app.modules.users.models import User
+
+    author_id = 'TEST123'
+    tweet = get_fake_tweet()
+    tweet.author_id = author_id
+
+    researcher_1.link_account(TwitterBot.social_account_key(), {'id': author_id})
+    assert researcher_1.linked_accounts == {'twitter': {'id': author_id}}
+
+    u = User.find_by_linked_account(TwitterBot.social_account_key(), author_id)
+    assert u == researcher_1
+    u = User.find_by_linked_account(TwitterBot.social_account_key(), '__NOT_FOUND__')
+    assert not u
+    u = User.find_by_linked_account('NO_SUCH_KEY', '__NOT_FOUND__')
+    assert not u
+
+    # this uses the HACK user.twitter_username (and not linked accounts)
+    #   thus this test should be fixed when hack goes away
+    author_username = 'USERNAME123'
+    researcher_1.twitter_username = author_username
+    tt = TwitterTweet(tweet)
+    tt.source = {'author': {'username': author_username}}
+    u = tt.find_author_user()
+    assert u == researcher_1
+
+    conf_tx = setting_utils.get_some_taxonomy_dict(flask_app_client, admin_user)
+    tt.raw_content = {
+        'text': 'this is some test',
+        'entities': {
+            'hashtags': [
+                # the "z" is for fuzZy
+                {'tag': 'z' + conf_tx['scientificName']}
+            ]
+        },
+    }
+    tx = tt.derive_taxonomy()
+    assert tx
+    assert tx.scientificName == conf_tx['scientificName']
+
+    # now lets try to make data from this
+    ok, msg = tt.assemble()
+    assert not ok
+    assert 'at least one image' in msg
+
+    tweet.attachments = True
+    # absorbs the error here, makes not images
+    tt = TwitterTweet(tweet)
+    assert not tt.get_assets()
+
+    mkey = 'MEDIA_KEY'
+    media_obj = Dummy()
+    media_obj.media_key = mkey
+    media_obj.data = {
+        'url': 'http://localhost/houston/static/images/icon.png',
+    }
+    tweet.attachments = {
+        'media_keys': [mkey],
+    }
+    rinc = {
+        'media': [media_obj],
+    }
+    tt = TwitterTweet(tweet, rinc)
+    # note, we cant seem to actually GET from urls while testing; will have to mock

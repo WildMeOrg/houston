@@ -3,13 +3,7 @@
 AssetGroups database models
 --------------------
 """
-# import copy
-# import enum
-# from flask import current_app, url_for
-# from flask_login import current_user  # NOQA
 from datetime import datetime  # NOQA
-
-# from flask_restx_patched._http import HTTPStatus
 from app.extensions import db
 import app.extensions.logging as AuditLog  # NOQA
 from app.extensions.intelligent_agent import (
@@ -19,9 +13,6 @@ from app.extensions.intelligent_agent import (
 )
 import gettext
 import traceback
-
-
-# from app.utils import HoustonException
 
 import logging
 
@@ -305,7 +296,11 @@ class TwitterTweet(IntelligentAgentContent):
         self._tweet = tweet
         self._resinc = response_includes
         author_data = {'id': tweet.author_id}
-        if 'users' in response_includes and len(response_includes['users']):
+        if (
+            response_includes
+            and 'users' in response_includes
+            and len(response_includes['users'])
+        ):
             author_data = response_includes['users'][0].data
         self.source = {
             'id': tweet.id,

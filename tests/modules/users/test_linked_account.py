@@ -22,3 +22,5 @@ def test_linked_account(researcher_1):
     assert found == researcher_1
     # bonus unrelated test
     assert not researcher_1.is_public_user()
+
+    researcher_1.linked_accounts = None

@@ -227,3 +227,5 @@ def test_linked_tweet_and_misc(researcher_1, flask_app_client, admin_user):
     }
     tt = TwitterTweet(tweet, rinc)
     # note, we cant seem to actually GET from urls while testing; will have to mock
+
+    researcher_1.linked_accounts = None

@@ -91,7 +91,9 @@ class DetailedEncounterSchema(BaseEncounterSchema):
 
 class AugmentedEdmEncounterSchema(BaseEncounterSchema):
     annotations = base_fields.Nested(
-        'BaseAnnotationSchema', many=True, only=('guid', 'asset_guid', 'ia_class')
+        'DetailedAnnotationSchema',
+        many=True,
+        only=('guid', 'asset_guid', 'ia_class', 'asset_src', 'bounds'),
     )
 
     createdHouston = base_fields.DateTime(attribute='created')

@@ -1073,6 +1073,11 @@ class Sighting(db.Model, FeatherModel):
                 'image_url': annot.asset.get_image_url(),
                 'asset_dimensions': annot.asset.get_dimensions(),
                 'bounds': annot.bounds,
+                'sighting_guid': self.guid,
+                'sighting_time': self.get_edm_data_field('time'),
+                'sighting_time_specificity': self.get_edm_data_field('timeSpecificity'),
+                'encounter_guid': annot.encounter.guid if annot.encounter else None,
+                'asset_filename': annot.asset.filename,
             }
 
         if (

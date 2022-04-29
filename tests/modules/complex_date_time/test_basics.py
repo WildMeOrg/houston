@@ -214,3 +214,30 @@ def test_models(db, request):
         cdt <= later_month
     except NotImplementedError as nie:
         assert 'mismatched specificities' in str(nie)
+
+
+@pytest.mark.skipif(
+    module_unavailable('complex_date_time'), reason='ComplexDateTime module disabled'
+)
+def test_nlp_time():
+    from app.utils import nlp_parse_complex_date_time
+    from app.modules.complex_date_time.models import Specificities
+
+    refdate = '2019-08-15'
+    text = 'a week ago at 3:30'
+    try:
+        cdt = nlp_parse_complex_date_time(text, reference_date=refdate, tz='US/Mountain')
+    except RuntimeError:
+        pytest.skip('NLP jar files not available')
+    assert cdt
+    assert cdt.isoformat_in_timezone() == '2019-08-07T21:30:00-06:00'
+    assert cdt.specificity == Specificities.time
+
+    text = 'last month'
+    cdt = nlp_parse_complex_date_time(text, reference_date=refdate)
+    assert cdt
+    assert cdt.isoformat_in_timezone() == '2019-07-01T00:00:00+00:00'
+    assert cdt.specificity == Specificities.month
+
+    cdt = nlp_parse_complex_date_time('i have no idea')
+    assert not cdt

@@ -127,3 +127,42 @@ def get_stored_filename(input_filename):
         return None
 
     return f'{hashlib.sha256(input_filename.encode()).hexdigest()}'
+
+
+def nlp_parse_complex_date_time(
+    text, reference_date=None, tz='UTC', time_specificity=None
+):
+    from app.modules.complex_date_time.models import ComplexDateTime, Specificities
+    from sutime import SUTime
+
+    # https://github.com/FraBle/python-sutime
+    # will throw RuntimeError if jars are not there
+    #  TODO readme on how to actually install requirements here (and/or automate)
+    sut = SUTime(mark_time_ranges=True, include_range=True)
+
+    # this will be an array [start,end] if found, or just [start]
+    #   but we only use start value
+    res = sut.parse(text, reference_date=reference_date)
+
+    if not res:
+        return None
+    value = res[0].get('value')
+    if not value:
+        return None
+
+    if res[0].get('type') == 'DATE':
+        parts = [int(p) for p in value.split('-')]
+        return ComplexDateTime.from_list(parts, tz, time_specificity)
+
+    if res[0].get('type') == 'TIME':
+        return ComplexDateTime.from_data(
+            {
+                'time': {
+                    'datetime': value,
+                    'timezone': tz,
+                    'specificity': Specificities.time,
+                }
+            }
+        )
+
+    raise ValueError(f'unknown type in results: {res}')

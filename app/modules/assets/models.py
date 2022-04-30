@@ -94,6 +94,7 @@ class Asset(db.Model, HoustonModel):
         'master': [4096, 4096],
         'mid': [1024, 1024],
         'thumb': [256, 256],
+        'abox': [1024, 1024],
     }
 
     def __repr__(self):
@@ -374,9 +375,42 @@ class Asset(db.Model, HoustonModel):
 
         with Image.open(source_path) as source_image:
             source_image.thumbnail(self.FORMATS[format])
+            if format == 'abox':
+                source_image = self.draw_annotations(source_image)
             source_image.save(target_path)
 
         return target_path
+
+    # currently only works with boxy annotations and theta=0
+    def draw_annotations(self, image):
+        if not self.annotations:
+            return image
+        # math assumes same aspect ratio, so if you squish an image, you change this code
+        iw, ih = image.size
+        dim = self.get_dimensions()
+        if not dim or not dim.get('width'):
+            raise ValueError('unable to get original dimensions')
+        scale = iw / dim['width']
+        res_image = image
+        for ann in self.annotations:
+            rect = ann.bounds.get('rect')
+            if not rect:
+                continue
+            res_image = self.draw_box(res_image, [int(scale * v) for v in rect])
+        return res_image
+
+    def draw_box(self, image, rect):
+        from PIL import ImageDraw
+
+        # h/t https://stackoverflow.com/a/43620169 for this wack ish
+        overlay = Image.new('RGBA', image.size, (255, 0, 0, 0))
+        draw = ImageDraw.Draw(overlay)
+        shape = [(rect[0], rect[1]), (rect[0] + rect[2], rect[1] + rect[3])]
+        # hardcoding color for now
+        draw.rectangle(shape, outline='#edac3a', fill=(255, 0, 0, 0), width=5)
+        res_image = image.convert('RGBA')
+        res_image = Image.alpha_composite(res_image, overlay)
+        return res_image.convert('RGB')
 
     def rotate(self, angle, **kwargs):
         if angle % 360 == 0:

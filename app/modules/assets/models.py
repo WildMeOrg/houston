@@ -400,7 +400,7 @@ class Asset(db.Model, HoustonModel):
         return res_image
 
     def draw_box(self, image, rect):
-        from PIL import ImageDraw
+        from PIL import ImageDraw  # noqa
 
         # h/t https://stackoverflow.com/a/43620169 for this wack ish
         overlay = Image.new('RGBA', image.size, (255, 0, 0, 0))

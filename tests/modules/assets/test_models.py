@@ -163,6 +163,7 @@ def test_derived_images_and_rotation(test_asset_group_uuid, request):
     assert get_format_sizes(zebra) == {
         'master': (1000, 664),
         'mid': (1000, 664),
+        'abox': (1000, 664),
         'thumb': (256, 170),
     }
 
@@ -178,6 +179,7 @@ def test_derived_images_and_rotation(test_asset_group_uuid, request):
     assert get_format_sizes(zebra) == {
         'master': (664, 1000),
         'mid': (664, 1000),
+        'abox': (664, 1000),
         'thumb': (170, 256),
     }
 
@@ -196,6 +198,7 @@ def test_derived_images_and_rotation(test_asset_group_uuid, request):
     assert get_format_sizes(zebra) == {
         'master': (664, 1000),
         'mid': (664, 1000),
+        'abox': (664, 1000),
         'thumb': (170, 256),
     }
 

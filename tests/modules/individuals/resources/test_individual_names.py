@@ -7,7 +7,7 @@ from tests.modules.sightings.resources import utils as sighting_utils
 
 import pytest
 
-from tests.utils import module_unavailable, extension_unavailable
+from tests.utils import module_unavailable
 
 
 @pytest.mark.skipif(
@@ -552,41 +552,3 @@ def test_name_validation(
     ]
 
     assert validation_resp.json == desired_resp
-
-
-@pytest.mark.skipif(
-    module_unavailable('individuals'), reason='Individuals module disabled'
-)
-@pytest.mark.skipif(
-    extension_unavailable('elasticsearch') or module_unavailable('elasticsearch'),
-    reason='Elasticsearch extension or module disabled',
-)
-def test_elasticsearch_name_schema(
-    db, flask_app_client, researcher_1, request, test_root
-):
-    from app.modules.individuals.models import Individual
-    from app.modules.individuals.schemas import ElasticsearchIndividualSchema
-    from app.extensions import elasticsearch as es
-
-    create_resp = individual_utils.create_individual_and_sighting(
-        flask_app_client,
-        researcher_1,
-        request,
-        test_root,
-        individual_data={
-            'names': [
-                {'context': 'firstName', 'value': 'Z432'},
-                {'context': 'Christian name', 'value': 'Zachariah'},
-            ],
-        },
-    )
-    ind = Individual.query.get(create_resp['individual'])
-    with es.session.begin(blocking=True, forced=True):
-        ind.index()
-    body = {}
-    indy = Individual.elasticsearch(body)[0]
-    # actually load the ES schema
-    es_schema = ElasticsearchIndividualSchema()
-    es_indy = es_schema.dump(indy).data
-    assert type(es_indy['names']) is list
-    assert es_indy['names'] == ['Z432', 'Zachariah']

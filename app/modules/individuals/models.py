@@ -179,10 +179,23 @@ class Individual(db.Model, FeatherModel):
     def get_taxonomy_guid(self):
         return self.get_edm_data_field('taxonomy')
 
-    def get_taxonomy_names(self):
-        taxonomy_guid = self.get_edm_data_field('taxonomy')
+    def get_taxonomy_guid_inherit_encounters(self, sighting_fallback=True):
+        tx_guid = self.get_edm_data_field('taxonomy')
+        if tx_guid is None:
+            for encounter in self.encounters:
+                tx_guid = encounter.get_taxonomy_guid(sighting_fallback)
+                if tx_guid:
+                    break
+        return tx_guid
+
+    # convenience method for frontend, display, search schema. Note the default inherit_encounters behavior.
+    def get_taxonomy_names(self, inherit_encounters=True):
+        if inherit_encounters:
+            taxonomy_guid = self.get_taxonomy_guid_inherit_encounters()
+        else:
+            taxonomy_guid = self.get_edm_data_field('taxonomy')
+
         taxonomy_names = []
-        # Taxonomy guid is optional in the response from EDM
         if taxonomy_guid:
             from app.modules.site_settings.models import SiteSetting
 

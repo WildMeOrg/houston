@@ -133,7 +133,7 @@ class ElasticsearchIndividualSchema(ModelSchema):
     death = base_fields.Function(Individual.get_time_of_death)
     comments = base_fields.Function(Individual.get_comments)
     customFields = base_fields.Function(Individual.get_custom_fields)
-    taxonomy_guid = base_fields.Function(Individual.get_taxonomy_guid)
+    taxonomy_guid = base_fields.Function(Individual.get_taxonomy_guid_inherit_encounters)
     has_annotations = base_fields.Function(Individual.has_annotations)
     last_seen = base_fields.Function(Individual.get_last_seen_time)
     taxonomy_names = base_fields.Function(Individual.get_taxonomy_names)

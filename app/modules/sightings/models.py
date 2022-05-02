@@ -1076,11 +1076,13 @@ class Sighting(db.Model, FeatherModel):
                 'asset_dimensions': annot.asset.get_dimensions(),
                 'bounds': annot.bounds,
                 'sighting_guid': self.guid,
-                'sighting_time': self.get_edm_data_field('time'),
-                'sighting_time_specificity': self.get_edm_data_field('timeSpecificity'),
+                'sighting_time': self.get_time_isoformat_in_timezone(),
+                'sighting_time_specificity': self.get_time_specificity(),
                 'encounter_guid': annot.encounter.guid if annot.encounter else None,
                 'asset_filename': annot.asset.filename,
-                'individual_first_name': individual.names[0] if individual else None,
+                'individual_first_name': individual.get_first_name()
+                if individual
+                else None,
             }
 
         if (

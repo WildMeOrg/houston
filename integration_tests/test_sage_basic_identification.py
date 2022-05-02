@@ -124,6 +124,16 @@ def test_create_asset_group_identification(session, codex_url, test_root, login)
     assert query_annot['status'] == 'complete'
     assert query_annot['guid'] in id_resp['annotation_data'].keys()
 
+    # look for additional annotation metadata
+    first_annot_key = next(iter(id_resp['annotation_data']))
+    first_annot = id_resp['annotation_data'][first_annot_key]
+
+    assert 'sighting_guid' in first_annot
+    assert 'sighting_time' in first_annot
+    assert 'encounter_guid' in first_annot
+    assert 'asset_filename' in first_annot
+    assert 'sighting_time_specificity' in first_annot
+
     # Check that we got job data back
     zebra_sighting = session.get(
         codex_url(f"/api/v1/sightings/{zebra2_guids['sighting']}")

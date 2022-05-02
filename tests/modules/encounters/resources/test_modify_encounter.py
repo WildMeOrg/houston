@@ -191,9 +191,11 @@ def test_modify_encounter(
 
     enc1_annotations = [
         {
-            'asset_guid': str(ann.asset.guid),
+            'asset_guid': '/api/v1/assets/src/' + str(ann.asset.guid),
+            'asset_src': str(ann.asset.guid),
             'ia_class': 'test',
             'guid': str(ann.guid),
+            'bounds': {'rect': [0, 1, 2, 3], 'theta': 0},
         }
         for ann in new_encounter_1.annotations
     ]

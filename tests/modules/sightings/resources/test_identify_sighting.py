@@ -151,3 +151,12 @@ def test_sighting_identification(
         ][0]['guid']
         in id_data['annotation_data'].keys()
     )
+
+    first_annot_key = next(iter(id_data['annotation_data']))
+    first_annot = id_data['annotation_data'][first_annot_key]
+
+    assert 'sighting_guid' in first_annot
+    assert 'sighting_time' in first_annot
+    assert 'encounter_guid' in first_annot
+    assert 'asset_filename' in first_annot
+    assert 'sighting_time_specificity' in first_annot

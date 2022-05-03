@@ -8,7 +8,7 @@ import json
 import logging
 from urllib.parse import urljoin
 
-from flask import current_app, send_file, request, url_for
+from flask import current_app, send_file, request, url_for, redirect, session
 from flask_login import current_user
 from flask_restx_patched import Resource
 from flask_restx_patched._http import HTTPStatus
@@ -438,6 +438,79 @@ class UserResetPasswordEmail(Resource):
         )
         msg.template('misc/password_reset', reset_link=reset_link)
         msg.send_message()
+
+
+# h/t https://agustinus.kristia.de/techblog/2015/08/29/twitter-auth-flask/
+@api.route('/social_callback/<string:service>')
+@api.login_required(oauth_scopes=[])
+class UserSocialCallback(Resource):
+    def get(self, service):
+        # this is true for now, but this might be more general later
+        if not is_module_enabled('intelligent_agent'):
+            abort(400, 'invalid')
+        if not service or service != 'twitter':
+            abort(400, 'invalid service')
+
+        import tweepy
+        from app.extensions.intelligent_agent.models import TwitterBot
+
+        args = request.args
+        ck = TwitterBot.get_site_setting_value('consumer_key')
+        cs = TwitterBot.get_site_setting_value('consumer_secret')
+        if not ck or not cs:
+            raise ValueError('twitter consumer key/secret not set')
+        try:
+            # auth = tweepy.OAuth1UserHandler(ck, cs, callback='http://localhost/api/v1/users/social_callback/twitter')
+            auth = tweepy.OAuth1UserHandler(ck, cs)
+            auth.request_token = session['twitter_request_token']
+            # oauth_token, oauth_verifier via url args
+            access_token, access_token_secret = auth.get_access_token(
+                args.get('oauth_verifier')
+            )
+            del session['twitter_request_token']
+            auth.set_access_token(access_token, access_token_secret)
+            api = tweepy.API(auth)
+            user = api.verify_credentials(skip_status=True, include_entities=False)
+            current_user.link_account(
+                'twitter',
+                {
+                    'id': user.id_str,
+                    'name': user.name,
+                    'username': user.screen_name,
+                    'location': user.location,
+                    'description': user.description,
+                    'profile_image_url': user.profile_image_url_https,
+                },
+            )
+        except Exception as ex:
+            log.error(f'twitter callback failed: {str(ex)}')
+            abort(400, 'internal twitter error')
+        return redirect('/settings')
+
+
+@api.route('/social_auth_redirect/<string:service>')
+@api.login_required(oauth_scopes=[])
+class UserSocialAuthRedirect(Resource):
+    def get(self, service):
+        if not service or service != 'twitter':
+            abort(400, 'invalid service')
+
+        # right now twitter "social login" is connected to TwitterBot settings
+        #  likely these two things should be decoupled a bit in settings
+        import tweepy
+        from app.extensions.intelligent_agent.models import TwitterBot
+
+        ck = TwitterBot.get_site_setting_value('consumer_key')
+        cs = TwitterBot.get_site_setting_value('consumer_secret')
+        if not ck or not cs:
+            abort(400, 'twitter consumer key/secret not set')
+        auth = tweepy.OAuth1UserHandler(
+            ck, cs, callback='http://localhost/api/v1/users/social_callback/twitter'
+        )
+        # need this for callback
+        url = auth.get_authorization_url(signin_with_twitter=True)
+        session['twitter_request_token'] = auth.request_token
+        return redirect(url)
 
 
 @api.route('/verify_account_email')

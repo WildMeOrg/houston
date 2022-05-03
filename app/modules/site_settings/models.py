@@ -106,6 +106,11 @@ class SiteSetting(db.Model, Timestamp):
         },
     }
 
+    if is_extension_enabled('intelligent_agent'):
+        from app.extensions.intelligent_agent.models import IntelligentAgent
+
+        HOUSTON_SETTINGS.update(IntelligentAgent.site_setting_config_all())
+
     key = db.Column(db.String, primary_key=True, nullable=False)
 
     file_upload_guid = db.Column(
@@ -520,6 +525,8 @@ class SiteSetting(db.Model, Timestamp):
         return val
 
 
+# most find-based methods reference *ids* which will be guids in new-world data
+# to search on name, try find_fuzzy()
 class Regions(dict):
     def __init__(self, *args, **kwargs):
         if 'data' in kwargs and isinstance(kwargs['data'], dict):
@@ -631,8 +638,147 @@ class Regions(dict):
                 found = found + cls._find(sub, locs, id_only, full_tree)
         return found
 
+    def traverse(self, node=None):
+        if not node:
+            return self.traverse(self)
+        nodes = []
+        if 'id' in node:
+            nodes.append(node)
+        if 'locationID' in node and isinstance(node['locationID'], list):
+            for n in node['locationID']:
+                nodes.extend(self.traverse(n))
+        return nodes
+
+    def find_fuzzy(self, match):
+        from app.utils import fuzzy_match
+
+        candidates = {}
+        nodes = self.traverse()
+        for reg in nodes:
+            candidates[reg['id']] = reg.get('name', reg['id'])
+        fzm = fuzzy_match(match, candidates)
+        # cutoff may need some tweakage here based on experience
+        if not fzm or fzm[0]['score'] < 150:
+            return None
+        return fzm[0]
+
+    # pass a list, returns ordered by score all fuzzy-matches
+    def find_fuzzy_list(self, possible):
+        matches = []
+        # reduces to unique (and lowercase first)
+        for p in set([a.lower() for a in possible]):
+            fz = self.find_fuzzy(p)
+            if fz:
+                matches.append(fz)
+        if not matches:
+            return []
+        # this way highest score (of duplicates) gets put in as only one
+        once = []
+        already = set()
+        for m in sorted(matches, key=lambda d: -d['score']):
+            if m['id'] not in already:
+                once.append(m)
+                already.add(m['id'])
+        return once
+
     def __repr__(self):
         return (
             f"<{self.__class__.__name__}(desc={self.get('description')} "
             f'; unique_id_count={len(self.find())})>'
+        )
+
+
+# constructor can take guid, scientificName, or itisTsn
+class Taxonomy:
+    def __init__(self, id, *args, **kwargs):
+        if isinstance(id, dict):  # special case from conf value
+            if not id.get('id') or not id.get('scientificName'):
+                raise ValueError('dict passed with no id/scientificName')
+            self.guid = id.get('id')
+            self.scientificName = id.get('scientificName')
+            self.itisTsn = id.get('itisTsn')
+            self.commonNames = id.get('commonNames', [])
+            return
+        import uuid
+
+        conf = self.get_configuration_value()
+        match_value = id
+        match_key = 'scientificName'
+        try:
+            match_value = int(id)
+            match_key = 'itisTsn'
+        except ValueError:
+            pass
+        try:
+            # str() will allow us to pass in true uuid or string-representation
+            uuid.UUID(str(id))
+            match_value = str(id)
+            match_key = 'id'
+        except Exception:
+            pass
+        for tx in conf:
+            if tx.get(match_key) == match_value:
+                self.guid = tx.get('id')
+                self.scientificName = tx.get('scientificName')
+                self.itisTsn = tx.get('itisTsn')
+                self.commonNames = tx.get('commonNames', [])
+                return
+        raise ValueError('unknown id')
+
+    @classmethod
+    def get_configuration_value(cls):
+        from app.modules.site_settings.models import SiteSetting
+
+        conf = SiteSetting.get_edm_configuration('site.species')
+        if not conf or not isinstance(conf, list):
+            raise ValueError('site.species not configured')
+        return conf
+
+    @classmethod
+    def find_fuzzy(cls, match):
+        conf = cls.get_configuration_value()
+        from app.utils import fuzzy_match
+
+        candidates = {}
+        for tx in conf:
+            candidates[tx['id']] = ' '.join(
+                tx.get('commonNames', []) + [tx.get('scientificName')]
+            )
+        fzm = fuzzy_match(match, candidates)
+        # cutoff may need some tweakage here based on experience
+        if not fzm or fzm[0]['score'] < 120:
+            return None
+        tx = Taxonomy(fzm[0]['id'])
+        tx._fuzz_score = fzm[0]['score']
+        return tx
+
+    # pass a list, returns ordered by score all fuzzy-matches
+    @classmethod
+    def find_fuzzy_list(cls, possible):
+        matches = []
+        # reduces to unique (and lowercase first)
+        for p in set([a.lower() for a in possible]):
+            fz = cls.find_fuzzy(p)
+            if fz:
+                matches.append(fz)
+        if not matches:
+            return []
+        # this way highest score (of duplicates) gets put in as only one
+        once = []
+        for m in sorted(matches, key=lambda d: -d._fuzz_score):
+            if m not in once:
+                once.append(m)
+        return once
+
+    def get_all_names(self):
+        return self.commonNames + [self.scientificName]
+
+    def __eq__(self, other):
+        if not isinstance(other, Taxonomy):
+            return False
+        return self.guid == other.guid
+
+    def __repr__(self):
+        return (
+            f'<{self.__class__.__name__}({self.scientificName} ' f'/ guid={self.guid})>'
         )

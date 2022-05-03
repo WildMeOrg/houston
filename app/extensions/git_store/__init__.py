@@ -488,7 +488,7 @@ class GitStore(db.Model, HoustonModel):
                 )
             except Exception:  # pragma: no cover
                 log.exception(
-                    'create_from_tus() had problems with import_tus_files(); deleting from db and fs %r'
+                    'create_from_metadata() had problems with import_tus_files(); deleting from db and fs %r'
                     % git_store
                 )
                 git_store.delete()

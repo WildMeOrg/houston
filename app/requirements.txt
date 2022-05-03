@@ -31,6 +31,8 @@ Flask-SQLAlchemy>=2.4,<3
 
 flower
 
+FuzzyWuzzy
+
 gevent
 
 gitpython
@@ -79,6 +81,7 @@ stripe
 sutime
 
 tqdm
+tweepy
 utool
 webargs==5.5.3
 werkzeug>=0.15,<0.16

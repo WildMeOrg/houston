@@ -209,6 +209,26 @@ class Individual(db.Model, FeatherModel):
 
         return taxonomy_names
 
+    def get_taxonomy_object(self):
+        tx_guid = self.get_taxonomy_guid()
+        if not tx_guid:
+            return None
+        from app.modules.site_settings.models import Taxonomy
+
+        tx = None
+        try:
+            tx = Taxonomy(tx_guid)
+        except Exception:
+            pass
+        return tx
+
+    # commented out for now due to duplication introduced by method above
+    #def get_taxonomy_names(self):
+    #    tx = self.get_taxonomy_object()
+    #    if not tx:
+    #        return []
+    #    return tx.get_all_names()
+
     def get_name_values(self):
         name_vals = [name.value for name in self.names]
         return name_vals

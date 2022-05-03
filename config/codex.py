@@ -42,6 +42,7 @@ class BaseCodexConfig(
         'mail',
         'stripe',
         'sentry',
+        'intelligent_agent',
     )
 
     ENABLED_MODULES = (

@@ -166,3 +166,72 @@ def nlp_parse_complex_date_time(
         )
 
     raise ValueError(f'unknown type in results: {res}')
+
+
+# this really should be moved to our baseclass to auto-complete the full path based on class
+#  e.g. sighting.url() => url for sighting.  but i cant figure out how to get the api/route to pass:
+#       url_for('api.encounters_encounters') => 'http://localhost/api/v1/encounters/'
+#       url_for('api.sightings_sightings') => 'http://localhost/api/v1/sightings/'
+def full_api_url(suffix_path=None):
+    from urllib.parse import urljoin
+    from flask import url_for
+
+    return urljoin(url_for('api.root', _external=True), suffix_path)
+
+
+# match is a string, and candidates can be one of:
+#   * list (of text strings)
+#   * dict with { id0: text0, id1: text1, ... }
+# this will return a list (ordered by best match to worst) of how well match fuzzy-matched the candidates.
+#   the list contains dicts like: { id: xxx, text: yyy, score: zzz } (id will be omitted if only a list is passed in)
+def fuzzy_match(match, candidates):
+    from fuzzywuzzy import fuzz
+
+    lmatch = match.lower()
+    if isinstance(candidates, list):
+        res = [{'text': i.lower()} for i in candidates]
+    else:
+        res = [{'id': i, 'text': candidates[i].lower()} for i in candidates]
+    for c in res:
+        c['score'] = fuzz.partial_ratio(lmatch, c['text']) + fuzz.ratio(lmatch, c['text'])
+    return sorted(res, key=lambda d: -d['score'])
+
+
+def get_redis_connection():
+    import redis
+    from flask import current_app
+
+    # this is cribbed from tus usage of redis - i guess its trying to reycle
+    #   a previous connection rather than always reconnecting.  ymmv?
+    #
+    # Find the stack on which we want to store the database connection.
+    # Starting with Flask 0.9, the _app_ctx_stack is the correct one,
+    # before that we need to use the _request_ctx_stack.
+    try:
+        from flask import _app_ctx_stack as stack
+    except ImportError:  # pragma: no cover
+        from flask import _request_ctx_stack as stack
+
+    redis_connection_string = current_app.config['REDIS_CONNECTION_STRING']
+    if not redis_connection_string:
+        raise ValueError('missing REDIS_CONNECTION_STRING')
+    ctx = stack.top
+    if not ctx:
+        raise ValueError('could not get ctx')
+    if not hasattr(ctx, 'codex_persisted_values_redis'):
+        ctx.codex_persisted_values_redis = redis.from_url(redis_connection_string)
+    conn = ctx.codex_persisted_values_redis
+    if not conn:
+        raise ValueError('unable to obtain redis connection')
+    return conn
+
+
+def set_persisted_value(key, value):
+    conn = get_redis_connection()
+    return conn.set(key, value)
+
+
+def get_persisted_value(key):
+    conn = get_redis_connection()
+    val = conn.get(key)
+    return val.decode('utf-8') if val else None

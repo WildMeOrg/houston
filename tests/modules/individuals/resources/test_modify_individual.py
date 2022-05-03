@@ -4,6 +4,7 @@
 from tests import utils
 from tests.modules.individuals.resources import utils as individual_utils
 from tests.modules.sightings.resources import utils as sighting_utils
+from tests.modules.site_settings.resources import utils as setting_utils
 import pytest
 
 from tests.utils import module_unavailable
@@ -19,8 +20,10 @@ def test_modify_individual_edm_fields(
 
     from app.modules.encounters.models import Encounter
     from app.modules.sightings.models import Sighting
+    from app.modules.individuals.models import Individual
 
     individual_json = None
+    tx = setting_utils.get_some_taxonomy_dict(flask_app_client, staff_user)
 
     try:
 
@@ -41,6 +44,7 @@ def test_modify_individual_edm_fields(
 
         individual_data_in = {
             'names': [{'context': 'defaultName', 'value': 'Godzilla'}],
+            'taxonomy': tx['id'],
             'encounters': [
                 {
                     'id': str(enc.guid),
@@ -103,6 +107,14 @@ def test_modify_individual_edm_fields(
         assert individual_json['guid'] is not None
         assert individual_json['sex'] == 'male'
         assert individual_json['timeOfBirth'] == '1445410800000'
+
+        indiv = Individual.query.get(individual_id)
+        tx_obj = indiv.get_taxonomy_object()
+        assert tx_obj
+        assert tx_obj.guid == tx['id']
+        assert set(indiv.get_taxonomy_names()) == set(
+            tx['commonNames'] + [tx['scientificName']]
+        )
 
     finally:
         individual_utils.delete_individual(

@@ -107,6 +107,7 @@ if is_extension_enabled('edm'):
             # TODO is this actually needed
             log.warning('User._process_edm_user_organization() not implemented yet')
 
+
 else:
     UserEDMMixin = object
 
@@ -167,6 +168,12 @@ class User(db.Model, FeatherModel, UserEDMMixin):
     default_identification_catalogue = db.Column(
         db.GUID, nullable=True
     )  # this may just be a string, however EDM wants to do ID catalogues
+
+    # these are to connect social accounts and the like
+    linked_accounts = db.Column(db.JSON, nullable=True)
+
+    # twitter_username is *temporary* way we link to twitter
+    twitter_username = db.Column(db.String, default=None, nullable=True, unique=True)
 
     profile_fileupload_guid = db.Column(
         db.GUID, db.ForeignKey('file_upload.guid'), nullable=True
@@ -527,6 +534,30 @@ class User(db.Model, FeatherModel, UserEDMMixin):
             cls.forum_id.contains(term),
             cls.full_name.contains(term),
         )
+
+    @classmethod
+    def find_by_linked_account(cls, account_key, value, id_key='id'):
+        possible = User.query.filter(User.linked_accounts.isnot(None)).all()
+        for user in possible:
+            if (
+                user.linked_accounts
+                and account_key in user.linked_accounts
+                and user.linked_accounts[account_key].get(id_key) == value
+            ):
+                return user
+        return None
+
+    def link_account(self, social_key, data):
+        if not isinstance(data, dict):
+            raise ValueError('must pass data as dict')
+        if not self.linked_accounts:
+            self.linked_accounts = {social_key: data}
+        else:
+            self.linked_accounts[social_key] = data
+            self.linked_accounts = self.linked_accounts
+        with db.session.begin():
+            db.session.merge(self)
+        db.session.refresh(self)
 
     @property
     def is_authenticated(self):
@@ -931,6 +962,9 @@ class User(db.Model, FeatherModel, UserEDMMixin):
             full_name='Public User',
             is_internal=False,
         )
+
+    def is_public_user(self):
+        return self.email == User.PUBLIC_USER_EMAIL
 
     @module_required('sightings', resolve='warn', default=[])
     def get_sightings(self):

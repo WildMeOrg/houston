@@ -107,7 +107,7 @@ class SiteSetting(db.Model, Timestamp):
     }
 
     if is_extension_enabled('intelligent_agent'):
-        from app.extensions.intelligent_agent import IntelligentAgent
+        from app.extensions.intelligent_agent.models import IntelligentAgent
 
         HOUSTON_SETTINGS.update(IntelligentAgent.site_setting_config_all())
 

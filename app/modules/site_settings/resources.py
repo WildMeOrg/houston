@@ -533,7 +533,7 @@ class TestSettings(Resource):
         if path.startswith('intelligent_agent_') and is_extension_enabled(
             'intelligent_agent'
         ):
-            from app.extensions.intelligent_agent import IntelligentAgent
+            from app.extensions.intelligent_agent.models import IntelligentAgent
 
             name = path[18:]
             agent_cls = IntelligentAgent.get_agent_class_by_short_name(name)

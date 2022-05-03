@@ -2,7 +2,7 @@
 import logging
 
 from app.extensions.celery import celery
-from app.extensions.intelligent_agent import IntelligentAgentException
+from app.extensions.intelligent_agent.models import IntelligentAgentException
 
 log = logging.getLogger(__name__)
 
@@ -96,7 +96,7 @@ DETECTION_RETRIES = 100
     max_retries=DETECTION_RETRIES,
 )
 def intelligent_agent_wait_for_detection_results(self, content_guid):
-    from app.extensions.intelligent_agent import IntelligentAgentContent
+    from app.extensions.intelligent_agent.models import IntelligentAgentContent
     from app.modules.assets.models import Asset
 
     iacontent = IntelligentAgentContent.query.get(content_guid)
@@ -147,7 +147,7 @@ IDENTIFICATION_RETRIES = 100
     max_retries=IDENTIFICATION_RETRIES,
 )
 def intelligent_agent_wait_for_identification_results(self, content_guid):
-    from app.extensions.intelligent_agent import IntelligentAgentContent
+    from app.extensions.intelligent_agent.models import IntelligentAgentContent
 
     iacontent = IntelligentAgentContent.query.get(content_guid)
     assert iacontent, f'could not get guid={str(content_guid)}'

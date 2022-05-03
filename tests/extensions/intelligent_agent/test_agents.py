@@ -47,8 +47,7 @@ def set_keys():
     reason='Intelligent Agent extension disabled',
 )
 def test_twitter_basics(flask_app):
-    from app.extensions.intelligent_agent import IntelligentAgent
-    from app.extensions.intelligent_agent.models import TwitterBot
+    from app.extensions.intelligent_agent.models import IntelligentAgent, TwitterBot
 
     assert not TwitterBot.is_enabled()
     SiteSetting.set(TwitterBot.site_setting_id('enabled'), string='true')
@@ -113,8 +112,11 @@ def test_twitter_connectivity(flask_app_client):
     reason='Intelligent Agent extension disabled',
 )
 def test_twitter_tweet_io(flask_app_client):
-    from app.extensions.intelligent_agent import IntelligentAgentContentState
-    from app.extensions.intelligent_agent.models import TwitterBot, TwitterTweet
+    from app.extensions.intelligent_agent.models import (
+        IntelligentAgentContentState,
+        TwitterBot,
+        TwitterTweet,
+    )
 
     set_keys()
     tb = TwitterBot()

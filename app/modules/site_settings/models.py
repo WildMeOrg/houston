@@ -39,9 +39,18 @@ class SiteSetting(db.Model, Timestamp):
                     ]
                 },
             },
+            'default': lambda: current_app.config.get('DEFAULT_EMAIL_SERVICE'),
         },
-        'email_service_username': {'type': str, 'public': False},
-        'email_service_password': {'type': str, 'public': False},
+        'email_service_username': {
+            'type': str,
+            'public': False,
+            'default': lambda: current_app.config.get('DEFAULT_EMAIL_SERVICE_USERNAME'),
+        },
+        'email_service_password': {
+            'type': str,
+            'public': False,
+            'default': lambda: current_app.config.get('DEFAULT_EMAIL_SERVICE_PASSWORD'),
+        },
         'email_default_sender_email': {
             'type': str,
             'public': False,

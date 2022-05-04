@@ -287,11 +287,9 @@ def test_alter_houston_settings(flask_app_client, admin_user, researcher_1):
     assert admin_configuration['email_service_username']['valueNotSet'] is False
     assert admin_configuration['email_service_password']['value'] == password
     assert admin_configuration['email_service_password']['valueNotSet'] is False
-    assert researcher_configuration['email_service_username']['value'] == ''
-    assert researcher_configuration['email_service_username']['valueNotSet'] is True
-    assert researcher_configuration['email_service_password']['value'] == ''
-    assert researcher_configuration['email_service_password']['valueNotSet'] is True
-    assert 'currentValue' not in researcher_definition['email_service_username'].keys()
-    assert 'currentValue' not in researcher_definition['email_service_password'].keys()
+    assert 'email_service_username' not in researcher_configuration
+    assert 'email_service_password' not in researcher_configuration
+    assert 'currentValue' not in researcher_definition['email_service_username']
+    assert 'currentValue' not in researcher_definition['email_service_password']
     assert admin_definition['email_service_username']['currentValue'] == username
     assert admin_definition['email_service_password']['currentValue'] == password

@@ -256,10 +256,35 @@ class IntelligentAgentContent(db.Model, HoustonModel):
     # can (should?) be overridden to be agent-specific if desired
     #   used for things like filename prefixes etc, so should be fairly "filename-friendly"
     def id_string(self):
-        return self.guid
+        return str(self.guid)
 
-    def derive_time(self):
+    def get_reference_date(self):
         raise NotImplementedError('must be overridden')
+
+    # probably useful for any agent, but agent can override if needed
+    #   note: requires get_reference_date() to be defined for subclass
+    def derive_time(self):
+        from app.modules.complex_date_time.models import ComplexDateTime, Specificities
+        from app.utils import nlp_parse_complex_date_time
+
+        # be warned: falls back to current time now
+        reference_date = (
+            self.get_reference_date() or datetime.utcnow().isoformat() + '+00:00'
+        )
+        try:
+            return nlp_parse_complex_date_time(
+                self.content_as_string(), reference_date=reference_date
+            )
+        except RuntimeError as err:
+            log.warning(
+                f'nlp_parse_complex_date_time() probably does not have JRE/jars installed, using fallback; threw error: {str(err)}'
+            )
+        return ComplexDateTime.from_data(
+            {
+                'time': reference_date,
+                'timeSpecificity': Specificities.time,
+            }
+        )
 
     # these search whole text, but can be overriden (e.g. with hashtags)
     #  wants a Taxonomy object
@@ -946,6 +971,10 @@ class TwitterTweet(IntelligentAgentContent):
         uname = self.get_author_username()
         return f'{author}:{uname}' if uname else author
 
+    # isoformat string
+    def get_reference_date(self):
+        return self.raw_content.get('created_at', '').replace('Z', '+00:00')
+
     def respond_to(self, text):
         log.debug(f'responding to {self} from {self.get_author_username()}: {text}')
         assert self.source and self.source.get('id')
@@ -961,17 +990,6 @@ class TwitterTweet(IntelligentAgentContent):
         for ht in self.raw_content['entities']['hashtags']:
             values.append(ht.get('tag'))
         return values
-
-    def derive_time(self):
-        # FIXME real implementation
-        from app.modules.complex_date_time.models import ComplexDateTime, Specificities
-
-        return ComplexDateTime.from_data(
-            {
-                'time': self.raw_content.get('created_at').replace('Z', '+00:00'),
-                'timeSpecificity': Specificities.time,
-            }
-        )
 
     # these could have a default behavior if not provided.  also they could look thru
     #   *whole* text (word-by-word), not just hashtags

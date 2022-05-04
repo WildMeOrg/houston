@@ -83,12 +83,12 @@ class ProductionConfig(BaseMWSConfig):
 class DevelopmentConfig(BaseMWSConfig):
     DEBUG = True
 
-    MAIL_OVERRIDE_RECIPIENTS = [
-        'testing@wildme.org',
-    ]
-    MAIL_ERROR_RECIPIENTS = [
-        'mail-errors@wildme.org',
-    ]
+    MAIL_OVERRIDE_RECIPIENTS = os.getenv(
+        'MAIL_OVERRIDE_RECIPIENTS', 'testing@wildme.org'
+    ).split(',')
+    MAIL_ERROR_RECIPIENTS = os.getenv(
+        'MAIL_ERROR_RECIPIENTS', 'mail-errors@wildme.org'
+    ).split(',')
 
     SECRET_KEY = 'DEVELOPMENT_SECRET_KEY'
     SENTRY_DSN = os.getenv('SENTRY_DSN_DEVELOPMENT', None)

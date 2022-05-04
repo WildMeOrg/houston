@@ -214,6 +214,9 @@ class EmailConfig(object):
     MAIL_USE_SSL = bool(os.getenv('MAIL_USE_SSL', False))
     MAIL_USERNAME = os.getenv('MAIL_USERNAME', 'dev@wildme.org')
     MAIL_PASSWORD = os.getenv('MAIL_PASSWORD', 'XXX')
+    DEFAULT_EMAIL_SERVICE = os.getenv('DEFAULT_EMAIL_SERVICE')
+    DEFAULT_EMAIL_SERVICE_USERNAME = os.getenv('DEFAULT_EMAIL_SERVICE_USERNAME')
+    DEFAULT_EMAIL_SERVICE_PASSWORD = os.getenv('DEFAULT_EMAIL_SERVICE_PASSWORD')
 
     @property
     def MAIL_DEFAULT_SENDER(self):

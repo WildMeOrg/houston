@@ -28,6 +28,10 @@ log = logging.getLogger('pytest.conftest')  # pylint: disable=invalid-name
 
 # Force FLASK_ENV to be testing instead of using what's defined in the environment
 os.environ['FLASK_ENV'] = 'testing'
+# Remove MAIL_DEFAULT_SENDER_EMAIL environment variable so the generated
+# one is used in tests
+if 'MAIL_DEFAULT_SENDER_EMAIL' in os.environ:
+    del os.environ['MAIL_DEFAULT_SENDER_EMAIL']
 
 
 # Import all models first for db.relationship to avoid model look up

@@ -211,7 +211,7 @@ class IntelligentAgentContent(db.Model, HoustonModel):
             ')>'.format(class_name=self.__class__.__name__, self=self)
         )
 
-    def respond_to(self, text):
+    def respond_to(self, text, media_paths=None):
         raise NotImplementedError('respond_to() must be overridden')
 
     # override
@@ -223,6 +223,18 @@ class IntelligentAgentContent(db.Model, HoustonModel):
         if not self.asset_group:
             return None
         return self.asset_group.assets
+
+    # right now does only abox format, but could be passed in
+    def get_media_paths(self):
+        assets = self.get_assets()
+        if not assets:
+            return None
+        paths = []
+        for asset in assets:
+            path = asset.get_or_make_format_path(self, 'abox')
+            paths.append(path)
+        log.debug(f'get_media_paths({self}) => {paths}')
+        return paths
 
     def get_asset_group_sighting(self):
         if not self.asset_group or not self.asset_group.asset_group_sightings:
@@ -477,6 +489,7 @@ class IntelligentAgentContent(db.Model, HoustonModel):
 
     def detection_complete(self):
         from app.modules.assets.models import Asset
+        from app.utils import full_api_url
         import traceback
 
         annots = []
@@ -522,17 +535,19 @@ class IntelligentAgentContent(db.Model, HoustonModel):
         elif len(annots) > 1:
             self.state = IntelligentAgentContentState.complete
             if self.owner and not self.owner.is_public_user():
-                # FIXME spec says we should provide link and image with annotations!?
                 self.respond_to(
                     _(
-                        'We found more than one animal. You must login and curate this data.'
+                        'We found more than one animal. You must login and curate this data. '
                     )
+                    + full_api_url('sightings/xxxx'),
+                    media_paths=self.get_media_paths(),
                 )
             else:
                 self.respond_to(
                     _(
                         'We found more than one animal. This submission will be curated by a researcher.'
-                    )
+                    ),
+                    media_paths=self.get_media_paths(),
                 )
         else:  # must be exactly 1 annot - on to identification!
             try:
@@ -609,7 +624,8 @@ class IntelligentAgentContent(db.Model, HoustonModel):
         )
         self.state = IntelligentAgentContentState.complete
         self.respond_to(
-            _('We finished processing your submission. Check it out here: ') + url
+            _('We finished processing your submission. Check it out here: ') + url,
+            media_paths=self.get_media_paths(),
         )
         with db.session.begin():
             db.session.merge(self)
@@ -999,11 +1015,15 @@ class TwitterTweet(IntelligentAgentContent):
     def get_reference_date(self):
         return self.raw_content.get('created_at', '').replace('Z', '+00:00')
 
-    def respond_to(self, text):
-        log.debug(f'responding to {self} from {self.get_author_username()}: {text}')
+    def respond_to(self, text, media_paths=None):
+        log.debug(
+            f'responding to {self} from {self.get_author_username()} [media {media_paths}]: {text}'
+        )
         assert self.source and self.source.get('id')
         tb = TwitterBot()
-        tb.create_tweet_queued(text, in_reply_to=self.source.get('id'))
+        tb.create_tweet_queued(
+            text, in_reply_to=self.source.get('id'), media_paths=media_paths
+        )
 
     def hashtag_values(self):
         if not self.raw_content.get('entities') or not isinstance(

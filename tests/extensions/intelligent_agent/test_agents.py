@@ -268,3 +268,20 @@ def test_linked_tweet_and_misc(researcher_1, flask_app_client, admin_user):
 
     # cleanup
     researcher_1.linked_accounts = None
+
+
+@pytest.mark.skipif(
+    extension_unavailable('intelligent_agent'),
+    reason='Intelligent Agent extension disabled',
+)
+def test_nlp_date():
+    from app.extensions.intelligent_agent.models import TwitterTweet
+
+    tweet = get_fake_tweet()
+    tt = TwitterTweet(tweet)
+
+    # right now we do not have ability to test actual NLP, so this falls back to using created_at
+    tt.raw_content = {'created_at': '2000-01-02T03:04:05Z'}
+    cdt = tt.derive_time()
+    assert cdt
+    assert cdt.isoformat_in_timezone() == '2000-01-02T03:04:05+00:00'

@@ -25,6 +25,7 @@ class TusManager(object):
         self.upload_finish_cb = upload_finish_cb
         self.upload_file_handler_cb = None
         self.delete_file_handler_cb = None
+        self.pending_transaction_handler_cb = None
 
         self.blueprint = Blueprint('tus-manager', __name__)
 
@@ -115,6 +116,10 @@ class TusManager(object):
 
     def delete_file_handler(self, callback):
         self.delete_file_handler_cb = callback
+        return callback
+
+    def pending_transaction_handler(self, callback):
+        self.pending_transaction_handler_cb = callback
         return callback
 
     # handle redis server connection
@@ -390,10 +395,20 @@ class TusManager(object):
 
     def tus_1_pending(self):
         # Get any pending transactions that the user may have been working on
+        status_code = 200
 
-        import utool as ut
+        if self.pending_transaction_handler_cb is not None:
+            try:
+                message = self.pending_transaction_handler_cb(
+                    self.upload_folder, request, self.app
+                )
+            except Exception:
+                message = 'User must be logged in'
+                status_code = 401
+        else:
+            message = ''
+            status_code = 204
 
-        ut.embed()
-
-        response = make_response('', 200)
+        response = make_response(message, status_code)
+        response.mimetype = 'application/json'
         return response

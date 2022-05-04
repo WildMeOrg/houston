@@ -23,6 +23,13 @@ if not is_extension_enabled('tus'):
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
 
+PREFIXES = {
+    'transaction': 'trans',
+    'submission': 'sub',
+    'session': 'session',
+}
+
+
 def init_app(app, **kwargs):
     # pylint: disable=unused-argument
     """
@@ -38,6 +45,7 @@ def init_app(app, **kwargs):
     tm.init_app(app, upload_url='/api/v1/tus')
     tm.upload_file_handler(_tus_upload_file_handler)
     tm.delete_file_handler(_tus_delete_file_handler)
+    tm.pending_transaction_handler(_tus_pending_transaction_handler)
 
 
 def _tus_upload_file_handler(
@@ -73,7 +81,7 @@ def _tus_upload_file_handler(
     if not os.path.exists(dir):
         os.makedirs(dir)
 
-    metadata_filepath = os.path.join(dir, '.metadata.json')
+    metadata_filepath = tus_get_transaction_metadata_filepath(dir)
 
     if not os.path.exists(metadata_filepath):
         with open(metadata_filepath, 'w') as metadata_file:
@@ -124,7 +132,7 @@ def _tus_delete_file_handler(upload_file_path, resource_id, req, app):
     matches = []
     for filepath in filepaths:
         assert os.path.exists(filepath)
-        metadata_filepath = tus_get_metadata_filepath(filepath)
+        metadata_filepath = tus_get_resource_metadata_filepath(filepath)
         if os.path.exists(metadata_filepath):
             with open(metadata_filepath, 'r') as metadata_file:
                 metadata = json.load(metadata_file)
@@ -143,15 +151,129 @@ def _tus_delete_file_handler(upload_file_path, resource_id, req, app):
         os.remove(match)
 
 
-def tus_get_metadata_filepath(filepath):
+def _tus_pending_transaction_handler(upload_folder, req, app):
+    import uuid
+
+    assert not current_user.is_anonymous
+    assert isinstance(current_user.guid, uuid.UUID)
+
+    transaction_datas = []
+    # traverse whole upload dir and take everything
+    for root, dirs, files in os.walk(upload_folder):
+        for dir in dirs:
+            if not dir.startswith('.'):
+                for key, prefix in PREFIXES.items():
+                    if key not in ['transaction']:
+                        continue
+                    prefix_str = '%s-' % (prefix)
+                    if dir.startswith(prefix_str):
+                        transaction_datas.append(
+                            (
+                                os.path.join(upload_folder, dir),
+                                dir.replace(prefix_str, ''),
+                            )
+                        )
+
+    matches = []
+    for transaction_data in transaction_datas:
+        dir, transaction_id = transaction_data
+
+        metadata_filepath = tus_get_transaction_metadata_filepath(dir)
+
+        if os.path.exists(metadata_filepath):
+            with open(metadata_filepath, 'r') as metadata_file:
+                metadata = json.load(metadata_file)
+                if str(current_user.guid) == metadata.get('user_guid'):
+                    matches.append(transaction_data)
+
+    response = {}
+
+    log.debug(
+        'User has %d pending transaction IDs: %r'
+        % (
+            len(matches),
+            matches,
+        )
+    )
+    for upload_dir, transaction_id in matches:
+
+        metadata_filepath = tus_get_transaction_metadata_filepath(upload_dir)
+
+        metadatas = []
+        resources = []
+        for root, dirs, files in os.walk(upload_dir):
+            for path in files:
+                if os.path.join(upload_dir, path) == metadata_filepath:
+                    continue
+                elif path.startswith('.'):
+                    metadatas.append(os.path.join(upload_dir, path))
+                else:
+                    resources.append(os.path.join(upload_dir, path))
+
+        valid_metadatas = []
+        valid_resources = []
+        for resource in resources:
+            metadata = tus_get_resource_metadata_filepath(resource)
+            if metadata in metadatas:
+                valid_resources.append(resource)
+                valid_metadatas.append(metadata)
+
+        delete_metadatas = sorted(set(metadatas) - set(valid_metadatas))
+        delete_resources = sorted(set(resources) - set(valid_resources))
+        delete_files = delete_metadatas + delete_resources
+
+        # Clean-up any corrupted data from the transaction
+        if len(delete_files) > 0:
+            log.debug(
+                'Cleaning %d corrupted files in transaction ID %r'
+                % (
+                    len(delete_files),
+                    transaction_id,
+                )
+            )
+
+            for delete_file in delete_files:
+                os.remove(delete_file)
+
+        assert len(valid_resources) == len(valid_metadatas)
+        if len(valid_resources) > 0:
+            response[transaction_id] = {'resources': {}}
+            total_size = 0
+            changed_times = []
+            for valid_resource, valid_metadata in zip(valid_resources, valid_metadatas):
+                with open(valid_metadata, 'r') as metadata_file:
+                    metadata = json.load(metadata_file)
+                    resource_id = metadata.get('resource_id', None)
+                    filename = metadata.get('filename', None)
+                    if None in [resource_id, filename]:
+                        continue
+                    stats = os.stat(valid_resource)
+                    response[transaction_id]['resources'][resource_id] = {
+                        'filename': filename,
+                        'bytes': stats.st_size,
+                    }
+                    total_size += stats.st_size
+                    changed_times.append(stats.st_ctime)
+            response[transaction_id]['bytes'] = total_size
+            response[transaction_id]['time'] = min(changed_times)
+
+    response_json = json.dumps(response)
+    return response_json
+
+
+def tus_get_resource_metadata_filepath(filepath):
     path, filename = os.path.split(filepath)
     return os.path.join(path, '.%s.metadata.json' % (filename,))
+
+
+def tus_get_transaction_metadata_filepath(dir):
+    return os.path.join(dir, '.metadata.json')
 
 
 def tus_write_file_metadata(stored_path, input_path, resource_id):
 
     # Store the original filename as metadata next to the file
-    metadata_filepath = tus_get_metadata_filepath(stored_path)
+    metadata_filepath = tus_get_resource_metadata_filepath(stored_path)
     with open(metadata_filepath, 'w') as metadata_file:
         metadata = {
             'saved_filename': stored_path,
@@ -170,16 +292,20 @@ def tus_upload_dir(app, git_store_guid=None, transaction_id=None, session_id=Non
     if git_store_guid is None and transaction_id is None and session_id is None:
         return base_path
     if git_store_guid is not None:
-        return os.path.join(base_path, '-'.join(['sub', str(git_store_guid)]))
+        return os.path.join(
+            base_path, '-'.join([PREFIXES['submission'], str(git_store_guid)])
+        )
     if transaction_id is not None:
         from uuid import UUID
 
         # this is just to test it is a valid uuid - will throw ValueError if not! (500 response)
         UUID(transaction_id, version=4)
-        return os.path.join(base_path, '-'.join(['trans', transaction_id]))
+        return os.path.join(
+            base_path, '-'.join([PREFIXES['transaction'], transaction_id])
+        )
     # must be session_id
     h = hashlib.sha256(session_id)
-    return os.path.join(base_path, '-'.join(['session', h.hexdigest()]))
+    return os.path.join(base_path, '-'.join([PREFIXES['session'], h.hexdigest()]))
 
 
 def tus_filepaths_from(
@@ -216,7 +342,7 @@ def tus_filepaths_from(
     metadatas = []
     for filepath in filepaths:
         assert os.path.exists(filepath)
-        metadata_filepath = tus_get_metadata_filepath(filepath)
+        metadata_filepath = tus_get_resource_metadata_filepath(filepath)
         if os.path.exists(metadata_filepath):
             with open(metadata_filepath, 'r') as metadata_file:
                 metadata = json.load(metadata_file)

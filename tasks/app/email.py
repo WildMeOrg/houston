@@ -30,7 +30,7 @@ def send(
     if password:
         SiteSetting.set('email_service_password', string=password)
 
-    msg = Email(subject, recipients=[recipient])
+    msg = Email(subject=subject, recipients=[recipient])
     msg.body = body
     msg.email_type = EmailTypes.invite
     resp = msg.send_message()

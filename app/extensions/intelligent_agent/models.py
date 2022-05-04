@@ -231,8 +231,8 @@ class IntelligentAgentContent(db.Model, HoustonModel):
             return None
         paths = []
         for asset in assets:
-            path = asset.get_or_make_format_path(self, 'abox')
-            paths.append(path)
+            path = asset.get_or_make_format_path('abox')
+            paths.append(str(path))
         log.debug(f'get_media_paths({self}) => {paths}')
         return paths
 
@@ -389,7 +389,6 @@ class IntelligentAgentContent(db.Model, HoustonModel):
                     'comments': self.content_as_string(),
                     'speciesDetectionModel': self.get_species_detection_models(),
                     'locationId': self.data.get('location_id'),
-                    'taxonomy': self.data.get('taxonomy_guid'),
                     'time': self.data.get('time'),
                     'timeSpecificity': self.data.get('time_specificity'),
                     'encounters': [
@@ -535,11 +534,14 @@ class IntelligentAgentContent(db.Model, HoustonModel):
         elif len(annots) > 1:
             self.state = IntelligentAgentContentState.complete
             if self.owner and not self.owner.is_public_user():
+                ags = self.get_asset_group_sighting()
+                assert ags, f'no AGS for {self}'
+                url = full_api_url(f'pending-sightings/{str(ags.guid)}')
                 self.respond_to(
                     _(
                         'We found more than one animal. You must login and curate this data. '
                     )
-                    + full_api_url('sightings/xxxx'),
+                    + url,
                     media_paths=self.get_media_paths(),
                 )
             else:
@@ -768,7 +770,10 @@ class TwitterBot(IntelligentAgent):
                 media_ids.append(media.media_id)
                 mct += 1
             tweet = self.api.update_status(
-                status=text, in_reply_to_status_id=in_reply_to, media_ids=media_ids
+                status=text,
+                in_reply_to_status_id=in_reply_to,
+                media_ids=media_ids,
+                auto_populate_reply_metadata=bool(in_reply_to),
             )
         else:
             tweet = self.client.create_tweet(text=text, in_reply_to_tweet_id=in_reply_to)

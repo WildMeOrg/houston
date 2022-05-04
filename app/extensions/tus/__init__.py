@@ -127,7 +127,7 @@ def _tus_delete_file_handler(upload_file_path, resource_id, req, app):
     for root, dirs, files in os.walk(upload_dir):
         for path in files:
             if not path.startswith('.'):
-                filepaths.append(os.path.join(upload_dir, path))
+                filepaths.append(os.path.join(root, path))
 
     matches = []
     for filepath in filepaths:
@@ -169,7 +169,7 @@ def _tus_pending_transaction_handler(upload_folder, req, app):
                     if dir.startswith(prefix_str):
                         transaction_datas.append(
                             (
-                                os.path.join(upload_folder, dir),
+                                os.path.join(root, dir),
                                 dir.replace(prefix_str, ''),
                             )
                         )
@@ -203,12 +203,12 @@ def _tus_pending_transaction_handler(upload_folder, req, app):
         resources = []
         for root, dirs, files in os.walk(upload_dir):
             for path in files:
-                if os.path.join(upload_dir, path) == metadata_filepath:
+                if os.path.join(root, path) == metadata_filepath:
                     continue
                 elif path.startswith('.'):
-                    metadatas.append(os.path.join(upload_dir, path))
+                    metadatas.append(os.path.join(root, path))
                 else:
-                    resources.append(os.path.join(upload_dir, path))
+                    resources.append(os.path.join(root, path))
 
         valid_metadatas = []
         valid_resources = []
@@ -326,7 +326,7 @@ def tus_filepaths_from(
     for root, dirs, files in os.walk(upload_dir):
         for path in files:
             if not path.startswith('.'):
-                filepaths.append(os.path.join(upload_dir, path))
+                filepaths.append(os.path.join(root, path))
 
     missing_paths = []
     if paths:
@@ -361,3 +361,36 @@ def tus_purge(git_store_guid=None, session_id=None, transaction_id=None):
         transaction_id=transaction_id,
     )
     shutil.rmtree(upload_dir)
+
+
+def tus_cleanup():
+    import time
+
+    tus_directory = tus_upload_dir(current_app)
+
+    ttl_seconds = current_app.config.get('UPLOADS_TTL_SECONDS', None)
+    if ttl_seconds is None:
+        return
+
+    limit = int(time.time() - ttl_seconds)
+
+    for root, dirs, files in os.walk(tus_directory):
+        for path in dirs + files:
+            tus_path = os.path.join(root, path)
+            stats = os.stat(tus_path)
+            delta = limit - stats.st_mtime
+            if delta > 0:
+                log.info(
+                    'Deleting too old (%s seconds) Tus pending file: %r'
+                    % (
+                        delta,
+                        tus_path,
+                    )
+                )
+                if os.path.isdir(tus_path):
+                    shutil.rmtree(tus_path)
+                else:
+                    os.remove(tus_path)
+
+        # Only inspect the root folder, no need to check recursively
+        break

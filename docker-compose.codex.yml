@@ -297,7 +297,7 @@ services:
   celery_worker:
     image: wildme/houston:latest
     build: *houston-build
-    command: ["celery", "-A", "app.extensions.celery.celery", "worker", "-l", "INFO", "--pool=gevent", "--task-events", "--without-heartbeat", "--without-gossip", "--without-mingle"]
+    command: ["celery", "-A", "app.extensions.celery.celery", "worker", "-l", "INFO", "--pool=gevent", "--task-events"]
     depends_on:
       houston:
         condition: service_healthy
@@ -312,7 +312,7 @@ services:
   celery_worker_2:
     image: wildme/houston:latest
     build: *houston-build
-    command: ["celery", "-A", "app.extensions.celery.celery", "worker", "-l", "INFO", "--pool=gevent", "--task-events", "--without-heartbeat", "--without-gossip", "--without-mingle"]
+    command: ["celery", "-A", "app.extensions.celery.celery", "worker", "-l", "INFO", "--pool=gevent", "--task-events"]
     depends_on:
       houston:
         condition: service_healthy
@@ -327,7 +327,7 @@ services:
   celery_worker_3:
     image: wildme/houston:latest
     build: *houston-build
-    command: ["celery", "-A", "app.extensions.celery.celery", "worker", "-l", "INFO", "--pool=gevent", "--task-events", "--without-heartbeat", "--without-gossip", "--without-mingle"]
+    command: ["celery", "-A", "app.extensions.celery.celery", "worker", "-l", "INFO", "--pool=gevent", "--task-events"]
     depends_on:
       houston:
         condition: service_healthy

@@ -45,3 +45,6 @@ if is_extension_enabled('elasticsearch'):
 
 if is_extension_enabled('intelligent_agent'):
     import app.extensions.intelligent_agent.tasks  # noqa
+
+if is_extension_enabled('tus'):
+    import app.extensions.tus.tasks  # noqa

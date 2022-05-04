@@ -5,6 +5,8 @@ import pytest
 
 from werkzeug.exceptions import HTTPException
 import tests.utils as test_utils
+from tests.utils import module_unavailable
+
 
 from app.modules.users import permissions
 from app.modules.users.permissions.types import AccessOperation
@@ -542,3 +544,25 @@ def test_ObjectAccessPermission_user_manager_user(
     validate_cannot_read_object(obj)
     validate_cannot_write_object(obj)
     validate_cannot_delete_object(obj)
+
+
+@pytest.mark.skipif(
+    module_unavailable('individuals'), reason='Individuals module disabled'
+)
+def test_data_manager_and_staff_access(
+    db, flask_app_client, researcher_1, data_manager_1, staff_user, request, test_root
+):
+    import tests.modules.individuals.resources.utils as individual_utils
+    uuids = individual_utils.create_individual_and_sighting(
+        flask_app_client,
+        researcher_1,
+        request,
+        test_root,
+    )
+    individual_id = uuids['individual']
+    sighting_id = uuids['sighting']
+
+    data_manager_indiv_json = individual_utils.read_individual(
+        flask_app_client, data_manager_1, individual_id
+    )
+

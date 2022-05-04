@@ -9,6 +9,7 @@ import shutil
 import json
 
 from flask import current_app
+from flask_login import current_user
 
 # from werkzeug.utils import secure_filename, escape
 
@@ -35,10 +36,13 @@ def init_app(app, **kwargs):
         os.makedirs(uploads_directory)
     tm = TusManager()
     tm.init_app(app, upload_url='/api/v1/tus')
-    tm.upload_file_handler(_tus_file_handler)
+    tm.upload_file_handler(_tus_upload_file_handler)
+    tm.delete_file_handler(_tus_delete_file_handler)
 
 
-def _tus_file_handler(upload_file_path, filename, original_filename, req, app):
+def _tus_upload_file_handler(
+    upload_file_path, filename, original_filename, resource_id, req, app
+):
     from uuid import UUID
 
     # these are two alternate methods: organize by asset_group, or (arbitrary/random) transaction id
@@ -68,22 +72,83 @@ def _tus_file_handler(upload_file_path, filename, original_filename, req, app):
 
     if not os.path.exists(dir):
         os.makedirs(dir)
+
+    metadata_filepath = os.path.join(dir, '.metadata.json')
+
+    if not os.path.exists(metadata_filepath):
+        with open(metadata_filepath, 'w') as metadata_file:
+            metadata = {
+                'user_guid': None
+                if current_user.is_anonymous
+                else str(current_user.guid),
+            }
+            json.dump(metadata, metadata_file)
+
     log.debug('Tus finished uploading: %r in dir %r.' % (filename, dir))
     filepath = os.path.join(dir, filename)
-    os.rename(upload_file_path, filepath)
 
-    # Store the original filename as metadata next to the file
-    tus_write_file_metadata(filepath, original_filename)
+    try:
+        os.rename(upload_file_path, filepath)
+
+        # Store the original filename as metadata next to the file
+        tus_write_file_metadata(filepath, original_filename, resource_id)
+    except Exception:
+        if os.path.exists(filepath):
+            os.rename(filepath, upload_file_path)
+        raise
 
     return filename
 
 
+def _tus_delete_file_handler(upload_file_path, resource_id, req, app):
+    from uuid import UUID
+
+    if 'x-tus-transaction-id' in req.headers:
+        transaction_id = req.headers.get('x-tus-transaction-id')
+        UUID(
+            transaction_id, version=4
+        )  # this is just to test it is a valid uuid - will throw ValueError if not! (500 response)
+
+    upload_dir = tus_upload_dir(
+        current_app,
+        transaction_id=transaction_id,
+    )
+
+    filepaths = []
+    # traverse whole upload dir and take everything
+    for root, dirs, files in os.walk(upload_dir):
+        for path in files:
+            if not path.startswith('.'):
+                filepaths.append(os.path.join(upload_dir, path))
+
+    matches = []
+    for filepath in filepaths:
+        assert os.path.exists(filepath)
+        metadata_filepath = tus_get_metadata_filepath(filepath)
+        if os.path.exists(metadata_filepath):
+            with open(metadata_filepath, 'r') as metadata_file:
+                metadata = json.load(metadata_file)
+                if resource_id == metadata.get('resource_id'):
+                    matches.append(filepath)
+                    matches.append(metadata_filepath)
+
+    log.debug(
+        'User requested deletion of uploaded resource ID %r, removing %d related files from transaction'
+        % (
+            resource_id,
+            len(matches),
+        )
+    )
+    for match in matches:
+        os.remove(match)
+
+
 def tus_get_metadata_filepath(filepath):
     path, filename = os.path.split(filepath)
-    return os.path.join(path, '.%s.meta.json' % (filename,))
+    return os.path.join(path, '.%s.metadata.json' % (filename,))
 
 
-def tus_write_file_metadata(stored_path, input_path):
+def tus_write_file_metadata(stored_path, input_path, resource_id):
 
     # Store the original filename as metadata next to the file
     metadata_filepath = tus_get_metadata_filepath(stored_path)
@@ -91,6 +156,7 @@ def tus_write_file_metadata(stored_path, input_path):
         metadata = {
             'saved_filename': stored_path,
             'filename': input_path,
+            'resource_id': resource_id,
         }
         json.dump(metadata, metadata_file)
 

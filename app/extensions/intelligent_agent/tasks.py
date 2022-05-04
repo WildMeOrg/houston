@@ -51,7 +51,7 @@ def twitterbot_collect():
     default_retry_delay=3,
     max_retries=None,  # keep trying forever
 )
-def twitterbot_create_tweet_queued(text, in_reply_to):
+def twitterbot_create_tweet_queued(text, in_reply_to, media_paths):
     from app.extensions.intelligent_agent.models import TwitterBot
     import time
 
@@ -76,7 +76,7 @@ def twitterbot_create_tweet_queued(text, in_reply_to):
         tb = TwitterBot()  # can raise exception
         # slight potential for race condition here of course, but hopefully slim and not catastrophic
         TwitterBot.set_persisted_value('create_tweet_queued_last', str(now))
-        tweet = tb.create_tweet_direct(text, in_reply_to)
+        tweet = tb.create_tweet_direct(text, in_reply_to, media_paths)
         log.info(f'twitterbot_create_tweet_queue(): {tweet} created')
         return
 

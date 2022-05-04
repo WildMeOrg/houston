@@ -720,30 +720,54 @@ class TwitterBot(IntelligentAgent):
         return tweets
 
     # this should be used with caution -- use create_tweet_queued() to be safer
-    def create_tweet_direct(self, text, in_reply_to=None):
+    #  warning: will truncate media at 4 (twitter limit)
+    def create_tweet_direct(self, text, in_reply_to=None, media_paths=None):
         assert self.client
         assert text
         # this helps prevent sending identical outgoing (and may help dbugging?)
         stamp = str(uuid.uuid4())[0:4]
         text += '   ' + stamp
-        log.info(f'create_tweet_direct(): {self} tweeting [re: {in_reply_to}] >>> {text}')
+        log.info(
+            f'create_tweet_direct(): {self} tweeting [re: {in_reply_to}] [media {media_paths}] >>> {text}'
+        )
         if (
             not self.is_enabled()
             or self.get_persisted_value('twitter_outgoing_disabled') == 'true'
         ):
             log.warning('create_tweet_direct(): OUTGOING DISABLED')
             return
-        tweet = self.client.create_tweet(text=text, in_reply_to_tweet_id=in_reply_to)
+
+        # we need to currently use the V1 api for this
+        if media_paths and isinstance(media_paths, list):
+            media_ids = []
+            mct = 0
+            for path in media_paths:
+                if mct > 3:
+                    log.warning(
+                        f'- {self} stopping sending after 4 images in {media_paths}'
+                    )
+                    break
+                media = self.api.media_upload(path)
+                log.debug(f'+ ({mct}) {self} {path} sent as media {media}')
+                media_ids.append(media.media_id)
+                mct += 1
+            tweet = self.api.update_status(
+                status=text, in_reply_to_status_id=in_reply_to, media_ids=media_ids
+            )
+        else:
+            tweet = self.client.create_tweet(text=text, in_reply_to_tweet_id=in_reply_to)
         log.debug(f'create_tweet_direct(): success tweeting {tweet}')
         return tweet
 
     # preferred usage (vs create_tweet_direct()) as it will throttle outgoing rate to
     #   hopefully keep twitter guards happy
-    def create_tweet_queued(self, text, in_reply_to=None):
+    def create_tweet_queued(self, text, in_reply_to=None, media_paths=None):
         from app.extensions.intelligent_agent.tasks import twitterbot_create_tweet_queued
 
-        log.debug(f'{self} queueing tweet [re: {in_reply_to}] -- {text}')
-        args = (text, in_reply_to)
+        log.debug(
+            f'{self} queueing tweet [re: {in_reply_to}] [media {media_paths}] -- {text}'
+        )
+        args = (text, in_reply_to, media_paths)
         async_res = twitterbot_create_tweet_queued.apply_async(args)
         log.debug(f'{self} async_res => {async_res}')
         return async_res

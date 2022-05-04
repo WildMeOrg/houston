@@ -211,7 +211,7 @@ class IntelligentAgentContent(db.Model, HoustonModel):
             ')>'.format(class_name=self.__class__.__name__, self=self)
         )
 
-    def respond_to(self, text):
+    def respond_to(self, text, media_paths=None):
         raise NotImplementedError('respond_to() must be overridden')
 
     # override
@@ -223,6 +223,18 @@ class IntelligentAgentContent(db.Model, HoustonModel):
         if not self.asset_group:
             return None
         return self.asset_group.assets
+
+    # right now does only abox format, but could be passed in
+    def get_media_paths(self):
+        assets = self.get_assets()
+        if not assets:
+            return None
+        paths = []
+        for asset in assets:
+            path = asset.get_or_make_format_path('abox')
+            paths.append(str(path))
+        log.debug(f'get_media_paths({self}) => {paths}')
+        return paths
 
     def get_asset_group_sighting(self):
         if not self.asset_group or not self.asset_group.asset_group_sightings:
@@ -377,7 +389,6 @@ class IntelligentAgentContent(db.Model, HoustonModel):
                     'comments': self.content_as_string(),
                     'speciesDetectionModel': self.get_species_detection_models(),
                     'locationId': self.data.get('location_id'),
-                    'taxonomy': self.data.get('taxonomy_guid'),
                     'time': self.data.get('time'),
                     'timeSpecificity': self.data.get('time_specificity'),
                     'encounters': [
@@ -477,6 +488,7 @@ class IntelligentAgentContent(db.Model, HoustonModel):
 
     def detection_complete(self):
         from app.modules.assets.models import Asset
+        from app.utils import full_api_url
         import traceback
 
         annots = []
@@ -522,17 +534,22 @@ class IntelligentAgentContent(db.Model, HoustonModel):
         elif len(annots) > 1:
             self.state = IntelligentAgentContentState.complete
             if self.owner and not self.owner.is_public_user():
-                # FIXME spec says we should provide link and image with annotations!?
+                ags = self.get_asset_group_sighting()
+                assert ags, f'no AGS for {self}'
+                url = full_api_url(f'pending-sightings/{str(ags.guid)}')
                 self.respond_to(
                     _(
-                        'We found more than one animal. You must login and curate this data.'
+                        'We found more than one animal. You must login and curate this data. '
                     )
+                    + url,
+                    media_paths=self.get_media_paths(),
                 )
             else:
                 self.respond_to(
                     _(
                         'We found more than one animal. This submission will be curated by a researcher.'
-                    )
+                    ),
+                    media_paths=self.get_media_paths(),
                 )
         else:  # must be exactly 1 annot - on to identification!
             try:
@@ -609,7 +626,8 @@ class IntelligentAgentContent(db.Model, HoustonModel):
         )
         self.state = IntelligentAgentContentState.complete
         self.respond_to(
-            _('We finished processing your submission. Check it out here: ') + url
+            _('We finished processing your submission. Check it out here: ') + url,
+            media_paths=self.get_media_paths(),
         )
         with db.session.begin():
             db.session.merge(self)
@@ -720,30 +738,57 @@ class TwitterBot(IntelligentAgent):
         return tweets
 
     # this should be used with caution -- use create_tweet_queued() to be safer
-    def create_tweet_direct(self, text, in_reply_to=None):
+    #  warning: will truncate media at 4 (twitter limit)
+    def create_tweet_direct(self, text, in_reply_to=None, media_paths=None):
         assert self.client
         assert text
         # this helps prevent sending identical outgoing (and may help dbugging?)
         stamp = str(uuid.uuid4())[0:4]
         text += '   ' + stamp
-        log.info(f'create_tweet_direct(): {self} tweeting [re: {in_reply_to}] >>> {text}')
+        log.info(
+            f'create_tweet_direct(): {self} tweeting [re: {in_reply_to}] [media {media_paths}] >>> {text}'
+        )
         if (
             not self.is_enabled()
             or self.get_persisted_value('twitter_outgoing_disabled') == 'true'
         ):
             log.warning('create_tweet_direct(): OUTGOING DISABLED')
             return
-        tweet = self.client.create_tweet(text=text, in_reply_to_tweet_id=in_reply_to)
+
+        # we need to currently use the V1 api for this
+        if media_paths and isinstance(media_paths, list):
+            media_ids = []
+            mct = 0
+            for path in media_paths:
+                if mct > 3:
+                    log.warning(
+                        f'- {self} stopping sending after 4 images in {media_paths}'
+                    )
+                    break
+                media = self.api.media_upload(path)
+                log.debug(f'+ ({mct}) {self} {path} sent as media {media}')
+                media_ids.append(media.media_id)
+                mct += 1
+            tweet = self.api.update_status(
+                status=text,
+                in_reply_to_status_id=in_reply_to,
+                media_ids=media_ids,
+                auto_populate_reply_metadata=bool(in_reply_to),
+            )
+        else:
+            tweet = self.client.create_tweet(text=text, in_reply_to_tweet_id=in_reply_to)
         log.debug(f'create_tweet_direct(): success tweeting {tweet}')
         return tweet
 
     # preferred usage (vs create_tweet_direct()) as it will throttle outgoing rate to
     #   hopefully keep twitter guards happy
-    def create_tweet_queued(self, text, in_reply_to=None):
+    def create_tweet_queued(self, text, in_reply_to=None, media_paths=None):
         from app.extensions.intelligent_agent.tasks import twitterbot_create_tweet_queued
 
-        log.debug(f'{self} queueing tweet [re: {in_reply_to}] -- {text}')
-        args = (text, in_reply_to)
+        log.debug(
+            f'{self} queueing tweet [re: {in_reply_to}] [media {media_paths}] -- {text}'
+        )
+        args = (text, in_reply_to, media_paths)
         async_res = twitterbot_create_tweet_queued.apply_async(args)
         log.debug(f'{self} async_res => {async_res}')
         return async_res
@@ -975,11 +1020,15 @@ class TwitterTweet(IntelligentAgentContent):
     def get_reference_date(self):
         return self.raw_content.get('created_at', '').replace('Z', '+00:00')
 
-    def respond_to(self, text):
-        log.debug(f'responding to {self} from {self.get_author_username()}: {text}')
+    def respond_to(self, text, media_paths=None):
+        log.debug(
+            f'responding to {self} from {self.get_author_username()} [media {media_paths}]: {text}'
+        )
         assert self.source and self.source.get('id')
         tb = TwitterBot()
-        tb.create_tweet_queued(text, in_reply_to=self.source.get('id'))
+        tb.create_tweet_queued(
+            text, in_reply_to=self.source.get('id'), media_paths=media_paths
+        )
 
     def hashtag_values(self):
         if not self.raw_content.get('entities') or not isinstance(

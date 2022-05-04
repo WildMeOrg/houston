@@ -124,8 +124,15 @@ def test_twitter_tweet_io(flask_app_client):
     fake_tweet.id = 'FAKE_TWEET_ID'
     with patch.object(tweepy.Client, 'create_tweet', return_value=fake_tweet):
         tweet = tb.create_tweet_direct('text')
-        # uncomment this line when tweeting is not disabled
-        # assert tweet
+        assert tweet
+
+    # now we "send" images (mock)
+    media_resp = Dummy()
+    media_resp.media_id = 'MEDIA_123'
+    with patch.object(tweepy.API, 'media_upload', return_value=media_resp):
+        with patch.object(tweepy.API, 'update_status', return_value=fake_tweet):
+            tweet = tb.create_tweet_direct('text', media_paths=['/tmp/fake.jpg'])
+            assert tweet
 
     fake_res = Dummy()
     fake_res.data = []

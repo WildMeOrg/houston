@@ -6,7 +6,6 @@ RESTful API User resources
 """
 import json
 import logging
-from urllib.parse import urljoin
 
 from flask import current_app, send_file, request, url_for, redirect, session
 from flask_login import current_user
@@ -431,11 +430,7 @@ class UserResetPasswordEmail(Resource):
             return
         code = user.get_account_recovery_code()
         msg = Email(recipients=[user])
-        # /auth/code/ instead of /api/v1/auth/code/ because we want the user to
-        # go to the frontend page
-        reset_link = urljoin(
-            url_for('api.root', _external=True), f'/auth/code/{code.accept_code}'
-        )
+        reset_link = url_for('frontend.auth-code', code=code.accept_code, _external=True)
         msg.template('misc/password_reset', reset_link=reset_link)
         msg.send_message()
 

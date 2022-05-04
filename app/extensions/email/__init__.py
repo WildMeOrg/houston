@@ -4,7 +4,6 @@ import datetime
 from io import StringIO
 import logging
 import re
-from urllib.parse import urljoin
 
 from flask import current_app, render_template, url_for
 from flask_mail import Mail, Message, email_dispatched
@@ -169,7 +168,7 @@ class Email(Message):
         self.set_language()
         global pmail
         if pmail is None:
-            pmail_kwargs['base_url'] = urljoin(url_for('api.root', _external=True), '/')
+            pmail_kwargs['base_url'] = url_for('frontend.root', _external=True)
             pmail = Premailer(**pmail_kwargs)  # REF: https://pypi.org/project/premailer/
         log.info('Using premailer = %r' % (pmail))
 

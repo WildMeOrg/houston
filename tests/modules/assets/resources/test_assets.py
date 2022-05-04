@@ -228,6 +228,9 @@ def test_read_all_assets(
     request,
     test_root,
 ):
+    from app.modules.assets.models import Asset
+
+    Asset.query.delete()
     uuids = asset_group_utils.create_large_asset_group_uuids(
         flask_app_client, researcher_1, request, test_root
     )

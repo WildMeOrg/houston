@@ -283,7 +283,7 @@ class GitStore(db.Model, HoustonModel):
         else:
             repo = Repo(local_store_path)
 
-        local_name_path = os.path.join(local_store_path, '_%s' % (self.GIT_STORE_NAME,))
+        local_name_path = os.path.join(local_store_path, '_uploads')
         if not os.path.exists(local_name_path):
             os.mkdir(local_name_path)
         pathlib.Path(os.path.join(local_name_path, '.touch')).touch()
@@ -303,7 +303,7 @@ class GitStore(db.Model, HoustonModel):
     def git_write_upload_file(self, upload_file):
         repo = self.ensure_repository()
         file_repo_path = os.path.join(
-            repo.working_tree_dir, '_%s' % (self.GIT_STORE_NAME,), upload_file.filename
+            repo.working_tree_dir, '_uploads', upload_file.filename
         )
         upload_file.save(file_repo_path)
         log.info('Wrote file upload and added to local repo: %r' % (file_repo_path,))
@@ -314,7 +314,7 @@ class GitStore(db.Model, HoustonModel):
             raise IOError('The path %r does not exist.' % (absolute_path,))
 
         repo = self.ensure_repository()
-        repo_path = os.path.join(repo.working_tree_dir, '_%s' % (self.GIT_STORE_NAME,))
+        repo_path = os.path.join(repo.working_tree_dir, '_uploads')
 
         absolute_path = absolute_path.rstrip('/')
         repo_path = repo_path.rstrip('/')
@@ -334,7 +334,7 @@ class GitStore(db.Model, HoustonModel):
             raise IOError('The filepath %r does not exist.' % (absolute_filepath,))
 
         repo = self.ensure_repository()
-        repo_path = os.path.join(repo.working_tree_dir, '_%s' % (self.GIT_STORE_NAME,))
+        repo_path = os.path.join(repo.working_tree_dir, '_uploads')
         _, filename = os.path.split(absolute_filepath)
         stored_filename = get_stored_filename(filename)
         repo_filepath = os.path.join(repo_path, stored_filename)
@@ -373,7 +373,7 @@ class GitStore(db.Model, HoustonModel):
 
         # repo.index.add('.gitignore')
         repo.index.add('_assets/')
-        repo.index.add('_%s/' % (self.GIT_STORE_NAME,))
+        repo.index.add('_uploads/')
         repo.index.add('metadata.json')
 
         commit = repo.index.commit(message)
@@ -541,7 +541,7 @@ class GitStore(db.Model, HoustonModel):
 
         sub_id = None if transaction_id is not None else self.guid
         local_store_path = self.get_absolute_path()
-        local_name_path = os.path.join(local_store_path, '_%s' % (self.GIT_STORE_NAME,))
+        local_name_path = os.path.join(local_store_path, '_uploads')
 
         filepaths, metadatas = tus_filepaths_from(
             git_store_guid=sub_id, transaction_id=transaction_id, paths=paths
@@ -608,7 +608,7 @@ class GitStore(db.Model, HoustonModel):
         self, verbose=True, existing_filepath_guid_mapping={}, input_filenames=[]
     ):
         """
-        Traverse the files in the _<self.GIT_STORE_NAME>/ folder and add/update symlinks
+        Traverse the files in the _raw/ folder and add/update symlinks
         for any relevant files we identify
 
         Ref:
@@ -620,7 +620,7 @@ class GitStore(db.Model, HoustonModel):
         import magic
 
         local_store_path = self.get_absolute_path()
-        local_name_path = os.path.join(local_store_path, '_%s' % (self.GIT_STORE_NAME,))
+        local_name_path = os.path.join(local_store_path, '_uploads')
         local_assets_path = os.path.join(local_store_path, '_assets')
 
         # Walk the local store path, looking for white-listed MIME type files
@@ -727,7 +727,7 @@ class GitStore(db.Model, HoustonModel):
         existing_asset_symlinks = ut.glob(os.path.join(local_assets_path, '*'))
         for existing_asset_symlink in existing_asset_symlinks:
             basename = os.path.basename(existing_asset_symlink)
-            if basename in ['.touch', 'derived']:
+            if basename in ['.touch', '_derived']:
                 continue
             existing_asset_target = os.readlink(existing_asset_symlink)
             existing_asset_target_ = os.path.abspath(

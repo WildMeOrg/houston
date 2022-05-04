@@ -282,9 +282,8 @@ class Asset(db.Model, HoustonModel):
 
     def get_derived_path(self, format):
         git_store_path = pathlib.Path(self.git_store.get_absolute_path())
-        assets_path = git_store_path / '_assets'
         filename = f'{self.guid}.{format}.{self.DERIVED_EXTENSION}'
-        return assets_path / 'derived' / filename
+        return git_store_path / '_derived' / filename
 
     def update_symlink(self, asset_git_store_filepath):
         target_path = pathlib.Path(asset_git_store_filepath)

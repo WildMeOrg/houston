@@ -31,7 +31,7 @@ RUN apt update \
         tmux \
         vim \
         git \
-        js \
+        jq \
         # Magic with python-magic (MIME-type parser)
         libmagic1 \
         #: tool to setuid+setgid+setgroups+exec at execution time

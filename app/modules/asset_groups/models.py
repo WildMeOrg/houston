@@ -118,6 +118,10 @@ class AssetGroupSighting(db.Model, HoustonModel):
                 raise ex
         AuditLog.user_create_object(log, self)
 
+    @property
+    def progress_preparation(self):
+        return self.asset_group.progress_preparation
+
     def commit(self):
         from app.modules.utils import Cleanup
         from app.extensions.elapsed_time import ElapsedTime
@@ -1122,15 +1126,6 @@ class AssetGroup(GitStore):
     __mapper_args__ = {
         'polymorphic_identity': 'asset_group',
     }
-
-    progress_preparation_guid = db.Column(
-        db.GUID, db.ForeignKey('progress.guid'), index=False, nullable=True
-    )
-
-    progress_preparation = db.relationship(
-        'Progress',
-        foreign_keys='AssetGroup.progress_preparation_guid',
-    )
 
     @classmethod
     def run_integrity(cls):

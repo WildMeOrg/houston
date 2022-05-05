@@ -135,6 +135,11 @@ class DetailedAssetGroupSightingSchema(BaseAssetGroupSightingSchema):
 
     jobs = base_fields.Function(AssetGroupSighting.get_detailed_jobs_json)
 
+    progress_preparation = base_fields.Nested(
+        'DetailedProgressSchema',
+        many=False,
+    )
+
     class Meta(BaseAssetGroupSightingSchema.Meta):
 
         fields = BaseAssetGroupSightingSchema.Meta.fields + (
@@ -147,6 +152,7 @@ class DetailedAssetGroupSightingSchema(BaseAssetGroupSightingSchema):
             'curation_start_time',
             'jobs',
             AssetGroupSighting.asset_group_guid.key,
+            'progress_preparation',
         )
         dump_only = BaseAssetGroupSightingSchema.Meta.dump_only + (
             AssetGroupSighting.jobs.key,

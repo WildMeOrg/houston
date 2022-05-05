@@ -237,7 +237,7 @@ services:
       WILDBOOK_DB_PASSWORD: "${WILDBOOK_DB_PASSWORD}"
       LOG_WIDTH: ${LOG_WIDTH}
 
-  celery_beat:
+  celery-beat:
     image: wildme/houston:latest
     build: *houston-build
     command: ["celery", "-A", "app.extensions.celery.celery", "beat", "-s", "/data/var/celerybeat-schedule", "-l", "INFO"]
@@ -256,7 +256,7 @@ services:
       - intranet
     environment: *houston-environment
 
-  celery_worker:
+  celery-worker:
     image: wildme/houston:latest
     build: *houston-build
     command: ["celery", "-A", "app.extensions.celery.celery", "worker", "-l", "INFO", "--pool=gevent", "--task-events"]
@@ -271,7 +271,7 @@ services:
       - intranet
     environment: *houston-environment
 
-  celery_worker_2:
+  celery-worker2:
     image: wildme/houston:latest
     build: *houston-build
     command: ["celery", "-A", "app.extensions.celery.celery", "worker", "-l", "INFO", "--pool=gevent", "--task-events"]
@@ -286,7 +286,7 @@ services:
       - intranet
     environment: *houston-environment
 
-  celery_worker_3:
+  celery-worker3:
     image: wildme/houston:latest
     build: *houston-build
     command: ["celery", "-A", "app.extensions.celery.celery", "worker", "-l", "INFO", "--pool=gevent", "--task-events"]

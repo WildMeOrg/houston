@@ -152,6 +152,15 @@ class GitStore(db.Model, HoustonModel):
 
     config = db.Column(db.JSON, default=lambda: {}, nullable=False)
 
+    progress_preparation_guid = db.Column(
+        db.GUID, db.ForeignKey('progress.guid'), index=False, nullable=True
+    )
+
+    progress_preparation = db.relationship(
+        'Progress',
+        foreign_keys='GitStore.progress_preparation_guid',
+    )
+
     __mapper_args__ = {
         'confirm_deleted_rows': False,
         'polymorphic_identity': 'gitstore',

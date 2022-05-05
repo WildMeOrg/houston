@@ -193,6 +193,13 @@ class IntelligentAgentContent(db.Model, HoustonModel):
         foreign_keys='IntelligentAgentContent.asset_group_guid',
     )
 
+    # this string value should be unique within the agent_type and will be used to prevent re-processing the
+    #   the same content accidentally.  it can be something like a twitter id or instagram post id, etc.
+    # if possible, the content should be persisted inside collect() early so that duplication can be caught
+    #   prior to any real processing (and responding) happens.
+    internal_id = db.Column(db.String(), index=True, nullable=False)
+    __table_args__ = (db.UniqueConstraint(agent_type, internal_id),)
+
     __mapper_args__ = {
         'confirm_deleted_rows': False,
         'polymorphic_identity': 'intelligent_agent',
@@ -682,6 +689,8 @@ class TwitterBot(IntelligentAgent):
     #   a since_id value must be set to change this behavior
     #   (a negative number will disable since_id)
     def collect(self, since_id=None):
+        import sqlalchemy
+
         assert self.client
         query = self.search_string()
         if not since_id:
@@ -719,6 +728,15 @@ class TwitterBot(IntelligentAgent):
                 )
                 continue
 
+            try:
+                with db.session.begin():
+                    db.session.add(tt)
+            except sqlalchemy.exc.IntegrityError as ex:
+                log.warning(
+                    f'skipping tweet {twt} (likely duplicate, already processed) due to: {str(ex)}'
+                )
+                continue
+
             # validates and creates tt.asset_group
             ok, err = tt.assemble()
             if ok:
@@ -730,7 +748,8 @@ class TwitterBot(IntelligentAgent):
                 tt.data['_rejection_error'] = err
                 tt.respond_to(_('Sorry, we cannot process this tweet because: ') + err)
             with db.session.begin():
-                db.session.add(tt)
+                db.session.merge(tt)
+            db.session.refresh(tt)
             if ok:
                 tt.wait_for_detection_results()
         self.set_persisted_value('since_id', latest_id)
@@ -954,6 +973,7 @@ class TwitterTweet(IntelligentAgentContent):
             'id': tweet.id,
             'author': author_data,
         }
+        self.internal_id = str(tweet.id)
         self.raw_content = tweet.data
         self.owner = self.find_author_user()
         if not self.owner:

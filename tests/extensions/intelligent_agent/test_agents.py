@@ -292,3 +292,29 @@ def test_nlp_date():
     cdt = tt.derive_time()
     assert cdt
     assert cdt.isoformat_in_timezone() == '2000-01-02T03:04:05+00:00'
+
+
+@pytest.mark.skipif(
+    extension_unavailable('intelligent_agent'),
+    reason='Intelligent Agent extension disabled',
+)
+def test_duplicate_tweet(db):
+    from app.extensions.intelligent_agent.models import TwitterTweet
+    import sqlalchemy
+
+    tweet = get_fake_tweet()
+    tweet.id = 123456789
+    tt = TwitterTweet(tweet)
+    with db.session.begin():
+        db.session.add(tt)
+
+    t2 = TwitterTweet(tweet)
+    try:
+        # saving should be blocked by table constraint
+        with db.session.begin():
+            db.session.add(t2)
+    except sqlalchemy.exc.IntegrityError:
+        pass
+    len(TwitterTweet.query.all()) == 1
+
+    TwitterTweet.query.delete()

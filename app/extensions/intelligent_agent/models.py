@@ -13,7 +13,7 @@ import logging
 from app.extensions import db
 import app.extensions.logging as AuditLog  # NOQA
 from app.extensions import HoustonModel
-from flask import current_app
+from flask import current_app, url_for
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 _ = gettext.gettext
@@ -488,7 +488,6 @@ class IntelligentAgentContent(db.Model, HoustonModel):
 
     def detection_complete(self):
         from app.modules.assets.models import Asset
-        from app.utils import full_api_url
         import traceback
 
         annots = []
@@ -536,7 +535,9 @@ class IntelligentAgentContent(db.Model, HoustonModel):
             if self.owner and not self.owner.is_public_user():
                 ags = self.get_asset_group_sighting()
                 assert ags, f'no AGS for {self}'
-                url = full_api_url(f'pending-sightings/{str(ags.guid)}')
+                url = url_for(
+                    'frontend.pending-sightings', guid=str(ags.guid), _external=True
+                )
                 self.respond_to(
                     _(
                         'We found more than one animal. You must login and curate this data. '
@@ -616,11 +617,9 @@ class IntelligentAgentContent(db.Model, HoustonModel):
         db.session.refresh(self)
 
     def identification_complete(self):
-        from app.utils import full_api_url
-
         sighting = self.get_sighting()
         assert sighting, f'no sighting for {self}'
-        url = full_api_url(f'sightings/{str(sighting.guid)}')
+        url = url_for('frontend.sightings', guid=str(sighting.guid), _external=True)
         log.warning(
             f'intelligent_agent: completed identification for {sighting} on {self}'
         )

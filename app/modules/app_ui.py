@@ -3,7 +3,6 @@
 import datetime
 import logging
 from functools import wraps
-from urllib.parse import urljoin
 
 # from app.modules.users.permissions import PasswordRequiredPermissionMixin
 import flask
@@ -44,10 +43,21 @@ def init_app(app):
     app.register_blueprint(backend_blueprint)
 
 
+@frontend_blueprint.route('/', endpoint='root')
+@frontend_blueprint.route('/auth/code/<string:code>', endpoint='auth-code')
+@frontend_blueprint.route(
+    '/pending-sightings/<string:guid>', endpoint='pending-sightings'
+)
+@frontend_blueprint.route('/sightings/<string:guid>', endpoint='sightings')
+def dummy_view(*args, **kwargs):
+    """This view is created just for frontend route generation"""
+    raise NotImplementedError
+
+
 def _render_template(template, **kwargs):
     now = datetime.datetime.now(tz=current_app.config.get('TIMEZONE'))
     config = {
-        'base_url': urljoin(url_for('backend.home'), '/'),
+        'base_url': url_for('frontend.root'),
         'google_analytics_tag': current_app.config.get('GOOGLE_ANALYTICS_TAG'),
         'stripe_public_key': current_app.config.get('STRIPE_PUBLIC_KEY'),
         'year': now.year,

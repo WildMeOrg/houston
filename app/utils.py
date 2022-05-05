@@ -168,17 +168,6 @@ def nlp_parse_complex_date_time(
     raise ValueError(f'unknown type in results: {res}')
 
 
-# this really should be moved to our baseclass to auto-complete the full path based on class
-#  e.g. sighting.url() => url for sighting.  but i cant figure out how to get the api/route to pass:
-#       url_for('api.encounters_encounters') => 'http://localhost/api/v1/encounters/'
-#       url_for('api.sightings_sightings') => 'http://localhost/api/v1/sightings/'
-def full_api_url(suffix_path=None):
-    from urllib.parse import urljoin
-    from flask import url_for
-
-    return urljoin(url_for('api.root', _external=True), suffix_path)
-
-
 # match is a string, and candidates can be one of:
 #   * list (of text strings)
 #   * dict with { id0: text0, id1: text1, ... }

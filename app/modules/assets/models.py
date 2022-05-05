@@ -407,7 +407,7 @@ class Asset(db.Model, HoustonModel):
         draw = ImageDraw.Draw(overlay)
         shape = [(rect[0], rect[1]), (rect[0] + rect[2], rect[1] + rect[3])]
         # hardcoding color for now
-        draw.rectangle(shape, outline='#edac3a', fill=(255, 0, 0, 0), width=5)
+        draw.rectangle(shape, outline='#FF952C', fill=(255, 0, 0, 0), width=5)
         res_image = image.convert('RGBA')
         res_image = Image.alpha_composite(res_image, overlay)
         return res_image.convert('RGB')

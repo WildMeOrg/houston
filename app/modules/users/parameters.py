@@ -152,6 +152,7 @@ class PatchUserDetailsParameters(PatchJSONParameters):
         User.is_contributor.fget.__name__,
         User.in_beta.fget.__name__,
         User.in_alpha.fget.__name__,
+        User.twitter_username.key,
     )
 
     SENSITIVE_FIELDS = (
@@ -277,6 +278,8 @@ class PatchUserDetailsParameters(PatchJSONParameters):
 
         if field == User.profile_fileupload_guid.key:
             obj.remove_profile_file()
+        if field == User.twitter_username.key:
+            obj.twitter_username = None
 
         return True
 

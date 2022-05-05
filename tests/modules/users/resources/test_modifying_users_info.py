@@ -737,3 +737,66 @@ def test_user_profile_fileupload(
         assert response.json['message'].startswith(
             'UnidentifiedImageError: cannot identify image file'
         )
+
+
+# this will/should go away when proper linked_accounts is utilized
+def test_modifying_user_twitter_username(
+    flask_app_client, regular_user, researcher_1, db
+):
+    # pylint: disable=invalid-name
+    test_username = 'TWITTER_TEST'
+    with flask_app_client.login(regular_user, auth_scopes=('users:write',)):
+        response = flask_app_client.patch(
+            '/api/v1/users/%s' % regular_user.guid,
+            content_type='application/json',
+            data=json.dumps(
+                [
+                    {
+                        'op': 'replace',
+                        'path': '/twitter_username',
+                        'value': test_username,
+                    },
+                ]
+            ),
+        )
+    assert response.status_code == 200
+    temp_user = User.query.get(response.json['guid'])
+    assert temp_user.twitter_username == test_username
+
+    # should fail cuz we do not allow 2 users to have same twitter_username
+    with flask_app_client.login(researcher_1, auth_scopes=('users:write',)):
+        response = flask_app_client.patch(
+            '/api/v1/users/%s' % researcher_1.guid,
+            content_type='application/json',
+            data=json.dumps(
+                [
+                    {
+                        'op': 'replace',
+                        'path': '/twitter_username',
+                        'value': test_username,
+                    },
+                ]
+            ),
+        )
+    assert response.status_code == 409  # conflict
+    temp_user = User.query.get(researcher_1.guid)
+    assert not temp_user.twitter_username
+
+    # remove twitter_username
+    with flask_app_client.login(regular_user, auth_scopes=('users:write',)):
+        response = flask_app_client.patch(
+            '/api/v1/users/%s' % regular_user.guid,
+            content_type='application/json',
+            data=json.dumps(
+                [
+                    {
+                        'op': 'remove',
+                        'path': '/twitter_username',
+                    },
+                ]
+            ),
+        )
+
+    assert response.status_code == 200
+    temp_user = User.query.get(response.json['guid'])
+    assert not temp_user.twitter_username

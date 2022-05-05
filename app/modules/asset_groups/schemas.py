@@ -60,8 +60,16 @@ class DetailedAssetGroupSchema(DetailedGitStoreSchema):
         many=True,
     )
 
+    progress_preparation = base_fields.Nested(
+        'DetailedProgressSchema',
+        many=False,
+    )
+
     class Meta(DetailedGitStoreSchema.Meta):
-        fields = DetailedGitStoreSchema.Meta.fields + ('asset_group_sightings',)
+        fields = DetailedGitStoreSchema.Meta.fields + (
+            'asset_group_sightings',
+            'progress_preparation',
+        )
         dump_only = DetailedGitStoreSchema.Meta.dump_only
 
 

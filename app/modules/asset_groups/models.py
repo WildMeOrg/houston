@@ -1123,6 +1123,15 @@ class AssetGroup(GitStore):
         'polymorphic_identity': 'asset_group',
     }
 
+    progress_preparation_guid = db.Column(
+        db.GUID, db.ForeignKey('progress.guid'), index=False, nullable=True
+    )
+
+    progress_preparation = db.relationship(
+        'Progress',
+        foreign_keys='AssetGroup.progress_preparation_guid',
+    )
+
     @classmethod
     def run_integrity(cls):
         result = {
@@ -1310,7 +1319,24 @@ class AssetGroup(GitStore):
         description = 'Adding Creation metadata'
         if metadata.description != '':
             description = metadata.description
-        self.git_commit(description, input_filenames=input_files)
+
+        self.git_commit(
+            description,
+            input_filenames=input_files,
+            update=False,  # Delay the processing of the files, move to the background
+            commit=False,  # Delay Git commit as well
+        )
+
+        from app.modules.progress.models import Progress
+
+        progress = Progress(description='Git commit for GitStore %r' % (self.guid,))
+        with db.session.begin():
+            db.session.add(progress)
+        db.session.refresh(progress)
+
+        # self.delay(self.guid, input_files, progress.guid)
+
+        return progress
 
     def asset_updated(self, asset):
         for ags in self.get_asset_group_sightings_for_asset(asset):

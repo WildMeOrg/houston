@@ -293,6 +293,11 @@ class GitStore(db.Model, HoustonModel):
             os.mkdir(assets_path)
         pathlib.Path(os.path.join(assets_path, '.touch')).touch()
 
+        metadata_path = os.path.join(local_store_path, '_metadata')
+        if not os.path.exists(metadata_path):
+            os.mkdir(metadata_path)
+        pathlib.Path(os.path.join(metadata_path, '.touch')).touch()
+
         metadata_path = os.path.join(local_store_path, 'metadata.json')
         if not os.path.exists(metadata_path):
             with open(metadata_path, 'w') as metatdata_file:
@@ -344,9 +349,17 @@ class GitStore(db.Model, HoustonModel):
         return repo_filepath
 
     def git_commit(
-        self, message, realize=True, update=True, input_filenames=[], **kwargs
+        self,
+        message,
+        realize=True,
+        update=True,
+        commit=True,
+        input_filenames=[],
+        **kwargs,
     ):
         repo = self.ensure_repository()
+
+        self.init_metadata()
 
         if realize:
             self.realize_local_store()
@@ -354,6 +367,21 @@ class GitStore(db.Model, HoustonModel):
         if update:
             self.update_asset_symlinks(input_filenames=input_filenames, **kwargs)
 
+        if commit:
+            # repo.index.add('.gitignore')
+            repo.index.add('_uploads/')
+            repo.index.add('_assets/')
+            repo.index.add('_metadata/')
+            repo.index.add('metadata.json')
+
+            new_commit = repo.index.commit(message)
+
+            self.update_metadata_from_commit(new_commit)
+
+        if update:
+            self.update_metadata_from_hook()
+
+    def init_metadata(self):
         local_store_path = self.get_absolute_path()
         local_store_metadata_path = os.path.join(local_store_path, 'metadata.json')
 
@@ -366,19 +394,8 @@ class GitStore(db.Model, HoustonModel):
         )
         local_store_metadata['commit_houston_api_version'] = str(version)
 
-        self.git_commit_metadata_hook(local_store_metadata)
-
         with open(local_store_metadata_path, 'w') as local_store_metadata_file:
             json.dump(local_store_metadata, local_store_metadata_file)
-
-        # repo.index.add('.gitignore')
-        repo.index.add('_assets/')
-        repo.index.add('_uploads/')
-        repo.index.add('metadata.json')
-
-        commit = repo.index.commit(message)
-
-        self.update_metadata_from_commit(commit)
 
     def git_pull(self):
         repo = self.get_repository()
@@ -542,6 +559,7 @@ class GitStore(db.Model, HoustonModel):
         sub_id = None if transaction_id is not None else self.guid
         local_store_path = self.get_absolute_path()
         local_name_path = os.path.join(local_store_path, '_uploads')
+        local_metadata_path = os.path.join(local_store_path, '_metadata')
 
         filepaths, metadatas = tus_filepaths_from(
             git_store_guid=sub_id, transaction_id=transaction_id, paths=paths
@@ -563,6 +581,17 @@ class GitStore(db.Model, HoustonModel):
             original_filename = metadata.get('filename', None)
             original_filenames.append(original_filename)
 
+            filename = metadata.get('filename', None)
+            if filename is not None:
+                metadata_filepath = os.path.join(
+                    local_metadata_path, '%s.metadata.json' % (name,)
+                )
+                with open(metadata_filepath, 'w') as metadata_file:
+                    metadata_ = {
+                        'filename': filename,
+                    }
+                    json.dump(metadata_, metadata_file)
+
         assets_added = []
         num_files = len(paths_added)
         if num_files > 0:
@@ -570,6 +599,8 @@ class GitStore(db.Model, HoustonModel):
             self.git_commit(
                 'Tus collect commit for %d files.' % (num_files,),
                 input_filenames=original_filenames,
+                update=False,  # Delay the processing of the files, move to the background
+                commit=False,  # Delay Git commit as well
             )
 
             # Do git push to gitlab in the background (we won't wait for its
@@ -856,6 +887,19 @@ class GitStore(db.Model, HoustonModel):
         with db.session.begin(subtransactions=True):
             db.session.merge(self)
         db.session.refresh(self)
+
+    def update_metadata_from_hook(self):
+        local_store_path = self.get_absolute_path()
+        local_store_metadata_path = os.path.join(local_store_path, 'metadata.json')
+
+        assert os.path.exists(local_store_metadata_path)
+        with open(local_store_metadata_path, 'r') as local_store_metadata_file:
+            local_store_metadata = json.load(local_store_metadata_file)
+
+        self.git_commit_metadata_hook(local_store_metadata)
+
+        with open(local_store_metadata_path, 'w') as local_store_metadata_file:
+            json.dump(local_store_metadata, local_store_metadata_file)
 
     def get_absolute_path(self):
         local_database_path = current_app.config.get(

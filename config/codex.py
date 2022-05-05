@@ -76,6 +76,7 @@ class BaseCodexConfig(
         'emails',
         'audit_logs',
         'integrity',
+        'progress',
     )
     # fmt: on
 

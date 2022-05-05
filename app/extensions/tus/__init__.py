@@ -255,7 +255,7 @@ def _tus_pending_transaction_handler(upload_folder, req, app):
                     total_size += stats.st_size
                     changed_times.append(stats.st_ctime)
             response[transaction_id]['bytes'] = total_size
-            response[transaction_id]['time'] = min(changed_times)
+            response[transaction_id]['time'] = int(min(changed_times))
 
     response_json = json.dumps(response)
     return response_json

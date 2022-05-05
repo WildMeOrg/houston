@@ -125,7 +125,7 @@ class AssetGroups(Resource):
             abort(400, f'Creation failed {ex}')
 
         try:
-            asset_group.begin_ia_pipeline(metadata)
+            progress = asset_group.begin_ia_pipeline(metadata)
         except HoustonException as ex:
             asset_group.delete()
             abort(
@@ -140,6 +140,12 @@ class AssetGroups(Resource):
             abort(400, f'IA pipeline failed {message}')
 
         AuditLog.user_create_object(log, asset_group, duration=timer.elapsed())
+
+        with db.session.begin():
+            asset_group.progress_preparation_guid = progress.guid
+            db.session.merge(asset_group)
+        db.session.refresh(asset_group)
+
         return asset_group
 
 

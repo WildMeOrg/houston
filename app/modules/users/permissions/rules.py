@@ -77,10 +77,10 @@ OBJECT_USER_MAP = {
         'is_admin',
         'is_researcher',
     ],
-    ('Individual', AccessOperation.READ): ['is_staff', 'is_data_manager'],
+    ('Individual', AccessOperation.READ): ['is_staff', 'is_data_manager', 'is_researcher'],
     ('Individual', AccessOperation.WRITE): ['is_staff', 'is_data_manager'],
     ('AssetGroupSighting', AccessOperation.WRITE_INTERNAL): ['is_internal'],
-    ('Encounter', AccessOperation.READ): ['is_staff', 'is_data_manager'],
+    ('Encounter', AccessOperation.READ): ['is_staff', 'is_data_manager', 'is_researcher'],
     ('Encounter', AccessOperation.WRITE): ['is_staff', 'is_data_manager'],
     ('User', AccessOperation.WRITE): [
         'is_user_manager',

@@ -135,4 +135,5 @@ class PersonalUserSchema(DetailedUserSchema):
             User.show_email_in_profile.key,
             User.use_usa_date_format.key,
             User.accepted_user_agreement.key,
+            User.twitter_username.key,
         )

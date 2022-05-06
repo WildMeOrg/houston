@@ -136,6 +136,7 @@ def test_twitter_tweet_io(flask_app_client):
 
     fake_res = Dummy()
     fake_res.data = []
+    fake_res.meta = {'newest_id': 123}
     me_value = Dummy()
     me_value.data = Dummy()
     me_value.data.username = 'A'

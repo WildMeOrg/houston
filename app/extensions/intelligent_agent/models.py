@@ -756,7 +756,7 @@ class TwitterBot(IntelligentAgent):
         assert text
         # this helps prevent sending identical outgoing (and may help dbugging?)
         stamp = str(uuid.uuid4())[0:4]
-        text += '   ' + stamp
+        text += '    〈' + stamp + '〉'
         log.info(
             f'create_tweet_direct(): {self} tweeting [re: {in_reply_to}] [media {media_paths}] >>> {text}'
         )

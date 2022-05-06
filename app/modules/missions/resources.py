@@ -623,7 +623,7 @@ class MissionCollectionByID(Resource):
             except HoustonException as ex:
                 abort(ex.status_code, ex.message)
         else:
-            from .tasks import delete_remote
+            from app.extensions.git_store.tasks import delete_remote
 
             delete_remote.delay(str(mission_collection_id))
 

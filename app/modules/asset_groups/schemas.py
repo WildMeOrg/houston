@@ -61,7 +61,7 @@ class DetailedAssetGroupSchema(DetailedGitStoreSchema):
     )
 
     progress_preparation = base_fields.Nested(
-        'DetailedProgressSchema',
+        'BaseProgressSchema',
         many=False,
     )
 
@@ -136,7 +136,7 @@ class DetailedAssetGroupSightingSchema(BaseAssetGroupSightingSchema):
     jobs = base_fields.Function(AssetGroupSighting.get_detailed_jobs_json)
 
     progress_preparation = base_fields.Nested(
-        'DetailedProgressSchema',
+        'BaseProgressSchema',
         many=False,
     )
 

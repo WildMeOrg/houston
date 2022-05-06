@@ -77,11 +77,13 @@ def test_create_asset_group_detection(session, codex_url, test_root, login):
             },
         ],
         'config': {
-            'time': response_json['config']['time'],
-            'timeSpecificity': 'time',
-            'locationId': 'Tiddleywink',
-            'encounters': response_json['config']['encounters'],
-            'assetReferences': ['zebra.jpg'],
+            'sighting': {
+                'time': response_json['config']['sighting']['time'],
+                'timeSpecificity': 'time',
+                'locationId': 'Tiddleywink',
+                'encounters': response_json['config']['sighting']['encounters'],
+                'assetReferences': ['zebra.jpg'],
+            }
         },
         'guid': ags_guid,
         'curation_start_time': response.json()['curation_start_time'],

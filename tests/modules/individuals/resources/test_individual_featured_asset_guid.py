@@ -116,7 +116,7 @@ def test_patch_featured_asset_guid_on_individual(
         )
 
     finally:
-        from app.modules.asset_groups.tasks import delete_remote
+        from app.extensions.git_store.tasks import delete_remote
 
         individual_utils.delete_individual(
             flask_app_client, researcher_1, str(individual.guid)

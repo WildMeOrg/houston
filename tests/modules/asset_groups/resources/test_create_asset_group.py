@@ -791,7 +791,7 @@ def test_create_asset_group_individual(
             flask_app_client, staff_user, ags_guid
         )
         assert ags_debug.json['stage'] == 'curation'
-        ags_config = ags_debug.json['config']
+        ags_config = ags_debug.json['config']['sighting']
         assert 'encounters' in ags_config.keys()
         assert ags_config['encounters'][0].get('individualUuid') is not None
 
@@ -865,7 +865,7 @@ def test_create_asset_group_international(
             flask_app_client, staff_user, ags_guid
         )
         assert ags_debug.json['stage'] == 'curation'
-        ags_config = ags_debug.json['config']
+        ags_config = ags_debug.json['config']['sighting']
         assert 'encounters' in ags_config.keys()
         assert ags_config['encounters'][0].get('individualUuid') is not None
 

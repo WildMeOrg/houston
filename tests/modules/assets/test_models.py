@@ -32,12 +32,23 @@ def set_up_assets(flask_app, db, test_root, admin_user, request):
 
     # Create asset group from metadata
     data = AssetGroupCreationData(transaction_id)
-    data.set_sighting_field(-1, 'assetReferences', [jpg.name for jpg in jpgs])
+    input_filenames = [jpg.name for jpg in jpgs]
+    data.set_sighting_field(-1, 'assetReferences', input_filenames)
     metadata = AssetGroupMetadata(data.get())
     with mock.patch('app.modules.asset_groups.metadata.current_user', new=admin_user):
         metadata.process_request()
     assert metadata.owner == admin_user
     asset_group = AssetGroup.create_from_metadata(metadata)
+
+    # Process asset_group
+    asset_group.git_commit(
+        'Test commit',
+        input_filenames=input_filenames,
+        update=True,
+        commit=True,
+    )
+    asset_group.post_preparation()
+
     cleanup(request, lambda: db.session.delete(asset_group))
 
     # Create annotation and sighting and sighting assets for the first asset

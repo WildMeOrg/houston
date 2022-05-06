@@ -434,6 +434,14 @@ class CommonHoustonModel(TimestampViewed, ElasticsearchModel):
             return []
         return cls.query.filter(cls.guid.in_(guids)).all()
 
+    @property
+    def exists(self):
+        cls = self.__class__
+        return (
+            cls.query.filter(cls.guid == self.guid).with_entities(cls.guid).first()
+            is not None
+        )
+
     def is_public(self):
         # Assume public if _owned_ by the public user
         if hasattr(self, 'user_is_owner'):

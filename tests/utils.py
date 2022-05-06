@@ -638,7 +638,7 @@ def write_uploaded_file(initial_filename, input_dir, file_data, write_mode='w'):
     with open(stored_path, write_mode) as out_file:
         out_file.write(file_data)
 
-    tus_write_file_metadata(stored_path, initial_filename)
+    tus_write_file_metadata(stored_path, initial_filename, None)
     return stored_path
 
 

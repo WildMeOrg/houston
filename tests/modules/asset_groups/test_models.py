@@ -25,14 +25,25 @@ def test_asset_group_sightings_jobs(flask_app, db, admin_user, test_root, reques
     trans_dir = create_transaction_dir(flask_app, transaction_id)
     copy_uploaded_file(test_root, input_filename, trans_dir, input_filename)
 
+    input_filenames = [input_filename]
     asset_group = AssetGroup.create_from_tus(
-        'test asset group description', admin_user, transaction_id, paths=[input_filename]
+        'test asset group description', admin_user, transaction_id, paths=input_filenames
     )
     asset_group.config['speciesDetectionModel'] = test_utils.dummy_detection_info()
     # Make sure config changes are saved
     asset_group.config = asset_group.config
     with db.session.begin():
         db.session.add(asset_group)
+
+    # Do prep manually
+    asset_group.git_commit(
+        'Test commit',
+        input_filenames=input_filenames,
+        update=True,
+        commit=True,
+    )
+    asset_group.post_preparation()
+
     request.addfinalizer(asset_group.delete)
     sighting_config1 = test_utils.dummy_sighting_info()
     sighting_config1['assetReferences'] = [input_filename]
@@ -41,6 +52,7 @@ def test_asset_group_sightings_jobs(flask_app, db, admin_user, test_root, reques
         sighting_config=sighting_config1,
         detection_configs=['african_terrestrial'],
     )
+    ags1.post_preparation()
     assert ags1.stage == AssetGroupSightingStage.detection
     assert ags1.get_detection_start_time() == ags1.created.isoformat() + 'Z'
     assert ags1.get_curation_start_time() is None
@@ -51,6 +63,8 @@ def test_asset_group_sightings_jobs(flask_app, db, admin_user, test_root, reques
         sighting_config=sighting_config2,
         detection_configs=test_utils.dummy_detection_info(),
     )
+    ags2.post_preparation()
+
     # no assets => processed
     assert ags2.stage == AssetGroupSightingStage.processed
     assert ags2.get_detection_start_time() is None
@@ -135,9 +149,9 @@ def test_asset_group_sightings_bulk(
         assert ags2
 
         # Due to DB interactions, cannot rely on the order
-        assert sorted(ags.config['locationId'] for ags in (ags1, ags2)) == sorted(
-            cnf['locationId'] for cnf in data.content['sightings']
-        )
+        assert sorted(
+            ags.config['sighting']['locationId'] for ags in (ags1, ags2)
+        ) == sorted(cnf['locationId'] for cnf in data.content['sightings'])
 
     finally:
         # Restore original state

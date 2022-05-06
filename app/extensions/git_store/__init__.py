@@ -366,16 +366,44 @@ class GitStore(db.Model, HoustonModel):
         input_filenames=[],
         **kwargs,
     ):
+        if self.progress_preparation:
+            self.progress_preparation = self.progress_preparation.config()
+
+        # Step 1
+        #   Description: Setup of the repository and init one JSON file
+        #   Delay: nearly instant, < 1.0 seconds
+        #   Percentage: 1% (0% -> 1%)
         repo = self.ensure_repository()
 
         self.init_metadata()
 
+        if self.progress_preparation:
+            self.progress_preparation.set(1)
+
+        # Step 2
+        #   Description: Unpack zip files and archives submitted to the repo, currently not implemented
+        #   Delay: no-op, << 1.0 seconds
+        #   Percentage: 0% (1% -> 1%)
         if realize:
             self.realize_local_store()
 
+        if self.progress_preparation:
+            self.progress_preparation.set(1)
+
+        # Step 3
+        #   Description: Walk the files in the repo and convert appropriate files to Assets and establish symlinks
+        #   Delay: the majority of the processing, unbounded seconds
+        #   Percentage: 89% (1% -> 90%)
         if update:
             self.update_asset_symlinks(input_filenames=input_filenames, **kwargs)
 
+        if self.progress_preparation:
+            self.progress_preparation.set(90)
+
+        # Step 4
+        #   Description: Commit the files into the repo into the git repository, requires hashing all of the files
+        #   Delay: a meaningful overhead, but should still be relatively quick, unbounded seconds (Step 4 << Step 3)
+        #   Percentage: 9% (90% -> 99%)
         if commit:
             # repo.index.add('.gitignore')
             repo.index.add('_uploads/')
@@ -387,8 +415,18 @@ class GitStore(db.Model, HoustonModel):
 
             self.update_metadata_from_commit(new_commit)
 
+        if self.progress_preparation:
+            self.progress_preparation.set(99)
+
+        # Step 5
+        #   Description: Update the Git Store's metadata using the git commit hash and other metadata
+        #   Delay: nearly instant, < 1.0 seconds
+        #   Percentage: 1% (99% -> 100%)
         if update:
             self.update_metadata_from_hook()
+
+        if self.progress_preparation:
+            self.progress_preparation.set(100)
 
     def init_metadata(self):
         local_store_path = self.get_absolute_path()
@@ -645,209 +683,314 @@ class GitStore(db.Model, HoustonModel):
         pass
 
     def update_asset_symlinks(
-        self, verbose=True, existing_filepath_guid_mapping={}, input_filenames=[]
+        self, existing_filepath_guid_mapping={}, input_filenames=[]
     ):
         """
         Traverse the files in the _raw/ folder and add/update symlinks
         for any relevant files we identify
+
+        This function represents Step 3 in self.git_commit().
+        The progress domain for this function is Percentage: 89% (1% -> 90%)
 
         Ref:
             https://pypi.org/project/python-magic/
             https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/MIME_types/Common_types
             http://www.iana.org/assignments/media-types/media-types.xhtml
         """
-        import utool as ut
-        import magic
+        assets = []
 
-        local_store_path = self.get_absolute_path()
-        local_name_path = os.path.join(local_store_path, '_uploads')
-        local_assets_path = os.path.join(local_store_path, '_assets')
+        try:
+            assert self.exists
 
-        # Walk the local store path, looking for white-listed MIME type files
-        files = []
-        skipped = []
-        errors = []
-        walk_list = sorted(list(os.walk(local_name_path)))
-        for root, directories, filenames in tqdm.tqdm(walk_list, desc='Walking Assets'):
-            filenames = sorted(filenames)
-            for filename in filenames:
-                filepath = os.path.join(root, filename)
+            import utool as ut
+            import magic
 
-                # Normalize path (sanity check)
-                filepath = os.path.normpath(filepath)
+            # Step 3.1
+            #   Description: Walk the files in the repo and extract the Magic signatures and file stats
+            #   Delay: a small overhead, should still be relatively quicklatively, unbounded seconds (Step 3.1 << Step 3.2)
+            #   Percentage: 1 - 10%
 
-                # Sanity check, ensure that the path is formatted well
-                assert os.path.exists(filepath)
-                assert os.path.isabs(filepath)
-                try:
-                    basename = os.path.basename(filepath)
-                    _, extension = os.path.splitext(basename)
-                    extension = extension.lower()
-                    extension = extension.strip('.')
+            local_store_path = self.get_absolute_path()
+            local_name_path = os.path.join(local_store_path, '_uploads')
+            local_assets_path = os.path.join(local_store_path, '_assets')
 
-                    if basename.startswith('.'):
-                        # Skip hidden files
-                        if basename not in ['.touch']:
-                            skipped.append((filepath, basename))
-                        continue
+            # Walk the local store path, looking for white-listed MIME type files
+            files = []
+            skipped = []
+            errors = []
+            walk_list = sorted(list(os.walk(local_name_path)))
+            for root, directories, filenames in walk_list:
+                filenames = sorted(filenames)
 
-                    if os.path.isdir(filepath):
-                        # Skip any directories (sanity check)
-                        skipped.append((filepath, extension))
-                        continue
+                if len(directories) > 0:
+                    log.warning(
+                        'Skipping import of %d directories found in %r'
+                        % (
+                            len(directories),
+                            root,
+                        )
+                    )
 
-                    if os.path.islink(filepath):
-                        # Skip any symbolic links (sanity check)
-                        skipped.append((filepath, extension))
-                        continue
-                    mime_type = magic.from_file(filepath, mime=True)
-                    if mime_type not in self.mime_type_whitelist:
-                        # Skip any unsupported MIME types
-                        skipped.append((filepath, extension))
-                        continue
+                for filename in tqdm.tqdm(filenames, desc='Walking Assets'):
+                    filepath = os.path.join(root, filename)
 
-                    magic_signature = magic.from_file(filepath)
-                    size_bytes = os.path.getsize(filepath)
+                    # Normalize path (sanity check)
+                    filepath = os.path.normpath(filepath)
 
-                    this_input_filename = None
-                    for input_filename in input_filenames:
-                        from app.utils import get_stored_filename
+                    # Sanity check, ensure that the path is formatted well
+                    assert os.path.exists(filepath)
+                    assert os.path.isabs(filepath)
+                    try:
+                        basename = os.path.basename(filepath)
+                        _, extension = os.path.splitext(basename)
+                        extension = extension.lower()
+                        extension = extension.strip('.')
 
-                        if get_stored_filename(input_filename) == basename:
-                            this_input_filename = input_filename
-                            break
+                        if basename.startswith('.'):
+                            # Skip hidden files
+                            if basename not in ['.touch']:
+                                skipped.append((filepath, basename))
+                            continue
 
-                    file_data = {
-                        'filepath': filepath,
-                        'path': this_input_filename if this_input_filename else basename,
-                        'mime_type': mime_type,
-                        'magic_signature': magic_signature,
-                        'size_bytes': size_bytes,
-                        'git_store_guid': self.guid,
-                    }
+                        if os.path.isdir(filepath):
+                            # Skip any directories (sanity check)
+                            skipped.append((filepath, extension))
+                            continue
 
-                    files.append(file_data)
-                except Exception:  # pragma: no cover
-                    logging.exception('Got exception in update_asset_symlinks')
-                    errors.append(filepath)
+                        if os.path.islink(filepath):
+                            # Skip any symbolic links (sanity check)
+                            skipped.append((filepath, extension))
+                            continue
+                        mime_type = magic.from_file(filepath, mime=True)
+                        if mime_type not in self.mime_type_whitelist:
+                            # Skip any unsupported MIME types
+                            skipped.append((filepath, extension))
+                            continue
 
-        if verbose:
-            print('Processed asset files from: %r' % (self,))
-            print('\tFiles   : %d' % (len(files),))
-            print('\tSkipped : %d' % (len(skipped),))
+                        magic_signature = magic.from_file(filepath)
+                        size_bytes = os.path.getsize(filepath)
+
+                        this_input_filename = None
+                        for input_filename in input_filenames:
+                            from app.utils import get_stored_filename
+
+                            if get_stored_filename(input_filename) == basename:
+                                this_input_filename = input_filename
+                                break
+
+                        file_data = {
+                            'filepath': filepath,
+                            'path': this_input_filename
+                            if this_input_filename
+                            else basename,
+                            'mime_type': mime_type,
+                            'magic_signature': magic_signature,
+                            'size_bytes': size_bytes,
+                            'git_store_guid': self.guid,
+                        }
+
+                        files.append(file_data)
+                    except Exception:  # pragma: no cover
+                        logging.exception('Got exception in update_asset_symlinks')
+                        errors.append(filepath)
+
+            log.info('Processed asset files from: %r' % (self,))
+            log.info('\tFiles   : %d' % (len(files),))
+            log.info('\tSkipped : %d' % (len(skipped),))
             if len(skipped) > 0:
                 skipped_ext_list = [skip[1] for skip in skipped]
                 skipped_ext_str = ut.repr3(ut.dict_hist(skipped_ext_list))
                 skipped_ext_str = skipped_ext_str.replace('\n', '\n\t\t')
-                print('\t\t%s' % (skipped_ext_str,))
-            print('\tErrors  : %d' % (len(errors),))
+                log.info('\t\t%s' % (skipped_ext_str,))
+            log.info('\tErrors  : %d' % (len(errors),))
 
-        # Compute the xxHash64 for all found files
-        filepath_list = [file_data_['filepath'] for file_data_ in files]
-        arguments_list = list(zip(filepath_list))
-        print('Computing filesystem xxHash64...')
-        filesystem_xxhash64_list = parallel(
-            compute_xxhash64_digest_filepath, arguments_list
-        )
-        filesystem_guid_list = list(map(ut.hashable_to_uuid, filesystem_xxhash64_list))
+            if self.progress_preparation:
+                self.progress_preparation.set(10)
 
-        # Update file_data with the filesystem and semantic hash information
-        zipped = zip(files, filesystem_xxhash64_list, filesystem_guid_list)
-        for file_data, filesystem_xxhash64, filesystem_guid in zipped:
-            file_data['filesystem_xxhash64'] = filesystem_xxhash64
-            file_data['filesystem_guid'] = filesystem_guid
+            # Step 3.2
+            #   Description: Compute the xxHash64 values for all of the found files
+            #   Delay: major pre-compute step, unbounded seconds (Step 3.2 < Step 3.4)
+            #   Percentage: 9% (10% -> 19%)
+            assert self.exists
 
-            semantic_guid_data = [
-                file_data['git_store_guid'],
-                file_data['filesystem_guid'],
-            ]
-            file_data['semantic_guid'] = ut.hashable_to_uuid(semantic_guid_data)
-
-        # Delete all existing symlinks
-        existing_asset_symlinks = ut.glob(os.path.join(local_assets_path, '*'))
-        for existing_asset_symlink in existing_asset_symlinks:
-            basename = os.path.basename(existing_asset_symlink)
-            if basename in ['.touch', '_derived']:
-                continue
-            existing_asset_target = os.readlink(existing_asset_symlink)
-            existing_asset_target_ = os.path.abspath(
-                os.path.join(local_assets_path, existing_asset_target)
+            # Compute the xxHash64 for all found files
+            filepath_list = [file_data_['filepath'] for file_data_ in files]
+            arguments_list = list(zip(filepath_list))
+            log.info('Computing filesystem xxHash64...')
+            filesystem_xxhash64_list = parallel(
+                compute_xxhash64_digest_filepath, arguments_list
             )
-            if os.path.exists(existing_asset_target_):
-                uuid_str, _ = os.path.splitext(basename)
-                uuid_str = uuid_str.strip().strip('.')
-                if existing_asset_target_ not in existing_filepath_guid_mapping:
-                    try:
-                        existing_filepath_guid_mapping[
-                            existing_asset_target_
-                        ] = uuid.UUID(uuid_str)
-                    except Exception:
-                        pass
-            os.remove(existing_asset_symlink)
+            filesystem_guid_list = list(
+                map(ut.hashable_to_uuid, filesystem_xxhash64_list)
+            )
 
-        # Add new or update any existing Assets found in the Git Store
-        local_asset_filepath_list = [
-            file_data.pop('filepath', None) for file_data in files
-        ]
-        assets = []
-        # TODO: slim down this DB context
-        with db.session.begin(subtransactions=True):
-            for file_data, local_asset_filepath in zip(files, local_asset_filepath_list):
-                semantic_guid = file_data.get('semantic_guid', None)
-                asset = Asset.query.filter(Asset.semantic_guid == semantic_guid).first()
-                if asset is None:
-                    # Check if we can recycle existing GUID from symlink
-                    recycle_guid = existing_filepath_guid_mapping.get(
-                        local_asset_filepath, None
-                    )
-                    if recycle_guid is not None:
-                        file_data['guid'] = recycle_guid
+            if self.progress_preparation:
+                self.progress_preparation.set(19)
 
-                    # Create record if asset is new
-                    asset = Asset(**file_data)
-                    db.session.add(asset)
-                else:
-                    # Update record if Asset exists
-                    search_keys = [
-                        'filesystem_guid',
-                        'semantic_guid',
-                        'git_store_guid',
-                    ]
+            # Step 3.3
+            #   Description: Prepare metadata for adding the Assets to the DB, clean up any existing symlinks
+            #   Delay: a small overhead, should still be relatively quicklatively, unbounded seconds (Step 3.3 << Step 3.4)
+            #   Percentage: 1% (19% -> 20%)
+            assert self.exists
 
-                    for key in file_data:
-                        if key in search_keys:
-                            continue
-                        value = file_data[key]
-                        setattr(asset, key, value)
-                    db.session.merge(asset)
-                assets.append(asset)
+            # Update file_data with the filesystem and semantic hash information
+            zipped = zip(files, filesystem_xxhash64_list, filesystem_guid_list)
+            for file_data, filesystem_xxhash64, filesystem_guid in zipped:
+                file_data['filesystem_xxhash64'] = filesystem_xxhash64
+                file_data['filesystem_guid'] = filesystem_guid
 
-        # Update all symlinks for each Asset
-        for asset, local_asset_filepath in zip(assets, local_asset_filepath_list):
-            db.session.refresh(asset)
-            asset.update_symlink(local_asset_filepath)
-            asset.set_derived_meta()
-            if verbose:
-                print(filepath)
-                print('\tAsset         : %s' % (asset,))
-                print('\tSemantic GUID : %s' % (asset.semantic_guid,))
-                print('\tMIME type     : %s' % (asset.mime_type,))
-                print('\tSignature     : %s' % (asset.magic_signature,))
-                print('\tSize bytes    : %s' % (asset.size_bytes,))
-                print('\tFS xxHash64   : %s' % (asset.filesystem_xxhash64,))
-                print('\tFS GUID       : %s' % (asset.filesystem_guid,))
+                semantic_guid_data = [
+                    file_data['git_store_guid'],
+                    file_data['filesystem_guid'],
+                ]
+                file_data['semantic_guid'] = ut.hashable_to_uuid(semantic_guid_data)
 
-        # Get all historical and current Assets for this Git Store
-        db.session.refresh(self)
+            # Delete all existing symlinks
+            existing_asset_symlinks = ut.glob(os.path.join(local_assets_path, '*'))
+            for existing_asset_symlink in existing_asset_symlinks:
+                basename = os.path.basename(existing_asset_symlink)
+                if basename in ['.touch', '_derived']:
+                    continue
+                existing_asset_target = os.readlink(existing_asset_symlink)
+                existing_asset_target_ = os.path.abspath(
+                    os.path.join(local_assets_path, existing_asset_target)
+                )
+                if os.path.exists(existing_asset_target_):
+                    uuid_str, _ = os.path.splitext(basename)
+                    uuid_str = uuid_str.strip().strip('.')
+                    if existing_asset_target_ not in existing_filepath_guid_mapping:
+                        try:
+                            existing_filepath_guid_mapping[
+                                existing_asset_target_
+                            ] = uuid.UUID(uuid_str)
+                        except Exception:
+                            pass
+                os.remove(existing_asset_symlink)
+
+            if self.progress_preparation:
+                self.progress_preparation.set(20)
+
+            # Step 3.4
+            #   Description: Add the assets to the database
+            #   Delay: the majority of the processing, unbounded seconds
+            #   Percentage: 60% (20% -> 80%)
+            assert self.exists
+
+            # Add new or update any existing Assets found in the Git Store
+            local_asset_filepath_list = [
+                file_data.pop('filepath', None) for file_data in files
+            ]
+            # TODO: slim down this DB context
+            with db.session.begin(subtransactions=True):
+                zipped = list(zip(files, local_asset_filepath_list))
+                for index, zip_data in enumerate(zipped):
+                    assert self.exists
+
+                    file_data, local_asset_filepath = zip_data
+
+                    semantic_guid = file_data.get('semantic_guid', None)
+                    asset = Asset.query.filter(
+                        Asset.semantic_guid == semantic_guid
+                    ).first()
+                    if asset is None:
+                        # Check if we can recycle existing GUID from symlink
+                        recycle_guid = existing_filepath_guid_mapping.get(
+                            local_asset_filepath, None
+                        )
+                        if recycle_guid is not None:
+                            file_data['guid'] = recycle_guid
+
+                        # Create record if asset is new
+                        asset = Asset(**file_data)
+                        db.session.add(asset)
+                    else:
+                        # Update record if Asset exists
+                        search_keys = [
+                            'filesystem_guid',
+                            'semantic_guid',
+                            'git_store_guid',
+                        ]
+
+                        for key in file_data:
+                            if key in search_keys:
+                                continue
+                            value = file_data[key]
+                            setattr(asset, key, value)
+                        db.session.merge(asset)
+                    assets.append(asset)
+
+                    if self.progress_preparation:
+                        numerator = index
+                        denominator = len(zipped)
+                        percentage = numerator / denominator
+                        offset = 20.0
+                        domain = 60.0
+                        new_percentage = offset + (domain * percentage)
+                        new_percentage = max(offset, min(offset + domain, new_percentage))
+                        self.progress_preparation.set(new_percentage)
+
+            if self.progress_preparation:
+                self.progress_preparation.set(80)
+
+            # Step 3.5
+            #   Description: Reload all of the assets into memory and update their symlinks
+            #   Delay: the majority of the processing, unbounded seconds
+            #   Percentage: 9% (89% -> 89%)
+            assert self.exists
+
+            # Update all symlinks for each Asset
+            for asset, local_asset_filepath in zip(assets, local_asset_filepath_list):
+                db.session.refresh(asset)
+                asset.update_symlink(local_asset_filepath)
+                asset.set_derived_meta()
+
+                log.debug(filepath)
+                log.debug('\tAsset         : %s' % (asset,))
+                log.debug('\tSemantic GUID : %s' % (asset.semantic_guid,))
+                log.debug('\tMIME type     : %s' % (asset.mime_type,))
+                log.debug('\tSignature     : %s' % (asset.magic_signature,))
+                log.debug('\tSize bytes    : %s' % (asset.size_bytes,))
+                log.debug('\tFS xxHash64   : %s' % (asset.filesystem_xxhash64,))
+                log.debug('\tFS GUID       : %s' % (asset.filesystem_guid,))
+
+            # Get all historical and current Assets for this Git Store
+            assert self.exists
+            db.session.refresh(self)
+
+            if self.progress_preparation:
+                self.progress_preparation.set(89)
+        except Exception:
+            if self.progress_preparation:
+                self.progress_preparation.fail()
+            raise
+        finally:
+            if not self.exists:
+                # Delete all assets that were added during this session
+                deleted_assets = assets
+            else:
+                # Figure out what Assets we need to delete because they aren't on disk anymore
+                deleted_assets = list(set(self.assets) - set(assets))
+
+        # Step 3.6
+        #   Description: Cleanup of any deleted assets
+        #   Delay: small overhead, unbounded seconds
+        #   Percentage: 1% (89% -> 90%)
 
         # Delete any historical Assets that have been deleted from this commit
-        deleted_assets = list(set(self.assets) - set(assets))
-        if verbose:
-            print('Deleting %d orphaned Assets' % (len(deleted_assets),))
-        with db.session.begin(subtransactions=True):
-            for deleted_asset in deleted_assets:
-                deleted_asset.delete()
+        log.info('Deleting %d orphaned Assets' % (len(deleted_assets),))
+        for deleted_asset in deleted_assets:
+            with db.session.begin(subtransactions=True):
+                try:
+                    if deleted_asset.exists:
+                        deleted_asset.delete()
+                except Exception:
+                    pass
+
+        assert self.exists
         db.session.refresh(self)
+
+        if self.progress_preparation:
+            self.progress_preparation.set(90)
 
     def update_metadata_from_project(self, project):
         # Update any local metadata from sub
@@ -992,6 +1135,11 @@ class GitStore(db.Model, HoustonModel):
             return False
 
     def delete(self):
+        additional = []
+
+        if self.progress_preparation:
+            additional.append(self.progress_preparation)
+
         with db.session.begin(subtransactions=True):
             for asset in self.assets:
                 asset.delete_cascade()
@@ -999,6 +1147,11 @@ class GitStore(db.Model, HoustonModel):
         #       transaction with the AssetGroup deletion transaction, bad for rollbacks
         with db.session.begin(subtransactions=True):
             db.session.delete(self)
+
+        with db.session.begin(subtransactions=True):
+            for obj in additional:
+                obj.delete()
+
         self.delete_dirs()
 
         # Delete the gitlab project in the background (we won't wait

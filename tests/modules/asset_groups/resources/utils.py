@@ -159,7 +159,9 @@ def patch_in_dummy_annotation(
     group_sighting = read_asset_group_sighting(
         flask_app_client, user, asset_group_sighting_uuid
     )
-    encounter_guid = group_sighting.json['config']['encounters'][encounter_num]['guid']
+    encounter_guid = group_sighting.json['config']['sighting']['encounters'][
+        encounter_num
+    ]['guid']
 
     patch_data = [test_utils.patch_add_op('annotations', [str(new_annot.guid)])]
     patch_asset_group_sighting(
@@ -240,9 +242,9 @@ def delete_asset_group(
     flask_app_client, user, asset_group_guid, expected_status_code=204
 ):
     from app.modules.asset_groups.models import AssetGroup
-    from app.modules.asset_groups.tasks import delete_remote
+    from app.extensions.git_store.tasks import delete_remote
 
-    with mock.patch('app.modules.asset_groups.tasks') as tasks:
+    with mock.patch('app.extensions.git_store.tasks') as tasks:
         # Do delete_remote in the foreground immediately instead of using a
         # celery worker in the background
         tasks.delete_remote.delay.side_effect = lambda *args, **kwargs: delete_remote(
@@ -421,12 +423,12 @@ def read_asset_group_sighting_as_sighting(
 def extract_ags_data(group_data, ags_num):
     ags_data = {
         'guid': group_data['asset_group_sightings'][ags_num]['guid'],
-        'encounters': group_data['asset_group_sightings'][ags_num]['config'][
+        'encounters': group_data['asset_group_sightings'][ags_num]['config']['sighting'][
             'encounters'
         ],
         'assets': [],
     }
-    for filename in group_data['asset_group_sightings'][ags_num]['config'][
+    for filename in group_data['asset_group_sightings'][ags_num]['config']['sighting'][
         'assetReferences'
     ]:
         asset_guids = [
@@ -579,6 +581,7 @@ def create_asset_group(
         test_utils.validate_dict_response(
             response, expected_status_code, {'status', 'message'}
         )
+
     return response
 
 

@@ -91,7 +91,7 @@ def test_asset_group_sightings(session, login, codex_url, test_root):
     ags_guid = ags['guid']
     assert len(ags['assets']) == 1
     ags_asset = ags['assets'][0]
-    ags_encounter = ags['config']['encounters'][0]
+    ags_encounter = ags['config']['sighting']['encounters'][0]
     asset_group_guid = response.json()['guid']
     assert response.json() == {
         'assets': [

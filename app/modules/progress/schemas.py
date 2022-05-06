@@ -17,12 +17,7 @@ class BaseProgressSchema(ModelSchema):
     class Meta:
         # pylint: disable=missing-docstring
         model = Progress
-        fields = (
-            Progress.guid.key,
-            # Progress.description.key,
-            Progress.percentage.key,
-            'complete',
-        )
+        fields = (Progress.guid.key,)
         dump_only = (Progress.guid.key,)
 
 
@@ -33,6 +28,11 @@ class DetailedProgressSchema(BaseProgressSchema):
 
     class Meta(BaseProgressSchema.Meta):
         fields = BaseProgressSchema.Meta.fields + (
+            Progress.description.key,
+            Progress.percentage.key,
+            Progress.status.key,
+            'complete',
+            Progress.eta.key,
             Progress.created.key,
             Progress.updated.key,
         )

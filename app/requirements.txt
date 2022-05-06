@@ -11,6 +11,8 @@ celery
 
 elasticsearch
 
+etaprogress
+
 Flask>=1.1,<2
 Flask-Caching>=1.8.0
 Flask-Cors>=3.0.8,<4

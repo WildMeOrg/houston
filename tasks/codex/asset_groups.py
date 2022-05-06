@@ -28,8 +28,8 @@ def create_asset_group_from_path(
     """
     from app.modules.users.models import User
     from app.modules.asset_groups.models import AssetGroup
-    from app.modules.asset_groups.tasks import git_push
     from app.extensions.git_store import GitStoreMajorType as AssetGroupMajorType
+    from app.extensions.git_store.tasks import git_push
     from app.extensions import db
     import socket
 

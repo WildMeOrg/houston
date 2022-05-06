@@ -440,7 +440,7 @@ class IntelligentAgentContent(db.Model, HoustonModel):
             log.debug(f'trying get {url} -> {target_path}')
             resp = requests.get(url)
             open(target_path, 'wb').write(resp.content)
-            tus_write_file_metadata(target_path, original_filename)
+            tus_write_file_metadata(target_path, original_filename, md.get('id', None))
             ct += 1
         log.debug(f'prepare_media_transaction() processed {self._transaction_paths}')
         return self._transaction_paths

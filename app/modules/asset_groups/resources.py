@@ -10,7 +10,7 @@ import werkzeug
 import uuid
 import json
 
-from flask import request
+from flask import request, current_app
 from flask_restx_patched import Resource
 from flask_restx_patched._http import HTTPStatus
 
@@ -88,6 +88,7 @@ class AssetGroups(Resource):
         """
         Create a new instance of Asset_group.
         """
+        from app.extensions.git_store.tasks import git_commit
         from app.extensions.elapsed_time import ElapsedTime
         import app.extensions.logging as AuditLog  # NOQA
         from app.modules.users.models import User
@@ -125,7 +126,7 @@ class AssetGroups(Resource):
             abort(400, f'Creation failed {ex}')
 
         try:
-            progress = asset_group.begin_ia_pipeline(metadata)
+            progress, input_files = asset_group.begin_ia_pipeline(metadata)
         except HoustonException as ex:
             asset_group.delete()
             abort(
@@ -145,6 +146,15 @@ class AssetGroups(Resource):
             asset_group.progress_preparation_guid = progress.guid
             db.session.merge(asset_group)
         db.session.refresh(asset_group)
+
+        # Start the git_commit that will process the assets (update=True) and commit the new files to the Git repo (commit=True)
+        description = 'Tus collect commit, %s' % (progress.description,)
+
+        if current_app.testing:
+            # When testing, run on-demand and don't use celery workers
+            git_commit.s(str(asset_group.guid), description, input_files).apply()
+        else:
+            git_commit.delay(str(asset_group.guid), description, input_files)
 
         return asset_group
 
@@ -321,7 +331,7 @@ class AssetGroupByID(Resource):
             except HoustonException as ex:
                 abort(ex.status_code, ex.message)
         else:
-            from .tasks import delete_remote
+            from app.extensions.git_store.tasks import delete_remote
 
             delete_remote.delay(str(asset_group_id))
 

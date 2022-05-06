@@ -111,20 +111,33 @@ def _tus_upload_file_handler(
 def _tus_delete_file_handler(upload_file_path, resource_id, req, app):
     from uuid import UUID
 
+    asset_group_id = None
+    transaction_id = None
+    if 'x-houston-asset-group-id' in req.headers:
+        asset_group_id = req.headers.get('x-houston-asset-group-id')
+        UUID(
+            asset_group_id, version=4
+        )  # this is just to test it is a valid uuid - will throw ValueError if not! (500 response)
+    # TODO verify asset_group? ownership? etc  possibly also "session-secret" to prevent anyone from adding to asset_group
     if 'x-tus-transaction-id' in req.headers:
         transaction_id = req.headers.get('x-tus-transaction-id')
         UUID(
             transaction_id, version=4
         )  # this is just to test it is a valid uuid - will throw ValueError if not! (500 response)
 
-    upload_dir = tus_upload_dir(
-        current_app,
-        transaction_id=transaction_id,
-    )
+    dir = os.path.join(tus_upload_dir(app), 'unknown')
+    if asset_group_id is not None:
+        dir = tus_upload_dir(app, git_store_guid=asset_group_id)
+    elif transaction_id is not None:
+        dir = tus_upload_dir(app, transaction_id=transaction_id)
+    elif 'session' in req.cookies:
+        dir = tus_upload_dir(
+            app, session_id=str(req.cookies.get('session')).encode('utf-8')
+        )
 
     filepaths = []
     # traverse whole upload dir and take everything
-    for root, dirs, files in os.walk(upload_dir):
+    for root, dirs, files in os.walk(dir):
         for path in files:
             if not path.startswith('.'):
                 filepaths.append(os.path.join(root, path))
@@ -270,7 +283,7 @@ def tus_get_transaction_metadata_filepath(dir):
     return os.path.join(dir, '.metadata.json')
 
 
-def tus_write_file_metadata(stored_path, input_path, resource_id):
+def tus_write_file_metadata(stored_path, input_path, resource_id=None):
 
     # Store the original filename as metadata next to the file
     metadata_filepath = tus_get_resource_metadata_filepath(stored_path)

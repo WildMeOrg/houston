@@ -35,6 +35,7 @@ MAX_DETECTION_ATTEMPTS = 10
 
 class AssetGroupSightingStage(str, enum.Enum):
     unknown = 'unknown'
+    preparation = 'preparation'
     detection = 'detection'
     curation = 'curation'
     processed = 'processed'
@@ -65,6 +66,8 @@ class AssetGroupSighting(db.Model, HoustonModel):
     # configuration metadata from the create request
     config = db.Column(db.JSON, nullable=True)
 
+    config = db.Column(db.JSON, nullable=True)
+
     sighting = db.relationship('Sighting')
 
     # May have multiple jobs outstanding, store as Json obj uuid_str is key, In_progress Bool is value
@@ -87,27 +90,67 @@ class AssetGroupSighting(db.Model, HoustonModel):
 
     def __init__(self, asset_group, sighting_config, detection_configs):
         self.asset_group = asset_group
-        self.config = sighting_config
+        self.config = {
+            'sighting': sighting_config,
+            'detections': detection_configs,
+        }
 
         # Start by writing to DB so that all rollback on failure works
         with db.session.begin(subtransactions=True):
             db.session.add(self)
         db.session.refresh(self)
 
+        self.set_stage(AssetGroupSightingStage.preparation, refresh=False)
+
+        AuditLog.user_create_object(log, self)
+
+    @property
+    def sighting_config(self):
+        return None if self.config is None else self.config.get('sighting', None)
+
+    @sighting_config.setter
+    def sighting_config(self, value):
+        if self.config is None:
+            self.config = {}
+        self.config['sighting'] = value
+
+    @property
+    def detection_configs(self):
+        return None if self.config is None else self.config.get('detections', None)
+
+    @detection_configs.setter
+    def detection_configs(self, value):
+        if self.config is None:
+            self.config = {}
+        self.config['detections'] = value
+
+    @property
+    def progress_preparation(self):
+        return self.asset_group.progress_preparation
+
+    def post_preparation(self):
+        if self.stage != AssetGroupSightingStage.preparation:
+            return
+
+        assert (
+            self.asset_group.progress_preparation is None
+            or self.asset_group.progress_preparation.complete
+        )
+
         # Allow sightings to have no Assets, they go straight to curation
         if (
-            'assetReferences' not in self.config
-            or len(self.config['assetReferences']) == 0
+            'assetReferences' not in self.sighting_config
+            or len(self.sighting_config['assetReferences']) == 0
         ):
-            self.stage = AssetGroupSightingStage.curation
+            self.set_stage(AssetGroupSightingStage.curation)
             self.commit()
 
-        elif len(detection_configs) == 1 and (
-            not detection_configs[0] or detection_configs[0] == 'None'
+        elif len(self.detection_configs) == 1 and (
+            not self.detection_configs[0] or self.detection_configs[0] == 'None'
         ):
-            self.stage = AssetGroupSightingStage.curation
+            self.set_stage(AssetGroupSightingStage.curation)
         else:
-            self.stage = AssetGroupSightingStage.detection
+            self.set_stage(AssetGroupSightingStage.detection)
 
         if self.stage == AssetGroupSightingStage.detection:
             try:
@@ -116,11 +159,6 @@ class AssetGroupSighting(db.Model, HoustonModel):
             except HoustonException as ex:
                 self.delete()
                 raise ex
-        AuditLog.user_create_object(log, self)
-
-    @property
-    def progress_preparation(self):
-        return self.asset_group.progress_preparation
 
     def commit(self):
         from app.modules.utils import Cleanup
@@ -131,10 +169,10 @@ class AssetGroupSighting(db.Model, HoustonModel):
         if self.stage != AssetGroupSightingStage.curation:
             raise HoustonException(
                 log,
-                f'AssetGroupSighting {self.guid} is currently {self.stage}, not curating cannot commit',
+                f'AssetGroupSighting {self.guid} is currently in {self.stage}, not curating cannot commit',
             )
 
-        if not self.config:
+        if not self.sighting_config:
             raise HoustonException(
                 log,
                 f'AssetGroupSighting {self.guid} has no metadata',
@@ -144,7 +182,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
         # Create sighting in EDM
         try:
             # Don't send the encounter guids. EDM doesn't use them but they confuse anyone reading logs
-            sent_data = self.config
+            sent_data = self.sighting_config
             for enc in sent_data['encounters']:
                 enc.pop('guid')
             result_data = current_app.edm.request_passthrough_result(
@@ -166,37 +204,37 @@ class AssetGroupSighting(db.Model, HoustonModel):
         # if we get here, edm has made the sighting.  now we have to consider encounters contained within,
         # and make houston for the sighting + encounters
 
-        # encounters via self.config and edm (result_data) need to have same count!
-        if ('encounters' in self.config and 'encounters' not in result_data) or (
-            'encounters' not in self.config and 'encounters' in result_data
+        # encounters via self.sighting_config and edm (result_data) need to have same count!
+        if ('encounters' in self.sighting_config and 'encounters' not in result_data) or (
+            'encounters' not in self.sighting_config and 'encounters' in result_data
         ):
             cleanup.rollback_and_houston_exception(
                 log,
                 'Missing encounters between requested config and result',
                 'Sighting.post missing encounters in one of %r or %r'
-                % (self.config, result_data),
+                % (self.sighting_config, result_data),
             )
-        if not len(self.config['encounters']) == len(result_data['encounters']):
+        if not len(self.sighting_config['encounters']) == len(result_data['encounters']):
             cleanup.rollback_and_houston_exception(
                 log,
                 'Imbalance in encounters between data and result',
                 'Sighting.post imbalanced encounters in %r or %r'
-                % (self.config, result_data),
+                % (self.sighting_config, result_data),
             )
 
         sighting = Sighting(
             guid=result_data['id'],
             # asset_group_sighting=self,  -- see note below
-            name=self.config.get('name', ''),
+            name=self.sighting_config.get('name', ''),
             stage=SightingStage.identification,
             version=result_data.get('version', 2),
         )
         try:
-            sighting.set_time_from_data(self.config)
+            sighting.set_time_from_data(self.sighting_config)
         except ValueError as ve:
             cleanup.rollback_and_abort(
                 f'Problem with sighting time/timeSpecificity values: {str(ve)}',
-                f"invalid time ({self.config.get('time')}) or timeSpecificity ({self.config.get('timeSpecificity')}): {str(ve)}",
+                f"invalid time ({self.sighting_config.get('time')}) or timeSpecificity ({self.sighting_config.get('timeSpecificity')}): {str(ve)}",
                 error_fields=['time'],
             )
         if not sighting.time:
@@ -209,15 +247,15 @@ class AssetGroupSighting(db.Model, HoustonModel):
         with db.session.begin(subtransactions=True):
             db.session.add(sighting)
         # Add the assets for all of the encounters to the created sighting object
-        for reference in self.config.get('assetReferences', []):
+        for reference in self.sighting_config.get('assetReferences', []):
             asset = self.asset_group.get_asset_for_file(reference)
             assert asset
             sighting.add_asset(asset)
 
         cleanup.add_object(sighting)
 
-        for encounter_num in range(len(self.config['encounters'])):
-            req_data = self.config['encounters'][encounter_num]
+        for encounter_num in range(len(self.sighting_config['encounters'])):
+            req_data = self.sighting_config['encounters'][encounter_num]
             res_data = result_data['encounters'][encounter_num]
             try:
                 owner_guid = self.asset_group.owner_guid
@@ -278,7 +316,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
         self.complete()
         sighting.ia_pipeline()
 
-        num_encounters = len(self.config['encounters'])
+        num_encounters = len(self.sighting_config['encounters'])
         AuditLog.user_create_object(
             log, sighting, f'with {num_encounters} encounter(s)', duration=timer.elapsed()
         )
@@ -287,13 +325,15 @@ class AssetGroupSighting(db.Model, HoustonModel):
 
     def has_filename(self, filename):
         return (
-            filename in self.config.get('assetReferences', []) if self.config else False
+            filename in self.sighting_config.get('assetReferences', [])
+            if self.sighting_config
+            else False
         )
 
     def has_annotation(self, annot_guid):
         ret_val = False
-        if self.config and self.config['encounters']:
-            for enc in self.config['encounters']:
+        if self.sighting_config and self.sighting_config['encounters']:
+            for enc in self.sighting_config['encounters']:
                 if annot_guid in enc.get('annotations', []):
                     ret_val = True
                     break
@@ -321,8 +361,8 @@ class AssetGroupSighting(db.Model, HoustonModel):
         if (
             self.stage != AssetGroupSightingStage.detection
             and not self.any_jobs_active()
-            and 'assetReferences' in self.config.keys()
-            and len(self.config['assetReferences']) != 0
+            and 'assetReferences' in self.sighting_config.keys()
+            and len(self.sighting_config['assetReferences']) != 0
         ):
             return self.curation_start.isoformat() + 'Z'
         return None
@@ -332,6 +372,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
         # Design allows for these limits to be configured later, potentially this data could be project specific
         stage_base_sizes = {
             AssetGroupSightingStage.unknown: 0,
+            AssetGroupSightingStage.preparation: 0,
             AssetGroupSightingStage.detection: 0,
             AssetGroupSightingStage.curation: 10,
             AssetGroupSightingStage.processed: 30,  # 40 for identification 20 for review
@@ -397,7 +438,11 @@ class AssetGroupSighting(db.Model, HoustonModel):
         return getter
 
     def get_config_field(self, field):
-        value = self.config.get(field) if isinstance(self.config, dict) else None
+        value = (
+            self.sighting_config.get(field)
+            if isinstance(self.sighting_config, dict)
+            else None
+        )
         if not value:
             value = self.asset_group.get_config_field(field)
         return value
@@ -434,7 +479,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
         return enc_json
 
     def get_encounter_json(self, encounter_guid):
-        encounters = self.config and self.config.get('encounters') or []
+        encounters = self.sighting_config and self.sighting_config.get('encounters') or []
         enc_json = None
         for encounter in encounters:
             if encounter['guid'] == str(encounter_guid):
@@ -443,7 +488,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
         return enc_json
 
     def get_encounters_json(self):
-        encounters = self.config and self.config.get('encounters') or []
+        encounters = self.sighting_config and self.sighting_config.get('encounters') or []
         enc_json = []
         for encounter in encounters:
             enc_json.append(self._augment_encounter_json(encounter))
@@ -751,13 +796,13 @@ class AssetGroupSighting(db.Model, HoustonModel):
         model_config.update(detector_config)
 
         asset_urls = []
-        if 'updatedAssets' in self.config:
+        if 'updatedAssets' in self.sighting_config:
             asset_urls = [
                 url_for('api.assets_asset_src_raw_by_id', asset_guid=guid, _external=True)
-                for guid in self.config['updatedAssets']
+                for guid in self.sighting_config['updatedAssets']
             ]
         else:
-            for filename in self.config.get('assetReferences'):
+            for filename in self.sighting_config.get('assetReferences'):
                 asset = self.asset_group.get_asset_for_file(filename)
                 if not asset:
                     logging.warning(f'Asset ref {filename}, cannot find asset, skipping')
@@ -841,10 +886,12 @@ class AssetGroupSighting(db.Model, HoustonModel):
         # response, process it here
         return True
 
-    def set_stage(self, stage):
+    def set_stage(self, stage, refresh=True):
         self.stage = stage
         with db.session.begin(subtransactions=True):
             db.session.merge(self)
+        if refresh:
+            db.session.refresh(self)
 
     def detected(self, job_id, response):
         log.info(f'Received Sage detection response on AssetGroupSighting {self.guid}')
@@ -954,12 +1001,12 @@ class AssetGroupSighting(db.Model, HoustonModel):
 
     # Record that the asset has been updated for future re detection
     def asset_updated(self, asset):
-        updated_assets = self.config.setdefault('updatedAssets', [])
+        updated_assets = self.sighting_config.setdefault('updatedAssets', [])
         if asset.guid not in updated_assets:
             updated_assets.append(asset.guid)
 
         # Ensure it's written to DB
-        self.config = self.config
+        self.sighting_config = self.sighting_config
 
     def rerun_detection(self, background=True):
         log.info('Rerunning Sage detection')
@@ -1001,9 +1048,9 @@ class AssetGroupSighting(db.Model, HoustonModel):
     # Used to build the response to AssetGroupSighting GET
     def get_assets(self):
         assets = []
-        if not self.config.get('assetReferences'):
+        if not self.sighting_config.get('assetReferences'):
             return assets
-        for filename in self.config.get('assetReferences'):
+        for filename in self.sighting_config.get('assetReferences'):
             asset = self.asset_group.get_asset_for_file(filename)
             if asset:
                 assets.append(asset)
@@ -1023,10 +1070,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
         for job_id in self.jobs:
             assert not self.jobs[job_id]['active']
 
-        self.stage = AssetGroupSightingStage.processed
-        with db.session.begin(subtransactions=True):
-            db.session.merge(self)
-        db.session.refresh(self)
+        self.set_stage(AssetGroupSightingStage.processed)
 
     def job_complete(self, job_id_str):
         if job_id_str in self.jobs:
@@ -1040,10 +1084,10 @@ class AssetGroupSighting(db.Model, HoustonModel):
 
             if len(outstanding_jobs) == 0:
                 # All complete, updatedAssets now in same sate as other assets so no need to store anymore
-                if 'updatedAssets' in self.config:
-                    del self.config['updatedAssets']
-                self.config = self.config
-                self.stage = AssetGroupSightingStage.curation
+                if 'updatedAssets' in self.sighting_config:
+                    del self.sighting_config['updatedAssets']
+                self.sighting_config = self.sighting_config
+                self.set_stage(AssetGroupSightingStage.curation, refresh=False)
                 self.curation_start = datetime.utcnow()
 
             # This is necessary because we can only mark jobs as
@@ -1065,15 +1109,17 @@ class AssetGroupSighting(db.Model, HoustonModel):
 
     def get_encounter_metadata(self, encounter_uuid):
         encounter_metadata = {}
-        for encounter_num in range(len(self.config['encounters'])):
-            if self.config['encounters'][encounter_num]['guid'] == str(encounter_uuid):
-                encounter_metadata = self.config['encounters'][encounter_num]
+        for encounter_num in range(len(self.sighting_config['encounters'])):
+            if self.sighting_config['encounters'][encounter_num]['guid'] == str(
+                encounter_uuid
+            ):
+                encounter_metadata = self.sighting_config['encounters'][encounter_num]
                 break
         return encounter_metadata
 
     def add_annotation_to_encounter(self, encounter_guid, annot_guid):
-        for encounter_num in range(len(self.config['encounters'])):
-            encounter_metadata = self.config['encounters'][encounter_num]
+        for encounter_num in range(len(self.sighting_config['encounters'])):
+            encounter_metadata = self.sighting_config['encounters'][encounter_num]
             if encounter_metadata['guid'] == str(encounter_guid):
                 if 'annotations' not in encounter_metadata.keys():
                     encounter_metadata['annotations'] = []
@@ -1081,28 +1127,30 @@ class AssetGroupSighting(db.Model, HoustonModel):
                     encounter_metadata['annotations'].append(annot_guid)
 
     def remove_annotation_from_encounter(self, encounter_guid, annot_guid):
-        for encounter_num in range(len(self.config['encounters'])):
-            encounter_metadata = self.config['encounters'][encounter_num]
+        for encounter_num in range(len(self.sighting_config['encounters'])):
+            encounter_metadata = self.sighting_config['encounters'][encounter_num]
             if encounter_metadata['guid'] == str(encounter_guid):
                 if (
                     'annotations' in encounter_metadata.keys()
                     and annot_guid in encounter_metadata['annotations']
                 ):
-                    self.config['encounters'][encounter_num]['annotations'].remove(
-                        annot_guid
-                    )
+                    self.sighting_config['encounters'][encounter_num][
+                        'annotations'
+                    ].remove(annot_guid)
 
     def remove_annotation(self, annot_guid):
-        for encounter_num in range(len(self.config['encounters'])):
-            encounter_metadata = self.config['encounters'][encounter_num]
+        for encounter_num in range(len(self.sighting_config['encounters'])):
+            encounter_metadata = self.sighting_config['encounters'][encounter_num]
             if (
                 'annotations' in encounter_metadata.keys()
                 and annot_guid in encounter_metadata['annotations']
             ):
-                self.config['encounters'][encounter_num]['annotations'].remove(annot_guid)
+                self.sighting_config['encounters'][encounter_num]['annotations'].remove(
+                    annot_guid
+                )
 
     def get_id_configs(self):
-        return self.config.get('idConfigs', [])
+        return self.sighting_config.get('idConfigs', [])
 
 
 class AssetGroup(GitStore):
@@ -1133,6 +1181,7 @@ class AssetGroup(GitStore):
             'assets_without_annots': [],
             'failed_sightings': [],
             'unknown_stage_sightings': [],
+            'preparation_stage_sightings': [],
             'sightings_missing_assets': [],
             'jobless_detecting_sightings': [],
         }
@@ -1175,6 +1224,15 @@ class AssetGroup(GitStore):
             ).all()
         ]
 
+        result['preparation_stage_sightings'] = [
+            sight.guid
+            for sight in (
+                db.session.query(AssetGroupSighting).filter(
+                    AssetGroupSighting.stage == AssetGroupSightingStage.preparation
+                )
+            ).all()
+        ]
+
         # Having detecting sightings is perfectly valid but there may be reasons why they're
         # stuck in detecting. Only look at ones that are at least an hour old to avoid false positives
         import datetime
@@ -1203,6 +1261,10 @@ class AssetGroup(GitStore):
 
         return result
 
+    def index_hook_obj(self, *args, **kwargs):
+        for sighting in self.asset_group_sightings:
+            sighting.index(*args, **kwargs)
+
     @classmethod
     def get_elasticsearch_schema(cls):
         from app.modules.asset_groups.schemas import CreateAssetGroupSchema
@@ -1211,17 +1273,17 @@ class AssetGroup(GitStore):
 
     @classmethod
     def ensure_remote_delay(cls, asset_group):
-        from .tasks import ensure_remote
+        from app.extensions.git_store.tasks import ensure_remote
 
         ensure_remote.delay(str(asset_group.guid))
 
     def git_push_delay(self):
-        from .tasks import git_push
+        from app.extensions.git_store.tasks import git_push
 
         git_push.delay(str(self.guid))
 
     def delete_remote_delay(self):
-        from .tasks import delete_remote
+        from app.extensions.git_store.tasks import delete_remote
 
         delete_remote.delay(str(self.guid))
 
@@ -1232,6 +1294,11 @@ class AssetGroup(GitStore):
             for sighting in self.asset_group_sightings:
                 metadata_request['sightings'].append(sighting.config)
             local_store_metadata['frontend_sightings_data'] = metadata_request
+
+    def post_preparation(self):
+        if self.asset_group_sightings:
+            for sighting in self.asset_group_sightings:
+                sighting.post_preparation()
 
     def is_partially_in_stage(self, stage):
         if self.asset_group_sightings:
@@ -1329,9 +1396,7 @@ class AssetGroup(GitStore):
             db.session.add(progress)
         db.session.refresh(progress)
 
-        # self.delay(self.guid, input_files, progress.guid)
-
-        return progress
+        return progress, input_files
 
     def asset_updated(self, asset):
         for ags in self.get_asset_group_sightings_for_asset(asset):

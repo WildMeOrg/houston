@@ -20,25 +20,11 @@ except RuntimeError:
 #        As it stands we define modules to load in configuration,
 #        but celery is sidelong to that configuration.
 #        As such, things like checking for an appliation's context is necessary.
-# Register celery tasks
 
-if is_module_enabled('job_control'):
-    import app.modules.job_control.tasks  # noqa
+# Register Extension-level tasks
 
-if is_module_enabled('asset_groups'):
-    import app.modules.asset_groups.tasks  # noqa
-
-if is_module_enabled('sightings'):
-    import app.modules.sightings.tasks  # noqa
-
-if is_module_enabled('individuals'):
-    import app.modules.individuals.tasks  # noqa
-
-if is_module_enabled('missions'):
-    import app.modules.missions.tasks  # noqa
-
-if is_module_enabled('elasticsearch'):
-    import app.modules.elasticsearch.tasks  # noqa
+# Always import GitStore tasks
+import app.extensions.git_store.tasks  # noqa
 
 if is_extension_enabled('elasticsearch'):
     import app.extensions.elasticsearch.tasks  # noqa
@@ -48,3 +34,23 @@ if is_extension_enabled('intelligent_agent'):
 
 if is_extension_enabled('tus'):
     import app.extensions.tus.tasks  # noqa
+
+# Register Module-level tasks
+
+if is_module_enabled('asset_groups'):
+    import app.modules.asset_groups.tasks  # noqa
+
+if is_module_enabled('elasticsearch'):
+    import app.modules.elasticsearch.tasks  # noqa
+
+if is_module_enabled('individuals'):
+    import app.modules.individuals.tasks  # noqa
+
+if is_module_enabled('job_control'):
+    import app.modules.job_control.tasks  # noqa
+
+if is_module_enabled('missions'):
+    import app.modules.missions.tasks  # noqa
+
+if is_module_enabled('sightings'):
+    import app.modules.sightings.tasks  # noqa

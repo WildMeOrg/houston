@@ -45,6 +45,31 @@ def test_create_string(db):
         db.session.delete(new_setting)
 
 
+def test_boolean(db):
+    bkey = 'test_boolean'
+    new_setting = SiteSetting.set(key=bkey, boolean=False)
+    try:
+        read_value = SiteSetting.query.get(bkey)
+        assert read_value.boolean is False
+        read_value = SiteSetting.get_value(bkey)
+        assert read_value is False
+
+        SiteSetting.set(key=bkey, boolean=True)
+        read_value = SiteSetting.query.get(bkey)
+        assert read_value.boolean is True
+        read_value = SiteSetting.get_value(bkey)
+        assert read_value is True
+
+        SiteSetting.set(key=bkey, boolean=None)
+        read_value = SiteSetting.query.get(bkey)
+        assert read_value.boolean is None
+        read_value = SiteSetting.get_value(bkey)
+        assert read_value is None
+
+    finally:
+        db.session.delete(new_setting)
+
+
 def test_get_value(db, flask_app):
     if is_extension_enabled('edm'):
         # Make sure site.name is set in edm

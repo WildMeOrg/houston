@@ -239,5 +239,18 @@ def test_nlp_time():
     assert cdt.isoformat_in_timezone() == '2019-07-01T00:00:00+00:00'
     assert cdt.specificity == Specificities.month
 
+    # some of the nasty range-y stuff
+    text = 'during last winter'
+    cdt = nlp_parse_complex_date_time(text, reference_date=refdate)
+    assert cdt
+    assert cdt.isoformat_in_timezone() == '2018-01-01T00:00:00+00:00'
+    assert cdt.specificity == Specificities.month
+
+    text = 'yesterday morning'
+    cdt = nlp_parse_complex_date_time(text, reference_date=refdate)
+    assert cdt
+    assert cdt.isoformat_in_timezone() == '2019-08-14T09:00:00+00:00'
+    assert cdt.specificity == Specificities.time
+
     cdt = nlp_parse_complex_date_time('i have no idea')
     assert not cdt

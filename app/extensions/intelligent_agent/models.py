@@ -49,18 +49,13 @@ class IntelligentAgent:
         # every agent class needs the enabled setting
         return {
             cls.site_setting_id('enabled'): {
-                'type': str,
-                'default': None,
+                'type': bool,
+                'default': False,
                 'public': False,
                 'edm_definition': {
-                    'defaultValue': 'false',
-                    'displayType': 'select',
-                    'schema': {
-                        'choices': [
-                            {'label': 'Disabled', 'value': 'false'},
-                            {'label': 'Enabled', 'value': 'true'},
-                        ]
-                    },
+                    'defaultValue': False,
+                    'fieldType': 'boolean',
+                    'displayType': 'boolean',
                 },
             }
         }
@@ -102,8 +97,7 @@ class IntelligentAgent:
 
     @classmethod
     def is_enabled(cls):
-        val = cls.get_site_setting_value('enabled')
-        return bool(val and val.lower().startswith('t'))
+        return bool(cls.get_site_setting_value('enabled'))
 
     @classmethod
     def is_ready(cls):

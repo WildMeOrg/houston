@@ -37,7 +37,7 @@ def get_fake_tweet():
 def set_keys():
     from app.extensions.intelligent_agent.models import TwitterBot
 
-    SiteSetting.set(TwitterBot.site_setting_id('enabled'), string='true')
+    SiteSetting.set(TwitterBot.site_setting_id('enabled'), boolean=True)
     for req in req_keys:
         SiteSetting.set(TwitterBot.site_setting_id(req), string='TEST_VALUE')
 
@@ -50,7 +50,7 @@ def test_twitter_basics(flask_app):
     from app.extensions.intelligent_agent.models import IntelligentAgent, TwitterBot
 
     assert not TwitterBot.is_enabled()
-    SiteSetting.set(TwitterBot.site_setting_id('enabled'), string='true')
+    SiteSetting.set(TwitterBot.site_setting_id('enabled'), boolean=True)
     assert TwitterBot.is_enabled()
     assert not TwitterBot.is_ready()
 
@@ -88,12 +88,12 @@ def test_twitter_connectivity(flask_app_client):
     me_value.data.name = 'B'
 
     with patch.object(tweepy.Client, 'get_me', return_value=me_value):
-        SiteSetting.set(TwitterBot.site_setting_id('enabled'), string='false')
+        SiteSetting.set(TwitterBot.site_setting_id('enabled'), boolean=False)
         assert not tb.is_ready()
         res = tb.test_setup()
         assert not res.get('success')
         assert res.get('message') == 'Not enabled.'
-        SiteSetting.set(TwitterBot.site_setting_id('enabled'), string='true')
+        SiteSetting.set(TwitterBot.site_setting_id('enabled'), boolean=True)
         res = tb.test_setup()
         assert res.get('success')
         assert res.get('username') == 'A'
@@ -210,6 +210,7 @@ def test_linked_tweet_and_misc(researcher_1, flask_app_client, admin_user):
     tt.source = {'author': {'username': author_username}}
     u = tt.find_author_user()
     assert u == researcher_1
+    researcher_1.twitter_username = None
 
     conf_tx = setting_utils.get_some_taxonomy_dict(flask_app_client, admin_user)
     tt.raw_content = {

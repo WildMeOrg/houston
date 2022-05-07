@@ -129,6 +129,7 @@ class SiteSetting(db.Model, Timestamp):
     public = db.Column(db.Boolean, default=True, nullable=False)
     string = db.Column(db.String, default='', nullable=True)
     data = db.Column(db.JSON, nullable=True)
+    boolean = db.Column(db.Boolean, nullable=True)
 
     def __repr__(self):
         return (
@@ -163,6 +164,7 @@ class SiteSetting(db.Model, Timestamp):
         string=None,
         public=None,
         data=None,
+        boolean=None,
         override_readonly=False,
     ):
         if is_extension_enabled('edm') and cls.is_edm_key(key):
@@ -178,6 +180,7 @@ class SiteSetting(db.Model, Timestamp):
             'file_upload_guid': file_upload_guid,
             'string': string,
             'data': data,
+            'boolean': boolean,
         }
         if public is not None:
             kwargs['public'] = public
@@ -210,12 +213,13 @@ class SiteSetting(db.Model, Timestamp):
     @classmethod
     def get_as_edm_format(cls, key):
         value = cls._get_value_for_edm_formats(key)
+        value_not_set = value is None
 
         data = {
             'id': key,
             'isSiteSetting': True,
-            'value': value if value else cls._get_default_value(key),
-            'valueNotSet': value is None,
+            'value': value if not value_not_set else cls._get_default_value(key),
+            'valueNotSet': value_not_set,
         }
         return data
 
@@ -297,6 +301,9 @@ class SiteSetting(db.Model, Timestamp):
         elif isinstance(value, dict) or isinstance(value, list):
             log.debug(f'updating Houston Setting key={key}')
             cls.set(key, data=value, public=cls.HOUSTON_SETTINGS[key]['public'])
+        elif isinstance(value, bool):
+            log.debug(f'updating Houston Setting key={key}')
+            cls.set(key, boolean=value, public=cls.HOUSTON_SETTINGS[key]['public'])
         else:
             msg = f'Houston Setting key={key}, value is not string, list or dict; value={value}'
             raise HoustonException(log, msg)
@@ -361,6 +368,13 @@ class SiteSetting(db.Model, Timestamp):
             return cls._get_default_value(key)
         return setting.data if setting else default
 
+    @classmethod
+    def get_boolean(cls, key, default=None):
+        setting = cls.query.get(key)
+        if not setting and default is None:
+            return cls._get_default_value(key)
+        return setting.boolean if setting else default
+
     # a bit of hackery.  right now *all* keys in edm-configuration are of the form `site.foo` so we use
     #   as a way branch on _where_ to get the value to return here.  but as we ween ourselves off edm config,
     #   either gradually or forklift, this can be extended to allow that
@@ -386,6 +400,8 @@ class SiteSetting(db.Model, Timestamp):
             return setting.file_upload
         elif setting.data:
             return setting.data
+        elif setting.boolean is not None:
+            return setting.boolean
         return setting.string
 
     # MainConfiguration and MainConfigurationDefinition resources code needs to behave differently if it's

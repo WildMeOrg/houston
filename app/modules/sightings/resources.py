@@ -630,8 +630,8 @@ class SightingByID(Resource):
             )
             ex_response_data = ex.get_val('response_data', {})
             if (
-                'vulnerableIndividual' in ex_response_data or
-                'vulnerableEncounter' in ex_response_data
+                'vulnerableIndividual' in ex_response_data
+                or 'vulnerableEncounter' in ex_response_data
             ):
                 abort(
                     400,

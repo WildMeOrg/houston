@@ -64,9 +64,7 @@ def test_create_asset_group(flask_app_client, researcher_1, readonly_user, test_
         )
 
         data.set_sighting_field(0, 'locationId', 37)
-        resp_msg = (
-            "locationId field had incorrect type, expected <class 'str'> Sighting 1"
-        )
+        resp_msg = 'locationId field had incorrect type, expected str in Sighting 1'
         asset_group_utils.create_asset_group(
             flask_app_client, researcher_1, data.get(), 400, resp_msg
         )

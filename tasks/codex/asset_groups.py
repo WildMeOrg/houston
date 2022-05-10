@@ -123,6 +123,12 @@ def list_all(context):
     for asset_group in asset_groups:
         print('AssetGroup : {} {}'.format(asset_group, asset_group.assets))
 
+        if (
+            asset_group.progress_preparation
+            and not asset_group.progress_preparation.complete
+        ):
+            print(asset_group.progress_preparation)
+
 
 @app_context_task
 def details(context, guid):
@@ -149,6 +155,9 @@ def details(context, guid):
 
     print(json.dumps(schema.dump(asset_group).data, indent=4, sort_keys=True))
 
+    if asset_group.progress_preparation and not asset_group.progress_preparation.complete:
+        print(asset_group.progress_preparation)
+
 
 @app_context_task
 def list_all_sightings_in_stage(context, stage):
@@ -163,6 +172,9 @@ def list_all_sightings_in_stage(context, stage):
 
     for ags in asset_group_sightings:
         print(f'AssetGroupSighting : {ags}')
+
+        if ags.progress_preparation and not ags.progress_preparation.complete:
+            print(ags.progress_preparation)
 
 
 @app_context_task
@@ -188,3 +200,6 @@ def ags_details(context, guid):
     import pprint
 
     pprint.pprint(schema.dump(ags).data)
+
+    if ags.progress_preparation and not ags.progress_preparation.complete:
+        print(ags.progress_preparation)

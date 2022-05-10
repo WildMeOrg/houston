@@ -153,8 +153,14 @@ class AssetGroups(Resource):
         if current_app.testing:
             # When testing, run on-demand and don't use celery workers
             git_commit.s(str(asset_group.guid), description, input_files).apply()
+            promise = None
         else:
-            git_commit.delay(str(asset_group.guid), description, input_files)
+            promise = git_commit.delay(str(asset_group.guid), description, input_files)
+
+        if promise is not None:
+            with db.session.begin():
+                progress.celery_guid = promise.id
+                db.session.merge(progress)
 
         return asset_group
 

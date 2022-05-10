@@ -17,6 +17,8 @@ log = logging.getLogger(__name__)
 
 
 ETA_CACHE = {}
+BROKER = None
+DEFAULT_CELERY_QUEUE_NAME = 'celery'
 
 
 class ProgressStatus(str, enum.Enum):
@@ -91,6 +93,47 @@ class Progress(db.Model, Timestamp):
             self.status in [ProgressStatus.healthy, ProgressStatus.completed]
             and self.percentage >= 100
         )
+
+    @property
+    def ahead(self):
+        import redis
+        import json
+
+        global BROKER
+
+        from flask import current_app
+
+        if self.celery_guid is None:
+            return None
+
+        if BROKER is None:
+            BROKER = redis.Redis(
+                host=current_app.config['REDIS_HOST'],
+                port=current_app.config['REDIS_PORT'],
+                db=current_app.config['REDIS_DATABASE'],
+                password=current_app.config['REDIS_PASSWORD'],
+            )
+
+        # inspect = current_app.celery.control.inspect()
+        # workers = inspect.ping()
+
+        total = BROKER.llen(DEFAULT_CELERY_QUEUE_NAME)
+        if total is None:
+            total = 0
+
+        for index in range(total):
+            try:
+                message = BROKER.lindex(DEFAULT_CELERY_QUEUE_NAME, index)
+                data = json.loads(message)
+                celery_guid = data.get('headers', {}).get('id', None)
+                if celery_guid is not None:
+                    celery_guid = uuid.UUID(celery_guid)
+                    if celery_guid == self.celery_guid:
+                        return total - 1 - index
+            except Exception:
+                pass
+
+        return 0
 
     def __repr__(self):
         return (

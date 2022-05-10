@@ -40,6 +40,8 @@ gevent
 gitpython
 gumby @ git+https://github.com/WildMeOrg/gumby.git
 
+humanize
+
 itsdangerous<2.1.0
 
 jsonschema==3.2.0

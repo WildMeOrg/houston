@@ -32,6 +32,7 @@ class DetailedProgressSchema(BaseProgressSchema):
             Progress.percentage.key,
             Progress.status.key,
             'complete',
+            'ahead',
             Progress.eta.key,
             Progress.created.key,
             Progress.updated.key,

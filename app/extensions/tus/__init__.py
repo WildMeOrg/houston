@@ -378,12 +378,18 @@ def tus_purge(git_store_guid=None, session_id=None, transaction_id=None):
 
 def tus_cleanup():
     import time
+    import humanize
+    import datetime
 
     tus_directory = tus_upload_dir(current_app)
 
     ttl_seconds = current_app.config.get('UPLOADS_TTL_SECONDS', None)
     if ttl_seconds is None:
         return
+
+    log.info(
+        'Using clean-up TTL seconds (config UPLOADS_TTL_SECONDS) of %d' % (ttl_seconds,)
+    )
 
     limit = int(time.time() - ttl_seconds)
 
@@ -404,6 +410,17 @@ def tus_cleanup():
                     shutil.rmtree(tus_path)
                 else:
                     os.remove(tus_path)
+            else:
+                age = int(time.time() - stats.st_mtime)
+
+                log.info(
+                    'Skipping Tus pending file (Age: %s, Remaining: %s): %r'
+                    % (
+                        humanize.naturaldelta(datetime.timedelta(seconds=age)),
+                        humanize.naturaldelta(datetime.timedelta(seconds=delta)),
+                        tus_path,
+                    )
+                )
 
         # Only inspect the root folder, no need to check recursively
         break

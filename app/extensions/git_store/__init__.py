@@ -362,7 +362,7 @@ class GitStore(db.Model, HoustonModel):
         message,
         realize=True,
         update=True,
-        commit=True,
+        commit=None,
         input_filenames=[],
         **kwargs,
     ):
@@ -404,7 +404,9 @@ class GitStore(db.Model, HoustonModel):
         #   Description: Commit the files into the repo into the git repository, requires hashing all of the files
         #   Delay: a meaningful overhead, but should still be relatively quick, unbounded seconds (Step 4 << Step 3)
         #   Percentage: 9% (90% -> 99%)
-        if commit:
+        if commit in [True] or (
+            commit not in [False] and current_app.config['UPLOADS_GIT_COMMIT']
+        ):
             # repo.index.add('.gitignore')
             repo.index.add('_uploads/')
             repo.index.add('_assets/')

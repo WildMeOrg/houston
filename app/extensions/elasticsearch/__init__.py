@@ -833,7 +833,7 @@ def check_celery(verbose=True, revoke=False):
                         )
                     )
                     signature.retries -= 1
-                    promise_ = signature.apply_async()
+                    promise_ = signature.delay()
                     active.append((signature, promise_))
                 else:
                     log.error(

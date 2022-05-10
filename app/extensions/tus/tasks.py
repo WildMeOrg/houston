@@ -4,7 +4,7 @@ import logging
 from app.extensions.celery import celery
 
 
-TUS_CLEANUP_FREQUENCY = 60 * 60 * 1
+TUS_CLEANUP_FREQUENCY = 60 * 15
 
 
 log = logging.getLogger(__name__)

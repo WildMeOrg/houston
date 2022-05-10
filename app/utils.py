@@ -264,3 +264,11 @@ def get_persisted_value(key):
     conn = get_redis_connection()
     val = conn.get(key)
     return val.decode('utf-8') if val else None
+
+
+def sizeof(num, suffix='B'):
+    for unit in ['', 'K', 'M', 'G', 'T', 'P', 'E', 'Z']:
+        if abs(num) < 1024.0:
+            return f'{num:3.1f}{unit}{suffix}'
+        num /= 1024.0
+    return f'{num:.1f}Yi {suffix}'

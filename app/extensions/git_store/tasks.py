@@ -71,7 +71,7 @@ def git_commit(git_store_guid, description, input_files):
             description,
             input_filenames=input_files,
             update=True,
-            commit=True,
+            commit=None,  # Use server default
         )
     except Exception:
         if git_store.progress_preparation:

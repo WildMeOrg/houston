@@ -498,6 +498,121 @@ class AssetGroupSighting(db.Model, HoustonModel):
             jobs.extend(asset_group_sighting.get_jobs_debug(verbose))
         return jobs
 
+    def get_pipeline_status(self):
+        db.session.refresh(self)
+        status = {
+            'preparation': self._get_pipeline_status_preparation(),
+            'detection': self._get_pipeline_status_detection(),
+            'summary': {},
+            'now': datetime.utcnow().isoformat(),
+        }
+        status['summary']['complete'] = (
+            status['preparation']['complete'] and status['detection']['complete']
+        )
+        return status
+
+    def _get_pipeline_status_preparation(self):
+        status = {
+            'skipped': False,
+            'start': None,
+            'inProgress': False,
+            'complete': False,
+            'end': None,
+        }
+        return status
+
+    # currently only gives most recent job
+    def _get_pipeline_status_detection(self):
+        status = {
+            'skipped': False,
+            'start': None,
+            'inProgress': False,
+            'complete': False,
+            'failed': False,
+            'error': None,
+            'end': None,
+            'numModels': 0,
+            'numJobs': None,
+            'numJobsActive': None,
+            'numJobsFailed': None,
+            'attempts': self.detection_attempts,
+            'attemptsMax': MAX_DETECTION_ATTEMPTS,
+        }
+        # TODO i am not sure if this is the best count here, as there
+        #   is config['updatedAssets'] which may actually need to be considered
+        status['numAssets'] = len(self.get_assets())
+
+        #  self.stage == AssetGroupSightingStage.detection
+        asset_group_config = self.asset_group.config
+        if 'speciesDetectionModel' in asset_group_config:
+            status['numModels'] = len(asset_group_config['speciesDetectionModel'])
+        # whose idea was this?
+        if (
+            status['numModels'] == 1
+            and asset_group_config['speciesDetectionModel'][0] == 'None'
+        ):
+            status['numModels'] = 0
+        if status['numModels'] < 1:  # assumed detection skipped
+            status['skipped'] = True
+            return status
+
+        status['inProgress'] = True
+
+        if self.detection_attempts > MAX_DETECTION_ATTEMPTS:
+            status['error'] = f'could not start after {MAX_DETECTION_ATTEMPTS} attempts'
+            status['failed'] = True
+            status['inProgress'] = False
+
+        # TODO needs more exploration - can we find out if we are waiting to start in celery?
+        if not self.jobs:
+            status['numJobs'] = 0
+            status['numJobsActive'] = 0
+            status['numJobsFailed'] = 0
+            status['_debug'] = 'self.jobs is empty'
+            return status
+
+        # we reset failed here, as it looks like job started anyway?
+        status['error'] = None
+        status['failed'] = False
+        status['numJobs'] = len(self.jobs)
+        status['numJobsActive'] = 0
+        status['numJobsFailed'] = 0
+        first_start = None
+        last_end = None
+        # TODO handle errors
+        for job_id in self.jobs:
+            job = self.jobs[job_id]
+            start = job.get('start')
+            if start and (not first_start or start < first_start):
+                first_start = start
+            end = job.get('end')
+            if end and (not last_end or end > last_end):
+                last_end = end
+            if job.get('active') is True:
+                status['numJobsActive'] += 1
+                # we sh/could toggle active if this shows failure
+                ss = None
+                try:
+                    ss = self.get_sage_job_status(job_id)
+                except Exception:
+                    status[f'_debug_{job_id}'] = 'failed getting job status'
+                if ss and ss.get('jobstatus') == 'exception':
+                    status['numJobsActive'] -= 1
+                    status['numJobsFailed'] += 1
+                    status[f'_debug_{job_id}'] = 'sage exception'
+                    status['failed'] = True
+                    status['error'] = 'sage job exception'
+
+        status['start'] = first_start
+        status['end'] = last_end
+        status['inProgress'] = status['numJobsActive'] > 0
+        status['complete'] = not status['inProgress']
+        return status
+
+    @classmethod
+    def get_sage_job_status(cls, job_id):
+        return current_app.acm.request_passthrough_result('job.status', 'get', {}, job_id)
+
     # Build up list to print out status (calling function chooses what to collect and print)
     def get_jobs_debug(self, verbose):
         details = []
@@ -593,7 +708,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
             self.jobs[str(job_id)] = {
                 'model': model,
                 'active': True,
-                'start': datetime.utcnow(),
+                'start': datetime.utcnow().isoformat(),
                 'asset_ids': [
                     uri.rsplit('/', 1)[-1]
                     for uri in json.loads(detection_request['image_uuid_list'])
@@ -820,6 +935,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
     def job_complete(self, job_id_str):
         if job_id_str in self.jobs:
             self.jobs[job_id_str]['active'] = False
+            self.jobs[job_id_str]['end'] = datetime.utcnow().isoformat()
 
             outstanding_jobs = []
             for job in self.jobs.keys():

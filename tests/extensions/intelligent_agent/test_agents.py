@@ -136,6 +136,7 @@ def test_twitter_tweet_io(flask_app_client):
 
     fake_res = Dummy()
     fake_res.data = []
+    fake_res.meta = {'newest_id': 123}
     me_value = Dummy()
     me_value.data = Dummy()
     me_value.data.username = 'A'
@@ -289,7 +290,10 @@ def test_nlp_date():
     tt = TwitterTweet(tweet)
 
     # right now we do not have ability to test actual NLP, so this falls back to using created_at
-    tt.raw_content = {'created_at': '2000-01-02T03:04:05Z'}
+    tt.raw_content = {
+        'text': 'happened right at 2000-01-02T03:04:05',
+        'created_at': '2000-01-02T03:04:05Z',
+    }
     cdt = tt.derive_time()
     assert cdt
     assert cdt.isoformat_in_timezone() == '2000-01-02T03:04:05+00:00'

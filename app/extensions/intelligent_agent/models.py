@@ -704,13 +704,14 @@ class TwitterBot(IntelligentAgent):
                 f'collect(since_id={since_id}) on {self} retrieved no tweets with query "{query}"'
             )
             return tweets
+        # we update this immediately so next iteration doesnt use old since_id
+        newest_id = res.meta.get('newest_id')
+        if newest_id:
+            self.set_persisted_value('since_id', int(newest_id))
         log.info(
-            f'collect(since_id={since_id}) on {self} retrieved {len(res.data)} tweet(s) with query "{query}"'
+            f'collect(since_id={since_id}) on {self} retrieved {len(res.data)} tweet(s) with query "{query}", newest_id={newest_id}'
         )
-        latest_id = 0
         for twt in res.data:
-            if twt.id > latest_id:
-                latest_id = twt.id
             try:
                 tt = TwitterTweet(twt, res.includes)
             except Exception as ex:
@@ -746,7 +747,6 @@ class TwitterBot(IntelligentAgent):
             db.session.refresh(tt)
             if ok:
                 tt.wait_for_detection_results()
-        self.set_persisted_value('since_id', latest_id)
         return tweets
 
     # this should be used with caution -- use create_tweet_queued() to be safer
@@ -756,7 +756,7 @@ class TwitterBot(IntelligentAgent):
         assert text
         # this helps prevent sending identical outgoing (and may help dbugging?)
         stamp = str(uuid.uuid4())[0:4]
-        text += '   ' + stamp
+        text += '    〈' + stamp + '〉'
         log.info(
             f'create_tweet_direct(): {self} tweeting [re: {in_reply_to}] [media {media_paths}] >>> {text}'
         )

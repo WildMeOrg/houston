@@ -8,6 +8,10 @@ Houston Common utils
 from flask_login import current_user  # NOQA
 import app.extensions.logging as AuditLog  # NOQA
 
+import logging
+
+log = logging.getLogger(__name__)  # pylint: disable=invalid-name
+
 
 class HoustonException(Exception):
     def __init__(
@@ -142,30 +146,65 @@ def nlp_parse_complex_date_time(
 
     # this will be an array [start,end] if found, or just [start]
     #   but we only use start value
-    res = sut.parse(text, reference_date=reference_date)
+    results = sut.parse(text, reference_date=reference_date)
 
-    if not res:
-        return None
-    value = res[0].get('value')
-    if not value:
+    if not results:
         return None
 
-    if res[0].get('type') == 'DATE':
-        parts = [int(p) for p in value.split('-')]
-        return ComplexDateTime.from_list(parts, tz, time_specificity)
+    # iterate over results until we get something we can use
+    for res in results:
+        value = res.get('value')
+        if not value:
+            continue
 
-    if res[0].get('type') == 'TIME':
-        return ComplexDateTime.from_data(
-            {
-                'time': {
-                    'datetime': value,
-                    'timezone': tz,
-                    'specificity': Specificities.time,
-                }
-            }
-        )
+        if res.get('type') == 'DATE':
+            # handle seasons
+            if value[5:] == 'SP':
+                value = value[:5] + '03'
+            elif value[5:] == 'SU':
+                value = value[:5] + '06'
+            elif value[5:] == 'FA':
+                value = value[:5] + '09'
+            elif value[5:] == 'WI':
+                # winter is weird - is it this year or next ... or last?
+                value = value[:5] + '01'
+            parts = [int(p) for p in value.split('-')]
+            try:
+                return ComplexDateTime.from_list(parts, tz, time_specificity)
+            except Exception as ex:
+                log.warning(
+                    f'nlp_parse_complex_date_time(): DATE exception on value={value} [from {res}]: {str(ex)}'
+                )
 
-    raise ValueError(f'unknown type in results: {res}')
+        elif res.get('type') == 'TIME':
+            # handle parts of day
+            if value[-3:] == 'TMO':
+                value = value[:11] + '09:00'
+            elif value[-3:] == 'TAF':
+                value = value[:11] + '13:00'
+            elif value[-3:] == 'TEV':
+                value = value[:11] + '17:00'
+            elif value[-3:] == 'TNI':
+                value = value[:11] + '22:00'
+            try:
+                return ComplexDateTime.from_data(
+                    {
+                        'time': {
+                            'datetime': value,
+                            'timezone': tz,
+                            'specificity': Specificities.time,
+                        }
+                    }
+                )
+            except Exception as ex:
+                log.warning(
+                    f'nlp_parse_complex_date_time(): TIME exception on value={value} [from {res}]: {str(ex)}'
+                )
+
+        else:
+            log.warning(f'nlp_parse_complex_date_time(): unknown type in {res}')
+
+    return None
 
 
 # match is a string, and candidates can be one of:

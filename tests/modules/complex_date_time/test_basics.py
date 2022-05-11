@@ -239,5 +239,207 @@ def test_nlp_time():
     assert cdt.isoformat_in_timezone() == '2019-07-01T00:00:00+00:00'
     assert cdt.specificity == Specificities.month
 
+    # some of the nasty range-y stuff
+    text = 'during last winter'
+    cdt = nlp_parse_complex_date_time(text, reference_date=refdate)
+    assert cdt
+    assert cdt.isoformat_in_timezone() == '2018-01-01T00:00:00+00:00'
+    assert cdt.specificity == Specificities.month
+
+    text = 'yesterday morning'
+    cdt = nlp_parse_complex_date_time(text, reference_date=refdate)
+    assert cdt
+    assert cdt.isoformat_in_timezone() == '2019-08-14T09:00:00+00:00'
+    assert cdt.specificity == Specificities.time
+
     cdt = nlp_parse_complex_date_time('i have no idea')
     assert not cdt
+
+
+@pytest.mark.skipif(
+    module_unavailable('complex_date_time'), reason='ComplexDateTime module disabled'
+)
+def test_nlp_time_mocked():
+    from app.utils import nlp_parse_complex_date_time
+    import sutime
+    from unittest.mock import patch
+
+    class mock_SUTime(object):
+        def parse(self, val, reference_date=None):
+            return []
+
+    mock_sutime = mock_SUTime()
+    with patch.object(sutime, 'SUTime', return_value=mock_sutime):
+        cdt = nlp_parse_complex_date_time('')
+        assert not cdt
+
+    class mock_SUTime(object):
+        def parse(self, val, reference_date=None):
+            return [{}]
+
+    mock_sutime = mock_SUTime()
+    with patch.object(sutime, 'SUTime', return_value=mock_sutime):
+        cdt = nlp_parse_complex_date_time('')
+        assert not cdt
+
+    class mock_SUTime(object):
+        def parse(self, val, reference_date=None):
+            return [
+                {
+                    'type': 'DATE',
+                    'value': '2022-SP',
+                }
+            ]
+
+    mock_sutime = mock_SUTime()
+    with patch.object(sutime, 'SUTime', return_value=mock_sutime):
+        cdt = nlp_parse_complex_date_time('was spring')
+        assert cdt
+        assert cdt.isoformat_in_timezone() == '2022-03-01T00:00:00+00:00'
+
+    class mock_SUTime(object):
+        def parse(self, val, reference_date=None):
+            return [
+                {
+                    'type': 'DATE',
+                    'value': '2022-SU',
+                }
+            ]
+
+    mock_sutime = mock_SUTime()
+    with patch.object(sutime, 'SUTime', return_value=mock_sutime):
+        cdt = nlp_parse_complex_date_time('in summer')
+        assert cdt
+        assert cdt.isoformat_in_timezone() == '2022-06-01T00:00:00+00:00'
+
+    class mock_SUTime(object):
+        def parse(self, val, reference_date=None):
+            return [
+                {
+                    'type': 'DATE',
+                    'value': '2022-FA',
+                }
+            ]
+
+    mock_sutime = mock_SUTime()
+    with patch.object(sutime, 'SUTime', return_value=mock_sutime):
+        cdt = nlp_parse_complex_date_time('fall')
+        assert cdt
+        assert cdt.isoformat_in_timezone() == '2022-09-01T00:00:00+00:00'
+
+    class mock_SUTime(object):
+        def parse(self, val, reference_date=None):
+            return [
+                {
+                    'type': 'DATE',
+                    'value': '2022-WI',
+                }
+            ]
+
+    mock_sutime = mock_SUTime()
+    with patch.object(sutime, 'SUTime', return_value=mock_sutime):
+        cdt = nlp_parse_complex_date_time('winter time brr')
+        assert cdt
+        assert cdt.isoformat_in_timezone() == '2022-01-01T00:00:00+00:00'
+
+    class mock_SUTime(object):
+        def parse(self, val, reference_date=None):
+            return [
+                {
+                    'type': 'DATE',
+                    'value': '0-0-0',
+                }
+            ]
+
+    mock_sutime = mock_SUTime()
+    with patch.object(sutime, 'SUTime', return_value=mock_sutime):
+        cdt = nlp_parse_complex_date_time('gives warning, no result')
+        assert not cdt
+
+    class mock_SUTime(object):
+        def parse(self, val, reference_date=None):
+            return [
+                {
+                    'type': 'TIME',
+                    'value': '2022-01-02TMO',
+                }
+            ]
+
+    mock_sutime = mock_SUTime()
+    with patch.object(sutime, 'SUTime', return_value=mock_sutime):
+        cdt = nlp_parse_complex_date_time('morning')
+        assert cdt
+        assert cdt.isoformat_in_timezone() == '2022-01-02T09:00:00+00:00'
+
+    class mock_SUTime(object):
+        def parse(self, val, reference_date=None):
+            return [
+                {
+                    'type': 'TIME',
+                    'value': '2022-01-02TAF',
+                }
+            ]
+
+    mock_sutime = mock_SUTime()
+    with patch.object(sutime, 'SUTime', return_value=mock_sutime):
+        cdt = nlp_parse_complex_date_time('afternoon')
+        assert cdt
+        assert cdt.isoformat_in_timezone() == '2022-01-02T13:00:00+00:00'
+
+    class mock_SUTime(object):
+        def parse(self, val, reference_date=None):
+            return [
+                {
+                    'type': 'TIME',
+                    'value': '2022-01-02TEV',
+                }
+            ]
+
+    mock_sutime = mock_SUTime()
+    with patch.object(sutime, 'SUTime', return_value=mock_sutime):
+        cdt = nlp_parse_complex_date_time('evening')
+        assert cdt
+        assert cdt.isoformat_in_timezone() == '2022-01-02T17:00:00+00:00'
+
+    class mock_SUTime(object):
+        def parse(self, val, reference_date=None):
+            return [
+                {
+                    'type': 'TIME',
+                    'value': '2022-01-02TNI',
+                }
+            ]
+
+    mock_sutime = mock_SUTime()
+    with patch.object(sutime, 'SUTime', return_value=mock_sutime):
+        cdt = nlp_parse_complex_date_time('night time')
+        assert cdt
+        assert cdt.isoformat_in_timezone() == '2022-01-02T22:00:00+00:00'
+
+    class mock_SUTime(object):
+        def parse(self, val, reference_date=None):
+            return [
+                {
+                    'type': 'TIME',
+                    'value': 'broken',
+                }
+            ]
+
+    mock_sutime = mock_SUTime()
+    with patch.object(sutime, 'SUTime', return_value=mock_sutime):
+        cdt = nlp_parse_complex_date_time('broken')
+        assert not cdt
+
+    class mock_SUTime(object):
+        def parse(self, val, reference_date=None):
+            return [
+                {
+                    'type': 'UNKNOWN',
+                    'value': 'broken',
+                }
+            ]
+
+    mock_sutime = mock_SUTime()
+    with patch.object(sutime, 'SUTime', return_value=mock_sutime):
+        cdt = nlp_parse_complex_date_time('broken')
+        assert not cdt

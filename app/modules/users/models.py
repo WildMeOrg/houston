@@ -708,7 +708,7 @@ class User(db.Model, FeatherModel, UserEDMMixin):
             .join(AssetGroup)
             .filter(AssetGroup.owner_guid == self.guid)
             .filter(AssetGroupSighting.stage != AssetGroupSightingStage.processed)
-        )
+        ).all()
 
     @module_required('sightings', resolve='warn', default=[])
     def unprocessed_sightings(self):

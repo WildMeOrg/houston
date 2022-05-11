@@ -14,6 +14,35 @@ from tests.utils import (
 )
 
 
+def validate_id_response(flask_app_client, user, sighting):
+    from app.modules.sightings.models import SightingStage
+
+    assert all(not job['active'] for job in sighting.jobs.values())
+    assert sighting.stage == SightingStage.un_reviewed
+
+    path = f'{str(sighting.guid)}/id_result'
+
+    id_data_resp = sighting_utils.read_sighting_path(flask_app_client, user, path)
+    id_data = id_data_resp.json
+    assert id_data['query_annotations'][0]['status'] == 'complete'
+    assert id_data['query_annotations'][0]['guid'] in id_data['annotation_data'].keys()
+    assert (
+        id_data['query_annotations'][0]['algorithms']['hotspotter_nosv'][
+            'scores_by_annotation'
+        ][0]['guid']
+        in id_data['annotation_data'].keys()
+    )
+
+    first_annot_key = next(iter(id_data['annotation_data']))
+    first_annot = id_data['annotation_data'][first_annot_key]
+
+    assert 'sighting_guid' in first_annot
+    assert 'sighting_time' in first_annot
+    assert 'encounter_guid' in first_annot
+    assert 'asset_filename' in first_annot
+    assert 'sighting_time_specificity' in first_annot
+
+
 @pytest.mark.skipif(
     module_unavailable('sightings'),
     reason='Sighting module disabled',
@@ -122,41 +151,38 @@ def test_sighting_identification(
     assert sighting.jobs[job_uuid]['algorithm'] == 'hotspotter_nosv'
 
     # Simulate response from Sage
-    sage_resp = sighting_utils.build_sage_identification_response(
+    sighting_utils.send_basic_sage_identification_response(
+        flask_app_client,
+        internal_user,
+        sighting_uuid,
         job_uuid,
         str(query_annot.content_guid),
         sighting.jobs[job_uuid]['algorithm'],
         str(target_annot.content_guid),
     )
+    validate_id_response(flask_app_client, researcher_1, sighting)
 
-    sighting_utils.send_sage_identification_response(
+    # Rerun ID after the sighting has been created
+    sighting_utils.rerun_identification_sim_sage_response(
+        flask_app, flask_app_client, researcher_1, sighting_uuid
+    )
+    # Must go back to ID
+    assert sighting.stage == SightingStage.identification
+
+    # Make sure the correct job is created and get ID
+    job_uuids = [guid for guid in sighting.jobs.keys()]
+    assert len(job_uuids) == 2
+    job_uuid = job_uuids[1]
+    assert sighting.jobs[job_uuid]['algorithm'] == 'hotspotter_nosv'
+
+    # Simulate response from Sage
+    sighting_utils.send_basic_sage_identification_response(
         flask_app_client,
         internal_user,
         sighting_uuid,
         job_uuid,
-        sage_resp,
+        str(query_annot.content_guid),
+        sighting.jobs[job_uuid]['algorithm'],
+        str(target_annot.content_guid),
     )
-    assert all(not job['active'] for job in sighting.jobs.values())
-    assert sighting.stage == SightingStage.un_reviewed
-
-    path = f'{sighting_uuid}/id_result'
-
-    id_data_resp = sighting_utils.read_sighting_path(flask_app_client, researcher_1, path)
-    id_data = id_data_resp.json
-    assert id_data['query_annotations'][0]['status'] == 'complete'
-    assert id_data['query_annotations'][0]['guid'] in id_data['annotation_data'].keys()
-    assert (
-        id_data['query_annotations'][0]['algorithms']['hotspotter_nosv'][
-            'scores_by_annotation'
-        ][0]['guid']
-        in id_data['annotation_data'].keys()
-    )
-
-    first_annot_key = next(iter(id_data['annotation_data']))
-    first_annot = id_data['annotation_data'][first_annot_key]
-
-    assert 'sighting_guid' in first_annot
-    assert 'sighting_time' in first_annot
-    assert 'encounter_guid' in first_annot
-    assert 'asset_filename' in first_annot
-    assert 'sighting_time_specificity' in first_annot
+    validate_id_response(flask_app_client, researcher_1, sighting)

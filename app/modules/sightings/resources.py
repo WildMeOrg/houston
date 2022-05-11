@@ -731,6 +731,34 @@ class SightingSageIdentified(Resource):
             abort(ex.status_code, ex.message, errorFields=ex.get_val('error', 'Error'))
 
 
+@api.route('/<uuid:sighting_guid>/rerun_id')
+@api.login_required(oauth_scopes=['sightings:write'])
+@api.response(
+    code=HTTPStatus.NOT_FOUND,
+    description='Sighting not found.',
+)
+@api.resolve_object_by_model(Sighting, 'sighting')
+class SightingRerunId(Resource):
+    """
+    Rerun ID for whole Sighting
+    """
+
+    @api.permission_required(
+        permissions.ObjectAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'obj': kwargs['sighting'],
+            'action': AccessOperation.WRITE,
+        },
+    )
+    def post(self, sighting):
+        try:
+            sighting.stage = SightingStage.identification
+            sighting.ia_pipeline()
+            return sighting.get_detailed_json()
+        except HoustonException as ex:
+            abort(ex.status_code, ex.message, errorFields=ex.get_val('error', 'Error'))
+
+
 @api.route('/<uuid:sighting_guid>/id_result')
 @api.login_required(oauth_scopes=['sightings:read'])
 @api.response(

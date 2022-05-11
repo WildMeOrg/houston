@@ -8,6 +8,7 @@ import json
 from tests import utils as test_utils
 import tests.extensions.tus.utils as tus_utils
 import tests.modules.asset_groups.resources.utils as asset_group_utils
+from unittest import mock
 
 PATH = '/api/v1/sightings/'
 
@@ -323,4 +324,66 @@ def send_sage_identification_response(
         test_utils.validate_dict_response(
             response, expected_status_code, {'status', 'message'}
         )
+    return response
+
+
+# Helper to combine the two above
+def send_basic_sage_identification_response(
+    flask_app_client,
+    internal_user,
+    sighting_uuid,
+    job_uuid,
+    annot_uuid,
+    algorithm,
+    target_annot_uuid,
+):
+    sage_resp = build_sage_identification_response(
+        job_uuid, annot_uuid, algorithm, target_annot_uuid
+    )
+
+    send_sage_identification_response(
+        flask_app_client,
+        internal_user,
+        sighting_uuid,
+        job_uuid,
+        sage_resp,
+    )
+
+
+def rerun_identification_sim_sage_response(
+    flask_app,
+    flask_app_client,
+    user,
+    sighting_guid,
+    expected_status_code=200,
+):
+    from app.modules.sightings import tasks
+    from app.modules.annotations.models import Annotation
+    from app.extensions import elasticsearch as es
+
+    # Start ID simulating success response from Sage
+    with mock.patch.object(
+        flask_app.acm,
+        'request_passthrough_result',
+        return_value={'success': True},
+    ):
+        with mock.patch.object(
+            tasks.send_all_identification,
+            'delay',
+            side_effect=lambda *args, **kwargs: tasks.send_all_identification(
+                *args, **kwargs
+            ),
+        ):
+            with es.session.begin(blocking=True, forced=True):
+                Annotation.index_all()
+            response = test_utils.post_via_flask(
+                flask_app_client,
+                user,
+                scopes='sightings:write',
+                path=f'{PATH}{sighting_guid}/rerun_id',
+                data={},
+                expected_status_code=expected_status_code,
+                response_200={'guid'},
+            )
+
     return response

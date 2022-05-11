@@ -544,4 +544,12 @@ if is_module_enabled('asset_groups'):
             """
             Get AssetGroupSightings for user
             """
-            return user.get_unprocessed_asset_group_sightings()
+            from app.extensions.elapsed_time import ElapsedTime
+
+            timer = ElapsedTime()
+            all_ags = user.get_unprocessed_asset_group_sightings()
+            log.info(f'read of all ags {len(all_ags)} took {timer.elapsed()} secs')
+
+            result = AssetGroupSightingAsSightingSchema().dump(all_ags, many=True)
+            log.info(f'dump of all ags took {timer.elapsed()} secs')
+            return result

@@ -25,7 +25,6 @@ EXPECTED_ASSET_GROUP_SIGHTING_FIELDS = {
     'locationId',
     'time',
     'timeSpecificity',
-    'completion',
     'assets',
 }
 
@@ -300,7 +299,6 @@ def patch_asset_group_sighting_as_sighting(
     response_200={
         'guid',
         'stage',
-        'completion',
         'assets',
         'time',
         'timeSpecificity',
@@ -352,7 +350,6 @@ def read_asset_group_sighting(
             'guid',
             'stage',
             'config',
-            'completion',
             'assets',
             'creator',
             'asset_group_guid',
@@ -376,7 +373,6 @@ def read_asset_group_sighting_debug(
             'guid',
             'stage',
             'config',
-            'completion',
             'assets',
             'creator',
             'asset_group_guid',
@@ -403,7 +399,6 @@ def read_asset_group_sighting_as_sighting(
         response_200={
             'guid',
             'stage',
-            'completion',
             'assets',
             'time',
             'timeSpecificity',

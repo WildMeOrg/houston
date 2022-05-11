@@ -15,7 +15,7 @@ import app.extensions
 
 # revision identifiers, used by Alembic.
 revision = 'cc1f915cde87'
-down_revision = 'f788098878ac'
+down_revision = '65f9621bd3dd'
 
 
 def upgrade():

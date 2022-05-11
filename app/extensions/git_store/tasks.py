@@ -78,8 +78,8 @@ def git_commit(git_store_guid, description, input_files):
             git_store.progress_preparation.fail()
         raise
 
-    assert git_store.progress_preparation.complete
-    git_store.post_preparation()
+    if git_store.progress_preparation:
+        assert git_store.progress_preparation.complete
 
     with es.session.begin(blocking=True, forced=True):
         git_store.index()

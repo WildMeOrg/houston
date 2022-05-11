@@ -238,8 +238,11 @@ class MissionTusCollect(Resource):
         """
         args['owner'] = current_user
         args['mission'] = mission
-        mission_collection = MissionCollection.create_from_tus(**args)
+        mission_collection, input_filenames = MissionCollection.create_from_tus(**args)
         db.session.refresh(mission_collection)
+
+        mission_collection.git_commit_delay(input_filenames)
+
         return mission_collection
 
 
@@ -278,10 +281,13 @@ class MissionCollectionsForMission(Resource):
     @api.response(schemas.DetailedMissionCollectionSchema())
     @api.response(code=HTTPStatus.CONFLICT)
     def post(self, args, mission):
-
         args['owner'] = current_user
         args['mission'] = mission
-        mission_collection = MissionCollection.create_from_tus(**args)
+        mission_collection, input_filenames = MissionCollection.create_from_tus(**args)
+        db.session.refresh(mission_collection)
+
+        mission_collection.git_commit_delay(input_filenames)
+
         return mission_collection
 
 

@@ -129,6 +129,7 @@ def test_sighting_jobs(db, request, researcher_1):
     from app.modules.asset_groups.models import AssetGroupSighting, AssetGroup
 
     group = AssetGroup(owner=researcher_1)
+
     sighting_config1 = test_utils.dummy_sighting_info()
     sighting_config1['idConfigs'] = ia_config1
     ags1 = AssetGroupSighting(

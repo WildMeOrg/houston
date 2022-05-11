@@ -37,8 +37,6 @@ def test_patch_asset_group(
     group_sighting = asset_group_utils.read_asset_group_sighting(
         flask_app_client, researcher_1, asset_group_sighting_guid
     )
-    assert 'completion' in group_sighting.json
-    assert group_sighting.json['completion'] == 10
     assert 'config' in group_sighting.json
     assert 'assetReferences' in group_sighting.json['config']['sighting']
 
@@ -208,7 +206,6 @@ def test_patch_asset_group_sighting_as_sighting(
     for field in {
         'guid',
         'stage',
-        'completion',
         'assets',
         'time',
         'timeSpecificity',
@@ -455,6 +452,7 @@ def test_patch_asset_group_annots(
             ),
             [utils.patch_add_op('annotations', annotation_guid)],
         ).json
+
         enc_annots = annot_add_resp['config']['sighting']['encounters'][encounter_num][
             'annotations'
         ]

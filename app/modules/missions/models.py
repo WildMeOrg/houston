@@ -330,6 +330,9 @@ class MissionCollection(GitStore):
     def asset_count(self):
         return len(self.get_assets(load=False))
 
+    def post_preparation_hook(self):
+        pass
+
     def get_assets(self, load=True):
         if load:
             return self.assets

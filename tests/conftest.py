@@ -603,7 +603,7 @@ def ensure_asset_group_repo(flask_app, db, asset_group, file_data=[]):
             update=True,
             commit=True,
         )
-        asset_group.post_preparation()
+        asset_group.post_preparation_hook()
 
         # Call git_push without .delay in tests to do it in the foreground
         try:

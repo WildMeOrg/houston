@@ -51,6 +51,10 @@ class Progress(db.Model, Timestamp):
         nullable=False,
     )
 
+    __mapper_args__ = {
+        'confirm_deleted_rows': False,
+    }
+
     __table_args__ = (
         db.CheckConstraint(0 <= percentage, name='progress_percentage_range_min'),
         db.CheckConstraint(percentage <= 100, name='progress_percentage_range_max'),

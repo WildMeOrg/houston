@@ -48,7 +48,7 @@ def create_sighting(session, codex_url, test_root, filename, group_data=None):
     annot_guid = response_json['assets'][0]['annotations'][0]['guid']
 
     encounter_guids = [
-        enc['guid'] for enc in response_json['config']['encounters']['sighting']
+        enc['guid'] for enc in response_json['config']['sighting']['encounters']
     ]
 
     assert len(encounter_guids) == 1

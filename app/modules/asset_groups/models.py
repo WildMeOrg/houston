@@ -66,8 +66,6 @@ class AssetGroupSighting(db.Model, HoustonModel):
     # configuration metadata from the create request
     config = db.Column(db.JSON, nullable=True)
 
-    config = db.Column(db.JSON, nullable=True)
-
     sighting = db.relationship('Sighting')
 
     # May have multiple jobs outstanding, store as Json obj uuid_str is key, In_progress Bool is value
@@ -102,6 +100,12 @@ class AssetGroupSighting(db.Model, HoustonModel):
 
         self.set_stage(AssetGroupSightingStage.preparation, refresh=False)
 
+        if (
+            not asset_group.progress_preparation
+            or asset_group.progress_preparation.complete
+        ):
+            self.post_preparation_hook()
+
         AuditLog.user_create_object(log, self)
 
     @property
@@ -128,7 +132,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
     def progress_preparation(self):
         return self.asset_group.progress_preparation
 
-    def post_preparation(self):
+    def post_preparation_hook(self):
         if self.stage != AssetGroupSightingStage.preparation:
             return
 
@@ -246,6 +250,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
 
         with db.session.begin(subtransactions=True):
             db.session.add(sighting)
+
         # Add the assets for all of the encounters to the created sighting object
         for reference in self.sighting_config.get('assetReferences', []):
             asset = self.asset_group.get_asset_for_file(reference)
@@ -366,38 +371,6 @@ class AssetGroupSighting(db.Model, HoustonModel):
         ):
             return self.curation_start.isoformat() + 'Z'
         return None
-
-    # Returns a percentage complete value 0-100
-    def get_completion(self):
-        # Design allows for these limits to be configured later, potentially this data could be project specific
-        stage_base_sizes = {
-            AssetGroupSightingStage.unknown: 0,
-            AssetGroupSightingStage.preparation: 0,
-            AssetGroupSightingStage.detection: 0,
-            AssetGroupSightingStage.curation: 10,
-            AssetGroupSightingStage.processed: 30,  # 40 for identification 20 for review
-            AssetGroupSightingStage.failed: 100,  # complete, even if failed
-        }
-        completion = stage_base_sizes[self.stage]
-
-        # some stages are either all or nothing, these just use the base sizes above.
-        # For those that have granularity we need to know the size range available and estimate how much has been done
-        if self.stage == AssetGroupSightingStage.detection:
-            if self.jobs:
-                size_range = (
-                    stage_base_sizes[AssetGroupSightingStage.curation]
-                    - stage_base_sizes[self.stage]
-                )
-                complete_jobs = [job for job in self.jobs.values() if not job['active']]
-                completion += size_range * (len(complete_jobs) / len(self.jobs))
-        elif self.stage == AssetGroupSightingStage.processed:
-            assert len(self.sighting) == 1
-            size_range = 100 - stage_base_sizes[self.stage]
-            sighting_completion = self.sighting[0].get_completion()
-            completion += (sighting_completion / 100) * size_range
-
-        # calculation generates a floating point value, reporting that would be claiming precision without accuracy
-        return round(completion)
 
     def get_detailed_jobs_json(self):
         job_data = []
@@ -937,8 +910,8 @@ class AssetGroupSighting(db.Model, HoustonModel):
             raise HoustonException(log, 'No json_result in message from Sage')
 
         job['json_result'] = json_result
-        self.jobs = self.jobs
         with db.session.begin(subtransactions=True):
+            self.jobs = self.jobs
             db.session.merge(self)
 
         sage_image_uuids = json_result.get('image_uuid_list', [])
@@ -993,10 +966,14 @@ class AssetGroupSighting(db.Model, HoustonModel):
                         bounds=bounds,
                     )
                 )
+
         for new_annot in annotations:
             AuditLog.system_create_object(log, new_annot, 'from Sage detection response')
             with db.session.begin(subtransactions=True):
                 db.session.add(new_annot)
+
+        db.session.refresh(self)
+
         self.job_complete(str(job_id))
 
     # Record that the asset has been updated for future re detection
@@ -1006,7 +983,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
             updated_assets.append(asset.guid)
 
         # Ensure it's written to DB
-        self.sighting_config = self.sighting_config
+        self.config = self.config
 
     def rerun_detection(self, background=True):
         log.info('Rerunning Sage detection')
@@ -1028,13 +1005,12 @@ class AssetGroupSighting(db.Model, HoustonModel):
     def start_detection(self, background=True):
         from app.modules.asset_groups.tasks import sage_detection
 
-        asset_group_config = self.asset_group.config
-        assert 'speciesDetectionModel' in asset_group_config
+        assert len(self.detection_configs) > 0
         assert self.stage == AssetGroupSightingStage.detection
 
         # Temporary restriction for MVP
-        assert len(asset_group_config['speciesDetectionModel']) == 1
-        for config in asset_group_config['speciesDetectionModel']:
+        assert len(self.detection_configs) == 1
+        for config in self.detection_configs:
             log.info(
                 f'ia pipeline starting detection {config} on AssetGroupSighting {self.guid}'
             )
@@ -1074,28 +1050,29 @@ class AssetGroupSighting(db.Model, HoustonModel):
 
     def job_complete(self, job_id_str):
         if job_id_str in self.jobs:
-            self.jobs[job_id_str]['active'] = False
-            self.jobs[job_id_str]['end'] = datetime.utcnow().isoformat()
-
-            outstanding_jobs = []
-            for job in self.jobs.keys():
-                if self.jobs[job]['active']:
-                    outstanding_jobs.append(job)
-
-            if len(outstanding_jobs) == 0:
-                # All complete, updatedAssets now in same sate as other assets so no need to store anymore
-                if 'updatedAssets' in self.sighting_config:
-                    del self.sighting_config['updatedAssets']
-                self.sighting_config = self.sighting_config
-                self.set_stage(AssetGroupSightingStage.curation, refresh=False)
-                self.curation_start = datetime.utcnow()
-
-            # This is necessary because we can only mark jobs as
-            # modified if we assign to it
-            self.jobs = self.jobs
-
             with db.session.begin(subtransactions=True):
+                self.jobs[job_id_str]['active'] = False
+                self.jobs[job_id_str]['end'] = datetime.utcnow().isoformat()
+
+                outstanding_jobs = []
+                for job in self.jobs.keys():
+                    if self.jobs[job]['active']:
+                        outstanding_jobs.append(job)
+
+                if len(outstanding_jobs) == 0:
+                    # All complete, updatedAssets now in same sate as other assets so no need to store anymore
+                    if 'updatedAssets' in self.sighting_config:
+                        del self.sighting_config['updatedAssets']
+                    self.config = self.config
+                    self.set_stage(AssetGroupSightingStage.curation, refresh=False)
+                    self.curation_start = datetime.utcnow()
+
+                # This is necessary because we can only mark jobs as
+                # modified if we assign to it
+                self.jobs = self.jobs
+
                 db.session.merge(self)
+            db.session.refresh(self)
         else:
             log.warning(f'job_id {job_id_str} not found in AssetGroupSighting')
 
@@ -1292,13 +1269,17 @@ class AssetGroup(GitStore):
             metadata_request = self.config
             metadata_request['sightings'] = []
             for sighting in self.asset_group_sightings:
-                metadata_request['sightings'].append(sighting.config)
+                metadata_request['sightings'].append(sighting.sighting_config)
             local_store_metadata['frontend_sightings_data'] = metadata_request
 
-    def post_preparation(self):
+    @property
+    def bulk_upload(self):
+        return isinstance(self.config, dict) and self.config.get('uploadType') == 'bulk'
+
+    def post_preparation_hook(self):
         if self.asset_group_sightings:
             for sighting in self.asset_group_sightings:
-                sighting.post_preparation()
+                sighting.post_preparation_hook()
 
     def is_partially_in_stage(self, stage):
         if self.asset_group_sightings:
@@ -1354,8 +1335,9 @@ class AssetGroup(GitStore):
         assert metadata.data_processed == AssetGroupMetadata.DataProcessed.complete
         import copy
 
-        # Store the metadata in the AssetGroup but not the sightings, that is stored on the AssetGroupSightings
+        # Store the metadata in the AssetGroup but not the sightings (also keep detection), that is stored on the AssetGroupSightings
         self.config = dict(metadata.request)
+
         del self.config['sightings']
 
         input_files = []
@@ -1374,10 +1356,6 @@ class AssetGroup(GitStore):
         # make sure the repo is created
         self.ensure_repository()
 
-        # Store the metadata in the AssetGroup but not the sightings, that is stored on the AssetGroupSightings
-        self.config = dict(metadata.request)
-        del self.config['sightings']
-
         description = 'Adding Creation metadata'
         if metadata.description != '':
             description = metadata.description
@@ -1389,14 +1367,7 @@ class AssetGroup(GitStore):
             commit=False,  # Delay Git commit as well
         )
 
-        from app.modules.progress.models import Progress
-
-        progress = Progress(description='Git commit for GitStore %r' % (self.guid,))
-        with db.session.begin():
-            db.session.add(progress)
-        db.session.refresh(progress)
-
-        return progress, input_files
+        return input_files
 
     def asset_updated(self, asset):
         for ags in self.get_asset_group_sightings_for_asset(asset):

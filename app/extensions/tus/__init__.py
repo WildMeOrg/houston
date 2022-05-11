@@ -15,6 +15,7 @@ from flask_login import current_user
 
 from flask_restx_patched import is_extension_enabled
 from app.utils import get_stored_filename
+import app.extensions.logging as AuditLog
 
 if not is_extension_enabled('tus'):
     raise RuntimeError('Tus is not enabled')
@@ -54,14 +55,15 @@ def _tus_upload_file_handler(
     from uuid import UUID
 
     # these are two alternate methods: organize by asset_group, or (arbitrary/random) transaction id
-    asset_group_id = None
+    # asset_group_id = None
+    # if 'x-houston-asset-group-id' in req.headers:
+    #     asset_group_id = req.headers.get('x-houston-asset-group-id')
+    #     UUID(
+    #         asset_group_id, version=4
+    #     )  # this is just to test it is a valid uuid - will throw ValueError if not! (500 response)
+    # # TODO verify asset_group? ownership? etc  possibly also "session-secret" to prevent anyone from adding to asset_group
+
     transaction_id = None
-    if 'x-houston-asset-group-id' in req.headers:
-        asset_group_id = req.headers.get('x-houston-asset-group-id')
-        UUID(
-            asset_group_id, version=4
-        )  # this is just to test it is a valid uuid - will throw ValueError if not! (500 response)
-    # TODO verify asset_group? ownership? etc  possibly also "session-secret" to prevent anyone from adding to asset_group
     if 'x-tus-transaction-id' in req.headers:
         transaction_id = req.headers.get('x-tus-transaction-id')
         UUID(
@@ -69,9 +71,9 @@ def _tus_upload_file_handler(
         )  # this is just to test it is a valid uuid - will throw ValueError if not! (500 response)
 
     dir = os.path.join(tus_upload_dir(app), 'unknown')
-    if asset_group_id is not None:
-        dir = tus_upload_dir(app, git_store_guid=asset_group_id)
-    elif transaction_id is not None:
+    # if asset_group_id is not None:
+    #     dir = tus_upload_dir(app, git_store_guid=asset_group_id)
+    if transaction_id is not None:
         dir = tus_upload_dir(app, transaction_id=transaction_id)
     elif 'session' in req.cookies:
         dir = tus_upload_dir(
@@ -111,14 +113,15 @@ def _tus_upload_file_handler(
 def _tus_delete_file_handler(upload_file_path, resource_id, req, app):
     from uuid import UUID
 
-    asset_group_id = None
+    # asset_group_id = None
+    # if 'x-houston-asset-group-id' in req.headers:
+    #     asset_group_id = req.headers.get('x-houston-asset-group-id')
+    #     UUID(
+    #         asset_group_id, version=4
+    #     )  # this is just to test it is a valid uuid - will throw ValueError if not! (500 response)
+    # # TODO verify asset_group? ownership? etc  possibly also "session-secret" to prevent anyone from adding to asset_group
+
     transaction_id = None
-    if 'x-houston-asset-group-id' in req.headers:
-        asset_group_id = req.headers.get('x-houston-asset-group-id')
-        UUID(
-            asset_group_id, version=4
-        )  # this is just to test it is a valid uuid - will throw ValueError if not! (500 response)
-    # TODO verify asset_group? ownership? etc  possibly also "session-secret" to prevent anyone from adding to asset_group
     if 'x-tus-transaction-id' in req.headers:
         transaction_id = req.headers.get('x-tus-transaction-id')
         UUID(
@@ -126,9 +129,9 @@ def _tus_delete_file_handler(upload_file_path, resource_id, req, app):
         )  # this is just to test it is a valid uuid - will throw ValueError if not! (500 response)
 
     dir = os.path.join(tus_upload_dir(app), 'unknown')
-    if asset_group_id is not None:
-        dir = tus_upload_dir(app, git_store_guid=asset_group_id)
-    elif transaction_id is not None:
+    # if asset_group_id is not None:
+    #     dir = tus_upload_dir(app, git_store_guid=asset_group_id)
+    if transaction_id is not None:
         dir = tus_upload_dir(app, transaction_id=transaction_id)
     elif 'session' in req.cookies:
         dir = tus_upload_dir(
@@ -153,13 +156,15 @@ def _tus_delete_file_handler(upload_file_path, resource_id, req, app):
                     matches.append(filepath)
                     matches.append(metadata_filepath)
 
-    log.debug(
+    AuditLog.audit_log(
+        log,
         'User requested deletion of uploaded resource ID %r, removing %d related files from transaction'
         % (
             resource_id,
             len(matches),
-        )
+        ),
     )
+
     for match in matches:
         os.remove(match)
 
@@ -333,6 +338,9 @@ def tus_filepaths_from(
         transaction_id=transaction_id,
     )
 
+    if not os.path.exists(upload_dir):
+        raise OSError('Upload_dir = %r is missing' % (upload_dir,))
+
     log.debug(f'_tus_filepaths_from passed paths: {paths}')
     filepaths = []
     # traverse whole upload dir and take everything
@@ -373,7 +381,8 @@ def tus_purge(git_store_guid=None, session_id=None, transaction_id=None):
         session_id=session_id,
         transaction_id=transaction_id,
     )
-    shutil.rmtree(upload_dir)
+    if os.path.exists(upload_dir):
+        shutil.rmtree(upload_dir)
 
 
 def tus_cleanup():

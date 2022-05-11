@@ -10,7 +10,7 @@ import werkzeug
 import uuid
 import json
 
-from flask import request, current_app
+from flask import request
 from flask_restx_patched import Resource
 from flask_restx_patched._http import HTTPStatus
 
@@ -88,7 +88,6 @@ class AssetGroups(Resource):
         """
         Create a new instance of Asset_group.
         """
-        from app.extensions.git_store.tasks import git_commit
         from app.extensions.elapsed_time import ElapsedTime
         import app.extensions.logging as AuditLog  # NOQA
         from app.modules.users.models import User
@@ -116,7 +115,7 @@ class AssetGroups(Resource):
             )
 
         try:
-            asset_group = AssetGroup.create_from_metadata(metadata)
+            asset_group, _ = AssetGroup.create_from_metadata(metadata)
         except HoustonException as ex:
             log.warning(
                 f'AssetGroup creation for transaction_id={metadata.tus_transaction_id} failed'
@@ -126,7 +125,7 @@ class AssetGroups(Resource):
             abort(400, f'Creation failed {ex}')
 
         try:
-            progress, input_files = asset_group.begin_ia_pipeline(metadata)
+            input_filenames = asset_group.begin_ia_pipeline(metadata)
         except HoustonException as ex:
             asset_group.delete()
             abort(
@@ -142,25 +141,13 @@ class AssetGroups(Resource):
 
         AuditLog.user_create_object(log, asset_group, duration=timer.elapsed())
 
-        with db.session.begin():
-            asset_group.progress_preparation_guid = progress.guid
-            db.session.merge(asset_group)
-        db.session.refresh(asset_group)
-
-        # Start the git_commit that will process the assets (update=True) and commit the new files to the Git repo (commit=True)
-        description = 'Tus collect commit, %s' % (progress.description,)
-
-        if current_app.testing:
-            # When testing, run on-demand and don't use celery workers
-            git_commit.s(str(asset_group.guid), description, input_files).apply()
-            promise = None
-        else:
-            promise = git_commit.delay(str(asset_group.guid), description, input_files)
-
-        if promise is not None:
-            with db.session.begin():
-                progress.celery_guid = promise.id
-                db.session.merge(progress)
+        try:
+            asset_group.git_commit_delay(input_filenames)
+        except Exception as ex:
+            asset_group.delete()
+            # If this was already an abort, use the correct message
+            message = ex.data if hasattr(ex, 'data') else ex
+            abort(400, f'Asset preparation failed {message}')
 
         return asset_group
 
@@ -840,6 +827,6 @@ class AssetGroupTusCollect(Resource):
             # We have checked the asset_group manager and cannot find this asset_group, raise 404 manually
             raise werkzeug.exceptions.NotFound
 
-        asset_group.import_tus_files()
+        asset_group.import_tus_files(foreground=True)
 
         return asset_group

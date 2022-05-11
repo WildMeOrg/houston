@@ -4,22 +4,22 @@
 Local Git Store
 
 """
-import logging
 from flask import current_app, request, session, render_template  # NOQA
 from flask_login import current_user  # NOQA
-from app.extensions import db
-from app.utils import HoustonException
 import requests.exceptions
-import utool as ut
-from app.version import version
 
+import git
+from git import Git as BaseGit, Repo as BaseRepo
 
-from app.extensions import HoustonModel, parallel
-import app.extensions.logging as AuditLog  # NOQA
 from app.modules.assets.models import Asset
 from app.modules.users.models import User
+import app.extensions.logging as AuditLog  # NOQA
+from app.extensions import db, HoustonModel, parallel
+from app.utils import HoustonException
+from app.version import version
 
-
+import utool as ut
+import logging
 import keyword
 import pathlib
 import shutil
@@ -28,11 +28,6 @@ import uuid
 import enum
 import json
 import os
-
-import app.extensions.logging as AuditLog  # NOQA
-
-import git
-from git import Git as BaseGit, Repo as BaseRepo
 
 
 KEYWORD_SET = set(keyword.kwlist)
@@ -207,10 +202,6 @@ class GitStore(db.Model, HoustonModel):
         pass
 
     @property
-    def bulk_upload(self):
-        return isinstance(self.config, dict) and self.config.get('uploadType') == 'bulk'
-
-    @property
     def anonymous(self):
         return self.owner is User.get_public_user()
 
@@ -292,15 +283,25 @@ class GitStore(db.Model, HoustonModel):
         else:
             repo = Repo(local_store_path)
 
-        local_name_path = os.path.join(local_store_path, '_uploads')
-        if not os.path.exists(local_name_path):
-            os.mkdir(local_name_path)
-        pathlib.Path(os.path.join(local_name_path, '.touch')).touch()
+        local_uploads_path = os.path.join(local_store_path, '_uploads')
+        if not os.path.exists(local_uploads_path):
+            os.mkdir(local_uploads_path)
+        pathlib.Path(os.path.join(local_uploads_path, '.touch')).touch()
 
         assets_path = os.path.join(local_store_path, '_assets')
         if not os.path.exists(assets_path):
             os.mkdir(assets_path)
         pathlib.Path(os.path.join(assets_path, '.touch')).touch()
+
+        # We moved the derived path, so clean-up the old location
+        old_derived_path = os.path.join(assets_path, 'derived')
+        if os.path.exists(old_derived_path):
+            shutil.rmtree(old_derived_path)
+
+        local_derived_path = os.path.join(local_store_path, '_derived')
+        if not os.path.exists(local_derived_path):
+            os.mkdir(local_derived_path)
+        pathlib.Path(os.path.join(local_derived_path, '.touch')).touch()
 
         metadata_path = os.path.join(local_store_path, '_metadata')
         if not os.path.exists(metadata_path):
@@ -427,8 +428,32 @@ class GitStore(db.Model, HoustonModel):
         if update:
             self.update_metadata_from_hook()
 
+        # Update the git store's preparation status
+        self.post_preparation_hook()
+
         if self.progress_preparation:
             self.progress_preparation.set(100)
+
+    def post_preparation_hook(self):
+        # Currently no hook
+        raise NotImplementedError()
+
+    def git_commit_delay(self, input_filenames):
+        from app.extensions.git_store.tasks import git_commit
+
+        # Start the git_commit that will process the assets (update=True) and commit the new files to the Git repo (commit=True)
+        description = 'Tus collect commit for GitStore %r' % (self.guid,)
+        if current_app.testing:
+            # When testing, run on-demand and don't use celery workers
+            git_commit(str(self.guid), description, input_filenames)
+            promise = None
+        else:
+            promise = git_commit.delay(str(self.guid), description, input_filenames)
+
+        if self.progress_preparation and promise:
+            with db.session.begin():
+                self.progress_preparation.celery_guid = promise.id
+                db.session.merge(self.progress_preparation)
 
     def init_metadata(self):
         local_store_path = self.get_absolute_path()
@@ -515,8 +540,32 @@ class GitStore(db.Model, HoustonModel):
 
         return git_store
 
+    def init_progress_preparation(self, overwrite=False):
+        from app.modules.progress.models import Progress
+
+        if self.progress_preparation is not None:
+            if not overwrite:
+                log.warning(
+                    'Git Store %r already has a progress preparation %r'
+                    % (
+                        self,
+                        self.progress_preparation,
+                    )
+                )
+                return
+
+        progress = Progress(description='Git commit for GitStore %r' % (self.guid,))
+        with db.session.begin():
+            db.session.add(progress)
+
+        with db.session.begin():
+            self.progress_preparation_guid = progress.guid
+            db.session.merge(self)
+
+        db.session.refresh(self)
+
     @classmethod
-    def create_from_metadata(cls, metadata, **kwargs):
+    def create_from_metadata(cls, metadata, foreground=False, **kwargs):
         if metadata.owner is not None and not metadata.owner.is_anonymous:
             git_store_owner = metadata.owner
         else:
@@ -549,8 +598,8 @@ class GitStore(db.Model, HoustonModel):
 
         if metadata.tus_transaction_id:
             try:
-                added = git_store.import_tus_files(
-                    transaction_id=metadata.tus_transaction_id
+                added, original_filenames = git_store.import_tus_files(
+                    transaction_id=metadata.tus_transaction_id, foreground=foreground
                 )
             except Exception:  # pragma: no cover
                 log.exception(
@@ -561,11 +610,26 @@ class GitStore(db.Model, HoustonModel):
                 raise
 
             log.debug('imported %r' % added)
-        return git_store
+        else:
+            original_filenames = []
+
+        if foreground:
+            git_store.post_preparation_hook()
+        else:
+            git_store.init_progress_preparation()
+
+        return git_store, original_filenames
 
     @classmethod
     def create_from_tus(
-        cls, description, owner, transaction_id, paths=[], submitter=None, **kwargs
+        cls,
+        description,
+        owner,
+        transaction_id,
+        paths=[],
+        submitter=None,
+        foreground=False,
+        **kwargs,
     ):
         assert transaction_id is not None
         if owner is not None and not owner.is_anonymous:
@@ -588,7 +652,9 @@ class GitStore(db.Model, HoustonModel):
         log.info('created %r' % git_store)
         added = None
         try:
-            added = git_store.import_tus_files(transaction_id=transaction_id, paths=paths)
+            added, original_filenames = git_store.import_tus_files(
+                transaction_id=transaction_id, paths=paths, foreground=foreground
+            )
         except Exception:  # pragma: no cover
             log.exception(
                 'create_from_tus() had problems with import_tus_files(); deleting from db and fs %r'
@@ -597,10 +663,17 @@ class GitStore(db.Model, HoustonModel):
             git_store.delete()
             raise
 
-        log.info('imported %r' % added)
-        return git_store
+        if foreground:
+            git_store.post_preparation_hook()
+        else:
+            git_store.init_progress_preparation()
 
-    def import_tus_files(self, transaction_id=None, paths=None, purge_dir=True):
+        log.info('imported %r' % added)
+        return git_store, original_filenames
+
+    def import_tus_files(
+        self, transaction_id=None, paths=None, foreground=False, purge_dir=True
+    ):
         from app.extensions.tus import tus_filepaths_from, tus_purge
 
         self.ensure_repository()
@@ -648,8 +721,8 @@ class GitStore(db.Model, HoustonModel):
             self.git_commit(
                 'Tus collect commit for %d files.' % (num_files,),
                 input_filenames=original_filenames,
-                update=False,  # Delay the processing of the files, move to the background
-                commit=False,  # Delay Git commit as well
+                update=foreground,
+                commit=foreground,
             )
 
             # Do git push to gitlab in the background (we won't wait for its
@@ -664,7 +737,7 @@ class GitStore(db.Model, HoustonModel):
             # may have some unclaimed files in it
             tus_purge(git_store_guid=sub_id, transaction_id=transaction_id)
 
-        return assets_added
+        return assets_added, original_filenames
 
     def realize_local_store(self):
         """

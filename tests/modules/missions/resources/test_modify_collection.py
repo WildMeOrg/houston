@@ -44,8 +44,13 @@ def test_create_patch_mission_collection(
         # test with explicit paths (should succeed)
         tid, valid_file = tus_utils.prep_tus_dir(test_root)
         transaction_ids.append(tid)
-        temp_mission_collection = MissionCollection.create_from_tus(
-            'PYTEST', data_manager_1, tid, mission=temp_mission, paths={valid_file}
+        temp_mission_collection, _ = MissionCollection.create_from_tus(
+            'PYTEST',
+            data_manager_1,
+            tid,
+            mission=temp_mission,
+            paths={valid_file},
+            foreground=True,
         )
         assert len(temp_mission_collection.assets) == 1
         assert temp_mission_collection.assets[0].path == valid_file

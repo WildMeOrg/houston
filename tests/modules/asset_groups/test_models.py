@@ -25,24 +25,18 @@ def test_asset_group_sightings_jobs(flask_app, db, admin_user, test_root, reques
     trans_dir = create_transaction_dir(flask_app, transaction_id)
     copy_uploaded_file(test_root, input_filename, trans_dir, input_filename)
 
-    input_filenames = [input_filename]
-    asset_group = AssetGroup.create_from_tus(
-        'test asset group description', admin_user, transaction_id, paths=input_filenames
+    asset_group, _ = AssetGroup.create_from_tus(
+        'test asset group description',
+        admin_user,
+        transaction_id,
+        paths=[input_filename],
+        foreground=True,
     )
     asset_group.config['speciesDetectionModel'] = test_utils.dummy_detection_info()
     # Make sure config changes are saved
     asset_group.config = asset_group.config
     with db.session.begin():
         db.session.add(asset_group)
-
-    # Do prep manually
-    asset_group.git_commit(
-        'Test commit',
-        input_filenames=input_filenames,
-        update=True,
-        commit=True,
-    )
-    asset_group.post_preparation()
 
     request.addfinalizer(asset_group.delete)
     sighting_config1 = test_utils.dummy_sighting_info()
@@ -52,7 +46,6 @@ def test_asset_group_sightings_jobs(flask_app, db, admin_user, test_root, reques
         sighting_config=sighting_config1,
         detection_configs=['african_terrestrial'],
     )
-    ags1.post_preparation()
     assert ags1.stage == AssetGroupSightingStage.detection
     assert ags1.get_detection_start_time() == ags1.created.isoformat() + 'Z'
     assert ags1.get_curation_start_time() is None
@@ -63,7 +56,6 @@ def test_asset_group_sightings_jobs(flask_app, db, admin_user, test_root, reques
         sighting_config=sighting_config2,
         detection_configs=test_utils.dummy_detection_info(),
     )
-    ags2.post_preparation()
 
     # no assets => processed
     assert ags2.stage == AssetGroupSightingStage.processed
@@ -161,76 +153,6 @@ def test_asset_group_sightings_bulk(
             )
 
 
-@pytest.mark.skipif(
-    module_unavailable('asset_groups'), reason='AssetGroups module disabled'
-)
-def test_asset_group_sighting_get_completion(
-    flask_app, flask_app_client, researcher_1, test_root, request
-):
-    from app.modules.asset_groups.models import (
-        AssetGroupSighting,
-        AssetGroupSightingStage,
-    )
-
-    # Use a real detection model to trigger a request sent to Sage
-    data = asset_group_utils.get_bulk_creation_data(
-        test_root, request, 'african_terrestrial'
-    )
-
-    # and the sim_sage util to catch it
-    resp = asset_group_utils.create_asset_group_sim_sage_init_resp(
-        flask_app, flask_app_client, researcher_1, data.get()
-    )
-    asset_group_guid = resp.json['guid']
-    request.addfinalizer(
-        lambda: asset_group_utils.delete_asset_group(
-            flask_app_client, researcher_1, asset_group_guid
-        )
-    )
-
-    # Check get_completion()
-    asset_group_sighting_guid = resp.json['asset_group_sightings'][0]['guid']
-    asset_group_sighting = AssetGroupSighting.query.get(asset_group_sighting_guid)
-    # In "detection" stage
-    assert asset_group_sighting.stage == AssetGroupSightingStage.detection
-    detection_time = asset_group_sighting.created.isoformat() + 'Z'
-    assert asset_group_sighting.get_detection_start_time() == detection_time
-    assert asset_group_sighting.get_curation_start_time() is None
-    assert asset_group_sighting.get_completion() == 0
-    # Mark job as completed -> "curation" stage
-    asset_group_sighting.job_complete(list(asset_group_sighting.jobs.keys())[0])
-    assert all(not job['active'] for job in asset_group_sighting.jobs.values())
-    assert asset_group_sighting.stage == AssetGroupSightingStage.curation
-    assert asset_group_sighting.get_detection_start_time() == detection_time
-    curation_time = asset_group_sighting.curation_start.isoformat() + 'Z'
-    assert asset_group_sighting.get_curation_start_time() == curation_time
-    assert asset_group_sighting.get_completion() == 10
-
-    # Call commit to move to "processed" stage
-    with mock.patch(
-        'app.modules.asset_groups.models.current_app.edm.request_passthrough_result',
-        return_value={
-            'id': str(uuid.uuid4()),
-            'encounters': [
-                {'id': str(uuid.uuid4())},
-                {'id': str(uuid.uuid4())},
-            ],
-        },
-    ):
-        asset_group_sighting.commit()
-    assert asset_group_sighting.stage == AssetGroupSightingStage.processed
-    assert asset_group_sighting.get_detection_start_time() == detection_time
-    assert asset_group_sighting.get_curation_start_time() == curation_time
-    assert asset_group_sighting.get_completion() == 30
-
-    # Check unknown and failed by manually setting them
-    asset_group_sighting.stage = AssetGroupSightingStage.unknown
-    assert asset_group_sighting.get_completion() == 0
-
-    asset_group_sighting.stage = AssetGroupSightingStage.failed
-    assert asset_group_sighting.get_completion() == 100
-
-
 @pytest.mark.skipif(extension_unavailable('edm'), reason='EDM extension disabled')
 def test_asset_group_sighting_config_field_getter(researcher_1, request):
     from app.modules.asset_groups.models import AssetGroupSighting, AssetGroup
@@ -246,13 +168,13 @@ def test_asset_group_sighting_config_field_getter(researcher_1, request):
 
     config_field_getter = AssetGroupSighting.config_field_getter
 
-    ags.config = None
+    ags.sighting_config = None
     assert config_field_getter('name')(ags) is None
     assert config_field_getter('name', default='value')(ags) == 'value'
     assert config_field_getter('name', default=1, cast=int)(ags) == 1
     assert config_field_getter('name', cast=int)(ags) is None
 
-    ags.config = {'id': '10', 'decimalLatitude': None}
+    ags.sighting_config = {'id': '10', 'decimalLatitude': None}
     assert config_field_getter('id')(ags) == '10'
     assert config_field_getter('id', default=1)(ags) == '10'
     assert config_field_getter('id', default=1, cast=int)(ags) == 10

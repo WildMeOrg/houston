@@ -124,7 +124,6 @@ class DetailedAssetGroupSightingSchema(BaseAssetGroupSightingSchema):
         many=True,
     )
 
-    completion = base_fields.Function(AssetGroupSighting.get_completion)
     sighting_guid = base_fields.Function(AssetGroupSighting.get_sighting_guid)
     detection_start_time = base_fields.Function(
         AssetGroupSighting.get_detection_start_time
@@ -145,7 +144,6 @@ class DetailedAssetGroupSightingSchema(BaseAssetGroupSightingSchema):
         fields = BaseAssetGroupSightingSchema.Meta.fields + (
             AssetGroupSighting.config.key,
             'assets',
-            'completion',
             'creator',
             'sighting_guid',
             'detection_start_time',
@@ -192,7 +190,6 @@ class AssetGroupSightingAsSightingSchema(ModelSchema):
 
     createdHouston = base_fields.DateTime(attribute='created')
     updatedHouston = base_fields.DateTime(attribute='updated')
-    completion = base_fields.Function(AssetGroupSighting.get_completion)
     creator = base_fields.Nested('PublicUserSchema', attribute='get_owner', many=False)
     detection_start_time = base_fields.Function(
         AssetGroupSighting.get_detection_start_time

@@ -32,20 +32,25 @@ def test_create_mission_collection_from_tus(flask_app, db, data_manager_1, test_
     if (transaction_dir).exists():
         shutil.rmtree(transaction_dir)
     with pytest.raises(OSError):
-        sub = MissionCollection.create_from_tus(
+        sub, _ = MissionCollection.create_from_tus(
             'PYTEST', data_manager_1, tid, mission=temp_mission
         )
 
     # now with a file dir+files but ask for wrong one
     tid, valid_file = tus_utils.prep_tus_dir(test_root)
     with pytest.raises(HoustonException):
-        sub = MissionCollection.create_from_tus(
+        sub, _ = MissionCollection.create_from_tus(
             'PYTEST', data_manager_1, tid, mission=temp_mission, paths={'fail.jpg'}
         )
 
     # test with explicit paths (should succeed)
-    sub = MissionCollection.create_from_tus(
-        'PYTEST', data_manager_1, tid, mission=temp_mission, paths={valid_file}
+    sub, _ = MissionCollection.create_from_tus(
+        'PYTEST',
+        data_manager_1,
+        tid,
+        mission=temp_mission,
+        paths={valid_file},
+        foreground=True,
     )
     assert len(sub.assets) == 1
     assert sub.assets[0].path == valid_file
@@ -55,8 +60,8 @@ def test_create_mission_collection_from_tus(flask_app, db, data_manager_1, test_
 
     # test with no paths (should succeed same as above)
     tid, valid_file = tus_utils.prep_tus_dir(test_root)
-    sub = MissionCollection.create_from_tus(
-        'PYTEST', data_manager_1, tid, mission=temp_mission
+    sub, _ = MissionCollection.create_from_tus(
+        'PYTEST', data_manager_1, tid, mission=temp_mission, foreground=True
     )
     assert len(sub.assets) == 1
     assert sub.assets[0].path == valid_file

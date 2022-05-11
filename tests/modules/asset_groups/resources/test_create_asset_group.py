@@ -133,6 +133,7 @@ def test_create_asset_group(flask_app_client, researcher_1, readonly_user, test_
         file_json = metadata_dict.get('frontend_sightings_data')
         request_json = data.get()
         # Stored data is a superset of what was sent so only check fields sent
+
         for key in request_json.keys():
             if key != 'sightings':
                 assert request_json[key] == file_json[key]
@@ -184,7 +185,7 @@ def test_create_asset_group_time(
             }
         ],
     }
-    expected_error = "IA pipeline failed {'status': 400, 'errorFields': ['time'], 'message': \"Problem with sighting time/timeSpecificity values: Invalid isoformat string: 'time'\"}"
+    expected_error = "Asset preparation failed {'status': 400, 'errorFields': ['time'], 'message': \"Problem with sighting time/timeSpecificity values: Invalid isoformat string: 'time'\"}"
     asset_group_utils.create_asset_group(
         flask_app_client, researcher_1, data, 400, expected_error
     )

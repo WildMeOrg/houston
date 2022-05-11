@@ -18,7 +18,6 @@ def init_app(app, **kwargs):
     Init Progress module.
     """
     api_v1.add_oauth_scope('progress:read', 'Provide access to Progress details')
-    api_v1.add_oauth_scope('progress:write', 'Provide write access to Progress details')
 
     # Touch underlying modules
     from . import models, resources  # NOQA

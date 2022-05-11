@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from . import utils
+import time
 
 
 # Not a generic util as there has to be exactly one asset group sighting, no assets, one sighting, and three
@@ -26,11 +27,24 @@ def create_sighting(session, codex_url):
     ags_guid = asset_group_sighting_guids[0]
 
     # Should not need a wait, should be just a get
-    ags_url = codex_url(f'/api/v1/asset_groups/sighting/{ags_guid}')
-    ags_json = session.get(ags_url).json()
-    assert len(ags_json['assets']) == 0
-    assert ags_json['stage'] == 'processed'
-    assert 'sighting_guid' in ags_json.keys()
+    trial = 0
+    while True:
+        ags_url = codex_url(f'/api/v1/asset_groups/sighting/{ags_guid}')
+        ags_json = session.get(ags_url).json()
+
+        try:
+            assert len(ags_json['assets']) == 0
+            assert ags_json['stage'] == 'processed'
+            assert 'sighting_guid' in ags_json.keys()
+            break
+        except AssertionError:
+            pass
+
+        if trial > 60:
+            raise RuntimeError()
+
+        trial += 1
+        time.sleep(1)
 
     sighting_guid = ags_json['sighting_guid']
     sight_url = codex_url(f'/api/v1/sightings/{sighting_guid}')
@@ -123,7 +137,7 @@ def test_social_groups(session, login, codex_url):
         {
             'name': 'Family',
             'guid': social_group_id,
-            'elasticsearchable': social_group['elasticsearchable'],
+            'elasticsearchable': response.json()[0]['elasticsearchable'],
             'indexed': response.json()[0]['indexed'],
         }
     ]

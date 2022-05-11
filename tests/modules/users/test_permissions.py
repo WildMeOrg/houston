@@ -5,6 +5,8 @@ import pytest
 
 from werkzeug.exceptions import HTTPException
 import tests.utils as test_utils
+from tests.utils import module_unavailable
+
 
 from app.modules.users import permissions
 from app.modules.users.permissions.types import AccessOperation
@@ -542,3 +544,70 @@ def test_ObjectAccessPermission_user_manager_user(
     validate_cannot_read_object(obj)
     validate_cannot_write_object(obj)
     validate_cannot_delete_object(obj)
+
+
+@pytest.mark.skipif(
+    module_unavailable('individuals'), reason='Individuals module disabled'
+)
+def test_data_manager_and_staff_access(
+    db, flask_app_client, researcher_1, data_manager_1, staff_user, request, test_root
+):
+    import tests.modules.individuals.resources.utils as individual_utils
+    import tests.modules.sightings.resources.utils as sighting_utils
+    import tests.modules.encounters.resources.utils as encounter_utils
+
+    # testing that staff and data_managers can edit and read these three objects
+    uuids = individual_utils.create_individual_and_sighting(
+        flask_app_client,
+        researcher_1,
+        request,
+        test_root,
+    )
+    individual_id = uuids['individual']
+    sighting_id = uuids['sighting']
+
+    # any of these methods will throw an error if we don't get a 200 OK response
+    ind_patch_data = [
+        test_utils.patch_add_op(
+            'names',
+            {
+                'context': 'test_context',
+                'value': 'test_value',
+            },
+        ),
+    ]
+    individual_utils.patch_individual(
+        flask_app_client, data_manager_1, individual_id, ind_patch_data
+    )
+    indiv_resp = individual_utils.read_individual(
+        flask_app_client, staff_user, individual_id
+    ).json
+    assert indiv_resp['names'][0]['context'] == 'test_context'
+    assert indiv_resp['names'][0]['value'] == 'test_value'
+    individual_utils.read_individual(flask_app_client, staff_user, individual_id)
+    test_dt = '1999-01-01T12:34:56-07:00'
+    sight_patch_data = [
+        test_utils.patch_replace_op('time', test_dt),
+        test_utils.patch_replace_op('timeSpecificity', 'month'),
+    ]
+    sighting_utils.patch_sighting(
+        flask_app_client,
+        staff_user,
+        sighting_id,
+        sight_patch_data,
+    )
+    sight_resp = sighting_utils.read_sighting(
+        flask_app_client, data_manager_1, sighting_id
+    ).json
+    assert sight_resp['time'] == test_dt
+    assert sight_resp['timeSpecificity'] == 'month'
+
+    encounter_id = sight_resp['encounters'][0]['guid']
+    patch_data = [test_utils.patch_replace_op('locationId', 'LOCATION_TEST_VALUE')]
+    encounter_utils.patch_encounter(
+        flask_app_client, encounter_id, data_manager_1, patch_data
+    )
+    enc_resp = encounter_utils.read_encounter(
+        flask_app_client, staff_user, encounter_id
+    ).json
+    assert enc_resp['locationId'] == 'LOCATION_TEST_VALUE'

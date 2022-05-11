@@ -199,6 +199,8 @@ def test_multi_cascade(flask_app_client, test_root, researcher_1, request, db):
     response = sighting_utils.delete_sighting(
         flask_app_client, researcher_1, sighting_id, expected_status_code=400
     )
+    assert individual1_id == response.json['vulnerableIndividualGuid']
+    # additional ids, eg individual2 and encounters, not currently returned from EDM
 
     # lets say we are okay - should delete *two* individuals
     headers = (('x-allow-delete-cascade-individual', True),)

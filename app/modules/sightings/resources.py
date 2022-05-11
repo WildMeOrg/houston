@@ -628,7 +628,19 @@ class SightingByID(Resource):
             log.warning(
                 f'Sighting.delete {sighting.guid} failed: ({ex.status_code} / edm={edm_status_code}) {ex.message}'
             )
-            abort(400, 'Delete failed')
+            ex_response_data = ex.get_val('response_data', {})
+            if (
+                'vulnerableIndividual' in ex_response_data
+                or 'vulnerableEncounter' in ex_response_data
+            ):
+                abort(
+                    400,
+                    'Delete failed because it would cause a delete cascade.',
+                    vulnerableIndividualGuid=ex_response_data.get('vulnerableIndividual'),
+                    vulnerableEncounterGuid=ex_response_data.get('vulnerableEncounter'),
+                )
+            else:
+                abort(400, 'Delete failed')
 
         # we have to roll our own response here (to return) as it seems the only way we can add a header
         #   (which we are using to denote the encounter DELETE also triggered a individual DELETE, since

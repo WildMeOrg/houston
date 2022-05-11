@@ -484,12 +484,14 @@ class Annotation(db.Model, HoustonModel):
 
         return AnnotationElasticsearchSchema
 
-    def send_to_identification(self, matching_set_query=None):
+    def send_to_identification(self, matching_set_query=None, algorithms=None):
         sighting = self.get_sighting()
         if not sighting:
             raise HoustonException(
                 log, f'{self} requires a sighting to run send_to_identification()'
             )
         sighting.validate_id_configs()
-        job_count = sighting.send_annotation_for_identification(self, matching_set_query)
+        job_count = sighting.send_annotation_for_identification(
+            self, matching_set_query, algorithms=algorithms
+        )
         return job_count

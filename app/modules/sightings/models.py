@@ -1265,22 +1265,47 @@ class Sighting(db.Model, FeatherModel):
     # this iterates over configs and algorithms
     # note: self.validate_id_configs() should be called before this (once)
     def send_annotation_for_identification(
-        self, annotation, matching_set_query=None, background=True
+        self, annotation, matching_set_query=None, background=True, algorithms=None
     ):
         num_jobs = 0
         annotation_guid = str(annotation.guid)
-        for config_id in range(len(self.id_configs)):
-            # note: we could test matching_set here and prevent duplicate testing within specific()
-            #  but we would have to be careful of code calling specific *directly*
-            for algorithm_id in range(len(self.id_configs[config_id]['algorithms'])):
+        if algorithms:
+            # Build up ids before starting any jobs so that we don't have a half started ID
+            ids = []
+            for algorithm in algorithms:
+                config_id, algorithm_id = self._get_ids_for_algorithm(algorithm)
+                if not config_id or not algorithm_id:
+                    # Not checking all of them, just raise error on first bad one found
+                    raise HoustonException(log, f'Algorithm {algorithm} not supported')
+                ids.append(
+                    {
+                        'config_id': config_id,
+                        'algorithm_id': algorithm_id,
+                    }
+                )
+            for id_pair in ids:
                 if self.send_annotation_for_identification_specific(
                     Annotation.query.get(annotation_guid),
-                    config_id,
-                    algorithm_id,
+                    id_pair['config_id'],
+                    id_pair['algorithm_id'],
                     matching_set_query,
                     background=background,
                 ):
                     num_jobs += 1
+
+        else:
+            for config_id in range(len(self.id_configs)):
+                # note: we could test matching_set here and prevent duplicate testing within specific()
+                #  but we would have to be careful of code calling specific *directly*
+                for algorithm_id in range(len(self.id_configs[config_id]['algorithms'])):
+                    if self.send_annotation_for_identification_specific(
+                        Annotation.query.get(annotation_guid),
+                        config_id,
+                        algorithm_id,
+                        matching_set_query,
+                        background=background,
+                    ):
+                        num_jobs += 1
         return num_jobs
 
     # see also send_annotation_for_identification() above
@@ -1407,3 +1432,12 @@ class Sighting(db.Model, FeatherModel):
 
     def _get_algorithm_name(self, config_id, algorithm_id):
         return self.id_configs[config_id]['algorithms'][algorithm_id]
+
+    def _get_ids_for_algorithm(self, algorithm_name):
+        # Will return the first config Id and algorithm Id it finds
+        for config_id in range(len(self.id_configs)):
+            algorithms = self.id_configs[config_id]['algorithms']
+            for algorithm_id in range(len(algorithms)):
+                if algorithms[algorithm_id] == algorithm_name:
+                    return config_id, algorithm_id
+        return None, None

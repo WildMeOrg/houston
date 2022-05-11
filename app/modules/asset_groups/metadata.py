@@ -59,11 +59,14 @@ class AssetGroupMetadata(object):
     def _validate_fields(cls, dictionary, fields, error_str):
         for field, field_type, mandatory in fields:
             if mandatory:
-                if field not in dictionary or not isinstance(
-                    dictionary[field], field_type
-                ):
+                if field not in dictionary:
                     raise AssetGroupMetadataError(
                         log, f'{field} field missing from {error_str}'
+                    )
+                if not isinstance(dictionary[field], field_type):
+                    raise AssetGroupMetadataError(
+                        log,
+                        f'{field} field had incorrect type, expected {field_type.__name__} in {error_str}',
                     )
                 if field_type == list:
                     # All mandatory lists must have at least one entry

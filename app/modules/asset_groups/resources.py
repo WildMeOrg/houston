@@ -133,7 +133,9 @@ class AssetGroups(Resource):
             )
         except Exception as ex:
             asset_group.delete()
-            abort(400, f'IA pipeline failed {ex}')
+            # If this was already an abort, use the correct message
+            message = ex.data if hasattr(ex, 'data') else ex
+            abort(400, f'IA pipeline failed {message}')
 
         AuditLog.user_create_object(log, asset_group, duration=timer.elapsed())
         return asset_group

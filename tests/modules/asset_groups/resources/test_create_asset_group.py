@@ -30,7 +30,7 @@ def test_create_asset_group(flask_app_client, researcher_1, readonly_user, test_
         asset_group_utils.create_asset_group(
             flask_app_client, researcher_1, data.get(), 400, resp_msg
         )
-        data.set_field('speciesDetectionModel', [False])
+        data.set_field('speciesDetectionModel', ['None'])
 
         data.set_field('transactionId', transaction_id)
         resp_msg = 'sightings field missing from request'
@@ -63,6 +63,11 @@ def test_create_asset_group(flask_app_client, researcher_1, readonly_user, test_
             flask_app_client, researcher_1, data.get(), 400, resp_msg
         )
 
+        data.set_sighting_field(0, 'locationId', 37)
+        resp_msg = 'locationId field had incorrect type, expected str in Sighting 1'
+        asset_group_utils.create_asset_group(
+            flask_app_client, researcher_1, data.get(), 400, resp_msg
+        )
         data.set_sighting_field(0, 'locationId', 'Lacock')
         resp_msg = 'time field missing from Sighting 1'
         asset_group_utils.create_asset_group(
@@ -109,7 +114,6 @@ def test_create_asset_group(flask_app_client, researcher_1, readonly_user, test_
             flask_app_client, researcher_1, data.get(), 400, resp_msg
         )
         data.content['sightings'][0].pop('ambiguity')
-
         resp = asset_group_utils.create_asset_group(
             flask_app_client, researcher_1, data.get()
         )
@@ -156,6 +160,34 @@ def test_create_asset_group(flask_app_client, researcher_1, readonly_user, test_
                 flask_app_client, researcher_1, asset_group_uuid
             )
         tus_utils.cleanup_tus_dir(transaction_id)
+
+
+# Time format failure scenarios
+@pytest.mark.skipif(
+    module_unavailable('asset_groups'), reason='AssetGroups module disabled'
+)
+def test_create_asset_group_time(
+    flask_app_client, researcher_1, readonly_user, test_root, request, db
+):
+    # pylint: disable=invalid-name
+    # Send with no assets, that way it does the commit automatically and hence we see the error expected.
+    # With assets this error would only be seen on the commit.
+    data = {
+        'uploadType': 'form',
+        'speciesDetectionModel': ['None'],
+        'sightings': [
+            {
+                'locationId': '45ce279e-4777-43ec-b4a0-9723aa77421e',
+                'time': 'time',
+                'timeSpecificity': 'time',
+                'encounters': [{}],
+            }
+        ],
+    }
+    expected_error = "IA pipeline failed {'status': 400, 'errorFields': ['time'], 'message': \"Problem with sighting time/timeSpecificity values: Invalid isoformat string: 'time'\"}"
+    asset_group_utils.create_asset_group(
+        flask_app_client, researcher_1, data, 400, expected_error
+    )
 
 
 # GPS Co-ordinate failure scenarios

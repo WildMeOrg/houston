@@ -168,7 +168,6 @@ class AssetGroupSightingAsSightingSchema(ModelSchema):
     createdHouston = base_fields.DateTime(attribute='created')
     updatedHouston = base_fields.DateTime(attribute='updated')
     completion = base_fields.Function(AssetGroupSighting.get_completion)
-    pipeline_status = base_fields.Function(AssetGroupSighting.get_pipeline_status)
     creator = base_fields.Nested('PublicUserSchema', attribute='get_owner', many=False)
     detection_start_time = base_fields.Function(
         AssetGroupSighting.get_detection_start_time
@@ -247,6 +246,12 @@ class AssetGroupSightingAsSightingSchema(ModelSchema):
             AssetGroupSighting.asset_group_guid.key,
         )
         dump_only = BaseAssetGroupSightingSchema.Meta.dump_only
+
+
+class AssetGroupSightingAsSightingWithPipelineStatusSchema(
+    AssetGroupSightingAsSightingSchema
+):
+    pipeline_status = base_fields.Function(AssetGroupSighting.get_pipeline_status)
 
 
 class DebugAssetGroupSightingSchema(DetailedAssetGroupSightingSchema):

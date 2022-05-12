@@ -235,7 +235,7 @@ class IndividualElasticsearch(Resource):
             'action': AccessOperation.READ,
         },
     )
-    @api.response(schemas.DetailedIndividualSchema(many=True))
+    @api.response(schemas.ElasticsearchIndividualSchema(many=True))
     @api.paginate()
     def get(self, args):
         search = {}
@@ -249,7 +249,7 @@ class IndividualElasticsearch(Resource):
             'action': AccessOperation.READ,
         },
     )
-    @api.response(schemas.DetailedIndividualSchema(many=True))
+    @api.response(schemas.ElasticsearchIndividualSchema(many=True))
     @api.paginate()
     def post(self, args):
         search = request.get_json()

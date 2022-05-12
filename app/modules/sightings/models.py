@@ -484,6 +484,9 @@ class Sighting(db.Model, FeatherModel):
 
         return details
 
+    def get_id_configs(self):
+        return self.id_configs
+
     def get_jobs_json(self):
         job_data = []
         if not self.jobs:

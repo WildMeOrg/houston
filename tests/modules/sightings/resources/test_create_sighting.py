@@ -131,6 +131,19 @@ def test_create_and_modify_and_delete_sighting(
     response = sighting_utils.read_sighting(flask_app_client, researcher_1, sighting_id)
     assert response.json['locationId'] == new_loc_id
 
+    new_configs = [{'algorithms': ['hotspotter_nosv']}]
+    sighting_utils.patch_sighting(
+        flask_app_client,
+        researcher_1,
+        sighting_id,
+        patch_data=[
+            {'op': 'replace', 'path': '/idConfigs', 'value': new_configs},
+        ],
+    )
+    # check that change was made
+    response = sighting_utils.read_sighting(flask_app_client, researcher_1, sighting_id)
+    assert response.json['idConfigs'] == new_configs
+
     # Single test that Sighting response has the correct keys
     assert set(response.json.keys()) >= {
         'comments',

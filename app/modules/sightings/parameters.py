@@ -45,6 +45,7 @@ class PatchSightingDetailsParameters(PatchJSONParameters):
     )
 
     PATH_CHOICES_HOUSTON = (
+        '/idConfigs',
         '/assetId',
         '/featuredAssetGuid',
         '/name',
@@ -93,5 +94,11 @@ class PatchSightingDetailsParameters(PatchJSONParameters):
 
             elif field == 'time' or field == 'timeSpecificity':
                 ret_val = ComplexDateTime.patch_replace_helper(obj, field, value)
+            elif field == 'idConfigs':
+                from app.modules.asset_groups.metadata import AssetGroupMetadata
 
+                # Raises AssetGroupMetadataError on error which is intentionally unnhandled
+                AssetGroupMetadata.validate_id_configs(value, f'Sighting {obj.guid}')
+                obj.id_configs = value
+                ret_val = True
         return ret_val

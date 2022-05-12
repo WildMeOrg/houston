@@ -150,6 +150,7 @@ class AugmentedEdmSightingSchema(TimedSightingSchema):
         Sighting.config_field_getter('speciesDetectionModel', default=[])
     )
     jobs = base_fields.Function(Sighting.get_jobs_json)
+    idConfigs = base_fields.Function(Sighting.get_id_configs)
 
     class Meta(TimedSightingSchema.Meta):
         """
@@ -169,6 +170,7 @@ class AugmentedEdmSightingSchema(TimedSightingSchema):
             'time',
             'timeSpecificity',
             'speciesDetectionModel',
+            'idConfigs',
         )
 
 

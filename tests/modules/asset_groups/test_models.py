@@ -79,7 +79,7 @@ def test_asset_group_sightings_jobs(flask_app, db, admin_user, test_root, reques
         str(job_id1): {
             'model': 'african_terrestrial',
             'active': True,
-            'start': now,
+            'start': now.isoformat(),
             'asset_ids': [str(asset_group.assets[0].guid)],
         },
     }
@@ -87,10 +87,29 @@ def test_asset_group_sightings_jobs(flask_app, db, admin_user, test_root, reques
         str(job_id2): {
             'model': 'african_terrestrial',
             'active': True,
-            'start': now,
+            'start': now.isoformat(),
             'asset_ids': [],
         },
     }
+
+    # not exactly sure why this is None, but we need it not-None
+    ags1.asset_group.config['speciesDetectionModel'] = ['fubar']
+    ags1.asset_group.config = ags1.asset_group.config
+    ps = ags1.get_pipeline_status()
+    assert ps['detection']
+    assert ps['detection']['inProgress']
+    assert not ps['detection']['failed']
+
+    ags1.jobs = None
+    ags1.detection_attempts = ps['detection']['numAttemptsMax'] + 9
+    with db.session.begin():
+        db.session.merge(ags1)
+    ps = ags1.get_pipeline_status()
+    assert ps['detection']['failed']
+    assert 'could not start' in ps['detection']['error']
+    assert ps['detection']['numJobs'] == 0
+    assert ps['detection']['numJobsActive'] == 0
+    assert ps['detection']['numJobsFailed'] == 0
 
 
 @pytest.mark.skipif(

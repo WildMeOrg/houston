@@ -313,6 +313,7 @@ def test_sightings(session, login, codex_url, test_root, admin_name):
         'timeSpecificity': 'time',
         'stage': 'un_reviewed',
         'speciesDetectionModel': ['african_terrestrial'],
+        'idConfigs': [{'algorithms': ['hotspotter_nosv']}],
         # 2021-11-16T09:45:26.717432+00:00
         'updatedHouston': response.json()['updatedHouston'],
         'version': sighting_version,

@@ -503,12 +503,21 @@ class AssetGroupSighting(db.Model, HoustonModel):
         status = {
             'preparation': self._get_pipeline_status_preparation(),
             'detection': self._get_pipeline_status_detection(),
-            'summary': {},
             'now': datetime.utcnow().isoformat(),
+            'stage': self.stage,
+            'summary': {
+                'percent': None,
+            },
         }
         status['summary']['complete'] = (
             status['preparation']['complete'] and status['detection']['complete']
         )
+        steps_total = status['preparation']['steps'] + status['detection']['steps']
+        steps_complete_total = (
+            status['preparation']['stepsComplete'] + status['detection']['stepsComplete']
+        )
+        if steps_total:
+            status['summary']['percent'] = steps_complete_total / steps_total
         return status
 
     def _get_pipeline_status_preparation(self):
@@ -518,6 +527,9 @@ class AssetGroupSighting(db.Model, HoustonModel):
             'inProgress': False,
             'complete': False,
             'end': None,
+            'steps': 0,
+            'stepsComplete': 0,
+            'percent': None,
         }
         return status
 
@@ -532,15 +544,22 @@ class AssetGroupSighting(db.Model, HoustonModel):
             'error': None,
             'end': None,
             'numModels': 0,
+            'jobs': None,
             'numJobs': None,
             'numJobsActive': None,
             'numJobsFailed': None,
             'attempts': self.detection_attempts,
             'attemptsMax': MAX_DETECTION_ATTEMPTS,
+            'numAssets': None,
+            'numAnnotations': None,
+            'steps': 0,
+            'stepsComplete': 0,
+            'percent': None,
         }
         # TODO i am not sure if this is the best count here, as there
         #   is config['updatedAssets'] which may actually need to be considered
         status['numAssets'] = len(self.get_assets())
+        status['numAnnotations'] = len(self.get_all_annotations())
 
         #  self.stage == AssetGroupSightingStage.detection
         asset_group_config = self.asset_group.config
@@ -554,6 +573,8 @@ class AssetGroupSighting(db.Model, HoustonModel):
             status['numModels'] = 0
         if status['numModels'] < 1:  # assumed detection skipped
             status['skipped'] = True
+            status['steps'] = 1
+            status['stepsComplete'] = 1
             return status
 
         status['inProgress'] = True
@@ -562,6 +583,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
             status['error'] = f'could not start after {MAX_DETECTION_ATTEMPTS} attempts'
             status['failed'] = True
             status['inProgress'] = False
+            status['steps'] = 1
 
         # TODO needs more exploration - can we find out if we are waiting to start in celery?
         if not self.jobs:
@@ -572,6 +594,8 @@ class AssetGroupSighting(db.Model, HoustonModel):
             return status
 
         # we reset failed here, as it looks like job started anyway?
+        status['steps'] = 1
+        status['stepsComplete'] = 1
         status['error'] = None
         status['failed'] = False
         status['numJobs'] = len(self.jobs)
@@ -579,34 +603,58 @@ class AssetGroupSighting(db.Model, HoustonModel):
         status['numJobsFailed'] = 0
         first_start = None
         last_end = None
-        # TODO handle errors
+
+        job_info_list = []
         for job_id in self.jobs:
+            status['steps'] += 1
+            job_info = {
+                'id': job_id,
+                'active': False,
+                'error': None,
+                # we only query sage for *active* jobs to save expense,
+                #   so this being None is normal for inactive jobs
+                'sage_status': None,
+            }
             job = self.jobs[job_id]
             start = job.get('start')
+            job_info['start'] = start
             if start and (not first_start or start < first_start):
                 first_start = start
             end = job.get('end')
+            job_info['end'] = end
             if end and (not last_end or end > last_end):
                 last_end = end
             if job.get('active') is True:
+                job_info['active'] = True
                 status['numJobsActive'] += 1
                 # we sh/could toggle active if this shows failure
                 ss = None
                 try:
                     ss = self.get_sage_job_status(job_id)
-                except Exception:
+                except Exception as ex:
                     status[f'_debug_{job_id}'] = 'failed getting job status'
-                if ss and ss.get('jobstatus') == 'exception':
-                    status['numJobsActive'] -= 1
-                    status['numJobsFailed'] += 1
-                    status[f'_debug_{job_id}'] = 'sage exception'
-                    status['failed'] = True
-                    status['error'] = 'sage job exception'
+                    job_info['_get_status_exception'] = str(ex)
+                if ss:
+                    job_info['sage_status'] = ss.get('jobstatus')
+                    if ss.get('jobstatus') == 'exception':
+                        job_info['error'] = 'sage exception'
+                        status['numJobsActive'] -= 1
+                        status['numJobsFailed'] += 1
+                        status[f'_debug_{job_id}'] = 'sage exception'
+                        status['failed'] = True
+                        status['error'] = 'sage job exception'
+            else:  # not active
+                status['stepsComplete'] += 1
+            job_info_list.append(job_info)
 
+        # this should sort in chron order (the str() handles unset start case)
+        status['jobs'] = sorted(job_info_list, key=lambda d: str(d['start']))
         status['start'] = first_start
         status['end'] = last_end
         status['inProgress'] = status['numJobsActive'] > 0
         status['complete'] = not status['inProgress']
+        if status['steps']:
+            status['percent'] = status['stepsComplete'] / status['steps']
         return status
 
     @classmethod
@@ -922,6 +970,14 @@ class AssetGroupSighting(db.Model, HoustonModel):
             # If there is no asset this is a data integrity error which should be handled elsewhere, not here
         assets.sort(key=lambda ast: ast.guid)
         return assets
+
+    # these may not be assigned etc, but simply exist
+    def get_all_annotations(self):
+        annots = []
+        for asset in self.get_assets():
+            if asset.annotations:
+                annots += asset.annotations
+        return annots
 
     def complete(self):
         for job_id in self.jobs:

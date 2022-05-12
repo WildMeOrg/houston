@@ -276,8 +276,27 @@ class Sighting(db.Model, FeatherModel):
         # will raise ValueError if data no good
         self.time = ComplexDateTime.from_data(data)
 
+    # truly unsure if these sets might always be the same, so.....
     def get_assets(self):
         return [ref.asset for ref in self.sighting_assets]
+
+    def get_encounter_assets(self):
+        assets = set()
+        for enc in self.encounters:
+            assets.update(enc.get_assets())
+        return assets
+
+    def get_all_assets(self):
+        assets = set(self.get_assets())
+        assets.update(self.get_encounter_assets())
+        return assets
+
+    def get_annotations(self):
+        annots = []
+        for enc in self.encounters:
+            if enc.annotations:
+                annots += enc.annotations
+        return annots
 
     def add_asset(self, asset):
         if asset not in self.get_assets():
@@ -387,6 +406,192 @@ class Sighting(db.Model, FeatherModel):
             return value or default
 
         return getter
+
+    def is_migrated_data(self):
+        return self.asset_group_sighting_guid is None
+
+    def get_pipeline_status(self):
+        db.session.refresh(self)
+        status = {
+            # do we want preparation here as well?
+            # 'preparation': self._get_pipeline_status_preparation(),
+            'detection': self._get_pipeline_status_detection(),
+            'identification': self._get_pipeline_status_identification(),
+            'now': datetime.utcnow().isoformat(),
+            'stage': self.stage,
+            'migrated': self.is_migrated_data(),
+            'summary': {
+                'percent': None,
+            },
+        }
+        status['summary']['complete'] = (
+            status['identification']['complete'] and status['detection']['complete']
+        )
+        steps_total = status['identification']['steps'] + status['detection']['steps']
+        steps_complete_total = (
+            status['identification']['stepsComplete']
+            + status['detection']['stepsComplete']
+        )
+        if steps_total:
+            status['summary']['percent'] = steps_complete_total / steps_total
+        return status
+
+    # this piggybacks off of AssetGroupSighting.... *if* we have one!
+    #   otherwise we assume we are migrated and kinda fake it
+    def _get_pipeline_status_detection(self):
+        if self.asset_group_sighting:
+            return self.asset_group_sighting._get_pipeline_status_detection()
+
+        # this should/must mimic asset_group_sighting in terms of fields listed
+        #   so keep in sync with that
+        status = {
+            'skipped': False,
+            'start': None,
+            'inProgress': False,
+            'complete': True,  # just going to assume it ran
+            'failed': False,
+            'error': None,
+            'end': None,
+            'numModels': 1,  # seems true for migration
+            'jobs': None,
+            'numJobs': None,
+            'numJobsActive': None,
+            'numJobsFailed': None,
+            'attempts': None,
+            'attemptsMax': None,
+            'numAssets': len(self.get_encounter_assets()),
+            'numAnnotations': len(self.get_annotations()),
+            'steps': 1,
+            'stepsComplete': 1,
+            'percent': 1.0,
+        }
+        return status
+
+    def _get_pipeline_status_identification(self):
+        annots = self.get_annotations()
+        status = {
+            'skipped': False,
+            'start': None,
+            'inProgress': False,
+            'complete': False,
+            'failed': False,
+            'error': None,
+            'end': None,
+            'jobs': None,
+            'numJobs': None,
+            'numJobsActive': None,
+            'numJobsFailed': None,
+            # these are only based on 0th id_config (all that we have for mvp)
+            'matchingSetQueryPassed': None,
+            'matchingSetQueryUsed': None,
+            # this is only based on 0th annotation (so is approximate)
+            'matchingSetSize': None,
+            'attempts': None,
+            'attemptsMax': None,
+            'idConfigs': None,
+            'numAssets': len(self.get_encounter_assets()),
+            'numAnnotations': len(annots),
+            'steps': 0,
+            'stepsComplete': 0,
+            'percent': None,
+        }
+
+        if self.asset_group_sighting:
+            status['idConfigs'] = self.asset_group_sighting.get_id_configs()
+            if status['idConfigs']:
+                # TODO not entirely true... i think.  as this can be passed via api (single annot)
+                status['matchingSetQueryPassed'] = status['idConfigs'][0].get(
+                    'matching_set'
+                )
+
+        if not self.is_migrated_data():
+            # seems irrelevant for migrated
+            if annots:
+                status['matchingSetSize'] = len(annots[0].get_matching_set(load=False))
+                if status['matchingSetQueryPassed']:
+                    status['matchingSetQueryUsed'] = annots[0].resolve_matching_set_query(
+                        status['matchingSetQueryPassed']
+                    )
+                else:
+                    status['matchingSetQueryUsed'] = annots[
+                        0
+                    ].get_matching_set_default_query()
+
+        if self.stage == SightingStage.identification:
+            status['inProgress'] = True
+            status['steps'] += 1
+
+        # TODO needs more exploration - can we find out if we are waiting to start in celery?
+        if not self.jobs:
+            status['numJobs'] = 0
+            status['numJobsActive'] = 0
+            status['numJobsFailed'] = 0
+            status['_debug'] = 'self.jobs is empty'
+            return status
+
+        # we reset failed here, as it looks like job started anyway?
+        status['steps'] = 1
+        status['stepsComplete'] = 1
+        status['error'] = None
+        status['failed'] = False
+        status['numJobs'] = len(self.jobs)
+        status['numJobsActive'] = 0
+        status['numJobsFailed'] = 0
+        first_start = None
+        last_end = None
+
+        job_info_list = []
+        for job_id in self.jobs:
+            status['steps'] += 1
+            job_info = {
+                'id': job_id,
+                'active': False,
+                'error': None,
+                # we only query sage for *active* jobs to save expense,
+                #   so this being None is normal for inactive jobs
+                'sage_status': None,
+            }
+            job = self.jobs[job_id]
+            start = job.get('start')
+            job_info['start'] = start
+            if start and (not first_start or start < first_start):
+                first_start = start
+            end = job.get('end')
+            job_info['end'] = end
+            if end and (not last_end or end > last_end):
+                last_end = end
+            if job.get('active') is True:
+                job_info['active'] = True
+                status['numJobsActive'] += 1
+                # we sh/could toggle active if this shows failure
+                ss = None
+                try:
+                    ss = self.get_sage_job_status(job_id)
+                except Exception as ex:
+                    status[f'_debug_{job_id}'] = 'failed getting job status'
+                    job_info['_get_status_exception'] = str(ex)
+                if ss:
+                    job_info['sage_status'] = ss.get('jobstatus')
+                    if ss.get('jobstatus') == 'exception':
+                        job_info['error'] = 'sage exception'
+                        status['numJobsActive'] -= 1
+                        status['numJobsFailed'] += 1
+                        status[f'_debug_{job_id}'] = 'sage exception'
+                        status['failed'] = True
+                        status['error'] = 'sage job exception'
+            else:  # not active
+                status['stepsComplete'] += 1
+            job_info_list.append(job_info)
+
+        # this should sort in chron order (the str() handles unset start case)
+        status['jobs'] = sorted(job_info_list, key=lambda d: str(d['start']))
+        status['start'] = first_start
+        status['end'] = last_end
+        status['inProgress'] = status['numJobsActive'] > 0
+        status['complete'] = not status['inProgress']
+        if status['steps']:
+            status['percent'] = status['stepsComplete'] / status['steps']
+        return status
 
     @classmethod
     def check_jobs(cls):

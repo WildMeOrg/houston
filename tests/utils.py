@@ -697,7 +697,7 @@ def wait_for_elasticsearch_status(flask_app_client, user, force=True):
     log = logging.getLogger('elasticsearch')  # pylint: disable=invalid-name
 
     trial = 0
-    status = [None]
+    status = {}
     while True:
         with es.session.begin(blocking=True, forced=force, verify=True):
             es.es_index_all()
@@ -705,7 +705,7 @@ def wait_for_elasticsearch_status(flask_app_client, user, force=True):
         try:
             status = get_elasticsearch_status(flask_app_client, user)
         except json.decoder.JSONDecodeError:
-            status = [None]
+            status = {'error': 'decoding problem'}
         log.info('Elasticsearch status: %s' % (status,))
 
         # Remove any outdated, disabled, health flags

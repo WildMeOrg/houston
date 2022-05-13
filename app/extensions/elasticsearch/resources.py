@@ -6,7 +6,6 @@ RESTful API User resources
 """
 
 import logging
-from flask import current_app, request
 from flask_restx_patched import Resource
 from app.extensions.api import Namespace
 
@@ -70,12 +69,3 @@ class ElasticsearchSync(Resource):
             status = {}
 
         return status
-
-
-@api.route('/proxy/<string:index>')
-# @api.login_required(oauth_scopes=['search:read'])
-class ElasticsearchProxy(Resource):
-    def post(self, index):
-        body = request.get_data()
-        resp = current_app.elasticsearch.search(index=index, body=body)
-        return resp

@@ -75,6 +75,26 @@ def read_encounter(flask_app_client, user, enc_guid, expected_status_code=200):
     return response
 
 
+def read_all_encounters_pagination(
+    flask_app_client, user, expected_status_code=200, **kwargs
+):
+    assert set(kwargs.keys()) <= {'limit', 'offset', 'sort', 'reverse', 'reverse_after'}
+
+    with flask_app_client.login(user, auth_scopes=('encounters:read',)):
+        response = flask_app_client.get(
+            PATH,
+            query_string=kwargs,
+        )
+
+    if expected_status_code == 200:
+        test_utils.validate_list_response(response, 200)
+    else:
+        test_utils.validate_dict_response(
+            response, expected_status_code, {'status', 'message'}
+        )
+    return response
+
+
 # This returns a sighting debug object so acn't reuse above method as expected fields are way different
 def read_encounter_debug(flask_app_client, user, enc_guid, expected_status_code=200):
     response = test_utils.get_dict_via_flask(

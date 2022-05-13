@@ -2,7 +2,8 @@
 # pylint: disable=missing-docstring
 import uuid
 from unittest import mock
-import datetime
+from datetime import datetime, timedelta
+import time
 
 from tests import utils
 from tests.modules.annotations.resources import utils as annot_utils
@@ -18,6 +19,7 @@ from tests.utils import module_unavailable
 def test_modify_encounter(
     db,
     flask_app_client,
+    staff_user,
     researcher_1,
     researcher_2,
     admin_user,
@@ -27,10 +29,10 @@ def test_modify_encounter(
 ):
     # pylint: disable=invalid-name
     from app.modules.encounters.models import Encounter
-    import datetime
+    from app.modules.complex_date_time.models import ComplexDateTime, Specificities
 
     data_in = {
-        'time': datetime.datetime.now().isoformat() + '+00:00',
+        'time': datetime.now().isoformat() + '+00:00',
         'timeSpecificity': 'time',
         'locationId': 'test',
         'encounters': [
@@ -38,8 +40,6 @@ def test_modify_encounter(
             {'locationId': 'Monster Island'},
         ],
     }
-    from datetime import datetime
-    from app.modules.complex_date_time.models import ComplexDateTime, Specificities
 
     uuids = sighting_utils.create_sighting(
         flask_app_client, researcher_1, request, test_root, data_in
@@ -178,6 +178,83 @@ def test_modify_encounter(
     assert not test_enc.time_guid
     assert not test_enc.time
     assert not cdt
+
+    # Check if we can sort by time
+    test_dt = datetime.utcnow().isoformat() + '+03:00'
+    patch_data = [
+        utils.patch_replace_op('time', test_dt),
+    ]
+    patch_res = enc_utils.patch_encounter(
+        flask_app_client, new_encounter_1.guid, researcher_2, patch_data
+    )
+    test_enc = Encounter.query.get(new_encounter_1.guid)
+    assert test_enc.time
+    assert test_enc.time.specificity == Specificities.time
+    assert test_enc.time.timezone == 'UTC+0300'
+    assert test_enc.time.isoformat_in_timezone() == test_dt
+
+    time.sleep(1)
+
+    test_dt = datetime.utcnow().isoformat() + '+03:00'
+    patch_data = [
+        utils.patch_replace_op('time', test_dt),
+    ]
+    patch_res = enc_utils.patch_encounter(
+        flask_app_client, new_encounter_2.guid, researcher_1, patch_data
+    )
+    test_enc = Encounter.query.get(new_encounter_2.guid)
+    assert test_enc.time
+    assert test_enc.time.specificity == Specificities.time
+    assert test_enc.time.timezone == 'UTC+0300'
+    assert test_enc.time.isoformat_in_timezone() == test_dt
+
+    from tests.modules.encounters.resources.utils import read_all_encounters_pagination
+
+    response = read_all_encounters_pagination(
+        flask_app_client, staff_user, sort='time.datetime'
+    )
+    actual_order = [uuid.UUID(value['guid']) for value in response.json]
+
+    expected_order = [
+        value[1]
+        for value in sorted(
+            [
+                (encounter.time.datetime, encounter.guid)
+                for encounter in [new_encounter_1, new_encounter_2]
+            ]
+        )
+    ]
+    assert actual_order == expected_order
+
+    test_dt = (new_encounter_1.time.datetime - timedelta(hours=1)).isoformat() + '+03:00'
+    patch_data = [
+        utils.patch_replace_op('time', test_dt),
+    ]
+    patch_res = enc_utils.patch_encounter(
+        flask_app_client, new_encounter_2.guid, researcher_1, patch_data
+    )
+
+    expected_order = [
+        value[1]
+        for value in sorted(
+            [
+                (encounter.time.datetime, encounter.guid)
+                for encounter in [new_encounter_1, new_encounter_2]
+            ]
+        )
+    ]
+    assert actual_order[::-1] == expected_order
+
+    # Check if we can sort with elasticsearch too
+    from app.extensions import elasticsearch as es
+
+    with es.session.begin(blocking=True, verify=True):
+        Encounter.index_all(force=True)
+
+    body = {}
+    _, encounters = Encounter.elasticsearch(body, total=True, sort='time.datetime')
+    vals = [encounter.time.datetime for encounter in encounters]
+    assert vals == sorted(vals)
 
     # Attach some assets and annotations
     from app.modules.asset_groups.models import AssetGroup
@@ -484,7 +561,7 @@ def test_mix_edm_houston_patch(
     assert 'decimalLatitude' not in read_resp.json.keys()
 
     # Houston only patch
-    new_time = datetime.datetime.now().isoformat() + '+00:00'
+    new_time = datetime.now().isoformat() + '+00:00'
     patch_resp = enc_utils.patch_encounter(
         flask_app_client,
         encounter_guid,
@@ -502,7 +579,7 @@ def test_mix_edm_houston_patch(
     # Houston and EDM patch
     lat = utils.random_decimal_latitude()
     long = utils.random_decimal_longitude()
-    new_time = datetime.datetime.now().isoformat() + '+00:00'
+    new_time = datetime.now().isoformat() + '+00:00'
     patch_resp = enc_utils.patch_encounter(
         flask_app_client,
         encounter_guid,

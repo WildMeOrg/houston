@@ -107,7 +107,6 @@ if is_extension_enabled('edm'):
             # TODO is this actually needed
             log.warning('User._process_edm_user_organization() not implemented yet')
 
-
 else:
     UserEDMMixin = object
 

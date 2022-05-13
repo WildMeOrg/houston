@@ -8,6 +8,7 @@ from app.utils import HoustonException
 
 import elasticsearch
 from elasticsearch import helpers
+from sqlalchemy.inspection import inspect
 
 import logging
 
@@ -1651,21 +1652,46 @@ def es_elasticsearch(
         default_column = cls.guid
 
     sort = sort.lower()
+    outerjoin_cls = None
+
     if sort in ['default', 'primary']:
         sort_column = default_column
     else:
+        # First, check for columns in the table
         sort_column = None
-        for column in list(cls.__table__.columns):
+        column_names = list(cls.__table__.columns)
+        for column in column_names:
             if column.name.lower() == sort:
                 sort_column = column
+
+        # Next, check for columns in relationship tables
+        if '.' in sort:
+            for attribute, relationship in inspect(cls).relationships.items():
+                rel_cls = relationship.mapper.class_
+                column_names = list(rel_cls.__table__.columns)
+                for column in column_names:
+                    column_name = '%s.%s' % (
+                        attribute,
+                        column.name.lower(),
+                    )
+                    if column_name == sort:
+                        outerjoin_cls = rel_cls
+                        sort_column = column
+
         if sort_column is None:
             log.warning('The sort field %r is unrecognized, defaulting to GUID' % (sort,))
             sort_column = default_column
 
     sort_func_1 = sort_column.desc if reverse else sort_column.asc
     sort_func_2 = default_column.desc if reverse else default_column.asc
+
+    query = cls.query
+
+    if outerjoin_cls is not None:
+        query = query.outerjoin(outerjoin_cls)
+
     query = (
-        cls.query.filter(cls.guid.in_(search_guids))
+        query.filter(cls.guid.in_(search_guids))
         .order_by(sort_func_1(), sort_func_2())
         .offset(offset)
         .limit(limit)

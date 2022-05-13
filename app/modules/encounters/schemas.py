@@ -78,7 +78,6 @@ class DetailedEncounterSchema(BaseEncounterSchema):
             Encounter.created.key,
             Encounter.updated.key,
             Encounter.owner_guid.key,
-            Encounter.public.key,
             'annotations',
             Encounter.owner.key,
             Encounter.submitter.key,

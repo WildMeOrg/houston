@@ -220,7 +220,7 @@ class Annotation(db.Model, HoustonModel):
     def user_is_owner(self, user):
         # Annotation has no owner, but it has one asset, that has one git store that has an owner
         # (encounter is no longer required on Annotation, so best route to owner is via Asset/Group)
-        return user is not None and user == self.asset.git_store.owner
+        return self.asset.user_is_owner(user)
 
     # Used for building matching set but abstract the annotation to name mapping
     def get_individual_guid(self):

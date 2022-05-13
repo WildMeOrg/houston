@@ -244,7 +244,7 @@ class Sighting(db.Model, FeatherModel):
         return self.user_owns_all_encounters(user)
 
     def user_is_owner(self, user):
-        return user in self.get_owners()
+        return user is not None and user in self.get_owners()
 
     def get_encounters(self):
         return self.encounters

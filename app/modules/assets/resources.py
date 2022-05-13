@@ -117,7 +117,6 @@ class AssetByID(Resource):
     Manipulations with a specific Asset.
     """
 
-    @api.login_required(oauth_scopes=['assets:read'])
     @api.permission_required(
         permissions.ObjectAccessPermission,
         kwargs_on_request=lambda kwargs: {

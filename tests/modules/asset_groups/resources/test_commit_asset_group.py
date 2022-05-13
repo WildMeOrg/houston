@@ -220,3 +220,54 @@ def test_commit_individual_asset_group(
             asset_group_utils.delete_asset_group(
                 flask_app_client, researcher_1, asset_group_uuid
             )
+
+
+@pytest.mark.skipif(
+    module_unavailable('asset_groups'), reason='AssetGroups module disabled'
+)
+def test_commit_anonymous_asset_group(
+    flask_app_client, researcher_1, regular_user, staff_user, test_root, db, request
+):
+    # pylint: disable=invalid-name
+    import tests.extensions.tus.utils as tus_utils
+    import tests.modules.assets.resources.utils as asset_utils
+    import tests.modules.sightings.resources.utils as sighting_utils
+    import tests.modules.encounters.resources.utils as encounter_utils
+    import tests.modules.annotations.resources.utils as annot_utils
+
+    transaction_id, test_filename = tus_utils.prep_tus_dir(test_root)
+    data = asset_group_utils.AssetGroupCreationData(transaction_id, test_filename)
+    data.set_field('submitterEmail', 'joe@example.invalid')
+    create_resp = asset_group_utils.create_asset_group(
+        flask_app_client, None, data.get()
+    ).json
+    asset_group_uuid = create_resp['guid']
+    request.addfinalizer(
+        lambda: asset_group_utils.delete_asset_group(
+            flask_app_client, staff_user, asset_group_uuid
+        )
+    )
+    asset_group_sighting_guid = create_resp['asset_group_sightings'][0]['guid']
+    asset_guid = create_resp['assets'][0]['guid']
+
+    # Anonymous user should be able to read group, ags and all assets
+    asset_group_utils.read_asset_group(flask_app_client, None, asset_group_uuid)
+    asset_group_utils.read_asset_group_sighting(
+        flask_app_client, None, asset_group_sighting_guid
+    )
+    asset_utils.read_asset(flask_app_client, None, asset_guid)
+
+    annot_guid = asset_group_utils.patch_in_dummy_annotation(
+        flask_app_client, db, researcher_1, asset_group_sighting_guid, asset_guid
+    )
+    # commit it
+    commit_resp = asset_group_utils.commit_asset_group_sighting(
+        flask_app_client, researcher_1, asset_group_sighting_guid
+    ).json
+
+    # anonymous user should be able to read sightings and encounters
+    sighting_utils.read_sighting(flask_app_client, None, commit_resp['guid'])
+    encounter_utils.read_encounter(
+        flask_app_client, None, commit_resp['encounters'][0]['guid']
+    )
+    annot_utils.read_annotation(flask_app_client, None, annot_guid)

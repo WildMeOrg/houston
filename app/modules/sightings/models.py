@@ -413,27 +413,51 @@ class Sighting(db.Model, FeatherModel):
     def get_pipeline_status(self):
         db.session.refresh(self)
         status = {
-            # do we want preparation here as well?
-            # 'preparation': self._get_pipeline_status_preparation(),
+            'preparation': self._get_pipeline_status_preparation(),
             'detection': self._get_pipeline_status_detection(),
             'identification': self._get_pipeline_status_identification(),
             'now': datetime.utcnow().isoformat(),
             'stage': self.stage,
             'migrated': self.is_migrated_data(),
             'summary': {
-                'percent': None,
+                'progress': None,
             },
         }
         status['summary']['complete'] = (
-            status['identification']['complete'] and status['detection']['complete']
+            status['preparation']['complete']
+            and status['identification']['complete']
+            and status['detection']['complete']
         )
-        steps_total = status['identification']['steps'] + status['detection']['steps']
+        steps_total = (
+            status['preparation']['steps']
+            + status['identification']['steps']
+            + status['detection']['steps']
+        )
         steps_complete_total = (
-            status['identification']['stepsComplete']
+            status['preparation']['stepsComplete']
+            + status['identification']['stepsComplete']
             + status['detection']['stepsComplete']
         )
         if steps_total:
-            status['summary']['percent'] = steps_complete_total / steps_total
+            status['summary']['progress'] = steps_complete_total / steps_total
+        return status
+
+    # this piggybacks off of AssetGroupSighting.... *if* we have one!
+    #   otherwise we assume we are migrated and kinda fake it
+    def _get_pipeline_status_preparation(self):
+        if self.asset_group_sighting:
+            return self.asset_group_sighting._get_pipeline_status_preparation()
+        # migration "approximation"
+        status = {
+            'skipped': False,
+            'start': None,
+            'inProgress': False,
+            'complete': True,
+            'end': None,
+            'steps': 1,
+            'stepsComplete': 1,
+            'progress': 1.0,
+        }
         return status
 
     # this piggybacks off of AssetGroupSighting.... *if* we have one!
@@ -463,7 +487,8 @@ class Sighting(db.Model, FeatherModel):
             'numAnnotations': len(self.get_annotations()),
             'steps': 1,
             'stepsComplete': 1,
-            'percent': 1.0,
+            'progress': 1.0,
+            '_note': 'migrated sighting; detection status fabricated',
         }
         return status
 
@@ -493,7 +518,7 @@ class Sighting(db.Model, FeatherModel):
             'numAnnotations': len(annots),
             'steps': 0,
             'stepsComplete': 0,
-            'percent': None,
+            'progress': None,
         }
 
         if self.asset_group_sighting:
@@ -516,6 +541,8 @@ class Sighting(db.Model, FeatherModel):
                     status['matchingSetQueryUsed'] = annots[
                         0
                     ].get_matching_set_default_query()
+        else:
+            status['_note'] = 'migrated data; status should be interpretted in context'
 
         if self.stage == SightingStage.identification:
             status['inProgress'] = True
@@ -537,12 +564,9 @@ class Sighting(db.Model, FeatherModel):
         status['numJobs'] = len(self.jobs)
         status['numJobsActive'] = 0
         status['numJobsFailed'] = 0
-        first_start = None
-        last_end = None
 
         job_info_list = []
         for job_id in self.jobs:
-            status['steps'] += 1
             job_info = {
                 'id': job_id,
                 'active': False,
@@ -552,14 +576,8 @@ class Sighting(db.Model, FeatherModel):
                 'sage_status': None,
             }
             job = self.jobs[job_id]
-            start = job.get('start')
-            job_info['start'] = start
-            if start and (not first_start or start < first_start):
-                first_start = start
-            end = job.get('end')
-            job_info['end'] = end
-            if end and (not last_end or end > last_end):
-                last_end = end
+            job_info['start'] = job.get('start')
+            job_info['end'] = job.get('end')
             if job.get('active') is True:
                 job_info['active'] = True
                 status['numJobsActive'] += 1
@@ -568,29 +586,36 @@ class Sighting(db.Model, FeatherModel):
                 try:
                     ss = self.get_sage_job_status(job_id)
                 except Exception as ex:
-                    status[f'_debug_{job_id}'] = 'failed getting job status'
-                    job_info['_get_status_exception'] = str(ex)
+                    status[f'_debug_{job_id}'] = 'failed getting sage job status'
+                    job_info['_get_sage_status_exception'] = str(ex)
                 if ss:
                     job_info['sage_status'] = ss.get('jobstatus')
                     if ss.get('jobstatus') == 'exception':
                         job_info['error'] = 'sage exception'
+                        job_info['failed'] = True
                         status['numJobsActive'] -= 1
                         status['numJobsFailed'] += 1
                         status[f'_debug_{job_id}'] = 'sage exception'
-                        status['failed'] = True
-                        status['error'] = 'sage job exception'
-            else:  # not active
-                status['stepsComplete'] += 1
             job_info_list.append(job_info)
 
         # this should sort in chron order (the str() handles unset start case)
         status['jobs'] = sorted(job_info_list, key=lambda d: str(d['start']))
-        status['start'] = first_start
-        status['end'] = last_end
-        status['inProgress'] = status['numJobsActive'] > 0
+
+        # we now only factor in *most recent* job, in terms of
+        #  failure, start/end, etc.  thus only 1 step
+        status['steps'] += 1
+        if status['jobs'][-1]['failed']:
+            status['failed'] = True
+            status['error'] = status['jobs'][-1]['error']
+        else:
+            status['stepsComplete'] += 1
+
+        status['inProgress'] = status['jobs'][-1]['active']
+        status['start'] = status['jobs'][-1]['start']
+        status['end'] = status['jobs'][-1]['end']
         status['complete'] = not status['inProgress']
         if status['steps']:
-            status['percent'] = status['stepsComplete'] / status['steps']
+            status['progress'] = status['stepsComplete'] / status['steps']
         return status
 
     @classmethod

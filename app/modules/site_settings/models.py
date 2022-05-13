@@ -349,24 +349,6 @@ class SiteSetting(db.Model, Timestamp):
 
             SocialGroup.site_settings_updated()
 
-        if cls.HOUSTON_SETTINGS[key].get('isApiKey', False):
-            # generate output file as
-            output = [
-                f"export const transloaditKey = {cls.get_value('transloaditKey')};",
-                f"export const transloaditTemplateId = {cls.get_value('transloaditTemplateId')};",
-                f"export const transloaditService = {cls.get_value('transloaditTemplateId')};",
-                f"export const googleMapsApiKey = {cls.get_value('googleMapsApiKey')};",
-                f"export const sentryDsn = {cls.get_value('sentryDsn')};",
-                f"export const flatfileKey = {cls.get_value('flatfileKey')};",
-            ]
-
-            # write to appropriate apikeys.js depending on if we're codex or mws
-            from flask import current_app
-
-            out_filename = f"_frontend.{current_app.config.get('PROJECT_NAME').lower()}/src/constants/apiKeys.js"
-            with open(out_filename, 'w') as out_file:
-                out_file.write(output)
-
     @classmethod
     def forget_key_value(cls, key):
         if cls.is_edm_key(key) and is_extension_enabled('edm'):
@@ -428,6 +410,13 @@ class SiteSetting(db.Model, Timestamp):
         if not setting and default is None:
             return cls._get_default_value(key)
         return setting.boolean if setting else default
+
+    @classmethod
+    def get_apikeys_json(cls):
+        json_response = {}
+        for key in cls.HOUSTON_SETTINGS.keys():
+            if cls.HOUSTON_SETTINGS[key].get('isApiKey', False):
+                json_response[key] = cls.get_value(key)
 
     # a bit of hackery.  right now *all* keys in edm-configuration are of the form `site.foo` so we use
     #   as a way branch on _where_ to get the value to return here.  but as we ween ourselves off edm config,

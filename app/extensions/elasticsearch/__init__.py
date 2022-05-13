@@ -3,6 +3,7 @@
 from gumby import Client, initialize_indexes_by_model
 
 from app.extensions import is_extension_enabled, db, executor
+from app.extensions.api import api_v1
 from app.utils import HoustonException
 
 import elasticsearch
@@ -1706,3 +1707,10 @@ def init_app(app, **kwargs):
 
     # Initialize indexes if they don't already exists
     initialize_indexes_by_model(using=app.es)
+
+    api_v1.add_oauth_scope('search:read', 'Provide access to search')
+
+    # Touch underlying modules
+    from . import resources  # NOQA
+
+    api_v1.add_namespace(resources.api)

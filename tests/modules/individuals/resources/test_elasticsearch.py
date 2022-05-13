@@ -2,7 +2,7 @@
 # pylint: disable=missing-docstring
 
 from tests import utils as test_utils
-from tests.modules.elasticsearch.resources import utils as es_utils
+from tests.extensions.elasticsearch.resources import utils as es_utils
 from tests.modules.individuals.resources import utils as individual_utils
 from tests.utils import module_unavailable, extension_unavailable
 from app.extensions import elasticsearch as es

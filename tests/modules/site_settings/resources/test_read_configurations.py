@@ -293,3 +293,25 @@ def test_alter_houston_settings(flask_app_client, admin_user, researcher_1):
     assert 'currentValue' not in researcher_definition['email_service_password']
     assert admin_definition['email_service_username']['currentValue'] == username
     assert admin_definition['email_service_password']['currentValue'] == password
+
+    conf_utils.modify_main_settings(
+        flask_app_client,
+        admin_user,
+        {'_value': None},
+        'email_service_username',
+    )
+    conf_utils.modify_main_settings(
+        flask_app_client,
+        admin_user,
+        {'_value': None},
+        'email_service_password',
+    )
+    config_response_admin = conf_utils.read_main_settings(
+        flask_app_client, admin_user, 'block'
+    )
+    admin_configuration = config_response_admin.json['response']['configuration']
+
+    assert admin_configuration['email_service_username']['value'] is None
+    assert admin_configuration['email_service_username']['valueNotSet']
+    assert admin_configuration['email_service_password']['value'] is None
+    assert admin_configuration['email_service_password']['valueNotSet']

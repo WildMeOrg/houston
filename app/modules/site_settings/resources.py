@@ -352,7 +352,10 @@ class MainConfiguration(Resource):
             elif path in SiteSetting.get_setting_keys():
                 if '_value' not in data.keys():
                     abort(400, 'Need _value as the key in the data setting')
-                SiteSetting.set_key_value(path, data['_value'])
+                if data['_value'] is not None:
+                    SiteSetting.set_key_value(path, data['_value'])
+                else:
+                    SiteSetting.forget_key_value(path)
                 resp = {'success': True, 'key': path}
                 return resp
 
@@ -433,7 +436,10 @@ def _process_houston_data(data):
         if key not in SiteSetting.get_setting_keys():
             log.warning(f'skipping unrecognized Houston Setting key={key}')
             continue
-        SiteSetting.set_key_value(key, data[key])
+        if data[key] is not None:
+            SiteSetting.set_key_value(key, data[key])
+        else:
+            SiteSetting.forget_key_value(key)
         success_keys.append(key)
 
     for key in delete_keys:

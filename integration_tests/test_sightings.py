@@ -147,7 +147,6 @@ def test_sightings(session, login, codex_url, test_root, admin_name):
         'decimalLatitude': -39.063228,
         'decimalLongitude': 21.832598,
         'speciesDetectionModel': ['african_terrestrial'],
-        'idConfigs': [{'algorithms': ['hotspotter_nosv']}],
         'encounters': [
             {
                 # 2021-11-09T11:15:24.343018+00:00

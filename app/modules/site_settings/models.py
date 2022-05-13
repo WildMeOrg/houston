@@ -113,6 +113,42 @@ class SiteSetting(db.Model, Timestamp):
                 'settable': False,
             },
         },
+        'transloaditKey': {
+            'type': str,
+            'public': False,
+            'default': '',
+            'isApiKey': True,
+        },
+        'transloaditTemplateId': {
+            'type': str,
+            'public': False,
+            'default': '',
+            'isApiKey': True,
+        },
+        'transloaditService': {
+            'type': str,
+            'public': False,
+            'default': '',
+            'isApiKey': True,
+        },
+        'googleMapsApiKey': {
+            'type': str,
+            'public': False,
+            'default': '',
+            'isApiKey': True,
+        },
+        'sentryDsn': {
+            'type': str,
+            'public': False,
+            'default': '',
+            'isApiKey': True,
+        },
+        'flatfileKey': {
+            'type': str,
+            'public': False,
+            'default': '',
+            'isApiKey': True,
+        },
     }
 
     if is_extension_enabled('intelligent_agent'):
@@ -312,6 +348,23 @@ class SiteSetting(db.Model, Timestamp):
             from app.modules.social_groups.models import SocialGroup
 
             SocialGroup.site_settings_updated()
+
+        if cls.HOUSTON_SETTINGS[key].get('isApiKey', False):
+            # generate output file as
+            output = [
+                f"export const transloaditKey = {cls.get_value('transloaditKey')};",
+                f"export const transloaditTemplateId = {cls.get_value('transloaditTemplateId')};",
+                f"export const transloaditService = {cls.get_value('transloaditTemplateId')};",
+                f"export const googleMapsApiKey = {cls.get_value('googleMapsApiKey')};",
+                f"export const sentryDsn = {cls.get_value('sentryDsn')};",
+                f"export const flatfileKey = {cls.get_value('flatfileKey')};",
+            ]
+
+            # write to appropriate apikeys.js depending on if we're codex or mws
+            # TODO Michael, this is the bit that I don't know how to determine if we're running as Codex or MWS
+            out_filename = '_frontend.codex/src/constants/apiKeys.js'
+            with open(out_filename, 'w') as out_file:
+                out_file.write(output)
 
     @classmethod
     def forget_key_value(cls, key):

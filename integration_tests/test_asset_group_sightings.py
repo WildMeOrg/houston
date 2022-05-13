@@ -266,6 +266,7 @@ def test_asset_group_sightings(session, login, codex_url, test_root):
         'identification_start_time': response.json()['identification_start_time'],
         'unreviewed_start_time': response.json()['unreviewed_start_time'],
         'review_time': None,
+        'pipeline_status': response.json()['pipeline_status'],
     }
 
     # PATCH asset group sighting as sighting

@@ -69,7 +69,6 @@ def test_create_asset_group_detection(session, codex_url, test_root, login):
                 'job_id': first_job['job_id'],
                 'model': 'african_terrestrial',
                 'active': False,
-                'start': first_job['start'],
                 'asset_ids': [asset_guid],
             },
         ],

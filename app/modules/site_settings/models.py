@@ -113,6 +113,42 @@ class SiteSetting(db.Model, Timestamp):
                 'settable': False,
             },
         },
+        'transloaditKey': {
+            'type': str,
+            'public': False,
+            'default': '',
+            'isApiKey': True,
+        },
+        'transloaditTemplateId': {
+            'type': str,
+            'public': False,
+            'default': '',
+            'isApiKey': True,
+        },
+        'transloaditService': {
+            'type': str,
+            'public': False,
+            'default': '',
+            'isApiKey': True,
+        },
+        'googleMapsApiKey': {
+            'type': str,
+            'public': False,
+            'default': '',
+            'isApiKey': True,
+        },
+        'sentryDsn': {
+            'type': str,
+            'public': False,
+            'default': '',
+            'isApiKey': True,
+        },
+        'flatfileKey': {
+            'type': str,
+            'public': False,
+            'default': '',
+            'isApiKey': True,
+        },
     }
 
     if is_extension_enabled('intelligent_agent'):
@@ -374,6 +410,13 @@ class SiteSetting(db.Model, Timestamp):
         if not setting and default is None:
             return cls._get_default_value(key)
         return setting.boolean if setting else default
+
+    @classmethod
+    def get_apikeys_json(cls):
+        json_response = {}
+        for key in cls.HOUSTON_SETTINGS.keys():
+            if cls.HOUSTON_SETTINGS[key].get('isApiKey', False):
+                json_response[key] = cls.get_value(key)
 
     # a bit of hackery.  right now *all* keys in edm-configuration are of the form `site.foo` so we use
     #   as a way branch on _where_ to get the value to return here.  but as we ween ourselves off edm config,

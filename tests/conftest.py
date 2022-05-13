@@ -765,9 +765,10 @@ def contributor_1_login(flask_app, contributor_1):
 
 @pytest.fixture()
 def public_encounter():
-    from app.modules.encounters.models import Encounter
+    from app.modules.users.models import User
+    import tests.utils as test_utils
 
-    return Encounter(public=True, asset_group_sighting_encounter_guid=uuid.uuid4())
+    return test_utils.generate_owned_encounter(User.get_public_user())
 
 
 @pytest.fixture()

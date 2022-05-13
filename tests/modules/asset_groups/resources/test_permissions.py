@@ -31,7 +31,7 @@ def test_user_read_permissions(
         flask_app_client, readonly_user, asset_group_guid, 403
     )
     # and as no user
-    asset_group_utils.read_asset_group(flask_app_client, None, asset_group_guid, 401)
+    asset_group_utils.read_asset_group(flask_app_client, None, asset_group_guid, 403)
 
 
 @pytest.mark.skipif(

@@ -303,6 +303,7 @@ def test_ObjectAccessPermission_admin_user(
     validate_cannot_delete_object(owned_encounter)
 
     owned_encounter.delete()
+    public_encounter.delete()
 
 
 @pytest.mark.skipif(
@@ -448,6 +449,7 @@ def test_ObjectAccessPermission_researcher_user(
 
     my_encounter.delete()
     owned_encounter.delete()
+    public_encounter.delete()
 
 
 @pytest.mark.skipif(
@@ -519,6 +521,7 @@ def test_ObjectAccessPermission_contributor_user(
 
     my_encounter.delete()
     owned_encounter.delete()
+    public_encounter.delete()
 
 
 def test_ObjectAccessPermission_user_manager_user(

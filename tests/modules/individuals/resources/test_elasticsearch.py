@@ -14,7 +14,7 @@ import pytest
     module_unavailable('individuals'), reason='Individuals module disabled'
 )
 @pytest.mark.skipif(
-    test_utils.extension_unavailable('elasticsearch'),
+    extension_unavailable('elasticsearch'),
     reason='Elasticsearch extension disabled',
 )
 def test_individual_elasticsearch_mappings(
@@ -64,49 +64,11 @@ def test_individual_elasticsearch_mappings(
     module_unavailable('individuals'), reason='Individuals module disabled'
 )
 @pytest.mark.skipif(
-    extension_unavailable('elasticsearch') or module_unavailable('elasticsearch'),
-    reason='Elasticsearch extension or module disabled',
+    extension_unavailable('elasticsearch'),
+    reason='Elasticsearch extension disabled',
 )
-def test_elasticsearch_names(db, flask_app_client, researcher_1, request, test_root):
+def test_returned_schema(flask_app_client, researcher_1, admin_user, request, test_root):
     from app.modules.individuals.models import Individual
-    from app.modules.individuals.schemas import ElasticsearchIndividualSchema
-
-    create_resp = individual_utils.create_individual_and_sighting(
-        flask_app_client,
-        researcher_1,
-        request,
-        test_root,
-        individual_data={
-            'names': [
-                {'context': 'firstName', 'value': 'Z432'},
-                {'context': 'Christian name', 'value': 'Zachariah'},
-            ],
-        },
-    )
-    ind = Individual.query.get(create_resp['individual'])
-    with es.session.begin(blocking=True, forced=True):
-        ind.index()
-    body = {}
-    indy = Individual.elasticsearch(body)[0]
-    # actually load the ES schema
-    es_schema = ElasticsearchIndividualSchema()
-    es_indy = es_schema.dump(indy).data
-    assert type(es_indy['names']) is list
-    assert es_indy['names'] == ['Z432', 'Zachariah']
-
-
-@pytest.mark.skipif(
-    module_unavailable('individuals'), reason='Individuals module disabled'
-)
-@pytest.mark.skipif(
-    extension_unavailable('elasticsearch') or module_unavailable('elasticsearch'),
-    reason='Elasticsearch extension or module disabled',
-)
-def test_elasticsearch_taxonomy(
-    db, flask_app_client, admin_user, researcher_1, request, test_root
-):
-    from app.modules.individuals.models import Individual
-    from app.modules.individuals.schemas import ElasticsearchIndividualSchema
     from tests.modules.site_settings.resources import utils as setting_utils
     import datetime
 
@@ -145,22 +107,40 @@ def test_elasticsearch_taxonomy(
         'taxonomies': tx_guid,
     }
 
-    uuids = individual_utils.create_individual_and_sighting(
+    # note that taxonomy is not set on the individual in this test (we are checking it will inherit from encounters)
+    individual_data = {
+        'sex': 'female',
+        'names': [
+            {'context': 'firstName', 'value': 'Z432'},
+            {'context': 'Christian name', 'value': 'Zachariah'},
+        ],
+    }
+
+    # from IPython import embed
+    # print('test embed')
+    # embed()
+
+    create_resp = individual_utils.create_individual_and_sighting(
         flask_app_client,
         researcher_1,
         request,
         test_root,
+        individual_data=individual_data,
         sighting_data=sighting_data,
     )
-    individual_id = uuids['individual']
-
-    ind = Individual.query.get(individual_id)
+    individual_guid = create_resp['individual']
+    enc_guid = create_resp['encounters'][0]
     with es.session.begin(blocking=True, forced=True):
-        ind.index()
-    body = {}
-    indy = Individual.elasticsearch(body)[0]
-    # actually load the ES schema
-    es_schema = ElasticsearchIndividualSchema()
-    es_indy = es_schema.dump(indy).data
+        Individual.query.get(individual_guid).index()
 
+    search_resp = test_utils.elasticsearch(flask_app_client, researcher_1, 'individuals')
+    es_indy = search_resp.json[0]
+
+    assert es_indy['guid'] == individual_guid
+    assert es_indy['sex'] == 'female'
+    assert es_indy['names'] == ['Z432', 'Zachariah']
     assert es_indy['taxonomy_guid'] == tx_guid
+
+    # check encounter is just a guid
+    assert es_indy['encounters'] == [enc_guid]
+    assert es_indy['num_encounters'] == 1

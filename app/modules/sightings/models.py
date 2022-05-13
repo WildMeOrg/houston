@@ -571,6 +571,7 @@ class Sighting(db.Model, FeatherModel):
                 'id': job_id,
                 'active': False,
                 'error': None,
+                'failed': False,
                 # we only query sage for *active* jobs to save expense,
                 #   so this being None is normal for inactive jobs
                 'sage_status': None,

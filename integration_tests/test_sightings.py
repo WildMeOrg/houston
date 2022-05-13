@@ -204,6 +204,7 @@ def test_sightings(session, login, codex_url, test_root, admin_name):
         'identification_start_time': None,
         'unreviewed_start_time': response.json()['unreviewed_start_time'],
         'review_time': None,
+        'pipeline_status': response.json()['pipeline_status'],
     }
 
     # PATCH sighting

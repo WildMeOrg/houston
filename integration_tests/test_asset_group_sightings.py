@@ -364,6 +364,7 @@ def test_asset_group_sightings(session, login, codex_url, test_root):
         'elasticsearchable': response.json()['elasticsearchable'],
         'jobs': [],
         'speciesDetectionModel': ['african_terrestrial'],
+        'idConfigs': [{'algorithms': ['hotspotter_nosv']}],
         'unreviewed_start_time': response.json()['unreviewed_start_time'],
     }
     # due to task timing, both are valid

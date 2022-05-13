@@ -361,8 +361,9 @@ class SiteSetting(db.Model, Timestamp):
             ]
 
             # write to appropriate apikeys.js depending on if we're codex or mws
-            # TODO Michael, this is the bit that I don't know how to determine if we're running as Codex or MWS
-            out_filename = '_frontend.codex/src/constants/apiKeys.js'
+            from flask import current_app
+
+            out_filename = f"_frontend.{current_app.config.get('PROJECT_NAME').lower()}/src/constants/apiKeys.js"
             with open(out_filename, 'w') as out_file:
                 out_file.write(output)
 

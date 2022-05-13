@@ -36,7 +36,7 @@ def test_relationship_type_roles(flask_app_client, admin_user):
     utils.modify_main_settings(
         flask_app_client,
         admin_user,
-        {'_value': []},
+        {'_value': ['rod', 'jane', 'freddy']},
         conf_key='relationship_type_roles',
         expected_status_code=400,
         expected_error='relationship_type_roles needs to be a dictionary',

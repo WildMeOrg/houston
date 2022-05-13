@@ -48,13 +48,9 @@ class PatchAnnotationDetailsParameters(PatchJSONParameters):
         '/%s' % field
         for field in (
             'encounter_guid',
-            'ia_class',
-            'bounds',
             'keywords',
         )
     )
-
-    NON_NULL_PATHS = ('/ia_class',)
 
     @classmethod
     def _check_keyword_value(cls, obj, field, value, state, create=True):

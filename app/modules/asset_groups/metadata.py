@@ -488,18 +488,6 @@ class AssetGroupMetadata(object):
                         f'Bulk Upload {group.guid} not processed, please finish this before creating new bulk upload',
                     )
 
-        else:  # Form upload by logged in user
-            unprocessed_groups = 0
-            for group in current_user.get_asset_groups():
-                if not group.is_processed() and not group.bulk_upload:
-                    unprocessed_groups += 1
-            # TODO arbitrary limit chosen for now
-            if unprocessed_groups > 10:
-                raise AssetGroupMetadataError(
-                    log,
-                    f'You have {unprocessed_groups} Asset groups outstanding, please finish these first',
-                )
-
     def _validate_sightings(self):
         from app.extensions.tus import tus_upload_dir
 

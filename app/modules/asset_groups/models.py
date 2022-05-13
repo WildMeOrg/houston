@@ -658,9 +658,11 @@ class AssetGroupSighting(db.Model, HoustonModel):
             raise HoustonException(log, 'No status in response from Sage')
 
         if status != 'completed':
-            # Job Failed on Sage but move to curation so that user can create anotations manually and commit
+            # Job Failed on Sage but move to curation so that user can create annotations manually and commit
             # Post MVP this may be a separate stage (that also permits annot creation and commit)
             self.set_stage(AssetGroupSightingStage.curation)
+            self.job_complete(str(job_id))
+
             # This is not an exception as the message from Sage was valid
             msg = f'JobID {str(job_id)} failed with status: {status}, Sage result: {response.get("json_result")}'
             AuditLog.backend_fault(log, msg, self)

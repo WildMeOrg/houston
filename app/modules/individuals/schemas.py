@@ -119,7 +119,8 @@ class DetailedIndividualSchema(NamedIndividualSchema):
 
 class ElasticsearchIndividualSchema(ModelSchema):
     """
-    Base Individual schema exposes only the most general fields.
+    ElasticsearchIndividualSchema is used for both indexing individuals for ES
+    and showing them to the user upon return.
     """
 
     featuredAssetGuid = base_fields.Function(Individual.get_featured_asset_guid)

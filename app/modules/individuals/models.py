@@ -125,6 +125,8 @@ class Individual(db.Model, FeatherModel):
     # )
 
     # there is a backref'd 'relationship_memberships' list of RelationshipIndividualMember accessible here
+    def user_is_owner(self, user):
+        return user is not None and user in self.get_members()
 
     @property
     def relationships(self):

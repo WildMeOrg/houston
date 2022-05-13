@@ -129,6 +129,7 @@ def test_returned_schema(flask_app_client, researcher_1, admin_user, request, te
         sighting_data=sighting_data,
     )
     individual_guid = create_resp['individual']
+    enc_guid = create_resp['encounters'][0]
     with es.session.begin(blocking=True, forced=True):
         Individual.query.get(individual_guid).index()
 
@@ -139,3 +140,7 @@ def test_returned_schema(flask_app_client, researcher_1, admin_user, request, te
     assert es_indy['sex'] == 'female'
     assert es_indy['names'] == ['Z432', 'Zachariah']
     assert es_indy['taxonomy_guid'] == tx_guid
+
+    # check encounter is just a guid
+    assert es_indy['encounters'] == [enc_guid]
+    assert es_indy['num_encounters'] == 1

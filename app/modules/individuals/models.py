@@ -223,7 +223,7 @@ class Individual(db.Model, FeatherModel):
         return tx
 
     # commented out for now due to duplication introduced by method above
-    #def get_taxonomy_names(self):
+    # def get_taxonomy_names(self):
     #    tx = self.get_taxonomy_object()
     #    if not tx:
     #        return []
@@ -267,6 +267,12 @@ class Individual(db.Model, FeatherModel):
 
     def get_encounters(self):
         return self.encounters
+
+    def get_encounter_guids(self):
+        return [encounter.guid for encounter in self.encounters]
+
+    def num_encounters(self):
+        return len(self.encounters)
 
     def add_encounters(self, encounters):
         for encounter in encounters:

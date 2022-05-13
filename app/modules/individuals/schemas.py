@@ -119,8 +119,7 @@ class DetailedIndividualSchema(NamedIndividualSchema):
 
 class ElasticsearchIndividualSchema(ModelSchema):
     """
-    ElasticsearchIndividualSchema is used for both indexing individuals for ES
-    and showing them to the user upon return.
+    ElasticsearchIndividualSchema is used for indexing individuals for ES
     """
 
     featuredAssetGuid = base_fields.Function(Individual.get_featured_asset_guid)
@@ -156,6 +155,62 @@ class ElasticsearchIndividualSchema(ModelSchema):
             'social_groups',
             'sex',
             'encounters',
+            'birth',
+            'death',
+            'comments',
+            'customFields',
+            'has_annotations',
+            'last_seen',
+            'taxonomy_names',
+        )
+        dump_only = (
+            Individual.guid.key,
+            Individual.created.key,
+            Individual.updated.key,
+        )
+
+
+class ElasticsearchIndividualReturnSchema(ModelSchema):
+    """
+    ElasticsearchIndividualSchema is used for showing results to the user upon return.
+    """
+
+    featuredAssetGuid = base_fields.Function(Individual.get_featured_asset_guid)
+    names = base_fields.Function(Individual.get_name_values)
+    firstName = base_fields.Function(Individual.get_first_name)
+    adoptionName = base_fields.Function(Individual.get_adoption_name)
+    social_groups = base_fields.Function(Individual.get_social_groups_json)
+    sex = base_fields.Function(Individual.get_sex)
+    birth = base_fields.Function(Individual.get_time_of_birth)
+    death = base_fields.Function(Individual.get_time_of_death)
+    comments = base_fields.Function(Individual.get_comments)
+    customFields = base_fields.Function(Individual.get_custom_fields)
+    taxonomy_guid = base_fields.Function(Individual.get_taxonomy_guid_inherit_encounters)
+    has_annotations = base_fields.Function(Individual.has_annotations)
+    last_seen = base_fields.Function(Individual.get_last_seen_time)
+    taxonomy_names = base_fields.Function(Individual.get_taxonomy_names)
+
+    encounters = base_fields.Function(Individual.get_encounter_guids)
+    num_encounters = base_fields.Function(Individual.num_encounters)
+
+    class Meta:
+        # pylint: disable=missing-docstring
+        model = Individual
+        fields = (
+            Individual.guid.key,
+            'elasticsearchable',
+            Individual.indexed.key,
+            Individual.created.key,
+            Individual.updated.key,
+            'featuredAssetGuid',
+            'names',
+            'firstName',
+            'adoptionName',
+            'taxonomy_guid',
+            'social_groups',
+            'sex',
+            'encounters',
+            'num_encounters',
             'birth',
             'death',
             'comments',

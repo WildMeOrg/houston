@@ -677,8 +677,8 @@ def test_elasticsearch_utilities(
         es.es_index_all()
 
     # Test tasks
-    es_tasks.es_task_refresh_index_all.s(True).apply().result
-    es_tasks.es_task_invalidate_indexed_timestamps.s(True).apply().result
+    es_tasks.es_task_refresh_index_all(True)
+    es_tasks.es_task_invalidate_indexed_timestamps(True)
 
 
 @pytest.mark.skipif(

@@ -371,7 +371,6 @@ if elasticsearch is None:
         def elasticsearch(self, *args, **kwargs):
             return []
 
-
 else:
 
     def register_elasticsearch_model(*args, **kwargs):

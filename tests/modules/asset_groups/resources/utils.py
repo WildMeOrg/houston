@@ -252,7 +252,7 @@ def delete_asset_group(
             response = flask_app_client.delete('%s%s' % (PATH, asset_group_guid))
 
     if expected_status_code == 204:
-        assert response.status_code == 204
+        assert response.status_code == 204, response.status_code
         assert not AssetGroup.is_on_remote(asset_group_guid)
     else:
         test_utils.validate_dict_response(
@@ -455,9 +455,11 @@ def create_asset_group_extract_uuids(
     uuids = {}
     if expected_status_code == 200:
         asset_group_uuid = create_resp.json['guid']
-        request.addfinalizer(
-            lambda: delete_asset_group(flask_app_client, user, asset_group_uuid)
-        )
+        if user:
+            # calling code responsibility to clear up if public data
+            request.addfinalizer(
+                lambda: delete_asset_group(flask_app_client, user, asset_group_uuid)
+            )
 
         assert len(create_resp.json['asset_group_sightings']) == 1
         uuids['asset_group'] = asset_group_uuid

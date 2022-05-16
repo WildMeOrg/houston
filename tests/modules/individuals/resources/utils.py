@@ -46,23 +46,32 @@ def create_individual(flask_app_client, user, expected_status_code=200, data_in=
 # and then creates the individual in the encounter created
 def create_individual_and_sighting(
     flask_app_client,
-    user,
+    owner_user,
     request,
     test_root,
     sighting_data=None,
     individual_data=None,
     large=False,
+    researcher_user=None,
 ):
     if large:
         # large means this test wants the specific large sighting data, to set specific data, use non large
         assert sighting_data is None
         uuids = sighting_utils.create_large_sighting(
-            flask_app_client, user, request, test_root
+            flask_app_client, owner_user, request, test_root, researcher_user
         )
     else:
         uuids = sighting_utils.create_sighting(
-            flask_app_client, user, request, test_root, sighting_data
+            flask_app_client,
+            owner_user,
+            request,
+            test_root,
+            sighting_data,
+            commit_user=researcher_user,
         )
+
+    if not researcher_user:
+        researcher_user = owner_user
 
     # Extract the encounters to use to create an individual
     assert len(uuids['encounters']) >= 1
@@ -71,11 +80,13 @@ def create_individual_and_sighting(
     else:
         individual_data = {'encounters': [{'id': uuids['encounters'][0]}]}
 
-    individual_response = create_individual(flask_app_client, user, 200, individual_data)
+    individual_response = create_individual(
+        flask_app_client, researcher_user, 200, individual_data
+    )
 
     individual_guid = individual_response.json['guid']
     request.addfinalizer(
-        lambda: delete_individual(flask_app_client, user, individual_guid)
+        lambda: delete_individual(flask_app_client, researcher_user, individual_guid)
     )
     uuids['individual'] = individual_guid
 

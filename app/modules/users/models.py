@@ -696,7 +696,7 @@ class User(db.Model, FeatherModel, UserEDMMixin):
         ]
 
     @module_required('asset_groups', resolve='warn', default=[])
-    def get_unprocessed_asset_group_sightings(self):
+    def get_unprocessed_asset_group_sightings(self, offset, limit):
         from app.modules.asset_groups.models import (
             AssetGroup,
             AssetGroupSighting,
@@ -704,11 +704,16 @@ class User(db.Model, FeatherModel, UserEDMMixin):
         )
 
         return (
-            db.session.query(AssetGroupSighting)
-            .join(AssetGroup)
-            .filter(AssetGroup.owner_guid == self.guid)
-            .filter(AssetGroupSighting.stage != AssetGroupSightingStage.processed)
-        ).all()
+            (
+                db.session.query(AssetGroupSighting)
+                .join(AssetGroup)
+                .filter(AssetGroup.owner_guid == self.guid)
+                .filter(AssetGroupSighting.stage != AssetGroupSightingStage.processed)
+            )
+            .offset(offset)
+            .limit(limit)
+            .all()
+        )
 
     @module_required('sightings', resolve='warn', default=[])
     def unprocessed_sightings(self):

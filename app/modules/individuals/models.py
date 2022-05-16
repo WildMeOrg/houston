@@ -730,7 +730,7 @@ class Individual(db.Model, FeatherModel):
     def get_blocking_encounters(self):
         blocking = []
         for enc in self.encounters:
-            if not enc.current_user_has_edit_permission():
+            if not enc.current_user_has_edit_permission() and not enc.is_public():
                 blocking.append(enc)
         return blocking
 

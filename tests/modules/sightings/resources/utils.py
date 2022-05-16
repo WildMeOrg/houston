@@ -67,13 +67,14 @@ def create_old_sighting(
 
 def create_sighting(
     flask_app_client,
-    user,
+    asset_group_user,
     request,
     test_root,
     sighting_data=None,
     expected_status_code=200,
     expected_error=None,
     commit_expected_status_code=200,
+    commit_user=None,
 ):
 
     if not sighting_data:
@@ -98,6 +99,9 @@ def create_sighting(
         ],
     }
 
+    if not commit_user:
+        commit_user = asset_group_user
+
     # Need to add the new filename to the sighting for the Asset group code to process it
     if 'assetReferences' not in group_data['sightings'][0].keys():
         group_data['sightings'][0]['assetReferences'] = []
@@ -111,7 +115,7 @@ def create_sighting(
     # Use shared helper to create the asset group and extract the uuids
     asset_group_uuids = asset_group_utils.create_asset_group_extract_uuids(
         flask_app_client,
-        user,
+        asset_group_user,
         group_data,
         request,
         expected_status_code,
@@ -123,7 +127,7 @@ def create_sighting(
     if 'asset_group_sighting' in uuids.keys():
         sighting_uuids = _commit_sighting_extract_uuids(
             flask_app_client,
-            user,
+            commit_user,
             uuids['asset_group_sighting'],
             expected_status_code=commit_expected_status_code,
         )
@@ -134,15 +138,19 @@ def create_sighting(
 
 
 # Helper that does what the above method does but for multiple files and multiple encounters in the sighting
-def create_large_sighting(flask_app_client, user, request, test_root):
+def create_large_sighting(
+    flask_app_client, owner_user, request, test_root, commit_user=None
+):
     uuids = asset_group_utils.create_large_asset_group_uuids(
-        flask_app_client, user, request, test_root
+        flask_app_client, owner_user, request, test_root
     )
+    if not commit_user:
+        commit_user = owner_user
 
     # Shared helper to extract the sighting data
     if 'asset_group_sighting' in uuids.keys():
         sighting_uuids = _commit_sighting_extract_uuids(
-            flask_app_client, user, uuids['asset_group_sighting']
+            flask_app_client, commit_user, uuids['asset_group_sighting']
         )
         uuids.update(sighting_uuids)
 

@@ -151,6 +151,50 @@ def test_merge_permissions(
     test_utils.module_unavailable('individuals', 'encounters', 'sightings'),
     reason='Individuals module disabled',
 )
+def test_merge_public_individual(
+    db,
+    flask_app_client,
+    researcher_1,
+    researcher_2,
+    staff_user,
+    request,
+    test_root,
+):
+    import tests.modules.asset_groups.resources.utils as group_utils
+
+    individual1_uuids = individual_utils.create_individual_and_sighting(
+        flask_app_client,
+        researcher_1,
+        request,
+        test_root,
+    )
+    # Second one owned by public
+    individual2_uuids = individual_utils.create_individual_and_sighting(
+        flask_app_client, None, request, test_root, researcher_user=researcher_2
+    )
+
+    individual1_id = individual1_uuids['individual']
+    individual2_id = individual2_uuids['individual']
+    asset_group2_uuid = individual2_uuids['asset_group']
+    request.addfinalizer(
+        lambda: group_utils.delete_asset_group(
+            flask_app_client, staff_user, asset_group2_uuid
+        )
+    )
+    # this tests as researcher_1, which should just do it
+    data_in = [individual2_id]
+    individual_utils.merge_individuals(
+        flask_app_client,
+        researcher_1,
+        individual1_id,
+        data_in,
+    )
+
+
+@pytest.mark.skipif(
+    test_utils.module_unavailable('individuals', 'encounters', 'sightings'),
+    reason='Individuals module disabled',
+)
 def test_get_data_and_voting(
     db,
     flask_app_client,

@@ -174,7 +174,6 @@ class AssetGroupElasticsearch(Resource):
         return AssetGroup.elasticsearch(search, **args)
 
 
-@api.login_required(oauth_scopes=['asset_groups:read'])
 @api.route('/<uuid:asset_group_guid>')
 @api.resolve_object_by_model(AssetGroup, 'asset_group', return_not_found=True)
 @api.response(
@@ -439,7 +438,6 @@ class AssetGroupSightingByID(Resource):
         },
     )
     @api.response(schemas.DetailedAssetGroupSightingSchema())
-    @api.login_required(oauth_scopes=['asset_group_sightings:read'])
     def get(self, asset_group_sighting):
         """
         Get Asset_group_sighting details by ID.

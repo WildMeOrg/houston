@@ -168,7 +168,6 @@ class AnnotationElasticsearch(Resource):
 
 
 @api.route('/<uuid:annotation_guid>')
-@api.login_required(oauth_scopes=['annotations:read'])
 @api.response(
     code=HTTPStatus.NOT_FOUND,
     description='Annotation not found.',

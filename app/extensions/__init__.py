@@ -435,6 +435,11 @@ class CommonHoustonModel(TimestampViewed, ElasticsearchModel):
         return cls.query.filter(cls.guid.in_(guids)).all()
 
     def is_public(self):
+        # Assume public if _owned_ by the public user
+        if hasattr(self, 'user_is_owner'):
+            from app.modules.users.models import User
+
+            return self.user_is_owner(User.get_public_user())
         return False
 
     def current_user_has_view_permission(self):

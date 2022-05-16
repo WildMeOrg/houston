@@ -74,8 +74,6 @@ class Encounter(db.Model, FeatherModel):
     # than it would solve
     asset_group_sighting_encounter_guid = db.Column(db.GUID, nullable=True)
 
-    public = db.Column(db.Boolean, default=False, nullable=False)
-
     # projects = db.relationship(
     #     'ProjectEncounter',
     #     back_populates='encounter',
@@ -90,6 +88,9 @@ class Encounter(db.Model, FeatherModel):
         db.GUID, db.ForeignKey('complex_date_time.guid'), index=True, nullable=True
     )
     time = db.relationship('ComplexDateTime')
+
+    def user_is_owner(self, user) -> bool:
+        return user is not None and user == self.owner
 
     @classmethod
     def get_elasticsearch_schema(cls):
@@ -185,9 +186,6 @@ class Encounter(db.Model, FeatherModel):
 
         if isinstance(individual, Individual):
             self.individual = individual
-
-    def is_public(self):
-        return self.public
 
     def add_annotation(self, annotation):
         if annotation not in self.annotations:

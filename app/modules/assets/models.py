@@ -528,8 +528,4 @@ class Asset(db.Model, HoustonModel):
 
     def user_is_owner(self, user: User) -> bool:
         # Asset has no owner, but it has one git_store that has an owner
-        return user is not None and user == self.git_store.owner
-
-    def is_public(self) -> bool:
-        # Assume public if _owned_ by the public user
-        return self.user_is_owner(User.get_public_user())
+        return self.git_store.user_is_owner(user)

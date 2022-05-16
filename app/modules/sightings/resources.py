@@ -444,7 +444,6 @@ class SightingByID(Resource):
     Manipulations with a specific Sighting.
     """
 
-    @api.login_required(oauth_scopes=['sightings:read'])
     @api.permission_required(
         permissions.ObjectAccessPermission,
         kwargs_on_request=lambda kwargs: {

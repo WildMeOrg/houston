@@ -75,6 +75,10 @@ class AssetGroupSighting(db.Model, HoustonModel):
     )
     detection_attempts = db.Column(db.Integer, default=0, nullable=False)
 
+    def user_is_owner(self, user: User) -> bool:
+        # AssetGroupSighting has no owner, so uses the AssetGroup one
+        return self.asset_group.user_is_owner(user)
+
     @classmethod
     def get_elasticsearch_schema(cls):
         from app.modules.asset_groups.schemas import BaseAssetGroupSightingSchema
@@ -234,7 +238,6 @@ class AssetGroupSighting(db.Model, HoustonModel):
                     owner_guid=owner_guid,
                     asset_group_sighting_encounter_guid=req_data['guid'],
                     submitter_guid=self.asset_group.submitter_guid,
-                    public=self.asset_group.anonymous,
                 )
                 new_encounter.set_time_from_data(req_data)
 

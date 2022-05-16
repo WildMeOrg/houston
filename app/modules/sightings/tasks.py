@@ -1,19 +1,12 @@
 # -*- coding: utf-8 -*-
 import logging
 
-import requests.exceptions
-
 from app.extensions.celery import celery
 
 log = logging.getLogger(__name__)
 
 
-# RequestException is a base class for all sorts of errors, inc timeouts so this handles them all
-@celery.task(
-    autoretry_for=(requests.exceptions.RequestException,),
-    default_retry_delay=600,
-    max_retries=10,
-)
+@celery.task
 def send_identification(
     sighting_guid,
     config_id,
@@ -40,12 +33,7 @@ def send_identification(
         )
 
 
-# RequestException is a base class for all sorts of errors, inc timeouts so this handles them all
-@celery.task(
-    autoretry_for=(requests.exceptions.RequestException,),
-    default_retry_delay=600,
-    max_retries=10,
-)
+@celery.task
 # as for the above but this time for everything in the sighting
 def send_all_identification(sighting_guid):
     from .models import Sighting

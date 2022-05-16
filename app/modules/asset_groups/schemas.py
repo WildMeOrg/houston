@@ -248,6 +248,12 @@ class AssetGroupSightingAsSightingSchema(ModelSchema):
         dump_only = BaseAssetGroupSightingSchema.Meta.dump_only
 
 
+class AssetGroupSightingAsSightingWithPipelineStatusSchema(
+    AssetGroupSightingAsSightingSchema
+):
+    pipeline_status = base_fields.Function(AssetGroupSighting.get_pipeline_status)
+
+
 class DebugAssetGroupSightingSchema(DetailedAssetGroupSightingSchema):
     jobs = base_fields.Function(AssetGroupSighting.get_debug_jobs_json)
 

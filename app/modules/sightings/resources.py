@@ -458,7 +458,9 @@ class SightingByID(Resource):
 
         # note: should probably _still_ check edm for: stale cache, deletion!
         #      user.edm_sync(version)
-        return sighting.get_detailed_json()
+        rtn = sighting.get_detailed_json()
+        rtn['pipeline_status'] = sighting.get_pipeline_status()
+        return rtn
 
     @api.login_required(oauth_scopes=['sightings:write'])
     @api.permission_required(

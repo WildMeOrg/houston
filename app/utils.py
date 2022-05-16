@@ -28,7 +28,8 @@ class HoustonException(Exception):
         AuditLog.audit_log(logger, f'Failed: {log_message} {self.status_code}', fault)
 
     def __str__(self):
-        return self.message
+        # something, somewhere was setting this as a tuple, hence this possibly redudant str()
+        return str(self.message)
 
     def get_val(self, argval, default):
         return self._kwargs.get(argval, default)

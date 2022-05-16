@@ -373,6 +373,12 @@ def test_modify_encounter(
     assert cfd_id in enc.json['customFields']
     assert enc.json['customFields'][cfd_id] == new_cfd_test_value
 
+    # some misc tests while we have all this data set up
+    assert len(new_encounter_1.sighting.get_encounter_assets()) == 4
+    assert len(new_encounter_1.sighting.get_all_assets()) == 5
+    assert len(new_encounter_1.sighting.get_annotations()) == 4
+    assert not new_encounter_1.sighting.is_migrated_data()
+
     new_encounter_1.sighting.delete_cascade()
 
 

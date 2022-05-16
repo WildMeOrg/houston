@@ -547,7 +547,7 @@ class AssetGroupSightingAsSighting(Resource):
             'action': AccessOperation.READ,
         },
     )
-    @api.response(schemas.AssetGroupSightingAsSightingSchema())
+    @api.response(schemas.AssetGroupSightingAsSightingWithPipelineStatusSchema())
     @api.login_required(oauth_scopes=['asset_group_sightings:read'])
     def get(self, asset_group_sighting):
         """

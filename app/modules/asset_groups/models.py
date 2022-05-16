@@ -498,6 +498,202 @@ class AssetGroupSighting(db.Model, HoustonModel):
             jobs.extend(asset_group_sighting.get_jobs_debug(verbose))
         return jobs
 
+    def get_pipeline_status(self):
+        db.session.refresh(self)
+        status = {
+            'preparation': self._get_pipeline_status_preparation(),
+            'detection': self._get_pipeline_status_detection(),
+            'identification': self._get_pipeline_status_identification(),
+            'now': datetime.utcnow().isoformat(),
+            'stage': self.stage,
+            'migrated': False,  # always false, but just for consistency with sighting
+            'summary': {
+                'progress': None,
+            },
+        }
+        status['summary']['complete'] = (
+            status['preparation']['complete'] and status['detection']['complete']
+        )
+        steps_total = status['preparation']['steps'] + status['detection']['steps']
+        steps_complete_total = (
+            status['preparation']['stepsComplete'] + status['detection']['stepsComplete']
+        )
+        if steps_total:
+            status['summary']['progress'] = steps_complete_total / steps_total
+        return status
+
+    # TODO just a placeholder now
+    def _get_pipeline_status_preparation(self):
+        status = {
+            'skipped': False,
+            'start': None,
+            'inProgress': False,
+            'complete': True,  # only while placeholder
+            'end': None,
+            'steps': 0,
+            'stepsComplete': 0,
+            'progress': None,
+            '_note': 'preparation NOT YET IMPLEMENTED / placeholder only',
+        }
+        return status
+
+    # currently only gives most recent job
+    def _get_pipeline_status_detection(self):
+        status = {
+            'skipped': False,
+            'start': None,
+            'inProgress': False,
+            'complete': False,
+            'failed': False,
+            'error': None,
+            'end': None,
+            'numModels': 0,
+            'jobs': None,
+            'numJobs': None,
+            'numJobsActive': None,
+            'numJobsFailed': None,
+            'numAttempts': self.detection_attempts,
+            'numAttemptsMax': MAX_DETECTION_ATTEMPTS,
+            'numAssets': None,
+            'numAnnotations': None,
+            'steps': 0,
+            'stepsComplete': 0,
+            'progress': None,
+        }
+        # TODO i am not sure if this is the best count here, as there
+        #   is config['updatedAssets'] which may actually need to be considered
+        status['numAssets'] = len(self.get_assets())
+        status['numAnnotations'] = len(self.get_all_annotations())
+
+        #  self.stage == AssetGroupSightingStage.detection
+        asset_group_config = self.asset_group.config
+        if 'speciesDetectionModel' in asset_group_config:
+            status['numModels'] = len(asset_group_config['speciesDetectionModel'])
+        # whose idea was this?
+        if (
+            status['numModels'] == 1
+            and asset_group_config['speciesDetectionModel'][0] == 'None'
+        ):
+            status['numModels'] = 0
+        if status['numModels'] < 1:  # assumed detection skipped
+            status['skipped'] = True
+            status['complete'] = True
+            status['steps'] = 1
+            status['stepsComplete'] = 1
+            return status
+
+        status['inProgress'] = True
+
+        if self.detection_attempts > MAX_DETECTION_ATTEMPTS:
+            status['error'] = f'could not start after {MAX_DETECTION_ATTEMPTS} attempts'
+            status['failed'] = True
+            status['inProgress'] = False
+            status['steps'] = 1
+
+        # TODO needs more exploration - can we find out if we are waiting to start in celery?
+        if not self.jobs:
+            status['numJobs'] = 0
+            status['numJobsActive'] = 0
+            status['numJobsFailed'] = 0
+            status['_debug'] = 'self.jobs is empty'
+            return status
+
+        # we reset failed here, as it looks like job started anyway?
+        status['steps'] = 1
+        status['stepsComplete'] = 1
+        status['error'] = None
+        status['failed'] = False
+        status['numJobs'] = len(self.jobs)
+        status['numJobsActive'] = 0
+        status['numJobsFailed'] = 0
+
+        job_info_list = []
+        for job_id in self.jobs:
+            job_info = {
+                'id': job_id,
+                'active': False,
+                'error': None,
+                'failed': False,
+                # we only query sage for *active* jobs to save expense,
+                #   so this being None is normal for inactive jobs
+                'sage_status': None,
+            }
+            job = self.jobs[job_id]
+            job_info['start'] = job.get('start')
+            job_info['end'] = job.get('end')
+            if job.get('active') is True:
+                job_info['active'] = True
+                status['numJobsActive'] += 1
+                # we sh/could toggle active if this shows failure  TODO
+                ss = None
+                try:
+                    ss = self.get_sage_job_status(job_id)
+                except Exception as ex:
+                    status[f'_debug_{job_id}'] = 'failed getting sage job status'
+                    job_info['_get_sage_status_exception'] = str(ex)
+                if ss:
+                    job_info['sage_status'] = ss.get('jobstatus')
+                    if ss.get('jobstatus') == 'exception':
+                        job_info['error'] = 'sage exception'
+                        job_info['failed'] = True
+                        status['numJobsActive'] -= 1
+                        status['numJobsFailed'] += 1
+                        status[f'_debug_{job_id}'] = 'sage exception'
+            job_info_list.append(job_info)
+
+        # this should sort in chron order (the str() handles unset start case)
+        status['jobs'] = sorted(job_info_list, key=lambda d: str(d['start']))
+
+        # we now only factor in *most recent* job, in terms of
+        #  failure, start/end, etc.  thus only 1 step
+        status['steps'] += 1
+        if status['jobs'][-1]['failed']:
+            status['failed'] = True
+            status['error'] = status['jobs'][-1]['error']
+        else:
+            status['stepsComplete'] += 1
+
+        status['inProgress'] = status['jobs'][-1]['active']
+        status['start'] = status['jobs'][-1]['start']
+        status['end'] = status['jobs'][-1]['end']
+        status['complete'] = not status['inProgress']
+        if status['steps']:
+            status['progress'] = status['stepsComplete'] / status['steps']
+        return status
+
+    # this is just for compatibility with sighting, but basically this is null
+    def _get_pipeline_status_identification(self):
+        status = {
+            'skipped': False,
+            'start': None,
+            'inProgress': False,
+            'complete': False,
+            'failed': False,
+            'error': None,
+            'end': None,
+            'jobs': None,
+            'numJobs': None,
+            'numJobsActive': None,
+            'numJobsFailed': None,
+            'matchingSetQueryPassed': None,
+            'matchingSetQueryUsed': None,
+            'matchingSetSize': None,
+            'numAttempts': None,
+            'numAttemptsMax': None,
+            'idConfigs': None,
+            'numAssets': len(self.get_assets()),
+            'numAnnotations': len(self.get_all_annotations()),
+            'steps': 0,
+            'stepsComplete': 0,
+            'progress': None,
+            '_note': 'identification only included for consistency; meaningless on AssetGroupSighting',
+        }
+        return status
+
+    @classmethod
+    def get_sage_job_status(cls, job_id):
+        return current_app.acm.request_passthrough_result('job.status', 'get', {}, job_id)
+
     # Build up list to print out status (calling function chooses what to collect and print)
     def get_jobs_debug(self, verbose):
         details = []
@@ -593,7 +789,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
             self.jobs[str(job_id)] = {
                 'model': model,
                 'active': True,
-                'start': datetime.utcnow(),
+                'start': datetime.utcnow().isoformat(),
                 'asset_ids': [
                     uri.rsplit('/', 1)[-1]
                     for uri in json.loads(detection_request['image_uuid_list'])
@@ -808,6 +1004,14 @@ class AssetGroupSighting(db.Model, HoustonModel):
         assets.sort(key=lambda ast: ast.guid)
         return assets
 
+    # these may not be assigned etc, but simply exist
+    def get_all_annotations(self):
+        annots = []
+        for asset in self.get_assets():
+            if asset.annotations:
+                annots += asset.annotations
+        return annots
+
     def complete(self):
         for job_id in self.jobs:
             assert not self.jobs[job_id]['active']
@@ -820,6 +1024,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
     def job_complete(self, job_id_str):
         if job_id_str in self.jobs:
             self.jobs[job_id_str]['active'] = False
+            self.jobs[job_id_str]['end'] = datetime.utcnow().isoformat()
 
             outstanding_jobs = []
             for job in self.jobs.keys():

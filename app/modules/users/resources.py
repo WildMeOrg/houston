@@ -538,21 +538,10 @@ if is_module_enabled('asset_groups'):
             },
         )
         @api.parameters(PaginationParameters())
-        # @api.response(AssetGroupSightingAsSightingSchema(many=True))
+        @api.response(AssetGroupSightingAsSightingSchema(many=True))
+        @api.paginate()
         def get(self, args, user):
             """
             Get AssetGroupSightings for user
             """
-            from app.extensions.elapsed_time import ElapsedTime
-
-            log.info(f'Into UserAsseGroupSightings GET args={args}')
-
-            timer = ElapsedTime()
-            all_ags = user.get_unprocessed_asset_group_sightings(
-                args['offset'], args['limit']
-            )
-            log.info(f'read of all ags {len(all_ags)} took {timer.elapsed()} secs')
-
-            result = AssetGroupSightingAsSightingSchema().dump(all_ags, many=True)
-            log.info(f'dump of all ags took {timer.elapsed()} secs')
-            return result
+            return user.get_unprocessed_asset_group_sightings()

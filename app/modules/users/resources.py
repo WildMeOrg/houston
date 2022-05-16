@@ -545,8 +545,12 @@ if is_module_enabled('asset_groups'):
             """
             from app.extensions.elapsed_time import ElapsedTime
 
+            log.info(f'Into UserAsseGroupSightings GET args={args}')
+
             timer = ElapsedTime()
-            all_ags = user.get_unprocessed_asset_group_sightings()
+            all_ags = user.get_unprocessed_asset_group_sightings(
+                args['offset'], args['limit']
+            )
             log.info(f'read of all ags {len(all_ags)} took {timer.elapsed()} secs')
 
             result = AssetGroupSightingAsSightingSchema().dump(all_ags, many=True)

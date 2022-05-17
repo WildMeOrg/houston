@@ -235,23 +235,33 @@ def test_merge_request_init(db, flask_app_client, researcher_1, researcher_2, re
     assert res
     assert 'async' in res
     assert res['async'].id
-
     request.addfinalizer(Notification.query.delete)
+
     notif = Notification.query.filter_by(
         recipient=researcher_1,
         message_type=NotificationType.individual_merge_request,
     ).first()
     assert notif
-
+    assert notif.message_values['individual_list']
+    notif_individual_guids = {
+        ind['guid'] for ind in notif.message_values['individual_list']
+    }
+    assert notif_individual_guids == {str(individual.guid), str(individual2.guid)}
     assert (
         'request_id' in notif.message_values
         and notif.message_values['request_id'] == res['async'].id
     )
+
     notif = Notification.query.filter_by(
         recipient=researcher_2,
         message_type=NotificationType.individual_merge_request,
     ).first()
     assert notif
+    assert notif.message_values['individual_list']
+    notif_individual_guids = {
+        ind['guid'] for ind in notif.message_values['individual_list']
+    }
+    assert notif_individual_guids == {str(individual.guid), str(individual2.guid)}
     assert (
         'request_id' in notif.message_values
         and notif.message_values['request_id'] == res['async'].id

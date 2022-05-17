@@ -33,12 +33,14 @@ def upgrade():
         sa.Column('percentage', sa.Integer(), nullable=True),
         sa.Column('eta', sa.Float(), nullable=True),
         sa.Column('celery_guid', app.extensions.GUID(), nullable=True),
+        sa.Column('message', sa.String(), nullable=True),
         sa.Column(
             'status',
             sa.Enum(
                 'created',
                 'healthy',
                 'completed',
+                'skipped',
                 'cancelled',
                 'failed',
                 name='progressstatus',
@@ -53,6 +55,20 @@ def upgrade():
         ),
         sa.PrimaryKeyConstraint('guid', name=op.f('pk_progress')),
     )
+
+    with op.batch_alter_table('progress', schema=None) as batch_op:
+        batch_op.add_column(
+            sa.Column('parent_guid', app.extensions.GUID(), nullable=True)
+        )
+        batch_op.create_index(
+            batch_op.f('ix_progress_parent_guid'), ['parent_guid'], unique=False
+        )
+        batch_op.create_foreign_key(
+            batch_op.f('fk_progress_parent_guid_progress'),
+            'progress',
+            ['parent_guid'],
+            ['guid'],
+        )
 
     with op.get_context().autocommit_block():
         op.execute("ALTER TYPE assetgroupsightingstage ADD VALUE 'preparation'")

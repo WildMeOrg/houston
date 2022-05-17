@@ -25,6 +25,7 @@ class ProgressStatus(str, enum.Enum):
     created = 'created'
     healthy = 'healthy'
     completed = 'completed'
+    skipped = 'skipped'
     cancelled = 'cancelled'
     failed = 'failed'
 
@@ -45,10 +46,25 @@ class Progress(db.Model, Timestamp):
 
     celery_guid = db.Column(db.GUID, default=None)
 
+    message = db.Column(db.String, nullable=True)
+
     status = db.Column(
         db.Enum(ProgressStatus),
         default=ProgressStatus.created,
         nullable=False,
+    )
+
+    parent_guid = db.Column(
+        db.GUID, db.ForeignKey('progress.guid'), index=True, nullable=True
+    )
+    parent = db.relationship(
+        'Progress',
+        backref=db.backref(
+            'steps',
+            primaryjoin='Progress.guid == Progress.parent_guid',
+            cascade='all',
+            remote_side=guid,
+        ),
     )
 
     __mapper_args__ = {
@@ -97,6 +113,10 @@ class Progress(db.Model, Timestamp):
             self.status in [ProgressStatus.healthy, ProgressStatus.completed]
             and self.percentage >= 100
         )
+
+    @property
+    def skipped(self):
+        return self.status in [ProgressStatus.skipped]
 
     @property
     def ahead(self):
@@ -189,12 +209,23 @@ class Progress(db.Model, Timestamp):
             raise ValueError('description has to be at least 3 characters long.')
         return description
 
-    def fail(self):
+    def skip(self, message=''):
+        db.session.refresh(self)
+        if self.status not in [ProgressStatus.created, ProgressStatus.healthy]:
+            return
+        with db.session.begin(subtransactions=True):
+            self.status = ProgressStatus.skipped
+            self.message = message
+            db.session.merge(self)
+        db.session.refresh(self)
+
+    def fail(self, message=''):
         db.session.refresh(self)
         if self.status not in [ProgressStatus.created, ProgressStatus.healthy]:
             return
         with db.session.begin(subtransactions=True):
             self.status = ProgressStatus.failed
+            self.message = message
             db.session.merge(self)
         db.session.refresh(self)
 

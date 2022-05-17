@@ -2,6 +2,7 @@
 import logging
 
 import requests.exceptions
+import sqlalchemy
 
 from app.extensions.celery import celery
 

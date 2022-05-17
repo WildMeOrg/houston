@@ -60,31 +60,12 @@ def delete_remote(git_store_guid, ignore_error=True):
 )
 def git_commit(git_store_guid, description, input_files):
     from app.extensions.git_store import GitStore
-    from app.extensions import elasticsearch as es
 
     git_store = GitStore.query.get(git_store_guid)
     if git_store is None:
         return  # git store doesn't exist in the database
 
-    try:
-        git_store.git_commit(
-            description,
-            input_filenames=input_files,
-            update=True,
-            commit=None,  # Use server default
-        )
-    except Exception:
-        if git_store.progress_preparation:
-            git_store.progress_preparation.fail()
-        raise
-
-    if git_store.progress_preparation:
-        assert git_store.progress_preparation.complete
-
-    with es.session.begin(blocking=True, forced=True):
-        git_store.index()
-        for asset in git_store.assets:
-            asset.index()
+    git_store.git_commit_worker(description, input_files)
 
 
 @celery.task(

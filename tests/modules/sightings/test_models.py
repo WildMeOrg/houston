@@ -137,6 +137,7 @@ def test_sighting_jobs(db, request, researcher_1):
         sighting_config=sighting_config1,
         detection_configs=test_utils.dummy_detection_info(),
     )
+    ags1.setup()
     sighting_config2 = test_utils.dummy_sighting_info()
     sighting_config2['idConfigs'] = ia_config2
     ags2 = AssetGroupSighting(
@@ -144,6 +145,7 @@ def test_sighting_jobs(db, request, researcher_1):
         sighting_config=sighting_config2,
         detection_configs=test_utils.dummy_detection_info(),
     )
+    ags2.setup()
 
     sighting1 = ags1.sighting[0]
     sighting2 = ags2.sighting[0]

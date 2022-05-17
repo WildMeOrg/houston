@@ -89,15 +89,18 @@ def test_access_asset_src_by_different_roles(
         asset_guid = resp.json['assets'][0]['guid']
 
         # Access the asset src as the admin user
-        asset_utils.read_src_asset(flask_app_client, admin_user, asset_guid)
+        response = asset_utils.read_src_asset(flask_app_client, admin_user, asset_guid)
+        response.close()
 
         # Access the asset src as the staff user
-        asset_utils.read_src_asset(flask_app_client, staff_user, asset_guid)
+        response = asset_utils.read_src_asset(flask_app_client, staff_user, asset_guid)
+        response.close()
 
         # Access the asset src as an anonymous user
-        asset_utils.read_src_asset(
+        response = asset_utils.read_src_asset(
             flask_app_client, None, asset_guid, expected_status_code=401
         )
+        response.close()
     finally:
         if asset_group_uuid:
             asset_group_utils.delete_asset_group(

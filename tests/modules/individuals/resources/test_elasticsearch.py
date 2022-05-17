@@ -117,10 +117,6 @@ def test_returned_schema(flask_app_client, researcher_1, admin_user, request, te
         ],
     }
 
-    # from IPython import embed
-    # print('test embed')
-    # embed()
-
     create_resp = individual_utils.create_individual_and_sighting(
         flask_app_client,
         researcher_1,

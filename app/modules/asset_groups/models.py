@@ -93,17 +93,17 @@ class AssetGroupSighting(db.Model, HoustonModel):
             'detections': detection_configs,
         }
 
-        # Start by writing to DB so that all rollback on failure works
-        with db.session.begin(subtransactions=True):
-            db.session.add(self)
-        db.session.refresh(self)
-
+    def setup(self):
         self.set_stage(AssetGroupSightingStage.preparation, refresh=False)
 
-        if (
-            not asset_group.progress_preparation
-            or asset_group.progress_preparation.complete
-        ):
+        if not self.asset_group.progress_preparation:
+            self.post_preparation_hook()
+        elif self.asset_group.progress_preparation.complete:
+            self.post_preparation_hook()
+        elif self.asset_group.progress_preparation.skipped:
+            self.post_preparation_hook()
+        elif self.asset_group.progress_preparation.percentage >= 99:
+            # We sometimes create an AGS when the percentage is 99%
             self.post_preparation_hook()
 
         AuditLog.user_create_object(log, self)
@@ -135,11 +135,6 @@ class AssetGroupSighting(db.Model, HoustonModel):
     def post_preparation_hook(self):
         if self.stage != AssetGroupSightingStage.preparation:
             return
-
-        assert (
-            self.asset_group.progress_preparation is None
-            or self.asset_group.progress_preparation.complete
-        )
 
         # Allow sightings to have no Assets, they go straight to curation
         if (
@@ -1003,8 +998,6 @@ class AssetGroupSighting(db.Model, HoustonModel):
             )
 
     def start_detection(self, background=True):
-        from app.modules.asset_groups.tasks import sage_detection
-
         assert len(self.detection_configs) > 0
         assert self.stage == AssetGroupSightingStage.detection
 
@@ -1015,11 +1008,13 @@ class AssetGroupSighting(db.Model, HoustonModel):
                 f'ia pipeline starting detection {config} on AssetGroupSighting {self.guid}'
             )
             self.detection_attempts += 1
+
             if background:
-                # Call sage_detection in the background by doing .delay()
+                from app.modules.asset_groups.tasks import sage_detection
+
                 sage_detection.delay(str(self.guid), config)
             else:
-                sage_detection(str(self.guid), config)
+                self.send_detection_to_sage(config)
 
     # Used to build the response to AssetGroupSighting GET
     def get_assets(self):
@@ -1340,18 +1335,26 @@ class AssetGroup(GitStore):
 
         del self.config['sightings']
 
-        input_files = []
-        for sighting_meta in metadata.request['sightings']:
-            input_files.extend(sighting_meta.get('assetReferences', []))
-            # All encounters in the metadata need to be allocated a pseudo ID for later patching
-            for encounter_num in range(len(sighting_meta['encounters'])):
-                sighting_meta['encounters'][encounter_num]['guid'] = str(uuid.uuid4())
+        ags_list = []
+        with db.session.begin(subtransactions=True):
+            input_files = []
+            for sighting_meta in metadata.request['sightings']:
+                input_files.extend(sighting_meta.get('assetReferences', []))
+                # All encounters in the metadata need to be allocated a pseudo ID for later patching
+                for encounter_num in range(len(sighting_meta['encounters'])):
+                    sighting_meta['encounters'][encounter_num]['guid'] = str(uuid.uuid4())
 
-            AssetGroupSighting(
-                asset_group=self,
-                sighting_config=copy.deepcopy(sighting_meta),
-                detection_configs=metadata.detection_configs,
-            )
+                ags = AssetGroupSighting(
+                    asset_group=self,
+                    sighting_config=copy.deepcopy(sighting_meta),
+                    detection_configs=metadata.detection_configs,
+                )
+                db.session.add(ags)
+                ags_list.append(ags)
+
+        for ags in ags_list:
+            db.session.refresh(ags)
+            ags.setup()
 
         # make sure the repo is created
         self.ensure_repository()

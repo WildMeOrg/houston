@@ -46,6 +46,7 @@ def test_asset_group_sightings_jobs(flask_app, db, admin_user, test_root, reques
         sighting_config=sighting_config1,
         detection_configs=['african_terrestrial'],
     )
+    ags1.setup()
     assert ags1.stage == AssetGroupSightingStage.detection
     assert ags1.get_detection_start_time() == ags1.created.isoformat() + 'Z'
     assert ags1.get_curation_start_time() is None
@@ -56,6 +57,7 @@ def test_asset_group_sightings_jobs(flask_app, db, admin_user, test_root, reques
         sighting_config=sighting_config2,
         detection_configs=test_utils.dummy_detection_info(),
     )
+    ags2.setup()
 
     # no assets => processed
     assert ags2.stage == AssetGroupSightingStage.processed
@@ -164,6 +166,7 @@ def test_asset_group_sighting_config_field_getter(researcher_1, request):
         sighting_config=test_utils.dummy_sighting_info(),
         detection_configs=test_utils.dummy_detection_info(),
     )
+    ags.setup()
     request.addfinalizer(ags.delete)
 
     config_field_getter = AssetGroupSighting.config_field_getter

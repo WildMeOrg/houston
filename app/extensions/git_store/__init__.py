@@ -368,7 +368,7 @@ class GitStore(db.Model, HoustonModel):
         **kwargs,
     ):
         if self.progress_preparation:
-            self.progress_preparation = self.progress_preparation.config()
+            self.progress_preparation.config()
 
         # Step 1
         #   Description: Setup of the repository and init one JSON file
@@ -428,8 +428,10 @@ class GitStore(db.Model, HoustonModel):
         if update:
             self.update_metadata_from_hook()
 
-        # Update the git store's preparation status
-        self.post_preparation_hook()
+            # Update the git store's preparation status
+            # We need the progress to be set to at least 99% at this point
+            if self.progress_preparation:
+                self.post_preparation_hook()
 
         if self.progress_preparation:
             self.progress_preparation.set(100)
@@ -439,21 +441,47 @@ class GitStore(db.Model, HoustonModel):
         raise NotImplementedError()
 
     def git_commit_delay(self, input_filenames):
-        from app.extensions.git_store.tasks import git_commit
-
         # Start the git_commit that will process the assets (update=True) and commit the new files to the Git repo (commit=True)
         description = 'Tus collect commit for GitStore %r' % (self.guid,)
-        if current_app.testing:
+        if True or current_app.testing:
+            # TODO (HARDENING): Remove True to the above conditional when tus-hardening is ready in the _frontend.codex/ repo
             # When testing, run on-demand and don't use celery workers
-            git_commit(str(self.guid), description, input_filenames)
+            self.git_commit_worker(description, input_filenames)
             promise = None
         else:
+            from app.extensions.git_store.tasks import git_commit
+
             promise = git_commit.delay(str(self.guid), description, input_filenames)
 
         if self.progress_preparation and promise:
             with db.session.begin():
                 self.progress_preparation.celery_guid = promise.id
                 db.session.merge(self.progress_preparation)
+
+        return self
+
+    def git_commit_worker(self, description, input_files):
+        from app.extensions import elasticsearch as es
+
+        try:
+            self.git_commit(
+                description,
+                input_filenames=input_files,
+                update=True,
+                commit=None,  # Use server default
+            )
+        except Exception:
+            if self.progress_preparation:
+                self.progress_preparation.fail()
+            raise
+
+        if self.progress_preparation:
+            assert self.progress_preparation.complete
+
+        with es.session.begin(blocking=True, forced=True):
+            self.index()
+            for asset in self.assets:
+                asset.index()
 
     def init_metadata(self):
         local_store_path = self.get_absolute_path()
@@ -557,6 +585,7 @@ class GitStore(db.Model, HoustonModel):
         progress = Progress(description='Git commit for GitStore %r' % (self.guid,))
         with db.session.begin():
             db.session.add(progress)
+        db.session.refresh(progress)
 
         with db.session.begin():
             self.progress_preparation_guid = progress.guid
@@ -581,18 +610,21 @@ class GitStore(db.Model, HoustonModel):
                 log,
                 'Only a Researcher can create a Git Store without any Assets',
             )
-        git_store = cls(
-            major_type=GitStoreMajorType.filesystem,
-            description=metadata.description,
-            owner_guid=git_store_owner.guid,
-            **kwargs,
-        )
-
-        if metadata.anonymous_submitter:
-            git_store.submitter = metadata.anonymous_submitter
 
         with db.session.begin(subtransactions=True):
+            git_store = cls(
+                major_type=GitStoreMajorType.filesystem,
+                description=metadata.description,
+                owner_guid=git_store_owner.guid,
+                **kwargs,
+            )
+
+            if metadata.anonymous_submitter:
+                git_store.submitter = metadata.anonymous_submitter
+
             db.session.add(git_store)
+
+        db.session.refresh(git_store)
 
         log.debug('created %r' % git_store)
 
@@ -613,10 +645,11 @@ class GitStore(db.Model, HoustonModel):
         else:
             original_filenames = []
 
+        git_store.init_progress_preparation()
+
         if foreground:
+            git_store.progress_preparation.skip('Completed in the foreground')
             git_store.post_preparation_hook()
-        else:
-            git_store.init_progress_preparation()
 
         return git_store, original_filenames
 
@@ -636,18 +669,21 @@ class GitStore(db.Model, HoustonModel):
             git_store_owner = owner
         else:
             git_store_owner = User.get_public_user()
-        git_store = cls(
-            major_type=GitStoreMajorType.filesystem,
-            description=description,
-            owner_guid=git_store_owner.guid,
-            **kwargs,
-        )
-
-        if submitter:
-            git_store.submitter = submitter
 
         with db.session.begin(subtransactions=True):
+            git_store = cls(
+                major_type=GitStoreMajorType.filesystem,
+                description=description,
+                owner_guid=git_store_owner.guid,
+                **kwargs,
+            )
+
+            if submitter:
+                git_store.submitter = submitter
+
             db.session.add(git_store)
+
+        db.session.refresh(git_store)
 
         log.info('created %r' % git_store)
         added = None
@@ -663,10 +699,11 @@ class GitStore(db.Model, HoustonModel):
             git_store.delete()
             raise
 
+        git_store.init_progress_preparation()
+
         if foreground:
+            git_store.progress_preparation.skip('Completed in the foreground')
             git_store.post_preparation_hook()
-        else:
-            git_store.init_progress_preparation()
 
         log.info('imported %r' % added)
         return git_store, original_filenames

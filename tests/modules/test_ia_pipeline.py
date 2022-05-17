@@ -43,7 +43,6 @@ def test_ia_pipeline_sim_detect_response(
 
     asset_group_uuid = None
     try:
-
         # and the sim_sage util to catch it
         ag_resp = asset_group_utils.create_asset_group_sim_sage_init_resp(
             flask_app, flask_app_client, researcher_1, creation_data.get()

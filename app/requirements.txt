@@ -61,6 +61,7 @@ psycopg2-binary
 pygeocoder
 python-dotenv
 python-gitlab
+python-Levenshtein
 python-magic
 
 #Flask-Tus-Cont

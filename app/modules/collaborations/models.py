@@ -181,7 +181,7 @@ class Collaboration(db.Model, HoustonModel):
                 CollaborationUserAssociations.user_guid == user.guid
             )
             .filter(approval_state_field == CollaborationUserState.APPROVED)
-            .values('collaboration_guid')
+            .values(CollaborationUserAssociations.collaboration_guid)
         ]
         # Then find all the users associated to the collaborations
         # approved by the other users

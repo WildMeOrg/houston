@@ -8,6 +8,7 @@ import time
 from unittest import mock
 
 import logging
+import warnings
 import sqlalchemy
 import pytest
 from flask_login import current_user, login_user, logout_user
@@ -366,6 +367,9 @@ def flask_app(gitlab_remote_login_pat, disable_elasticsearch):
 @pytest.fixture(scope='session')
 def db(flask_app):
     from app.extensions import db as db_instance
+
+    # Always error on SADeprecationWarnings when testing
+    warnings.filterwarnings('error', category=sqlalchemy.exc.SADeprecationWarning)
 
     yield db_instance
 

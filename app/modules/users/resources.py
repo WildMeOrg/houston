@@ -383,7 +383,7 @@ class UserSightings(Resource):
             'action': AccessOperation.READ,
         },
     )
-    @api.parameters(PaginationParameters())
+    # @api.parameters(PaginationParameters())
     def get(self, args, user):
         """
         Get Sightings for user with EDM metadata
@@ -539,9 +539,11 @@ if is_module_enabled('asset_groups'):
         )
         @api.parameters(PaginationParameters())
         @api.response(AssetGroupSightingAsSightingSchema(many=True))
-        @api.paginate()
+        # @api.paginate()
         def get(self, args, user):
             """
             Get AssetGroupSightings for user
             """
-            return user.get_unprocessed_asset_group_sightings()
+            return user.get_unprocessed_asset_group_sightings(
+                args['offset'], args['limit']
+            )

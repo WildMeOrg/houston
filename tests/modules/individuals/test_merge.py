@@ -243,6 +243,7 @@ def test_merge_request_init(db, flask_app_client, researcher_1, researcher_2, re
     ).first()
     assert notif
     assert notif.message_values['individual_list']
+    assert notif.message_values['deadline']
     notif_individual_guids = {
         ind['guid'] for ind in notif.message_values['individual_list']
     }

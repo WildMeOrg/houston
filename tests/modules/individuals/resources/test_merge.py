@@ -238,11 +238,10 @@ def test_get_data_and_voting(
         flask_app_client, researcher_1, request, test_root, individual_data=ind1_data
     )
     # Second one owned by different researcher
+    ind2_name = 'Hannibal'
+    ind2_data = {'names': [{'context': 'Behind', 'value': ind2_name}]}
     individual2_uuids = individual_utils.create_individual_and_sighting(
-        flask_app_client,
-        researcher_2,
-        request,
-        test_root,
+        flask_app_client, researcher_2, request, test_root, individual_data=ind2_data
     )
 
     individual1_id = individual1_uuids['individual']
@@ -291,10 +290,14 @@ def test_get_data_and_voting(
     assert not notif_message['is_resolved']
     assert str(researcher_2.guid) == notif_message['sender_guid']
     assert 'individual_merge_request' == notif_message['message_type']
-    assert len(notif_message['message_values']['individual_list']) == 1
-    individual_notif = notif_message['message_values']['individual_list'][0]
-    assert individual_notif['guid'] == individual1_id
-    assert individual_notif['primaryName'] == ind1_name
+    assert len(notif_message['message_values']['your_individuals']) == 1
+    your_individual = notif_message['message_values']['your_individuals'][0]
+    assert your_individual['guid'] == individual1_id
+    assert your_individual['primaryName'] == ind1_name
+    assert len(notif_message['message_values']['other_individuals']) == 1
+    other_individual = notif_message['message_values']['other_individuals'][0]
+    assert other_individual['guid'] == individual2_id
+    assert other_individual['primaryName'] == ind2_name
 
     # we should have a valid merge request now to test against
     #   also should have 1 auto-vote by researcher_2

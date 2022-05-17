@@ -220,9 +220,18 @@ def test_getting_asset_group_sightings_for_user(
 
     from tests.modules.asset_groups.resources import utils as group_utils
 
-    uuids = group_utils.create_simple_asset_group(
-        flask_app_client, researcher_1, request, test_root
+    data = group_utils.get_bulk_creation_data(test_root, request)
+    resp = group_utils.create_asset_group(flask_app_client, researcher_1, data.get())
+    asset_group_uuid = resp.json['guid']
+    request.addfinalizer(
+        lambda: group_utils.delete_asset_group(
+            flask_app_client, staff_user, asset_group_uuid
+        )
     )
+
+    # Make sure that both AGS' are created and have the correct locations
+    ags1_uuid = resp.json['asset_group_sightings'][0]['guid']
+    ags2_uuid = resp.json['asset_group_sightings'][1]['guid']
 
     response = user_utils.read_user_path(
         flask_app_client, researcher_1, f'{researcher_1.guid}/asset_group_sightings'
@@ -232,16 +241,16 @@ def test_getting_asset_group_sightings_for_user(
     assert response.content_type == 'application/json'
     assert isinstance(response.json, list)
 
-    assert len(response.json) == 1
+    assert len(response.json) == 2
     ags = response.json[0]
 
-    assert ags['asset_group_guid'] == uuids[0]
-    assert ags['guid'] == uuids[1]
+    # not checking content as it's a bulk group and could be either
+    assert 'locationId' in ags.keys()
+    assert 'time' in ags.keys()
+    assert 'timeSpecificity' in ags.keys()
+
+    assert ags['guid'] in [ags1_uuid, ags2_uuid]
     assert ags['stage'] == 'curation'
     assert 'time' in ags
     assert ags['time']
     assert ags['timeSpecificity'] == 'time'
-    # check time in encounters as well
-    assert len(ags['encounters']) == 1
-    assert 'time' in ags['encounters'][0]
-    assert 'timeSpecificity' in ags['encounters'][0]

@@ -516,7 +516,7 @@ class UserVerifyAccountEmail(Resource):
 
 
 if is_module_enabled('asset_groups'):
-    from app.modules.asset_groups.schemas import AssetGroupSightingAsSightingSchema
+    from app.modules.asset_groups.schemas import BaseAssetGroupSightingSchema
 
     @api.route('/<uuid:user_guid>/asset_group_sightings')
     @api.module_required('sightings')
@@ -537,8 +537,8 @@ if is_module_enabled('asset_groups'):
                 'action': AccessOperation.READ,
             },
         )
-        @api.parameters(PaginationParameters())
-        @api.response(AssetGroupSightingAsSightingSchema(many=True))
+        @api.response(BaseAssetGroupSightingSchema(many=True))
+        @api.paginate()
         def get(self, args, user):
             """
             Get AssetGroupSightings for user

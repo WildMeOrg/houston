@@ -70,6 +70,14 @@ class BaseAssetGroupSightingSchema(ModelSchema):
     Asset_group sighting schema
     """
 
+    time = base_fields.Function(AssetGroupSighting.config_field_getter('time'))
+    timeSpecificity = base_fields.Function(
+        AssetGroupSighting.config_field_getter('timeSpecificity')
+    )
+    locationId = base_fields.Function(
+        AssetGroupSighting.config_field_getter('locationId')
+    )
+
     class Meta:
         # pylint: disable=missing-docstring
         model = AssetGroupSighting
@@ -78,6 +86,9 @@ class BaseAssetGroupSightingSchema(ModelSchema):
             AssetGroupSighting.stage.key,
             'elasticsearchable',
             AssetGroupSighting.indexed.key,
+            'time',
+            'timeSpecificity',
+            'locationId',
         )
         dump_only = (AssetGroupSighting.guid.key,)
 
@@ -179,9 +190,6 @@ class AssetGroupSightingAsSightingSchema(ModelSchema):
     time = base_fields.Function(AssetGroupSighting.config_field_getter('time'))
     timeSpecificity = base_fields.Function(
         AssetGroupSighting.config_field_getter('timeSpecificity')
-    )
-    locationId = base_fields.Function(
-        AssetGroupSighting.config_field_getter('locationId')
     )
 
     encounters = base_fields.Nested(

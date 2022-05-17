@@ -537,13 +537,10 @@ if is_module_enabled('asset_groups'):
                 'action': AccessOperation.READ,
             },
         )
-        @api.parameters(PaginationParameters())
         @api.response(BaseAssetGroupSightingSchema(many=True))
-        # @api.paginate()
+        @api.paginate()
         def get(self, args, user):
             """
             Get AssetGroupSightings for user
             """
-            return user.get_unprocessed_asset_group_sightings(
-                args['offset'], args['limit']
-            )
+            return user.get_unprocessed_asset_group_sightings()

@@ -254,7 +254,3 @@ def test_getting_asset_group_sightings_for_user(
     assert 'time' in ags
     assert ags['time']
     assert ags['timeSpecificity'] == 'time'
-    # check time in encounters as well
-    assert len(ags['encounters']) == 1
-    assert 'time' in ags['encounters'][0]
-    assert 'timeSpecificity' in ags['encounters'][0]

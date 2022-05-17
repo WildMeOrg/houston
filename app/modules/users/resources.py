@@ -516,7 +516,7 @@ class UserVerifyAccountEmail(Resource):
 
 
 if is_module_enabled('asset_groups'):
-    from app.modules.asset_groups.schemas import AssetGroupSightingAsSightingSchema
+    from app.modules.asset_groups.schemas import AssetGroupSightingListSchema
 
     @api.route('/<uuid:user_guid>/asset_group_sightings')
     @api.module_required('sightings')
@@ -538,12 +538,16 @@ if is_module_enabled('asset_groups'):
             },
         )
         @api.parameters(PaginationParameters())
-        @api.response(AssetGroupSightingAsSightingSchema(many=True))
+        @api.response(AssetGroupSightingListSchema(many=True))
         # @api.paginate()
         def get(self, args, user):
             """
             Get AssetGroupSightings for user
             """
-            return user.get_unprocessed_asset_group_sightings(
+            ret = user.get_unprocessed_asset_group_sightings(
                 args['offset'], args['limit']
             )
+            log.info(
+                f"UserAssetGroupSightings GET offset:{args['offset']} limit:{args['limit']} len {len(ret)}"
+            )
+            return ret

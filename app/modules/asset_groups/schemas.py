@@ -156,6 +156,16 @@ class AssetGroupSightingEncounterSchema(ModelSchema):
     verbatimLocality = base_fields.String(default=None)
 
 
+class AssetGroupSightingListSchema(ModelSchema):
+    time = base_fields.Function(AssetGroupSighting.config_field_getter('time'))
+    timeSpecificity = base_fields.Function(
+        AssetGroupSighting.config_field_getter('timeSpecificity')
+    )
+    locationId = base_fields.Function(
+        AssetGroupSighting.config_field_getter('locationId')
+    )
+
+
 class AssetGroupSightingAsSightingSchema(ModelSchema):
     """
     In order for the frontend to render an AGS with the same code that renders a

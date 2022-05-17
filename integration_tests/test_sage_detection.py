@@ -64,12 +64,16 @@ def test_create_asset_group_detection(session, codex_url, test_root, login):
         ],
         'completion': 10,
         'stage': 'curation',
+        'locationId': 'Tiddleywink',
+        'time': '2000-01-01T01:01:01+00:00',
+        'timeSpecificity': 'time',
         'jobs': [
             {
                 'job_id': first_job['job_id'],
                 'model': 'african_terrestrial',
                 'active': False,
                 'asset_ids': [asset_guid],
+                'start': first_job['start'],
             },
         ],
         'config': {

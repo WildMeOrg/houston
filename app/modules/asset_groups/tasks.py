@@ -4,7 +4,6 @@ import logging
 import git
 from flask import current_app
 import requests.exceptions
-import sqlalchemy.exc
 
 from app.extensions.celery import celery
 from app.extensions.gitlab import GitlabInitializationError
@@ -74,12 +73,7 @@ def git_push(asset_group_guid):
     log.debug(f'...pushed to {repo.head.ref}')
 
 
-# RequestException is a base class for all sorts of errors, inc timeouts so this handles them all
-@celery.task(
-    autoretry_for=(requests.exceptions.RequestException, sqlalchemy.exc.SQLAlchemyError),
-    default_retry_delay=10,
-    max_retries=10,
-)
+@celery.task
 def sage_detection(asset_group_sighting_guid, model):
     from .models import AssetGroupSighting
 

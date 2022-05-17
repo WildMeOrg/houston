@@ -383,7 +383,7 @@ class UserSightings(Resource):
             'action': AccessOperation.READ,
         },
     )
-    # @api.parameters(PaginationParameters())
+    @api.parameters(PaginationParameters())
     def get(self, args, user):
         """
         Get Sightings for user with EDM metadata

@@ -244,7 +244,11 @@ def test_getting_asset_group_sightings_for_user(
     assert len(response.json) == 2
     ags = response.json[0]
 
-    assert ags['asset_group_guid'] == asset_group_uuid
+    # not checking content as it's a bulk group and could be either
+    assert 'locationId' in ags.keys()
+    assert 'time' in ags.keys()
+    assert 'timeSpecificity' in ags.keys()
+
     assert ags['guid'] in [ags1_uuid, ags2_uuid]
     assert ags['stage'] == 'curation'
     assert 'time' in ags

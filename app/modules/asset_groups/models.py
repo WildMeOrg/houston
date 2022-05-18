@@ -822,7 +822,8 @@ class AssetGroupSighting(db.Model, HoustonModel):
                 f'Sage Detection on AssetGroupSighting({self.guid}) Job{job_id} failed to start, '
                 f'code: {ex.status_code}, acm_status_code: {acm_status_code}, giving up'
             )
-            # Assuming some sort of persisten error in Sage
+            # Assuming some sort of persistent error in Sage
+            self.job_complete(str(job_id))
             self.set_stage(AssetGroupSightingStage.curation)
 
     def check_job_status(self, job_id):

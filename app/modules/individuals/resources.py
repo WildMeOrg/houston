@@ -680,7 +680,7 @@ class IndividualMergeRequestByTaskId(Resource):
                 'merge_outcome': 'blocked',
             }
             Individual.merge_notify(
-                all_individuals, request_data, NotificationType.individual_merge_declined
+                all_individuals, request_data, NotificationType.individual_merge_blocked
             )
             return {'vote': vote, 'merge_request_cancelled': True}
 

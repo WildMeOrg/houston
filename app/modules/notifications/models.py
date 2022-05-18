@@ -36,7 +36,7 @@ class NotificationType(str, enum.Enum):
     collab_manager_revoke = 'collaboration_manager_revoke'
     individual_merge_request = 'individual_merge_request'
     individual_merge_complete = 'individual_merge_complete'
-    individual_merge_declined = 'individual_merge_declined'
+    individual_merge_blocked = 'individual_merge_blocked'
 
 
 # Can send messages out on multiple channels
@@ -94,7 +94,7 @@ NOTIFICATION_DEFAULTS = {
         NotificationChannel.rest: True,
         NotificationChannel.email: False,
     },
-    NotificationType.individual_merge_declined: {
+    NotificationType.individual_merge_blocked: {
         NotificationChannel.rest: True,
         NotificationChannel.email: False,
     },
@@ -188,15 +188,16 @@ NOTIFICATION_CONFIG = {
         'allow_multiple': True,
         'resolve_on_read': True,
     },
-    NotificationType.individual_merge_declined: {
-        'email_template_name': 'individual_merge_declined',
-        'email_digest_content_template': 'individual_merge_declined_digest.jinja2',
+    NotificationType.individual_merge_blocked: {
+        'email_template_name': 'individual_merge_blocked',
+        'email_digest_content_template': 'individual_merge_blocked_digest.jinja2',
         'mandatory_fields': {
             'request_id',
             'your_individuals',
             'other_individuals',
         },
         'allow_multiple': True,
+        'resolve_on_read': True,
     },
     NotificationType.raw: {
         'email_template_name': 'raw',

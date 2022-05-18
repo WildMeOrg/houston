@@ -36,6 +36,7 @@ class NotificationType(str, enum.Enum):
     collab_manager_revoke = 'collaboration_manager_revoke'
     individual_merge_request = 'individual_merge_request'
     individual_merge_complete = 'individual_merge_complete'
+    individual_merge_blocked = 'individual_merge_blocked'
 
 
 # Can send messages out on multiple channels
@@ -90,6 +91,10 @@ NOTIFICATION_DEFAULTS = {
         NotificationChannel.email: False,
     },
     NotificationType.individual_merge_complete: {
+        NotificationChannel.rest: True,
+        NotificationChannel.email: False,
+    },
+    NotificationType.individual_merge_blocked: {
         NotificationChannel.rest: True,
         NotificationChannel.email: False,
     },
@@ -169,8 +174,8 @@ NOTIFICATION_CONFIG = {
         'email_digest_content_template': 'individual_merge_request_digest.jinja2',
         'mandatory_fields': {
             'request_id',
-            'individual_list',
-            'encounter_list',
+            'your_individuals',
+            'other_individuals',
         },
         'allow_multiple': True,
     },
@@ -179,8 +184,17 @@ NOTIFICATION_CONFIG = {
         'email_digest_content_template': 'individual_merge_complete_digest.jinja2',
         'mandatory_fields': {
             'request_id',
-            'individual_list',
-            'encounter_list',
+        },
+        'allow_multiple': True,
+        'resolve_on_read': True,
+    },
+    NotificationType.individual_merge_blocked: {
+        'email_template_name': 'individual_merge_blocked',
+        'email_digest_content_template': 'individual_merge_blocked_digest.jinja2',
+        'mandatory_fields': {
+            'request_id',
+            'your_individuals',
+            'other_individuals',
         },
         'allow_multiple': True,
         'resolve_on_read': True,
@@ -211,21 +225,23 @@ class NotificationBuilder(object):
         else:  # snh
             self.data['manager_name'] = 'no user manager'
 
-    def set_individual_merge(self, individuals, encounters, request_data):
-        self.data['individual_list'] = []
+    def set_individual_merge(self, your_individuals, other_individuals, request_data):
+        self.data['your_individuals'] = []
         source_names = []
-        for indiv in individuals:
+        for indiv in your_individuals:
             ind_data = {'guid': indiv.guid, 'primaryName': indiv.get_primary_name()}
-            self.data['individual_list'].append(ind_data)
+            self.data['your_individuals'].append(ind_data)
             if 'target_individual_guid' not in self.data:
                 self.data['target_individual_guid'] = str(indiv.guid)
                 self.data['target_individual_name'] = indiv.get_primary_name()
             else:
                 source_names.append(indiv.get_primary_name())
         self.data['source_names_list'] = ', '.join(source_names)
-        self.data['encounter_list'] = []
-        for enc in encounters:
-            self.data['encounter_list'].append(enc.guid)
+        self.data['other_individuals'] = []
+
+        for indiv in other_individuals:
+            ind_data = {'guid': indiv.guid, 'primaryName': indiv.get_primary_name()}
+            self.data['other_individuals'].append(ind_data)
         self.data['request_id'] = request_data.get('id')
         # TODO other goodies in request_data
 

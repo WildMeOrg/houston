@@ -602,35 +602,37 @@ class Individual(db.Model, FeatherModel):
                 ):
                     continue
                 if enc.owner not in owners:
-                    owners[enc.owner] = {'individuals': set(), 'encounters': set()}
-                owners[enc.owner]['individuals'].add(indiv)
-                owners[enc.owner]['encounters'].add(enc)
+                    owners[enc.owner] = {'individuals': list()}
+                owners[enc.owner]['individuals'].append(indiv)
         log.debug(f'merge_notify() type={notif_type} created owners structure {owners}')
         for owner in owners:
             Individual._merge_notify_user(
                 current_user,
                 owner,
                 owners[owner]['individuals'],
-                owners[owner]['encounters'],
+                individuals,
                 request_data,
                 notif_type,
             )
 
     @classmethod
     def _merge_notify_user(
-        cls, sender, user, individuals, encounters, request_data, notif_type
+        cls, sender, user, your_individuals, all_individuals, request_data, notif_type
     ):
         from app.modules.notifications.models import (
             Notification,
             NotificationBuilder,
         )
 
+        other_individuals = []
+        for indiv_id in range(len(all_individuals)):
+            if all_individuals[indiv_id] not in your_individuals:
+                other_individuals.append(all_individuals[indiv_id])
+
         builder = NotificationBuilder(sender)
-        builder.set_individual_merge(individuals, encounters, request_data)
+        builder.set_individual_merge(your_individuals, other_individuals, request_data)
         notification = Notification.create(notif_type, user, builder)
-        log_msg = (
-            f'merge request: notification {notification} from {sender} re: {individuals}'
-        )
+        log_msg = f'merge request: notification {notification} from {sender} re: {your_individuals}'
         AuditLog.audit_log_object(log, user, log_msg)
 
     @classmethod

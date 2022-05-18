@@ -166,7 +166,7 @@ class Encounter(db.Model, FeatherModel):
         if self.time:
             return self.time
         if self.sighting and sighting_fallback:
-            return self.sighting.get_time()
+            return self.sighting.time
         return None
 
     def get_time_specificity(self):

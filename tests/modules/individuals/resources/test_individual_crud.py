@@ -118,9 +118,11 @@ def test_add_remove_encounters(db, flask_app_client, researcher_1, request, test
     from app.modules.individuals.models import Individual
     from app.modules.encounters.models import Encounter
     from app.modules.sightings.models import Sighting
+    from app.modules.complex_date_time.models import Specificities
 
+    test_time = datetime.datetime.now().isoformat() + '+00:00'
     data_in = {
-        'time': datetime.datetime.now().isoformat() + '+00:00',
+        'time': test_time,
         'timeSpecificity': 'time',
         'locationId': 'test',
         'encounters': [
@@ -164,6 +166,9 @@ def test_add_remove_encounters(db, flask_app_client, researcher_1, request, test
         flask_app_client, researcher_1, 200, {'encounters': [{'id': str(enc_1.guid)}]}
     )
     individual_1 = Individual.query.get(response.json['guid'])
+
+    assert individual_1.get_last_seen_time_isoformat() == test_time
+    assert individual_1.get_last_seen_time_specificity() == Specificities.time
 
     # # let's start with one
     # individual_1.add_encounter(enc_1)

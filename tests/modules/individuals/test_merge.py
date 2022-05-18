@@ -210,6 +210,7 @@ def test_merge_request_init(db, flask_app_client, researcher_1, researcher_2, re
     from app.modules.individuals.models import Individual
     from app.modules.encounters.models import Encounter
     from app.modules.notifications.models import Notification, NotificationType
+    from dateutil import parser as dt_parser
 
     # since this is just a simple init-only test, we can use incomplete data (not going to edm etc)
     #   we just want to see that the task starts (it should be ignored and die when triggered in celery)
@@ -242,12 +243,9 @@ def test_merge_request_init(db, flask_app_client, researcher_1, researcher_2, re
         message_type=NotificationType.individual_merge_request,
     ).first()
     assert notif
-    assert notif.message_values['individual_list']
     assert notif.message_values['deadline']
-    notif_individual_guids = {
-        ind['guid'] for ind in notif.message_values['individual_list']
-    }
-    assert notif_individual_guids == {str(individual.guid), str(individual2.guid)}
+    deadline = dt_parser.parse(notif.message_values['deadline'])
+    assert deadline
     assert (
         'request_id' in notif.message_values
         and notif.message_values['request_id'] == res['async'].id
@@ -258,11 +256,9 @@ def test_merge_request_init(db, flask_app_client, researcher_1, researcher_2, re
         message_type=NotificationType.individual_merge_request,
     ).first()
     assert notif
-    assert notif.message_values['individual_list']
-    notif_individual_guids = {
-        ind['guid'] for ind in notif.message_values['individual_list']
-    }
-    assert notif_individual_guids == {str(individual.guid), str(individual2.guid)}
+    assert notif.message_values['deadline']
+    deadline = dt_parser.parse(notif.message_values['deadline'])
+    assert deadline
     assert (
         'request_id' in notif.message_values
         and notif.message_values['request_id'] == res['async'].id

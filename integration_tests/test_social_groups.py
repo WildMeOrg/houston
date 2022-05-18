@@ -6,6 +6,7 @@ from . import utils
 # encounters,
 def create_sighting(session, codex_url):
     group_data = {
+        'token': 'XXX',
         'description': 'This is a test asset_group, please ignore',
         'uploadType': 'bulk',
         'speciesDetectionModel': ['None'],

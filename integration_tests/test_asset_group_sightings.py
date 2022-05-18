@@ -47,6 +47,7 @@ def test_asset_group_sightings(session, login, codex_url, test_root):
     response = session.post(
         codex_url('/api/v1/asset_groups/'),
         json={
+            'token': 'XXX',
             'description': 'This is a test asset group, please ignore',
             'sightings': [
                 {
@@ -391,6 +392,7 @@ def create_individual(
     default_name_context=DEFAULT_NAME_CONTEXT,
 ):
     group_data = {
+        'token': 'XXX',
         'description': 'This is a test asset_group, please ignore',
         'uploadType': 'bulk',
         'speciesDetectionModel': ['None'],
@@ -455,6 +457,7 @@ def test_bulk_upload(session, login, codex_url, test_root, request):
     response = session.post(
         codex_url('/api/v1/asset_groups/'),
         json={
+            'token': 'XXX',
             'description': 'Bulk import from user',
             'uploadType': 'bulk',
             'speciesDetectionModel': ['african_terrestrial'],
@@ -568,6 +571,7 @@ def test_delete_asset_group_sightings(session, login, codex_url, test_root, requ
     response = session.post(
         codex_url('/api/v1/asset_groups/'),
         json={
+            'token': 'XXX',
             'description': 'Bulk import from user',
             'uploadType': 'bulk',
             'speciesDetectionModel': ['african_terrestrial'],

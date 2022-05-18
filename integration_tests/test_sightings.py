@@ -38,6 +38,7 @@ def test_sightings(session, login, codex_url, test_root, admin_name):
     response = session.post(
         codex_url('/api/v1/asset_groups/'),
         json={
+            'token': 'XXX',
             'description': 'This is a test asset group, please ignore',
             'sightings': [
                 {

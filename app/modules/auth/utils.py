@@ -10,10 +10,15 @@ More details are available here:
 * http://lepture.com/en/2013/create-oauth-server
 """
 import datetime
+import functools
+import json
 import logging
+import time
 
+import requests
 import pytz
-from flask import session
+import werkzeug.exceptions
+from flask import session, request, current_app
 from flask_login import current_user
 
 
@@ -165,3 +170,48 @@ def delete_session_oauth2_token(user=None):
         )
         if session_oauth2_bearer_token is not None:
             session_oauth2_bearer_token.delete()
+
+
+def recaptcha_required(func):
+    @functools.wraps(func)
+    def inner(*args, **kwargs):
+        token = json.loads(request.data).get('token')
+
+        if token == current_app.config.get('RECAPTCHA_BYPASS'):
+            return func(*args, **kwargs)
+
+        from app.modules.site_settings.models import SiteSetting
+
+        # Retry 10 times if there's an error
+        for i in range(10):
+            try:
+                response = requests.post(
+                    current_app.config.get('RECAPTCHA_SITE_VERIFY_API'),
+                    data={
+                        'secret': SiteSetting.get_string('recaptchaSecretKey'),
+                        'response': token,
+                    },
+                ).json()
+                break
+            except requests.exceptions.ConnectionError:
+                time.sleep(2)
+            except requests.exceptions.RequestException:
+                log.exception('Recaptcha failure')
+
+        log.debug(f'Recaptcha response={response}')
+        score = response.get('score', 0)
+        success = response.get('success', False)
+
+        if not success:
+            # Probably misconfigured or API changed
+            log.error(f'Recaptcha response failure: {response}')
+            raise werkzeug.exceptions.BadRequest(
+                f'Recaptcha response failure: {response}'
+            )
+        if score >= 0.5:
+            return func(*args, **kwargs)
+
+        log.error(f'Recaptcha bot score failed: {response}')
+        raise werkzeug.exceptions.BadRequest('Recaptcha bot score failed')
+
+    return inner

@@ -16,6 +16,7 @@ from flask_restx_patched._http import HTTPStatus
 
 from app.extensions import db
 from app.extensions.api import Namespace, abort
+from app.modules.auth.utils import recaptcha_required
 from app.modules.users import permissions
 from app.modules.users.permissions.types import AccessOperation
 from app.utils import HoustonException
@@ -72,6 +73,7 @@ class AssetGroups(Resource):
         """
         return AssetGroup.query_search(args=args)
 
+    @recaptcha_required
     @api.permission_required(
         permissions.ModuleAccessPermission,
         kwargs_on_request=lambda kwargs: {

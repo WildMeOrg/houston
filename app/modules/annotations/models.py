@@ -253,7 +253,7 @@ class Annotation(db.Model, HoustonModel):
             query = self.get_matching_set_default_query()
         else:
             query = self.resolve_matching_set_query(query)
-        matching_set = self.elasticsearch(query, load=load)
+        matching_set = self.elasticsearch(query, load=load, limit=None)
         log.info(
             f'annot.get_matching_set(): finding matching set for {self} using (resolved) query {query} => {len(matching_set)} annots'
         )

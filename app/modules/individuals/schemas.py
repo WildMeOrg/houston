@@ -135,6 +135,7 @@ class ElasticsearchIndividualSchema(ModelSchema):
     customFields = base_fields.Function(Individual.get_custom_fields)
     taxonomy_guid = base_fields.Function(Individual.get_taxonomy_guid_inherit_encounters)
     has_annotations = base_fields.Function(Individual.has_annotations)
+    num_encounters = base_fields.Function(Individual.num_encounters)
     last_seen = base_fields.Function(Individual.get_last_seen_time_isoformat)
     last_seen_specificity = base_fields.Function(
         Individual.get_last_seen_time_specificity
@@ -163,6 +164,7 @@ class ElasticsearchIndividualSchema(ModelSchema):
             'comments',
             'customFields',
             'has_annotations',
+            'num_encounters',
             'last_seen',
             'last_seen_specificity',
             'taxonomy_names',

@@ -243,8 +243,9 @@ class NotificationBuilder(object):
             ind_data = {'guid': indiv.guid, 'primaryName': indiv.get_primary_name()}
             self.data['other_individuals'].append(ind_data)
         self.data['request_id'] = request_data.get('id')
-        self.data['deadline'] = request_data.get('deadline')
-
+        deadline_datetime = request_data.get('deadline')
+        if deadline_datetime:
+            self.data['deadline'] = deadline_datetime.isoformat()
         # TODO other goodies in request_data
 
 

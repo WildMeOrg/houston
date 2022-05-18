@@ -235,7 +235,8 @@ class NotificationBuilder(object):
             if 'target_individual_guid' not in self.data:
                 self.data['target_individual_guid'] = str(indiv.guid)
                 self.data['target_individual_name'] = indiv.get_primary_name()
-
+            else:
+                source_names.append(indiv.get_primary_name())
         self.data['source_names_list'] = ', '.join(source_names)
         self.data['other_individuals'] = []
 

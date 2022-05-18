@@ -44,6 +44,7 @@ def test_individual_elasticsearch_mappings(
         'indexed',
         # 'names',
         'last_seen',
+        'last_seen_specificity',
         'death',
         'comments',
         '_schema',

@@ -378,7 +378,16 @@ class Individual(db.Model, FeatherModel):
             else:
                 last_enc = enc
 
-        return last_enc.created
+        # last_enc == None is BAD here, but we handle it just in case
+        return last_enc.get_time() if last_enc else None
+
+    def get_last_seen_time_isoformat(self):
+        lstime = self.get_last_seen_time()
+        return lstime.isoformat_in_timezone() if lstime else None
+
+    def get_last_seen_time_specificity(self):
+        lstime = self.get_last_seen_time()
+        return lstime.specificity if lstime else None
 
     def has_annotations(self):
         for enc in self.encounters:

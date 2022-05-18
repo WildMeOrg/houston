@@ -135,7 +135,10 @@ class ElasticsearchIndividualSchema(ModelSchema):
     customFields = base_fields.Function(Individual.get_custom_fields)
     taxonomy_guid = base_fields.Function(Individual.get_taxonomy_guid_inherit_encounters)
     has_annotations = base_fields.Function(Individual.has_annotations)
-    last_seen = base_fields.Function(Individual.get_last_seen_time)
+    last_seen = base_fields.Function(Individual.get_last_seen_time_isoformat)
+    last_seen_specificity = base_fields.Function(
+        Individual.get_last_seen_time_specificity
+    )
     taxonomy_names = base_fields.Function(Individual.get_taxonomy_names)
 
     class Meta:
@@ -161,6 +164,7 @@ class ElasticsearchIndividualSchema(ModelSchema):
             'customFields',
             'has_annotations',
             'last_seen',
+            'last_seen_specificity',
             'taxonomy_names',
         )
         dump_only = (
@@ -187,7 +191,10 @@ class ElasticsearchIndividualReturnSchema(ModelSchema):
     customFields = base_fields.Function(Individual.get_custom_fields)
     taxonomy_guid = base_fields.Function(Individual.get_taxonomy_guid_inherit_encounters)
     has_annotations = base_fields.Function(Individual.has_annotations)
-    last_seen = base_fields.Function(Individual.get_last_seen_time)
+    last_seen = base_fields.Function(Individual.get_last_seen_time_isoformat)
+    last_seen_specificity = base_fields.Function(
+        Individual.get_last_seen_time_specificity
+    )
     taxonomy_names = base_fields.Function(Individual.get_taxonomy_names)
 
     encounters = base_fields.Function(Individual.get_encounter_guids)
@@ -217,6 +224,7 @@ class ElasticsearchIndividualReturnSchema(ModelSchema):
             'customFields',
             'has_annotations',
             'last_seen',
+            'last_seen_specificity',
             'taxonomy_names',
         )
         dump_only = (

@@ -201,9 +201,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
                 'Must have time/timeSpecificity values',
                 'Must have time/timeSpecificity values',
             )
-        # we do not set this in the Sighting() constructor above, as a failure due to `time` value above
-        #   causes an attempt to persist `sighting`, which we do not want
-        sighting.set_asset_group_sighting(self)
+
         with db.session.begin(subtransactions=True):
             db.session.add(sighting)
         # Add the assets for all of the encounters to the created sighting object
@@ -267,6 +265,10 @@ class AssetGroupSighting(db.Model, HoustonModel):
                     f'Problem with creating encounter [{encounter_num}]: {ex}',
                     f'{ex} on encounter {encounter_num}: enc={req_data}',
                 )
+
+        # This has to be done as the final step in the creation as the FE does not seem to wait for the commit
+        # response but starts using the sighting as soon as it can be read from the AGS
+        sighting.set_asset_group_sighting(self)
 
         # AssetGroupSighting is finished, all subsequent processing is on the Sighting
         self.complete()

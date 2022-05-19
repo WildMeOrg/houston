@@ -514,10 +514,12 @@ class FeatherModel(CommonHoustonModel):
         if self.encounters is not None and edm_json['encounters'] is not None:
             guid_to_encounter = {e['guid']: e for e in edm_json['encounters']}
             if set(str(e.guid) for e in self.encounters) != set(guid_to_encounter):
-                raise HoustonException(
-                    log,
-                    f'Imbalanced encounters between edm/feather objects on {class_name} {str(self.guid)}!',
+                error_msg = f'Imbalanced encounters between edm/feather objects on {class_name} {str(self.guid)}'
+                error_msg += (
+                    f', locally:{len(self.encounters)}, EDM:{len(guid_to_encounter)} !'
                 )
+                raise HoustonException(log, error_msg)
+
             for encounter in self.encounters:  # now we augment each encounter
                 found_edm = guid_to_encounter[str(encounter.guid)]
                 found_edm.update(encounter_schema.dump(encounter).data)

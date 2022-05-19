@@ -16,7 +16,10 @@ from app.extensions.api import abort
 
 from app.extensions import db
 from app.extensions.api import Namespace
-from app.extensions.api.parameters import PaginationParameters
+from app.extensions.api.parameters import (
+    PaginationParameters,
+    PaginationParametersLatestFirst,
+)
 from app.modules.users import permissions
 from app.modules.users.permissions.types import AccessOperation
 
@@ -168,7 +171,7 @@ class AllUnreadNotifications(Resource):
         },
     )
     @api.response(schemas.DetailedNotificationSchema(many=True))
-    @api.paginate(parameters.ListAllUnreadNotifications())
+    @api.paginate(PaginationParametersLatestFirst())
     def get(self, args):
         """
         List of Notifications for all users with no preferences applied.

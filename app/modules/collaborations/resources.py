@@ -21,6 +21,7 @@ from app.modules.users.permissions.types import AccessOperation
 from app.utils import HoustonException
 from app.modules.users import permissions
 import app.extensions.logging as AuditLog
+from app.extensions.api.parameters import PaginationParametersLatestFirst
 
 from . import parameters, schemas
 from .models import Collaboration
@@ -47,7 +48,7 @@ class Collaborations(Resource):
         },
     )
     @api.response(schemas.BaseCollaborationSchema(many=True))
-    @api.paginate(parameters.GetCollaborationsParameters())
+    @api.paginate(PaginationParametersLatestFirst())
     def get(self, args):
         """
         List of Collaboration.

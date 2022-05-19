@@ -11,7 +11,10 @@ from flask import current_app, send_file, request, url_for, redirect, session
 from flask_login import current_user
 from flask_restx_patched import Resource
 from flask_restx_patched._http import HTTPStatus
-from app.extensions.api.parameters import PaginationParameters
+from app.extensions.api.parameters import (
+    PaginationParameters,
+    PaginationParametersLatestFirst,
+)
 from app.extensions.api import Namespace, abort
 import app.extensions.logging as AuditLog
 from app.extensions import is_extension_enabled
@@ -538,7 +541,7 @@ if is_module_enabled('asset_groups'):
             },
         )
         @api.response(BaseAssetGroupSightingSchema(many=True))
-        @api.paginate()
+        @api.paginate(PaginationParametersLatestFirst())
         def get(self, args, user):
             """
             Get AssetGroupSightings for user

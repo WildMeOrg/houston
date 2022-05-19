@@ -9,19 +9,11 @@ import logging
 
 from . import schemas
 from flask_login import current_user
-from app.extensions.api.parameters import PaginationParameters
 from app.modules.users.permissions.types import AccessOperation
 from app.modules.users.permissions import rules
 from app.utils import HoustonException
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
-
-
-class GetCollaborationsParameters(PaginationParameters):
-    sort = base_fields.String(
-        description='the field to sort the results by, default is "created"',
-        missing='created',
-    )
 
 
 class CreateCollaborationParameters(Parameters, schemas.DetailedCollaborationSchema):

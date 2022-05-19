@@ -70,3 +70,15 @@ class PaginationParameters(Parameters):
         description='the field to reverse the sorted results (after paging has been performed), default is False',
         missing=False,
     )
+
+
+class PaginationParametersLatestFirst(PaginationParameters):
+
+    sort = base_fields.String(
+        description='the field to sort the results by, default is the created key column',
+        missing='created',
+    )
+    reverse = base_fields.Boolean(
+        description='the field to reverse the sorted results (before paging has been performed), default is True',
+        missing=True,
+    )

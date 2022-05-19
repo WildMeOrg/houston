@@ -198,7 +198,6 @@ class AssetSrcRawByID(Resource):
         },
     )
     def get(self, asset):
-        log.info(f'Sage raw src read of Asset {asset.guid}')
         return send_file(asset.get_symlink())
 
 

@@ -1478,7 +1478,7 @@ class Sighting(db.Model, FeatherModel):
 
     def ia_pipeline(self, background=True):
 
-        assert self.stage == SightingStage.identification
+        assert self.stage == SightingStage.identification, self.stage
         self.validate_id_configs()
         from .tasks import send_all_identification
 

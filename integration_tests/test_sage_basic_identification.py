@@ -7,6 +7,7 @@ def create_sighting(session, codex_url, test_root, filename, group_data=None):
     transaction_id = utils.upload_to_tus(session, codex_url, [test_root / filename])
     if not group_data:
         group_data = {
+            'token': 'XXX',
             'description': 'This is a test asset_group, please ignore',
             'uploadType': 'form',
             'speciesDetectionModel': ['african_terrestrial'],
@@ -158,6 +159,7 @@ def test_identification_international(session, codex_url, test_root, login):
     # Going to get nasty now and put international characters in here
     filename = 'zebra-named-Sigurður.jpg'
     group_data = {
+        'token': 'XXX',
         'description': description,
         'uploadType': 'form',
         'speciesDetectionModel': ['african_terrestrial'],

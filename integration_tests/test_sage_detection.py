@@ -10,6 +10,7 @@ def test_create_asset_group_detection(session, codex_url, test_root, login):
     zebra = test_root / 'zebra.jpg'
     transaction_id = utils.upload_to_tus(session, codex_url, [zebra])
     data = {
+        'token': 'XXX',
         'description': 'This is a test asset_group, please ignore',
         'uploadType': 'form',
         'speciesDetectionModel': ['african_terrestrial'],

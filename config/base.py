@@ -230,7 +230,12 @@ class EmailConfig(object):
 
 
 class ReCaptchaConfig(object):
+    RECAPTCHA_SITE_VERIFY_API = os.getenv(
+        'RECAPTCHA_SITE_VERIFY_API',
+        'https://www.google.com/recaptcha/api/siteverify',
+    )
     RECAPTCHA_PUBLIC_KEY = os.getenv('RECAPTCHA_PUBLIC_KEY', 'XXX')
+    RECAPTCHA_SECRET_KEY = os.getenv('RECAPTCHA_SECRET_KEY', 'XXX')
     RECAPTCHA_BYPASS = os.getenv('RECAPTCHA_BYPASS', 'XXX')
 
 

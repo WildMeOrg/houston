@@ -149,6 +149,16 @@ class SiteSetting(db.Model, Timestamp):
             'default': '',
             'isApiKey': True,
         },
+        'recaptchaPublicKey': {
+            'type': str,
+            'public': True,
+            'default': lambda: current_app.config.get('RECAPTCHA_PUBLIC_KEY'),
+        },
+        'recaptchaSecretKey': {
+            'type': str,
+            'public': False,
+            'default': lambda: current_app.config.get('RECAPTCHA_SECRET_KEY'),
+        },
     }
 
     if is_extension_enabled('intelligent_agent'):

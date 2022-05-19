@@ -543,6 +543,8 @@ class AssetGroupCreationData(object):
 def create_asset_group(
     flask_app_client, user, data, expected_status_code=200, expected_error=''
 ):
+    data['token'] = 'XXX'  # Recaptcha bypass
+
     from app.modules.asset_groups.tasks import sage_detection
 
     # Call sage_detection in the foreground by skipping "delay"

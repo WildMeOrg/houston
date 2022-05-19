@@ -49,10 +49,10 @@ def test_create_collaboration(
 
         # which should contain the same Users
         assert len(all_resp.json) == 2
-        assert set(all_resp.json[0]['members'].keys()) == set(
+        assert set(all_resp.json[1]['members'].keys()) == set(
             {str(readonly_user.guid), str(researcher_2.guid)}
         )
-        assert set(all_resp.json[1]['members'].keys()) == set(
+        assert set(all_resp.json[0]['members'].keys()) == set(
             {str(researcher_1.guid), str(researcher_2.guid)}
         )
 

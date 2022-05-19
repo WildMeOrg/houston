@@ -246,7 +246,7 @@ class NotificationBuilder(object):
         self.data['request_id'] = request_data.get('id')
         deadline_datetime = request_data.get('deadline')
         if deadline_datetime:
-            self.data['deadline'] = deadline_datetime.isoformat()
+            self.data['deadline'] = deadline_datetime.isoformat() + 'Z'
         # TODO other goodies in request_data
 
 

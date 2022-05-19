@@ -302,12 +302,23 @@ class Individual(db.Model, FeatherModel):
         return self.names
 
     def get_primary_name(self):
-        if self.names:
-            # Placeholder, first created name to make sure it's always the same one
+        if self.names and self.has_default_name():
+            primary_name = self.get_name_for_context(DEFAULT_NAME_CONTEXT)
+        elif self.names:
             ordered_names = sorted(self.names, key=lambda name: name.created)
-            return ordered_names[0].value
+            primary_name = ordered_names[0].value
         else:
-            return None
+            # should never happen, but seems like the desired behavior if it does in eg a
+            # test where we haven't set names or rendering FE on weirdly-migrated data
+            primary_name = str(self.guid)
+        return primary_name
+
+    def has_name_context(self, context):
+        contexts = set([name.context for name in self.names])
+        return context in contexts
+
+    def has_default_name(self):
+        self.has_name_context(DEFAULT_NAME_CONTEXT)
 
     # should be only one of these
     def get_name_for_context(self, context):

@@ -176,6 +176,7 @@ NOTIFICATION_CONFIG = {
             'request_id',
             'your_individuals',
             'other_individuals',
+            'deadline',
         },
         'allow_multiple': True,
     },
@@ -243,6 +244,9 @@ class NotificationBuilder(object):
             ind_data = {'guid': indiv.guid, 'primaryName': indiv.get_primary_name()}
             self.data['other_individuals'].append(ind_data)
         self.data['request_id'] = request_data.get('id')
+        deadline_datetime = request_data.get('deadline')
+        if deadline_datetime:
+            self.data['deadline'] = deadline_datetime.isoformat() + 'Z'
         # TODO other goodies in request_data
 
 

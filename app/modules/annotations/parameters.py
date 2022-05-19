@@ -154,6 +154,9 @@ class PatchAnnotationDetailsParameters(PatchJSONParameters):
                 ret_val = super(PatchAnnotationDetailsParameters, cls).replace(
                     obj, field, value, state
                 )
+                if field == Annotation.bounds.key or field == Annotation.ia_class.key:
+                    # Setting of these fields means that the Sage annotation must be recalculated
+                    obj.content_guid = None
 
         return ret_val
 

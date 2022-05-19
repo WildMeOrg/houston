@@ -359,7 +359,11 @@ class IntelligentAgentContent(db.Model, HoustonModel):
         data = {}
         tx = self.derive_taxonomy()
         if not tx:
-            return False, _('You must include the species as a hashtag.')
+            return (
+                False,
+                _('You must include the species as a hashtag: ')
+                + self.taxonomy_hashtags_description(),
+            )
         data['taxonomy_guid'] = tx.guid
         loc = self.derive_location_id()
         if not loc:
@@ -1058,11 +1062,26 @@ class TwitterTweet(IntelligentAgentContent):
     def derive_taxonomy(self):
         from app.modules.site_settings.models import Taxonomy
 
-        for ht in self.hashtag_values():
-            tx = Taxonomy.find_fuzzy(ht)
-            log.debug(f'hashtag "{ht}" matched {tx}')
-            return tx
-        return None
+        values = self.hashtag_values()
+        if not values:
+            return None
+        txs = Taxonomy.find_fuzzy_list(values)
+        log.debug(f'derive_taxonomy(): hashtags {values} yielded {txs}')
+        return txs[0] if txs else None
+
+    # this will be for tweeting out to user and will be truncated if list "is long"
+    @classmethod
+    def taxonomy_hashtags_description(cls):
+        from app.modules.site_settings.models import Taxonomy
+
+        conf = Taxonomy.get_configuration_value()
+        tags = []
+        for tx in conf:
+            # in theory we could also use:  tx.get('commonNames', [])
+            tags.append(tx.get('scientificName', 'error').lower().replace(' ', ''))
+        if len(tags) > 4:
+            return '#' + ', #'.join(tags[:4]) + ', etc.'
+        return '#' + ', #'.join(tags)
 
     # this override is only to satisify the deadline hack of not using real user.linked_account process FIXME
     #   remove it (to let baseclass method run) when hack is gone

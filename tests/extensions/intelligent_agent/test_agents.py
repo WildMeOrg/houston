@@ -218,8 +218,10 @@ def test_linked_tweet_and_misc(researcher_1, flask_app_client, admin_user):
         'text': 'this is some test',
         'entities': {
             'hashtags': [
+                {'tag': 'somethingmeaningless'},
+                {'tag': 'ignoremeforsure'},
                 # the "z" is for fuzZy
-                {'tag': 'z' + conf_tx['scientificName']}
+                {'tag': 'z' + conf_tx['scientificName']},
             ]
         },
     }

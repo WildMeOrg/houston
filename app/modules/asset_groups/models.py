@@ -541,18 +541,29 @@ class AssetGroupSighting(db.Model, HoustonModel):
             status['summary']['progress'] = steps_complete_total / steps_total
         return status
 
-    # TODO just a placeholder now
     def _get_pipeline_status_preparation(self):
+        from app.modules.progress.models import ProgressStatus
+
+        progress = self.progress_preparation
+        # FIXME what to do if progress is None
         status = {
-            'skipped': False,
-            'start': None,
-            'inProgress': False,
-            'complete': True,  # only while placeholder
-            'end': None,
-            'steps': 0,
+            'skipped': progress.skipped,
+            # should inProgress be dropped now?   TODO: discuss with FE team
+            'inProgress': progress.status == ProgressStatus.created
+            or progress.status == ProgressStatus.healthy,
+            'complete': progress.complete,
+            'message': progress.message,
+            'steps': 0,  # TODO steps may be added later
             'stepsComplete': 0,
-            'progress': None,
-            '_note': 'preparation NOT YET IMPLEMENTED / placeholder only',
+            # using previously established 0.0-1.0 but maybe FE will want to swtich to 0-100
+            'progress': progress.percentage / 100,
+            'start': None,
+            'end': None,
+            # the following are new, thanks to Progress class
+            'eta': progress.current_eta,
+            'ahead': progress.ahead,
+            'status': progress.status,
+            'description': progress.description,
         }
         return status
 

@@ -52,16 +52,19 @@ class AutoAuthFlaskClient(FlaskClient):
         self._auth_scopes = None
 
     def open(self, *args, **kwargs):
+        from app.extensions import db
+        from app.modules.auth.models import OAuth2Client, OAuth2Token
+
+        oauth2_client_guid = None
+        oauth2_bearer_token_guid = None
         try:
             if self._user is not None:
-                from app.extensions import db
-                from app.modules.auth.models import OAuth2Client, OAuth2Token
-
                 oauth2_client = OAuth2Client(
                     secret='SECRET',
                     user=self._user,
                     default_scopes=[],
                 )
+                oauth2_client_guid = oauth2_client.guid
 
                 oauth2_bearer_token = OAuth2Token(
                     client=oauth2_client,
@@ -71,6 +74,7 @@ class AutoAuthFlaskClient(FlaskClient):
                     scopes=self._auth_scopes,
                     expires=datetime.utcnow() + timedelta(days=1),
                 )
+                oauth2_bearer_token_guid = oauth2_bearer_token.guid
 
                 with db.session.begin():
                     db.session.add(oauth2_client)
@@ -93,10 +97,16 @@ class AutoAuthFlaskClient(FlaskClient):
         except Exception:
             raise
         finally:
-            if self._user is not None:
-                with db.session.begin():
-                    db.session.delete(oauth2_bearer_token)
-                    db.session.delete(oauth2_bearer_token.client)
+            with db.session.begin():
+                if oauth2_bearer_token_guid is not None:
+                    oauth2_bearer_token_ = OAuth2Token.query.get(oauth2_bearer_token_guid)
+                    if oauth2_bearer_token_:
+                        db.session.delete(oauth2_bearer_token_)
+
+                if oauth2_client_guid is not None:
+                    oauth2_client_ = OAuth2Client.query.get(oauth2_client_guid)
+                    if oauth2_client_:
+                        db.session.delete(oauth2_client_)
 
         return response
 

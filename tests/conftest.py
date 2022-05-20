@@ -236,6 +236,7 @@ def flask_app(gitlab_remote_login_pat, disable_elasticsearch):
         # Override values that might be defined in docker-compose.override.yml
         config_override['DEFAULT_EMAIL_SERVICE_USERNAME'] = None
         config_override['DEFAULT_EMAIL_SERVICE_PASSWORD'] = None
+        config_override['RECAPTCHA_PUBLIC_KEY'] = None
 
         app = create_app(config_override=config_override)
         from app.extensions import db

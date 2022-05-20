@@ -233,6 +233,11 @@ def flask_app(gitlab_remote_login_pat, disable_elasticsearch):
         config_override['UPLOADS_DATABASE_PATH'] = str(pathlib.Path(td) / 'uploads')
         config_override['FILEUPLOAD_BASE_PATH'] = str(pathlib.Path(td) / 'fileuploads')
 
+        # Override values that might be defined in docker-compose.override.yml
+        config_override['DEFAULT_EMAIL_SERVICE_USERNAME'] = None
+        config_override['DEFAULT_EMAIL_SERVICE_PASSWORD'] = None
+        config_override['RECAPTCHA_PUBLIC_KEY'] = None
+
         app = create_app(config_override=config_override)
         from app.extensions import db
 

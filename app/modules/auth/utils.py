@@ -175,12 +175,16 @@ def delete_session_oauth2_token(user=None):
 def recaptcha_required(func):
     @functools.wraps(func)
     def inner(*args, **kwargs):
+        from app.modules.site_settings.models import SiteSetting
+
+        if not SiteSetting.get_string('recaptchaPublicKey'):
+            log.debug('Recaptcha skipped (recaptchaPublicKey not set)')
+            return func(*args, **kwargs)
+
         token = json.loads(request.data).get('token')
 
         if token == current_app.config.get('RECAPTCHA_BYPASS'):
             return func(*args, **kwargs)
-
-        from app.modules.site_settings.models import SiteSetting
 
         # Retry 10 times if there's an error
         for i in range(10):
@@ -194,8 +198,10 @@ def recaptcha_required(func):
                 ).json()
                 break
             except requests.exceptions.ConnectionError:
+                response = {}
                 time.sleep(2)
             except requests.exceptions.RequestException:
+                response = {}
                 log.exception('Recaptcha failure')
 
         log.debug(f'Recaptcha response={response}')

@@ -54,7 +54,7 @@ class ElasticsearchModel(object):
         return None
 
     @classmethod
-    def index_hook_cls(cls):
+    def index_hook_cls(cls, *args, **kwargs):
         pass
 
     @classmethod
@@ -204,8 +204,8 @@ class ElasticsearchModel(object):
     def elasticsearchable(self):
         return self.indexed >= self.updated
 
-    def index_hook_obj(self):
-        return self.__class__.index_hook_cls()
+    def index_hook_obj(self, *args, **kwargs):
+        return self.__class__.index_hook_cls(*args, **kwargs)
 
     def available(self, *args, **kwargs):
         return es_exists(self, *args, **kwargs)
@@ -833,7 +833,7 @@ def check_celery(verbose=True, revoke=False):
                         )
                     )
                     signature.retries -= 1
-                    promise_ = signature.apply_async()
+                    promise_ = signature.delay()
                     active.append((signature, promise_))
                 else:
                     log.error(
@@ -1000,7 +1000,7 @@ def es_index(obj, app=None, force=False, quiet=False):
         log.error('Database update on an ES model without ES index update')
 
     if hasattr(obj, 'index_hook_obj'):
-        obj.index_hook_obj()
+        obj.index_hook_obj(app=app, force=force, quiet=quiet)
 
     # Refresh the index
     es_refresh_index(index, app=app)

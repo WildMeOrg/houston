@@ -49,7 +49,6 @@ def test_commit_asset_group(
     )
     assert set(group_sighting.json.keys()) >= set(
         {
-            'completion',
             'asset_group_guid',
             'assets',
             'stage',
@@ -60,7 +59,6 @@ def test_commit_asset_group(
             'sighting_guid',
         }
     )
-    assert group_sighting.json['completion'] == 30
     assert group_sighting.json['asset_group_guid'] == asset_group_uuid
     assert group_sighting.json['creator']['guid'] == str(regular_user.guid)
     assert group_sighting.json['sighting_guid'] == sighting_uuid

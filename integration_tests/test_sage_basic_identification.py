@@ -47,7 +47,9 @@ def create_sighting(session, codex_url, test_root, filename, group_data=None):
     assert len(response_json['assets'][0]['annotations']) == 1
     annot_guid = response_json['assets'][0]['annotations'][0]['guid']
 
-    encounter_guids = [enc['guid'] for enc in response_json['config']['encounters']]
+    encounter_guids = [
+        enc['guid'] for enc in response_json['config']['sighting']['encounters']
+    ]
 
     assert len(encounter_guids) == 1
     encounter_guid = encounter_guids[0]
@@ -207,8 +209,10 @@ def test_identification_international(session, codex_url, test_root, login):
     zebra2_ags = session.get(
         codex_url(f"/api/v1/asset_groups/sighting/{zebra2_guids['ags']}")
     ).json()
-    assert zebra2_ags['config']['verbatimLocality'] == location
-    assert zebra2_ags['config']['encounters'][0]['verbatimLocality'] == location
+    assert zebra2_ags['config']['sighting']['verbatimLocality'] == location
+    assert (
+        zebra2_ags['config']['sighting']['encounters'][0]['verbatimLocality'] == location
+    )
 
     id_result_url = codex_url(f"/api/v1/sightings/{zebra2_guids['sighting']}/id_result")
     utils.wait_for(

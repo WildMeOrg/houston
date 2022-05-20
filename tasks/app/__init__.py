@@ -24,6 +24,7 @@ from tasks.app import (
     shell,
     site_settings,
     swagger,
+    tus,
     users,
 )
 
@@ -45,6 +46,7 @@ namespace = Collection(
     shell,
     site_settings,
     swagger,
+    tus,
     users,
 )
 

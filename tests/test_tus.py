@@ -3,29 +3,21 @@ import base64
 import pathlib
 import shutil
 import urllib.parse
+import uuid
 
 import pytest
 
 from tests.utils import redis_unavailable, get_stored_path
 
 
-@pytest.fixture
-def file_upload_filename():
+def get_file_upload_filename():
     return 'a.txt'
 
 
-@pytest.fixture
-def file_upload_asset_group_id():
-    return '11111111-1111-1111-1111-111111111111'
-
-
-@pytest.fixture
-def file_upload_path(flask_app, file_upload_asset_group_id, file_upload_filename):
+def get_file_upload_path(flask_app, transaction_id):
     uploads = pathlib.Path(flask_app.config['UPLOADS_DATABASE_PATH'])
-    path = uploads / f'sub-{file_upload_asset_group_id}' / file_upload_filename
-    yield path
-    if path.parent.exists():
-        shutil.rmtree(path.parent)
+    path = uploads / f'trans-{transaction_id}' / get_file_upload_filename()
+    return path
 
 
 def test_tus_options(flask_app_client):
@@ -39,9 +31,11 @@ def test_tus_options(flask_app_client):
 
 
 @pytest.mark.skipif(redis_unavailable(), reason='Redis unavailable')
-def test_tus_upload_protocol(
-    flask_app_client, file_upload_path, file_upload_asset_group_id
-):
+def test_tus_upload_protocol(flask_app, flask_app_client):
+    resource_id = str(uuid.uuid4())
+    transaction_id = str(uuid.uuid4())
+    file_upload_path = get_file_upload_path(flask_app, transaction_id)
+
     # Initialize file upload
     a_txt = 'abcd\n'
     filename = file_upload_path.name
@@ -52,6 +46,7 @@ def test_tus_upload_protocol(
             'Upload-Metadata': f'filename {encoded_filename}',
             'Upload-Length': len(a_txt),
             'Tus-Resumable': '1.0.0',
+            'x-tus-resource-id': resource_id,
         },
     )
     assert response.status_code == 201
@@ -80,6 +75,7 @@ def test_tus_upload_protocol(
             'Content-Type': 'application/offset+octet-stream',
             'Content-Length': len(a_txt),
             'Upload-Offset': 0,
+            'x-tus-transaction-id': transaction_id,
         },
         data=a_txt[:-1],
     )
@@ -105,7 +101,7 @@ def test_tus_upload_protocol(
             'Content-Type': 'application/offset+octet-stream',
             'Content-Length': len(a_txt),
             'Upload-Offset': len(a_txt) - 1,
-            'X-Houston-asset-group-Id': file_upload_asset_group_id,
+            'x-tus-transaction-id': transaction_id,
         },
         data=a_txt[-1:],
     )
@@ -124,11 +120,18 @@ def test_tus_upload_protocol(
     )
     assert response.status_code == 404
 
+    if file_upload_path.parent.exists():
+        shutil.rmtree(file_upload_path.parent)
+
 
 @pytest.mark.skipif(redis_unavailable(), reason='Redis unavailable')
-def test_tus_delete(flask_app_client, file_upload_path):
+def test_tus_delete(flask_app, flask_app_client):
     # Initialize file upload
     a_txt = 'abcd\n'
+
+    transaction_id = str(uuid.uuid4())
+    file_upload_path = get_file_upload_path(flask_app, transaction_id)
+
     filename = file_upload_path.name
     encoded_filename = base64.b64encode(filename.encode('utf-8')).decode('utf-8')
     response = flask_app_client.post(
@@ -190,11 +193,14 @@ def test_tus_delete(flask_app_client, file_upload_path):
     assert response.status_code == 200
     assert response.headers['Tus-File-Exists'] == 'False'
 
+    if file_upload_path.parent.exists():
+        shutil.rmtree(file_upload_path.parent)
+
 
 @pytest.mark.skipif(redis_unavailable(), reason='Redis unavailable')
-def test_tus_corner_cases(flask_app, flask_app_client, file_upload_filename):
+def test_tus_corner_cases(flask_app, flask_app_client):
     a_txt = 'abcd\n'
-    filename = file_upload_filename
+    filename = get_file_upload_filename()
     encoded_filename = base64.b64encode(filename.encode('utf-8')).decode('utf-8')
 
     # No Upload-Metadata and Tus-Resumable when initializing file upload
@@ -255,7 +261,7 @@ def test_tus_corner_cases(flask_app, flask_app_client, file_upload_filename):
     found_one = False
     from app.utils import get_stored_filename
 
-    stored_filename = get_stored_filename(file_upload_filename)
+    stored_filename = get_stored_filename(get_file_upload_filename())
     for fname in upload_dir.glob(f'session-*/{stored_filename}'):
         uploaded_file = pathlib.Path(fname)
         with uploaded_file.open('r') as f:

@@ -120,10 +120,11 @@ class Sighting(db.Model, FeatherModel):
         return ElasticsearchSightingSchema
 
     # when we index this sighting, lets (re-)index annotations
-    def index_hook_obj(self):
+    def index_hook_obj(self, *args, **kwargs):
+        kwargs['force'] = True
         for enc in self.encounters:
             for annot in enc.annotations:
-                annot.index(force=True)
+                annot.index(*args, **kwargs)
 
     def __repr__(self):
         return (
@@ -1428,30 +1429,6 @@ class Sighting(db.Model, FeatherModel):
             response['query_annotations'][-1]['algorithms'] = algorithms
             log.debug(f'Sighting ID response: {response}')
         return response
-
-    # Returns a percentage complete value 0-100 for the AssetGroupSighting operations that occur withing
-    # the Sighting object
-    def get_completion(self):
-        # Design allows for these limits to be configured later, potentially this data could be project specific
-        stage_base_sizes = {
-            SightingStage.identification: 0,
-            SightingStage.un_reviewed: 66,  # 2/3 of the time in sighting ia pipeline is in identification
-            SightingStage.processed: 100,  # The rest is spent being reviewed
-            SightingStage.failed: 100,  # complete, even if failed
-        }
-        completion = stage_base_sizes[self.stage]
-
-        # virtually all stages are either all or nothing, these just use the base sizes above.
-        # For those that have granularity we need to know the size range available and estimate how much has been done
-        if self.stage == SightingStage.identification:
-            if self.jobs:
-                size_range = (
-                    stage_base_sizes[SightingStage.identification]
-                    - stage_base_sizes[self.stage]
-                )
-                complete_jobs = [job for job in self.jobs.values() if not job['active']]
-                completion += size_range * (len(complete_jobs) / len(self.jobs))
-        return completion
 
     def set_asset_group_sighting(self, ags):
         self.asset_group_sighting = ags

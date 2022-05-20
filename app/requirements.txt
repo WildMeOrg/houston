@@ -11,6 +11,8 @@ celery
 
 elasticsearch
 
+etaprogress
+
 Flask>=1.1,<2
 Flask-Caching>=1.8.0
 Flask-Cors>=3.0.8,<4
@@ -38,6 +40,8 @@ gevent
 gitpython
 gumby @ git+https://github.com/WildMeOrg/gumby.git
 
+humanize
+
 itsdangerous<2.1.0
 
 jsonschema==3.2.0
@@ -57,6 +61,7 @@ psycopg2-binary
 pygeocoder
 python-dotenv
 python-gitlab
+python-Levenshtein
 python-magic
 
 #Flask-Tus-Cont

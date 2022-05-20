@@ -76,7 +76,6 @@ def create_sighting(
     commit_expected_status_code=200,
     commit_user=None,
 ):
-
     if not sighting_data:
         # Create a valid but simple one
         sighting_data = {

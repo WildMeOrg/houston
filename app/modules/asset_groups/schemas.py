@@ -60,8 +60,16 @@ class DetailedAssetGroupSchema(DetailedGitStoreSchema):
         many=True,
     )
 
+    progress_preparation = base_fields.Nested(
+        'BaseProgressSchema',
+        many=False,
+    )
+
     class Meta(DetailedGitStoreSchema.Meta):
-        fields = DetailedGitStoreSchema.Meta.fields + ('asset_group_sightings',)
+        fields = DetailedGitStoreSchema.Meta.fields + (
+            'asset_group_sightings',
+            'progress_preparation',
+        )
         dump_only = DetailedGitStoreSchema.Meta.dump_only
 
 
@@ -116,7 +124,6 @@ class DetailedAssetGroupSightingSchema(BaseAssetGroupSightingSchema):
         many=True,
     )
 
-    completion = base_fields.Function(AssetGroupSighting.get_completion)
     sighting_guid = base_fields.Function(AssetGroupSighting.get_sighting_guid)
     detection_start_time = base_fields.Function(
         AssetGroupSighting.get_detection_start_time
@@ -127,18 +134,23 @@ class DetailedAssetGroupSightingSchema(BaseAssetGroupSightingSchema):
 
     jobs = base_fields.Function(AssetGroupSighting.get_detailed_jobs_json)
 
+    progress_preparation = base_fields.Nested(
+        'BaseProgressSchema',
+        many=False,
+    )
+
     class Meta(BaseAssetGroupSightingSchema.Meta):
 
         fields = BaseAssetGroupSightingSchema.Meta.fields + (
             AssetGroupSighting.config.key,
             'assets',
-            'completion',
             'creator',
             'sighting_guid',
             'detection_start_time',
             'curation_start_time',
             'jobs',
             AssetGroupSighting.asset_group_guid.key,
+            'progress_preparation',
         )
         dump_only = BaseAssetGroupSightingSchema.Meta.dump_only + (
             AssetGroupSighting.jobs.key,
@@ -178,7 +190,6 @@ class AssetGroupSightingAsSightingSchema(ModelSchema):
 
     createdHouston = base_fields.DateTime(attribute='created')
     updatedHouston = base_fields.DateTime(attribute='updated')
-    completion = base_fields.Function(AssetGroupSighting.get_completion)
     creator = base_fields.Nested('PublicUserSchema', attribute='get_owner', many=False)
     detection_start_time = base_fields.Function(
         AssetGroupSighting.get_detection_start_time

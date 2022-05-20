@@ -37,7 +37,8 @@ def set_up_assets(flask_app, db, test_root, admin_user, request):
     with mock.patch('app.modules.asset_groups.metadata.current_user', new=admin_user):
         metadata.process_request()
     assert metadata.owner == admin_user
-    asset_group = AssetGroup.create_from_metadata(metadata)
+    asset_group, _ = AssetGroup.create_from_metadata(metadata, foreground=True)
+
     cleanup(request, lambda: db.session.delete(asset_group))
 
     # Create annotation and sighting and sighting assets for the first asset

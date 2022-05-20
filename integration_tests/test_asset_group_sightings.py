@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import datetime
+import time
 
 from . import utils
 
@@ -84,6 +85,7 @@ def test_asset_group_sightings(session, login, codex_url, test_root):
         pprint.pprint(response.json())
 
     assert response.status_code == 200
+    response = utils.wait_for_progress_preparation(session, codex_url, response)
     assert len(response.json()['assets']) == 1
     asset = response.json()['assets'][0]
     assert len(response.json()['asset_group_sightings']) == 1
@@ -91,7 +93,7 @@ def test_asset_group_sightings(session, login, codex_url, test_root):
     ags_guid = ags['guid']
     assert len(ags['assets']) == 1
     ags_asset = ags['assets'][0]
-    ags_encounter = ags['config']['encounters'][0]
+    ags_encounter = ags['config']['sighting']['encounters'][0]
     asset_group_guid = response.json()['guid']
     assert response.json() == {
         'assets': [
@@ -119,27 +121,29 @@ def test_asset_group_sightings(session, login, codex_url, test_root):
                         'updated': ags_asset['updated'],
                     },
                 ],
-                'completion': 0,
                 'config': {
-                    'assetReferences': [sighting_filename],
-                    'customFields': sighting_custom_fields,
-                    'decimalLatitude': -39.063228,
-                    'decimalLongitude': 21.832598,
-                    'encounters': [
-                        {
-                            'customFields': enc_custom_fields,
-                            'decimalLatitude': 63.142385,
-                            'decimalLongitude': -21.596914,
-                            'guid': ags_encounter['guid'],
-                            'sex': 'male',
-                            'taxonomy': ags_encounter['taxonomy'],
-                            'time': ags_encounter['time'],
-                            'timeSpecificity': 'time',
-                        }
-                    ],
-                    'locationId': 'PYTEST',
-                    'time': '2000-01-01T01:01:01+00:00',
-                    'timeSpecificity': 'time',
+                    'detections': ['african_terrestrial'],
+                    'sighting': {
+                        'assetReferences': [sighting_filename],
+                        'customFields': sighting_custom_fields,
+                        'decimalLatitude': -39.063228,
+                        'decimalLongitude': 21.832598,
+                        'encounters': [
+                            {
+                                'customFields': enc_custom_fields,
+                                'decimalLatitude': 63.142385,
+                                'decimalLongitude': -21.596914,
+                                'guid': ags_encounter['guid'],
+                                'sex': 'male',
+                                'taxonomy': ags_encounter['taxonomy'],
+                                'time': ags_encounter['time'],
+                                'timeSpecificity': 'time',
+                            }
+                        ],
+                        'locationId': 'PYTEST',
+                        'time': '2000-01-01T01:01:01+00:00',
+                        'timeSpecificity': 'time',
+                    },
                 },
                 'creator': creator_data,
                 'curation_start_time': ags['curation_start_time'],
@@ -148,6 +152,7 @@ def test_asset_group_sightings(session, login, codex_url, test_root):
                 'guid': ags_guid,
                 'indexed': ags['indexed'],
                 'jobs': ags['jobs'],
+                'progress_preparation': ags['progress_preparation'],
                 'sighting_guid': None,
                 'stage': 'detection',
                 'locationId': 'PYTEST',
@@ -164,6 +169,7 @@ def test_asset_group_sightings(session, login, codex_url, test_root):
         'indexed': response.json()['indexed'],
         'major_type': 'filesystem',
         'owner_guid': my_guid,
+        'progress_preparation': {'guid': response.json()['progress_preparation']['guid']},
         'updated': response.json()['updated'],
     }
 
@@ -213,7 +219,6 @@ def test_asset_group_sightings(session, login, codex_url, test_root):
             },
         ],
         'comments': None,
-        'completion': 10,
         'createdEDM': None,
         # 2021-11-12T18:28:32.744114+00:00
         'createdHouston': response.json()['createdHouston'],
@@ -411,12 +416,24 @@ def create_individual(
     assert len(asset_group_sighting_guids) == 1
     ags_guid = asset_group_sighting_guids[0]
 
-    # Should not need a wait, should be just a get
-    ags_url = codex_url(f'/api/v1/asset_groups/sighting/{ags_guid}')
-    ags_json = session.get(ags_url).json()
-    assert len(ags_json['assets']) == 0
-    assert ags_json['stage'] == 'processed'
-    assert 'sighting_guid' in ags_json.keys()
+    trial = 0
+    while True:
+        ags_url = codex_url(f'/api/v1/asset_groups/sighting/{ags_guid}')
+        ags_json = session.get(ags_url).json()
+
+        try:
+            assert len(ags_json['assets']) == 0
+            assert ags_json['stage'] == 'processed'
+            assert 'sighting_guid' in ags_json.keys()
+            break
+        except AssertionError:
+            pass
+
+        if trial > 10:
+            raise RuntimeError()
+
+        trial += 1
+        time.sleep(1)
 
     sighting_guid = ags_json['sighting_guid']
     sight_url = codex_url(f'/api/v1/sightings/{sighting_guid}')

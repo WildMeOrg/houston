@@ -440,7 +440,7 @@ class IntelligentAgentContent(db.Model, HoustonModel):
             log.debug(f'trying get {url} -> {target_path}')
             resp = requests.get(url)
             open(target_path, 'wb').write(resp.content)
-            tus_write_file_metadata(target_path, original_filename)
+            tus_write_file_metadata(target_path, original_filename, md.get('id', None))
             ct += 1
         log.debug(f'prepare_media_transaction() processed {self._transaction_paths}')
         return self._transaction_paths
@@ -456,7 +456,7 @@ class IntelligentAgentContent(db.Model, HoustonModel):
         metadata = AssetGroupMetadata(metadata_json)
         metadata.process_request()
         metadata.owner = self.owner  # override!
-        self.asset_group = AssetGroup.create_from_metadata(metadata)
+        self.asset_group, _ = AssetGroup.create_from_metadata(metadata, foreground=True)
         # this should kick off detection
         self.state = IntelligentAgentContentState.active_detection
         self.asset_group.begin_ia_pipeline(metadata)
@@ -586,11 +586,11 @@ class IntelligentAgentContent(db.Model, HoustonModel):
     def commit_to_sighting(self, annot):
         assert self.asset_group and self.asset_group.asset_group_sightings
         ags = self.asset_group.asset_group_sightings[0]
-        assert ags.config['encounters']
+        assert ags.sighting_config['encounters']
         log.debug(
             f'setting single annot {annot} into encounter on AssetGroupSighting {str(ags.guid)} in {self}'
         )
-        ags.config['encounters'][0]['annotations'] = [str(annot.guid)]
+        ags.sighting_config['encounters'][0]['annotations'] = [str(annot.guid)]
         ags.config = ags.config
         with db.session.begin():
             db.session.merge(ags)

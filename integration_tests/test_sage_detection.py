@@ -30,6 +30,7 @@ def test_create_asset_group_detection(session, codex_url, test_root, login):
         json=data,
     )
     assert response.status_code == 200
+    response = utils.wait_for_progress_preparation(session, codex_url, response)
     asset_group_guid = response.json()['guid']
     assert len(response.json()['assets']) == 1
     asset_guid = response.json()['assets'][0]['guid']
@@ -63,7 +64,6 @@ def test_create_asset_group_detection(session, codex_url, test_root, login):
                 'elasticsearchable': response_json['assets'][0]['elasticsearchable'],
             }
         ],
-        'completion': 10,
         'stage': 'curation',
         'locationId': 'Tiddleywink',
         'time': '2000-01-01T01:01:01+00:00',
@@ -77,11 +77,14 @@ def test_create_asset_group_detection(session, codex_url, test_root, login):
             },
         ],
         'config': {
-            'time': response_json['config']['time'],
-            'timeSpecificity': 'time',
-            'locationId': 'Tiddleywink',
-            'encounters': response_json['config']['encounters'],
-            'assetReferences': ['zebra.jpg'],
+            'detections': ['african_terrestrial'],
+            'sighting': {
+                'time': response_json['config']['sighting']['time'],
+                'timeSpecificity': 'time',
+                'locationId': 'Tiddleywink',
+                'encounters': response_json['config']['sighting']['encounters'],
+                'assetReferences': ['zebra.jpg'],
+            },
         },
         'guid': ags_guid,
         'curation_start_time': response.json()['curation_start_time'],
@@ -89,6 +92,7 @@ def test_create_asset_group_detection(session, codex_url, test_root, login):
         'elasticsearchable': response.json()['elasticsearchable'],
         'indexed': response.json()['indexed'],
         'asset_group_guid': asset_group_guid,
+        'progress_preparation': {'guid': response.json()['progress_preparation']['guid']},
         'sighting_guid': None,
         'creator': {
             'full_name': me['full_name'],

@@ -71,7 +71,7 @@ def test_clone_asset_group_from_gitlab(
     from app.modules.asset_groups.models import AssetGroup
 
     # Patch delete_remote so it doesn't delete the gitlab project
-    with mock.patch('app.modules.asset_groups.tasks.delete_remote'):
+    with mock.patch('app.extensions.git_store.tasks.delete_remote'):
         AssetGroup.query.get(test_asset_group_uuid).delete()
 
     try:
@@ -116,7 +116,7 @@ def test_clone_asset_group_from_gitlab(
             assert 'AssetGroup is already cloned locally' in stdout.getvalue()
             assert repo_path.exists()
 
-    with mock.patch('app.modules.asset_groups.tasks.delete_remote'):
+    with mock.patch('app.extensions.git_store.tasks.delete_remote'):
         AssetGroup.query.get(test_asset_group_uuid).delete()
 
 
@@ -134,6 +134,6 @@ def test_list_all(flask_app, test_asset_group_uuid, test_empty_asset_group_uuid)
             assert f'<AssetGroup(guid={test_asset_group_uuid}, )' in asset_groups
             assert f'<AssetGroup(guid={test_empty_asset_group_uuid}, )' in asset_groups
 
-        with mock.patch('app.modules.asset_groups.tasks.delete_remote'):
+        with mock.patch('app.extensions.git_store.tasks.delete_remote'):
             AssetGroup.query.get(test_asset_group_uuid).delete()
             AssetGroup.query.get(test_empty_asset_group_uuid).delete()

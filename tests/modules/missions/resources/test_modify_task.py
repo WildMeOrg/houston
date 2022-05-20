@@ -7,6 +7,7 @@ from tests.utils import random_guid, wait_for_elasticsearch_status
 import tests.extensions.tus.utils as tus_utils
 import datetime
 import pytest
+import time
 
 from tests.utils import module_unavailable
 
@@ -83,6 +84,9 @@ def test_modify_mission_task_users(
 
         now = datetime.datetime.utcnow()
 
+        with es.session.begin(blocking=True):
+            Asset.index_all(force=True)
+
         trial = 0
         while True:
             trial += 1
@@ -108,6 +112,8 @@ def test_modify_mission_task_users(
                 break
             except AssertionError:
                 continue
+
+            time.sleep(1)
 
         mission_task = MissionTask.query.get(mission_task_guid)
         assert len(mission_task.get_members()) == 1

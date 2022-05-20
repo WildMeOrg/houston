@@ -115,7 +115,7 @@ class AssetGroups(Resource):
             )
 
         try:
-            asset_group = AssetGroup.create_from_metadata(metadata)
+            asset_group, _ = AssetGroup.create_from_metadata(metadata)
         except HoustonException as ex:
             log.warning(
                 f'AssetGroup creation for transaction_id={metadata.tus_transaction_id} failed'
@@ -125,7 +125,7 @@ class AssetGroups(Resource):
             abort(400, f'Creation failed {ex}')
 
         try:
-            asset_group.begin_ia_pipeline(metadata)
+            input_filenames = asset_group.begin_ia_pipeline(metadata)
         except HoustonException as ex:
             asset_group.delete()
             abort(
@@ -140,6 +140,15 @@ class AssetGroups(Resource):
             abort(400, f'IA pipeline failed {message}')
 
         AuditLog.user_create_object(log, asset_group, duration=timer.elapsed())
+
+        try:
+            asset_group.git_commit_delay(input_filenames)
+        except Exception as ex:
+            asset_group.delete()
+            # If this was already an abort, use the correct message
+            message = ex.data if hasattr(ex, 'data') else ex
+            abort(400, f'Asset preparation failed {message}')
+
         return asset_group
 
 
@@ -315,7 +324,7 @@ class AssetGroupByID(Resource):
             except HoustonException as ex:
                 abort(ex.status_code, ex.message)
         else:
-            from .tasks import delete_remote
+            from app.extensions.git_store.tasks import delete_remote
 
             delete_remote.delay(str(asset_group_id))
 
@@ -818,6 +827,6 @@ class AssetGroupTusCollect(Resource):
             # We have checked the asset_group manager and cannot find this asset_group, raise 404 manually
             raise werkzeug.exceptions.NotFound
 
-        asset_group.import_tus_files()
+        asset_group.import_tus_files(foreground=True)
 
         return asset_group

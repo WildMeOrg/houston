@@ -8,6 +8,7 @@ import time
 from unittest import mock
 
 import logging
+import warnings
 import sqlalchemy
 import pytest
 from flask_login import current_user, login_user, logout_user
@@ -265,23 +266,33 @@ def flask_app(gitlab_remote_login_pat, disable_elasticsearch):
 
             if utils.redis_unavailable():
                 # Run code in foreground if redis not available
-                from app.modules.asset_groups import tasks
+                from app.extensions.git_store import tasks as git_store_tasks
+                from app.modules.asset_groups import tasks as asset_groups_tasks
                 from app.modules.sightings import tasks as sighting_tasks
 
                 tasks_patch = []
                 for func in (
                     'delete_remote',
                     'ensure_remote',
+                    # 'git_commit',
                     'git_push',
-                    'sage_detection',
                 ):
                     tasks_patch.append(
                         mock.patch.object(
-                            getattr(tasks, func),
+                            getattr(git_store_tasks, func),
                             'delay',
-                            getattr(tasks, func),
+                            getattr(git_store_tasks, func),
                         ),
                     )
+
+                tasks_patch.append(
+                    mock.patch.object(
+                        getattr(asset_groups_tasks, 'sage_detection'),
+                        'delay',
+                        getattr(asset_groups_tasks, 'sage_detection'),
+                    ),
+                )
+
                 tasks_patch.append(
                     mock.patch.object(
                         getattr(sighting_tasks, 'send_identification'),
@@ -356,6 +367,9 @@ def flask_app(gitlab_remote_login_pat, disable_elasticsearch):
 @pytest.fixture(scope='session')
 def db(flask_app):
     from app.extensions import db as db_instance
+
+    # Always error on SADeprecationWarnings when testing
+    warnings.filterwarnings('error', category=sqlalchemy.exc.SADeprecationWarning)
 
     yield db_instance
 
@@ -568,7 +582,7 @@ def ensure_asset_group_repo(flask_app, db, asset_group, file_data=[]):
         return
 
     from app.extensions.gitlab import GitlabInitializationError
-    from app.modules.asset_groups.tasks import git_push, ensure_remote
+    from app.extensions.git_store.tasks import git_push, ensure_remote
 
     asset_group.ensure_repository()
     # Call ensure_remote without .delay in tests to do it in the foreground
@@ -590,7 +604,11 @@ def ensure_asset_group_repo(flask_app, db, asset_group, file_data=[]):
             'Initial commit for testing',
             existing_filepath_guid_mapping=filepath_guid_mapping,
             input_filenames=input_files,
+            update=True,
+            commit=True,
         )
+        asset_group.post_preparation_hook()
+
         # Call git_push without .delay in tests to do it in the foreground
         try:
             git_push(str(asset_group.guid))

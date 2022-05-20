@@ -99,7 +99,7 @@ class Encounter(db.Model, FeatherModel):
         return ElasticsearchEncounterSchema
 
     # index of encounter must trigger index of its annotations (so they can update)
-    def index_hook_obj(self):
+    def index_hook_obj(self, *args, **kwargs):
         for annot in self.annotations:
             annot.index(force=True)
 

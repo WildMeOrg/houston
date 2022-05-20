@@ -117,7 +117,7 @@ _main() {
 		if [ -z "$ALREADY_INITIALIZED" ]; then
 			mkdir -p ${DATA_ROOT}
 			# fix permissions on the data directory
-			chown nobody ${DATA_ROOT}
+			chown -R nobody:nogroup ${DATA_ROOT}
 			# check dir permissions to reduce likelihood of half-initialized database
 			ls ${DATA_ROOT}/ > /dev/null
 

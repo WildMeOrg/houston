@@ -224,7 +224,7 @@ def delete_mission_collection(
     flask_app_client, user, mission_collection_guid, expected_status_code=204
 ):
     from app.modules.missions.models import MissionCollection
-    from app.modules.missions.tasks import delete_remote
+    from app.extensions.git_store.tasks import delete_remote
 
     with mock.patch('app.modules.missions.tasks') as tasks:
         # Do delete_remote in the foreground immediately instead of using a

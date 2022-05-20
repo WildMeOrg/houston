@@ -24,6 +24,8 @@ class TusManager(object):
         self.file_overwrite = overwrite
         self.upload_finish_cb = upload_finish_cb
         self.upload_file_handler_cb = None
+        self.delete_file_handler_cb = None
+        self.pending_transaction_handler_cb = None
 
         self.blueprint = Blueprint('tus-manager', __name__)
 
@@ -99,8 +101,25 @@ class TusManager(object):
             methods=['DELETE'],
         )
 
+        # routes with user's pending transactions
+        self.blueprint.add_url_rule(
+            f'{self.upload_url}/pending',
+            'tus-1-get-pending-info',
+            self.tus_1_pending,
+            methods=['GET'],
+            provide_automatic_options=False,
+        )
+
     def upload_file_handler(self, callback):
         self.upload_file_handler_cb = callback
+        return callback
+
+    def delete_file_handler(self, callback):
+        self.delete_file_handler_cb = callback
+        return callback
+
+    def pending_transaction_handler(self, callback):
+        self.pending_transaction_handler_cb = callback
         return callback
 
     # handle redis server connection
@@ -151,6 +170,8 @@ class TusManager(object):
         return str(uuid.uuid4())
 
     def tus_creation_1_create(self):
+        from uuid import UUID
+
         """Implements POST to create file according to Tus protocol Creation extension"""
         # print('begin tus_creation_1_create')
         response = make_response('', 200)
@@ -179,7 +200,15 @@ class TusManager(object):
             return response
 
         file_size = int(request.headers.get('Upload-Length', '0'))
-        resource_id = self.create_resource_id()
+
+        if 'x-tus-resource-id' in request.headers:
+            resource_id = request.headers.get('x-tus-resource-id')
+            UUID(
+                resource_id, version=4
+            )  # this is just to test it is a valid uuid - will throw ValueError if not! (500 response)
+        else:
+            # Generate random resource ID
+            resource_id = self.create_resource_id()
 
         p = self.redis_connection.pipeline()
         p.setex(
@@ -321,7 +350,12 @@ class TusManager(object):
                     )
                 else:
                     filename = self.upload_file_handler_cb(
-                        upload_file_path, stored_filename, filename, request, self.app
+                        upload_file_path,
+                        stored_filename,
+                        filename,
+                        resource_id,
+                        request,
+                        self.app,
                     )
             finally:
                 self._remove_resources(resource_id)
@@ -331,7 +365,7 @@ class TusManager(object):
 
         return response
 
-    def _remove_resources(self, resource_id):
+    def _remove_resources(self, resource_id, include_transaction=False):
         p = self.redis_connection.pipeline()
         p.delete('file-uploads/{}/filename'.format(resource_id))
         p.delete('file-uploads/{}/file_size'.format(resource_id))
@@ -345,13 +379,36 @@ class TusManager(object):
         except FileNotFoundError:
             pass
 
+        if include_transaction and self.delete_file_handler_cb is not None:
+            self.delete_file_handler_cb(upload_file_path, resource_id, request, self.app)
+
     def tus_1_delete(self, resource_id):
         """Implements DELETE according to Tus Termination protocol"""
         response = make_response('', 204)
         response.headers['Tus-Resumable'] = self.tus_api_version
         response.headers['Tus-Version'] = self.tus_api_version_supported
 
-        self._remove_resources(resource_id)
+        self._remove_resources(resource_id, include_transaction=True)
 
         response.status_code = 204
+        return response
+
+    def tus_1_pending(self):
+        # Get any pending transactions that the user may have been working on
+        status_code = 200
+
+        if self.pending_transaction_handler_cb is not None:
+            try:
+                message = self.pending_transaction_handler_cb(
+                    self.upload_folder, request, self.app
+                )
+            except Exception:
+                message = 'User must be logged in'
+                status_code = 401
+        else:
+            message = ''
+            status_code = 204
+
+        response = make_response(message, status_code)
+        response.mimetype = 'application/json'
         return response

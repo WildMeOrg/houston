@@ -87,12 +87,12 @@ class PatchAssetGroupSightingDetailsParameters(PatchJSONParameters):
                 AssetGroupMetadata.validate_annotations(
                     obj, value['annotations'], f'Sighting {obj.guid}'
                 )
-            if 'encounters' not in obj.config.keys():
-                obj.config['encounters'] = []
+            if 'encounters' not in obj.sighting_config.keys():
+                obj.sighting_config['encounters'] = []
 
             # allocate pseudo ID for encounter
             value['guid'] = str(uuid.uuid4())
-            obj.config['encounters'].append(value)
+            obj.sighting_config['encounters'].append(value)
 
             # force write
             obj.config = obj.config
@@ -100,14 +100,14 @@ class PatchAssetGroupSightingDetailsParameters(PatchJSONParameters):
         elif field == 'assetReferences':
             # Raises AssetGroupMetadataError on error which is intentionally unnhandled
             cls.validate_asset_references(obj, [value])
-            if value in obj.config.get('assetReferences', []):
+            if value in obj.sighting_config.get('assetReferences', []):
                 raise AssetGroupMetadataError(
                     log, f'{value} already in Group for assetGroupSighting {obj.guid}'
                 )
-            if 'assetReferences' in obj.config.keys():
-                obj.config[field].append(value)
+            if 'assetReferences' in obj.sighting_config.keys():
+                obj.sighting_config[field].append(value)
             else:
-                obj.config[field] = [value]
+                obj.sighting_config[field] = [value]
 
             # force write
             obj.config = obj.config
@@ -146,12 +146,12 @@ class PatchAssetGroupSightingDetailsParameters(PatchJSONParameters):
         if field == 'config':
             # The permissions check of what is allowed to be updated is done in the
             # PatchAssetGroupSightingMetadata, this assumes that the data is valid
-            obj.config = value
+            obj.sighting_config = value
             ret_val = True
         elif field == 'idConfigs':
             # Raises AssetGroupMetadataError on error which is intentionally unnhandled
             AssetGroupMetadata.validate_id_configs(value, f'Sighting {obj.guid}')
-            obj.config[field] = value
+            obj.sighting_config[field] = value
             ret_val = True
         elif field == 'encounters':
             # Does not make sense to replace an encounter
@@ -160,10 +160,10 @@ class PatchAssetGroupSightingDetailsParameters(PatchJSONParameters):
             # Only supports patch of all refs as one operation
             # Raises AssetGroupMetadataError on error which is intentionally unnhandled
             cls.validate_asset_references(obj, value)
-            obj.config[field] = value
+            obj.sighting_config[field] = value
             ret_val = True
         else:
-            obj.config[field] = value
+            obj.sighting_config[field] = value
             ret_val = True
 
         # Force the DB write
@@ -180,20 +180,20 @@ class PatchAssetGroupSightingDetailsParameters(PatchJSONParameters):
         if field == 'encounters':
             # 'remove' passed for the encounter even if it wasn't there to start with
             ret_val = True
-            if 'encounters' in obj.config.keys():
+            if 'encounters' in obj.sighting_config.keys():
                 if not isinstance(value, str):
                     # but fails for invalid value type
                     ret_val = False
                 else:
-                    for config_encounter in obj.config['encounters']:
+                    for config_encounter in obj.sighting_config['encounters']:
                         if config_encounter['guid'] == value:
-                            obj.config['encounters'].remove(config_encounter)
+                            obj.sighting_config['encounters'].remove(config_encounter)
                             changed = True
         elif field == 'assetReferences':
             # always succeed. reference is remove or wasn't there. Either way it's not there anymore
             ret_val = True
-            if value in obj.config.get('assetReferences', []):
-                obj.config['assetReferences'].remove(value)
+            if value in obj.sighting_config.get('assetReferences', []):
+                obj.sighting_config['assetReferences'].remove(value)
                 changed = True
         if changed:
             # Force the DB write
@@ -223,7 +223,7 @@ class PatchAssetGroupSightingAsSightingParameters(
         if field == 'idConfigs':
             # Raises AssetGroupMetadataError on error which is intentionally unnhandled
             AssetGroupMetadata.validate_id_configs(value, f'Sighting {obj.guid}')
-            obj.config[field] = value
+            obj.sighting_config[field] = value
             ret_val = True
         elif field == 'encounters':
             # Does not make sense to replace an encounter
@@ -232,10 +232,10 @@ class PatchAssetGroupSightingAsSightingParameters(
             # Only supports patch of all refs as one operation
             # Raises AssetGroupMetadataError on error which is intentionally unnhandled
             cls.validate_asset_references(obj, value)
-            obj.config[field] = value
+            obj.sighting_config[field] = value
             ret_val = True
         else:
-            obj.config[field] = value
+            obj.sighting_config[field] = value
             ret_val = True
 
         # Force the DB write

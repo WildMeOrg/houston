@@ -312,11 +312,12 @@ class Sightings(Resource):
             from app.modules.asset_groups.models import AssetGroup
 
             try:
-                asset_group = AssetGroup.create_from_tus(
+                asset_group, input_files = AssetGroup.create_from_tus(
                     'Sighting.post ' + result_data['id'],
                     owner,
                     transaction_id,
                     paths=all_arefs[transaction_id],
+                    foreground=True,
                 )
             except Exception as ex:
                 cleanup.asset_group = asset_group
@@ -327,7 +328,7 @@ class Sightings(Resource):
                 )
             cleanup.asset_group = asset_group
 
-            log.debug(
+            log.info(
                 'create_from_tus returned: %r => %r' % (asset_group, asset_group.assets)
             )
 

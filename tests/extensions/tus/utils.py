@@ -34,7 +34,7 @@ def prep_tus_dir(test_root, transaction_id=None, filename='zebra.jpg'):
     input_image = path.split(os.sep)[-1]
     stored_image = get_stored_filename(input_image)
     shutil.copy(image_file, f'{upload_dir}/{stored_image}')
-    tus_write_file_metadata(f'{upload_dir}/{stored_image}', input_image)
+    tus_write_file_metadata(f'{upload_dir}/{stored_image}', input_image, None)
 
     size = os.path.getsize(image_file)
     assert size > 0
@@ -57,7 +57,7 @@ def prep_randomized_tus_dir(total=100, transaction_id=None):
         size = os.path.getsize(image_file)
         stored_image = get_stored_filename(filename)
         os.rename(image_file, f'{upload_dir}/{stored_image}')
-        tus_write_file_metadata(f'{upload_dir}/{stored_image}', filename)
+        tus_write_file_metadata(f'{upload_dir}/{stored_image}', filename, None)
         assert size > 0
 
     return transaction_id

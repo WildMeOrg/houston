@@ -37,12 +37,12 @@ def test_patch_asset_group(
     group_sighting = asset_group_utils.read_asset_group_sighting(
         flask_app_client, researcher_1, asset_group_sighting_guid
     )
-    assert 'completion' in group_sighting.json
-    assert group_sighting.json['completion'] == 10
     assert 'config' in group_sighting.json
-    assert 'assetReferences' in group_sighting.json['config']
+    assert 'assetReferences' in group_sighting.json['config']['sighting']
 
-    new_absent_file = copy.deepcopy(group_sighting.json['config']['assetReferences'])
+    new_absent_file = copy.deepcopy(
+        group_sighting.json['config']['sighting']['assetReferences']
+    )
     new_absent_file.append('absent_file.jpg')
     patch_data = [utils.patch_replace_op('assetReferences', new_absent_file)]
     expected_resp = (
@@ -69,7 +69,7 @@ def test_patch_asset_group(
     patch_resp = asset_group_utils.patch_asset_group_sighting(
         flask_app_client, researcher_1, asset_group_sighting_guid, patch_data
     )
-    assert len(patch_resp.json['config']['encounters']) == 2
+    assert len(patch_resp.json['config']['sighting']['encounters']) == 2
 
     # chosen for reasons of incongruity as the naked mole rat is virtually blind
     # so has no 'sight'
@@ -79,7 +79,7 @@ def test_patch_asset_group(
     )
 
     # invalid patch, encounter has individualuuid of nonsense
-    encounter_guid = group_sighting.json['config']['encounters'][0]['guid']
+    encounter_guid = group_sighting.json['config']['sighting']['encounters'][0]['guid']
     encounter_path = f'{asset_group_sighting_guid}/encounter/{encounter_guid}'
 
     patch_data = [utils.patch_add_op('individualUuid', '8037460')]
@@ -110,12 +110,12 @@ def test_patch_asset_group(
     )
 
     # Valid patch, removing the added encounter
-    guid_to_go = patch_resp.json['config']['encounters'][-1]['guid']
+    guid_to_go = patch_resp.json['config']['sighting']['encounters'][-1]['guid']
     patch_remove = [utils.patch_remove_op('encounters', guid_to_go)]
     patch_resp = asset_group_utils.patch_asset_group_sighting(
         flask_app_client, researcher_1, asset_group_sighting_guid, patch_remove
     )
-    assert len(patch_resp.json['config']['encounters']) == 1
+    assert len(patch_resp.json['config']['sighting']['encounters']) == 1
 
     # invalid patch, encounter has invalid annotation uuid
     patch_data = [utils.patch_add_op('annotations', invalid_uuid)]
@@ -146,7 +146,7 @@ def test_patch_asset_group(
         encounter_path,
         [utils.patch_replace_op('annotations', annotation1_guid)],
     )
-    annots = annot_replace_resp.json['config']['encounters'][0]['annotations']
+    annots = annot_replace_resp.json['config']['sighting']['encounters'][0]['annotations']
     assert len(annots) == 1
     assert annots[0] == annotation1_guid
 
@@ -157,7 +157,7 @@ def test_patch_asset_group(
         encounter_path,
         [utils.patch_add_op('annotations', annotation2_guid)],
     )
-    annots = annot_add_resp.json['config']['encounters'][0]['annotations']
+    annots = annot_add_resp.json['config']['sighting']['encounters'][0]['annotations']
     assert len(annots) == 2
     assert annots[1] == annotation2_guid
 
@@ -168,7 +168,7 @@ def test_patch_asset_group(
         encounter_path,
         [utils.patch_add_op('annotations', annotation2_guid)],
     )
-    annots = annot_add_resp.json['config']['encounters'][0]['annotations']
+    annots = annot_add_resp.json['config']['sighting']['encounters'][0]['annotations']
     assert len(annots) == 2
     assert annots[1] == annotation2_guid
 
@@ -206,7 +206,6 @@ def test_patch_asset_group_sighting_as_sighting(
     for field in {
         'guid',
         'stage',
-        'completion',
         'assets',
         'time',
         'timeSpecificity',
@@ -356,7 +355,7 @@ def test_patch_ags_encounters(
         researcher_1,
         asset_group_sighting_guid,
     )
-    encounter_guid = group_sighting.json['config']['encounters'][0]['guid']
+    encounter_guid = group_sighting.json['config']['sighting']['encounters'][0]['guid']
     assert encounter_guid
 
     # patch time value on encounter
@@ -379,9 +378,14 @@ def test_patch_ags_encounters(
         researcher_1,
         asset_group_sighting_guid,
     )
-    assert group_sighting_verify.json['config']['encounters'][0]['time'] == time_value
     assert (
-        group_sighting_verify.json['config']['encounters'][0]['timeSpecificity']
+        group_sighting_verify.json['config']['sighting']['encounters'][0]['time']
+        == time_value
+    )
+    assert (
+        group_sighting_verify.json['config']['sighting']['encounters'][0][
+            'timeSpecificity'
+        ]
         == 'month'
     )
 
@@ -411,7 +415,7 @@ def test_patch_ags_encounters(
         researcher_1,
         asset_group_sighting_guid,
     ).json
-    ags_enc = group_sighting_verify['config']['encounters'][0]
+    ags_enc = group_sighting_verify['config']['sighting']['encounters'][0]
     ags_as_sighting_enc = gas['encounters'][0]
     assert ags_enc['verbatimLocality'] == locality
     assert ags_enc['taxonomy'] == taxonomy
@@ -448,7 +452,10 @@ def test_patch_asset_group_annots(
             ),
             [utils.patch_add_op('annotations', annotation_guid)],
         ).json
-        enc_annots = annot_add_resp['config']['encounters'][encounter_num]['annotations']
+
+        enc_annots = annot_add_resp['config']['sighting']['encounters'][encounter_num][
+            'annotations'
+        ]
 
         assert annotation_guid in enc_annots
         return annotation_guid
@@ -479,8 +486,8 @@ def test_patch_asset_group_annots(
         [utils.patch_add_op('annotations', annotation1_guid)],
     ).json
 
-    enc1_annots = annot_add_resp['config']['encounters'][0]['annotations']
-    enc2_annots = annot_add_resp['config']['encounters'][1]['annotations']
+    enc1_annots = annot_add_resp['config']['sighting']['encounters'][0]['annotations']
+    enc2_annots = annot_add_resp['config']['sighting']['encounters'][1]['annotations']
     assert len(enc1_annots) == 0
     assert len(enc2_annots) == 1
     assert enc2_annots[0] == annotation1_guid

@@ -62,6 +62,7 @@ class BaseMWSConfig(
         'api',
         'emails',
         'audit_logs',
+        'progress',
     )
     # fmt: on
 

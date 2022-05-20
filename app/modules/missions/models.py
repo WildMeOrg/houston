@@ -330,6 +330,9 @@ class MissionCollection(GitStore):
     def asset_count(self):
         return len(self.get_assets(load=False))
 
+    def post_preparation_hook(self):
+        pass
+
     def get_assets(self, load=True):
         if load:
             return self.assets
@@ -358,17 +361,17 @@ class MissionCollection(GitStore):
 
     @classmethod
     def ensure_remote_delay(cls, mission_collection):
-        from .tasks import ensure_remote
+        from app.extensions.git_store.tasks import ensure_remote
 
         ensure_remote.delay(str(mission_collection.guid))
 
     def git_push_delay(self):
-        from .tasks import git_push
+        from app.extensions.git_store.tasks import git_push
 
         git_push.delay(str(self.guid))
 
     def delete_remote_delay(self):
-        from .tasks import delete_remote
+        from app.extensions.git_store.tasks import delete_remote
 
         delete_remote.delay(str(self.guid))
 

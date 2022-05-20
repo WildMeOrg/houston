@@ -96,3 +96,6 @@ prof/
 # Development files
 db-edm-*.sql
 db-houston-*.sql
+
+test[A-Z]/
+_assets/transect/

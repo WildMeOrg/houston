@@ -103,6 +103,11 @@ if is_extension_enabled('elasticsearch'):
 else:
     elasticsearch = None
 
+if is_extension_enabled('intelligent_agent'):
+    from . import intelligent_agent  # NOQA
+else:
+    intelligent_agent = None
+
 if is_extension_enabled('mail'):
     from .email import mail  # NOQA
 else:
@@ -434,6 +439,14 @@ class CommonHoustonModel(TimestampViewed, ElasticsearchModel):
             return []
         return cls.query.filter(cls.guid.in_(guids)).all()
 
+    @property
+    def exists(self):
+        cls = self.__class__
+        return (
+            cls.query.filter(cls.guid == self.guid).with_entities(cls.guid).first()
+            is not None
+        )
+
     def is_public(self):
         # Assume public if _owned_ by the public user
         if hasattr(self, 'user_is_owner'):
@@ -681,10 +694,10 @@ def init_app(app, force_enable=False, force_disable=None):
         'edm': edm,
         'gitlab': gitlab,
         'elasticsearch': elasticsearch,
+        'intelligent_agent': intelligent_agent,
         'mail': mail,
         'stripe': stripe,
     }
-
     executor.EXECUTOR_TYPE = app.config['EXECUTOR_TYPE']
     executor.EXECUTOR_MAX_WORKERS = app.config['EXECUTOR_MAX_WORKERS']
     enabled_extension_names = app.config['ENABLED_EXTENSIONS']

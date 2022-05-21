@@ -545,7 +545,24 @@ class AssetGroupSighting(db.Model, HoustonModel):
         from app.modules.progress.models import ProgressStatus
 
         progress = self.progress_preparation
-        # FIXME what to do if progress is None
+        # no progress object, do the best we can?
+        if not progress:
+            return {
+                'skipped': None,
+                'inProgress': False,
+                'complete': True,
+                'message': 'missing Progress',
+                'steps': 0,
+                'stepsComplete': 0,
+                'progress': 1,
+                'start': None,
+                'end': None,
+                'eta': None,
+                'ahead': None,
+                'status': None,
+                'description': None,
+            }
+
         status = {
             'skipped': progress.skipped,
             # should inProgress be dropped now?   TODO: discuss with FE team
@@ -557,7 +574,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
             'stepsComplete': 0,
             # using previously established 0.0-1.0 but maybe FE will want to swtich to 0-100
             'progress': progress.percentage / 100,
-            'start': None,
+            'start': progress.created.isoformat() + 'Z',
             'end': None,
             # the following are new, thanks to Progress class
             'eta': progress.current_eta,
@@ -565,6 +582,8 @@ class AssetGroupSighting(db.Model, HoustonModel):
             'status': progress.status,
             'description': progress.description,
         }
+        if progress.complete:
+            status['end'] = (progress.updated.isoformat() + 'Z',)
         return status
 
     # currently only gives most recent job

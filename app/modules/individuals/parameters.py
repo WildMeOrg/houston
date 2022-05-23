@@ -191,12 +191,7 @@ class PatchIndividualDetailsParameters(PatchJSONParameters):
                 encounter = Encounter.query.get(encounter_guid)
                 if encounter is not None and encounter not in obj.encounters:
                     obj.add_encounter(encounter)
-                    encounter.individual = obj  # This didn't help
-                    encounter.individual_guid = obj.guid # This helped with assert below but not ultimate error
                     assert encounter in obj.get_encounters()
-                    assert obj == encounter.individual  # these passed but still doesn't show later
-                    assert obj.guid == encounter.individual.guid
-                    assert obj.guid == encounter.individual_guid
                     ret_val = True
 
         elif field == 'featuredAssetGuid' and util.is_valid_uuid_string(value):

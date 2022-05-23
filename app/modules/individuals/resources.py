@@ -393,11 +393,6 @@ class IndividualByID(Resource):
                     abort(ex.status_code, ex.message)
 
         db.session.merge(individual)
-
-        # ALREADY TRIED, didn't work
-        # for encounter in individual.encounters:
-        #     db.session.merge(encounter)
-
         AuditLog.patch_object(log, individual, args, duration=timer.elapsed())
         return individual
 

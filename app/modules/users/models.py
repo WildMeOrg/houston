@@ -968,7 +968,7 @@ class User(db.Model, FeatherModel, UserEDMMixin):
             email=User.PUBLIC_USER_EMAIL,
             password=User.initial_random_password(),
             full_name='Public User',
-            is_internal=False,
+            is_internal=True,
         )
 
     def is_public_user(self):

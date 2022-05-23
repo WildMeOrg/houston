@@ -198,6 +198,25 @@ open _build/html/index.html
 ```
 
 
+## reCAPTCHA
+
+Register at https://www.google.com/recaptcha/admin/create for `reCAPTCHA v3`.
+
+Add the site (public) key and secret key to `docker-compose.override.yml`:
+
+```
+services:
+  houston:
+    environment:
+      RECAPTCHA_PUBLIC_KEY: "recaptcha-public-key"
+      RECAPTCHA_SECRET_KEY: "recaptcha-secret-key"
+```
+
+`docker-compose up -d` to update running services.
+
+Settings can also be set via `SiteSetting`, the keys are
+`recaptchaPublicKey` and `recaptchaSecretKey`.
+
 ## License
 
 This software is subject to the provisions of Apache License Version 2.0 (APL). See `LICENSE` for details. Copyright (c) 2020 Wild Me

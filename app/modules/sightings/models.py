@@ -481,7 +481,7 @@ class Sighting(db.Model, FeatherModel):
             'inProgress': False,
             'complete': True,  # just going to assume it ran
             'failed': False,
-            'error': None,
+            'message': None,
             'end': None,
             'numModels': 1,  # seems true for migration
             'jobs': None,
@@ -507,7 +507,7 @@ class Sighting(db.Model, FeatherModel):
             'inProgress': False,
             'complete': False,
             'failed': False,
-            'error': None,
+            'message': None,
             'end': None,
             'jobs': None,
             'numJobs': None,
@@ -566,7 +566,7 @@ class Sighting(db.Model, FeatherModel):
         # we reset failed here, as it looks like job started anyway?
         status['steps'] = 1
         status['stepsComplete'] = 1
-        status['error'] = None
+        status['message'] = None
         status['failed'] = False
         status['numJobs'] = len(self.jobs)
         status['numJobsActive'] = 0
@@ -614,7 +614,7 @@ class Sighting(db.Model, FeatherModel):
         status['steps'] += 1
         if status['jobs'][-1]['failed']:
             status['failed'] = True
-            status['error'] = status['jobs'][-1]['error']
+            status['message'] = status['jobs'][-1]['error']
         else:
             status['stepsComplete'] += 1
 

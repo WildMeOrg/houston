@@ -594,7 +594,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
             'inProgress': False,
             'complete': False,
             'failed': False,
-            'error': None,
+            'message': None,
             'end': None,
             'numModels': 0,
             'jobs': None,
@@ -634,7 +634,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
         status['inProgress'] = True
 
         if self.detection_attempts > MAX_DETECTION_ATTEMPTS:
-            status['error'] = f'could not start after {MAX_DETECTION_ATTEMPTS} attempts'
+            status['message'] = f'could not start after {MAX_DETECTION_ATTEMPTS} attempts'
             status['failed'] = True
             status['inProgress'] = False
             status['steps'] = 1
@@ -650,7 +650,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
         # we reset failed here, as it looks like job started anyway?
         status['steps'] = 1
         status['stepsComplete'] = 1
-        status['error'] = None
+        status['message'] = None
         status['failed'] = False
         status['numJobs'] = len(self.jobs)
         status['numJobsActive'] = 0
@@ -698,7 +698,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
         status['steps'] += 1
         if status['jobs'][-1]['failed']:
             status['failed'] = True
-            status['error'] = status['jobs'][-1]['error']
+            status['message'] = status['jobs'][-1]['error']
         else:
             status['stepsComplete'] += 1
 
@@ -718,7 +718,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
             'inProgress': False,
             'complete': False,
             'failed': False,
-            'error': None,
+            'message': None,
             'end': None,
             'jobs': None,
             'numJobs': None,

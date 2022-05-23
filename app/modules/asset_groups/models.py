@@ -570,7 +570,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
             or progress.status == ProgressStatus.healthy,
             'complete': progress.complete,
             'message': progress.message,
-            'steps': len(progress.steps),
+            'steps': len(progress.steps) if progress.steps else 0,
             'stepsComplete': 0,  # TBD
             # using previously established 0.0-1.0 but maybe FE will want to swtich to 0-100
             'progress': progress.percentage / 100,

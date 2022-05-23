@@ -80,7 +80,15 @@ def delete_site(pytestconfig):
                 db + ['dropdb', '-U', 'postgres', database],
                 db + ['createdb', '-O', database, '-U', 'postgres', database],
             )
-        commands += (['docker', 'volume', 'rm', 'houston_acm-var'],)
+        commands += (
+            [
+                'docker',
+                'volume',
+                'rm',
+                'houston_acm-cache-var',
+                'houston_acm-database-var',
+            ],
+        )
         commands += (['docker-compose', 'up', '-d'] + services,)
         for command in commands:
             print(f'Running {command}')

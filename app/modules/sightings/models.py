@@ -458,9 +458,12 @@ class Sighting(db.Model, FeatherModel):
         status = {
             'skipped': False,
             'start': None,
+            'end': None,
+            'message': None,
             'inProgress': False,
             'complete': True,
-            'end': None,
+            'eta': None,
+            'ahead': None,
             'steps': 1,
             'stepsComplete': 1,
             'progress': 1.0,
@@ -478,11 +481,13 @@ class Sighting(db.Model, FeatherModel):
         status = {
             'skipped': False,
             'start': None,
+            'end': None,
             'inProgress': False,
             'complete': True,  # just going to assume it ran
             'failed': False,
             'message': None,
-            'end': None,
+            'eta': None,
+            'ahead': None,
             'numModels': 1,  # seems true for migration
             'jobs': None,
             'numJobs': None,
@@ -504,11 +509,13 @@ class Sighting(db.Model, FeatherModel):
         status = {
             'skipped': False,
             'start': None,
+            'end': None,
             'inProgress': False,
             'complete': False,
             'failed': False,
             'message': None,
-            'end': None,
+            'eta': None,
+            'ahead': None,
             'jobs': None,
             'numJobs': None,
             'numJobsActive': None,

@@ -17,6 +17,9 @@ from datetime import datetime  # NOQA
 import logging as logging_native  # NOQA
 from .logging import Logging  # NOQA
 
+
+# from app.modules.individuals.models import Individual
+
 logging = Logging()
 log = logging_native.getLogger(__name__)  # pylint: disable=invalid-name
 
@@ -500,6 +503,7 @@ class FeatherModel(CommonHoustonModel):
     """
 
     def get_edm_data_with_enc_schema(self, encounter_schema):
+
         from app.utils import HoustonException
         from copy import deepcopy
 
@@ -524,6 +528,8 @@ class FeatherModel(CommonHoustonModel):
                 encounter['decimalLatitude'] = float(encounter['decimalLatitude'])
             encounter['guid'] = encounter.pop('id', None)
 
+        merged_edm_json_encounters = []
+
         if self.encounters is not None and edm_json['encounters'] is not None:
             guid_to_encounter = {e['guid']: e for e in edm_json['encounters']}
             if set(str(e.guid) for e in self.encounters) != set(guid_to_encounter):
@@ -535,7 +541,11 @@ class FeatherModel(CommonHoustonModel):
 
             for encounter in self.encounters:  # now we augment each encounter
                 found_edm = guid_to_encounter[str(encounter.guid)]
+                # below line might be operating on a copy, not the original object?
                 found_edm.update(encounter_schema.dump(encounter).data)
+                merged_edm_json_encounters.append(found_edm)
+
+        edm_json['encounters'] = merged_edm_json_encounters
 
         return edm_json
 

@@ -17,9 +17,6 @@ from datetime import datetime  # NOQA
 import logging as logging_native  # NOQA
 from .logging import Logging  # NOQA
 
-
-# from app.modules.individuals.models import Individual
-
 logging = Logging()
 log = logging_native.getLogger(__name__)  # pylint: disable=invalid-name
 
@@ -503,7 +500,6 @@ class FeatherModel(CommonHoustonModel):
     """
 
     def get_edm_data_with_enc_schema(self, encounter_schema):
-
         from app.utils import HoustonException
         from copy import deepcopy
 

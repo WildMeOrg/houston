@@ -121,7 +121,6 @@ class PatchIndividualDetailsParameters(PatchJSONParameters):
 
     @classmethod
     def add(cls, obj, field, value, state):
-
         # there are two forms for op=add path=/names:
         # 1. ADD NEW NAME:  value = {context: C, value: V, preferring_users: [user_guid...]}   (preferring_users is optional)
         # 2. ADD NEW PREFERRING USER (existing name):  value = {guid: name_guid, preferring_user: user_guid}
@@ -183,7 +182,6 @@ class PatchIndividualDetailsParameters(PatchJSONParameters):
     @classmethod
     def replace(cls, obj, field, value, state):
         ret_val = False
-
         if field == 'encounters':
             for encounter_guid in value:
                 from app.modules.encounters.models import Encounter
@@ -196,7 +194,6 @@ class PatchIndividualDetailsParameters(PatchJSONParameters):
 
         elif field == 'featuredAssetGuid' and util.is_valid_uuid_string(value):
             ret_val = obj.set_featured_asset_guid(UUID(value, version=4))
-
         elif field == 'names':
             from app.modules.names.models import Name
 

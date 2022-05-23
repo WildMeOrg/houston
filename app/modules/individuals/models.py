@@ -603,24 +603,32 @@ class Individual(db.Model, FeatherModel):
 
         if not notif_type:
             notif_type = NotificationType.individual_merge_request
-        owners = {}
+        # Use method to get real stakeholders (public isn't one)
+        stakeholders = cls.get_merge_request_stakeholders(individuals)
+
+        # Build up dict of which individuals each user is a stakeholder for
+        owner_individuals = {}
         for indiv in individuals:
             for enc in indiv.encounters:
-                # we only skip current_user when it is merge_request (merge_complete goes to all users)
-                if not enc.owner or (
-                    notif_type == NotificationType.individual_merge_request
-                    and enc.owner == current_user
-                ):
-                    continue
-                if enc.owner not in owners:
-                    owners[enc.owner] = {'individuals': list()}
-                owners[enc.owner]['individuals'].append(indiv)
-        log.debug(f'merge_notify() type={notif_type} created owners structure {owners}')
-        for owner in owners:
+                if enc.owner not in owner_individuals:
+                    owner_individuals[enc.owner] = []
+                owner_individuals[enc.owner].append(indiv)
+        log.debug(
+            f'merge_notify() type={notif_type} created owners structure {owner_individuals}'
+        )
+
+        for stakeholder in stakeholders:
+            # we only skip current_user when it is merge_request (merge_complete/block goes to all users)
+            if (
+                notif_type == NotificationType.individual_merge_request
+                and stakeholder == current_user
+            ):
+                continue
+
             Individual._merge_notify_user(
                 current_user,
-                owner,
-                owners[owner]['individuals'],
+                stakeholder,
+                owner_individuals[stakeholder],
                 individuals,
                 request_data,
                 notif_type,
@@ -848,8 +856,9 @@ class Individual(db.Model, FeatherModel):
         users = set()
         for indiv in individuals:
             for enc in indiv.encounters:
-                if enc.get_owner():
-                    users.add(enc.get_owner())
+                enc_owner = enc.get_owner()
+                if enc_owner and not enc_owner.is_internal:
+                    users.add(enc_owner)
         return users
 
     # likely will evolve to include other reasons to not be allowed to merge (changes since request etc)

@@ -223,7 +223,7 @@ def test_tus_corner_cases(flask_app, flask_app_client):
         },
     )
     assert response.status_code == 201
-    assert response.headers['Location'].startswith('http://localhost/api/v1/tus/')
+    assert response.headers['Location'].startswith('http://localhost:84/api/v1/tus/')
 
     path = urllib.parse.urlparse(response.headers['Location']).path
     filename = path.split('/')[-1]

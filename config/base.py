@@ -226,7 +226,7 @@ class EmailConfig(object):
             os.getenv('MAIL_DEFAULT_SENDER_NAME', 'Do Not Reply'),
             os.getenv(
                 'MAIL_DEFAULT_SENDER_EMAIL',
-                f'do-not-reply@{self.SERVER_NAME.replace("www.", "", 1)}',
+                f'do-not-reply@{self.SERVER_NAME.replace("www.", "", 1).split(":")[0]}',
             ),
         )
 

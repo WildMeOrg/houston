@@ -243,7 +243,7 @@ def test_linked_tweet_and_misc(researcher_1, flask_app_client, admin_user):
     media_obj = Dummy()
     media_obj.media_key = mkey
     media_obj.data = {
-        'url': 'http://localhost/houston/static/images/icon.png',
+        'url': 'http://localhost:84/houston/static/images/icon.png',
     }
     tweet.attachments = {
         'media_keys': [mkey],

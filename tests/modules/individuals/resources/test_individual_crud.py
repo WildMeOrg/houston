@@ -492,6 +492,9 @@ def test_edm_custom_field_patch(
     assert individual_json['customFields'] == custom_fields
 
 
+@pytest.mark.skipif(
+    module_unavailable('individuals'), reason='Individuals module disabled'
+)
 def test_patch_encounter(db, flask_app_client, researcher_1, request, test_root):
 
     from app.modules.individuals.models import Individual

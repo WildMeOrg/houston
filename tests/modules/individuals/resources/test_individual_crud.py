@@ -8,7 +8,6 @@ import datetime
 from tests.modules.individuals.resources import utils as individual_utils
 from tests.modules.annotations.resources import utils as annot_utils
 from tests.modules.sightings.resources import utils as sighting_utils
-from tests.modules.encounters.resources import utils as encounter_utils
 from tests.modules.site_settings.resources import utils as setting_utils
 
 from tests import utils
@@ -553,4 +552,3 @@ def test_patch_encounter(db, flask_app_client, researcher_1, request, test_root)
     temp_enc.delete()
     individual = Individual.query.get(individual_guid)
     individual.delete()
-

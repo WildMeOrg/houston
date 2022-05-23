@@ -8,6 +8,7 @@ import datetime
 from tests.modules.individuals.resources import utils as individual_utils
 from tests.modules.annotations.resources import utils as annot_utils
 from tests.modules.sightings.resources import utils as sighting_utils
+from tests.modules.encounters.resources import utils as encounter_utils
 from tests.modules.site_settings.resources import utils as setting_utils
 
 from tests import utils
@@ -493,6 +494,9 @@ def test_edm_custom_field_patch(
 
 
 def test_patch_encounter(db, flask_app_client, researcher_1, request, test_root):
+
+    from app.modules.individuals.models import Individual
+
     # this one just to init the individual
     temp_enc = utils.generate_encounter_instance(
         user_email='enc@user', user_password='encuser', user_full_name='enc user 1'
@@ -533,7 +537,6 @@ def test_patch_encounter(db, flask_app_client, researcher_1, request, test_root)
     individual_enc_guids = {enc['guid'] for enc in individual_json['encounters']}
     assert encounter_guid in individual_enc_guids
     # the encounters' individuals
-    # current test failure is following line; enc['indvidual'] is erroneously empty
     enc_individual_guids = {
         enc['individual']['id'] for enc in individual_json['encounters']
     }
@@ -545,3 +548,9 @@ def test_patch_encounter(db, flask_app_client, researcher_1, request, test_root)
 
     sighting_enc_ind_guid = sighting_json['encounters'][0]['individual']['guid']
     assert individual_guid == sighting_enc_ind_guid
+
+    # other objs are cleaned-up automatically
+    temp_enc.delete()
+    individual = Individual.query.get(individual_guid)
+    individual.delete()
+

@@ -121,6 +121,7 @@ class PatchIndividualDetailsParameters(PatchJSONParameters):
 
     @classmethod
     def add(cls, obj, field, value, state):
+
         # there are two forms for op=add path=/names:
         # 1. ADD NEW NAME:  value = {context: C, value: V, preferring_users: [user_guid...]}   (preferring_users is optional)
         # 2. ADD NEW PREFERRING USER (existing name):  value = {guid: name_guid, preferring_user: user_guid}
@@ -182,6 +183,7 @@ class PatchIndividualDetailsParameters(PatchJSONParameters):
     @classmethod
     def replace(cls, obj, field, value, state):
         ret_val = False
+
         if field == 'encounters':
             for encounter_guid in value:
                 from app.modules.encounters.models import Encounter
@@ -189,8 +191,14 @@ class PatchIndividualDetailsParameters(PatchJSONParameters):
                 encounter = Encounter.query.get(encounter_guid)
                 if encounter is not None and encounter not in obj.encounters:
                     obj.add_encounter(encounter)
+                    encounter.individual = obj  # This didn't help
+                    encounter.individual_guid = obj.guid # This helped with assert below but not ultimate error
                     assert encounter in obj.get_encounters()
+                    assert obj == encounter.individual  # these passed but still doesn't show later
+                    assert obj.guid == encounter.individual.guid
+                    assert obj.guid == encounter.individual_guid
                     ret_val = True
+
         elif field == 'featuredAssetGuid' and util.is_valid_uuid_string(value):
             ret_val = obj.set_featured_asset_guid(UUID(value, version=4))
 

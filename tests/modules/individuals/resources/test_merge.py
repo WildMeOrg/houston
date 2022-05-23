@@ -529,3 +529,91 @@ def test_decline_voting(
     assert merge_blocked_notif.get('is_resolved')
 
     IndividualMergeRequestVote.query.delete()
+
+
+# similar to the public test above except that once the merged individual (two encounters, one public,
+# one owned by researcher 1) is created, it is them merged with an individual with encounter owned by researcher 2
+# This should result in a voting req to researcher 1 but not public
+@pytest.mark.skipif(
+    test_utils.module_unavailable('individuals', 'encounters', 'sightings'),
+    reason='Individuals module disabled',
+)
+def test_merge_public_individual_no_vote(
+    db,
+    flask_app_client,
+    researcher_1,
+    researcher_2,
+    staff_user,
+    request,
+    test_root,
+):
+    import tests.modules.asset_groups.resources.utils as group_utils
+
+    individual1_uuids = individual_utils.create_individual_and_sighting(
+        flask_app_client,
+        researcher_1,
+        request,
+        test_root,
+    )
+    # Second one owned by public
+    individual2_uuids = individual_utils.create_individual_and_sighting(
+        flask_app_client, None, request, test_root, researcher_user=researcher_2
+    )
+
+    individual1_id = individual1_uuids['individual']
+    individual2_id = individual2_uuids['individual']
+    asset_group2_uuid = individual2_uuids['asset_group']
+    request.addfinalizer(
+        lambda: group_utils.delete_asset_group(
+            flask_app_client, staff_user, asset_group2_uuid
+        )
+    )
+    # this tests as researcher_1, which should just do it
+    data_in = [individual2_id]
+    individual_utils.merge_individuals(
+        flask_app_client,
+        researcher_1,
+        individual1_id,
+        data_in,
+    )
+
+    individual3_uuids = individual_utils.create_individual_and_sighting(
+        flask_app_client,
+        researcher_2,
+        request,
+        test_root,
+    )
+    individual3_id = individual3_uuids['individual']
+
+    # this tests as researcher_2, which should trigger a merge-request (owns just 1 encounter)
+    # Alternative logic to test above. This one is keeping the sender stakeholder individual, not the recipient
+    data_in = [individual1_id]
+    response = individual_utils.merge_individuals(
+        flask_app_client,
+        researcher_2,
+        individual3_id,
+        data_in,
+        expected_fields={
+            'merge_request',
+            'request_id',
+            'deadline',
+            'blocking_encounters',
+        },
+    )
+
+    from app.modules.individuals.models import Individual, IndividualMergeRequestVote
+
+    assert response['merge_request']
+    assert response['blocking_encounters'] == [individual1_uuids['encounters'][0]]
+    request_id = response.get('request_id')
+    assert request_id
+    individual1 = Individual.query.get(individual1_id)
+    stakeholders = Individual.get_merge_request_stakeholders([individual1])
+    assert len(stakeholders) == 1
+    assert researcher_1 in stakeholders
+
+    # we should have a valid merge request now to test against
+    #   also should have 1 auto-vote by researcher_2
+    voters = IndividualMergeRequestVote.get_voters(request_id)
+    assert len(voters) == 1
+    assert voters[0] == researcher_2

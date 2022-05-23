@@ -23,6 +23,38 @@ docker-compose rm -f --stop houston
 docker-compose up -d houston
 ```
 
+## Running development server on port 80
+
+Instead of using `http://localhost:84/`, you can configure the server to use
+port 80 in `docker-compose.override.yml`:
+
+```yaml
+services:
+  houston:
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://0.0.0.0:5000/api/v1/site-settings/heartbeat", "-H", "Host: localhost" ]
+    environment:
+      SERVER_NAME: "localhost"
+
+  celery-worker:
+    environment:
+      SERVER_NAME: "localhost"
+
+  celery-worker2:
+    environment:
+      SERVER_NAME: "localhost"
+
+  celery-worker3:
+    environment:
+      SERVER_NAME: "localhost"
+
+  localhost:
+    ports:
+      - "80:80"
+```
+
+Then do `docker-compose up -d` to update services.
+
 ## Module Structure
 
 Once you added a module name into `config.ENABLED_MODULES`, it is required to

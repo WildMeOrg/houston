@@ -458,7 +458,7 @@ class UserSocialCallback(Resource):
         if not ck or not cs:
             raise ValueError('twitter consumer key/secret not set')
         try:
-            # auth = tweepy.OAuth1UserHandler(ck, cs, callback='http://localhost/api/v1/users/social_callback/twitter')
+            # auth = tweepy.OAuth1UserHandler(ck, cs, callback=url_for('api.users_user_social_callback', service='twitter', _external=True))
             auth = tweepy.OAuth1UserHandler(ck, cs)
             auth.request_token = session['twitter_request_token']
             # oauth_token, oauth_verifier via url args
@@ -503,7 +503,11 @@ class UserSocialAuthRedirect(Resource):
         if not ck or not cs:
             abort(400, 'twitter consumer key/secret not set')
         auth = tweepy.OAuth1UserHandler(
-            ck, cs, callback='http://localhost/api/v1/users/social_callback/twitter'
+            ck,
+            cs,
+            callback=url_for(
+                'api.users_user_social_callback', service='twitter', _external=True
+            ),
         )
         # need this for callback
         url = auth.get_authorization_url(signin_with_twitter=True)

@@ -238,6 +238,7 @@ def flask_app(gitlab_remote_login_pat, disable_elasticsearch):
         config_override['DEFAULT_EMAIL_SERVICE_USERNAME'] = None
         config_override['DEFAULT_EMAIL_SERVICE_PASSWORD'] = None
         config_override['RECAPTCHA_PUBLIC_KEY'] = None
+        config_override['SERVER_NAME'] = 'localhost:84'
 
         app = create_app(config_override=config_override)
         from app.extensions import db

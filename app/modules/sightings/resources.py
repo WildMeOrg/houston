@@ -434,6 +434,23 @@ class SightingElasticsearch(Resource):
         return Sighting.elasticsearch(search, **args)
 
 
+@api.route('/remove_all_empty')
+@api.login_required(oauth_scopes=['sightings:write'])
+class SightingRemoveEmpty(Resource):
+    @api.permission_required(
+        permissions.ModuleAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'module': Sighting,
+            'action': AccessOperation.DELETE,
+        },
+    )
+    def post(self):
+        try:
+            Sighting.remove_all_empty()
+        except HoustonException as ex:
+            abort(400, ex.message)
+
+
 @api.route('/<uuid:sighting_guid>')
 @api.response(
     code=HTTPStatus.NOT_FOUND,

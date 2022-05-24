@@ -258,6 +258,20 @@ class IndividualElasticsearch(Resource):
         return Individual.elasticsearch(search, **args)
 
 
+@api.route('/remove_all_empty')
+@api.login_required(oauth_scopes=['individuals:write'])
+class SightingRemoveEmpty(Resource):
+    @api.permission_required(
+        permissions.ModuleAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'module': Individual,
+            'action': AccessOperation.DELETE,
+        },
+    )
+    def post(self):
+        return Individual.remove_all_empty()
+
+
 @api.route('/<uuid:individual_guid>')
 @api.response(
     code=HTTPStatus.NOT_FOUND,

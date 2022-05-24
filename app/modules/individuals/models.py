@@ -163,6 +163,12 @@ class Individual(db.Model, FeatherModel):
 
         return result
 
+    @classmethod
+    def remove_all_empty(cls):
+        # Individual without encounters are an error that should never really happen
+        for indiv in Individual.query.filter(~Individual.encounters.any()).all():
+            indiv.delete_from_edm_and_houston()
+
     def get_sex(self):
         return self.get_edm_data_field('sex')
 

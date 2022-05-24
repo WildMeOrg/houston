@@ -29,6 +29,7 @@ MODULE_USER_MAP = {
     ('Encounter', AccessOperation.WRITE): ['is_active'],  # TODO is this still correct
     ('Sighting', AccessOperation.READ): ['is_researcher'],
     ('Sighting', AccessOperation.WRITE): ['is_active'],
+    ('Sighting', AccessOperation.DELETE): ['is_data_manager', 'is_admin'],
     ('Mission', AccessOperation.READ): ['is_data_manager', 'is_admin'],
     ('Mission', AccessOperation.WRITE): ['is_data_manager'],
     ('MissionCollection', AccessOperation.READ): ['is_data_manager', 'is_admin'],
@@ -37,6 +38,7 @@ MODULE_USER_MAP = {
     ('MissionTask', AccessOperation.WRITE): ['is_data_manager'],
     ('Individual', AccessOperation.READ): ['is_researcher'],
     ('Individual', AccessOperation.WRITE): ['is_researcher'],
+    ('Individual', AccessOperation.DELETE): ['is_data_manager', 'is_admin'],
     ('Annotation', AccessOperation.READ): ['is_researcher'],
     ('Annotation', AccessOperation.WRITE): ['is_researcher'],
     ('User', AccessOperation.READ): ['is_user_manager'],

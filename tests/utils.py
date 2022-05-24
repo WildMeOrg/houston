@@ -253,20 +253,20 @@ def validate_dict_response(response, expected_code, expected_fields):
     # after some discussion, dropping the check of response.content_type
     # turns out response.json is very forgiving and tries to parse response.data
     # even when response.is_json == False ... so this allows for sloppy headers but valid json getting thru
-    assert isinstance(response.json, dict)
+    assert isinstance(response.json, dict), response.json
     assert set(response.json.keys()) >= expected_fields, set(response.json.keys())
 
 
 def validate_list_response(response, expected_code):
     assert response.status_code == expected_code
     assert response.content_type == 'application/json'
-    assert isinstance(response.json, list)
+    assert isinstance(response.json, list), response.json
 
 
 def validate_list_of_dictionaries_response(response, expected_code, expected_fields):
     validate_list_response(response, expected_code)
     for item in response.json:
-        assert isinstance(item, dict)
+        assert isinstance(item, dict), item
         assert set(item.keys()) >= expected_fields, set(item.keys())
 
 

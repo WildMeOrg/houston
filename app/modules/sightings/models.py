@@ -173,6 +173,12 @@ class Sighting(db.Model, FeatherModel):
 
         return result
 
+    @classmethod
+    def remove_all_empty(cls):
+        # Sightings without encounters are an error that should never really happen
+        for sighting in Sighting.query.filter(~Sighting.encounters.any()).all():
+            sighting.delete_from_edm_and_houston()
+
     def get_owners(self):
         owners = []
         for encounter in self.get_encounters():

@@ -269,7 +269,10 @@ class IndividualRemoveEmpty(Resource):
         },
     )
     def post(self):
-        return Individual.remove_all_empty()
+        try:
+            Individual.remove_all_empty()
+        except HoustonException as ex:
+            abort(400, ex.message)
 
 
 @api.route('/<uuid:individual_guid>')

@@ -445,7 +445,10 @@ class SightingRemoveEmpty(Resource):
         },
     )
     def post(self):
-        return Sighting.remove_all_empty()
+        try:
+            Sighting.remove_all_empty()
+        except HoustonException as ex:
+            abort(400, ex.message)
 
 
 @api.route('/<uuid:sighting_guid>')

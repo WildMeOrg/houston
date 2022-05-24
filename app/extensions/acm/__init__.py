@@ -53,6 +53,8 @@ class ACMManager(RestManager):
     # pylint: disable=abstract-method
     """"""
     NAME = 'ACM'
+    USE_JSON_HEADERS = False
+
     ENDPOINT_PREFIX = 'api'
     # We use // as a shorthand for prefix
     # fmt: off

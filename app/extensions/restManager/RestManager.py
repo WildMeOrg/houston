@@ -80,6 +80,7 @@ class RestManager(RestManagerUserMixin):
     ENDPOINT_PREFIX = None
     ENDPOINTS = None
     NAME = None
+    USE_JSON_HEADERS = True
 
     def __init__(self, pre_initialize=False, *args, **kwargs):
         super(RestManager, self).__init__(*args, **kwargs)
@@ -397,7 +398,9 @@ class RestManager(RestManagerUserMixin):
                         'application/javascript'
                     ) or header_value.lower().startswith('application/json'):
                         is_json = True
-        passthrough_kwargs['headers'] = headers
+
+        if self.USE_JSON_HEADERS:
+            passthrough_kwargs['headers'] = headers
 
         if is_json:
             data_ = passthrough_kwargs.pop('data', None)

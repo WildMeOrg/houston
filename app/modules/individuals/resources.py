@@ -260,7 +260,7 @@ class IndividualElasticsearch(Resource):
 
 @api.route('/remove_all_empty')
 @api.login_required(oauth_scopes=['individuals:write'])
-class SightingRemoveEmpty(Resource):
+class IndividualRemoveEmpty(Resource):
     @api.permission_required(
         permissions.ModuleAccessPermission,
         kwargs_on_request=lambda kwargs: {

@@ -114,7 +114,7 @@ def test_asset_group_sightings_jobs(flask_app, db, admin_user, test_root, reques
         db.session.merge(ags1)
     ps = ags1.get_pipeline_status()
     assert ps['detection']['failed']
-    assert 'could not start' in ps['detection']['error']
+    assert 'could not start' in ps['detection']['message']
     assert ps['detection']['numJobs'] == 0
     assert ps['detection']['numJobsActive'] == 0
     assert ps['detection']['numJobsFailed'] == 0

@@ -458,9 +458,13 @@ class Sighting(db.Model, FeatherModel):
         status = {
             'skipped': False,
             'start': None,
+            'end': None,
+            'message': None,
             'inProgress': False,
             'complete': True,
-            'end': None,
+            'failed': False,
+            'eta': None,
+            'ahead': None,
             'steps': 1,
             'stepsComplete': 1,
             'progress': 1.0,
@@ -478,11 +482,13 @@ class Sighting(db.Model, FeatherModel):
         status = {
             'skipped': False,
             'start': None,
+            'end': None,
             'inProgress': False,
             'complete': True,  # just going to assume it ran
             'failed': False,
-            'error': None,
-            'end': None,
+            'message': None,
+            'eta': None,
+            'ahead': None,
             'numModels': 1,  # seems true for migration
             'jobs': None,
             'numJobs': None,
@@ -504,11 +510,13 @@ class Sighting(db.Model, FeatherModel):
         status = {
             'skipped': False,
             'start': None,
+            'end': None,
             'inProgress': False,
             'complete': False,
             'failed': False,
-            'error': None,
-            'end': None,
+            'message': None,
+            'eta': None,
+            'ahead': None,
             'jobs': None,
             'numJobs': None,
             'numJobsActive': None,
@@ -566,7 +574,7 @@ class Sighting(db.Model, FeatherModel):
         # we reset failed here, as it looks like job started anyway?
         status['steps'] = 1
         status['stepsComplete'] = 1
-        status['error'] = None
+        status['message'] = None
         status['failed'] = False
         status['numJobs'] = len(self.jobs)
         status['numJobsActive'] = 0
@@ -614,7 +622,7 @@ class Sighting(db.Model, FeatherModel):
         status['steps'] += 1
         if status['jobs'][-1]['failed']:
             status['failed'] = True
-            status['error'] = status['jobs'][-1]['error']
+            status['message'] = status['jobs'][-1]['error']
         else:
             status['stepsComplete'] += 1
 

@@ -541,19 +541,51 @@ class AssetGroupSighting(db.Model, HoustonModel):
             status['summary']['progress'] = steps_complete_total / steps_total
         return status
 
-    # TODO just a placeholder now
     def _get_pipeline_status_preparation(self):
+        from app.modules.progress.models import ProgressStatus
+
+        progress = self.progress_preparation
+        # no progress object, do the best we can?
+        if not progress:
+            return {
+                'skipped': None,
+                'inProgress': False,
+                'complete': True,
+                'failed': False,
+                'message': 'missing Progress',
+                'steps': 0,
+                'stepsComplete': 0,
+                'progress': 1,
+                'start': None,
+                'end': None,
+                'eta': None,
+                'ahead': None,
+                'status': None,
+                'description': None,
+            }
+
         status = {
-            'skipped': False,
-            'start': None,
-            'inProgress': False,
-            'complete': True,  # only while placeholder
+            'skipped': progress.skipped,
+            # should inProgress be dropped now?   TODO: discuss with FE team
+            'inProgress': progress.status == ProgressStatus.created
+            or progress.status == ProgressStatus.healthy,
+            'complete': progress.complete,
+            'failed': progress.status == ProgressStatus.failed,
+            'message': progress.message,
+            'steps': len(progress.steps) if progress.steps else 0,
+            'stepsComplete': 0,  # TBD
+            # using previously established 0.0-1.0 but maybe FE will want to swtich to 0-100
+            'progress': progress.percentage / 100,
+            'start': progress.created.isoformat() + 'Z',
             'end': None,
-            'steps': 0,
-            'stepsComplete': 0,
-            'progress': None,
-            '_note': 'preparation NOT YET IMPLEMENTED / placeholder only',
+            # the following are new, thanks to Progress class
+            'eta': progress.current_eta,
+            'ahead': progress.ahead,
+            'status': progress.status,
+            'description': progress.description,
         }
+        if progress.complete:
+            status['end'] = progress.updated.isoformat() + 'Z'
         return status
 
     # currently only gives most recent job
@@ -561,11 +593,13 @@ class AssetGroupSighting(db.Model, HoustonModel):
         status = {
             'skipped': False,
             'start': None,
+            'end': None,
             'inProgress': False,
             'complete': False,
             'failed': False,
-            'error': None,
-            'end': None,
+            'message': None,
+            'eta': None,
+            'ahead': None,
             'numModels': 0,
             'jobs': None,
             'numJobs': None,
@@ -604,7 +638,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
         status['inProgress'] = True
 
         if self.detection_attempts > MAX_DETECTION_ATTEMPTS:
-            status['error'] = f'could not start after {MAX_DETECTION_ATTEMPTS} attempts'
+            status['message'] = f'could not start after {MAX_DETECTION_ATTEMPTS} attempts'
             status['failed'] = True
             status['inProgress'] = False
             status['steps'] = 1
@@ -620,7 +654,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
         # we reset failed here, as it looks like job started anyway?
         status['steps'] = 1
         status['stepsComplete'] = 1
-        status['error'] = None
+        status['message'] = None
         status['failed'] = False
         status['numJobs'] = len(self.jobs)
         status['numJobsActive'] = 0
@@ -668,7 +702,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
         status['steps'] += 1
         if status['jobs'][-1]['failed']:
             status['failed'] = True
-            status['error'] = status['jobs'][-1]['error']
+            status['message'] = status['jobs'][-1]['error']
         else:
             status['stepsComplete'] += 1
 
@@ -685,11 +719,13 @@ class AssetGroupSighting(db.Model, HoustonModel):
         status = {
             'skipped': False,
             'start': None,
+            'end': None,
             'inProgress': False,
             'complete': False,
             'failed': False,
-            'error': None,
-            'end': None,
+            'message': None,
+            'eta': None,
+            'ahead': None,
             'jobs': None,
             'numJobs': None,
             'numJobsActive': None,

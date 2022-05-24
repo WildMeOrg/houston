@@ -551,6 +551,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
                 'skipped': None,
                 'inProgress': False,
                 'complete': True,
+                'failed': False,
                 'message': 'missing Progress',
                 'steps': 0,
                 'stepsComplete': 0,
@@ -569,6 +570,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
             'inProgress': progress.status == ProgressStatus.created
             or progress.status == ProgressStatus.healthy,
             'complete': progress.complete,
+            'failed': progress.status == ProgressStatus.failed,
             'message': progress.message,
             'steps': len(progress.steps) if progress.steps else 0,
             'stepsComplete': 0,  # TBD

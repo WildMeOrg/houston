@@ -462,6 +462,7 @@ class Sighting(db.Model, FeatherModel):
             'message': None,
             'inProgress': False,
             'complete': True,
+            'failed': False,
             'eta': None,
             'ahead': None,
             'steps': 1,

@@ -585,7 +585,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
             'description': progress.description,
         }
         if progress.complete:
-            status['end'] = (progress.updated.isoformat() + 'Z',)
+            status['end'] = progress.updated.isoformat() + 'Z'
         return status
 
     # currently only gives most recent job

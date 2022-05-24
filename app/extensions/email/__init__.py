@@ -328,11 +328,18 @@ class Email(Message):
             log.debug(
                 f'Attempting to send email from {self.sender} to {self.recipients}: {self.subject} [{self._transaction_id}]'
             )
-            mail.send(self)
-            response = {
-                'status': self.status,
-                'success': True,
-            }
+            try:
+                mail.send(self)
+                response = {
+                    'status': self.status,
+                    'success': True,
+                }
+            except Exception:
+                response = {
+                    'status': 'failed to send email',
+                    'success': False,
+                }
+
         else:
             log.debug(
                 f'Codex not configured for email; failed to send to {self.recipients}: {self.subject}'

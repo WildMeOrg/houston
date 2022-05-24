@@ -193,7 +193,6 @@ class PatchIndividualDetailsParameters(PatchJSONParameters):
                     ret_val = True
         elif field == 'featuredAssetGuid' and util.is_valid_uuid_string(value):
             ret_val = obj.set_featured_asset_guid(UUID(value, version=4))
-
         elif field == 'names':
             from app.modules.names.models import Name
 

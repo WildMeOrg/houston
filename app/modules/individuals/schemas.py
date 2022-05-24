@@ -56,6 +56,22 @@ class NamedIndividualSchema(BaseIndividualSchema):
         fields = BaseIndividualSchema.Meta.fields + ('names',)
 
 
+class BasicNamedIndividualSchema(ModelSchema):
+    """
+    Detailed Individual schema exposes all useful fields.
+    """
+
+    names = base_fields.Function(Individual.get_name_values)
+    id = base_fields.Function(lambda ind : ind.guid)
+
+    class Meta():
+        model = Individual
+        fields = (
+            'id',
+            'names',
+        )
+
+
 class IndividualRelationshipSchema(DetailedRelationshipSchema):
     """
     Relationship schema used in the individual API

@@ -490,3 +490,68 @@ def test_edm_custom_field_patch(
     ).json
 
     assert individual_json['customFields'] == custom_fields
+
+
+@pytest.mark.skipif(
+    module_unavailable('individuals'), reason='Individuals module disabled'
+)
+def test_patch_encounter(db, flask_app_client, researcher_1, request, test_root):
+
+    from app.modules.individuals.models import Individual
+
+    # this one just to init the individual
+    temp_enc = utils.generate_encounter_instance(
+        user_email='enc@user', user_password='encuser', user_full_name='enc user 1'
+    )
+    temp_enc.owner = researcher_1
+    encounter_json = {'encounters': [{'id': str(temp_enc.guid)}]}
+    ind_create_resp = individual_utils.create_individual(
+        flask_app_client, researcher_1, expected_status_code=200, data_in=encounter_json
+    )
+    individual_guid = ind_create_resp.json['guid']
+
+    sighting_data_in = {
+        'time': datetime.datetime.now().isoformat() + '+00:00',
+        'timeSpecificity': 'time',
+        'locationId': 'test',
+        'encounters': [{}],
+    }
+    uuids = sighting_utils.create_sighting(
+        flask_app_client, researcher_1, request, test_root, sighting_data_in
+    )
+    encounter_guid = uuids['encounters'][0]
+    sighting_guid = uuids['sighting']
+
+    add_enc_opp = [utils.patch_add_op('encounters', [encounter_guid])]
+    individual_utils.patch_individual(
+        flask_app_client,
+        researcher_1,
+        '%s' % individual_guid,
+        patch_data=add_enc_opp,
+        headers=None,
+        expected_status_code=200,
+    )
+
+    individual_json = individual_utils.read_individual(
+        flask_app_client, researcher_1, individual_guid
+    ).json
+    # the individual's encounters (includes temp_enc and the patched enc)
+    individual_enc_guids = {enc['guid'] for enc in individual_json['encounters']}
+    assert encounter_guid in individual_enc_guids
+    # the encounters' individuals
+    enc_individual_guids = {
+        enc['individual']['id'] for enc in individual_json['encounters']
+    }
+    assert all([ind_guid == individual_guid for ind_guid in enc_individual_guids])
+
+    sighting_json = sighting_utils.read_sighting(
+        flask_app_client, researcher_1, sighting_guid
+    ).json
+
+    sighting_enc_ind_guid = sighting_json['encounters'][0]['individual']['guid']
+    assert individual_guid == sighting_enc_ind_guid
+
+    # other objs are cleaned-up automatically
+    temp_enc.delete()
+    individual = Individual.query.get(individual_guid)
+    individual.delete()

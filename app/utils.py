@@ -120,6 +120,20 @@ def normalized_timezone_string(dt):
     return dt.strftime('UTC%z')
 
 
+# converts string like 'Wed, 25 May 2022 00:16:42 GMT' which is what datetime is stringified as
+def datetime_string_to_isoformat(dts):
+    from datetime import datetime
+
+    if not isinstance(dts, str):
+        return None
+    try:
+        d = datetime.strptime(dts, '%a, %d %b %Y %H:%M:%S %Z')
+    except ValueError as err:
+        log.warning(f'could not convert {dts}: {str(err)}')
+        return None
+    return d.isoformat() + 'Z'
+
+
 # As some filenames are problematic, may contain special chars ";&/." etc store all filenames as a hash of the
 # original filename but maintain the extension
 def get_stored_filename(input_filename):

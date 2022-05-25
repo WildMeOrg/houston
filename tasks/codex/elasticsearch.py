@@ -4,7 +4,7 @@ Application Users management related tasks for Invoke.
 """
 
 from tasks.utils import app_context_task
-from datetime import datetime, timedelta
+import datetime
 
 
 @app_context_task(
@@ -23,7 +23,7 @@ def catchup_index(context, before, batch_size=100, batch_pause=3):
     # from app.modules.individuals.tasks import execute_merge_request
     # async_res = execute_merge_request.apply_async(args, eta=deadline)
     conf = {
-        'before': datetime.fromisoformat(before).strftime('%Y-%m-%d %H:%M:%S'),
+        'before': datetime.datetime.fromisoformat(before).strftime('%Y-%m-%d %H:%M:%S'),
         'batch_size': int(batch_size),
         'batch_pause': int(batch_pause),
     }
@@ -58,7 +58,7 @@ def _kickoff():
     from app.modules.elasticsearch.tasks import catchup_index_start
 
     start_pause = 10
-    start_time = datetime.utcnow() + timedelta(seconds=start_pause)
+    start_time = datetime.datetime.utcnow() + datetime.timedelta(seconds=start_pause)
     async_res = catchup_index_start.apply_async(eta=start_time)
     print(
         f'Starting background catchup-indexing in {start_pause} seconds  [{async_res}].'

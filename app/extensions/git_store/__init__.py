@@ -156,6 +156,24 @@ class GitStore(db.Model, HoustonModel):
         foreign_keys='GitStore.progress_preparation_guid',
     )
 
+    progress_detection_guid = db.Column(
+        db.GUID, db.ForeignKey('progress.guid'), index=False, nullable=True
+    )
+
+    progress_detection = db.relationship(
+        'Progress',
+        foreign_keys='GitStore.progress_detection_guid',
+    )
+
+    progress_identification_guid = db.Column(
+        db.GUID, db.ForeignKey('progress.guid'), index=False, nullable=True
+    )
+
+    progress_identification = db.relationship(
+        'Progress',
+        foreign_keys='GitStore.progress_identification_guid',
+    )
+
     __mapper_args__ = {
         'confirm_deleted_rows': False,
         'polymorphic_identity': 'gitstore',
@@ -367,7 +385,7 @@ class GitStore(db.Model, HoustonModel):
         input_filenames=[],
         **kwargs,
     ):
-        if self.progress_preparation:
+        if self.progress_preparation and update:
             self.progress_preparation.config()
 
         # Step 1
@@ -378,7 +396,7 @@ class GitStore(db.Model, HoustonModel):
 
         self.init_metadata()
 
-        if self.progress_preparation:
+        if self.progress_preparation and update:
             self.progress_preparation.set(1)
 
         # Step 2
@@ -388,7 +406,7 @@ class GitStore(db.Model, HoustonModel):
         if realize:
             self.realize_local_store()
 
-        if self.progress_preparation:
+        if self.progress_preparation and update:
             self.progress_preparation.set(1)
 
         # Step 3
@@ -398,7 +416,7 @@ class GitStore(db.Model, HoustonModel):
         if update:
             self.update_asset_symlinks(input_filenames=input_filenames, **kwargs)
 
-        if self.progress_preparation:
+        if self.progress_preparation and update:
             self.progress_preparation.set(90)
 
         # Step 4
@@ -418,7 +436,7 @@ class GitStore(db.Model, HoustonModel):
 
             self.update_metadata_from_commit(new_commit)
 
-        if self.progress_preparation:
+        if self.progress_preparation and update:
             self.progress_preparation.set(99)
 
         # Step 5
@@ -426,19 +444,19 @@ class GitStore(db.Model, HoustonModel):
         #   Delay: nearly instant, < 1.0 seconds
         #   Percentage: 1% (99% -> 100%)
         if update:
+            # Update the underlying AGS metadata
             self.update_metadata_from_hook()
 
-            # Update the git store's preparation status
+            # Tell any dependent objects to continue their standard workflow
             # We need the progress to be set to at least 99% at this point
-            if self.progress_preparation:
-                self.post_preparation_hook()
+            self.post_preparation_hook()
 
-        if self.progress_preparation:
+        if self.progress_preparation and update:
             self.progress_preparation.set(100)
 
     def post_preparation_hook(self):
         # Currently no hook
-        raise NotImplementedError()
+        pass
 
     def git_commit_delay(self, input_filenames):
         # Start the git_commit that will process the assets (update=True) and commit the new files to the Git repo (commit=True)
@@ -470,13 +488,13 @@ class GitStore(db.Model, HoustonModel):
                 update=True,
                 commit=None,  # Use server default
             )
-        except Exception:
+        except Exception as ex:
             if self.progress_preparation:
-                self.progress_preparation.fail()
+                self.progress_preparation.fail(str(ex))
             raise
 
         if self.progress_preparation:
-            assert self.progress_preparation.complete
+            assert not self.progress_preparation.active
 
         with es.session.begin(blocking=True, forced=True):
             self.index()
@@ -568,6 +586,58 @@ class GitStore(db.Model, HoustonModel):
 
         return git_store
 
+    def init_progress_identification(self, overwrite=False):
+        from app.modules.progress.models import Progress
+
+        if self.progress_identification is not None:
+            if not overwrite:
+                log.warning(
+                    'Git Store %r already has a progress identification %r'
+                    % (
+                        self,
+                        self.progress_identification,
+                    )
+                )
+                return
+
+        progress = Progress(
+            description='identification tracking for GitStore %r' % (self.guid,)
+        )
+        with db.session.begin():
+            db.session.add(progress)
+
+        with db.session.begin():
+            self.progress_identification_guid = progress.guid
+            db.session.merge(self)
+
+        db.session.refresh(self)
+
+    def init_progress_detection(self, overwrite=False):
+        from app.modules.progress.models import Progress
+
+        if self.progress_detection is not None:
+            if not overwrite:
+                log.warning(
+                    'Git Store %r already has a progress detection %r'
+                    % (
+                        self,
+                        self.progress_detection,
+                    )
+                )
+                return
+
+        progress = Progress(
+            description='Detection tracking for GitStore %r' % (self.guid,)
+        )
+        with db.session.begin():
+            db.session.add(progress)
+
+        with db.session.begin():
+            self.progress_detection_guid = progress.guid
+            db.session.merge(self)
+
+        db.session.refresh(self)
+
     def init_progress_preparation(self, overwrite=False):
         from app.modules.progress.models import Progress
 
@@ -628,6 +698,9 @@ class GitStore(db.Model, HoustonModel):
 
         log.debug('created %r' % git_store)
 
+        git_store.init_progress_preparation()
+        git_store.init_progress_detection()
+
         if metadata.tus_transaction_id:
             try:
                 added, original_filenames = git_store.import_tus_files(
@@ -644,12 +717,6 @@ class GitStore(db.Model, HoustonModel):
             log.debug('imported %r' % added)
         else:
             original_filenames = []
-
-        git_store.init_progress_preparation()
-
-        if foreground:
-            git_store.progress_preparation.skip('Completed in the foreground')
-            git_store.post_preparation_hook()
 
         return git_store, original_filenames
 
@@ -686,6 +753,10 @@ class GitStore(db.Model, HoustonModel):
         db.session.refresh(git_store)
 
         log.info('created %r' % git_store)
+
+        git_store.init_progress_preparation()
+        git_store.init_progress_detection()
+
         added = None
         try:
             added, original_filenames = git_store.import_tus_files(
@@ -698,12 +769,6 @@ class GitStore(db.Model, HoustonModel):
             )
             git_store.delete()
             raise
-
-        git_store.init_progress_preparation()
-
-        if foreground:
-            git_store.progress_preparation.skip('Completed in the foreground')
-            git_store.post_preparation_hook()
 
         log.info('imported %r' % added)
         return git_store, original_filenames
@@ -1071,9 +1136,9 @@ class GitStore(db.Model, HoustonModel):
 
             if self.progress_preparation:
                 self.progress_preparation.set(89)
-        except Exception:
+        except Exception as ex:
             if self.progress_preparation:
-                self.progress_preparation.fail()
+                self.progress_preparation.fail(str(ex))
             raise
         finally:
             if not self.exists:

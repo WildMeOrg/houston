@@ -46,6 +46,8 @@ class Progress(db.Model, Timestamp):
 
     celery_guid = db.Column(db.GUID, default=None)
 
+    sage_guid = db.Column(db.GUID, default=None)
+
     message = db.Column(db.String, nullable=True)
 
     status = db.Column(
@@ -65,6 +67,7 @@ class Progress(db.Model, Timestamp):
             cascade='all',
             remote_side=guid,
         ),
+        remote_side=parent_guid,
     )
 
     __mapper_args__ = {
@@ -108,6 +111,14 @@ class Progress(db.Model, Timestamp):
             return round(self.pgeta.eta_seconds, 1)
 
     @property
+    def idle(self):
+        return self.status in [ProgressStatus.created]
+
+    @property
+    def skipped(self):
+        return self.status in [ProgressStatus.skipped]
+
+    @property
     def complete(self):
         return (
             self.status in [ProgressStatus.healthy, ProgressStatus.completed]
@@ -115,8 +126,16 @@ class Progress(db.Model, Timestamp):
         )
 
     @property
-    def skipped(self):
-        return self.status in [ProgressStatus.skipped]
+    def failed(self):
+        return self.status in [ProgressStatus.failed]
+
+    @property
+    def active(self):
+        return self.status in [ProgressStatus.created, ProgressStatus.healthy]
+
+    @property
+    def inactive(self):
+        return not self.active
 
     @property
     def ahead(self):
@@ -127,35 +146,54 @@ class Progress(db.Model, Timestamp):
 
         from flask import current_app
 
-        if self.celery_guid is None:
+        if self.celery_guid is None and self.sage_guid is None:
             return None
 
-        if BROKER is None:
-            BROKER = redis.Redis(
-                host=current_app.config['REDIS_HOST'],
-                port=current_app.config['REDIS_PORT'],
-                db=current_app.config['REDIS_DATABASE'],
-                password=current_app.config['REDIS_PASSWORD'],
+        if self.celery_guid is not None:
+            if BROKER is None:
+                BROKER = redis.Redis(
+                    host=current_app.config['REDIS_HOST'],
+                    port=current_app.config['REDIS_PORT'],
+                    db=current_app.config['REDIS_DATABASE'],
+                    password=current_app.config['REDIS_PASSWORD'],
+                )
+
+            # inspect = current_app.celery.control.inspect()
+            # workers = inspect.ping()
+
+            total = BROKER.llen(DEFAULT_CELERY_QUEUE_NAME)
+            if total is None:
+                total = 0
+
+            for index in range(total):
+                try:
+                    message = BROKER.lindex(DEFAULT_CELERY_QUEUE_NAME, index)
+                    data = json.loads(message)
+                    celery_guid = data.get('headers', {}).get('id', None)
+                    if celery_guid is not None:
+                        celery_guid = uuid.UUID(celery_guid)
+                        if celery_guid == self.celery_guid:
+                            ahead = total - 1 - index
+                            if ahead > 0:
+                                return ahead
+                except Exception:
+                    pass
+
+        if self.sage_guid is not None:
+            jobs = current_app.sage.request_passthrough_result(
+                'engine.list', 'get', target='default'
+            )['json_result']
+            statuses, sage_jobs = current_app.sage.get_job_status(
+                jobs, exclude_done=False
             )
 
-        # inspect = current_app.celery.control.inspect()
-        # workers = inspect.ping()
-
-        total = BROKER.llen(DEFAULT_CELERY_QUEUE_NAME)
-        if total is None:
-            total = 0
-
-        for index in range(total):
-            try:
-                message = BROKER.lindex(DEFAULT_CELERY_QUEUE_NAME, index)
-                data = json.loads(message)
-                celery_guid = data.get('headers', {}).get('id', None)
-                if celery_guid is not None:
-                    celery_guid = uuid.UUID(celery_guid)
-                    if celery_guid == self.celery_guid:
-                        return total - 1 - index
-            except Exception:
-                pass
+            total = len(sage_jobs)
+            for index, sage_job in enumerate(sage_jobs):
+                sage_jobid, status = sage_job
+                if sage_jobid == str(self.sage_guid):
+                    ahead = total - 1 - index
+                    if ahead > 0:
+                        return ahead
 
         return 0
 
@@ -167,7 +205,11 @@ class Progress(db.Model, Timestamp):
             'status={self.status}, '
             'percentage={self.percentage}, '
             'eta={self.eta}, '
+            'active={self.active}, '
             'complete={self.complete}, '
+            'skipped={self.skipped}, '
+            'failed={self.failed}, '
+            'skipped={self.skipped}, '
             'created={self.created}, '
             'updated={self.updated}'
             ')>'.format(class_name=self.__class__.__name__, self=self)
@@ -209,7 +251,7 @@ class Progress(db.Model, Timestamp):
             raise ValueError('description has to be at least 3 characters long.')
         return description
 
-    def skip(self, message=''):
+    def skip(self, message=None):
         db.session.refresh(self)
         if self.status not in [ProgressStatus.created, ProgressStatus.healthy]:
             return
@@ -218,8 +260,10 @@ class Progress(db.Model, Timestamp):
             self.message = message
             db.session.merge(self)
         db.session.refresh(self)
+        if self.parent:
+            self.parent.notify(self.guid)
 
-    def fail(self, message=''):
+    def fail(self, message=None):
         db.session.refresh(self)
         if self.status not in [ProgressStatus.created, ProgressStatus.healthy]:
             return
@@ -228,6 +272,8 @@ class Progress(db.Model, Timestamp):
             self.message = message
             db.session.merge(self)
         db.session.refresh(self)
+        if self.parent:
+            self.parent.notify(self.guid)
 
     def cancel(self):
         db.session.refresh(self)
@@ -237,10 +283,20 @@ class Progress(db.Model, Timestamp):
             self.status = ProgressStatus.cancelled
             db.session.merge(self)
         db.session.refresh(self)
+        if self.parent:
+            self.parent.notify(self.guid)
 
     def delete(self):
+        parent = self.parent
+        guid = self.guid
         with db.session.begin(subtransactions=True):
             db.session.delete(self)
+        if parent:
+            parent.notify(guid)
+
+    def notify(self, step_guid):
+        # The step
+        pass
 
     def config(self, items=None):
         if items is None:
@@ -299,15 +355,21 @@ class Progress(db.Model, Timestamp):
         new_percentage = int(max(0, min(100, value)))
 
         db.session.refresh(self)
-        if self.status not in [ProgressStatus.created, ProgressStatus.healthy]:
-            log.warning(
-                'Attempting to set Progress %r to %d, but status is %r'
-                % (
-                    self.guid,
-                    new_percentage,
-                    self.status,
-                )
-            )
+
+        if self.status not in [
+            ProgressStatus.created,
+            ProgressStatus.healthy,
+            ProgressStatus.skipped,
+            ProgressStatus.cancelled,
+        ]:
+            # log.debug(
+            #     'Attempting to set Progress %r to %d, but status is %r'
+            #     % (
+            #         self.guid,
+            #         new_percentage,
+            #         self.status,
+            #     )
+            # )
             return self.status
 
         if new_percentage < self.percentage:
@@ -341,6 +403,8 @@ class Progress(db.Model, Timestamp):
                 self.status = ProgressStatus.healthy
             db.session.merge(self)
         db.session.refresh(self)
+        if self.parent:
+            self.parent.notify(self.guid)
 
         log.info('Updated %r' % (self,))
 

@@ -9,7 +9,7 @@ from flask import current_app, url_for
 import uuid
 import logging
 import app.extensions.logging as AuditLog
-from datetime import datetime
+import datetime
 from app.modules.names.models import Name, DEFAULT_NAME_CONTEXT
 from app.utils import HoustonException
 
@@ -34,7 +34,11 @@ class IndividualMergeRequestVote(db.Model):
     user = db.relationship('User', foreign_keys=[user_guid])
     vote = db.Column(db.String(length=10), index=True, nullable=False)
     created = db.Column(
-        db.DateTime, index=True, default=datetime.utcnow, nullable=False, primary_key=True
+        db.DateTime,
+        index=True,
+        default=datetime.datetime.utcnow,
+        nullable=False,
+        primary_key=True,
     )
 
     def __repr__(self):
@@ -802,7 +806,6 @@ class Individual(db.Model, FeatherModel):
     # NOTE: this does not do any notification of users; see merge_request_from()
     def _merge_request_init(self, individuals, parameters=None):
         from app.modules.individuals.tasks import execute_merge_request
-        from datetime import datetime, timedelta
 
         if not individuals or not isinstance(individuals, list) or len(individuals) < 1:
             msg = f'merge request passed invalid individuals: {individuals}'
@@ -811,13 +814,13 @@ class Individual(db.Model, FeatherModel):
         if not parameters:
             parameters = {}
         parameters['checksum'] = Individual.merge_request_hash([self] + individuals)
-        delta = timedelta(days=Individual.get_merge_request_deadline_days())
+        delta = datetime.timedelta(days=Individual.get_merge_request_deadline_days())
         # allow us to override deadline delta; mostly good for testing
         if 'deadline_delta_seconds' in parameters and isinstance(
             parameters['deadline_delta_seconds'], int
         ):
-            delta = timedelta(seconds=parameters['deadline_delta_seconds'])
-        deadline = datetime.utcnow() + delta
+            delta = datetime.timedelta(seconds=parameters['deadline_delta_seconds'])
+        deadline = datetime.datetime.utcnow() + delta
         individual_guids = [str(indiv.guid) for indiv in individuals]
         stakeholders = Individual.get_merge_request_stakeholders([self] + individuals)
         parameters['stakeholder_guids'] = [str(u.guid) for u in stakeholders]

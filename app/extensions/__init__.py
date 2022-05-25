@@ -13,7 +13,7 @@ import sys  # NOQA
 import uuid  # NOQA
 import json  # NOQA
 import tqdm  # NOQA
-from datetime import datetime  # NOQA
+import datetime  # NOQA
 import logging as logging_native  # NOQA
 from .logging import Logging  # NOQA
 
@@ -83,10 +83,10 @@ if is_extension_enabled('tus'):
 else:
     tus = None
 
-if is_extension_enabled('acm'):
-    from . import acm  # NOQA
+if is_extension_enabled('sage'):
+    from . import sage  # NOQA
 else:
-    acm = None
+    sage = None
 
 if is_extension_enabled('edm'):
     from . import edm  # NOQA
@@ -225,7 +225,7 @@ def custom_json_decoder(obj):
             '^[A-Z][a-z][a-z], [0-9][0-9] [A-Z][a-z][a-z]', value
         ):
             try:
-                obj[key] = datetime.strptime(value, '%a, %d %b %Y %H:%M:%S %Z')
+                obj[key] = datetime.datetime.strptime(value, '%a, %d %b %Y %H:%M:%S %Z')
             except ValueError:
                 pass
     return obj
@@ -334,25 +334,31 @@ class Timestamp(object):
 
     """
 
-    created = db.Column(db.DateTime, index=True, default=datetime.utcnow, nullable=False)
-    updated = db.Column(db.DateTime, index=True, default=datetime.utcnow, nullable=False)
-    indexed = db.Column(db.DateTime, index=True, default=datetime.utcnow, nullable=False)
+    created = db.Column(
+        db.DateTime, index=True, default=datetime.datetime.utcnow, nullable=False
+    )
+    updated = db.Column(
+        db.DateTime, index=True, default=datetime.datetime.utcnow, nullable=False
+    )
+    indexed = db.Column(
+        db.DateTime, index=True, default=datetime.datetime.utcnow, nullable=False
+    )
 
 
 @sa.event.listens_for(Timestamp, 'before_update', propagate=True)
 def timestamp_before_update(mapper, connection, target):
     # When a model with a timestamp is updated; force update the updated
     # timestamp.
-    target.updated = datetime.utcnow()
+    target.updated = datetime.datetime.utcnow()
 
 
 class TimestampViewed(Timestamp):
     """Adds `viewed` column to a derived declarative model."""
 
-    viewed = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    viewed = db.Column(db.DateTime, default=datetime.datetime.utcnow, nullable=False)
 
     def view(self):
-        self.viewed = datetime.utcnow()
+        self.viewed = datetime.datetime.utcnow()
 
 
 if elasticsearch is None:
@@ -390,9 +396,19 @@ else:
     ElasticsearchModel = elasticsearch.ElasticsearchModel
 
 
+if sage is None:
+
+    class SageModel(object):
+        pass
+
+else:
+
+    SageModel = sage.SageModel
+
+
 class CommonHoustonModel(TimestampViewed, ElasticsearchModel):
     """
-    A completely transient model that allows for Houston to wrap EDM or ACM
+    A completely transient model that allows for Houston to wrap EDM or Sage
     responses into a model and allows for serialization of results with
     Rest-PLUS.
 
@@ -475,7 +491,7 @@ class FeatherModel(CommonHoustonModel):
     A light-weight model that 1) stores critical information concerning security
     and permissions or 2) gives Houston insight on frequently-cached information
     so that it can quickly resolve requests itself without needing to query the
-    EDM or ACM.
+    EDM or Sage.
 
     A FeatherModel inherits from SQLAlchemy.Model and creates a local SQL* table
     in the local Houston database.  All models in Houston also derive from the
@@ -690,7 +706,7 @@ def init_app(app, force_enable=False, force_disable=None):
     optional_extensions = {
         'cors': cross_origin_resource_sharing,
         'tus': tus,
-        'acm': acm,
+        'sage': sage,
         'edm': edm,
         'gitlab': gitlab,
         'elasticsearch': elasticsearch,

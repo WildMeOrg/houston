@@ -10,7 +10,6 @@ import logging
 from flask import request
 from flask_restx_patched import Resource
 from flask_restx._http import HTTPStatus
-from datetime import datetime  # NOQA
 import dateutil
 import uuid
 

@@ -4,7 +4,7 @@ Annotations database models
 --------------------
 """
 
-from app.extensions import db, HoustonModel
+from app.extensions import db, HoustonModel, SageModel
 from app.modules import is_module_enabled
 from app.utils import HoustonException
 from flask import current_app
@@ -24,7 +24,7 @@ class AnnotationKeywords(db.Model, HoustonModel):
     keyword = db.relationship('Keyword')
 
 
-class Annotation(db.Model, HoustonModel):
+class Annotation(db.Model, HoustonModel, SageModel):
     """
     Annotations database model.
     """
@@ -83,6 +83,15 @@ class Annotation(db.Model, HoustonModel):
         foreign_keys=[contributor_guid],
     )
 
+    progress_identification_guid = db.Column(
+        db.GUID, db.ForeignKey('progress.guid'), index=False, nullable=True
+    )
+
+    progress_identification = db.relationship(
+        'Progress',
+        foreign_keys='Annotation.progress_identification_guid',
+    )
+
     def __repr__(self):
         return (
             '<{class_name}('
@@ -126,6 +135,126 @@ class Annotation(db.Model, HoustonModel):
                 log, f'Annotation {self.guid} not connected to an encounter'
             )
 
+    @classmethod
+    def get_sage_sync_tags(cls):
+        return 'annotation', 'annot'
+
+    def sync_with_sage(
+        self, ensure=False, force=False, bulk_sage_uuids=None, skip_asset=False, **kwargs
+    ):
+        from app.extensions.sage import (
+            to_sage_uuid,
+            from_sage_uuid,
+            # encode_sage_request,
+            SAGE_UNKNOWN_NAME,
+        )
+
+        # First, ensure that the annotation's asset has been synced with Sage
+        if not skip_asset:
+            self.asset.sync_with_sage(
+                ensure=ensure, force=force, bulk_sage_uuids=bulk_sage_uuids, **kwargs
+            )
+
+            if self.asset.content_guid is None:
+                log.error(
+                    'Asset for Annotation %r failed to send, cannot send annotation to Sage'
+                    % (self,)
+                )
+                # We tried to sync the asset's content GUID, but that failed... it is likely that the asset's file is missing
+                return
+
+        if force:
+            with db.session.begin(subtransactions=True):
+                self.content_guid = None
+                db.session.merge(self)
+            db.session.refresh(self)
+
+        if ensure:
+            if self.content_guid is not None:
+                if bulk_sage_uuids is not None:
+                    # Existence checks can be slow one-by-one, bulk checks are better
+                    if self.content_guid in bulk_sage_uuids.get('annotation', {}):
+                        # We have found this Annotation on Sage, simply return
+                        return
+                else:
+                    content_guid_str = str(self.content_guid)
+                    sage_rowids = current_app.sage.request_passthrough_result(
+                        'annotation.exists', 'get', args=content_guid_str, target='sync'
+                    )
+                    if len(sage_rowids) == 1:
+                        if sage_rowids[0] is not None:
+                            # We have found this Asset on Sage, simply return
+                            return
+
+                # If we have arrived here, it means we have a non-NULL content guid that isn't on the Sage instance
+                # Null out the local content GUID and restart
+                with db.session.begin(subtransactions=True):
+                    self.content_guid = None
+                    db.session.merge(self)
+                db.session.refresh(self)
+
+        if self.content_guid is not None:
+            return
+
+        assert self.content_guid is None
+
+        if self.encounter and self.encounter.individual:
+            annot_name = str(self.encounter.individual.guid)
+        else:
+            annot_name = SAGE_UNKNOWN_NAME
+
+        sage_request = {
+            'image_uuid_list': [to_sage_uuid(self.asset.content_guid)],
+            'annot_species_list': [self.ia_class],
+            'annot_bbox_list': [self.bounds['rect']],
+            'annot_name_list': [annot_name],
+            'annot_theta_list': [self.bounds['theta']],
+        }
+        # encoded_sage_request = encode_sage_request(sage_request)
+        sage_response = current_app.sage.request_passthrough_result(
+            'annotation.create', 'post', {'json': sage_request}, target='sync'
+        )
+        sage_guid = from_sage_uuid(sage_response[0])
+
+        with db.session.begin(subtransactions=True):
+            self.content_guid = sage_guid
+            db.session.merge(self)
+        db.session.refresh(self)
+
+    def init_progress_identification(self, parent=None, overwrite=False):
+        from app.modules.progress.models import Progress
+
+        if self.progress_identification is not None:
+            if not overwrite:
+                log.warning(
+                    'Annotation %r already has a progress identification %r'
+                    % (
+                        self,
+                        self.progress_identification,
+                    )
+                )
+                return
+
+        progress = Progress(
+            description='Sage identification for Annotation %r' % (self.guid,)
+        )
+        with db.session.begin():
+            db.session.add(progress)
+
+        with db.session.begin():
+            self.progress_identification_guid = progress.guid
+            db.session.merge(self)
+
+        db.session.refresh(self)
+
+        # Assign the parent's progress
+        if parent and self.progress_identification:
+            with db.session.begin():
+                self.progress_identification.parent_guid = parent.guid
+            db.session.merge(self.progress_identification)
+
+        db.session.refresh(self)
+
     # Assumes that the caller actually wants the debug data for the context of where the annotation came from.
     # Therefore returns the debug data for the sighting (if there is one), the ags if not.
     # If neither Sighting or AGS (Annot created but not curated), returns the DetailedAnnot data
@@ -146,39 +275,6 @@ class Annotation(db.Model, HoustonModel):
 
             schema = DetailedAnnotationSchema()
             return schema.dump(self).data
-
-    def ensure_sage(self):
-        assert self.asset
-        if not self.asset.content_guid:
-            log.warning(
-                f'Not adding Annot {self.guid} to Sage as its asset has no content guid'
-            )
-            return
-        from app.extensions.acm import (
-            to_acm_uuid,
-            from_acm_uuid,
-            default_acm_individual_uuid,
-            encode_acm_request,
-        )
-
-        sage_req = {
-            'image_uuid_list': [to_acm_uuid(self.asset.content_guid)],
-            'annot_species_list': [self.ia_class],
-            'annot_bbox_list': [self.bounds['rect']],
-            'annot_name_list': [default_acm_individual_uuid()],
-            'annot_theta_list': [self.bounds['theta']],
-        }
-        if self.encounter and self.encounter.individual:
-            sage_req['annot_name_list'][0] = to_acm_uuid(self.encounter.individual.guid)
-
-        encoded_request = encode_acm_request(sage_req)
-        # as does this
-        sage_response = current_app.acm.request_passthrough_result(
-            'annotations.create',
-            'post',
-            {'params': encoded_request},
-        )
-        self.content_guid = from_acm_uuid(sage_response[0])
 
     @property
     def keywords(self):
@@ -263,14 +359,14 @@ class Annotation(db.Model, HoustonModel):
         # n.b. default will not take any locationId or ownership into consideration
         parts = {'filter': []}
 
-        # must have a content_guid (i.e. wbia guid)
-        parts['filter'].append(
-            {
-                'exists': {
-                    'field': 'content_guid',
-                }
-            }
-        )
+        # # must have a content_guid (i.e. wbia guid)
+        # parts['filter'].append(
+        #     {
+        #         'exists': {
+        #             'field': 'content_guid',
+        #         }
+        #     }
+        # )
 
         viewpoint_list = self.get_neighboring_viewpoints()
         # TODO should we allow nulls?

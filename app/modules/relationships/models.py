@@ -5,7 +5,7 @@ Relationships database models
 """
 
 from app.extensions import HoustonModel, db
-from datetime import datetime  # NOQA
+import datetime
 import app.extensions.logging as AuditLog
 
 import uuid
@@ -94,9 +94,11 @@ class Relationship(db.Model, HoustonModel):
     )  # pylint: disable=invalid-name
 
     start_date = db.Column(
-        db.DateTime, index=True, default=datetime.utcnow, nullable=True
+        db.DateTime, index=True, default=datetime.datetime.utcnow, nullable=True
     )
-    end_date = db.Column(db.DateTime, index=True, default=datetime.utcnow, nullable=True)
+    end_date = db.Column(
+        db.DateTime, index=True, default=datetime.datetime.utcnow, nullable=True
+    )
 
     type_guid = db.Column(db.GUID, nullable=True)
 

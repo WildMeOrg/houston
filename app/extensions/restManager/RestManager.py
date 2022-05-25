@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=no-self-use
 """
-Rest Manager base class, to be used for any entity (EDM/ACM) where we need to interface with an external
+Rest Manager base class, to be used for any entity (EDM/Sage) where we need to interface with an external
 system using REST API
 
 """
@@ -80,6 +80,8 @@ class RestManager(RestManagerUserMixin):
     ENDPOINT_PREFIX = None
     ENDPOINTS = None
     NAME = None
+    USE_JSON_HEADERS = True
+
     USE_JSON_HEADERS = True
 
     def __init__(self, pre_initialize=False, *args, **kwargs):
@@ -310,10 +312,7 @@ class RestManager(RestManagerUserMixin):
                 verbose=verbose,
                 reauthenticated=True,
             )
-        else:
-            log.warning(
-                f'Non-OK ({response.status_code}) response on {method} {endpoint}: {response.content}'
-            )
+
         if verbose:
             log.info(
                 f'{self.NAME} {method} of {endpoint_encoded} sent {passthrough_kwargs} took {timer.elapsed()} seconds'
@@ -376,9 +375,9 @@ class RestManager(RestManagerUserMixin):
         is_json = False
         for header_key in allowed_header_key_list:
             if header_key != 'User-Agent':
-                # Don't use request's user-agent because acm creates a session
+                # Don't use request's user-agent because sage creates a session
                 # token with user-agent and ip address and if user-agent
-                # changes, acm (flask_paranoid) clears the session and
+                # changes, sage (flask_paranoid) clears the session and
                 # redirects to /
                 try:
                     header_value = request.headers.get(header_key, None)

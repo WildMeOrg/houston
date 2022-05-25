@@ -18,8 +18,8 @@ log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 edm_pass = Namespace(
     'passthroughs/edm', description='EDM Passthroughs'
 )  # pylint: disable=invalid-name
-acm_pass = Namespace(
-    'passthroughs/acm', description='ACM Passthroughs'
+sage_pass = Namespace(
+    'passthroughs/sage', description='Sage Passthroughs'
 )  # pylint: disable=invalid-name
 
 
@@ -110,9 +110,9 @@ class EDMPassthroughs(Resource):
         return response
 
 
-@acm_pass.route('/')
-@acm_pass.login_required(oauth_scopes=['passthroughs:read'])
-class ACMPassthroughTargets(Resource):
+@sage_pass.route('/')
+@sage_pass.login_required(oauth_scopes=['passthroughs:read'])
+class SagePassthroughTargets(Resource):
     """
     Manipulations with Passthroughs.
     """
@@ -121,14 +121,14 @@ class ACMPassthroughTargets(Resource):
         """
         List the possible EDM passthrough targets.
         """
-        targets = current_app.acm.get_target_list()
+        targets = current_app.sage.get_target_list()
         return targets
 
 
 @edm_pass.route('/<string:target>/', defaults={'path': None}, doc=False)
 @edm_pass.route('/<string:target>/<path:path>')
 @edm_pass.login_required(oauth_scopes=['passthroughs:read'])
-class ACMPassthroughs(Resource):
+class SagePassthroughs(Resource):
     r"""
     A pass-through allows a GET or POST request to be referred to a registered back-end EDM
 
@@ -165,7 +165,7 @@ class ACMPassthroughs(Resource):
         params.update(request.args)
         params.update(request.form)
 
-        response = current_app.acm.request_passthrough(
+        response = current_app.sage.request_passthrough(
             'passthrough.data', 'get', {'params': params}, path, target
         )
 
@@ -190,7 +190,7 @@ class ACMPassthroughs(Resource):
         if len(files) > 0:
             passthrough_kwargs['files'] = files
 
-        response = current_app.acm.request_passthrough(
+        response = current_app.sage.request_passthrough(
             'passthrough.data', 'post', passthrough_kwargs, path, target
         )
 

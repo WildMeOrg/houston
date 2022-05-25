@@ -107,7 +107,7 @@ jobs:
       - name: Show sage logs if failed
         if: failure()
         run: |
-          docker-compose logs --no-color sage
+          docker-compose logs --no-color sage sage-sync
 
       - name: Show houston logs if failed
         if: failure()

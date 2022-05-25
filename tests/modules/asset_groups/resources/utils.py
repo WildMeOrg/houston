@@ -585,8 +585,6 @@ def create_asset_group(
     return response
 
 
-# As for method above but simulate a successful initial response from Sage and do some minimal validation
-# Note this is just the ack to say that Sage has received the request, not the detection response itself
 def create_asset_group_sim_sage_init_resp(
     flask_app, flask_app_client, user, data, expected_status_code=200, expected_error=''
 ):
@@ -642,73 +640,6 @@ def get_bulk_creation_data(test_root, request, species_detection_model=None):
     return data
 
 
-# # Create a default valid Sage detection response (to allow for the test to corrupt it accordingly)
-# def build_sage_detection_response(asset_group_sighting_guid, job_uuid):
-#     from app.modules.asset_groups.models import AssetGroupSighting
-#     import uuid
-
-#     asset_group_sighting = AssetGroupSighting.query.get(asset_group_sighting_guid)
-#     asset_ids = list(asset_group_sighting.jobs.values())[-1]['asset_guids']
-
-#     # Generate the response back from Sage
-#     sage_resp = {
-#         'status': 'completed',
-#         'jobid': str(job_uuid),
-#         'json_result': {
-#             'image_uuid_list': [
-#                 # Image UUID stored in sage (not the same as houston)
-#                 {'__UUID__': str(uuid.uuid4())}
-#                 for _ in asset_ids
-#             ],
-#             'results_list': [
-#                 [
-#                     {
-#                         'id': 1,
-#                         'uuid': {'__UUID__': ANNOTATION_UUIDS[0]},
-#                         'xtl': 459,
-#                         'ytl': 126,
-#                         'left': 459,
-#                         'top': 126,
-#                         'width': 531,
-#                         'height': 539,
-#                         'theta': 0.0,
-#                         'confidence': 0.8568,
-#                         'class': 'zebra',
-#                         'species': 'zebra',
-#                         'viewpoint': 'right',
-#                         'quality': None,
-#                         'multiple': False,
-#                         'interest': False,
-#                     },
-#                     {
-#                         'id': 2,
-#                         'uuid': {'__UUID__': ANNOTATION_UUIDS[1]},
-#                         'xtl': 26,
-#                         'ytl': 145,
-#                         'left': 26,
-#                         'top': 145,
-#                         'width': 471,
-#                         'height': 500,
-#                         'theta': 0.0,
-#                         'confidence': 0.853,
-#                         'class': 'zebra',
-#                         'species': 'zebra',
-#                         'viewpoint': 'right',
-#                         'quality': None,
-#                         'multiple': False,
-#                         'interest': False,
-#                     },
-#                 ],
-#             ],
-#         },
-#     }
-
-#     # Make sure results_list is the same length as the assets (just
-#     # empty [])
-#     sage_resp['json_result']['results_list'] += [[] for _ in range(len(asset_ids) - 1)]
-#     return sage_resp
-
-
 def validate_file_data(test_root, data, filename):
     import hashlib
 
@@ -731,31 +662,6 @@ def validate_file_data(test_root, data, filename):
     assert hashlib.md5(data).hexdigest() == md5sum
 
 
-# def send_sage_detection_response(
-#     flask_app_client,
-#     user,
-#     asset_group_sighting_guid,
-#     job_guid,
-#     data=None,
-#     expected_status_code=200,
-# ):
-#     if not data:
-#         data = build_sage_detection_response(asset_group_sighting_guid, job_guid)
-#     with flask_app_client.login(user, auth_scopes=('asset_group_sightings:write',)):
-#         response = flask_app_client.post(
-#             f'{PATH}sighting/{asset_group_sighting_guid}/sage_detected/{job_guid}',
-#             content_type='application/json',
-#             data=json.dumps(data),
-#         )
-#     if expected_status_code == 200:
-#         assert response.status_code == expected_status_code, response.status_code
-#     else:
-#         test_utils.validate_dict_response(
-#             response, expected_status_code, {'status', 'message'}
-#         )
-#     return response
-
-
 # As for the normal commit but fake a response from Sage indicating Success
 def commit_asset_group_sighting_sage_identification(
     flask_app,
@@ -774,33 +680,6 @@ def commit_asset_group_sighting_sage_identification(
         flask_app_client, user, asset_group_sighting_guid, expected_status_code
     )
     return response
-
-
-# def simulate_job_detection_response(
-#     flask_app_client,
-#     user,
-#     asset_group_sighting_uuid,
-#     asset_guid,
-#     job_id,
-#     expected_status_code=200,
-# ):
-#     path = f'sighting/{asset_group_sighting_uuid}/sage_detected/{job_id}'
-#     data = build_sage_detection_response(asset_group_sighting_uuid, job_id)
-
-#     with flask_app_client.login(user, auth_scopes=('asset_group_sightings:write',)):
-#         response = flask_app_client.post(
-#             f'{PATH}{path}',
-#             content_type='application/json',
-#             data=json.dumps(data),
-#         )
-
-#     if expected_status_code == 200:
-#         assert expected_status_code == response.status_code
-#     else:
-#         test_utils.validate_dict_response(
-#             response, expected_status_code, {'status', 'message'}
-#         )
-#     return response
 
 
 def detect_asset_group_sighting(

@@ -284,21 +284,6 @@ def flask_app(gitlab_remote_login_pat, disable_elasticsearch):
                         ),
                     )
 
-                # tasks_patch.append(
-                #     mock.patch.object(
-                #         getattr(asset_groups_tasks, 'sage_detection'),
-                #         'delay',
-                #         getattr(asset_groups_tasks, 'sage_detection'),
-                #     ),
-                # )
-
-                # tasks_patch.append(
-                #     mock.patch.object(
-                #         getattr(sighting_tasks, 'send_identification'),
-                #         'delay',
-                #         getattr(sighting_tasks, 'send_identification'),
-                #     ),
-                # )
                 for patch in tasks_patch:
                     patch.start()
 

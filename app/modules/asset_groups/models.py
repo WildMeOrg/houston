@@ -887,8 +887,6 @@ class AssetGroupSighting(db.Model, HoustonModel):
         return model_config, asset_guids
 
     def send_detection_to_sage(self, model):
-        # from app.extensions.sage import encode_sage_request
-
         try:
             job_id = uuid.uuid4()
             detection_request, asset_guids = self.build_detection_request(job_id, model)
@@ -896,7 +894,6 @@ class AssetGroupSighting(db.Model, HoustonModel):
             log.info('detection_request = %r' % (detection_request,))
             log.info('asset_guids = %r' % (asset_guids,))
             try:
-                # encoded_detection_request = encode_sage_request(detection_request)
                 sage_job_uuid = current_app.sage.request_passthrough_result(
                     'engine.detect',
                     'post',
@@ -1586,8 +1583,7 @@ class AssetGroup(GitStore):
             # Refresh each AGS to load its GUID and perform any lingering setup now that it is in the database
             db.session.refresh(ags)
             ags.setup()
-
-        AuditLog.user_create_object(log, self)
+            AuditLog.user_create_object(log, ags)
 
         # make sure the repo is created
         self.ensure_repository()

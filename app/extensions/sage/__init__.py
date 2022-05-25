@@ -82,7 +82,6 @@ class SageModel(object):
                 for delete_sage_uuid in delete_sage_uuids:
                     sage_request[key].append(to_sage_uuid(delete_sage_uuid))
 
-                # encoded_sage_request = encode_sage_request(sage_request)
                 sage_response = current_app.sage.request_passthrough_result(
                     '%s.delete' % (houston_tag,),
                     'delete',
@@ -124,21 +123,6 @@ def from_sage_uuid(sage_uuid):
         return None
 
     return houston_guid
-
-
-# all requests to Sage need to be fieldwise json encoded
-def encode_sage_request(request_in):
-    import json
-
-    encoded_request = {}
-    for key in request_in:
-        value = request_in[key]
-        if isinstance(value, list):
-            encoded_request[key] = json.dumps(value)
-        else:
-            encoded_request[key] = value
-
-    return encoded_request
 
 
 class SageManager(RestManager):

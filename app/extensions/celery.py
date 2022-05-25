@@ -35,6 +35,9 @@ if is_extension_enabled('intelligent_agent'):
 if is_extension_enabled('tus'):
     import app.extensions.tus.tasks  # noqa
 
+if is_extension_enabled('sage'):
+    import app.extensions.sage.tasks  # noqa
+
 # Register Module-level tasks
 
 if is_module_enabled('asset_groups'):

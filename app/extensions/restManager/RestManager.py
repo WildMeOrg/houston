@@ -82,8 +82,6 @@ class RestManager(RestManagerUserMixin):
     NAME = None
     USE_JSON_HEADERS = True
 
-    USE_JSON_HEADERS = True
-
     def __init__(self, pre_initialize=False, *args, **kwargs):
         super(RestManager, self).__init__(*args, **kwargs)
         self.initialized = False

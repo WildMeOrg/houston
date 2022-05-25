@@ -4,5 +4,8 @@ services:
   sage:
     image: wildme/wbia:arm64
 
+  sage-sync:
+    image: wildme/wbia:arm64
+
   edm:
     image: wildme/edm:arm64

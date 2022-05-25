@@ -13,8 +13,6 @@ log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
 def _get_available_model_mappings():
     available = {
-        # 'AssetGroup': app.modules.asset_groups.models.AssetGroup,
-        # 'AssetGroupSighting': app.modules.asset_groups.models.AssetGroupSighting,
         'Asset': app.modules.assets.models.Asset,
         'Annotation': app.modules.annotations.models.Annotation,
     }

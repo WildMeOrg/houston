@@ -59,10 +59,10 @@ class Progress(db.Model, Timestamp):
     parent_guid = db.Column(
         db.GUID, db.ForeignKey('progress.guid'), index=True, nullable=True
     )
-    parent = db.relationship(
+    steps = db.relationship(
         'Progress',
         backref=db.backref(
-            'steps',
+            'parent',
             primaryjoin='Progress.guid == Progress.parent_guid',
             cascade='all',
             remote_side=guid,
@@ -117,6 +117,10 @@ class Progress(db.Model, Timestamp):
     @property
     def skipped(self):
         return self.status in [ProgressStatus.skipped]
+
+    @property
+    def cancelled(self):
+        return self.status in [ProgressStatus.cancelled]
 
     @property
     def complete(self):
@@ -263,7 +267,7 @@ class Progress(db.Model, Timestamp):
         if self.parent:
             self.parent.notify(self.guid)
 
-    def fail(self, message=None):
+    def fail(self, message=None, chain=None):
         db.session.refresh(self)
         if self.status not in [ProgressStatus.created, ProgressStatus.healthy]:
             return
@@ -273,34 +277,81 @@ class Progress(db.Model, Timestamp):
             db.session.merge(self)
         db.session.refresh(self)
         if self.parent:
-            self.parent.notify(self.guid)
+            self.parent.notify(self.guid, chain=chain)
 
-    def cancel(self):
+    def cancel(self, message=None, chain=None):
         db.session.refresh(self)
         if self.status not in [ProgressStatus.created, ProgressStatus.healthy]:
             return
         with db.session.begin(subtransactions=True):
             self.status = ProgressStatus.cancelled
+            self.message = message
             db.session.merge(self)
         db.session.refresh(self)
         if self.parent:
-            self.parent.notify(self.guid)
+            self.parent.notify(self.guid, chain=chain)
 
-    def delete(self):
+    def delete(self, chain=None):
         parent = self.parent
         guid = self.guid
         with db.session.begin(subtransactions=True):
             db.session.delete(self)
         if parent:
-            parent.notify(guid)
+            parent.notify(guid, chain=chain)
 
-    def notify(self, step_guid):
-        # The step
-        pass
+    def notify(self, step_guid, chain=None):
+        if chain is None:
+            chain = [step_guid]
+
+        if self.guid in chain:
+            # Make sure that we have not seen outselves already in the parent chain (loop)
+            return
+
+        chain.append(self.guid)
+
+        steps = len(self.steps)
+        if steps == 0:
+            items = None
+        else:
+            items = list(range(1, steps + 1))
+
+        if self.items is None or self.pgeta is None:
+            self.config(items)
+        elif steps is not None and self.pgeta.denominator != steps:
+            self.config(items)
+
+        step = Progress.query.get(step_guid)
+
+        try:
+            if step.skipped:
+                self.iterate(chain=chain)
+            elif step.cancelled:
+                self.iterate(chain=chain)
+            elif step.completed:
+                self.iterate(chain=chain)
+            elif step.failed:
+                message = 'Step %r failure: %r' % (
+                    step,
+                    step.message,
+                )
+                self.fail(message, chain=chain)
+            else:
+                # The update was a step set progress percentage notification
+                # Currently, do nothing because we only want to track steps that are complete
+                pass
+        except Exception:
+            log.warning(
+                'Failed to notify parent %r from step %r'
+                % (
+                    self,
+                    step,
+                )
+            )
 
     def config(self, items=None):
         if items is None:
-            items = list(range(1, 101))
+            steps = 100
+            items = list(range(1, steps + 1))
 
         assert isinstance(items, (tuple, list))
         self.items = items
@@ -344,14 +395,14 @@ class Progress(db.Model, Timestamp):
 
         return item
 
-    def iterate(self, amount=1):
+    def iterate(self, amount=1, chain=None):
         self.pgeta.numerator += amount
-        self.set(100.0 * self.pgeta.numerator / len(self.items))
+        self.set(100.0 * self.pgeta.numerator / len(self.items), chain=chain)
 
-    def increment(self, amount=1):
-        self.set(self.percentage + amount)
+    def increment(self, amount=1, chain=None):
+        self.set(self.percentage + amount, chain=chain)
 
-    def set(self, value, items=None, force=False):
+    def set(self, value, items=None, force=False, chain=None):
         new_percentage = int(max(0, min(100, value)))
 
         db.session.refresh(self)
@@ -404,7 +455,7 @@ class Progress(db.Model, Timestamp):
             db.session.merge(self)
         db.session.refresh(self)
         if self.parent:
-            self.parent.notify(self.guid)
+            self.parent.notify(self.guid, chain=chain)
 
         log.info('Updated %r' % (self,))
 

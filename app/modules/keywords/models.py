@@ -14,7 +14,7 @@ log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
 class KeywordSource(str, enum.Enum):
     user = 'user'
-    sage = 'wbia'
+    wbia = 'wbia'
 
 
 # class KeywordModule(str, enum.Enum):

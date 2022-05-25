@@ -145,7 +145,6 @@ class Annotation(db.Model, HoustonModel, SageModel):
         from app.extensions.sage import (
             to_sage_uuid,
             from_sage_uuid,
-            # encode_sage_request,
             SAGE_UNKNOWN_NAME,
         )
 
@@ -210,7 +209,6 @@ class Annotation(db.Model, HoustonModel, SageModel):
             'annot_name_list': [annot_name],
             'annot_theta_list': [self.bounds['theta']],
         }
-        # encoded_sage_request = encode_sage_request(sage_request)
         sage_response = current_app.sage.request_passthrough_result(
             'annotation.create', 'post', {'json': sage_request}, target='sync'
         )

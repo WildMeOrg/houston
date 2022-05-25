@@ -1122,8 +1122,6 @@ class Sighting(db.Model, FeatherModel):
     ):
         from app.extensions.sage import from_sage_uuid
 
-        # from app.extensions.sage import encode_sage_request
-
         if not self.id_configs:
             log.warning('send_identification called without id_configs')
             self.set_stage(SightingStage.failed)
@@ -1216,7 +1214,6 @@ class Sighting(db.Model, FeatherModel):
                             ),
                         )
 
-                    # encoded_request = encode_sage_request(id_request)
                     try:
                         sage_job_uuid = current_app.sage.request_passthrough_result(
                             'engine.identification', 'post', {'json': id_request}

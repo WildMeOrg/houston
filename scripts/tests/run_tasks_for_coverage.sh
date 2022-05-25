@@ -32,7 +32,6 @@ coverage run --append `which invoke` app.config.show
 
 # test interpreter shells
 echo | coverage run --append `which invoke` app.shell
-echo | coverage run --append `which invoke` app.dev.embed
 
 # test app.endpoints.*
 coverage run --append `which invoke` app.endpoints.list
@@ -76,5 +75,17 @@ if [ "$HOUSTON_APP_CONTEXT" == 'codex' ]; then
     coverage run --append `which invoke` codex.job-control.check-ags-jobs
     coverage run --append `which invoke` codex.job-control.check-sighting-jobs
 fi
+
+# test sage.*
+coverage run --append `which invoke` sage.sync
+coverage run --append `which invoke` sage.prune
+coverage run --append `which invoke` sage.force
+coverage run --append `which invoke` sage.ensure
+coverage run --append `which invoke` sage.status
+coverage run --append `which invoke` sage.results
+
+# test app.tus
+coverage run --append `which invoke` app.tus.cache-info
+coverage run --append `which invoke` app.tus.cleanup
 
 coverage run --append `which invoke` dependencies.install-all-ui --on-error skip

@@ -617,6 +617,8 @@ class AssetGroupSighting(db.Model, HoustonModel):
 
     # currently only gives most recent job
     def _get_pipeline_status_detection(self):
+        from app.utils import datetime_string_to_isoformat
+
         status = {
             'skipped': False,
             'start': None,
@@ -699,8 +701,8 @@ class AssetGroupSighting(db.Model, HoustonModel):
                 'sage_status': None,
             }
             job = self.jobs[job_id]
-            job_info['start'] = job.get('start')
-            job_info['end'] = job.get('end')
+            job_info['start'] = datetime_string_to_isoformat(job.get('start'))
+            job_info['end'] = datetime_string_to_isoformat(job.get('end'))
             if job.get('active') is True:
                 job_info['active'] = True
                 status['numJobsActive'] += 1

@@ -72,7 +72,7 @@ def delete_site(pytestconfig):
             'celery_worker',
             'celery_beat',
         ]
-        databases = ['wildbook', 'houston', 'wbia']
+        databases = ['wildbook', 'houston', 'sage']
         commands = (['docker-compose', 'rm', '-f', '--stop'] + services,)
         db = ['docker-compose', 'exec', 'db']
         for database in databases:

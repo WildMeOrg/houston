@@ -757,7 +757,7 @@ def wait_for_progress(flask_app, progress_guids=None):
         except AssertionError:
             pass
 
-        if trial > 60:
+        if trial > 300:
             raise RuntimeError('Failed to get all progress trackers completed')
 
         trial += 1

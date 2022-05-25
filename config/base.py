@@ -294,7 +294,7 @@ def get_env_rest_config(interface):
 
 class SageConfig(object):
     # Read the config from the environment but ensure that there is always a default URI
-    # WBIA doesn't currently support authentications but no reason to not use the same function to read
+    # Sage doesn't currently support authentications but no reason to not use the same function to read
     # the env config.
     SAGE_URIS, SAGE_AUTHENTICATIONS = get_env_rest_config('SAGE')
     if 'default' not in SAGE_URIS:

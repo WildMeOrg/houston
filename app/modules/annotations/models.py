@@ -359,7 +359,7 @@ class Annotation(db.Model, HoustonModel, SageModel):
         # n.b. default will not take any locationId or ownership into consideration
         parts = {'filter': []}
 
-        # # must have a content_guid (i.e. wbia guid)
+        # # must have a content_guid (i.e. sage guid)
         # parts['filter'].append(
         #     {
         #         'exists': {

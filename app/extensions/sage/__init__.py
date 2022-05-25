@@ -152,7 +152,7 @@ class SageManager(RestManager):
     # We use // as a shorthand for prefix
     # fmt: off
     ENDPOINTS = {
-        # No user.session, wbia doesn't support logins
+        # No user.session, Sage doesn't support logins
         'annotation': {
             'list': '//annot/json/',
             'data': '//annot/name/uuid/json/?annot_uuid_list=[{"__UUID__": "%s"}]',

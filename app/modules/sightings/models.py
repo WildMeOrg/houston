@@ -574,7 +574,7 @@ class Sighting(db.Model, FeatherModel):
             'matchingSetQueryPassed': None,
             'matchingSetQueryUsed': None,
             # this is only based on 0th annotation (so is approximate)
-            'matchingSetSize': None,
+            # 'matchingSetSize': None,   # dropped now cuz its expensive
             'numAttempts': None,
             'numAttemptsMax': None,
             'idConfigs': None,
@@ -596,7 +596,8 @@ class Sighting(db.Model, FeatherModel):
         if not self.is_migrated_data():
             # seems irrelevant for migrated
             if annots:
-                status['matchingSetSize'] = len(annots[0].get_matching_set(load=False))
+                # too expensive
+                # status['matchingSetSize'] = len(annots[0].get_matching_set(load=False))
                 if status['matchingSetQueryPassed']:
                     status['matchingSetQueryUsed'] = annots[0].resolve_matching_set_query(
                         status['matchingSetQueryPassed']

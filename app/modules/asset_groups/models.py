@@ -759,7 +759,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
             'numJobsFailed': None,
             'matchingSetQueryPassed': None,
             'matchingSetQueryUsed': None,
-            'matchingSetSize': None,
+            # 'matchingSetSize': None,
             'numAttempts': None,
             'numAttemptsMax': None,
             'idConfigs': None,

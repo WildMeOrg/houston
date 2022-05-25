@@ -1,10 +1,8 @@
 # -*- coding: utf-8 -*-
-import io
-from unittest import mock
 import tests.extensions.tus.utils as tus_utils
 import tests.modules.asset_groups.resources.utils as asset_group_utils
+import tests.utils as test_utils
 
-from invoke import MockContext
 import pytest
 
 from tests.utils import (
@@ -22,51 +20,19 @@ def test_asset_group_detection_jobs(
     flask_app, flask_app_client, researcher_1, staff_user, test_root, db
 ):
     # pylint: disable=invalid-name
-
     transaction_id, test_filename = tus_utils.prep_tus_dir(test_root)
     asset_group_uuid = None
     try:
         data = asset_group_utils.AssetGroupCreationData(transaction_id, test_filename)
         data.set_field('speciesDetectionModel', ['african_terrestrial'])
 
-        # Simulate a valid response from Sage but don't actually send the request to Sage
-        with mock.patch.object(
-            flask_app.acm,
-            'request_passthrough_result',
-            return_value={'success': True},
-        ):
-            resp = asset_group_utils.create_asset_group(
-                flask_app_client, None, data.get()
-            )
-            asset_group_uuid = resp.json['guid']
+        resp = asset_group_utils.create_asset_group(flask_app_client, None, data.get())
+        asset_group_uuid = resp.json['guid']
 
-        # Now see that the task gets what we expect
-        with mock.patch('app.create_app'):
-            with mock.patch('sys.stdout', new=io.StringIO()) as stdout:
-                from tasks.app import job_control
-
-                job_control.print_all_asset_jobs(
-                    MockContext(), resp.json['assets'][0]['guid']
-                )
-                job_output = stdout.getvalue()
-                assert "'type': 'AssetGroupSighting'" in job_output
-                assert "'active': True" in job_output
-                assert "'model': 'african_terrestrial'" in job_output
-
-                # Simulate a valid response from Sage but don't actually send the request to Sage
-                with mock.patch.object(
-                    flask_app.acm,
-                    'request_passthrough_result',
-                    return_value={'success': True, 'content': 'something'},
-                ):
-                    job_control.print_last_asset_job(
-                        MockContext(), resp.json['assets'][0]['guid'], verbose=True
-                    )
-                    job_output = stdout.getvalue()
-                    assert "'type': 'AssetGroupSighting'" in job_output
-                    assert "'active': True" in job_output
-                    assert "'model': 'african_terrestrial'" in job_output
-                    assert "'endpoint': '/api/engine/detect/cnn/lightnet/'" in job_output
+        progress_guids = []
+        for ags in resp.json['asset_group_sightings']:
+            progress_guids.append(ags['progress_detection']['guid'])
+        test_utils.wait_for_progress(flask_app, progress_guids)
 
     finally:
         if asset_group_uuid:
@@ -94,6 +60,7 @@ def test_sighting_identification_jobs(
     request,
 ):
     # pylint: disable=invalid-name
+    from app.modules.annotations.models import Annotation
     from app.modules.sightings.models import Sighting, SightingStage
     from app.extensions import elasticsearch as es
 
@@ -130,7 +97,12 @@ def test_sighting_identification_jobs(
         flask_app_client, researcher_1, request, test_root
     )
     annot_uuid = asset_group_utils.patch_in_dummy_annotation(
-        flask_app_client, db, researcher_1, asset_group_sighting_guid2, asset_uuid2
+        flask_app_client,
+        db,
+        researcher_1,
+        asset_group_sighting_guid2,
+        asset_uuid2,
+        padding=1,
     )
     response = asset_group_utils.commit_asset_group_sighting_sage_identification(
         flask_app, flask_app_client, researcher_1, asset_group_sighting_guid2
@@ -138,61 +110,15 @@ def test_sighting_identification_jobs(
     sighting_uuid = response.json['guid']
     wait_for_elasticsearch_status(flask_app_client, researcher_1)
 
-    # Here starts the test for real
     sighting = Sighting.query.get(sighting_uuid)
-    # Push stage back to ID
-    sighting.stage = SightingStage.identification
+    annotation = Annotation.query.get(annot_uuid)
 
-    # Now give it an ID config
-    sighting.id_configs = [
-        {
-            'algorithms': [
-                'hotspotter_nosv',
-            ],
-        }
-    ]
+    jobs = sighting.jobs
+    keys = list(jobs.keys())
+    key = keys[0]
+    job = jobs[key]
 
-    with mock.patch.object(
-        flask_app.acm,
-        'request_passthrough_result',
-        return_value={'success': True},
-    ):
-        from app.modules.sightings import tasks
-
-        with mock.patch.object(
-            tasks.send_identification,
-            'delay',
-            side_effect=lambda *args, **kwargs: tasks.send_identification(
-                *args, **kwargs
-            ),
-        ):
-            sighting.ia_pipeline()
-
-    # Now see that the task gets what we expect
-    with mock.patch('app.create_app'):
-        with mock.patch('sys.stdout', new=io.StringIO()) as stdout:
-            from tasks.app import job_control
-
-            job_control.print_all_annotation_jobs(MockContext(), str(annot_uuid))
-            job_output = stdout.getvalue()
-            assert "'type': 'Sighting'" in job_output
-            assert "'active': True" in job_output
-            assert "'jobid':" in job_output
-            assert "'algorithm': 'hotspotter_nosv'," in job_output
-
-            # Simulate a valid response from Sage but don't actually send the request to Sage
-            with mock.patch.object(
-                flask_app.acm,
-                'request_passthrough_result',
-                return_value={'success': True, 'content': 'something'},
-            ):
-                job_control.print_last_annotation_job(
-                    MockContext(), str(annot_uuid), verbose=True
-                )
-                job_output = stdout.getvalue()
-                assert "'type': 'Sighting'" in job_output
-                assert "'active': True" in job_output
-                assert "'algorithm': 'hotspotter_nosv'," in job_output
-                assert (
-                    "'response': {'content': 'something', 'success': True}" in job_output
-                )
+    assert job['annotation'] == str(annotation.guid)
+    assert job['algorithm'] == 'hotspotter_nosv'
+    assert job['matching_set'] is None
+    assert job['active']

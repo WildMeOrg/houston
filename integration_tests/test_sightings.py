@@ -68,7 +68,7 @@ def test_sightings(session, login, codex_url, test_root, admin_name):
             'uploadType': 'form',
         },
     )
-    response = utils.wait_for_progress_preparation(session, codex_url, response)
+    response = utils.wait_for_progress(session, codex_url, response, 'preparation')
 
     assert response.status_code == 200, response.json()
     asset_group_guid = response.json()['guid']

@@ -2,7 +2,7 @@
 # pylint: disable=missing-docstring
 import uuid
 from unittest import mock
-from datetime import datetime, timedelta
+import datetime
 import time
 
 from tests import utils
@@ -32,7 +32,7 @@ def test_modify_encounter(
     from app.modules.complex_date_time.models import ComplexDateTime, Specificities
 
     data_in = {
-        'time': datetime.now().isoformat() + '+00:00',
+        'time': datetime.datetime.now().isoformat() + '+00:00',
         'timeSpecificity': 'time',
         'locationId': 'test',
         'encounters': [
@@ -99,7 +99,7 @@ def test_modify_encounter(
     )
 
     # test setting ComplexDateTime time value
-    dt = datetime.utcnow()
+    dt = datetime.datetime.utcnow()
     dt_string = dt.isoformat()  # first test no time zone (error)
     patch_data = [
         utils.patch_replace_op('time', dt_string),
@@ -150,7 +150,7 @@ def test_modify_encounter(
     assert test_enc.time.isoformat_in_timezone() == test_dt
 
     # now update just the date/time
-    test_dt = datetime.utcnow().isoformat() + '+03:00'
+    test_dt = datetime.datetime.utcnow().isoformat() + '+03:00'
     patch_data = [
         utils.patch_replace_op('time', test_dt),
     ]
@@ -180,7 +180,7 @@ def test_modify_encounter(
     assert not cdt
 
     # Check if we can sort by time
-    test_dt = datetime.utcnow().isoformat() + '+03:00'
+    test_dt = datetime.datetime.utcnow().isoformat() + '+03:00'
     patch_data = [
         utils.patch_replace_op('time', test_dt),
     ]
@@ -195,7 +195,7 @@ def test_modify_encounter(
 
     time.sleep(1)
 
-    test_dt = datetime.utcnow().isoformat() + '+03:00'
+    test_dt = datetime.datetime.utcnow().isoformat() + '+03:00'
     patch_data = [
         utils.patch_replace_op('time', test_dt),
     ]
@@ -226,7 +226,9 @@ def test_modify_encounter(
     ]
     assert actual_order == expected_order
 
-    test_dt = (new_encounter_1.time.datetime - timedelta(hours=1)).isoformat() + '+03:00'
+    test_dt = (
+        new_encounter_1.time.datetime - datetime.timedelta(hours=1)
+    ).isoformat() + '+03:00'
     patch_data = [
         utils.patch_replace_op('time', test_dt),
     ]
@@ -567,7 +569,7 @@ def test_mix_edm_houston_patch(
     assert 'decimalLatitude' not in read_resp.json.keys()
 
     # Houston only patch
-    new_time = datetime.now().isoformat() + '+00:00'
+    new_time = datetime.datetime.now().isoformat() + '+00:00'
     patch_resp = enc_utils.patch_encounter(
         flask_app_client,
         encounter_guid,
@@ -585,7 +587,7 @@ def test_mix_edm_houston_patch(
     # Houston and EDM patch
     lat = utils.random_decimal_latitude()
     long = utils.random_decimal_longitude()
-    new_time = datetime.now().isoformat() + '+00:00'
+    new_time = datetime.datetime.now().isoformat() + '+00:00'
     patch_resp = enc_utils.patch_encounter(
         flask_app_client,
         encounter_guid,

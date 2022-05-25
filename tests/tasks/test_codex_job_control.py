@@ -48,7 +48,7 @@ def test_print_all_sighting_jobs(flask_app_client, researcher_1, request, test_r
         'sighting'
     ]
     sighting = Sighting.query.get(s_guid)
-    assert sighting.stage == 'identification'
+    assert sighting.stage == 'un_reviewed'
 
     with mock.patch('tasks.utils.app_context_task') as app_context_task:
         app_context_task.side_effect = lambda: (lambda func: func)
@@ -63,6 +63,3 @@ def test_print_all_sighting_jobs(flask_app_client, researcher_1, request, test_r
             print_all_sighting_jobs(MockContext(), sighting_guid=s_guid)
             assert get_job_debug.call_count == 1
             get_job_debug.reset_mock()
-
-            print_all_sighting_jobs(MockContext())
-            assert get_job_debug.call_count == 1

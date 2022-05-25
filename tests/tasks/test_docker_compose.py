@@ -19,19 +19,19 @@ def test_rebuild_specific_services():
         context = MockContext(
             run={
                 'docker-compose config': Result(DOCKER_COMPOSE),
-                'docker-compose rm --stop -f db acm': True,
-                'docker volume ls -q -f dangling=true -f name=houston_db* -f name=houston_acm* | xargs docker volume rm': True,
-                'docker-compose pull db acm': True,
-                'docker-compose build db acm': True,
+                'docker-compose rm --stop -f db sage': True,
+                'docker volume ls -q -f dangling=true -f name=houston_db* -f name=houston_sage* | xargs docker volume rm': True,
+                'docker-compose pull db sage': True,
+                'docker-compose build db sage': True,
             },
         )
-        tasks.docker_compose.rebuild(context, service=['db', 'acm'])
+        tasks.docker_compose.rebuild(context, service=['db', 'sage'])
         assert logger.info.call_args_list == [
-            mock.call('Stop and remove codex services db, acm'),
-            mock.call('Remove codex volumes db, acm'),
-            mock.call('Pull image updates db, acm'),
-            mock.call('Rebuild images db, acm'),
-            mock.call('You can now do "docker-compose up -d db acm"'),
+            mock.call('Stop and remove codex services db, sage'),
+            mock.call('Remove codex volumes db, sage'),
+            mock.call('Pull image updates db, sage'),
+            mock.call('Rebuild images db, sage'),
+            mock.call('You can now do "docker-compose up -d db sage"'),
         ]
 
 

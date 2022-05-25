@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from datetime import datetime, timedelta
+import datetime
 
 from mock import Mock
 
@@ -31,7 +31,7 @@ def test_loading_user_from_request_with_bearer_token(
         token_type='Bearer',
         access_token='test_access_token',
         scopes=[],
-        expires=datetime.utcnow() + timedelta(days=1),
+        expires=datetime.datetime.utcnow() + datetime.timedelta(days=1),
     )
 
     with db.session.begin():

@@ -70,7 +70,12 @@ def test_annotation_identification(
         flask_app_client, researcher_1, request, test_root
     )
     query_annot_guid = asset_group_utils.patch_in_dummy_annotation(
-        flask_app_client, db, researcher_1, asset_group_sighting_guid2, asset_uuid2
+        flask_app_client,
+        db,
+        researcher_1,
+        asset_group_sighting_guid2,
+        asset_uuid2,
+        padding=1,
     )
     target_annot = Annotation.query.get(target_annot_guid)
     query_annot = Annotation.query.get(query_annot_guid)

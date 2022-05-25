@@ -85,7 +85,7 @@ def test_asset_group_sightings(session, login, codex_url, test_root):
         pprint.pprint(response.json())
 
     assert response.status_code == 200
-    response = utils.wait_for_progress_preparation(session, codex_url, response)
+    response = utils.wait_for_progress(session, codex_url, response, 'preparation')
     assert len(response.json()['assets']) == 1
     asset = response.json()['assets'][0]
     assert len(response.json()['asset_group_sightings']) == 1
@@ -153,6 +153,8 @@ def test_asset_group_sightings(session, login, codex_url, test_root):
                 'indexed': ags['indexed'],
                 'jobs': ags['jobs'],
                 'progress_preparation': ags['progress_preparation'],
+                'progress_detection': ags['progress_detection'],
+                'progress_identification': ags['progress_identification'],
                 'sighting_guid': None,
                 'stage': 'detection',
                 'locationId': 'PYTEST',
@@ -169,7 +171,9 @@ def test_asset_group_sightings(session, login, codex_url, test_root):
         'indexed': response.json()['indexed'],
         'major_type': 'filesystem',
         'owner_guid': my_guid,
-        'progress_preparation': {'guid': response.json()['progress_preparation']['guid']},
+        'progress_preparation': response.json()['progress_preparation'],
+        'progress_detection': response.json()['progress_detection'],
+        'progress_identification': response.json()['progress_identification'],
         'updated': response.json()['updated'],
     }
 

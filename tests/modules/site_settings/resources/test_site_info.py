@@ -10,12 +10,12 @@ from tests.utils import extension_unavailable
 
 
 @pytest.mark.skipif(
-    extension_unavailable('acm', 'edm'), reason='ACM or EDM extension disabled'
+    extension_unavailable('sage', 'edm'), reason='Sage or EDM extension disabled'
 )
 def test_site_info(flask_app_client):
-    with mock.patch('flask.current_app.acm.get_dict') as acm_get_dict:
+    with mock.patch('flask.current_app.sage.get_dict') as sage_get_dict:
         with mock.patch('flask.current_app.edm.get_dict') as edm_get_dict:
-            acm_get_dict.return_value = {
+            sage_get_dict.return_value = {
                 'status': {
                     'success': True,
                     'code': 200,
@@ -40,7 +40,7 @@ def test_site_info(flask_app_client):
             'version': app.version.version,
             'git_version': app.version.git_revision,
         },
-        'acm': {
+        'sage': {
             'version': '3.5.1.dev23',
         },
         'edm': {
@@ -53,16 +53,16 @@ def test_site_info(flask_app_client):
 
 
 @pytest.mark.skipif(
-    extension_unavailable('acm', 'edm'), reason='ACM or EDM extension disabled'
+    extension_unavailable('sage', 'edm'), reason='Sage or EDM extension disabled'
 )
 def test_site_info_api_error(flask_app_client):
-    with mock.patch('flask.current_app.acm.get_dict') as acm_get_dict:
+    with mock.patch('flask.current_app.sage.get_dict') as sage_get_dict:
         with mock.patch('flask.current_app.edm.get_dict') as edm_get_dict:
             not_found = Response()
             not_found.status_code = 404
-            acm_get_dict.return_value = not_found
+            sage_get_dict.return_value = not_found
             edm_get_dict.return_value = not_found
-            # both acm and edm returns 404
+            # both sage and edm returns 404
             resp = flask_app_client.get('/api/v1/site-settings/site-info/')
 
     assert resp.status_code == 200
@@ -72,6 +72,6 @@ def test_site_info_api_error(flask_app_client):
             'version': app.version.version,
             'git_version': app.version.git_revision,
         },
-        'acm': '<Response [404]>',
+        'sage': '<Response [404]>',
         'edm': '<Response [404]>',
     }

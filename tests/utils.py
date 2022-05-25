@@ -5,7 +5,7 @@ Testing utils
 """
 
 from contextlib import contextmanager
-from datetime import datetime, timedelta
+import datetime
 import json
 import tempfile
 
@@ -72,7 +72,7 @@ class AutoAuthFlaskClient(FlaskClient):
                     token_type='Bearer',
                     access_token='test_access_token',
                     scopes=self._auth_scopes,
-                    expires=datetime.utcnow() + timedelta(days=1),
+                    expires=datetime.datetime.utcnow() + datetime.timedelta(days=1),
                 )
                 oauth2_bearer_token_guid = oauth2_bearer_token.guid
 
@@ -209,8 +209,8 @@ def generate_user_instance(
         full_name=full_name,
         password=password,
         email=email,
-        created=created or datetime.now(),
-        updated=updated or datetime.now(),
+        created=created or datetime.datetime.now(),
+        updated=updated or datetime.datetime.now(),
         is_active=is_active,
         is_staff=is_staff,
         is_admin=is_admin,
@@ -580,8 +580,6 @@ def random_uuid():
 
 
 def timestamp():
-    import datetime
-
     return datetime.datetime.now().isoformat() + '+00:00'
 
 
@@ -596,13 +594,13 @@ def random_nonce(length=16):
 
 
 def isoformat_timestamp_now():
-    return datetime.now().isoformat() + '+00:00'
+    return datetime.datetime.now().isoformat() + '+00:00'
 
 
 def complex_date_time_now():
     from app.modules.complex_date_time.models import ComplexDateTime, Specificities
 
-    return ComplexDateTime(datetime.utcnow(), 'UTC+00:00', Specificities.time)
+    return ComplexDateTime(datetime.datetime.utcnow(), 'UTC+00:00', Specificities.time)
 
 
 def dummy_sighting_info():
@@ -610,7 +608,7 @@ def dummy_sighting_info():
         'time': isoformat_timestamp_now(),
         'timeSpecificity': 'time',
         'locationId': 'narnia',
-        'encounters': [{'guid': uuid.uuid4()}],
+        'encounters': [{'guid': str(uuid.uuid4())}],
         'assetReferences': [],
     }
 
@@ -733,6 +731,34 @@ def wait_for_elasticsearch_status(flask_app_client, user, force=True):
 
         if trial > 10:
             raise RuntimeError()
+
+        trial += 1
+        time.sleep(1)
+
+
+def wait_for_progress(flask_app, progress_guids=None):
+    from app.modules.progress.models import Progress
+
+    if progress_guids is None:
+        progress_guids = []
+
+    trial = 0
+    while True:
+        try:
+            # Fetch the detection results from Sage
+            flask_app.sage.sync_jobs()
+
+            for progress_guid in progress_guids:
+                progress = Progress.query.get(progress_guid)
+                assert not progress.active
+                assert progress.complete
+
+            break
+        except AssertionError:
+            pass
+
+        if trial > 60:
+            raise RuntimeError('Failed to get all progress trackers completed')
 
         trial += 1
         time.sleep(1)

@@ -87,7 +87,6 @@ def test_get_detectors_zebras(flask_app_client):
             'name': 'African terrestrial mammal detector',
             'description': 'Trained on zebras, giraffes, lions, hyenas, leopards, cheetahs, and wild dogs.',
             'config_dict': {
-                'start_detect': '/api/engine/detect/cnn/lightnet/',
                 'labeler_algo': 'densenet',
                 'labeler_model_tag': 'zebra_v1',
                 'model_tag': 'ggr2',
@@ -105,7 +104,6 @@ def test_get_named_detector_config_african_terrestrial(flask_app_client):
     detector_config = ia_config_reader.get_named_detector_config(detector_name)
 
     desired_config = {
-        'start_detect': '/api/engine/detect/cnn/lightnet/',
         'labeler_algo': 'densenet',
         'labeler_model_tag': 'zebra_v1',
         'model_tag': 'ggr2',
@@ -133,7 +131,7 @@ def test_get_detect_model_frontend_data(flask_app_client):
                     'scientific_name': 'Equus grevyi',
                     'common_name': "Grevy's zebra",
                     'itis_id': 202400,
-                    'ia_classes': ['zebra_grevys', 'zebra'],
+                    'ia_classes': ['zebra', 'zebra_grevys'],
                     'id_algos': {
                         'hotspotter_nosv': {'description': 'HotSpotter pattern-matcher'}
                     },
@@ -142,7 +140,7 @@ def test_get_detect_model_frontend_data(flask_app_client):
                     'scientific_name': 'Equus quagga',
                     'common_name': 'plains zebra',
                     'itis_id': 624996,
-                    'ia_classes': ['zebra_grevys', 'zebra'],
+                    'ia_classes': ['zebra', 'zebra_grevys'],
                     'id_algos': {
                         'hotspotter_nosv': {'description': 'HotSpotter pattern-matcher'}
                     },

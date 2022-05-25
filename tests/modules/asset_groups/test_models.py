@@ -1,10 +1,9 @@
 # -*- coding: utf-8 -*-
-import datetime
-from unittest import mock
 import uuid
 import tests.modules.asset_groups.resources.utils as asset_group_utils
 import tests.utils as test_utils
 import pytest
+from app.utils import HoustonException
 
 from tests.utils import module_unavailable, extension_unavailable
 
@@ -64,48 +63,35 @@ def test_asset_group_sightings_jobs(flask_app, db, admin_user, test_root, reques
     assert ags2.get_detection_start_time() is None
     assert ags2.get_curation_start_time() is None
 
-    now = datetime.datetime(2021, 7, 7, 17, 55, 34)
-    job_id1 = uuid.UUID('53ea04e0-1e87-412d-aa17-0ff5e05db78d')
-    job_id2 = uuid.UUID('fca55971-f014-4a8d-9e94-2c88b72d2d8c')
+    progress_guids = [str(ags1.progress_detection.guid)]
+    test_utils.wait_for_progress(flask_app, progress_guids)
 
-    uuids = [job_id2, job_id1]
+    ags1.init_progress_detection(overwrite=True)
+    ags1.send_detection_to_sage('african_terrestrial')
 
-    from app.modules.asset_groups.tasks import sage_detection
+    with pytest.raises(HoustonException) as exc:
+        ags2.send_detection_to_sage('african_terrestrial')
+    assert (
+        str(exc.value)
+        == 'Cannot rerun detection on AssetGroupSighting in processed stage'
+    )
 
-    # Don't send anything to acm
-    with mock.patch('app.modules.asset_groups.models.current_app') as mock_app:
-        mock_app.config.get.return_value = 'zebra'
-        with mock.patch('datetime.datetime') as mock_datetime:
-            with mock.patch(
-                'app.modules.asset_groups.models.uuid.uuid4', side_effect=uuids.pop
-            ):
-                mock_datetime.utcnow.return_value = now
-                sage_detection(str(ags1.guid), 'african_terrestrial')
-                sage_detection(str(ags2.guid), 'african_terrestrial')
+    progress_guids = [str(ags1.progress_detection.guid)]
+    test_utils.wait_for_progress(flask_app, progress_guids)
 
-    assert AssetGroupSighting.query.get(ags1.guid).jobs == {
-        str(job_id1): {
-            'model': 'african_terrestrial',
-            'active': True,
-            'start': now.isoformat(),
-            'asset_ids': [str(asset_group.assets[0].guid)],
-        },
-    }
-    assert AssetGroupSighting.query.get(ags2.guid).jobs == {
-        str(job_id2): {
-            'model': 'african_terrestrial',
-            'active': True,
-            'start': now.isoformat(),
-            'asset_ids': [],
-        },
-    }
+    keys = list(ags1.jobs.keys())
+    key = keys[0]
+    job = ags1.jobs[key]
+    assert job['model'] == 'african_terrestrial'
+    assert not job['active']
+    assert job['asset_guids'] == [str(asset_group.assets[0].guid)]
 
     # not exactly sure why this is None, but we need it not-None
     ags1.asset_group.config['speciesDetectionModel'] = ['fubar']
     ags1.asset_group.config = ags1.asset_group.config
     ps = ags1.get_pipeline_status()
     assert ps['detection']
-    assert ps['detection']['inProgress']
+    assert not ps['detection']['inProgress']
     assert not ps['detection']['failed']
 
     ags1.jobs = None

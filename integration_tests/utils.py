@@ -62,7 +62,7 @@ def create_asset_group(session, codex_url, data):
     print(response.text)
     assert response.status_code == 200
 
-    response = wait_for_progress_preparation(session, codex_url, response)
+    response = wait_for_progress(session, codex_url, response, 'preparation')
 
     json_resp = response.json()
     assert set(json_resp.keys()) >= set(
@@ -141,12 +141,12 @@ def create_custom_field(session, codex_url, cls, name, type='string', multiple=F
     return cfd_list[0]
 
 
-def wait_for_progress_preparation(session, codex_url, response):
+def wait_for_progress(session, codex_url, response, progress_type='preparation'):
     import pprint
 
     pprint.pprint(response.json())
 
-    progress_guid = response.json()['progress_preparation']['guid']
+    progress_guid = response.json()['progress_%s' % (progress_type,)]['guid']
 
     progress_url = codex_url(f'/api/v1/progress/{progress_guid}')
     wait_for(session.get, progress_url, lambda response: response.json()['complete'])

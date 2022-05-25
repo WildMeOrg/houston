@@ -140,13 +140,13 @@ def test_annotation_matching_set(
     assert 'bool' in query
     assert 'filter' in query['bool']
     # omg this is tedious so just cutting to the chase (9 viewpoint/neighbors)
-    assert len(query['bool']['filter'][1]['bool']['should']) == 9
+    assert len(query['bool']['filter'][0]['bool']['should']) == 9
     assert query['bool']['must_not']['match']['encounter_guid'] == str(enc1_guid)
 
     # will just use default (as above)
     matching_set = annotation.get_matching_set()
-    assert len(matching_set) == 1
-    assert str(matching_set[0].guid) == annotation_match_guid
+    assert len(matching_set) >= 1
+    assert annotation_match_guid in [str(val.guid) for val in matching_set]
 
     # test resolving of non-default queries
     try:

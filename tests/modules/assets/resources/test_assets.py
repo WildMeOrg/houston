@@ -168,11 +168,16 @@ def test_find_raw_asset(
     asset_guid = uuids['assets'][0]
 
     # Only internal, not even uploader can read the raw src for the file
-    asset_utils.read_raw_src_asset(flask_app_client, researcher_1, asset_guid, 403)
-    asset_utils.read_raw_src_asset(flask_app_client, admin_user, asset_guid, 403)
+    asset_utils.read_raw_src_asset(
+        flask_app_client, researcher_1, asset_guid, 403
+    ).close()
+    asset_utils.read_raw_src_asset(flask_app_client, admin_user, asset_guid, 403).close()
 
-    # Even internal is not allowed to access it if it's not in the detecting stage
-    asset_utils.read_raw_src_asset(flask_app_client, internal_user, asset_guid, 403)
+    # internal users should always be allowed to access it, regardless of the detecting stage
+    asset_utils.read_raw_src_asset(
+        flask_app_client, internal_user, asset_guid, 200
+    ).close()
+
     from app.modules.asset_groups.models import (
         AssetGroupSightingStage,
         AssetGroupSighting,
@@ -191,10 +196,6 @@ def test_find_raw_asset(
 
         assert raw_src_response.content_type == 'image/jpeg'
         assert hashlib.md5(raw_src_response.data).hexdigest() in initial_md5sum_values
-
-        # Force the server to release the file handler
-        raw_src_response.close()
-
     finally:
         # Force the server to release the file handler
         if raw_src_response:

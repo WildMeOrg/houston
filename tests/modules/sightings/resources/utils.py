@@ -8,7 +8,6 @@ import json
 from tests import utils as test_utils
 import tests.extensions.tus.utils as tus_utils
 import tests.modules.asset_groups.resources.utils as asset_group_utils
-from unittest import mock
 
 PATH = '/api/v1/sightings/'
 
@@ -269,128 +268,115 @@ def delete_sighting(
     return response
 
 
-# Create a default valid Sage detection response (to allow for the test to corrupt it accordingly)
-def build_sage_identification_response(
-    job_uuid, annot_uuid, algorithm, target_annot_uuid
-):
+# # Create a default valid Sage detection response (to allow for the test to corrupt it accordingly)
+# def build_sage_identification_response(
+#     job_uuid, annot_uuid, algorithm, target_annot_uuid
+# ):
 
-    # Generate the response back from Sage.
-    sage_resp = {
-        'jobid': f'{str(job_uuid)}',
-        'json_result': {
-            'cm_dict': {annot_uuid: {}},
-            'inference_dict': {},
-            'query_annot_uuid_list': [{'__UUID__': annot_uuid}],
-            'query_config_dict': {
-                'pipeline_root': algorithm,
-            },
-            'summary_annot': [
-                {
-                    'daid': 353909,
-                    'dnid': 101124,
-                    'duuid': {'__UUID__': target_annot_uuid},
-                    'score': 0.49249419758140284,
-                    'species': 'tursiops_truncatus',
-                    'viewpoint': 'left',
-                },
-            ],
-            'summary_name': [
-                {
-                    'daid': 354564,
-                    'dnid': 78920,
-                    'duuid': {'__UUID__': target_annot_uuid},
-                    'score': 4.755731035123042,
-                    'species': 'tursiops_truncatus',
-                    'viewpoint': 'right',
-                },
-            ],
-        },
-        'status': 'completed',
-    }
+#     # Generate the response back from Sage.
+#     sage_resp = {
+#         'jobid': f'{str(job_uuid)}',
+#         'json_result': {
+#             'cm_dict': {annot_uuid: {}},
+#             'inference_dict': {},
+#             'query_annot_uuid_list': [{'__UUID__': annot_uuid}],
+#             'query_config_dict': {
+#                 'pipeline_root': algorithm,
+#             },
+#             'summary_annot': [
+#                 {
+#                     'daid': 353909,
+#                     'dnid': 101124,
+#                     'duuid': {'__UUID__': target_annot_uuid},
+#                     'score': 0.49249419758140284,
+#                     'species': 'tursiops_truncatus',
+#                     'viewpoint': 'left',
+#                 },
+#             ],
+#             'summary_name': [
+#                 {
+#                     'daid': 354564,
+#                     'dnid': 78920,
+#                     'duuid': {'__UUID__': target_annot_uuid},
+#                     'score': 4.755731035123042,
+#                     'species': 'tursiops_truncatus',
+#                     'viewpoint': 'right',
+#                 },
+#             ],
+#         },
+#         'status': 'completed',
+#     }
 
-    return sage_resp
-
-
-def send_sage_identification_response(
-    flask_app_client,
-    user,
-    sighting_guid,
-    job_guid,
-    data,
-    expected_status_code=200,
-):
-    with flask_app_client.login(user, auth_scopes=('sightings:write',)):
-        response = flask_app_client.post(
-            f'{PATH}{sighting_guid}/sage_identified/{job_guid}',
-            content_type='application/json',
-            data=json.dumps(data),
-        )
-    if expected_status_code == 200:
-        assert response.status_code == expected_status_code
-    else:
-        test_utils.validate_dict_response(
-            response, expected_status_code, {'status', 'message'}
-        )
-    return response
+#     return sage_resp
 
 
-# Helper to combine the two above
-def send_basic_sage_identification_response(
-    flask_app_client,
-    internal_user,
-    sighting_uuid,
-    job_uuid,
-    annot_uuid,
-    algorithm,
-    target_annot_uuid,
-):
-    sage_resp = build_sage_identification_response(
-        job_uuid, annot_uuid, algorithm, target_annot_uuid
-    )
+# def send_sage_identification_response(
+#     flask_app_client,
+#     user,
+#     sighting_guid,
+#     job_guid,
+#     data,
+#     expected_status_code=200,
+# ):
+#     with flask_app_client.login(user, auth_scopes=('sightings:write',)):
+#         response = flask_app_client.post(
+#             f'{PATH}{sighting_guid}/sage_identified/{job_guid}',
+#             content_type='application/json',
+#             data=json.dumps(data),
+#         )
+#     if expected_status_code == 200:
+#         assert response.status_code == expected_status_code
+#     else:
+#         test_utils.validate_dict_response(
+#             response, expected_status_code, {'status', 'message'}
+#         )
+#     return response
 
-    send_sage_identification_response(
-        flask_app_client,
-        internal_user,
-        sighting_uuid,
-        job_uuid,
-        sage_resp,
-    )
+
+# # Helper to combine the two above
+# def send_basic_sage_identification_response(
+#     flask_app_client,
+#     internal_user,
+#     sighting_uuid,
+#     job_uuid,
+#     annot_uuid,
+#     algorithm,
+#     target_annot_uuid,
+# ):
+#     sage_resp = build_sage_identification_response(
+#         job_uuid, annot_uuid, algorithm, target_annot_uuid
+#     )
+
+#     send_sage_identification_response(
+#         flask_app_client,
+#         internal_user,
+#         sighting_uuid,
+#         job_uuid,
+#         sage_resp,
+#     )
 
 
-def rerun_identification_sim_sage_response(
-    flask_app,
-    flask_app_client,
-    user,
-    sighting_guid,
-    expected_status_code=200,
-):
-    from app.modules.sightings import tasks
-    from app.modules.annotations.models import Annotation
-    from app.extensions import elasticsearch as es
+# def rerun_identification_sim_sage_response(
+#     flask_app,
+#     flask_app_client,
+#     user,
+#     sighting_guid,
+#     expected_status_code=200,
+# ):
+#     from app.modules.annotations.models import Annotation
+#     from app.extensions import elasticsearch as es
 
-    # Start ID simulating success response from Sage
-    with mock.patch.object(
-        flask_app.acm,
-        'request_passthrough_result',
-        return_value={'success': True},
-    ):
-        with mock.patch.object(
-            tasks.send_all_identification,
-            'delay',
-            side_effect=lambda *args, **kwargs: tasks.send_all_identification(
-                *args, **kwargs
-            ),
-        ):
-            with es.session.begin(blocking=True, forced=True):
-                Annotation.index_all()
-            response = test_utils.post_via_flask(
-                flask_app_client,
-                user,
-                scopes='sightings:write',
-                path=f'{PATH}{sighting_guid}/rerun_id',
-                data={},
-                expected_status_code=expected_status_code,
-                response_200={'guid'},
-            )
+#     # Start ID simulating success response from Sage
+#     with es.session.begin(blocking=True, forced=True):
+#         Annotation.index_all()
+#     response = test_utils.post_via_flask(
+#         flask_app_client,
+#         user,
+#         scopes='sightings:write',
+#         path=f'{PATH}{sighting_guid}/rerun_id',
+#         data={},
+#         expected_status_code=expected_status_code,
+#         response_200={'guid'},
+#     )
 
-    return response
+#     return response

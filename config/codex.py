@@ -3,7 +3,7 @@
 import os
 
 from .base import (
-    ACMConfig,
+    SageConfig,
     AssetGroupConfig,
     BaseConfig,
     EDMConfig,
@@ -21,7 +21,7 @@ class BaseCodexConfig(
     EmailConfig,
     ReCaptchaConfig,
     GoogleConfig,
-    ACMConfig,
+    SageConfig,
     EDMConfig,
     AssetGroupConfig,
     ElasticsearchConfig,
@@ -33,7 +33,7 @@ class BaseCodexConfig(
 
     # fmt: off
     ENABLED_EXTENSIONS = (
-        'acm',
+        'sage',
         'edm',
         'cors',
         'elasticsearch',
@@ -71,7 +71,6 @@ class BaseCodexConfig(
         'app_ui',
         'swagger_ui',
 
-        'api',
         'passthroughs',
         'emails',
         'audit_logs',

@@ -97,5 +97,5 @@ prof/
 db-edm-*.sql
 db-houston-*.sql
 
-test[A-Z]/
+test[A-R]/
 _assets/transect/

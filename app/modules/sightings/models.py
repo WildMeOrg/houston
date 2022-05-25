@@ -642,8 +642,8 @@ class Sighting(db.Model, FeatherModel):
                 'sage_status': None,
             }
             job = self.jobs[job_id]
-            job_info['start'] = job.get('start')
-            job_info['end'] = job.get('end')
+            job_info['start'] = datetime_string_to_isoformat(job.get('start'))
+            job_info['end'] = datetime_string_to_isoformat(job.get('end'))
             if job.get('active') is True:
                 job_info['active'] = True
                 status['numJobsActive'] += 1
@@ -677,8 +677,8 @@ class Sighting(db.Model, FeatherModel):
             status['stepsComplete'] += 1
 
         status['inProgress'] = status['jobs'][-1]['active']
-        status['start'] = datetime_string_to_isoformat(status['jobs'][-1]['start'])
-        status['end'] = datetime_string_to_isoformat(status['jobs'][-1]['end'])
+        status['start'] = status['jobs'][-1]['start']
+        status['end'] = status['jobs'][-1]['end']
         status['complete'] = not status['inProgress']
         if status['steps']:
             status['progress'] = status['stepsComplete'] / status['steps']

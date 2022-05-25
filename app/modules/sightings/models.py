@@ -904,35 +904,45 @@ class Sighting(db.Model, FeatherModel):
     # specifically to pass to Sage, so we dress it up accordingly
     def get_matching_set_data(self, annotation_guid, matching_set_config=None):
         from app.extensions.acm import to_acm_uuid, default_acm_individual_uuid
+        from app.extensions.elapsed_time import ElapsedTime
 
+        timer = ElapsedTime()
         annotation = Annotation.query.get(annotation_guid)
         assert annotation
         log.debug(
             f'sighting.get_matching_set_data(): sighting {self.guid} finding matching set for {annotation} using {matching_set_config}'
         )
         matching_set_annotations = annotation.get_matching_set(matching_set_config)
+        log.debug(
+            f'  found {len(matching_set_annotations)} annots in {timer.elapsed()} sec'
+        )
 
+        timer = ElapsedTime()
         matching_set_individual_uuids = []
         matching_set_annot_uuids = []
+        unique_set = set()  # just to prevent duplication
         for annot in matching_set_annotations:
             # ideally the query on matching_set annots will exclude these, but in case someone got fancy:
             if not annot.content_guid:
                 log.warning(f'skipping {annot} due to no content_guid')
                 continue
-            if annot.encounter and annot.encounter.sighting:
+            # this *does* assume the sighting exists due to elasticsearch constraints, in order to improve performance.
+            #   it previously was this, which took longer as it needed to load two objects from db:
+            #          if annot.encounter and annot.encounter.sighting:
+            if annot.encounter_guid and annot.content_guid not in unique_set:
+                unique_set.add(annot.content_guid)
                 acm_annot_uuid = to_acm_uuid(annot.content_guid)
-                if acm_annot_uuid not in matching_set_annot_uuids:
-                    matching_set_annot_uuids.append(acm_annot_uuid)
-                    individual_guid = annot.get_individual_guid()
-                    if individual_guid:
-                        individual_guid = str(individual_guid)
-                    else:
-                        # Use Sage default value
-                        individual_guid = default_acm_individual_uuid()
-                    matching_set_individual_uuids.append(individual_guid)
+                matching_set_annot_uuids.append(acm_annot_uuid)
+                individual_guid = annot.get_individual_guid()
+                if individual_guid:
+                    individual_guid = str(individual_guid)
+                else:
+                    # Use Sage default value
+                    individual_guid = default_acm_individual_uuid()
+                matching_set_individual_uuids.append(individual_guid)
 
         log.debug(
-            f'sighting.get_matching_set_data(): Built matching set individuals {matching_set_individual_uuids}, '
+            f'sighting.get_matching_set_data(): [{timer.elapsed()} sec] Built matching set individuals {matching_set_individual_uuids}, '
             f'annots {matching_set_annot_uuids} for Annot {annotation_guid} on {self}'
         )
         return matching_set_individual_uuids, matching_set_annot_uuids

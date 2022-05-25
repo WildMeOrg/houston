@@ -553,19 +553,19 @@ class AssetGroupSighting(db.Model, HoustonModel):
             'now': datetime.datetime.utcnow().isoformat(),
             'stage': self.stage,
             'migrated': False,  # always false, but just for consistency with sighting
-            'summary': {
-                'progress': None,
-            },
+            'summary': {},
         }
         status['summary']['complete'] = (
-            status['preparation']['complete'] and status['detection']['complete']
+            status['preparation']['complete']
+            and status['detection']['complete']
+            and status['identification']['complete']
         )
-        steps_total = status['preparation']['steps'] + status['detection']['steps']
-        steps_complete_total = (
-            status['preparation']['stepsComplete'] + status['detection']['stepsComplete']
-        )
-        if steps_total:
-            status['summary']['progress'] = steps_complete_total / steps_total
+        # this is not the best math, but prob best we can do
+        status['summary']['progress'] = (
+            (status['preparation']['progress'] or 0)
+            + (status['detection']['progress'] or 0)
+            + (status['identification']['progress'] or 0)
+        ) / 3
         return status
 
     def _get_pipeline_status_preparation(self):

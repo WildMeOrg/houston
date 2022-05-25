@@ -481,27 +481,19 @@ class Sighting(db.Model, FeatherModel):
             'now': datetime.datetime.utcnow().isoformat(),
             'stage': self.stage,
             'migrated': self.is_migrated_data(),
-            'summary': {
-                'progress': None,
-            },
+            'summary': {},
         }
         status['summary']['complete'] = (
             status['preparation']['complete']
-            and status['identification']['complete']
             and status['detection']['complete']
+            and status['identification']['complete']
         )
-        steps_total = (
-            status['preparation']['steps']
-            + status['identification']['steps']
-            + status['detection']['steps']
-        )
-        steps_complete_total = (
-            status['preparation']['stepsComplete']
-            + status['identification']['stepsComplete']
-            + status['detection']['stepsComplete']
-        )
-        if steps_total:
-            status['summary']['progress'] = steps_complete_total / steps_total
+        # this is not the best math, but prob best we can do
+        status['summary']['progress'] = (
+            (status['preparation']['progress'] or 0)
+            + (status['detection']['progress'] or 0)
+            + (status['identification']['progress'] or 0)
+        ) / 3
         return status
 
     # this piggybacks off of AssetGroupSighting.... *if* we have one!
@@ -561,6 +553,8 @@ class Sighting(db.Model, FeatherModel):
         return status
 
     def _get_pipeline_status_identification(self):
+        from app.utils import datetime_string_to_isoformat
+
         annots = self.get_annotations()
         status = {
             'skipped': False,
@@ -682,8 +676,8 @@ class Sighting(db.Model, FeatherModel):
             status['stepsComplete'] += 1
 
         status['inProgress'] = status['jobs'][-1]['active']
-        status['start'] = status['jobs'][-1]['start']
-        status['end'] = status['jobs'][-1]['end']
+        status['start'] = datetime_string_to_isoformat(status['jobs'][-1]['start'])
+        status['end'] = datetime_string_to_isoformat(status['jobs'][-1]['end'])
         status['complete'] = not status['inProgress']
         if status['steps']:
             status['progress'] = status['stepsComplete'] / status['steps']

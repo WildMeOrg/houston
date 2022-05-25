@@ -1,109 +1,120 @@
 {
-    "_note": "The hierarchy of this file is genus->species->ia_class->_id_conf (id config). detect_config is under Genus->species. Keys with a leading underscore and their children are non-biological categories of config, like _id_conf and _detection_conf. Keys without leading underscores are semantic lookups that are derived from Wildbook data, e.g. Megaptera.novaeangliae.whale_fluke.",
-    "_default": "@Panthera.onca",
-    "Panthera": {
-      "uncia": {
-        "_default":{
-          "_id_conf": "@Panthera.uncia.snow_leopard._id_conf"
-        },
-        "_detect_conf": [
+  "Acinonyx": {
+    "jubatus": {
+      "_detect_conf": [
+        {
+          "labeler_algo": "densenet",
+          "labeler_model_tag": "cheetah_v1",
+          "model_tag": "cheetah_v1",
+          "nms_aware": "byclass",
+          "nms_thresh": 0.6,
+          "sensitivity": 0.62
+        }
+      ],
+      "cheetah": {
+        "_id_conf": [
           {
-            "labeler_algo": "densenet",
-            "model_tag": "snow_leopard_v0",
-            "nms_thresh": 0.40,
-            "sensitivity": 0.44
-          }
-        ],
-        "snow_leopard":{
-          "_id_conf": [
-            {
-              "query_config_dict": {
-                "sv_on":true
-              },
-              "description": "HotSpotter pattern-matcher"
+            "query_config_dict": {
+              "sv_on": true
             }
-          ]
-        }
-      },
-      "onca": {
-        "_default":{
-          "_id_conf": "@Panthera.onca.jaguar._id_conf"
-        },
-        "_detect_conf": [
-          {
-            "labeler_algo": "densenet",
-            "model_tag": "jaguar_v2",
-            "nms_thresh": 0.50,
-            "sensitivity": 0.50
           }
-        ],
-        "onca": "@Panthera.onca.jaguar",
-        "jaguar":{
-          "_id_conf": [
-            {
-              "query_config_dict": {
-                "sv_on":true
-              },
-              "description": "HotSpotter pattern-matcher"
-            }
-          ]
-        }
-      },
-      "pardus": {
-           "_detect_conf": [
-              {
-                 "model_tag":"leopard_v0",
-                 "viewpoint_model_tag":"leopard_v0",
-                 "labeler_algo":"densenet",
-                 "nms_aware": null,
-                 "nms_thresh": 0.50,
-                 "sensitivity": 0.73
-              }
-           ],
-           "leopard": {
-              "_id_conf": [
-                {"query_config_dict": {"sv_on": true} }
-              ]
-           }
-        }
-    },
-    "Acinonyx": {
-        "jubatus": {
-           "_detect_conf": [
-              {
-                 "model_tag":"cheetah_v1",
-                 "labeler_model_tag":"cheetah_v1",
-                 "labeler_algo":"densenet",
-                 "nms_aware": "byclass",
-                 "nms_thresh": 0.60,
-                 "sensitivity": 0.62
-              }
-           ],
-           "cheetah": {
-              "_id_conf": [
-                {"query_config_dict": {"sv_on": true} }
-              ]
-           }
-        }
-     },
-
-     "Lynx": {
-          "lynx": {
-              "_detect_conf": [
-                  {
-                      "model_tag":"lynx",
-                      "labeler_model_tag":"lynx_v3",
-                      "labeler_algo":"densenet",
-                      "nms_aware": null,
-                      "nms_thresh": 0.41,
-                      "sensitivity": 0.41
-                  }
-              ],
-              "lynx_pardinus": {
-                  "_id_conf": [
-                  {"query_config_dict": {"sv_on": false} }
-                  ]
-              }
-          }
+        ]
       }
-  }
+    }
+  },
+  "Lynx": {
+    "lynx": {
+      "_detect_conf": [
+        {
+          "labeler_algo": "densenet",
+          "labeler_model_tag": "lynx_v3",
+          "model_tag": "lynx",
+          "nms_aware": null,
+          "nms_thresh": 0.41,
+          "sensitivity": 0.41
+        }
+      ],
+      "lynx_pardinus": {
+        "_id_conf": [
+          {
+            "query_config_dict": {
+              "sv_on": false
+            }
+          }
+        ]
+      }
+    }
+  },
+  "Panthera": {
+    "onca": {
+      "_default": {
+        "_id_conf": "@Panthera.onca.jaguar._id_conf"
+      },
+      "_detect_conf": [
+        {
+          "labeler_algo": "densenet",
+          "model_tag": "jaguar_v2",
+          "nms_thresh": 0.5,
+          "sensitivity": 0.5
+        }
+      ],
+      "jaguar": {
+        "_id_conf": [
+          {
+            "description": "HotSpotter pattern-matcher",
+            "query_config_dict": {
+              "sv_on": true
+            }
+          }
+        ]
+      },
+      "onca": "@Panthera.onca.jaguar"
+    },
+    "pardus": {
+      "_detect_conf": [
+        {
+          "labeler_algo": "densenet",
+          "model_tag": "leopard_v0",
+          "nms_aware": null,
+          "nms_thresh": 0.5,
+          "sensitivity": 0.73,
+          "viewpoint_model_tag": "leopard_v0"
+        }
+      ],
+      "leopard": {
+        "_id_conf": [
+          {
+            "query_config_dict": {
+              "sv_on": true
+            }
+          }
+        ]
+      }
+    },
+    "uncia": {
+      "_default": {
+        "_id_conf": "@Panthera.uncia.snow_leopard._id_conf"
+      },
+      "_detect_conf": [
+        {
+          "labeler_algo": "densenet",
+          "model_tag": "snow_leopard_v0",
+          "nms_thresh": 0.4,
+          "sensitivity": 0.44
+        }
+      ],
+      "snow_leopard": {
+        "_id_conf": [
+          {
+            "description": "HotSpotter pattern-matcher",
+            "query_config_dict": {
+              "sv_on": true
+            }
+          }
+        ]
+      }
+    }
+  },
+  "_default": "@Panthera.onca",
+  "_note": "The hierarchy of this file is genus->species->ia_class->_id_conf (id config). detect_config is under Genus->species. Keys with a leading underscore and their children are non-biological categories of config, like _id_conf and _detection_conf. Keys without leading underscores are semantic lookups that are derived from Wildbook data, e.g. Megaptera.novaeangliae.whale_fluke."
+}

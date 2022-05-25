@@ -1,41 +1,41 @@
 {
-    "_note": "The hierarchy of this file is genus->species->ia_class->_id_conf (id config). detect_config is under Genus->species. Keys with a leading underscore and their children are non-biological categories of config, like _id_conf and _detection_conf. Keys without leading underscores are semantic lookups that are derived from Wildbook data, e.g. Megaptera.novaeangliae.whale_fluke.",
-    "_default": "@Epinephelus.striatus",
-    "Epinephelus": {
-      "striatus": {
-        "_default":{
-          "_id_conf": "@Epinephelus.striatus.grouper_nassau._id_conf"
-        },
-        "_detect_conf": [
-          {
-            "model_tag": "nassau_grouper_v3",
-            "labeler_model_tag": "nassau_grouper_v3",
-            "labeler_algo": "densenet",
-            "nms_aware": null,
-            "nms_thresh": 0.40,
-            "sensitivity": 0.46
-          }
-        ],
-        "nassau_grouper":{
-          "_id_conf": [
-            {
-              "query_config_dict": {
-                "sv_on":true
-              },
-              "description": "HotSpotter pattern-matcher"
-            }
-          ]
-        },
-        "grouper_nassau":{
-          "_id_conf": [
-            {
-              "query_config_dict": {
-                "sv_on":true
-              },
-              "description": "HotSpotter pattern-matcher"
-            }
-          ]
+  "Epinephelus": {
+    "striatus": {
+      "_default": {
+        "_id_conf": "@Epinephelus.striatus.grouper_nassau._id_conf"
+      },
+      "_detect_conf": [
+        {
+          "labeler_algo": "densenet",
+          "labeler_model_tag": "nassau_grouper_v3",
+          "model_tag": "nassau_grouper_v3",
+          "nms_aware": null,
+          "nms_thresh": 0.4,
+          "sensitivity": 0.46
         }
+      ],
+      "grouper_nassau": {
+        "_id_conf": [
+          {
+            "description": "HotSpotter pattern-matcher",
+            "query_config_dict": {
+              "sv_on": true
+            }
+          }
+        ]
+      },
+      "nassau_grouper": {
+        "_id_conf": [
+          {
+            "description": "HotSpotter pattern-matcher",
+            "query_config_dict": {
+              "sv_on": true
+            }
+          }
+        ]
       }
     }
-  }
+  },
+  "_default": "@Epinephelus.striatus",
+  "_note": "The hierarchy of this file is genus->species->ia_class->_id_conf (id config). detect_config is under Genus->species. Keys with a leading underscore and their children are non-biological categories of config, like _id_conf and _detection_conf. Keys without leading underscores are semantic lookups that are derived from Wildbook data, e.g. Megaptera.novaeangliae.whale_fluke."
+}

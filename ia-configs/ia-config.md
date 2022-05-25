@@ -14,8 +14,6 @@ these configs. If there is no species and genus, typically in a single species W
 * Omit the URLs from all IA json files. This should be gleaned from the ```.env``` configuration for the WBIA instance being used.
 * Rename each file to a unique name like changing IOT IA.json to IA.sea_turtle.json
 * Add a IA.GLOBAL.json file to hold global API endpoints. (Not complete URLs)
-* The globals file will split the ```start_detect``` value into another object with both "yolo" and "lightnet" keys.
-    * A key will be added to detect blocks to specify something other than lightnet.
 
 Since some IA.json files contain many species (looking at you, Flukebook) it would be a burden to tease every IA.json file for every
 Wildbook apart into separate IA.\<genus_species\>.json. Since the genus resides at the top level of each of these files,

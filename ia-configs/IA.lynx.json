@@ -1,78 +1,106 @@
 {
-    "_note":"The hierarchy of this file is genus->species->ia_class->_id_conf (id config). detect_config is under Genus->species. Keys with a leading underscore and their children are non-biological categories of config, like _id_conf and _detection_conf. Keys without leading underscores are semantic lookups that are derived from Wildbook data, e.g. Megaptera.novaeangliae.whale_fluke.",
-    "_default":"@Lynx.pardinus",
-    "Lynx": {
-        "pardinus": {
-            "_detect_conf": [
-                {
-                    "model_tag":"lynx",
-                    "labeler_model_tag":"lynx_v3",
-                    "labeler_algo":"densenet",
-                    "nms_aware": null,
-                    "nms_thresh": 0.41,
-                    "sensitivity": 0.41
-                }
-            ],
-            "lynx_pardinus": {
-                "_id_conf": [
-                {"query_config_dict": {"sv_on": false} }
-                ]
-            },
-            "lynx": {
-                "_id_conf": [
-                {"query_config_dict": {"sv_on": false} }
-                ]
-            }
-        },
-        "_note":"I know, I know....",
-        "Pardinus": {
-            "_detect_conf": [
-                {
-                    "model_tag":"lynx",
-                    "labeler_model_tag":"lynx_v3",
-                    "labeler_algo":"densenet",
-                    "nms_aware": null,
-                    "nms_thresh": 0.41,
-                    "sensitivity": 0.41
-                }
-            ],
-            "lynx_pardinus": {
-                "_id_conf": [
-                {"query_config_dict": {"sv_on": false} }
-                ]
-            },
-            "lynx": {
-                "_id_conf": [
-                {"query_config_dict": {"sv_on": false} }
-                ]
-            }
-        },
-        "lynx": {
-            "_detect_conf": [
-                {
-                    "model_tag":"lynx",
-                    "labeler_model_tag":"lynx_v3",
-                    "labeler_algo":"densenet",
-                    "nms_aware": null,
-                    "nms_thresh": 0.41,
-                    "sensitivity": 0.41
-                }
-            ],
-            "lynx_pardinus": {
-                "_id_conf": [
-                {"query_config_dict": {"sv_on": false} }
-                ]
-            },
-            "lynx_lynx": {
-                "_id_conf": [
-                {"query_config_dict": {"sv_on": false} }
-                ]
-            },
-            "lynx": {
-                "_id_conf": [
-                {"query_config_dict": {"sv_on": false} }
-                ]
-            }
+  "Lynx": {
+    "Pardinus": {
+      "_detect_conf": [
+        {
+          "labeler_algo": "densenet",
+          "labeler_model_tag": "lynx_v3",
+          "model_tag": "lynx",
+          "nms_aware": null,
+          "nms_thresh": 0.41,
+          "sensitivity": 0.41
         }
+      ],
+      "lynx": {
+        "_id_conf": [
+          {
+            "query_config_dict": {
+              "sv_on": false
+            }
+          }
+        ]
+      },
+      "lynx_pardinus": {
+        "_id_conf": [
+          {
+            "query_config_dict": {
+              "sv_on": false
+            }
+          }
+        ]
+      }
+    },
+    "_note": "I know, I know....",
+    "lynx": {
+      "_detect_conf": [
+        {
+          "labeler_algo": "densenet",
+          "labeler_model_tag": "lynx_v3",
+          "model_tag": "lynx",
+          "nms_aware": null,
+          "nms_thresh": 0.41,
+          "sensitivity": 0.41
+        }
+      ],
+      "lynx": {
+        "_id_conf": [
+          {
+            "query_config_dict": {
+              "sv_on": false
+            }
+          }
+        ]
+      },
+      "lynx_lynx": {
+        "_id_conf": [
+          {
+            "query_config_dict": {
+              "sv_on": false
+            }
+          }
+        ]
+      },
+      "lynx_pardinus": {
+        "_id_conf": [
+          {
+            "query_config_dict": {
+              "sv_on": false
+            }
+          }
+        ]
+      }
+    },
+    "pardinus": {
+      "_detect_conf": [
+        {
+          "labeler_algo": "densenet",
+          "labeler_model_tag": "lynx_v3",
+          "model_tag": "lynx",
+          "nms_aware": null,
+          "nms_thresh": 0.41,
+          "sensitivity": 0.41
+        }
+      ],
+      "lynx": {
+        "_id_conf": [
+          {
+            "query_config_dict": {
+              "sv_on": false
+            }
+          }
+        ]
+      },
+      "lynx_pardinus": {
+        "_id_conf": [
+          {
+            "query_config_dict": {
+              "sv_on": false
+            }
+          }
+        ]
+      }
     }
+  },
+  "_default": "@Lynx.pardinus",
+  "_note": "The hierarchy of this file is genus->species->ia_class->_id_conf (id config). detect_config is under Genus->species. Keys with a leading underscore and their children are non-biological categories of config, like _id_conf and _detection_conf. Keys without leading underscores are semantic lookups that are derived from Wildbook data, e.g. Megaptera.novaeangliae.whale_fluke."
 }

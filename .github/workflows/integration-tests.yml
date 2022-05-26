@@ -50,10 +50,15 @@ jobs:
           cd _frontend.codex
           cp src/constants/apiKeysTemplate.js src/constants/apiKeys.js
 
+      # - name: Add 1GB of Swap
+      #   uses: pierotofy/set-swap-space@master
+      #   with:
+      #     swap-size-gb: 1
+
       - name: Run docker-compose
         run: |
           set -ex
-          docker-compose up -d db redis elasticsearch elasticsearch2 elasticsearch3 acm edm houston celery-beat celery-worker dev-frontend localhost
+          docker-compose up -d db redis elasticsearch elasticsearch2 elasticsearch3 sage sage-sync edm houston celery-beat celery-worker dev-frontend localhost
 
       - name: Install dependencies
         run: |
@@ -86,7 +91,7 @@ jobs:
           do
             wget --tries=1 -O - http://localhost:84/ && break
           done
-          # Wait for acm to be ready
+          # Wait for sage to be ready
           while sleep 10
           do
             wget --tries=1 -O - http://localhost:82/ && break
@@ -104,10 +109,10 @@ jobs:
           docker-compose logs --tail=250
           docker-compose ps
 
-      - name: Show acm logs if failed
+      - name: Show sage logs if failed
         if: failure()
         run: |
-          docker-compose logs --no-color acm
+          docker-compose logs --no-color sage sage-sync
 
       - name: Show houston logs if failed
         if: failure()

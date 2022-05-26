@@ -65,10 +65,22 @@ class DetailedAssetGroupSchema(DetailedGitStoreSchema):
         many=False,
     )
 
+    progress_detection = base_fields.Nested(
+        'BaseProgressSchema',
+        many=False,
+    )
+
+    progress_identification = base_fields.Nested(
+        'BaseProgressSchema',
+        many=False,
+    )
+
     class Meta(DetailedGitStoreSchema.Meta):
         fields = DetailedGitStoreSchema.Meta.fields + (
             'asset_group_sightings',
             'progress_preparation',
+            'progress_detection',
+            'progress_identification',
         )
         dump_only = DetailedGitStoreSchema.Meta.dump_only
 
@@ -139,6 +151,16 @@ class DetailedAssetGroupSightingSchema(BaseAssetGroupSightingSchema):
         many=False,
     )
 
+    progress_detection = base_fields.Nested(
+        'BaseProgressSchema',
+        many=False,
+    )
+
+    progress_identification = base_fields.Nested(
+        'BaseProgressSchema',
+        many=False,
+    )
+
     class Meta(BaseAssetGroupSightingSchema.Meta):
 
         fields = BaseAssetGroupSightingSchema.Meta.fields + (
@@ -151,6 +173,8 @@ class DetailedAssetGroupSightingSchema(BaseAssetGroupSightingSchema):
             'jobs',
             AssetGroupSighting.asset_group_guid.key,
             'progress_preparation',
+            'progress_detection',
+            'progress_identification',
         )
         dump_only = BaseAssetGroupSightingSchema.Meta.dump_only + (
             AssetGroupSighting.jobs.key,
@@ -255,6 +279,21 @@ class AssetGroupSightingAsSightingSchema(ModelSchema):
     hasView = base_fields.Boolean(default=True)
     hasEdit = base_fields.Boolean(default=True)
 
+    progress_preparation = base_fields.Nested(
+        'BaseProgressSchema',
+        many=False,
+    )
+
+    progress_detection = base_fields.Nested(
+        'BaseProgressSchema',
+        many=False,
+    )
+
+    progress_identification = base_fields.Nested(
+        'BaseProgressSchema',
+        many=False,
+    )
+
     class Meta:
         # adds extras to the fields already defined above
         additional = (
@@ -263,6 +302,9 @@ class AssetGroupSightingAsSightingSchema(ModelSchema):
             AssetGroupSighting.updated.key,
             AssetGroupSighting.stage.key,
             AssetGroupSighting.asset_group_guid.key,
+            'progress_preparation',
+            'progress_detection',
+            'progress_identification',
         )
         dump_only = BaseAssetGroupSightingSchema.Meta.dump_only
 

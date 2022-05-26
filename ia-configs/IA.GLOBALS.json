@@ -1,17 +1,13 @@
 {
-    "_global_endpoints": {
-        "_note": "The common WBIA endpoints targeted by all WBIA configs.",
-        "add_images": "/api/image/json/",
-        "add_annotations": "/api/annot/json/",
-        "start_identify": "/api/engine/query/graph/",
-        "identify_review": "/api/review/query/graph/",
-        "start_detect": {
-            "default": "@_global_endpoints.start_detect.lightnet",
-            "lightnet": "/api/engine/detect/cnn/lightnet/",
-            "yolo": "/api/engine/detect/cnn/yolo/"
-        },
-        "detect_review": "/api/review/detect/cnn/yolo/",
-        "get_job_status": "/api/engine/job/status/",
-        "get_job_result": "/api/engine/job/result/"
-    }
+  "_global_endpoints": {
+    "_note": "The common WBIA endpoints targeted by all WBIA configs.",
+    "add_annotations": "/api/annot/json/",
+    "add_images": "/api/image/json/",
+    "detect_review": "/api/review/detect/cnn/yolo/",
+    "get_job_result": "/api/engine/job/result/",
+    "get_job_status": "/api/engine/job/status/",
+    "identify_review": "/api/review/query/graph/",
+    "start_detect": "/api/engine/detect/cnn/",
+    "start_identify": "/api/engine/query/graph/"
+  }
 }

@@ -11,7 +11,7 @@ from app.extensions import db
 import logging
 
 import app.extensions.logging as AuditLog
-from datetime import datetime
+import datetime
 from dateutil import tz
 from app.utils import normalized_timezone_string
 import pytz
@@ -39,7 +39,7 @@ class ComplexDateTime(db.Model):
     """
 
     def __init__(self, dt, timezone, specificity, *args, **kwargs):
-        if not dt or not isinstance(dt, datetime):
+        if not dt or not isinstance(dt, datetime.datetime):
             raise ValueError('must pass a datetime object')
         if not timezone:
             raise ValueError('must provide a time zone')
@@ -56,7 +56,9 @@ class ComplexDateTime(db.Model):
         db.GUID, default=uuid.uuid4, primary_key=True
     )  # pylint: disable=invalid-name
 
-    datetime = db.Column(db.DateTime, index=True, default=datetime.utcnow, nullable=False)
+    datetime = db.Column(
+        db.DateTime, index=True, default=datetime.datetime.utcnow, nullable=False
+    )
 
     timezone = db.Column(db.String(), index=True, nullable=False, default='Z')
 
@@ -93,7 +95,7 @@ class ComplexDateTime(db.Model):
         if len(parts) == 2:
             parts.append(1)  # add 1st of month
         # will throw ValueError if bunk data passed in
-        dt = datetime(*parts, tzinfo=tz.gettz(timezone))
+        dt = datetime.datetime(*parts, tzinfo=tz.gettz(timezone))
         return ComplexDateTime(dt, timezone, specificity)
 
     # this accepts a dict which is roughly "user input".  it will look for a mix of items passed in,
@@ -146,7 +148,7 @@ class ComplexDateTime(db.Model):
                 log, f'no datetime for ComplexDateTime.from_dict(): {data}'
             )
             raise ValueError('time parsing error, missing datetime value')
-        dt = datetime.fromisoformat(dt_str)  # will throw ValueError if invalid
+        dt = datetime.datetime.fromisoformat(dt_str)  # will throw ValueError if invalid
         timezone = data.get('timezone')
         if not timezone:  # hope we can get one from datetime
             if not dt.tzinfo:
@@ -195,7 +197,6 @@ class ComplexDateTime(db.Model):
     @classmethod
     def patch_replace_helper(cls, obj, field, value):
         from app.modules.complex_date_time.models import ComplexDateTime, Specificities
-        from datetime import datetime
         from app.utils import normalized_timezone_string
         from .models import db
         import pytz
@@ -213,7 +214,7 @@ class ComplexDateTime(db.Model):
             timezone = None
             if field == 'time':
                 # this will throw ValueError if not parseable
-                dt = datetime.fromisoformat(value)
+                dt = datetime.datetime.fromisoformat(value)
                 if not dt.tzinfo:
                     raise ValueError(f'passed value {value} does not have time zone data')
                 timezone = normalized_timezone_string(dt)
@@ -236,7 +237,7 @@ class ComplexDateTime(db.Model):
             # this is the wonky bit, we have no time_cfd - we have to create ComplexDateTime based on only one of datetime/specificity
             #   the hope is that the next patch op will add/replace the other attribute
             if not dt:
-                dt = datetime.utcnow()
+                dt = datetime.datetime.utcnow()
                 timezone = 'UTC'
             if not specificity:
                 specificity = Specificities.time

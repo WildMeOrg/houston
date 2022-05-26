@@ -3,9 +3,9 @@
 import tests.modules.asset_groups.resources.utils as asset_group_utils
 import tests.modules.users.resources.utils as user_utils
 import tests.extensions.tus.utils as tus_utils
-import json
-from unittest import mock
+import tests.utils as test_utils
 import pytest
+import json
 
 from tests.utils import module_unavailable
 
@@ -122,7 +122,6 @@ def test_create_asset_group(flask_app_client, researcher_1, readonly_user, test_
         # Read the metadata file and make sure that the frontend sightings are exactly what we sent
         from app.modules.asset_groups.models import AssetGroup
         import os
-        import json
 
         asset_group = AssetGroup.query.get(resp.json['guid'])
         asset_group_path = asset_group.get_absolute_path()
@@ -479,44 +478,18 @@ def test_create_asset_group_sim_detection(
         data = AssetGroupCreationData(transaction_id, test_filename)
         data.set_field('speciesDetectionModel', ['african_terrestrial'])
 
-        # Simulate a valid response from Sage but don't actually send the request to Sage
-        with mock.patch.object(
-            flask_app.acm,
-            'request_passthrough_result',
-            return_value={'success': True},
-        ) as detection_started:
-            resp = asset_group_utils.create_asset_group(
-                flask_app_client, None, data.get()
-            )
-            assert detection_started.call_count == 1
-            passed_args = detection_started.call_args[0]
-            assert passed_args[:-2] == ('job.detect_request', 'post')
-            params = passed_args[-2]['params']
-            assert set(params.keys()) >= {
-                'endpoint',
-                'jobid',
-                'callback_url',
-                'image_uuid_list',
-                'labeler_algo',
-                'labeler_model_tag',
-            }
-            assert passed_args[-1] == 'cnn/lightnet'
+        resp = asset_group_utils.create_asset_group(flask_app_client, None, data.get())
+        assert set(resp.json.keys()) >= {'guid', 'asset_group_sightings', 'assets'}
+        asset_group_sighting_uuid = resp.json['asset_group_sightings'][0]['guid']
+        asset_group_uuid = resp.json['guid']
+        assets = sorted(resp.json['assets'], key=lambda a: a['filename'])
+        assert len(assets) == 1
 
-            job_id = params['jobid']
-            assert set(resp.json.keys()) >= {'guid', 'asset_group_sightings', 'assets'}
-            asset_group_sighting_uuid = resp.json['asset_group_sightings'][0]['guid']
-            asset_group_uuid = resp.json['guid']
-            assets = sorted(resp.json['assets'], key=lambda a: a['filename'])
-            assert len(assets) == 1
-            asset_guids = [a['guid'] for a in assets]
+        progress_guids = []
+        for ags in resp.json['asset_group_sightings']:
+            progress_guids.append(ags['progress_detection']['guid'])
+        test_utils.wait_for_progress(flask_app, progress_guids)
 
-        asset_group_utils.simulate_job_detection_response(
-            flask_app_client,
-            internal_user,
-            asset_group_sighting_uuid,
-            asset_guids[0],
-            job_id,
-        )
         read_resp = asset_group_utils.read_asset_group_sighting(
             flask_app_client, researcher_1, asset_group_sighting_uuid
         ).json
@@ -574,6 +547,11 @@ def test_create_asset_group_repeat_detection(
     )
     asset_group_sighting1_guid = resp.json['asset_group_sightings'][0]['guid']
 
+    progress_guids = []
+    for ags in resp.json['asset_group_sightings']:
+        progress_guids.append(ags['progress_detection']['guid'])
+    test_utils.wait_for_progress(flask_app, progress_guids)
+
     ags1 = AssetGroupSighting.query.get(asset_group_sighting1_guid)
     assert ags1
 
@@ -582,21 +560,12 @@ def test_create_asset_group_repeat_detection(
     job_uuid = job_uuids[0]
     assert ags1.jobs[job_uuid]['model'] == 'african_terrestrial'
 
-    # Simulate response from Sage
-    asset_group_utils.send_sage_detection_response(
-        flask_app_client,
-        internal_user,
-        asset_group_sighting1_guid,
-        job_uuid,
-    )
     assert ags1.stage == AssetGroupSightingStage.curation
 
     # Rotate one of the assets
     from app.modules.annotations.models import Annotation
 
-    annot = Annotation.query.filter_by(
-        content_guid=asset_group_utils.ANNOTATION_UUIDS[0]
-    ).first()
+    annot = Annotation.query.first()
     asset_guid = annot.asset.guid
 
     patch_data = [
@@ -608,48 +577,15 @@ def test_create_asset_group_repeat_detection(
     ]
     asset_utils.patch_asset(flask_app_client, asset_guid, researcher_1, patch_data)
 
-    # Simulate a valid response from Sage but don't actually send the request to Sage
-    from app.modules.asset_groups import tasks
+    resp = asset_group_utils.detect_asset_group_sighting(
+        flask_app_client, researcher_1, asset_group_sighting1_guid
+    )
+    assert ags1.stage == AssetGroupSightingStage.detection
 
-    with mock.patch.object(
-        flask_app.acm,
-        'request_passthrough_result',
-        return_value={'success': True},
-    ) as detection_reran:
+    progress_guids = [resp.json['progress_detection']['guid']]
+    test_utils.wait_for_progress(flask_app, progress_guids)
 
-        with mock.patch.object(
-            tasks.sage_detection,
-            'delay',
-            side_effect=lambda *args, **kwargs: tasks.sage_detection(*args, **kwargs),
-        ):
-            asset_group_utils.detect_asset_group_sighting(
-                flask_app_client, researcher_1, asset_group_sighting1_guid
-            )
-        assert detection_reran.call_count == 1
-        passed_args = detection_reran.call_args[0]
-        assert passed_args[:-2] == ('job.detect_request', 'post')
-        params = passed_args[-2]['params']
-        assert set(params.keys()) >= {
-            'endpoint',
-            'jobid',
-            'callback_url',
-            'image_uuid_list',
-            'labeler_algo',
-            'labeler_model_tag',
-        }
-        assert params['image_uuid_list'] == json.dumps(
-            [f'houston+http://localhost:84/api/v1/assets/src_raw/{asset_guid}']
-        )
-        job_uuid = params['jobid']
-        assert ags1.stage == AssetGroupSightingStage.detection
-        # Simulate response from Sage
-        asset_group_utils.send_sage_detection_response(
-            flask_app_client,
-            internal_user,
-            asset_group_sighting1_guid,
-            job_uuid,
-        )
-        assert ags1.stage == AssetGroupSightingStage.curation
+    assert ags1.stage == AssetGroupSightingStage.curation
 
 
 @pytest.mark.skipif(

@@ -109,8 +109,14 @@ class TimedSightingSchema(CreateSightingSchema):
     unreviewed_start_time = base_fields.Function(Sighting.get_unreviewed_start_time)
     review_time = base_fields.Function(Sighting.get_review_time)
 
+    progress_identification = base_fields.Nested(
+        'BaseProgressSchema',
+        many=False,
+    )
+
     class Meta(CreateSightingSchema.Meta):
         fields = CreateSightingSchema.Meta.fields + (
+            'progress_identification',
             'detection_start_time',
             'curation_start_time',
             'identification_start_time',
@@ -181,7 +187,7 @@ class DetailedSightingJobSchema(ModelSchema):
     start = base_fields.DateTime()
     algorithm = base_fields.String()
     annotation = base_fields.String()
-    complete_time = base_fields.DateTime()
+    end = base_fields.DateTime()
     result = base_fields.Dict()
 
 

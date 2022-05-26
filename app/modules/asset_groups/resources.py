@@ -115,7 +115,7 @@ class AssetGroups(Resource):
             )
 
         try:
-            asset_group, _ = AssetGroup.create_from_metadata(metadata)
+            asset_group, _ = AssetGroup.create_from_metadata(metadata, foreground=True)
         except HoustonException as ex:
             log.warning(
                 f'AssetGroup creation for transaction_id={metadata.tus_transaction_id} failed'
@@ -131,7 +131,7 @@ class AssetGroups(Resource):
             abort(
                 ex.status_code,
                 ex.message,
-                acm_status_code=ex.get_val('acm_status_code', None),
+                sage_status_code=ex.get_val('sage_status_code', None),
             )
         except Exception as ex:
             asset_group.delete()
@@ -146,8 +146,9 @@ class AssetGroups(Resource):
         except Exception as ex:
             asset_group.delete()
             # If this was already an abort, use the correct message
-            message = ex.data if hasattr(ex, 'data') else ex
+            message = ex.data if hasattr(ex, 'data') else str(ex)
             abort(400, f'Asset preparation failed {message}')
+            raise
 
         return asset_group
 

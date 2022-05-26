@@ -129,13 +129,6 @@ def test_most_ia_pipeline_audit_log(
     job_uuid = job_uuids[0]
     assert ags1.jobs[job_uuid]['model'] == 'african_terrestrial'
 
-    # Simulate response from Sage
-    asset_group_utils.send_sage_detection_response(
-        flask_app_client,
-        internal_user,
-        asset_group_sighting1_guid,
-        job_uuid,
-    )
     assert ags1.stage == AssetGroupSightingStage.curation
 
     # commit it (without Identification)

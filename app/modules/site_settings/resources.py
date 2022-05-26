@@ -494,12 +494,12 @@ class IaClassConfigs(Resource):
 class SiteInfo(Resource):
     def get(self):
 
-        acm_version = current_app.acm.get_dict('version.dict', None)
-        if isinstance(acm_version, dict):
-            acm_version = acm_version['response']
+        sage_version = current_app.sage.get_dict('version.dict', None)
+        if isinstance(sage_version, dict):
+            sage_version = sage_version['response']
         else:
-            # acm returns a non 200 response
-            acm_version = repr(acm_version)
+            # sage returns a non 200 response
+            sage_version = repr(sage_version)
         edm_version = current_app.edm.get_dict('version.dict', None)
         if not isinstance(edm_version, dict):
             # edm returns a non 200 response
@@ -509,7 +509,7 @@ class SiteInfo(Resource):
                 'version': app.version.version,
                 'git_version': app.version.git_revision,
             },
-            'acm': acm_version,
+            'sage': sage_version,
             'edm': edm_version,
         }
 

@@ -123,10 +123,7 @@ def list_all(context):
     for asset_group in asset_groups:
         print('AssetGroup : {} {}'.format(asset_group, asset_group.assets))
 
-        if (
-            asset_group.progress_preparation
-            and not asset_group.progress_preparation.complete
-        ):
+        if asset_group.progress_preparation and asset_group.progress_preparation.active:
             print(asset_group.progress_preparation)
 
 
@@ -155,7 +152,7 @@ def details(context, guid):
 
     print(json.dumps(schema.dump(asset_group).data, indent=4, sort_keys=True))
 
-    if asset_group.progress_preparation and not asset_group.progress_preparation.complete:
+    if asset_group.progress_preparation and asset_group.progress_preparation.active:
         print(asset_group.progress_preparation)
 
 
@@ -173,7 +170,7 @@ def list_all_sightings_in_stage(context, stage):
     for ags in asset_group_sightings:
         print(f'AssetGroupSighting : {ags}')
 
-        if ags.progress_preparation and not ags.progress_preparation.complete:
+        if ags.progress_preparation and ags.progress_preparation.active:
             print(ags.progress_preparation)
 
 
@@ -201,5 +198,5 @@ def ags_details(context, guid):
 
     pprint.pprint(schema.dump(ags).data)
 
-    if ags.progress_preparation and not ags.progress_preparation.complete:
+    if ags.progress_preparation and ags.progress_preparation.active:
         print(ags.progress_preparation)

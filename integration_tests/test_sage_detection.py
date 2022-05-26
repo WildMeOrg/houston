@@ -2,7 +2,7 @@
 from . import utils
 
 
-def test_create_asset_group_detection(session, codex_url, test_root, login):
+def disabled_test_create_asset_group_detection(session, codex_url, test_root, login):
     login(session)
     me = session.get(codex_url('/api/v1/users/me')).json()
 
@@ -30,7 +30,7 @@ def test_create_asset_group_detection(session, codex_url, test_root, login):
         json=data,
     )
     assert response.status_code == 200
-    response = utils.wait_for_progress_preparation(session, codex_url, response)
+    response = utils.wait_for_progress(session, codex_url, response, 'preparation')
     asset_group_guid = response.json()['guid']
     assert len(response.json()['assets']) == 1
     asset_guid = response.json()['assets'][0]['guid']
@@ -73,7 +73,8 @@ def test_create_asset_group_detection(session, codex_url, test_root, login):
                 'job_id': first_job['job_id'],
                 'model': 'african_terrestrial',
                 'active': False,
-                'asset_ids': [asset_guid],
+                'start': first_job['start'],
+                'asset_guids': [asset_guid],
             },
         ],
         'config': {
@@ -92,7 +93,9 @@ def test_create_asset_group_detection(session, codex_url, test_root, login):
         'elasticsearchable': response.json()['elasticsearchable'],
         'indexed': response.json()['indexed'],
         'asset_group_guid': asset_group_guid,
-        'progress_preparation': {'guid': response.json()['progress_preparation']['guid']},
+        'progress_preparation': response.json()['progress_preparation'],
+        'progress_detection': response.json()['progress_detection'],
+        'progress_identification': response.json()['progress_identification'],
         'sighting_guid': None,
         'creator': {
             'full_name': me['full_name'],

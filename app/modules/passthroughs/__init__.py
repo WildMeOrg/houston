@@ -18,10 +18,10 @@ def init_app(app, **kwargs):
     Init Passthroughs module.
     """
     api_v1.add_oauth_scope(
-        'passthroughs:read', 'Provide access to EDM and ACM passthroughs'
+        'passthroughs:read', 'Provide access to EDM and Sage passthroughs'
     )
     api_v1.add_oauth_scope(
-        'passthroughs:write', 'Provide write access to EDM and ACM passthroughs'
+        'passthroughs:write', 'Provide write access to EDM and Sage passthroughs'
     )
 
     # Touch underlying modules

@@ -328,7 +328,7 @@ pytest -s -c integration_tests/conftest.py integration_tests/
 
 **WARNING!! Running the integration tests create real data and users on the site.**
 
-If you want to delete the houston / edm / acm data on your site before the tests, you can do:
+If you want to delete the houston / edm / sage data on your site before the tests, you can do:
 
 ```
 pytest --delete-site -s -c integration_tests/conftest.py integration_tests/

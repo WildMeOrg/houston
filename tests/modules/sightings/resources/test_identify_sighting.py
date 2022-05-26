@@ -99,7 +99,12 @@ def test_sighting_identification(
         flask_app_client, researcher_1, request, test_root
     )
     query_annot_guid = asset_group_utils.patch_in_dummy_annotation(
-        flask_app_client, db, researcher_1, asset_group_sighting_guid2, asset_uuid2
+        flask_app_client,
+        db,
+        researcher_1,
+        asset_group_sighting_guid2,
+        asset_uuid2,
+        padding=1,
     )
     target_annot = Annotation.query.get(target_annot_guid)
     query_annot = Annotation.query.get(query_annot_guid)
@@ -150,39 +155,10 @@ def test_sighting_identification(
     job_uuid = job_uuids[0]
     assert sighting.jobs[job_uuid]['algorithm'] == 'hotspotter_nosv'
 
-    # Simulate response from Sage
-    sighting_utils.send_basic_sage_identification_response(
-        flask_app_client,
-        internal_user,
-        sighting_uuid,
-        job_uuid,
-        str(query_annot.content_guid),
-        sighting.jobs[job_uuid]['algorithm'],
-        str(target_annot.content_guid),
-    )
-    validate_id_response(flask_app_client, researcher_1, sighting)
+    progress_guids = []
+    for annotation in sighting.get_annotations():
+        if annotation.progress_identification:
+            if annotation.progress_identification.sage_guid:
+                progress_guids.append(str(annotation.progress_identification.guid))
 
-    # Rerun ID after the sighting has been created
-    sighting_utils.rerun_identification_sim_sage_response(
-        flask_app, flask_app_client, researcher_1, sighting_uuid
-    )
-    # Must go back to ID
-    assert sighting.stage == SightingStage.identification
-
-    # Make sure the correct job is created and get ID
-    job_uuids = [guid for guid in sighting.jobs.keys()]
-    assert len(job_uuids) == 2
-    job_uuid = job_uuids[1]
-    assert sighting.jobs[job_uuid]['algorithm'] == 'hotspotter_nosv'
-
-    # Simulate response from Sage
-    sighting_utils.send_basic_sage_identification_response(
-        flask_app_client,
-        internal_user,
-        sighting_uuid,
-        job_uuid,
-        str(query_annot.content_guid),
-        sighting.jobs[job_uuid]['algorithm'],
-        str(target_annot.content_guid),
-    )
-    validate_id_response(flask_app_client, researcher_1, sighting)
+    test_utils.wait_for_progress(flask_app, progress_guids)

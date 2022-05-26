@@ -1,54 +1,52 @@
 {
   "_README": "A value starting with '@' indicates an absolute path from the top of this config file, and parsing that @-link results in the value of that absolute path. The first half of this file (top-level _detectors and _identifiers) defines the various algorithms we use, including the configs we send to SAGE and some metadata about each config. Each algo config is under a name-key, e.g. the african_terrestrial detector.  \n The second half of the file defines the pipeline for each species by referencing the previously-defined algorithms, in the hierachy genus->species->detectors, and genus->species->iaClass->identifiers. The values of these species configurations should be @-links but literals are also supported by the parser.",
+  "Equus": {
+    "grevyi": {
+      "_common_name": "Grevy's zebra",
+      "_default": "@Equus.grevyi.zebra",
+      "_detectors": "@Equus.quagga._detectors",
+      "_itis_id": 202400,
+      "zebra": "@Equus.quagga.zebra",
+      "zebra_grevys": "@Equus.grevyi.zebra"
+    },
+    "quagga": {
+      "_common_name": "plains zebra",
+      "_default": "@Equus.quagga.zebra",
+      "_detectors": [
+        "@_detectors.african_terrestrial"
+      ],
+      "_itis_id": 624996,
+      "zebra": {
+        "_identifiers": [
+          "@_identifiers.hotspotter_nosv"
+        ]
+      },
+      "zebra_grevys": "@Equus.quagga.zebra"
+    }
+  },
+  "_default": "@Equus.quagga",
   "_detectors": {
     "african_terrestrial": {
-      "name": "African terrestrial mammal detector",
-      "description": "Trained on zebras, giraffes, lions, hyenas, leopards, cheetahs, and wild dogs.",
       "config_dict": {
-        "start_detect": "/api/engine/detect/cnn/lightnet/",
         "labeler_algo": "densenet",
         "labeler_model_tag": "zebra_v1",
         "model_tag": "ggr2",
         "nms_thresh": 0.4,
         "sensitivity": 0.4
-      }
+      },
+      "description": "Trained on zebras, giraffes, lions, hyenas, leopards, cheetahs, and wild dogs.",
+      "name": "African terrestrial mammal detector"
     }
   },
   "_identifiers": {
     "hotspotter_nosv": {
+      "frontend": {
+        "description": "HotSpotter pattern-matcher"
+      },
       "sage": {
         "query_config_dict": {
           "sv_on": false
         }
-      },
-      "frontend": {
-        "description": "HotSpotter pattern-matcher"
-      }
-    }
-  },
-
-  "_default": "@Equus.quagga",
-  "Equus": {
-    "grevyi": {
-      "_common_name": "Grevy's zebra",
-      "_itis_id": 202400,
-      "_detectors": "@Equus.quagga._detectors",
-      "_default": "@Equus.grevyi.zebra",
-      "zebra_grevys": "@Equus.grevyi.zebra",
-      "zebra": "@Equus.quagga.zebra"
-    },
-    "quagga": {
-      "_common_name": "plains zebra",
-      "_itis_id": 624996,
-      "_detectors": [
-        "@_detectors.african_terrestrial"
-      ],
-      "_default": "@Equus.quagga.zebra",
-      "zebra_grevys": "@Equus.quagga.zebra",
-      "zebra":{
-        "_identifiers": [
-          "@_identifiers.hotspotter_nosv"
-        ]
       }
     }
   }

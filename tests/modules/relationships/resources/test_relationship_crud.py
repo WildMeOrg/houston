@@ -4,7 +4,7 @@
 import logging
 
 from tests.utils import module_unavailable
-from datetime import datetime, timedelta  # NOQA
+import datetime
 import pytest
 import uuid
 
@@ -112,8 +112,8 @@ def test_create_read_delete_relationship(
         'individual_1_role_guid': mother_role_guid,
         'individual_2_role_guid': calf_role_guid,
         'type_guid': family_type_guid,
-        'start_date': str(datetime.utcnow()),
-        'end_date': str(datetime.utcnow() + timedelta(days=1)),
+        'start_date': str(datetime.datetime.utcnow()),
+        'end_date': str(datetime.datetime.utcnow() + datetime.timedelta(days=1)),
     }
     response = relationship_utils.create_relationship(
         flask_app_client,
@@ -187,7 +187,7 @@ def test_create_read_delete_relationship(
     # one day time delta for this test
     assert (
         relationship_1.start_date.date()
-        == (relationship_1.end_date - timedelta(days=1)).date()
+        == (relationship_1.end_date - datetime.timedelta(days=1)).date()
     )
 
     response = individual_utils.read_individual(

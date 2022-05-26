@@ -149,7 +149,7 @@ services:
     environment:
       ELASTICSEARCH_HOSTS: "http://${ELASTICSEARCH_HOSTS}"
 
-  acm:
+  sage:
     # https://github.com/WildMeOrg/wildbook-ia
     image: wildme/wbia:latest
     command: ["--db-uri", "${WBIA_DB_URI}"]
@@ -160,13 +160,35 @@ services:
     # labels:
     #   - autoheal=true
     volumes:
-      - acm-database-var:/data/db
-      - acm-cache-var:/cache
+      - sage-database-var:/data/db
+      - sage-cache-var:/cache
     networks:
       - intranet
     ports:
       # FIXME: exposed for developer verification
       - "82:5000"
+    environment:
+      WBIA_DB_URI: "${WBIA_DB_URI}"
+      HOUSTON_CLIENT_ID: "${HOUSTON_CLIENT_ID}"
+      HOUSTON_CLIENT_SECRET: "${HOUSTON_CLIENT_SECRET}"
+
+  sage-sync:
+    # https://github.com/WildMeOrg/wildbook-ia
+    image: wildme/wbia:latest
+    command: ["--db-uri", "${WBIA_DB_URI}"]
+    depends_on:
+      sage:
+        condition: service_healthy
+      db:
+        condition: service_healthy
+    # healthcheck:  # WBIA defines it's own health check and is already labeled for autoheal
+    # labels:
+    #   - autoheal=true
+    volumes:
+      - sage-database-var:/data/db
+      - sage-cache-var:/cache
+    networks:
+      - intranet
     environment:
       WBIA_DB_URI: "${WBIA_DB_URI}"
       HOUSTON_CLIENT_ID: "${HOUSTON_CLIENT_ID}"
@@ -214,7 +236,8 @@ services:
       FLASK_ENV: development
       SQLALCHEMY_DATABASE_URI: "${SQLALCHEMY_DATABASE_URI}"
       TEST_DATABASE_URI: "${TEST_DATABASE_URI}"
-      ACM_AUTHENTICATIONS_URI__DEFAULT: "${ACM_AUTHENTICATIONS_URI__DEFAULT}"
+      SAGE_AUTHENTICATIONS_URI__DEFAULT: "${SAGE_AUTHENTICATIONS_URI__DEFAULT}"
+      SAGE_AUTHENTICATIONS_URI__SYNC: "${SAGE_AUTHENTICATIONS_URI__SYNC}"
       ELASTICSEARCH_HOSTS: "${ELASTICSEARCH_HOSTS}"
       REDIS_HOST: redis
       REDIS_PASSWORD: "seekret_development_password"
@@ -348,7 +371,7 @@ services:
   localhost:
     image: nginx:latest
     depends_on:
-      # acm:
+      # sage:
       #   condition: service_healthy
       houston:
         condition: service_healthy
@@ -391,6 +414,6 @@ volumes:
   es-var2:
   es-var3:
   redis-var:
-  acm-database-var:
-  acm-cache-var:
+  sage-database-var:
+  sage-cache-var:
   houston-var:

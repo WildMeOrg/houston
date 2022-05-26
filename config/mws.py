@@ -3,7 +3,7 @@
 import os
 
 from .base import (
-    ACMConfig,
+    SageConfig,
     AssetGroupConfig,
     BaseConfig,
     EDMConfig,
@@ -21,7 +21,7 @@ class BaseMWSConfig(
     EmailConfig,
     ReCaptchaConfig,
     GoogleConfig,
-    ACMConfig,
+    SageConfig,
     EDMConfig,
     AssetGroupConfig,
     ElasticsearchConfig,
@@ -33,7 +33,7 @@ class BaseMWSConfig(
 
     # fmt: off
     ENABLED_EXTENSIONS = (
-        'acm',
+        'sage',
         'cors',
         'elasticsearch',
         'tus',
@@ -59,7 +59,6 @@ class BaseMWSConfig(
         'app_ui',
         'swagger_ui',
 
-        'api',
         'emails',
         'audit_logs',
         'progress',

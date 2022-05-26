@@ -6,7 +6,7 @@ Sightings database models
 import enum
 import logging
 import uuid
-from datetime import datetime  # NOQA
+import datetime  # NOQA
 from flask import current_app, url_for
 from flask_restx_patched._http import HTTPStatus
 
@@ -69,7 +69,6 @@ class Sighting(db.Model, FeatherModel):
     # Content = jobId : {
     #                'algorithm': algorithm,
     #                'annotation': str(annotation_uuid),
-    #                'annotation_sage_uuid': str(annotation_sage_uuid),
     #                'active': boolean,
     #                'success': boolean, Only present once active is False
     #                'failure_reason': freeform text
@@ -107,10 +106,19 @@ class Sighting(db.Model, FeatherModel):
         'Encounter', back_populates='sighting', order_by='Encounter.guid'
     )
     unreviewed_start = db.Column(
-        db.DateTime, index=True, default=datetime.utcnow, nullable=False
+        db.DateTime, index=True, default=datetime.datetime.utcnow, nullable=False
     )
     review_time = db.Column(
-        db.DateTime, index=True, default=datetime.utcnow, nullable=False
+        db.DateTime, index=True, default=datetime.datetime.utcnow, nullable=False
+    )
+
+    progress_identification_guid = db.Column(
+        db.GUID, db.ForeignKey('progress.guid'), index=False, nullable=True
+    )
+
+    progress_identification = db.relationship(
+        'Progress',
+        foreign_keys='Sighting.progress_identification_guid',
     )
 
     @classmethod
@@ -158,8 +166,6 @@ class Sighting(db.Model, FeatherModel):
 
         # any sighting that has been identifying for over an hour looks suspicious. The only fault we know of at
         # the moment is if there are no jobs,
-        import datetime
-
         an_hour_ago = datetime.datetime.utcnow() - datetime.timedelta(hours=1)
         result['jobless_identifying_sightings'] = [
             sight.guid
@@ -232,6 +238,46 @@ class Sighting(db.Model, FeatherModel):
     def get_custom_fields(self):
         return self.get_edm_data_field('customFields')
 
+    def init_progress_identification(self, overwrite=False):
+        from app.modules.progress.models import Progress
+
+        if self.progress_identification is not None:
+            if not overwrite:
+                log.warning(
+                    'Sighting %r already has a progress identification %r'
+                    % (
+                        self,
+                        self.progress_identification,
+                    )
+                )
+                return
+
+        progress = Progress(
+            description='Sage identification for Sighting %r' % (self.guid,)
+        )
+        with db.session.begin():
+            db.session.add(progress)
+
+        with db.session.begin():
+            self.progress_identification_guid = progress.guid
+            db.session.merge(self)
+
+        # Assign the parent's progress
+        if self.asset_group_sighting:
+            self.asset_group_sighting.init_progress_identification()  # Ensure initialized
+
+            if (
+                self.progress_identification
+                and self.asset_group_sighting.progress_identification
+            ):
+                with db.session.begin():
+                    self.progress_identification.parent_guid = (
+                        self.asset_group_sighting.progress_identification.guid
+                    )
+                db.session.merge(self.progress_identification)
+
+        db.session.refresh(self)
+
     # will return None if not a single owner of all encounters (otherwise that user)
     def single_encounter_owner(self):
         single = None
@@ -253,6 +299,13 @@ class Sighting(db.Model, FeatherModel):
     def user_is_owner(self, user):
         return user is not None and user in self.get_owners()
 
+    def set_stage(self, stage, refresh=True):
+        with db.session.begin(subtransactions=True):
+            self.stage = stage
+            db.session.merge(self)
+        if refresh:
+            db.session.refresh(self)
+
     def get_encounters(self):
         return self.encounters
 
@@ -263,8 +316,8 @@ class Sighting(db.Model, FeatherModel):
     def reviewed(self):
         ret_val = False
         if self.stage == SightingStage.un_reviewed:
-            self.stage = SightingStage.processed
-            self.review_time = datetime.utcnow()
+            self.set_stage(SightingStage.processed)
+            self.review_time = datetime.datetime.utcnow()
             ret_val = True
         return ret_val
 
@@ -423,7 +476,7 @@ class Sighting(db.Model, FeatherModel):
             'preparation': self._get_pipeline_status_preparation(),
             'detection': self._get_pipeline_status_detection(),
             'identification': self._get_pipeline_status_identification(),
-            'now': datetime.utcnow().isoformat(),
+            'now': datetime.datetime.utcnow().isoformat(),
             'stage': self.stage,
             'migrated': self.is_migrated_data(),
             'summary': {
@@ -665,8 +718,8 @@ class Sighting(db.Model, FeatherModel):
         for job_id in jobs.keys():
             job = jobs[job_id]
             if job['active']:
-                current_app.acm.request_passthrough_result(
-                    'job.response', 'post', {}, job
+                current_app.sage.request_passthrough_result(
+                    'engine.result', 'get', {}, job
                 )
                 # TODO Process response DEX-335
                 # TODO If UTC Start more than {arbitrary limit} ago.... do something
@@ -707,23 +760,22 @@ class Sighting(db.Model, FeatherModel):
                 details[-1]['request'] = self.build_identification_request(
                     self.jobs[job_id].get('matching_set'),
                     self.jobs[job_id]['annotation'],
-                    self.jobs[job_id]['annotation_sage_uuid'],
                     job_id,
                     self.jobs[job_id]['algorithm'],
                 )
                 try:
-                    acm_data = current_app.acm.request_passthrough_result(
-                        'job.response', 'post', {}, job_id
+                    sage_data = current_app.sage.request_passthrough_result(
+                        'engine.result', 'get', {}, job_id
                     )
                     # cm_dict is enormous and as we don't use it in Houston, don't print it as debug
-                    if 'json_result' in acm_data and isinstance(
-                        acm_data['json_result'], dict
+                    if 'json_result' in sage_data and isinstance(
+                        sage_data['json_result'], dict
                     ):
-                        acm_data['json_result'].pop('cm_dict', None)
-                    details[-1]['response'] = acm_data
+                        sage_data['json_result'].pop('cm_dict', None)
+                    details[-1]['response'] = sage_data
 
                 except HoustonException as ex:
-                    # acm seems particularly flaky for getting the sighting data, if it fails, don't pass it back
+                    # sage seems particularly flaky for getting the sighting data, if it fails, don't pass it back
                     details[-1][
                         'response'
                     ] = f'Failed to read data from Sage {ex.message}'
@@ -902,13 +954,14 @@ class Sighting(db.Model, FeatherModel):
             self.add_encounter(encounter)
 
     # specifically to pass to Sage, so we dress it up accordingly
-    def get_matching_set_data(self, annotation_guid, matching_set_config=None):
-        from app.extensions.acm import to_acm_uuid, default_acm_individual_uuid
+    def get_matching_set_data(self, annotation, matching_set_config=None):
+        from app.extensions.sage import to_sage_uuid, SAGE_UNKNOWN_NAME
         from app.extensions.elapsed_time import ElapsedTime
 
+        Annotation.sync_all_with_sage(ensure=True)
+
         timer = ElapsedTime()
-        annotation = Annotation.query.get(annotation_guid)
-        assert annotation
+
         log.debug(
             f'sighting.get_matching_set_data(): sighting {self.guid} finding matching set for {annotation} using {matching_set_config}'
         )
@@ -926,42 +979,50 @@ class Sighting(db.Model, FeatherModel):
             if not annot.content_guid:
                 log.warning(f'skipping {annot} due to no content_guid')
                 continue
+
+            if annot.content_guid == annotation.content_guid:
+                continue
+
             # this *does* assume the sighting exists due to elasticsearch constraints, in order to improve performance.
             #   it previously was this, which took longer as it needed to load two objects from db:
             #          if annot.encounter and annot.encounter.sighting:
             if annot.encounter_guid and annot.content_guid not in unique_set:
                 unique_set.add(annot.content_guid)
-                acm_annot_uuid = to_acm_uuid(annot.content_guid)
-                matching_set_annot_uuids.append(acm_annot_uuid)
+
                 individual_guid = annot.get_individual_guid()
                 if individual_guid:
                     individual_guid = str(individual_guid)
                 else:
                     # Use Sage default value
-                    individual_guid = default_acm_individual_uuid()
+                    individual_guid = SAGE_UNKNOWN_NAME
+
+                matching_set_annot_uuids.append(annot.content_guid)
                 matching_set_individual_uuids.append(individual_guid)
 
+        # Ensure that the annotation we are querying on is in the database list as well
+        matching_set_annot_uuids = list(
+            map(to_sage_uuid, sorted(set(matching_set_annot_uuids)))
+        )
         log.debug(
             f'sighting.get_matching_set_data(): [{timer.elapsed()} sec] Built matching set individuals {matching_set_individual_uuids}, '
-            f'annots {matching_set_annot_uuids} for Annot {annotation_guid} on {self}'
+            f'annots {matching_set_annot_uuids} for Annot {annotation} on {self}'
         )
         return matching_set_individual_uuids, matching_set_annot_uuids
 
     def build_identification_request(
         self,
+        annotation,
         matching_set_config,
-        annotation_uuid,
-        annotation_sage_uuid,
         job_uuid,
         algorithm,
     ):
-        from app.extensions.acm import default_acm_individual_uuid
+        from app.extensions.sage import SAGE_UNKNOWN_NAME
 
-        debug_context = f'Sighting:{self.guid}, Annot:{annotation_uuid}, annotation_sage_uuid={annotation_sage_uuid} algorithm:{algorithm}'
+        debug_context = f'Sighting:{self.guid}, Annot:{annotation}, algorithm:{algorithm}'
         (
             matching_set_individual_uuids,
             matching_set_annot_uuids,
-        ) = self.get_matching_set_data(annotation_uuid, matching_set_config)
+        ) = self.get_matching_set_data(annotation, matching_set_config)
 
         assert len(matching_set_individual_uuids) == len(matching_set_annot_uuids)
 
@@ -972,7 +1033,7 @@ class Sighting(db.Model, FeatherModel):
             )
             return {}
 
-        from app.extensions.acm import to_acm_uuid
+        from app.extensions.sage import to_sage_uuid
         from app.modules.ia_config_reader import IaConfig
 
         callback_url = url_for(
@@ -992,9 +1053,9 @@ class Sighting(db.Model, FeatherModel):
             'callback_url': f'houston+{callback_url}',
             'callback_detailed': True,
             'matching_state_list': [],
-            'query_annot_name_list': [default_acm_individual_uuid()],
+            'query_annot_name_list': [SAGE_UNKNOWN_NAME],
             'query_annot_uuid_list': [
-                to_acm_uuid(annotation_sage_uuid),
+                to_sage_uuid(annotation.content_guid),
             ],
             'database_annot_name_list': matching_set_individual_uuids,
             'database_annot_uuid_list': matching_set_annot_uuids,
@@ -1021,7 +1082,7 @@ class Sighting(db.Model, FeatherModel):
             for config_id in range(len(self.id_configs)):
                 conf = self.id_configs[config_id]
                 Annotation.query.get(annotation_guid)
-                matching_set_query = conf.get('matching_set')
+                matching_set_query = conf.get('matching_set', None)
                 # load=False should get us this response quickly, cuz we just want a count
                 matching_set = annot.get_matching_set(matching_set_query, load=False)
                 if not matching_set:
@@ -1030,7 +1091,7 @@ class Sighting(db.Model, FeatherModel):
                     )
                     continue
                 for algorithm_id in range(len(conf['algorithms'])):
-                    if self._has_active_jobs(config_id, algorithm_id, str(annot.guid)):
+                    if self._has_active_jobs(str(annot.guid), config_id, algorithm_id):
                         log.info(
                             f'Sighting {self.guid} send_all_identification annot {annot} {config_id}{algorithm_id} has active jobs'
                         )
@@ -1038,16 +1099,14 @@ class Sighting(db.Model, FeatherModel):
 
                     num_jobs += 1
 
-                    self.send_identification(
-                        config_id, algorithm_id, annot.guid, annot.content_guid
-                    )
+                    self.send_identification(annot, config_id, algorithm_id)
 
         if num_jobs > 0:
             log.info(
                 f'Started Identification for Sighting:{self.guid} using {num_jobs} jobs'
             )
         else:
-            self.stage = SightingStage.un_reviewed
+            self.set_stage(SightingStage.un_reviewed)
             log.info(
                 f'Sighting {self.guid} un-reviewed, identification not needed or not possible (jobs=0)'
             )
@@ -1056,114 +1115,172 @@ class Sighting(db.Model, FeatherModel):
 
     def send_identification(
         self,
+        annotation,
         config_id,
         algorithm_id,
-        annotation_uuid,
-        annotation_sage_uuid,
         matching_set_query=None,
     ):
-        from datetime import datetime
-        from app.extensions.acm import encode_acm_request
+        from app.extensions.sage import from_sage_uuid
 
         if not self.id_configs:
             log.warning('send_identification called without id_configs')
-            self.stage = SightingStage.failed
+            self.set_stage(SightingStage.failed)
             return
-        # Message construction has to be in the task as the jobId must be unique
-        job_uuid = uuid.uuid4()
-        job_uuid_str = str(job_uuid)
 
-        algorithm = self._get_algorithm_name(config_id, algorithm_id)
-        debug_context = f'Sighting:{self.guid}, Annot:{annotation_uuid}, Ann content_guid:{annotation_sage_uuid} algorithm:{algorithm}, job:{job_uuid}'
-        num_jobs = len(self.jobs)
-        log.debug(f'{debug_context}, In send_identification, num jobs {num_jobs}')
+        annotation.init_progress_identification(parent=self.progress_identification)
 
-        matching_set_query = matching_set_query or self.id_configs[config_id].get(
-            'matching_set'
-        )
-        algorithm = self.id_configs[config_id]['algorithms'][algorithm_id]
-        self.jobs[job_uuid_str] = {
-            'matching_set': matching_set_query,
-            'algorithm': algorithm,
-            'annotation': str(annotation_uuid),
-            'annotation_sage_uuid': str(annotation_sage_uuid)
-            if annotation_sage_uuid
-            else 'None',
-        }
+        try:
+            # Message construction has to be in the task as the jobId must be unique
+            job_uuid = uuid.uuid4()
+            job_uuid_str = str(job_uuid)
 
-        if not annotation_sage_uuid:
-            log.warning(
-                f'{debug_context}, Sage Identification aborted due to no content_guid on Annotation '
+            algorithm = self._get_algorithm_name(config_id, algorithm_id)
+            debug_context = f'Sighting:{self.guid}, Annot:{annotation}, Ann content_guid:{annotation.content_guid} algorithm:{algorithm}, job:{job_uuid}'
+            num_jobs = len(self.jobs)
+            log.debug(f'{debug_context}, In send_identification, num jobs {num_jobs}')
+
+            matching_set_query = matching_set_query or self.id_configs[config_id].get(
+                'matching_set'
             )
-            self.jobs[job_uuid_str]['active'] = False
-            self.jobs[job_uuid_str]['success'] = False
-            self.jobs[job_uuid_str]['failure_reason'] = 'No content guid on Annotation'
-            # force DB write
-            self.jobs = self.jobs
+            algorithm = self.id_configs[config_id]['algorithms'][algorithm_id]
+
             with db.session.begin(subtransactions=True):
-                db.session.merge(self)
-            return
-        id_request = self.build_identification_request(
-            matching_set_query,
-            annotation_uuid,
-            annotation_sage_uuid,
-            job_uuid,
-            algorithm,
-        )
-        if id_request != {}:
-            encoded_request = encode_acm_request(id_request)
-            try:
-                current_app.acm.request_passthrough_result(
-                    'job.identification_request', 'post', {'params': encoded_request}
+                self.jobs[job_uuid_str] = {
+                    'matching_set': matching_set_query,
+                    'algorithm': algorithm,
+                    'annotation': str(annotation.guid),
+                }
+
+                id_request = self.build_identification_request(
+                    annotation,
+                    matching_set_query,
+                    job_uuid,
+                    algorithm,
                 )
+                if id_request != {}:
+                    # Ensure all annotations in the above request have been sent to Sage
+                    query_sage_uuids = id_request.get('query_annot_uuid_list', [])
+                    database_sage_uuids = id_request.get('database_annot_uuid_list', [])
+                    query_sage_guids = set(map(from_sage_uuid, query_sage_uuids))
+                    database_sage_guids = set(map(from_sage_uuid, database_sage_uuids))
 
-                log.info(f'{debug_context} Sent ID Request, creating job')
-                self.jobs[job_uuid_str]['active'] = True
-                self.jobs[job_uuid_str]['start'] = datetime.utcnow()
+                    requested_content_guids = query_sage_guids | database_sage_guids
 
-            except HoustonException as ex:
-                acm_status_code = ex.get_val('acm_status_code', None)
-                if (
-                    ex.status_code == HTTPStatus.SERVICE_UNAVAILABLE
-                    or ex.status_code == HTTPStatus.INTERNAL_SERVER_ERROR
-                ):
-                    if (
-                        self._get_attempts_for_config(
-                            config_id, algorithm_id, str(annotation_uuid)
+                    if None in requested_content_guids:
+                        requested_content_guids = list(requested_content_guids)
+                        nulled = requested_content_guids.count(None)
+                        raise HoustonException(
+                            log,
+                            'Tried to start an ID job with annotation content GUIDs that are None, missing: %r'
+                            % (nulled,),
                         )
-                        < MAX_IDENTIFICATION_ATTEMPTS
-                    ):
-                        log.warning(
-                            f'{debug_context} Sage Identification failed to start '
-                            f'code: {ex.status_code}, acm_status_code: {acm_status_code}, retrying'
-                        )
-                        annotation = Annotation.find(annotation_uuid)
-                        assert annotation
-                        self.send_annotation_for_identification_specific(
-                            annotation, config_id, algorithm_id, restart=False
-                        )
-                    else:
-                        log.warning(
-                            f'{debug_context} Sage Identification failed to start '
-                            f'code: {ex.status_code}, acm_status_code: {acm_status_code}, giving up'
-                        )
-                        self.jobs[job_uuid_str]['active'] = False
-                        self.jobs[job_uuid_str]['success'] = False
-                        self.jobs[job_uuid_str]['failure_reason'] = 'too many retries'
-        else:
-            self.jobs[job_uuid_str]['active'] = False
-            self.jobs[job_uuid_str]['success'] = False
-            self.jobs[job_uuid_str]['failure_reason'] = 'No ID request built'
 
-        # This is necessary because we can only mark self as modified if
-        # we assign to one of the database attributes
-        self.jobs = self.jobs
-        with db.session.begin(subtransactions=True):
-            db.session.merge(self)
+                    local_content_guids = Annotation.query.with_entities(
+                        Annotation.content_guid
+                    ).all()
+                    local_content_guids = set(
+                        [item[0] for item in local_content_guids if item is not None]
+                    )
+
+                    missing = requested_content_guids - local_content_guids
+                    if len(missing) > 0:
+                        raise HoustonException(
+                            log,
+                            'Tried to start an ID job with annotation content GUIDs that are not in the local Houston database, missing: %r'
+                            % (missing,),
+                        )
+
+                    sage_uuids = current_app.sage.request_passthrough_result(
+                        'annotation.list', 'get', target='sync'
+                    )
+                    sage_guids = set([from_sage_uuid(uuid_) for uuid_ in sage_uuids])
+
+                    missing = requested_content_guids - sage_guids
+                    if len(missing) > 0:
+                        raise HoustonException(
+                            log,
+                            'Tried to start an ID job with annotation content GUIDs that are not in the remote Sage database, missing: %r'
+                            % (missing,),
+                        )
+
+                    search = database_sage_guids - query_sage_guids
+                    if len(search) == 0:
+                        raise HoustonException(
+                            log,
+                            'Tried to start an ID job with an empty database or with only the query annotation in the database, query: %r, database: %r'
+                            % (
+                                query_sage_guids,
+                                database_sage_guids,
+                            ),
+                        )
+
+                    try:
+                        sage_job_uuid = current_app.sage.request_passthrough_result(
+                            'engine.identification', 'post', {'json': id_request}
+                        )
+                        sage_guid = uuid.UUID(sage_job_uuid)
+                        assert sage_guid == job_uuid
+
+                        if annotation.progress_identification:
+                            # Set the status to healthy and 0%
+                            annotation.progress_identification = (
+                                annotation.progress_identification.config()
+                            )
+
+                            with db.session.begin(subtransactions=True):
+                                annotation.progress_identification.sage_guid = sage_guid
+                                db.session.merge(annotation.progress_identification)
+
+                        log.info(f'{debug_context} Sent ID Request, creating job')
+                        self.jobs[job_uuid_str]['active'] = True
+                        self.jobs[job_uuid_str]['start'] = datetime.datetime.utcnow()
+
+                    except HoustonException as ex:
+                        sage_status_code = ex.get_val('sage_status_code', None)
+                        if (
+                            ex.status_code == HTTPStatus.SERVICE_UNAVAILABLE
+                            or ex.status_code == HTTPStatus.INTERNAL_SERVER_ERROR
+                        ):
+                            if (
+                                self._get_attempts_for_config(
+                                    str(annotation.guid), config_id, algorithm_id
+                                )
+                                < MAX_IDENTIFICATION_ATTEMPTS
+                            ):
+                                log.warning(
+                                    f'{debug_context} Sage Identification failed to start '
+                                    f'code: {ex.status_code}, sage_status_code: {sage_status_code}, retrying'
+                                )
+                                self.send_annotation_for_identification_specific(
+                                    annotation, config_id, algorithm_id, restart=False
+                                )
+                            else:
+                                log.warning(
+                                    f'{debug_context} Sage Identification failed to start '
+                                    f'code: {ex.status_code}, sage_status_code: {sage_status_code}, giving up'
+                                )
+                                self.jobs[job_uuid_str]['active'] = False
+                                self.jobs[job_uuid_str]['success'] = False
+                                self.jobs[job_uuid_str][
+                                    'failure_reason'
+                                ] = 'too many retries'
+                else:
+                    self.jobs[job_uuid_str]['active'] = False
+                    self.jobs[job_uuid_str]['success'] = False
+                    self.jobs[job_uuid_str]['failure_reason'] = 'No ID request built'
+
+                self.jobs = self.jobs
+
+                db.session.merge(self)
+            db.session.refresh(self)
+        except Exception as ex:
+            if annotation.progress_identification:
+                annotation.progress_identification.fail(str(ex))
+            raise
 
     # validate that the id response is a valid format and extract the data required from it
     def _parse_id_response(self, job_id_str, data):
-        from app.extensions.acm import from_acm_uuid
+        from app.extensions.sage import from_sage_uuid
 
         status = data.get('status', 'failed')
         result = {
@@ -1203,12 +1320,12 @@ class Sighting(db.Model, FeatherModel):
                 f'Sage ID responded with {len(query_annot_uuids)} query_annots for {job_id_str}',
             )
 
-        acm_uuid = from_acm_uuid(query_annot_uuids[0])
-        query_annots = Annotation.query.filter_by(content_guid=acm_uuid).all()
+        sage_uuid = from_sage_uuid(query_annot_uuids[0])
+        query_annots = Annotation.query.filter_by(content_guid=sage_uuid).all()
         if not query_annots:
             raise HoustonException(
                 log,
-                f'Sage ID response with unknown query annot uuid {acm_uuid} for job {job_id_str}',
+                f'Sage ID response with unknown query annot uuid {sage_uuid} for job {job_id_str}',
             )
 
         possible_annot_guids = [str(annot.guid) for annot in query_annots]
@@ -1216,29 +1333,29 @@ class Sighting(db.Model, FeatherModel):
         if job['annotation'] not in possible_annot_guids:
             raise HoustonException(
                 log,
-                f'Sage ID response with invalid annot uuid {acm_uuid} for job {job_id_str}',
+                f'Sage ID response with invalid annot uuid {sage_uuid} for job {job_id_str}',
             )
 
         # Now it's reasonably valid, let's extract the bits we need
         for target_annot_data in json_result['summary_annot']:
-            acm_uuid = from_acm_uuid(target_annot_data['duuid'])
-            target_annot = Annotation.query.filter_by(content_guid=acm_uuid).first()
+            sage_uuid = from_sage_uuid(target_annot_data['duuid'])
+            target_annot = Annotation.query.filter_by(content_guid=sage_uuid).first()
             if not target_annot:
                 raise HoustonException(
                     log,
-                    f'Sage ID response with unknown target annot uuid {acm_uuid} for job {job_id_str}',
+                    f'Sage ID response with unknown target annot uuid {sage_uuid} for job {job_id_str}',
                 )
             result['scores_by_annotation'].append(
                 {str(target_annot.guid): target_annot_data['score']}
             )
 
         for target_annot_data in json_result['summary_name']:
-            acm_uuid = from_acm_uuid(target_annot_data['duuid'])
-            target_annot = Annotation.query.filter_by(content_guid=acm_uuid).first()
+            sage_uuid = from_sage_uuid(target_annot_data['duuid'])
+            target_annot = Annotation.query.filter_by(content_guid=sage_uuid).first()
             if not target_annot:
                 raise HoustonException(
                     log,
-                    f'Sage ID response with unknown target annot uuid {acm_uuid} for job {job_id_str}',
+                    f'Sage ID response with unknown target annot uuid {sage_uuid} for job {job_id_str}',
                 )
             result['scores_by_individual'].append(
                 {str(target_annot.guid): target_annot_data['score']}
@@ -1247,54 +1364,67 @@ class Sighting(db.Model, FeatherModel):
         return status, result
 
     def identified(self, job_id, data):
-        job_id_str = str(job_id)
-        if job_id_str not in self.jobs:
-            raise HoustonException(log, f'job_id {job_id_str} not found')
-        job = self.jobs[job_id_str]
-        algorithm = job['algorithm']
-        annot_guid = job['annotation']
-        debug_context = f'Sighting:{self.guid}, Annot:{annot_guid}, algorithm:{algorithm}'
+        annotation = None
 
-        status, result = self._parse_id_response(job_id_str, data)
-
-        description = ''
         try:
-            from app.modules.ia_config_reader import IaConfig
+            job_id_str = str(job_id)
+            if job_id_str not in self.jobs:
+                raise HoustonException(log, f'job_id {job_id_str} not found')
+            job = self.jobs[job_id_str]
+            algorithm = job['algorithm']
+            annot_guid = job['annotation']
+            debug_context = (
+                f'Sighting:{self.guid}, Annot:{annot_guid}, algorithm:{algorithm}'
+            )
 
-            ia_config_reader = IaConfig(current_app.config.get('CONFIG_MODEL'))
-            id_config_dict = ia_config_reader.get(f'_identifiers.{algorithm}')
-            assert id_config_dict
-            frontend_data = id_config_dict.get('frontend', '')
-            if frontend_data:
-                description = frontend_data.get('description', '')
-        except KeyError:
-            log.warning(f'{debug_context} failed to find {algorithm},')
+            status, result = self._parse_id_response(job_id_str, data)
 
-        log.info(
-            f"{debug_context} Received successful response '{description}' from Sage for {job_id_str}"
-        )
-        log.debug(f'{debug_context} ID response stored result: {result}')
+            description = ''
+            try:
+                from app.modules.ia_config_reader import IaConfig
 
-        # All good, mark job as finished
-        job['active'] = False
-        job['success'] = status == 'completed'
-        job['result'] = result
-        job['complete_time'] = datetime.utcnow()
+                ia_config_reader = IaConfig(current_app.config.get('CONFIG_MODEL'))
+                id_config_dict = ia_config_reader.get(f'_identifiers.{algorithm}')
+                assert id_config_dict
+                frontend_data = id_config_dict.get('frontend', '')
+                if frontend_data:
+                    description = frontend_data.get('description', '')
+            except KeyError:
+                log.warning(f'{debug_context} failed to find {algorithm},')
 
-        self.jobs = self.jobs
-        if not self.any_jobs_active():
-            self.stage = SightingStage.un_reviewed
+            log.info(
+                f"{debug_context} Received successful response '{description}' from Sage for {job_id_str}"
+            )
+            log.debug(f'{debug_context} ID response stored result: {result}')
 
-        self.unreviewed_start = datetime.utcnow()
-        with db.session.begin(subtransactions=True):
-            db.session.merge(self)
+            # All good, mark job as finished
+            with db.session.begin(subtransactions=True):
+                job['active'] = False
+                job['success'] = status == 'completed'
+                job['result'] = result
+                job['end'] = datetime.datetime.utcnow()
+
+                if not self.any_jobs_active():
+                    self.set_stage(SightingStage.un_reviewed)
+
+                self.unreviewed_start = datetime.datetime.utcnow()
+                self.jobs = self.jobs
+                db.session.merge(self)
+
+            annotation = Annotation.query.get(annot_guid)
+            if annotation is not None and annotation.progress_identification is not None:
+                annotation.progress_identification.set(100)
+        except Exception as ex:
+            if annotation is not None and annotation.progress_identification is not None:
+                annotation.progress_identification.fail(str(ex))
+            raise
 
     def check_job_status(self, job_id):
         if str(job_id) not in self.jobs:
             log.warning(f'check_job_status called for invalid job {job_id}')
             return False
 
-        # TODO Poll ACM to see what's happening with this job, if it's ready to handle and we missed the
+        # TODO Poll Sage to see what's happening with this job, if it's ready to handle and we missed the
         # response, process it here
         return True
 
@@ -1310,7 +1440,7 @@ class Sighting(db.Model, FeatherModel):
             data = {
                 'guid': t_annot_guid,
                 'score': t_annot_result[t_annot_guid],
-                'id_finish_time': str(q_annot_job['complete_time']),
+                'id_finish_time': str(q_annot_job['end']),
             }
 
         return t_annot, data
@@ -1477,14 +1607,30 @@ class Sighting(db.Model, FeatherModel):
                 # Only one for MVP
                 assert len(config['algorithms']) == 1
 
-    def ia_pipeline(self, background=True):
+    def ia_pipeline(self, foreground=None):
+
+        if foreground is None:
+            foreground = current_app.testing
 
         assert self.stage == SightingStage.identification, self.stage
         self.validate_id_configs()
-        from .tasks import send_all_identification
+        self.init_progress_identification()
 
-        send_all_identification.delay(str(self.guid))
-        log.info(f'Starting Identification for Sighting:{self.guid} in celery')
+        if foreground:
+            self.send_all_identification()
+            promise = None
+        else:
+            from .tasks import send_all_identification
+
+            promise = send_all_identification.delay(str(self.guid))
+
+            log.info(f'Starting Identification for Sighting:{self.guid} in celery')
+
+        if self.progress_identification and promise:
+            with db.session.begin():
+                self.progress_identification.celery_guid = promise.id
+                db.session.merge(self.progress_identification)
+
         for encounter in self.encounters:
             encounter_metadata = self.asset_group_sighting.get_encounter_metadata(
                 encounter.asset_group_sighting_encounter_guid
@@ -1500,8 +1646,11 @@ class Sighting(db.Model, FeatherModel):
     # this iterates over configs and algorithms
     # note: self.validate_id_configs() should be called before this (once)
     def send_annotation_for_identification(
-        self, annotation, matching_set_query=None, background=True
+        self, annotation, matching_set_query=None, foreground=None
     ):
+        if foreground is None:
+            foreground = current_app.testing
+
         num_jobs = 0
         annotation_guid = str(annotation.guid)
         for config_id in range(len(self.id_configs)):
@@ -1513,7 +1662,7 @@ class Sighting(db.Model, FeatherModel):
                     config_id,
                     algorithm_id,
                     matching_set_query,
-                    background=background,
+                    foreground=foreground,
                 ):
                     num_jobs += 1
         return num_jobs
@@ -1526,9 +1675,12 @@ class Sighting(db.Model, FeatherModel):
         algorithm_id,
         matching_set_query=None,
         restart=True,
-        background=True,
+        foreground=None,
     ):
-        from .tasks import send_identification
+        from app.extensions import elasticsearch as es
+
+        if foreground is None:
+            foreground = current_app.testing
 
         algorithm = self._get_algorithm_name(config_id, algorithm_id)
         debug_context = (
@@ -1544,8 +1696,13 @@ class Sighting(db.Model, FeatherModel):
                 f'{debug_context} Skipping {annotation} due to lack of content_guid or encounter'
             )
             return False
+
+        # Force this to be up-to-date in Sage
+        annotation.sync_with_sage(ensure=True)
+
         # force this to be up-to-date in index
-        annotation.index()
+        with es.session.begin(blocking=True):
+            annotation.index()
 
         matching_set_query = matching_set_query or self.id_configs[config_id].get(
             'matching_set'
@@ -1558,7 +1715,7 @@ class Sighting(db.Model, FeatherModel):
             )
             return False
 
-        if self._has_active_jobs(config_id, algorithm_id, str(annotation.guid)):
+        if self._has_active_jobs(str(annotation.guid), config_id, algorithm_id):
             log.info(
                 f'{debug_context} Skipping {annotation.guid} as already an active job for {algorithm_id}'
             )
@@ -1568,45 +1725,50 @@ class Sighting(db.Model, FeatherModel):
             f'{debug_context} Queueing up ID job: '
             f'matching_set size={len(matching_set)} algo {algorithm_id}'
         )
-        annotation_guid = str(annotation.guid)
-        if background:
-            send_identification.delay(
-                str(self.guid),
+
+        self.init_progress_identification(overrite=True)
+
+        if foreground:
+            self.send_identification(
+                annotation,
                 config_id,
                 algorithm_id,
-                annotation.guid,
-                annotation.content_guid,
                 matching_set_query,
             )
+            promise = None
         else:
-            sighting_guid = str(self.guid)
-            send_identification(
-                sighting_guid,
+            from .tasks import send_identification
+
+            promise = send_identification.delay(
+                str(self.guid),
+                str(annotation.guid),
                 config_id,
                 algorithm_id,
-                annotation.guid,
-                annotation.content_guid,
                 matching_set_query,
             )
-            self = Sighting.query.get(sighting_guid)
+
+        if self.progress_identification and promise:
+            with db.session.begin():
+                self.progress_identification.celery_guid = promise.id
+                db.session.merge(self.progress_identification)
 
         # store that we sent it (handles retry counts)
-        self._update_job_config(config_id, algorithm_id, annotation_guid, restart)
+        self._update_job_config(str(annotation.guid), config_id, algorithm_id, restart)
         return True
 
-    def _get_job_config(self, config_id, algorithm_id, annotation_guid_str):
+    def _get_job_config(self, annotation_guid_str, config_id, algorithm_id):
         for job_cnf in self.job_configs:
             # { 'configId': config, 'algorithmId': algorithm, 'annotation': str(annotation_uuid), 'num_tries': 1 }
             if (
-                job_cnf['configId'] == config_id
+                job_cnf['annotation'] == annotation_guid_str
+                and job_cnf['configId'] == config_id
                 and job_cnf['algorithmId'] == algorithm_id
-                and job_cnf['annotation'] == annotation_guid_str
             ):
                 return job_cnf
             return {}
 
-    def _update_job_config(self, config_id, algorithm_id, annotation_guid_str, restart):
-        job_cnf = self._get_job_config(config_id, algorithm_id, annotation_guid_str)
+    def _update_job_config(self, annotation_guid_str, config_id, algorithm_id, restart):
+        job_cnf = self._get_job_config(annotation_guid_str, config_id, algorithm_id)
         if job_cnf:
             job_cnf['num_tries'] = 1 if restart else job_cnf['num_tries'] + 1
         else:
@@ -1623,14 +1785,14 @@ class Sighting(db.Model, FeatherModel):
         with db.session.begin(subtransactions=True):
             db.session.merge(self)
 
-    def _get_attempts_for_config(self, config_id, algorithm_id, annotation_guid_str):
-        job_cnf = self._get_job_config(config_id, algorithm_id, annotation_guid_str)
+    def _get_attempts_for_config(self, annotation_guid_str, config_id, algorithm_id):
+        job_cnf = self._get_job_config(annotation_guid_str, config_id, algorithm_id)
         if job_cnf:
             return job_cnf['num_tries']
         else:
             return 0
 
-    def _has_active_jobs(self, config_id, algorithm_id, annotation_guid_str):
+    def _has_active_jobs(self, annotation_guid_str, config_id, algorithm_id):
         for job in self.jobs:
             if (
                 self.jobs[job]['algorithm']

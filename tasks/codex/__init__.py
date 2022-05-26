@@ -10,37 +10,35 @@ from config import get_preliminary_config
 from tasks.app import run
 from tasks.codex import (
     asset_groups,
+    collaborations,
     consistency,
-    edm,
+    elasticsearch,
     encounters,
     initialize,
     integrations,
+    integrity,
     organizations,
-    collaborations,
+    job_control,
     progress,
     projects,
-    elasticsearch,
     sightings,
-    job_control,
-    integrity,
 )
 
 
 namespace = Collection(
     asset_groups,
+    collaborations,
     consistency,
-    edm,
+    elasticsearch,
     encounters,
     initialize,
     integrations,
+    integrity,
+    job_control,
     organizations,
-    collaborations,
     progress,
     projects,
-    elasticsearch,
     sightings,
-    job_control,
-    integrity,
     run,
 )
 

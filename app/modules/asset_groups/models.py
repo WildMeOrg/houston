@@ -7,11 +7,11 @@ import copy
 import enum
 from flask import current_app, url_for
 from flask_login import current_user  # NOQA
-from datetime import datetime  # NOQA
+import datetime
 from flask_restx_patched._http import HTTPStatus
 from app.extensions import db, HoustonModel
 import app.extensions.logging as AuditLog  # NOQA
-from app.extensions.acm import from_acm_uuid
+from app.extensions.sage import from_sage_uuid
 from app.extensions.git_store import GitStore
 from app.modules.annotations.models import Annotation
 from app.modules.assets.models import Asset
@@ -24,7 +24,6 @@ from app.utils import HoustonException
 
 import logging
 import uuid
-import json
 
 from .metadata import AssetGroupMetadata
 
@@ -72,9 +71,27 @@ class AssetGroupSighting(db.Model, HoustonModel):
     jobs = db.Column(db.JSON, default=lambda: {}, nullable=True)
 
     curation_start = db.Column(
-        db.DateTime, index=True, default=datetime.utcnow, nullable=False
+        db.DateTime, index=True, default=datetime.datetime.utcnow, nullable=False
     )
     detection_attempts = db.Column(db.Integer, default=0, nullable=False)
+
+    progress_detection_guid = db.Column(
+        db.GUID, db.ForeignKey('progress.guid'), index=False, nullable=True
+    )
+
+    progress_detection = db.relationship(
+        'Progress',
+        foreign_keys='AssetGroupSighting.progress_detection_guid',
+    )
+
+    progress_identification_guid = db.Column(
+        db.GUID, db.ForeignKey('progress.guid'), index=False, nullable=True
+    )
+
+    progress_identification = db.relationship(
+        'Progress',
+        foreign_keys='AssetGroupSighting.progress_identification_guid',
+    )
 
     def user_is_owner(self, user: User) -> bool:
         # AssetGroupSighting has no owner, so uses the AssetGroup one
@@ -94,7 +111,9 @@ class AssetGroupSighting(db.Model, HoustonModel):
         }
 
     def setup(self):
-        self.set_stage(AssetGroupSightingStage.preparation, refresh=False)
+        # Setup needs to happen after the AGS has been added to the database
+
+        self.set_stage(AssetGroupSightingStage.preparation)
 
         if not self.asset_group.progress_preparation:
             self.post_preparation_hook()
@@ -105,8 +124,6 @@ class AssetGroupSighting(db.Model, HoustonModel):
         elif self.asset_group.progress_preparation.percentage >= 99:
             # We sometimes create an AGS when the percentage is 99%
             self.post_preparation_hook()
-
-        AuditLog.user_create_object(log, self)
 
     @property
     def sighting_config(self):
@@ -136,17 +153,26 @@ class AssetGroupSighting(db.Model, HoustonModel):
         if self.stage != AssetGroupSightingStage.preparation:
             return
 
+        # Setup the progress detection
+        self.init_progress_detection(overwrite=True, increment_attempts=True)
+
         # Allow sightings to have no Assets, they go straight to curation
         if (
             'assetReferences' not in self.sighting_config
             or len(self.sighting_config['assetReferences']) == 0
         ):
+            if self.progress_detection:
+                self.progress_detection.skip('No assets were submitted')
+
             self.set_stage(AssetGroupSightingStage.curation)
             self.commit()
 
         elif len(self.detection_configs) == 1 and (
             not self.detection_configs[0] or self.detection_configs[0] == 'None'
         ):
+            if self.progress_detection:
+                self.progress_detection.skip('No detection config specified')
+
             self.set_stage(AssetGroupSightingStage.curation)
         else:
             self.set_stage(AssetGroupSightingStage.detection)
@@ -487,15 +513,15 @@ class AssetGroupSighting(db.Model, HoustonModel):
                     'assuming Celery error and starting them again'
                 )
             try:
-                self.rerun_detection(background=False)
+                self.rerun_detection()
             except Exception:
                 log.exception(f'{self} rerun_detection failed')
             return
         for job_id in jobs.keys():
             job = jobs[job_id]
             if job['active']:
-                current_app.acm.request_passthrough_result(
-                    'job.response', 'post', {}, job_id
+                current_app.sage.request_passthrough_result(
+                    'engine.result', 'get', {}, job_id
                 )
                 # TODO Process response
                 # TODO If UTC Start more than {arbitrary limit} ago.... do something
@@ -523,7 +549,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
             'preparation': self._get_pipeline_status_preparation(),
             'detection': self._get_pipeline_status_detection(),
             'identification': self._get_pipeline_status_identification(),
-            'now': datetime.utcnow().isoformat(),
+            'now': datetime.datetime.utcnow().isoformat(),
             'stage': self.stage,
             'migrated': False,  # always false, but just for consistency with sighting
             'summary': {
@@ -747,7 +773,9 @@ class AssetGroupSighting(db.Model, HoustonModel):
 
     @classmethod
     def get_sage_job_status(cls, job_id):
-        return current_app.acm.request_passthrough_result('job.status', 'get', {}, job_id)
+        return current_app.sage.request_passthrough_result(
+            'job.status', 'get', {}, job_id
+        )
 
     # Build up list to print out status (calling function chooses what to collect and print)
     def get_jobs_debug(self, verbose):
@@ -759,12 +787,13 @@ class AssetGroupSighting(db.Model, HoustonModel):
             details[-1]['job_id'] = job_id
 
             if verbose:
-                details[-1]['request'] = self.build_detection_request(
+                detection_request, _ = self.build_detection_request(
                     job_id, self.jobs[job_id]['model']
                 )
+                details[-1]['request'] = detection_request
                 try:
-                    sage_response = current_app.acm.request_passthrough_result(
-                        'job.response', 'post', {}, job_id
+                    sage_response = current_app.sage.request_passthrough_result(
+                        'engine.result', 'get', {}, job_id
                     )
 
                     details[-1]['response'] = sage_response
@@ -776,8 +805,9 @@ class AssetGroupSighting(db.Model, HoustonModel):
 
         return details
 
-    def build_detection_request(self, job_uuid, model):
+    def build_detection_request(self, job_uuid, model, preload=True):
         from app.modules.ia_config_reader import IaConfig
+        from app.extensions.sage import to_sage_uuid
 
         callback_url = url_for(
             'api.asset_groups_asset_group_sighting_detected',
@@ -786,226 +816,295 @@ class AssetGroupSighting(db.Model, HoustonModel):
             _external=True,
         )
 
-        ia_config_reader = IaConfig(current_app.config.get('CONFIG_MODEL'))
-        detector_config = ia_config_reader.get_named_detector_config(model)
-
-        assert 'start_detect' in detector_config
-
         model_config = {
-            'endpoint': detector_config['start_detect'],
             'jobid': str(job_uuid),
             'callback_url': f'houston+{callback_url}',
             'callback_detailed': True,
         }
+
+        ia_config_reader = IaConfig(current_app.config.get('CONFIG_MODEL'))
+        detector_config = ia_config_reader.get_named_detector_config(model)
         model_config.update(detector_config)
 
-        asset_urls = []
+        assets = []
         if 'updatedAssets' in self.sighting_config:
-            asset_urls = [
-                url_for('api.assets_asset_src_raw_by_id', asset_guid=guid, _external=True)
-                for guid in self.sighting_config['updatedAssets']
-            ]
+            for guid in self.sighting_config['updatedAssets']:
+                asset = Asset.query.get(guid)
+                if not asset:
+                    logging.warning(f'Asset ref {guid}, cannot find asset, skipping')
+                    continue
+                assets.append(asset)
         else:
             for filename in self.sighting_config.get('assetReferences'):
                 asset = self.asset_group.get_asset_for_file(filename)
                 if not asset:
                     logging.warning(f'Asset ref {filename}, cannot find asset, skipping')
                     continue
+                assets.append(asset)
 
-                asset_url = url_for(
-                    'api.assets_asset_src_raw_by_id',
-                    asset_guid=str(asset.guid),
-                    _external=True,
+        asset_sage_data = []
+
+        if preload:
+            # Ensure that the assets exist on Sage
+            for asset in assets:
+                asset.sync_with_sage(ensure=True)
+                asset_sage_data.append(
+                    (
+                        to_sage_uuid(asset.content_guid),
+                        asset.guid,
+                    )
                 )
-                if asset_url not in asset_urls:
-                    asset_urls.append(asset_url)
 
-        # Sort the Asset URLs so that when processing the response we know which
-        # content guid relates to which asset guid
-        asset_urls.sort()
-        model_config['image_uuid_list'] = json.dumps(
-            [f'houston+{asset_url}' for asset_url in asset_urls]
-        )
-        return model_config
+            asset_sage_data.sort(key=lambda data: data[0]['__UUID__'])
+        else:
+            for asset in assets:
+                asset_sage_data.append(
+                    (
+                        url_for(
+                            'api.assets_asset_src_raw_by_id',
+                            asset_guid=str(asset.guid),
+                            _external=True,
+                        ),
+                        asset.guid,
+                    )
+                )
+
+            # Sort the Asset URLs so that when processing the response we know which
+            # content guid relates to which asset guid
+            asset_sage_data.sort(key=lambda data: data[0])
+
+        asset_sage_values = []
+        asset_guids = []
+        for asset_sage_value, asset_guid in asset_sage_data:
+            if asset_sage_value in asset_sage_values:
+                # Deduplicate
+                continue
+            asset_sage_values.append(asset_sage_value)
+            asset_guids.append(asset_guid)
+
+        model_config['image_uuid_list'] = asset_sage_values
+
+        return model_config, asset_guids
 
     def send_detection_to_sage(self, model):
-        job_id = uuid.uuid4()
-        detection_request = self.build_detection_request(job_id, model)
-        log.info(f'Sending detection message to Sage for {model}')
         try:
-            current_app.acm.request_passthrough_result(
-                'job.detect_request',
-                'post',
-                {'params': detection_request},
-                'cnn/lightnet',
-            )
-            from datetime import datetime  # NOQA
+            job_id = uuid.uuid4()
+            detection_request, asset_guids = self.build_detection_request(job_id, model)
+            log.info(f'Sending detection message to Sage for {model}')
+            log.info('detection_request = %r' % (detection_request,))
+            log.info('asset_guids = %r' % (asset_guids,))
+            try:
+                sage_job_uuid = current_app.sage.request_passthrough_result(
+                    'engine.detect',
+                    'post',
+                    {'json': detection_request},
+                )
+                sage_guid = uuid.UUID(sage_job_uuid)
+                assert sage_guid == job_id
 
-            self.jobs[str(job_id)] = {
-                'model': model,
-                'active': True,
-                'start': datetime.utcnow().isoformat(),
-                'asset_ids': [
-                    uri.rsplit('/', 1)[-1]
-                    for uri in json.loads(detection_request['image_uuid_list'])
-                ],
-            }
-            # This is necessary because we can only mark self as modified if
-            # we assign to one of the database attributes
-            self.jobs = self.jobs
+                if self.progress_detection:
+                    # Set the status to healthy and 0%
+                    self.progress_detection = self.progress_detection.config()
 
-            with db.session.begin(subtransactions=True):
-                db.session.merge(self)
-        except HoustonException as ex:
-            acm_status_code = ex.get_val('acm_status_code', None)
+                    with db.session.begin():
+                        self.progress_detection.sage_guid = sage_guid
+                        db.session.merge(self.progress_detection)
 
-            # Celery has done it's job and called the function to generate the request and will not retry as it
-            # only does that for RequestException, which includes various timeouts ec, not HoustonException
+                self.jobs[str(job_id)] = {
+                    'model': model,
+                    'active': True,
+                    'start': datetime.datetime.utcnow().isoformat(),
+                    'asset_guids': asset_guids,
+                }
+                # This is necessary because we can only mark self as modified if
+                # we assign to one of the database attributes
+                self.jobs = self.jobs
 
-            if (
-                ex.status_code == HTTPStatus.SERVICE_UNAVAILABLE
-                or ex.status_code == HTTPStatus.INTERNAL_SERVER_ERROR
-            ):
-                if self.detection_attempts < MAX_DETECTION_ATTEMPTS:
-                    log.warning(
-                        f'Sage Detection on AssetGroupSighting({self.guid}) Job{job_id} failed to start, '
-                        f'code: {ex.status_code}, acm_status_code: {acm_status_code}, retrying'
-                    )
-                    self.rerun_detection()
+                with db.session.begin(subtransactions=True):
+                    db.session.merge(self)
+            except HoustonException as ex:
+                sage_status_code = ex.get_val('sage_status_code', None)
 
-            log.warning(
-                f'Sage Detection on AssetGroupSighting({self.guid}) Job{job_id} failed to start, '
-                f'code: {ex.status_code}, acm_status_code: {acm_status_code}, giving up'
-            )
-            # Assuming some sort of persistent error in Sage
-            self.job_complete(str(job_id))
-            self.set_stage(AssetGroupSightingStage.curation)
+                # Celery has done it's job and called the function to generate the request and will not retry as it
+                # only does that for RequestException, which includes various timeouts ec, not HoustonException
+
+                if (
+                    ex.status_code == HTTPStatus.SERVICE_UNAVAILABLE
+                    or ex.status_code == HTTPStatus.INTERNAL_SERVER_ERROR
+                ):
+                    if self.detection_attempts < MAX_DETECTION_ATTEMPTS:
+                        log.warning(
+                            f'Sage Detection on AssetGroupSighting({self.guid}) Job{job_id} failed to start, '
+                            f'code: {ex.status_code}, sage_status_code: {sage_status_code}, retrying'
+                        )
+                        self.rerun_detection()
+
+                log.warning(
+                    f'Sage Detection on AssetGroupSighting({self.guid}) Job{job_id} failed to start, '
+                    f'code: {ex.status_code}, sage_status_code: {sage_status_code}, giving up'
+                )
+                # Assuming some sort of persistent error in Sage
+                self.job_complete(str(job_id))
+                self.set_stage(AssetGroupSightingStage.curation)
+        except Exception as ex:
+            if self.progress_detection:
+                self.progress_detection.fail(str(ex))
+            raise
 
     def check_job_status(self, job_id):
         if str(job_id) not in self.jobs:
             log.warning(f'check_job_status called for invalid job {job_id}')
             return False
 
-        # TODO Poll ACM to see what's happening with this job, if it's ready to handle and we missed the
+        # TODO Poll Sage to see what's happening with this job, if it's ready to handle and we missed the
         # response, process it here
         return True
 
     def set_stage(self, stage, refresh=True):
-        self.stage = stage
         with db.session.begin(subtransactions=True):
+            self.stage = stage
             db.session.merge(self)
         if refresh:
             db.session.refresh(self)
 
     def detected(self, job_id, response):
-        log.info(f'Received Sage detection response on AssetGroupSighting {self.guid}')
-        if self.stage != AssetGroupSightingStage.detection:
-            raise HoustonException(
-                log, f'AssetGroupSighting {self.guid} is not detecting'
+        try:
+            log.info(
+                f'Received Sage detection response on AssetGroupSighting {self.guid}'
             )
-
-        job = self.jobs.get(str(job_id))
-        if job is None:
-            raise HoustonException(
-                log, f'job_id {job_id} not found, self.jobs={self.jobs}'
-            )
-
-        status = response.get('status')
-        if not status:
-            raise HoustonException(log, 'No status in response from Sage')
-
-        if status != 'completed':
-            # Job Failed on Sage but move to curation so that user can create annotations manually and commit
-            # Post MVP this may be a separate stage (that also permits annot creation and commit)
-            self.set_stage(AssetGroupSightingStage.curation)
-            self.job_complete(str(job_id))
-
-            # This is not an exception as the message from Sage was valid
-            msg = f'JobID {str(job_id)} failed with status: {status}, Sage result: {response.get("json_result")}'
-            AuditLog.backend_fault(log, msg, self)
-            return
-
-        job_id_msg = response.get('jobid')
-        if not job_id_msg:
-            raise HoustonException(log, 'Must be a job id in the response')
-
-        if job_id_msg != str(job_id):
-            raise HoustonException(
-                log,
-                f'Job id in message {job_id_msg} must match job id in callback {job_id}',
-            )
-
-        json_result = response.get('json_result', None)
-
-        if not json_result:
-            raise HoustonException(log, 'No json_result in message from Sage')
-
-        job['json_result'] = json_result
-        with db.session.begin(subtransactions=True):
-            self.jobs = self.jobs
-            db.session.merge(self)
-
-        sage_image_uuids = json_result.get('image_uuid_list', [])
-        results_list = json_result.get('results_list', [])
-        if len(sage_image_uuids) != len(results_list):
-            raise HoustonException(
-                log,
-                f'image list len {len(sage_image_uuids)} does not match results len {len(results_list)}',
-            )
-        if len(sage_image_uuids) != len(job['asset_ids']):
-            raise HoustonException(
-                log,
-                f'image list from sage {len(sage_image_uuids)} does not match local image list {len(job["asset_ids"])}',
-            )
-
-        annotations = []
-        # Populate Asset Content guids, ordered by Asset Guids as that is the order they were sent in
-        sorted_asset_ids = job['asset_ids']
-        sorted_asset_ids.sort()
-        log.debug(f'Received Image UUIDs {sage_image_uuids} in detection response')
-
-        for i, asset_id in enumerate(sorted_asset_ids):
-            asset = Asset.find(asset_id)
-            if not asset:
-                raise HoustonException(log, f'Asset Id {asset_id} not found')
-            asset.content_guid = from_acm_uuid(sage_image_uuids[i])
-
-            results = results_list[i]
-
-            for annot_id in range(len(results)):
-                annot_data = results[annot_id]
-                content_guid = from_acm_uuid(annot_data.get('uuid', {}))
-                ia_class = annot_data.get('class', None)
-                # TODO sage returns "null" as the viewpoint, when it always
-                # returns a viewpoint, we can remove the "or 'unknown'" part
-                viewpoint = annot_data.get('viewpoint', None) or 'unknown'
-                if not viewpoint or not ia_class:
-                    raise HoustonException(
-                        log,
-                        f'Need a viewpoint "{viewpoint}" and a class "{ia_class}" in each of the results',
-                    )
-
-                bounds = Annotation.create_bounds(annot_data)
-
-                annotations.append(
-                    Annotation(
-                        guid=uuid.uuid4(),
-                        content_guid=content_guid,
-                        asset=asset,
-                        ia_class=ia_class,
-                        viewpoint=viewpoint,
-                        bounds=bounds,
-                    )
+            if self.stage != AssetGroupSightingStage.detection:
+                raise HoustonException(
+                    log, f'AssetGroupSighting {self.guid} is not detecting'
                 )
 
-        for new_annot in annotations:
-            AuditLog.system_create_object(log, new_annot, 'from Sage detection response')
+            job = self.jobs.get(str(job_id))
+            if job is None:
+                raise HoustonException(
+                    log, f'job_id {job_id} not found, self.jobs={self.jobs}'
+                )
+
+            status = response.get('status')
+            if not status:
+                raise HoustonException(log, 'No status in response from Sage')
+
+            if status != 'completed':
+                # Job Failed on Sage but move to curation so that user can create annotations manually and commit
+                # Post MVP this may be a separate stage (that also permits annot creation and commit)
+                self.set_stage(AssetGroupSightingStage.curation)
+                self.job_complete(str(job_id))
+
+                # This is not an exception as the message from Sage was valid
+                msg = f'JobID {str(job_id)} failed with status: {status}, Sage result: {response.get("json_result")}'
+                AuditLog.backend_fault(log, msg, self)
+                return
+
+            job_id_msg = response.get('jobid')
+            if not job_id_msg:
+                raise HoustonException(log, 'Must be a job id in the response')
+
+            if job_id_msg != str(job_id):
+                raise HoustonException(
+                    log,
+                    f'Job id in message {job_id_msg} must match job id in callback {job_id}',
+                )
+
+            json_result = response.get('json_result', None)
+
+            if not json_result:
+                raise HoustonException(log, 'No json_result in message from Sage')
+
+            job['result'] = json_result
             with db.session.begin(subtransactions=True):
-                db.session.add(new_annot)
+                self.jobs = self.jobs
+                db.session.merge(self)
 
-        db.session.refresh(self)
+            asset_guids = job['asset_guids']
+            sage_image_uuids = json_result.get('image_uuid_list', [])
+            results_list = json_result.get('results_list', [])
 
-        self.job_complete(str(job_id))
+            if len(sage_image_uuids) != len(results_list):
+                raise HoustonException(
+                    log,
+                    f'image list len {len(sage_image_uuids)} does not match results len {len(results_list)}',
+                )
+            if len(sage_image_uuids) != len(asset_guids):
+                raise HoustonException(
+                    log,
+                    f'image list from sage {len(sage_image_uuids)} does not match local image list {len(job["asset_ids"])}',
+                )
+
+            with db.session.begin(subtransactions=True):
+                assets = []
+                annotations = []
+
+                zipped = zip(asset_guids, sage_image_uuids, results_list)
+                for asset_guid, sage_image_uuid, results in zipped:
+                    asset = Asset.find(asset_guid)
+                    if not asset:
+                        raise HoustonException(log, f'Asset {asset_guid} not found')
+
+                    assets.append(asset)
+
+                    sage_content_guid = from_sage_uuid(sage_image_uuid)
+
+                    if asset.content_guid is not None:
+                        try:
+                            assert (
+                                asset.content_guid == sage_content_guid
+                            ), 'The content GUID for %r is a mismatch' % (asset,)
+                        except Exception:
+                            # Get the content GUID fresh from Sage and double check
+                            asset.sync_with_sage(ensure=True, force=True)
+                            if asset.content_guid != sage_content_guid:
+                                raise
+                    else:
+                        asset.content_guid = sage_content_guid
+
+                    for result in results:
+
+                        content_guid = from_sage_uuid(result.get('uuid', None))
+                        ia_class = result.get('class', None)
+                        # TODO sage returns "null" as the viewpoint, when it always
+                        # returns a viewpoint, we can remove the "or 'unknown'" part
+                        viewpoint = result.get('viewpoint', None) or 'unknown'
+                        if not viewpoint or not ia_class:
+                            raise HoustonException(
+                                log,
+                                f'Need a viewpoint "{viewpoint}" and a class "{ia_class}" in each of the results',
+                            )
+
+                        bounds = Annotation.create_bounds(result)
+
+                        annotations.append(
+                            Annotation(
+                                guid=uuid.uuid4(),
+                                content_guid=content_guid,
+                                asset=asset,
+                                ia_class=ia_class,
+                                viewpoint=viewpoint,
+                                bounds=bounds,
+                            )
+                        )
+
+                for annotation in annotations:
+                    AuditLog.system_create_object(
+                        log, annotation, 'from Sage detection response'
+                    )
+                    db.session.add(annotation)
+
+                for asset in assets:
+                    db.session.merge(asset)
+
+            db.session.refresh(self)
+
+            self.job_complete(job_id)
+
+            if self.progress_detection:
+                self.progress_detection.set(100)
+        except Exception as ex:
+            if self.progress_detection:
+                self.progress_detection.fail(str(ex))
+            raise
 
     # Record that the asset has been updated for future re detection
     def asset_updated(self, asset):
@@ -1016,24 +1115,107 @@ class AssetGroupSighting(db.Model, HoustonModel):
         # Ensure it's written to DB
         self.config = self.config
 
-    def rerun_detection(self, background=True):
+    def rerun_detection(self, foreground=None):
+
+        if foreground is None:
+            foreground = current_app.testing
+
         log.info('Rerunning Sage detection')
+        self.init_progress_detection(overwrite=True)
+
         if self.stage == AssetGroupSightingStage.curation:
             self.set_stage(AssetGroupSightingStage.detection)
-            self.start_detection(background=background)
+            self.start_detection(foreground=foreground)
         elif self.stage == AssetGroupSightingStage.detection:
             if self.any_jobs_active():
                 raise HoustonException(
                     log,
                     'Cannot rerun detection on AssetGroupSighting in detection stage with active jobs',
                 )
-            self.start_detection(background=background)
+            self.start_detection(foreground=foreground)
         else:
             raise HoustonException(
                 log, f'Cannot rerun detection on AssetGroupSighting in {self.stage} stage'
             )
 
-    def start_detection(self, background=True):
+    def init_progress_detection(self, overwrite=False, increment_attempts=True):
+        from app.modules.progress.models import Progress
+
+        if self.progress_detection is not None:
+            if not overwrite:
+                log.warning(
+                    'Asset Group Sighting %r already has a progress detection %r'
+                    % (
+                        self,
+                        self.progress_detection,
+                    )
+                )
+                return
+
+        progress = Progress(
+            description='Sage Detection for AssetGroupSighting %r' % (self.guid,)
+        )
+        with db.session.begin():
+            db.session.add(progress)
+
+        with db.session.begin():
+            self.progress_detection_guid = progress.guid
+            if increment_attempts:
+                self.detection_attempts += 1
+            db.session.merge(self)
+
+        # Assign the parent's progress
+        self.asset_group.init_progress_detection()  # Ensure initialized
+
+        if self.progress_detection and self.asset_group.progress_detection:
+            with db.session.begin():
+                self.progress_detection.parent_guid = (
+                    self.asset_group.progress_detection.guid
+                )
+            db.session.merge(self.progress_detection)
+
+        db.session.refresh(self)
+
+    def init_progress_identification(self, overwrite=False):
+        from app.modules.progress.models import Progress
+
+        if self.progress_identification is not None:
+            if not overwrite:
+                log.warning(
+                    'Asset Group Sighting %r already has a progress identification %r'
+                    % (
+                        self,
+                        self.progress_identification,
+                    )
+                )
+                return
+
+        progress = Progress(
+            description='Sage identification for AssetGroupSighting %r' % (self.guid,)
+        )
+        with db.session.begin():
+            db.session.add(progress)
+
+        with db.session.begin():
+            self.progress_identification_guid = progress.guid
+            db.session.merge(self)
+
+        # Assign the parent's progress
+        self.asset_group.init_progress_identification()  # Ensure initialized
+
+        if self.progress_identification and self.asset_group.progress_identification:
+            with db.session.begin():
+                self.progress_identification.parent_guid = (
+                    self.asset_group.progress_identification.guid
+                )
+            db.session.merge(self.progress_identification)
+
+        db.session.refresh(self)
+
+    def start_detection(self, foreground=None):
+        if foreground is None:
+            foreground = current_app.testing
+
         assert len(self.detection_configs) > 0
         assert self.stage == AssetGroupSightingStage.detection
 
@@ -1043,14 +1225,19 @@ class AssetGroupSighting(db.Model, HoustonModel):
             log.info(
                 f'ia pipeline starting detection {config} on AssetGroupSighting {self.guid}'
             )
-            self.detection_attempts += 1
 
-            if background:
+            if foreground:
+                self.send_detection_to_sage(config)
+                promise = None
+            else:
                 from app.modules.asset_groups.tasks import sage_detection
 
-                sage_detection.delay(str(self.guid), config)
-            else:
-                self.send_detection_to_sage(config)
+                promise = sage_detection.delay(str(self.guid), config)
+
+            if self.progress_detection and promise:
+                with db.session.begin():
+                    self.progress_detection.celery_guid = promise.id
+                    db.session.merge(self.progress_detection)
 
     # Used to build the response to AssetGroupSighting GET
     def get_assets(self):
@@ -1079,11 +1266,14 @@ class AssetGroupSighting(db.Model, HoustonModel):
 
         self.set_stage(AssetGroupSightingStage.processed)
 
-    def job_complete(self, job_id_str):
-        if job_id_str in self.jobs:
+    def job_complete(self, job_id):
+        if not isinstance(job_id, str):
+            job_id = str(job_id)
+
+        if job_id in self.jobs:
             with db.session.begin(subtransactions=True):
-                self.jobs[job_id_str]['active'] = False
-                self.jobs[job_id_str]['end'] = datetime.utcnow().isoformat()
+                self.jobs[job_id]['active'] = False
+                self.jobs[job_id]['end'] = datetime.datetime.utcnow().isoformat()
 
                 outstanding_jobs = []
                 for job in self.jobs.keys():
@@ -1096,7 +1286,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
                         del self.sighting_config['updatedAssets']
                     self.config = self.config
                     self.set_stage(AssetGroupSightingStage.curation, refresh=False)
-                    self.curation_start = datetime.utcnow()
+                    self.curation_start = datetime.datetime.utcnow()
 
                 # This is necessary because we can only mark jobs as
                 # modified if we assign to it
@@ -1105,7 +1295,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
                 db.session.merge(self)
             db.session.refresh(self)
         else:
-            log.warning(f'job_id {job_id_str} not found in AssetGroupSighting')
+            log.warning(f'job_id {job_id} not found in AssetGroupSighting')
 
     def delete(self):
         AuditLog.delete_object(log, self)
@@ -1243,8 +1433,6 @@ class AssetGroup(GitStore):
 
         # Having detecting sightings is perfectly valid but there may be reasons why they're
         # stuck in detecting. Only look at ones that are at least an hour old to avoid false positives
-        import datetime
-
         an_hour_ago = datetime.datetime.utcnow() - datetime.timedelta(hours=1)
         detecting_sightings = (
             db.session.query(AssetGroupSighting)
@@ -1380,6 +1568,7 @@ class AssetGroup(GitStore):
                 for encounter_num in range(len(sighting_meta['encounters'])):
                     sighting_meta['encounters'][encounter_num]['guid'] = str(uuid.uuid4())
 
+                # Start by writing to DB so that all rollback on failure works
                 ags = AssetGroupSighting(
                     asset_group=self,
                     sighting_config=copy.deepcopy(sighting_meta),
@@ -1388,9 +1577,13 @@ class AssetGroup(GitStore):
                 db.session.add(ags)
                 ags_list.append(ags)
 
+        db.session.refresh(self)
+
         for ags in ags_list:
+            # Refresh each AGS to load its GUID and perform any lingering setup now that it is in the database
             db.session.refresh(ags)
             ags.setup()
+            AuditLog.user_create_object(log, ags)
 
         # make sure the repo is created
         self.ensure_repository()

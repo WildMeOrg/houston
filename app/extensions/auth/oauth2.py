@@ -11,7 +11,7 @@ More details are available here:
 * http://lepture.com/en/2013/create-oauth-server
 """
 
-from datetime import datetime, timedelta
+import datetime
 import functools
 import logging
 
@@ -63,7 +63,7 @@ class OAuth2RequestValidator(provider.OAuth2RequestValidator):
         expires_in = token['expires_in']
 
         # IMPORTANT: WE NEED THIS TO BE IN UTC FOR OAUTH2
-        expires = datetime.utcnow() + timedelta(seconds=expires_in)
+        expires = datetime.datetime.utcnow() + datetime.timedelta(seconds=expires_in)
 
         try:
             token_instance = self._token_class(
@@ -87,7 +87,7 @@ class OAuth2RequestValidator(provider.OAuth2RequestValidator):
         # TODO: review expiration time
         # decide the expires time yourself
         # IMPORTANT: WE NEED THIS TO BE IN UTC FOR OAUTH2
-        expires = datetime.utcnow() + timedelta(seconds=100)
+        expires = datetime.datetime.utcnow() + datetime.timedelta(seconds=100)
 
         try:
             grant_instance = self._grant_class(

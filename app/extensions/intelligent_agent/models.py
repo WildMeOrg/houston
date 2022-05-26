@@ -3,7 +3,7 @@
 IntelligentAgent (and subclass) models
 --------------------------------------
 """
-from datetime import datetime  # NOQA
+import datetime
 import gettext
 import traceback
 import uuid
@@ -282,7 +282,7 @@ class IntelligentAgentContent(db.Model, HoustonModel):
 
         # be warned: falls back to current time now
         reference_date = (
-            self.get_reference_date() or datetime.utcnow().isoformat() + '+00:00'
+            self.get_reference_date() or datetime.datetime.utcnow().isoformat() + '+00:00'
         )
         try:
             return nlp_parse_complex_date_time(

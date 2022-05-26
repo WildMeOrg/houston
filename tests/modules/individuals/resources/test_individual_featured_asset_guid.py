@@ -64,6 +64,9 @@ def test_patch_featured_asset_guid_on_individual(
     assert new_asset_1.guid is not None
     assert new_asset_2.guid is not None
 
+    ann_1 = None
+    ann_2 = None
+
     try:
         ann_resp_1 = annot_utils.create_annotation(
             flask_app_client,
@@ -122,8 +125,10 @@ def test_patch_featured_asset_guid_on_individual(
             flask_app_client, researcher_1, str(individual.guid)
         )
         sighting.delete_cascade()
-        ann_1.delete()
-        ann_2.delete()
+        if ann_1:
+            ann_1.delete()
+        if ann_2:
+            ann_2.delete()
         delete_remote(str(new_asset_group.guid))
         asset_group_utils.delete_asset_group(
             flask_app_client, researcher_1, new_asset_group.guid
@@ -195,6 +200,7 @@ def test_featured_individual_read(db, flask_app_client, researcher_1, test_root,
     request.addfinalizer(lambda: ann1.delete())
 
     # Make that asset the featured one
+    db.session.refresh(individual)
     individual.set_featured_asset_guid(asset_guids[1])
 
     # Reread the path, should now be asset 1

@@ -62,9 +62,9 @@ class BasicNamedIndividualSchema(ModelSchema):
     """
 
     names = base_fields.Function(Individual.get_name_values)
-    id = base_fields.Function(lambda ind : ind.guid)
+    id = base_fields.Function(lambda ind: ind.guid)
 
-    class Meta():
+    class Meta:
         model = Individual
         fields = (
             'id',

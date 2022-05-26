@@ -129,7 +129,7 @@ class Annotations(Resource):
             db.session.add(annotation)
         try:
             # needs to be after the add to ensure asset is valid
-            annotation.ensure_sage()
+            annotation.sync_with_sage()
         except HoustonException as ex:
             abort(400, ex.message)
         return annotation

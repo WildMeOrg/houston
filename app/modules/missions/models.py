@@ -5,6 +5,7 @@ Missions database models
 """
 import uuid
 import enum
+import datetime
 
 from app.extensions import (
     db,
@@ -212,8 +213,8 @@ class Mission(db.Model, HoustonModel, Timestamp):
         for job_id in jobs.keys():
             job = jobs[job_id]
             if job['active']:
-                current_app.acm.request_passthrough_result(
-                    'job.response', 'post', {}, job
+                current_app.sage.request_passthrough_result(
+                    'engine.result', 'get', {}, job
                 )
 
     @classmethod
@@ -232,8 +233,8 @@ class Mission(db.Model, HoustonModel, Timestamp):
             details[-1]['job_id'] = job_id
 
             if verbose:
-                details[-1]['response'] = current_app.acm.request_passthrough_result(
-                    'job.response', 'post', {}, job_id
+                details[-1]['response'] = current_app.sage.request_passthrough_result(
+                    'engine.result', 'get', {}, job_id
                 )
 
         return details
@@ -249,14 +250,12 @@ class Mission(db.Model, HoustonModel, Timestamp):
         return False
 
     def send_mws_backend_operation(self):
-        from datetime import datetime
-
         model_options = self.get_options()
         job_uuid = uuid.uuid4()
 
         self.jobs[str(job_uuid)] = {
             'active': True,
-            'start': datetime.utcnow(),
+            'start': datetime.datetime.utcnow(),
             'options': model_options,
         }
         self.jobs = self.jobs

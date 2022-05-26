@@ -1,150 +1,161 @@
 {
-    "_note":"The hierarchy of this file is genus->species->ia_class->_id_conf (id config). detect_config is under Genus->species. Keys with a leading underscore and their children are non-biological categories of config, like _id_conf and _detection_conf. Keys without leading underscores are semantic lookups that are derived from Wildbook data, e.g. Megaptera.novaeangliae.whale_fluke.",
-    "_default":"@Lycaon.pictus",
-    "Lycaon": {
-       "pictus": {
-          "_detect_conf": [
-             {
-                "model_tag":"wilddog_v0",
-                "labeler_model_tag":"wilddog_v3+wilddog_v2+wilddog_v1",
-                "labeler_algo":"densenet",
-                "nms_aware":"ispart",
-                "nms_thresh": 0.50,
-                "sensitivity": 0.48,
-                "use_labeler_species": true,
-                "assigner_algo": "wd_v0"
-             }
-          ],
-          "wild_dog": {
-             "_id_conf": [
-                {
-                   "query_config_dict": {
-                      "sv_on": true,
-                      "n": 20
-                   }
-                }
-             ]
-          },
-          "wild_dog_standard": {
-             "_id_conf": "@Lycaon.pictus.wild_dog._id_conf",
-             "_save_keyword": "BodyStandard"
-          },
-          "wild_dog_tan": {
-             "_id_conf": "@Lycaon.pictus.wild_dog._id_conf",
-             "_save_keyword": "BodyTan"
-          },
-          "wild_dog_dark": {
-             "_id_conf": "@Lycaon.pictus.wild_dog._id_conf",
-             "_save_keyword": "BodyDark"
-          },
-          "wild_dog_ambiguous": {
-             "_id_conf": "@Lycaon.pictus.wild_dog._id_conf",
-             "_save_keyword": "BodyAmbiguous"
-          },
-          "wild_dog_general": {
-             "_id_conf": "@Lycaon.pictus.wild_dog._id_conf",
-             "_save_as": "wild_dog_general",
-             "_save_keyword": "BodyGeneral"
-          },
-          "wild_dog_puppy": {
-             "_id_conf": "@Lycaon.pictus.wild_dog._id_conf",
-             "_save_keyword": "Puppy"
-          },
-          "wild_dog+tail_general": {
-             "_id_conf": [],
-             "_save_as": "wild_dog+tail_general",
-             "_save_keyword": "TailGeneral"
-          },
-          "wild_dog+tail_double_black_brown": {
-             "_id_conf": [],
-             "_save_keyword": "TailDoubleBlackBrown"
-          },
-          "wild_dog+tail_double_black_white": {
-             "_id_conf": [],
-             "_save_keyword": "TailDoubleBlackWhite"
-          },
-          "wild_dog+tail_long_black": {
-             "_id_conf": [],
-             "_save_keyword": "TailLongBlack"
-          },
-          "wild_dog+tail_long_white": {
-             "_id_conf": [],
-             "_save_keyword": "TailLongWhite"
-          },
-          "wild_dog+tail_short_black": {
-             "_id_conf": [],
-             "_save_keyword": "TailShortBlack"
-          },
-          "wild_dog+tail_triple_black": {
-             "_id_conf": [],
-             "_save_keyword": "TailTripleBlack"
-          },
-          "wild_dog+tail_ambiguous": {
-             "_id_conf": [],
-             "_save_keyword": "TailAmbiguous"
-          },
-          "wild_dog+tail_standard": {
-             "_id_conf": [],
-             "_save_keyword": "TailStandard"
+  "_note": "The hierarchy of this file is genus->species->ia_class->_id_conf (id config). detect_config is under Genus->species. Keys with a leading underscore and their children are non-biological categories of config, like _id_conf and _detection_conf. Keys without leading underscores are semantic lookups that are derived from Wildbook data, e.g. Megaptera.novaeangliae.whale_fluke.",
+  "Acinonyx": {
+    "jubatus": {
+      "_detect_conf": [
+        {
+          "labeler_algo": "densenet",
+          "labeler_model_tag": "cheetah_v1",
+          "model_tag": "cheetah_v1",
+          "nms_aware": "byclass",
+          "nms_thresh": 0.6,
+          "sensitivity": 0.62
+        }
+      ],
+      "cheetah": {
+        "_id_conf": [
+          {
+            "query_config_dict": {
+              "sv_on": true
+            }
           }
-
-       }
-    },
-    "Panthera": {
-       "pardus": {
-          "_detect_conf": [
-             {
-                "model_tag":"leopard_v0",
-                "viewpoint_model_tag":"leopard_v0",
-                "labeler_algo":"densenet",
-                "nms_aware": null,
-                "nms_thresh": 0.50,
-                "sensitivity": 0.73
-             }
-          ],
-          "leopard": {
-             "_id_conf": [
-               {"query_config_dict": {"sv_on": true} }
-             ]
-          }
-       }
-    },
-    "Acinonyx": {
-       "jubatus": {
-          "_detect_conf": [
-             {
-                "model_tag":"cheetah_v1",
-                "labeler_model_tag":"cheetah_v1",
-                "labeler_algo":"densenet",
-                "nms_aware": "byclass",
-                "nms_thresh": 0.60,
-                "sensitivity": 0.62
-             }
-          ],
-          "cheetah": {
-             "_id_conf": [
-               {"query_config_dict": {"sv_on": true} }
-             ]
-          }
-       }
-    },
-    "Crocuta": {
-       "crocuta": {
-          "_detect_conf": [
-                {
-                   "model_tag": "hyaena_v0",
-                   "labeler_model_tag": "hyaena_v0",
-                   "labeler_algo": "densenet",
-                   "nms_aware": null,
-                   "nms_thresh": 0.70,
-                   "sensitivity": 0.74
-                 }
-          ],
-          "hyaena": {
-             "_id_conf": [
-               {"query_config_dict": {"sv_on": true} }
-             ]
-          }
-       }
+        ]
+      }
     }
- }
+  },
+  "Crocuta": {
+    "crocuta": {
+      "_detect_conf": [
+        {
+          "labeler_algo": "densenet",
+          "labeler_model_tag": "hyaena_v0",
+          "model_tag": "hyaena_v0",
+          "nms_aware": null,
+          "nms_thresh": 0.7,
+          "sensitivity": 0.74
+        }
+      ],
+      "hyaena": {
+        "_id_conf": [
+          {
+            "query_config_dict": {
+              "sv_on": true
+            }
+          }
+        ]
+      }
+    }
+  },
+  "Lycaon": {
+    "pictus": {
+      "_detect_conf": [
+        {
+          "assigner_algo": "wd_v0",
+          "labeler_algo": "densenet",
+          "labeler_model_tag": "wilddog_v3+wilddog_v2+wilddog_v1",
+          "model_tag": "wilddog_v0",
+          "nms_aware": "ispart",
+          "nms_thresh": 0.5,
+          "sensitivity": 0.48,
+          "use_labeler_species": true
+        }
+      ],
+      "wild_dog": {
+        "_id_conf": [
+          {
+            "query_config_dict": {
+              "n": 20,
+              "sv_on": true
+            }
+          }
+        ]
+      },
+      "wild_dog+tail_ambiguous": {
+        "_id_conf": [],
+        "_save_keyword": "TailAmbiguous"
+      },
+      "wild_dog+tail_double_black_brown": {
+        "_id_conf": [],
+        "_save_keyword": "TailDoubleBlackBrown"
+      },
+      "wild_dog+tail_double_black_white": {
+        "_id_conf": [],
+        "_save_keyword": "TailDoubleBlackWhite"
+      },
+      "wild_dog+tail_general": {
+        "_id_conf": [],
+        "_save_as": "wild_dog+tail_general",
+        "_save_keyword": "TailGeneral"
+      },
+      "wild_dog+tail_long_black": {
+        "_id_conf": [],
+        "_save_keyword": "TailLongBlack"
+      },
+      "wild_dog+tail_long_white": {
+        "_id_conf": [],
+        "_save_keyword": "TailLongWhite"
+      },
+      "wild_dog+tail_short_black": {
+        "_id_conf": [],
+        "_save_keyword": "TailShortBlack"
+      },
+      "wild_dog+tail_standard": {
+        "_id_conf": [],
+        "_save_keyword": "TailStandard"
+      },
+      "wild_dog+tail_triple_black": {
+        "_id_conf": [],
+        "_save_keyword": "TailTripleBlack"
+      },
+      "wild_dog_ambiguous": {
+        "_id_conf": "@Lycaon.pictus.wild_dog._id_conf",
+        "_save_keyword": "BodyAmbiguous"
+      },
+      "wild_dog_dark": {
+        "_id_conf": "@Lycaon.pictus.wild_dog._id_conf",
+        "_save_keyword": "BodyDark"
+      },
+      "wild_dog_general": {
+        "_id_conf": "@Lycaon.pictus.wild_dog._id_conf",
+        "_save_as": "wild_dog_general",
+        "_save_keyword": "BodyGeneral"
+      },
+      "wild_dog_puppy": {
+        "_id_conf": "@Lycaon.pictus.wild_dog._id_conf",
+        "_save_keyword": "Puppy"
+      },
+      "wild_dog_standard": {
+        "_id_conf": "@Lycaon.pictus.wild_dog._id_conf",
+        "_save_keyword": "BodyStandard"
+      },
+      "wild_dog_tan": {
+        "_id_conf": "@Lycaon.pictus.wild_dog._id_conf",
+        "_save_keyword": "BodyTan"
+      }
+    }
+  },
+  "Panthera": {
+    "pardus": {
+      "_detect_conf": [
+        {
+          "labeler_algo": "densenet",
+          "model_tag": "leopard_v0",
+          "nms_aware": null,
+          "nms_thresh": 0.5,
+          "sensitivity": 0.73,
+          "viewpoint_model_tag": "leopard_v0"
+        }
+      ],
+      "leopard": {
+        "_id_conf": [
+          {
+            "query_config_dict": {
+              "sv_on": true
+            }
+          }
+        ]
+      }
+    }
+  },
+  "_default": "@Lycaon.pictus"
+}

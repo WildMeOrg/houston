@@ -259,13 +259,13 @@ class GoogleConfig(GoogleAnalyticsConfig, GoogleMapsConfig):
 
 
 def get_env_rest_config(interface):
-    """Parse ACM/EDM configuration from environment variables"""
+    """Parse Sage/EDM configuration from environment variables"""
     # Parse all uris from environment variables
     uris = {}
     for varname in [
         e for e in os.environ if e.startswith(f'{interface}_AUTHENTICATIONS_URI__')
     ]:
-        #: e.g. ACM_AUTHENTICATIONS_URI__DEFAULT
+        #: e.g. SAGE_AUTHENTICATIONS_URI__DEFAULT
         key = varname.split('__')[-1].lower()
         value = os.environ[varname]
         uris[key] = value
@@ -292,13 +292,13 @@ def get_env_rest_config(interface):
     return uris, authns
 
 
-class ACMConfig(object):
+class SageConfig(object):
     # Read the config from the environment but ensure that there is always a default URI
-    # WBIA doesn't currently support authentications but no reason to not use the same function to read
+    # Sage doesn't currently support authentications but no reason to not use the same function to read
     # the env config.
-    ACM_URIS, ACM_AUTHENTICATIONS = get_env_rest_config('ACM')
-    if 'default' not in ACM_URIS:
-        ACM_URIS['default'] = 'https://sandbox.tier2.dyn.wildme.io'
+    SAGE_URIS, SAGE_AUTHENTICATIONS = get_env_rest_config('SAGE')
+    if 'default' not in SAGE_URIS:
+        SAGE_URIS['default'] = 'https://sandbox.tier2.dyn.wildme.io'
 
 
 class EDMConfig(object):

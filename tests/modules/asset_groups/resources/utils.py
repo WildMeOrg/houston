@@ -5,7 +5,6 @@ Asset_group resources utils
 """
 import json
 import os
-import re
 import shutil
 from unittest import mock
 
@@ -133,7 +132,13 @@ def create_large_asset_group_uuids(flask_app_client, user, request, test_root):
 
 # Helper as used across multiple tests
 def patch_in_dummy_annotation(
-    flask_app_client, db, user, asset_group_sighting_uuid, asset_uuid, encounter_num=0
+    flask_app_client,
+    db,
+    user,
+    asset_group_sighting_uuid,
+    asset_uuid,
+    encounter_num=0,
+    padding=0,
 ):
     from app.modules.assets.models import Asset
     from app.modules.annotations.models import Annotation
@@ -143,13 +148,19 @@ def patch_in_dummy_annotation(
     assert asset
 
     # Create a dummy annotation for this Sighting
+    rect = [
+        10 - padding,
+        10 - padding,
+        390 + padding,
+        390 + padding,
+    ]
     new_annot = Annotation(
         guid=uuid.uuid4(),
         content_guid=uuid.uuid4(),
         asset=asset,
         ia_class='none',
         viewpoint='test',
-        bounds={'rect': [45, 5, 78, 3], 'theta': 4.8},
+        bounds={'rect': rect, 'theta': 4.8},
     )
     with db.session.begin(subtransactions=True):
         db.session.add(new_annot)
@@ -542,25 +553,19 @@ def create_asset_group(
 ):
     data['token'] = 'XXX'  # Recaptcha bypass
 
-    from app.modules.asset_groups.tasks import sage_detection
-
-    # Call sage_detection in the foreground by skipping "delay"
-    with mock.patch(
-        'app.modules.asset_groups.tasks.sage_detection.delay', side_effect=sage_detection
-    ):
-        if user:
-            with flask_app_client.login(user, auth_scopes=('asset_groups:write',)):
-                response = flask_app_client.post(
-                    '%s' % PATH,
-                    content_type='application/json',
-                    data=json.dumps(data),
-                )
-        else:
+    if user:
+        with flask_app_client.login(user, auth_scopes=('asset_groups:write',)):
             response = flask_app_client.post(
                 '%s' % PATH,
                 content_type='application/json',
                 data=json.dumps(data),
             )
+    else:
+        response = flask_app_client.post(
+            '%s' % PATH,
+            content_type='application/json',
+            data=json.dumps(data),
+        )
 
     if expected_status_code == 200:
         test_utils.validate_dict_response(
@@ -580,61 +585,27 @@ def create_asset_group(
     return response
 
 
-# As for method above but simulate a successful initial response from Sage and do some minimal validation
-# Note this is just the ack to say that Sage has received the request, not the detection response itself
 def create_asset_group_sim_sage_init_resp(
     flask_app, flask_app_client, user, data, expected_status_code=200, expected_error=''
 ):
-    # Simulate a valid response from Sage but don't actually send the request to Sage
-    with mock.patch.object(
-        flask_app.acm,
-        'request_passthrough_result',
-        return_value={'success': True},
-    ) as detection_started:
-        from app.modules.asset_groups import tasks
+    # Create the AssetGroup and run detection in foreground
+    resp = create_asset_group(
+        flask_app_client, user, data, expected_status_code, expected_error
+    )
 
-        with mock.patch.object(
-            tasks.sage_detection,
-            'delay',
-            side_effect=lambda *args, **kwargs: tasks.sage_detection(*args, **kwargs),
-        ):
-            resp = create_asset_group(
-                flask_app_client, user, data, expected_status_code, expected_error
-            )
-        passed_args = detection_started.call_args[0]
-        try:
-            assert passed_args[:-2] == ('job.detect_request', 'post')
-            params = passed_args[-2]['params']
-            assert set(params.keys()) >= {
-                'endpoint',
-                'jobid',
-                'labeler_algo',
-                'labeler_model_tag',
-                'image_uuid_list',
-                'callback_url',
-                'callback_detailed',
-            }
-            assert params['endpoint'] == '/api/engine/detect/cnn/lightnet/'
-            assert re.match('[a-f0-9-]{36}', params['jobid'])
-            assert re.match(
-                r'houston\+http://localhost:84/api/v1/asset_groups/sighting/[a-f0-9-]{36}/sage_detected/'
-                + params['jobid'],
-                params['callback_url'],
-            )
-            assert all(
-                re.match(
-                    r'houston\+http://localhost:84/api/v1/assets/src_raw/[a-f0-9-]{36}',
-                    uri,
-                )
-                for uri in json.loads(params['image_uuid_list'])
-            )
-        except Exception:
-            # Calling code cannot clear up the asset group as the resp is not passed if any of the assertions fail
-            # meaning that all subsequent tests would fail.
-            if 'guid' in resp.json:
-                delete_asset_group(flask_app_client, user, resp.json['guid'])
-            raise
-        return resp
+    try:
+        progress_guids = []
+        for ags in resp.json['asset_group_sightings']:
+            progress_guids.append(ags['progress_detection']['guid'])
+        test_utils.wait_for_progress(flask_app, progress_guids)
+
+    except Exception:
+        # Calling code cannot clear up the asset group as the resp is not passed if any of the assertions fail
+        # meaning that all subsequent tests would fail.
+        if 'guid' in resp.json:
+            delete_asset_group(flask_app_client, user, resp.json['guid'])
+        raise
+    return resp
 
 
 # Helper as many bulk uploads use a common set of files
@@ -669,73 +640,6 @@ def get_bulk_creation_data(test_root, request, species_detection_model=None):
     return data
 
 
-# Create a default valid Sage detection response (to allow for the test to corrupt it accordingly)
-def build_sage_detection_response(asset_group_sighting_guid, job_uuid):
-    from app.modules.asset_groups.models import AssetGroupSighting
-    import uuid
-
-    asset_group_sighting = AssetGroupSighting.query.get(asset_group_sighting_guid)
-    asset_ids = list(asset_group_sighting.jobs.values())[-1]['asset_ids']
-
-    # Generate the response back from Sage
-    sage_resp = {
-        'status': 'completed',
-        'jobid': str(job_uuid),
-        'json_result': {
-            'image_uuid_list': [
-                # Image UUID stored in acm (not the same as houston)
-                {'__UUID__': str(uuid.uuid4())}
-                for _ in asset_ids
-            ],
-            'results_list': [
-                [
-                    {
-                        'id': 1,
-                        'uuid': {'__UUID__': ANNOTATION_UUIDS[0]},
-                        'xtl': 459,
-                        'ytl': 126,
-                        'left': 459,
-                        'top': 126,
-                        'width': 531,
-                        'height': 539,
-                        'theta': 0.0,
-                        'confidence': 0.8568,
-                        'class': 'zebra',
-                        'species': 'zebra',
-                        'viewpoint': 'right',
-                        'quality': None,
-                        'multiple': False,
-                        'interest': False,
-                    },
-                    {
-                        'id': 2,
-                        'uuid': {'__UUID__': ANNOTATION_UUIDS[1]},
-                        'xtl': 26,
-                        'ytl': 145,
-                        'left': 26,
-                        'top': 145,
-                        'width': 471,
-                        'height': 500,
-                        'theta': 0.0,
-                        'confidence': 0.853,
-                        'class': 'zebra',
-                        'species': 'zebra',
-                        'viewpoint': 'right',
-                        'quality': None,
-                        'multiple': False,
-                        'interest': False,
-                    },
-                ],
-            ],
-        },
-    }
-
-    # Make sure results_list is the same length as the assets (just
-    # empty [])
-    sage_resp['json_result']['results_list'] += [[] for _ in range(len(asset_ids) - 1)]
-    return sage_resp
-
-
 def validate_file_data(test_root, data, filename):
     import hashlib
 
@@ -758,31 +662,6 @@ def validate_file_data(test_root, data, filename):
     assert hashlib.md5(data).hexdigest() == md5sum
 
 
-def send_sage_detection_response(
-    flask_app_client,
-    user,
-    asset_group_sighting_guid,
-    job_guid,
-    data=None,
-    expected_status_code=200,
-):
-    if not data:
-        data = build_sage_detection_response(asset_group_sighting_guid, job_guid)
-    with flask_app_client.login(user, auth_scopes=('asset_group_sightings:write',)):
-        response = flask_app_client.post(
-            f'{PATH}sighting/{asset_group_sighting_guid}/sage_detected/{job_guid}',
-            content_type='application/json',
-            data=json.dumps(data),
-        )
-    if expected_status_code == 200:
-        assert response.status_code == expected_status_code, response.status_code
-    else:
-        test_utils.validate_dict_response(
-            response, expected_status_code, {'status', 'message'}
-        )
-    return response
-
-
 # As for the normal commit but fake a response from Sage indicating Success
 def commit_asset_group_sighting_sage_identification(
     flask_app,
@@ -791,55 +670,15 @@ def commit_asset_group_sighting_sage_identification(
     asset_group_sighting_guid,
     expected_status_code=200,
 ):
-    from app.modules.sightings import tasks
     from app.modules.annotations.models import Annotation
     from app.extensions import elasticsearch as es
 
     # Start ID simulating success response from Sage
-    with mock.patch.object(
-        flask_app.acm,
-        'request_passthrough_result',
-        return_value={'success': True},
-    ):
-        with mock.patch.object(
-            tasks.send_all_identification,
-            'delay',
-            side_effect=lambda *args, **kwargs: tasks.send_all_identification(
-                *args, **kwargs
-            ),
-        ):
-            with es.session.begin(blocking=True, forced=True):
-                Annotation.index_all()
-            response = commit_asset_group_sighting(
-                flask_app_client, user, asset_group_sighting_guid, expected_status_code
-            )
-    return response
-
-
-def simulate_job_detection_response(
-    flask_app_client,
-    user,
-    asset_group_sighting_uuid,
-    asset_guid,
-    job_id,
-    expected_status_code=200,
-):
-    path = f'sighting/{asset_group_sighting_uuid}/sage_detected/{job_id}'
-    data = build_sage_detection_response(asset_group_sighting_uuid, job_id)
-
-    with flask_app_client.login(user, auth_scopes=('asset_group_sightings:write',)):
-        response = flask_app_client.post(
-            f'{PATH}{path}',
-            content_type='application/json',
-            data=json.dumps(data),
-        )
-
-    if expected_status_code == 200:
-        assert expected_status_code == response.status_code
-    else:
-        test_utils.validate_dict_response(
-            response, expected_status_code, {'status', 'message'}
-        )
+    with es.session.begin(blocking=True, forced=True):
+        Annotation.index_all()
+    response = commit_asset_group_sighting(
+        flask_app_client, user, asset_group_sighting_guid, expected_status_code
+    )
     return response
 
 

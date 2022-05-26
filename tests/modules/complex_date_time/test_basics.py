@@ -8,7 +8,7 @@ from app.utils import (
     datetime_as_timezone,
     normalized_timezone_string,
 )
-from datetime import datetime
+import datetime
 
 
 @pytest.mark.skipif(
@@ -50,7 +50,7 @@ def test_models(db, request):
     except ValueError as ve:
         assert 'must pass a datetime object' == str(ve)
 
-    dt = datetime.utcnow()
+    dt = datetime.datetime.utcnow()
     try:
         cdt = ComplexDateTime(dt, None, None)
     except ValueError as ve:
@@ -182,7 +182,7 @@ def test_models(db, request):
     assert cdt.specificity == Specificities.day
 
     # now some comparisons.  note this assumes we have not traveled back in time prior to 1999.
-    dt_later = datetime.utcnow()
+    dt_later = datetime.datetime.utcnow()
     # same specificity as cdt
     later = ComplexDateTime(dt_later, 'US/Pacific', Specificities.day)
     later_mountain = ComplexDateTime(dt_later, 'US/Mountain', Specificities.day)

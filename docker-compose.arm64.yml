@@ -1,7 +1,10 @@
 version: "3"
 
 services:
-  acm:
+  sage:
+    image: wildme/wbia:arm64
+
+  sage-sync:
     image: wildme/wbia:arm64
 
   edm:

@@ -5,6 +5,7 @@ from tests.modules.individuals.resources import utils as individual_utils
 from tests.modules.sightings.resources import utils as sighting_utils
 from tests.modules.social_groups.resources import utils as socgrp_utils
 import pytest
+import datetime
 from tests import utils as test_utils
 
 from tests.utils import module_unavailable
@@ -314,7 +315,6 @@ def test_merge_hash(db, flask_app_client, researcher_1, researcher_2, request):
 def test_failure_cases(db, flask_app_client, researcher_1, request):
     from app.modules.individuals.models import Individual
     from app.modules.individuals.tasks import execute_merge_request
-    from datetime import datetime, timedelta
 
     fake_guid = '00000000-0000-0000-0000-ffffffffffff'
 
@@ -326,7 +326,7 @@ def test_failure_cases(db, flask_app_client, researcher_1, request):
         assert 'invalid individuals' in str(ve)
 
     # just gets us a (mostly bunk) celery task, so we can test revoked
-    deadline = datetime.utcnow() + timedelta(minutes=5)
+    deadline = datetime.datetime.utcnow() + datetime.timedelta(minutes=5)
     async_res = execute_merge_request.apply_async(
         (str(individual1.guid), [], {}), eta=deadline
     )

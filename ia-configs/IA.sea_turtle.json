@@ -1,77 +1,100 @@
 {
-    "_note":"The hierarchy of this file is genus->species->ia_class->_id_conf (id config). detect_config is under Genus->species. Keys with a leading underscore and their children are non-biological categories of config, like _id_conf and _detection_conf. Keys without leading underscores are semantic lookups that are derived from Wildbook data, e.g. Megaptera.novaeangliae.whale_fluke.",
-    "_default":"@Eretmochelys.imbricata",
-    "Eretmochelys": {
-       "imbricata": {
-          "_detect_conf": [
-             {
-                "model_tag":"iot_v0",
-                "labeler_model_tag":"iot_v0",
-                "labeler_algo":"densenet",
-                "nms_aware":"ispart",
-                "nms_thresh": 0.50,
-                "sensitivity": 0.36
-             }
-          ],
-          "turtle_green+head": {
-            "_id_conf": [
-              {"query_config_dict": {"sv_on": true} }
-            ]
-          },
-          "turtle_hawksbill+head": {
-             "_id_conf": [
-               {"query_config_dict": {"sv_on": true} }
-             ]
+  "_note": "The hierarchy of this file is genus->species->ia_class->_id_conf (id config). detect_config is under Genus->species. Keys with a leading underscore and their children are non-biological categories of config, like _id_conf and _detection_conf. Keys without leading underscores are semantic lookups that are derived from Wildbook data, e.g. Megaptera.novaeangliae.whale_fluke.",
+  "Chelonia": {
+    "mydas": {
+      "_detect_conf": [
+        {
+          "labeler_algo": "densenet",
+          "labeler_model_tag": "iot_v0",
+          "model_tag": "iot_v0",
+          "nms_aware": "ispart",
+          "nms_thresh": 0.5,
+          "sensitivity": 0.36
+        }
+      ],
+      "turtle_green+head": {
+        "_id_conf": [
+          {
+            "query_config_dict": {
+              "sv_on": true
+            }
           }
-
-       }
-    },
-    "Chelonia": {
-       "mydas": {
-          "_detect_conf": [
-             {
-                "model_tag":"iot_v0",
-                "labeler_model_tag":"iot_v0",
-                "labeler_algo":"densenet",
-                "nms_aware": "ispart",
-                "nms_thresh": 0.50,
-                "sensitivity": 0.36
-             }
-          ],
-          "turtle_green+head": {
-             "_id_conf": [
-               {"query_config_dict": {"sv_on": true} }
-             ]
-          },
-          "turtle_hawksbill+head": {
-            "_id_conf": [
-              {"query_config_dict": {"sv_on": true} }
-            ]
-         }
-       }
-    },
-    "Lepidochelys": {
-       "olivacea": {
-          "_detect_conf": [
-             {
-                "model_tag":"iot_v0",
-                "labeler_model_tag":"iot_v0",
-                "labeler_algo":"densenet",
-                "nms_aware": "ispart",
-                "nms_thresh": 0.50,
-                "sensitivity": 0.36
-             }
-          ],
-          "turtle_oliveridley+head": {
-             "_id_conf": [
-               {"query_config_dict": {"sv_on": true} }
-             ]
-          },
-          "turtle_hawksbill+head": {
-            "_id_conf": [
-              {"query_config_dict": {"sv_on": true} }
-            ]
+        ]
+      },
+      "turtle_hawksbill+head": {
+        "_id_conf": [
+          {
+            "query_config_dict": {
+              "sv_on": true
+            }
           }
-       }
+        ]
+      }
     }
- }
+  },
+  "Eretmochelys": {
+    "imbricata": {
+      "_detect_conf": [
+        {
+          "labeler_algo": "densenet",
+          "labeler_model_tag": "iot_v0",
+          "model_tag": "iot_v0",
+          "nms_aware": "ispart",
+          "nms_thresh": 0.5,
+          "sensitivity": 0.36
+        }
+      ],
+      "turtle_green+head": {
+        "_id_conf": [
+          {
+            "query_config_dict": {
+              "sv_on": true
+            }
+          }
+        ]
+      },
+      "turtle_hawksbill+head": {
+        "_id_conf": [
+          {
+            "query_config_dict": {
+              "sv_on": true
+            }
+          }
+        ]
+      }
+    }
+  },
+  "Lepidochelys": {
+    "olivacea": {
+      "_detect_conf": [
+        {
+          "labeler_algo": "densenet",
+          "labeler_model_tag": "iot_v0",
+          "model_tag": "iot_v0",
+          "nms_aware": "ispart",
+          "nms_thresh": 0.5,
+          "sensitivity": 0.36
+        }
+      ],
+      "turtle_hawksbill+head": {
+        "_id_conf": [
+          {
+            "query_config_dict": {
+              "sv_on": true
+            }
+          }
+        ]
+      },
+      "turtle_oliveridley+head": {
+        "_id_conf": [
+          {
+            "query_config_dict": {
+              "sv_on": true
+            }
+          }
+        ]
+      }
+    }
+  },
+  "_default": "@Eretmochelys.imbricata"
+}

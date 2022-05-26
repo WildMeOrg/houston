@@ -1,93 +1,88 @@
 {
-    "_note":"The hierarchy of this file is genus->species->ia_class->_id_conf (id config). detect_config is under Genus->species. Keys with a leading underscore and their children are non-biological categories of config, like _id_conf and _detection_conf. Keys without leading underscores are semantic lookups that are derived from Wildbook data, e.g. Megaptera.novaeangliae.whale_fluke.",
-    "_default":"@Phycodurus.eques",
-
-    "Phycodurus":{
-
-       "eques":{
-
-          "seadragon_leafy+head":{
-             "_note": "this corresponds to a head annotation",
-             "_id_conf":[
-                {
-                   "query_config_dict":{
-                      "sv_on":true
-                   },
-                   "description":"HotSpotter head pattern-matcher"
-                }
-             ]
-          },
-          "seadragon_leafy":{
-             "_note": "this corresponds to a body annotation",
-             "_id_conf":[
-                {
-                   "query_config_dict":{
-                      "sv_on":true
-                   },
-                   "description":"HotSpotter body pattern-matcher",
-                   "default": false
-                }
-             ]
-          },
-          "seadragon_weedy":"@Phycodurus.eques.seadragon_leafy",
-          "seadragon_weedy+head":"@Phycodurus.eques.seadragon_leafy+head",
-          "_default" : "@Phycodurus.eques.seadragon_leafy+head",
-          "_detect_conf":[
-             {
-                "model_tag"           : "seadragon_v1",
-                "sensitivity"         : 0.55,
-                "nms_thresh"          : 0.40,
-                "nms_aware"           : "ispart",
-                "labeler_algo"        : "densenet",
-                "labeler_model_tag"   : "seadragon_v2",
-                "use_labeler_species" : true,
-                "apply_nms_post_use_labeler_species" : true
-             }
-          ]
-       }
-    },
-       "Phyllopteryx":{
-
-       "taeniolatus":{
-
-          "seadragon_weedy+head":{
-             "_note": "this corresponds to a head annotation",
-             "_id_conf":[
-                {
-                   "query_config_dict":{
-                      "sv_on":true
-                   },
-                   "description":"HotSpotter head pattern-matcher"
-                }
-             ]
-          },
-          "seadragon_weedy":{
-             "_note": "this corresponds to a body annotation",
-             "_id_conf":[
-                {
-                   "query_config_dict":{
-                      "sv_on":true
-                   },
-                   "description":"HotSpotter body pattern-matcher",
-                   "default": false
-                }
-             ]
-          },
-          "seadragon_leafy":"@Phyllopteryx.taeniolatus.seadragon_weedy",
-          "seadragon_leafy+head":"@Phyllopteryx.taeniolatus.seadragon_weedy+head",
-          "_default" : "@Phyllopteryx.taeniolatus.seadragon_leafy+head",
-          "_detect_conf":[
-             {
-                "model_tag"           : "seadragon_v1",
-                "sensitivity"         : 0.55,
-                "nms_thresh"          : 0.40,
-                "nms_aware"           : "ispart",
-                "labeler_algo"        : "densenet",
-                "labeler_model_tag"   : "seadragon_v2",
-                "use_labeler_species" : true,
-                "apply_nms_post_use_labeler_species" : true
-             }
-          ]
-       }
+  "_note": "The hierarchy of this file is genus->species->ia_class->_id_conf (id config). detect_config is under Genus->species. Keys with a leading underscore and their children are non-biological categories of config, like _id_conf and _detection_conf. Keys without leading underscores are semantic lookups that are derived from Wildbook data, e.g. Megaptera.novaeangliae.whale_fluke.",
+  "Phycodurus": {
+    "eques": {
+      "_default": "@Phycodurus.eques.seadragon_leafy+head",
+      "_detect_conf": [
+        {
+          "apply_nms_post_use_labeler_species": true,
+          "labeler_algo": "densenet",
+          "labeler_model_tag": "seadragon_v2",
+          "model_tag": "seadragon_v1",
+          "nms_aware": "ispart",
+          "nms_thresh": 0.4,
+          "sensitivity": 0.55,
+          "use_labeler_species": true
+        }
+      ],
+      "seadragon_leafy": {
+        "_note": "this corresponds to a body annotation",
+        "_id_conf": [
+          {
+            "default": false,
+            "description": "HotSpotter body pattern-matcher",
+            "query_config_dict": {
+              "sv_on": true
+            }
+          }
+        ]
+      },
+      "seadragon_leafy+head": {
+        "_note": "this corresponds to a head annotation",
+        "_id_conf": [
+          {
+            "description": "HotSpotter head pattern-matcher",
+            "query_config_dict": {
+              "sv_on": true
+            }
+          }
+        ]
+      },
+      "seadragon_weedy": "@Phycodurus.eques.seadragon_leafy",
+      "seadragon_weedy+head": "@Phycodurus.eques.seadragon_leafy+head"
     }
- }
+  },
+  "Phyllopteryx": {
+    "taeniolatus": {
+      "_default": "@Phyllopteryx.taeniolatus.seadragon_leafy+head",
+      "_detect_conf": [
+        {
+          "apply_nms_post_use_labeler_species": true,
+          "labeler_algo": "densenet",
+          "labeler_model_tag": "seadragon_v2",
+          "model_tag": "seadragon_v1",
+          "nms_aware": "ispart",
+          "nms_thresh": 0.4,
+          "sensitivity": 0.55,
+          "use_labeler_species": true
+        }
+      ],
+      "seadragon_leafy": "@Phyllopteryx.taeniolatus.seadragon_weedy",
+      "seadragon_leafy+head": "@Phyllopteryx.taeniolatus.seadragon_weedy+head",
+      "seadragon_weedy": {
+        "_note": "this corresponds to a body annotation",
+        "_id_conf": [
+          {
+            "default": false,
+            "description": "HotSpotter body pattern-matcher",
+            "query_config_dict": {
+              "sv_on": true
+            }
+          }
+        ]
+      },
+      "seadragon_weedy+head": {
+        "_note": "this corresponds to a head annotation",
+        "_id_conf": [
+          {
+            "description": "HotSpotter head pattern-matcher",
+            "query_config_dict": {
+              "sv_on": true
+            }
+          }
+        ]
+      }
+    }
+  },
+  "_default": "@Phycodurus.eques"
+}

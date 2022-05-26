@@ -58,7 +58,7 @@ def pytest_addoption(parser):
         '--delete-site',
         action='store_true',
         default=False,
-        help='Clear the houston, edm and acm databases.  Can be used to test initialization',
+        help='Clear the houston, edm and sage databases.  Can be used to test initialization',
     )
 
 
@@ -66,13 +66,13 @@ def pytest_addoption(parser):
 def delete_site(pytestconfig):
     if pytestconfig.getoption('delete_site'):
         services = [
-            'acm',
+            'sage',
             'houston',
             'edm',
             'celery_worker',
             'celery_beat',
         ]
-        databases = ['wildbook', 'houston', 'wbia']
+        databases = ['wildbook', 'houston', 'sage']
         commands = (['docker-compose', 'rm', '-f', '--stop'] + services,)
         db = ['docker-compose', 'exec', 'db']
         for database in databases:
@@ -85,15 +85,15 @@ def delete_site(pytestconfig):
                 'docker',
                 'volume',
                 'rm',
-                'houston_acm-cache-var',
-                'houston_acm-database-var',
+                'houston_sage-database-var',
+                'houston_sage-cache-var',
             ],
         )
         commands += (['docker-compose', 'up', '-d'] + services,)
         for command in commands:
             print(f'Running {command}')
             subprocess.run(command)
-        print('Wait for acm to be up')
+        print('Wait for sage to be up')
         response = None
         timeout = 180  # timeout after 3 minutes
         while response is None and timeout >= 0:
@@ -105,7 +105,7 @@ def delete_site(pytestconfig):
                 timeout -= 5
                 pass
         else:
-            assert False, 'Unable to connect to acm'
+            assert False, 'Unable to connect to sage'
 
 
 @pytest.fixture(autouse=True, scope='session')

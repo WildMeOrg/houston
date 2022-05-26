@@ -6,7 +6,7 @@ Notifications database models
 
 from app.extensions import db, HoustonModel
 from app.utils import HoustonException
-from datetime import datetime  # NOQA
+import datetime
 
 import enum
 import uuid
@@ -274,7 +274,9 @@ class Notification(db.Model, HoustonModel):
     recipient = db.relationship('User', back_populates='notifications')
     sender_guid = db.Column(db.GUID, nullable=True)
 
-    created = db.Column(db.DateTime, index=True, default=datetime.utcnow, nullable=False)
+    created = db.Column(
+        db.DateTime, index=True, default=datetime.datetime.utcnow, nullable=False
+    )
 
     @classmethod
     def get_elasticsearch_schema(cls):

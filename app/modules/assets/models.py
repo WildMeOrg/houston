@@ -7,7 +7,7 @@ from flask import current_app, url_for
 from functools import total_ordering
 import pathlib
 
-from app.extensions import db, HoustonModel
+from app.extensions import db, HoustonModel, SageModel
 from app.modules import module_required
 from app.utils import HoustonException
 from app.modules.users.models import User
@@ -16,6 +16,7 @@ from PIL import Image
 
 import uuid
 import logging
+import os
 
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
@@ -29,7 +30,7 @@ class AssetTags(db.Model, HoustonModel):
 
 
 @total_ordering
-class Asset(db.Model, HoustonModel):
+class Asset(db.Model, HoustonModel, SageModel):
     """
     Assets database model.
     """
@@ -255,6 +256,65 @@ class Asset(db.Model, HoustonModel):
     def get_asset_group_sightings(self):
         return self.git_store.get_asset_group_sightings_for_asset(self)
 
+    @classmethod
+    def get_sage_sync_tags(cls):
+        return 'asset', 'image'
+
+    def sync_with_sage(self, ensure=False, force=False, bulk_sage_uuids=None, **kwargs):
+        from app.extensions.sage import from_sage_uuid
+
+        if force:
+            with db.session.begin(subtransactions=True):
+                self.content_guid = None
+                db.session.merge(self)
+            db.session.refresh(self)
+
+        if ensure:
+            if self.content_guid is not None:
+                if bulk_sage_uuids is not None:
+                    # Existence checks can be slow one-by-one, bulk checks are better
+                    if self.content_guid in bulk_sage_uuids.get('asset', {}):
+                        # We have found this Asset on Sage, simply return
+                        return
+                else:
+                    content_guid_str = str(self.content_guid)
+                    sage_rowids = current_app.sage.request_passthrough_result(
+                        'asset.exists', 'get', args=content_guid_str, target='sync'
+                    )
+                    if len(sage_rowids) == 1 and sage_rowids[0] is not None:
+                        # We have found this Asset on Sage, simply return
+                        return
+
+                # If we have arrived here, it means we have a non-NULL content guid that isn't on the Sage instance
+                # Null out the local content GUID and restart
+                with db.session.begin(subtransactions=True):
+                    self.content_guid = None
+                    db.session.merge(self)
+                db.session.refresh(self)
+
+        if self.content_guid is not None:
+            return
+
+        assert self.content_guid is None
+        symlink = self.get_symlink()
+        image_filepath = symlink.resolve()
+        if os.path.exists(image_filepath):
+            with open(image_filepath, 'rb') as image_file:
+                files = {
+                    'image': image_file,
+                }
+                sage_response = current_app.sage.request_passthrough_result(
+                    'asset.upload', 'post', {'files': files}, target='sync'
+                )
+                sage_guid = from_sage_uuid(sage_response)
+
+                with db.session.begin(subtransactions=True):
+                    self.content_guid = sage_guid
+                    db.session.merge(self)
+                db.session.refresh(self)
+        else:
+            log.error('Asset %r is missing on disk, cannot send to Sage' % (self,))
+
     # this property is so that schema can output { "filename": "original_filename.jpg" }
     @property
     def filename(self):
@@ -312,7 +372,8 @@ class Asset(db.Model, HoustonModel):
 
     # Special access to the raw file only for internal users
     def user_raw_read(self, user):
-        return self.is_detection() and user.is_internal
+        # return self.is_detection() and user.is_internal
+        return user.is_internal
 
     # will only set .meta values that can be derived automatically from file
     # (will not overwrite any manual/other values); silently fails if unknown type for deriving
@@ -417,7 +478,7 @@ class Asset(db.Model, HoustonModel):
             return
         with Image.open(self.get_symlink()) as im:
             if (angle % 360) in (90, 180, 270):
-                method = getattr(Image, f'ROTATE_{angle}')
+                method = getattr(Image.Transpose, f'ROTATE_{angle}')
                 im_rotated = im.transpose(method=method)
             else:
                 im_rotated = im.rotate(angle, **kwargs)

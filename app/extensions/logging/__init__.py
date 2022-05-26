@@ -26,7 +26,7 @@ class Logging(object):
         Delete = 'Delete'
         Update = 'Update'  # Generic Update
         FrontEndFault = 'Front End Fault'  # Bad message received on API
-        BackEndFault = 'Back End Fault'  # Faulty message received from ACM/EDM etc
+        BackEndFault = 'Back End Fault'  # Faulty message received from Sage/EDM etc
         HoustonFault = 'Houston Fault'  # Internal Error within Houston
         Other = 'Access'  # None of the above
 

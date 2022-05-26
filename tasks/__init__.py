@@ -91,6 +91,20 @@ namespaces.append(task_dependencies)
 namespaces.append(task_docker_compose)
 
 try:
+    from tasks import sage as sage_tasks  # NOQA
+
+    namespaces.append(sage_tasks)
+except ModuleNotFoundError as e:  # pragma: no cover
+    logger.warning(f'Unable to load tasks.sage.*\n{str(e)}')
+
+try:
+    from tasks import edm as edm_tasks  # NOQA
+
+    namespaces.append(edm_tasks)
+except ModuleNotFoundError as e:  # pragma: no cover
+    logger.warning(f'Unable to load tasks.edm.*\n{str(e)}')
+
+try:
     from tasks import gumby as gumby_tasks  # NOQA
 
     namespaces.append(gumby_tasks)

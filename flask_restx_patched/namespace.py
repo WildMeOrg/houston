@@ -1,19 +1,20 @@
 # -*- coding: utf-8 -*-
+import os
 from functools import wraps
 
+import elasticsearch
 import flask
 import flask_marshmallow
 from flask_restx import Namespace as OriginalNamespace
-from flask_restx.utils import merge, unpack
 from flask_restx._http import HTTPStatus
+from flask_restx.utils import merge, unpack
 from webargs.flaskparser import parser as webargs_parser
 from werkzeug import cached_property  # NOQA
 from werkzeug import exceptions as http_exceptions
-import elasticsearch
-import os
 
-from .model import Model, DefaultHTTPErrorSchema
 from config import get_preliminary_config
+
+from .model import DefaultHTTPErrorSchema, Model
 
 
 def is_x_enabled(names, name_args, enabled_names):
@@ -628,7 +629,7 @@ class Namespace(OriginalNamespace):
             )
 
             return self.doc(
-                description='**REQUIRED EXTENSIONS: %s**\n\n' % (extensions,)
+                description='**REQUIRED EXTENSIONS: {}**\n\n'.format(extensions)
             )(
                 self.response(
                     code=HTTPStatus.NOT_IMPLEMENTED.value,
@@ -680,7 +681,7 @@ class Namespace(OriginalNamespace):
                 protected_func, _required_decorator
             )
 
-            return self.doc(description='**REQUIRED MODULES: %s**\n\n' % (modules,))(
+            return self.doc(description='**REQUIRED MODULES: {}**\n\n'.format(modules))(
                 self.response(
                     code=HTTPStatus.NOT_IMPLEMENTED.value,
                     description='Some required server-side modules are disabled',

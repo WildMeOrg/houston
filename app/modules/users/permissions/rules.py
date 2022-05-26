@@ -5,14 +5,15 @@ RESTful API Rules
 -----------------------
 """
 import logging
+from typing import Any, Type
 
 from flask_login import current_user
-from flask_restx_patched._http import HTTPStatus
 from permission import Rule as BaseRule
-from typing import Type, Any
+
 from app.extensions.api import abort
-from app.modules import module_required, is_module_enabled
+from app.modules import is_module_enabled, module_required
 from app.modules.users.permissions.types import AccessOperation
+from flask_restx_patched._http import HTTPStatus
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 

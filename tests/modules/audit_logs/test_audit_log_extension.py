@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=missing-docstring
 def test_raising_faults():
-    from app.modules.audit_logs.models import AuditLog
     import app.extensions.logging as AuditLogExtension  # NOQA
+    from app.modules.audit_logs.models import AuditLog
 
     houston_fault_msg = (
         'ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff'

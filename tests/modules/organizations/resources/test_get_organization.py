@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import pytest
+
 from tests.utils import module_unavailable
 
 

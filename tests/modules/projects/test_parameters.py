@@ -11,8 +11,8 @@ def test_project_remove_encounters(
 ):  # pylint: disable=unused-argument
     # pylint: disable=unused-argument
     from app.modules.asset_groups.models import AssetGroup
-    from app.modules.projects.parameters import PatchProjectDetailsParameters
     from app.modules.projects.models import Project
+    from app.modules.projects.parameters import PatchProjectDetailsParameters
 
     temp_proj = Project(
         title='Temp Project',

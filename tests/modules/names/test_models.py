@@ -3,6 +3,7 @@
 
 import pytest
 import sqlalchemy
+
 from tests.utils import module_unavailable
 
 

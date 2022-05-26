@@ -4,11 +4,12 @@ Audit Logs database models
 --------------------
 """
 
-from flask_login import current_user  # NOQA
-from app.extensions import db, HoustonModel
 import logging
-
 import uuid
+
+from flask_login import current_user  # NOQA
+
+from app.extensions import HoustonModel, db
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
@@ -47,8 +48,8 @@ class AuditLog(db.Model, HoustonModel):
 
     @classmethod
     def query_search_term_hook(cls, term):
-        from sqlalchemy_utils.functions import cast_if
         from sqlalchemy import String
+        from sqlalchemy_utils.functions import cast_if
 
         return (
             cast_if(cls.guid, String).contains(term),

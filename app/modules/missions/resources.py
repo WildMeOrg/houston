@@ -6,27 +6,26 @@ RESTful API Missions resources
 """
 
 import logging
-import werkzeug
 import uuid
 
+import randomname
+import tqdm
+import werkzeug
 from flask import request
-from flask_restx_patched import Resource
-from flask_restx_patched._http import HTTPStatus
 from flask_login import current_user  # NOQA
+from marshmallow import ValidationError
 
 from app.extensions import db
 from app.extensions.api import Namespace, abort
+from app.modules.assets.schemas import DetailedAssetTableSchema
 from app.modules.users import permissions
 from app.modules.users.permissions.types import AccessOperation
-from app.modules.assets.schemas import DetailedAssetTableSchema
+from app.utils import HoustonException
+from flask_restx_patched import Resource
+from flask_restx_patched._http import HTTPStatus
+
 from . import parameters, schemas
 from .models import Mission, MissionCollection, MissionTask
-from marshmallow import ValidationError
-import randomname
-import tqdm
-
-from app.utils import HoustonException
-
 
 USE_GLOBALLY_UNIQUE_MISSION_TASK_NAMES = True
 
@@ -405,7 +404,7 @@ class MissionTasksForMission(Resource):
                 ),
                 sep=' ',
             ).title()
-            title = 'New Task: %s' % (title,)
+            title = 'New Task: {}'.format(title)
         assert title is not None
         assert title not in titles
 

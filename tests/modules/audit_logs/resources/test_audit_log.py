@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=missing-docstring
-import tests.modules.asset_groups.resources.utils as asset_group_utils
-import tests.modules.users.resources.utils as user_utils
-import tests.modules.audit_logs.resources.utils as audit_utils
 import pytest
 
+import tests.modules.asset_groups.resources.utils as asset_group_utils
+import tests.modules.audit_logs.resources.utils as audit_utils
+import tests.modules.users.resources.utils as user_utils
 from tests.utils import module_unavailable
 
 
@@ -172,8 +172,8 @@ def test_most_ia_pipeline_audit_log(
 def test_audit_log_faults(
     flask_app_client, researcher_1, readonly_user, admin_user, test_root, db
 ):
-    from app.modules.audit_logs.models import AuditLog
     import app.extensions.logging as AuditLogExtension
+    from app.modules.audit_logs.models import AuditLog
 
     # Reuse a different test that generates a truckload of faults
     from tests.modules.asset_groups.resources.test_create_asset_group import (

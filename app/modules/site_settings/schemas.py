@@ -5,8 +5,8 @@ Serialization schemas for Site Settings resources RESTful API
 """
 from flask_marshmallow import base_fields
 
-from flask_restx_patched import ModelSchema
 from app.extensions import ExtraValidationSchema
+from flask_restx_patched import ModelSchema
 
 from .models import SiteSetting
 

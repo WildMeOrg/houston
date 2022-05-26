@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 
-import tests.modules.sightings.resources.utils as sighting_utils
-import pytest
 import datetime
 
-from tests.utils import module_unavailable
+import pytest
 
+import tests.modules.sightings.resources.utils as sighting_utils
+from tests.utils import module_unavailable
 
 timestamp = datetime.datetime.now().isoformat() + '+00:00'
 

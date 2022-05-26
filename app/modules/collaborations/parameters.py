@@ -3,15 +3,17 @@
 Input arguments (Parameters) for Collaborations resources RESTful API
 -----------------------------------------------------------
 """
-from flask_restx_patched import Parameters, PatchJSONParameters
-from flask_marshmallow import base_fields
 import logging
 
-from . import schemas
 from flask_login import current_user
-from app.modules.users.permissions.types import AccessOperation
+from flask_marshmallow import base_fields
+
 from app.modules.users.permissions import rules
+from app.modules.users.permissions.types import AccessOperation
 from app.utils import HoustonException
+from flask_restx_patched import Parameters, PatchJSONParameters
+
+from . import schemas
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 

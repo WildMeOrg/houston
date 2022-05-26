@@ -15,12 +15,11 @@ import json
 import logging
 import time
 
-import requests
 import pytz
+import requests
 import werkzeug.exceptions
-from flask import session, request, current_app
+from flask import current_app, request, session
 from flask_login import current_user
-
 
 log = logging.getLogger(__name__)
 
@@ -55,7 +54,7 @@ def create_session_oauth2_client(user, **kwargs):
         )
         with db.session.begin():
             db.session.add(session_oauth2_client)
-    log.debug('Using session Oauth2 client = %r' % (session_oauth2_client,))
+    log.debug('Using session Oauth2 client = {!r}'.format(session_oauth2_client))
     return session_oauth2_client
 
 

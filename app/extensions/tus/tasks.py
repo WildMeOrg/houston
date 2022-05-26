@@ -3,7 +3,6 @@ import logging
 
 from app.extensions.celery import celery
 
-
 TUS_CLEANUP_FREQUENCY = 60 * 15
 
 

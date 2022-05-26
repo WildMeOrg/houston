@@ -3,8 +3,8 @@
 social_group resources utils
 -------------
 """
-from tests import utils as test_utils
 import tests.modules.site_settings.resources.utils as setting_utils
+from tests import utils as test_utils
 
 PATH = '/api/v1/social-groups/'
 EXPECTED_KEYS = {'guid', 'name', 'members'}

@@ -5,16 +5,17 @@ A structure for holding a DateTime object with additional complexity
 involving time zone and specificity
 --------------------
 """
-import uuid
+import datetime
 import enum
-from app.extensions import db
 import logging
+import uuid
+
+import pytz
+from dateutil import tz
 
 import app.extensions.logging as AuditLog
-import datetime
-from dateutil import tz
+from app.extensions import db
 from app.utils import normalized_timezone_string
-import pytz
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
@@ -196,10 +197,12 @@ class ComplexDateTime(db.Model):
     # used from parameters.py for object which have time/timeSpecifity patches (currently encounter and sighting)
     @classmethod
     def patch_replace_helper(cls, obj, field, value):
+        import pytz
+
         from app.modules.complex_date_time.models import ComplexDateTime, Specificities
         from app.utils import normalized_timezone_string
+
         from .models import db
-        import pytz
 
         # * note: field==time requires `value` is iso8601 **with timezone**
         # this gets a little funky in the event there is *no existing time set* as the patch

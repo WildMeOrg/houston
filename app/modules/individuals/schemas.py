@@ -4,20 +4,20 @@ Serialization schemas for Individuals resources RESTful API
 ----------------------------------------------------
 """
 
-from flask_restx_patched import ModelSchema
 from flask_marshmallow import base_fields
 
-from .models import Individual
-
-from app.modules.names.schemas import DetailedNameSchema
 from app.modules.encounters.schemas import (
     DetailedEncounterSchema,
     ElasticsearchEncounterSchema,
 )
+from app.modules.names.schemas import DetailedNameSchema
 from app.modules.relationships.schemas import (
-    DetailedRelationshipSchema,
     BaseRelationshipIndividualMemberSchema,
+    DetailedRelationshipSchema,
 )
+from flask_restx_patched import ModelSchema
+
+from .models import Individual
 
 
 class BaseIndividualSchema(ModelSchema):

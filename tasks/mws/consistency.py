@@ -6,6 +6,7 @@ This file contains initialization data for development usage only.
 You can execute this code via ``invoke mws.consistency``
 """
 import logging
+
 from tasks.utils import app_context_task
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name

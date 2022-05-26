@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=missing-docstring
 
+import pytest
+
 from tests import utils
 from tests.modules.individuals.resources import utils as individual_utils
 from tests.modules.sightings.resources import utils as sighting_utils
 from tests.modules.site_settings.resources import utils as setting_utils
-import pytest
-
 from tests.utils import module_unavailable
 
 
@@ -19,8 +19,8 @@ def test_modify_individual_edm_fields(
 ):
 
     from app.modules.encounters.models import Encounter
-    from app.modules.sightings.models import Sighting
     from app.modules.individuals.models import Individual
+    from app.modules.sightings.models import Sighting
 
     individual_json = None
     tx = setting_utils.get_some_taxonomy_dict(flask_app_client, staff_user)

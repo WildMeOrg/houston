@@ -2,12 +2,12 @@
 # pylint: disable=missing-docstring
 import uuid
 
-from tests.modules.annotations.resources import utils as annot_utils
-from tests.modules.asset_groups.resources import utils as ag_utils
-from tests.modules.encounters.resources import utils as enc_utils
-from tests.modules.assets.resources import utils as asset_utils
 import pytest
 
+from tests.modules.annotations.resources import utils as annot_utils
+from tests.modules.asset_groups.resources import utils as ag_utils
+from tests.modules.assets.resources import utils as asset_utils
+from tests.modules.encounters.resources import utils as enc_utils
 from tests.utils import module_unavailable
 
 

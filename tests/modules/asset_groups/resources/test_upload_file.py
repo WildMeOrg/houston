@@ -2,10 +2,10 @@
 # pylint: disable=missing-docstring
 from os.path import basename
 
-import tests.modules.asset_groups.resources.utils as asset_group_utils
-import tests.extensions.tus.utils as tus_utils
 import pytest
 
+import tests.extensions.tus.utils as tus_utils
+import tests.modules.asset_groups.resources.utils as asset_group_utils
 from tests.utils import module_unavailable
 
 

@@ -21,7 +21,7 @@ def _get_available_model_mappings():
             available[name] = registered_model
         else:
             for registered_model in registered_models:
-                unique_name = '%s.%s' % (
+                unique_name = '{}.{}'.format(
                     registered_model.__module__,
                     registered_model.__name__,
                 )
@@ -44,7 +44,7 @@ def _index_worker(model=None, **kwargs):
             model_cls = available.get(model, None)
 
             if model_cls is None:
-                print('Model must be one of %r' % (set(available.keys()),))
+                print('Model must be one of {!r}'.format(set(available.keys())))
             else:
                 model_cls.index_all()
 
@@ -62,7 +62,7 @@ def _prune_worker(model=None):
             model_cls = available.get(model, None)
 
             if model_cls is None:
-                print('Model must be one of %r' % (set(available.keys()),))
+                print('Model must be one of {!r}'.format(set(available.keys())))
             else:
                 model_cls.prune_all()
 
@@ -79,7 +79,7 @@ def _invalidate_worker(model=None):
         model_cls = available.get(model, None)
 
         if model_cls is None:
-            print('Model must be one of %r' % (set(available.keys()),))
+            print('Model must be one of {!r}'.format(set(available.keys())))
         else:
             model_cls.invalidate_all()
 
@@ -93,8 +93,9 @@ def status(context, model=None):
     """
     Get the status from Elasticsearch
     """
-    from app.extensions import elasticsearch as es
     import utool as ut
+
+    from app.extensions import elasticsearch as es
 
     status = es.es_status(missing=True)
     print(ut.repr3(status))
@@ -182,11 +183,11 @@ def delete_index(context, model=None):
         model_cls = available.get(model, None)
 
         if model_cls is None:
-            print('Model must be one of %r' % (set(available.keys()),))
+            print('Model must be one of {!r}'.format(set(available.keys())))
         else:
             indices.append(model_cls._index())
 
     if len(indices) > 0:
         for index in indices:
-            print('Deleting ES index %r' % (index,))
+            print('Deleting ES index {!r}'.format(index))
             es.es_delete_index(index)

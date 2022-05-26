@@ -5,7 +5,6 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-
 __all__ = (
     'export_dotenv',
     'import_class',

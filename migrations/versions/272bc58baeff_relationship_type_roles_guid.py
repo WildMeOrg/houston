@@ -9,12 +9,11 @@ Create Date: 2022-04-12 15:51:41.958648
 import json
 import uuid
 
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 
 import app
 import app.extensions
-
 
 # revision identifiers, used by Alembic.
 revision = '272bc58baeff'

@@ -4,6 +4,7 @@ Assets resources utils
 -------------
 """
 import json
+
 from tests import utils as test_utils
 
 PATH = '/api/v1/assets/'
@@ -129,7 +130,7 @@ def read_all_assets_pagination(
 
 def delete_asset(flask_app_client, user, asset_guid, expected_status_code=204):
     with flask_app_client.login(user, auth_scopes=('assets:write',)):
-        response = flask_app_client.delete('%s%s' % (PATH, asset_guid))
+        response = flask_app_client.delete('{}{}'.format(PATH, asset_guid))
 
     if expected_status_code == 204:
         assert response.status_code == 204

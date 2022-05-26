@@ -6,13 +6,12 @@ Revises: b58abf228d55
 Create Date: 2022-04-29 17:33:52.397614
 
 """
-from alembic import op
 import sqlalchemy as sa
 import sqlalchemy_utils  # noqa
+from alembic import op
 
 import app
 import app.extensions
-
 
 # revision identifiers, used by Alembic.
 revision = 'ce5c26b34f15'

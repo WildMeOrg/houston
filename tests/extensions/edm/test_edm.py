@@ -2,8 +2,9 @@
 # pylint: disable=invalid-name,missing-docstring
 
 import uuid
-import pytest
 from unittest import mock
+
+import pytest
 
 from tests.utils import extension_unavailable
 

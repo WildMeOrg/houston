@@ -7,11 +7,10 @@ Serialization schemas for Assets resources RESTful API
 from flask_marshmallow import base_fields
 from marshmallow import ValidationError
 
-from flask_restx_patched import ModelSchema
 from app.extensions import ExtraValidationSchema
-from app.modules import is_module_enabled
 from app.extensions.git_store.schemas import BaseGitStoreSchema
-
+from app.modules import is_module_enabled
+from flask_restx_patched import ModelSchema
 
 from .models import Asset
 

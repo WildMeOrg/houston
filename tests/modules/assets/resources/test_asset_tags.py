@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=missing-docstring
-from tests import utils
-import tests.modules.asset_groups.resources.utils as asset_group_utils
-import tests.modules.assets.resources.utils as asset_utils
-from tests.modules.keywords.resources import utils as tag_utils
 import pytest
 
+import tests.modules.asset_groups.resources.utils as asset_group_utils
+import tests.modules.assets.resources.utils as asset_utils
+from tests import utils
+from tests.modules.keywords.resources import utils as tag_utils
 from tests.utils import module_unavailable
 
 

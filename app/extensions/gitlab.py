@@ -4,13 +4,12 @@
 Gitlab Management.
 
 """
+import keyword
 import logging
 
-from flask import current_app, request, session, render_template  # NOQA
-from flask_login import current_user  # NOQA
 import gitlab
-
-import keyword
+from flask import current_app, render_template, request, session  # NOQA
+from flask_login import current_user  # NOQA
 
 from flask_restx_patched import is_extension_enabled
 
@@ -148,7 +147,7 @@ class GitlabManager(object):
             )
         else:
             tag_list = [
-                'type:%s' % (project_type,),
+                'type:{}'.format(project_type),
             ]
             for tag in additional_tags:
                 if isinstance(tag, str):

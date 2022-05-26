@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
+import uuid
 from pathlib import Path
+
+import pytest
 
 from app.modules.fileuploads.models import FileUpload
 from app.modules.site_settings.models import SiteSetting
-import uuid
-import pytest
-
 from tests.utils import extension_unavailable, is_extension_enabled
 
 

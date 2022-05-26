@@ -4,10 +4,9 @@ docker-compose tasks for invoke
 """
 import logging
 
+import yaml
 from invoke import task
 from invoke.exceptions import Exit
-import yaml
-
 
 logger = logging.getLogger(__name__)
 

@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=invalid-name,missing-docstring
 
-from app.modules.users.models import User
-import tests.utils as test_utils
 import pytest
 
+import tests.utils as test_utils
+from app.modules.users.models import User
 from tests.utils import module_unavailable
 
 
@@ -13,8 +13,8 @@ from tests.utils import module_unavailable
     reason='Individuals module disabled',
 )
 def test_cooccurrence(db, flask_app_client, researcher_1):
-    from app.modules.sightings.models import Sighting, SightingStage
     from app.modules.individuals.models import Individual
+    from app.modules.sightings.models import Sighting, SightingStage
 
     sighting = Sighting(stage=SightingStage.processed)
     sighting.time = test_utils.complex_date_time_now()
@@ -47,7 +47,7 @@ def test_cooccurrence(db, flask_app_client, researcher_1):
         db.session.add(individual_3)
 
     pals = individual_1.get_cooccurring_individuals()
-    assert set(pals) == set([individual_2, individual_3])
+    assert set(pals) == {individual_2, individual_3}
 
     # since its all set up, lets test api as well
     with flask_app_client.login(researcher_1, auth_scopes=('individuals:read',)):
@@ -55,9 +55,10 @@ def test_cooccurrence(db, flask_app_client, researcher_1):
             f'/api/v1/individuals/{str(individual_1.guid)}/cooccurrence'
         )
     assert len(response.json) == 2
-    assert set([response.json[0]['guid'], response.json[1]['guid']]) == set(
-        [str(individual_2.guid), str(individual_3.guid)]
-    )
+    assert {response.json[0]['guid'], response.json[1]['guid']} == {
+        str(individual_2.guid),
+        str(individual_3.guid),
+    }
 
     # tests indiv.get_shared_sightings(list_individual_guids)
     individual_4 = Individual()
@@ -80,7 +81,7 @@ def test_cooccurrence(db, flask_app_client, researcher_1):
         db.session.add(encounter_e)
 
     with_2 = individual_1.get_shared_sightings(individual_2)
-    assert set(with_2) == set([sighting, sighting_two])
+    assert set(with_2) == {sighting, sighting_two}
     with_3 = individual_1.get_shared_sightings(individual_3)
     assert with_3 == [sighting]
     empty = individual_4.get_shared_sightings(individual_3)

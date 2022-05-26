@@ -2,11 +2,12 @@
 # pylint: disable=invalid-name,missing-docstring
 import os
 import pathlib
-import pytest
 import shutil
 
-from tests.utils import module_unavailable
+import pytest
+
 from tests.extensions.tus import utils as tus_utils
+from tests.utils import module_unavailable
 
 
 @pytest.mark.skipif(module_unavailable('missions'), reason='Missions module disabled')

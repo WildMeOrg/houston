@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=missing-docstring
 
-from tests.modules.sightings.resources import utils as sighting_utils
-from tests.modules.encounters.resources import utils as enc_utils
-from tests.modules.individuals.resources import utils as indiv_utils
-from tests import utils as test_utils
 import pytest
 
+from tests import utils as test_utils
+from tests.modules.encounters.resources import utils as enc_utils
+from tests.modules.individuals.resources import utils as indiv_utils
+from tests.modules.sightings.resources import utils as sighting_utils
 from tests.utils import module_unavailable
 
 

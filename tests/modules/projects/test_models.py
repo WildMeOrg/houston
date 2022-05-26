@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=invalid-name,missing-docstring
 
-import sqlalchemy
-
 import logging
+
 import pytest
+import sqlalchemy
 
 from tests.utils import module_unavailable
 
@@ -13,10 +13,7 @@ from tests.utils import module_unavailable
 def test_project_add_members(
     db, temp_user, researcher_1, researcher_2
 ):  # pylint: disable=unused-argument
-    from app.modules.projects.models import (
-        Project,
-        ProjectUserMembershipEnrollment,
-    )
+    from app.modules.projects.models import Project, ProjectUserMembershipEnrollment
 
     temp_proj = Project(
         title='Temp Project',

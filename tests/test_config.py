@@ -3,12 +3,12 @@
 import pytest
 
 from config import (
-    configure_app,
     CONFIG_CLS_MAPPER,
     CONTEXT_ENVIRONMENT_VARIABLE,
-    get_preliminary_config,
     VALID_CONTEXTS,
     VALID_ENVIRONMENTS,
+    configure_app,
+    get_preliminary_config,
 )
 from config.utils import import_class
 

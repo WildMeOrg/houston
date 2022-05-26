@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=missing-docstring
-from tests import utils
 import pytest
 
+from tests import utils
 from tests.utils import module_unavailable
 
 PATH = '/api/v1/encounters/'

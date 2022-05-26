@@ -5,12 +5,11 @@ Social Groups database models
 """
 
 import logging
-
-from app.extensions import db, HoustonModel
-from app.utils import HoustonException
-import app.extensions.logging as AuditLog
-
 import uuid
+
+import app.extensions.logging as AuditLog
+from app.extensions import HoustonModel, db
+from app.utils import HoustonException
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 

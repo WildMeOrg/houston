@@ -3,8 +3,9 @@
 Individual resources utils
 -------------
 """
-import logging
 import json
+import logging
+
 from tests import utils as test_utils
 from tests.modules.sightings.resources import utils as sighting_utils
 
@@ -97,7 +98,7 @@ def read_individual(
     flask_app_client, regular_user, individual_guid, expected_status_code=200
 ):
     with flask_app_client.login(regular_user, auth_scopes=('individuals:read',)):
-        response = flask_app_client.get('%s%s' % (PATH, individual_guid))
+        response = flask_app_client.get('{}{}'.format(PATH, individual_guid))
 
     assert response.status_code == expected_status_code
     if response.status_code == 200:
@@ -117,7 +118,7 @@ def read_individual_path(
 
 def delete_individual(flask_app_client, user, guid, expected_status_code=204):
     with flask_app_client.login(user, auth_scopes=('individuals:write',)):
-        response = flask_app_client.delete('%s%s' % (PATH, guid))
+        response = flask_app_client.delete('{}{}'.format(PATH, guid))
 
     if expected_status_code == 204:
         # we allow 404 here in the event that it is being called as a finalizer on an
@@ -141,7 +142,7 @@ def patch_individual(
 ):
     with flask_app_client.login(user, auth_scopes=('individuals:write',)):
         response = flask_app_client.patch(
-            '%s%s' % (PATH, individual_guid),
+            '{}{}'.format(PATH, individual_guid),
             data=json.dumps(patch_data),
             content_type='application/json',
             headers=headers,

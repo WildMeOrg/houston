@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=missing-docstring
 
-from tests import utils
-from tests.modules.projects.resources import utils as proj_utils
 import pytest
 
+from tests import utils
+from tests.modules.projects.resources import utils as proj_utils
 from tests.utils import module_unavailable
 
 
@@ -12,8 +12,8 @@ from tests.utils import module_unavailable
 def test_modify_project(db, flask_app_client, admin_user, researcher_1, researcher_2):
 
     # pylint: disable=invalid-name
-    from app.modules.projects.models import Project
     from app.modules.encounters.models import Encounter
+    from app.modules.projects.models import Project
 
     response = proj_utils.create_project(
         flask_app_client, researcher_1, 'This is a test project, please ignore'
@@ -87,8 +87,8 @@ def test_invalid_encounters(
     test_empty_asset_group_uuid,
 ):
     # pylint: disable=invalid-name
-    from app.modules.projects.models import Project
     from app.modules.encounters.models import Encounter
+    from app.modules.projects.models import Project
 
     response = proj_utils.create_project(
         flask_app_client, researcher_1, 'This is a test project, please ignore'
@@ -208,8 +208,8 @@ def test_owner_permission(flask_app_client, researcher_1, researcher_2):
 
 @pytest.mark.skipif(module_unavailable('projects'), reason='Projects module disabled')
 def test_member_permission(db, flask_app_client, researcher_1, researcher_2):
-    from app.modules.projects.models import Project
     from app.modules.encounters.models import Encounter
+    from app.modules.projects.models import Project
 
     response = proj_utils.create_project(
         flask_app_client, researcher_1, 'This is a test project, please ignore'
@@ -264,8 +264,8 @@ def test_member_permission(db, flask_app_client, researcher_1, researcher_2):
 
 @pytest.mark.skipif(module_unavailable('projects'), reason='Projects module disabled')
 def test_non_member_permission(db, flask_app_client, researcher_1, researcher_2):
-    from app.modules.projects.models import Project
     from app.modules.encounters.models import Encounter
+    from app.modules.projects.models import Project
 
     response = proj_utils.create_project(
         flask_app_client, researcher_1, 'This is a test project, please ignore'

@@ -1,14 +1,14 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=invalid-name,missing-docstring
 
-import pytest
-
-from unittest.mock import patch
-from tests.utils import extension_unavailable
-import tweepy
 import time
+from unittest.mock import patch
+
+import pytest
+import tweepy
 
 from app.modules.site_settings.models import SiteSetting
+from tests.utils import extension_unavailable
 
 
 # manipulate into whatever fake twitter response we want
@@ -186,8 +186,8 @@ def test_twitter_tweet_io(flask_app_client):
 )
 def test_linked_tweet_and_misc(researcher_1, flask_app_client, admin_user):
     from app.extensions.intelligent_agent.models import TwitterBot, TwitterTweet
-    from tests.modules.site_settings.resources import utils as setting_utils
     from app.modules.users.models import User
+    from tests.modules.site_settings.resources import utils as setting_utils
 
     author_id = 'TEST123'
     tweet = get_fake_tweet()
@@ -306,8 +306,9 @@ def test_nlp_date():
     reason='Intelligent Agent extension disabled',
 )
 def test_duplicate_tweet(db):
-    from app.extensions.intelligent_agent.models import TwitterTweet
     import sqlalchemy
+
+    from app.extensions.intelligent_agent.models import TwitterTweet
 
     tweet = get_fake_tweet()
     tweet.id = 123456789

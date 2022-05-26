@@ -5,14 +5,12 @@ RESTful API Asset_groups resources
 --------------------------
 """
 
-import logging
-import werkzeug
-import uuid
 import json
+import logging
+import uuid
 
+import werkzeug
 from flask import request
-from flask_restx_patched import Resource
-from flask_restx_patched._http import HTTPStatus
 
 from app.extensions import db
 from app.extensions.api import Namespace, abort
@@ -20,9 +18,11 @@ from app.modules.auth.utils import recaptcha_required
 from app.modules.users import permissions
 from app.modules.users.permissions.types import AccessOperation
 from app.utils import HoustonException
+from flask_restx_patched import Resource
+from flask_restx_patched._http import HTTPStatus
 
 from . import parameters, schemas
-from .metadata import AssetGroupMetadataError, AssetGroupMetadata
+from .metadata import AssetGroupMetadata, AssetGroupMetadataError
 from .models import AssetGroup, AssetGroupSighting
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
@@ -88,8 +88,8 @@ class AssetGroups(Resource):
         """
         Create a new instance of Asset_group.
         """
-        from app.extensions.elapsed_time import ElapsedTime
         import app.extensions.logging as AuditLog  # NOQA
+        from app.extensions.elapsed_time import ElapsedTime
         from app.modules.users.models import User
 
         timer = ElapsedTime()
@@ -467,8 +467,8 @@ class AssetGroupSightingByID(Resource):
     @api.parameters(parameters.PatchAssetGroupSightingDetailsParameters())
     @api.response(schemas.DetailedAssetGroupSightingSchema())
     def patch(self, args, asset_group_sighting):
-        from app.extensions.elapsed_time import ElapsedTime
         import app.extensions.logging as AuditLog  # NOQA
+        from app.extensions.elapsed_time import ElapsedTime
 
         timer = ElapsedTime()
         context = api.commit_or_abort(
@@ -580,8 +580,8 @@ class AssetGroupSightingAsSighting(Resource):
     @api.parameters(parameters.PatchAssetGroupSightingAsSightingParameters())
     @api.response(schemas.AssetGroupSightingAsSightingSchema())
     def patch(self, args, asset_group_sighting):
-        from app.extensions.elapsed_time import ElapsedTime
         import app.extensions.logging as AuditLog  # NOQA
+        from app.extensions.elapsed_time import ElapsedTime
 
         timer = ElapsedTime()
 
@@ -645,8 +645,8 @@ class AssetGroupSightingEncounterByID(Resource):
     @api.parameters(parameters.PatchAssetGroupSightingEncounterDetailsParameters())
     @api.response(schemas.DetailedAssetGroupSightingSchema())
     def patch(self, args, asset_group_sighting, encounter_guid):
-        from app.extensions.elapsed_time import ElapsedTime
         import app.extensions.logging as AuditLog  # NOQA
+        from app.extensions.elapsed_time import ElapsedTime
 
         timer = ElapsedTime()
         context = api.commit_or_abort(
@@ -690,8 +690,8 @@ class AssetGroupSightingAsSightingEncounterByID(Resource):
     @api.login_required(oauth_scopes=['asset_group_sightings:write'])
     @api.parameters(parameters.PatchAssetGroupSightingEncounterDetailsParameters())
     def patch(self, args, asset_group_sighting, encounter_guid):
-        from app.extensions.elapsed_time import ElapsedTime
         import app.extensions.logging as AuditLog  # NOQA
+        from app.extensions.elapsed_time import ElapsedTime
 
         timer = ElapsedTime()
         context = api.commit_or_abort(

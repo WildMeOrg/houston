@@ -6,12 +6,11 @@ Revises: ce5c26b34f15
 Create Date: 2022-05-05 19:33:23.318457
 
 """
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 
 import app
 import app.extensions
-
 
 # revision identifiers, used by Alembic.
 revision = 'cc1f915cde87'
@@ -120,10 +119,8 @@ def downgrade():
         "CREATE TYPE assetgroupsightingstage AS ENUM('unknown', 'detection', 'curation', 'processed', 'failed')"
     )
     op.execute(
-        (
-            'ALTER TABLE asset_group_sighting ALTER COLUMN stage TYPE assetgroupsightingstage USING '
-            'stage::text::assetgroupsightingstage'
-        )
+        'ALTER TABLE asset_group_sighting ALTER COLUMN stage TYPE assetgroupsightingstage USING '
+        'stage::text::assetgroupsightingstage'
     )
     op.execute('DROP TYPE assetgroupsightingstage_old')
     # ### end Alembic commands ###

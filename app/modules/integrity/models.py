@@ -4,9 +4,9 @@ Integrity database models
 --------------------
 """
 
-from app.extensions import db, HoustonModel
-
 import uuid
+
+from app.extensions import HoustonModel, db
 
 
 class Integrity(db.Model, HoustonModel):
@@ -31,11 +31,11 @@ class Integrity(db.Model, HoustonModel):
     def __init__(self):
         # Creating an Integrity entry runs the full integrity checks and generates and stores the result
         # for later analysis
-        from app.modules.sightings.models import Sighting
-        from app.modules.individuals.models import Individual
-        from app.modules.asset_groups.models import AssetGroup
         from app.modules.annotations.models import Annotation
+        from app.modules.asset_groups.models import AssetGroup
         from app.modules.assets.models import Asset
+        from app.modules.individuals.models import Individual
+        from app.modules.sightings.models import Sighting
 
         self.result = {
             'asset_groups': AssetGroup.run_integrity(),

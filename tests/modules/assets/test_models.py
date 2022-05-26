@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 import pathlib
-from unittest import mock
 import uuid
+from unittest import mock
 
-from PIL import Image
 import pytest
+from PIL import Image
 
 import tests.utils as test_utils
 from tests.utils import module_unavailable
@@ -15,12 +15,11 @@ from tests.utils import module_unavailable
 )
 def set_up_assets(flask_app, db, test_root, admin_user, request):
     from app.modules.annotations.models import Annotation
-    from app.modules.asset_groups.models import AssetGroup
     from app.modules.asset_groups.metadata import AssetGroupMetadata
+    from app.modules.asset_groups.models import AssetGroup
     from app.modules.sightings.models import Sighting, SightingAssets, SightingStage
-
     from tests.modules.asset_groups.resources.utils import AssetGroupCreationData
-    from tests.utils import create_transaction_dir, copy_uploaded_file, cleanup
+    from tests.utils import cleanup, copy_uploaded_file, create_transaction_dir
 
     # Add jpg files to tus transaction dir
     transaction_id = str(uuid.uuid4())
@@ -69,8 +68,8 @@ def set_up_assets(flask_app, db, test_root, admin_user, request):
 )
 def test_asset_meta_and_delete(flask_app, db, test_root, admin_user, request):
     from app.modules.annotations.models import Annotation
-    from app.modules.assets.models import Asset
     from app.modules.asset_groups.models import AssetGroup
+    from app.modules.assets.models import Asset
     from app.modules.sightings.models import Sighting, SightingAssets
 
     asset_group = set_up_assets(flask_app, db, test_root, admin_user, request)

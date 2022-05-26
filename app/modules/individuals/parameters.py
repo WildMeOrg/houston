@@ -3,15 +3,17 @@
 Input arguments (Parameters) for Individuals resources RESTful API
 -----------------------------------------------------------
 """
-from flask_restx_patched import Parameters, PatchJSONParameters
-from . import schemas
 import logging
-import app.modules.utils as util
-from flask_restx_patched._http import HTTPStatus
-from flask_marshmallow import base_fields
-from app.utils import HoustonException
 from uuid import UUID
 
+from flask_marshmallow import base_fields
+
+import app.modules.utils as util
+from app.utils import HoustonException
+from flask_restx_patched import Parameters, PatchJSONParameters
+from flask_restx_patched._http import HTTPStatus
+
+from . import schemas
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
@@ -94,9 +96,10 @@ class PatchIndividualDetailsParameters(PatchJSONParameters):
             and util.is_valid_uuid_string(value['guid'])
             and util.is_valid_uuid_string(value['preferring_user'])
         ):
+            from flask_login import current_user
+
             from app.modules.names.models import Name
             from app.modules.users.models import User
-            from flask_login import current_user
 
             name = Name.query.get(value['guid'])
             if not name or name.individual_guid != obj.guid:
@@ -134,9 +137,10 @@ class PatchIndividualDetailsParameters(PatchJSONParameters):
                     'value must contain keys ("context", "value") or ("guid", "preferring_user")',
                     status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
                 )
+            from flask_login import current_user
+
             from app.modules.names.models import Name
             from app.modules.users.models import User
-            from flask_login import current_user
 
             if 'context' in value:
                 # if add_name fails (e.g. constraint violation due to context duplication) a 409/conflict will be returned

@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=missing-docstring
 
-from tests.modules.projects.resources import utils as proj_utils
 import pytest
 
+from tests.modules.projects.resources import utils as proj_utils
 from tests.utils import module_unavailable
 
 

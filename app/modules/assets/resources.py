@@ -7,20 +7,18 @@ RESTful API Assets resources
 
 import logging
 
-from flask import send_file, request
+import werkzeug
+from flask import request, send_file
 
-from flask_restx_patched import Resource
-from flask_restx_patched._http import HTTPStatus
 from app.extensions import db
 from app.extensions.api import Namespace
 from app.modules.users import permissions
 from app.modules.users.permissions.types import AccessOperation
-import werkzeug
+from flask_restx_patched import Resource
+from flask_restx_patched._http import HTTPStatus
 
+from . import parameters, schemas
 from .models import Asset
-
-from . import schemas, parameters
-
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 api = Namespace('assets', description='Assets')  # pylint: disable=invalid-name

@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 import pytest
 
-from tests.utils import module_unavailable
 from tests.modules.missions.resources import utils as mission_utils
+from tests.utils import module_unavailable
 
 
 @pytest.mark.skipif(module_unavailable('missions'), reason='Missions module disabled')

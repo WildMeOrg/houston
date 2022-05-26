@@ -4,16 +4,16 @@ IntelligentAgent (and subclass) models
 --------------------------------------
 """
 import datetime
+import enum
 import gettext
+import logging
 import traceback
 import uuid
-import enum
-import logging
 
-from app.extensions import db
-import app.extensions.logging as AuditLog  # NOQA
-from app.extensions import HoustonModel
 from flask import current_app, url_for
+
+import app.extensions.logging as AuditLog  # NOQA
+from app.extensions import HoustonModel, db
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 _ = gettext.gettext
@@ -415,9 +415,11 @@ class IntelligentAgentContent(db.Model, HoustonModel):
     def prepare_media_transaction(self, media_data):
         if not isinstance(media_data, list) or not media_data:
             raise ValueError('invalid or empty media_data')
-        import requests
-        import uuid
         import os
+        import uuid
+
+        import requests
+
         from app.extensions.tus import tus_upload_dir, tus_write_file_metadata
         from app.utils import get_stored_filename
 
@@ -492,8 +494,9 @@ class IntelligentAgentContent(db.Model, HoustonModel):
         db.session.refresh(self)
 
     def detection_complete(self):
-        from app.modules.assets.models import Asset
         import traceback
+
+        from app.modules.assets.models import Asset
 
         annots = []
         jobs = []
@@ -1086,8 +1089,9 @@ class TwitterTweet(IntelligentAgentContent):
     # this override is only to satisify the deadline hack of not using real user.linked_account process FIXME
     #   remove it (to let baseclass method run) when hack is gone
     def find_author_user(self):
-        from app.modules.users.models import User
         from sqlalchemy import func
+
+        from app.modules.users.models import User
 
         username = self.get_author_username()
         if not username:

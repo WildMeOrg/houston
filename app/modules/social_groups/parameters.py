@@ -4,9 +4,11 @@ Input arguments (Parameters) for Social Groups resources RESTful API
 -----------------------------------------------------------
 """
 import logging
+
 from flask_marshmallow import base_fields
-from flask_restx_patched import Parameters, PatchJSONParameters
+
 import app.extensions.logging as AuditLog
+from flask_restx_patched import Parameters, PatchJSONParameters
 
 from . import schemas
 

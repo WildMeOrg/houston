@@ -3,15 +3,14 @@
 Progress database models
 --------------------
 """
+import enum
 import logging
+import uuid
 
-from sqlalchemy_utils import Timestamp
 from etaprogress.eta import ETA
+from sqlalchemy_utils import Timestamp
 
 from app.extensions import db
-
-import uuid
-import enum
 
 log = logging.getLogger(__name__)
 
@@ -143,8 +142,9 @@ class Progress(db.Model, Timestamp):
 
     @property
     def ahead(self):
-        import redis
         import json
+
+        import redis
 
         global BROKER
 
@@ -330,7 +330,7 @@ class Progress(db.Model, Timestamp):
             elif step.completed:
                 self.iterate(chain=chain)
             elif step.failed:
-                message = 'Step %r failure: %r' % (
+                message = 'Step {!r} failure: {!r}'.format(
                     step,
                     step.message,
                 )
@@ -457,6 +457,6 @@ class Progress(db.Model, Timestamp):
         if self.parent:
             self.parent.notify(self.guid, chain=chain)
 
-        log.info('Updated %r' % (self,))
+        log.info('Updated {!r}'.format(self))
 
         return 'set'

@@ -6,15 +6,16 @@ Input arguments (Parameters) for Asset_groups resources RESTful API
 import logging
 import uuid
 
-from app.modules.sightings.parameters import PatchSightingDetailsParameters
-from app.modules.encounters.parameters import PatchEncounterDetailsParameters
-from .metadata import AssetGroupMetadata, AssetGroupMetadataError
-from flask_restx_patched import Parameters, PatchJSONParameters
 from flask_login import current_user  # NOQA
 
-from . import schemas
-from .models import AssetGroup
+from app.modules.encounters.parameters import PatchEncounterDetailsParameters
+from app.modules.sightings.parameters import PatchSightingDetailsParameters
 from app.modules.users.permissions import rules
+from flask_restx_patched import Parameters, PatchJSONParameters
+
+from . import schemas
+from .metadata import AssetGroupMetadata, AssetGroupMetadataError
+from .models import AssetGroup
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 

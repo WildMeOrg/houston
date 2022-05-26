@@ -1,14 +1,10 @@
 # -*- coding: utf-8 -*-
 import pytest
 
-from tests import utils
-from tests.utils import (
-    module_unavailable,
-    random_guid,
-    wait_for_elasticsearch_status,
-)
-from tests.modules.missions.resources import utils as mission_utils
 import tests.extensions.tus.utils as tus_utils
+from tests import utils
+from tests.modules.missions.resources import utils as mission_utils
+from tests.utils import module_unavailable, random_guid, wait_for_elasticsearch_status
 
 
 @pytest.mark.skipif(module_unavailable('missions'), reason='Missions module disabled')
@@ -20,11 +16,7 @@ def test_get_mission_task_not_found(flask_app_client):
 
 @pytest.mark.skipif(module_unavailable('missions'), reason='Missions module disabled')
 def test_get_mission_task_by_search(flask_app_client, data_manager_1, test_root):
-    from app.modules.missions.models import (
-        Mission,
-        MissionCollection,
-        MissionTask,
-    )
+    from app.modules.missions.models import Mission, MissionCollection, MissionTask
 
     transaction_id, test_filename = tus_utils.prep_tus_dir(test_root)
     transaction_ids = []

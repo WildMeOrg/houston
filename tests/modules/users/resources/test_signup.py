@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=missing-docstring
-from unittest import mock
 import uuid
+from unittest import mock
+
 import tests.modules.users.resources.utils as user_utils
 from app.modules import is_module_enabled
-
 
 # from config import get_preliminary_config
 

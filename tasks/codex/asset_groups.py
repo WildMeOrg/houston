@@ -3,8 +3,9 @@
 Application AssetGroup management related tasks for Invoke.
 """
 
-from tasks.utils import app_context_task
 import os
+
+from tasks.utils import app_context_task
 
 
 @app_context_task(
@@ -26,12 +27,13 @@ def create_asset_group_from_path(
     Command Line:
     > invoke codex.asset_groups.create-asset_group-from-path --path tests/asset_groups/test-000/ --email jason@wildme.org
     """
-    from app.modules.users.models import User
-    from app.modules.asset_groups.models import AssetGroup
+    import socket
+
+    from app.extensions import db
     from app.extensions.git_store import GitStoreMajorType as AssetGroupMajorType
     from app.extensions.git_store.tasks import git_push
-    from app.extensions import db
-    import socket
+    from app.modules.asset_groups.models import AssetGroup
+    from app.modules.users.models import User
 
     user = User.find(email=email)
 
@@ -39,10 +41,10 @@ def create_asset_group_from_path(
         raise Exception("User with email '%s' does not exist." % email)
 
     absolute_path = os.path.abspath(os.path.expanduser(path))
-    print('Attempting to import path: %r' % (absolute_path,))
+    print('Attempting to import path: {!r}'.format(absolute_path))
 
     if not os.path.exists(path):
-        raise IOError('The path %r does not exist.' % (absolute_path,))
+        raise IOError('The path {!r} does not exist.'.format(absolute_path))
 
     args = {
         'owner_guid': user.guid,
@@ -62,11 +64,11 @@ def create_asset_group_from_path(
     asset_group.git_copy_path(absolute_path)
 
     hostname = socket.gethostname()
-    asset_group.git_commit('Initial commit via CLI on host %r' % (hostname,))
+    asset_group.git_commit('Initial commit via CLI on host {!r}'.format(hostname))
 
     git_push(str(asset_group.guid))
 
-    print('Created and pushed new asset_group: %r' % (asset_group,))
+    print('Created and pushed new asset_group: {!r}'.format(asset_group))
 
 
 @app_context_task(
@@ -86,8 +88,8 @@ def clone_asset_group_from_gitlab(
     Command Line:
     > invoke codex.asset_groups.clone-asset_group-from-gitlab --guid 00000000-0000-0000-0000-000000000002 --email jason@wildme.org
     """
-    from app.modules.users.models import User
     from app.modules.asset_groups.models import AssetGroup
+    from app.modules.users.models import User
 
     user = User.find(email=email)
 
@@ -97,18 +99,20 @@ def clone_asset_group_from_gitlab(
     asset_group = AssetGroup.query.get(guid)
 
     if asset_group is not None:
-        print('AssetGroup is already cloned locally:\n\t%s' % (asset_group,))
+        print('AssetGroup is already cloned locally:\n\t{}'.format(asset_group))
         asset_group.ensure_repository()
         return
 
     asset_group = AssetGroup.ensure_store(guid, owner=user)
 
     if asset_group is None:
-        raise ValueError('Could not find asset_group in GitLab using GUID %r' % (guid,))
+        raise ValueError(
+            'Could not find asset_group in GitLab using GUID {!r}'.format(guid)
+        )
 
     print('Cloned asset_group from GitLab:')
-    print('\tAssetGroup: %r' % (asset_group,))
-    print('\tLocal Path: %r' % (asset_group.get_absolute_path(),))
+    print('\tAssetGroup: {!r}'.format(asset_group))
+    print('\tLocal Path: {!r}'.format(asset_group.get_absolute_path()))
 
 
 @app_context_task

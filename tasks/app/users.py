@@ -37,8 +37,8 @@ def add_role(context, email, role):
     """
     Update a given user (email) to have a role (Admin, Staff, Internal, Researcher, Contributor, Exporter)
     """
-    from app.modules.users.models import User
     from app.extensions import db
+    from app.modules.users.models import User
 
     user = User.find(email=email)
 
@@ -50,7 +50,7 @@ def add_role(context, email, role):
     role = role.lower()
 
     if role in ['admin', 'administrator']:
-        print('Found user:\n\t%r' % (user,))
+        print('Found user:\n\t{!r}'.format(user))
         answer = input(
             'Are you sure you want to promote the above found user to a site administrator? [Y / N]: '
         )
@@ -87,8 +87,8 @@ def remove_role(context, email, role):
     """
     Update a given user (email) to not have a role (Admin, Staff, Internal, Researcher, Contributor, Exporter)
     """
-    from app.modules.users.models import User
     from app.extensions import db
+    from app.modules.users.models import User
 
     user = User.find(email=email)
 
@@ -126,8 +126,8 @@ def create_oauth2_client(context, email, guid, secret, default_scopes=None):
     """
     Create a new OAuth2 Client associated with a given user (email).
     """
-    from app.modules.users.models import User
     from app.modules.auth.models import OAuth2Client
+    from app.modules.users.models import User
 
     user = User.find(email=email)
 

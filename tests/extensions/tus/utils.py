@@ -4,12 +4,14 @@ tus test utils
 -------------
 """
 
-from flask import current_app
 import os
 import shutil
-import tqdm
-from PIL import Image
+
 import numpy as np
+import tqdm
+from flask import current_app
+from PIL import Image
+
 from app.extensions.tus import tus_upload_dir, tus_write_file_metadata
 from app.utils import get_stored_filename
 from tests.utils import random_nonce
@@ -50,7 +52,7 @@ def prep_randomized_tus_dir(total=100, transaction_id=None):
         os.mkdir(upload_dir)
 
     for iteration in tqdm.tqdm(list(range(total)), desc='Random Tus Images'):
-        filename = '%s.jpg' % (random_nonce(32),)
+        filename = '{}.jpg'.format(random_nonce(32))
         image_file = os.path.join(upload_dir, filename)
         numpy_image = np.around(np.random.rand(128, 128, 3) * 255.0).astype(np.uint8)
         Image.fromarray(numpy_image, 'RGB').save(image_file)

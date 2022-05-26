@@ -1,10 +1,11 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=invalid-name,missing-docstring
 
-import sqlalchemy
-import pytest
-
 import logging
+
+import pytest
+import sqlalchemy
+
 from tests.utils import module_unavailable
 
 
@@ -12,10 +13,7 @@ from tests.utils import module_unavailable
 def test_mission_add_members(
     db, temp_user, data_manager_1, data_manager_2
 ):  # pylint: disable=unused-argument
-    from app.modules.missions.models import (
-        Mission,
-        MissionUserAssignment,
-    )
+    from app.modules.missions.models import Mission, MissionUserAssignment
 
     temp_mission = Mission(
         title='Temp Mission',

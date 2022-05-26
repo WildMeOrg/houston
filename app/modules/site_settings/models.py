@@ -3,14 +3,14 @@
 Site Settings database models
 --------------------
 """
-from app.extensions import db, Timestamp, extension_required, is_extension_enabled
+import logging
+
 from flask import current_app
 from flask_login import current_user  # NOQA
 
+from app.extensions import Timestamp, db, extension_required, is_extension_enabled
 from app.modules import is_module_enabled
 from app.utils import HoustonException
-
-import logging
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
@@ -744,7 +744,7 @@ class Regions(dict):
     def find_fuzzy_list(self, possible):
         matches = []
         # reduces to unique (and lowercase first)
-        for p in set([a.lower() for a in possible]):
+        for p in {a.lower() for a in possible}:
             fz = self.find_fuzzy(p)
             if fz:
                 matches.append(fz)
@@ -835,7 +835,7 @@ class Taxonomy:
     def find_fuzzy_list(cls, possible):
         matches = []
         # reduces to unique (and lowercase first)
-        for p in set([a.lower() for a in possible]):
+        for p in {a.lower() for a in possible}:
             fz = cls.find_fuzzy(p)
             if fz:
                 matches.append(fz)

@@ -3,8 +3,9 @@
 Application Users management related tasks for Invoke.
 """
 
-from tasks.utils import app_context_task
 import datetime
+
+from tasks.utils import app_context_task
 
 
 @app_context_task(

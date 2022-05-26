@@ -5,14 +5,13 @@ RESTful API Passthroughs resources
 --------------------------
 """
 
+import json
 import logging
 
 from flask import current_app, request
-from flask_restx_patched import Resource
+
 from app.extensions.api import Namespace
-
-import json
-
+from flask_restx_patched import Resource
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 edm_pass = Namespace(

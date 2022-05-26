@@ -3,12 +3,11 @@ import pathlib
 from unittest import mock
 
 import invoke.exceptions
-from invoke import MockContext, Result
 import pytest
+from invoke import MockContext, Result
 
 import tasks.docker_compose
 from tests.utils import extension_unavailable
-
 
 with (pathlib.Path(__file__).parent.parent.parent / 'docker-compose.yml').open() as f:
     DOCKER_COMPOSE = f.read()

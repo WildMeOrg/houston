@@ -1,15 +1,15 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=missing-docstring
+import datetime
 import uuid
 
-from tests.modules.sightings.resources import utils as sighting_utils
-from tests.modules.individuals.resources import utils as individual_utils
-from tests.modules.asset_groups.resources import utils as asset_group_utils
-from tests.extensions.tus import utils as tus_utils
-from tests import utils as test_utils
-import datetime
 import pytest
 
+from tests import utils as test_utils
+from tests.extensions.tus import utils as tus_utils
+from tests.modules.asset_groups.resources import utils as asset_group_utils
+from tests.modules.individuals.resources import utils as individual_utils
+from tests.modules.sightings.resources import utils as sighting_utils
 from tests.utils import module_unavailable
 
 timestamp = datetime.datetime.now().isoformat() + '+00:00'
@@ -86,8 +86,8 @@ def test_create_failures(flask_app_client, test_root, researcher_1, request):
 def test_create_and_modify_and_delete_sighting(
     db, flask_app_client, researcher_1, test_root, staff_user, request
 ):
-    from app.modules.sightings.models import Sighting
     from app.modules.complex_date_time.models import Specificities
+    from app.modules.sightings.models import Sighting
 
     # we should end up with these same counts (which _should be_ all zeros!)
     orig_ct = test_utils.all_count(db)
@@ -378,12 +378,12 @@ def test_create_anon_and_delete_sighting(
     sighting = Sighting.query.get(sighting_id)
     assert sighting is not None
     asset_guids.sort()
-    assert sorted([str(a.asset_guid) for a in sighting.sighting_assets]) == asset_guids
+    assert sorted(str(a.asset_guid) for a in sighting.sighting_assets) == asset_guids
 
     # Check assets are returned in GET sighting
     with flask_app_client.login(staff_user, auth_scopes=('sightings:read',)):
         response = flask_app_client.get(f'/api/v1/sightings/{sighting_id}')
-        assert sorted([a['guid'] for a in response.json['assets']]) == asset_guids
+        assert sorted(a['guid'] for a in response.json['assets']) == asset_guids
 
     # test some modification; this should fail (401) cuz anon should not be allowed
     new_loc_id = 'test_2_fail'
@@ -587,9 +587,9 @@ def test_complex_mixed_patch(
 def test_create_sighting_time_test(
     flask_app, flask_app_client, researcher_1, request, test_root
 ):
-    from tests.modules.sightings.resources import utils as sighting_utils
-    from app.modules.sightings.models import Sighting
     from app.modules.complex_date_time.models import Specificities
+    from app.modules.sightings.models import Sighting
+    from tests.modules.sightings.resources import utils as sighting_utils
 
     # test with invalid time
     sighting_data = {

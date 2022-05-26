@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=missing-docstring
+import pytest
+
 import tests.modules.collaborations.resources.utils as collab_utils
 import tests.modules.notifications.resources.utils as notif_utils
 import tests.utils as utils
-import pytest
-
 from tests.utils import module_unavailable
 
 

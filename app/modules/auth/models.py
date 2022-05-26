@@ -9,20 +9,20 @@ More details are available here:
 * http://flask-oauthlib.readthedocs.org/en/latest/oauth2.html
 * http://lepture.com/en/2013/create-oauth-server
 """
-import logging
+import datetime
 import enum
+import logging
+import random
+import uuid
 
+import pytz
+from flask import current_app
 from sqlalchemy import or_
 from sqlalchemy_utils.types import ScalarListType
 
-from app.extensions import db, HoustonModel
+from app.extensions import HoustonModel, db
 from app.extensions.auth import security
 from app.modules.users.models import User
-from flask import current_app
-import datetime
-import pytz
-import random
-import uuid
 
 log = logging.getLogger(__name__)
 
@@ -316,7 +316,9 @@ class Code(db.Model, HoustonModel):
     ):
         """Replace will automatically invalidate any codes previously issued (above the replace_ttl value, in minutes)"""
         code_settings = CODE_SETTINGS.get(code_type, None)
-        assert code_settings is not None, 'Code type was unrecognized: %r' % (code_type,)
+        assert code_settings is not None, 'Code type was unrecognized: {!r}'.format(
+            code_type
+        )
 
         # Get any codes that fit this request
         valid_codes = cls.valid_codes(user, code_type)
@@ -363,10 +365,14 @@ class Code(db.Model, HoustonModel):
                     # Found unique codes
                     break
                 log.warning('Finding alternate codes, there was a conflict:')
-                log.warning('\tCandidate   Accept Code  : %r' % (accept_code,))
-                log.warning('\tConflicting Accept Codes : %r' % (existing_accept_codes,))
-                log.warning('\tCandidate   Reject Code  : %r' % (reject_code,))
-                log.warning('\tConflicting Reject Codes : %r' % (existing_reject_codes,))
+                log.warning('\tCandidate   Accept Code  : {!r}'.format(accept_code))
+                log.warning(
+                    '\tConflicting Accept Codes : {!r}'.format(existing_accept_codes)
+                )
+                log.warning('\tCandidate   Reject Code  : {!r}'.format(reject_code))
+                log.warning(
+                    '\tConflicting Reject Codes : {!r}'.format(existing_reject_codes)
+                )
 
             ttl_days = code_settings.get('ttl')
             if ttl_days is None or ttl_days < 0:

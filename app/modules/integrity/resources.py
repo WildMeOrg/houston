@@ -8,17 +8,16 @@ RESTful API Integrity resources
 import logging
 
 from flask import request
-from flask_restx_patched import Resource
 from flask_restx._http import HTTPStatus
 
 from app.extensions import db
 from app.extensions.api import Namespace
 from app.modules.users import permissions
 from app.modules.users.permissions.types import AccessOperation
+from flask_restx_patched import Resource
 
 from . import parameters, schemas
 from .models import Integrity
-
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 api = Namespace(

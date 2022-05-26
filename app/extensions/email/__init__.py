@@ -1,19 +1,19 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=no-self-use
 import datetime
-from io import StringIO
 import logging
 import re
+from io import StringIO
 
+import cssutils
+import htmlmin
 from flask import current_app, render_template, url_for
 from flask_mail import Mail, Message, email_dispatched
 from jinja2 import TemplateNotFound
 from premailer import Premailer
-import cssutils
-import htmlmin
+
 import app.version
 from app.utils import to_ascii
-
 from flask_restx_patched import is_extension_enabled
 
 if not is_extension_enabled('mail'):
@@ -106,8 +106,9 @@ def _format_datetime(dt, verbose=False):
 
 class Email(Message):
     def __init__(self, **kwargs):
-        from app.modules.site_settings.models import SiteSetting
         import uuid
+
+        from app.modules.site_settings.models import SiteSetting
 
         if 'recipients' not in kwargs:
             raise AttributeError('Email() must have recipients= argument')
@@ -276,7 +277,7 @@ class Email(Message):
         ]
         webfonts_html = ''.join(webfonts)
         minified_html = minified_html.replace(
-            '</head>', '%s</head>' % (WEBFONTS_PLACEHOLDER_CODE,)
+            '</head>', '{}</head>'.format(WEBFONTS_PLACEHOLDER_CODE)
         )
         final_html = minified_html.replace(WEBFONTS_PLACEHOLDER_CODE, webfonts_html)
         self.html = final_html

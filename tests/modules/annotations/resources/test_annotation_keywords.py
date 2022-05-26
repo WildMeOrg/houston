@@ -1,12 +1,13 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=missing-docstring
+import logging
+
+import pytest
+
 from tests import utils
 from tests.modules.annotations.resources import utils as annot_utils
 from tests.modules.asset_groups.resources import utils as ag_utils
 from tests.modules.keywords.resources import utils as keyword_utils
-import pytest
-import logging
-
 from tests.utils import module_unavailable
 
 log = logging.getLogger(__name__)

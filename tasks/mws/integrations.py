@@ -4,7 +4,6 @@ import sys
 
 from tasks.utils import app_context_task
 
-
 log = logging.getLogger(__name__)
 
 

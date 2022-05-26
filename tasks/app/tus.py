@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
-from tasks.utils import app_context_task
-from app.utils import sizeof
 import logging
+
+from app.utils import sizeof
+from tasks.utils import app_context_task
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
@@ -11,15 +12,16 @@ def cache_info(context, model=None):
     """
     Get the status of the Tus cache folder
     """
-    from app.modules.users.models import User
-    from app.extensions import tus
-    from flask import current_app
-    import humanize
     import datetime
     import json
     import os
-
     import time
+
+    import humanize
+    from flask import current_app
+
+    from app.extensions import tus
+    from app.modules.users.models import User
 
     tus_directory = tus.tus_upload_dir(current_app)
 

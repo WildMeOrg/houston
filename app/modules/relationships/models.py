@@ -4,13 +4,12 @@ Relationships database models
 --------------------
 """
 
-from app.extensions import HoustonModel, db
 import datetime
-import app.extensions.logging as AuditLog
-
+import logging
 import uuid
 
-import logging
+import app.extensions.logging as AuditLog
+from app.extensions import HoustonModel, db
 
 log = logging.getLogger(__name__)
 

@@ -6,13 +6,12 @@ Revises: None
 Create Date: 2021-04-27 12:38:21.490885
 
 """
-from alembic import op
 import sqlalchemy as sa
 import sqlalchemy_utils
+from alembic import op
 
 import app
 import app.extensions
-
 
 # revision identifiers, used by Alembic.
 revision = '3c74d2d3214a_initial_database'

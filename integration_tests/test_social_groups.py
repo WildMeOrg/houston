@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
-from . import utils
 import time
+
+from . import utils
 
 
 # Not a generic util as there has to be exactly one asset group sighting, no assets, one sighting, and three

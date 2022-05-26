@@ -8,22 +8,18 @@ import json
 import logging
 from urllib.parse import urlencode
 
-from flask import current_app, request, redirect
+from flask import current_app, redirect, request
 from flask_login import current_user, login_user, logout_user
+
+from app.extensions import oauth2
+from app.extensions.api import Namespace, abort, api_v1
+from app.modules.users.models import User
 from flask_restx_patched import Resource
 from flask_restx_patched._http import HTTPStatus
 
-from app.extensions import oauth2
-from app.extensions.api import Namespace, api_v1, abort
-from app.modules.users.models import User
-
-from . import schemas, parameters
-from .models import db, OAuth2Client, Code, CodeDecisions, CodeTypes
-from .utils import (
-    create_session_oauth2_token,
-    delete_session_oauth2_token,
-)
-
+from . import parameters, schemas
+from .models import Code, CodeDecisions, CodeTypes, OAuth2Client, db
+from .utils import create_session_oauth2_token, delete_session_oauth2_token
 
 log = logging.getLogger(__name__)
 api = Namespace('auth', description='Authentication')
@@ -62,7 +58,7 @@ class OAuth2Sessions(Resource):
             status = login_user(user, remember=False)
 
             if status:
-                log.info('Logged in User via API: %r' % (user,))
+                log.info('Logged in User via API: {!r}'.format(user))
                 create_session_oauth2_token()
             else:
                 failure = 'Account Disabled'
@@ -89,7 +85,7 @@ class OAuth2Sessions(Resource):
         """
         Log-out the active OAuth2 Session.
         """
-        log.info('Logging out User via API: %r' % (current_user,))
+        log.info('Logging out User via API: {!r}'.format(current_user))
 
         delete_session_oauth2_token()
         logout_user()

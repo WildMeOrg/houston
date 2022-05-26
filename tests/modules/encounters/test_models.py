@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=invalid-name,missing-docstring
 
-import tests.utils as test_utils
-import logging
 import datetime
+import logging
+
 import pytest
 
+import tests.utils as test_utils
 from tests.utils import module_unavailable
-
 
 log = logging.getLogger(__name__)
 
@@ -80,9 +80,9 @@ def test_owned_encounters_ordering(db, request):
 
 @pytest.mark.skipif(module_unavailable('encounters'), reason='Encounters module disabled')
 def test_encounter_time(db, request):
-    from app.modules.users.models import User
     from app.modules.complex_date_time.models import ComplexDateTime, Specificities
     from app.modules.encounters.models import Encounter
+    from app.modules.users.models import User
 
     public_owner = User.get_public_user()
     test_encounter = test_utils.generate_owned_encounter(public_owner)

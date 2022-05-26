@@ -3,15 +3,17 @@
 Input arguments (Parameters) for Annotations resources RESTful API
 -----------------------------------------------------------
 """
+from flask_login import current_user
 from flask_marshmallow import base_fields
 from marshmallow import validates_schema
-from flask_restx_patched import Parameters, PatchJSONParameters
-from flask_login import current_user
+
+from app.extensions.api import abort
 from app.modules.users.permissions import rules
+from flask_restx_patched import Parameters, PatchJSONParameters
+from flask_restx_patched._http import HTTPStatus
+
 from . import schemas
 from .models import Annotation
-from app.extensions.api import abort
-from flask_restx_patched._http import HTTPStatus
 
 
 class CreateAnnotationParameters(Parameters, schemas.BaseAnnotationSchema):

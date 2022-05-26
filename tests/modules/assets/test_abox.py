@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
-from PIL import Image
 import pytest
+from PIL import Image
 
 # import tests.utils as test_utils
 from tests.utils import module_unavailable
@@ -11,8 +11,8 @@ from tests.utils import module_unavailable
     module_unavailable('asset_groups'), reason='AssetGroups module disabled'
 )
 def test_abox_format():
-    from app.modules.assets.models import Asset
     from app.modules.annotations.models import Annotation
+    from app.modules.assets.models import Asset
 
     asset = Asset()
     image = Image.new('RGB', (1000, 800))

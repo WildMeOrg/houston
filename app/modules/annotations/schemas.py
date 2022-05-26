@@ -5,8 +5,10 @@ Serialization schemas for Annotations resources RESTful API
 """
 
 from flask_marshmallow import base_fields
-from flask_restx_patched import ModelSchema
+
 from app.modules import is_module_enabled
+from flask_restx_patched import ModelSchema
+
 from .models import Annotation
 
 

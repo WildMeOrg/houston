@@ -6,11 +6,10 @@ RESTful API User resources
 """
 
 import logging
-from flask_restx_patched import Resource
-from app.extensions.api import Namespace
 
 from app.extensions import is_extension_enabled
-
+from app.extensions.api import Namespace
+from flask_restx_patched import Resource
 
 log = logging.getLogger(__name__)
 api = Namespace('search', description='Searching via Elasticsearch')

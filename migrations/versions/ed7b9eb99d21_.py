@@ -9,7 +9,6 @@ Create Date: 2022-04-26 09:54:19.649695
 from alembic import op
 from sqlalchemy.dialects import postgresql
 
-
 # revision identifiers, used by Alembic.
 revision = 'ed7b9eb99d21'
 down_revision = '272bc58baeff'

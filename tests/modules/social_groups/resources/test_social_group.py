@@ -3,14 +3,15 @@
 
 import logging
 import uuid
-import pytest
-from tests.utils import module_unavailable
 
-import tests.modules.social_groups.resources.utils as soc_group_utils
+import pytest
+
+import tests.modules.audit_logs.resources.utils as audit_utils
 import tests.modules.individuals.resources.utils as individual_utils
 import tests.modules.sightings.resources.utils as sighting_utils
-import tests.modules.audit_logs.resources.utils as audit_utils
+import tests.modules.social_groups.resources.utils as soc_group_utils
 from tests import utils as test_utils
+from tests.utils import module_unavailable
 
 log = logging.getLogger(__name__)
 
@@ -294,9 +295,9 @@ def test_role_changes(
     current_roles = get_response.json['response']['configuration']['social_group_roles'][
         'value'
     ]
-    assert set({'Matriarch', 'IrritatingGit'}) == set(
-        [role['label'] for role in current_roles]
-    )
+    assert set({'Matriarch', 'IrritatingGit'}) == {
+        role['label'] for role in current_roles
+    }
 
     # Create some individuals to use in testing
     individuals = create_individuals(flask_app_client, researcher_1, request, test_root)

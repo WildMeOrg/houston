@@ -1,28 +1,23 @@
 # -*- coding: utf-8 -*-
-from importlib import import_module
+import logging
 import os
 import pathlib
 import tempfile
-import uuid
 import time
+import uuid
+import warnings
+from importlib import import_module
 from unittest import mock
 
-import logging
-import warnings
-import sqlalchemy
 import pytest
+import sqlalchemy
 from flask_login import current_user, login_user, logout_user
-from flask_restx_patched import is_module_enabled, is_extension_enabled
 
 from app import create_app
 from config import CONTEXT_ENVIRONMENT_VARIABLE, VALID_CONTEXTS
+from flask_restx_patched import is_extension_enabled, is_module_enabled
 
-from . import (
-    utils,
-    TEST_ASSET_GROUP_UUID,
-    TEST_EMPTY_ASSET_GROUP_UUID,
-)
-
+from . import TEST_ASSET_GROUP_UUID, TEST_EMPTY_ASSET_GROUP_UUID, utils
 
 log = logging.getLogger('pytest.conftest')  # pylint: disable=invalid-name
 
@@ -336,7 +331,7 @@ def flask_app(gitlab_remote_login_pat, disable_elasticsearch):
                 indices = es.es_all_indices()
                 for index in indices:
                     if index.startswith(es.TESTING_PREFIX):
-                        log.debug('Cleaning up test index %r' % (index,))
+                        log.debug('Cleaning up test index {!r}'.format(index))
                         es.es_delete_index(index, app=app)
 
             # Drop all tables
@@ -566,8 +561,8 @@ def ensure_asset_group_repo(flask_app, db, asset_group, file_data=[]):
         print('Gitlab unavailable, skip git_push')
         return
 
+    from app.extensions.git_store.tasks import ensure_remote, git_push
     from app.extensions.gitlab import GitlabInitializationError
-    from app.extensions.git_store.tasks import git_push, ensure_remote
 
     asset_group.ensure_repository()
     # Call ensure_remote without .delay in tests to do it in the foreground
@@ -629,9 +624,9 @@ def test_asset_group_uuid(flask_app, db, researcher_1, test_asset_group_file_dat
         print('Gitlab unavailable, skip ensure_asset_group_repo')
         return
 
+    from app.extensions.git_store import GitStoreMajorType as AssetGroupMajorType
     from app.extensions.gitlab import GitlabInitializationError
     from app.modules.asset_groups.models import AssetGroup
-    from app.extensions.git_store import GitStoreMajorType as AssetGroupMajorType
 
     guid = TEST_ASSET_GROUP_UUID
     asset_group = AssetGroup.query.get(guid)
@@ -660,8 +655,8 @@ def test_asset_group_uuid(flask_app, db, researcher_1, test_asset_group_file_dat
 
 @pytest.fixture
 def test_empty_asset_group_uuid(flask_app, db, researcher_1):
-    from app.modules.asset_groups.models import AssetGroup
     from app.extensions.git_store import GitStoreMajorType as AssetGroupMajorType
+    from app.modules.asset_groups.models import AssetGroup
 
     guid = TEST_EMPTY_ASSET_GROUP_UUID
     asset_group = AssetGroup.query.get(guid)
@@ -773,8 +768,8 @@ def contributor_1_login(flask_app, contributor_1):
 
 @pytest.fixture()
 def public_encounter():
-    from app.modules.users.models import User
     import tests.utils as test_utils
+    from app.modules.users.models import User
 
     return test_utils.generate_owned_encounter(User.get_public_user())
 

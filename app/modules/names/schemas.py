@@ -4,11 +4,12 @@ Serialization schemas for Names resources RESTful API
 ----------------------------------------------------
 """
 
-from flask_restx_patched import ModelSchema
 from flask_marshmallow import base_fields
 
-from .models import Name
 from app.modules.users.schemas import PublicUserSchema
+from flask_restx_patched import ModelSchema
+
+from .models import Name
 
 
 class BaseNameSchema(ModelSchema):

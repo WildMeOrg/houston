@@ -4,26 +4,26 @@ Testing utils
 -------------
 """
 
-from contextlib import contextmanager
 import datetime
 import json
+import logging
+import os
+import random
 import tempfile
+import time
+import uuid
+from contextlib import contextmanager
 
+import redis
 from flask import Response
 from flask.testing import FlaskClient
 from werkzeug.utils import cached_property
+
 from app.extensions.auth import security
-import logging
-import redis
-import time
-import random
-import uuid
-import os
-
 from config import get_preliminary_config
-from . import TEST_ASSET_GROUP_UUID, TEST_EMPTY_ASSET_GROUP_UUID
-
 from flask_restx_patched import is_extension_enabled, is_module_enabled
+
+from . import TEST_ASSET_GROUP_UUID, TEST_EMPTY_ASSET_GROUP_UUID
 
 
 class AutoAuthFlaskClient(FlaskClient):
@@ -199,7 +199,7 @@ def generate_user_instance(
         user_guid = uuid.uuid4()
 
     if email is None:
-        email = '%s@localhost' % (email,)
+        email = '{}@localhost'.format(email)
 
     if password is None:
         password = security.generate_random(128)
@@ -424,7 +424,7 @@ def delete_via_flask(
 def patch_test_op(value, path='current_password', guid=None):
     operation = {
         'op': 'test',
-        'path': '/%s' % (path,),
+        'path': '/{}'.format(path),
         'value': value,
     }
     if guid is not None:
@@ -435,7 +435,7 @@ def patch_test_op(value, path='current_password', guid=None):
 def patch_add_op(path, value, guid=None):
     operation = {
         'op': 'add',
-        'path': '/%s' % (path,),
+        'path': '/{}'.format(path),
         'value': value,
     }
     if guid is not None:
@@ -446,7 +446,7 @@ def patch_add_op(path, value, guid=None):
 def patch_remove_op(path, value=None, guid=None):
     operation = {
         'op': 'remove',
-        'path': '/%s' % (path,),
+        'path': '/{}'.format(path),
     }
     if value:
         operation['value'] = value
@@ -458,7 +458,7 @@ def patch_remove_op(path, value=None, guid=None):
 def patch_replace_op(path, value, guid=None):
     operation = {
         'op': 'replace',
-        'path': '/%s' % (path,),
+        'path': '/{}'.format(path),
         'value': value,
     }
     if guid is not None:
@@ -469,7 +469,7 @@ def patch_replace_op(path, value, guid=None):
 def set_union_op(path, value):
     operation = {
         'op': 'union',
-        'path': '/%s' % (path,),
+        'path': '/{}'.format(path),
         'value': value,
     }
     return operation
@@ -478,7 +478,7 @@ def set_union_op(path, value):
 def set_intersection_op(path, value):
     operation = {
         'op': 'intersection',
-        'path': '/%s' % (path,),
+        'path': '/{}'.format(path),
         'value': value,
     }
     return operation
@@ -487,7 +487,7 @@ def set_intersection_op(path, value):
 def set_difference_op(path, value):
     operation = {
         'op': 'difference',
-        'path': '/%s' % (path,),
+        'path': '/{}'.format(path),
         'value': value,
     }
     return operation
@@ -525,8 +525,8 @@ def all_count(db):
         count[cls.__name__] = row_count(db, cls)
 
     if is_module_enabled('assets', 'asset_groups'):
-        from app.modules.assets.models import Asset
         from app.modules.asset_groups.models import AssetGroup
+        from app.modules.assets.models import Asset
 
         asset_query = Asset.query
         asset_group_query = AssetGroup.query
@@ -618,8 +618,9 @@ def dummy_detection_info():
 
 
 def get_stored_path(full_path):
-    from app.utils import get_stored_filename
     import os
+
+    from app.utils import get_stored_filename
 
     dir, filename = os.path.split(full_path)
     stored_filename = get_stored_filename(filename)
@@ -714,7 +715,7 @@ def wait_for_elasticsearch_status(flask_app_client, user, force=True):
             status = get_elasticsearch_status(flask_app_client, user)
         except json.decoder.JSONDecodeError:
             status = {'error': 'decoding problem'}
-        log.info('Elasticsearch status: %s' % (status,))
+        log.info('Elasticsearch status: {}'.format(status))
 
         # Remove any outdated, disabled, health flags
         remove_keys = [
@@ -768,10 +769,10 @@ def elasticsearch(flask_app_client, user, namespace, data=None, expected_status_
     if data is None:
         data = {}
 
-    scope = '%s:read' % (namespace,)
+    scope = '{}:read'.format(namespace)
     with flask_app_client.login(user, auth_scopes=(scope,)):
         response = flask_app_client.post(
-            '/api/v1/%s/search/' % (namespace,),
+            '/api/v1/{}/search/'.format(namespace),
             content_type='application/json',
             data=json.dumps(data),
         )

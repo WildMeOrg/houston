@@ -2,8 +2,9 @@
 # This file is meant for celery command lines, for example:
 #    celery -A app.extensions.celery.celery worker
 from flask import current_app
-from flask_restx_patched import is_extension_enabled, is_module_enabled
+
 from config import get_preliminary_config
+from flask_restx_patched import is_extension_enabled, is_module_enabled
 
 config = get_preliminary_config()
 

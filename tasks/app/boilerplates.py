@@ -78,7 +78,7 @@ def crud_module(context, module_name='', module_name_singular=''):
             module_title=module_title,
             module_namespace=module_name.replace('_', '-'),
             model_name=model_name,
-        ).dump('%s/%s.py' % (module_path, template_file))
+        ).dump('{}/{}.py'.format(module_path, template_file))
 
     log.info('Module `%s` has been created.', module_name)
     print(

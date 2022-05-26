@@ -1,11 +1,12 @@
 # -*- coding: utf-8 -*-
 import uuid
+
+import pytest
+
 import tests.modules.asset_groups.resources.utils as asset_group_utils
 import tests.utils as test_utils
-import pytest
 from app.utils import HoustonException
-
-from tests.utils import module_unavailable, extension_unavailable
+from tests.utils import extension_unavailable, module_unavailable
 
 
 @pytest.mark.skipif(
@@ -143,7 +144,7 @@ def test_asset_group_sightings_bulk(
 
 @pytest.mark.skipif(extension_unavailable('edm'), reason='EDM extension disabled')
 def test_asset_group_sighting_config_field_getter(researcher_1, request):
-    from app.modules.asset_groups.models import AssetGroupSighting, AssetGroup
+    from app.modules.asset_groups.models import AssetGroup, AssetGroupSighting
 
     asset_group = AssetGroup(owner=researcher_1)
     request.addfinalizer(asset_group.delete)

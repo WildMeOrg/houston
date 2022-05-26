@@ -1,13 +1,14 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=missing-docstring
 
+import datetime
+
+import pytest
+
+from tests import utils as test_utils
 from tests.modules.individuals.resources import utils as individual_utils
 from tests.modules.sightings.resources import utils as sighting_utils
 from tests.modules.social_groups.resources import utils as socgrp_utils
-import pytest
-import datetime
-from tests import utils as test_utils
-
 from tests.utils import module_unavailable
 
 
@@ -99,8 +100,8 @@ def test_merge(db, flask_app_client, researcher_1, request, test_root):
 def test_merge_social_groups(
     db, flask_app_client, researcher_1, admin_user, request, test_root
 ):
-    from app.modules.social_groups.models import SocialGroup
     from app.modules.individuals.models import Individual
+    from app.modules.social_groups.models import SocialGroup
 
     individual1_uuids = individual_utils.create_individual_and_sighting(
         flask_app_client,
@@ -194,13 +195,15 @@ def test_merge_social_groups(
     assert len(social_groupA.members) == 1
     assert str(social_groupA.members[0].individual_guid) == individual1_id
     assert len(social_groupB.members) == 1
-    assert set(social_groupB.get_member(individual1_id).roles) == set(
-        [groupB_role_from_1, groupB_role_from_2]
-    )
+    assert set(social_groupB.get_member(individual1_id).roles) == {
+        groupB_role_from_1,
+        groupB_role_from_2,
+    }
     assert len(social_groupC.members) == 1
-    assert set(social_groupC.get_member(individual1_id).roles) == set(
-        [groupC_shared_role, groupC_role_from_2]
-    )
+    assert set(social_groupC.get_member(individual1_id).roles) == {
+        groupC_shared_role,
+        groupC_role_from_2,
+    }
 
 
 @pytest.mark.skipif(
@@ -208,10 +211,11 @@ def test_merge_social_groups(
     reason='Individuals module disabled',
 )
 def test_merge_request_init(db, flask_app_client, researcher_1, researcher_2, request):
-    from app.modules.individuals.models import Individual
-    from app.modules.encounters.models import Encounter
-    from app.modules.notifications.models import Notification, NotificationType
     from dateutil import parser as dt_parser
+
+    from app.modules.encounters.models import Encounter
+    from app.modules.individuals.models import Individual
+    from app.modules.notifications.models import Notification, NotificationType
 
     # since this is just a simple init-only test, we can use incomplete data (not going to edm etc)
     #   we just want to see that the task starts (it should be ignored and die when triggered in celery)
@@ -271,8 +275,8 @@ def test_merge_request_init(db, flask_app_client, researcher_1, researcher_2, re
     reason='Individuals module disabled',
 )
 def test_merge_hash(db, flask_app_client, researcher_1, researcher_2, request):
-    from app.modules.individuals.models import Individual
     from app.modules.encounters.models import Encounter
+    from app.modules.individuals.models import Individual
 
     individual1 = Individual()
     enc1 = Encounter()
@@ -372,7 +376,7 @@ def test_failure_cases(db, flask_app_client, researcher_1, request):
     )
     assert rtn
     assert len(rtn) == 2
-    assert set([individual1, individual2]) == set(rtn)
+    assert {individual1, individual2} == set(rtn)
 
 
 @pytest.mark.skipif(
@@ -438,7 +442,7 @@ def test_merge_names(db, flask_app_client, researcher_1, admin_user, request, te
         'another',
         'third',
         overridden_context,
-    } == set([name.context for name in individual1.names])
+    } == {name.context for name in individual1.names}
 
     # test fail_on_conflict flag (currently not used anywhere) - should raise ValueError
     individual4_uuids = individual_utils.create_individual_and_sighting(

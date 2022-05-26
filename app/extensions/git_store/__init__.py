@@ -4,31 +4,30 @@
 Local Git Store
 
 """
-from flask import current_app, request, session, render_template  # NOQA
-from flask_login import current_user  # NOQA
-import requests.exceptions
-
-import git
-from git import Git as BaseGit, Repo as BaseRepo
-
-from app.modules.assets.models import Asset
-from app.modules.users.models import User
-import app.extensions.logging as AuditLog  # NOQA
-from app.extensions import db, HoustonModel, parallel
-from app.utils import HoustonException
-from app.version import version
-
-import utool as ut
-import logging
-import keyword
-import pathlib
-import shutil
-import tqdm
-import uuid
 import enum
 import json
+import keyword
+import logging
 import os
+import pathlib
+import shutil
+import uuid
 
+import git
+import requests.exceptions
+import tqdm
+import utool as ut
+from flask import current_app, render_template, request, session  # NOQA
+from flask_login import current_user  # NOQA
+from git import Git as BaseGit
+from git import Repo as BaseRepo
+
+import app.extensions.logging as AuditLog  # NOQA
+from app.extensions import HoustonModel, db, parallel
+from app.modules.assets.models import Asset
+from app.modules.users.models import User
+from app.utils import HoustonException
+from app.version import version
 
 KEYWORD_SET = set(keyword.kwlist)
 
@@ -37,8 +36,9 @@ log = logging.getLogger(__name__)
 
 def compute_xxhash64_digest_filepath(filepath):
     try:
-        import xxhash
         import os
+
+        import xxhash
 
         assert os.path.exists(filepath)
 
@@ -243,7 +243,7 @@ class GitStore(db.Model, HoustonModel):
             # Write mime.whitelist.<mime-type-whitelist-guid>.json
             mime_type_whitelist_mapping_filepath = os.path.join(
                 current_app.config.get('PROJECT_DATABASE_PATH'),
-                'mime.whitelist.%s.json' % (self._mime_type_whitelist_guid,),
+                'mime.whitelist.{}.json'.format(self._mime_type_whitelist_guid),
             )
             if not os.path.exists(mime_type_whitelist_mapping_filepath):
                 log.debug(
@@ -339,20 +339,20 @@ class GitStore(db.Model, HoustonModel):
             repo.working_tree_dir, '_uploads', upload_file.filename
         )
         upload_file.save(file_repo_path)
-        log.info('Wrote file upload and added to local repo: %r' % (file_repo_path,))
+        log.info('Wrote file upload and added to local repo: {!r}'.format(file_repo_path))
 
     def git_copy_path(self, path):
         absolute_path = os.path.abspath(os.path.expanduser(path))
         if not os.path.exists(path):
-            raise IOError('The path %r does not exist.' % (absolute_path,))
+            raise IOError('The path {!r} does not exist.'.format(absolute_path))
 
         repo = self.ensure_repository()
         repo_path = os.path.join(repo.working_tree_dir, '_uploads')
 
         absolute_path = absolute_path.rstrip('/')
         repo_path = repo_path.rstrip('/')
-        absolute_path = '%s/' % (absolute_path,)
-        repo_path = '%s/' % (repo_path,)
+        absolute_path = '{}/'.format(absolute_path)
+        repo_path = '{}/'.format(repo_path)
 
         if os.path.exists(repo_path):
             shutil.rmtree(repo_path)
@@ -364,7 +364,7 @@ class GitStore(db.Model, HoustonModel):
 
         absolute_filepath = os.path.abspath(os.path.expanduser(filepath))
         if not os.path.exists(absolute_filepath):
-            raise IOError('The filepath %r does not exist.' % (absolute_filepath,))
+            raise IOError('The filepath {!r} does not exist.'.format(absolute_filepath))
 
         repo = self.ensure_repository()
         repo_path = os.path.join(repo.working_tree_dir, '_uploads')
@@ -460,7 +460,7 @@ class GitStore(db.Model, HoustonModel):
 
     def git_commit_delay(self, input_filenames):
         # Start the git_commit that will process the assets (update=True) and commit the new files to the Git repo (commit=True)
-        description = 'Tus collect commit for GitStore %r' % (self.guid,)
+        description = 'Tus collect commit for GitStore {!r}'.format(self.guid)
         if True or current_app.testing:
             # TODO (HARDENING): Remove True to the above conditional when tus-hardening is ready in the _frontend.codex/ repo
             # When testing, run on-demand and don't use celery workers
@@ -601,7 +601,7 @@ class GitStore(db.Model, HoustonModel):
                 return
 
         progress = Progress(
-            description='identification tracking for GitStore %r' % (self.guid,)
+            description='identification tracking for GitStore {!r}'.format(self.guid)
         )
         with db.session.begin():
             db.session.add(progress)
@@ -627,7 +627,7 @@ class GitStore(db.Model, HoustonModel):
                 return
 
         progress = Progress(
-            description='Detection tracking for GitStore %r' % (self.guid,)
+            description='Detection tracking for GitStore {!r}'.format(self.guid)
         )
         with db.session.begin():
             db.session.add(progress)
@@ -652,7 +652,7 @@ class GitStore(db.Model, HoustonModel):
                 )
                 return
 
-        progress = Progress(description='Git commit for GitStore %r' % (self.guid,))
+        progress = Progress(description='Git commit for GitStore {!r}'.format(self.guid))
         with db.session.begin():
             db.session.add(progress)
         db.session.refresh(progress)
@@ -808,7 +808,7 @@ class GitStore(db.Model, HoustonModel):
             filename = metadata.get('filename', None)
             if filename is not None:
                 metadata_filepath = os.path.join(
-                    local_metadata_path, '%s.metadata.json' % (name,)
+                    local_metadata_path, '{}.metadata.json'.format(name)
                 )
                 with open(metadata_filepath, 'w') as metadata_file:
                     metadata_ = {
@@ -879,8 +879,8 @@ class GitStore(db.Model, HoustonModel):
         try:
             assert self.exists
 
-            import utool as ut
             import magic
+            import utool as ut
 
             # Step 3.1
             #   Description: Walk the files in the repo and extract the Magic signatures and file stats
@@ -971,14 +971,14 @@ class GitStore(db.Model, HoustonModel):
                         logging.exception('Got exception in update_asset_symlinks')
                         errors.append(filepath)
 
-            log.info('Processed asset files from: %r' % (self,))
+            log.info('Processed asset files from: {!r}'.format(self))
             log.info('\tFiles   : %d' % (len(files),))
             log.info('\tSkipped : %d' % (len(skipped),))
             if len(skipped) > 0:
                 skipped_ext_list = [skip[1] for skip in skipped]
                 skipped_ext_str = ut.repr3(ut.dict_hist(skipped_ext_list))
                 skipped_ext_str = skipped_ext_str.replace('\n', '\n\t\t')
-                log.info('\t\t%s' % (skipped_ext_str,))
+                log.info('\t\t{}'.format(skipped_ext_str))
             log.info('\tErrors  : %d' % (len(errors),))
 
             if self.progress_preparation:
@@ -1122,13 +1122,13 @@ class GitStore(db.Model, HoustonModel):
                 asset.set_derived_meta()
 
                 log.debug(filepath)
-                log.debug('\tAsset         : %s' % (asset,))
-                log.debug('\tSemantic GUID : %s' % (asset.semantic_guid,))
-                log.debug('\tMIME type     : %s' % (asset.mime_type,))
-                log.debug('\tSignature     : %s' % (asset.magic_signature,))
-                log.debug('\tSize bytes    : %s' % (asset.size_bytes,))
-                log.debug('\tFS xxHash64   : %s' % (asset.filesystem_xxhash64,))
-                log.debug('\tFS GUID       : %s' % (asset.filesystem_guid,))
+                log.debug('\tAsset         : {}'.format(asset))
+                log.debug('\tSemantic GUID : {}'.format(asset.semantic_guid))
+                log.debug('\tMIME type     : {}'.format(asset.mime_type))
+                log.debug('\tSignature     : {}'.format(asset.magic_signature))
+                log.debug('\tSize bytes    : {}'.format(asset.size_bytes))
+                log.debug('\tFS xxHash64   : {}'.format(asset.filesystem_xxhash64))
+                log.debug('\tFS GUID       : {}'.format(asset.filesystem_guid))
 
             # Get all historical and current Assets for this Git Store
             assert self.exists

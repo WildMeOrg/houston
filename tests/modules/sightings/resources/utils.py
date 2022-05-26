@@ -5,9 +5,9 @@ Project resources utils
 """
 import json
 
-from tests import utils as test_utils
 import tests.extensions.tus.utils as tus_utils
 import tests.modules.asset_groups.resources.utils as asset_group_utils
+from tests import utils as test_utils
 
 PATH = '/api/v1/sightings/'
 
@@ -238,7 +238,7 @@ def patch_sighting(
         flask_app_client,
         user,
         'sightings:write',
-        '%s%s' % (PATH, sighting_guid),
+        '{}{}'.format(PATH, sighting_guid),
         patch_data,
         expected_status_code,
         set(),
@@ -257,7 +257,9 @@ def delete_sighting(
     flask_app_client, user, sight_guid, expected_status_code=204, headers=None
 ):
     with flask_app_client.login(user, auth_scopes=('sightings:write',)):
-        response = flask_app_client.delete('%s%s' % (PATH, sight_guid), headers=headers)
+        response = flask_app_client.delete(
+            '{}{}'.format(PATH, sight_guid), headers=headers
+        )
 
     if expected_status_code == 204:
         assert response.status_code == 204, response.json

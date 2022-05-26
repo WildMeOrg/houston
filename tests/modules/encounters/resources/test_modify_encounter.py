@@ -1,17 +1,17 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=missing-docstring
-import uuid
-from unittest import mock
 import datetime
 import time
+import uuid
+from unittest import mock
+
+import pytest
 
 from tests import utils
 from tests.modules.annotations.resources import utils as annot_utils
 from tests.modules.encounters.resources import utils as enc_utils
 from tests.modules.sightings.resources import utils as sighting_utils
 from tests.modules.site_settings.resources import utils as setting_utils
-import pytest
-
 from tests.utils import module_unavailable
 
 
@@ -28,8 +28,8 @@ def test_modify_encounter(
     test_root,
 ):
     # pylint: disable=invalid-name
-    from app.modules.encounters.models import Encounter
     from app.modules.complex_date_time.models import ComplexDateTime, Specificities
+    from app.modules.encounters.models import Encounter
 
     data_in = {
         'time': datetime.datetime.now().isoformat() + '+00:00',
@@ -218,10 +218,8 @@ def test_modify_encounter(
     expected_order = [
         value[1]
         for value in sorted(
-            [
-                (encounter.time.datetime, encounter.guid)
-                for encounter in [new_encounter_1, new_encounter_2]
-            ]
+            (encounter.time.datetime, encounter.guid)
+            for encounter in [new_encounter_1, new_encounter_2]
         )
     ]
     assert actual_order == expected_order
@@ -239,10 +237,8 @@ def test_modify_encounter(
     expected_order = [
         value[1]
         for value in sorted(
-            [
-                (encounter.time.datetime, encounter.guid)
-                for encounter in [new_encounter_1, new_encounter_2]
-            ]
+            (encounter.time.datetime, encounter.guid)
+            for encounter in [new_encounter_1, new_encounter_2]
         )
     ]
     assert actual_order[::-1] == expected_order
@@ -416,9 +412,9 @@ def test_modify_encounter_error(
 def test_create_encounter_time_test(
     flask_app, flask_app_client, researcher_1, request, test_root
 ):
-    from tests.modules.sightings.resources import utils as sighting_utils
-    from app.modules.encounters.models import Encounter
     from app.modules.complex_date_time.models import Specificities
+    from app.modules.encounters.models import Encounter
+    from tests.modules.sightings.resources import utils as sighting_utils
 
     # test with invalid time
     sighting_data = {

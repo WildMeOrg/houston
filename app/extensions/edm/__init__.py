@@ -4,20 +4,20 @@
 Ecological Data Management (EDM) manager.
 
 """
+import keyword
 import logging
-from flask import current_app, request, session, render_template  # NOQA
+import types
+import uuid
+
+import sqlalchemy
+import tqdm
+from flask import current_app, render_template, request, session  # NOQA
 from flask_login import current_user  # NOQA
+
+import app.extensions.logging as AuditLog  # NOQA
 from app.extensions import db
 from app.extensions.restManager.RestManager import RestManager
 from app.utils import HoustonException
-
-import types
-import tqdm
-import keyword
-import uuid
-import sqlalchemy
-import app.extensions.logging as AuditLog  # NOQA
-
 from flask_restx_patched import is_extension_enabled
 
 if not is_extension_enabled('edm'):
@@ -219,7 +219,7 @@ class EDMManager(RestManager):
 class EDMObjectMixin(object):
     @classmethod
     def edm_sync_all(cls, verbose=True, refresh=False):
-        edm_items = current_app.edm.get_list('%s.list' % (cls.EDM_NAME,))
+        edm_items = current_app.edm.get_list('{}.list'.format(cls.EDM_NAME))
 
         if verbose:
             log.info(
@@ -286,7 +286,7 @@ class EDMObjectMixin(object):
             set(sorted(data._fields)) - set(self.EDM_ATTRIBUTE_MAPPING)
         )
         if len(unmapped_attributes) > 0:
-            log.warning('Unmapped attributes: %r' % (unmapped_attributes,))
+            log.warning('Unmapped attributes: {!r}'.format(unmapped_attributes))
 
         found_version = None
         for edm_attribute in self.EDM_ATTRIBUTE_MAPPING:
@@ -296,7 +296,7 @@ class EDMObjectMixin(object):
                 attribute = self.EDM_ATTRIBUTE_MAPPING[edm_attribute]
                 if attribute is None:
                     log.warning(
-                        'Ignoring mapping for EDM attribute %r' % (edm_attribute,)
+                        'Ignoring mapping for EDM attribute {!r}'.format(edm_attribute)
                     )
                     continue
 
@@ -336,12 +336,12 @@ class EDMObjectMixin(object):
             db.session.merge(self)
 
         if found_version is None:
-            log.info('Updating to claimed version %r' % (claimed_version,))
+            log.info('Updating to claimed version {!r}'.format(claimed_version))
         else:
-            log.info('Updating to found version %r' % (found_version,))
+            log.info('Updating to found version {!r}'.format(found_version))
 
     def _sync_item(self, guid, version):
-        response = current_app.edm.get_data_item(guid, '%s.data' % (self.EDM_NAME,))
+        response = current_app.edm.get_data_item(guid, '{}.data'.format(self.EDM_NAME))
 
         assert response.success
         data = response.result

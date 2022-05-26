@@ -4,19 +4,18 @@
 import logging
 
 import pytest
+
 from app.modules.notifications.models import (
+    NOTIFICATION_DEFAULTS,
     Notification,
+    NotificationBuilder,
     NotificationChannel,
     NotificationType,
-    NotificationBuilder,
-    UserNotificationPreferences,
-    NOTIFICATION_DEFAULTS,
     SystemNotificationPreferences,
+    UserNotificationPreferences,
 )
 from app.utils import HoustonException
-
 from tests.utils import module_unavailable
-
 
 log = logging.getLogger(__name__)
 
@@ -103,9 +102,9 @@ def test_notification_message(db, researcher_1, researcher_2, flask_app, request
 
 def test_validate_preferences():
     from app.modules.notifications.models import (
+        NotificationChannel,
         NotificationPreferences,
         NotificationType,
-        NotificationChannel,
     )
 
     with pytest.raises(HoustonException) as exc:
@@ -115,7 +114,7 @@ def test_validate_preferences():
     with pytest.raises(HoustonException) as exc:
         NotificationPreferences.validate_preferences({'random': 'value'})
 
-    valid_options = sorted([i.value for i in NotificationType.__members__.values()])
+    valid_options = sorted(i.value for i in NotificationType.__members__.values())
     assert (
         str(exc.value)
         == f'Unknown field(s): random, options are {", ".join(valid_options)}.'
@@ -123,7 +122,7 @@ def test_validate_preferences():
 
     with pytest.raises(HoustonException) as exc:
         NotificationPreferences.validate_preferences({'all': {'random': True}})
-    valid_channels = sorted([i.value for i in NotificationChannel.__members__.values()])
+    valid_channels = sorted(i.value for i in NotificationChannel.__members__.values())
     assert (
         str(exc.value)
         == f'"all": Unknown field(s): random, options are {", ".join(valid_channels)}.'

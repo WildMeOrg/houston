@@ -6,12 +6,11 @@ Revises: cd0bc2d4043a
 Create Date: 2021-10-04 16:42:16.522352
 
 """
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 
 import app
 import app.extensions
-
 
 # revision identifiers, used by Alembic.
 revision = '001eedbc2f9a'

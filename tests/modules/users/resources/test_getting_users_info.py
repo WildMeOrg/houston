@@ -1,12 +1,13 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=missing-docstring
-import pytest
 import datetime
-from . import utils as user_utils
 
-from tests.utils import module_unavailable
+import pytest
+
 from app.modules import is_module_enabled
+from tests.utils import module_unavailable
 
+from . import utils as user_utils
 
 timestamp = datetime.datetime.now().isoformat() + 'Z'
 

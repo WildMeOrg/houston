@@ -15,17 +15,14 @@ from flask import (
     request,
     url_for,
 )
-from flask_login import login_user, logout_user, login_required, current_user
+from flask_login import current_user, login_required, login_user, logout_user
 
-from app.modules.auth.views import (
-    _is_safe_url,
-)
 from app.modules.auth.utils import (
     create_session_oauth2_token,
     delete_session_oauth2_token,
 )
+from app.modules.auth.views import _is_safe_url
 from app.modules.users.models import User
-
 
 log = logging.getLogger(__name__)
 
@@ -125,7 +122,7 @@ def user_login(email=None, password=None, remember=None, refer=None, *args, **kw
 
     if refer is not None:
         if not _is_safe_url(refer):
-            log.error('User gave insecure next URL: %r' % (refer,))
+            log.error('User gave insecure next URL: {!r}'.format(refer))
             refer = None
 
     failure_refer = 'backend.home'
@@ -186,11 +183,11 @@ def user_logout(refer=None, *args, **kwargs):
 
     if refer is not None:
         if not _is_safe_url(refer):
-            log.error('User gave insecure next URL: %r' % (refer,))
+            log.error('User gave insecure next URL: {!r}'.format(refer))
             refer = None
 
     # Delete the Oauth2 token for this session
-    log.info('Logging out User: %r' % (current_user,))
+    log.info('Logging out User: {!r}'.format(current_user))
 
     delete_session_oauth2_token()
 

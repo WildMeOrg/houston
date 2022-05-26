@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
-from tasks.utils import download_file
+import hashlib
 import os
 from os.path import abspath, exists
-import hashlib
+
+from tasks.utils import download_file
 
 
 def test_download_file():

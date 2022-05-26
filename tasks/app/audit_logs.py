@@ -29,9 +29,10 @@ def all(context):
 @app_context_task()
 def all_faults(context):
     """Print out all of the audit log faults"""
-    from app.modules.audit_logs.models import AuditLog
-    import app.extensions.logging as AuditLogExtension  # NOQA
     from sqlalchemy import desc
+
+    import app.extensions.logging as AuditLogExtension  # NOQA
+    from app.modules.audit_logs.models import AuditLog
 
     faults = (
         AuditLog.query.filter(

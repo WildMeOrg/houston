@@ -4,9 +4,8 @@ Assets module
 ============
 """
 
-from app.extensions.api import api_v1
 from app.extensions import register_elasticsearch_model
-
+from app.extensions.api import api_v1
 from app.modules import is_module_enabled
 
 if not is_module_enabled('assets'):

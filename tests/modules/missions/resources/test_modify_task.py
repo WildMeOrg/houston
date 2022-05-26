@@ -1,15 +1,15 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=missing-docstring
 
-from tests import utils
-from tests.modules.missions.resources import utils as mission_utils
-from tests.utils import random_guid, wait_for_elasticsearch_status
-import tests.extensions.tus.utils as tus_utils
 import datetime
-import pytest
 import time
 
-from tests.utils import module_unavailable
+import pytest
+
+import tests.extensions.tus.utils as tus_utils
+from tests import utils
+from tests.modules.missions.resources import utils as mission_utils
+from tests.utils import module_unavailable, random_guid, wait_for_elasticsearch_status
 
 
 @pytest.mark.skipif(module_unavailable('missions'), reason='Missions module disabled')
@@ -17,13 +17,9 @@ def test_modify_mission_task_users(
     db, flask_app_client, data_manager_1, data_manager_2, test_root
 ):
     # pylint: disable=invalid-name
-    from app.modules.missions.models import (
-        Mission,
-        MissionCollection,
-        MissionTask,
-    )
-    from app.modules.assets.models import Asset
     from app.extensions import elasticsearch as es
+    from app.modules.assets.models import Asset
+    from app.modules.missions.models import Mission, MissionCollection, MissionTask
 
     if es.is_disabled():
         return
@@ -156,10 +152,7 @@ def test_modify_mission_task_users(
 
 @pytest.mark.skipif(module_unavailable('missions'), reason='Missions module disabled')
 def test_owner_permission(flask_app_client, data_manager_1, data_manager_2, test_root):
-    from app.modules.missions.models import (
-        Mission,
-        MissionCollection,
-    )
+    from app.modules.missions.models import Mission, MissionCollection
 
     transaction_id, test_filename = tus_utils.prep_tus_dir(test_root)
     transaction_ids = []

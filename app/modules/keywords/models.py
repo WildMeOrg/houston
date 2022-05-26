@@ -7,7 +7,7 @@ import enum
 import logging
 import uuid
 
-from app.extensions import db, HoustonModel
+from app.extensions import HoustonModel, db
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 

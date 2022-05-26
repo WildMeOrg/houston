@@ -10,14 +10,15 @@ import logging
 import uuid
 
 from flask import request
-from flask_restx_patched import Resource
 from flask_restx._http import HTTPStatus
-from app.utils import HoustonException
+
+import app.extensions.logging as AuditLog
 from app.extensions import db
-from app.extensions.api import abort, Namespace
+from app.extensions.api import Namespace, abort
 from app.modules.users import permissions
 from app.modules.users.permissions.types import AccessOperation
-import app.extensions.logging as AuditLog
+from app.utils import HoustonException
+from flask_restx_patched import Resource
 
 from . import parameters, schemas
 from .models import SocialGroup
@@ -54,7 +55,7 @@ def validate_members(input_data):
             )
         # Use same validation for members (in create and patch) and member(in patch)
         # roles is the only valid key for members but guid is valid for member patch
-        if not data.keys() <= set(['roles']):
+        if not data.keys() <= {'roles'}:
             raise HoustonException(
                 log,
                 f'Social Group member {member_guid} fields not supported {set(data.keys())}',

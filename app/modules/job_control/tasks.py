@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import logging
+
 from app.extensions.celery import celery
 
 log = logging.getLogger(__name__)

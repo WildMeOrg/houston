@@ -11,14 +11,12 @@ import logging
 
 from flask import send_file
 from flask_login import current_user  # NOQA
+
+from app.extensions.api import Namespace
 from flask_restx_patched import Resource
 from flask_restx_patched._http import HTTPStatus
 
-from app.extensions.api import Namespace
-
-
 from .models import FileUpload
-
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 api = Namespace('fileuploads', description='FileUploads')  # pylint: disable=invalid-name

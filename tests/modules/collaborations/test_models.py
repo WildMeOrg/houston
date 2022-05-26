@@ -1,11 +1,10 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=invalid-name,missing-docstring
 
-import pytest
-
 import logging
-
 from unittest import mock
+
+import pytest
 
 from tests.utils import module_unavailable
 
@@ -52,8 +51,7 @@ def test_collaboration_create_with_members(
     module_unavailable('collaborations'), reason='Collaborations module disabled'
 )
 def test_collaboration_read_state_changes(db, collab_user_a, collab_user_b, request):
-    from app.modules.collaborations.models import Collaboration
-    from app.modules.collaborations.models import CollaborationUserState
+    from app.modules.collaborations.models import Collaboration, CollaborationUserState
 
     collab = Collaboration([collab_user_a, collab_user_b], collab_user_a)
     with db.session.begin():
@@ -99,8 +97,7 @@ def test_collaboration_read_state_changes(db, collab_user_a, collab_user_b, requ
     module_unavailable('collaborations'), reason='Collaborations module disabled'
 )
 def test_collaboration_edit_state_changes(db, collab_user_a, collab_user_b, request):
-    from app.modules.collaborations.models import Collaboration
-    from app.modules.collaborations.models import CollaborationUserState
+    from app.modules.collaborations.models import Collaboration, CollaborationUserState
 
     collab = Collaboration([collab_user_a, collab_user_b], collab_user_a)
     with db.session.begin():

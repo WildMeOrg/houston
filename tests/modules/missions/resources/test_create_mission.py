@@ -1,23 +1,19 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=missing-docstring
 
-from tests import utils
-from tests.modules.missions.resources import utils as mission_utils
-from tests.utils import random_guid, wait_for_elasticsearch_status
-import tests.extensions.tus.utils as tus_utils
 import pytest
 import tqdm
 
-from tests.utils import module_unavailable
+import tests.extensions.tus.utils as tus_utils
+from tests import utils
+from tests.modules.missions.resources import utils as mission_utils
+from tests.utils import module_unavailable, random_guid, wait_for_elasticsearch_status
 
 
 @pytest.mark.skipif(module_unavailable('missions'), reason='Missions module disabled')
 def test_create_and_delete_mission(flask_app_client, data_manager_1):
     # pylint: disable=invalid-name
-    from app.modules.missions.models import (
-        Mission,
-        MissionUserAssignment,
-    )
+    from app.modules.missions.models import Mission, MissionUserAssignment
 
     nonce, title = mission_utils.make_name('mission')
     response = mission_utils.create_mission(
@@ -95,11 +91,7 @@ def test_mission_permission(
 
 @pytest.mark.skipif(module_unavailable('missions'), reason='Missions module disabled')
 def test_delete_mission_cleanup(flask_app_client, data_manager_1, test_root):
-    from app.modules.missions.models import (
-        Mission,
-        MissionCollection,
-        MissionTask,
-    )
+    from app.modules.missions.models import Mission, MissionCollection, MissionTask
 
     transaction_id, test_filename = tus_utils.prep_tus_dir(test_root)
     transaction_ids = []
@@ -209,11 +201,7 @@ def test_delete_mission_cleanup(flask_app_client, data_manager_1, test_root):
 
 @pytest.mark.skipif(module_unavailable('missions'), reason='Missions module disabled')
 def test_mission_scalability(flask_app_client, data_manager_1, test_root):
-    from app.modules.missions.models import (
-        Mission,
-        MissionCollection,
-        MissionTask,
-    )
+    from app.modules.missions.models import Mission, MissionCollection, MissionTask
 
     ASSETS = 1000
     MISSION_COLLECTIONS = 2
@@ -322,11 +310,8 @@ def test_mission_scalability(flask_app_client, data_manager_1, test_root):
 
 @pytest.mark.skipif(module_unavailable('missions'), reason='Missions module disabled')
 def test_get_mission_assets(flask_app_client, data_manager_1, test_root):
-    from app.modules.missions.models import (
-        Mission,
-        MissionCollection,
-    )
     from app.extensions import elasticsearch as es
+    from app.modules.missions.models import Mission, MissionCollection
 
     if es.is_disabled():
         return

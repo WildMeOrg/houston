@@ -2,17 +2,17 @@
 # pylint: disable=missing-docstring
 import uuid
 
+import pytest
+
+from tests import utils
 from tests.modules.annotations.resources import utils as annot_utils
 from tests.modules.encounters.resources import utils as enc_utils
 from tests.modules.site_settings.resources import utils as setting_utils
-import pytest
-
 from tests.utils import (
-    module_unavailable,
     extension_unavailable,
+    module_unavailable,
     wait_for_elasticsearch_status,
 )
-from tests import utils
 
 
 @pytest.mark.skipif(
@@ -31,8 +31,8 @@ def test_annotation_matching_set(
     test_root,
 ):
     # pylint: disable=invalid-name
-    from app.modules.annotations.models import Annotation
     from app.extensions import elasticsearch as es
+    from app.modules.annotations.models import Annotation
 
     if es.is_disabled():
         pytest.skip('Elasticsearch disabled (via command-line)')

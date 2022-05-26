@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=missing-docstring
-import tests.modules.asset_groups.resources.utils as asset_group_utils
 import logging
 
+import tests.modules.asset_groups.resources.utils as asset_group_utils
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
@@ -23,10 +23,10 @@ def disabled_test_create_bulk_asset_group_and_detection(
         asset_group = AssetGroup.query.get(asset_group_uuid)
 
         for sighting in asset_group.asset_group_sightings:
-            log.info('sighting = %r' % (sighting,))
-            log.info('sighting.config = %r' % (sighting.config,))
-            log.info('sighting.stage = %r' % (sighting.stage,))
-            log.info('sighting.jobs = %r' % (sighting.jobs,))
+            log.info('sighting = {!r}'.format(sighting))
+            log.info('sighting.config = {!r}'.format(sighting.config))
+            log.info('sighting.stage = {!r}'.format(sighting.stage))
+            log.info('sighting.jobs = {!r}'.format(sighting.jobs))
             assert len(sighting.jobs) > 0
     finally:
         if asset_group_uuid:

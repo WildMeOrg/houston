@@ -3,19 +3,20 @@
 Sightings database models
 --------------------
 """
+import datetime  # NOQA
 import enum
 import logging
 import uuid
-import datetime  # NOQA
-from flask import current_app, url_for
-from flask_restx_patched._http import HTTPStatus
 
+from flask import current_app, url_for
+
+import app.extensions.logging as AuditLog
 from app.extensions import FeatherModel, HoustonModel, db
 from app.modules.annotations.models import Annotation
 from app.modules.encounters.models import Encounter
 from app.modules.individuals.models import Individual
 from app.utils import HoustonException
-import app.extensions.logging as AuditLog
+from flask_restx_patched._http import HTTPStatus
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
@@ -253,7 +254,7 @@ class Sighting(db.Model, FeatherModel):
                 return
 
         progress = Progress(
-            description='Sage identification for Sighting %r' % (self.guid,)
+            description='Sage identification for Sighting {!r}'.format(self.guid)
         )
         with db.session.begin():
             db.session.add(progress)
@@ -365,8 +366,9 @@ class Sighting(db.Model, FeatherModel):
 
     @classmethod
     def get_unsupported_fields(cls, fields):
-        from .parameters import PatchSightingDetailsParameters
         from app.modules.site_settings.models import SiteSetting
+
+        from .parameters import PatchSightingDetailsParameters
 
         unsupported_fields = []
 
@@ -955,8 +957,8 @@ class Sighting(db.Model, FeatherModel):
 
     # specifically to pass to Sage, so we dress it up accordingly
     def get_matching_set_data(self, annotation, matching_set_config=None):
-        from app.extensions.sage import to_sage_uuid, SAGE_UNKNOWN_NAME
         from app.extensions.elapsed_time import ElapsedTime
+        from app.extensions.sage import SAGE_UNKNOWN_NAME, to_sage_uuid
 
         Annotation.sync_all_with_sage(ensure=True)
 
@@ -1178,9 +1180,9 @@ class Sighting(db.Model, FeatherModel):
                     local_content_guids = Annotation.query.with_entities(
                         Annotation.content_guid
                     ).all()
-                    local_content_guids = set(
-                        [item[0] for item in local_content_guids if item is not None]
-                    )
+                    local_content_guids = {
+                        item[0] for item in local_content_guids if item is not None
+                    }
 
                     missing = requested_content_guids - local_content_guids
                     if len(missing) > 0:
@@ -1193,7 +1195,7 @@ class Sighting(db.Model, FeatherModel):
                     sage_uuids = current_app.sage.request_passthrough_result(
                         'annotation.list', 'get', target='sync'
                     )
-                    sage_guids = set([from_sage_uuid(uuid_) for uuid_ in sage_uuids])
+                    sage_guids = {from_sage_uuid(uuid_) for uuid_ in sage_uuids}
 
                     missing = requested_content_guids - sage_guids
                     if len(missing) > 0:

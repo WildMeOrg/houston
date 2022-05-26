@@ -2,16 +2,17 @@
 # pylint: disable=invalid-name,missing-docstring
 
 import logging
+
 import pytest
+
+import tests.modules.notifications.resources.utils as notif_utils
+import tests.modules.users.resources.utils as user_utils
 import tests.utils as test_utils
 from app.modules.notifications.models import (
     Notification,
-    NotificationType,
     NotificationBuilder,
+    NotificationType,
 )
-import tests.modules.notifications.resources.utils as notif_utils
-import tests.modules.users.resources.utils as user_utils
-
 from tests.utils import module_unavailable
 
 log = logging.getLogger(__name__)

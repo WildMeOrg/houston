@@ -2,9 +2,9 @@
 import logging
 
 import git
-from flask import current_app
 import requests.exceptions
 import sqlalchemy.exc
+from flask import current_app
 
 from app.extensions.celery import celery
 from app.extensions.gitlab import GitlabInitializationError

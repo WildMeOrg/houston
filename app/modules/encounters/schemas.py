@@ -5,6 +5,7 @@ Serialization schemas for Encounters resources RESTful API
 """
 
 from flask_marshmallow import base_fields
+
 from flask_restx_patched import ModelSchema
 
 from .models import Encounter

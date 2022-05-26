@@ -113,7 +113,7 @@ def delete_encounter(
     flask_app_client, user, enc_guid, expected_status_code=204, headers=None
 ):
     with flask_app_client.login(user, auth_scopes=('encounter:write',)):
-        response = flask_app_client.delete('%s%s' % (PATH, enc_guid), headers=headers)
+        response = flask_app_client.delete('{}{}'.format(PATH, enc_guid), headers=headers)
 
     if expected_status_code == 204:
         assert response.status_code == 204

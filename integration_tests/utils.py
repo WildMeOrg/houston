@@ -146,13 +146,13 @@ def wait_for_progress(session, codex_url, response, progress_type='preparation')
 
     pprint.pprint(response.json())
 
-    progress_guid = response.json()['progress_%s' % (progress_type,)]['guid']
+    progress_guid = response.json()['progress_{}'.format(progress_type)]['guid']
 
     progress_url = codex_url(f'/api/v1/progress/{progress_guid}')
     wait_for(session.get, progress_url, lambda response: response.json()['complete'])
 
     asset_group_guid = response.json()['guid']
 
-    response = session.get(codex_url('/api/v1/asset_groups/%s/' % (asset_group_guid,)))
+    response = session.get(codex_url('/api/v1/asset_groups/{}/'.format(asset_group_guid)))
 
     return response

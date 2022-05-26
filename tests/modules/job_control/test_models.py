@@ -1,8 +1,10 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=invalid-name,missing-docstring
 from unittest import mock
-import tests.utils as test_utils
+
 import pytest
+
+import tests.utils as test_utils
 from tests.utils import module_unavailable
 
 
@@ -11,10 +13,11 @@ from tests.utils import module_unavailable
 )
 def test_job_control(flask_app, researcher_1, test_root, db):
     # pylint: disable=invalid-name
+    import uuid
+
     from app.modules.asset_groups.models import AssetGroup, AssetGroupSighting
     from app.modules.job_control.models import JobControl
     from tests.utils import copy_uploaded_file, create_transaction_dir
-    import uuid
 
     asset_group = None
     try:

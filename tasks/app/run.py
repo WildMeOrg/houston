@@ -8,14 +8,12 @@ try:
     from importlib import reload
 except ImportError:  # pragma: no cover
     pass  # Python 2 has built-in reload() function
+import logging
 import os
 import platform
-import logging
+
 from flask_restx_patched import is_extension_enabled
-
-
 from tasks.utils import app_context_task
-
 
 log = logging.getLogger(__name__)
 
@@ -25,8 +23,9 @@ DEFAULT_HOST = '0.0.0.0'
 
 def hide_noisy_endpoint_logs():
     """Disable logs for requests to specific endpoints."""
-    from werkzeug import serving
     import re
+
+    from werkzeug import serving
 
     disabled_endpoints = (
         '/api/v1/site-settings/heartbeat',
@@ -76,7 +75,7 @@ def warmup(
     if print_routes or app.debug:
         log.info('Using route rules:')
         for rule in app.url_map.iter_rules():
-            log.info('\t%r' % (rule,))
+            log.info('\t{!r}'.format(rule))
 
     return app
 

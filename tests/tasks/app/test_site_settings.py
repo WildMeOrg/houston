@@ -3,8 +3,9 @@ import io
 from pathlib import Path
 from unittest import mock
 
-from app.modules.site_settings.models import SiteSetting
 from invoke import MockContext
+
+from app.modules.site_settings.models import SiteSetting
 
 
 def test_site_settings(flask_app, db, request, test_root):

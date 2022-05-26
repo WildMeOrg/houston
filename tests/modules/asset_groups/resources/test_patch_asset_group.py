@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=missing-docstring
-import uuid
 import copy
+import uuid
 
-import tests.modules.asset_groups.resources.utils as asset_group_utils
-import tests.modules.annotations.resources.utils as annot_utils
-from tests import utils
 import pytest
 
+import tests.modules.annotations.resources.utils as annot_utils
+import tests.modules.asset_groups.resources.utils as asset_group_utils
+from tests import utils
 from tests.utils import module_unavailable
 
 

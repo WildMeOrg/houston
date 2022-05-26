@@ -52,8 +52,9 @@ def twitterbot_collect():
     max_retries=None,  # keep trying forever
 )
 def twitterbot_create_tweet_queued(text, in_reply_to, media_paths):
-    from app.extensions.intelligent_agent.models import TwitterBot
     import time
+
+    from app.extensions.intelligent_agent.models import TwitterBot
 
     if not TwitterBot.is_enabled():
         log.info(

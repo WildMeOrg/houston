@@ -2,11 +2,11 @@
 # pylint: disable=missing-docstring
 import uuid
 
+import pytest
+
 from tests import utils as test_utils
 from tests.modules.annotations.resources import utils as annot_utils
 from tests.modules.sightings.resources import utils as sighting_utils
-import pytest
-
 from tests.utils import module_unavailable
 
 

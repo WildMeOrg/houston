@@ -1,14 +1,16 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=invalid-name,missing-docstring
 
+import datetime
+
 import pytest
-from tests.utils import module_unavailable
+
 from app.utils import (
-    iso8601_to_datetime_with_timezone,
     datetime_as_timezone,
+    iso8601_to_datetime_with_timezone,
     normalized_timezone_string,
 )
-import datetime
+from tests.utils import module_unavailable
 
 
 @pytest.mark.skipif(
@@ -42,8 +44,9 @@ def test_utils():
     module_unavailable('complex_date_time'), reason='ComplexDateTime module disabled'
 )
 def test_models(db, request):
-    from app.modules.complex_date_time.models import ComplexDateTime, Specificities
     from dateutil import tz
+
+    from app.modules.complex_date_time.models import ComplexDateTime, Specificities
 
     try:
         cdt = ComplexDateTime('test', 'test', 'test')
@@ -220,8 +223,8 @@ def test_models(db, request):
     module_unavailable('complex_date_time'), reason='ComplexDateTime module disabled'
 )
 def test_nlp_time():
-    from app.utils import nlp_parse_complex_date_time
     from app.modules.complex_date_time.models import Specificities
+    from app.utils import nlp_parse_complex_date_time
 
     refdate = '2019-08-15'
     text = 'a week ago at 3:30'
@@ -260,9 +263,11 @@ def test_nlp_time():
     module_unavailable('complex_date_time'), reason='ComplexDateTime module disabled'
 )
 def test_nlp_time_mocked():
-    from app.utils import nlp_parse_complex_date_time
-    import sutime
     from unittest.mock import patch
+
+    import sutime
+
+    from app.utils import nlp_parse_complex_date_time
 
     class mock_SUTime(object):
         def parse(self, val, reference_date=None):

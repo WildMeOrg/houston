@@ -3,9 +3,10 @@
 Logging adapter
 ---------------
 """
-import logging
-from flask_login import current_user  # NOQA
 import enum
+import logging
+
+from flask_login import current_user  # NOQA
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 

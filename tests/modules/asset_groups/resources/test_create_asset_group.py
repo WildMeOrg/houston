@@ -1,12 +1,13 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=missing-docstring
-import tests.modules.asset_groups.resources.utils as asset_group_utils
-import tests.modules.users.resources.utils as user_utils
-import tests.extensions.tus.utils as tus_utils
-import tests.utils as test_utils
-import pytest
 import json
 
+import pytest
+
+import tests.extensions.tus.utils as tus_utils
+import tests.modules.asset_groups.resources.utils as asset_group_utils
+import tests.modules.users.resources.utils as user_utils
+import tests.utils as test_utils
 from tests.utils import module_unavailable
 
 
@@ -120,8 +121,9 @@ def test_create_asset_group(flask_app_client, researcher_1, readonly_user, test_
 
         asset_group_uuid = resp.json['guid']
         # Read the metadata file and make sure that the frontend sightings are exactly what we sent
-        from app.modules.asset_groups.models import AssetGroup
         import os
+
+        from app.modules.asset_groups.models import AssetGroup
 
         asset_group = AssetGroup.query.get(resp.json['guid'])
         asset_group_path = asset_group.get_absolute_path()
@@ -408,8 +410,9 @@ def test_create_asset_group_anonymous(
         data.set_field('submitterEmail', 'joe@blogs.com')
         resp = asset_group_utils.create_asset_group(flask_app_client, None, data.get())
         asset_group_uuid = resp.json['guid']
-        from app.modules.users.models import User
         import uuid
+
+        from app.modules.users.models import User
 
         assert uuid.UUID(resp.json['owner_guid']) == User.get_public_user().guid
 
@@ -428,8 +431,9 @@ def no_test_create_asset_group_detection(
     flask_app, flask_app_client, researcher_1, staff_user, test_root, db, request
 ):
     # pylint: disable=invalid-name
-    from tests.modules.asset_groups.resources.utils import AssetGroupCreationData
     from time import sleep
+
+    from tests.modules.asset_groups.resources.utils import AssetGroupCreationData
 
     transaction_id, test_filename = tus_utils.prep_tus_dir(test_root)
 
@@ -689,8 +693,9 @@ def test_create_asset_group_individual(
     empty_individual,
 ):
     # pylint: disable=invalid-name
-    from tests.modules.asset_groups.resources.utils import AssetGroupCreationData
     import uuid
+
+    from tests.modules.asset_groups.resources.utils import AssetGroupCreationData
 
     transaction_id, test_filename = tus_utils.prep_tus_dir(test_root)
     asset_group_uuid = None
@@ -755,8 +760,9 @@ def test_create_asset_group_international(
     empty_individual,
 ):
     # pylint: disable=invalid-name
-    from tests.modules.asset_groups.resources.utils import AssetGroupCreationData
     import uuid
+
+    from tests.modules.asset_groups.resources.utils import AssetGroupCreationData
 
     transaction_id, test_filename = tus_utils.prep_tus_dir(test_root)
     second_filename = 'zebra_?_.jpg'

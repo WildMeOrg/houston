@@ -5,28 +5,26 @@ RESTful API Sightings resources
 --------------------------
 """
 
+import json
 import logging
+import os
+from uuid import UUID
 
-from flask_restx_patched import Resource
-from flask_restx_patched._http import HTTPStatus
+from flask import current_app, make_response, request, send_file
 from flask_login import current_user  # NOQA
-from flask import request, current_app, send_file, make_response
 
+import app.extensions.logging as AuditLog
 from app.extensions import db
-from app.extensions.api import Namespace
+from app.extensions.api import Namespace, abort
+from app.modules import utils
 from app.modules.users import permissions
 from app.modules.users.permissions.types import AccessOperation
 from app.utils import HoustonException
+from flask_restx_patched import Resource
+from flask_restx_patched._http import HTTPStatus
 
-from app.extensions.api import abort
 from . import parameters, schemas
 from .models import Sighting, SightingStage
-
-from app.modules import utils
-import json
-import os
-from uuid import UUID
-import app.extensions.logging as AuditLog
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 api = Namespace('sightings', description='Sightings')  # pylint: disable=invalid-name
@@ -286,7 +284,7 @@ class Sightings(Resource):
         except Exception as ex:
             cleanup.rollback_and_abort(
                 'Invalid encounter.annotations',
-                '_get_annotations() threw %r on encounters=%r' % (ex, enc_json),
+                '_get_annotations() threw {!r} on encounters={!r}'.format(ex, enc_json),
             )
 
         asset_references = request_in.get('assetReferences')
@@ -299,7 +297,9 @@ class Sightings(Resource):
                 % (ex, request_in['assetReferences']),
             )
         log.debug(
-            '_validate_asset_references returned: %r, %r' % (all_arefs, paths_wanted)
+            '_validate_asset_references returned: {!r}, {!r}'.format(
+                all_arefs, paths_wanted
+            )
         )
 
         asset_group = None
@@ -329,7 +329,9 @@ class Sightings(Resource):
             cleanup.asset_group = asset_group
 
             log.info(
-                'create_from_tus returned: %r => %r' % (asset_group, asset_group.assets)
+                'create_from_tus returned: {!r} => {!r}'.format(
+                    asset_group, asset_group.assets
+                )
             )
 
         sighting = Sighting(
@@ -350,7 +352,9 @@ class Sightings(Resource):
             assets = _validate_assets(asset_group.assets, paths_wanted)
             if assets is not None:
                 sighting.add_assets_no_context(assets)
-        log.debug('Sighting with guid=%r is adding assets=%r' % (sighting.guid, assets))
+        log.debug(
+            'Sighting with guid={!r} is adding assets={!r}'.format(sighting.guid, assets)
+        )
 
         from app.modules.encounters.models import Encounter
 

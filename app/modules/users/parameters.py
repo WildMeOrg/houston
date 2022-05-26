@@ -7,23 +7,23 @@ Input arguments (Parameters) for User resources RESTful API
 import logging
 from pathlib import Path
 
+import PIL
+
 # from flask import current_app
 from flask_login import current_user
 from flask_marshmallow import base_fields
+from marshmallow import validates_schema
+
+from app.extensions.api import abort
+from app.extensions.api.parameters import PaginationParameters
+from app.utils import HoustonException
 from flask_restx_patched import Parameters, PatchJSONParameters
 from flask_restx_patched._http import HTTPStatus
-from marshmallow import validates_schema
-import PIL
-
-from app.extensions.api.parameters import PaginationParameters
-from app.extensions.api import abort
-from app.utils import HoustonException
 
 from . import schemas
 
 # from . import permissions
-from .models import User, db, USER_ROLES
-
+from .models import USER_ROLES, User, db
 
 log = logging.getLogger(__name__)
 
@@ -202,11 +202,11 @@ class PatchUserDetailsParameters(PatchJSONParameters):
         Changing `is_admin` property requires current user to be Admin, and
         `current_password` of the current user should be provided..
         """
-        log.debug('Updating replace field %s' % (field,))
-        log.debug('sensitive %s' % (cls.SENSITIVE_FIELDS,))
-        log.debug('privileged %s' % (cls.PRIVILEGED_FIELDS,))
+        log.debug('Updating replace field {}'.format(field))
+        log.debug('sensitive {}'.format(cls.SENSITIVE_FIELDS))
+        log.debug('privileged {}'.format(cls.PRIVILEGED_FIELDS))
         if field in cls.SENSITIVE_FIELDS or field in cls.PRIVILEGED_FIELDS:
-            log.debug('Updating sensitive field %s' % (field,))
+            log.debug('Updating sensitive field {}'.format(field))
             if 'current_password' not in state:
                 abort(
                     code=HTTPStatus.FORBIDDEN,
@@ -224,7 +224,7 @@ class PatchUserDetailsParameters(PatchJSONParameters):
         #         pass
 
         if field in cls.PRIVILEGED_FIELDS:
-            log.debug('Updating administrator-only field %s' % (field,))
+            log.debug('Updating administrator-only field {}'.format(field))
             if not current_user.is_admin:
                 abort(
                     code=HTTPStatus.FORBIDDEN,

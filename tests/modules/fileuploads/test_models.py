@@ -6,14 +6,14 @@ import pathlib
 import shutil
 import uuid
 
-from app.modules.fileuploads.models import FileUpload, modify_image
-from PIL import Image
 import pytest
+from PIL import Image
 
+from app.modules.fileuploads.models import FileUpload, modify_image
 from tests.utils import (
     TemporaryDirectoryUUID,
-    create_transaction_dir,
     copy_uploaded_file,
+    create_transaction_dir,
     write_uploaded_file,
 )
 

@@ -4,8 +4,9 @@ Asset_group resources utils
 -------------
 """
 
-from tests import utils as test_utils
 import json
+
+from tests import utils as test_utils
 
 PATH = '/api/v1/users/'
 
@@ -75,7 +76,7 @@ def patch_user(
 ):
     with flask_app_client.login(running_user, auth_scopes=('users:write',)):
         response = flask_app_client.patch(
-            '%s%s' % (PATH, user_modified.guid),
+            '{}{}'.format(PATH, user_modified.guid),
             content_type='application/json',
             data=json.dumps(data),
         )

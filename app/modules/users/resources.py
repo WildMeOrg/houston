@@ -7,23 +7,24 @@ RESTful API User resources
 import json
 import logging
 
-from flask import current_app, send_file, request, url_for, redirect, session
+from flask import current_app, redirect, request, send_file, session, url_for
 from flask_login import current_user
-from flask_restx_patched import Resource
-from flask_restx_patched._http import HTTPStatus
+
+import app.extensions.logging as AuditLog
+from app.extensions import is_extension_enabled
+from app.extensions.api import Namespace, abort
 from app.extensions.api.parameters import (
     PaginationParameters,
     PaginationParametersLatestFirst,
 )
-from app.extensions.api import Namespace, abort
-import app.extensions.logging as AuditLog
-from app.extensions import is_extension_enabled
 from app.extensions.email import Email
-
-from . import permissions, schemas, parameters
-from app.modules.users.permissions.types import AccessOperation
-from .models import db, User
 from app.modules import is_module_enabled
+from app.modules.users.permissions.types import AccessOperation
+from flask_restx_patched import Resource
+from flask_restx_patched._http import HTTPStatus
+
+from . import parameters, permissions, schemas
+from .models import User, db
 
 log = logging.getLogger(__name__)
 api = Namespace('users', description='Users')
@@ -322,7 +323,9 @@ class AdminUserInitialized(Resource):
                 update=True,
             )
             log.info(
-                'Success creating startup (houston) admin user via API: %r.' % (admin,)
+                'Success creating startup (houston) admin user via API: {!r}.'.format(
+                    admin
+                )
             )
             rtn = {
                 'initialized': True,
@@ -450,6 +453,7 @@ class UserSocialCallback(Resource):
             abort(400, 'invalid service')
 
         import tweepy
+
         from app.extensions.intelligent_agent.models import TwitterBot
 
         args = request.args
@@ -496,6 +500,7 @@ class UserSocialAuthRedirect(Resource):
         # right now twitter "social login" is connected to TwitterBot settings
         #  likely these two things should be decoupled a bit in settings
         import tweepy
+
         from app.extensions.intelligent_agent.models import TwitterBot
 
         ck = TwitterBot.get_site_setting_value('consumer_key')

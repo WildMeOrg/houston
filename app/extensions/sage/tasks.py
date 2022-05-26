@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 import logging
 
-from app.extensions.celery import celery
 from flask import current_app
 
+from app.extensions.celery import celery
 
 SAGE_SYNC_FREQUENCY = 60 * 60
 
@@ -23,8 +23,8 @@ def sage_task_setup_periodic_tasks(sender, **kwargs):
 
 @celery.task
 def sage_task_sync():
-    from app.modules.assets.models import Asset
     from app.modules.annotations.models import Annotation
+    from app.modules.assets.models import Asset
 
     # Sync all Assets
     Asset.sync_all_with_sage(ensure=True, prune=True)

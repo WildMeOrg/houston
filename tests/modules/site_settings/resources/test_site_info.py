@@ -1,11 +1,10 @@
 # -*- coding: utf-8 -*-
 from unittest import mock
 
+import pytest
 from requests import Response
 
 import app.version
-import pytest
-
 from tests.utils import extension_unavailable
 
 

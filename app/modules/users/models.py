@@ -8,16 +8,15 @@ import logging
 import uuid
 
 from flask import current_app, url_for
+from flask_login import current_user  # NOQA
 from sqlalchemy_utils import types as column_types
 
-from flask_login import current_user  # NOQA
-from app.extensions import db, FeatherModel, is_extension_enabled
-from app.modules import module_required, is_module_enabled
-from app.extensions.auth import security
-from app.extensions.api.parameters import _get_is_static_role_property
-from app.extensions.email import Email
 import app.extensions.logging as AuditLog
-
+from app.extensions import FeatherModel, db, is_extension_enabled
+from app.extensions.api.parameters import _get_is_static_role_property
+from app.extensions.auth import security
+from app.extensions.email import Email
+from app.modules import is_module_enabled, module_required
 
 log = logging.getLogger(__name__)
 
@@ -68,7 +67,7 @@ if is_extension_enabled('edm'):
             is_new = user is None
 
             if is_new:
-                email = '%s@localhost' % (guid,)
+                email = '{}@localhost'.format(guid)
                 password = User.initial_random_password()
                 user = User(
                     guid=guid,
@@ -440,7 +439,7 @@ class User(db.Model, FeatherModel, UserEDMMixin):
             if send_verification:
                 user.send_verify_account_email()
 
-            log.info('New user created: %r' % (user,))
+            log.info('New user created: {!r}'.format(user))
         elif update:
             user.password = password
             user.is_internal = is_internal
@@ -457,7 +456,7 @@ class User(db.Model, FeatherModel, UserEDMMixin):
             with db.session.begin():
                 db.session.merge(user)
 
-            log.info('Updated user: %r' % (user,))
+            log.info('Updated user: {!r}'.format(user))
 
         db.session.refresh(user)
 
@@ -472,7 +471,7 @@ class User(db.Model, FeatherModel, UserEDMMixin):
 
         email_candidates = [
             email,
-            '%s@localhost' % (email,),
+            '{}@localhost'.format(email),
         ]
         for email_candidate in email_candidates:
 
@@ -493,14 +492,16 @@ class User(db.Model, FeatherModel, UserEDMMixin):
                 if edm_login_fallback and is_extension_enabled('edm'):
                     # We want to check the EDM even if we don't have a local user record
                     if current_app.edm.check_user_login(email_candidate, password):
-                        log.info('User authenticated via EDM: %r' % (email_candidate,))
+                        log.info(
+                            'User authenticated via EDM: {!r}'.format(email_candidate)
+                        )
 
                         if user is not None:
                             # We authenticated a local user against an EDM (but the local password failed)
                             if user.password != password:
                                 # The user passed the login with an EDM, update local password
                                 log.warning(
-                                    "Updating user's local password: %r" % (user,)
+                                    "Updating user's local password: {!r}".format(user)
                                 )
                                 user = user.set_password(password)
                             return user
@@ -523,8 +524,8 @@ class User(db.Model, FeatherModel, UserEDMMixin):
 
     @classmethod
     def query_search_term_hook(cls, term):
-        from sqlalchemy_utils.functions import cast_if
         from sqlalchemy import String
+        from sqlalchemy_utils.functions import cast_if
 
         return (
             cast_if(cls.guid, String).contains(term),
@@ -799,7 +800,7 @@ class User(db.Model, FeatherModel, UserEDMMixin):
         return self
 
     def lockout(self):
-        from app.modules.auth.models import OAuth2Client, OAuth2Grant, OAuth2Token, Code
+        from app.modules.auth.models import Code, OAuth2Client, OAuth2Grant, OAuth2Token
 
         # Disable permissions
         self.is_staff = False
@@ -976,8 +977,8 @@ class User(db.Model, FeatherModel, UserEDMMixin):
 
     @module_required('sightings', resolve='warn', default=[])
     def get_sightings(self):
-        from app.modules.sightings.models import Sighting
         from app.modules.encounters.models import Encounter
+        from app.modules.sightings.models import Sighting
 
         return (
             db.session.query(Sighting)

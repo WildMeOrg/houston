@@ -8,7 +8,6 @@ from unittest import mock
 
 from tests import utils as test_utils
 
-
 PATH_MISSIONS = '/api/v1/missions/'
 PATH_MISSION_COLLECTIONS = '/api/v1/missions/collections/'
 PATH_MISSION_COLLECTIONS_FOR_MISSION = '/api/v1/missions/%s/collections/'
@@ -29,7 +28,7 @@ ANNOTATION_UUIDS = [
 
 def make_name(class_name='mission'):
     nonce = test_utils.random_nonce(8)
-    name = 'This is a test %s (%s), please ignore' % (
+    name = 'This is a test {} ({}), please ignore'.format(
         class_name,
         nonce,
     )
@@ -57,7 +56,7 @@ def create_mission(flask_app_client, user, title, expected_status_code=200):
 def patch_mission(flask_app_client, mission_guid, user, data, expected_status_code=200):
     with flask_app_client.login(user, auth_scopes=('missions:write',)):
         response = flask_app_client.patch(
-            '%s%s' % (PATH_MISSIONS, mission_guid),
+            '{}{}'.format(PATH_MISSIONS, mission_guid),
             content_type='application/json',
             data=json.dumps(data),
         )
@@ -73,7 +72,7 @@ def patch_mission(flask_app_client, mission_guid, user, data, expected_status_co
 
 def read_mission(flask_app_client, user, mission_guid, expected_status_code=200):
     with flask_app_client.login(user, auth_scopes=('missions:read',)):
-        response = flask_app_client.get('%s%s' % (PATH_MISSIONS, mission_guid))
+        response = flask_app_client.get('{}{}'.format(PATH_MISSIONS, mission_guid))
 
     if expected_status_code == 200:
         test_utils.validate_dict_response(response, 200, {'guid', 'title'})
@@ -123,7 +122,7 @@ def elasticsearch_mission_assets(
 
 def delete_mission(flask_app_client, user, mission_guid, expected_status_code=204):
     with flask_app_client.login(user, auth_scopes=('missions:delete',)):
-        response = flask_app_client.delete('%s%s' % (PATH_MISSIONS, mission_guid))
+        response = flask_app_client.delete('{}{}'.format(PATH_MISSIONS, mission_guid))
 
     if expected_status_code == 204:
         assert response.status_code == 204
@@ -223,8 +222,8 @@ def read_mission_collections_for_mission(
 def delete_mission_collection(
     flask_app_client, user, mission_collection_guid, expected_status_code=204
 ):
-    from app.modules.missions.models import MissionCollection
     from app.extensions.git_store.tasks import delete_remote
+    from app.modules.missions.models import MissionCollection
 
     with mock.patch('app.modules.missions.tasks') as tasks:
         # Do delete_remote in the foreground immediately instead of using a
@@ -234,7 +233,7 @@ def delete_mission_collection(
         )
         with flask_app_client.login(user, auth_scopes=('missions:write',)):
             response = flask_app_client.delete(
-                '%s%s' % (PATH_MISSION_COLLECTIONS, mission_collection_guid)
+                '{}{}'.format(PATH_MISSION_COLLECTIONS, mission_collection_guid)
             )
 
     if expected_status_code == 204:
@@ -270,7 +269,7 @@ def update_mission_task(
 ):
     with flask_app_client.login(user, auth_scopes=('missions:write',)):
         response = flask_app_client.post(
-            '%s%s' % (PATH_MISSION_TASKS, mission_task_guid),
+            '{}{}'.format(PATH_MISSION_TASKS, mission_task_guid),
             content_type='application/json',
             data=json.dumps(data),
         )
@@ -289,7 +288,7 @@ def patch_mission_task(
 ):
     with flask_app_client.login(user, auth_scopes=('missions:write',)):
         response = flask_app_client.patch(
-            '%s%s' % (PATH_MISSION_TASKS, mission_task_guid),
+            '{}{}'.format(PATH_MISSION_TASKS, mission_task_guid),
             content_type='application/json',
             data=json.dumps(data),
         )
@@ -307,7 +306,9 @@ def read_mission_task(
     flask_app_client, user, mission_task_guid, expected_status_code=200
 ):
     with flask_app_client.login(user, auth_scopes=('missions:read',)):
-        response = flask_app_client.get('%s%s' % (PATH_MISSION_TASKS, mission_task_guid))
+        response = flask_app_client.get(
+            '{}{}'.format(PATH_MISSION_TASKS, mission_task_guid)
+        )
 
     if expected_status_code == 200:
         test_utils.validate_dict_response(response, 200, {'guid', 'title'})
@@ -353,7 +354,7 @@ def delete_mission_task(
 ):
     with flask_app_client.login(user, auth_scopes=('missions:delete',)):
         response = flask_app_client.delete(
-            '%s%s' % (PATH_MISSION_TASKS, mission_task_guid)
+            '{}{}'.format(PATH_MISSION_TASKS, mission_task_guid)
         )
 
     if expected_status_code == 204:

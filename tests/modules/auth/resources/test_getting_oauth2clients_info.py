@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=missing-docstring
-import pytest
 import uuid
+
+import pytest
 
 
 @pytest.mark.parametrize(

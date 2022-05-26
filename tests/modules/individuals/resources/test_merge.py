@@ -1,10 +1,12 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=missing-docstring
 
-from tests.modules.individuals.resources import utils as individual_utils
-import pytest
-from tests import utils as test_utils
 import logging
+
+import pytest
+
+from tests import utils as test_utils
+from tests.modules.individuals.resources import utils as individual_utils
 
 log = logging.getLogger(__name__)
 
@@ -355,7 +357,7 @@ def test_get_data_and_voting(
     assert response.json.get('vote') == 'allow'
     voters = IndividualMergeRequestVote.get_voters(request_id)
     assert len(voters) == 2
-    assert set(voters) == set([researcher_1, researcher_2])
+    assert set(voters) == {researcher_1, researcher_2}
 
     # test the is_resolved field on merge notifications
     res1_notifs = notif_utils.read_all_notifications(flask_app_client, researcher_1)
@@ -504,7 +506,7 @@ def test_decline_voting(
     assert response.json.get('vote') == 'block'
     voters = IndividualMergeRequestVote.get_voters(request_id)
     assert len(voters) == 2
-    assert set(voters) == set([researcher_1, researcher_2])
+    assert set(voters) == {researcher_1, researcher_2}
 
     # test the is_resolved field on merge notifications
     res1_notifs = notif_utils.read_all_notifications(flask_app_client, researcher_1)

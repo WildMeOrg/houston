@@ -63,6 +63,10 @@ def test_misc():
     res = datetime_string_to_isoformat(None)
     assert not res
 
+    thru = '2000-01-02T03:04:05Z'
+    res = datetime_string_to_isoformat(thru)
+    assert res == thru
+
     res = datetime_string_to_isoformat('Wed, 25 May 2022 00:16:42 GMT')
     assert res == '2022-05-25T00:16:42Z'
 

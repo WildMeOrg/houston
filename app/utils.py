@@ -122,10 +122,16 @@ def normalized_timezone_string(dt):
 
 # converts string like 'Wed, 25 May 2022 00:16:42 GMT' which is what datetime is stringified as
 def datetime_string_to_isoformat(dts):
+    import re
     from datetime import datetime
 
     if not isinstance(dts, str):
         return None
+
+    # if are already in isoformat, just return
+    if re.match(r'^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}', dts):
+        return dts
+
     try:
         d = datetime.strptime(dts, '%a, %d %b %Y %H:%M:%S %Z')
     except ValueError as err:

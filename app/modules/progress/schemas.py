@@ -4,8 +4,6 @@ Serialization schemas for Progress resources RESTful API
 ----------------------------------------------------
 """
 
-from flask_marshmallow import base_fields
-
 from flask_restx_patched import ModelSchema
 
 from .models import Progress
@@ -28,9 +26,6 @@ class DetailedProgressSchema(BaseProgressSchema):
     Detailed Progress schema exposes all useful fields.
     """
 
-    parent = base_fields.Nested('DetailedProgressSchema', many=False)
-    steps = base_fields.Nested('DetailedProgressSchema', many=True)
-
     class Meta(BaseProgressSchema.Meta):
         fields = BaseProgressSchema.Meta.fields + (
             Progress.description.key,
@@ -45,8 +40,7 @@ class DetailedProgressSchema(BaseProgressSchema):
             'idle',
             'inactive',
             'ahead',
-            'parent',
-            'steps',
+            Progress.parent_guid.key,
             Progress.celery_guid.key,
             Progress.sage_guid.key,
             Progress.eta.key,

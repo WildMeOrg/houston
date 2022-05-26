@@ -6,7 +6,6 @@ Application related tasks for Invoke.
 from invoke import Collection
 
 from config import get_preliminary_config
-
 from tasks.app import run
 from tasks.codex import (
     asset_groups,
@@ -17,13 +16,12 @@ from tasks.codex import (
     initialize,
     integrations,
     integrity,
-    organizations,
     job_control,
+    organizations,
     progress,
     projects,
     sightings,
 )
-
 
 namespace = Collection(
     asset_groups,

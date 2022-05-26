@@ -1,9 +1,8 @@
 # -*- coding: utf-8 -*-
 from app.extensions import db
-
-from tasks.utils import app_context_task
 from app.modules.fileuploads.models import FileUpload  # NOQA
 from app.modules.site_settings.models import SiteSetting  # NOQA
+from tasks.utils import app_context_task
 
 
 @app_context_task(

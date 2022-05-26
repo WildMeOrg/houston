@@ -3,9 +3,10 @@
 Application AssetGroup management related tasks for Invoke.
 """
 
-from tasks.utils import app_context_task
-from app.extensions import db
 import pprint
+
+from app.extensions import db
+from tasks.utils import app_context_task
 
 
 def print_result(result):

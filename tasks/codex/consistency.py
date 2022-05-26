@@ -6,11 +6,11 @@ This file contains initialization data for development usage only.
 You can execute this code via ``invoke codex.consistency``
 """
 import logging
-import tqdm
 
-from app.extensions import db
+import tqdm
 from flask import current_app
 
+from app.extensions import db
 from tasks.utils import app_context_task
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
@@ -69,8 +69,9 @@ def user_staff_permissions(context):
 
 @app_context_task
 def cleanup_gitlab(context, dryrun=False, clean=False):
-    import gitlab
     import datetime
+
+    import gitlab
     import pytz
 
     TEST_GROUP_NAMES = ['TEST']
@@ -89,7 +90,7 @@ def cleanup_gitlab(context, dryrun=False, clean=False):
 
     gl = gitlab.Gitlab(remote_uri, private_token=remote_personal_access_token)
     gl.auth()
-    log.info('Logged in: %r' % (gl,))
+    log.info('Logged in: {!r}'.format(gl))
 
     projects = []
     groups = gl.groups.list()

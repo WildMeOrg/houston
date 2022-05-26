@@ -11,8 +11,8 @@ import platform
 try:
     import rich
     from rich.logging import RichHandler
-    from rich.theme import Theme
     from rich.style import Style
+    from rich.theme import Theme
 
     console_kwargs = {
         'theme': Theme(

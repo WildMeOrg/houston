@@ -5,10 +5,9 @@ This file contains initialization data for development usage only.
 
 You can execute this code via ``invoke app.db.init_development_data``
 """
-from app.extensions import db, api
-
 import uuid
 
+from app.extensions import api, db
 
 DOCUMENTATION_CLIENT_GUID = uuid.UUID('00000000-0000-0000-0000-000000000000')
 DOCUMENTATION_CLIENT_SECRET = 'SECRET'
@@ -74,8 +73,8 @@ def init_auth(docs_user):
 
 
 def init():
-    from app.modules.users.models import User
     from app.modules.auth.models import OAuth2Client
+    from app.modules.users.models import User
 
     # Automatically update `default_scopes` for `documentation` OAuth2 Client,
     # as it is nice to have an ability to evaluate all available API calls.

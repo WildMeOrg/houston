@@ -3,7 +3,6 @@ import logging
 
 from invoke import task
 
-
 log = logging.getLogger(__name__)
 
 
@@ -11,6 +10,7 @@ log = logging.getLogger(__name__)
 def shell(context):
     """Enter into IPython Shell with an initialized app"""
     import IPython
+
     from app import create_app
 
     app = create_app()

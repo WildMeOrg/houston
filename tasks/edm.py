@@ -3,8 +3,9 @@
 Application EDM related tasks for Invoke.
 """
 
-from tasks.utils import app_context_task
 from flask import current_app as app
+
+from tasks.utils import app_context_task
 
 
 @app_context_task()

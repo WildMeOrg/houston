@@ -12,18 +12,17 @@ import shutil
 
 from tasks.utils import app_context_task
 
-
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
 try:
     from alembic import __version__ as __alembic_version__
-    from alembic.config import Config as AlembicConfig
     from alembic import command
+    from alembic.config import Config as AlembicConfig
 except ImportError:  # pragma: no cover
     log.warning("Alembic cannot be imported, so some app.db.* tasks won't be available!")
 else:
 
-    alembic_version = tuple([int(v) for v in __alembic_version__.split('.')[0:3]])
+    alembic_version = tuple(int(v) for v in __alembic_version__.split('.')[0:3])
 
     class Config(AlembicConfig):
         """
@@ -454,6 +453,7 @@ def _reset(context):
     Delete the filesystem database and re-initialize
     """
     from flask import current_app
+
     from tasks.app.run import warmup
 
     delete_path_configs = [

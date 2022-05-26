@@ -3,10 +3,12 @@
 Application Sage related tasks for Invoke.
 """
 
-from tasks.utils import app_context_task
-from flask import current_app
-import app
 import logging
+
+from flask import current_app
+
+import app
+from tasks.utils import app_context_task
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
@@ -33,7 +35,7 @@ def _sync_worker(model=None, **kwargs):
         model_cls = available.get(model, None)
 
         if model_cls is None:
-            print('Model must be one of %r' % (set(available.keys()),))
+            print('Model must be one of {!r}'.format(set(available.keys())))
         else:
             model_cls.sync_all_with_sage(**kwargs)
 

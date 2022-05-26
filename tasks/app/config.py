@@ -11,8 +11,9 @@ def show(context):
     """
     Show application configuration data
     """
-    from flask import current_app
     from functools import reduce
+
+    from flask import current_app
 
     config = current_app.config
     max_key_len = reduce(

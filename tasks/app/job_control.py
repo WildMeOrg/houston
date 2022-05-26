@@ -3,9 +3,10 @@
 Application Job_control related tasks for Invoke.
 """
 
-from tasks.utils import app_context_task
-from app.utils import HoustonException
 import pprint
+
+from app.utils import HoustonException
+from tasks.utils import app_context_task
 
 
 @app_context_task()

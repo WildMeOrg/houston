@@ -3,7 +3,7 @@
 import os
 
 from .base import (
-    SageConfig,
+    DATA_ROOT,
     AssetGroupConfig,
     BaseConfig,
     EDMConfig,
@@ -11,8 +11,8 @@ from .base import (
     EmailConfig,
     GoogleConfig,
     ReCaptchaConfig,
+    SageConfig,
     WildbookDatabaseConfig,
-    DATA_ROOT,
 )
 
 

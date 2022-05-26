@@ -11,7 +11,6 @@ from alembic import op
 import app
 import app.extensions
 
-
 # revision identifiers, used by Alembic.
 revision = '9e71ecc2708a'
 down_revision = '9b2a1efceeec'

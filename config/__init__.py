@@ -13,8 +13,7 @@ import os
 from functools import lru_cache
 from pathlib import Path
 
-from .utils import import_class, export_dotenv
-
+from .utils import export_dotenv, import_class
 
 CONTEXT_ENVIRONMENT_VARIABLE = 'HOUSTON_APP_CONTEXT'
 CONFIG_CLS_MAPPER = {

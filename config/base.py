@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 import datetime
+import multiprocessing
 import os
 import random
 import string
 from pathlib import Path
-import multiprocessing
 
 import flask
 import pytz

@@ -6,13 +6,12 @@ Revises: 804d984e9dd4
 Create Date: 2022-01-25 09:09:17.621655
 
 """
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
+from sqlalchemy.dialects import postgresql
 
 import app
 import app.extensions
-from sqlalchemy.dialects import postgresql
-
 
 # revision identifiers, used by Alembic.
 revision = '3fc0b28658aa'

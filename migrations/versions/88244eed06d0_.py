@@ -6,12 +6,11 @@ Revises: 2ef73ff71f0c
 Create Date: 2021-12-20 20:08:32.545465
 
 """
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 
 import app
 import app.extensions
-
 
 # revision identifiers, used by Alembic.
 revision = '88244eed06d0'

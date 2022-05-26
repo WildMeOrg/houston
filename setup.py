@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-from __future__ import absolute_import, print_function, division
-import subprocess
+from __future__ import absolute_import, division, print_function
+
 import os
+import subprocess
 
 from setuptools import setup
-
 
 PROJECT_ROOT = os.path.abspath(os.path.dirname(__file__))
 
@@ -69,7 +69,7 @@ REVISION = git_version()
 SUFFIX = REVISION[:8]
 VERSION = '%d.%d.%d' % (MAJOR, MINOR, MICRO)
 if SUFFIX:
-    VERSION = '%s.%s' % (VERSION, SUFFIX)
+    VERSION = '{}.{}'.format(VERSION, SUFFIX)
 PACKAGES = ['.']
 
 

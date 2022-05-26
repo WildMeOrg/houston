@@ -47,7 +47,7 @@ for model in get_models():
         pydot.Node(
             model.__name__.lower(),
             fontsize='10',
-            label='{%s|%s}' % (model.__name__, '\n'.join(column_names)),
+            label='{{{}|{}}}'.format(model.__name__, '\n'.join(column_names)),
             shape='record',
         )
     )

@@ -461,8 +461,7 @@ class GitStore(db.Model, HoustonModel):
     def git_commit_delay(self, input_filenames):
         # Start the git_commit that will process the assets (update=True) and commit the new files to the Git repo (commit=True)
         description = 'Tus collect commit for GitStore {!r}'.format(self.guid)
-        if True or current_app.testing:
-            # TODO (HARDENING): Remove True to the above conditional when tus-hardening is ready in the _frontend.codex/ repo
+        if current_app.testing:
             # When testing, run on-demand and don't use celery workers
             self.git_commit_worker(description, input_filenames)
             promise = None

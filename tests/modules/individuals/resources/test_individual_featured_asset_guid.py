@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=missing-docstring
-from tests.modules.sightings.resources import utils as sighting_utils
-from tests.modules.asset_groups.resources import utils as asset_group_utils
-from tests.modules.individuals.resources import utils as individual_utils
-from tests.modules.annotations.resources import utils as annot_utils
-from tests import utils
 import pytest
 
+from tests import utils
+from tests.modules.annotations.resources import utils as annot_utils
+from tests.modules.asset_groups.resources import utils as asset_group_utils
+from tests.modules.individuals.resources import utils as individual_utils
+from tests.modules.sightings.resources import utils as sighting_utils
 from tests.utils import module_unavailable
 
 
@@ -140,8 +140,8 @@ def test_patch_featured_asset_guid_on_individual(
 )
 def test_featured_individual_read(db, flask_app_client, researcher_1, test_root, request):
     from app.modules.annotations.models import Annotation
-    from app.modules.individuals.models import Individual
     from app.modules.assets.models import Asset
+    from app.modules.individuals.models import Individual
 
     # Specifically use the large one as we want multiple assets
     uuids = individual_utils.create_individual_and_sighting(

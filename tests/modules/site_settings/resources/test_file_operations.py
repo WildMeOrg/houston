@@ -1,16 +1,16 @@
 # -*- coding: utf-8 -*-
 from pathlib import Path
 
+import pytest
+
 from app.modules.fileuploads.models import FileUpload
 from app.modules.site_settings.models import SiteSetting
-
 from tests.utils import (
     TemporaryDirectoryUUID,
-    module_unavailable,
     copy_uploaded_file,
+    module_unavailable,
     write_uploaded_file,
 )
-import pytest
 
 
 @pytest.mark.skipif(

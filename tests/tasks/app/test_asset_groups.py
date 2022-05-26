@@ -2,11 +2,11 @@
 import io
 import pathlib
 import re
-from unittest import mock
 import uuid
+from unittest import mock
 
-from invoke import MockContext
 import pytest
+from invoke import MockContext
 
 from tests.utils import module_unavailable
 
@@ -56,7 +56,7 @@ def test_create_asset_group_from_path(flask_app, test_root, admin_user, request)
 
     assert asset_group.owner == admin_user
     dir_files = sorted(f.name for f in pathlib.Path(test_root).glob('*'))
-    asset_paths = sorted([a.path for a in asset_group.assets])
+    asset_paths = sorted(a.path for a in asset_group.assets)
     assert dir_files == asset_paths
     assert asset_group.description == 'AssetGroup creation test'
 

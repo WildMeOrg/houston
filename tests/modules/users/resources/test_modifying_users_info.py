@@ -2,22 +2,18 @@
 # pylint: disable=missing-docstring
 import io
 import json
-from pathlib import Path
 import shutil
 import tempfile
 import uuid
+from pathlib import Path
 
-from app.modules.users.models import User
-from app.modules.fileuploads.models import FileUpload
-from flask_restx_patched import is_extension_enabled
 from PIL import Image
 
-from tests.utils import (
-    TemporaryDirectoryUUID,
-    copy_uploaded_file,
-    write_uploaded_file,
-)
 import tests.modules.users.resources.utils as user_utils
+from app.modules.fileuploads.models import FileUpload
+from app.modules.users.models import User
+from flask_restx_patched import is_extension_enabled
+from tests.utils import TemporaryDirectoryUUID, copy_uploaded_file, write_uploaded_file
 
 
 def test_user_id_not_found(flask_app_client, regular_user):

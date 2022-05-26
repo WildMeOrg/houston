@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=missing-docstring
-from tests.modules.sightings.resources import utils as sighting_utils
-from tests.modules.asset_groups.resources import utils as asset_group_utils
-from tests import utils
 import pytest
 
+from tests import utils
+from tests.modules.asset_groups.resources import utils as asset_group_utils
+from tests.modules.sightings.resources import utils as sighting_utils
 from tests.utils import module_unavailable
 
 
@@ -118,8 +118,8 @@ def test_patch_featured_asset_guid_on_sighting(
 
 @pytest.mark.skipif(module_unavailable('sightings'), reason='Sightings module disabled')
 def test_featured_sighting_read(db, flask_app_client, researcher_1, test_root, request):
-    from app.modules.sightings.models import Sighting
     from app.modules.asset_groups.models import AssetGroup
+    from app.modules.sightings.models import Sighting
 
     uuids = sighting_utils.create_large_sighting(
         flask_app_client, researcher_1, request, test_root

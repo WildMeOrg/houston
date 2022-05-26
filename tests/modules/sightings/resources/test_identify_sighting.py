@@ -1,15 +1,14 @@
 # -*- coding: utf-8 -*-
 import uuid
 
+import pytest
+
 import tests.modules.asset_groups.resources.utils as asset_group_utils
 import tests.modules.sightings.resources.utils as sighting_utils
 import tests.utils as test_utils
-
-import pytest
-
 from tests.utils import (
-    module_unavailable,
     extension_unavailable,
+    module_unavailable,
     wait_for_elasticsearch_status,
 )
 
@@ -61,9 +60,9 @@ def test_sighting_identification(
     request,
 ):
     # pylint: disable=invalid-name
-    from app.modules.sightings.models import Sighting, SightingStage
-    from app.modules.annotations.models import Annotation
     from app.extensions import elasticsearch as es
+    from app.modules.annotations.models import Annotation
+    from app.modules.sightings.models import Sighting, SightingStage
 
     if es.is_disabled():
         pytest.skip('Elasticsearch disabled (via command-line)')

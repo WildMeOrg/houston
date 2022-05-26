@@ -3,7 +3,7 @@ import datetime
 
 import pytz
 
-from app.modules.auth.models import Code, CodeTypes, CodeDecisions
+from app.modules.auth.models import Code, CodeDecisions, CodeTypes
 
 
 def test_Code(db, researcher_1):

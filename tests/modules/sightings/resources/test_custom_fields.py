@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=missing-docstring
 
-from tests.modules.sightings.resources import utils as sighting_utils
-from tests.modules.site_settings.resources import utils as setting_utils
 import pytest
 
+from tests.modules.sightings.resources import utils as sighting_utils
+from tests.modules.site_settings.resources import utils as setting_utils
 from tests.utils import module_unavailable
 
 
@@ -19,8 +19,9 @@ def test_custom_fields_on_sighting(
     test_asset_group_uuid,
     request,
 ):
-    from app.modules.sightings.models import Sighting
     import datetime
+
+    from app.modules.sightings.models import Sighting
 
     cfd_id = setting_utils.custom_field_create(
         flask_app_client, admin_user, 'test_cfd', cls='Sighting'

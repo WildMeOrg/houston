@@ -4,6 +4,7 @@ Assets resources utils
 -------------
 """
 import json
+
 from tests import utils as test_utils
 
 PATH = '/api/v1/keywords/'
@@ -12,7 +13,7 @@ PATH = '/api/v1/keywords/'
 def patch_keyword(flask_app_client, user, keyword_guid, data, expected_status_code=200):
     with flask_app_client.login(user, auth_scopes=('keywords:write',)):
         response = flask_app_client.patch(
-            '%s%s' % (PATH, keyword_guid),
+            '{}{}'.format(PATH, keyword_guid),
             content_type='application/json',
             data=json.dumps(data),
         )
@@ -82,7 +83,7 @@ def read_all_keywords(flask_app_client, user, expected_status_code=200):
 
 def delete_keyword(flask_app_client, user, keyword_guid, expected_status_code=204):
     with flask_app_client.login(user, auth_scopes=('keywords:write',)):
-        response = flask_app_client.delete('%s%s' % (PATH, keyword_guid))
+        response = flask_app_client.delete('{}{}'.format(PATH, keyword_guid))
 
     if expected_status_code == 204:
         assert response.status_code == 204

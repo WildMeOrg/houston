@@ -174,7 +174,7 @@ def test_regular_user_can_revoke_token(
         '/api/v1/auth/revoke',
         content_type='application/x-www-form-urlencoded',
         headers={
-            'Authorization': 'Bearer %s' % (regular_user_oauth2_token.access_token,)
+            'Authorization': 'Bearer {}'.format(regular_user_oauth2_token.access_token)
         },
         data=data,
     )

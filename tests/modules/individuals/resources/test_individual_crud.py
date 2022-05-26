@@ -1,20 +1,17 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=missing-docstring
-import logging
-
-import uuid
 import datetime
+import logging
+import uuid
 
-from tests.modules.individuals.resources import utils as individual_utils
-from tests.modules.annotations.resources import utils as annot_utils
-from tests.modules.sightings.resources import utils as sighting_utils
-from tests.modules.site_settings.resources import utils as setting_utils
-
-from tests import utils
 import pytest
 
+from tests import utils
+from tests.modules.annotations.resources import utils as annot_utils
+from tests.modules.individuals.resources import utils as individual_utils
+from tests.modules.sightings.resources import utils as sighting_utils
+from tests.modules.site_settings.resources import utils as setting_utils
 from tests.utils import module_unavailable
-
 
 log = logging.getLogger(__name__)
 
@@ -115,10 +112,10 @@ def test_read_encounter_from_edm(db, flask_app_client):
     module_unavailable('individuals'), reason='Individuals module disabled'
 )
 def test_add_remove_encounters(db, flask_app_client, researcher_1, request, test_root):
-    from app.modules.individuals.models import Individual
-    from app.modules.encounters.models import Encounter
-    from app.modules.sightings.models import Sighting
     from app.modules.complex_date_time.models import Specificities
+    from app.modules.encounters.models import Encounter
+    from app.modules.individuals.models import Individual
+    from app.modules.sightings.models import Sighting
 
     test_time = datetime.datetime.now().isoformat() + '+00:00'
     data_in = {
@@ -263,9 +260,9 @@ def test_individual_has_detailed_encounter_from_edm(
     test_root,
     test_asset_group_uuid,
 ):
+    from app.modules.asset_groups.models import AssetGroup
     from app.modules.encounters.models import Encounter
     from app.modules.sightings.models import Sighting
-    from app.modules.asset_groups.models import AssetGroup
 
     data_in = {
         'encounters': [

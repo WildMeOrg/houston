@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import tempfile
-from unittest import mock
 import uuid
+from unittest import mock
 
 import gitlab.exceptions
 import pytest

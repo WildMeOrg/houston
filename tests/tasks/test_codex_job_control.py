@@ -2,8 +2,8 @@
 import importlib
 from unittest import mock
 
-from invoke import MockContext
 import pytest
+from invoke import MockContext
 
 from tests.modules.asset_groups.resources import utils as ag_utils
 from tests.modules.sightings.resources import utils as s_utils

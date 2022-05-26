@@ -2,12 +2,10 @@
 # pylint: disable=missing-docstring
 import logging
 
+import pytest
 
 from tests import utils as test_utils
-
-import pytest
 from tests.utils import module_unavailable
-
 
 log = logging.getLogger(__name__)
 

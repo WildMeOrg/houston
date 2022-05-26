@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=missing-docstring
+import uuid
+
+import pytest
+
 import tests.modules.collaborations.resources.utils as collab_utils
 import tests.modules.users.resources.utils as user_utils
 import tests.utils as test_utils
-
-import uuid
-import pytest
-
 from tests.utils import module_unavailable
 
 

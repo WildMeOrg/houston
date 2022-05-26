@@ -6,7 +6,6 @@ from tests import utils as test_utils
 from tests.extensions.elasticsearch.resources import utils as es_utils
 from tests.modules.sightings.resources import utils
 
-
 EXPECTED_KEYS = {
     'created',
     'guid',

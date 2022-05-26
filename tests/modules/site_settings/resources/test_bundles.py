@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=missing-docstring
-from tests.modules.site_settings.resources import utils as conf_utils
-from app.modules.site_settings.models import SiteSetting
 import uuid
+
 import pytest
 
-from tests.utils import module_unavailable, extension_unavailable
-
+from app.modules.site_settings.models import SiteSetting
+from tests.modules.site_settings.resources import utils as conf_utils
+from tests.utils import extension_unavailable, module_unavailable
 
 BUNDLE_PATH = 'block'
 

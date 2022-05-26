@@ -1,15 +1,13 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=invalid-name,missing-docstring
-from mock import Mock, patch
 import pytest
-
+from mock import Mock, patch
 from werkzeug.exceptions import HTTPException
+
 import tests.utils as test_utils
-from tests.utils import module_unavailable
-
-
 from app.modules.users import permissions
 from app.modules.users.permissions.types import AccessOperation
+from tests.utils import module_unavailable
 
 
 # helpers to make object and module reading and writing testing more intuitive
@@ -311,8 +309,8 @@ def test_ObjectAccessPermission_admin_user(
 )
 def test_ModuleAccessPermission_anonymous_user(anonymous_user_login):
     # pylint: disable=unused-argument
-    from app.modules.users.models import User
     from app.modules.asset_groups.models import AssetGroup
+    from app.modules.users.models import User
 
     # anon user cannot do anything with most classes
     validate_cannot_read_module(NotARealClass)
@@ -334,8 +332,8 @@ def test_ModuleAccessPermission_anonymous_user(anonymous_user_login):
 )
 def test_ModuleAccessPermission_authenticated_user(authenticated_user_login):
     # pylint: disable=unused-argument
-    from app.modules.users.models import User
     from app.modules.asset_groups.models import AssetGroup
+    from app.modules.users.models import User
 
     # regular users also shouldn't be able to access most classes
     validate_cannot_read_module(NotARealClass)
@@ -357,8 +355,8 @@ def test_ModuleAccessPermission_authenticated_user(authenticated_user_login):
 )
 def test_ModuleAccessPermission_admin_user(admin_user_login):
     # pylint: disable=unused-argument
-    from app.modules.users.models import User
     from app.modules.asset_groups.models import AssetGroup
+    from app.modules.users.models import User
 
     # Admin users cannot do what they like
     validate_cannot_read_module(NotARealClass)
@@ -381,8 +379,8 @@ def test_ModuleAccessPermission_admin_user(admin_user_login):
 )
 def test_ModuleAccessPermission_user_manager_user(user_manager_user_login):
     # pylint: disable=unused-argument
-    from app.modules.users.models import User
     from app.modules.asset_groups.models import AssetGroup
+    from app.modules.users.models import User
 
     # user Admins not especially priviliged
     validate_cannot_read_module(NotARealClass)
@@ -555,9 +553,9 @@ def test_ObjectAccessPermission_user_manager_user(
 def test_data_manager_and_staff_access(
     db, flask_app_client, researcher_1, data_manager_1, staff_user, request, test_root
 ):
+    import tests.modules.encounters.resources.utils as encounter_utils
     import tests.modules.individuals.resources.utils as individual_utils
     import tests.modules.sightings.resources.utils as sighting_utils
-    import tests.modules.encounters.resources.utils as encounter_utils
 
     # testing that staff and data_managers can edit and read these three objects
     uuids = individual_utils.create_individual_and_sighting(

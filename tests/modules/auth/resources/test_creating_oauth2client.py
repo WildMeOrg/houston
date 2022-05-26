@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
-import pytest
 import uuid
+
+import pytest
 import six
 
 

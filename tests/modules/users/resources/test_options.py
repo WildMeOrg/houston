@@ -2,7 +2,6 @@
 # pylint: disable=missing-docstring
 import pytest
 
-
 REPLACE_KEY = '<REPLACE_UUID>'
 
 
@@ -28,14 +27,14 @@ def test_users_options_unauthorized(
     'path,expected_allowed_methods',
     (
         ('/api/v1/users/', {'POST', 'OPTIONS'}),
-        ('/api/v1/users/%s' % (REPLACE_KEY,), {'GET', 'OPTIONS', 'PATCH', 'DELETE'}),
+        ('/api/v1/users/{}'.format(REPLACE_KEY), {'GET', 'OPTIONS', 'PATCH', 'DELETE'}),
     ),
 )
 def test_users_options_authorized(
     path, expected_allowed_methods, flask_app_client, regular_user
 ):
     if REPLACE_KEY in path:
-        path = path.replace(REPLACE_KEY, '%s' % (regular_user.guid,))
+        path = path.replace(REPLACE_KEY, '{}'.format(regular_user.guid))
 
     with flask_app_client.login(regular_user, auth_scopes=('users:write', 'users:read')):
         response = flask_app_client.options(path)

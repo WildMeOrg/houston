@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=missing-docstring
 
+import pytest
+
+from app.extensions import elasticsearch as es
 from tests import utils as test_utils
 from tests.extensions.elasticsearch.resources import utils as es_utils
 from tests.modules.individuals.resources import utils as individual_utils
-from tests.utils import module_unavailable, extension_unavailable
-from app.extensions import elasticsearch as es
-
-import pytest
+from tests.utils import extension_unavailable, module_unavailable
 
 
 @pytest.mark.skipif(
@@ -69,9 +69,10 @@ def test_individual_elasticsearch_mappings(
     reason='Elasticsearch extension disabled',
 )
 def test_returned_schema(flask_app_client, researcher_1, admin_user, request, test_root):
+    import datetime
+
     from app.modules.individuals.models import Individual
     from tests.modules.site_settings.resources import utils as setting_utils
-    import datetime
 
     # make a taxonomy to use
     response = setting_utils.read_main_settings(

@@ -3,9 +3,7 @@
 
 import pytest
 
-from tests.utils import (
-    extension_unavailable,
-)
+from tests.utils import extension_unavailable
 
 
 @pytest.mark.skipif(extension_unavailable('edm'), reason='EDM extension disabled')

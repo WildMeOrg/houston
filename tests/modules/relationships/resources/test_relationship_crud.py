@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=invalid-name,missing-docstring
 
-import logging
-
-from tests.utils import module_unavailable
 import datetime
-import pytest
+import logging
 import uuid
 
+import pytest
+
+from tests.utils import module_unavailable
 
 log = logging.getLogger(__name__)
 
@@ -19,11 +19,11 @@ log = logging.getLogger(__name__)
 def test_create_read_delete_relationship(
     flask_app_client, admin_user, researcher_1, request, test_root
 ):
-    from tests.modules.individuals.resources import utils as individual_utils
+    from app.modules.relationships.models import Relationship
     from tests.modules.encounters.resources import utils as encounter_utils
+    from tests.modules.individuals.resources import utils as individual_utils
     from tests.modules.relationships.resources import utils as relationship_utils
     from tests.modules.site_settings.resources import utils as site_settings_utils
-    from app.modules.relationships.models import Relationship
 
     family_type_guid = '49e85f81-c11a-42be-9097-d22c61345ed8'
     mother_role_guid = '1b62eb1a-0b80-4c2d-b914-923beba8863c'

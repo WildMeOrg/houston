@@ -1,9 +1,11 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=invalid-name,missing-docstring
 
-from tests.utils import module_unavailable
-import pytest
 import uuid
+
+import pytest
+
+from tests.utils import module_unavailable
 
 
 @pytest.mark.skipif(
@@ -13,7 +15,6 @@ import uuid
 def test_relationship_instantiation(db, staff_user, flask_app_client, request, test_root):
     from app.modules.relationships.models import Relationship
     from app.modules.site_settings.models import SiteSetting
-
     from tests.modules.individuals.resources import utils as indiv_utils
     from tests.modules.relationships.resources import utils as relationship_utils
 

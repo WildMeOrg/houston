@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=missing-docstring
 import json
+
 from tests import utils
 
 PATH = '/api/v1/organizations/'
@@ -31,13 +32,13 @@ def test_create_and_delete_organization(flask_app_client, admin_user, temp_user)
 
     # Try reading it back
     with flask_app_client.login(temp_user, auth_scopes=('organizations:read',)):
-        response = flask_app_client.get('%s%s' % (PATH, organization_guid))
+        response = flask_app_client.get('{}{}'.format(PATH, organization_guid))
 
     utils.validate_dict_response(response, 200, {'guid', 'title'})
 
     # And deleting it
     with flask_app_client.login(temp_user, auth_scopes=('organizations:write',)):
-        response = flask_app_client.delete('%s%s' % (PATH, organization_guid))
+        response = flask_app_client.delete('{}{}'.format(PATH, organization_guid))
 
     assert response.status_code == 204
     read_organization = Organization.query.get(organization_guid)

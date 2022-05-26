@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=invalid-name,missing-docstring
 import logging
+
 import pytest
 
-from app.modules.users.models import User
 import tests.utils as test_utils
-
+from app.modules.users.models import User
 from tests.utils import module_unavailable
 
 

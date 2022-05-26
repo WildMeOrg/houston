@@ -2,11 +2,12 @@
 # pylint: disable=invalid-name,missing-docstring
 
 import logging
-import pytest
-from tests.utils import module_unavailable
 
-import tests.modules.integrity.resources.utils as integ_utils
+import pytest
+
 import tests.modules.individuals.resources.utils as ind_utils
+import tests.modules.integrity.resources.utils as integ_utils
+from tests.utils import module_unavailable
 
 log = logging.getLogger(__name__)
 

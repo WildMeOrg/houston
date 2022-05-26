@@ -1,12 +1,11 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=missing-docstring
 
+import pytest
+
 from tests import utils
 from tests.modules.individuals.resources import utils as individual_utils
 from tests.modules.sightings.resources import utils as sighting_utils
-
-import pytest
-
 from tests.utils import module_unavailable
 
 
@@ -371,8 +370,8 @@ def test_get_set_individual_names(
     module_unavailable('individuals'), reason='Individuals module disabled'
 )
 def test_get_by_name(db, flask_app_client, researcher_1, request, test_root):
-    from app.modules.names.models import DEFAULT_NAME_CONTEXT
     from app.modules.individuals.models import Individual
+    from app.modules.names.models import DEFAULT_NAME_CONTEXT
     from app.utils import HoustonException
 
     individual_1_id = individual_utils.create_individual_and_sighting(

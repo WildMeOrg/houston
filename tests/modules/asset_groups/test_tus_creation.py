@@ -2,19 +2,20 @@
 # pylint: disable=invalid-name,missing-docstring
 import os
 import pathlib
-import pytest
 import shutil
 
-from tests.utils import module_unavailable
+import pytest
+
 from tests.extensions.tus import utils as tus_utils
+from tests.utils import module_unavailable
 
 
 @pytest.mark.skipif(
     module_unavailable('asset_groups'), reason='AssetGroups module disabled'
 )
 def test_create_asset_group_from_tus(flask_app, db, researcher_1, test_root):
-    from app.utils import HoustonException
     from app.modules.asset_groups.models import AssetGroup
+    from app.utils import HoustonException
 
     tid = tus_utils.get_transaction_id()  # '11111111-1111-1111-1111-111111111111'
 

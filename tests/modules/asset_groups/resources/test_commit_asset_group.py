@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=missing-docstring
-import tests.modules.asset_groups.resources.utils as asset_group_utils
-from tests import utils as test_utils
 import pytest
 
+import tests.modules.asset_groups.resources.utils as asset_group_utils
+from tests import utils as test_utils
 from tests.utils import module_unavailable
 
 
@@ -96,7 +96,7 @@ def test_commit_owner_asset_group(
         assert sighting.stage == SightingStage.un_reviewed
         # It seems encounters may not be returned in order so we can't assert
         # encounters[0].owner == regular_user
-        assert sorted([e.owner.email for e in encounters]) == [
+        assert sorted(e.owner.email for e in encounters) == [
             researcher_1.email,
             regular_user.email,
         ]
@@ -166,8 +166,8 @@ def test_commit_individual_asset_group(
     request,
 ):
     # pylint: disable=invalid-name
-    from app.modules.sightings.models import Sighting, SightingStage
     from app.modules.asset_groups.models import AssetGroupSighting
+    from app.modules.sightings.models import Sighting, SightingStage
 
     asset_group_uuid = None
     try:
@@ -229,10 +229,10 @@ def test_commit_anonymous_asset_group(
 ):
     # pylint: disable=invalid-name
     import tests.extensions.tus.utils as tus_utils
-    import tests.modules.assets.resources.utils as asset_utils
-    import tests.modules.sightings.resources.utils as sighting_utils
-    import tests.modules.encounters.resources.utils as encounter_utils
     import tests.modules.annotations.resources.utils as annot_utils
+    import tests.modules.assets.resources.utils as asset_utils
+    import tests.modules.encounters.resources.utils as encounter_utils
+    import tests.modules.sightings.resources.utils as sighting_utils
 
     transaction_id, test_filename = tus_utils.prep_tus_dir(test_root)
     data = asset_group_utils.AssetGroupCreationData(transaction_id, test_filename)

@@ -1,11 +1,12 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=missing-docstring
 
-from tests.modules.sightings.resources import utils as sighting_utils
-from tests.modules.site_settings.resources import utils as setting_utils
-import pytest
 import json
 
+import pytest
+
+from tests.modules.sightings.resources import utils as sighting_utils
+from tests.modules.site_settings.resources import utils as setting_utils
 from tests.utils import (
     module_unavailable,
     random_decimal_latitude,
@@ -25,8 +26,9 @@ def test_mega_data(
     request,
     test_root,
 ):
-    from app.modules.sightings.models import Sighting
     import datetime
+
+    from app.modules.sightings.models import Sighting
 
     # make some customFields in edm
     sighting_cfd_id = setting_utils.custom_field_create(

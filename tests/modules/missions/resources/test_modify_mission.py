@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=missing-docstring
 
-from tests import utils
-from tests.modules.missions.resources import utils as mission_utils
 import pytest
 
+from tests import utils
+from tests.modules.missions.resources import utils as mission_utils
 from tests.utils import module_unavailable
 
 

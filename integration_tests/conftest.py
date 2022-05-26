@@ -12,7 +12,6 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import WebDriverWait
 
-
 TIMEOUT = int(os.getenv('TIMEOUT', 20))
 POLL_FREQUENCY = int(os.getenv('POLL_FREQUENCY', 1))
 CODEX_URL = os.getenv('CODEX_URL', 'http://localhost:84/')

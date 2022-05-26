@@ -8,11 +8,9 @@ import os
 import shutil
 from unittest import mock
 
-from config import get_preliminary_config
-
 import tests.extensions.tus.utils as tus_utils
+from config import get_preliminary_config
 from tests import utils as test_utils
-
 
 PATH = '/api/v1/asset_groups/'
 EXPECTED_ASSET_GROUP_SIGHTING_FIELDS = {
@@ -140,9 +138,10 @@ def patch_in_dummy_annotation(
     encounter_num=0,
     padding=0,
 ):
-    from app.modules.assets.models import Asset
-    from app.modules.annotations.models import Annotation
     import uuid
+
+    from app.modules.annotations.models import Annotation
+    from app.modules.assets.models import Asset
 
     asset = Asset.find(asset_uuid)
     assert asset
@@ -251,8 +250,8 @@ def read_all_asset_groups(flask_app_client, user, expected_status_code=200):
 def delete_asset_group(
     flask_app_client, user, asset_group_guid, expected_status_code=204
 ):
-    from app.modules.asset_groups.models import AssetGroup
     from app.extensions.git_store.tasks import delete_remote
+    from app.modules.asset_groups.models import AssetGroup
 
     with mock.patch('app.extensions.git_store.tasks') as tasks:
         # Do delete_remote in the foreground immediately instead of using a
@@ -261,7 +260,7 @@ def delete_asset_group(
             *args, **kwargs
         )
         with flask_app_client.login(user, auth_scopes=('asset_groups:write',)):
-            response = flask_app_client.delete('%s%s' % (PATH, asset_group_guid))
+            response = flask_app_client.delete('{}{}'.format(PATH, asset_group_guid))
 
     if expected_status_code == 204:
         assert response.status_code == 204, response.status_code
@@ -642,9 +641,10 @@ def get_bulk_creation_data(test_root, request, species_detection_model=None):
 
 def validate_file_data(test_root, data, filename):
     import hashlib
+    import io
 
     from PIL import Image
-    import io
+
     from app.modules.assets.models import Asset
 
     full_path = f'{test_root}/{filename}'
@@ -670,8 +670,8 @@ def commit_asset_group_sighting_sage_identification(
     asset_group_sighting_guid,
     expected_status_code=200,
 ):
-    from app.modules.annotations.models import Annotation
     from app.extensions import elasticsearch as es
+    from app.modules.annotations.models import Annotation
 
     # Start ID simulating success response from Sage
     with es.session.begin(blocking=True, forced=True):

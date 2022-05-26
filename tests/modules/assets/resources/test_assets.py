@@ -2,13 +2,12 @@
 # pylint: disable=missing-docstring
 import hashlib
 
+import pytest
+
 import tests.extensions.tus.utils as tus_utils
 import tests.modules.asset_groups.resources.utils as asset_group_utils
 import tests.modules.assets.resources.utils as asset_utils
-import pytest
-
 from tests.utils import module_unavailable
-
 
 # md5sum values of the initial and derived files
 initial_md5sum_values = [
@@ -179,8 +178,8 @@ def test_find_raw_asset(
     ).close()
 
     from app.modules.asset_groups.models import (
-        AssetGroupSightingStage,
         AssetGroupSighting,
+        AssetGroupSightingStage,
     )
 
     new_sighting = AssetGroupSighting.query.get(uuids['asset_group_sighting'])

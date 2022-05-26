@@ -7,7 +7,7 @@ import uuid
 
 import pytest
 
-from tests.utils import redis_unavailable, get_stored_path
+from tests.utils import get_stored_path, redis_unavailable
 
 
 def get_file_upload_filename():

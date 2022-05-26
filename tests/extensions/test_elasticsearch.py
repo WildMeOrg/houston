@@ -1,14 +1,15 @@
 # -*- coding: utf-8 -*-
-import pytest
-import time
 import datetime
+import time
+
+import pytest
 import tqdm
 
 from tests.utils import (
+    elasticsearch,
     extension_unavailable,
     module_unavailable,
     wait_for_elasticsearch_status,
-    elasticsearch,
 )
 
 
@@ -17,8 +18,8 @@ from tests.utils import (
 )
 def test_indexing_with_elasticsearch():
     from app.extensions import elasticsearch as es
-    from app.modules.users.models import User
     from app.modules.assets.models import AssetTags
+    from app.modules.users.models import User
 
     assert User in es.REGISTERED_MODELS
     assert AssetTags not in es.REGISTERED_MODELS
@@ -68,15 +69,15 @@ def test_elasticsearch_utilities(
     request,
     test_root,
 ):
-    from app.extensions.elasticsearch import tasks as es_tasks
+    import tests.modules.asset_groups.resources.utils as asset_group_utils
     from app.extensions import elasticsearch as es
+    from app.extensions.elasticsearch import tasks as es_tasks
+    from app.modules.assets.models import Asset
     from app.modules.complex_date_time.models import ComplexDateTime, Specificities
     from app.modules.users.models import User
     from app.modules.users.schemas import UserListSchema
-    from app.modules.assets.models import Asset
-    from tests.modules.users.resources.utils import read_all_users_pagination
     from tests.modules.assets.resources.utils import read_all_assets_pagination
-    import tests.modules.asset_groups.resources.utils as asset_group_utils
+    from tests.modules.users.resources.utils import read_all_users_pagination
 
     if es.is_disabled():
         return

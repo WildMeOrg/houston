@@ -3,8 +3,9 @@
 Relationship resources utils
 -------------
 """
-import logging
 import json
+import logging
+
 from tests import utils as test_utils
 
 PATH = '/api/v1/relationships/'
@@ -35,7 +36,7 @@ def read_relationship(
     flask_app_client, regular_user, relationship_guid, expected_status_code=200
 ):
     with flask_app_client.login(regular_user, auth_scopes=('relationships:read',)):
-        response = flask_app_client.get('%s%s' % (PATH, relationship_guid))
+        response = flask_app_client.get('{}{}'.format(PATH, relationship_guid))
 
     assert response.status_code == expected_status_code
     if response.status_code == 200:
@@ -52,7 +53,7 @@ def delete_relationship(
     flask_app_client, user, relationship_guid, expected_status_code=204
 ):
     with flask_app_client.login(user, auth_scopes=('relationships:write',)):
-        response = flask_app_client.delete('%s%s' % (PATH, relationship_guid))
+        response = flask_app_client.delete('{}{}'.format(PATH, relationship_guid))
 
     if expected_status_code == 204:
         assert response.status_code == 204
@@ -72,7 +73,7 @@ def patch_relationship(
 ):
     with flask_app_client.login(user, auth_scopes=('relationships:write',)):
         response = flask_app_client.patch(
-            '%s%s' % (PATH, relationship_guid),
+            '{}{}'.format(PATH, relationship_guid),
             data=json.dumps(patch_data),
             content_type='application/json',
             headers=headers,

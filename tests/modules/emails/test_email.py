@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=missing-docstring
-from pathlib import Path
 import uuid
+from pathlib import Path
 
-from app.modules.emails.models import RecordedEmail, EmailTypes, EmailRecord
-from app.modules.site_settings.models import SiteSetting
-from app.extensions.email import Email
 import pytest
 
+from app.extensions.email import Email
+from app.modules.emails.models import EmailRecord, EmailTypes, RecordedEmail
+from app.modules.site_settings.models import SiteSetting
 
 test_recipient = str(uuid.uuid4()) + '-test@example.com'
 

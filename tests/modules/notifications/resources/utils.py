@@ -4,6 +4,7 @@ notification resources utils
 -------------
 """
 import json
+
 from tests import utils as test_utils
 
 PATH = '/api/v1/notifications/'

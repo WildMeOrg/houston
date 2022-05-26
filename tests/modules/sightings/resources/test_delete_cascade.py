@@ -14,13 +14,14 @@
 # but there may be some redundancy with these tests in here.
 
 
-from tests.modules.sightings.resources import utils as sighting_utils
-from tests.modules.individuals.resources import utils as individual_utils
-from tests.modules.encounters.resources import utils as encounter_utils
-from tests import utils as test_utils
 import datetime
+
 import pytest
 
+from tests import utils as test_utils
+from tests.modules.encounters.resources import utils as encounter_utils
+from tests.modules.individuals.resources import utils as individual_utils
+from tests.modules.sightings.resources import utils as sighting_utils
 from tests.utils import module_unavailable
 
 timestamp = datetime.datetime.now().isoformat() + '+00:00'

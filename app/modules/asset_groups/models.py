@@ -351,6 +351,8 @@ class AssetGroupSighting(db.Model, HoustonModel):
         return sighting
 
     def has_filename(self, filename):
+        if not self.sighting_config:
+            return False
         return (
             filename in self.sighting_config.get('assetReferences', [])
             if self.sighting_config
@@ -388,6 +390,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
         if (
             self.stage != AssetGroupSightingStage.detection
             and not self.any_jobs_active()
+            and self.sighting_config
             and 'assetReferences' in self.sighting_config.keys()
             and len(self.sighting_config['assetReferences']) != 0
         ):
@@ -433,6 +436,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
         return getter
 
     def get_config_field(self, field):
+        # should we check for self.sighting_config here? or let it throw exception?
         value = (
             self.sighting_config.get(field)
             if isinstance(self.sighting_config, dict)
@@ -1247,7 +1251,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
     # Used to build the response to AssetGroupSighting GET
     def get_assets(self):
         assets = []
-        if not self.sighting_config.get('assetReferences'):
+        if not self.sighting_config or not self.sighting_config.get('assetReferences'):
             return assets
         for filename in self.sighting_config.get('assetReferences'):
             asset = self.asset_group.get_asset_for_file(filename)

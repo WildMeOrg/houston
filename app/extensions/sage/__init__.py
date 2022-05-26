@@ -5,16 +5,16 @@ Asset Curation Model (Sage) manager.
 
 """
 
-from flask import current_app, request, session, render_template  # NOQA
-from flask_login import current_user  # NOQA
-from app.extensions.restManager.RestManager import RestManager
-from app.utils import HoustonException
-
-import logging
 import keyword
-import tqdm
+import logging
 import uuid
 
+import tqdm
+from flask import current_app, render_template, request, session  # NOQA
+from flask_login import current_user  # NOQA
+
+from app.extensions.restManager.RestManager import RestManager
+from app.utils import HoustonException
 from flask_restx_patched import is_extension_enabled
 
 if not is_extension_enabled('sage'):
@@ -34,9 +34,9 @@ class SageModel(object):
     def sync_all_with_sage(cls, prune=False, **kwargs):
         houston_tag, sage_tag = cls.get_sage_sync_tags()
         sage_uuids = current_app.sage.request_passthrough_result(
-            '%s.list' % (houston_tag,), 'get', target='sync'
+            '{}.list'.format(houston_tag), 'get', target='sync'
         )
-        sage_uuids = set([from_sage_uuid(guid) for guid in sage_uuids])
+        sage_uuids = {from_sage_uuid(guid) for guid in sage_uuids}
 
         bulk_sage_uuids = {
             houston_tag: sage_uuids,
@@ -45,13 +45,13 @@ class SageModel(object):
         if houston_tag == 'annotation':
             houston_tag_ = 'asset'
             sage_uuids_ = current_app.sage.request_passthrough_result(
-                '%s.list' % (houston_tag_,), 'get', target='sync'
+                '{}.list'.format(houston_tag_), 'get', target='sync'
             )
-            sage_uuids_ = set([from_sage_uuid(guid) for guid in sage_uuids_])
+            sage_uuids_ = {from_sage_uuid(guid) for guid in sage_uuids_}
             bulk_sage_uuids[houston_tag_] = sage_uuids_
 
         objs = cls.query.all()
-        desc = 'Sage Sync %s' % (cls.__name__,)
+        desc = 'Sage Sync {}'.format(cls.__name__)
         for obj in tqdm.tqdm(objs, desc=desc):
             obj.sync_with_sage(bulk_sage_uuids=bulk_sage_uuids, **kwargs)
 
@@ -59,9 +59,9 @@ class SageModel(object):
             houston_sage_uuids = cls.query.with_entities(cls.content_guid).all()
 
             # Standardize
-            houston_sage_uuids = set(
-                [guid for (guid,) in houston_sage_uuids if guid is not None]
-            )
+            houston_sage_uuids = {
+                guid for (guid,) in houston_sage_uuids if guid is not None
+            }
 
             # Calculate
             delete_sage_uuids = sage_uuids - houston_sage_uuids
@@ -75,7 +75,7 @@ class SageModel(object):
                     )
                 )
 
-                key = '%s_uuid_list' % (sage_tag,)
+                key = '{}_uuid_list'.format(sage_tag)
                 sage_request = {
                     key: [],
                 }
@@ -83,7 +83,7 @@ class SageModel(object):
                     sage_request[key].append(to_sage_uuid(delete_sage_uuid))
 
                 sage_response = current_app.sage.request_passthrough_result(
-                    '%s.delete' % (houston_tag,),
+                    '{}.delete'.format(houston_tag),
                     'delete',
                     {'json': sage_request},
                     target='sync',
@@ -111,7 +111,7 @@ def from_sage_uuid(sage_uuid):
     if sage_uuid is None:
         return None
 
-    assert '__UUID__' in sage_uuid, 'Received sage_uuid = %r' % (sage_uuid,)
+    assert '__UUID__' in sage_uuid, 'Received sage_uuid = {!r}'.format(sage_uuid)
 
     sage_guid = sage_uuid.get('__UUID__', None)
     if sage_guid is None:
@@ -277,19 +277,17 @@ class SageManager(RestManager):
         )['json_result']
         statuses, sage_jobs = current_app.sage.get_job_status(jobs, exclude_done=False)
 
-        sage_completed_job_guids = set(
-            [sage_job_id for sage_job_id, status in sage_jobs if status in ['completed']]
-        )
-        sage_failed_job_guids = set(
-            [sage_job_id for sage_job_id, status in sage_jobs if status in ['exception']]
-        )
-        sage_pending_job_guids = set(
-            [
-                sage_job_id
-                for sage_job_id, status in sage_jobs
-                if status not in ['completed', 'exception', 'None']
-            ]
-        )
+        sage_completed_job_guids = {
+            sage_job_id for sage_job_id, status in sage_jobs if status in ['completed']
+        }
+        sage_failed_job_guids = {
+            sage_job_id for sage_job_id, status in sage_jobs if status in ['exception']
+        }
+        sage_pending_job_guids = {
+            sage_job_id
+            for sage_job_id, status in sage_jobs
+            if status not in ['completed', 'exception', 'None']
+        }
 
         self.sync_jobs_detection(
             sage_completed_job_guids,
@@ -385,10 +383,7 @@ class SageManager(RestManager):
         sage_pending_job_guids,
         verbose=True,
     ):
-        from app.modules.asset_groups.models import (
-            Sighting,
-            SightingStage,
-        )
+        from app.modules.asset_groups.models import Sighting, SightingStage
 
         sightings = Sighting.query.all()
 
@@ -453,8 +448,8 @@ class SageManager(RestManager):
             sighting.identified(job_id, response)
 
     def get_status(self):
-        from app.modules.assets.models import Asset
         from app.modules.annotations.models import Annotation
+        from app.modules.assets.models import Asset
 
         # Get Sage data
         sage_assets = current_app.sage.request_passthrough_result(
@@ -486,21 +481,21 @@ class SageManager(RestManager):
         ).all()
 
         # Standardize
-        sage_assets = set([from_sage_uuid(guid) for guid in sage_assets])
-        sage_annots = set([from_sage_uuid(guid) for guid in sage_annots])
+        sage_assets = {from_sage_uuid(guid) for guid in sage_assets}
+        sage_annots = {from_sage_uuid(guid) for guid in sage_annots}
 
-        houston_assets = set([guid for (guid,) in houston_assets if guid is not None])
-        houston_annots = set([guid for (guid,) in houston_annots if guid is not None])
+        houston_assets = {guid for (guid,) in houston_assets if guid is not None}
+        houston_annots = {guid for (guid,) in houston_annots if guid is not None}
 
-        houston_sage_assets_none = sum([guid is None for (guid,) in houston_sage_assets])
-        houston_sage_annots_none = sum([guid is None for (guid,) in houston_sage_annots])
+        houston_sage_assets_none = sum(guid is None for (guid,) in houston_sage_assets)
+        houston_sage_annots_none = sum(guid is None for (guid,) in houston_sage_annots)
 
-        houston_sage_assets = set(
-            [guid for (guid,) in houston_sage_assets if guid is not None]
-        )
-        houston_sage_annots = set(
-            [guid for (guid,) in houston_sage_annots if guid is not None]
-        )
+        houston_sage_assets = {
+            guid for (guid,) in houston_sage_assets if guid is not None
+        }
+        houston_sage_annots = {
+            guid for (guid,) in houston_sage_annots if guid is not None
+        }
 
         log.info('Assets')
         log.info(

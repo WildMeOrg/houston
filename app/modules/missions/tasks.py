@@ -5,7 +5,6 @@ import requests.exceptions
 
 from app.extensions.celery import celery
 
-
 log = logging.getLogger(__name__)
 
 

@@ -3,15 +3,15 @@
 Input arguments (Parameters) for Encounters resources RESTful API
 -----------------------------------------------------------
 """
+import logging
+
 from flask_login import current_user
+
+from app.modules.users.permissions import rules
+from app.utils import HoustonException
 from flask_restx_patched import Parameters, PatchJSONParameters
 
 from . import schemas
-from app.modules.users.permissions import rules
-import logging
-
-
-from app.utils import HoustonException
 
 log = logging.getLogger(__name__)
 
@@ -58,8 +58,9 @@ class PatchEncounterDetailsParameters(PatchJSONParameters):
 
     @classmethod
     def replace(cls, obj, field, value, state):
-        from app.modules.users.models import User
         from app.modules.complex_date_time.models import ComplexDateTime
+        from app.modules.users.models import User
+
         from .models import db
 
         ret_val = False

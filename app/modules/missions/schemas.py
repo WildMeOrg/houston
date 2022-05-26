@@ -4,8 +4,9 @@ Serialization schemas for Missions resources RESTful API
 ----------------------------------------------------
 """
 
-from flask_restx_patched import ModelSchema
 from flask_marshmallow import base_fields
+
+from flask_restx_patched import ModelSchema
 
 from .models import Mission, MissionCollection, MissionTask
 

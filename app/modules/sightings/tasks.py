@@ -14,8 +14,8 @@ def send_identification(
     algorithm_id,
     matching_set_query=None,
 ):
-    from app.modules.sightings.models import Sighting
     from app.modules.annotations.models import Annotation
+    from app.modules.sightings.models import Sighting
 
     sighting = Sighting.query.get(sighting_guid)
     annotation = Annotation.query.get(annotation_guid)

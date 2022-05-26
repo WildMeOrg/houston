@@ -5,16 +5,17 @@ Rest Manager base class, to be used for any entity (EDM/Sage) where we need to i
 system using REST API
 
 """
-import logging
-from werkzeug.exceptions import BadRequest
-from flask import current_app, request, session, render_template  # NOQA
-from flask_login import current_user  # NOQA
-import requests
-from collections import namedtuple
-import utool as ut
 import json
 import keyword
+import logging
 import uuid
+from collections import namedtuple
+
+import requests
+import utool as ut
+from flask import current_app, render_template, request, session  # NOQA
+from flask_login import current_user  # NOQA
+from werkzeug.exceptions import BadRequest
 
 KEYWORD_SET = set(keyword.kwlist)
 
@@ -27,7 +28,7 @@ def _json_object_hook(data):
     keys_ = []
     for key in keys:
         if key in KEYWORD_SET:
-            key_ = '%s_' % (key,)
+            key_ = '{}_'.format(key)
             assert key_ not in keys_set
         else:
             key_ = key
@@ -92,7 +93,7 @@ class RestManager(RestManagerUserMixin):
         assert self.ENDPOINTS is not None
 
         # Start with all contents as empty structures
-        self.targets = set([])
+        self.targets = set()
         self.sessions = {}
         self.uris = {}
         self.auths = {}
@@ -362,7 +363,7 @@ class RestManager(RestManagerUserMixin):
         # Check target
         targets = list(self.targets)
         if target not in targets:
-            raise BadRequest('The specified target %r is invalid.' % (target,))
+            raise BadRequest('The specified target {!r} is invalid.'.format(target))
 
         headers = passthrough_kwargs.get('headers', {})
         allowed_header_key_list = [

@@ -4,21 +4,22 @@ Input arguments (Parameters) for Missions resources RESTful API
 -----------------------------------------------------------
 """
 
+import logging
+
 from flask_login import current_user  # NOQA
 from flask_marshmallow import base_fields
+from marshmallow import ValidationError
+
+from app.modules.users.permissions import rules
 from flask_restx_patched import (
     Parameters,
     PatchJSONParameters,
     PatchJSONParametersWithPassword,
     SetOperationsJSONParameters,
 )
-from marshmallow import ValidationError
 
 from . import schemas
 from .models import Mission, MissionCollection, MissionTask
-from app.modules.users.permissions import rules
-import logging
-
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
@@ -69,8 +70,8 @@ class PatchMissionDetailsParameters(PatchJSONParametersWithPassword):
 
     @classmethod
     def add(cls, obj, field, value, state):
-        from app.modules.users.models import User
         from app.modules.assets.models import Asset
+        from app.modules.users.models import User
 
         # Check permissions
         super(PatchMissionDetailsParameters, cls).add(obj, field, value, state)
@@ -93,8 +94,8 @@ class PatchMissionDetailsParameters(PatchJSONParametersWithPassword):
 
     @classmethod
     def remove(cls, obj, field, value, state):
-        from app.modules.users.models import User
         from app.modules.assets.models import Asset
+        from app.modules.users.models import User
 
         # Check permissions
         super(PatchMissionDetailsParameters, cls).remove(obj, field, value, state)
@@ -197,8 +198,8 @@ class CreateMissionTaskParameters(SetOperationsJSONParameters):
 
     @classmethod
     def resolve(cls, field, value, obj):
-        from app.modules.missions.models import MissionCollection, MissionTask
         from app.modules.assets.models import Asset
+        from app.modules.missions.models import MissionCollection, MissionTask
 
         def _check(condition):
             if not condition:
@@ -286,8 +287,8 @@ class PatchMissionTaskDetailsParameters(PatchJSONParametersWithPassword):
 
     @classmethod
     def add(cls, obj, field, value, state):
-        from app.modules.users.models import User
         from app.modules.assets.models import Asset
+        from app.modules.users.models import User
 
         super(PatchMissionTaskDetailsParameters, cls).add(obj, field, value, state)
         ret_val = False
@@ -321,8 +322,8 @@ class PatchMissionTaskDetailsParameters(PatchJSONParametersWithPassword):
 
     @classmethod
     def remove(cls, obj, field, value, state):
-        from app.modules.users.models import User
         from app.modules.assets.models import Asset
+        from app.modules.users.models import User
 
         # Check permissions
         super(PatchMissionTaskDetailsParameters, cls).remove(obj, field, value, state)

@@ -12,7 +12,6 @@ from flask import Blueprint
 
 from .utils import fail_on_missing_static_folder
 
-
 blueprint = Blueprint(
     'customized_swagger_ui',
     __name__,

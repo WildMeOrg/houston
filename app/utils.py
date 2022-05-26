@@ -5,11 +5,12 @@ Houston Common utils
 --------------------------
 """
 
-from flask_login import current_user  # NOQA
-import app.extensions.logging as AuditLog  # NOQA
-
 import datetime
 import logging
+
+from flask_login import current_user  # NOQA
+
+import app.extensions.logging as AuditLog  # NOQA
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
@@ -66,8 +67,8 @@ def get_celery_tasks_scheduled(type=None):
 
 
 def get_celery_data(task_id):
-    from flask import current_app
     from celery.result import AsyncResult
+    from flask import current_app
 
     inspect = current_app.celery.control.inspect()
     workers = inspect.ping()
@@ -133,8 +134,9 @@ def get_stored_filename(input_filename):
 def nlp_parse_complex_date_time(
     text, reference_date=None, tz='UTC', time_specificity=None
 ):
-    from app.modules.complex_date_time.models import ComplexDateTime, Specificities
     from sutime import SUTime
+
+    from app.modules.complex_date_time.models import ComplexDateTime, Specificities
 
     # https://github.com/FraBle/python-sutime
     # will throw RuntimeError if jars are not there

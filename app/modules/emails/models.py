@@ -1,17 +1,14 @@
 # -*- coding: utf-8 -*-
-import logging
-import enum
-
-from flask import current_app, request
-from app.extensions.email import Email  # , _format_datetime
-
-from app.extensions import db, HoustonModel
-
 import datetime
+import enum
+import logging
 import pprint
-
 import uuid
 
+from flask import current_app, request
+
+from app.extensions import HoustonModel, db
+from app.extensions.email import Email  # , _format_datetime
 
 log = logging.getLogger(__name__)
 pp = pprint.PrettyPrinter(indent=2)

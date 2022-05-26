@@ -4,13 +4,14 @@ Annotations database models
 --------------------
 """
 
-from app.extensions import db, HoustonModel, SageModel
-from app.modules import is_module_enabled
-from app.utils import HoustonException
+import logging
+import uuid
+
 from flask import current_app
 
-import uuid
-import logging
+from app.extensions import HoustonModel, SageModel, db
+from app.modules import is_module_enabled
+from app.utils import HoustonException
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
@@ -142,11 +143,7 @@ class Annotation(db.Model, HoustonModel, SageModel):
     def sync_with_sage(
         self, ensure=False, force=False, bulk_sage_uuids=None, skip_asset=False, **kwargs
     ):
-        from app.extensions.sage import (
-            to_sage_uuid,
-            from_sage_uuid,
-            SAGE_UNKNOWN_NAME,
-        )
+        from app.extensions.sage import SAGE_UNKNOWN_NAME, from_sage_uuid, to_sage_uuid
 
         # First, ensure that the annotation's asset has been synced with Sage
         if not skip_asset:
@@ -233,7 +230,7 @@ class Annotation(db.Model, HoustonModel, SageModel):
                 return
 
         progress = Progress(
-            description='Sage identification for Annotation %r' % (self.guid,)
+            description='Sage identification for Annotation {!r}'.format(self.guid)
         )
         with db.session.begin():
             db.session.add(progress)
@@ -278,7 +275,7 @@ class Annotation(db.Model, HoustonModel, SageModel):
         return self.get_keywords()
 
     def get_keywords(self):
-        return sorted([ref.keyword for ref in self.keyword_refs])
+        return sorted(ref.keyword for ref in self.keyword_refs)
 
     def add_keyword(self, keyword):
         with db.session.begin(subtransactions=True):
@@ -447,7 +444,7 @@ class Annotation(db.Model, HoustonModel, SageModel):
     def get_keyword_values(self):
         if not self.keyword_refs:
             return []
-        return sorted([ref.keyword.value for ref in self.keyword_refs])
+        return sorted(ref.keyword.value for ref in self.keyword_refs)
 
     def delete(self):
         with db.session.begin(subtransactions=True):

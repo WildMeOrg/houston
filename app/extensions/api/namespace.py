@@ -3,22 +3,21 @@
 Extended Api Namespace implementation with an application-specific helpers
 --------------------------------------------------------------------------
 """
+import logging
 from contextlib import contextmanager
 from functools import wraps
-import logging
 
 import flask_marshmallow
 import flask_sqlalchemy
-from sqlalchemy.inspection import inspect
 import sqlalchemy
+from marshmallow import ValidationError
+from sqlalchemy.inspection import inspect
 
-from flask_restx_patched.namespace import Namespace as BaseNamespace
 from flask_restx_patched._http import HTTPStatus
+from flask_restx_patched.namespace import Namespace as BaseNamespace
 
 from . import http_exceptions
 from .webargs_parser import CustomWebargsParser
-
-from marshmallow import ValidationError
 
 log = logging.getLogger(__name__)
 
@@ -177,7 +176,7 @@ class Namespace(BaseNamespace):
                                 rel_cls = relationship.mapper.class_
                                 column_names = list(rel_cls.__table__.columns)
                                 for column in column_names:
-                                    column_name = '%s.%s' % (
+                                    column_name = '{}.{}'.format(
                                         attribute,
                                         column.name.lower(),
                                     )

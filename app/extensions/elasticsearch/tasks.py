@@ -1,9 +1,8 @@
 # -*- coding: utf-8 -*-
 import logging
-
 import uuid
-from app.extensions.celery import celery
 
+from app.extensions.celery import celery
 
 ELASTICSEARCH_MAXIMUM_SESSION_LENGTH = 60 * 15
 ELASTICSEARCH_UPDATE_FREQUENCY = 60 * 60 * 1
@@ -32,11 +31,12 @@ def es_task_setup_periodic_tasks(sender, **kwargs):
 
 @celery.task
 def es_task_refresh_index_all(force=False):
-    from app.extensions import elasticsearch as es
     from flask import current_app
 
+    from app.extensions import elasticsearch as es
+
     testing = current_app.testing and not force
-    log.info('Running Refresh Index All (testing = %r)' % (testing,))
+    log.info('Running Refresh Index All (testing = {!r})'.format(testing))
     if testing:
         log.info('...skipping')
         return True
@@ -53,7 +53,7 @@ def es_task_refresh_index_all(force=False):
 
     # Check on the status of the DB relative to ES
     status = es.es_status(app=current_app)
-    log.info('Elasticsearch status = %r' % (status,))
+    log.info('Elasticsearch status = {!r}'.format(status))
 
     # Ignore any active jobs
     status.pop('active', None)
@@ -62,11 +62,12 @@ def es_task_refresh_index_all(force=False):
 
 @celery.task
 def es_task_invalidate_indexed_timestamps(force=False):
-    from app.extensions import elasticsearch as es
     from flask import current_app
 
+    from app.extensions import elasticsearch as es
+
     testing = current_app.testing and not force
-    log.info('Running Invalidate Indexed Timestamps (testing = %r)' % (testing,))
+    log.info('Running Invalidate Indexed Timestamps (testing = {!r})'.format(testing))
     if testing:
         log.info('...skipping')
         return True
@@ -79,8 +80,9 @@ def es_task_invalidate_indexed_timestamps(force=False):
 
 @celery.task
 def es_task_index_bulk(index, items):
-    from app.extensions import elasticsearch as es
     from flask import current_app
+
+    from app.extensions import elasticsearch as es
 
     app = current_app
     cls = es.es_index_class(index)
@@ -139,8 +141,9 @@ def es_task_index_bulk(index, items):
 
 @celery.task
 def es_task_delete_guid_bulk(index, guids):
-    from app.extensions import elasticsearch as es
     from flask import current_app
+
+    from app.extensions import elasticsearch as es
 
     app = current_app
     cls = es.es_index_class(index)

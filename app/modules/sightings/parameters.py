@@ -6,16 +6,16 @@ Input arguments (Parameters) for Sightings resources RESTful API
 
 # from flask_marshmallow import base_fields
 
+from uuid import UUID
+
 from flask_login import current_user
+
+import app.modules.utils as util
+from app.modules.users.permissions import rules
+from app.modules.users.permissions.types import AccessOperation
 from flask_restx_patched import Parameters, PatchJSONParameters
 
 from . import schemas
-
-from app.modules.users.permissions.types import AccessOperation
-from app.modules.users.permissions import rules
-
-import app.modules.utils as util
-from uuid import UUID
 
 
 class CreateSightingParameters(Parameters, schemas.CreateSightingSchema):

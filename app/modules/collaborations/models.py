@@ -3,14 +3,14 @@
 Collaborations database models
 --------------------
 """
-import uuid
 import logging
+import uuid
+
 from flask_login import current_user
 
-from app.extensions import db, HoustonModel
 import app.extensions.logging as AuditLog
+from app.extensions import HoustonModel, db
 from app.utils import HoustonException
-
 
 log = logging.getLogger(__name__)
 

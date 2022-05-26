@@ -4,12 +4,11 @@ Names database models
 A structure for holding a (user-provided) name for an Individual.
 --------------------
 """
+import logging
 import uuid
 
-from app.extensions import db, HoustonModel, Timestamp
-
-import logging
 import app.extensions.logging as AuditLog
+from app.extensions import HoustonModel, Timestamp, db
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 

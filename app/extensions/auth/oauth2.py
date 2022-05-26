@@ -15,15 +15,13 @@ import datetime
 import functools
 import logging
 
-
+import sqlalchemy
 from flask import request, session
 from flask_login import current_user
 from flask_oauthlib import provider
-from flask_restx_patched._http import HTTPStatus
-import sqlalchemy
 
 from app.extensions import api, db
-
+from flask_restx_patched._http import HTTPStatus
 
 log = logging.getLogger(__name__)
 

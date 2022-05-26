@@ -6,18 +6,18 @@ RESTful API Audit Logs resources
 """
 
 import logging
-from flask_restx_patched import Resource
-from flask_restx._http import HTTPStatus
 
 from flask import request
+from flask_restx._http import HTTPStatus
+
 from app.extensions.api import Namespace
 from app.modules.users import permissions
 from app.modules.users.permissions.types import AccessOperation
+from flask_restx_patched import Resource
 
 from . import schemas
 from .models import AuditLog
-from .parameters import GetAuditLogParameters, GetAuditLogFaultsParameters
-
+from .parameters import GetAuditLogFaultsParameters, GetAuditLogParameters
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 api = Namespace('audit_logs', description='Audit_logs')  # pylint: disable=invalid-name

@@ -7,11 +7,11 @@ import datetime
 import logging
 import uuid
 
-from flask import current_app
 import pytz
+from flask import current_app
 
+from app.extensions import HoustonModel, db
 from app.extensions.edm import EDMObjectMixin
-from app.extensions import db, HoustonModel
 from app.modules.users.models import User
 
 log = logging.getLogger(__name__)
@@ -96,7 +96,7 @@ class OrganizationEDMMixin(EDMObjectMixin):
 
     def _process_members(self, members):
         for member in members:
-            log.info('Adding Member ID %s' % (member.id,))
+            log.info('Adding Member ID {}'.format(member.id))
             user, is_new = User.ensure_edm_obj(member.id)
             if user not in self.members:
                 enrollment = OrganizationUserMembershipEnrollment(

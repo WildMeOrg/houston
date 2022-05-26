@@ -4,13 +4,15 @@ Individuals database models
 --------------------
 """
 
-from app.extensions import FeatherModel, db
-from flask import current_app, url_for
-import uuid
-import logging
-import app.extensions.logging as AuditLog
 import datetime
-from app.modules.names.models import Name, DEFAULT_NAME_CONTEXT
+import logging
+import uuid
+
+from flask import current_app, url_for
+
+import app.extensions.logging as AuditLog
+from app.extensions import FeatherModel, db
+from app.modules.names.models import DEFAULT_NAME_CONTEXT, Name
 from app.utils import HoustonException
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
@@ -324,7 +326,7 @@ class Individual(db.Model, FeatherModel):
         return primary_name
 
     def has_name_context(self, context):
-        contexts = set([name.context for name in self.names])
+        contexts = {name.context for name in self.names}
         return context in contexts
 
     def has_default_name(self):
@@ -442,9 +444,10 @@ class Individual(db.Model, FeatherModel):
     # arbitrary individual_guid
     @classmethod
     def get_cooccurring_individual_guids_for_individual_guid(cls, individual_guid):
-        from app.modules.sightings.models import Sighting
-        from app.modules.encounters.models import Encounter
         from sqlalchemy.orm import aliased
+
+        from app.modules.encounters.models import Encounter
+        from app.modules.sightings.models import Sighting
 
         enc1 = aliased(Encounter, name='enc1')
         enc2 = aliased(Encounter, name='enc2')
@@ -475,9 +478,10 @@ class Individual(db.Model, FeatherModel):
     def get_shared_sighting_guids_for_individual_guids(cls, *individuals):
         if not individuals or not isinstance(individuals, tuple) or len(individuals) < 2:
             raise ValueError('must be passed a tuple of at least 2 individuals')
-        from app.modules.sightings.models import Sighting
-        from app.modules.encounters.models import Encounter
         from sqlalchemy.orm import aliased
+
+        from app.modules.encounters.models import Encounter
+        from app.modules.sightings.models import Sighting
 
         # we want guids strings here
         individual_guids = []
@@ -609,6 +613,7 @@ class Individual(db.Model, FeatherModel):
     @classmethod
     def merge_notify(cls, individuals, request_data, notif_type=None):
         from flask_login import current_user
+
         from app.modules.notifications.models import NotificationType
 
         if not notif_type:
@@ -648,10 +653,7 @@ class Individual(db.Model, FeatherModel):
     def _merge_notify_user(
         cls, sender, user, your_individuals, all_individuals, request_data, notif_type
     ):
-        from app.modules.notifications.models import (
-            Notification,
-            NotificationBuilder,
-        )
+        from app.modules.notifications.models import Notification, NotificationBuilder
 
         other_individuals = []
         for indiv_id in range(len(all_individuals)):
@@ -725,7 +727,7 @@ class Individual(db.Model, FeatherModel):
     #  currently, override-context will only replace an existing one, not add to names when it does not exist
     def merge_names(self, source_individuals, override=None, fail_on_conflict=False):
         override_contexts = set(override.keys()) if isinstance(override, dict) else set()
-        contexts_on_self = set([name.context for name in self.names])
+        contexts_on_self = {name.context for name in self.names}
         for indiv in source_individuals:
             for name in indiv.names:
                 if fail_on_conflict and name.context in contexts_on_self:

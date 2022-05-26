@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
+import logging
 from pathlib import Path
 from typing import NoReturn, Optional, Union
-from app.extensions.api import abort
+from uuid import UUID
+
 from flask import Blueprint, Flask, current_app, request
 
-import logging
-
-from uuid import UUID
+from app.extensions.api import abort
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 

@@ -6,12 +6,12 @@ RESTful API JobControl resources
 """
 
 import logging
-from flask_restx_patched import Resource
 
 from app.extensions.api import Namespace
 from app.extensions.api.parameters import PaginationParameters
 from app.modules.users import permissions
 from app.modules.users.permissions.types import AccessOperation
+from flask_restx_patched import Resource
 
 from .models import JobControl
 

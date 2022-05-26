@@ -5,27 +5,26 @@ RESTful API Site Settings resources
 --------------------------
 """
 
+import json
 import logging
 from pathlib import Path
 
+from flask import current_app, redirect, request, url_for
 from flask_login import current_user  # NOQA
-from flask import current_app, request, redirect, url_for
-from flask_restx_patched import Resource
 from flask_restx._http import HTTPStatus
 
-from app.extensions import db, is_extension_enabled
 import app.extensions.logging as AuditLog  # NOQA
-from app.extensions.api import abort, Namespace
-from app.modules.users.models import User
+import app.version
+from app.extensions import db, is_extension_enabled
+from app.extensions.api import Namespace, abort
 from app.modules.users import permissions
+from app.modules.users.models import User
 from app.modules.users.permissions.types import AccessOperation
 from app.utils import HoustonException
-import app.version
+from flask_restx_patched import Resource
 
-from . import schemas, parameters
+from . import parameters, schemas
 from .models import SiteSetting
-import json
-
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 api = Namespace(

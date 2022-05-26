@@ -8,7 +8,7 @@ Input arguments (Parameters) for Notifications resources RESTful API
 from flask_restx_patched import Parameters, PatchJSONParameters
 
 from . import schemas
-from .models import Notification, NOTIFICATION_CONFIG  # NOQA
+from .models import NOTIFICATION_CONFIG, Notification  # NOQA
 
 
 class CreateNotificationParameters(Parameters, schemas.DetailedNotificationSchema):

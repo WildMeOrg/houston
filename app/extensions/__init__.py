@@ -8,29 +8,31 @@ Extensions provide access to common resources of the application.
 
 Please, put new extension instantiations and initializations here.
 """
+import datetime  # NOQA
+import json  # NOQA
+import logging as logging_native  # NOQA
 import re  # NOQA
 import sys  # NOQA
 import uuid  # NOQA
-import json  # NOQA
+
 import tqdm  # NOQA
-import datetime  # NOQA
-import logging as logging_native  # NOQA
+
 from .logging import Logging  # NOQA
 
 logging = Logging()
 log = logging_native.getLogger(__name__)  # pylint: disable=invalid-name
 
 import flask.json  # NOQA
-
-from .flask_sqlalchemy import SQLAlchemy  # NOQA
 import sqlalchemy as sa  # NOQA
-from sqlalchemy.ext import mutable  # NOQA
 from flask_caching import Cache  # NOQA
 from flask_executor import Executor  # NOQA
-from sqlalchemy.types import TypeDecorator, CHAR  # NOQA
-from sqlalchemy.sql import elements  # NOQA
 from sqlalchemy.dialects.postgresql import UUID  # NOQA
+from sqlalchemy.ext import mutable  # NOQA
+from sqlalchemy.sql import elements  # NOQA
+from sqlalchemy.types import CHAR, TypeDecorator  # NOQA
 from sqlalchemy_utils import types as column_types  # NOQA
+
+from .flask_sqlalchemy import SQLAlchemy  # NOQA
 
 db = SQLAlchemy()
 
@@ -38,7 +40,8 @@ cache = Cache()
 
 executor = Executor()
 
-from sqlalchemy_utils import force_auto_coercion, force_instant_defaults  # NOQA
+from sqlalchemy_utils import force_auto_coercion  # NOQA
+from sqlalchemy_utils import force_instant_defaults  # NOQA
 
 force_auto_coercion()
 force_instant_defaults()
@@ -52,10 +55,9 @@ login_manager = LoginManager()
 # login_manager.session_protection = "strong"
 ##########################################################################################
 
-from flask_paranoid import Paranoid  # NOQA
-
 from flask_marshmallow import Marshmallow  # NOQA
-from marshmallow import Schema, validates_schema, ValidationError  # NOQA
+from flask_paranoid import Paranoid  # NOQA
+from marshmallow import Schema, ValidationError, validates_schema  # NOQA
 
 marshmallow = Marshmallow()
 
@@ -65,11 +67,11 @@ oauth2 = OAuth2Provider()
 
 # from flask_minify import minify  # NOQA
 
-from . import sentry  # NOQA
+from flask_restx_patched import extension_required  # NOQA
+from flask_restx_patched import is_extension_enabled  # NOQA
 
 from . import api  # NOQA
-
-from flask_restx_patched import is_extension_enabled, extension_required  # NOQA
+from . import sentry  # NOQA
 
 if is_extension_enabled('cors'):
     from flask_cors import CORS  # NOQA
@@ -419,7 +421,7 @@ class CommonHoustonModel(TimestampViewed, ElasticsearchModel):
 
     @classmethod
     def query_search(cls, search=None, args=None):
-        from sqlalchemy import or_, and_
+        from sqlalchemy import and_, or_
 
         if args is not None:
             search = args.get('search', None)
@@ -444,8 +446,8 @@ class CommonHoustonModel(TimestampViewed, ElasticsearchModel):
 
     @classmethod
     def query_search_term_hook(cls, term):
-        from sqlalchemy_utils.functions import cast_if
         from sqlalchemy import String
+        from sqlalchemy_utils.functions import cast_if
 
         return (cast_if(cls.guid, String).contains(term),)
 
@@ -516,8 +518,9 @@ class FeatherModel(CommonHoustonModel):
     """
 
     def get_edm_data_with_enc_schema(self, encounter_schema):
-        from app.utils import HoustonException
         from copy import deepcopy
+
+        from app.utils import HoustonException
 
         # Only for FeatherModels that have encounters (Sighting/Individual)
         assert hasattr(self, 'encounters')
@@ -542,7 +545,7 @@ class FeatherModel(CommonHoustonModel):
 
         if self.encounters is not None and edm_json['encounters'] is not None:
             guid_to_encounter = {e['guid']: e for e in edm_json['encounters']}
-            if set(str(e.guid) for e in self.encounters) != set(guid_to_encounter):
+            if {str(e.guid) for e in self.encounters} != set(guid_to_encounter):
                 error_msg = f'Imbalanced encounters between edm/feather objects on {class_name} {str(self.guid)}'
                 error_msg += (
                     f', locally:{len(self.encounters)}, EDM:{len(guid_to_encounter)} !'
@@ -559,9 +562,10 @@ class FeatherModel(CommonHoustonModel):
     # cache allows minimal calls to edm for same object, but has the potential
     #   to return stale data
     def get_edm_complete_data(self, use_cache=True):
-        from flask import current_app
         import time
         from copy import deepcopy
+
+        from flask import current_app
 
         # going to give cache a life of 5 min kinda arbitrarily
         cache_lifespan_seconds = 300
@@ -634,8 +638,8 @@ db.JSON = JSON
 def parallel(
     worker_func, args_list, kwargs_list=None, thread=True, workers=None, desc=None
 ):
-    from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
     import multiprocessing
+    from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 
     args_list = list(args_list)
 
@@ -696,11 +700,13 @@ def init_app(app, force_enable=False, force_disable=None):
     extension_names = essential_extensions.keys()
     for extension_name in extension_names:
         if extension_name not in force_disable:
-            log.info('Init required extension %r' % (extension_name,))
+            log.info('Init required extension {!r}'.format(extension_name))
             extension = essential_extensions.get(extension_name)
             extension.init_app(app)
         else:
-            log.info('Skipped required extension %r (force disabled)' % (extension_name,))
+            log.info(
+                'Skipped required extension {!r} (force disabled)'.format(extension_name)
+            )
 
     # The remaining extensions
     optional_extensions = {
@@ -738,9 +744,11 @@ def init_app(app, force_enable=False, force_disable=None):
             if extension is not None:
                 extension.init_app(app)
         elif extension_name not in force_disable:
-            log.info('Skipped optional extension %r (disabled)' % (extension_name,))
+            log.info('Skipped optional extension {!r} (disabled)'.format(extension_name))
         else:
-            log.info('Skipped optional extension %r (force disabled)' % (extension_name,))
+            log.info(
+                'Skipped optional extension {!r} (force disabled)'.format(extension_name)
+            )
 
     # minify(app=app)
 

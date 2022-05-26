@@ -3,21 +3,16 @@
 Missions database models
 --------------------
 """
-import uuid
-import enum
 import datetime
-
-from app.extensions import (
-    db,
-    HoustonModel,
-    Timestamp,
-    elasticsearch_context,
-)
-from app.extensions.git_store import GitStore
-
-from flask import current_app
-import tqdm
+import enum
 import logging
+import uuid
+
+import tqdm
+from flask import current_app
+
+from app.extensions import HoustonModel, Timestamp, db, elasticsearch_context
+from app.extensions.git_store import GitStore
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
@@ -95,8 +90,8 @@ class Mission(db.Model, HoustonModel, Timestamp):
 
     @classmethod
     def query_search_term_hook(cls, term):
-        from sqlalchemy_utils.functions import cast_if
         from sqlalchemy import String
+        from sqlalchemy_utils.functions import cast_if
 
         return (
             cast_if(cls.guid, String).contains(term),
@@ -348,8 +343,8 @@ class MissionCollection(GitStore):
 
     @classmethod
     def query_search_term_hook(cls, term):
-        from sqlalchemy_utils.functions import cast_if
         from sqlalchemy import String
+        from sqlalchemy_utils.functions import cast_if
 
         return (
             cast_if(cls.guid, String).contains(term),
@@ -514,8 +509,8 @@ class MissionTask(db.Model, HoustonModel, Timestamp):
 
     @classmethod
     def query_search_term_hook(cls, term):
-        from sqlalchemy_utils.functions import cast_if
         from sqlalchemy import String
+        from sqlalchemy_utils.functions import cast_if
 
         return (
             cast_if(cls.guid, String).contains(term),

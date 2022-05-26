@@ -4,15 +4,18 @@ AssetGroups database models
 --------------------
 """
 import copy
+import datetime
 import enum
+import logging
+import uuid
+
 from flask import current_app, url_for
 from flask_login import current_user  # NOQA
-import datetime
-from flask_restx_patched._http import HTTPStatus
-from app.extensions import db, HoustonModel
+
 import app.extensions.logging as AuditLog  # NOQA
-from app.extensions.sage import from_sage_uuid
+from app.extensions import HoustonModel, db
 from app.extensions.git_store import GitStore
+from app.extensions.sage import from_sage_uuid
 from app.modules.annotations.models import Annotation
 from app.modules.assets.models import Asset
 from app.modules.encounters.models import Encounter
@@ -21,9 +24,7 @@ from app.modules.names.models import DEFAULT_NAME_CONTEXT
 from app.modules.sightings.models import Sighting, SightingStage
 from app.modules.users.models import User
 from app.utils import HoustonException
-
-import logging
-import uuid
+from flask_restx_patched._http import HTTPStatus
 
 from .metadata import AssetGroupMetadata
 
@@ -186,8 +187,8 @@ class AssetGroupSighting(db.Model, HoustonModel):
                 raise ex
 
     def commit(self):
-        from app.modules.utils import Cleanup
         from app.extensions.elapsed_time import ElapsedTime
+        from app.modules.utils import Cleanup
 
         timer = ElapsedTime()
 
@@ -445,8 +446,8 @@ class AssetGroupSighting(db.Model, HoustonModel):
         return self.__class__.config_field_getter('customFields', default={})(self)
 
     def _augment_encounter_json(self, encounter_data):
-        from app.modules.users.schemas import PublicUserSchema
         from app.modules.annotations.schemas import BaseAnnotationSchema
+        from app.modules.users.schemas import PublicUserSchema
 
         user_schema = PublicUserSchema()
         annot_schema = BaseAnnotationSchema()
@@ -806,8 +807,8 @@ class AssetGroupSighting(db.Model, HoustonModel):
         return details
 
     def build_detection_request(self, job_uuid, model, preload=True):
-        from app.modules.ia_config_reader import IaConfig
         from app.extensions.sage import to_sage_uuid
+        from app.modules.ia_config_reader import IaConfig
 
         callback_url = url_for(
             'api.asset_groups_asset_group_sighting_detected',
@@ -891,8 +892,8 @@ class AssetGroupSighting(db.Model, HoustonModel):
             job_id = uuid.uuid4()
             detection_request, asset_guids = self.build_detection_request(job_id, model)
             log.info(f'Sending detection message to Sage for {model}')
-            log.info('detection_request = %r' % (detection_request,))
-            log.info('asset_guids = %r' % (asset_guids,))
+            log.info('detection_request = {!r}'.format(detection_request))
+            log.info('asset_guids = {!r}'.format(asset_guids))
             try:
                 sage_job_uuid = current_app.sage.request_passthrough_result(
                     'engine.detect',
@@ -1051,7 +1052,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
                         try:
                             assert (
                                 asset.content_guid == sage_content_guid
-                            ), 'The content GUID for %r is a mismatch' % (asset,)
+                            ), 'The content GUID for {!r} is a mismatch'.format(asset)
                         except Exception:
                             # Get the content GUID fresh from Sage and double check
                             asset.sync_with_sage(ensure=True, force=True)
@@ -1153,7 +1154,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
                 return
 
         progress = Progress(
-            description='Sage Detection for AssetGroupSighting %r' % (self.guid,)
+            description='Sage Detection for AssetGroupSighting {!r}'.format(self.guid)
         )
         with db.session.begin():
             db.session.add(progress)
@@ -1191,7 +1192,9 @@ class AssetGroupSighting(db.Model, HoustonModel):
                 return
 
         progress = Progress(
-            description='Sage identification for AssetGroupSighting %r' % (self.guid,)
+            description='Sage identification for AssetGroupSighting {!r}'.format(
+                self.guid
+            )
         )
         with db.session.begin():
             db.session.add(progress)

@@ -6,6 +6,7 @@ Serialization schemas for Keywords resources RESTful API
 
 
 from flask_restx_patched import ModelSchema
+
 from .models import Keyword
 
 

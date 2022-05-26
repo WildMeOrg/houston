@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """Provides UI space served directly from this application"""
 import logging
+
 from app.modules import is_module_enabled
 
 log = logging.getLogger(__name__)

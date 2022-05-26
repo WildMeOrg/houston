@@ -4,7 +4,6 @@ Auth module
 ===========
 """
 from app.extensions.api import api_v1
-
 from app.modules import is_module_enabled
 
 if not is_module_enabled('auth'):
@@ -21,7 +20,7 @@ def init_app(app, **kwargs):
     api_v1.add_oauth_scope('auth:write', 'Provide write access to auth details')
 
     # Touch underlying modules
-    from . import models, views, resources  # pylint: disable=unused-import  # NOQA
+    from . import models, resources, views  # pylint: disable=unused-import  # NOQA
 
     # Mount authentication routes
     api_v1.add_namespace(resources.api)

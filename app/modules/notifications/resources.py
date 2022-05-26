@@ -9,24 +9,21 @@ import logging
 
 from flask import request
 from flask_login import current_user  # NOQA
-from flask_restx_patched import Resource
-from flask_restx_patched._http import HTTPStatus
 from marshmallow import ValidationError
-from app.extensions.api import abort
 
 from app.extensions import db
-from app.extensions.api import Namespace
+from app.extensions.api import Namespace, abort
 from app.extensions.api.parameters import (
     PaginationParameters,
     PaginationParametersLatestFirst,
 )
 from app.modules.users import permissions
 from app.modules.users.permissions.types import AccessOperation
-
+from flask_restx_patched import Resource
+from flask_restx_patched._http import HTTPStatus
 
 from . import parameters, schemas
 from .models import Notification
-
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 api = Namespace(

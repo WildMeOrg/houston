@@ -3,19 +3,20 @@
 Logging adapter
 ---------------
 """
+import json
 import logging
 import os
 import shutil
-import json
 
 from flask import current_app
 from flask_login import current_user
 
+import app.extensions.logging as AuditLog
+from app.utils import get_stored_filename
+from flask_restx_patched import is_extension_enabled
+
 # from werkzeug.utils import secure_filename, escape
 
-from flask_restx_patched import is_extension_enabled
-from app.utils import get_stored_filename
-import app.extensions.logging as AuditLog
 
 if not is_extension_enabled('tus'):
     raise RuntimeError('Tus is not enabled')
@@ -94,7 +95,7 @@ def _tus_upload_file_handler(
             }
             json.dump(metadata, metadata_file)
 
-    log.debug('Tus finished uploading: %r in dir %r.' % (filename, dir))
+    log.debug('Tus finished uploading: {!r} in dir {!r}.'.format(filename, dir))
     filepath = os.path.join(dir, filename)
 
     try:
@@ -281,7 +282,7 @@ def _tus_pending_transaction_handler(upload_folder, req, app):
 
 def tus_get_resource_metadata_filepath(filepath):
     path, filename = os.path.split(filepath)
-    return os.path.join(path, '.%s.metadata.json' % (filename,))
+    return os.path.join(path, '.{}.metadata.json'.format(filename))
 
 
 def tus_get_transaction_metadata_filepath(dir):
@@ -339,7 +340,7 @@ def tus_filepaths_from(
     )
 
     if not os.path.exists(upload_dir):
-        raise OSError('Upload_dir = %r is missing' % (upload_dir,))
+        raise OSError('Upload_dir = {!r} is missing'.format(upload_dir))
 
     log.debug(f'_tus_filepaths_from passed paths: {paths}')
     filepaths = []
@@ -386,9 +387,10 @@ def tus_purge(git_store_guid=None, session_id=None, transaction_id=None):
 
 
 def tus_cleanup():
-    import time
-    import humanize
     import datetime
+    import time
+
+    import humanize
 
     tus_directory = tus_upload_dir(current_app)
 

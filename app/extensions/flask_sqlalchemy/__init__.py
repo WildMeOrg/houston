@@ -5,8 +5,8 @@ Flask-SQLAlchemy adapter
 """
 import uuid
 
-from sqlalchemy import MetaData
 from flask_sqlalchemy import SQLAlchemy as BaseSQLAlchemy
+from sqlalchemy import MetaData
 
 
 class AlembicDatabaseMigrationConfig(object):

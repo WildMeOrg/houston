@@ -4,14 +4,14 @@ FileUploads database models
 --------------------
 """
 import logging
-import uuid
 import os
 import shutil
+import uuid
 
 from flask import current_app, url_for
 from PIL import Image
 
-from app.extensions import db, HoustonModel
+from app.extensions import HoustonModel, db
 
 log = logging.getLogger(__name__)
 

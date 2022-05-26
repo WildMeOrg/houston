@@ -6,11 +6,11 @@ Input arguments (Parameters) for Auth resources
 """
 from flask_login import current_user
 from flask_marshmallow import base_fields
-from flask_restx_patched import Parameters
-from marshmallow import validates, ValidationError
+from marshmallow import ValidationError, validates
 
 from app.extensions import api
 from app.extensions.api.parameters import PaginationParameters
+from flask_restx_patched import Parameters
 
 
 class ListOAuth2ClientsParameters(PaginationParameters):

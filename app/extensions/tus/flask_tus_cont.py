@@ -1,9 +1,11 @@
 # -*- coding: utf-8 -*-
-from flask import Blueprint, request, make_response, url_for
 import base64
 import os
-import redis
 import uuid
+
+import redis
+from flask import Blueprint, make_response, request, url_for
+
 from app.utils import get_stored_filename
 
 # Find the stack on which we want to store the database connection.

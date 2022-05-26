@@ -4,9 +4,9 @@ Input arguments (Parameters) for Assets resources RESTful API
 -------------------------------------------------------------
 """
 
+from app.extensions.api import abort
 from flask_restx_patched import PatchJSONParameters
 from flask_restx_patched._http import HTTPStatus
-from app.extensions.api import abort
 
 from . import schemas
 

@@ -5,23 +5,22 @@ RESTful API Annotations resources
 --------------------------
 """
 
-import logging
 import json
+import logging
 
 from flask import request
-from flask_restx_patched import Resource
 from flask_restx._http import HTTPStatus
 
+import app.extensions.logging as AuditLog
 from app.extensions import db
 from app.extensions.api import Namespace, abort
 from app.modules.users import permissions
 from app.modules.users.permissions.types import AccessOperation
-import app.extensions.logging as AuditLog
 from app.utils import HoustonException
+from flask_restx_patched import Resource
 
 from . import parameters, schemas
 from .models import Annotation
-
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 api = Namespace('annotations', description='Annotations')  # pylint: disable=invalid-name
@@ -65,10 +64,10 @@ class Annotations(Resource):
         """
         Create a new instance of Annotation.
         """
-        from app.modules.assets.models import Asset
-        from app.modules.asset_groups.models import AssetGroup, AssetGroupSightingStage
-        from app.modules.encounters.models import Encounter
         from app.extensions.elapsed_time import ElapsedTime
+        from app.modules.asset_groups.models import AssetGroup, AssetGroupSightingStage
+        from app.modules.assets.models import Asset
+        from app.modules.encounters.models import Encounter
 
         timer = ElapsedTime()
 

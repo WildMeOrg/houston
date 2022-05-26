@@ -5,7 +5,7 @@ Projects database models
 """
 import uuid
 
-from app.extensions import db, HoustonModel, Timestamp
+from app.extensions import HoustonModel, Timestamp, db
 
 
 # All many:many associations handled as Houston model classes to give control and history

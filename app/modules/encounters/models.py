@@ -3,11 +3,11 @@
 Encounters database models
 --------------------
 """
-import uuid
 import logging
-from app.extensions import db, FeatherModel
-import app.extensions.logging as AuditLog
+import uuid
 
+import app.extensions.logging as AuditLog
+from app.extensions import FeatherModel, db
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
@@ -127,7 +127,7 @@ class Encounter(db.Model, FeatherModel):
         return str(self.sighting.guid)
 
     def get_assets(self):
-        return set([ann.asset for ann in self.annotations])
+        return {ann.asset for ann in self.annotations}
 
     def get_custom_fields(self):
         return self.get_edm_data_field('customFields')

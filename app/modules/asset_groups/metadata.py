@@ -11,6 +11,7 @@ import os
 
 from flask import current_app
 from flask_login import current_user  # NOQA
+
 from app.utils import HoustonException
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name

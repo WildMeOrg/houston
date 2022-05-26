@@ -5,10 +5,10 @@ Serialization schemas for Relationships resources RESTful API
 """
 
 from flask_marshmallow import base_fields
+
 from flask_restx_patched import ModelSchema
 
-from .models import Relationship
-from .models import RelationshipIndividualMember
+from .models import Relationship, RelationshipIndividualMember
 
 
 class BaseRelationshipSchema(ModelSchema):

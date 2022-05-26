@@ -5,27 +5,25 @@ RESTful API Collaborations resources
 --------------------------
 """
 
-import logging
 import json
+import logging
 
 from flask import request
 from flask_login import current_user  # NOQA
-from flask_restx_patched import Resource
-from flask_restx_patched._http import HTTPStatus
-from app.extensions.api import abort
 from marshmallow import ValidationError
 
+import app.extensions.logging as AuditLog
 from app.extensions import db
-from app.extensions.api import Namespace
+from app.extensions.api import Namespace, abort
+from app.extensions.api.parameters import PaginationParametersLatestFirst
+from app.modules.users import permissions
 from app.modules.users.permissions.types import AccessOperation
 from app.utils import HoustonException
-from app.modules.users import permissions
-import app.extensions.logging as AuditLog
-from app.extensions.api.parameters import PaginationParametersLatestFirst
+from flask_restx_patched import Resource
+from flask_restx_patched._http import HTTPStatus
 
 from . import parameters, schemas
 from .models import Collaboration
-
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 api = Namespace(

@@ -4,13 +4,13 @@ Notifications database models
 --------------------
 """
 
-from app.extensions import db, HoustonModel
-from app.utils import HoustonException
 import datetime
-
 import enum
-import uuid
 import logging
+import uuid
+
+from app.extensions import HoustonModel, db
+from app.utils import HoustonException
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 

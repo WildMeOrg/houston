@@ -3,21 +3,19 @@
 Assets database models
 --------------------
 """
-from flask import current_app, url_for
-from functools import total_ordering
-import pathlib
-
-from app.extensions import db, HoustonModel, SageModel
-from app.modules import module_required
-from app.utils import HoustonException
-from app.modules.users.models import User
-
-from PIL import Image
-
-import uuid
 import logging
 import os
+import pathlib
+import uuid
+from functools import total_ordering
 
+from flask import current_app, url_for
+from PIL import Image
+
+from app.extensions import HoustonModel, SageModel, db
+from app.modules import module_required
+from app.modules.users.models import User
+from app.utils import HoustonException
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
@@ -197,7 +195,7 @@ class Asset(db.Model, HoustonModel, SageModel):
         return jobs
 
     def get_tags(self):
-        return sorted([ref.tag for ref in self.tag_refs])
+        return sorted(ref.tag for ref in self.tag_refs)
 
     def add_tag(self, tag):
         with db.session.begin(subtransactions=True):
@@ -313,7 +311,7 @@ class Asset(db.Model, HoustonModel, SageModel):
                     db.session.merge(self)
                 db.session.refresh(self)
         else:
-            log.error('Asset %r is missing on disk, cannot send to Sage' % (self,))
+            log.error('Asset {!r} is missing on disk, cannot send to Sage'.format(self))
 
     # this property is so that schema can output { "filename": "original_filename.jpg" }
     @property
@@ -537,7 +535,9 @@ class Asset(db.Model, HoustonModel, SageModel):
         target_path.parent.mkdir(parents=True, exist_ok=True)
         if target_path.exists():
             return target_path
-        log.info('make_master_format() creating master format as %r' % (target_path,))
+        log.info(
+            'make_master_format() creating master format as {!r}'.format(target_path)
+        )
         with Image.open(source_path) as source_image:
             source_image.thumbnail(self.FORMATS['master'])
             rgb = source_image.convert('RGB')

@@ -5,10 +5,12 @@ Input arguments (Parameters) for Projects resources RESTful API
 """
 
 from flask_login import current_user  # NOQA
+
+from app.modules.users.permissions import rules
 from flask_restx_patched import Parameters, PatchJSONParametersWithPassword
+
 from . import schemas
 from .models import Project
-from app.modules.users.permissions import rules
 
 
 class CreateProjectParameters(Parameters, schemas.DetailedProjectSchema):
@@ -27,8 +29,8 @@ class PatchProjectDetailsParameters(PatchJSONParametersWithPassword):
 
     @classmethod
     def add(cls, obj, field, value, state):
-        from app.modules.users.models import User
         from app.modules.encounters.models import Encounter
+        from app.modules.users.models import User
 
         super(PatchProjectDetailsParameters, cls).add(obj, field, value, state)
         ret_val = False
@@ -65,8 +67,8 @@ class PatchProjectDetailsParameters(PatchJSONParametersWithPassword):
 
     @classmethod
     def remove(cls, obj, field, value, state):
-        from app.modules.users.models import User
         from app.modules.encounters.models import Encounter
+        from app.modules.users.models import User
 
         super(PatchProjectDetailsParameters, cls).remove(obj, field, value, state)
 

@@ -5,20 +5,22 @@ RESTful API Individuals resources
 --------------------------
 """
 
-import logging
 import json
-from flask_restx_patched import Resource
+import logging
+
+from flask import current_app, request, send_file
 from flask_restx._http import HTTPStatus
-from flask import request, current_app, send_file
+
+import app.extensions.logging as AuditLog
 from app.extensions import db
 from app.extensions.api import Namespace, abort
 from app.modules.users import permissions
 from app.modules.users.permissions.types import AccessOperation
 from app.utils import HoustonException
+from flask_restx_patched import Resource
 
 from . import parameters, schemas
 from .models import Individual, IndividualMergeRequestVote
-import app.extensions.logging as AuditLog
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 api = Namespace('individuals', description='Individuals')  # pylint: disable=invalid-name
@@ -186,6 +188,7 @@ class Individuals(Resource):
         if not names_data or not isinstance(names_data, list):
             return names
         from flask_login import current_user
+
         from app.modules.names.models import Name
 
         for name_json in names_data:
@@ -663,6 +666,7 @@ class IndividualMergeRequestByTaskId(Resource):
 
     def post(self, task_id):
         from flask_login import current_user
+
         from app.modules.notifications.models import NotificationType
 
         vote = request.json.get('vote')
@@ -812,10 +816,11 @@ class FlatfileNameValidation(Resource):
     #   ["Zesus", 46]
     # ]
     def post(self):
-        from app.modules.names.models import Name, DEFAULT_NAME_CONTEXT
+        from collections import defaultdict
 
         from flask_login import current_user
-        from collections import defaultdict
+
+        from app.modules.names.models import DEFAULT_NAME_CONTEXT, Name
 
         if not current_user or current_user.is_anonymous:
             abort(code=401)

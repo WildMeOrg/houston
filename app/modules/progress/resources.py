@@ -7,16 +7,15 @@ RESTful API Progress resources
 
 import logging
 
-from flask_restx_patched import Resource
 from flask_restx._http import HTTPStatus
 
 from app.extensions.api import Namespace
 from app.modules.users import permissions
 from app.modules.users.permissions.types import AccessOperation
+from flask_restx_patched import Resource
 
 from . import schemas
 from .models import Progress
-
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 api = Namespace('progress', description='Progress')  # pylint: disable=invalid-name

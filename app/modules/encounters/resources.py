@@ -7,23 +7,20 @@ RESTful API Encounters resources
 
 import logging
 
+from flask import current_app, make_response, request
 from flask_login import current_user  # NOQA
-from flask_restx_patched import Resource
-from flask_restx_patched._http import HTTPStatus
-from flask import request, current_app, make_response
 
+import app.extensions.logging as AuditLog
 from app.extensions import db
-from app.extensions.api import Namespace
+from app.extensions.api import Namespace, abort
 from app.modules.users import permissions
 from app.modules.users.permissions.types import AccessOperation
 from app.utils import HoustonException
-
-from app.extensions.api import abort
+from flask_restx_patched import Resource
+from flask_restx_patched._http import HTTPStatus
 
 from . import parameters, schemas
 from .models import Encounter
-import app.extensions.logging as AuditLog
-
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 api = Namespace('encounters', description='Encounters')  # pylint: disable=invalid-name

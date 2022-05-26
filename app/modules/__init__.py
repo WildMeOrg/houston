@@ -29,8 +29,8 @@ def init_app(app, force_enable=False, force_disable=None, **kwargs):
         force_disable = []
 
     if force_enable:
-        import os
         import glob
+        import os
 
         skip_module_names = [
             'ia_config_reader',
@@ -38,7 +38,7 @@ def init_app(app, force_enable=False, force_disable=None, **kwargs):
         ]
 
         module_path = os.path.join(app.config['PROJECT_ROOT'], 'app', 'modules')
-        module_paths = glob.glob('%s/*' % (module_path,))
+        module_paths = glob.glob('{}/*'.format(module_path))
         module_names = []
         for module_path in module_paths:
             _, module_name_raw = os.path.split(module_path)
@@ -73,4 +73,4 @@ def init_app(app, force_enable=False, force_disable=None, **kwargs):
             )
             import_module('.%s' % module_name, package=__name__).init_app(app, **kwargs)
         else:
-            logging.info('Skipped module %r (force disabled)' % (module_name,))
+            logging.info('Skipped module {!r} (force disabled)'.format(module_name))

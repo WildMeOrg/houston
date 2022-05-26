@@ -5,8 +5,8 @@ Serialization schemas for Assets resources RESTful API
 """
 
 from flask_marshmallow import base_fields
-from app.extensions.git_store import GitStore
 
+from app.extensions.git_store import GitStore
 from flask_restx_patched import ModelSchema
 
 

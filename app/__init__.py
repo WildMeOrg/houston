@@ -6,14 +6,13 @@ import functools
 import logging
 import os
 
-from app.modules import is_module_enabled
+import sqlalchemy
 from celery import Celery
 from flask import Flask
-import sqlalchemy
 from werkzeug.contrib.fixers import ProxyFix
 
+from app.modules import is_module_enabled
 from config import configure_app
-
 
 log = logging.getLogger(__name__)
 

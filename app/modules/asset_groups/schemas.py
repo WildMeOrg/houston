@@ -62,17 +62,17 @@ class DetailedAssetGroupSchema(DetailedGitStoreSchema):
     )
 
     progress_preparation = base_fields.Nested(
-        'BaseProgressSchema',
+        'DetailedProgressSchema',
         many=False,
     )
 
     progress_detection = base_fields.Nested(
-        'BaseProgressSchema',
+        'DetailedProgressSchema',
         many=False,
     )
 
     progress_identification = base_fields.Nested(
-        'BaseProgressSchema',
+        'DetailedProgressSchema',
         many=False,
     )
 
@@ -152,17 +152,17 @@ class DetailedAssetGroupSightingSchema(BaseAssetGroupSightingSchema):
     jobs = base_fields.Function(AssetGroupSighting.get_detailed_jobs_json)
 
     progress_preparation = base_fields.Nested(
-        'BaseProgressSchema',
+        'DetailedProgressSchema',
         many=False,
     )
 
     progress_detection = base_fields.Nested(
-        'BaseProgressSchema',
+        'DetailedProgressSchema',
         many=False,
     )
 
     progress_identification = base_fields.Nested(
-        'BaseProgressSchema',
+        'DetailedProgressSchema',
         many=False,
     )
 
@@ -288,17 +288,17 @@ class AssetGroupSightingAsSightingSchema(ModelSchema):
     hasEdit = base_fields.Boolean(default=True)
 
     progress_preparation = base_fields.Nested(
-        'BaseProgressSchema',
+        'DetailedProgressSchema',
         many=False,
     )
 
     progress_detection = base_fields.Nested(
-        'BaseProgressSchema',
+        'DetailedProgressSchema',
         many=False,
     )
 
     progress_identification = base_fields.Nested(
-        'BaseProgressSchema',
+        'DetailedProgressSchema',
         many=False,
     )
 

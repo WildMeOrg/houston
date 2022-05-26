@@ -1,4 +1,5 @@
 {
+  "_note": "The hierarchy of this file is genus->species->ia_class->_id_conf (id config). detect_config is under Genus->species. Keys with a leading underscore and their children are non-biological categories of config, like _id_conf and _detection_conf. Keys without leading underscores are semantic lookups that are derived from Wildbook data, e.g. Megaptera.novaeangliae.whale_fluke.",
   "Acinonyx": {
     "jubatus": {
       "_detect_conf": [
@@ -156,6 +157,5 @@
       }
     }
   },
-  "_default": "@Lycaon.pictus",
-  "_note": "The hierarchy of this file is genus->species->ia_class->_id_conf (id config). detect_config is under Genus->species. Keys with a leading underscore and their children are non-biological categories of config, like _id_conf and _detection_conf. Keys without leading underscores are semantic lookups that are derived from Wildbook data, e.g. Megaptera.novaeangliae.whale_fluke."
+  "_default": "@Lycaon.pictus"
 }

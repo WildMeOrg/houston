@@ -1,4 +1,5 @@
 {
+  "_note": "The hierarchy of this file is genus->species->ia_class->_id_conf (id config). detect_config is under Genus->species. Keys with a leading underscore and their children are non-biological categories of config, like _id_conf and _detection_conf. Keys without leading underscores are semantic lookups that are derived from Wildbook data, e.g. Megaptera.novaeangliae.whale_fluke.",
   "Balaenoptera": {
     "physalus": {
       "_default": "@Balaenoptera.physalus.whale_fin+fin_dorsal",
@@ -88,6 +89,7 @@
       "_default": "@Eubalaena.australis.right_whale+head_aerial",
       "_detect_conf": "@Eubalaena.glacialis._detect_conf",
       "right_whale": {
+        "_note": "this corresponds to a belly/body annotation",
         "_id_conf": [
           {
             "default": false,
@@ -96,8 +98,7 @@
               "sv_on": false
             }
           }
-        ],
-        "_note": "this corresponds to a belly/body annotation"
+        ]
       },
       "right_whale+fluke": {
         "_id_conf": [
@@ -161,6 +162,7 @@
         }
       ],
       "right_whale": {
+        "_note": "this corresponds to a belly/body annotation",
         "_id_conf": [
           {
             "default": false,
@@ -169,8 +171,7 @@
               "sv_on": false
             }
           }
-        ],
-        "_note": "this corresponds to a belly/body annotation"
+        ]
       },
       "right_whale+fluke": {
         "_id_conf": [
@@ -440,6 +441,7 @@
       ],
       "whale_humpback+fin_dorsal": "@Orcinus.orca.whale_orca+fin_dorsal",
       "whale_orca": {
+        "_note": "this corresponds to a lateral body annotation",
         "_id_conf": [
           {
             "description": "FAST: Pose-Invariant Embedding pattern-matcher",
@@ -454,8 +456,7 @@
               "sv_on": false
             }
           }
-        ],
-        "_note": "this corresponds to a lateral body annotation"
+        ]
       },
       "whale_orca+fin_dorsal": {
         "_id_conf": [
@@ -853,6 +854,5 @@
       "_id_conf": []
     },
     "_id_conf": []
-  },
-  "_note": "The hierarchy of this file is genus->species->ia_class->_id_conf (id config). detect_config is under Genus->species. Keys with a leading underscore and their children are non-biological categories of config, like _id_conf and _detection_conf. Keys without leading underscores are semantic lookups that are derived from Wildbook data, e.g. Megaptera.novaeangliae.whale_fluke."
+  }
 }

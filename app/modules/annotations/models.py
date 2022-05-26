@@ -180,10 +180,9 @@ class Annotation(db.Model, HoustonModel, SageModel):
                     sage_rowids = current_app.sage.request_passthrough_result(
                         'annotation.exists', 'get', args=content_guid_str, target='sync'
                     )
-                    if len(sage_rowids) == 1:
-                        if sage_rowids[0] is not None:
-                            # We have found this Asset on Sage, simply return
-                            return
+                    if len(sage_rowids) == 1 and sage_rowids[0] is not None:
+                        # We have found this Asset on Sage, simply return
+                        return
 
                 # If we have arrived here, it means we have a non-NULL content guid that isn't on the Sage instance
                 # Null out the local content GUID and restart
@@ -356,15 +355,6 @@ class Annotation(db.Model, HoustonModel, SageModel):
     def get_matching_set_default_query(self):
         # n.b. default will not take any locationId or ownership into consideration
         parts = {'filter': []}
-
-        # # must have a content_guid (i.e. sage guid)
-        # parts['filter'].append(
-        #     {
-        #         'exists': {
-        #             'field': 'content_guid',
-        #         }
-        #     }
-        # )
 
         viewpoint_list = self.get_neighboring_viewpoints()
         # TODO should we allow nulls?

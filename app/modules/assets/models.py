@@ -281,10 +281,9 @@ class Asset(db.Model, HoustonModel, SageModel):
                     sage_rowids = current_app.sage.request_passthrough_result(
                         'asset.exists', 'get', args=content_guid_str, target='sync'
                     )
-                    if len(sage_rowids) == 1:
-                        if sage_rowids[0] is not None:
-                            # We have found this Asset on Sage, simply return
-                            return
+                    if len(sage_rowids) == 1 and sage_rowids[0] is not None:
+                        # We have found this Asset on Sage, simply return
+                        return
 
                 # If we have arrived here, it means we have a non-NULL content guid that isn't on the Sage instance
                 # Null out the local content GUID and restart

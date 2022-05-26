@@ -1,4 +1,5 @@
 {
+  "_note": "The hierarchy of this file is genus->species->ia_class->_id_conf (id config). detect_config is under Genus->species. Keys with a leading underscore and their children are non-biological categories of config, like _id_conf and _detection_conf. Keys without leading underscores are semantic lookups that are derived from Wildbook data, e.g. Megaptera.novaeangliae.whale_fluke.",
   "Phycodurus": {
     "eques": {
       "_default": "@Phycodurus.eques.seadragon_leafy+head",
@@ -15,6 +16,7 @@
         }
       ],
       "seadragon_leafy": {
+        "_note": "this corresponds to a body annotation",
         "_id_conf": [
           {
             "default": false,
@@ -23,10 +25,10 @@
               "sv_on": true
             }
           }
-        ],
-        "_note": "this corresponds to a body annotation"
+        ]
       },
       "seadragon_leafy+head": {
+        "_note": "this corresponds to a head annotation",
         "_id_conf": [
           {
             "description": "HotSpotter head pattern-matcher",
@@ -34,8 +36,7 @@
               "sv_on": true
             }
           }
-        ],
-        "_note": "this corresponds to a head annotation"
+        ]
       },
       "seadragon_weedy": "@Phycodurus.eques.seadragon_leafy",
       "seadragon_weedy+head": "@Phycodurus.eques.seadragon_leafy+head"
@@ -59,6 +60,7 @@
       "seadragon_leafy": "@Phyllopteryx.taeniolatus.seadragon_weedy",
       "seadragon_leafy+head": "@Phyllopteryx.taeniolatus.seadragon_weedy+head",
       "seadragon_weedy": {
+        "_note": "this corresponds to a body annotation",
         "_id_conf": [
           {
             "default": false,
@@ -67,10 +69,10 @@
               "sv_on": true
             }
           }
-        ],
-        "_note": "this corresponds to a body annotation"
+        ]
       },
       "seadragon_weedy+head": {
+        "_note": "this corresponds to a head annotation",
         "_id_conf": [
           {
             "description": "HotSpotter head pattern-matcher",
@@ -78,11 +80,9 @@
               "sv_on": true
             }
           }
-        ],
-        "_note": "this corresponds to a head annotation"
+        ]
       }
     }
   },
-  "_default": "@Phycodurus.eques",
-  "_note": "The hierarchy of this file is genus->species->ia_class->_id_conf (id config). detect_config is under Genus->species. Keys with a leading underscore and their children are non-biological categories of config, like _id_conf and _detection_conf. Keys without leading underscores are semantic lookups that are derived from Wildbook data, e.g. Megaptera.novaeangliae.whale_fluke."
+  "_default": "@Phycodurus.eques"
 }

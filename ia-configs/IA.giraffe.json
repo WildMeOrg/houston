@@ -1,8 +1,9 @@
 {
+  "_note": "The hierarchy of this file is genus->species->ia_class->_id_conf (id config). detect_config is under Genus->species. Keys with a leading underscore and their children are non-biological categories of config, like _id_conf and _detection_conf. Keys without leading underscores are semantic lookups that are derived from Wildbook data, e.g. Megaptera.novaeangliae.whale_fluke.",
   "Giraffa": {
     "camelopardalis": {
-      "_detect_conf": "@Giraffa.tippelskirchii._detect_conf",
       "_note": "below this is to handle the case where taxonomy = 'Giraffa.camelopardalis' (no 3rd term)",
+      "_detect_conf": "@Giraffa.tippelskirchii._detect_conf",
       "antiquorum": "@Giraffa.tippelskirchii",
       "camelopardalis": "@Giraffa.tippelskirchii",
       "giraffe_masai": "@Giraffa.tippelskirchii.giraffe_masai",
@@ -11,8 +12,8 @@
       "peralta": "@Giraffa.tippelskirchii"
     },
     "giraffa": {
-      "_detect_conf": "@Giraffa.tippelskirchii._detect_conf",
       "_note": "below this is to handle the case where taxonomy = 'Giraffa.giraffa' (no 3rd term)",
+      "_detect_conf": "@Giraffa.tippelskirchii._detect_conf",
       "angolensis": "@Giraffa.tippelskirchii",
       "giraffa": "@Giraffa.tippelskirchii",
       "giraffe_masai": "@Giraffa.tippelskirchii.giraffe_masai",
@@ -52,6 +53,5 @@
       }
     }
   },
-  "_default": "@Giraffa.camelopardalis.reticulata",
-  "_note": "The hierarchy of this file is genus->species->ia_class->_id_conf (id config). detect_config is under Genus->species. Keys with a leading underscore and their children are non-biological categories of config, like _id_conf and _detection_conf. Keys without leading underscores are semantic lookups that are derived from Wildbook data, e.g. Megaptera.novaeangliae.whale_fluke."
+  "_default": "@Giraffa.camelopardalis.reticulata"
 }

@@ -650,7 +650,9 @@ class Sighting(db.Model, FeatherModel):
                 # we sh/could toggle active if this shows failure
                 ss = None
                 try:
-                    ss = self.get_sage_job_status(job_id)
+                    # disabling for now as we are going to start using Progress soon
+                    # ss = self.get_sage_job_status(job_id)
+                    pass
                 except Exception as ex:
                     status[f'_debug_{job_id}'] = 'failed getting sage job status'
                     job_info['_get_sage_status_exception'] = str(ex)

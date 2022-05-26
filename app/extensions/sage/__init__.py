@@ -563,7 +563,7 @@ class SageManager(RestManager):
         log.info('Jobs (%d)' % (len(sage_jobs),))
         for job_id, status in sage_jobs:
             log.info(
-                '\t%s: %d'
+                '\t%s: %s'
                 % (
                     job_id.ljust(14),
                     status,
@@ -584,7 +584,7 @@ class SageManager(RestManager):
         log.info('Sync Jobs (%d)' % (len(sage_jobs),))
         for job_id, status in sage_jobs:
             log.info(
-                '\t%s: %d'
+                '\t%s: %s'
                 % (
                     job_id.ljust(14),
                     status,

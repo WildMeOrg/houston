@@ -203,7 +203,7 @@ class Annotation(db.Model, HoustonModel, SageModel):
             'annot_species_list': [self.ia_class],
             'annot_bbox_list': [self.bounds['rect']],
             'annot_name_list': [annot_name],
-            'annot_theta_list': [self.bounds['theta']],
+            'annot_theta_list': [self.bounds.get('theta', 0)],
         }
         sage_response = current_app.sage.request_passthrough_result(
             'annotation.create', 'post', {'json': sage_request}, target='sync'

@@ -326,33 +326,34 @@ class SageManager(RestManager):
         unknown_jobs = []
         corrupt_jobs = []
         for asset_group_sighting in tqdm.tqdm(asset_group_sightings):
-            for job_id in asset_group_sighting.jobs:
-                job_metadata = asset_group_sighting.jobs[job_id]
-                job_data = (asset_group_sighting, job_id)
+            if asset_group_sighting.jobs:
+                for job_id in asset_group_sighting.jobs:
+                    job_metadata = asset_group_sighting.jobs[job_id]
+                    job_data = (asset_group_sighting, job_id)
 
-                if job_metadata.keys() < start_keys:
-                    corrupt_jobs.append(job_data)
-                elif job_metadata.get('active'):
-                    if job_id in sage_completed_job_guids:
-                        fetch_jobs.append(job_data)
-                    elif job_id in sage_failed_job_guids:
-                        failed_jobs.append(job_data)
-                    elif job_id in sage_pending_job_guids:
-                        pending_jobs.append(job_data)
-                    else:
-                        unknown_jobs.append(job_data)
-                else:
-                    if job_metadata.keys() < end_keys:
+                    if job_metadata.keys() < start_keys:
+                        corrupt_jobs.append(job_data)
+                    elif job_metadata.get('active'):
                         if job_id in sage_completed_job_guids:
                             fetch_jobs.append(job_data)
                         elif job_id in sage_failed_job_guids:
-                            corrupt_jobs.append(job_data)
+                            failed_jobs.append(job_data)
                         elif job_id in sage_pending_job_guids:
-                            corrupt_jobs.append(job_data)
+                            pending_jobs.append(job_data)
                         else:
-                            corrupt_jobs.append(job_data)
+                            unknown_jobs.append(job_data)
                     else:
-                        completed += 1
+                        if job_metadata.keys() < end_keys:
+                            if job_id in sage_completed_job_guids:
+                                fetch_jobs.append(job_data)
+                            elif job_id in sage_failed_job_guids:
+                                corrupt_jobs.append(job_data)
+                            elif job_id in sage_pending_job_guids:
+                                corrupt_jobs.append(job_data)
+                            else:
+                                corrupt_jobs.append(job_data)
+                        else:
+                            completed += 1
 
         if verbose:
             log.info('Detection Jobs')
@@ -397,33 +398,34 @@ class SageManager(RestManager):
         unknown_jobs = []
         corrupt_jobs = []
         for sighting in tqdm.tqdm(sightings):
-            for job_id in sighting.jobs:
-                job_metadata = sighting.jobs[job_id]
-                job_data = (sighting, job_id)
+            if sighting.jobs:
+                for job_id in sighting.jobs:
+                    job_metadata = sighting.jobs[job_id]
+                    job_data = (sighting, job_id)
 
-                if job_metadata.keys() < start_keys:
-                    corrupt_jobs.append(job_data)
-                elif job_metadata.get('active'):
-                    if job_id in sage_completed_job_guids:
-                        fetch_jobs.append(job_data)
-                    elif job_id in sage_failed_job_guids:
-                        failed_jobs.append(job_data)
-                    elif job_id in sage_pending_job_guids:
-                        pending_jobs.append(job_data)
-                    else:
-                        unknown_jobs.append(job_data)
-                else:
-                    if job_metadata.keys() < end_keys:
+                    if job_metadata.keys() < start_keys:
+                        corrupt_jobs.append(job_data)
+                    elif job_metadata.get('active'):
                         if job_id in sage_completed_job_guids:
                             fetch_jobs.append(job_data)
                         elif job_id in sage_failed_job_guids:
-                            corrupt_jobs.append(job_data)
+                            failed_jobs.append(job_data)
                         elif job_id in sage_pending_job_guids:
-                            corrupt_jobs.append(job_data)
+                            pending_jobs.append(job_data)
                         else:
-                            corrupt_jobs.append(job_data)
+                            unknown_jobs.append(job_data)
                     else:
-                        completed += 1
+                        if job_metadata.keys() < end_keys:
+                            if job_id in sage_completed_job_guids:
+                                fetch_jobs.append(job_data)
+                            elif job_id in sage_failed_job_guids:
+                                corrupt_jobs.append(job_data)
+                            elif job_id in sage_pending_job_guids:
+                                corrupt_jobs.append(job_data)
+                            else:
+                                corrupt_jobs.append(job_data)
+                        else:
+                            completed += 1
 
         if verbose:
             log.info('Identification Jobs')

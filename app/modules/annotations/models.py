@@ -153,6 +153,7 @@ class Annotation(db.Model, HoustonModel, SageModel):
             )
 
             return
+
         # First, ensure that the annotation's asset has been synced with Sage
         if not skip_asset:
             self.asset.sync_with_sage(
@@ -205,6 +206,15 @@ class Annotation(db.Model, HoustonModel, SageModel):
             annot_name = str(self.encounter.individual.guid)
         else:
             annot_name = SAGE_UNKNOWN_NAME
+
+        try:
+            self.validate_bounds(self.bounds)
+        except Exception:
+            log.error(
+                'Annotation %r failed to pass validate_bounds(), cannot send annotation to Sage'
+                % (self,)
+            )
+            return
 
         sage_request = {
             'image_uuid_list': [to_sage_uuid(self.asset.content_guid)],

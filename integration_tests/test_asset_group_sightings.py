@@ -278,6 +278,9 @@ def test_asset_group_sightings(session, login, codex_url, test_root):
         'curation_start_time': response.json()['curation_start_time'],
         'identification_start_time': response.json()['identification_start_time'],
         'unreviewed_start_time': response.json()['unreviewed_start_time'],
+        'progress_preparation': response.json()['progress_preparation'],
+        'progress_detection': response.json()['progress_detection'],
+        'progress_identification': response.json()['progress_identification'],
         'review_time': None,
         'pipeline_status': response.json()['pipeline_status'],
     }
@@ -373,6 +376,7 @@ def test_asset_group_sightings(session, login, codex_url, test_root):
         'curation_start_time': response.json()['curation_start_time'],
         'detection_start_time': response.json()['detection_start_time'],
         'identification_start_time': None,
+        'progress_identification': response.json()['progress_identification'],
         'review_time': None,
         'indexed': response.json()['indexed'],
         'elasticsearchable': response.json()['elasticsearchable'],

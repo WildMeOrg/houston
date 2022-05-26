@@ -76,9 +76,7 @@ def create_sighting(session, codex_url, test_root, filename, group_data=None):
     }
 
 
-def debugging_test_create_asset_group_identification(
-    session, codex_url, test_root, login
-):
+def disabled_test_create_asset_group_identification(session, codex_url, test_root, login):
     login(session)
     zebra_guids = create_sighting(session, codex_url, test_root, 'zebra-flopped.jpg')
 
@@ -147,7 +145,7 @@ def debugging_test_create_asset_group_identification(
     assert not id_job_data['active']
 
 
-def debugging_test_identification_international(session, codex_url, test_root, login):
+def disabled_test_identification_international(session, codex_url, test_root, login):
     login(session)
     zebra_guids = create_sighting(session, codex_url, test_root, 'zebra-flopped.jpg')
 

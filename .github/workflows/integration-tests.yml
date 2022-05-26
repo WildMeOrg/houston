@@ -50,6 +50,11 @@ jobs:
           cd _frontend.codex
           cp src/constants/apiKeysTemplate.js src/constants/apiKeys.js
 
+      # - name: Add 1GB of Swap
+      #   uses: pierotofy/set-swap-space@master
+      #   with:
+      #     swap-size-gb: 1
+
       - name: Run docker-compose
         run: |
           set -ex

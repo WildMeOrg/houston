@@ -2,7 +2,7 @@
 from . import utils
 
 
-def debugging_test_create_asset_group_detection(session, codex_url, test_root, login):
+def disabled_test_create_asset_group_detection(session, codex_url, test_root, login):
     login(session)
     me = session.get(codex_url('/api/v1/users/me')).json()
 

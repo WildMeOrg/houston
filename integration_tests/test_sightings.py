@@ -205,6 +205,7 @@ def test_sightings(session, login, codex_url, test_root, admin_name):
         'curation_start_time': response.json()['curation_start_time'],
         'identification_start_time': None,
         'unreviewed_start_time': response.json()['unreviewed_start_time'],
+        'progress_identification': response.json()['progress_identification'],
         'review_time': None,
         'pipeline_status': response.json()['pipeline_status'],
     }
@@ -332,6 +333,7 @@ def test_sightings(session, login, codex_url, test_root, admin_name):
         'curation_start_time': response.json()['curation_start_time'],
         'identification_start_time': None,
         'unreviewed_start_time': response.json()['unreviewed_start_time'],
+        'progress_identification': response.json()['progress_identification'],
         'review_time': None,
     }
 

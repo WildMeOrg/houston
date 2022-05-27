@@ -477,6 +477,7 @@ class Sighting(db.Model, FeatherModel):
         status = {
             'preparation': self._get_pipeline_status_preparation(),
             'detection': self._get_pipeline_status_detection(),
+            'curation': self._get_pipeline_status_curation(),
             'identification': self._get_pipeline_status_identification(),
             'now': datetime.datetime.utcnow().isoformat(),
             'stage': self.stage,
@@ -486,14 +487,16 @@ class Sighting(db.Model, FeatherModel):
         status['summary']['complete'] = (
             status['preparation']['complete']
             and status['detection']['complete']
+            and status['curation']['complete']
             and status['identification']['complete']
         )
         # this is not the best math, but prob best we can do
         status['summary']['progress'] = (
             (status['preparation']['progress'] or 0)
             + (status['detection']['progress'] or 0)
+            + (status['curation']['progress'] or 0)
             + (status['identification']['progress'] or 0)
-        ) / 3
+        ) / 4
         return status
 
     # this piggybacks off of AssetGroupSighting.... *if* we have one!
@@ -550,6 +553,41 @@ class Sighting(db.Model, FeatherModel):
             'progress': 1.0,
             '_note': 'migrated sighting; detection status fabricated',
         }
+        return status
+
+    def _get_pipeline_status_curation(self):
+
+        if self.asset_group_sighting:
+            status = self.asset_group_sighting._get_pipeline_status_curation()
+        else:
+            status = {
+                '_note': 'migrated sighting; curation status fabricated',
+                'skipped': False,
+                'start': None,
+                'end': None,
+                'inProgress': False,
+                'complete': False,
+                'failed': False,
+                'progress': 0.0,
+            }
+            # setting only fields that would be set already if there were an AGS
+            if len(self.get_assets()) < 1:
+                status['skipped'] = True
+
+            # The curation stage starts when manual annotation OR detection adds the first annotation to the asset group sighting.
+            annotations = self.get_annotations()
+            if annotations and len(annotations) > 1:
+                times = [ann.created for ann in annotations]
+                first_time = min(times)
+                status['start'] = first_time.isoformat() + 'Z'
+            else:
+                status['start'] = self.created.isoformat() + 'Z'
+
+        # Sightings have all finished the curation stage
+        status['inProgress'] = False
+        status['complete'] = True
+        status['end'] = self.created.isoformat() + 'Z'
+        status['progress'] = 1.0
         return status
 
     def _get_pipeline_status_identification(self):

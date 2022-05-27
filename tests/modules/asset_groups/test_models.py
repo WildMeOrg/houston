@@ -95,11 +95,23 @@ def test_asset_group_sightings_jobs(flask_app, db, admin_user, test_root, reques
     assert not ps['detection']['inProgress']
     assert not ps['detection']['failed']
 
+    curation_progress = {
+        'skipped': False,
+        'start': ags1.get_curation_start_time(),
+        'end': None,
+        'inProgress': True,
+        'complete': False,
+        'failed': False,
+        'progress': 0.5,
+    }
+    assert ps['curation'] == curation_progress
+
     ags1.jobs = None
     ags1.detection_attempts = ps['detection']['numAttemptsMax'] + 9
     with db.session.begin():
         db.session.merge(ags1)
     ps = ags1.get_pipeline_status()
+
     assert ps['detection']['failed']
     assert 'could not start' in ps['detection']['message']
     assert ps['detection']['numJobs'] == 0

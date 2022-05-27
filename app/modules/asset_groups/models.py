@@ -553,6 +553,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
         status = {
             'preparation': self._get_pipeline_status_preparation(),
             'detection': self._get_pipeline_status_detection(),
+            'curation': self._get_pipeline_status_curation(),
             'identification': self._get_pipeline_status_identification(),
             'now': datetime.datetime.utcnow().isoformat(),
             'stage': self.stage,
@@ -562,14 +563,16 @@ class AssetGroupSighting(db.Model, HoustonModel):
         status['summary']['complete'] = (
             status['preparation']['complete']
             and status['detection']['complete']
+            and status['curation']['complete']
             and status['identification']['complete']
         )
         # this is not the best math, but prob best we can do
         status['summary']['progress'] = (
             (status['preparation']['progress'] or 0)
             + (status['detection']['progress'] or 0)
+            + (status['curation']['progress'] or 0)
             + (status['identification']['progress'] or 0)
-        ) / 3
+        ) / 4
         return status
 
     def _get_pipeline_status_preparation(self):
@@ -745,6 +748,34 @@ class AssetGroupSighting(db.Model, HoustonModel):
         status['complete'] = not status['inProgress']
         if status['steps']:
             status['progress'] = status['stepsComplete'] / status['steps']
+        return status
+
+    def _get_pipeline_status_curation(self):
+
+        status = {
+            'skipped': False,
+            'start': self.get_curation_start_time(),
+            'end': None,
+            'inProgress': self.stage == AssetGroupSightingStage.curation,
+            'complete': False,
+            'failed': False,
+            'progress': 0.0,
+        }
+        # If there are no assets in an asset group sighting, curation will be skipped.
+        if len(self.get_assets()) < 1:
+            status['skipped'] = True
+            status['progress'] = 1.0
+
+        elif status['inProgress']:
+            # this is the "Fisher progress constant" and on average it has zero error
+            status['progress'] = 0.5
+            # detection may have been skipped and we need to infer this
+            if not status['start']:
+                annotations = self.get_all_annotations()
+                if annotations and len(annotations) > 1:
+                    first_annot_created = min(ann.created for ann in annotations)
+                    status['start'] = first_annot_created.isoformat() + 'Z'
+
         return status
 
     # this is just for compatibility with sighting, but basically this is null

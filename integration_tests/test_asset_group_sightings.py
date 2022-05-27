@@ -158,6 +158,7 @@ def test_asset_group_sightings(session, login, codex_url, test_root):
                 'sighting_guid': None,
                 'stage': 'detection',
                 'locationId': 'PYTEST',
+                'submissionTime': ags['submissionTime'],
                 'time': '2000-01-01T01:01:01+00:00',
                 'timeSpecificity': 'time',
             },

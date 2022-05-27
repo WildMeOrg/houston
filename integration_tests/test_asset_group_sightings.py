@@ -158,7 +158,6 @@ def test_asset_group_sightings(session, login, codex_url, test_root):
                 'sighting_guid': None,
                 'stage': 'detection',
                 'locationId': 'PYTEST',
-                'submissionTime': ags['submissionTime'],
                 'time': '2000-01-01T01:01:01+00:00',
                 'timeSpecificity': 'time',
             },
@@ -263,6 +262,7 @@ def test_asset_group_sightings(session, login, codex_url, test_root):
         'locationId': 'PYTEST',
         'stage': 'curation',
         'speciesDetectionModel': ['african_terrestrial'],
+        'submissionTime': response.json()['submissionTime'],
         'time': '2000-01-01T01:01:01+00:00',
         'timeSpecificity': 'time',
         # 2021-11-12T18:28:32.744135+00:00

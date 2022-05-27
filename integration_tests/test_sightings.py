@@ -330,6 +330,7 @@ def test_sightings(session, login, codex_url, test_root, admin_name):
         'created': response.json()['created'],
         'updated': response.json()['updated'],
         'indexed': response.json()['indexed'],
+        'submissionTime': response.json()['submissionTime'],
         'detection_start_time': response.json()['detection_start_time'],
         'curation_start_time': response.json()['curation_start_time'],
         'identification_start_time': None,

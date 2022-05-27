@@ -8,6 +8,8 @@ import tests.utils as test_utils
 from app.utils import HoustonException
 from tests.utils import extension_unavailable, module_unavailable
 
+import dateutil
+
 
 @pytest.mark.skipif(
     module_unavailable('asset_groups'), reason='AssetGroups module disabled'
@@ -95,11 +97,22 @@ def test_asset_group_sightings_jobs(flask_app, db, admin_user, test_root, reques
     assert not ps['detection']['inProgress']
     assert not ps['detection']['failed']
 
+    # As long as it's an AGS (and not committed to sighting)
+    # curation is ongoing
+    assert ps['curation']
+    assert ps['curation']['inProgress']
+    assert not ps['curation']['complete']
+    assert not ps['curation']['skipped']
+    assert ps['curation']['progress'] == 0.5
+    curation_start = dateutil.parser.parse(ps['curation']['start'])
+    assert curation_start
+
     ags1.jobs = None
     ags1.detection_attempts = ps['detection']['numAttemptsMax'] + 9
     with db.session.begin():
         db.session.merge(ags1)
     ps = ags1.get_pipeline_status()
+
     assert ps['detection']['failed']
     assert 'could not start' in ps['detection']['message']
     assert ps['detection']['numJobs'] == 0

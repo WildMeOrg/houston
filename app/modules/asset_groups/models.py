@@ -553,6 +553,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
         status = {
             'preparation': self._get_pipeline_status_preparation(),
             'detection': self._get_pipeline_status_detection(),
+            'curation': self._get_pipeline_status_curation(),
             'identification': self._get_pipeline_status_identification(),
             'now': datetime.datetime.utcnow().isoformat(),
             'stage': self.stage,
@@ -561,13 +562,15 @@ class AssetGroupSighting(db.Model, HoustonModel):
         }
         status['summary']['complete'] = (
             status['preparation']['complete']
-            and status['detection']['complete']
+            and (status['detection']['complete'] or status['curation']['complete'])
             and status['identification']['complete']
         )
+        detection_progress = status.get('detection', {}).get('progress', 0.0)
+        curation_progress = status.get('curation', {}).get('progress', 0.0)
         # this is not the best math, but prob best we can do
         status['summary']['progress'] = (
             (status['preparation']['progress'] or 0)
-            + (status['detection']['progress'] or 0)
+            + max(detection_progress, curation_progress)
             + (status['identification']['progress'] or 0)
         ) / 3
         return status
@@ -746,6 +749,37 @@ class AssetGroupSighting(db.Model, HoustonModel):
         if status['steps']:
             status['progress'] = status['stepsComplete'] / status['steps']
         return status
+
+
+    def _get_pipeline_status_curation(self):
+
+        status = {
+            'skipped': False,
+            'start': None,
+            'end': None,
+            'inProgress': False,
+            'complete': False,
+            'failed': False,
+            'progress': 0.0
+        }
+        # If there are no assets in an asset group sighting, curation will be skipped.
+        if len(self.get_assets()) < 1:
+            status['skipped'] = True
+            status['progress'] = 1.0
+
+        # The curation stage starts when manual annotation OR detection adds the first annotation to the asset group sighting.
+        annotations = self.get_all_annotations()
+        status['inProgress'] = len(annotations) > 1
+        # start time is creation of first annot
+        if status['inProgress']:
+            first_annot_created = min([ann.created for ann in annotations])
+            status['start'] = first_annot_created.isoformat() + 'Z'
+            # this is the "Fisher progress constant" and on average it has zero error
+            status['progress'] = 0.5
+
+        return status
+
+
 
     # this is just for compatibility with sighting, but basically this is null
     def _get_pipeline_status_identification(self):

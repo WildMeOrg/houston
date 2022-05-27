@@ -289,18 +289,20 @@ class SageManager(RestManager):
             if status not in ['completed', 'exception', 'None']
         }
 
-        self.sync_jobs_detection(
+        pending = 0
+        pending += self.sync_jobs_detection(
             sage_completed_job_guids,
             sage_failed_job_guids,
             sage_pending_job_guids,
             verbose=verbose,
         )
-        self.sync_jobs_identification(
+        pending += self.sync_jobs_identification(
             sage_completed_job_guids,
             sage_failed_job_guids,
             sage_pending_job_guids,
             verbose=verbose,
         )
+        return pending
 
     def sync_jobs_detection(
         self,
@@ -377,6 +379,8 @@ class SageManager(RestManager):
 
             asset_group_sighting.detected(job_id, response)
 
+        return len(pending_jobs) + len(fetch_jobs)
+
     def sync_jobs_identification(
         self,
         sage_completed_job_guids,
@@ -448,6 +452,8 @@ class SageManager(RestManager):
                 sighting.set_stage(SightingStage.identification)
 
             sighting.identified(job_id, response)
+
+        return len(pending_jobs) + len(fetch_jobs)
 
     def get_status(self):
         from app.modules.annotations.models import Annotation

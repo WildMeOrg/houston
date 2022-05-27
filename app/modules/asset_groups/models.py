@@ -377,6 +377,10 @@ class AssetGroupSighting(db.Model, HoustonModel):
         else:
             return None
 
+    # this is to mirror same method on Sighting
+    def get_submission_time(self):
+        return self.created
+
     # Don't store detection start time directly. It's either the creation time if we ever had detection
     # jobs or None if no detection was done (and hence no jobs exist)
     def get_detection_start_time(self):

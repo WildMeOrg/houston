@@ -70,6 +70,7 @@ class ElasticsearchSightingSchema(BaseSightingSchema):
     comments = base_fields.Function(Sighting.get_comments)
     taxonomy_guid = base_fields.Function(Sighting.get_taxonomy_guid)
     customFields = base_fields.Function(Sighting.get_custom_fields)
+    submissionTime = base_fields.Function(Sighting.get_submission_time)
 
     class Meta:
         # pylint: disable=missing-docstring
@@ -89,6 +90,7 @@ class ElasticsearchSightingSchema(BaseSightingSchema):
             'owners',
             'taxonomy_guid',
             'customFields',
+            'submissionTime',
         )
         dump_only = (
             Sighting.guid.key,
@@ -158,6 +160,7 @@ class AugmentedEdmSightingSchema(TimedSightingSchema):
     )
     jobs = base_fields.Function(Sighting.get_jobs_json)
     idConfigs = base_fields.Function(Sighting.get_id_configs)
+    submissionTime = base_fields.Function(Sighting.get_submission_time)
 
     class Meta(TimedSightingSchema.Meta):
         """
@@ -178,6 +181,7 @@ class AugmentedEdmSightingSchema(TimedSightingSchema):
             'timeSpecificity',
             'speciesDetectionModel',
             'idConfigs',
+            'submissionTime',
         )
 
 

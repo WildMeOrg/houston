@@ -148,6 +148,7 @@ def test_asset_group_sightings(session, login, codex_url, test_root):
                 'creator': creator_data,
                 'curation_start_time': ags['curation_start_time'],
                 'detection_start_time': ags['detection_start_time'],
+                'submissionTime': ags['submissionTime'],
                 'elasticsearchable': ags['elasticsearchable'],
                 'guid': ags_guid,
                 'indexed': ags['indexed'],
@@ -262,6 +263,7 @@ def test_asset_group_sightings(session, login, codex_url, test_root):
         'locationId': 'PYTEST',
         'stage': 'curation',
         'speciesDetectionModel': ['african_terrestrial'],
+        'submissionTime': response.json()['submissionTime'],
         'time': '2000-01-01T01:01:01+00:00',
         'timeSpecificity': 'time',
         # 2021-11-12T18:28:32.744135+00:00
@@ -375,6 +377,7 @@ def test_asset_group_sightings(session, login, codex_url, test_root):
         'updatedHouston': response.json()['updatedHouston'],
         'curation_start_time': response.json()['curation_start_time'],
         'detection_start_time': response.json()['detection_start_time'],
+        'submissionTime': response.json()['submissionTime'],
         'identification_start_time': None,
         'progress_identification': response.json()['progress_identification'],
         'review_time': None,

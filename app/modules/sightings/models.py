@@ -426,6 +426,15 @@ class Sighting(db.Model, FeatherModel):
         if guid in asset_guids:
             self.featured_asset_guid = guid
 
+    # this is (from user perspective) when this "started", so really means
+    #   AssetGroupSighting creation (if applicable)
+    def get_submission_time(self):
+        return (
+            self.asset_group_sighting.created
+            if self.asset_group_sighting
+            else self.created
+        )
+
     def get_detection_start_time(self):
         if self.asset_group_sighting:
             return self.asset_group_sighting.get_detection_start_time()

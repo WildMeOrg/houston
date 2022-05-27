@@ -585,13 +585,10 @@ class Sighting(db.Model, FeatherModel):
             'progress': None,
         }
 
-        if self.asset_group_sighting:
-            status['idConfigs'] = self.asset_group_sighting.get_id_configs()
-            if status['idConfigs']:
-                # TODO not entirely true... i think.  as this can be passed via api (single annot)
-                status['matchingSetQueryPassed'] = status['idConfigs'][0].get(
-                    'matching_set'
-                )
+        status['idConfigs'] = self.get_id_configs()
+        if status['idConfigs']:
+            # TODO not entirely true... i think.  as this can be passed via api (single annot)
+            status['matchingSetQueryPassed'] = status['idConfigs'][0].get('matching_set')
 
         if not self.is_migrated_data():
             # seems irrelevant for migrated

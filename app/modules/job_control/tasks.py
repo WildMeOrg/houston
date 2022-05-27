@@ -5,8 +5,7 @@ from app.extensions.celery import celery
 
 log = logging.getLogger(__name__)
 
-# JOB_CONTROL_CHECK_FREQUENCY = 120
-JOB_CONTROL_CHECK_FREQUENCY = None
+JOB_CONTROL_CHECK_FREQUENCY = 120
 
 
 @celery.on_after_configure.connect

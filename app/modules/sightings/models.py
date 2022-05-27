@@ -486,18 +486,17 @@ class Sighting(db.Model, FeatherModel):
         }
         status['summary']['complete'] = (
             status['preparation']['complete']
-            and (status['detection']['complete'] or status['curation']['complete'])
+            and status['detection']['complete']
+            and status['curation']['complete']
             and status['identification']['complete']
         )
-        # these are two alternate paths
-        detection_progress = status.get('detection', {}).get('progress', 0.0)
-        curation_progress = status.get('curation', {}).get('progress', 0.0)
         # this is not the best math, but prob best we can do
         status['summary']['progress'] = (
             (status['preparation']['progress'] or 0)
-            + max(detection_progress, curation_progress)
+            + (status['detection']['progress'] or 0)
+            + (status['curation']['progress'] or 0)
             + (status['identification']['progress'] or 0)
-        ) / 3
+        ) / 4
         return status
 
     # this piggybacks off of AssetGroupSighting.... *if* we have one!
@@ -556,7 +555,6 @@ class Sighting(db.Model, FeatherModel):
         }
         return status
 
-
     def _get_pipeline_status_curation(self):
 
         if self.asset_group_sighting:
@@ -570,7 +568,7 @@ class Sighting(db.Model, FeatherModel):
                 'inProgress': False,
                 'complete': False,
                 'failed': False,
-                'progress': 0.0
+                'progress': 0.0,
             }
             # setting only fields that would be set already if there were an AGS
             if len(self.get_assets()) < 1:
@@ -578,9 +576,12 @@ class Sighting(db.Model, FeatherModel):
 
             # The curation stage starts when manual annotation OR detection adds the first annotation to the asset group sighting.
             annotations = self.get_all_annotations()
-            times = [ann.created for ann in annotations]
-            first_time = min(times)
-            status['start'] = first_time.isoformat() + 'Z'
+            if annotations and len(annotations) > 1:
+                times = [ann.created for ann in annotations]
+                first_time = min(times)
+                status['start'] = first_time.isoformat() + 'Z'
+            else:
+                status['start'] = self.created.isoformat() + 'Z'
 
         # Sightings have all finished the curation stage
         status['inProgress'] = False

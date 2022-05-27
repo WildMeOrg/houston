@@ -148,6 +148,7 @@ def test_asset_group_sightings(session, login, codex_url, test_root):
                 'creator': creator_data,
                 'curation_start_time': ags['curation_start_time'],
                 'detection_start_time': ags['detection_start_time'],
+                'submissionTime': ags['submissionTime'],
                 'elasticsearchable': ags['elasticsearchable'],
                 'guid': ags_guid,
                 'indexed': ags['indexed'],

@@ -377,6 +377,7 @@ def test_asset_group_sightings(session, login, codex_url, test_root):
         'updatedHouston': response.json()['updatedHouston'],
         'curation_start_time': response.json()['curation_start_time'],
         'detection_start_time': response.json()['detection_start_time'],
+        'submissionTime': response.json()['submissionTime'],
         'identification_start_time': None,
         'progress_identification': response.json()['progress_identification'],
         'review_time': None,

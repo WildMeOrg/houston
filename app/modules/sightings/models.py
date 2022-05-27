@@ -575,7 +575,7 @@ class Sighting(db.Model, FeatherModel):
                 status['skipped'] = True
 
             # The curation stage starts when manual annotation OR detection adds the first annotation to the asset group sighting.
-            annotations = self.get_all_annotations()
+            annotations = self.get_annotations()
             if annotations and len(annotations) > 1:
                 times = [ann.created for ann in annotations]
                 first_time = min(times)

@@ -5,14 +5,13 @@ import logging
 import pytest
 
 import tests.utils as test_utils
+from app.modules.sightings.models import Sighting, SightingStage
 from app.modules.users.models import User
 from tests.utils import module_unavailable
 
 
 @pytest.mark.skipif(module_unavailable('sightings'), reason='Sightings module disabled')
 def test_sighting_create_and_add_encounters(db):
-
-    from app.modules.sightings.models import Sighting, SightingStage
 
     test_sighting = Sighting(stage=SightingStage.processed)
     test_sighting.time = test_utils.complex_date_time_now()
@@ -59,9 +58,31 @@ def test_sighting_create_and_add_encounters(db):
 
 
 @pytest.mark.skipif(module_unavailable('sightings'), reason='Sightings module disabled')
-def test_sighting_ensure_no_duplicate_encounters(db):
-    from app.modules.sightings.models import Sighting, SightingStage
+def test_basic_pipeline_status(db):
+    sighting = Sighting(stage=SightingStage.processed)
+    sighting.time = test_utils.complex_date_time_now()
 
+    with db.session.begin():
+        db.session.add(sighting)
+
+    pipeline_status = sighting.get_pipeline_status()
+
+    curation_status = {
+        '_note': 'migrated sighting; curation status fabricated',
+        'skipped': True,
+        'start': sighting.created.isoformat() + 'Z',
+        'end': sighting.created.isoformat() + 'Z',
+        'inProgress': False,
+        'complete': True,
+        'failed': False,
+        'progress': 1.0,
+    }
+    assert pipeline_status['curation'] == curation_status
+    sighting.delete()
+
+
+@pytest.mark.skipif(module_unavailable('sightings'), reason='Sightings module disabled')
+def test_sighting_ensure_no_duplicate_encounters(db):
     test_sighting = Sighting(stage=SightingStage.processed)
     test_sighting.time = test_utils.complex_date_time_now()
     owner = User.get_public_user()

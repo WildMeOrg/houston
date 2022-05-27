@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 import datetime
+from unittest.mock import Mock
 
 from flask import request
-from mock import Mock
 
 from app.modules import auth
 

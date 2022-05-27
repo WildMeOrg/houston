@@ -588,7 +588,7 @@ class GitStore(db.Model, HoustonModel):
     def init_progress_identification(self, overwrite=False):
         from app.modules.progress.models import Progress
 
-        if self.progress_identification is not None:
+        if self.progress_identification:
             if not overwrite:
                 log.warning(
                     'Git Store %r already has a progress identification %r'
@@ -614,7 +614,7 @@ class GitStore(db.Model, HoustonModel):
     def init_progress_detection(self, overwrite=False):
         from app.modules.progress.models import Progress
 
-        if self.progress_detection is not None:
+        if self.progress_detection:
             if not overwrite:
                 log.warning(
                     'Git Store %r already has a progress detection %r'
@@ -640,7 +640,7 @@ class GitStore(db.Model, HoustonModel):
     def init_progress_preparation(self, overwrite=False):
         from app.modules.progress.models import Progress
 
-        if self.progress_preparation is not None:
+        if self.progress_preparation:
             if not overwrite:
                 log.warning(
                     'Git Store %r already has a progress preparation %r'

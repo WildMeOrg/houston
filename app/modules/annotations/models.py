@@ -236,7 +236,7 @@ class Annotation(db.Model, HoustonModel, SageModel):
     def init_progress_identification(self, parent=None, overwrite=False):
         from app.modules.progress.models import Progress
 
-        if self.progress_identification is not None:
+        if self.progress_identification:
             if not overwrite:
                 log.warning(
                     'Annotation %r already has a progress identification %r'

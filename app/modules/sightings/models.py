@@ -242,7 +242,7 @@ class Sighting(db.Model, FeatherModel):
     def init_progress_identification(self, overwrite=False):
         from app.modules.progress.models import Progress
 
-        if self.progress_identification is not None:
+        if self.progress_identification:
             if not overwrite:
                 log.warning(
                     'Sighting %r already has a progress identification %r'
@@ -1483,12 +1483,12 @@ class Sighting(db.Model, FeatherModel):
                     log, f'annotation {annot_guid} for {job_id_str} not found'
                 )
 
-            if annotation.progress_identification is not None:
+            if annotation.progress_identification:
                 annotation.progress_identification.set(90)
 
             status, result = self._parse_id_response(job_id_str, data)
 
-            if annotation.progress_identification is not None:
+            if annotation.progress_identification:
                 annotation.progress_identification.set(91)
 
             description = ''
@@ -1504,7 +1504,7 @@ class Sighting(db.Model, FeatherModel):
             except KeyError:
                 log.warning(f'{debug_context} failed to find {algorithm},')
 
-            if annotation.progress_identification is not None:
+            if annotation.progress_identification:
                 annotation.progress_identification.set(92)
 
             log.info(
@@ -1528,16 +1528,16 @@ class Sighting(db.Model, FeatherModel):
                 self.jobs = self.jobs
                 db.session.merge(self)
 
-            if annotation.progress_identification is not None:
+            if annotation.progress_identification:
                 annotation.progress_identification.set(95)
 
             # Ensure that the ID result is readable
             self.get_id_result()
 
-            if annotation is not None and annotation.progress_identification is not None:
+            if annotation and annotation.progress_identification:
                 annotation.progress_identification.set(100)
         except Exception as ex:
-            if annotation is not None and annotation.progress_identification is not None:
+            if annotation and annotation.progress_identification:
                 annotation.progress_identification.fail(str(ex))
             raise
 

@@ -117,8 +117,6 @@ class AssetGroupSighting(db.Model, HoustonModel):
 
         self.set_stage(AssetGroupSightingStage.preparation)
 
-        self.init_progress_detection(overwrite=True)
-
         if not self.asset_group.progress_preparation:
             self.post_preparation_hook()
         elif self.asset_group.progress_preparation.complete:
@@ -156,6 +154,8 @@ class AssetGroupSighting(db.Model, HoustonModel):
     def post_preparation_hook(self):
         if self.stage != AssetGroupSightingStage.preparation:
             return
+
+        self.init_progress_detection(overwrite=True)
 
         # Allow sightings to have no Assets, they go straight to curation
         if (
@@ -1228,7 +1228,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
     def init_progress_detection(self, overwrite=False):
         from app.modules.progress.models import Progress
 
-        if self.progress_detection is not None:
+        if self.progress_detection:
             if not overwrite:
                 log.warning(
                     'Asset Group Sighting %r already has a progress detection %r'
@@ -1264,7 +1264,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
     def init_progress_identification(self, overwrite=False):
         from app.modules.progress.models import Progress
 
-        if self.progress_identification is not None:
+        if self.progress_identification:
             if not overwrite:
                 log.warning(
                     'Asset Group Sighting %r already has a progress identification %r'

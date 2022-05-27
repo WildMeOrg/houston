@@ -150,6 +150,8 @@ class AssetGroups(Resource):
             abort(400, f'Asset preparation failed {message}')
             raise
 
+        db.session.refresh(asset_group)
+
         return asset_group
 
 

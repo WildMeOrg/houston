@@ -155,7 +155,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
         if self.stage != AssetGroupSightingStage.preparation:
             return
 
-        self.init_progress_detection(overwrite=True)
+        self.init_progress_detection()
 
         # Allow sightings to have no Assets, they go straight to curation
         if (
@@ -1205,6 +1205,8 @@ class AssetGroupSighting(db.Model, HoustonModel):
         if foreground is None:
             foreground = current_app.testing
 
+        self.init_progress_detection(overwrite=True)
+
         log.info('Rerunning Sage detection')
 
         if self.stage == AssetGroupSightingStage.curation:
@@ -1306,7 +1308,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
         assert len(self.detection_configs) > 0
         assert self.stage == AssetGroupSightingStage.detection
 
-        self.init_progress_detection(overwrite=True)
+        self.init_progress_detection()
 
         if self.progress_detection:
             # Set the status to healthy and 0%

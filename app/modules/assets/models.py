@@ -318,19 +318,26 @@ class Asset(db.Model, HoustonModel, SageModel):
         symlink = self.get_symlink()
         image_filepath = symlink.resolve()
         if os.path.exists(image_filepath):
-            with open(image_filepath, 'rb') as image_file:
-                files = {
-                    'image': image_file,
-                }
-                sage_response = current_app.sage.request_passthrough_result(
-                    'asset.upload', 'post', {'files': files}, target='sync'
-                )
-                sage_guid = from_sage_uuid(sage_response)
+            try:
+                with open(image_filepath, 'rb') as image_file:
+                    files = {
+                        'image': image_file,
+                    }
+                    sage_response = current_app.sage.request_passthrough_result(
+                        'asset.upload', 'post', {'files': files}, target='sync'
+                    )
+                    sage_guid = from_sage_uuid(sage_response)
 
-                with db.session.begin(subtransactions=True):
-                    self.content_guid = sage_guid
-                    db.session.merge(self)
-                db.session.refresh(self)
+                    with db.session.begin(subtransactions=True):
+                        self.content_guid = sage_guid
+                        db.session.merge(self)
+                    db.session.refresh(self)
+            except Exception:
+                log.error(
+                    'Asset {!r} is corrupted or an incompatible type, cannot send to Sage'.format(
+                        self
+                    )
+                )
         else:
             log.error('Asset {!r} is missing on disk, cannot send to Sage'.format(self))
 

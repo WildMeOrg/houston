@@ -98,6 +98,7 @@ class BaseAssetGroupSightingSchema(ModelSchema):
     locationId = base_fields.Function(
         AssetGroupSighting.config_field_getter('locationId')
     )
+    submissionTime = base_fields.Function(AssetGroupSighting.get_submission_time)
 
     class Meta:
         # pylint: disable=missing-docstring
@@ -110,6 +111,7 @@ class BaseAssetGroupSightingSchema(ModelSchema):
             'time',
             'timeSpecificity',
             'locationId',
+            'submissionTime',
         )
         dump_only = (AssetGroupSighting.guid.key,)
 
@@ -276,6 +278,7 @@ class AssetGroupSightingAsSightingSchema(ModelSchema):
     identification_start_time = base_fields.String(default=None)
     unreviewed_start_time = base_fields.String(default=None)
     review_time = base_fields.String(default=None)
+    submissionTime = base_fields.Function(AssetGroupSighting.get_submission_time)
 
     hasView = base_fields.Boolean(default=True)
     hasEdit = base_fields.Boolean(default=True)

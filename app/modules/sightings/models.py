@@ -1117,6 +1117,8 @@ class Sighting(db.Model, FeatherModel):
         return id_request
 
     def send_all_identification(self):
+        self.init_progress_identification(overwrite=True)
+
         sighting_guid = str(self.guid)
         num_jobs = 0
         # Once we support multiple IA configs and algorithms, the number of jobs is going to grow....rapidly
@@ -1130,25 +1132,36 @@ class Sighting(db.Model, FeatherModel):
         ):
             annot = Annotation.query.get(annotation_guid)
 
+            annot.init_progress_identification(parent=self.progress_identification)
+
+            if annot.progress_identification:
+                # Set the status to healthy and 0%
+                annot.progress_identification = annot.progress_identification.config()
+
             for config_id in range(len(self.id_configs)):
                 conf = self.id_configs[config_id]
-                Annotation.query.get(annotation_guid)
                 matching_set_query = conf.get('matching_set', None)
                 # load=False should get us this response quickly, cuz we just want a count
                 matching_set = annot.get_matching_set(matching_set_query, load=False)
+
                 if not matching_set:
-                    log.info(
-                        f'Sighting {self.guid} send_all_identification annot {annot} {config_id} no matching set'
-                    )
+                    skip_message = f'Sighting {self.guid} send_all_identification annot {annot} {config_id} no matching set'
+                    log.info(skip_message)
+                    if annot.progress_identification:
+                        annot.progress_identification.skip(skip_message)
                     continue
                 for algorithm_id in range(len(conf['algorithms'])):
                     if self._has_active_jobs(str(annot.guid), config_id, algorithm_id):
-                        log.info(
-                            f'Sighting {self.guid} send_all_identification annot {annot} {config_id}{algorithm_id} has active jobs'
-                        )
+                        skip_message = f'Sighting {self.guid} send_all_identification annot {annot} {config_id}{algorithm_id} has active jobs'
+                        log.info(skip_message)
+                        if annot.progress_identification:
+                            annot.progress_identification.skip(skip_message)
                         continue
 
                     num_jobs += 1
+
+                    if annot.progress_identification:
+                        annot.progress_identification.set(1)
 
                     self.send_identification(annot, config_id, algorithm_id)
 
@@ -1173,12 +1186,19 @@ class Sighting(db.Model, FeatherModel):
     ):
         from app.extensions.sage import from_sage_uuid
 
+        if annotation.progress_identification:
+            annotation.progress_identification.set(2)
+
         if not self.id_configs:
+            message = 'send_identification called without id_configs'
             log.warning('send_identification called without id_configs')
             self.set_stage(SightingStage.failed)
+            if annotation.progress_identification:
+                annotation.progress_identification.fail(message)
             return
 
-        annotation.init_progress_identification(parent=self.progress_identification)
+        if annotation.progress_identification:
+            annotation.progress_identification.set(3)
 
         try:
             # Message construction has to be in the task as the jobId must be unique
@@ -1195,6 +1215,9 @@ class Sighting(db.Model, FeatherModel):
             )
             algorithm = self.id_configs[config_id]['algorithms'][algorithm_id]
 
+            if annotation.progress_identification:
+                annotation.progress_identification.set(4)
+
             with db.session.begin(subtransactions=True):
                 self.jobs[job_uuid_str] = {
                     'matching_set': matching_set_query,
@@ -1202,13 +1225,22 @@ class Sighting(db.Model, FeatherModel):
                     'annotation': str(annotation.guid),
                 }
 
+                if annotation.progress_identification:
+                    annotation.progress_identification.set(5)
+
                 id_request = self.build_identification_request(
                     annotation,
                     matching_set_query,
                     job_uuid,
                     algorithm,
                 )
+                if annotation.progress_identification:
+                    annotation.progress_identification.set(6)
+
                 if id_request != {}:
+                    if annotation.progress_identification:
+                        annotation.progress_identification.set(7)
+
                     # Ensure all annotations in the above request have been sent to Sage
                     query_sage_uuids = id_request.get('query_annot_uuid_list', [])
                     database_sage_uuids = id_request.get('database_annot_uuid_list', [])
@@ -1226,6 +1258,9 @@ class Sighting(db.Model, FeatherModel):
                             % (nulled,),
                             obj=self,
                         )
+
+                    if annotation.progress_identification:
+                        annotation.progress_identification.set(8)
 
                     local_content_guids = Annotation.query.with_entities(
                         Annotation.content_guid
@@ -1269,6 +1304,9 @@ class Sighting(db.Model, FeatherModel):
                             obj=self,
                         )
 
+                    if annotation.progress_identification:
+                        annotation.progress_identification.set(9)
+
                     try:
                         sage_job_uuid = current_app.sage.request_passthrough_result(
                             'engine.identification', 'post', {'json': id_request}
@@ -1277,10 +1315,7 @@ class Sighting(db.Model, FeatherModel):
                         assert sage_guid == job_uuid
 
                         if annotation.progress_identification:
-                            # Set the status to healthy and 0%
-                            annotation.progress_identification = (
-                                annotation.progress_identification.config()
-                            )
+                            annotation.progress_identification.set(10)
 
                             with db.session.begin(subtransactions=True):
                                 annotation.progress_identification.sage_guid = sage_guid
@@ -1442,7 +1477,19 @@ class Sighting(db.Model, FeatherModel):
                 f'Sighting:{self.guid}, Annot:{annot_guid}, algorithm:{algorithm}'
             )
 
+            annotation = Annotation.query.get(annot_guid)
+            if not annotation:
+                raise HoustonException(
+                    log, f'annotation {annot_guid} for {job_id_str} not found'
+                )
+
+            if annotation.progress_identification is not None:
+                annotation.progress_identification.set(90)
+
             status, result = self._parse_id_response(job_id_str, data)
+
+            if annotation.progress_identification is not None:
+                annotation.progress_identification.set(91)
 
             description = ''
             try:
@@ -1456,6 +1503,9 @@ class Sighting(db.Model, FeatherModel):
                     description = frontend_data.get('description', '')
             except KeyError:
                 log.warning(f'{debug_context} failed to find {algorithm},')
+
+            if annotation.progress_identification is not None:
+                annotation.progress_identification.set(92)
 
             log.info(
                 f"{debug_context} Received successful response '{description}' from Sage for {job_id_str}"
@@ -1478,7 +1528,12 @@ class Sighting(db.Model, FeatherModel):
                 self.jobs = self.jobs
                 db.session.merge(self)
 
-            annotation = Annotation.query.get(annot_guid)
+            if annotation.progress_identification is not None:
+                annotation.progress_identification.set(95)
+
+            # Ensure that the ID result is readable
+            self.get_id_result()
+
             if annotation is not None and annotation.progress_identification is not None:
                 annotation.progress_identification.set(100)
         except Exception as ex:
@@ -1681,7 +1736,6 @@ class Sighting(db.Model, FeatherModel):
 
         assert self.stage == SightingStage.identification, self.stage
         self.validate_id_configs()
-        self.init_progress_identification()
 
         if foreground:
             self.send_all_identification()
@@ -1793,7 +1847,15 @@ class Sighting(db.Model, FeatherModel):
             f'matching_set size={len(matching_set)} algo {algorithm_id}'
         )
 
-        self.init_progress_identification(overrite=True)
+        self.init_progress_identification()
+
+        annotation.init_progress_identification(parent=self.progress_identification)
+
+        if annotation.progress_identification:
+            # Set the status to healthy and 0%
+            annotation.progress_identification = (
+                annotation.progress_identification.config()
+            )
 
         if foreground:
             self.send_identification(
@@ -1815,6 +1877,8 @@ class Sighting(db.Model, FeatherModel):
             )
 
         if self.progress_identification and promise:
+            if annotation.progress_identification:
+                annotation.progress_identification.set(1)
             with db.session.begin():
                 self.progress_identification.celery_guid = promise.id
                 db.session.merge(self.progress_identification)

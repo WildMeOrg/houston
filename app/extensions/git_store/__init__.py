@@ -699,6 +699,7 @@ class GitStore(db.Model, HoustonModel):
 
         git_store.init_progress_preparation()
         git_store.init_progress_detection()
+        git_store.init_progress_identification()
 
         if metadata.tus_transaction_id:
             try:
@@ -755,6 +756,7 @@ class GitStore(db.Model, HoustonModel):
 
         git_store.init_progress_preparation()
         git_store.init_progress_detection()
+        git_store.init_progress_identification()
 
         added = None
         try:

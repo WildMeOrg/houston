@@ -435,6 +435,9 @@ class Sighting(db.Model, FeatherModel):
             else self.created
         )
 
+    def get_submission_time_isoformat(self):
+        return self.get_submission_time().isoformat() + 'Z'
+
     def get_detection_start_time(self):
         if self.asset_group_sighting:
             return self.asset_group_sighting.get_detection_start_time()

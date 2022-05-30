@@ -561,17 +561,3 @@ class TestSettings(Resource):
             return res
 
         abort(400, 'Invalid test')
-
-
-# The apiKeys for the frontend to read
-@api.route('/apiKeys')
-class ApiKeySettings(Resource):
-    @api.permission_required(
-        permissions.ModuleAccessPermission,
-        kwargs_on_request=lambda kwargs: {
-            'module': SiteSetting,
-            'action': AccessOperation.READ,
-        },
-    )
-    def get(self):
-        return SiteSetting.get_apikeys_json()

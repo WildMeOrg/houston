@@ -9,9 +9,11 @@ from .base import (
     EDMConfig,
     ElasticsearchConfig,
     EmailConfig,
+    FlatfileConfig,
     GoogleConfig,
     ReCaptchaConfig,
     SageConfig,
+    TransloaditConfig,
     WildbookDatabaseConfig,
 )
 
@@ -26,6 +28,8 @@ class BaseCodexConfig(
     AssetGroupConfig,
     ElasticsearchConfig,
     WildbookDatabaseConfig,
+    FlatfileConfig,
+    TransloaditConfig,
 ):
     PROJECT_NAME = 'Codex'
 

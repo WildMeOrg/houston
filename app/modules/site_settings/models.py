@@ -116,37 +116,37 @@ class SiteSetting(db.Model, Timestamp):
         'transloaditKey': {
             'type': str,
             'public': False,
-            'default': '',
+            'default': lambda: current_app.config.get('TRANSLOADIT_KEY'),
             'isApiKey': True,
         },
         'transloaditTemplateId': {
             'type': str,
             'public': False,
-            'default': '',
+            'default': lambda: current_app.config.get('TRANSLOADIT_TEMPLATE_ID'),
             'isApiKey': True,
         },
         'transloaditService': {
             'type': str,
             'public': False,
-            'default': '',
+            'default': lambda: current_app.config.get('TRANSLOADIT_SERVICE'),
             'isApiKey': True,
         },
         'googleMapsApiKey': {
             'type': str,
             'public': False,
-            'default': '',
+            'default': lambda: current_app.config.get('GOOGLE_MAPS_API_KEY'),
             'isApiKey': True,
         },
         'sentryDsn': {
             'type': str,
             'public': False,
-            'default': '',
+            'default': lambda: current_app.config.get('SENTRY_DSN'),
             'isApiKey': True,
         },
         'flatfileKey': {
             'type': str,
             'public': False,
-            'default': '',
+            'default': lambda: current_app.config.get('FLATFILE_KEY'),
             'isApiKey': True,
         },
         'recaptchaPublicKey': {

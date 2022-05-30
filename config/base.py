@@ -251,11 +251,21 @@ class GoogleAnalyticsConfig(object):
 
 
 class GoogleMapsConfig(object):
-    GOOGLE_MAP_API_KEY = 'XXX'
+    GOOGLE_MAPS_API_KEY = os.getenv('GOOGLE_MAPS_API_KEY')
 
 
 class GoogleConfig(GoogleAnalyticsConfig, GoogleMapsConfig):
     pass
+
+
+class TransloaditConfig:
+    TRANSLOADIT_KEY = os.getenv('TRANSLOADIT_KEY')
+    TRANSLOADIT_TEMPLATE_ID = os.getenv('TRANSLOADIT_TEMPLATE_ID')
+    TRANSLOADIT_SERVICE = os.getenv('TRANSLOADIT_SERVICE')
+
+
+class FlatfileConfig:
+    FLATFILE_KEY = os.getenv('FLATFILE_KEY')
 
 
 def get_env_rest_config(interface):

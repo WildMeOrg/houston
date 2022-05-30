@@ -17,7 +17,12 @@ log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
 class HoustonException(Exception):
     def __init__(
-        self, logger, log_message, fault=AuditLog.AuditType.FrontEndFault, **kwargs
+        self,
+        logger,
+        log_message,
+        fault=AuditLog.AuditType.FrontEndFault,
+        obj=None,
+        **kwargs,
     ):
         self.message = kwargs.get('message', log_message)
         self.status_code = kwargs.get('status_code', 400)
@@ -27,7 +32,12 @@ class HoustonException(Exception):
         if log_message == '' and self.message != '':
             log_message = self.message
 
-        AuditLog.audit_log(logger, f'Failed: {log_message} {self.status_code}', fault)
+        if obj:
+            AuditLog.audit_log_object(
+                logger, obj, f'Failed: {log_message} {self.status_code}', fault
+            )
+        else:
+            AuditLog.audit_log(logger, f'Failed: {log_message} {self.status_code}', fault)
 
     def __str__(self):
         # something, somewhere was setting this as a tuple, hence this possibly redudant str()

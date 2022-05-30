@@ -794,7 +794,9 @@ class GitStore(db.Model, HoustonModel):
                 filename for filename in uploaded_files if filename not in paths
             ]
             if unprocessed_files:
-                raise HoustonException(log, f'Asset(s) {unprocessed_files} are not used')
+                raise HoustonException(
+                    log, f'Asset(s) {unprocessed_files} are not used', obj=self
+                )
 
         paths_added = []
         original_filenames = []

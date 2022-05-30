@@ -533,7 +533,9 @@ class Asset(db.Model, HoustonModel, SageModel):
         format = Image.registered_extensions().get(f'.{self.extension}', None)
         if not format:
             raise HoustonException(
-                log, f'Unable to find valid format to save modified Asset {self.guid}'
+                log,
+                f'Unable to find valid format to save modified Asset {self.guid}',
+                obj=self,
             )
         image_object.save(symlink.resolve(), format=format)
         self.reset_derived_images()
@@ -551,6 +553,7 @@ class Asset(db.Model, HoustonModel, SageModel):
             raise HoustonException(
                 log,
                 'Asset does not have a valid path, needs to be within an AssetGroup',
+                obj=self,
             )
         target_path = self.get_derived_path('master')
         target_path.parent.mkdir(parents=True, exist_ok=True)

@@ -508,7 +508,7 @@ class Collaboration(db.Model, HoustonModel):
                     db.session.merge(other_assoc)
         else:
             raise HoustonException(
-                log, 'Unable to start edit on unapproved collaboration'
+                log, 'Unable to start edit on unapproved collaboration', obj=self
             )
 
     # This relates to if the user can access the collaboration itself, not the data

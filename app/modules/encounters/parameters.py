@@ -85,7 +85,7 @@ class PatchEncounterDetailsParameters(PatchJSONParameters):
                 )
             if annot.encounter and not annot.encounter.current_user_has_edit_permission():
                 raise HoustonException(
-                    log, f'annotation {value} owned by a different user'
+                    log, f'annotation {value} owned by a different user', obj=annot
                 )
             annot.encounter = obj
 

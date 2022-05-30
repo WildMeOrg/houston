@@ -77,6 +77,7 @@ class PatchIndividualDetailsParameters(PatchJSONParameters):
                     log,
                     f'invalid name guid {value}',
                     status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
+                    obj=obj,
                 )
             try:
                 obj.remove_name(name)
@@ -85,6 +86,7 @@ class PatchIndividualDetailsParameters(PatchJSONParameters):
                     log,
                     f'{name} could not be removed from {obj}: {str(ve)}',
                     status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
+                    obj=obj,
                 )
             ret_val = True
 
@@ -116,6 +118,7 @@ class PatchIndividualDetailsParameters(PatchJSONParameters):
                     log,
                     f"invalid user guid {value['preferring_user']}",
                     status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
+                    obj=obj,
                 )
             found = name.remove_preferring_user(user)
             return found
@@ -136,6 +139,7 @@ class PatchIndividualDetailsParameters(PatchJSONParameters):
                     log,
                     'value must contain keys ("context", "value") or ("guid", "preferring_user")',
                     status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
+                    obj=obj,
                 )
             from flask_login import current_user
 
@@ -156,6 +160,7 @@ class PatchIndividualDetailsParameters(PatchJSONParameters):
                                 log,
                                 f'invalid user guid {user_guid}',
                                 status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
+                                obj=obj,
                             )
                         preferring_users.append(user)
                 obj.add_name(
@@ -169,6 +174,7 @@ class PatchIndividualDetailsParameters(PatchJSONParameters):
                         log,
                         f"invalid name guid {value['guid']}",
                         status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
+                        obj=obj,
                     )
                 user = User.query.get(value['preferring_user'])
                 # see above decree from 2021-12-08
@@ -177,6 +183,7 @@ class PatchIndividualDetailsParameters(PatchJSONParameters):
                         log,
                         f"invalid user guid {value['preferring_user']}",
                         status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
+                        obj=obj,
                     )
                 name.add_preferring_user(user)
                 return True
@@ -210,6 +217,7 @@ class PatchIndividualDetailsParameters(PatchJSONParameters):
                     log,
                     'value must contain keys "guid" and at least one of: "context", "value"',
                     status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
+                    obj=obj,
                 )
             name = Name.query.get(value['guid'])
             if not name or name.individual_guid != obj.guid:
@@ -217,6 +225,7 @@ class PatchIndividualDetailsParameters(PatchJSONParameters):
                     log,
                     f"invalid name guid {value['guid']}",
                     status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
+                    obj=obj,
                 )
             if 'context' in value:
                 name.context = value['context']

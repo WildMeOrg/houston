@@ -133,7 +133,7 @@ class Annotation(db.Model, HoustonModel, SageModel):
             return self.encounter.sighting.get_job_debug(self.guid, verbose)
         else:
             raise HoustonException(
-                log, f'Annotation {self.guid} not connected to an encounter'
+                log, f'Annotation {self.guid} not connected to an encounter', obj=self
             )
 
     @classmethod
@@ -569,7 +569,9 @@ class Annotation(db.Model, HoustonModel, SageModel):
         sighting = self.get_sighting()
         if not sighting:
             raise HoustonException(
-                log, f'{self} requires a sighting to run send_to_identification()'
+                log,
+                f'{self} requires a sighting to run send_to_identification()',
+                obj=self,
             )
         sighting.validate_id_configs()
         job_count = sighting.send_annotation_for_identification(self, matching_set_query)

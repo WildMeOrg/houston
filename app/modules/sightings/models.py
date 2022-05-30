@@ -1092,7 +1092,7 @@ class Sighting(db.Model, FeatherModel):
         try:
             id_config_dict = ia_config_reader.get(f'_identifiers.{algorithm}')['sage']
         except KeyError:
-            raise HoustonException(log, f'failed to find {algorithm}')
+            raise HoustonException(log, f'failed to find {algorithm}', obj=self)
 
         id_request = {
             'jobid': str(job_uuid),
@@ -1219,6 +1219,7 @@ class Sighting(db.Model, FeatherModel):
                             log,
                             'Tried to start an ID job with annotation content GUIDs that are None, missing: %r'
                             % (nulled,),
+                            obj=self,
                         )
 
                     local_content_guids = Annotation.query.with_entities(
@@ -1234,6 +1235,7 @@ class Sighting(db.Model, FeatherModel):
                             log,
                             'Tried to start an ID job with annotation content GUIDs that are not in the local Houston database, missing: %r'
                             % (missing,),
+                            obj=self,
                         )
 
                     sage_uuids = current_app.sage.request_passthrough_result(
@@ -1247,6 +1249,7 @@ class Sighting(db.Model, FeatherModel):
                             log,
                             'Tried to start an ID job with annotation content GUIDs that are not in the remote Sage database, missing: %r'
                             % (missing,),
+                            obj=self,
                         )
 
                     search = database_sage_guids - query_sage_guids
@@ -1258,6 +1261,7 @@ class Sighting(db.Model, FeatherModel):
                                 query_sage_guids,
                                 database_sage_guids,
                             ),
+                            obj=self,
                         )
 
                     try:
@@ -1341,29 +1345,35 @@ class Sighting(db.Model, FeatherModel):
 
         job_id_msg = data.get('jobid')
         if not job_id_msg:
-            raise HoustonException(log, f'Must be a job id in the response {job_id_str}')
+            raise HoustonException(
+                log, f'Must be a job id in the response {job_id_str}', obj=self
+            )
 
         if job_id_msg != job_id_str:
             raise HoustonException(
                 log,
                 f'Job id in message {job_id_msg} must match job id in callback {job_id_str}',
+                obj=self,
             )
         json_result = data.get('json_result')
         if not json_result:
             raise HoustonException(
-                log, f'No json_result in the response for {job_id_str}'
+                log, f'No json_result in the response for {job_id_str}', obj=self
             )
 
         query_annot_uuids = json_result.get('query_annot_uuid_list', [])
         if not query_annot_uuids:
             raise HoustonException(
-                log, f'No query_annot_uuid_list in the json_result for {job_id_str}'
+                log,
+                f'No query_annot_uuid_list in the json_result for {job_id_str}',
+                obj=self,
             )
 
         if len(query_annot_uuids) != 1:
             raise HoustonException(
                 log,
                 f'Sage ID responded with {len(query_annot_uuids)} query_annots for {job_id_str}',
+                obj=self,
             )
 
         sage_uuid = from_sage_uuid(query_annot_uuids[0])
@@ -1372,6 +1382,7 @@ class Sighting(db.Model, FeatherModel):
             raise HoustonException(
                 log,
                 f'Sage ID response with unknown query annot uuid {sage_uuid} for job {job_id_str}',
+                obj=self,
             )
 
         possible_annot_guids = [str(annot.guid) for annot in query_annots]
@@ -1380,6 +1391,7 @@ class Sighting(db.Model, FeatherModel):
             raise HoustonException(
                 log,
                 f'Sage ID response with invalid annot uuid {sage_uuid} for job {job_id_str}',
+                obj=self,
             )
 
         # Now it's reasonably valid, let's extract the bits we need
@@ -1390,6 +1402,7 @@ class Sighting(db.Model, FeatherModel):
                 raise HoustonException(
                     log,
                     f'Sage ID response with unknown target annot uuid {sage_uuid} for job {job_id_str}',
+                    obj=self,
                 )
             result['scores_by_annotation'].append(
                 {str(target_annot.guid): target_annot_data['score']}
@@ -1402,6 +1415,7 @@ class Sighting(db.Model, FeatherModel):
                 raise HoustonException(
                     log,
                     f'Sage ID response with unknown target annot uuid {sage_uuid} for job {job_id_str}',
+                    obj=self,
                 )
             result['scores_by_individual'].append(
                 {str(target_annot.guid): target_annot_data['score']}
@@ -1415,7 +1429,7 @@ class Sighting(db.Model, FeatherModel):
         try:
             job_id_str = str(job_id)
             if job_id_str not in self.jobs:
-                raise HoustonException(log, f'job_id {job_id_str} not found')
+                raise HoustonException(log, f'job_id {job_id_str} not found', obj=self)
             job = self.jobs[job_id_str]
             algorithm = job['algorithm']
             annot_guid = job['annotation']

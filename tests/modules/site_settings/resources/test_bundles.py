@@ -11,83 +11,104 @@ from tests.utils import extension_unavailable, module_unavailable
 BUNDLE_PATH = 'block'
 
 
-@pytest.mark.skipif(extension_unavailable('edm'), reason='EDM extension disabled')
 @pytest.mark.skipif(
     module_unavailable('site_settings'), reason='Site-settings module disabled'
 )
-def test_bundle_read(flask_app_client, admin_user):
+@pytest.mark.parametrize(
+    'keys,is_edm',
+    (
+        (['site.name', 'email_service'], True),
+        (['email_service'], False),
+    ),
+)
+def test_bundle_read(flask_app_client, admin_user, keys, is_edm):
     response = conf_utils.read_main_settings(flask_app_client, admin_user)
+    if extension_unavailable('edm') and is_edm:
+        pytest.skip('EDM extension disabled')
+
     assert response.json['success']
     assert response.json['response']
     assert 'configuration' in response.json['response']
     assert isinstance(response.json['response']['configuration'], dict)
-    assert 'site.name' in response.json['response']['configuration']
-    assert 'value' in response.json['response']['configuration']['site.name']
-    assert response.json['response']['configuration']['site.name'] is not None
+
+    for key in keys:
+        assert key in response.json['response']['configuration']
+        assert 'value' in response.json['response']['configuration'][key]
+        if isinstance(keys, dict):
+            value = keys[key]
+            assert response.json['response']['configuration'][key]['value'] == value
+        else:
+            assert response.json['response']['configuration'][key]['value'] is not None
 
 
-@pytest.mark.skipif(extension_unavailable('edm'), reason='EDM extension disabled')
 @pytest.mark.skipif(
     module_unavailable('site_settings'), reason='Site-Settings module disabled'
 )
-def test_bundle_modify(flask_app_client, admin_user, db):
+@pytest.mark.parametrize(
+    'data,expected_status_code,is_edm',
+    (
+        ({'site.name': f'TEST-{str(uuid.uuid4())}'}, 200, True),
+        ({'email_default_sender_name': 'testing'}, 200, False),
+        (
+            {
+                'bad_key': 'abcd',
+                'email_default_sender_name': {'foo': 'bar'},
+                'email_default_sender_email': [],
+            },
+            400,
+            False,
+        ),
+        (
+            {
+                'bad_key': 'abcd',
+                'email_default_sender_name': 'Testing',
+                'site.name': f'TEST-{str(uuid.uuid4())}',
+            },
+            200,
+            True,
+        ),
+        ({'sentryDsn': 'sentryDsnKey'}, 200, False),
+    ),
+)
+def test_bundle_modify(
+    flask_app_client, admin_user, db, request, data, expected_status_code, is_edm
+):
+    if extension_unavailable('edm') and is_edm:
+        pytest.skip('EDM extension disabled')
+
     response = conf_utils.read_main_settings(flask_app_client, admin_user)
-    orig_name = response.json['response']['configuration']['site.name']['value']
-    key = 'site.name'
-    test_value = 'TEST-' + str(uuid.uuid4())
-    data = {
-        key: test_value,
-    }
+    old_values = {}
+    invalid_key = []
+    for key in data:
+        old_value = response.json['response']['configuration'].get(key, {})
+        if old_value:
+            old_values[key] = old_value['value']
+        else:
+            invalid_key.append(key)
+    request.addfinalizer(
+        lambda: conf_utils.modify_main_settings(flask_app_client, admin_user, old_values)
+    )
     response = conf_utils.modify_main_settings(
         flask_app_client,
         admin_user,
         data,
+        expected_status_code=expected_status_code,
     )
-    assert response.json['success']
-    assert response.json['updated']
-    assert isinstance(response.json['updated'], list)
-    assert key in response.json['updated']
-    # bonus test of SiteSetting read (of edm conf)
-    assert SiteSetting.get_value(key) == test_value
-
-    # test SiteSetting modification via bundle
-    #   first a failure (invalid value of valid key)
-    key = 'email_default_sender_name'
-    data = {
-        'bad_key': 'abcd',  # this should be ignored
-        key: {'foo': 'bar'},  # this should cause a 400
-    }
-    response = conf_utils.modify_main_settings(
-        flask_app_client,
-        admin_user,
-        data,
-        expected_status_code=400,
-    )
-    assert key in response.json['message']  # error message
-
-    #   now this should work
-    key2 = 'site.name'
-    data = {
-        'bad_key': 'abcd',  # this should be ignored
-        key: test_value,
-        key2: orig_name,
-    }
-    response = conf_utils.modify_main_settings(
-        flask_app_client,
-        admin_user,
-        data,
-    )
-    assert response.json['success']
-    assert response.json['updated']
-    assert isinstance(response.json['updated'], list)
-    assert key in response.json['updated']
-    assert key2 in response.json['updated']
-    # get_string since this is SiteSetting
-    assert SiteSetting.get_string(key) == test_value
-    # get_value since this is edm conf value
-    assert SiteSetting.get_value(key2) == orig_name
-
-    # cleanup
-    setting = SiteSetting.query.get(key)
-    assert setting is not None
-    db.session.delete(setting)
+    if expected_status_code == 200:
+        assert response.json['success']
+        assert response.json['updated']
+        assert isinstance(response.json['updated'], list)
+        for key, value in data.items():
+            if key in invalid_key:
+                assert key not in response.json['updated']
+                assert SiteSetting.get_value(key) is None
+            else:
+                assert key in response.json['updated']
+                assert SiteSetting.get_value(key) == value
+    else:
+        for key in data:
+            if key in invalid_key:
+                assert key not in response.json['message']
+            else:
+                assert key in response.json['message']
+                break  # Only the first valid key is reported

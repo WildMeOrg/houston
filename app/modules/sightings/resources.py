@@ -728,7 +728,7 @@ class FeaturedAssetGuidBySightingID(Resource):
         return {'success': success}
 
 
-@api.route('/<uuid:sighting_guid>/sage_identified/<uuid:job_guid>')
+@api.route('/<uuid:sighting_guid>/sage_identified/<uuid:job_guid>', doc=False)
 @api.login_required(oauth_scopes=['sightings:write'])
 @api.response(
     code=HTTPStatus.NOT_FOUND,

@@ -751,7 +751,12 @@ class Sighting(db.Model, FeatherModel):
     def check_all_job_status(self, all_scheduled):
         jobs = self.jobs
         if not jobs:
-            if not all_scheduled:
+            # Somewhat arbitrary limit of at least 10 minutes after creation.
+            if (
+                not all_scheduled
+                and datetime.datetime.utcnow() + datetime.timedelta(minutes=10)
+                > self.created
+            ):
                 # TODO it would be nice to know if the scheduled tasks were for other Sightings than this one
                 # but at the moment, it's not clear how we could detect this
                 log.warning(
@@ -1148,14 +1153,14 @@ class Sighting(db.Model, FeatherModel):
                     self.send_identification(annot, config_id, algorithm_id)
 
         if num_jobs > 0:
-            log.info(
+            message = (
                 f'Started Identification for Sighting:{self.guid} using {num_jobs} jobs'
             )
+            AuditLog.audit_log_object(log, self, message)
         else:
             self.set_stage(SightingStage.un_reviewed)
-            log.info(
-                f'Sighting {self.guid} un-reviewed, identification not needed or not possible (jobs=0)'
-            )
+            message = f'Sighting {self.guid} un-reviewed, identification not needed or not possible (jobs=0)'
+            AuditLog.audit_log_object(log, self, message)
             with db.session.begin(subtransactions=True):
                 db.session.merge(self)
 
@@ -1466,8 +1471,10 @@ class Sighting(db.Model, FeatherModel):
 
                 if not self.any_jobs_active():
                     self.set_stage(SightingStage.un_reviewed)
+                    self.unreviewed_start = datetime.datetime.utcnow()
+                    message = f'Sighting {self.guid} all jobs completed'
+                    AuditLog.audit_log_object(log, self, message)
 
-                self.unreviewed_start = datetime.datetime.utcnow()
                 self.jobs = self.jobs
                 db.session.merge(self)
 

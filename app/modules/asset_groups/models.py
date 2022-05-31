@@ -70,6 +70,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
 
     # May have multiple jobs outstanding, store as Json obj uuid_str is key, In_progress Bool is value
     jobs = db.Column(db.JSON, default=lambda: {}, nullable=True)
+    detection_start = db.Column(db.DateTime, index=True, default=None, nullable=True)
 
     curation_start = db.Column(
         db.DateTime, index=True, default=datetime.datetime.utcnow, nullable=False
@@ -389,8 +390,8 @@ class AssetGroupSighting(db.Model, HoustonModel):
     # Don't store detection start time directly. It's either the creation time if we ever had detection
     # jobs or None if no detection was done (and hence no jobs exist)
     def get_detection_start_time(self):
-        if self.jobs or self.stage == AssetGroupSightingStage.detection:
-            return self.created.isoformat() + 'Z'
+        if self.detection_start:
+            return self.detection_start.isoformat() + 'Z'
         return None
 
     # curation time is only valid if there are no active detection jobs and there were some assets
@@ -519,7 +520,12 @@ class AssetGroupSighting(db.Model, HoustonModel):
     def check_all_job_status(self, all_scheduled):
         jobs = self.jobs
         if not jobs:
-            if not all_scheduled:
+            # Don't attempt to restart detection until we have had at least 10 minutes for celery to have a go
+            if (
+                not all_scheduled
+                and datetime.datetime.utcnow() + datetime.timedelta(minutes=10)
+                > self.detection_start
+            ):
                 # TODO it would be nice to know if the scheduled tasks were for other AGS than this one
                 # but at the moment, it's not clear how we could detect this
                 log.warning(
@@ -966,7 +972,9 @@ class AssetGroupSighting(db.Model, HoustonModel):
                 # This is necessary because we can only mark self as modified if
                 # we assign to one of the database attributes
                 self.jobs = self.jobs
-
+                log.info(
+                    f'Started Detection job, on AssetGroupSighting {self.guid}, self.jobs= {self.jobs}'
+                )
                 with db.session.begin(subtransactions=True):
                     db.session.merge(self)
             except HoustonException as ex:
@@ -974,25 +982,24 @@ class AssetGroupSighting(db.Model, HoustonModel):
 
                 # Celery has done it's job and called the function to generate the request and will not retry as it
                 # only does that for RequestException, which includes various timeouts ec, not HoustonException
-
                 if (
                     ex.status_code == HTTPStatus.SERVICE_UNAVAILABLE
                     or ex.status_code == HTTPStatus.INTERNAL_SERVER_ERROR
-                ):
-                    if self.detection_attempts < MAX_DETECTION_ATTEMPTS:
-                        log.warning(
-                            f'Sage Detection on AssetGroupSighting({self.guid}) Job{job_id} failed to start, '
-                            f'code: {ex.status_code}, sage_status_code: {sage_status_code}, retrying'
-                        )
-                        self.rerun_detection()
+                ) and self.detection_attempts < MAX_DETECTION_ATTEMPTS:
+                    log.warning(
+                        f'Sage Detection on AssetGroupSighting({self.guid}) Job{job_id} failed to start, '
+                        f'code: {ex.status_code}, sage_status_code: {sage_status_code}, retrying'
+                    )
+                    self.rerun_detection()
 
-                log.warning(
-                    f'Sage Detection on AssetGroupSighting({self.guid}) Job{job_id} failed to start, '
-                    f'code: {ex.status_code}, sage_status_code: {sage_status_code}, giving up'
-                )
-                # Assuming some sort of persistent error in Sage
-                self.job_complete(str(job_id))
-                self.set_stage(AssetGroupSightingStage.curation)
+                else:
+                    log.warning(
+                        f'Sage Detection on AssetGroupSighting({self.guid}) Job{job_id} failed to start, '
+                        f'code: {ex.status_code}, sage_status_code: {sage_status_code}, giving up'
+                    )
+                    # Assuming some sort of persistent error in Sage
+                    self.job_complete(str(job_id))
+                    self.set_stage(AssetGroupSightingStage.curation)
         except Exception as ex:
             if self.progress_detection:
                 self.progress_detection.fail(str(ex))
@@ -1153,6 +1160,9 @@ class AssetGroupSighting(db.Model, HoustonModel):
             db.session.refresh(self)
 
             self.job_complete(job_id)
+            AuditLog.audit_log_object(
+                log, self, f'Detection for AssetGroupSighting {self.guid} succeeded'
+            )
 
             if self.progress_detection:
                 self.progress_detection.set(100)
@@ -1171,6 +1181,14 @@ class AssetGroupSighting(db.Model, HoustonModel):
         self.config = self.config
 
     def rerun_detection(self, foreground=None):
+        if self.detection_attempts >= MAX_DETECTION_ATTEMPTS:
+            message = f'Detection on AssetGroupSighting({self.guid}) failed. Already had '
+            message += f'{self.detection_attempts} attempts, assuming a persistent error and moving to curation'
+            AuditLog.audit_log_object(log, self, message)
+
+            # Assuming some sort of persistent error in Sage
+            self.set_stage(AssetGroupSightingStage.curation)
+            return
 
         if foreground is None:
             foreground = current_app.testing
@@ -1282,8 +1300,10 @@ class AssetGroupSighting(db.Model, HoustonModel):
         # Temporary restriction for MVP
         assert len(self.detection_configs) == 1
         for config in self.detection_configs:
-            log.info(
-                f'ia pipeline starting detection {config} on AssetGroupSighting {self.guid}'
+            AuditLog.audit_log_object(
+                log,
+                self,
+                f'Starting detection {config} on AssetGroupSighting {self.guid}',
             )
 
             if foreground:
@@ -1298,6 +1318,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
                 with db.session.begin():
                     self.progress_detection.celery_guid = promise.id
                     db.session.merge(self.progress_detection)
+        self.detection_start = datetime.datetime.utcnow()
 
     # Used to build the response to AssetGroupSighting GET
     def get_assets(self):

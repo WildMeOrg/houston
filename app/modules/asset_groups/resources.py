@@ -774,7 +774,9 @@ class AssetGroupSightingDetect(Resource):
         return asset_group_sighting
 
 
-@api.route('/sighting/<uuid:asset_group_sighting_guid>/sage_detected/<uuid:job_guid>')
+@api.route(
+    '/sighting/<uuid:asset_group_sighting_guid>/sage_detected/<uuid:job_guid>', doc=False
+)
 @api.login_required(oauth_scopes=['asset_group_sightings:write'])
 @api.response(
     code=HTTPStatus.NOT_FOUND,

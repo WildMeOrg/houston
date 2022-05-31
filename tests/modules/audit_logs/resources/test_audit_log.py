@@ -65,12 +65,14 @@ def test_audit_asset_group_creation(
         audit_utils.read_audit_log(flask_app_client, contributor_1, sighting_uuid, 403)
         sighting_audit = audit_utils.read_audit_log(
             flask_app_client, admin_user, sighting_uuid
-        )
-        assert len(sighting_audit.json) == 1
-        log_entry = sighting_audit.json[0]
-        assert log_entry['user_email'] == researcher_1.email
-        assert log_entry['module_name'] == 'Sighting'
-        assert log_entry['item_guid'] == sighting_uuid
+        ).json
+
+        assert len(sighting_audit) == 2
+        create_entry = sighting_audit[1]
+        assert create_entry['user_email'] == researcher_1.email
+        assert create_entry['module_name'] == 'Sighting'
+        assert create_entry['item_guid'] == sighting_uuid
+        assert 'un-reviewed' in sighting_audit[0]['message']
 
     finally:
         if asset_group_uuid:

@@ -534,6 +534,7 @@ class FeatherModel(CommonHoustonModel):
             raise HoustonException(
                 log,
                 f'Only one None encounters value between {class_name} edm/feather objects!',
+                obj=self,
             )
         for encounter in edm_json.get('encounters') or []:
             # EDM returns strings for decimalLatitude and decimalLongitude
@@ -550,7 +551,7 @@ class FeatherModel(CommonHoustonModel):
                 error_msg += (
                     f', locally:{len(self.encounters)}, EDM:{len(guid_to_encounter)} !'
                 )
-                raise HoustonException(log, error_msg)
+                raise HoustonException(log, error_msg, obj=self)
 
             for encounter in self.encounters:  # now we augment each encounter
                 found_edm = guid_to_encounter[str(encounter.guid)]

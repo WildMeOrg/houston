@@ -196,12 +196,14 @@ class AssetGroupSighting(db.Model, HoustonModel):
             raise HoustonException(
                 log,
                 f'AssetGroupSighting {self.guid} is currently in {self.stage}, not curating cannot commit',
+                obj=self,
             )
 
         if not self.sighting_config:
             raise HoustonException(
                 log,
                 f'AssetGroupSighting {self.guid} has no metadata',
+                obj=self,
             )
         cleanup = Cleanup('AssetGroup')
 
@@ -1019,18 +1021,20 @@ class AssetGroupSighting(db.Model, HoustonModel):
             )
             if self.stage != AssetGroupSightingStage.detection:
                 raise HoustonException(
-                    log, f'AssetGroupSighting {self.guid} is not detecting'
+                    log, f'AssetGroupSighting {self.guid} is not detecting', obj=self
                 )
 
             job = self.jobs.get(str(job_id))
             if job is None:
                 raise HoustonException(
-                    log, f'job_id {job_id} not found, self.jobs={self.jobs}'
+                    log,
+                    f'AssetGroupSighting {self.guid} job_id {job_id} not found, self.jobs={self.jobs}',
+                    obj=self,
                 )
 
             status = response.get('status')
             if not status:
-                raise HoustonException(log, 'No status in response from Sage')
+                raise HoustonException(log, 'No status in response from Sage', obj=self)
 
             if status != 'completed':
                 # Job Failed on Sage but move to curation so that user can create annotations manually and commit
@@ -1045,18 +1049,21 @@ class AssetGroupSighting(db.Model, HoustonModel):
 
             job_id_msg = response.get('jobid')
             if not job_id_msg:
-                raise HoustonException(log, 'Must be a job id in the response')
+                raise HoustonException(log, 'Must be a job id in the response', obj=self)
 
             if job_id_msg != str(job_id):
                 raise HoustonException(
                     log,
                     f'Job id in message {job_id_msg} must match job id in callback {job_id}',
+                    obj=self,
                 )
 
             json_result = response.get('json_result', None)
 
             if not json_result:
-                raise HoustonException(log, 'No json_result in message from Sage')
+                raise HoustonException(
+                    log, 'No json_result in message from Sage', obj=self
+                )
 
             job['result'] = json_result
             with db.session.begin(subtransactions=True):
@@ -1071,11 +1078,13 @@ class AssetGroupSighting(db.Model, HoustonModel):
                 raise HoustonException(
                     log,
                     f'image list len {len(sage_image_uuids)} does not match results len {len(results_list)}',
+                    obj=self,
                 )
             if len(sage_image_uuids) != len(asset_guids):
                 raise HoustonException(
                     log,
                     f'image list from sage {len(sage_image_uuids)} does not match local image list {len(job["asset_ids"])}',
+                    obj=self,
                 )
 
             with db.session.begin(subtransactions=True):
@@ -1116,6 +1125,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
                             raise HoustonException(
                                 log,
                                 f'Need a viewpoint "{viewpoint}" and a class "{ia_class}" in each of the results',
+                                obj=self,
                             )
 
                         bounds = Annotation.create_bounds(result)
@@ -1176,11 +1186,14 @@ class AssetGroupSighting(db.Model, HoustonModel):
                 raise HoustonException(
                     log,
                     'Cannot rerun detection on AssetGroupSighting in detection stage with active jobs',
+                    obj=self,
                 )
             self.start_detection(foreground=foreground)
         else:
             raise HoustonException(
-                log, f'Cannot rerun detection on AssetGroupSighting in {self.stage} stage'
+                log,
+                f'Cannot rerun detection on AssetGroupSighting in {self.stage} stage',
+                obj=self,
             )
 
     def init_progress_detection(self, overwrite=False, increment_attempts=True):

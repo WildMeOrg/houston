@@ -983,7 +983,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
 
                     self.jobs = self.jobs
                     log.info(
-                        f'Started Detection job, on AssetGroupSighting {self.guid}, self.jobs= {self.jobs}'
+                        f'Started Detection job, on AssetGroupSighting {self.guid}, self.jobs={self.jobs}'
                     )
                     self.detection_attempts += 1
                     db.session.merge(self)

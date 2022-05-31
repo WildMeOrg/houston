@@ -242,7 +242,7 @@ class SageManager(RestManager):
         )
         return response_data
 
-    def get_job_status(self, jobs, exclude_done=True):
+    def get_job_status(self, jobs, exclude_done=False):
 
         statuses = {}
         sage_jobs = []
@@ -254,7 +254,13 @@ class SageManager(RestManager):
                 statuses[status] = 0
             statuses[status] += 1
 
-            if exclude_done and status in [None, 'None', 'completed']:
+            if exclude_done and status in [
+                'completed',
+                'exception',
+                'corrupted',
+                'None',
+                None,
+            ]:
                 continue
 
             sage_jobs.append(
@@ -275,7 +281,7 @@ class SageManager(RestManager):
         jobs = current_app.sage.request_passthrough_result(
             'engine.list', 'get', target='default'
         )['json_result']
-        statuses, sage_jobs = current_app.sage.get_job_status(jobs, exclude_done=False)
+        statuses, sage_jobs = current_app.sage.get_job_status(jobs)
 
         sage_completed_job_guids = {
             sage_job_id for sage_job_id, status in sage_jobs if status in ['completed']
@@ -286,23 +292,35 @@ class SageManager(RestManager):
         sage_pending_job_guids = {
             sage_job_id
             for sage_job_id, status in sage_jobs
-            if status not in ['completed', 'exception', 'None']
+            if status not in ['completed', 'exception', 'corrupted', 'None']
         }
 
-        pending = 0
-        pending += self.sync_jobs_detection(
+        detection_active, detection_seen_jobs = self.sync_jobs_detection(
             sage_completed_job_guids,
             sage_failed_job_guids,
             sage_pending_job_guids,
             verbose=verbose,
         )
-        pending += self.sync_jobs_identification(
+        identification_active, identification_seen_jobs = self.sync_jobs_identification(
             sage_completed_job_guids,
             sage_failed_job_guids,
             sage_pending_job_guids,
             verbose=verbose,
         )
-        return pending
+
+        active = detection_active + identification_active
+        seen_jobs = set(detection_seen_jobs + identification_seen_jobs)
+
+        sage_completed_job_guids = set(sage_completed_job_guids) - set(seen_jobs)
+        sage_failed_job_guids = set(sage_failed_job_guids) - set(seen_jobs)
+        sage_pending_job_guids = set(sage_pending_job_guids) - set(seen_jobs)
+        if verbose:
+            log.info('Not Tracked Jobs')
+            log.info('\tCompleted    : %d' % (len(sage_completed_job_guids),))
+            log.info('\tFailed       : %d' % (len(sage_failed_job_guids),))
+            log.info('\tActive       : %d' % (len(sage_pending_job_guids),))
+
+        return active
 
     def sync_jobs_detection(
         self,
@@ -327,11 +345,14 @@ class SageManager(RestManager):
         pending_jobs = []
         unknown_jobs = []
         corrupt_jobs = []
+        seen_jobs = []
         for asset_group_sighting in tqdm.tqdm(asset_group_sightings):
             if asset_group_sighting.jobs:
                 for job_id in asset_group_sighting.jobs:
                     job_metadata = asset_group_sighting.jobs[job_id]
                     job_data = (asset_group_sighting, job_id)
+
+                    seen_jobs.append(job_id)
 
                     if job_metadata.keys() < start_keys:
                         corrupt_jobs.append(job_data)
@@ -379,7 +400,8 @@ class SageManager(RestManager):
 
             asset_group_sighting.detected(job_id, response)
 
-        return len(pending_jobs) + len(fetch_jobs)
+        active = len(pending_jobs) + len(fetch_jobs)
+        return active, seen_jobs
 
     def sync_jobs_identification(
         self,
@@ -401,11 +423,14 @@ class SageManager(RestManager):
         pending_jobs = []
         unknown_jobs = []
         corrupt_jobs = []
+        seen_jobs = []
         for sighting in tqdm.tqdm(sightings):
             if sighting.jobs:
                 for job_id in sighting.jobs:
                     job_metadata = sighting.jobs[job_id]
                     job_data = (sighting, job_id)
+
+                    seen_jobs.append(job_id)
 
                     if job_metadata.keys() < start_keys:
                         corrupt_jobs.append(job_data)
@@ -453,7 +478,8 @@ class SageManager(RestManager):
 
             sighting.identified(job_id, response)
 
-        return len(pending_jobs) + len(fetch_jobs)
+        active = len(pending_jobs) + len(fetch_jobs)
+        return active, seen_jobs
 
     def get_status(self):
         from app.modules.annotations.models import Annotation
@@ -568,15 +594,15 @@ class SageManager(RestManager):
                 )
             )
 
-        log.info('Jobs (%d)' % (len(sage_jobs),))
-        for job_id, status in sage_jobs:
-            log.info(
-                '\t%s: %s'
-                % (
-                    job_id.ljust(14),
-                    status,
-                )
-            )
+        # log.info('Jobs (%d)' % (len(sage_jobs),))
+        # for job_id, status in sage_jobs:
+        #     log.info(
+        #         '\t%s: %s'
+        #         % (
+        #             job_id.ljust(14),
+        #             status,
+        #         )
+        #     )
 
         statuses, sage_jobs = self.get_job_status(jobs_sync)
         log.info('Sync Jobs Status')
@@ -589,15 +615,15 @@ class SageManager(RestManager):
                 )
             )
 
-        log.info('Sync Jobs (%d)' % (len(sage_jobs),))
-        for job_id, status in sage_jobs:
-            log.info(
-                '\t%s: %s'
-                % (
-                    job_id.ljust(14),
-                    status,
-                )
-            )
+        # log.info('Sync Jobs (%d)' % (len(sage_jobs),))
+        # for job_id, status in sage_jobs:
+        #     log.info(
+        #         '\t%s: %s'
+        #         % (
+        #             job_id.ljust(14),
+        #             status,
+        #         )
+        #     )
 
 
 def init_app(app, **kwargs):

@@ -566,6 +566,7 @@ def ensure_asset_group_repo(flask_app, db, asset_group, file_data=[]):
 
     asset_group.ensure_repository()
     # Call ensure_remote without .delay in tests to do it in the foreground
+
     try:
         ensure_remote(str(asset_group.guid), additional_tags=['type:pytest-required'])
     except GitlabInitializationError:

@@ -30,7 +30,6 @@ def test_asset_group_sightings_jobs(flask_app, db, admin_user, test_root, reques
         admin_user,
         transaction_id,
         paths=[input_filename],
-        foreground=True,
     )
     asset_group.config['speciesDetectionModel'] = test_utils.dummy_detection_info()
     # Make sure config changes are saved

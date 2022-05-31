@@ -129,6 +129,10 @@ class Progress(db.Model, Timestamp):
         )
 
     @property
+    def completed(self):
+        return self.complete
+
+    @property
     def failed(self):
         return self.status in [ProgressStatus.failed]
 
@@ -187,9 +191,7 @@ class Progress(db.Model, Timestamp):
             jobs = current_app.sage.request_passthrough_result(
                 'engine.list', 'get', target='default'
             )['json_result']
-            statuses, sage_jobs = current_app.sage.get_job_status(
-                jobs, exclude_done=False
-            )
+            statuses, sage_jobs = current_app.sage.get_job_status(jobs, exclude_done=True)
 
             total = len(sage_jobs)
             for index, sage_job in enumerate(sage_jobs):

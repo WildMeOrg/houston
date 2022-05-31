@@ -64,7 +64,9 @@ def create_asset_group_from_path(
     asset_group.git_copy_path(absolute_path)
 
     hostname = socket.gethostname()
-    asset_group.git_commit('Initial commit via CLI on host {!r}'.format(hostname))
+    asset_group.git_commit(
+        'Initial commit via CLI on host {!r}'.format(hostname), update=True, commit=True
+    )
 
     git_push(str(asset_group.guid))
 

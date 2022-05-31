@@ -663,7 +663,11 @@ class GitStore(db.Model, HoustonModel):
         db.session.refresh(self)
 
     @classmethod
-    def create_from_metadata(cls, metadata, foreground=False, **kwargs):
+    def create_from_metadata(cls, metadata, foreground=None, **kwargs):
+
+        if foreground is None:
+            foreground = current_app.testing
+
         if metadata.owner is not None and not metadata.owner.is_anonymous:
             git_store_owner = metadata.owner
         else:
@@ -728,9 +732,12 @@ class GitStore(db.Model, HoustonModel):
         transaction_id,
         paths=[],
         submitter=None,
-        foreground=False,
+        foreground=None,
         **kwargs,
     ):
+        if foreground is None:
+            foreground = current_app.testing
+
         assert transaction_id is not None
         if owner is not None and not owner.is_anonymous:
             git_store_owner = owner
@@ -775,9 +782,12 @@ class GitStore(db.Model, HoustonModel):
         return git_store, original_filenames
 
     def import_tus_files(
-        self, transaction_id=None, paths=None, foreground=False, purge_dir=True
+        self, transaction_id=None, paths=None, foreground=None, purge_dir=True
     ):
         from app.extensions.tus import tus_filepaths_from, tus_purge
+
+        if foreground is None:
+            foreground = current_app.testing
 
         self.ensure_repository()
 
@@ -1060,54 +1070,62 @@ class GitStore(db.Model, HoustonModel):
             local_asset_filepath_list = [
                 file_data.pop('filepath', None) for file_data in files
             ]
-            # TODO: slim down this DB context
-            with db.session.begin(subtransactions=True):
-                zipped = list(zip(files, local_asset_filepath_list))
-                for index, zip_data in enumerate(zipped):
-                    assert self.exists
+            zipped = list(zip(files, local_asset_filepath_list))
+            for index, zip_data in enumerate(zipped):
+                assert self.exists
 
-                    file_data, local_asset_filepath = zip_data
+                file_data, local_asset_filepath = zip_data
 
-                    semantic_guid = file_data.get('semantic_guid', None)
-                    asset = Asset.query.filter(
-                        Asset.semantic_guid == semantic_guid
-                    ).first()
-                    if asset is None:
-                        # Check if we can recycle existing GUID from symlink
-                        recycle_guid = existing_filepath_guid_mapping.get(
-                            local_asset_filepath, None
-                        )
-                        if recycle_guid is not None:
-                            file_data['guid'] = recycle_guid
+                semantic_guid = file_data.get('semantic_guid', None)
+                asset = Asset.query.filter(Asset.semantic_guid == semantic_guid).first()
+                if asset is None:
+                    log.info(
+                        'Making new asset for semantic_guid = {!r}'.format(semantic_guid)
+                    )
 
-                        # Create record if asset is new
+                    # Check if we can recycle existing GUID from symlink
+                    recycle_guid = existing_filepath_guid_mapping.get(
+                        local_asset_filepath, None
+                    )
+                    if recycle_guid is not None:
+                        file_data['guid'] = recycle_guid
+
+                    # Create record if asset is new
+                    with db.session.begin(subtransactions=True):
                         asset = Asset(**file_data)
                         db.session.add(asset)
-                    else:
-                        # Update record if Asset exists
-                        search_keys = [
-                            'filesystem_guid',
-                            'semantic_guid',
-                            'git_store_guid',
-                        ]
+                else:
+                    log.info(
+                        'Found asset {!r} for semantic_guid = {!r}'.format(
+                            asset, semantic_guid
+                        )
+                    )
 
+                    # Update record if Asset exists
+                    search_keys = [
+                        'filesystem_guid',
+                        'semantic_guid',
+                        'git_store_guid',
+                    ]
+
+                    with db.session.begin(subtransactions=True):
                         for key in file_data:
                             if key in search_keys:
                                 continue
                             value = file_data[key]
                             setattr(asset, key, value)
                         db.session.merge(asset)
-                    assets.append(asset)
+                assets.append(asset)
 
-                    if self.progress_preparation:
-                        numerator = index
-                        denominator = len(zipped)
-                        percentage = numerator / denominator
-                        offset = 20.0
-                        domain = 60.0
-                        new_percentage = offset + (domain * percentage)
-                        new_percentage = max(offset, min(offset + domain, new_percentage))
-                        self.progress_preparation.set(new_percentage)
+                if self.progress_preparation:
+                    numerator = index
+                    denominator = len(zipped)
+                    percentage = numerator / denominator
+                    offset = 20.0
+                    domain = 60.0
+                    new_percentage = offset + (domain * percentage)
+                    new_percentage = max(offset, min(offset + domain, new_percentage))
+                    self.progress_preparation.set(new_percentage)
 
             if self.progress_preparation:
                 self.progress_preparation.set(80)
@@ -1124,7 +1142,7 @@ class GitStore(db.Model, HoustonModel):
                 asset.update_symlink(local_asset_filepath)
                 asset.set_derived_meta()
 
-                log.debug(filepath)
+                log.debug(local_asset_filepath)
                 log.debug('\tAsset         : {}'.format(asset))
                 log.debug('\tSemantic GUID : {}'.format(asset.semantic_guid))
                 log.debug('\tMIME type     : {}'.format(asset.mime_type))

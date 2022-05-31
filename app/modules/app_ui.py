@@ -78,7 +78,7 @@ def admin_required(func):
     @wraps(func)
     def decorated_function(*args, **kwargs):
         if not current_user and not current_user.is_admin:
-            return redirect(url_for('backend.user_login'))
+            return redirect(url_for('frontend.user_login'))
         return func(*args, **kwargs)
 
     return decorated_function
@@ -104,6 +104,7 @@ def home(*args, **kwargs):
 
 
 @backend_blueprint.route('/login', methods=['POST'])
+@frontend_blueprint.route('/login', methods=['POST'])
 @ensure_admin_exists
 def user_login(email=None, password=None, remember=None, refer=None, *args, **kwargs):
     # pylint: disable=unused-argument
@@ -125,7 +126,7 @@ def user_login(email=None, password=None, remember=None, refer=None, *args, **kw
             log.error('User gave insecure next URL: {!r}'.format(refer))
             refer = None
 
-    failure_refer = 'backend.home'
+    failure_refer = 'frontend.home'
 
     user = User.find(email=email, password=password)
 
@@ -196,7 +197,7 @@ def user_logout(refer=None, *args, **kwargs):
     flash('You were successfully logged out.', 'warning')
 
     if refer is None:
-        redirect = url_for('backend.home')
+        redirect = url_for('frontend.home')
     else:
         redirect = refer
 
@@ -204,6 +205,7 @@ def user_logout(refer=None, *args, **kwargs):
 
 
 @backend_blueprint.route('/admin_init', methods=['GET'])
+@frontend_blueprint.route('/admin_init', methods=['GET'])
 def admin_init(*args, **kwargs):
     """
     This endpoint is for initial admin user creation
@@ -242,7 +244,7 @@ def create_admin_user(email=None, password=None, repeat_password=None, *args, **
                 if admin.is_admin:
                     message = 'Success creating startup admin user.'
                     # update configuration value for admin user created
-                    return flask.redirect(url_for('backend.home'))
+                    return flask.redirect(url_for('frontend.home'))
                 else:
                     message = 'We failed to create or update the user as an admin.'
             else:

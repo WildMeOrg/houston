@@ -51,7 +51,6 @@ def test_create_mission_collection_from_tus(flask_app, db, data_manager_1, test_
         tid,
         mission=temp_mission,
         paths={valid_file},
-        foreground=True,
     )
     assert len(sub.assets) == 1
     assert sub.assets[0].path == valid_file
@@ -62,7 +61,7 @@ def test_create_mission_collection_from_tus(flask_app, db, data_manager_1, test_
     # test with no paths (should succeed same as above)
     tid, valid_file = tus_utils.prep_tus_dir(test_root)
     sub, _ = MissionCollection.create_from_tus(
-        'PYTEST', data_manager_1, tid, mission=temp_mission, foreground=True
+        'PYTEST', data_manager_1, tid, mission=temp_mission
     )
     assert len(sub.assets) == 1
     assert sub.assets[0].path == valid_file

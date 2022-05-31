@@ -155,12 +155,6 @@ class AssetGroupSighting(db.Model, HoustonModel):
         if self.stage != AssetGroupSightingStage.preparation:
             return
 
-        self.init_progress_detection(overwrite=True)
-
-        if self.progress_detection:
-            # Set the status to healthy and 0%
-            self.progress_detection = self.progress_detection.config()
-
         # Allow sightings to have no Assets, they go straight to curation
         if (
             'assetReferences' not in self.sighting_config
@@ -943,10 +937,10 @@ class AssetGroupSighting(db.Model, HoustonModel):
         return model_config, asset_guids
 
     def send_detection_to_sage(self, model):
-        if self.progress_detection:
-            self.progress_detection.set(2)
-
         try:
+            if self.progress_detection:
+                self.progress_detection.set(2)
+
             job_id = uuid.uuid4()
             detection_request, asset_guids = self.build_detection_request(job_id, model)
             log.info(f'Sending detection message to Sage for {model}')
@@ -968,17 +962,14 @@ class AssetGroupSighting(db.Model, HoustonModel):
                 if self.progress_detection:
                     self.progress_detection.set(4)
 
-                self.jobs[str(job_id)] = {
-                    'model': model,
-                    'active': True,
-                    'start': datetime.datetime.utcnow().isoformat(),
-                    'asset_guids': asset_guids,
-                }
-
-                if self.progress_detection:
-                    self.progress_detection.set(5)
-
                 with db.session.begin(subtransactions=True):
+                    self.jobs[str(job_id)] = {
+                        'model': model,
+                        'active': True,
+                        'start': datetime.datetime.utcnow().isoformat(),
+                        'asset_guids': asset_guids,
+                    }
+
                     self.jobs = self.jobs
                     log.info(
                         f'Started Detection job, on AssetGroupSighting {self.guid}, self.jobs= {self.jobs}'
@@ -1210,12 +1201,6 @@ class AssetGroupSighting(db.Model, HoustonModel):
         if foreground is None:
             foreground = current_app.testing
 
-        self.init_progress_detection(overwrite=True)
-
-        if self.progress_detection:
-            # Set the status to healthy and 0%
-            self.progress_detection = self.progress_detection.config()
-
         if self.stage == AssetGroupSightingStage.curation:
             self.set_stage(AssetGroupSightingStage.detection)
             self.start_detection(foreground=foreground)
@@ -1311,6 +1296,12 @@ class AssetGroupSighting(db.Model, HoustonModel):
     def start_detection(self, foreground=None):
         if foreground is None:
             foreground = current_app.testing
+
+        self.init_progress_detection(overwrite=True)
+
+        if self.progress_detection:
+            # Set the status to healthy and 0%
+            self.progress_detection = self.progress_detection.config()
 
         assert len(self.detection_configs) > 0
         assert self.stage == AssetGroupSightingStage.detection

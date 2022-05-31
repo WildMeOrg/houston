@@ -381,6 +381,9 @@ class AssetGroupSighting(db.Model, HoustonModel):
     def get_submission_time(self):
         return self.created
 
+    def get_submission_time_isoformat(self):
+        return self.get_submission_time().isoformat() + 'Z'
+
     # Don't store detection start time directly. It's either the creation time if we ever had detection
     # jobs or None if no detection was done (and hence no jobs exist)
     def get_detection_start_time(self):

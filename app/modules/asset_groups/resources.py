@@ -116,7 +116,6 @@ class AssetGroups(Resource):
 
         try:
             asset_group, _ = AssetGroup.create_from_metadata(metadata, foreground=True)
-            # TODO (HARDENING): Remove the above `foreground=True`
         except HoustonException as ex:
             log.warning(
                 f'AssetGroup creation for transaction_id={metadata.tus_transaction_id} failed'
@@ -834,6 +833,5 @@ class AssetGroupTusCollect(Resource):
             raise werkzeug.exceptions.NotFound
 
         asset_group.import_tus_files(foreground=True)
-        # TODO (HARDENING): Remove the above `foreground=True`
 
         return asset_group

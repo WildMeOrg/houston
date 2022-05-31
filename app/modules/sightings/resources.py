@@ -317,6 +317,7 @@ class Sightings(Resource):
                     owner,
                     transaction_id,
                     paths=all_arefs[transaction_id],
+                    foreground=True,
                 )
             except Exception as ex:
                 cleanup.asset_group = asset_group

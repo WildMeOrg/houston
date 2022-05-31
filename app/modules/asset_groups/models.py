@@ -155,7 +155,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
         if self.stage != AssetGroupSightingStage.preparation:
             return
 
-        self.init_progress_detection()
+        self.init_progress_detection(overwrite=True)
 
         if self.progress_detection:
             # Set the status to healthy and 0%
@@ -974,8 +974,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
                     'start': datetime.datetime.utcnow().isoformat(),
                     'asset_guids': asset_guids,
                 }
-                # This is necessary because we can only mark self as modified if
-                # we assign to one of the database attributes
+
                 if self.progress_detection:
                     self.progress_detection.set(5)
 
@@ -1206,6 +1205,8 @@ class AssetGroupSighting(db.Model, HoustonModel):
             self.set_stage(AssetGroupSightingStage.curation)
             return
 
+        log.info('Rerunning Sage detection')
+
         if foreground is None:
             foreground = current_app.testing
 
@@ -1214,8 +1215,6 @@ class AssetGroupSighting(db.Model, HoustonModel):
         if self.progress_detection:
             # Set the status to healthy and 0%
             self.progress_detection = self.progress_detection.config()
-
-        log.info('Rerunning Sage detection')
 
         if self.stage == AssetGroupSightingStage.curation:
             self.set_stage(AssetGroupSightingStage.detection)

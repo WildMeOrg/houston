@@ -307,10 +307,9 @@ class MainConfiguration(Resource):
                     )
             data['response']['configuration']['site.images'] = ss_json
 
-            for key, type_def in SiteSetting.HOUSTON_SETTINGS.items():
+            for key, type_def in SiteSetting.get_houston_settings_for_current_user():
                 key_data = SiteSetting.get_as_edm_format(key)
-                if user_is_admin or type_def.get('public', True):
-                    data['response']['configuration'][key] = key_data
+                data['response']['configuration'][key] = key_data
         elif (
             'response' in data
             and data['response'].get('private', False)

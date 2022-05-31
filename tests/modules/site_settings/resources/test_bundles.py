@@ -15,14 +15,40 @@ BUNDLE_PATH = 'block'
     module_unavailable('site_settings'), reason='Site-settings module disabled'
 )
 @pytest.mark.parametrize(
-    'keys,is_edm',
+    'keys,is_edm,user_var',
     (
-        (['site.name', 'email_service'], True),
-        (['email_service'], False),
+        (['site.name', 'email_service'], True, 'admin_user'),
+        ({'email_service': 'mailchimp'}, False, 'admin_user'),
+        (
+            {
+                'recaptchaPublicKey': 'recaptcha-key',
+                'flatfileKey': 'flatfile-key',
+                'EXCLUDED': ['email_service'],
+            },
+            False,
+            'researcher_1',
+        ),
+        (
+            {
+                'recaptchaPublicKey': 'recaptcha-key',
+                'EXCLUDED': ['email_service', 'flatfileKey'],
+            },
+            False,
+            'None',
+        ),
     ),
 )
-def test_bundle_read(flask_app_client, admin_user, keys, is_edm):
-    response = conf_utils.read_main_settings(flask_app_client, admin_user)
+def test_bundle_read(
+    flask_app_client, request, admin_user, researcher_1, keys, is_edm, user_var
+):
+    from app.modules.site_settings.models import SiteSetting
+
+    SiteSetting.set('recaptchaPublicKey', string='recaptcha-key')
+    request.addfinalizer(lambda: SiteSetting.forget_key_value('recaptchaPublicKey'))
+    SiteSetting.set('flatfileKey', string='flatfile-key')
+    request.addfinalizer(lambda: SiteSetting.forget_key_value('flatfileKey'))
+
+    response = conf_utils.read_main_settings(flask_app_client, eval(user_var))
     if extension_unavailable('edm') and is_edm:
         pytest.skip('EDM extension disabled')
 
@@ -30,6 +56,10 @@ def test_bundle_read(flask_app_client, admin_user, keys, is_edm):
     assert response.json['response']
     assert 'configuration' in response.json['response']
     assert isinstance(response.json['response']['configuration'], dict)
+
+    if isinstance(keys, dict):
+        for key in keys.pop('EXCLUDED', []):
+            assert key not in response.json['response']['configuration']
 
     for key in keys:
         assert key in response.json['response']['configuration']

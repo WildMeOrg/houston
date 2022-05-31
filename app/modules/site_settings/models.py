@@ -142,6 +142,7 @@ class SiteSetting(db.Model, Timestamp):
         'flatfileKey': {
             'type': str,
             'public': True,
+            'permission': lambda: not current_user.is_anonymous,
             'default': lambda: current_app.config.get('FLATFILE_KEY'),
         },
         'recaptchaPublicKey': {
@@ -444,6 +445,14 @@ class SiteSetting(db.Model, Timestamp):
         elif setting.boolean is not None:
             return setting.boolean
         return setting.string
+
+    @classmethod
+    def get_houston_settings_for_current_user(cls):
+        is_admin = getattr(current_user, 'is_admin', False)
+        for key, type_def in SiteSetting.HOUSTON_SETTINGS.items():
+            permission = type_def.get('permission', lambda: True)()
+            if is_admin or type_def.get('public', True) and permission:
+                yield key, type_def
 
     # MainConfiguration and MainConfigurationDefinition resources code needs to behave differently if it's
     # accessing a block of data or a single value, so have one place that does this check

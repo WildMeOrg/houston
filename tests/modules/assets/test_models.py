@@ -36,7 +36,7 @@ def set_up_assets(flask_app, db, test_root, admin_user, request):
     with mock.patch('app.modules.asset_groups.metadata.current_user', new=admin_user):
         metadata.process_request()
     assert metadata.owner == admin_user
-    asset_group, _ = AssetGroup.create_from_metadata(metadata, foreground=True)
+    asset_group, _ = AssetGroup.create_from_metadata(metadata)
 
     cleanup(request, lambda: db.session.delete(asset_group))
 

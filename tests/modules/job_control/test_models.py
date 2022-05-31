@@ -31,7 +31,6 @@ def test_job_control(flask_app, researcher_1, test_root, db):
             researcher_1,
             transaction_id,
             paths=[input_filename],
-            foreground=True,
         )
 
         with db.session.begin():

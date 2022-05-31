@@ -51,7 +51,6 @@ def test_create_patch_mission_collection(
             tid,
             mission=temp_mission,
             paths={valid_file},
-            foreground=True,
         )
         assert len(temp_mission_collection.assets) == 1
         assert temp_mission_collection.assets[0].path == valid_file

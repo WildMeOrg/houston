@@ -115,7 +115,7 @@ class AssetGroups(Resource):
             )
 
         try:
-            asset_group, _ = AssetGroup.create_from_metadata(metadata, foreground=True)
+            asset_group, _ = AssetGroup.create_from_metadata(metadata)
         except HoustonException as ex:
             log.warning(
                 f'AssetGroup creation for transaction_id={metadata.tus_transaction_id} failed'
@@ -149,6 +149,8 @@ class AssetGroups(Resource):
             message = ex.data if hasattr(ex, 'data') else str(ex)
             abort(400, f'Asset preparation failed {message}')
             raise
+
+        db.session.refresh(asset_group)
 
         return asset_group
 
@@ -830,6 +832,6 @@ class AssetGroupTusCollect(Resource):
             # We have checked the asset_group manager and cannot find this asset_group, raise 404 manually
             raise werkzeug.exceptions.NotFound
 
-        asset_group.import_tus_files(foreground=True)
+        asset_group.import_tus_files()
 
         return asset_group

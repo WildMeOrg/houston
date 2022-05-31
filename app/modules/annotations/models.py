@@ -145,19 +145,28 @@ class Annotation(db.Model, HoustonModel, SageModel):
     ):
         from app.extensions.sage import SAGE_UNKNOWN_NAME, from_sage_uuid, to_sage_uuid
 
+        if self.asset is None:
+            log.error(
+                'Annotation {!r} has no asset, cannot send annotation to Sage'.format(
+                    self
+                )
+            )
+
+            return
+
         # First, ensure that the annotation's asset has been synced with Sage
         if not skip_asset:
             self.asset.sync_with_sage(
                 ensure=ensure, force=force, bulk_sage_uuids=bulk_sage_uuids, **kwargs
             )
 
-            if self.asset.content_guid is None:
-                log.error(
-                    'Asset for Annotation %r failed to send, cannot send annotation to Sage'
-                    % (self,)
-                )
-                # We tried to sync the asset's content GUID, but that failed... it is likely that the asset's file is missing
-                return
+        if self.asset.content_guid is None:
+            log.error(
+                'Asset for Annotation %r failed to send, cannot send annotation to Sage'
+                % (self,)
+            )
+            # We tried to sync the asset's content GUID, but that failed... it is likely that the asset's file is missing
+            return
 
         if force:
             with db.session.begin(subtransactions=True):
@@ -198,12 +207,21 @@ class Annotation(db.Model, HoustonModel, SageModel):
         else:
             annot_name = SAGE_UNKNOWN_NAME
 
+        try:
+            self.validate_bounds(self.bounds)
+        except Exception:
+            log.error(
+                'Annotation %r failed to pass validate_bounds(), cannot send annotation to Sage'
+                % (self,)
+            )
+            return
+
         sage_request = {
             'image_uuid_list': [to_sage_uuid(self.asset.content_guid)],
             'annot_species_list': [self.ia_class],
             'annot_bbox_list': [self.bounds['rect']],
             'annot_name_list': [annot_name],
-            'annot_theta_list': [self.bounds['theta']],
+            'annot_theta_list': [self.bounds.get('theta', 0)],
         }
         sage_response = current_app.sage.request_passthrough_result(
             'annotation.create', 'post', {'json': sage_request}, target='sync'
@@ -218,7 +236,7 @@ class Annotation(db.Model, HoustonModel, SageModel):
     def init_progress_identification(self, parent=None, overwrite=False):
         from app.modules.progress.models import Progress
 
-        if self.progress_identification is not None:
+        if self.progress_identification:
             if not overwrite:
                 log.warning(
                     'Annotation %r already has a progress identification %r'

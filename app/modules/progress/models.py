@@ -129,6 +129,10 @@ class Progress(db.Model, Timestamp):
         )
 
     @property
+    def completed(self):
+        return self.complete
+
+    @property
     def failed(self):
         return self.status in [ProgressStatus.failed]
 
@@ -153,7 +157,7 @@ class Progress(db.Model, Timestamp):
         if self.celery_guid is None and self.sage_guid is None:
             return None
 
-        if self.celery_guid is not None:
+        if self.celery_guid:
             if BROKER is None:
                 BROKER = redis.Redis(
                     host=current_app.config['REDIS_HOST'],
@@ -174,7 +178,7 @@ class Progress(db.Model, Timestamp):
                     message = BROKER.lindex(DEFAULT_CELERY_QUEUE_NAME, index)
                     data = json.loads(message)
                     celery_guid = data.get('headers', {}).get('id', None)
-                    if celery_guid is not None:
+                    if celery_guid:
                         celery_guid = uuid.UUID(celery_guid)
                         if celery_guid == self.celery_guid:
                             ahead = total - 1 - index
@@ -183,13 +187,11 @@ class Progress(db.Model, Timestamp):
                 except Exception:
                     pass
 
-        if self.sage_guid is not None:
+        if self.sage_guid:
             jobs = current_app.sage.request_passthrough_result(
                 'engine.list', 'get', target='default'
             )['json_result']
-            statuses, sage_jobs = current_app.sage.get_job_status(
-                jobs, exclude_done=False
-            )
+            statuses, sage_jobs = current_app.sage.get_job_status(jobs, exclude_done=True)
 
             total = len(sage_jobs)
             for index, sage_job in enumerate(sage_jobs):
@@ -221,7 +223,7 @@ class Progress(db.Model, Timestamp):
 
     def __iter__(self):
         assert (
-            self.items is not None and self.pgeta is not None
+            self.items and self.pgeta
         ), 'Items is not configured, use obj = obj.config(items) to setup'
         self.pgeta.numerator = 0
         self.set(0, force=True)
@@ -317,7 +319,7 @@ class Progress(db.Model, Timestamp):
 
         if self.items is None or self.pgeta is None:
             self.config(items)
-        elif steps is not None and self.pgeta.denominator != steps:
+        elif steps and self.pgeta.denominator != steps:
             self.config(items)
 
         step = Progress.query.get(step_guid)

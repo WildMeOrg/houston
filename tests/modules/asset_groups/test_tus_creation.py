@@ -37,9 +37,7 @@ def test_create_asset_group_from_tus(flask_app, db, researcher_1, test_root):
 
     # test with explicit paths (should succeed)
     tid, valid_file = tus_utils.prep_tus_dir(test_root)
-    sub, _ = AssetGroup.create_from_tus(
-        'PYTEST', researcher_1, tid, paths=[valid_file], foreground=True
-    )
+    sub, _ = AssetGroup.create_from_tus('PYTEST', researcher_1, tid, paths=[valid_file])
     assert len(sub.assets) == 1
     assert sub.assets[0].path == valid_file
     if os.path.exists(sub.get_absolute_path()):
@@ -48,7 +46,7 @@ def test_create_asset_group_from_tus(flask_app, db, researcher_1, test_root):
 
     # test with no paths (should succeed same as above)
     tid, valid_file = tus_utils.prep_tus_dir(test_root)
-    sub, _ = AssetGroup.create_from_tus('PYTEST', researcher_1, tid, foreground=True)
+    sub, _ = AssetGroup.create_from_tus('PYTEST', researcher_1, tid)
     assert len(sub.assets) == 1
     assert sub.assets[0].path == valid_file
     if os.path.exists(sub.get_absolute_path()):

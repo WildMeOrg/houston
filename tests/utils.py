@@ -747,12 +747,15 @@ def wait_for_progress(flask_app, progress_guids=None):
     while True:
         try:
             # Fetch the detection results from Sage
-            flask_app.sage.sync_jobs()
+            pending = flask_app.sage.sync_jobs()
+            if pending == 0:
+                break
 
             for progress_guid in progress_guids:
                 progress = Progress.query.get(progress_guid)
-                assert not progress.active
-                assert progress.complete
+                if progress:
+                    assert not progress.active
+                    assert progress.complete
 
             break
         except AssertionError:

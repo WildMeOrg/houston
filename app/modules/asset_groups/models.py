@@ -155,9 +155,6 @@ class AssetGroupSighting(db.Model, HoustonModel):
         if self.stage != AssetGroupSightingStage.preparation:
             return
 
-        # Setup the progress detection
-        self.init_progress_detection(overwrite=True, increment_attempts=True)
-
         # Allow sightings to have no Assets, they go straight to curation
         if (
             'assetReferences' not in self.sighting_config
@@ -941,11 +938,19 @@ class AssetGroupSighting(db.Model, HoustonModel):
 
     def send_detection_to_sage(self, model):
         try:
+            if self.progress_detection:
+                self.progress_detection.set(2)
+
             job_id = uuid.uuid4()
+            job_id_str = str(job_id)
             detection_request, asset_guids = self.build_detection_request(job_id, model)
             log.info(f'Sending detection message to Sage for {model}')
             log.info('detection_request = {!r}'.format(detection_request))
             log.info('asset_guids = {!r}'.format(asset_guids))
+
+            if self.progress_detection:
+                self.progress_detection.set(3)
+
             try:
                 sage_job_uuid = current_app.sage.request_passthrough_result(
                     'engine.detect',
@@ -956,29 +961,57 @@ class AssetGroupSighting(db.Model, HoustonModel):
                 assert sage_guid == job_id
 
                 if self.progress_detection:
-                    # Set the status to healthy and 0%
-                    self.progress_detection = self.progress_detection.config()
+                    self.progress_detection.set(4)
 
+                # Immediately bump the number of attempts
+                with db.session.begin(subtransactions=True):
+                    self.detection_attempts += 1
+
+                if self.progress_detection:
+                    self.progress_detection.set(5)
+
+                with db.session.begin(subtransactions=True):
+                    if self.jobs is None:
+                        self.jobs = {}
+
+                    self.jobs[job_id_str] = {
+                        'model': model,
+                        'active': True,
+                        'start': datetime.datetime.utcnow().isoformat(),
+                        'asset_guids': asset_guids,
+                    }
+
+                    self.jobs = self.jobs
+                    log.info(
+                        f'Started Detection job, on AssetGroupSighting {self.guid}, self.jobs={self.jobs}'
+                    )
+                    self.detection_attempts += 1
+                    db.session.merge(self)
+
+                db.session.refresh(self)
+
+                assert self.jobs and job_id_str in self.jobs
+
+                if self.progress_detection:
+                    self.progress_detection.set(6)
+
+                if self.progress_detection:
                     with db.session.begin():
                         self.progress_detection.sage_guid = sage_guid
                         db.session.merge(self.progress_detection)
 
-                self.jobs[str(job_id)] = {
-                    'model': model,
-                    'active': True,
-                    'start': datetime.datetime.utcnow().isoformat(),
-                    'asset_guids': asset_guids,
-                }
-                # This is necessary because we can only mark self as modified if
-                # we assign to one of the database attributes
-                self.jobs = self.jobs
-                log.info(
-                    f'Started Detection job, on AssetGroupSighting {self.guid}, self.jobs= {self.jobs}'
-                )
-                with db.session.begin(subtransactions=True):
-                    db.session.merge(self)
+                if self.progress_detection:
+                    self.progress_detection.set(10)
             except HoustonException as ex:
                 sage_status_code = ex.get_val('sage_status_code', None)
+
+                # If the progress_detection has a progress percentage of 4%, we have failed prior to
+                # incrementing self.detection_attempts.  If the progress is less than 4, then we never actually send
+                # the job to Sage for detection
+                if self.progress_detection and self.progress_detection.percentage == 4:
+                    with db.session.begin(subtransactions=True):
+                        self.detection_attempts += 1
+                    db.session.refresh(self)
 
                 # Celery has done it's job and called the function to generate the request and will not retry as it
                 # only does that for RequestException, which includes various timeouts ec, not HoustonException
@@ -991,14 +1024,13 @@ class AssetGroupSighting(db.Model, HoustonModel):
                         f'code: {ex.status_code}, sage_status_code: {sage_status_code}, retrying'
                     )
                     self.rerun_detection()
-
                 else:
                     log.warning(
                         f'Sage Detection on AssetGroupSighting({self.guid}) Job{job_id} failed to start, '
                         f'code: {ex.status_code}, sage_status_code: {sage_status_code}, giving up'
                     )
                     # Assuming some sort of persistent error in Sage
-                    self.job_complete(str(job_id))
+                    self.job_complete(job_id)
                     self.set_stage(AssetGroupSightingStage.curation)
         except Exception as ex:
             if self.progress_detection:
@@ -1047,7 +1079,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
                 # Job Failed on Sage but move to curation so that user can create annotations manually and commit
                 # Post MVP this may be a separate stage (that also permits annot creation and commit)
                 self.set_stage(AssetGroupSightingStage.curation)
-                self.job_complete(str(job_id))
+                self.job_complete(job_id)
 
                 # This is not an exception as the message from Sage was valid
                 msg = f'JobID {str(job_id)} failed with status: {status}, Sage result: {response.get("json_result")}'
@@ -1075,6 +1107,8 @@ class AssetGroupSighting(db.Model, HoustonModel):
             job['result'] = json_result
             with db.session.begin(subtransactions=True):
                 self.jobs = self.jobs
+                # A detection job succeeded, let's zero out the number of attempts
+                self.detection_attempts = 0
                 db.session.merge(self)
 
             asset_guids = job['asset_guids']
@@ -1190,11 +1224,10 @@ class AssetGroupSighting(db.Model, HoustonModel):
             self.set_stage(AssetGroupSightingStage.curation)
             return
 
+        log.info('Rerunning Sage detection')
+
         if foreground is None:
             foreground = current_app.testing
-
-        log.info('Rerunning Sage detection')
-        self.init_progress_detection(overwrite=True)
 
         if self.stage == AssetGroupSightingStage.curation:
             self.set_stage(AssetGroupSightingStage.detection)
@@ -1214,10 +1247,10 @@ class AssetGroupSighting(db.Model, HoustonModel):
                 obj=self,
             )
 
-    def init_progress_detection(self, overwrite=False, increment_attempts=True):
+    def init_progress_detection(self, overwrite=False):
         from app.modules.progress.models import Progress
 
-        if self.progress_detection is not None:
+        if self.progress_detection:
             if not overwrite:
                 log.warning(
                     'Asset Group Sighting %r already has a progress detection %r'
@@ -1236,8 +1269,6 @@ class AssetGroupSighting(db.Model, HoustonModel):
 
         with db.session.begin():
             self.progress_detection_guid = progress.guid
-            if increment_attempts:
-                self.detection_attempts += 1
             db.session.merge(self)
 
         # Assign the parent's progress
@@ -1255,7 +1286,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
     def init_progress_identification(self, overwrite=False):
         from app.modules.progress.models import Progress
 
-        if self.progress_identification is not None:
+        if self.progress_identification:
             if not overwrite:
                 log.warning(
                     'Asset Group Sighting %r already has a progress identification %r'
@@ -1294,6 +1325,12 @@ class AssetGroupSighting(db.Model, HoustonModel):
         if foreground is None:
             foreground = current_app.testing
 
+        self.init_progress_detection(overwrite=True)
+
+        if self.progress_detection:
+            # Set the status to healthy and 0%
+            self.progress_detection = self.progress_detection.config()
+
         assert len(self.detection_configs) > 0
         assert self.stage == AssetGroupSightingStage.detection
 
@@ -1315,6 +1352,8 @@ class AssetGroupSighting(db.Model, HoustonModel):
                 promise = sage_detection.delay(str(self.guid), config)
 
             if self.progress_detection and promise:
+                if self.progress_detection:
+                    self.progress_detection.set(1)
                 with db.session.begin():
                     self.progress_detection.celery_guid = promise.id
                     db.session.merge(self.progress_detection)

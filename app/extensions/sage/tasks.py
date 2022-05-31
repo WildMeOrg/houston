@@ -5,7 +5,8 @@ from flask import current_app
 
 from app.extensions.celery import celery
 
-SAGE_SYNC_FREQUENCY = 60 * 60
+# SAGE_SYNC_FREQUENCY = 60 * 60
+SAGE_SYNC_FREQUENCY = None
 
 
 log = logging.getLogger(__name__)

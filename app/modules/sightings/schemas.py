@@ -113,7 +113,7 @@ class TimedSightingSchema(CreateSightingSchema):
     review_time = base_fields.Function(Sighting.get_review_time)
 
     progress_identification = base_fields.Nested(
-        'BaseProgressSchema',
+        'DetailedProgressSchema',
         many=False,
     )
 

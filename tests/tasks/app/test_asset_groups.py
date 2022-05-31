@@ -55,7 +55,14 @@ def test_create_asset_group_from_path(flask_app, test_root, admin_user, request)
     request.addfinalizer(asset_group.delete)
 
     assert asset_group.owner == admin_user
-    dir_files = sorted(f.name for f in pathlib.Path(test_root).glob('*'))
+    duplicate_paths = [
+        'zebra-named-Sigurður.jpg',
+        'zebra.jpg',
+        'zebra2.jpg',
+    ]
+    dir_files = sorted(
+        f.name for f in pathlib.Path(test_root).glob('*') if f.name not in duplicate_paths
+    )
     asset_paths = sorted(a.path for a in asset_group.assets)
     assert dir_files == asset_paths
     assert asset_group.description == 'AssetGroup creation test'

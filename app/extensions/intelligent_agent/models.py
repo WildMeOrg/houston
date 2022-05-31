@@ -458,7 +458,7 @@ class IntelligentAgentContent(db.Model, HoustonModel):
         metadata = AssetGroupMetadata(metadata_json)
         metadata.process_request()
         metadata.owner = self.owner  # override!
-        self.asset_group, _ = AssetGroup.create_from_metadata(metadata, foreground=True)
+        self.asset_group, _ = AssetGroup.create_from_metadata(metadata)
         # this should kick off detection
         self.state = IntelligentAgentContentState.active_detection
         self.asset_group.begin_ia_pipeline(metadata)

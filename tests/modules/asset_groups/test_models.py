@@ -48,7 +48,7 @@ def test_asset_group_sightings_jobs(flask_app, db, admin_user, test_root, reques
     )
     ags1.setup()
     assert ags1.stage == AssetGroupSightingStage.detection
-    assert ags1.get_detection_start_time() == ags1.created.isoformat() + 'Z'
+    assert ags1.get_detection_start_time() == ags1.detection_start.isoformat() + 'Z'
     assert ags1.get_curation_start_time() is None
     sighting_config2 = test_utils.dummy_sighting_info()
     sighting_config2['assetReferences'] = []

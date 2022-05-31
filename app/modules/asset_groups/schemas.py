@@ -324,6 +324,7 @@ class AssetGroupSightingAsSightingWithPipelineStatusSchema(
 
 
 class DebugAssetGroupSightingSchema(DetailedAssetGroupSightingSchema):
+    detection_attempts = base_fields.Function(lambda ags: ags.detection_attempts)
     jobs = base_fields.Function(AssetGroupSighting.get_debug_jobs_json)
 
 

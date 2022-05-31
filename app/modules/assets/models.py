@@ -115,6 +115,7 @@ class Asset(db.Model, HoustonModel, SageModel):
         result = {
             'no_content_guid': [],
             'multiple_sightings': [],
+            'no_sightings': [],
         }
 
         # Assets must have a content guid unless they are in an AGS that is still detecting
@@ -144,6 +145,26 @@ class Asset(db.Model, HoustonModel, SageModel):
                             break
                     else:
                         sighting = annot_sighting
+
+        # This shoudl leave us with assets that are definitely a problem and some that might be OK if they are in
+        # an Asset group that has not been fully processed. Need to manually go though them to check.
+        assets_without_sighting = [
+            asset
+            for asset in (
+                db.session.query(Asset).filter(~Asset.asset_sightings.any()).all()
+            )
+        ]
+        for asset in assets_without_sighting:
+            if isinstance(asset.git_store, AssetGroup):
+                if asset.git_store.is_processed():
+                    # if group is processed, then this was left hanging, definitely a problem
+                    result['no_sightings'].append(asset.guid)
+                elif not asset.git_store.get_asset_group_sightings_for_asset(asset):
+                    # asset has no ags, That's a problem
+                    result['no_sightings'].append(asset.guid)
+            else:
+                # Not an asset group, definitely a problem
+                result['no_sightings'].append(asset.guid)
 
         return result
 

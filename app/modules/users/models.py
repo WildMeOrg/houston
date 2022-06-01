@@ -910,32 +910,28 @@ class User(db.Model, FeatherModel, UserEDMMixin):
         return annotations
 
     def remove_profile_file(self):
-        with db.session.begin(subtransactions=True):
-            if self.profile_fileupload_guid:
-                fup = self.profile_fileupload
-                self.profile_fileupload_guid = None
-                db.session.merge(self)
-                if fup:
-                    fup.delete()
+        if self.profile_fileupload_guid:
+            fup = self.profile_fileupload
+            self.profile_fileupload_guid = None
+            db.session.add(self)
+
+            if fup:
+                fup.delete()
 
     def deactivate(self):
         AuditLog.audit_log_object(log, self, 'Deactivating')
         # Store email hash for potential later restoration
         # But zap all of the personal information
+        self.email = self._get_hashed_email(self.email)
+        # But zap all of the personal information
+        self.full_name = 'Inactivated User'
+        self.is_active = False
+        self.remove_profile_file()
+        self.website = None
+        self.forum_id = None
 
-        with db.session.begin(subtransactions=True):
-            self.email = self._get_hashed_email(self.email)
-
-            # But zap all of the personal information
-            self.full_name = 'Inactivated User'
-            self.is_active = False
-            self.website = None
-            self.forum_id = None
-
-            self.remove_profile_file()
-
-            self.password = security.generate_random(128)
-
+        self.password = security.generate_random(128)
+        with db.session.begin():
             db.session.merge(self)
 
     def delete(self):
@@ -952,7 +948,7 @@ class User(db.Model, FeatherModel, UserEDMMixin):
     @classmethod
     def _get_hashed_email(cls, email):
         assert isinstance(email, str)
-        hashed_email = hash(email.strip().lower())
+        hashed_email = hash(email.lower())
         return f'{hashed_email}@deactivated'
 
     @classmethod

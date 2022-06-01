@@ -737,45 +737,48 @@ class Sighting(db.Model, FeatherModel):
 
     @classmethod
     def check_jobs(cls):
-        # get scheduled celery tasks only once and use for all AGS
-        from app.utils import get_celery_tasks_scheduled
+        pass
 
-        all_scheduled = get_celery_tasks_scheduled(
-            'app.modules.sightings.tasks.send_identification'
-        ) + get_celery_tasks_scheduled(
-            'app.modules.sightings.tasks.send_all_identification'
-        )
-        for (sighting_guid,) in Sighting.query.filter(
-            Sighting.stage == SightingStage.identification
-        ).values(Sighting.guid):
-            Sighting.query.get(sighting_guid).check_all_job_status(all_scheduled)
+    #     # get scheduled celery tasks only once and use for all AGS
+    #     from app.utils import get_celery_tasks_scheduled
 
-    def check_all_job_status(self, all_scheduled):
-        jobs = self.jobs
-        if not jobs:
-            # Somewhat arbitrary limit of at least 10 minutes after creation.
-            if (
-                not all_scheduled
-                and datetime.datetime.utcnow() + datetime.timedelta(minutes=10)
-                > self.created
-            ):
-                # TODO it would be nice to know if the scheduled tasks were for other Sightings than this one
-                # but at the moment, it's not clear how we could detect this
-                log.warning(
-                    f'{self.guid} is identifying but no identification jobs are running, '
-                    'assuming Celery error and starting them all again'
-                )
-            self.send_all_identification()
-            return
+    #     all_scheduled = get_celery_tasks_scheduled(
+    #         'app.modules.sightings.tasks.send_identification'
+    #     ) + get_celery_tasks_scheduled(
+    #         'app.modules.sightings.tasks.send_all_identification'
+    #     )
+    #     for (sighting_guid,) in Sighting.query.filter(
+    #         Sighting.stage == SightingStage.identification
+    #     ).values(Sighting.guid):
+    #         Sighting.query.get(sighting_guid).check_all_job_status(all_scheduled)
 
-        for job_id in jobs.keys():
-            job = jobs[job_id]
-            if job['active']:
-                current_app.sage.request_passthrough_result(
-                    'engine.result', 'get', {}, job
-                )
-                # TODO Process response DEX-335
-                # TODO If UTC Start more than {arbitrary limit} ago.... do something
+    # def check_all_job_status(self, all_scheduled):
+    #     jobs = self.jobs
+
+    #     if not jobs:
+    #         # Somewhat arbitrary limit of at least 10 minutes after creation.
+    #         if (
+    #             not all_scheduled
+    #             and datetime.datetime.utcnow() + datetime.timedelta(minutes=10)
+    #             > self.created
+    #         ):
+    #             # TODO it would be nice to know if the scheduled tasks were for other Sightings than this one
+    #             # but at the moment, it's not clear how we could detect this
+    #             log.warning(
+    #                 f'{self.guid} is identifying but no identification jobs are running, '
+    #                 'assuming Celery error and starting them all again'
+    #             )
+    #         self.send_all_identification()
+    #         return
+
+    #     for job_id in jobs.keys():
+    #         job = jobs[job_id]
+    #         if job['active']:
+    #             current_app.sage.request_passthrough_result(
+    #                 'engine.result', 'get', {}, job
+    #             )
+    #             # TODO Process response DEX-335
+    #             # TODO If UTC Start more than {arbitrary limit} ago.... do something
 
     def any_jobs_active(self):
         jobs = self.jobs
@@ -1120,7 +1123,7 @@ class Sighting(db.Model, FeatherModel):
 
         self.init_progress_identification()
 
-        Annotation.sync_all_with_sage(ensure=True)
+        # Annotation.sync_all_with_sage(ensure=True)
 
         sighting_guid = str(self.guid)
         num_jobs = 0
@@ -1138,6 +1141,8 @@ class Sighting(db.Model, FeatherModel):
         )
         for annotation_guid in annotation_guids:
             annot = Annotation.query.get(annotation_guid)
+
+            annot.sync_with_sage(ensure=True)
 
             annot.init_progress_identification(
                 parent=self.progress_identification, overwrite=True

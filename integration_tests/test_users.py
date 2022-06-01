@@ -27,7 +27,7 @@ def test_user_deactivation(session, codex_url, login, logout, admin_email):
     response = session.get(codex_url(f'/api/v1/users/{new_user_guid}'))
     assert '@deactivated' in response.json()['email']
     assert response.json()['full_name'] == 'Inactivated User'
-    assert logout(session) == {}
+    logout(session)
 
     # Unable to sign up as a new user with the same email address
     response = session.post(

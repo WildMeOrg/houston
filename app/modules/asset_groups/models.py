@@ -503,45 +503,47 @@ class AssetGroupSighting(db.Model, HoustonModel):
 
     @classmethod
     def check_jobs(cls):
-        # get scheduled celery tasks only once and use for all AGS
-        from app.utils import get_celery_tasks_scheduled
+        pass
 
-        all_scheduled = get_celery_tasks_scheduled(
-            'app.modules.asset_groups.tasks.sage_detection'
-        )
-        for asset_group_sighting in AssetGroupSighting.query.filter(
-            AssetGroupSighting.stage == AssetGroupSightingStage.detection
-        ).all():
-            asset_group_sighting.check_all_job_status(all_scheduled)
+    #     # get scheduled celery tasks only once and use for all AGS
+    #     from app.utils import get_celery_tasks_scheduled
 
-    def check_all_job_status(self, all_scheduled):
-        jobs = self.jobs
-        if not jobs:
-            # Don't attempt to restart detection until we have had at least 10 minutes for celery to have a go
-            if (
-                not all_scheduled
-                and datetime.datetime.utcnow() + datetime.timedelta(minutes=10)
-                > self.detection_start
-            ):
-                # TODO it would be nice to know if the scheduled tasks were for other AGS than this one
-                # but at the moment, it's not clear how we could detect this
-                log.warning(
-                    f'{self.guid} is detecting but no detection jobs are running, '
-                    'assuming Celery error and starting them again'
-                )
-            try:
-                self.rerun_detection()
-            except Exception:
-                log.exception(f'{self} rerun_detection failed')
-            return
-        for job_id in jobs.keys():
-            job = jobs[job_id]
-            if job['active']:
-                current_app.sage.request_passthrough_result(
-                    'engine.result', 'get', {}, job_id
-                )
-                # TODO Process response
-                # TODO If UTC Start more than {arbitrary limit} ago.... do something
+    #     all_scheduled = get_celery_tasks_scheduled(
+    #         'app.modules.asset_groups.tasks.sage_detection'
+    #     )
+    #     for asset_group_sighting in AssetGroupSighting.query.filter(
+    #         AssetGroupSighting.stage == AssetGroupSightingStage.detection
+    #     ).all():
+    #         asset_group_sighting.check_all_job_status(all_scheduled)
+
+    # def check_all_job_status(self, all_scheduled):
+    #     jobs = self.jobs
+    #     if not jobs:
+    #         # Don't attempt to restart detection until we have had at least 10 minutes for celery to have a go
+    #         if (
+    #             not all_scheduled
+    #             and datetime.datetime.utcnow() + datetime.timedelta(minutes=10)
+    #             > self.detection_start
+    #         ):
+    #             # TODO it would be nice to know if the scheduled tasks were for other AGS than this one
+    #             # but at the moment, it's not clear how we could detect this
+    #             log.warning(
+    #                 f'{self.guid} is detecting but no detection jobs are running, '
+    #                 'assuming Celery error and starting them again'
+    #             )
+    #         try:
+    #             self.rerun_detection()
+    #         except Exception:
+    #             log.exception(f'{self} rerun_detection failed')
+    #         return
+    #     for job_id in jobs.keys():
+    #         job = jobs[job_id]
+    #         if job['active']:
+    #             current_app.sage.request_passthrough_result(
+    #                 'engine.result', 'get', {}, job_id
+    #             )
+    #             # TODO Process response
+    #             # TODO If UTC Start more than {arbitrary limit} ago.... do something
 
     def any_jobs_active(self):
         jobs = self.jobs

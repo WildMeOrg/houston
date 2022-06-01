@@ -1534,19 +1534,23 @@ class Sighting(db.Model, FeatherModel):
 
             # All good, mark job as finished
             with db.session.begin(subtransactions=True):
-                job['active'] = False
-                job['success'] = status == 'completed'
-                job['result'] = result
-                job['end'] = datetime.datetime.utcnow()
-
-                if not self.any_jobs_active():
-                    self.set_stage(SightingStage.un_reviewed)
-                    self.unreviewed_start = datetime.datetime.utcnow()
-                    message = f'Sighting {self.guid} all jobs completed'
-                    AuditLog.audit_log_object(log, self, message)
-
+                self.jobs[job_id_str]['active'] = False
+                self.jobs[job_id_str]['success'] = status == 'completed'
+                self.jobs[job_id_str]['result'] = result
+                self.jobs[job_id_str]['end'] = datetime.datetime.utcnow()
                 self.jobs = self.jobs
                 db.session.merge(self)
+
+            db.session.refresh(self)
+
+            if not self.any_jobs_active():
+                self.set_stage(SightingStage.un_reviewed, refresh=False)
+                with db.session.begin(subtransactions=True):
+                    self.unreviewed_start = datetime.datetime.utcnow()
+                    db.session.merge(self)
+                db.session.refresh(self)
+                message = f'Sighting {self.guid} all jobs completed'
+                AuditLog.audit_log_object(log, self, message)
 
             if annotation.progress_identification:
                 annotation.progress_identification.set(95)

@@ -8,6 +8,7 @@ import uuid
 
 from flask_login import current_user  # NOQA
 
+import app.extensions.logging as AuditLog
 from app.modules.encounters.parameters import PatchEncounterDetailsParameters
 from app.modules.sightings.parameters import PatchSightingDetailsParameters
 from app.modules.users.permissions import rules
@@ -133,7 +134,9 @@ class PatchAssetGroupSightingDetailsParameters(PatchJSONParameters):
             ags_s = obj.asset_group.get_asset_group_sightings_for_asset(asset)
             if ags_s:
                 if len(ags_s) != 1:
-                    log.warning(f'Asset {asset.guid} already in multiple AGS')
+                    message = f'Asset {asset.guid} already in multiple AGS'
+                    AuditLog.audit_log_object_fault(log, asset, message)
+                    log.warning(message)
                 if obj not in ags_s:
                     raise AssetGroupMetadataError(
                         log,

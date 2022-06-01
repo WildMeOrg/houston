@@ -251,9 +251,10 @@ class EncounterByID(Resource):
             )
         except HoustonException as ex:
             edm_status_code = ex.get_val('edm_status_code', 400)
-            log.warning(
-                f'Encounter.delete {encounter.guid} failed: ({ex.status_code} / edm={edm_status_code}) {ex.message}'
-            )
+            message = f'Encounter.delete {encounter.guid} failed: ({ex.status_code} / edm={edm_status_code}) {ex.message}'
+            AuditLog.audit_log_object_fault(log, encounter, message)
+            log.warning(message)
+
             ex_response_data = ex.get_val('response_data', {})
             if (
                 'vulnerableIndividual' in ex_response_data
@@ -283,14 +284,16 @@ class EncounterByID(Resource):
 
             sighting = Sighting.query.get(sighting_id)
             if sighting is None:
-                log.error(
-                    f'deletion of {encounter} triggered deletion of sighting {sighting_id}; but this was not found!'
-                )
+                message = f'deletion of {encounter} triggered deletion of sighting {sighting_id}; but this was not found!'
+                AuditLog.audit_log_object_fault(log, encounter, message)
+                log.error(message)
+
                 abort(400, f'Cascade-deleted Sighting not found id={sighting_id}')
             else:
-                log.warning(  # TODO future audit log here
-                    f'EDM triggered self-deletion of {sighting} result={result}'
-                )
+                message = f'EDM triggered self-deletion of {sighting} result={result}'
+                AuditLog.audit_log_object_fault(log, encounter, message)
+                log.warning(message)
+
                 sighting.delete_cascade()  # this will get rid of our encounter(s) as well so no need to encounter.delete()
                 resp.headers['x-deletedSighting-guid'] = sighting_id
         else:

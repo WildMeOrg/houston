@@ -5,6 +5,7 @@ import requests.exceptions
 import sqlalchemy
 from flask import current_app
 
+import app.extensions.logging as AuditLog
 from app.extensions.celery import celery
 
 log = logging.getLogger(__name__)
@@ -38,7 +39,9 @@ def fetch_sage_detection_result(asset_group_sighting_guid, job_id):
                 args=job_id,
             )
         except Exception:
-            log.warning(f'Failed to fetch the Sage detection result with job_id {job_id}')
+            message = f'Failed to fetch the Sage detection result for AGS {asset_group_sighting.guid} with job_id {job_id}'
+            AuditLog.audit_log_object_fault(log, asset_group_sighting, message)
+            log.warning(message)
             return
         asset_group_sighting.detected(job_id, response)
     else:

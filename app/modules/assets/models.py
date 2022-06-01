@@ -12,6 +12,7 @@ from functools import total_ordering
 from flask import current_app, url_for
 from PIL import Image
 
+import app.extensions.logging as AuditLog
 from app.extensions import HoustonModel, SageModel, db
 from app.modules import module_required
 from app.modules.users.models import User
@@ -333,13 +334,14 @@ class Asset(db.Model, HoustonModel, SageModel):
                         db.session.merge(self)
                     db.session.refresh(self)
             except Exception:
-                log.error(
-                    'Asset {!r} is corrupted or an incompatible type, cannot send to Sage'.format(
-                        self
-                    )
-                )
+                message = f'Asset {self} is corrupted or an incompatible type, cannot send to Sage'
+                AuditLog.audit_log_object_fault(log, self, message)
+                log.error(message)
+
         else:
-            log.error('Asset {!r} is missing on disk, cannot send to Sage'.format(self))
+            message = f'Asset {self} is missing on disk, cannot send to Sage'
+            AuditLog.audit_log_object_fault(log, self, message)
+            log.error(message)
 
     # this property is so that schema can output { "filename": "original_filename.jpg" }
     @property

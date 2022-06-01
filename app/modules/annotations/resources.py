@@ -108,7 +108,9 @@ class Annotations(Resource):
                     message='cannot create encounter-less annotation on asset that does not have an asset group sighting',
                 )
             if len(ags) != 1:
-                log.warning(f'Asset {asset_guid} is in {len(ags)} asset group sightings')
+                message = f'Asset {asset_guid} is in {len(ags)} asset group sightings'
+                AuditLog.audit_log_object_fault(log, asset, message)
+                log.warning(message)
                 abort(
                     code=HTTPStatus.BAD_REQUEST,
                     message='asset erroneously in multiple asset group sightings',

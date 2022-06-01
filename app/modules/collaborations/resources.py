@@ -105,10 +105,11 @@ class Collaborations(Resource):
 
         for collab_assoc in users[0].get_collaboration_associations():
             if users[1] in collab_assoc.collaboration.get_users():
-                log.warning(
-                    f'Collaboration between {users[0].email} and {users[1].email} already exists '
-                    f'Collab {collab_assoc.collaboration}(attempted by {current_user.email})'
-                )
+                message = f'Collaboration between {users[0].email} and {users[1].email} already exists '
+                message += f'Collab {collab_assoc.collaboration}(attempted by {current_user.email})'
+                AuditLog.audit_log_object_fault(log, collab_assoc.collaboration, message)
+                log.warning(message)
+
                 return collab_assoc.collaboration
 
         context = api.commit_or_abort(

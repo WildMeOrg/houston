@@ -46,7 +46,10 @@ class IndividualCleanup(object):
             failed_individual = Individual.query.get(self.individual_guid)
             # we try deleting from edm *regardless of failed_individual*, as sometimes
             #   the houston individual did not get made, but the edm did
-            log.error(f'Attempting to delete Individual {self.individual_guid} from EDM')
+            message = f'Attempting to delete Individual {self.individual_guid} from EDM'
+            if failed_individual:
+                AuditLog.audit_log_object_fault(log, failed_individual, message)
+            log.error(message)
             try:
                 current_app.edm.request_passthrough(
                     'individual.data', 'delete', {}, self.individual_guid
@@ -54,12 +57,13 @@ class IndividualCleanup(object):
             except Exception:
                 pass
             if failed_individual is not None:
+                message = f'The Individual with guid {self.individual_guid} has been deleted from Houston'
+                AuditLog.audit_log_object_fault(log, failed_individual, message)
+                log.error(message)
+
                 with db.session.begin():
                     db.session.delete(failed_individual)
-                log.error(
-                    'The Individual with guid %r has been deleted from Houston'
-                    % self.individual_guid
-                )
+
         abort(code, message)
 
 
@@ -416,10 +420,10 @@ class IndividualByID(Resource):
 
         response_data = response.json()
         if not response.ok or not response_data.get('success', False):
-            log.warning(
-                'Individual.delete:  Failed to delete id %r using delete_from_edm(). response_data=%r'
-                % (individual.guid, response_data)
-            )
+            message = f'Individual.delete:  Failed to delete id {individual.guid} using delete_from_edm(). response_data={response_data}'
+            AuditLog.audit_log_object_fault(log, individual, message)
+            log.warning(message)
+
         try:
             individual.delete()
         except Exception:

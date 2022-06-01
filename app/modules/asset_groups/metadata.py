@@ -12,6 +12,7 @@ import os
 from flask import current_app
 from flask_login import current_user  # NOQA
 
+import app.extensions.logging as AuditLog
 from app.utils import HoustonException
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
@@ -220,7 +221,9 @@ class AssetGroupMetadata(object):
             ags_s = annot.asset.get_asset_group_sightings()
             # There should be only one
             if len(ags_s) != 1:
-                log.warning(f'Asset {annot.asset.guid} has {len(ags_s)} AGS')
+                message = f'Asset {annot.asset.guid} has {len(ags_s)} AGS'
+                AuditLog.audit_log_object_fault(log, annot.asset, message)
+                log.warning(message)
             # and it should be this one
             if asset_group_sighting not in ags_s:
                 raise AssetGroupMetadataError(

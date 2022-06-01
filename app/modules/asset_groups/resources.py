@@ -12,6 +12,7 @@ import uuid
 import werkzeug
 from flask import request
 
+import app.extensions.logging as AuditLog
 from app.extensions import db
 from app.extensions.api import Namespace, abort
 from app.modules.auth.utils import recaptcha_required
@@ -813,7 +814,9 @@ class AssetGroupSightingDetected(Resource):
             )
             return str(promise.id)
         except HoustonException as ex:
-            log.exception(f'sage_detected error: {request.data}')
+            message = f'sage_detected error: {request.data}'
+            AuditLog.audit_log_object_fault(log, asset_group_sighting, message)
+            log.exception(message)
             abort(ex.status_code, ex.message, errorFields=ex.get_val('error', 'Error'))
 
 

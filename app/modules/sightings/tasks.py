@@ -3,6 +3,7 @@ import logging
 
 from flask import current_app
 
+import app.extensions.logging as AuditLog
 from app.extensions.celery import celery
 
 log = logging.getLogger(__name__)
@@ -68,9 +69,9 @@ def fetch_sage_identification_result(sighting_guid, job_id):
                 args=job_id,
             )
         except Exception:
-            log.warning(
-                f'Failed to fetch the Sage identification result with job_id {job_id}'
-            )
+            message = f'Failed to fetch the Sage identification result  for sighting {sighting_guid} with job_id {job_id}'
+            AuditLog.audit_log_object_fault(log, sighting, message)
+            log.warning(message)
             return
         sighting.identified(job_id, response)
     else:

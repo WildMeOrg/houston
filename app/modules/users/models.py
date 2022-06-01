@@ -910,18 +910,20 @@ class User(db.Model, FeatherModel, UserEDMMixin):
         return annotations
 
     def remove_profile_file(self):
-        if self.profile_fileupload_guid:
-            fup = self.profile_fileupload
-            if fup:
-                fup.delete()
-            self.profile_fileupload_guid = None
+        with db.session.begin(subtransactions=True):
+            if self.profile_fileupload_guid:
+                fup = self.profile_fileupload
+                self.profile_fileupload_guid = None
+                db.session.merge(self)
+                if fup:
+                    fup.delete()
 
     def deactivate(self):
         AuditLog.audit_log_object(log, self, 'Deactivating')
         # Store email hash for potential later restoration
         # But zap all of the personal information
 
-        with db.session.begin():
+        with db.session.begin(subtransactions=True):
             self.email = self._get_hashed_email(self.email)
 
             # But zap all of the personal information

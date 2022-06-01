@@ -713,7 +713,7 @@ class GitStore(db.Model, HoustonModel):
 
         if metadata.tus_transaction_id:
             try:
-                added, original_filenames = git_store.import_tus_files(
+                _, original_filenames = git_store.import_tus_files(
                     transaction_id=metadata.tus_transaction_id, foreground=foreground
                 )
             except Exception:  # pragma: no cover
@@ -723,8 +723,6 @@ class GitStore(db.Model, HoustonModel):
                 )
                 git_store.delete()
                 raise
-
-            log.debug('imported %r' % added)
         else:
             original_filenames = []
 
@@ -771,9 +769,8 @@ class GitStore(db.Model, HoustonModel):
         git_store.init_progress_detection()
         git_store.init_progress_identification()
 
-        added = None
         try:
-            added, original_filenames = git_store.import_tus_files(
+            _, original_filenames = git_store.import_tus_files(
                 transaction_id=transaction_id, paths=paths, foreground=foreground
             )
         except Exception:  # pragma: no cover
@@ -784,7 +781,6 @@ class GitStore(db.Model, HoustonModel):
             git_store.delete()
             raise
 
-        log.info('imported %r' % added)
         return git_store, original_filenames
 
     def import_tus_files(

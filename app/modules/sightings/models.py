@@ -1009,8 +1009,6 @@ class Sighting(db.Model, FeatherModel):
         from app.extensions.elapsed_time import ElapsedTime
         from app.extensions.sage import SAGE_UNKNOWN_NAME, to_sage_uuid
 
-        Annotation.sync_all_with_sage(ensure=True)
-
         timer = ElapsedTime()
 
         log.debug(
@@ -1117,7 +1115,10 @@ class Sighting(db.Model, FeatherModel):
         return id_request
 
     def send_all_identification(self):
+
         self.init_progress_identification()
+
+        Annotation.sync_all_with_sage(ensure=True)
 
         sighting_guid = str(self.guid)
         num_jobs = 0
@@ -1337,6 +1338,9 @@ class Sighting(db.Model, FeatherModel):
                                 )
                                 < MAX_IDENTIFICATION_ATTEMPTS
                             ):
+                                # Ensure Sage is completely up-to-date
+                                Annotation.sync_all_with_sage(ensure=True)
+
                                 log.warning(
                                     f'{debug_context} Sage Identification failed to start '
                                     f'code: {ex.status_code}, sage_status_code: {sage_status_code}, retrying'
@@ -1817,9 +1821,6 @@ class Sighting(db.Model, FeatherModel):
                 f'{debug_context} Skipping {annotation} due to lack of content_guid or encounter'
             )
             return False
-
-        # Force this to be up-to-date in Sage
-        annotation.sync_with_sage(ensure=True)
 
         # force this to be up-to-date in index
         with es.session.begin(blocking=True):

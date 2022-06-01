@@ -17,7 +17,6 @@ import tqdm
 import utool as ut
 import werkzeug
 from elasticsearch import helpers
-from gumby import Client, initialize_indexes_by_model
 from sqlalchemy.inspection import inspect
 
 from app.extensions import db, executor, is_extension_enabled
@@ -26,7 +25,6 @@ from app.utils import HoustonException
 
 if not is_extension_enabled('elasticsearch'):
     raise RuntimeError('Elastic Search is not enabled')
-
 
 ENABLED = True
 TESTING_PREFIX = 'testing'
@@ -1726,15 +1724,14 @@ def init_app(app, **kwargs):
     """
     global session
 
-    hosts = app.config['ELASTICSEARCH_HOSTS']
-    app.elasticsearch = Client(hosts)
+    app.elasticsearch = elasticsearch.Elasticsearch(
+        hosts=app.config['ELASTICSEARCH_HOSTS'],
+        http_auth=app.config['ELASTICSEARCH_HTTP_AUTH'],
+    )
     app.es = app.elasticsearch
 
     # Setup Elasticsearch session handle
     session = ElasticSearchBulkOperation(app=app)
-
-    # Initialize indexes if they don't already exists
-    initialize_indexes_by_model(using=app.es)
 
     api_v1.add_oauth_scope('search:read', 'Provide access to search')
 

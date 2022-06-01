@@ -104,13 +104,6 @@ try:
 except ModuleNotFoundError as e:  # pragma: no cover
     logger.warning(f'Unable to load tasks.edm.*\n{str(e)}')
 
-try:
-    from tasks import gumby as gumby_tasks  # NOQA
-
-    namespaces.append(gumby_tasks)
-except ModuleNotFoundError as e:  # pragma: no cover
-    logger.warning(f'Unable to load tasks.gumby.*\n{str(e)}')
-
 # NOTE: `namespace` or `ns` name is required!
 namespace = Collection(*namespaces)
 

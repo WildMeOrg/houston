@@ -9,7 +9,7 @@ blinker
 
 celery
 
-elasticsearch
+elasticsearch>=7.0.0,<7.14.0
 
 etaprogress
 
@@ -38,7 +38,6 @@ FuzzyWuzzy
 gevent
 
 gitpython
-gumby @ git+https://github.com/WildMeOrg/gumby.git
 
 humanize
 

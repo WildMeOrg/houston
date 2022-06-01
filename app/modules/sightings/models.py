@@ -1123,8 +1123,6 @@ class Sighting(db.Model, FeatherModel):
 
         self.init_progress_identification()
 
-        # Annotation.sync_all_with_sage(ensure=True)
-
         sighting_guid = str(self.guid)
         num_jobs = 0
         # Once we support multiple IA configs and algorithms, the number of jobs is going to grow....rapidly
@@ -1199,6 +1197,10 @@ class Sighting(db.Model, FeatherModel):
         matching_set_query=None,
     ):
         from app.extensions.sage import from_sage_uuid
+
+        # Ensure Sage is completely up-to-date
+        if current_app.testing:
+            Annotation.sync_all_with_sage(ensure=True)
 
         if annotation.progress_identification:
             annotation.progress_identification.set(2)

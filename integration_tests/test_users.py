@@ -34,7 +34,7 @@ def test_user_deactivation(session, codex_url, login, logout, admin_email):
         codex_url('/api/v1/users/'),
         json=new_user,
     )
-    assert response.status_code == 200
+    assert response.status_code == 409
     assert (
         response.json()['message']
         == 'The email address is already in use in an inactivated user.'

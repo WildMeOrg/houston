@@ -9,7 +9,6 @@ import logging
 import uuid
 
 import tqdm
-from flask import current_app
 
 from app.extensions import HoustonModel, Timestamp, db, elasticsearch_context
 from app.extensions.git_store import GitStore
@@ -195,44 +194,6 @@ class Mission(db.Model, HoustonModel, Timestamp):
             job_data.append(this_job)
 
         return job_data
-
-    @classmethod
-    def check_jobs(cls):
-        for mission in Mission.query.all():
-            mission.check_all_job_status()
-
-    def check_all_job_status(self):
-        jobs = self.jobs
-        if not jobs:
-            return
-        for job_id in jobs.keys():
-            job = jobs[job_id]
-            if job['active']:
-                current_app.sage.request_passthrough_result(
-                    'engine.result', 'get', {}, job
-                )
-
-    @classmethod
-    def get_all_jobs_debug(cls, verbose):
-        jobs = []
-        for mission in Mission.query.all():
-            jobs.extend(mission.get_job_debug(verbose))
-        return jobs
-
-    def get_job_debug(self, verbose):
-        details = []
-        for job_id in self.jobs.keys():
-            details.append(self.jobs[job_id])
-            details[-1]['type'] = 'Mission'
-            details[-1]['object_guid'] = self.guid
-            details[-1]['job_id'] = job_id
-
-            if verbose:
-                details[-1]['response'] = current_app.sage.request_passthrough_result(
-                    'engine.result', 'get', {}, job_id
-                )
-
-        return details
 
     def any_jobs_active(self):
         jobs = self.jobs

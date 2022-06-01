@@ -56,9 +56,7 @@ MODULE_USER_MAP = {
     ('SocialGroup', AccessOperation.WRITE): ['is_researcher'],
     ('Relationship', AccessOperation.READ): ['is_researcher'],
     ('Relationship', AccessOperation.WRITE): ['is_researcher'],
-    ('JobControl', AccessOperation.READ): ['is_active'],
     # Generally only staff can read debug information, this is the one exception
-    ('JobControl', AccessOperation.READ_DEBUG): ['is_admin'],
     ('Integrity', AccessOperation.READ): ['is_admin'],
     ('Integrity', AccessOperation.WRITE): ['is_admin'],
 }

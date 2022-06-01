@@ -58,7 +58,6 @@ class BaseMWSConfig(
         'annotations',
         'missions',
         'site_settings',
-        'job_control',
 
         'app_ui',
         'swagger_ui',

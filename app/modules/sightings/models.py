@@ -735,51 +735,6 @@ class Sighting(db.Model, FeatherModel):
             status['progress'] = status['stepsComplete'] / status['steps']
         return status
 
-    @classmethod
-    def check_jobs(cls):
-        pass
-
-    #     # get scheduled celery tasks only once and use for all AGS
-    #     from app.utils import get_celery_tasks_scheduled
-
-    #     all_scheduled = get_celery_tasks_scheduled(
-    #         'app.modules.sightings.tasks.send_identification'
-    #     ) + get_celery_tasks_scheduled(
-    #         'app.modules.sightings.tasks.send_all_identification'
-    #     )
-    #     for (sighting_guid,) in Sighting.query.filter(
-    #         Sighting.stage == SightingStage.identification
-    #     ).values(Sighting.guid):
-    #         Sighting.query.get(sighting_guid).check_all_job_status(all_scheduled)
-
-    # def check_all_job_status(self, all_scheduled):
-    #     jobs = self.jobs
-
-    #     if not jobs:
-    #         # Somewhat arbitrary limit of at least 10 minutes after creation.
-    #         if (
-    #             not all_scheduled
-    #             and datetime.datetime.utcnow() + datetime.timedelta(minutes=10)
-    #             > self.created
-    #         ):
-    #             # TODO it would be nice to know if the scheduled tasks were for other Sightings than this one
-    #             # but at the moment, it's not clear how we could detect this
-    #             log.warning(
-    #                 f'{self.guid} is identifying but no identification jobs are running, '
-    #                 'assuming Celery error and starting them all again'
-    #             )
-    #         self.send_all_identification()
-    #         return
-
-    #     for job_id in jobs.keys():
-    #         job = jobs[job_id]
-    #         if job['active']:
-    #             current_app.sage.request_passthrough_result(
-    #                 'engine.result', 'get', {}, job
-    #             )
-    #             # TODO Process response DEX-335
-    #             # TODO If UTC Start more than {arbitrary limit} ago.... do something
-
     def any_jobs_active(self):
         jobs = self.jobs
         if not jobs:
@@ -789,54 +744,6 @@ class Sighting(db.Model, FeatherModel):
             if job['active']:
                 return True
         return False
-
-    @classmethod
-    def get_all_jobs_debug(cls, verbose):
-        jobs = []
-
-        for sighting in Sighting.query.all():
-            jobs.extend(sighting.get_job_debug(annotation_id=None, verbose=verbose))
-        return jobs
-
-    # Build up dict to print out status (calling function chooses what to collect and print)
-    def get_job_debug(self, annotation_id=None, verbose=True):
-
-        details = []
-        if not self.jobs:
-            return details
-        for job_id in self.jobs.keys():
-            if annotation_id and str(annotation_id) != self.jobs[job_id]['annotation']:
-                continue
-            details.append(self.jobs[job_id])
-            details[-1]['type'] = 'Sighting'
-            details[-1]['object_guid'] = self.guid
-            details[-1]['job_id'] = job_id
-
-            if verbose:
-                details[-1]['request'] = self.build_identification_request(
-                    self.jobs[job_id].get('matching_set'),
-                    self.jobs[job_id]['annotation'],
-                    job_id,
-                    self.jobs[job_id]['algorithm'],
-                )
-                try:
-                    sage_data = current_app.sage.request_passthrough_result(
-                        'engine.result', 'get', {}, job_id
-                    )
-                    # cm_dict is enormous and as we don't use it in Houston, don't print it as debug
-                    if 'json_result' in sage_data and isinstance(
-                        sage_data['json_result'], dict
-                    ):
-                        sage_data['json_result'].pop('cm_dict', None)
-                    details[-1]['response'] = sage_data
-
-                except HoustonException as ex:
-                    # sage seems particularly flaky for getting the sighting data, if it fails, don't pass it back
-                    details[-1][
-                        'response'
-                    ] = f'Failed to read data from Sage {ex.message}'
-
-        return details
 
     def get_id_configs(self):
         return self.id_configs
@@ -1490,9 +1397,8 @@ class Sighting(db.Model, FeatherModel):
             job_id_str = str(job_id)
             if job_id_str not in self.jobs:
                 raise HoustonException(log, f'job_id {job_id_str} not found', obj=self)
-            job = self.jobs[job_id_str]
-            algorithm = job['algorithm']
-            annot_guid = job['annotation']
+            algorithm = self.jobs[job_id_str]['algorithm']
+            annot_guid = self.jobs[job_id_str]['annotation']
             debug_context = (
                 f'Sighting:{self.guid}, Annot:{annot_guid}, algorithm:{algorithm}'
             )
@@ -1534,10 +1440,10 @@ class Sighting(db.Model, FeatherModel):
 
             # All good, mark job as finished
             with db.session.begin(subtransactions=True):
-                job['active'] = False
-                job['success'] = status == 'completed'
-                job['result'] = result
-                job['end'] = datetime.datetime.utcnow()
+                self.jobs[job_id_str]['active'] = False
+                self.jobs[job_id_str]['success'] = status == 'completed'
+                self.jobs[job_id_str]['result'] = result
+                self.jobs[job_id_str]['end'] = datetime.datetime.utcnow()
 
                 if not self.any_jobs_active():
                     self.set_stage(SightingStage.un_reviewed)

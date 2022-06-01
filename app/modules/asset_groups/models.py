@@ -501,50 +501,6 @@ class AssetGroupSighting(db.Model, HoustonModel):
 
         return enc_json
 
-    @classmethod
-    def check_jobs(cls):
-        pass
-
-    #     # get scheduled celery tasks only once and use for all AGS
-    #     from app.utils import get_celery_tasks_scheduled
-
-    #     all_scheduled = get_celery_tasks_scheduled(
-    #         'app.modules.asset_groups.tasks.sage_detection'
-    #     )
-    #     for asset_group_sighting in AssetGroupSighting.query.filter(
-    #         AssetGroupSighting.stage == AssetGroupSightingStage.detection
-    #     ).all():
-    #         asset_group_sighting.check_all_job_status(all_scheduled)
-
-    # def check_all_job_status(self, all_scheduled):
-    #     jobs = self.jobs
-    #     if not jobs:
-    #         # Don't attempt to restart detection until we have had at least 10 minutes for celery to have a go
-    #         if (
-    #             not all_scheduled
-    #             and datetime.datetime.utcnow() + datetime.timedelta(minutes=10)
-    #             > self.detection_start
-    #         ):
-    #             # TODO it would be nice to know if the scheduled tasks were for other AGS than this one
-    #             # but at the moment, it's not clear how we could detect this
-    #             log.warning(
-    #                 f'{self.guid} is detecting but no detection jobs are running, '
-    #                 'assuming Celery error and starting them again'
-    #             )
-    #         try:
-    #             self.rerun_detection()
-    #         except Exception:
-    #             log.exception(f'{self} rerun_detection failed')
-    #         return
-    #     for job_id in jobs.keys():
-    #         job = jobs[job_id]
-    #         if job['active']:
-    #             current_app.sage.request_passthrough_result(
-    #                 'engine.result', 'get', {}, job_id
-    #             )
-    #             # TODO Process response
-    #             # TODO If UTC Start more than {arbitrary limit} ago.... do something
-
     def any_jobs_active(self):
         jobs = self.jobs
         if not jobs:
@@ -554,13 +510,6 @@ class AssetGroupSighting(db.Model, HoustonModel):
             if job['active']:
                 return True
         return False
-
-    @classmethod
-    def get_all_jobs_debug(cls, verbose):
-        jobs = []
-        for asset_group_sighting in AssetGroupSighting.query.all():
-            jobs.extend(asset_group_sighting.get_jobs_debug(verbose))
-        return jobs
 
     def get_pipeline_status(self):
         db.session.refresh(self)
@@ -828,34 +777,6 @@ class AssetGroupSighting(db.Model, HoustonModel):
         return current_app.sage.request_passthrough_result(
             'job.status', 'get', {}, job_id
         )
-
-    # Build up list to print out status (calling function chooses what to collect and print)
-    def get_jobs_debug(self, verbose):
-        details = []
-        for job_id in self.jobs.keys():
-            details.append(self.jobs[job_id])
-            details[-1]['type'] = 'AssetGroupSighting'
-            details[-1]['object_guid'] = self.guid
-            details[-1]['job_id'] = job_id
-
-            if verbose:
-                detection_request, _ = self.build_detection_request(
-                    job_id, self.jobs[job_id]['model']
-                )
-                details[-1]['request'] = detection_request
-                try:
-                    sage_response = current_app.sage.request_passthrough_result(
-                        'engine.result', 'get', {}, job_id
-                    )
-
-                    details[-1]['response'] = sage_response
-                except HoustonException as ex:
-                    # Sage seems particularly flaky with this API
-                    details[-1][
-                        'response'
-                    ] = f'Sage response caused HoustonException {ex.message}'
-
-        return details
 
     def build_detection_request(self, job_uuid, model, preload=True):
         from app.extensions.sage import to_sage_uuid

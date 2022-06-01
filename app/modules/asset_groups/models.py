@@ -503,45 +503,47 @@ class AssetGroupSighting(db.Model, HoustonModel):
 
     @classmethod
     def check_jobs(cls):
-        # get scheduled celery tasks only once and use for all AGS
-        from app.utils import get_celery_tasks_scheduled
+        pass
 
-        all_scheduled = get_celery_tasks_scheduled(
-            'app.modules.asset_groups.tasks.sage_detection'
-        )
-        for asset_group_sighting in AssetGroupSighting.query.filter(
-            AssetGroupSighting.stage == AssetGroupSightingStage.detection
-        ).all():
-            asset_group_sighting.check_all_job_status(all_scheduled)
+    #     # get scheduled celery tasks only once and use for all AGS
+    #     from app.utils import get_celery_tasks_scheduled
 
-    def check_all_job_status(self, all_scheduled):
-        jobs = self.jobs
-        if not jobs:
-            # Don't attempt to restart detection until we have had at least 10 minutes for celery to have a go
-            if (
-                not all_scheduled
-                and datetime.datetime.utcnow() + datetime.timedelta(minutes=10)
-                > self.detection_start
-            ):
-                # TODO it would be nice to know if the scheduled tasks were for other AGS than this one
-                # but at the moment, it's not clear how we could detect this
-                log.warning(
-                    f'{self.guid} is detecting but no detection jobs are running, '
-                    'assuming Celery error and starting them again'
-                )
-            try:
-                self.rerun_detection()
-            except Exception:
-                log.exception(f'{self} rerun_detection failed')
-            return
-        for job_id in jobs.keys():
-            job = jobs[job_id]
-            if job['active']:
-                current_app.sage.request_passthrough_result(
-                    'engine.result', 'get', {}, job_id
-                )
-                # TODO Process response
-                # TODO If UTC Start more than {arbitrary limit} ago.... do something
+    #     all_scheduled = get_celery_tasks_scheduled(
+    #         'app.modules.asset_groups.tasks.sage_detection'
+    #     )
+    #     for asset_group_sighting in AssetGroupSighting.query.filter(
+    #         AssetGroupSighting.stage == AssetGroupSightingStage.detection
+    #     ).all():
+    #         asset_group_sighting.check_all_job_status(all_scheduled)
+
+    # def check_all_job_status(self, all_scheduled):
+    #     jobs = self.jobs
+    #     if not jobs:
+    #         # Don't attempt to restart detection until we have had at least 10 minutes for celery to have a go
+    #         if (
+    #             not all_scheduled
+    #             and datetime.datetime.utcnow() + datetime.timedelta(minutes=10)
+    #             > self.detection_start
+    #         ):
+    #             # TODO it would be nice to know if the scheduled tasks were for other AGS than this one
+    #             # but at the moment, it's not clear how we could detect this
+    #             log.warning(
+    #                 f'{self.guid} is detecting but no detection jobs are running, '
+    #                 'assuming Celery error and starting them again'
+    #             )
+    #         try:
+    #             self.rerun_detection()
+    #         except Exception:
+    #             log.exception(f'{self} rerun_detection failed')
+    #         return
+    #     for job_id in jobs.keys():
+    #         job = jobs[job_id]
+    #         if job['active']:
+    #             current_app.sage.request_passthrough_result(
+    #                 'engine.result', 'get', {}, job_id
+    #             )
+    #             # TODO Process response
+    #             # TODO If UTC Start more than {arbitrary limit} ago.... do something
 
     def any_jobs_active(self):
         jobs = self.jobs
@@ -869,7 +871,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
         model_config = {
             'jobid': str(job_uuid),
             'callback_url': f'houston+{callback_url}',
-            'callback_detailed': True,
+            # 'callback_detailed': True,
         }
 
         ia_config_reader = IaConfig(current_app.config.get('CONFIG_MODEL'))
@@ -1251,7 +1253,9 @@ class AssetGroupSighting(db.Model, HoustonModel):
         from app.modules.progress.models import Progress
 
         if self.progress_detection:
-            if not overwrite:
+            if overwrite:
+                self.progress_detection.cancel()
+            else:
                 log.warning(
                     'Asset Group Sighting %r already has a progress detection %r'
                     % (
@@ -1271,9 +1275,6 @@ class AssetGroupSighting(db.Model, HoustonModel):
             self.progress_detection_guid = progress.guid
             db.session.merge(self)
 
-        # Assign the parent's progress
-        self.asset_group.init_progress_detection()  # Ensure initialized
-
         if self.progress_detection and self.asset_group.progress_detection:
             with db.session.begin():
                 self.progress_detection.parent_guid = (
@@ -1287,7 +1288,9 @@ class AssetGroupSighting(db.Model, HoustonModel):
         from app.modules.progress.models import Progress
 
         if self.progress_identification:
-            if not overwrite:
+            if overwrite:
+                self.progress_identification.cancel()
+            else:
                 log.warning(
                     'Asset Group Sighting %r already has a progress identification %r'
                     % (
@@ -1308,9 +1311,6 @@ class AssetGroupSighting(db.Model, HoustonModel):
         with db.session.begin():
             self.progress_identification_guid = progress.guid
             db.session.merge(self)
-
-        # Assign the parent's progress
-        self.asset_group.init_progress_identification()  # Ensure initialized
 
         if self.progress_identification and self.asset_group.progress_identification:
             with db.session.begin():

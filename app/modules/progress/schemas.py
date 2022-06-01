@@ -4,6 +4,8 @@ Serialization schemas for Progress resources RESTful API
 ----------------------------------------------------
 """
 
+from flask_marshmallow import base_fields
+
 from flask_restx_patched import ModelSchema
 
 from .models import Progress
@@ -17,17 +19,8 @@ class BaseProgressSchema(ModelSchema):
     class Meta:
         # pylint: disable=missing-docstring
         model = Progress
-        fields = (Progress.guid.key,)
-        dump_only = (Progress.guid.key,)
-
-
-class DetailedProgressSchema(BaseProgressSchema):
-    """
-    Detailed Progress schema exposes all useful fields.
-    """
-
-    class Meta(BaseProgressSchema.Meta):
-        fields = BaseProgressSchema.Meta.fields + (
+        fields = (
+            Progress.guid.key,
             Progress.description.key,
             Progress.percentage.key,
             Progress.status.key,
@@ -40,14 +33,34 @@ class DetailedProgressSchema(BaseProgressSchema):
             'idle',
             'inactive',
             'ahead',
-            Progress.parent_guid.key,
             Progress.celery_guid.key,
             Progress.sage_guid.key,
             Progress.eta.key,
             Progress.created.key,
             Progress.updated.key,
         )
-        dump_only = BaseProgressSchema.Meta.dump_only + (
+        dump_only = (
+            Progress.guid.key,
+            Progress.celery_guid.key,
+            Progress.sage_guid.key,
             Progress.created.key,
             Progress.updated.key,
         )
+
+
+class DetailedProgressSchema(BaseProgressSchema):
+    """
+    Detailed Progress schema exposes all useful fields.
+    """
+
+    steps = base_fields.Nested(
+        BaseProgressSchema,
+        many=True,
+    )
+
+    class Meta(BaseProgressSchema.Meta):
+        fields = BaseProgressSchema.Meta.fields + (
+            Progress.parent_guid.key,
+            'steps',
+        )
+        dump_only = BaseProgressSchema.Meta.dump_only

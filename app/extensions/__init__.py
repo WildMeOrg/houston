@@ -49,6 +49,7 @@ force_instant_defaults()
 from flask_login import LoginManager  # NOQA
 
 login_manager = LoginManager()
+login_manager.login_view = 'frontend.user_login'
 ##########################################################################################
 # IMPORTANT: Do not uncomment the line below, it will break the oauth login management
 #            that is managed by @login_manager.request_loader

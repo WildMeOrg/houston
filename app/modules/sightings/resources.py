@@ -748,7 +748,17 @@ class SightingSageIdentified(Resource):
     )
     def post(self, sighting, job_guid):
         try:
-            sighting.identified(job_guid, json.loads(request.data))
+            # Don't expect the response to have the full JSON response, leads to errors in Sage that can't be handled
+            # sighting.identified(job_guid, json.loads(request.data))
+
+            # Instead, use the data we already have to fetch the result from Sage
+            from .tasks import fetch_sage_identification_result
+
+            promise = fetch_sage_identification_result.delay(
+                str(sighting.guid), str(job_guid)
+            )
+            log.info(f'Fetching Identification for Sighting:{sighting.guid} in celery')
+            return str(promise.id)
         except HoustonException as ex:
             abort(ex.status_code, ex.message, errorFields=ex.get_val('error', 'Error'))
 

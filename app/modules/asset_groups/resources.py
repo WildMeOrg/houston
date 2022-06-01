@@ -799,7 +799,19 @@ class AssetGroupSightingDetected(Resource):
     )
     def post(self, asset_group_sighting, job_guid):
         try:
-            asset_group_sighting.detected(job_guid, json.loads(request.data))
+            # Don't expect the response to have the full JSON response, leads to errors in Sage that can't be handled
+            # asset_group_sighting.detected(job_guid, json.loads(request.data))
+
+            # Instead, use the data we already have to fetch the result from Sage
+            from .tasks import fetch_sage_detection_result
+
+            promise = fetch_sage_detection_result.delay(
+                str(asset_group_sighting.guid), str(job_guid)
+            )
+            log.info(
+                f'Fetching Detection for Asset Group Sighting:{asset_group_sighting.guid} in celery'
+            )
+            return str(promise.id)
         except HoustonException as ex:
             log.exception(f'sage_detected error: {request.data}')
             abort(ex.status_code, ex.message, errorFields=ex.get_val('error', 'Error'))

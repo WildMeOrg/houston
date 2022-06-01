@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 import logging
 
+from flask import current_app
+
 from app.extensions.celery import celery
 
 log = logging.getLogger(__name__)
@@ -50,3 +52,26 @@ def send_all_identification(sighting_guid):
         log.warning(
             f'Failed to find the sighting {sighting_guid} to perform Identification on'
         )
+
+
+@celery.task
+def fetch_sage_identification_result(sighting_guid, job_id):
+    from app.modules.sightings.models import Sighting
+
+    sighting = Sighting.query.get(sighting_guid)
+    if sighting:
+        try:
+            response = current_app.sage.request_passthrough_result(
+                'engine.result',
+                'get',
+                target='default',
+                args=job_id,
+            )
+        except Exception:
+            log.warning(
+                f'Failed to fetch the Sage identification result with job_id {job_id}'
+            )
+            return
+        sighting.identified(job_id, response)
+    else:
+        log.warning(f'Failed to find the sighting {sighting_guid}')

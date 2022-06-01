@@ -5,8 +5,8 @@ from flask import current_app
 
 from app.extensions.celery import celery
 
-# SAGE_SYNC_FREQUENCY = 60 * 60
-SAGE_SYNC_FREQUENCY = None
+SAGE_DATA_SYNC_FREQUENCY = 60 * 60
+SAGE_JOBS_SYNC_FREQUENCY = 60 * 5
 
 
 log = logging.getLogger(__name__)
@@ -14,16 +14,22 @@ log = logging.getLogger(__name__)
 
 @celery.on_after_configure.connect
 def sage_task_setup_periodic_tasks(sender, **kwargs):
-    if SAGE_SYNC_FREQUENCY is not None:
+    if SAGE_DATA_SYNC_FREQUENCY is not None:
         sender.add_periodic_task(
-            SAGE_SYNC_FREQUENCY,
-            sage_task_sync.s(),
-            name='Sync and Prune Sage',
+            SAGE_DATA_SYNC_FREQUENCY,
+            sage_task_data_sync.s(),
+            name='Sync and Prune Sage Data',
+        )
+    if SAGE_JOBS_SYNC_FREQUENCY is not None:
+        sender.add_periodic_task(
+            SAGE_JOBS_SYNC_FREQUENCY,
+            sage_task_jobs_sync.s(),
+            name='Sync and Fetch Sage Jobs',
         )
 
 
 @celery.task
-def sage_task_sync():
+def sage_task_data_sync():
     from app.modules.annotations.models import Annotation
     from app.modules.assets.models import Asset
 
@@ -33,8 +39,11 @@ def sage_task_sync():
     # Sync all Annotations
     Annotation.sync_all_with_sage(ensure=True, prune=True)
 
-    # Sync all job results
-    current_app.sage.sync_jobs()
-
     # Get status of Sage
     current_app.sage.get_status()
+
+
+@celery.task
+def sage_task_jobs_sync():
+    # Sync all job results
+    current_app.sage.sync_jobs()

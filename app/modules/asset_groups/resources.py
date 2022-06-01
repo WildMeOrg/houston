@@ -10,7 +10,7 @@ import logging
 import uuid
 
 import werkzeug
-from flask import current_app, request
+from flask import request
 
 from app.extensions import db
 from app.extensions.api import Namespace, abort
@@ -803,14 +803,11 @@ class AssetGroupSightingDetected(Resource):
             # asset_group_sighting.detected(job_guid, json.loads(request.data))
 
             # Instead, use the data we already have to fetch the result from Sage
-            job_id = str(job_guid)
-            response = current_app.sage.request_passthrough_result(
-                'engine.result',
-                'get',
-                target='default',
-                args=job_id,
-            )
-            asset_group_sighting.detected(job_id, response)
+            from .tasks import fetch_sage_detection_result
+
+            promise = fetch_sage_detection_result.delay(str(self.guid), str(job_guid))
+            log.info(f'Fetching Detection for Asset Group:{self.guid} in celery')
+            return str(promise.id)
         except HoustonException as ex:
             log.exception(f'sage_detected error: {request.data}')
             abort(ex.status_code, ex.message, errorFields=ex.get_val('error', 'Error'))

@@ -752,14 +752,13 @@ class SightingSageIdentified(Resource):
             # sighting.identified(job_guid, json.loads(request.data))
 
             # Instead, use the data we already have to fetch the result from Sage
-            job_id = str(job_guid)
-            response = current_app.sage.request_passthrough_result(
-                'engine.result',
-                'get',
-                target='default',
-                args=job_id,
+            from .tasks import fetch_sage_identification_result
+
+            promise = fetch_sage_identification_result.delay(
+                str(self.guid), str(job_guid)
             )
-            sighting.identified(job_id, response)
+            log.info(f'Fetching Identification for Sighting:{self.guid} in celery')
+            return str(promise.id)
         except HoustonException as ex:
             abort(ex.status_code, ex.message, errorFields=ex.get_val('error', 'Error'))
 

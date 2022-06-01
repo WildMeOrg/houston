@@ -168,7 +168,7 @@ def user_login(email=None, password=None, remember=None, refer=None, *args, **kw
     return flask.redirect(redirect)
 
 
-@backend_blueprint.route('/logout', methods=['GET'])
+@backend_blueprint.route('/logout', methods=['GET', 'POST'])
 @frontend_blueprint.route('/logout', methods=['GET', 'POST'])
 @login_required
 def user_logout(refer=None, *args, **kwargs):

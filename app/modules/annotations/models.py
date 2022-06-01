@@ -365,9 +365,6 @@ class Annotation(db.Model, HoustonModel, SageModel):
         log.info(
             f'annot.get_matching_set(): finding matching set for {self} using (resolved) query {query} => {len(matching_set)} annots'
         )
-
-        Annotation.sync_all_with_sage(ensure=True)
-
         return matching_set
 
     def get_matching_set_default_query(self):

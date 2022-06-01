@@ -28,6 +28,7 @@ def test_user_deactivation(session, codex_url, login, logout, admin_email):
     assert '@deactivated' in response.json()['email']
     assert response.json()['full_name'] == 'Inactivated User'
     logout(session)
+    logout(session)
 
     # Unable to sign up as a new user with the same email address
     response = session.post(

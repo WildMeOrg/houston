@@ -1318,6 +1318,7 @@ class Sighting(db.Model, FeatherModel):
                         if annotation.progress_identification:
                             annotation.progress_identification.set(10)
 
+                        if annotation.progress_identification:
                             with db.session.begin(subtransactions=True):
                                 annotation.progress_identification.sage_guid = sage_guid
                                 db.session.merge(annotation.progress_identification)

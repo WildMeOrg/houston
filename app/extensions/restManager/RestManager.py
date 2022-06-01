@@ -313,9 +313,12 @@ class RestManager(RestManagerUserMixin):
             )
 
         if verbose:
+            passthrough_kwargs_json = json.dumps(passthrough_kwargs)
+            length = len(passthrough_kwargs_json)
             log.info(
-                f'{self.NAME} {method} of {endpoint_encoded} sent {passthrough_kwargs} took {timer.elapsed()} seconds'
+                f'{self.NAME} {method} of {endpoint_encoded} sent {length} characters took {timer.elapsed()} seconds'
             )
+            log.debug(f'{self.NAME} sent data {passthrough_kwargs}')
         return response
 
     def get_list(self, list_name, target='default'):

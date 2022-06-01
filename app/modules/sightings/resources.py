@@ -755,9 +755,9 @@ class SightingSageIdentified(Resource):
             from .tasks import fetch_sage_identification_result
 
             promise = fetch_sage_identification_result.delay(
-                str(self.guid), str(job_guid)
+                str(sighting.guid), str(job_guid)
             )
-            log.info(f'Fetching Identification for Sighting:{self.guid} in celery')
+            log.info(f'Fetching Identification for Sighting:{sighting.guid} in celery')
             return str(promise.id)
         except HoustonException as ex:
             abort(ex.status_code, ex.message, errorFields=ex.get_val('error', 'Error'))

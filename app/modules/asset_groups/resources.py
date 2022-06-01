@@ -805,8 +805,12 @@ class AssetGroupSightingDetected(Resource):
             # Instead, use the data we already have to fetch the result from Sage
             from .tasks import fetch_sage_detection_result
 
-            promise = fetch_sage_detection_result.delay(str(self.guid), str(job_guid))
-            log.info(f'Fetching Detection for Asset Group:{self.guid} in celery')
+            promise = fetch_sage_detection_result.delay(
+                str(asset_group_sighting.guid), str(job_guid)
+            )
+            log.info(
+                f'Fetching Detection for Asset Group Sighting:{asset_group_sighting.guid} in celery'
+            )
             return str(promise.id)
         except HoustonException as ex:
             log.exception(f'sage_detected error: {request.data}')

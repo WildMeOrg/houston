@@ -1251,7 +1251,9 @@ class AssetGroupSighting(db.Model, HoustonModel):
         from app.modules.progress.models import Progress
 
         if self.progress_detection:
-            if not overwrite:
+            if overwrite:
+                self.progress_detection.cancel()
+            else:
                 log.warning(
                     'Asset Group Sighting %r already has a progress detection %r'
                     % (
@@ -1271,9 +1273,6 @@ class AssetGroupSighting(db.Model, HoustonModel):
             self.progress_detection_guid = progress.guid
             db.session.merge(self)
 
-        # Assign the parent's progress
-        self.asset_group.init_progress_detection()  # Ensure initialized
-
         if self.progress_detection and self.asset_group.progress_detection:
             with db.session.begin():
                 self.progress_detection.parent_guid = (
@@ -1287,7 +1286,9 @@ class AssetGroupSighting(db.Model, HoustonModel):
         from app.modules.progress.models import Progress
 
         if self.progress_identification:
-            if not overwrite:
+            if overwrite:
+                self.progress_identification.cancel()
+            else:
                 log.warning(
                     'Asset Group Sighting %r already has a progress identification %r'
                     % (
@@ -1308,9 +1309,6 @@ class AssetGroupSighting(db.Model, HoustonModel):
         with db.session.begin():
             self.progress_identification_guid = progress.guid
             db.session.merge(self)
-
-        # Assign the parent's progress
-        self.asset_group.init_progress_identification()  # Ensure initialized
 
         if self.progress_identification and self.asset_group.progress_identification:
             with db.session.begin():

@@ -324,6 +324,10 @@ class Progress(db.Model, Timestamp):
 
         step = Progress.query.get(step_guid)
 
+        if not step:
+            # The step was deleted
+            return
+
         try:
             if step.skipped:
                 self.iterate(chain=chain)

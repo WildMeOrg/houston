@@ -243,7 +243,9 @@ class Sighting(db.Model, FeatherModel):
         from app.modules.progress.models import Progress
 
         if self.progress_identification:
-            if not overwrite:
+            if overwrite:
+                self.progress_identification.cancel()
+            else:
                 log.warning(
                     'Sighting %r already has a progress identification %r'
                     % (
@@ -1125,15 +1127,21 @@ class Sighting(db.Model, FeatherModel):
         # Once we support multiple IA configs and algorithms, the number of jobs is going to grow....rapidly
         #  also: once we have > 1 config, some annot-level checks will be redundant (e.g. matching_set) so may
         #    require a rethink on how these loops are nested
-        for (annotation_guid,) in (
+        annotation_guids = (
             Annotation.query.join(Annotation.encounter)
             .join(Encounter.sighting)
             .filter(Sighting.guid == sighting_guid)
             .values(Annotation.guid)
-        ):
+        )
+        annotation_guids = sorted(
+            {annotation_guid[0] for annotation_guid in annotation_guids}
+        )
+        for annotation_guid in annotation_guids:
             annot = Annotation.query.get(annotation_guid)
 
-            annot.init_progress_identification(parent=self.progress_identification)
+            annot.init_progress_identification(
+                parent=self.progress_identification, overwrite=True
+            )
 
             if annot.progress_identification:
                 # Set the status to healthy and 0%
@@ -1735,6 +1743,8 @@ class Sighting(db.Model, FeatherModel):
                 assert len(config['algorithms']) == 1
 
     def ia_pipeline(self, foreground=None):
+
+        self.init_progress_identification()
 
         if foreground is None:
             foreground = current_app.testing

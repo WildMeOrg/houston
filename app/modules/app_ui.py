@@ -41,7 +41,7 @@ def init_app(app):
 
 
 @frontend_blueprint.route('/', endpoint='root')
-@frontend_blueprint.route('/login', endpoint='login')
+@frontend_blueprint.route('/login', endpoint='user_login')
 @frontend_blueprint.route('/auth/code/<string:code>', endpoint='auth-code')
 @frontend_blueprint.route(
     '/pending-sightings/<string:guid>', endpoint='pending-sightings'
@@ -168,14 +168,27 @@ def user_login(email=None, password=None, remember=None, refer=None, *args, **kw
     return flask.redirect(redirect)
 
 
-@backend_blueprint.route('/logout', methods=['GET', 'POST'])
 @frontend_blueprint.route('/logout', methods=['GET', 'POST'])
 @login_required
-def user_logout(refer=None, *args, **kwargs):
+def user_logout_frontend(refer=None, *args, **kwargs):
     # pylint: disable=unused-argument
     """
     This endpoint is the landing page for the logged-in user
     """
+    return user_logout_shared('frontend.user_login', refer=refer, *args, **kwargs)
+
+
+@backend_blueprint.route('/logout', methods=['GET', 'POST'])
+@login_required
+def user_logout_backend(refer=None, *args, **kwargs):
+    # pylint: disable=unused-argument
+    """
+    This endpoint is the landing page for the logged-in user
+    """
+    return user_logout_shared('backend.user_login', refer=refer, *args, **kwargs)
+
+
+def user_logout_shared(default_redirect, refer=None, *args, **kwargs):
     if refer is None:
         refer = flask.request.args.get('next', request.form.get('next', None))
 
@@ -197,7 +210,7 @@ def user_logout(refer=None, *args, **kwargs):
     flash('You were successfully logged out.', 'warning')
 
     if refer is None:
-        redirect = url_for('backend.home')
+        redirect = url_for(default_redirect)
     else:
         redirect = refer
 

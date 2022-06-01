@@ -748,7 +748,18 @@ class SightingSageIdentified(Resource):
     )
     def post(self, sighting, job_guid):
         try:
-            sighting.identified(job_guid, json.loads(request.data))
+            # Don't expect the response to have the full JSON response, leads to errors in Sage that can't be handled
+            # sighting.identified(job_guid, json.loads(request.data))
+
+            # Instead, use the data we already have to fetch the result from Sage
+            job_id = str(job_guid)
+            response = current_app.sage.request_passthrough_result(
+                'engine.result',
+                'get',
+                target='default',
+                args=job_id,
+            )
+            sighting.identified(job_id, response)
         except HoustonException as ex:
             abort(ex.status_code, ex.message, errorFields=ex.get_val('error', 'Error'))
 

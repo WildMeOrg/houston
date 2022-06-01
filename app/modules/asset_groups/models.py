@@ -869,7 +869,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
         model_config = {
             'jobid': str(job_uuid),
             'callback_url': f'houston+{callback_url}',
-            'callback_detailed': True,
+            # 'callback_detailed': True,
         }
 
         ia_config_reader = IaConfig(current_app.config.get('CONFIG_MODEL'))

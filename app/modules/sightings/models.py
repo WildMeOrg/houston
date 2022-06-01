@@ -1102,7 +1102,7 @@ class Sighting(db.Model, FeatherModel):
         id_request = {
             'jobid': str(job_uuid),
             'callback_url': f'houston+{callback_url}',
-            'callback_detailed': True,
+            # 'callback_detailed': True,
             'matching_state_list': [],
             'query_annot_name_list': [SAGE_UNKNOWN_NAME],
             'query_annot_uuid_list': [
@@ -1117,7 +1117,7 @@ class Sighting(db.Model, FeatherModel):
         return id_request
 
     def send_all_identification(self):
-        self.init_progress_identification(overwrite=True)
+        self.init_progress_identification()
 
         sighting_guid = str(self.guid)
         num_jobs = 0

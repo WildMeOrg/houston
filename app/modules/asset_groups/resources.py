@@ -10,7 +10,7 @@ import logging
 import uuid
 
 import werkzeug
-from flask import request
+from flask import current_app, request
 
 from app.extensions import db
 from app.extensions.api import Namespace, abort
@@ -799,7 +799,18 @@ class AssetGroupSightingDetected(Resource):
     )
     def post(self, asset_group_sighting, job_guid):
         try:
-            asset_group_sighting.detected(job_guid, json.loads(request.data))
+            # Don't expect the response to have the full JSON response, leads to errors in Sage that can't be handled
+            # asset_group_sighting.detected(job_guid, json.loads(request.data))
+
+            # Instead, use the data we already have to fetch the result from Sage
+            job_id = str(job_guid)
+            response = current_app.sage.request_passthrough_result(
+                'engine.result',
+                'get',
+                target='default',
+                args=job_id,
+            )
+            asset_group_sighting.detected(job_id, response)
         except HoustonException as ex:
             log.exception(f'sage_detected error: {request.data}')
             abort(ex.status_code, ex.message, errorFields=ex.get_val('error', 'Error'))

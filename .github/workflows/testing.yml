@@ -145,3 +145,9 @@ jobs:
           files: ./_coverage/coverage.xml
           env_vars: OS,PYTHON,TEST_DATABASE_URI
           fail_ci_if_error: true
+
+      - name: Show docker-compose logs if failed
+        if: failure()
+        run: |
+          docker-compose logs --tail=250
+          docker-compose ps

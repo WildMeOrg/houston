@@ -25,6 +25,7 @@ class SiteSetting(db.Model, Timestamp):
     }
     EDM_PREFIX = 'site.'
 
+    # public=False means the setting is only used in the backend
     HOUSTON_SETTINGS = {
         'email_service': {
             'type': str,
@@ -63,21 +64,21 @@ class SiteSetting(db.Model, Timestamp):
         },
         'email_header_image_url': {
             'type': str,
-            'public': True,
+            'public': False,
         },
         'email_title_greeting': {
             'type': str,
-            'public': True,
+            'public': False,
             'default': 'Hello!',
         },
         'email_secondary_title': {
             'type': str,
-            'public': True,
+            'public': False,
             'default': 'Codex for everyone!',
         },
         'email_secondary_text': {
             'type': list,
-            'public': True,
+            'public': False,
             'default': [
                 'Can you help researchers study and protect animals?',
                 'Wild Me is a 501(c)(3) non-profit that develops the cutting edge technology for a global community of wildlife researchers. Are you interested in further supporting our mission?',
@@ -85,12 +86,12 @@ class SiteSetting(db.Model, Timestamp):
         },
         'email_adoption_button_text': {
             'type': str,
-            'public': True,
+            'public': False,
             'default': 'Adopt an animal',
         },
         'email_legal_statement': {
             'type': str,
-            'public': True,
+            'public': False,
             'default': 'Wildbook is copyrighted 2022 by Wild Me.  Individual contributors to Wildbook retain copyrights for submitted images. No reproduction or usage of material in this library is permitted without the express permission of the copyright holders.',
         },
         'social_group_roles': {'type': list, 'public': True},
@@ -116,38 +117,33 @@ class SiteSetting(db.Model, Timestamp):
         'transloaditKey': {
             'type': str,
             'public': False,
-            'default': '',
-            'isApiKey': True,
+            'default': lambda: current_app.config.get('TRANSLOADIT_KEY'),
         },
         'transloaditTemplateId': {
             'type': str,
             'public': False,
-            'default': '',
-            'isApiKey': True,
+            'default': lambda: current_app.config.get('TRANSLOADIT_TEMPLATE_ID'),
         },
         'transloaditService': {
             'type': str,
             'public': False,
-            'default': '',
-            'isApiKey': True,
+            'default': lambda: current_app.config.get('TRANSLOADIT_SERVICE'),
         },
         'googleMapsApiKey': {
             'type': str,
-            'public': False,
-            'default': '',
-            'isApiKey': True,
+            'public': True,
+            'default': lambda: current_app.config.get('GOOGLE_MAPS_API_KEY'),
         },
         'sentryDsn': {
             'type': str,
-            'public': False,
-            'default': '',
-            'isApiKey': True,
+            'public': True,
+            'default': lambda: current_app.config.get('SENTRY_DSN'),
         },
         'flatfileKey': {
             'type': str,
-            'public': False,
-            'default': '',
-            'isApiKey': True,
+            'public': True,
+            'permission': lambda: not current_user.is_anonymous,
+            'default': lambda: current_app.config.get('FLATFILE_KEY'),
         },
         'recaptchaPublicKey': {
             'type': str,
@@ -421,13 +417,6 @@ class SiteSetting(db.Model, Timestamp):
             return cls._get_default_value(key)
         return setting.boolean if setting else default
 
-    @classmethod
-    def get_apikeys_json(cls):
-        json_response = {}
-        for key in cls.HOUSTON_SETTINGS.keys():
-            if cls.HOUSTON_SETTINGS[key].get('isApiKey', False):
-                json_response[key] = cls.get_value(key)
-
     # a bit of hackery.  right now *all* keys in edm-configuration are of the form `site.foo` so we use
     #   as a way branch on _where_ to get the value to return here.  but as we ween ourselves off edm config,
     #   either gradually or forklift, this can be extended to allow that
@@ -456,6 +445,14 @@ class SiteSetting(db.Model, Timestamp):
         elif setting.boolean is not None:
             return setting.boolean
         return setting.string
+
+    @classmethod
+    def get_houston_settings_for_current_user(cls):
+        is_admin = getattr(current_user, 'is_admin', False)
+        for key, type_def in SiteSetting.HOUSTON_SETTINGS.items():
+            permission = type_def.get('permission', lambda: True)()
+            if is_admin or type_def.get('public', True) and permission:
+                yield key, type_def
 
     # MainConfiguration and MainConfigurationDefinition resources code needs to behave differently if it's
     # accessing a block of data or a single value, so have one place that does this check

@@ -12,7 +12,7 @@ from tests.utils import extension_unavailable, module_unavailable
 @pytest.mark.skipif(
     module_unavailable('site_settings'), reason='Site-settings module disabled'
 )
-def test_read_site_settings(flask_app_client, researcher_1):
+def test_read_edm_site_settings(flask_app_client, researcher_1):
     # pylint: disable=invalid-name
     test_key = 'site.name'
     response = conf_utils.read_main_settings(flask_app_client, researcher_1, test_key)
@@ -69,7 +69,7 @@ def test_read_site_settings(flask_app_client, researcher_1):
 @pytest.mark.skipif(
     module_unavailable('site_settings'), reason='Site-settings module disabled'
 )
-def test_alter_settings(flask_app_client, admin_user):
+def test_alter_edm_settings(flask_app_client, admin_user):
     response = conf_utils.read_main_settings(flask_app_client, admin_user, 'site.species')
     assert 'value' in response.json['response']
     vals = response.json['response']['value']
@@ -94,7 +94,7 @@ def test_alter_settings(flask_app_client, admin_user):
 
 
 @pytest.mark.skipif(extension_unavailable('edm'), reason='EDM extension disabled')
-def test_alter_custom_fields(flask_app_client, admin_user):
+def test_alter_edm_custom_fields(flask_app_client, admin_user):
 
     categories = conf_utils.read_main_settings(
         flask_app_client, admin_user, 'site.custom.customFieldCategories'
@@ -224,6 +224,9 @@ def test_alter_custom_fields(flask_app_client, admin_user):
     assert second['id'] not in def_ids
 
 
+@pytest.mark.skipif(
+    module_unavailable('site_settings'), reason='Site-settings module disabled'
+)
 def test_dict_write(flask_app_client, admin_user):
     # Create json site setting
     data = [
@@ -240,7 +243,6 @@ def test_dict_write(flask_app_client, admin_user):
     conf_utils.delete_main_setting(flask_app_client, admin_user, 'social_group_roles')
 
 
-@pytest.mark.skipif(extension_unavailable('edm'), reason='EDM extension disabled')
 @pytest.mark.skipif(
     module_unavailable('site_settings'), reason='Site-settings module disabled'
 )

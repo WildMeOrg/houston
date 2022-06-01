@@ -277,13 +277,14 @@ class MainConfiguration(Resource):
             }
             return data
 
+        data = {'success': True, 'response': {'configuration': {}}}
         if is_extension_enabled('edm'):
             data = SiteSetting.get_edm_configuration_as_edm_format(
                 'configuration.data', path
             )
-        else:
+        elif SiteSetting.is_edm_key(path):
             # If tried to set EDM value and we have no EDM, it's a failure
-            data = {'success': False, 'response': {'configuration': {}}}
+            data['success'] = False
 
         user_is_admin = (
             current_user is not None
@@ -306,10 +307,9 @@ class MainConfiguration(Resource):
                     )
             data['response']['configuration']['site.images'] = ss_json
 
-            for key, type_def in SiteSetting.HOUSTON_SETTINGS.items():
+            for key, type_def in SiteSetting.get_houston_settings_for_current_user():
                 key_data = SiteSetting.get_as_edm_format(key)
-                if user_is_admin or type_def.get('public', True):
-                    data['response']['configuration'][key] = key_data
+                data['response']['configuration'][key] = key_data
         elif (
             'response' in data
             and data['response'].get('private', False)
@@ -348,6 +348,8 @@ class MainConfiguration(Resource):
         try:
             if path == '' or path == 'block':  # posting a bundle (no path)
                 success_ss_keys = _process_houston_data(data)
+                if not data:  # All keys processed
+                    return {'success': True, 'updated': success_ss_keys}
             elif path in SiteSetting.get_setting_keys():
                 if '_value' not in data.keys():
                     abort(400, 'Need _value as the key in the data setting')
@@ -558,17 +560,3 @@ class TestSettings(Resource):
             return res
 
         abort(400, 'Invalid test')
-
-
-# The apiKeys for the frontend to read
-@api.route('/apiKeys')
-class ApiKeySettings(Resource):
-    @api.permission_required(
-        permissions.ModuleAccessPermission,
-        kwargs_on_request=lambda kwargs: {
-            'module': SiteSetting,
-            'action': AccessOperation.READ,
-        },
-    )
-    def get(self):
-        return SiteSetting.get_apikeys_json()

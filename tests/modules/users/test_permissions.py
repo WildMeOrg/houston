@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=invalid-name,missing-docstring
+from unittest.mock import Mock, patch
+
 import pytest
-from mock import Mock, patch
 from werkzeug.exceptions import HTTPException
 
 import tests.utils as test_utils

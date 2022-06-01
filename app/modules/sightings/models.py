@@ -1490,9 +1490,8 @@ class Sighting(db.Model, FeatherModel):
             job_id_str = str(job_id)
             if job_id_str not in self.jobs:
                 raise HoustonException(log, f'job_id {job_id_str} not found', obj=self)
-            job = self.jobs[job_id_str]
-            algorithm = job['algorithm']
-            annot_guid = job['annotation']
+            algorithm = self.jobs[job_id_str]['algorithm']
+            annot_guid = self.jobs[job_id_str]['annotation']
             debug_context = (
                 f'Sighting:{self.guid}, Annot:{annot_guid}, algorithm:{algorithm}'
             )

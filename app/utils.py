@@ -131,6 +131,7 @@ def normalized_timezone_string(dt):
 
 
 # converts string like 'Wed, 25 May 2022 00:16:42 GMT' which is what datetime is stringified as
+#   we make assumption here that utcnow() is being used to create datetime, so please always do that
 def datetime_string_to_isoformat(dts):
     import re
     from datetime import datetime
@@ -139,8 +140,12 @@ def datetime_string_to_isoformat(dts):
         return None
 
     # if are already in isoformat, just return
-    if re.match(r'^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}', dts):
+    # has timezone:
+    if re.match(r'^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[.0-9]*[\+\-Z].*', dts):
         return dts
+    # no timezone:
+    if re.match(r'^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[.0-9]*', dts):
+        return dts + 'Z'
 
     try:
         d = datetime.strptime(dts, '%a, %d %b %Y %H:%M:%S %Z')

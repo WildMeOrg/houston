@@ -301,6 +301,8 @@ class SiteSetting(db.Model, Timestamp):
             return default_value
         if cls.HOUSTON_SETTINGS[key]['type'] == dict:
             def_val = {}
+        if cls.HOUSTON_SETTINGS[key]['type'] == bool:
+            def_val = False
         return def_val
 
     @classmethod

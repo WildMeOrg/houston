@@ -140,9 +140,11 @@ def datetime_string_to_isoformat(dts):
         return None
 
     # if are already in isoformat, just return
-    if re.match(r'^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}.*[\+\-Z][\w:]*$', dts):  # has timezone
+    # has timezone:
+    if re.match(r'^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[.0-9]*[\+\-Z].*', dts):
         return dts
-    if re.match(r'^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}', dts):  # no timezone
+    # no timezone:
+    if re.match(r'^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[.0-9]*', dts):
         return dts + 'Z'
 
     try:

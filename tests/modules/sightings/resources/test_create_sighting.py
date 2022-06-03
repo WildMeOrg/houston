@@ -662,3 +662,27 @@ def test_create_sighting_time_test(
     assert test_sight.time.timezone == 'UTC+0300'
     assert test_sight.time.specificity == Specificities.day
     assert test_sight.time.isoformat_in_timezone() == sighting_data['time']
+
+
+@pytest.mark.skipif(module_unavailable('sightings'), reason='Sightings module disabled')
+def test_data_manager(
+    db, flask_app_client, researcher_1, test_root, data_manager_1, request
+):
+    from app.modules.sightings.models import Sighting
+
+    data_in = {
+        'encounters': [{}],
+        'time': timestamp,
+        'timeSpecificity': 'time',
+        'locationId': 'test',
+    }
+    uuids = sighting_utils.create_sighting(
+        flask_app_client, researcher_1, request, test_root, data_in
+    )
+
+    sighting_id = uuids['sighting']
+    sighting = Sighting.query.get(sighting_id)
+    assert sighting is not None
+
+    sighting_utils.read_sighting(flask_app_client, data_manager_1, sighting_id)
+    sighting_utils.delete_sighting(flask_app_client, data_manager_1, sighting_id)

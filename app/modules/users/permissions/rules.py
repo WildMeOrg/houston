@@ -106,6 +106,7 @@ OBJECT_USER_MAP = {
     ('Sighting', AccessOperation.READ_PRIVILEGED): ['is_staff'],
     ('Sighting', AccessOperation.READ): ['is_staff', 'is_data_manager'],
     ('Sighting', AccessOperation.WRITE): ['is_staff', 'is_data_manager'],
+    ('Sighting', AccessOperation.DELETE): ['is_staff', 'is_data_manager'],
     ('SocialGroup', AccessOperation.READ): ['is_researcher'],
     ('SocialGroup', AccessOperation.WRITE): ['is_researcher'],
     ('SocialGroup', AccessOperation.DELETE): ['is_researcher'],

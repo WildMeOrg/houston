@@ -393,6 +393,9 @@ class Annotation(db.Model, HoustonModel, SageModel):
         if tx_guid:
             parts['filter'].append({'match': {'taxonomy_guid': tx_guid}})
 
+        # requiring an encounter is equivalent to requiring a sighting, which seems reasonable (see DEX-1027)
+        parts['filter'].append({'exists': {'field': 'encounter_guid'}})
+
         if self.encounter_guid:
             parts['must_not'] = {'match': {'encounter_guid': str(self.encounter_guid)}}
 
@@ -425,6 +428,8 @@ class Annotation(db.Model, HoustonModel, SageModel):
         # (going with the theory that if these are *redundant* its not a big deal to ES.)
         # we MUST have a content_guid
         query['bool']['filter'].append({'exists': {'field': 'content_guid'}})
+        # requiring an encounter is equivalent to requiring a sighting, which seems reasonable (see DEX-1027)
+        query['bool']['filter'].append({'exists': {'field': 'encounter_guid'}})
         return query
 
     # first tries encounter fields, but will use field on sighting if none on encounter,

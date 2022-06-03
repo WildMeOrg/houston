@@ -425,9 +425,6 @@ class Annotation(db.Model, HoustonModel, SageModel):
             query['bool']['must_not'] = {
                 'match': {'encounter_guid': str(self.encounter_guid)}
             }
-        # (going with the theory that if these are *redundant* its not a big deal to ES.)
-        # we MUST have a content_guid
-        query['bool']['filter'].append({'exists': {'field': 'content_guid'}})
         # requiring an encounter is equivalent to requiring a sighting, which seems reasonable (see DEX-1027)
         query['bool']['filter'].append({'exists': {'field': 'encounter_guid'}})
         return query

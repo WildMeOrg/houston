@@ -1592,9 +1592,14 @@ class Sighting(db.Model, FeatherModel):
 
     # Helper to ensure that the required annot and individual data is present
     def _ensure_annot_data_in_response(self, annot, response):
+        # encounterless annotations are Bad (or likely leaked in from uncommitted ags)
+        #   so we dont report them as results.  see DEX-1027
+        if not annot.encounter:
+            log.warning(f'id_result for {self} skipping encounterless {annot}')
+            return
 
         # will populate individual_first_name in next block to save a database hit
-        individual_guid = annot.encounter.individual_guid if annot.encounter else None
+        individual_guid = annot.encounter.individual_guid
         individual = Individual.query.get(individual_guid) if individual_guid else None
 
         if annot.guid not in response['annotation_data'].keys():

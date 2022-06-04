@@ -763,12 +763,12 @@ class AssetGroupSighting(db.Model, HoustonModel):
             return status
 
         # curation has completed if we have a sighting
-        if self.sighting:
+        if len(self.sighting) > 0:
             status['complete'] = True
             status['progress'] = 1
             status['stepsComplete'] = 1
             status['steps'] = 1
-            status['end'] = self.sighting.created.isoformat() + 'Z'
+            status['end'] = self.sighting[0].created.isoformat() + 'Z'
             return status
 
         # i think curation cannot fail, so the only thing left is to be inProgress

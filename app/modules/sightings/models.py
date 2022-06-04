@@ -505,10 +505,13 @@ class Sighting(db.Model, FeatherModel):
             'summary': {},
         }
         status['summary']['complete'] = (
-            status['preparation']['complete']
-            and status['detection']['complete']
-            and status['curation']['complete']
-            and status['identification']['complete']
+            (status['preparation']['complete'] or status['preparation']['skipped'])
+            and (status['detection']['complete'] or status['detection']['skipped'])
+            and (status['curation']['complete'] or status['curation']['skipped'])
+            and (
+                status['identification']['complete']
+                or status['identification']['skipped']
+            )
         )
         # this is not the best math, but prob best we can do
         status['summary']['progress'] = (
@@ -524,20 +527,22 @@ class Sighting(db.Model, FeatherModel):
     def _get_pipeline_status_preparation(self):
         if self.asset_group_sighting:
             return self.asset_group_sighting._get_pipeline_status_preparation()
-        # migration "approximation"
+        # migration means faking preparation complete
         status = {
             'skipped': False,
-            'start': None,
-            'end': None,
-            'message': None,
             'inProgress': False,
-            'complete': True,
             'failed': False,
+            'complete': True,
+            'message': 'migrated data; fabricated status',
+            'steps': 0,
+            'stepsComplete': 0,
+            'progress': 1,
+            'start': self.created.isoformat() + 'Z',
+            'end': self.created.isoformat() + 'Z',
             'eta': None,
             'ahead': None,
-            'steps': 1,
-            'stepsComplete': 1,
-            'progress': 1.0,
+            'status': None,
+            'description': None,
         }
         return status
 
@@ -547,198 +552,133 @@ class Sighting(db.Model, FeatherModel):
         if self.asset_group_sighting:
             return self.asset_group_sighting._get_pipeline_status_detection()
 
-        # this should/must mimic asset_group_sighting in terms of fields listed
-        #   so keep in sync with that
+        # for migrated data we *assume* detection was run and completed
+        #   we may want to revisit this later if this leads to weirdness
         status = {
             'skipped': False,
-            'start': None,
-            'end': None,
             'inProgress': False,
-            'complete': True,  # just going to assume it ran
             'failed': False,
-            'message': None,
+            'complete': True,
+            'message': 'migrated data; fabricated status',
+            'steps': 0,
+            'stepsComplete': 0,
+            'progress': 1,
+            'start': self.created.isoformat() + 'Z',
+            'end': self.created.isoformat() + 'Z',
             'eta': None,
             'ahead': None,
-            'numModels': 1,  # seems true for migration
-            'jobs': None,
-            'numJobs': None,
-            'numJobsActive': None,
-            'numJobsFailed': None,
-            'numAttempts': None,
-            'numAttemptsMax': None,
-            'numAssets': len(self.get_encounter_assets()),
-            'numAnnotations': len(self.get_annotations()),
-            'steps': 1,
-            'stepsComplete': 1,
-            'progress': 1.0,
-            '_note': 'migrated sighting; detection status fabricated',
+            'status': None,
+            'description': None,
         }
         return status
 
     def _get_pipeline_status_curation(self):
-
         if self.asset_group_sighting:
             status = self.asset_group_sighting._get_pipeline_status_curation()
+            # the fact that we are in a sighting means curation is finished
+            #    and this means it can only be skipped or complete
+            #    so we "repair" the AGS-provided status if it says otherwise
+            if not status['skipped'] and not status['complete']:
+                status['complete'] = True
+                status['skipped'] = False
+                status['failed'] = False
+                status['inProgress'] = False
+                status['progress'] = 1
+                status[
+                    '_note'
+                ] = 'repaired a questionable AssetGroupSighting curation status'
+            # and we need something for these, so....
+            if status['complete'] and not status['start']:
+                status['start'] = (self.created.isoformat() + 'Z',)
+            if status['complete'] and not status['end']:
+                status['end'] = (self.created.isoformat() + 'Z',)
+
         else:
             status = {
-                '_note': 'migrated sighting; curation status fabricated',
                 'skipped': False,
-                'start': None,
-                'end': None,
                 'inProgress': False,
-                'complete': False,
                 'failed': False,
-                'progress': 0.0,
+                'complete': True,
+                'message': 'migrated data; fabricated status',
+                'steps': 0,
+                'stepsComplete': 0,
+                'progress': 1,
+                'start': self.created.isoformat() + 'Z',
+                'end': self.created.isoformat() + 'Z',
+                'eta': None,
+                'ahead': None,
+                'status': None,
+                'description': None,
             }
-            # setting only fields that would be set already if there were an AGS
-            if len(self.get_assets()) < 1:
-                status['skipped'] = True
 
-            # The curation stage starts when manual annotation OR detection adds the first annotation to the asset group sighting.
-            annotations = self.get_annotations()
-            if annotations and len(annotations) > 1:
-                times = [ann.created for ann in annotations]
-                first_time = min(times)
-                status['start'] = first_time.isoformat() + 'Z'
-            else:
-                status['start'] = self.created.isoformat() + 'Z'
-
-        # Sightings have all finished the curation stage
-        status['inProgress'] = False
-        status['complete'] = True
-        status['end'] = self.created.isoformat() + 'Z'
-        status['progress'] = 1.0
+        # leaving this for prosperity and consideration, but going to comment out for now
+        #
+        # The curation stage starts when manual annotation OR detection adds the first annotation to the asset group sighting.
+        # annotations = self.get_annotations()
+        # if annotations and len(annotations) > 1:
+        #    times = [ann.created for ann in annotations]
+        #    first_time = min(times)
+        #    status['start'] = first_time.isoformat() + 'Z'
+        # else:
+        #    status['start'] = self.created.isoformat() + 'Z'
         return status
 
     def _get_pipeline_status_identification(self):
-        from app.utils import datetime_string_to_isoformat
+        from app.modules.progress.models import ProgressStatus
 
-        annots = self.get_annotations()
+        progress = self.progress_identification
+        # no progress object, we assume it has not yet started
+        if not progress:
+            return {
+                'skipped': False,
+                'inProgress': False,
+                'failed': False,
+                'complete': False,
+                'message': 'missing Progress',
+                'steps': 0,
+                'stepsComplete': 0,
+                'progress': 0,
+                'start': None,
+                'end': None,
+                'eta': None,
+                'ahead': None,
+                'status': None,
+                'description': None,
+            }
+
         status = {
+            # start with these false and set below
             'skipped': False,
-            'start': None,
-            'end': None,
             'inProgress': False,
-            'complete': False,
             'failed': False,
-            'message': None,
-            'eta': None,
-            'ahead': None,
-            'jobs': None,
-            'numJobs': None,
-            'numJobsActive': None,
-            'numJobsFailed': None,
-            # these are only based on 0th id_config (all that we have for mvp)
-            'matchingSetQueryPassed': None,
-            'matchingSetQueryUsed': None,
-            # this is only based on 0th annotation (so is approximate)
-            # 'matchingSetSize': None,   # dropped now cuz its expensive
-            'numAttempts': None,
-            'numAttemptsMax': None,
-            'idConfigs': None,
-            'numAssets': len(self.get_encounter_assets()),
-            'numAnnotations': len(annots),
-            'steps': 0,
-            'stepsComplete': 0,
-            'progress': None,
+            'complete': False,
+            'message': progress.message,
+            'steps': len(progress.steps) if progress.steps else 0,
+            'stepsComplete': 0,  # TBD
+            'progress': progress.percentage / 100,
+            'start': progress.created.isoformat() + 'Z',
+            'end': None,
+            'eta': progress.current_eta,
+            'ahead': progress.ahead,
+            'status': progress.status,
+            'description': progress.description,
         }
 
-        status['idConfigs'] = self.get_id_configs()
-        if status['idConfigs']:
-            # TODO not entirely true... i think.  as this can be passed via api (single annot)
-            status['matchingSetQueryPassed'] = status['idConfigs'][0].get('matching_set')
-
-        if not self.is_migrated_data():
-            # seems irrelevant for migrated
-            if annots:
-                # too expensive
-                # status['matchingSetSize'] = len(annots[0].get_matching_set(load=False))
-                if status['matchingSetQueryPassed']:
-                    status['matchingSetQueryUsed'] = annots[0].resolve_matching_set_query(
-                        status['matchingSetQueryPassed']
-                    )
-                else:
-                    status['matchingSetQueryUsed'] = annots[
-                        0
-                    ].get_matching_set_default_query()
-        else:
-            status['_note'] = 'migrated data; status should be interpretted in context'
-
-        if self.stage == SightingStage.identification:
-            status['inProgress'] = True
-            status['steps'] += 1
-
-        # TODO needs more exploration - can we find out if we are waiting to start in celery?
-        if not self.jobs:
-            status['numJobs'] = 0
-            status['numJobsActive'] = 0
-            status['numJobsFailed'] = 0
-            status['_debug'] = 'self.jobs is empty'
-            return status
-
-        # we reset failed here, as it looks like job started anyway?
-        status['steps'] = 1
-        status['stepsComplete'] = 1
-        status['message'] = None
-        status['failed'] = False
-        status['numJobs'] = len(self.jobs)
-        status['numJobsActive'] = 0
-        status['numJobsFailed'] = 0
-
-        job_info_list = []
-        for job_id in self.jobs:
-            job_info = {
-                'id': job_id,
-                'active': False,
-                'error': None,
-                'failed': False,
-                # we only query sage for *active* jobs to save expense,
-                #   so this being None is normal for inactive jobs
-                'sage_status': None,
-            }
-            job = self.jobs[job_id]
-            job_info['start'] = datetime_string_to_isoformat(job.get('start'))
-            job_info['end'] = datetime_string_to_isoformat(job.get('end'))
-            if job.get('active') is True:
-                job_info['active'] = True
-                status['numJobsActive'] += 1
-                # we sh/could toggle active if this shows failure
-                ss = None
-                try:
-                    # disabling for now as we are going to start using Progress soon
-                    # ss = self.get_sage_job_status(job_id)
-                    pass
-                except Exception as ex:
-                    status[f'_debug_{job_id}'] = 'failed getting sage job status'
-                    job_info['_get_sage_status_exception'] = str(ex)
-                if ss:
-                    job_info['sage_status'] = ss.get('jobstatus')
-                    if ss.get('jobstatus') == 'exception':
-                        job_info['error'] = 'sage exception'
-                        job_info['failed'] = True
-                        status['numJobsActive'] -= 1
-                        status['numJobsFailed'] += 1
-                        status[f'_debug_{job_id}'] = 'sage exception'
-            job_info_list.append(job_info)
-
-        # this should sort in chron order (the str() handles unset start case)
-        status['jobs'] = sorted(job_info_list, key=lambda d: str(d['start']))
-
-        # we now only factor in *most recent* job, in terms of
-        #  failure, start/end, etc.  thus only 1 step
-        status['steps'] += 1
-        if status['jobs'][-1]['failed']:
+        if progress.skipped:
+            status['skipped'] = True
+        elif progress.status == ProgressStatus.failed:
             status['failed'] = True
-            status['message'] = status['jobs'][-1]['error']
-        else:
-            status['stepsComplete'] += 1
+        elif progress.complete:
+            status['complete'] = True
+        elif (
+            progress.status == ProgressStatus.created
+            or progress.status == ProgressStatus.healthy
+        ):
+            status['inProgress'] = True
+        # if it falls through, all False, thus "waiting"
 
-        status['inProgress'] = status['jobs'][-1]['active']
-        status['start'] = status['jobs'][-1]['start']
-        status['end'] = status['jobs'][-1]['end']
-        status['complete'] = not status['inProgress']
-        if status['steps']:
-            status['progress'] = status['stepsComplete'] / status['steps']
+        if progress.complete:
+            status['end'] = progress.updated.isoformat() + 'Z'
         return status
 
     @classmethod

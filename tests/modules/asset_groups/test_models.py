@@ -102,20 +102,15 @@ def test_asset_group_sightings_jobs(flask_app, db, admin_user, test_root, reques
         'complete': False,
         'failed': False,
         'progress': 0.5,
+        'ahead': None,
+        'eta': None,
+        'message': None,
+        'description': None,
+        'status': None,
+        'steps': 0,
+        'stepsComplete': 0,
     }
     assert ps['curation'] == curation_progress
-
-    ags1.jobs = None
-    ags1.detection_attempts = ps['detection']['numAttemptsMax'] + 9
-    with db.session.begin():
-        db.session.merge(ags1)
-    ps = ags1.get_pipeline_status()
-
-    assert ps['detection']['failed']
-    assert 'could not start' in ps['detection']['message']
-    assert ps['detection']['numJobs'] == 0
-    assert ps['detection']['numJobsActive'] == 0
-    assert ps['detection']['numJobsFailed'] == 0
 
 
 @pytest.mark.skipif(

@@ -70,14 +70,20 @@ def test_basic_pipeline_status(db):
     pipeline_status = sighting.get_pipeline_status()
 
     curation_status = {
-        '_note': 'migrated sighting; curation status fabricated',
-        'skipped': True,
+        'message': 'migrated data; fabricated status',
         'start': sighting.created.isoformat() + 'Z',
         'end': sighting.created.isoformat() + 'Z',
         'inProgress': False,
         'complete': True,
         'failed': False,
-        'progress': 1.0,
+        'skipped': False,
+        'progress': 1,
+        'ahead': None,
+        'steps': 0,
+        'stepsComplete': 0,
+        'description': None,
+        'status': None,
+        'eta': None,
     }
     assert pipeline_status['curation'] == curation_status
     sighting.delete()

@@ -896,3 +896,24 @@ def test_delete_asset_group_sighting(test_root, flask_app_client, researcher_1, 
         assert resp.status_code == 200
     # Check asset group still exists
     asset_group_utils.read_asset_group(flask_app_client, researcher_1, ag_guid)
+
+
+# Test that a researcher cannot access another researchers data
+@pytest.mark.skipif(
+    module_unavailable('asset_groups'), reason='AssetGroups module disabled'
+)
+def test_create_asset_group_access(
+    flask_app_client, researcher_1, researcher_2, test_root, request, db
+):
+    # pylint: disable=invalid-name
+
+    (
+        asset_group_uuid,
+        asset_group_sighting_guid,
+        asset_uuid,
+    ) = asset_group_utils.create_simple_asset_group(
+        flask_app_client, researcher_1, request, test_root
+    )
+    asset_group_utils.read_asset_group_sighting(
+        flask_app_client, researcher_2, asset_group_sighting_guid, 403
+    )

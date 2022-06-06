@@ -99,6 +99,16 @@ class AssetGroupSighting(db.Model, HoustonModel):
         # AssetGroupSighting has no owner, so uses the AssetGroup one
         return self.asset_group.user_is_owner(user)
 
+    def user_can_access(self, user):
+        if not user.is_researcher:
+            # even owners, if they are not researchers, cannot access their own asset group sightings
+            return False
+        if self.user_is_owner(user):
+            return True
+        # A Researcher can control any anonymous or contributors AGS but not another researchers
+        if not self.asset_group.owner.is_researcher:
+            return True
+
     @classmethod
     def get_elasticsearch_schema(cls):
         from app.modules.asset_groups.schemas import BaseAssetGroupSightingSchema

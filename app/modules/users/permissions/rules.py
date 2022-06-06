@@ -70,15 +70,15 @@ OBJECT_USER_MAP = {
     ('AssetGroup', AccessOperation.READ_PRIVILEGED): ['is_staff'],
     ('AssetGroupSighting', AccessOperation.READ): [
         'is_admin',
-        'is_researcher',
+        'is_data_manager',
     ],
     ('AssetGroupSighting', AccessOperation.WRITE): [
         'is_admin',
-        'is_researcher',
+        'is_data_manager',
     ],
     ('AssetGroupSighting', AccessOperation.DELETE): [
         'is_admin',
-        'is_researcher',
+        'is_data_manager',
     ],
     ('Individual', AccessOperation.READ): [
         'is_staff',
@@ -134,6 +134,9 @@ OBJECT_USER_METHOD_MAP = {
     ('Sighting', AccessOperation.DELETE): ['user_can_edit_all_encounters'],
     ('Asset', AccessOperation.READ_INTERNAL): ['user_raw_read'],
     ('Asset', AccessOperation.WRITE): ['user_is_owner'],
+    ('AssetGroupSighting', AccessOperation.READ): ['user_can_access'],
+    ('AssetGroupSighting', AccessOperation.WRITE): ['user_can_access'],
+    ('AssetGroupSighting', AccessOperation.DELETE): ['user_can_access'],
     ('Annotation', AccessOperation.READ): ['user_is_owner'],
     ('Annotation', AccessOperation.WRITE): ['user_is_owner'],
     ('Annotation', AccessOperation.DELETE): ['user_is_owner'],

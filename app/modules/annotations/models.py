@@ -111,12 +111,30 @@ class Annotation(db.Model, HoustonModel, SageModel):
 
     @classmethod
     def run_integrity(cls):
-        result = {'no_content_guid': []}
+        from app.modules.asset_groups.models import AssetGroup
+
+        result = {'no_content_guid': [], 'no_encounter': []}
 
         # Annots must always have a content guid
         no_contents = Annotation.query.filter(Annotation.content_guid.is_(None)).all()
         if no_contents:
             result['no_content_guid'] = [annot.guid for annot in no_contents]
+
+        no_encounters = []
+        if is_module_enabled('encounters'):
+            no_encounters = Annotation.query.filter(
+                Annotation.encounter_guid.is_(None)
+            ).all()
+
+        # just because an annot has no encounters does not immediately make this an integrity check failure
+        # Annots in Assets in Asset groups that are not fully processed may validly not have an encounter
+        for annot in no_encounters:
+            assert annot.asset.git_store
+            # Integrity only currently implemented on codex, not MWS
+            assert isinstance(annot.asset.git_store, AssetGroup)
+
+            if annot.asset.git_store.is_processed():
+                result['no_encounter'].append(annot.guid)
 
         return result
 
@@ -270,25 +288,39 @@ class Annotation(db.Model, HoustonModel, SageModel):
         db.session.refresh(self)
 
     # Assumes that the caller actually wants the debug data for the context of where the annotation came from.
-    # Therefore returns the debug data for the sighting (if there is one), the ags if not.
-    # If neither Sighting or AGS (Annot created but not curated), returns the DetailedAnnot data
+    # Therefore, returns an amalgamation of the detailed Annot plus one of :
+    # the sighting schema (if the annot has a sighting)
+    # or the AGS if the annot is curated to be part of an AGS (user has done curation but not hit commit)
+    # or the possible AGSs if the annot is not curated to be part of any AGS.
     def get_debug_json(self):
+        from app.modules.asset_groups.schemas import DebugAssetGroupSightingSchema
+
+        from .schemas import DetailedAnnotationSchema
+
+        ags_schema = DebugAssetGroupSightingSchema()
+        annot_schema = DetailedAnnotationSchema()
+        ()
+        returned_json = {'annotation': annot_schema.dump(self).data}
+
         if self.encounter:
-            return self.encounter.sighting.get_debug_json()
+            returned_json['sighting'] = self.encounter.sighting.get_debug_json()
+            return returned_json
 
         assert self.asset.git_store
         ags = self.asset.git_store.get_asset_group_sighting_for_annotation(self)
         if ags:
-            from app.modules.asset_groups.schemas import DebugAssetGroupSightingSchema
-
-            schema = DebugAssetGroupSightingSchema()
-            return schema.dump(ags).data
+            returned_json['asset_group_sighting'] = ags_schema.dump(ags).data
         else:
-            # Annotation created but not curated into an AGS
-            from .schemas import DetailedAnnotationSchema
+            # Annotation created but not curated into an AGS, instead use one the AGS of the asset
+            ags_s = self.asset.git_store.get_asset_group_sightings_for_asset(self.asset)
+            if len(ags_s) > 0:
+                returned_json['possible_asset_group_sightings'] = []
+                for ags_id in range(len(ags_s)):
+                    returned_json['possible_asset_group_sightings'].append(
+                        ags_schema.dump(ags_s[ags_id]).data
+                    )
 
-            schema = DetailedAnnotationSchema()
-            return schema.dump(self).data
+        return returned_json
 
     @property
     def keywords(self):

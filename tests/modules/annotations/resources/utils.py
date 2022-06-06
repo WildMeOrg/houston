@@ -99,12 +99,16 @@ def patch_annotation(
     return response
 
 
-def read_annotation(flask_app_client, user, annotation_guid, expected_status_code=200):
+def read_annotation(
+    flask_app_client, user, annotation_guid, expected_status_code=200, expected_keys=None
+):
+    if expected_keys is None:
+        expected_keys = EXPECTED_KEYS
     with flask_app_client.login(user, auth_scopes=('annotations:read',)):
         response = flask_app_client.get('{}{}'.format(PATH, annotation_guid))
 
     if expected_status_code == 200:
-        test_utils.validate_dict_response(response, 200, EXPECTED_KEYS)
+        test_utils.validate_dict_response(response, 200, expected_keys)
     else:
         test_utils.validate_dict_response(
             response, expected_status_code, {'status', 'message'}

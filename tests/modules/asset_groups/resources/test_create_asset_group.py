@@ -502,10 +502,12 @@ def test_create_asset_group_sim_detection(
         from tests.modules.annotations.resources import utils as annot_utils
 
         annot_guid = read_resp['assets'][0]['annotations'][0]['guid']
-        annot_debug = annot_utils.read_annotation(
-            flask_app_client, staff_user, f'debug/{annot_guid}'
+        annot_data = annot_utils.read_annotation(
+            flask_app_client,
+            researcher_1,
+            annot_guid,
         ).json
-        assert annot_debug['asset_guid'] == read_resp['assets'][0]['guid']
+        assert annot_data['asset_guid'] == read_resp['assets'][0]['guid']
 
     finally:
         if asset_group_uuid:

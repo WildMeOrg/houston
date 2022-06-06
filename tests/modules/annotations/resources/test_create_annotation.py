@@ -209,3 +209,76 @@ def test_create_annotation_stage(flask_app_client, researcher_1, db, request, te
         researcher_1,
         asset_uuid,
     )
+
+
+@pytest.mark.skipif(
+    module_unavailable('asset_groups'), reason='AssetGroups module disabled'
+)
+def test_annotation_debug(
+    flask_app_client, researcher_1, staff_user, db, request, test_root
+):
+    from tests import utils as test_utils
+
+    # pylint: disable=invalid-name
+    (
+        asset_group_uuid,
+        asset_group_sighting_guid,
+        asset_uuid,
+    ) = ag_utils.create_simple_asset_group(
+        flask_app_client, researcher_1, request, test_root
+    )
+    annot_resp = annot_utils.create_annotation_simple(
+        flask_app_client,
+        researcher_1,
+        asset_uuid,
+    ).json
+
+    annot_guid = annot_resp['guid']
+    annot_debug = annot_utils.read_annotation(
+        flask_app_client,
+        staff_user,
+        f'debug/{annot_guid}',
+        expected_keys={'annotation', 'possible_asset_group_sightings'},
+    ).json
+    assert annot_debug['annotation']['asset_guid'] == annot_resp['asset_guid']
+    assert len(annot_debug['possible_asset_group_sightings']) == 1
+    debug_ags = annot_debug['possible_asset_group_sightings'][0]
+    assert debug_ags['guid'] == asset_group_sighting_guid
+    assert debug_ags['asset_group_guid'] == asset_group_uuid
+
+    # Patch it in
+    group_sighting = ag_utils.read_asset_group_sighting(
+        flask_app_client, researcher_1, asset_group_sighting_guid
+    )
+    encounter_guid = group_sighting.json['config']['sighting']['encounters'][0]['guid']
+
+    patch_data = [test_utils.patch_add_op('annotations', [annot_guid])]
+    ag_utils.patch_asset_group_sighting(
+        flask_app_client,
+        researcher_1,
+        f'{asset_group_sighting_guid}/encounter/{encounter_guid}',
+        patch_data,
+    )
+    # Should now be the actual asset group sighting, not possibles
+    annot_debug = annot_utils.read_annotation(
+        flask_app_client,
+        staff_user,
+        f'debug/{annot_guid}',
+        expected_keys={'annotation', 'asset_group_sighting'},
+    ).json
+    debug_ags = annot_debug['asset_group_sighting']
+    assert debug_ags['guid'] == asset_group_sighting_guid
+    assert debug_ags['asset_group_guid'] == asset_group_uuid
+
+    commit_response = ag_utils.commit_asset_group_sighting(
+        flask_app_client, researcher_1, asset_group_sighting_guid
+    )
+    sighting_uuid = commit_response.json['guid']
+    # Should now be the actual asset group sighting, not possibles
+    annot_debug = annot_utils.read_annotation(
+        flask_app_client,
+        staff_user,
+        f'debug/{annot_guid}',
+        expected_keys={'annotation', 'sighting'},
+    ).json
+    assert annot_debug['sighting']['guid'] == sighting_uuid

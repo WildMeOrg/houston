@@ -222,7 +222,7 @@ class AssetGroupMetadata(object):
             # There should be only one
             if len(ags_s) != 1:
                 message = f'Asset {annot.asset.guid} has {len(ags_s)} AGS'
-                AuditLog.audit_log_object_fault(log, annot.asset, message)
+                AuditLog.audit_log_object_warning(log, annot.asset, message)
                 log.warning(message)
             # and it should be this one
             if asset_group_sighting not in ags_s:

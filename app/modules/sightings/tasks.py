@@ -70,7 +70,7 @@ def fetch_sage_identification_result(sighting_guid, job_id):
             )
         except Exception:
             message = f'Failed to fetch the Sage identification result  for sighting {sighting_guid} with job_id {job_id}'
-            AuditLog.audit_log_object_fault(log, sighting, message)
+            AuditLog.audit_log_object_warning(log, sighting, message)
             log.warning(message)
             return
         sighting.identified(job_id, response)

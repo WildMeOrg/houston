@@ -1033,13 +1033,13 @@ class AssetGroupSighting(db.Model, HoustonModel):
                 ) and self.detection_attempts < MAX_DETECTION_ATTEMPTS:
                     message = f'Sage Detection on AssetGroupSighting({self.guid}) Job{job_id} failed to start, '
                     message += f'code: {ex.status_code}, sage_status_code: {sage_status_code}, retrying'
-                    AuditLog.audit_log_object_fault(log, self, message)
+                    AuditLog.audit_log_object_warning(log, self, message)
                     log.warning(message)
                     self.rerun_detection()
                 else:
                     message = f'Sage Detection on AssetGroupSighting({self.guid}) Job{job_id} failed to start, '
                     message += f'code: {ex.status_code}, sage_status_code: {sage_status_code}, giving up'
-                    AuditLog.audit_log_object_fault(log, self, message)
+                    AuditLog.audit_log_object_warning(log, self, message)
                     log.warning(message)
 
                     # Assuming some sort of persistent error in Sage
@@ -1268,7 +1268,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
                 self.progress_detection.cancel()
             else:
                 message = f'Asset Group Sighting {self} already has a progress detection {self.progress_detection}'
-                AuditLog.audit_log_object_fault(log, self, message)
+                AuditLog.audit_log_object_warning(log, self, message)
                 log.warning(message)
                 return
 
@@ -1299,7 +1299,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
                 self.progress_identification.cancel()
             else:
                 message = f'Asset Group Sighting {self} already has a progress identification {self.progress_identification}'
-                AuditLog.audit_log_object_fault(log, self, message)
+                AuditLog.audit_log_object_warning(log, self, message)
                 log.warning(message)
                 return
 
@@ -1419,7 +1419,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
             db.session.refresh(self)
         else:
             message = f'job_id {job_id} not found in AssetGroupSighting {self.guid}'
-            AuditLog.audit_log_object_fault(log, self, message)
+            AuditLog.audit_log_object_warning(log, self, message)
             log.warning(message)
 
     def delete(self):

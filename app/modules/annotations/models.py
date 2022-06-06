@@ -166,7 +166,7 @@ class Annotation(db.Model, HoustonModel, SageModel):
 
         if self.asset is None:
             message = f'Annotation {self} has no asset, cannot send annotation to Sage'
-            AuditLog.audit_log_object_fault(log, self, message)
+            AuditLog.audit_log_object_error(log, self, message)
             log.error(message)
 
             return
@@ -179,7 +179,7 @@ class Annotation(db.Model, HoustonModel, SageModel):
 
         if self.asset.content_guid is None:
             message = f'Asset for Annotation {self} failed to send, cannot send annotation to Sage'
-            AuditLog.audit_log_object_fault(log, self, message)
+            AuditLog.audit_log_object_error(log, self, message)
             log.error(message)
 
             # We tried to sync the asset's content GUID, but that failed... it is likely that the asset's file is missing
@@ -228,7 +228,7 @@ class Annotation(db.Model, HoustonModel, SageModel):
             self.validate_bounds(self.bounds)
         except Exception:
             message = f'Annotation {self} failed to pass validate_bounds(), cannot send annotation to Sage'
-            AuditLog.audit_log_object_fault(log, self, message)
+            AuditLog.audit_log_object_error(log, self, message)
             log.error(message)
 
             return
@@ -258,7 +258,7 @@ class Annotation(db.Model, HoustonModel, SageModel):
                 self.progress_identification.cancel()
             else:
                 message = f'Annotation {self} already has a progress identification {self.progress_identification}'
-                AuditLog.audit_log_object_fault(log, self, message)
+                AuditLog.audit_log_object_warning(log, self, message)
                 log.warning(message)
                 return
 

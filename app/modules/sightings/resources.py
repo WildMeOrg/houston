@@ -53,7 +53,7 @@ class SightingCleanup(object):
             Sighting.delete_from_edm_by_guid(current_app, self.sighting_guid, request)
         if self.asset_group is not None:
             message = 'Cleanup removing %r' % self.asset_group
-            AuditLog.audit_log_object_fault(log, self.asset_group, message)
+            AuditLog.audit_log_object_warning(log, self.asset_group, message)
             log.warning(message)
             self.asset_group.delete()
             self.asset_group = None
@@ -537,7 +537,7 @@ class SightingByID(Resource):
 
             except HoustonException as ex:
                 message = f'_get_annotations failed {ex.message}'
-                AuditLog.audit_log_object_fault(log, sighting, message)
+                AuditLog.audit_log_object_warning(log, sighting, message)
                 log.warning(message)
                 abort(code=400, message=ex.message)
 
@@ -566,7 +566,7 @@ class SightingByID(Resource):
 
             if 'deletedSighting' in result:
                 message = f'EDM triggered self-deletion of {sighting} result={result}'
-                AuditLog.audit_log_object_fault(log, sighting, message)
+                AuditLog.audit_log_object_warning(log, sighting, message)
                 log.warning(message)
                 response_data['threatened_sighting_id'] = str(sighting.guid)
                 sighting.delete_cascade()  # this will get rid of our encounter(s) as well so no need to rectify_edm_encounters()
@@ -655,7 +655,7 @@ class SightingByID(Resource):
         except HoustonException as ex:
             edm_status_code = ex.get_val('edm_status_code', 400)
             message = f'Sighting.delete {sighting.guid} failed: ({ex.status_code} / edm={edm_status_code}) {ex.message}'
-            AuditLog.audit_log_object_fault(log, sighting, message)
+            AuditLog.audit_log_object_warning(log, sighting, message)
             log.warning(message)
 
             ex_response_data = ex.get_val('response_data', {})

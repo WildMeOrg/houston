@@ -335,12 +335,12 @@ class Asset(db.Model, HoustonModel, SageModel):
                     db.session.refresh(self)
             except Exception:
                 message = f'Asset {self} is corrupted or an incompatible type, cannot send to Sage'
-                AuditLog.audit_log_object_fault(log, self, message)
+                AuditLog.audit_log_object_error(log, self, message)
                 log.error(message)
 
         else:
             message = f'Asset {self} is missing on disk, cannot send to Sage'
-            AuditLog.audit_log_object_fault(log, self, message)
+            AuditLog.audit_log_object_error(log, self, message)
             log.error(message)
 
     # this property is so that schema can output { "filename": "original_filename.jpg" }

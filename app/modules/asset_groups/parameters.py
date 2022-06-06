@@ -135,7 +135,7 @@ class PatchAssetGroupSightingDetailsParameters(PatchJSONParameters):
             if ags_s:
                 if len(ags_s) != 1:
                     message = f'Asset {asset.guid} already in multiple AGS'
-                    AuditLog.audit_log_object_fault(log, asset, message)
+                    AuditLog.audit_log_object_warning(log, asset, message)
                     log.warning(message)
                 if obj not in ags_s:
                     raise AssetGroupMetadataError(

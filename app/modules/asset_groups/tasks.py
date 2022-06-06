@@ -40,7 +40,7 @@ def fetch_sage_detection_result(asset_group_sighting_guid, job_id):
             )
         except Exception:
             message = f'Failed to fetch the Sage detection result for AGS {asset_group_sighting.guid} with job_id {job_id}'
-            AuditLog.audit_log_object_fault(log, asset_group_sighting, message)
+            AuditLog.audit_log_object_warning(log, asset_group_sighting, message)
             log.warning(message)
             return
         asset_group_sighting.detected(job_id, response)

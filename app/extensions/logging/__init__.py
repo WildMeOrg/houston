@@ -29,7 +29,9 @@ class Logging(object):
         FrontEndFault = 'Front End Fault'  # Bad message received on API
         BackEndFault = 'Back End Fault'  # Faulty message received from Sage/EDM etc
         HoustonFault = 'Houston Fault'  # Internal Error within Houston
-        ObjectFault = 'Object Fault'  # Error that happened while processing an object
+        ObjectError = 'Object Error'  # Error while processing an object
+        ObjectWarning = 'Object Warning'  # Warning while processing an object
+
         Other = 'Access'  # None of the above
 
     def __init__(self, app=None):
@@ -115,8 +117,14 @@ class Logging(object):
         AuditLog.create(msg, audit_type, module_name, obj.guid, *args, **kwargs)
 
     @classmethod
-    def audit_log_object_fault(cls, logger, obj, msg='', *args, **kwargs):
-        cls.audit_log_object(logger, obj, msg, cls.AuditType.ObjectFault, *args, **kwargs)
+    def audit_log_object_error(cls, logger, obj, msg='', *args, **kwargs):
+        cls.audit_log_object(logger, obj, msg, cls.AuditType.ObjectError, *args, **kwargs)
+
+    @classmethod
+    def audit_log_object_warning(cls, logger, obj, msg='', *args, **kwargs):
+        cls.audit_log_object(
+            logger, obj, msg, cls.AuditType.ObjectWarning, *args, **kwargs
+        )
 
     @classmethod
     def user_create_object(cls, logger, obj, msg='', *args, **kwargs):

@@ -109,7 +109,7 @@ class Annotations(Resource):
                 )
             if len(ags) != 1:
                 message = f'Asset {asset_guid} is in {len(ags)} asset group sightings'
-                AuditLog.audit_log_object_fault(log, asset, message)
+                AuditLog.audit_log_object_warning(log, asset, message)
                 log.warning(message)
                 abort(
                     code=HTTPStatus.BAD_REQUEST,

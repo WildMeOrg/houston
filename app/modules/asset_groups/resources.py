@@ -815,7 +815,7 @@ class AssetGroupSightingDetected(Resource):
             return str(promise.id)
         except HoustonException as ex:
             message = f'sage_detected error: {request.data}'
-            AuditLog.audit_log_object_fault(log, asset_group_sighting, message)
+            AuditLog.audit_log_object_error(log, asset_group_sighting, message)
             log.exception(message)
             abort(ex.status_code, ex.message, errorFields=ex.get_val('error', 'Error'))
 

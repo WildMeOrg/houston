@@ -495,7 +495,7 @@ class User(db.Model, FeatherModel, UserEDMMixin):
                                 message = "Updating user's local password: {!r}".format(
                                     user
                                 )
-                                AuditLog.audit_log_object_fault(log, user, message)
+                                AuditLog.audit_log_object_warning(log, user, message)
                                 log.warning(message)
 
                                 user = user.set_password(password)

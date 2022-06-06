@@ -48,7 +48,7 @@ class IndividualCleanup(object):
             #   the houston individual did not get made, but the edm did
             message = f'Attempting to delete Individual {self.individual_guid} from EDM'
             if failed_individual:
-                AuditLog.audit_log_object_fault(log, failed_individual, message)
+                AuditLog.audit_log_object_error(log, failed_individual, message)
             log.error(message)
             try:
                 current_app.edm.request_passthrough(
@@ -58,7 +58,7 @@ class IndividualCleanup(object):
                 pass
             if failed_individual is not None:
                 message = f'The Individual with guid {self.individual_guid} has been deleted from Houston'
-                AuditLog.audit_log_object_fault(log, failed_individual, message)
+                AuditLog.audit_log_object_error(log, failed_individual, message)
                 log.error(message)
 
                 with db.session.begin():
@@ -421,7 +421,7 @@ class IndividualByID(Resource):
         response_data = response.json()
         if not response.ok or not response_data.get('success', False):
             message = f'Individual.delete:  Failed to delete id {individual.guid} using delete_from_edm(). response_data={response_data}'
-            AuditLog.audit_log_object_fault(log, individual, message)
+            AuditLog.audit_log_object_warning(log, individual, message)
             log.warning(message)
 
         try:

@@ -11,6 +11,7 @@ import uuid
 
 import werkzeug
 from flask import request
+from flask_login import current_user
 
 import app.extensions.logging as AuditLog
 from app.extensions import db
@@ -24,7 +25,7 @@ from flask_restx_patched._http import HTTPStatus
 
 from . import parameters, schemas
 from .metadata import AssetGroupMetadata, AssetGroupMetadataError
-from .models import AssetGroup, AssetGroupSighting
+from .models import AssetGroup, AssetGroupSighting, AssetGroupSightingStage
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 api = Namespace(
@@ -396,9 +397,51 @@ class AssetGroupSightings(Resource):
     @api.paginate()
     def get(self, args):
         """
-        List of Asset_group.
+        List of Asset_group Sightings.
         """
         return AssetGroupSighting.query_search(args=args)
+
+
+@api.login_required(oauth_scopes=['asset_groups:read'])
+@api.route('/sighting/pending')
+class PendingAssetGroupSightings(Resource):
+    """
+    Manipulations with Asset_group sightings.
+    """
+
+    @api.permission_required(
+        permissions.ModuleAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'module': AssetGroupSighting,
+            'action': AccessOperation.READ_MULTI_USER,
+        },
+    )
+    @api.response(schemas.AssetGroupSightingAsSightingSchema(many=True))
+    @api.paginate()
+    def get(self, args):
+        """
+        List of Pending Asset_group Sightings.
+        """
+        from app.modules.users.models import User
+
+        query = AssetGroupSighting.query_search(args=args)
+        query = query.filter(
+            AssetGroupSighting.stage.isnot(AssetGroupSightingStage.processed)
+        )
+        if current_user.is_admin:
+            # Admins see everything
+            return query
+
+        if current_user.is_researcher:
+            # Researchers see their own, public ones and all others owned by users who are not researchers
+            query = query.join(AssetGroup)
+            query = query.join(AssetGroup.owner)
+            query = query.filter(
+                (AssetGroup.owner_guid == current_user.guid)
+                | (AssetGroup.owner_guid == User.get_public_user().guid)
+                | AssetGroup.owner.is_researcher.isnot(True)
+            )
+            return query
 
 
 @api.route('/sighting/search')

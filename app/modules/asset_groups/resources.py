@@ -403,45 +403,78 @@ class AssetGroupSightings(Resource):
 
 
 @api.login_required(oauth_scopes=['asset_groups:read'])
-@api.route('/sighting/pending')
-class PendingAssetGroupSightings(Resource):
+@api.route('/sighting/pending/public')
+class PublicPendingAssetGroupSightings(Resource):
     """
-    Manipulations with Asset_group sightings.
+    Get the Public Pending Asset_group sightings.
     """
 
     @api.permission_required(
         permissions.ModuleAccessPermission,
         kwargs_on_request=lambda kwargs: {
             'module': AssetGroupSighting,
-            'action': AccessOperation.READ_MULTI_USER,
+            'action': AccessOperation.READ_BY_ROLE,
         },
     )
-    @api.response(schemas.AssetGroupSightingAsSightingSchema(many=True))
+    @api.response(schemas.BaseAssetGroupSightingSchema(many=True))
     @api.paginate()
     def get(self, args):
         """
-        List of Pending Asset_group Sightings.
+        List of Pending Public Asset_group Sightings for a researcher to process
         """
         from app.modules.users.models import User
 
         query = AssetGroupSighting.query_search(args=args)
         query = query.filter(
-            AssetGroupSighting.stage.isnot(AssetGroupSightingStage.processed)
+            AssetGroupSighting.stage != AssetGroupSightingStage.processed
         )
-        if current_user.is_admin:
-            # Admins see everything
-            return query
 
         if current_user.is_researcher:
-            # Researchers see their own, public ones and all others owned by users who are not researchers
             query = query.join(AssetGroup)
             query = query.join(AssetGroup.owner)
-            query = query.filter(
-                (AssetGroup.owner_guid == current_user.guid)
-                | (AssetGroup.owner_guid == User.get_public_user().guid)
-                | AssetGroup.owner.is_researcher.isnot(True)
-            )
+            query = query.filter(AssetGroup.owner_guid == User.get_public_user().guid)
+
             return query
+
+        # deliberately return Nothing for non researchers
+        return []
+
+
+@api.login_required(oauth_scopes=['asset_groups:read'])
+@api.route('/sighting/pending/contributor')
+class ContributorPendingAssetGroupSightings(Resource):
+    """
+    Get the Contributor Pending Asset_group sightings.
+    """
+
+    @api.permission_required(
+        permissions.ModuleAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'module': AssetGroupSighting,
+            'action': AccessOperation.READ_BY_ROLE,
+        },
+    )
+    @api.response(schemas.BaseAssetGroupSightingSchema(many=True))
+    def get(self):
+        """
+        List of Pending Contributor submitted Asset_group Sightings for a researcher to process
+        """
+
+        query = AssetGroupSighting.query_search()
+        query = query.filter(
+            AssetGroupSighting.stage != AssetGroupSightingStage.processed
+        )
+        response = []
+        if current_user.is_researcher:
+            # TODO figure out if this is possible as an sqlalchemy query, as the roles are bitmaps, this may be hard
+            for ags in query.all():
+                if (
+                    ags.asset_group.owner.is_contributor
+                    and not ags.asset_group.owner.is_researcher
+                ):
+                    response.append(ags)
+            return response
+        return []
 
 
 @api.route('/sighting/search')

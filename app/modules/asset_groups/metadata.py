@@ -483,6 +483,11 @@ class AssetGroupMetadata(object):
                         'Invalid submitter data',
                         403,
                     )
+        elif not current_user.is_researcher:
+            if self.bulk_upload:
+                raise AssetGroupMetadataError(log, 'User not permitted to do bulk upload')
+            if self.owner_assignment:
+                raise AssetGroupMetadataError(log, 'User not permitted to assign owners')
         elif self.bulk_upload:
             for group in current_user.get_asset_groups():
                 if group.bulk_upload and not group.is_processed():

@@ -501,14 +501,16 @@ def test_ObjectAccessPermission_contributor_user(
     # object that is not a project, encounter or asset
     mock_other = Mock(is_public=lambda: False)
     projects = [project1, project2, project3]
+
     with patch.object(contributor_1_login, 'owns_object', return_value=False):
         with patch.object(contributor_1_login, 'get_projects', return_value=projects):
-            # Project access disabled for MVP, the first 3 should be _can_read checks when restored
-            validate_cannot_read_object(project1)
-            validate_cannot_read_object(owned_encounter)
-            validate_cannot_read_object(mock_asset)
-            # object that is not a project, encounter or asset
-            validate_cannot_read_object(mock_other)
+            with patch.object(mock_asset, 'user_can_access', return_value=False):
+                # Project access disabled for MVP, the first 3 should be _can_read checks when restored
+                validate_cannot_read_object(project1)
+                validate_cannot_read_object(owned_encounter)
+                validate_cannot_read_object(mock_asset)
+                # object that is not a project, encounter or asset
+                validate_cannot_read_object(mock_other)
 
     my_encounter = test_utils.generate_owned_encounter(contributor_1_login)
     with db.session.begin():

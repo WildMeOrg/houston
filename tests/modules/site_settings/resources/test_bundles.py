@@ -97,7 +97,7 @@ def test_bundle_read(
             200,
             True,
         ),
-        ({'sentryDsn': 'sentryDsnKey'}, 200, False),
+        ({'recaptchaPublicKey': 'recaptcha-public-key'}, 200, False),
     ),
 )
 def test_bundle_modify(

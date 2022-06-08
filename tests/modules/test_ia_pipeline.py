@@ -130,8 +130,8 @@ def test_ia_pipeline_sim_detect_response(
         if len(annot_guids) > 0:
             annot_debug = annot_utils.read_debug(
                 flask_app_client, staff_user, annot_guids[0]
-            )
-            assert annot_debug.json['guid'] == sighting_uuid
+            ).json
+            assert annot_debug['sighting']['guid'] == sighting_uuid
 
         asset_guids = [asset['guid'] for asset in ag_resp.json['assets']]
         asset_debug = asset_utils.read_asset(

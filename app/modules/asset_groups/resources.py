@@ -16,6 +16,7 @@ from flask_login import current_user
 import app.extensions.logging as AuditLog
 from app.extensions import db
 from app.extensions.api import Namespace, abort
+from app.extensions.api.parameters import PaginationParameters
 from app.modules.auth.utils import recaptcha_required
 from app.modules.users import permissions
 from app.modules.users.permissions.types import AccessOperation
@@ -454,8 +455,8 @@ class ContributorPendingAssetGroupSightings(Resource):
             'action': AccessOperation.READ_BY_ROLE,
         },
     )
+    @api.parameters(PaginationParameters())
     @api.response(schemas.BaseAssetGroupSightingSchema(many=True))
-    @api.paginate()
     def get(self, args):
         """
         List of Pending Contributor submitted Asset_group Sightings for a researcher to process

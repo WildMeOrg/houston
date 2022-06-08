@@ -51,9 +51,8 @@ function checkout() {
 
 function build_in_docker() {
     echo "Running the Codex frontend build within Docker..."
-    # Ensure the node image is up-to-date
-    docker pull node:lts
-    docker run --rm -v $(pwd)/:/code -w /code node:lts /bin/bash -c "./scripts/codex/build.frontend.sh --exec"
+    docker pull node:16.15.0
+    docker run --rm -v $(pwd)/:/code -w /code node:16.15.0 /bin/bash -c "./scripts/codex/build.frontend.sh --exec"
     echo "Finished running the build within Docker"
 }
 

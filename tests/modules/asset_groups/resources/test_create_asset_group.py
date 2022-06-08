@@ -408,13 +408,68 @@ def test_create_asset_group_anonymous(
         data.remove_encounter_field(0, 0, 'ownerEmail')
 
         data.set_field('submitterEmail', 'joe@blogs.com')
-        resp = asset_group_utils.create_asset_group(flask_app_client, None, data.get())
-        asset_group_uuid = resp.json['guid']
+        resp = asset_group_utils.create_asset_group(
+            flask_app_client, None, data.get()
+        ).json
+        asset_group_uuid = resp['guid']
+        asset_group_sighting_guid = resp['asset_group_sightings'][0]['guid']
         import uuid
 
         from app.modules.users.models import User
 
-        assert uuid.UUID(resp.json['owner_guid']) == User.get_public_user().guid
+        assert uuid.UUID(resp['owner_guid']) == User.get_public_user().guid
+        pending_ags = asset_group_utils.read_pending_asset_group_sightings(
+            flask_app_client, researcher_1, 'public'
+        ).json
+        assert pending_ags[0]['guid'] == asset_group_sighting_guid
+
+    finally:
+        if asset_group_uuid:
+            asset_group_utils.delete_asset_group(
+                flask_app_client, staff_user, asset_group_uuid
+            )
+        tus_utils.cleanup_tus_dir(transaction_id)
+
+
+@pytest.mark.skipif(
+    module_unavailable('asset_groups'), reason='AssetGroups module disabled'
+)
+def test_create_asset_group_contributor(
+    flask_app_client, contributor_1, researcher_1, staff_user, test_root, db
+):
+    # pylint: disable=invalid-name
+    from tests.modules.asset_groups.resources.utils import AssetGroupCreationData
+
+    transaction_id, test_filename = tus_utils.prep_tus_dir(test_root)
+    asset_group_uuid = None
+    try:
+        data = AssetGroupCreationData(transaction_id, test_filename)
+
+        data.set_field('uploadType', 'bulk')
+        resp_msg = 'User not permitted to do bulk upload'
+        asset_group_utils.create_asset_group(
+            flask_app_client, contributor_1, data.get(), 400, resp_msg
+        )
+        data.set_field('uploadType', 'form')
+
+        data.set_encounter_field(0, 0, 'ownerEmail', researcher_1.email)
+        resp_msg = 'User not permitted to assign owners'
+        asset_group_utils.create_asset_group(
+            flask_app_client, contributor_1, data.get(), 400, resp_msg
+        )
+        data.remove_encounter_field(0, 0, 'ownerEmail')
+
+        data.set_field('submitterEmail', 'joe@blogs.com')
+        resp = asset_group_utils.create_asset_group(
+            flask_app_client, contributor_1, data.get()
+        ).json
+        asset_group_uuid = resp['guid']
+        asset_group_sighting_guid = resp['asset_group_sightings'][0]['guid']
+
+        pending_ags = asset_group_utils.read_pending_asset_group_sightings(
+            flask_app_client, researcher_1, 'contributor'
+        ).json
+        assert pending_ags[0]['guid'] == asset_group_sighting_guid
 
     finally:
         if asset_group_uuid:

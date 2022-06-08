@@ -26,6 +26,10 @@ MODULE_USER_MAP = {
     ('AssetGroup', AccessOperation.READ): ['is_admin'],
     ('AssetGroup', AccessOperation.WRITE): ['is_active'],
     ('AssetGroupSighting', AccessOperation.READ): ['is_admin'],
+    ('AssetGroupSighting', AccessOperation.READ_BY_ROLE): [
+        'is_admin',
+        'is_researcher',
+    ],
     ('Encounter', AccessOperation.READ): ['is_researcher'],
     ('Encounter', AccessOperation.WRITE): ['is_active'],  # TODO is this still correct
     ('Sighting', AccessOperation.READ): ['is_researcher'],

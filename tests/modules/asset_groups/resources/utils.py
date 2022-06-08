@@ -347,6 +347,18 @@ def read_all_asset_group_sightings(flask_app_client, user, expected_status_code=
     )
 
 
+def read_pending_asset_group_sightings(
+    flask_app_client, user, group, expected_status_code=200
+):
+    return test_utils.get_list_via_flask(
+        flask_app_client,
+        user,
+        scopes='asset_groups:read',
+        path=f'{PATH}sighting/pending/{group}',
+        expected_status_code=expected_status_code,
+    )
+
+
 def read_asset_group_sighting(
     flask_app_client, user, asset_group_sighting_guid, expected_status_code=200
 ):

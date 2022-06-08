@@ -11,10 +11,12 @@ import uuid
 
 import werkzeug
 from flask import request
+from flask_login import current_user
 
 import app.extensions.logging as AuditLog
 from app.extensions import db
 from app.extensions.api import Namespace, abort
+from app.extensions.api.parameters import PaginationParameters
 from app.modules.auth.utils import recaptcha_required
 from app.modules.users import permissions
 from app.modules.users.permissions.types import AccessOperation
@@ -24,7 +26,7 @@ from flask_restx_patched._http import HTTPStatus
 
 from . import parameters, schemas
 from .metadata import AssetGroupMetadata, AssetGroupMetadataError
-from .models import AssetGroup, AssetGroupSighting
+from .models import AssetGroup, AssetGroupSighting, AssetGroupSightingStage
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 api = Namespace(
@@ -396,9 +398,88 @@ class AssetGroupSightings(Resource):
     @api.paginate()
     def get(self, args):
         """
-        List of Asset_group.
+        List of Asset_group Sightings.
         """
         return AssetGroupSighting.query_search(args=args)
+
+
+@api.login_required(oauth_scopes=['asset_groups:read'])
+@api.route('/sighting/pending/public')
+class PublicPendingAssetGroupSightings(Resource):
+    """
+    Get the Public Pending Asset_group sightings.
+    """
+
+    @api.permission_required(
+        permissions.ModuleAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'module': AssetGroupSighting,
+            'action': AccessOperation.READ_BY_ROLE,
+        },
+    )
+    @api.response(schemas.BaseAssetGroupSightingSchema(many=True))
+    @api.paginate()
+    def get(self, args):
+        """
+        List of Pending Public Asset_group Sightings for a researcher to process
+        """
+        from app.modules.users.models import User
+
+        query = AssetGroupSighting.query_search(args=args)
+        query = query.filter(
+            AssetGroupSighting.stage != AssetGroupSightingStage.processed
+        )
+
+        if current_user.is_researcher:
+            query = query.join(AssetGroup)
+            query = query.join(AssetGroup.owner)
+            query = query.filter(AssetGroup.owner_guid == User.get_public_user().guid)
+
+            return query
+
+        # deliberately return Nothing for non researchers
+        return []
+
+
+@api.login_required(oauth_scopes=['asset_groups:read'])
+@api.route('/sighting/pending/contributor')
+class ContributorPendingAssetGroupSightings(Resource):
+    """
+    Get the Contributor Pending Asset_group sightings.
+    """
+
+    @api.permission_required(
+        permissions.ModuleAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'module': AssetGroupSighting,
+            'action': AccessOperation.READ_BY_ROLE,
+        },
+    )
+    @api.parameters(PaginationParameters())
+    @api.response(schemas.BaseAssetGroupSightingSchema(many=True))
+    def get(self, args):
+        """
+        List of Pending Contributor submitted Asset_group Sightings for a researcher to process
+        """
+
+        query = AssetGroupSighting.query_search()
+        query = query.filter(
+            AssetGroupSighting.stage != AssetGroupSightingStage.processed
+        )
+        response = []
+        if current_user.is_researcher:
+            # TODO figure out if this is possible as an sqlalchemy query, as the roles are bitmaps, this may be hard
+            for ags in query.all():
+                if (
+                    ags.asset_group.owner.is_contributor
+                    and not ags.asset_group.owner.is_researcher
+                ):
+                    response.append(ags)
+            # Manually apply offset and limit after the list is created
+            offset = args['offset']
+            limit = args['limit']
+            return response[offset : offset + limit]
+        return []
 
 
 @api.route('/sighting/search')

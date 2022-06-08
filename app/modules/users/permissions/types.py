@@ -17,7 +17,9 @@ class AccessOperation(enum.Enum):
     READ_PRIVILEGED = 3
     # internal operations only (only Sage, no wetware users)
     READ_INTERNAL = 4
-    WRITE = 5
+    # Read where different users see different things, eg lists where admin sees all but researcher sees a limited set
+    READ_BY_ROLE = 5
+    WRITE = 6
     # internal operations only (only Sage, no wetware users)
-    WRITE_INTERNAL = 6
-    DELETE = 7
+    WRITE_INTERNAL = 7
+    DELETE = 8

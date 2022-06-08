@@ -441,18 +441,18 @@ class ObjectActionRule(DenyAbortMixin, Rule):
     #             project_index = project_index + 1
 
     @module_required('collaborations', resolve='warn', default=False)
-    def _permitted_via_collaboration(self, user):
+    def _permitted_via_collaboration(self):
         from app.modules.collaborations.models import Collaboration
 
-        tried_users = [user]
+        tried_users = [self._user]
         object_user_methods = OBJECT_USER_METHOD_MAP.get(
             (self._obj.__class__.__name__, self._action)
         )
 
         if self._action == AccessOperation.READ:
-            collab_users = Collaboration.get_users_for_read(user)
+            collab_users = Collaboration.get_users_for_read(self._user)
         elif self._action == AccessOperation.WRITE:
-            collab_users = Collaboration.get_users_for_write(user)
+            collab_users = Collaboration.get_users_for_write(self._user)
         else:
             collab_users = []
 

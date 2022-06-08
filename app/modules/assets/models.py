@@ -10,6 +10,7 @@ import uuid
 from functools import total_ordering
 
 from flask import current_app, url_for
+from flask_login import current_user
 from PIL import Image
 
 import app.extensions.logging as AuditLog
@@ -404,10 +405,13 @@ class Asset(db.Model, HoustonModel, SageModel):
         return user.is_internal
 
     # This relates to if the user can access to viewing an asset if it was specifically in a sighting's ID result that the user has access to view
-    def user_can_access(self, user):
+    def user_can_access(self, user=None):
         from app.modules.annotations.models import Annotation
         from app.modules.users.permissions.rules import ObjectActionRule
         from app.modules.users.permissions.types import AccessOperation
+
+        if user is None:
+            user = current_user
 
         users = []
         users.append(user)

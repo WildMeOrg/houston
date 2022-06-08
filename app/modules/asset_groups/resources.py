@@ -455,7 +455,8 @@ class ContributorPendingAssetGroupSightings(Resource):
         },
     )
     @api.response(schemas.BaseAssetGroupSightingSchema(many=True))
-    def get(self):
+    @api.paginate()
+    def get(self, args):
         """
         List of Pending Contributor submitted Asset_group Sightings for a researcher to process
         """
@@ -473,7 +474,10 @@ class ContributorPendingAssetGroupSightings(Resource):
                     and not ags.asset_group.owner.is_researcher
                 ):
                     response.append(ags)
-            return response
+            # Manually apply offset and limit after the list is created
+            offset = args['offset']
+            limit = args['limit']
+            return response[offset : offset + limit]
         return []
 
 

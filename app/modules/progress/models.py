@@ -102,12 +102,15 @@ class Progress(db.Model, Timestamp):
 
     @property
     def current_eta(self):
-        if self.items is None or self.pgeta is None:
+        try:
+            if self.items is None or self.pgeta is None:
+                return None
+            if self.pgeta.eta_seconds is None:
+                return None
+            else:
+                return round(self.pgeta.eta_seconds, 1)
+        except Exception:
             return None
-        if self.pgeta.eta_seconds is None:
-            return None
-        else:
-            return round(self.pgeta.eta_seconds, 1)
 
     @property
     def idle(self):
@@ -360,6 +363,11 @@ class Progress(db.Model, Timestamp):
             items = list(range(1, steps + 1))
 
         assert isinstance(items, (tuple, list))
+
+        if len(items) == 0:
+            steps = 100
+            items = list(range(1, steps + 1))
+
         self.items = items
 
         total = len(self.items)
@@ -447,7 +455,12 @@ class Progress(db.Model, Timestamp):
         assert self.pgeta is not None
 
         if int(self.pgeta.percent) < new_percentage:
-            self.pgeta.numerator = int(self.pgeta.denominator * (new_percentage / 100.0))
+            try:
+                self.pgeta.numerator = int(
+                    self.pgeta.denominator * (new_percentage / 100.0)
+                )
+            except ZeroDivisionError:
+                pass
             # assert int(self.pgeta.percent) >= new_percentage
 
         with db.session.begin(subtransactions=True):

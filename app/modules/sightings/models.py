@@ -1762,7 +1762,7 @@ class Sighting(db.Model, FeatherModel):
                 # Only one for MVP
                 assert len(config['algorithms']) == 1
 
-    def ia_pipeline(self, foreground=None):
+    def ia_pipeline(self, foreground=True):
 
         self.init_progress_identification()
 

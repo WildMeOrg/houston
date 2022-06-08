@@ -98,14 +98,6 @@ if is_extension_enabled('edm'):
                 self.is_user_manager = True
                 self.is_data_manager = True
 
-        def _process_edm_user_profile_url(self, url):
-            # TODO is this actually needed
-            log.warning('User._process_edm_profile_url() not implemented yet')
-
-        def _process_edm_user_organization(self, org):
-            # TODO is this actually needed
-            log.warning('User._process_edm_user_organization() not implemented yet')
-
 else:
     UserEDMMixin = object
 
@@ -500,9 +492,12 @@ class User(db.Model, FeatherModel, UserEDMMixin):
                             # We authenticated a local user against an EDM (but the local password failed)
                             if user.password != password:
                                 # The user passed the login with an EDM, update local password
-                                log.warning(
-                                    "Updating user's local password: {!r}".format(user)
+                                message = "Updating user's local password: {!r}".format(
+                                    user
                                 )
+                                AuditLog.audit_log_object_warning(log, user, message)
+                                log.warning(message)
+
                                 user = user.set_password(password)
                             return user
                         else:

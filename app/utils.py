@@ -33,8 +33,8 @@ class HoustonException(Exception):
             log_message = self.message
 
         if obj:
-            AuditLog.audit_log_object(
-                logger, obj, f'Failed: {log_message} {self.status_code}', fault
+            AuditLog.audit_log_object_error(
+                logger, obj, f'Failed: {log_message} {self.status_code}'
             )
         else:
             AuditLog.audit_log(logger, f'Failed: {log_message} {self.status_code}', fault)

@@ -9,6 +9,7 @@ import uuid
 
 from flask import current_app
 
+import app.extensions.logging as AuditLog
 from app.extensions import HoustonModel, SageModel, db
 from app.modules import is_module_enabled
 from app.utils import HoustonException
@@ -164,11 +165,9 @@ class Annotation(db.Model, HoustonModel, SageModel):
         from app.extensions.sage import SAGE_UNKNOWN_NAME, from_sage_uuid, to_sage_uuid
 
         if self.asset is None:
-            log.error(
-                'Annotation {!r} has no asset, cannot send annotation to Sage'.format(
-                    self
-                )
-            )
+            message = f'Annotation {self} has no asset, cannot send annotation to Sage'
+            AuditLog.audit_log_object_error(log, self, message)
+            log.error(message)
 
             return
 
@@ -179,10 +178,10 @@ class Annotation(db.Model, HoustonModel, SageModel):
             )
 
         if self.asset.content_guid is None:
-            log.error(
-                'Asset for Annotation %r failed to send, cannot send annotation to Sage'
-                % (self,)
-            )
+            message = f'Asset for Annotation {self} failed to send, cannot send annotation to Sage'
+            AuditLog.audit_log_object_error(log, self, message)
+            log.error(message)
+
             # We tried to sync the asset's content GUID, but that failed... it is likely that the asset's file is missing
             return
 
@@ -228,10 +227,10 @@ class Annotation(db.Model, HoustonModel, SageModel):
         try:
             self.validate_bounds(self.bounds)
         except Exception:
-            log.error(
-                'Annotation %r failed to pass validate_bounds(), cannot send annotation to Sage'
-                % (self,)
-            )
+            message = f'Annotation {self} failed to pass validate_bounds(), cannot send annotation to Sage'
+            AuditLog.audit_log_object_error(log, self, message)
+            log.error(message)
+
             return
 
         sage_request = {
@@ -258,13 +257,9 @@ class Annotation(db.Model, HoustonModel, SageModel):
             if overwrite:
                 self.progress_identification.cancel()
             else:
-                log.warning(
-                    'Annotation %r already has a progress identification %r'
-                    % (
-                        self,
-                        self.progress_identification,
-                    )
-                )
+                message = f'Annotation {self} already has a progress identification {self.progress_identification}'
+                AuditLog.audit_log_object_warning(log, self, message)
+                log.warning(message)
                 return
 
         progress = Progress(

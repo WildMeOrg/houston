@@ -48,10 +48,13 @@ class SightingCleanup(object):
             f'Bailing on sighting creation: {log_message} (error_fields {error_fields})'
         )
         if self.sighting_guid is not None:
+
             log.warning('Cleanup removing Sighting %r from EDM' % self.sighting_guid)
             Sighting.delete_from_edm_by_guid(current_app, self.sighting_guid, request)
         if self.asset_group is not None:
-            log.warning('Cleanup removing %r' % self.asset_group)
+            message = 'Cleanup removing %r' % self.asset_group
+            AuditLog.audit_log_object_warning(log, self.asset_group, message)
+            log.warning(message)
             self.asset_group.delete()
             self.asset_group = None
         abort(
@@ -533,7 +536,9 @@ class SightingByID(Resource):
                         enc_json_data.append(enc_json)
 
             except HoustonException as ex:
-                log.warning(f'_get_annotations failed {ex.message}')
+                message = f'_get_annotations failed {ex.message}'
+                AuditLog.audit_log_object_warning(log, sighting, message)
+                log.warning(message)
                 abort(code=400, message=ex.message)
 
             result = None
@@ -560,7 +565,9 @@ class SightingByID(Resource):
             sighting.remove_cached_edm_data()
 
             if 'deletedSighting' in result:
-                log.warning(f'EDM triggered self-deletion of {sighting} result={result}')
+                message = f'EDM triggered self-deletion of {sighting} result={result}'
+                AuditLog.audit_log_object_warning(log, sighting, message)
+                log.warning(message)
                 response_data['threatened_sighting_id'] = str(sighting.guid)
                 sighting.delete_cascade()  # this will get rid of our encounter(s) as well so no need to rectify_edm_encounters()
                 sighting = None
@@ -647,9 +654,10 @@ class SightingByID(Resource):
             deleted_ids = sighting.delete_from_edm_and_houston(request)
         except HoustonException as ex:
             edm_status_code = ex.get_val('edm_status_code', 400)
-            log.warning(
-                f'Sighting.delete {sighting.guid} failed: ({ex.status_code} / edm={edm_status_code}) {ex.message}'
-            )
+            message = f'Sighting.delete {sighting.guid} failed: ({ex.status_code} / edm={edm_status_code}) {ex.message}'
+            AuditLog.audit_log_object_warning(log, sighting, message)
+            log.warning(message)
+
             ex_response_data = ex.get_val('response_data', {})
             if (
                 'vulnerableIndividual' in ex_response_data

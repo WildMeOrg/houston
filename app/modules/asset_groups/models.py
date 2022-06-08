@@ -1031,16 +1031,17 @@ class AssetGroupSighting(db.Model, HoustonModel):
                     ex.status_code == HTTPStatus.SERVICE_UNAVAILABLE
                     or ex.status_code == HTTPStatus.INTERNAL_SERVER_ERROR
                 ) and self.detection_attempts < MAX_DETECTION_ATTEMPTS:
-                    log.warning(
-                        f'Sage Detection on AssetGroupSighting({self.guid}) Job{job_id} failed to start, '
-                        f'code: {ex.status_code}, sage_status_code: {sage_status_code}, retrying'
-                    )
+                    message = f'Sage Detection on AssetGroupSighting({self.guid}) Job{job_id} failed to start, '
+                    message += f'code: {ex.status_code}, sage_status_code: {sage_status_code}, retrying'
+                    AuditLog.audit_log_object_warning(log, self, message)
+                    log.warning(message)
                     self.rerun_detection()
                 else:
-                    log.warning(
-                        f'Sage Detection on AssetGroupSighting({self.guid}) Job{job_id} failed to start, '
-                        f'code: {ex.status_code}, sage_status_code: {sage_status_code}, giving up'
-                    )
+                    message = f'Sage Detection on AssetGroupSighting({self.guid}) Job{job_id} failed to start, '
+                    message += f'code: {ex.status_code}, sage_status_code: {sage_status_code}, giving up'
+                    AuditLog.audit_log_object_warning(log, self, message)
+                    log.warning(message)
+
                     # Assuming some sort of persistent error in Sage
                     self.job_complete(job_id)
                     self.set_stage(AssetGroupSightingStage.curation)
@@ -1266,13 +1267,9 @@ class AssetGroupSighting(db.Model, HoustonModel):
             if overwrite:
                 self.progress_detection.cancel()
             else:
-                log.warning(
-                    'Asset Group Sighting %r already has a progress detection %r'
-                    % (
-                        self,
-                        self.progress_detection,
-                    )
-                )
+                message = f'Asset Group Sighting {self} already has a progress detection {self.progress_detection}'
+                AuditLog.audit_log_object_warning(log, self, message)
+                log.warning(message)
                 return
 
         progress = Progress(
@@ -1301,13 +1298,9 @@ class AssetGroupSighting(db.Model, HoustonModel):
             if overwrite:
                 self.progress_identification.cancel()
             else:
-                log.warning(
-                    'Asset Group Sighting %r already has a progress identification %r'
-                    % (
-                        self,
-                        self.progress_identification,
-                    )
-                )
+                message = f'Asset Group Sighting {self} already has a progress identification {self.progress_identification}'
+                AuditLog.audit_log_object_warning(log, self, message)
+                log.warning(message)
                 return
 
         progress = Progress(
@@ -1425,7 +1418,9 @@ class AssetGroupSighting(db.Model, HoustonModel):
                 db.session.merge(self)
             db.session.refresh(self)
         else:
-            log.warning(f'job_id {job_id} not found in AssetGroupSighting')
+            message = f'job_id {job_id} not found in AssetGroupSighting {self.guid}'
+            AuditLog.audit_log_object_warning(log, self, message)
+            log.warning(message)
 
     def delete(self):
         AuditLog.delete_object(log, self)

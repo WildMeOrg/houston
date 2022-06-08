@@ -218,6 +218,7 @@ class Sighting(db.Model, FeatherModel):
             regions = Regions()
         except ValueError as e:
             if str(e) == 'no region data available':
+                AuditLog.audit_log_object_warning(log, self, str(e))
                 log.warning(str(e))
                 return None
             raise
@@ -246,13 +247,9 @@ class Sighting(db.Model, FeatherModel):
             if overwrite:
                 self.progress_identification.cancel()
             else:
-                log.warning(
-                    'Sighting %r already has a progress identification %r'
-                    % (
-                        self,
-                        self.progress_identification,
-                    )
-                )
+                message = f'Sighting {self} already has a progress identification {self.progress_identification}'
+                AuditLog.audit_log_object_warning(log, self, message)
+                log.warning(message)
                 return
 
         progress = Progress(
@@ -1031,7 +1028,9 @@ class Sighting(db.Model, FeatherModel):
         for annot in matching_set_annotations:
             # ideally the query on matching_set annots will exclude these, but in case someone got fancy:
             if not annot.content_guid:
-                log.warning(f'skipping {annot} due to no content_guid')
+                message = f'skipping {annot} due to no content_guid'
+                AuditLog.audit_log_object_warning(log, self, message)
+                log.warning(message)
                 continue
 
             if annot.content_guid == annotation.content_guid:
@@ -1207,7 +1206,8 @@ class Sighting(db.Model, FeatherModel):
 
         if not self.id_configs:
             message = 'send_identification called without id_configs'
-            log.warning('send_identification called without id_configs')
+            AuditLog.audit_log_object_warning(log, self, message)
+            log.warning(message)
             self.set_stage(SightingStage.failed)
             if annotation.progress_identification:
                 annotation.progress_identification.fail(message)
@@ -1356,19 +1356,20 @@ class Sighting(db.Model, FeatherModel):
                             ):
                                 # Ensure Sage is completely up-to-date
                                 Annotation.sync_all_with_sage(ensure=True)
+                                message = f'{debug_context} Sage Identification failed to start '
+                                message += f'code: {ex.status_code}, sage_status_code: {sage_status_code}, retrying'
+                                AuditLog.audit_log_object_warning(log, self, message)
+                                log.warning(message)
 
-                                log.warning(
-                                    f'{debug_context} Sage Identification failed to start '
-                                    f'code: {ex.status_code}, sage_status_code: {sage_status_code}, retrying'
-                                )
                                 self.send_annotation_for_identification_specific(
                                     annotation, config_id, algorithm_id, restart=False
                                 )
                             else:
-                                log.warning(
-                                    f'{debug_context} Sage Identification failed to start '
-                                    f'code: {ex.status_code}, sage_status_code: {sage_status_code}, giving up'
-                                )
+                                message = f'{debug_context} Sage Identification failed to start '
+                                message += f'code: {ex.status_code}, sage_status_code: {sage_status_code}, giving up'
+                                AuditLog.audit_log_object_warning(log, self, message)
+                                log.warning(message)
+
                                 self.jobs[job_uuid_str]['active'] = False
                                 self.jobs[job_uuid_str]['success'] = False
                                 self.jobs[job_uuid_str][
@@ -1521,7 +1522,9 @@ class Sighting(db.Model, FeatherModel):
                 if frontend_data:
                     description = frontend_data.get('description', '')
             except KeyError:
-                log.warning(f'{debug_context} failed to find {algorithm},')
+                message = f'{debug_context} failed to find {algorithm},'
+                AuditLog.audit_log_object_warning(log, self, message)
+                log.warning(message)
 
             if annotation.progress_identification:
                 annotation.progress_identification.set(92)
@@ -1566,7 +1569,9 @@ class Sighting(db.Model, FeatherModel):
 
     def check_job_status(self, job_id):
         if str(job_id) not in self.jobs:
-            log.warning(f'check_job_status called for invalid job {job_id}')
+            message = f'check_job_status called for invalid job {job_id}'
+            AuditLog.audit_log_object_warning(log, self, message)
+            log.warning(message)
             return False
 
         # TODO Poll Sage to see what's happening with this job, if it's ready to handle and we missed the
@@ -1843,9 +1848,10 @@ class Sighting(db.Model, FeatherModel):
         )
         assert self.id_configs and 0 <= config_id < len(self.id_configs)
         if not annotation.content_guid or not annotation.encounter_guid:
-            log.warning(
-                f'{debug_context} Skipping {annotation} due to lack of content_guid or encounter'
-            )
+            message = f'{debug_context} Skipping {annotation} due to lack of content_guid or encounter'
+            AuditLog.audit_log_object_warning(log, self, message)
+            log.warning(message)
+
             return False
 
         # force this to be up-to-date in index

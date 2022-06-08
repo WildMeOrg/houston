@@ -138,6 +138,15 @@ class SiteSetting(db.Model, Timestamp):
             'type': str,
             'public': True,
             'default': lambda: current_app.config.get('SENTRY_DSN'),
+            # sentry is only initialized once in
+            # app/extensions/sentry/__init__.py so changing the sentryDsn site
+            # setting wouldn't change where the errors are sent... For now,
+            # make sentryDsn read only
+            'read_only': True,
+            'edm_definition': {
+                'readOnly': True,
+                'settable': False,
+            },
         },
         'flatfileKey': {
             'type': str,

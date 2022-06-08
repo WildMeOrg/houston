@@ -26,7 +26,7 @@ MODULE_USER_MAP = {
     ('AssetGroup', AccessOperation.READ): ['is_admin'],
     ('AssetGroup', AccessOperation.WRITE): ['is_active'],
     ('AssetGroupSighting', AccessOperation.READ): ['is_admin'],
-    ('AssetGroupSighting', AccessOperation.READ_MULTI_USER): [
+    ('AssetGroupSighting', AccessOperation.READ_BY_ROLE): [
         'is_admin',
         'is_researcher',
     ],

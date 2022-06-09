@@ -187,13 +187,18 @@ class DetailedAssetGroupSightingSchema(BaseAssetGroupSightingSchema):
 
 
 class AssetGroupSightingEncounterSchema(ModelSchema):
+    class Meta:
+        # pylint: disable=missing-docstring
+        # Needed to provide the accessor methods for the hasView and hasEdit methods to work
+        model = AssetGroupSighting
+
     createdHouston = base_fields.DateTime()
     customFields = base_fields.Dict(default={})
     decimalLatitude = base_fields.Float(default=None)
     decimalLongitude = base_fields.Float(default=None)
     guid = base_fields.UUID()
-    hasEdit = base_fields.Boolean(default=True)
-    hasView = base_fields.Boolean(default=True)
+    hasEdit = base_fields.Function(AssetGroupSighting.current_user_has_edit_permission)
+    hasView = base_fields.Function(AssetGroupSighting.current_user_has_view_permission)
     individual = base_fields.Dict(default={})
     owner = base_fields.Dict()
     sex = base_fields.String(default=None, allow_none=True)
@@ -216,6 +221,8 @@ class AssetGroupSightingAsSightingSchema(ModelSchema):
     which creates a getter for a config field of a given name. We can add more
     fields using the pattern below.
     """
+
+    # pylint: disable=missing-docstring
 
     createdHouston = base_fields.DateTime(attribute='created')
     updatedHouston = base_fields.DateTime(attribute='updated')
@@ -284,8 +291,8 @@ class AssetGroupSightingAsSightingSchema(ModelSchema):
         AssetGroupSighting.get_submission_time_isoformat
     )
 
-    hasView = base_fields.Boolean(default=True)
-    hasEdit = base_fields.Boolean(default=True)
+    hasEdit = base_fields.Function(AssetGroupSighting.current_user_has_edit_permission)
+    hasView = base_fields.Function(AssetGroupSighting.current_user_has_view_permission)
 
     progress_preparation = base_fields.Nested(
         'DetailedProgressSchema',
@@ -303,6 +310,9 @@ class AssetGroupSightingAsSightingSchema(ModelSchema):
     )
 
     class Meta:
+        # Needed to provide the accessor methods for the hasView and hasEdit methods to work
+        model = AssetGroupSighting
+
         # adds extras to the fields already defined above
         additional = (
             AssetGroupSighting.guid.key,
@@ -320,6 +330,9 @@ class AssetGroupSightingAsSightingSchema(ModelSchema):
 class AssetGroupSightingAsSightingWithPipelineStatusSchema(
     AssetGroupSightingAsSightingSchema
 ):
+    class Meta(AssetGroupSightingAsSightingSchema.Meta):
+        pass
+
     pipeline_status = base_fields.Function(AssetGroupSighting.get_pipeline_status)
 
 

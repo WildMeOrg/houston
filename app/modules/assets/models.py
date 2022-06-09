@@ -10,6 +10,7 @@ import uuid
 from functools import total_ordering
 
 from flask import current_app, url_for
+from flask_login import current_user
 from PIL import Image
 
 import app.extensions.logging as AuditLog
@@ -402,6 +403,43 @@ class Asset(db.Model, HoustonModel, SageModel):
     def user_raw_read(self, user):
         # return self.is_detection() and user.is_internal
         return user.is_internal
+
+    # This relates to if the user can access to viewing an asset if it was specifically in a sighting's ID result that the user has access to view
+    def user_can_access(self, user=None):
+        from app.modules.annotations.models import Annotation
+        from app.modules.users.permissions.rules import ObjectActionRule
+        from app.modules.users.permissions.types import AccessOperation
+
+        if user is None:
+            user = current_user
+
+        users = []
+        users.append(user)
+        for collaboration in user.get_collaboration_associations():
+            users.append(collaboration.get_other_user())
+
+        sightings = []
+        for user in users:
+            sightings += user.get_sightings()
+
+        annotation_guids = []
+        for sighting in sightings:
+            rule = ObjectActionRule(sighting, AccessOperation.READ, user)
+            if rule.check():
+                annotation_guids += sighting.get_matched_annotation_guids()
+
+        annotation_guids = sorted(set(annotation_guids))
+
+        cls = Annotation
+        asset_guids = (
+            cls.query.filter(cls.guid.in_(annotation_guids))
+            .with_entities(cls.asset_guid)
+            .all()
+        )
+        asset_guids = [val[0] for val in asset_guids]
+        asset_guids = sorted(set(asset_guids))
+
+        return self.guid in asset_guids
 
     # will only set .meta values that can be derived automatically from file
     # (will not overwrite any manual/other values); silently fails if unknown type for deriving

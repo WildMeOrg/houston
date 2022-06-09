@@ -10,6 +10,7 @@ import logging
 import os
 from uuid import UUID
 
+import werkzeug
 from flask import current_app, make_response, request, send_file
 from flask_login import current_user  # NOQA
 
@@ -823,6 +824,60 @@ class SightingIdResult(Resource):
             return sighting.get_id_result()
         except HoustonException as ex:
             abort(ex.status_code, ex.message, errorFields=ex.get_val('error', 'Error'))
+
+
+@api.route('/<uuid:sighting_guid>/annotations/src/<uuid:annotation_guid>')
+@api.login_required(oauth_scopes=['sightings:read'])
+@api.response(
+    code=HTTPStatus.NOT_FOUND,
+    description='Sighting not found.',
+)
+@api.resolve_object_by_model(Sighting, 'sighting')
+class SightingIdResultAnnotationSrcAsset(Resource):
+    """
+    Get the asset for an annotation in the Sighting's ID data
+    """
+
+    @api.permission_required(
+        permissions.ObjectAccessPermission,
+        kwargs_on_request=lambda kwargs: {
+            'obj': kwargs['sighting'],
+            'action': AccessOperation.READ,
+        },
+    )
+    def get(self, sighting, annotation_guid):
+        from app.modules.annotations.models import Annotation
+
+        annotation = Annotation.query.get(annotation_guid)
+        if not annotation:
+            # Sanity check, this should always pass
+            abort(code=HTTPStatus.NOT_FOUND, message='Annotation not found.')
+
+        asset = annotation.asset
+
+        # First, check if the user owns the asset
+        if not asset.user_is_owner(current_user):
+            # Next, check if the sighting has this annotation in it's ID results
+            annotation_guids = sighting.get_matched_annotation_guids()
+            if annotation_guid not in annotation_guids:
+                # Last, final attempt to see if a user can load this ID result from any collaborator's sightings
+                if not asset.user_can_access(current_user):
+                    abort(
+                        code=HTTPStatus.NOT_FOUND,
+                        message='Annotation not found in the ID results for this Sighting.',
+                    )
+
+        # The user is allowed to view the asset, but not the original source.  Only show the derived "mid" version
+        format = 'mid'
+        cls = type(asset.git_store)
+        cls.ensure_store(asset.git_store_guid)
+        try:
+            asset_format_path = asset.get_or_make_format_path(format)
+        except Exception:
+            logging.exception('Got exception from get_or_make_format_path()')
+            raise werkzeug.exceptions.NotImplemented
+
+        return send_file(asset_format_path, asset.DERIVED_MIME_TYPE)
 
 
 @api.route('/<uuid:sighting_guid>/featured_image', doc=False)

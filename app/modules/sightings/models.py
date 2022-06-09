@@ -1612,11 +1612,17 @@ class Sighting(db.Model, FeatherModel):
                 annot.encounter.get_location_id() if annot.encounter else None
             )
             # add annot data
+            image_url = url_for(
+                'api.sightings_sighting_id_result_annotation_src_asset',
+                sighting_guid=self.guid,
+                annotation_guid=annot.guid,
+                _external=True,
+            )
             response['annotation_data'][str(annot.guid)] = {
                 'viewpoint': annot.viewpoint,
                 'encounter_location': encounter_location,
                 'individual_guid': str(individual_guid),
-                'image_url': annot.asset.get_image_url(),
+                'image_url': image_url,
                 'asset_dimensions': annot.asset.get_dimensions(),
                 'bounds': annot.bounds,
                 'sighting_guid': self.guid,
@@ -1738,6 +1744,33 @@ class Sighting(db.Model, FeatherModel):
             response['query_annotations'][-1]['algorithms'] = algorithms
             log.debug(f'Sighting ID response: {response}')
         return response
+
+    def get_matched_annotation_guids(self):
+        annotation_guids = []
+        if self.jobs:
+            for job_id in self.jobs.keys():
+                job = self.jobs[job_id]
+
+                # Get all query annotations
+                query_annotation_guid = job.get('annotation', None)
+                if query_annotation_guid is not None:
+                    annotation = Annotation.query.get(query_annotation_guid)
+                    if annotation:
+                        annotation_guids.append(annotation.guid)
+
+                # Get all result annotations
+                result = job.get('result', {})
+                scores_by_annotation = result.get('scores_by_annotation', [])
+                scores_by_individual = result.get('scores_by_individual', [])
+                for score in scores_by_annotation + scores_by_individual:
+                    for annotation_guid in score.keys():
+                        # Ensure exists in DB
+                        annotation = Annotation.query.get(annotation_guid)
+                        if annotation:
+                            annotation_guids.append(annotation.guid)
+
+        annotation_guids = sorted(set(annotation_guids))
+        return annotation_guids
 
     def set_asset_group_sighting(self, ags):
         self.asset_group_sighting = ags

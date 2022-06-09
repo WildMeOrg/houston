@@ -71,6 +71,12 @@ MODULE_USER_MAP = {
 OBJECT_USER_MAP = {
     ('SiteSetting', AccessOperation.WRITE): ['is_admin'],
     ('SiteSetting', AccessOperation.DELETE): ['is_admin'],
+    ('Asset', AccessOperation.READ): [
+        'is_staff',
+        'is_admin',
+        'is_data_manager',
+        'is_researcher',
+    ],
     ('AssetGroup', AccessOperation.READ_PRIVILEGED): ['is_staff'],
     ('AssetGroupSighting', AccessOperation.READ): [
         'is_admin',
@@ -136,6 +142,7 @@ OBJECT_USER_METHOD_MAP = {
     ('Sighting', AccessOperation.READ): ['user_is_owner'],
     ('Sighting', AccessOperation.WRITE): ['user_owns_all_encounters'],
     ('Sighting', AccessOperation.DELETE): ['user_can_edit_all_encounters'],
+    ('Asset', AccessOperation.READ): ['user_can_access'],
     ('Asset', AccessOperation.READ_INTERNAL): ['user_raw_read'],
     ('Asset', AccessOperation.WRITE): ['user_is_owner'],
     ('AssetGroupSighting', AccessOperation.READ): ['user_can_access'],
@@ -309,7 +316,7 @@ class ObjectActionRule(DenyAbortMixin, Rule):
     Ensure that the current_user has has permission to perform the action on the object passed.
     """
 
-    def __init__(self, obj=None, action=AccessOperation.READ, **kwargs):
+    def __init__(self, obj=None, action=AccessOperation.READ, user=None, **kwargs):
         """
         Args:
         obj (object) - any object can be passed here, which this functionality will
@@ -319,6 +326,9 @@ class ObjectActionRule(DenyAbortMixin, Rule):
         """
         self._obj = obj
         self._action = action
+        if user is None:
+            user = current_user
+        self._user = user
         super().__init__(**kwargs)
 
     def any_table_driven_permission(self):
@@ -333,9 +343,9 @@ class ObjectActionRule(DenyAbortMixin, Rule):
 
         if roles is not None:
             for role in roles:
-                if not hasattr(current_user, role):
+                if not hasattr(self._user, role):
                     log.warning(f'user object does not have accessor {role}')
-                elif getattr(current_user, role):
+                elif getattr(self._user, role):
                     return True, True
 
         if object_user_methods is not None:
@@ -344,12 +354,12 @@ class ObjectActionRule(DenyAbortMixin, Rule):
                     log.warning(
                         f'{self._obj.__class__.__name__} object does not have accessor {method}'
                     )
-                elif getattr(self._obj, method)(current_user):
+                elif getattr(self._obj, method)(self._user):
                     return True, True
 
         return True, False
 
-    def elevated_permission(self, user):
+    def elevated_permission(self):
         # internal access cannot be achieved by elevated permission
         if (
             self._action == AccessOperation.READ_INTERNAL
@@ -358,42 +368,43 @@ class ObjectActionRule(DenyAbortMixin, Rule):
             return False
         elif self._action == AccessOperation.READ_DEBUG:
             # Only staff can read debug info, not owners
-            return user.is_privileged
+            return self._user.is_privileged
         else:
             # Specifically also includes READ_PRIVILEGED
-            return owner_or_privileged(user, self._obj)
+            return owner_or_privileged(self._user, self._obj)
 
     def check(self):
         # This Rule is for checking permissions on objects, so there must be one, Use the ModuleActionRule for
         # permissions checking without objects
         assert self._obj is not None
+
         # Anyone can read public data, even anonymous and inactive users
         has_permission = self._action == AccessOperation.READ and self._obj.is_public()
 
-        if current_user and not current_user.is_anonymous and current_user.is_active:
+        if self._user and not self._user.is_anonymous and self._user.is_active:
             if not has_permission:
                 was_table_driven, has_permission = self.any_table_driven_permission()
 
             if not has_permission:
-                has_permission = self.elevated_permission(current_user) | (
-                    self._permitted_via_collaboration(current_user)
-                    # | self._permitted_via_org(current_user)
-                    # | self._permitted_via_project(current_user)
+                has_permission = self.elevated_permission() | (
+                    self._permitted_via_collaboration()
+                    # | self._permitted_via_org()
+                    # | self._permitted_via_project()
                 )
 
         if not has_permission:
             log.info(
                 'Access permission denied for %r, %r by %r'
-                % (self._action, self._obj, current_user)
+                % (self._action, self._obj, self._user)
             )
         return has_permission
 
-    # def _permitted_via_org(self, user):
+    # def _permitted_via_org(self):
     #     has_permission = False
     #     # Orgs not supported fully yet, but allow read if user is in it
     #     if self._action == AccessOperation.READ:
     #         org_index = 0
-    #         orgs = user.get_org_memberships()
+    #         orgs = self._user.get_org_memberships()
     #         while not has_permission and org_index < len(orgs):
     #             org = orgs[org_index]
     #             member_index = 0
@@ -405,13 +416,13 @@ class ObjectActionRule(DenyAbortMixin, Rule):
     #
     #     return has_permission
 
-    # def _permitted_via_project(self, user):
+    # def _permitted_via_project(self):
     #     from app.modules.encounters.models import Encounter
     #     from app.modules.assets.models import Asset
     #
     #     has_permission = False
     #     project_index = 0
-    #     projects = user.get_projects()
+    #     projects = self._user.get_projects()
     #     # For MVP, Project ownership/membership is the driving factor for access to data within the project,
     #     # not the Role. If Role specific access is later required, it would be added here.
     #     # A user may read an object via permission granted via the project. The user may not update or
@@ -430,18 +441,18 @@ class ObjectActionRule(DenyAbortMixin, Rule):
     #             project_index = project_index + 1
 
     @module_required('collaborations', resolve='warn', default=False)
-    def _permitted_via_collaboration(self, user):
+    def _permitted_via_collaboration(self):
         from app.modules.collaborations.models import Collaboration
 
-        tried_users = [user]
+        tried_users = [self._user]
         object_user_methods = OBJECT_USER_METHOD_MAP.get(
             (self._obj.__class__.__name__, self._action)
         )
 
         if self._action == AccessOperation.READ:
-            collab_users = Collaboration.get_users_for_read(user)
+            collab_users = Collaboration.get_users_for_read(self._user)
         elif self._action == AccessOperation.WRITE:
-            collab_users = Collaboration.get_users_for_write(user)
+            collab_users = Collaboration.get_users_for_write(self._user)
         else:
             collab_users = []
 

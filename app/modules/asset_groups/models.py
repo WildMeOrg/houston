@@ -492,6 +492,10 @@ class AssetGroupSighting(db.Model, HoustonModel):
         if self.asset_group.submitter_guid:
             submitter = User.find(self.asset_group.submitter_guid)
             enc_json['submitter'] = user_schema.dump(submitter).data
+
+        enc_json['hasEdit'] = self.current_user_has_edit_permission()
+        enc_json['hasView'] = self.current_user_has_view_permission()
+
         return enc_json
 
     def get_encounter_json(self, encounter_guid):

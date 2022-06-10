@@ -159,18 +159,6 @@ def test_annotation_matching_set(
     resolved = annotation.resolve_matching_set_query(query_in)
     assert resolved == query_in
 
-    query_in = {'bool': {'filter': {'a', 0}}}
-    resolved = annotation.resolve_matching_set_query(query_in)
-    assert isinstance(resolved['bool']['filter'], list)
-    assert len(resolved['bool']['filter']) == 2
-    assert 'exists' in resolved['bool']['filter'][1]
-    assert 'must_not' in resolved['bool']
-
-    query_in = {'bool': {'filter': [{'a', 0}]}}
-    resolved = annotation.resolve_matching_set_query(query_in)
-    assert isinstance(resolved['bool']['filter'], list)
-    assert len(resolved['bool']['filter']) == 2
-
     # test hook that indexes annotation when encounter is indexed
     was_indexed = annotation.indexed
     annotation.encounter.index()

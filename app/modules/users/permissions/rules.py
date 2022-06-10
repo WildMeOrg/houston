@@ -377,6 +377,8 @@ class ObjectActionRule(DenyAbortMixin, Rule):
         # This Rule is for checking permissions on objects, so there must be one, Use the ModuleActionRule for
         # permissions checking without objects
         assert self._obj is not None
+        # And it must be a real object, not a dict
+        assert hasattr(self._obj, 'is_public')
 
         # Anyone can read public data, even anonymous and inactive users
         has_permission = self._action == AccessOperation.READ and self._obj.is_public()

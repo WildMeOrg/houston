@@ -187,13 +187,14 @@ class DetailedAssetGroupSightingSchema(BaseAssetGroupSightingSchema):
 
 
 class AssetGroupSightingEncounterSchema(ModelSchema):
+
     createdHouston = base_fields.DateTime()
     customFields = base_fields.Dict(default={})
     decimalLatitude = base_fields.Float(default=None)
     decimalLongitude = base_fields.Float(default=None)
     guid = base_fields.UUID()
-    hasEdit = base_fields.Boolean(default=True)
-    hasView = base_fields.Boolean(default=True)
+    hasEdit = base_fields.Boolean(default=False)
+    hasView = base_fields.Boolean(default=False)
     individual = base_fields.Dict(default={})
     owner = base_fields.Dict()
     sex = base_fields.String(default=None, allow_none=True)
@@ -284,8 +285,8 @@ class AssetGroupSightingAsSightingSchema(ModelSchema):
         AssetGroupSighting.get_submission_time_isoformat
     )
 
-    hasView = base_fields.Boolean(default=True)
-    hasEdit = base_fields.Boolean(default=True)
+    hasEdit = base_fields.Function(AssetGroupSighting.current_user_has_edit_permission)
+    hasView = base_fields.Function(AssetGroupSighting.current_user_has_view_permission)
 
     progress_preparation = base_fields.Nested(
         'DetailedProgressSchema',

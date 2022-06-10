@@ -435,25 +435,7 @@ class Annotation(db.Model, HoustonModel, SageModel):
             raise ValueError('must be passed a dict ES query')
         if not self.encounter_guid:
             raise ValueError('cannot resolve query on Annotation with no Encounter')
-        # we just punt on stuff we dont understand and accept as-is
-        if (
-            'bool' not in query
-            or not isinstance(query['bool'], dict)
-            or 'filter' not in query['bool']
-        ):
-            log.debug(f'not resolving atypical query: {query}')
-            return query
-        # handle case where we have {bool: {filter: {...}} to make filter an array
-        if not isinstance(query['bool']['filter'], list):
-            query['bool']['filter'] = [query['bool']['filter']]
-        # i guess to be *extra-thorough* this should *update* an existing `must_not` ?
-        # we do not match within our own encounter
-        if 'must_not' not in query['bool']:
-            query['bool']['must_not'] = {
-                'match': {'encounter_guid': str(self.encounter_guid)}
-            }
-        # requiring an encounter is equivalent to requiring a sighting, which seems reasonable (see DEX-1027)
-        query['bool']['filter'].append({'exists': {'field': 'encounter_guid'}})
+        # DEX-1147 leaves the critical criteria to the FE/caller to remember
         return query
 
     # first tries encounter fields, but will use field on sighting if none on encounter,

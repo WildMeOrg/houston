@@ -242,13 +242,13 @@ def get_and_ensure_test_regions(flask_app_client, admin_user):
     names = [region['name'] for region in regions]
     updated = False
     if 'Wiltshire' not in names:
-        regions.append({'id': uuid.uuid4(), 'name': 'Wiltshire'})
+        regions.append({'id': str(uuid.uuid4()), 'name': 'Wiltshire'})
         updated = True
     if 'Mongolia' not in names:
-        regions.append({'id': uuid.uuid4(), 'name': 'Mongolia'})
+        regions.append({'id': str(uuid.uuid4()), 'name': 'Mongolia'})
         updated = True
     if 'France' not in names:
-        regions.append({'id': uuid.uuid4(), 'name': 'France'})
+        regions.append({'id': str(uuid.uuid4()), 'name': 'France'})
         updated = True
     if updated:
         modify_main_settings(

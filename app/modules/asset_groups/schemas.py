@@ -187,10 +187,6 @@ class DetailedAssetGroupSightingSchema(BaseAssetGroupSightingSchema):
 
 
 class AssetGroupSightingEncounterSchema(ModelSchema):
-    class Meta:
-        # pylint: disable=missing-docstring
-        # Needed to provide the accessor methods for the hasView and hasEdit methods to work
-        model = AssetGroupSighting
 
     createdHouston = base_fields.DateTime()
     customFields = base_fields.Dict(default={})
@@ -221,8 +217,6 @@ class AssetGroupSightingAsSightingSchema(ModelSchema):
     which creates a getter for a config field of a given name. We can add more
     fields using the pattern below.
     """
-
-    # pylint: disable=missing-docstring
 
     createdHouston = base_fields.DateTime(attribute='created')
     updatedHouston = base_fields.DateTime(attribute='updated')
@@ -310,9 +304,6 @@ class AssetGroupSightingAsSightingSchema(ModelSchema):
     )
 
     class Meta:
-        # Needed to provide the accessor methods for the hasView and hasEdit methods to work
-        model = AssetGroupSighting
-
         # adds extras to the fields already defined above
         additional = (
             AssetGroupSighting.guid.key,
@@ -330,9 +321,6 @@ class AssetGroupSightingAsSightingSchema(ModelSchema):
 class AssetGroupSightingAsSightingWithPipelineStatusSchema(
     AssetGroupSightingAsSightingSchema
 ):
-    class Meta(AssetGroupSightingAsSightingSchema.Meta):
-        pass
-
     pipeline_status = base_fields.Function(AssetGroupSighting.get_pipeline_status)
 
 

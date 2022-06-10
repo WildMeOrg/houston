@@ -198,6 +198,28 @@ open _build/html/index.html
 ```
 
 
+## Site Settings
+
+There are some site settings that some features are dependent on:
+
+| Site setting name        | Environment variable             |         |
+|-------------------------|----------------------------------|------------|
+| `flatfileKey`            | `FLATFILE_KEY`                   | Flatfile API key for bulk upload |
+| `recaptchaPublicKey`     | `RECAPTCHA_PUBLIC_KEY`           | Recaptcha site key (disabled if empty) |
+| `recaptchaSecretKey`     | `RECAPTCHA_SECRET_KEY`           | Recaptcha secret key |
+| `googleMapsApiKey`       | `GOOGLE_MAPS_API_KEY`            | Google maps API key (sighting report form) |
+| `email_service`          | `DEFAULT_EMAIL_SERVICE`          | e.g. "mailchimp" |
+| `email_service_username` | `DEFAULT_EMAIL_SERVICE_USERNAME` | mailchimp username |
+| `email_service_password` | `DEFAULT_EMAIL_SERVICE_PASSWORD` | mailchimp password |
+
+The way these site settings work is:
+
+ - look in the database table `site_setting` for key, return value if exists
+ - if not in the database, return the environment variable
+
+For example, you can set the environment variables in the `.env` file or use `docker-compose.override.yml` to override the environment variables without having to edit any checked in files.  Run `docker-compose up -d` to update any affected containers.
+
+
 ## reCAPTCHA
 
 Register at https://www.google.com/recaptcha/admin/create for `reCAPTCHA v3`.

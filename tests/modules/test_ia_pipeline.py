@@ -9,7 +9,7 @@ import tests.modules.encounters.resources.utils as enc_utils
 import tests.modules.sightings.resources.utils as sighting_utils
 import tests.modules.site_settings.resources.utils as site_setting_utils
 from tests import utils as test_utils
-from tests.utils import module_unavailable
+from tests.utils import module_unavailable, wait_for_elasticsearch_status
 
 
 @pytest.mark.skipif(
@@ -163,6 +163,9 @@ def test_ia_pipeline_conf_id(
     db,
     request,
 ):
+    from app.modules.annotations.models import Annotation
+    from app.modules.sightings.models import Sighting
+
     # pylint: disable=invalid-name
     regions = site_setting_utils.get_and_ensure_test_regions(flask_app_client, staff_user)
     region1_id = regions[0]['id']
@@ -238,6 +241,7 @@ def test_ia_pipeline_conf_id(
     ).json
     sighting_uuid = commit_response['guid']
     progress_id_guid = commit_response['progress_identification']['guid']
+    wait_for_elasticsearch_status(flask_app_client, researcher_1)
     # wait for id to complete
     test_utils.wait_for_progress(flask_app, [progress_id_guid])
 
@@ -247,4 +251,13 @@ def test_ia_pipeline_conf_id(
     assert len(sighting_data['encounters']) == 1
     assert sighting_data['encounters'][0]['annotations'][0]['guid'] == annot_guid
 
-    # TODO more validation of the outcome
+    sighting = Sighting.query.get(sighting_uuid)
+    assert sighting
+    ms_query = sighting.id_configs[0]['matching_set']
+    annot = Annotation.query.get(annot_guid)
+
+    # at this point, this should work, but we are sorting out a "feature" in ES that splits guids on their dashes
+    #   which causes us to not be able to match locationIds that are guids
+    #     https://stackoverflow.com/questions/16978508/matching-whole-string-with-dashes-in-elasticsearch
+    #
+    len(annot.get_matching_set(ms_query)) == 1

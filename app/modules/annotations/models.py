@@ -465,6 +465,10 @@ class Annotation(db.Model, HoustonModel, SageModel):
             else None
         )
 
+    @property
+    def locationId(self):
+        return self.get_location_id()
+
     def get_taxonomy_guid(self, sighting_fallback=True):
         return (
             self.encounter.get_taxonomy_guid(sighting_fallback)

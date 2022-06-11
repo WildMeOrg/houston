@@ -69,7 +69,6 @@ class AnnotationElasticsearchSchema(BaseAnnotationSchema):
     """
 
     keywords = base_fields.Function(Annotation.get_keyword_values)
-    locationId = base_fields.Function(Annotation.get_location_id)
     taxonomy_guid = base_fields.Function(Annotation.get_taxonomy_guid)
     owner_guid = base_fields.Function(Annotation.get_owner_guid_str)
     encounter_guid = base_fields.Function(Annotation.get_encounter_guid_str)

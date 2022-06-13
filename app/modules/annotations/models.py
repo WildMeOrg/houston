@@ -436,7 +436,8 @@ class Annotation(db.Model, HoustonModel, SageModel):
         if not self.encounter_guid:
             raise ValueError('cannot resolve query on Annotation with no Encounter')
         # DEX-1147 leaves the critical criteria to the FE/caller to remember
-        return query
+        macroed = self.matching_set_query_replace_macros(query)
+        return macroed
 
     # currently macros can only be *values*, not *keys*
     def matching_set_query_replace_macros(self, query):

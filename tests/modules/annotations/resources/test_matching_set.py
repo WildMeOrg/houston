@@ -307,7 +307,9 @@ def test_annotation_matching_set_macros(
     query = {
         'filter': {
             'A': '_MACRO_annotation_sighting_guid',
-            'B': '_MACRO_annotation_encounter_guid',
+            'B': [
+                {'bool': '_MACRO_annotation_encounter_guid'},
+            ],
             'C': {
                 'match': '_MACRO_annotation_neighboring_viewpoints_clause',
             },
@@ -315,7 +317,8 @@ def test_annotation_matching_set_macros(
     }
     replaced = annotation.matching_set_query_replace_macros(query)
     assert replaced['filter']['A'] == sighting_guid
-    assert replaced['filter']['B'] == enc1_guid
+    assert len(replaced['filter']['B']) == 1
+    assert replaced['filter']['B'][0]['bool'] == enc1_guid
     assert 'match' in replaced['filter']['C']
     vps = annotation.get_neighboring_viewpoints()
     assert len(replaced['filter']['C']['match']['should']) == len(vps)

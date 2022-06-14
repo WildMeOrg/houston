@@ -448,6 +448,14 @@ class Annotation(db.Model, HoustonModel, SageModel):
         for key in replaced:
             if isinstance(replaced[key], dict):  # recurse!
                 replaced[key] = self.matching_set_query_replace_macros(replaced[key])
+            elif isinstance(replaced[key], list):  # recurse!
+                for i in range(len(replaced[key])):
+                    if isinstance(replaced[key][i], dict) or isinstance(
+                        replaced[key][i], list
+                    ):
+                        replaced[key][i] = self.matching_set_query_replace_macros(
+                            replaced[key][i]
+                        )
             elif isinstance(replaced[key], str) and replaced[key].startswith('_MACRO_'):
                 macro_name = replaced[key][7:]
                 if macro_name == 'annotation_neighboring_viewpoints_clause':

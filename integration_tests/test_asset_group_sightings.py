@@ -348,6 +348,8 @@ def test_asset_group_sightings(session, login, codex_url, test_root):
     assert annot_create_response.status_code == 200
     assert annot_create_response.json()['asset_guid'] == asset_guid
 
+    utils.set_id_config_for_ags(session, codex_url, ags_guid)
+
     # Commit asset group sighting (becomes sighting)
     response = session.post(codex_url(f'/api/v1/asset_groups/sighting/{ags_guid}/commit'))
     assert response.status_code == 200

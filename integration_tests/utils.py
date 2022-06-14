@@ -78,6 +78,21 @@ def create_asset_group(session, codex_url, data):
     return group_guid, ags_guids, asset_guids
 
 
+def set_id_config_for_ags(session, codex_url, ags_guid, algorithm='hotspotter_nosv'):
+    patch_data = [
+        {
+            'op': 'replace',
+            'path': '/idConfigs',
+            'value': [{'algorithms': [algorithm]}],
+        }
+    ]
+    response = session.patch(
+        codex_url(f'/api/v1/asset_groups/sighting/as_sighting/{ags_guid}'),
+        json=patch_data,
+    )
+    return response
+
+
 def wait_for(
     session_method,
     url,

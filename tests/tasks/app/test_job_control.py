@@ -103,6 +103,10 @@ def test_sighting_identification_jobs(
         asset_uuid2,
         padding=1,
     )
+    asset_group_utils.patch_in_id_config(
+        flask_app_client, researcher_1, asset_group_sighting_guid2
+    )
+
     response = asset_group_utils.commit_asset_group_sighting_sage_identification(
         flask_app, flask_app_client, researcher_1, asset_group_sighting_guid2
     )

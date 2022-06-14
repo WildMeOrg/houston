@@ -128,6 +128,60 @@ def create_large_asset_group_uuids(flask_app_client, user, request, test_root):
     return uuids
 
 
+# A more fully featured version of the simple ones above
+def create_complex_asset_group_uuids(
+    flask_app_client,
+    user,
+    request,
+    test_root,
+    filename='zebra.jpg',
+    detection_model=None,
+    location_id=None,
+):
+    transaction_id, test_filename = tus_utils.prep_tus_dir(test_root, filename=filename)
+    request.addfinalizer(lambda: tus_utils.cleanup_tus_dir(transaction_id))
+
+    data = AssetGroupCreationData(transaction_id, test_filename)
+    if detection_model:
+        data.set_field('speciesDetectionModel', [detection_model])
+    if location_id:
+        data.set_sighting_field(0, 'locationId', location_id)
+    # Use shared helper to create the asset group and extract the uuids
+    uuids = create_asset_group_extract_uuids(flask_app_client, user, data.get(), request)
+
+    # Add these two, OK yes they're not uuids but they're useful
+    uuids['transaction'] = transaction_id
+    uuids['filename'] = test_filename
+    return uuids
+
+
+# Helper as used multiple times
+def assign_annot_to_encounter(flask_app_client, user, ags_guid):
+    # manually add annots to encounters
+    ags_as_sighting = read_asset_group_sighting_as_sighting(
+        flask_app_client, user, ags_guid
+    )
+    annots = []
+    for asset in ags_as_sighting.json['assets']:
+        annots += asset['annotations']
+
+    annot_guids = [annot['guid'] for annot in annots]
+    encounter_guids = [enc['guid'] for enc in ags_as_sighting.json['encounters']]
+    assert len(annot_guids) == 1
+    assert len(encounter_guids) == 1
+    annot_guid = annot_guids[0]
+    encounter_guid = encounter_guids[0]
+
+    patch_in_annotations(
+        flask_app_client,
+        user,
+        ags_guid,
+        encounter_guid,
+        annot_guids,
+    )
+    return annot_guid, encounter_guid
+
+
 # Helper as used across multiple tests
 def patch_in_dummy_annotation(
     flask_app_client,
@@ -190,6 +244,28 @@ def patch_in_annotations(
         flask_app_client,
         user,
         f'{asset_group_sighting_uuid}/encounter/{encounter_guid}',
+        patch_data,
+    )
+
+
+def patch_in_id_config(
+    flask_app_client,
+    user,
+    asset_group_sighting_uuid,
+    algorithm='hotspotter_nosv',
+    matching_set=None,
+):
+    patch_data = [
+        {
+            'op': 'replace',
+            'path': '/idConfigs',
+            'value': [{'algorithms': [algorithm], 'matching_set': matching_set}],
+        }
+    ]
+    patch_asset_group_sighting_as_sighting(
+        flask_app_client,
+        user,
+        f'{asset_group_sighting_uuid}',
         patch_data,
     )
 
@@ -470,22 +546,21 @@ def create_asset_group_extract_uuids(
 ):
     create_resp = create_asset_group(
         flask_app_client, user, group_data, expected_status_code, expected_error
-    )
+    ).json
     uuids = {}
     if expected_status_code == 200:
-        asset_group_uuid = create_resp.json['guid']
+        asset_group_uuid = create_resp['guid']
         if user:
             # calling code responsibility to clear up if public data
             request.addfinalizer(
                 lambda: delete_asset_group(flask_app_client, user, asset_group_uuid)
             )
 
-        assert len(create_resp.json['asset_group_sightings']) == 1
+        assert len(create_resp['asset_group_sightings']) == 1
         uuids['asset_group'] = asset_group_uuid
-        uuids['asset_group_sighting'] = create_resp.json['asset_group_sightings'][0][
-            'guid'
-        ]
-        uuids['assets'] = [asset['guid'] for asset in create_resp.json['assets']]
+        uuids['asset_group_sighting'] = create_resp['asset_group_sightings'][0]['guid']
+        uuids['assets'] = [asset['guid'] for asset in create_resp['assets']]
+        uuids['progress_detection'] = create_resp['progress_detection']['guid']
 
     return uuids
 

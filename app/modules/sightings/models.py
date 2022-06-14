@@ -629,7 +629,7 @@ class Sighting(db.Model, FeatherModel):
         progress = self.progress_identification
         # no progress object, we assume it has not yet started
         if not progress:
-            return {
+            status = {
                 'skipped': False,
                 'inProgress': False,
                 'failed': False,
@@ -645,6 +645,10 @@ class Sighting(db.Model, FeatherModel):
                 'status': None,
                 'description': None,
             }
+            # if migrated, should look skipped rather than not started
+            if self.is_migrated_data():
+                status['skipped'] = True
+            return status
 
         status = {
             # start with these false and set below

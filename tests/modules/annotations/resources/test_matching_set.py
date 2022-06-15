@@ -241,3 +241,86 @@ def test_annotation_elasticsearch(
     assert sdump.data.get('viewpoint') == viewpoint
     assert sdump.data.get('encounter_guid') == enc_guid
     assert sdump.data.get('sighting_guid') == uuids['sighting']
+
+
+@pytest.mark.skipif(
+    module_unavailable('asset_groups'),
+    reason='AssetGroups module disabled',
+)
+def test_annotation_matching_set_macros(
+    flask_app_client,
+    researcher_1,
+    admin_user,
+    request,
+    test_root,
+):
+    # pylint: disable=invalid-name
+    from app.modules.annotations.models import Annotation
+
+    # make sure we dont have stray annots around
+    Annotation.query.delete()
+
+    enc1_uuids = enc_utils.create_encounter(
+        flask_app_client, researcher_1, request, test_root
+    )
+    enc1_guid = enc1_uuids['encounters'][0]
+    enc1_asset_guid = enc1_uuids['assets'][0]
+    enc1_uuids = enc_utils.create_encounter(
+        flask_app_client, researcher_1, request, test_root
+    )
+    enc1_guid = enc1_uuids['encounters'][0]
+    enc1_asset_guid = enc1_uuids['assets'][0]
+    sighting_guid = enc1_uuids['sighting']
+
+    tx = setting_utils.get_some_taxonomy_dict(flask_app_client, admin_user)
+    assert tx
+    assert 'id' in tx
+    taxonomy_guid = tx['id']
+    locationId = 'erehwon'
+    patch_data = [
+        utils.patch_replace_op('taxonomy', taxonomy_guid),
+        utils.patch_replace_op('locationId', locationId),
+    ]
+    enc_utils.patch_encounter(
+        flask_app_client,
+        enc1_guid,
+        researcher_1,
+        patch_data,
+    )
+
+    viewpoint = 'upfront'
+    response = annot_utils.create_annotation(
+        flask_app_client,
+        researcher_1,
+        enc1_asset_guid,
+        enc1_guid,
+        viewpoint=viewpoint,
+    )
+
+    annotation_guid = response.json['guid']
+    annotation = Annotation.query.get(annotation_guid)
+    assert annotation.asset_guid == uuid.UUID(enc1_asset_guid)
+
+    request.addfinalizer(annotation.delete)
+
+    # this is a kind of bunk query (in terms of useful for ES), but good enough for testing
+    query = {
+        'filter': {
+            'A': '_MACRO_annotation_sighting_guid',
+            'B': [
+                {'bool': '_MACRO_annotation_encounter_guid'},
+            ],
+            'C': {
+                'match': '_MACRO_annotation_neighboring_viewpoints_clause',
+            },
+        }
+    }
+    replaced = annotation.matching_set_query_replace_macros(query)
+    assert replaced['filter']['A'] == sighting_guid
+    assert len(replaced['filter']['B']) == 1
+    assert replaced['filter']['B'][0]['bool'] == enc1_guid
+    assert 'match' in replaced['filter']['C']
+    vps = annotation.get_neighboring_viewpoints()
+    assert len(replaced['filter']['C']['match']['should']) == len(vps)
+    for vp in vps:
+        assert {'term': {'viewpoint': vp}} in replaced['filter']['C']['match']['should']

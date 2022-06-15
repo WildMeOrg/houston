@@ -436,7 +436,45 @@ class Annotation(db.Model, HoustonModel, SageModel):
         if not self.encounter_guid:
             raise ValueError('cannot resolve query on Annotation with no Encounter')
         # DEX-1147 leaves the critical criteria to the FE/caller to remember
-        return query
+        macroed = self.matching_set_query_replace_macros(query)
+        return macroed
+
+    # currently macros can only be *values*, not *keys*
+    def matching_set_query_replace_macros(self, query):
+        assert query and isinstance(query, dict)
+        from copy import deepcopy
+
+        replaced = deepcopy(query)
+        for key in replaced:
+            if isinstance(replaced[key], dict):  # recurse!
+                replaced[key] = self.matching_set_query_replace_macros(replaced[key])
+            elif isinstance(replaced[key], list):  # recurse!
+                for i in range(len(replaced[key])):
+                    if isinstance(replaced[key][i], dict) or isinstance(
+                        replaced[key][i], list
+                    ):
+                        replaced[key][i] = self.matching_set_query_replace_macros(
+                            replaced[key][i]
+                        )
+            elif isinstance(replaced[key], str) and replaced[key].startswith('_MACRO_'):
+                macro_name = replaced[key][7:]
+                if macro_name == 'annotation_neighboring_viewpoints_clause':
+                    viewpoint_list = self.get_neighboring_viewpoints()
+                    if not viewpoint_list:
+                        replaced[key] = {}
+                    else:
+                        viewpoint_data = []
+                        for vp in viewpoint_list:
+                            viewpoint_data.append({'term': {'viewpoint': vp}})
+                        replaced[key] = {
+                            'minimum_should_match': 1,
+                            'should': viewpoint_data,
+                        }
+                elif macro_name == 'annotation_sighting_guid':
+                    replaced[key] = self.get_sighting_guid_str()
+                elif macro_name == 'annotation_encounter_guid':
+                    replaced[key] = self.get_encounter_guid_str()
+        return replaced
 
     # first tries encounter fields, but will use field on sighting if none on encounter,
     #   unless sighting_fallback=False

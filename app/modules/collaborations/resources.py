@@ -85,6 +85,9 @@ class Collaborations(Resource):
         if not other_user.is_active:
             abort(400, f'User with guid {other_user_guid} is not active')
 
+        if other_user.is_internal:
+            abort(400, f'Not permitted to request a collaboration with {other_user_guid}')
+
         users = [current_user, other_user]
         second_user_guid = req.get('second_user_guid')
         if second_user_guid:
@@ -100,7 +103,11 @@ class Collaborations(Resource):
 
             if not second_user.is_active:
                 abort(400, f'Second user with guid {second_user_guid} is not active')
-
+            if second_user.is_internal:
+                abort(
+                    400,
+                    f'Not permitted to request a collaboration with {second_user_guid}',
+                )
             users = [other_user, second_user]
 
         for collab_assoc in users[0].get_collaboration_associations():

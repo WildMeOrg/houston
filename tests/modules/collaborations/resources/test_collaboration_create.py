@@ -78,6 +78,7 @@ def test_create_collaboration(
 def test_create_approved_collaboration(
     flask_app_client, researcher_1, researcher_2, user_manager_user, readonly_user, db
 ):
+    from app.modules.users.models import User
 
     duff_uuid = str(uuid.uuid4())
     data = {
@@ -85,6 +86,14 @@ def test_create_approved_collaboration(
         'second_user_guid': duff_uuid,
     }
     resp_msg = f'Second user with guid {duff_uuid} not found'
+    collab_utils.create_collaboration(
+        flask_app_client, user_manager_user, data, 400, resp_msg
+    )
+
+    public_user = User.get_public_user()
+    public_user_guid = str(public_user.guid)
+    data['second_user_guid'] = public_user_guid
+    resp_msg = f'Not permitted to request a collaboration with {public_user_guid}'
     collab_utils.create_collaboration(
         flask_app_client, user_manager_user, data, 400, resp_msg
     )

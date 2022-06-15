@@ -34,27 +34,6 @@ def check_edm(app, verbose):
     return True
 
 
-def check_edm_db(app, verbose):
-    """Check for connectivity to directly to the EDM database.
-    This connection is used by the indexing procedures.
-
-    """
-    from app.modules.elasticsearch.tasks import create_wildbook_engine
-
-    engine = create_wildbook_engine()
-    try:
-        with engine.connect() as conn:
-            result = conn.execute('SELECT 1')
-            assert result.scalar() == 1
-    except Exception as e:
-        if verbose:
-            log.exception('')
-        else:
-            log.error(str(e))
-        return False
-    return True
-
-
 def check_gitlab(app, verbose):
     """Check the gitlab connection indirectly through the GitlabManager"""
     try:
@@ -105,7 +84,6 @@ def check(context, verbose=True):
         f"db ({app.config['SQLALCHEMY_DATABASE_URI']})": check_db_connection,
         'gitlab': check_gitlab,
         'edm': check_edm,
-        'edm database': check_edm_db,
         'elasticsearch': check_elasticsearch,
         'celery': check_celery_tasks,
         # ...

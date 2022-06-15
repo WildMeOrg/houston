@@ -5,7 +5,7 @@ from flask import current_app
 
 from app.extensions.celery import celery
 
-SAGE_DATA_SYNC_FREQUENCY = 60 * 60
+SAGE_DATA_SYNC_FREQUENCY = None  # 60 * 60
 SAGE_JOBS_SYNC_FREQUENCY = 60 * 5
 
 
@@ -34,10 +34,10 @@ def sage_task_data_sync():
     from app.modules.assets.models import Asset
 
     # Sync all Assets
-    Asset.sync_all_with_sage(ensure=True, prune=True)
+    Asset.sync_all_with_sage(ensure=True)
 
     # Sync all Annotations
-    Annotation.sync_all_with_sage(ensure=True, prune=True)
+    Annotation.sync_all_with_sage(ensure=True)
 
     # Get status of Sage
     current_app.sage.get_status()

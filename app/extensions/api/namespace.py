@@ -125,6 +125,8 @@ class Namespace(BaseNamespace):
         def decorator(func):
             @wraps(func)
             def wrapper(self_, parameters_args, *args, **kwargs):
+                from app.extensions.elasticsearch import ELASTICSEARCH_SORTING_PREFIX
+
                 offset = parameters_args['offset']
                 limit = parameters_args['limit']
                 sort = parameters_args['sort']
@@ -155,7 +157,19 @@ class Namespace(BaseNamespace):
                         )
                         default_column = cls.guid
 
+                    if sort.startswith(ELASTICSEARCH_SORTING_PREFIX):
+                        log.error(
+                            'Unable to sort listing APIs with Elasticsearch property {!r}'.format(
+                                sort
+                            )
+                        )
+
+                        # Remove ES-specific prefix from sort
+                        # This will also try to use local columns as a backup, if found
+                        sort = sort.replace(ELASTICSEARCH_SORTING_PREFIX, '')
+
                     sort = sort.lower()
+
                     outerjoin_cls = None
 
                     if sort in ['default', 'primary']:

@@ -4,7 +4,14 @@ import pytest
 
 from tests import utils as test_utils
 from tests.extensions.elasticsearch.resources import utils as es_utils
-from tests.modules.sightings.resources import utils
+from tests.modules.individuals.resources import utils as individual_utils
+from tests.modules.sightings.resources import utils as sighting_utils
+from tests.utils import (
+    elasticsearch,
+    extension_unavailable,
+    module_unavailable,
+    wait_for_elasticsearch_status,
+)
 
 EXPECTED_KEYS = {
     'created',
@@ -41,7 +48,7 @@ def no_test_sighting_elasticsearch_mappings(flask_app_client, researcher_1):
 def test_search(flask_app_client, researcher_1, request, test_root):
     from app.modules.sightings.models import Sighting
 
-    sighting_guid = utils.create_sighting(
+    sighting_guid = sighting_utils.create_sighting(
         flask_app_client,
         researcher_1,
         request,
@@ -58,3 +65,115 @@ def test_search(flask_app_client, researcher_1, request, test_root):
         expected_status_code=200,
         expected_fields=EXPECTED_KEYS,
     )
+
+
+@pytest.mark.skipif(module_unavailable('sightings'), reason='Sightings module disabled')
+@pytest.mark.skipif(
+    extension_unavailable('elasticsearch'),
+    reason='Elasticsearch extension or module disabled',
+)
+def test_search_with_elasticsearch(
+    db, flask_app_client, researcher_1, request, test_root
+):
+    from app.extensions import elasticsearch as es
+    from app.modules.names.models import DEFAULT_NAME_CONTEXT
+    from app.modules.sightings.models import Sighting
+
+    sighting_1_id = individual_utils.create_individual_and_sighting(
+        flask_app_client,
+        researcher_1,
+        request,
+        test_root,
+        individual_data={
+            'names': [
+                {'context': DEFAULT_NAME_CONTEXT, 'value': 'Zebra 1'},
+                {'context': 'nickname', 'value': 'Nick'},
+            ],
+        },
+    )['sighting']
+    individual_utils.create_individual_and_sighting(
+        flask_app_client,
+        researcher_1,
+        request,
+        test_root,
+        individual_data={
+            'names': [
+                {'context': 'nickname', 'value': 'Nick'},
+            ],
+        },
+    )
+    individual_utils.create_individual_and_sighting(
+        flask_app_client,
+        researcher_1,
+        request,
+        test_root,
+        individual_data={
+            'names': [
+                {'context': 'nickname', 'value': 'Nick Jr.'},
+            ],
+        },
+    )
+
+    # Index all users
+    with es.session.begin(blocking=True):
+        Sighting.index_all(force=True)
+
+    # Wait for elasticsearch to catch up
+    wait_for_elasticsearch_status(flask_app_client, researcher_1)
+    assert len(Sighting.elasticsearch(None, load=False)) == 3
+
+    # Search sightings (matching GUID first)
+    searchTerm = sighting_1_id
+    search = {
+        'bool': {
+            'minimum_should_match': 1,
+            'should': [
+                {'match_phrase': {'guid': {'query': searchTerm}}},
+                {'match_phrase': {'locationId_id': {'query': searchTerm}}},
+                {
+                    'query_string': {
+                        'query': '*{}*'.format(searchTerm),
+                        'fields': [
+                            'verbatimLocality',
+                            'owners.full_name',
+                            'locationId_value',
+                        ],
+                    },
+                },
+            ],
+        },
+    }
+    result_api = Sighting.elasticsearch(search, load=True)
+    response = elasticsearch(flask_app_client, researcher_1, 'sightings', search)
+    result_rest = response.json
+    assert len(result_api) == 1
+    assert len(result_api) == len(result_rest)
+    assert str(result_api[0].guid) == result_rest[0].get('guid')
+
+    sighting = result_api[0]
+    searchTerm = sighting.get_location_id()
+    all_location_ids = [sighting.get_location_id() for sighting in Sighting.query.all()]
+    search = {
+        'bool': {
+            'minimum_should_match': 1,
+            'should': [
+                {'match_phrase': {'guid': {'query': searchTerm}}},
+                {'match_phrase': {'locationId_id': {'query': searchTerm}}},
+                {
+                    'query_string': {
+                        'query': '*{}*'.format(searchTerm),
+                        'fields': [
+                            'verbatimLocality',
+                            'owners.full_name',
+                            'locationId_value',
+                        ],
+                    },
+                },
+            ],
+        },
+    }
+    result_api = Sighting.elasticsearch(search, load=False)
+    response = elasticsearch(flask_app_client, researcher_1, 'sightings', search)
+    result_rest = response.json
+    assert len(result_api) == all_location_ids.count(searchTerm)
+    assert len(result_api) == len(result_rest)

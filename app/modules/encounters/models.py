@@ -98,6 +98,16 @@ class Encounter(db.Model, FeatherModel):
 
         return ElasticsearchEncounterSchema
 
+    @classmethod
+    def patch_elasticsearch_mappings(cls, mappings):
+        mappings = super(Encounter, cls).patch_elasticsearch_mappings(mappings)
+
+        mappings['point'] = {
+            'type': 'geo_point',
+        }
+
+        return mappings
+
     # index of encounter must trigger index of its annotations (so they can update)
     def index_hook_obj(self, *args, **kwargs):
         for annot in self.annotations:

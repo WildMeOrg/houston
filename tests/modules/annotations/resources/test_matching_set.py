@@ -9,6 +9,7 @@ from tests.modules.annotations.resources import utils as annot_utils
 from tests.modules.encounters.resources import utils as enc_utils
 from tests.modules.site_settings.resources import utils as setting_utils
 from tests.utils import (
+    elasticsearch,
     extension_unavailable,
     module_unavailable,
     wait_for_elasticsearch_status,
@@ -324,3 +325,109 @@ def test_annotation_matching_set_macros(
     assert len(replaced['filter']['C']['match']['should']) == len(vps)
     for vp in vps:
         assert {'term': {'viewpoint': vp}} in replaced['filter']['C']['match']['should']
+
+
+@pytest.mark.skipif(
+    module_unavailable('asset_groups'),
+    reason='AssetGroups module disabled',
+)
+@pytest.mark.skipif(
+    extension_unavailable('elasticsearch'),
+    reason='Elasticsearch extension or module disabled',
+)
+def test_search_with_elasticsearch(
+    flask_app_client,
+    researcher_1,
+    admin_user,
+    request,
+    test_root,
+):
+    # pylint: disable=invalid-name
+    from app.extensions import elasticsearch as es
+    from app.modules.annotations.models import Annotation
+
+    uuids = enc_utils.create_encounter(flask_app_client, researcher_1, request, test_root)
+    enc_guid = uuids['encounters'][0]
+    asset_guid = uuids['assets'][0]
+
+    tx = setting_utils.get_some_taxonomy_dict(flask_app_client, admin_user)
+    assert tx
+    assert 'id' in tx
+    taxonomy_guid = tx['id']
+    locationId = 'erehwon'
+    patch_data = [
+        utils.patch_replace_op('taxonomy', taxonomy_guid),
+        utils.patch_replace_op('locationId', locationId),
+    ]
+    enc_utils.patch_encounter(
+        flask_app_client,
+        enc_guid,
+        researcher_1,
+        patch_data,
+    )
+
+    viewpoint = 'upfront'
+    response = annot_utils.create_annotation(
+        flask_app_client,
+        researcher_1,
+        asset_guid,
+        enc_guid,
+        viewpoint=viewpoint,
+    )
+
+    annotation_guid = response.json['guid']
+    annotation = Annotation.query.get(annotation_guid)
+    request.addfinalizer(annotation.delete)
+    annotation.content_guid = uuid.uuid4()
+
+    # Index all users
+    with es.session.begin(blocking=True):
+        Annotation.index_all(force=True)
+
+    # Wait for elasticsearch to catch up
+    wait_for_elasticsearch_status(flask_app_client, researcher_1)
+    assert len(Annotation.elasticsearch(None, load=False)) == 1
+
+    locationId = annotation.get_location_id()
+    search = {
+        'bool': {
+            'filter': [
+                {
+                    'bool': {
+                        'minimum_should_match': 1,
+                        'should': [
+                            {
+                                'term': {
+                                    'locationId': locationId,
+                                }
+                            },
+                        ],
+                    }
+                },
+                {
+                    'bool': {
+                        'minimum_should_match': 1,
+                        'should': [
+                            {'term': {'viewpoint': 'up'}},
+                            {'term': {'viewpoint': 'upleft'}},
+                            {'term': {'viewpoint': 'upfrontleft'}},
+                            {'term': {'viewpoint': 'upfront'}},
+                            {'term': {'viewpoint': 'upfrontright'}},
+                            {'term': {'viewpoint': 'upright'}},
+                            {'term': {'viewpoint': 'upbackright'}},
+                            {'term': {'viewpoint': 'upback'}},
+                            {'term': {'viewpoint': 'upbackleft'}},
+                        ],
+                    }
+                },
+                {'exists': {'field': 'encounter_guid'}},
+            ],
+            'must_not': {'match': {'encounter_guid': 'does not exist'}},
+        }
+    }
+    result_api = Annotation.elasticsearch(search, load=False)
+    response = elasticsearch(flask_app_client, researcher_1, 'annotations', search)
+    result_rest = response.json
+    assert len(result_api) == 1
+    assert len(result_api) == len(result_rest)
+    assert str(result_api[0]) == result_rest[0].get('guid')

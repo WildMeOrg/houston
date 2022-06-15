@@ -238,14 +238,14 @@ def get_and_ensure_test_regions(flask_app_client, admin_user):
     regions = []
     # navigate through the fluff to find the data but don't assume that anything is there
     # (github tests are doing strange stuff)
-    if(
+    if (
         'response' in regions_resp
         and 'value' in regions_resp['response']
         and 'locationID' in regions_resp['response']['value']
     ):
         regions = regions_resp['response']['value']['locationID']
         names = [region['name'] for region in regions]
-        
+
     updated = False
     if 'Wiltshire' not in names:
         regions.append({'id': str(uuid.uuid4()), 'name': 'Wiltshire'})

@@ -1775,14 +1775,6 @@ class Sighting(db.Model, FeatherModel):
     def set_asset_group_sighting(self, ags):
         self.asset_group_sighting = ags
         self.id_configs = ags.get_id_configs()
-        if not self.id_configs:
-            # If no configs passed by the user, use the first one from the IA Config
-            from app.modules.ia_config_reader import IaConfig
-
-            ia_config_reader = IaConfig(current_app.config.get('CONFIG_MODEL'))
-
-            identifiers = ia_config_reader.get('_identifiers')
-            self.id_configs = [{'algorithms': [list(identifiers.keys())[0]]}]
 
     def validate_id_configs(self):
         num_configs = len(self.id_configs)

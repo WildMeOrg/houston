@@ -80,6 +80,8 @@ def test_sightings(session, login, codex_url, test_root, admin_name):
         session.get, ags_url, lambda response: response.json()['stage'] == 'curation'
     )
 
+    utils.set_id_config_for_ags(session, codex_url, ags_guids[0])
+
     # Commit asset group sighting which returns a sighting
     response = session.post(
         codex_url(f'/api/v1/asset_groups/sighting/{ags_guids[0]}/commit')

@@ -7,7 +7,9 @@ import tests.modules.asset_groups.resources.utils as asset_group_utils
 import tests.modules.assets.resources.utils as asset_utils
 import tests.modules.encounters.resources.utils as enc_utils
 import tests.modules.sightings.resources.utils as sighting_utils
-from tests.utils import module_unavailable
+import tests.modules.site_settings.resources.utils as site_setting_utils
+import tests.utils as test_utils
+from tests.utils import module_unavailable, wait_for_elasticsearch_status
 
 
 @pytest.mark.skipif(
@@ -145,3 +147,79 @@ def test_ia_pipeline_sim_detect_response(
             asset_group_utils.delete_asset_group(
                 flask_app_client, researcher_1, asset_group_uuid
             )
+
+
+@pytest.mark.skipif(
+    module_unavailable('asset_groups', 'sightings'), reason='AssetGroups module disabled'
+)
+def test_ia_pipeline_skip_id(
+    flask_app,
+    flask_app_client,
+    researcher_1,
+    regular_user,
+    staff_user,
+    internal_user,
+    test_root,
+    db,
+    request,
+):
+
+    # pylint: disable=invalid-name
+    regions = site_setting_utils.get_and_ensure_test_regions(flask_app_client, staff_user)
+    region1_id = regions[0]['id']
+
+    # create one sighting to give us some annots to test against
+    previous_sighting_uuids = asset_group_utils.create_complex_asset_group_uuids(
+        flask_app_client,
+        researcher_1,
+        request,
+        test_root,
+        filename='zebra2.jpg',
+        detection_model='african_terrestrial',
+        location_id=region1_id,
+    )
+    ags_guid = previous_sighting_uuids['asset_group_sighting']
+    # wait for detection to finish
+    test_utils.wait_for_progress(
+        flask_app, [previous_sighting_uuids['progress_detection']]
+    )
+    # manually add annots to encounter
+    asset_group_utils.assign_annot_to_encounter(flask_app_client, researcher_1, ags_guid)
+    # commit it
+    asset_group_utils.commit_asset_group_sighting(
+        flask_app_client, researcher_1, ags_guid
+    )
+
+    uuids = asset_group_utils.create_complex_asset_group_uuids(
+        flask_app_client,
+        researcher_1,
+        request,
+        test_root,
+        detection_model='african_terrestrial',
+    )
+    ags_guid = uuids['asset_group_sighting']
+    # wait for detection to finish
+    test_utils.wait_for_progress(flask_app, [uuids['progress_detection']])
+
+    # manually add annots to encounter
+    annot_guid, encounter_guid = asset_group_utils.assign_annot_to_encounter(
+        flask_app_client, researcher_1, ags_guid
+    )
+    # commit it
+    commit_response = asset_group_utils.commit_asset_group_sighting(
+        flask_app_client, researcher_1, uuids['asset_group_sighting']
+    ).json
+    sighting_uuid = commit_response['guid']
+    progress_id_guid = commit_response['progress_identification']['guid']
+    wait_for_elasticsearch_status(flask_app_client, researcher_1)
+    # wait for id to complete
+    test_utils.wait_for_progress(flask_app, [progress_id_guid])
+
+    sighting_data = sighting_utils.read_sighting(
+        flask_app_client, researcher_1, sighting_uuid
+    ).json
+    assert len(sighting_data['encounters']) == 1
+    assert sighting_data['encounters'][0]['annotations'][0]['guid'] == annot_guid
+
+    assert sighting_data['stage'] == 'un_reviewed'
+    assert sighting_data['identification_start_time'] is None

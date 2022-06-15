@@ -3,6 +3,8 @@
 Configuration resources utils
 -------------
 """
+import uuid
+
 from tests import utils as test_utils
 
 EXPECTED_KEYS = {'response'}
@@ -225,3 +227,41 @@ def get_some_taxonomy_dict(flask_app_client, admin_user):
         and len(response.json['response']['value']) > 0
     )
     return response.json['response']['value'][0]
+
+
+# Helper util to get (and create if necessary) the regions we will use for testing
+def get_and_ensure_test_regions(flask_app_client, admin_user):
+    regions_resp = read_main_settings(
+        flask_app_client, admin_user, 'site.custom.regions'
+    ).json
+    names = []
+    regions = []
+    # navigate through the fluff to find the data but don't assume that anything is there
+    # (github tests are doing strange stuff)
+    if (
+        'response' in regions_resp
+        and 'value' in regions_resp['response']
+        and 'locationID' in regions_resp['response']['value']
+    ):
+        regions = regions_resp['response']['value']['locationID']
+        names = [region['name'] for region in regions]
+
+    updated = False
+    if 'Wiltshire' not in names:
+        regions.append({'id': str(uuid.uuid4()), 'name': 'Wiltshire'})
+        updated = True
+    if 'Mongolia' not in names:
+        regions.append({'id': str(uuid.uuid4()), 'name': 'Mongolia'})
+        updated = True
+    if 'France' not in names:
+        regions.append({'id': str(uuid.uuid4()), 'name': 'France'})
+        updated = True
+    if updated:
+        modify_main_settings(
+            flask_app_client,
+            admin_user,
+            {'_value': {'locationID': regions}},
+            'site.custom.regions',
+        )
+
+    return regions

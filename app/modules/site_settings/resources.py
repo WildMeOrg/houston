@@ -523,13 +523,10 @@ class PublicData(Resource):
         from app.modules.sightings.models import Sighting
         from app.modules.users.models import User
 
-        all_users = User.query.all()
-        num_individuals = Individual.query_search()
-        num_sightings = Sighting.query_search()
         return {
-            'num_users': len(all_users),
-            'num_individuals': num_individuals,
-            'num_sightings': num_sightings,
+            'num_users': User.query_search().count(),
+            'num_individuals': Individual.query_search().count(),
+            'num_sightings': Sighting.query_search().count(),
         }
 
 

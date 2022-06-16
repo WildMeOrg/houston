@@ -52,9 +52,6 @@ def get_public_data(context, debug=False):
     from app.modules.sightings.models import Sighting
     from app.modules.users.models import User
 
-    all_users = User.query.all()
-    num_individuals = Individual.query_search()
-    num_sightings = Sighting.query_search()
-    print(f'num_users: {len(all_users)}')
-    print(f'num_individuals: {num_individuals}')
-    print(f'num_sightings: {num_sightings}')
+    print(f'num_users: {User.query_search().count()}')
+    print(f'num_individuals: {Individual.query_search().count()}')
+    print(f'num_sightings: {Sighting.query_search().count()}')

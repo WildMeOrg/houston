@@ -252,6 +252,11 @@ def test_elasticsearch_utilities(
     assert total1 == total2 and total2 == total3
     assert set(users1) == set(users2) and set(users1) == set(users3)
 
+    with es.session.begin(blocking=True, forced=True):
+        es.es_index_mappings_patch(User)
+    with es.session.begin(blocking=True, forced=True):
+        User.index_all()
+
     # Check pagination
     reference = User.elasticsearch(body)
 

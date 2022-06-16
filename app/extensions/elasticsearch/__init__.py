@@ -279,7 +279,7 @@ class ElasticSearchBulkOperation(object):
         if self.in_bulk_mode():
             top_config = self.depth[0]
             if top_config is not None:
-                forced = top_config.get('forced', False)
+                forced = top_config.get('forced', top_config.get('force', False))
         return forced
 
     def track_bulk_action(self, action, item, force=False):
@@ -655,10 +655,10 @@ class ElasticSearchBulkOperation(object):
             if config is None:
                 config = {}
 
-            blocking = config.get('blocking', self.blocking)
-            verify = config.get('verify', False)
+            blocking = config.get('blocking', config.get('foreground', self.blocking))
+            verify = config.get('verified', config.get('verify', False))
             disabled = config.get('disabled', not config.get('enabled', True))
-            forced = config.get('forced', False)
+            forced = config.get('forced', config.get('force', False))
 
             keys = self.bulk_actions.keys()
             log.debug('ES exit block with {!r} keys'.format(keys))

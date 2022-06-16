@@ -17,6 +17,7 @@ import app.extensions.logging as AuditLog  # NOQA
 import app.version
 from app.extensions import db, is_extension_enabled
 from app.extensions.api import Namespace, abort
+from app.modules import is_module_enabled
 from app.modules.users import permissions
 from app.modules.users.models import User
 from app.modules.users.permissions.types import AccessOperation
@@ -519,15 +520,24 @@ class SiteInfo(Resource):
 class PublicData(Resource):
     def get(self):
 
-        from app.modules.individuals.models import Individual
-        from app.modules.sightings.models import Sighting
-        from app.modules.users.models import User
+        response = {}
 
-        return {
-            'num_users': User.query_search().count(),
-            'num_individuals': Individual.query_search().count(),
-            'num_sightings': Sighting.query_search().count(),
-        }
+        if is_module_enabled('individuals'):
+            from app.modules.individuals.models import Individual
+
+            response['num_individuals'] = Individual.query_search().count()
+
+        if is_module_enabled('sightings'):
+            from app.modules.sightings.models import Sighting
+
+            response['num_sightings'] = Sighting.query_search().count()
+
+        if is_module_enabled('users'):
+            from app.modules.users.models import User
+
+            response['num_users'] = User.query_search().count()
+
+        return response
 
 
 @api.route('/heartbeat')

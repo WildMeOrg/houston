@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from app.extensions import db
+from app.modules import is_module_enabled
 from app.modules.fileuploads.models import FileUpload  # NOQA
 from app.modules.site_settings.models import SiteSetting  # NOQA
 from tasks.utils import app_context_task
@@ -44,14 +45,19 @@ def get_value(context, key, default=None):
 
 
 @app_context_task()
-def get_public_data(context, debug=False):
-    if debug:
-        breakpoint()
+def get_public_data(context):
 
-    from app.modules.individuals.models import Individual
-    from app.modules.sightings.models import Sighting
-    from app.modules.users.models import User
+    if is_module_enabled('individuals'):
+        from app.modules.individuals.models import Individual
 
-    print(f'num_users: {User.query_search().count()}')
-    print(f'num_individuals: {Individual.query_search().count()}')
-    print(f'num_sightings: {Sighting.query_search().count()}')
+        print(f'num_individuals: {Individual.query_search().count()}')
+
+    if is_module_enabled('sightings'):
+        from app.modules.sightings.models import Sighting
+
+        print(f'num_sightings: {Sighting.query_search().count()}')
+
+    if is_module_enabled('users'):
+        from app.modules.users.models import User
+
+        print(f'num_users: {User.query_search().count()}')

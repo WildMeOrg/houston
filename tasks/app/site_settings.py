@@ -41,3 +41,20 @@ def get_value(context, key, default=None):
     else:
         val = SiteSetting.get_value(key, default=default)
     print(repr(val))
+
+
+@app_context_task()
+def get_public_data(context, debug=False):
+    if debug:
+        breakpoint()
+
+    from app.modules.individuals.models import Individual
+    from app.modules.sightings.models import Sighting
+    from app.modules.users.models import User
+
+    all_users = User.query.all()
+    num_individuals = Individual.query_search()
+    num_sightings = Sighting.query_search()
+    print(f'num_users: {len(all_users)}')
+    print(f'num_individuals: {num_individuals}')
+    print(f'num_sightings: {num_sightings}')

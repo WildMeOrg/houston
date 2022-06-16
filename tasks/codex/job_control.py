@@ -41,20 +41,16 @@ def print_all_sighting_jobs(context, sighting_guid=None, verbose=True):
 
 
 @app_context_task()
-def check_ags_jobs(context, debug=False):
+def check_ags_jobs(context):
     """AssetGroupSighting.check_jobs(), optional --debug to use pdb"""
     from app.modules.asset_groups.models import AssetGroupSighting
 
-    if debug:
-        breakpoint()
     AssetGroupSighting.check_jobs()
 
 
 @app_context_task()
-def check_sighting_jobs(context, debug=False):
+def check_sighting_jobs(context):
     """Sighting.check_jobs(), optional --debug to use pdb"""
     from app.modules.sightings.models import Sighting
 
-    if debug:
-        breakpoint()
     Sighting.check_jobs()

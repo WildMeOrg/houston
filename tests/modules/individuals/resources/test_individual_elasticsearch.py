@@ -61,7 +61,7 @@ def test_search_with_elasticsearch(
         },
     )
 
-    # Index all users
+    # Index all individuals
     with es.session.begin(blocking=True):
         Individual.index_all(force=True)
 

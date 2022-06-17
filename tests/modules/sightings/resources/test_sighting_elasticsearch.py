@@ -114,7 +114,7 @@ def test_search_with_elasticsearch(
         },
     )
 
-    # Index all users
+    # Index all sightings
     with es.session.begin(blocking=True):
         Sighting.index_all(force=True)
 

@@ -270,7 +270,7 @@ def test_elasticsearch_utilities(
                         None,
                         'guid',
                         'indexed',
-                        'full_name',
+                        # 'full_name',
                         'elasticsearch.guid',
                     ]:
                         for reverse in [True, False]:
@@ -323,10 +323,10 @@ def test_elasticsearch_utilities(
                 compare.sort(key=lambda user: user.guid, reverse=reverse)
             elif sort == 'indexed':
                 compare.sort(key=lambda user: (user.indexed, user.guid), reverse=reverse)
-            elif sort == 'full_name':
-                compare.sort(
-                    key=lambda user: (user.full_name, user.guid), reverse=reverse
-                )
+            # elif sort == 'full_name':
+            #     compare.sort(
+            #         key=lambda user: (user.full_name, user.guid), reverse=reverse
+            #     )
             elif sort == 'elasticsearch.guid':
                 values = []
                 for user in compare:
@@ -359,7 +359,7 @@ def test_elasticsearch_utilities(
     configs = []
     for limit in [None, 1, 5, 100]:
         for offset in [None, 0, 5, 100]:
-            for sort in [None, 'guid', 'indexed', 'full_name', 'elasticsearch.guid']:
+            for sort in [None, 'guid', 'indexed', 'elasticsearch.guid']:
                 for reverse in [True, False]:
                     for reverse_after in [True, False]:
                         config = (limit, offset, sort, reverse, reverse_after)
@@ -399,10 +399,10 @@ def test_elasticsearch_utilities(
                 compare.sort(key=lambda user: user.guid, reverse=reverse)
             elif sort == 'indexed':
                 compare.sort(key=lambda user: (user.indexed, user.guid), reverse=reverse)
-            elif sort == 'full_name':
-                compare.sort(
-                    key=lambda user: (user.full_name, user.guid), reverse=reverse
-                )
+            # elif sort == 'full_name':
+            #     compare.sort(
+            #         key=lambda user: (user.full_name, user.guid), reverse=reverse
+            #     )
             else:
                 raise ValueError()
 

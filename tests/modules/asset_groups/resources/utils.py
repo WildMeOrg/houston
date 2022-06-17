@@ -72,15 +72,16 @@ def create_simple_asset_group_uuids(flask_app_client, user, request, test_root):
 
 # Helper that does what the above method does but for multiple files and multiple encounters in the sighting
 def create_large_asset_group_uuids(flask_app_client, user, request, test_root):
+    import uuid
+
     import tests.extensions.tus.utils as tus_utils
     from tests import utils as test_utils
 
     transaction_id, filenames = create_bulk_tus_transaction(test_root)
     uuids = {'transaction': transaction_id}
     request.addfinalizer(lambda: tus_utils.cleanup_tus_dir(transaction_id))
-    import random
 
-    locationId = random.randrange(10000)
+    locationId = str(uuid.uuid4())
     sighting_data = {
         'time': '2000-01-01T01:01:01+00:00',
         'timeSpecificity': 'time',

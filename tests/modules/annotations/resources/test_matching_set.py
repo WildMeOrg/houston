@@ -56,7 +56,7 @@ def test_annotation_matching_set(
     assert tx
     assert 'id' in tx
     taxonomy_guid = tx['id']
-    locationId = 'erehwon'
+    locationId = str(uuid.uuid4())
     patch_data = [
         utils.patch_replace_op('taxonomy', taxonomy_guid),
         utils.patch_replace_op('locationId', locationId),
@@ -201,7 +201,7 @@ def test_annotation_elasticsearch(
     assert tx
     assert 'id' in tx
     taxonomy_guid = tx['id']
-    locationId = 'erehwon'
+    locationId = str(uuid.uuid4())
     patch_data = [
         utils.patch_replace_op('taxonomy', taxonomy_guid),
         utils.patch_replace_op('locationId', locationId),
@@ -277,7 +277,7 @@ def test_annotation_matching_set_macros(
     assert tx
     assert 'id' in tx
     taxonomy_guid = tx['id']
-    locationId = 'erehwon'
+    locationId = str(uuid.uuid4())
     patch_data = [
         utils.patch_replace_op('taxonomy', taxonomy_guid),
         utils.patch_replace_op('locationId', locationId),
@@ -354,7 +354,7 @@ def test_search_with_elasticsearch(
     assert tx
     assert 'id' in tx
     taxonomy_guid = tx['id']
-    locationId = 'erehwon'
+    locationId = str(uuid.uuid4())
     patch_data = [
         utils.patch_replace_op('taxonomy', taxonomy_guid),
         utils.patch_replace_op('locationId', locationId),
@@ -380,7 +380,7 @@ def test_search_with_elasticsearch(
     request.addfinalizer(annotation.delete)
     annotation.content_guid = uuid.uuid4()
 
-    # Index all users
+    # Index all annotations
     with es.session.begin(blocking=True):
         Annotation.index_all(force=True)
 

@@ -537,6 +537,12 @@ class PublicData(Resource):
 
             response['num_users'] = User.query_search().count()
 
+        if is_module_enabled('asset_group_sightings'):
+            from app.modules.asset_groups.models import AssetGroupSighting, AssetGroupSightingStage
+            response['num_pending_sightings'] = AssetGroupSighting.query.filter(
+                AssetGroupSighting.stage != AssetGroupSightingStage.processed
+            ).count()
+
         return response
 
 

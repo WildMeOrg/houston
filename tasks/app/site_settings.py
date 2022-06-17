@@ -45,7 +45,10 @@ def get_value(context, key, default=None):
 
 
 @app_context_task()
-def get_public_data(context):
+def get_public_data(context, debug=False):
+
+    if debug:
+        breakpoint()
 
     if is_module_enabled('individuals'):
         from app.modules.individuals.models import Individual
@@ -61,3 +64,10 @@ def get_public_data(context):
         from app.modules.users.models import User
 
         print(f'num_users: {User.query_search().count()}')
+
+    if is_module_enabled('asset_group_sightings'):
+        from app.modules.asset_groups.models import AssetGroupSighting, AssetGroupSightingStage
+        num_pending_sightings = AssetGroupSighting.query.filter(
+            AssetGroupSighting.stage != AssetGroupSightingStage.processed
+        ).count()
+        print(f'num_pending_sightings: {num_pending_sightings}')

@@ -124,9 +124,9 @@ class SagePassthroughTargets(Resource):
         return targets
 
 
-@edm_pass.route('/<string:target>/', defaults={'path': None}, doc=False)
-@edm_pass.route('/<string:target>/<path:path>')
-@edm_pass.login_required(oauth_scopes=['passthroughs:read'])
+@sage_pass.route('/<string:target>/', defaults={'path': None}, doc=False)
+@sage_pass.route('/<string:target>/<path:path>')
+@sage_pass.login_required(oauth_scopes=['passthroughs:read'])
 class SagePassthroughs(Resource):
     r"""
     A pass-through allows a GET or POST request to be referred to a registered back-end EDM
@@ -163,10 +163,14 @@ class SagePassthroughs(Resource):
         params = {}
         params.update(request.args)
         params.update(request.form)
-
-        response = current_app.sage.request_passthrough(
-            'passthrough.data', 'get', {'params': params}, path, target
-        )
+        if target == 'jobs':
+            response = current_app.sage.request_passthrough(
+                'passthrough.jobs', 'get', {'params': params}, path, 'default'
+            )
+        else:
+            response = current_app.sage.request_passthrough(
+                'passthrough.data', 'get', {'params': params}, path, target
+            )
 
         return response
 

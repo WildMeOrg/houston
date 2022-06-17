@@ -156,6 +156,7 @@ class SageManager(RestManager):
         },
         'passthrough': {
             'data': '',
+            'jobs': '//engine/job/status/',
         },
         'engine': {
             'list': '//engine/job/status/',

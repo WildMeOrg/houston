@@ -45,7 +45,10 @@ def get_value(context, key, default=None):
 
 
 @app_context_task()
-def get_public_data(context):
+def get_public_data(context, debug=False):
+
+    if debug:
+        breakpoint()
 
     if is_module_enabled('individuals'):
         from app.modules.individuals.models import Individual
@@ -60,4 +63,21 @@ def get_public_data(context):
     if is_module_enabled('users'):
         from app.modules.users.models import User
 
-        print(f'num_users: {User.query_search().count()}')
+        num_internal_users = User.query.filter(
+            User.static_roles.op('&')(User.StaticRoles.INTERNAL.mask) > 1
+        ).count()
+
+        print(
+            f'num_users: {User.query_search().count()} of which {num_internal_users} are internal'
+        )
+
+    if is_module_enabled('asset_groups'):
+        from app.modules.asset_groups.models import (
+            AssetGroupSighting,
+            AssetGroupSightingStage,
+        )
+
+        num_pending_sightings = AssetGroupSighting.query.filter(
+            AssetGroupSighting.stage != AssetGroupSightingStage.processed
+        ).count()
+        print(f'num_pending_sightings: {num_pending_sightings}')

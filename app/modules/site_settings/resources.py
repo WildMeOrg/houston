@@ -535,10 +535,17 @@ class PublicData(Resource):
         if is_module_enabled('users'):
             from app.modules.users.models import User
 
-            response['num_users'] = User.query_search().count()
+            num_internal_users = User.query.filter(
+                User.static_roles.op('&')(User.StaticRoles.INTERNAL.mask) > 1
+            ).count()
+            response['num_users'] = User.query_search().count() - num_internal_users
 
-        if is_module_enabled('asset_group_sightings'):
-            from app.modules.asset_groups.models import AssetGroupSighting, AssetGroupSightingStage
+        if is_module_enabled('asset_groups'):
+            from app.modules.asset_groups.models import (
+                AssetGroupSighting,
+                AssetGroupSightingStage,
+            )
+
             response['num_pending_sightings'] = AssetGroupSighting.query.filter(
                 AssetGroupSighting.stage != AssetGroupSightingStage.processed
             ).count()

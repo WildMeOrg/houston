@@ -284,6 +284,18 @@ class Asset(db.Model, HoustonModel, SageModel):
     def sync_with_sage(self, ensure=False, force=False, bulk_sage_uuids=None, **kwargs):
         from app.extensions.sage import from_sage_uuid
 
+        if self.mime_type not in current_app.config.get(
+            'SAGE_MIME_TYPE_WHITELIST_EXTENSIONS', []
+        ):
+            log.info(
+                'Cannot sync Asset %r with unsupported SAGE MIME type %d, skipping'
+                % (
+                    self,
+                    self.mime_type,
+                )
+            )
+            return
+
         if force:
             with db.session.begin(subtransactions=True):
                 self.content_guid = None

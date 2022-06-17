@@ -509,6 +509,15 @@ class SageManager(RestManager):
         houston_assets = Asset.query.with_entities(Asset.guid).all()
         houston_annots = Annotation.query.with_entities(Annotation.guid).all()
 
+        sage_compatible_mime_types = current_app.config.get(
+            'SAGE_MIME_TYPE_WHITELIST_EXTENSIONS', []
+        )
+        houston_compatible_assets = (
+            Asset.query.filter(Asset.mime_type.in_(sage_compatible_mime_types))
+            .with_entities(Asset.guid)
+            .all()
+        )
+
         houston_sage_assets = Asset.query.with_entities(Asset.content_guid).all()
         houston_sage_annots = Annotation.query.with_entities(
             Annotation.content_guid
@@ -519,7 +528,22 @@ class SageManager(RestManager):
         sage_annots = {from_sage_uuid(guid) for guid in sage_annots}
 
         houston_assets = {guid for (guid,) in houston_assets if guid is not None}
+        houston_compatible_assets = {
+            guid for (guid,) in houston_compatible_assets if guid is not None
+        }
         houston_annots = {guid for (guid,) in houston_annots if guid is not None}
+
+        houston_incompatible_assets = houston_assets - houston_compatible_assets
+        houston_incompatible_annots = (
+            Annotation.query.filter(
+                Annotation.asset_guid.in_(houston_incompatible_assets)
+            )
+            .with_entities(Annotation.guid)
+            .all()
+        )
+        houston_incompatible_annots = {
+            guid for (guid,) in houston_incompatible_annots if guid is not None
+        }
 
         houston_sage_assets_none = sum(guid is None for (guid,) in houston_sage_assets)
         houston_sage_annots_none = sum(guid is None for (guid,) in houston_sage_annots)
@@ -531,13 +555,17 @@ class SageManager(RestManager):
             guid for (guid,) in houston_sage_annots if guid is not None
         }
 
+        houston_sage_assets = houston_sage_assets - houston_incompatible_assets
+        houston_sage_annots = houston_sage_annots - houston_incompatible_annots
+
         log.info('Assets')
         log.info(
-            '\tHouston       : %d (out of %d, %d Nones)'
+            '\tHouston       : %d (out of %d, %d Nones, %d Incompatible)'
             % (
                 len(houston_sage_assets),
                 len(houston_assets),
                 houston_sage_assets_none,
+                len(houston_incompatible_assets),
             )
         )
         log.info('\tSage          : %d' % (len(sage_assets),))
@@ -549,11 +577,12 @@ class SageManager(RestManager):
         log.info('')
         log.info('Annotations')
         log.info(
-            '\tHouston       : %d (out of %d, %d Nones)'
+            '\tHouston       : %d (out of %d, %d Nones, %d Incompatible)'
             % (
                 len(houston_sage_annots),
                 len(houston_annots),
                 houston_sage_annots_none,
+                len(houston_incompatible_annots),
             )
         )
         log.info('\tSage          : %d' % (len(sage_annots),))

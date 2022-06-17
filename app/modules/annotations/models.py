@@ -171,6 +171,18 @@ class Annotation(db.Model, HoustonModel, SageModel):
 
             return
 
+        if self.asset.mime_type not in current_app.config.get(
+            'SAGE_MIME_TYPE_WHITELIST_EXTENSIONS', []
+        ):
+            log.info(
+                'Cannot sync Annotation %r with unsupported SAGE MIME type %d on Asset, skipping'
+                % (
+                    self,
+                    self.asset.mime_type,
+                )
+            )
+            return
+
         # First, ensure that the annotation's asset has been synced with Sage
         if not skip_asset:
             self.asset.sync_with_sage(

@@ -118,6 +118,14 @@ class BaseConfig(FlaskConfigOverrides, RedisConfig):
         'video/webm': 'webm',
     }
 
+    SAGE_MIME_TYPE_WHITELIST_EXTENSIONS = [
+        'image/bmp',
+        'image/jpeg',
+        'image/png',
+        'image/tiff',
+        'image/webp',
+    ]
+
     # specifically this is where tus "temporary" files go
     UPLOADS_DATABASE_PATH = str(DATA_ROOT / 'uploads')
     UPLOADS_TTL_SECONDS = 60 * 60 * 1

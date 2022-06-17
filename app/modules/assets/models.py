@@ -288,7 +288,7 @@ class Asset(db.Model, HoustonModel, SageModel):
             'SAGE_MIME_TYPE_WHITELIST_EXTENSIONS', []
         ):
             log.info(
-                'Cannot sync Asset %r with unsupported SAGE MIME type %d, skipping'
+                'Cannot sync Asset %r with unsupported SAGE MIME type %r, skipping'
                 % (
                     self,
                     self.mime_type,

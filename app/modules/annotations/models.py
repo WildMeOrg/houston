@@ -175,7 +175,7 @@ class Annotation(db.Model, HoustonModel, SageModel):
             'SAGE_MIME_TYPE_WHITELIST_EXTENSIONS', []
         ):
             log.info(
-                'Cannot sync Annotation %r with unsupported SAGE MIME type %d on Asset, skipping'
+                'Cannot sync Annotation %r with unsupported SAGE MIME type %r on Asset, skipping'
                 % (
                     self,
                     self.asset.mime_type,

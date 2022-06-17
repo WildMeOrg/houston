@@ -9,6 +9,8 @@ blinker
 
 celery
 
+deepdiff
+
 elasticsearch>=7.0.0,<7.14.0
 
 etaprogress

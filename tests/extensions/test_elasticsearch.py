@@ -29,7 +29,7 @@ def test_indexing_with_elasticsearch():
 
 
 @pytest.mark.skipif(
-    extension_unavailable('elasticsearch') or module_unavailable('elasticsearch'),
+    extension_unavailable('elasticsearch'),
     reason='Elasticsearch extension or module disabled',
 )
 def test_index_cls_conversion():
@@ -49,9 +49,7 @@ def test_index_cls_conversion():
 
 
 @pytest.mark.skipif(
-    extension_unavailable('elasticsearch')
-    or module_unavailable('elasticsearch')
-    or module_unavailable('asset_groups'),
+    extension_unavailable('elasticsearch') or module_unavailable('asset_groups'),
     reason='Elasticsearch extension or module disabled, or Asset Groups module is disabled',
 )
 def test_elasticsearch_utilities(
@@ -142,7 +140,9 @@ def test_elasticsearch_utilities(
     assert admin_user.available() == es.es_exists(admin_user)
     assert not admin_user.elasticsearchable
 
-    assert admin_user.index().get('result', None) == 'created'
+    with es.session.begin(blocking=True):
+        assert admin_user.index() == 'tracked'
+    assert admin_user.fetch().get('found', True)
     assert admin_user.index().get('result', None) == 'updated'
     assert admin_user.elasticsearchable
     assert admin_user.available()
@@ -252,6 +252,11 @@ def test_elasticsearch_utilities(
     assert total1 == total2 and total2 == total3
     assert set(users1) == set(users2) and set(users1) == set(users3)
 
+    with es.session.begin(blocking=True, forced=True):
+        es.es_index_mappings_patch(User)
+    with es.session.begin(blocking=True, forced=True):
+        User.index_all()
+
     # Check pagination
     reference = User.elasticsearch(body)
 
@@ -261,7 +266,13 @@ def test_elasticsearch_utilities(
         for total in [True, False]:
             for limit in [None, 1, 5, 100]:
                 for offset in [None, 0, 5, 100]:
-                    for sort in [None, 'guid', 'indexed', 'full_name']:
+                    for sort in [
+                        None,
+                        'guid',
+                        'indexed',
+                        # 'full_name',
+                        'elasticsearch.guid',
+                    ]:
                         for reverse in [True, False]:
                             for reverse_after in [True, False]:
                                 config = (
@@ -312,10 +323,17 @@ def test_elasticsearch_utilities(
                 compare.sort(key=lambda user: user.guid, reverse=reverse)
             elif sort == 'indexed':
                 compare.sort(key=lambda user: (user.indexed, user.guid), reverse=reverse)
-            elif sort == 'full_name':
-                compare.sort(
-                    key=lambda user: (user.full_name, user.guid), reverse=reverse
-                )
+            # elif sort == 'full_name':
+            #     compare.sort(
+            #         key=lambda user: (user.full_name, user.guid), reverse=reverse
+            #     )
+            elif sort == 'elasticsearch.guid':
+                values = []
+                for user in compare:
+                    es_guid = user.fetch().get('_source', {}).get('guid')
+                    values.append((es_guid, user))
+                values.sort(reverse=reverse)
+                compare = [value[1] for value in values]
             else:
                 raise ValueError()
 
@@ -341,7 +359,7 @@ def test_elasticsearch_utilities(
     configs = []
     for limit in [None, 1, 5, 100]:
         for offset in [None, 0, 5, 100]:
-            for sort in [None, 'guid', 'indexed', 'full_name']:
+            for sort in [None, 'guid', 'indexed', 'elasticsearch.guid']:
                 for reverse in [True, False]:
                     for reverse_after in [True, False]:
                         config = (limit, offset, sort, reverse, reverse_after)
@@ -377,14 +395,14 @@ def test_elasticsearch_utilities(
 
             compare = reference[:]
 
-            if sort in [None, 'guid']:
+            if sort in [None, 'guid', 'elasticsearch.guid']:
                 compare.sort(key=lambda user: user.guid, reverse=reverse)
             elif sort == 'indexed':
                 compare.sort(key=lambda user: (user.indexed, user.guid), reverse=reverse)
-            elif sort == 'full_name':
-                compare.sort(
-                    key=lambda user: (user.full_name, user.guid), reverse=reverse
-                )
+            # elif sort == 'full_name':
+            #     compare.sort(
+            #         key=lambda user: (user.full_name, user.guid), reverse=reverse
+            #     )
             else:
                 raise ValueError()
 
@@ -420,7 +438,12 @@ def test_elasticsearch_utilities(
         for total in [True, False]:
             for limit in [None, 1, 10]:
                 for offset in [None, 0, 1, 10]:
-                    for sort in [None, 'magic_signature', 'path']:
+                    for sort in [
+                        None,
+                        'magic_signature',
+                        'path',
+                        'elasticsearch.annotation_count',
+                    ]:
                         for reverse in [True, False]:
                             for reverse_after in [True, False]:
                                 config = (
@@ -475,6 +498,13 @@ def test_elasticsearch_utilities(
                 )
             elif sort == 'path':
                 compare.sort(key=lambda asset: (asset.path, asset.guid), reverse=reverse)
+            elif sort == 'elasticsearch.annotation_count':
+                values = []
+                for asset in compare:
+                    es_guid = asset.fetch().get('_source', {}).get('annotation_count')
+                    values.append((es_guid, asset))
+                values.sort(reverse=reverse)
+                compare = [value[1] for value in values]
             else:
                 raise ValueError()
 
@@ -500,7 +530,12 @@ def test_elasticsearch_utilities(
     configs = []
     for limit in [None, 1, 10]:
         for offset in [None, 0, 1, 10]:
-            for sort in [None, 'magic_signature', 'path']:
+            for sort in [
+                None,
+                'magic_signature',
+                'path',
+                'elasticsearch.annotation_count',
+            ]:
                 for reverse in [True, False]:
                     for reverse_after in [True, False]:
                         config = (limit, offset, sort, reverse, reverse_after)
@@ -536,7 +571,7 @@ def test_elasticsearch_utilities(
 
             compare = reference[:]
 
-            if sort in [None, 'guid']:
+            if sort in [None, 'guid', 'elasticsearch.annotation_count']:
                 compare.sort(key=lambda asset: asset.guid, reverse=reverse)
             elif sort == 'magic_signature':
                 compare.sort(
@@ -683,7 +718,7 @@ def test_elasticsearch_utilities(
 
 
 @pytest.mark.skipif(
-    extension_unavailable('elasticsearch') or module_unavailable('elasticsearch'),
+    extension_unavailable('elasticsearch'),
     reason='Elasticsearch extension or module disabled',
 )
 def test_model_search(flask_app_client, staff_user):

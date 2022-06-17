@@ -44,9 +44,6 @@ if is_extension_enabled('sage'):
 if is_module_enabled('asset_groups'):
     import app.modules.asset_groups.tasks  # noqa
 
-if is_module_enabled('elasticsearch'):
-    import app.modules.elasticsearch.tasks  # noqa
-
 if is_module_enabled('individuals'):
     import app.modules.individuals.tasks  # noqa
 

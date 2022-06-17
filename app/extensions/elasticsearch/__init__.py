@@ -4,6 +4,7 @@ import datetime
 import enum
 import json
 import logging
+import pprint
 import time
 import types
 import uuid
@@ -33,6 +34,7 @@ REGISTERED_MODELS = {}
 CELERY_VERIFY_TIMEOUT = 60.0
 CELERY_ASYNC_PROMISES = []
 
+ELASTICSEARCH_SORTING_PREFIX = 'elasticsearch.'
 
 log = logging.getLogger('elasticsearch')  # pylint: disable=invalid-name
 
@@ -46,6 +48,36 @@ class ElasticsearchModel(object):
     @classmethod
     def get_elasticsearch_schema(cls):
         return None
+
+    @classmethod
+    def get_elasticsearch_settings(cls):
+        return None
+
+    @classmethod
+    def patch_elasticsearch_mappings(cls, mappings):
+        # Check all fields that are GUIDs or "IDs"
+        for key in mappings:
+            # Ensure all GUIDs and the _schema
+            if (
+                key in ['guid', '_schema', 'email']
+                or key.endswith('_guid')
+                or key.endswith('Id')
+                or key.endswith('ID')
+                or key.endswith('_id')
+            ):
+                mappings[key] = {
+                    'type': 'keyword',
+                }
+            # # Convert all text types to keywords by default
+            # if mappings[key].get('type', None) in ['text']:
+            #     mappings[key] = {
+            #         'type': 'keyword',
+            #     }
+            if key in ['properties']:
+                # Recursively catch all properties of a field as well
+                mappings[key] = cls.patch_elasticsearch_mappings(mappings[key])
+
+        return mappings
 
     @classmethod
     def index_hook_cls(cls, *args, **kwargs):
@@ -62,6 +94,8 @@ class ElasticsearchModel(object):
     @classmethod
     def index_all(cls, app=None, prune=True, pit=False, update=True, force=False):
         index = cls._index()
+
+        es_index_mappings_patch(cls, app=app)
 
         session_forced = session.in_forced_mode()
 
@@ -245,7 +279,7 @@ class ElasticSearchBulkOperation(object):
         if self.in_bulk_mode():
             top_config = self.depth[0]
             if top_config is not None:
-                forced = top_config.get('forced', False)
+                forced = top_config.get('forced', top_config.get('force', False))
         return forced
 
     def track_bulk_action(self, action, item, force=False):
@@ -305,7 +339,7 @@ class ElasticSearchBulkOperation(object):
         if app is None:
             app = self.app
 
-        index = es_index_name(cls)
+        index = es_index_name(cls, app=app)
 
         if index is None:
             return exists
@@ -348,7 +382,7 @@ class ElasticSearchBulkOperation(object):
         if app is None:
             app = self.app
 
-        index = es_index_name(cls)
+        index = es_index_name(cls, app=app)
 
         if index is None:
             return 0
@@ -382,6 +416,10 @@ class ElasticSearchBulkOperation(object):
         if len(pending) == 0:
             return len(skipped)
 
+        # Check schema mappings first
+        es_index_mappings_patch(cls, app=app)
+
+        # Continue to serialize and send
         level_str = '' if level == 0 else ' [retry=%d]' % (level,)
         desc = 'Serializing (Bulk) {}{}'.format(
             cls.__name__,
@@ -473,7 +511,7 @@ class ElasticSearchBulkOperation(object):
         if app is None:
             app = self.app
 
-        index = es_index_name(cls)
+        index = es_index_name(cls, app=app)
 
         if index is None:
             return 0
@@ -617,10 +655,10 @@ class ElasticSearchBulkOperation(object):
             if config is None:
                 config = {}
 
-            blocking = config.get('blocking', self.blocking)
-            verify = config.get('verify', False)
+            blocking = config.get('blocking', config.get('foreground', self.blocking))
+            verify = config.get('verified', config.get('verify', False))
             disabled = config.get('disabled', not config.get('enabled', True))
-            forced = config.get('forced', False)
+            forced = config.get('forced', config.get('force', False))
 
             keys = self.bulk_actions.keys()
             log.debug('ES exit block with {!r} keys'.format(keys))
@@ -968,17 +1006,17 @@ def es_validate(obj):
                 )
 
 
-def es_index(obj, app=None, force=False, quiet=False):
+def es_index(obj, app=None, force=False, quiet=False, recover=True):
     from flask import current_app
-
-    cls = obj.__class__
-    index = es_index_name(cls, quiet=quiet)
-
-    if index is None:
-        return None
 
     if app is None:
         app = current_app
+
+    cls = obj.__class__
+    index = es_index_name(cls, app=app, quiet=quiet)
+
+    if index is None:
+        return None
 
     if session.in_bulk_mode():
         return session.track_bulk_action('index', obj, force=force)
@@ -986,9 +1024,26 @@ def es_index(obj, app=None, force=False, quiet=False):
     try:
         index, id_, body = obj.serialize()
         resp = app.es.index(index=index, id=id_, body=body)
-    except (elasticsearch.exceptions.RequestError, TypeError):  # pragma: no cover
-        log.error('Error indexing {!r}'.format(obj))
-        raise
+
+        _seq_no = resp.get('_seq_no', None)
+        if _seq_no is not None and _seq_no == 0:
+            # We have indexed our very first object, let's check the mappings
+            es_index_mappings_patch(cls, app=app)
+            cls.pit(app=app)
+    except (
+        elasticsearch.exceptions.RequestError,
+        TypeError,
+    ) as exception:  # pragma: no cover
+        if not recover:
+            raise
+
+        try:
+            # We want to try to recover by checking the index's mappings and try re-indexing
+            es_index_mappings_patch(cls, app=app)
+            es_index(obj, app=app, force=force, quiet=quiet, recover=False)
+        except Exception:
+            log.error('Error indexing {!r}, likely bad schema'.format(obj))
+            raise exception  # Raise original exception
 
     # Update the object's indexed timestamp
     assert resp['_id'] == str(obj.guid)
@@ -1024,6 +1079,45 @@ def es_all_indices(app=None):
             response.append(index)
 
     return response
+
+
+def es_create_index(cls, app=None, mappings=None):
+    from flask import current_app
+
+    if is_disabled():
+        return False
+
+    if app is None:
+        app = current_app
+
+    index = es_index_name(cls, app=app)
+
+    if index is None:
+        return None
+
+    if es_index_exists(index, app=app):
+        return 'exists'
+
+    body = {}
+
+    settings = cls.get_elasticsearch_settings()
+    if settings is not None:
+        body['settings'] = settings
+
+    if mappings is not None:
+        body['mappings'] = {'_doc': {'properties': mappings}}
+        include_type_name = True
+    else:
+        include_type_name = False
+
+    response = app.es.indices.create(
+        index, body=body, include_type_name=include_type_name
+    )
+    acknowledged = response.get('acknowledged', False)
+
+    cls.pit(app=app)
+
+    return acknowledged
 
 
 def es_delete_index(index, app=None):
@@ -1078,16 +1172,16 @@ def es_update(*args, **kwargs):
 def es_exists(obj, app=None):
     from flask import current_app
 
+    if app is None:
+        app = current_app
+
     id_ = str(obj.guid)
     cls = obj.__class__
-    index = es_index_name(cls)
+    index = es_index_name(cls, app=app)
 
     if index is None:
         obj.invalidate()
         return False
-
-    if app is None:
-        app = current_app
 
     exists = app.es.exists(index, id=id_)
 
@@ -1127,18 +1221,83 @@ def es_index_mappings(index, app=None):
     return mappings
 
 
-def es_get(obj, app=None):
+def es_index_mappings_patch(cls, app=None, quiet=False):
+    from copy import deepcopy
+
+    from deepdiff import DeepDiff
     from flask import current_app
-
-    id_ = str(obj.guid)
-    cls = obj.__class__
-    index = es_index_name(cls)
-
-    if index is None:
-        return None
 
     if app is None:
         app = current_app
+
+    if is_disabled():
+        return None
+
+    if cls not in REGISTERED_MODELS:
+        if not quiet:
+            log.error('Model ({!r}) is not in Elasticsearch'.format(cls))
+        return None
+
+    if not hasattr(cls, 'patch_elasticsearch_mappings'):
+        return None
+
+    index = es_index_name(cls, app=app)
+
+    if not es_index_exists(index, app=app):
+        return None
+
+    mappings = es_index_mappings(index)
+    if len(mappings) == 0:
+        # We don't have a useful "starting" mapping from the auto-parsing, skip
+        return None
+
+    # We want to give the developer of `patch_elasticsearch_mappings` the most freedom,
+    # can use by-reference updates or returned value
+
+    patched_mappings = deepcopy(mappings)
+    patched_mappings = cls.patch_elasticsearch_mappings(patched_mappings)
+
+    diff = DeepDiff(mappings, patched_mappings)
+    if len(diff) > 0:
+        log.error('Index ({!r}) has an incorrect mapping, rebuilding'.format(index))
+        log.error(pprint.pformat(diff))
+
+        # Get all of the GUIDs that have been indexed for this class
+        es_refresh_index(index, app=app)
+        existsing_guids = cls.elasticsearch(None, load=False)
+
+        # Delete the current idnex
+        es_delete_index(index)
+
+        # Recreate the index with the correct mappings
+        es_create_index(cls, app=app, mappings=patched_mappings)
+
+        # Restore the msissing GUIDs (in the background)
+        with session.begin(forced=True):
+            objs = cls.query.filter(cls.guid.in_(existsing_guids)).all()
+            desc = 'Restoring {}'.format(cls.__name__)
+            for obj in tqdm.tqdm(objs, desc=desc, disable=quiet):
+                obj.index(app=app)
+
+        es_refresh_index(index, app=app)
+
+        return 'patched'
+
+    return 'up-to-date'
+
+
+def es_get(obj, app=None):
+    from flask import current_app
+
+    if app is None:
+        app = current_app
+
+    id_ = str(obj.guid)
+    cls = obj.__class__
+    index = es_index_name(cls, app=app)
+
+    if index is None:
+        return None
 
     if not app.es.exists(index, id=id_):
         return None
@@ -1159,7 +1318,11 @@ def es_search(index, body, app=None):
     if not es_index_exists(index, app=app):
         return None
 
-    resp = list(helpers.scan(app.es, query=body, index=index, scroll='1d', size=10000))
+    resp = list(
+        helpers.scan(
+            app.es, query=body, index=index, scroll='1d', preserve_order=True, size=10000
+        )
+    )
 
     return resp
 
@@ -1172,10 +1335,10 @@ def es_delete(obj, app=None):
 def es_delete_guid(cls, guid, app=None):
     from flask import current_app
 
-    index = es_index_name(cls)
-
     if app is None:
         app = current_app
+
+    index = es_index_name(cls, app=app)
 
     if session.in_bulk_mode():
         return session.track_bulk_action('delete', (cls, guid))
@@ -1219,24 +1382,27 @@ def es_pit(cls, app=None):
 
     global REGISTERED_MODELS
 
-    index = es_index_name(cls)
+    if app is None:
+        app = current_app
+
+    index = es_index_name(cls, app=app)
 
     if index is None:
         return None
 
-    if app is None:
-        app = current_app
+    if not es_index_exists(index, app=app):
+        return None
 
     pit_id = REGISTERED_MODELS.get(cls, {}).get('pit', None)
     if pit_id is not None:
         body = {
             'id': pit_id,
         }
-        resp = app.es.close_point_in_time(body)
-        assert resp['succeeded']
-
-    if not es_index_exists(index, app=app):
-        app.es.indices.create(index)
+        try:
+            resp = app.es.close_point_in_time(body)
+            assert resp['succeeded']
+        except elasticsearch.exceptions.NotFoundError:
+            pass
 
     resp = app.es.open_point_in_time(index, keep_alive='1d')
     pit_id = resp.get('id', None)
@@ -1255,7 +1421,7 @@ def es_status(app=None, outdated=True, missing=False, active=True, health=True):
 
     if outdated:
         for cls in REGISTERED_MODELS:
-            index = es_index_name(cls)
+            index = es_index_name(cls, app=app)
             if index is None:
                 continue
 
@@ -1267,7 +1433,7 @@ def es_status(app=None, outdated=True, missing=False, active=True, health=True):
 
     if missing:
         for cls in REGISTERED_MODELS:
-            index = es_index_name(cls)
+            index = es_index_name(cls, app=app)
             if index is None:
                 continue
 
@@ -1589,9 +1755,43 @@ def es_elasticsearch(
 
     # Don't return anything about the hits
     assert isinstance(body, dict)
+    assert sort.count('.') <= 1
     body['_source'] = False
 
-    hits = es_search(index, body, app=app)
+    pre_sorted = sort.startswith(ELASTICSEARCH_SORTING_PREFIX)
+
+    if pre_sorted:
+        es_sort_term = sort.replace(ELASTICSEARCH_SORTING_PREFIX, '')
+        es_sort_order = 'desc' if reverse else 'asc'
+        body['sort'] = [
+            {
+                es_sort_term: {'order': es_sort_order},
+            },
+            {
+                'guid': {'order': es_sort_order},
+            },
+        ]
+
+    try:
+        hits = es_search(index, body, app=app)
+    except (elasticsearch.exceptions.RequestError, TypeError):  # pragma: no cover
+        if 'sort' in body:
+            # Try again without any sort field in the body
+            es_sort = body.pop('sort')
+            log.error(
+                'Unable to sort within Elasticsearch using {!r}, retrying without sort'.format(
+                    es_sort
+                )
+            )
+
+            # Remove ES-specific prefix from sort
+            # This will also try to use local columns as a backup, if found
+            sort = sort.replace(ELASTICSEARCH_SORTING_PREFIX, '')
+            pre_sorted = False
+
+            hits = es_search(index, body, app=app)
+        else:
+            raise
 
     if hits is None or len(hits) == 0:
         if total:
@@ -1652,7 +1852,11 @@ def es_elasticsearch(
     sort = sort.lower()
     outerjoin_cls = None
 
-    if sort in ['default', 'primary']:
+    if pre_sorted:
+        # The results we pre-sorted by Elasticsearch during the query, just fetch them
+        # We will re-order them after load
+        sort_column = default_column
+    elif sort in ['default', 'primary']:
         sort_column = default_column
     else:
         # First, check for columns in the table
@@ -1690,26 +1894,58 @@ def es_elasticsearch(
     if outerjoin_cls is not None:
         query = query.outerjoin(outerjoin_cls)
 
-    query = (
-        query.filter(cls.guid.in_(search_guids))
-        .order_by(sort_func_1(), sort_func_2())
-        .offset(offset)
-        .limit(limit)
-    )
+    query = query.filter(cls.guid.in_(search_guids))
 
-    if reverse_after:
-        after_sort_func_1 = sort_column.asc if reverse else sort_column.desc
-        after_sort_func_2 = default_column.asc if reverse else default_column.desc
-        query = query.from_self().order_by(after_sort_func_1(), after_sort_func_2())
-
-    if not load:
+    if pre_sorted:
+        # We pre-sorted, so let's do all filtering on the GUIDs here since the query is being broken up here
         query = query.with_entities(cls.guid)
 
-    results = query.all()
+        houston_guids = query.all()
+        houston_guids = {local_result[0] for local_result in houston_guids}
 
-    if not load:
-        # Strip column 0
-        results = [result[0] for result in results]
+        elasticsearch_guids = []
+        for search_guid in search_guids:
+            if search_guid in houston_guids:
+                elasticsearch_guids.append(search_guid)
+
+        if offset is not None:
+            offset = max(0, min(offset, len(elasticsearch_guids)))
+            elasticsearch_guids = elasticsearch_guids[offset:]
+
+        if limit is not None:
+            offset = max(0, min(limit, len(elasticsearch_guids)))
+            elasticsearch_guids = elasticsearch_guids[:limit]
+
+        if reverse_after:
+            elasticsearch_guids = elasticsearch_guids[::-1]
+
+        if load:
+            results = []
+            for elasticsearch_guid in elasticsearch_guids:
+                obj = cls.query.get(elasticsearch_guid)
+                if (
+                    obj
+                ):  # This should always be True since we have already filtered on the DB
+                    results.append(obj)
+        else:
+            results = elasticsearch_guids
+    else:
+        # We are performing a Houston-forward SQL query, so let's stay within SQLalchemy for as long as possible
+        query = query.order_by(sort_func_1(), sort_func_2()).offset(offset).limit(limit)
+
+        if reverse_after:
+            after_sort_func_1 = sort_column.asc if reverse else sort_column.desc
+            after_sort_func_2 = default_column.asc if reverse else default_column.desc
+            query = query.from_self().order_by(after_sort_func_1(), after_sort_func_2())
+
+        if not load:
+            query = query.with_entities(cls.guid)
+
+        results = query.all()
+
+        if not load:
+            # Strip column 0
+            results = [result[0] for result in results]
 
     if total:
         return total_hits, results

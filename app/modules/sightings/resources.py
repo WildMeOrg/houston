@@ -793,6 +793,19 @@ class SightingRerunId(Resource):
     )
     def post(self, sighting):
         try:
+            req = json.loads(request.data)
+            from app.modules.asset_groups.metadata import (
+                AssetGroupMetadata,
+                AssetGroupMetadataError,
+            )
+
+            log.warning(req)
+            if isinstance(req, list) and len(req) > 0:
+                try:
+                    AssetGroupMetadata.validate_id_configs(req, 'id_configs')
+                except AssetGroupMetadataError as error:
+                    abort(error.status_code, error.message)
+                sighting.id_configs = req
             sighting.stage = SightingStage.identification
             sighting.ia_pipeline()
             return sighting.get_detailed_json()

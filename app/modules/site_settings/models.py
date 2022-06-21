@@ -93,10 +93,18 @@ class SiteSetting(db.Model, Timestamp):
             'public': False,
             'default': 'Wildbook is copyrighted 2022 by Wild Me.  Individual contributors to Wildbook retain copyrights for submitted images. No reproduction or usage of material in this library is permitted without the express permission of the copyright holders.',
         },
-        'social_group_roles': {'type': list, 'public': True},
+        'social_group_roles': {
+            'type': list,
+            'public': True,
+            'validate_function': lambda value: SiteSetting.validate_social_group_roles(
+                value
+            ),
+            # 'activate_function':
+        },
         'relationship_type_roles': {
             'type': dict,
             'public': True,
+            'validate': lambda value: SiteSetting.validate_relationship_type_roles(value),
             'definition': {
                 'fieldType': 'json',
                 'displayType': 'relationship-type-role',
@@ -252,58 +260,6 @@ class SiteSetting(db.Model, Timestamp):
             return {}
 
     @classmethod
-    def _get_value_for_edm_formats(cls, key):
-        value = cls.get_value(key)
-        key_conf = cls._get_houston_setting_conf(key)
-
-        # Only admin can read private data
-        if not key_conf.get('public', True):
-            if not current_user or current_user.is_anonymous or not current_user.is_admin:
-                value = None
-        return value
-
-    @classmethod
-    def get_value_verbose(cls, key):
-        value = cls._get_value_for_edm_formats(key)
-        value_not_set = value is None
-
-        data = {
-            'value': value if not value_not_set else cls._get_default_value(key),
-        }
-        return data
-
-    @classmethod
-    def get_houston_definitions(cls):
-        configuration = {}
-        for key in SiteSetting.get_setting_keys():
-            configuration[key] = cls.get_definition(key)
-        return configuration
-
-    @classmethod
-    def get_definition(cls, key):
-        key_conf = cls._get_houston_setting_conf(key)
-        is_public = key_conf.get('public', True)
-        data = {
-            'descriptionId': f'CONFIGURATION_{key.upper()}_DESCRIPTION',
-            'labelId': f'CONFIGURATION_{key.upper()}_LABEL',
-            'defaultValue': '',
-            'isPrivate': not is_public,
-            'settable': True,
-            'required': True,
-            'fieldType': 'string',
-            'displayType': 'string',
-        }
-        value = cls._get_value_for_edm_formats(key)
-        if value:
-            data['currentValue'] = value
-
-        # Some variables have specific values so incorporate those as required
-        edm_definition = key_conf.get('definition', None)
-        if edm_definition:
-            data.update(edm_definition)
-        return data
-
-    @classmethod
     def _get_default_value(cls, key):
         def_val = ''
         if key not in cls.HOUSTON_SETTINGS:
@@ -340,20 +296,6 @@ class SiteSetting(db.Model, Timestamp):
             errors = schema.validate(relationship_object)
             if errors:
                 raise HoustonException(log, schema.get_error_message(errors))
-
-    @classmethod
-    def set_houston_data(cls, data):
-        assert isinstance(data, dict)
-        success_keys = []
-        for key in data.keys():
-            if key in cls.get_setting_keys():
-                if data[key] is not None:
-                    cls.set_key_value(key, data[key])
-                else:
-                    cls.forget_key_value(key)
-                success_keys.append(key)
-
-        return success_keys
 
     @classmethod
     def set_key_value(cls, key, value):
@@ -473,8 +415,77 @@ class SiteSetting(db.Model, Timestamp):
             return setting.boolean
         return setting.string
 
+    ##########################################################################################################
+    # All the functions below are for handling the REST API functions. These need detailed access to the Site
+    # Settings internals but need to understand the format of the incoming and outgoing REST messages.
+
+    # separated out as both the definition and configuration REST formats need the value, and to have permissions
+    # checked, but the formatting is different in the two messages
     @classmethod
-    def get_houston_block_data_for_current_user(cls):
+    def _get_houston_value_check_permission(cls, key):
+        value = cls.get_value(key)
+        key_conf = cls._get_houston_setting_conf(key)
+
+        # Only admin can read private data
+        if not key_conf.get('public', True):
+            if not current_user or current_user.is_anonymous or not current_user.is_admin:
+                value = None
+        return value
+
+    @classmethod
+    def get_houston_value_or_default(cls, key):
+        value = cls._get_houston_value_check_permission(key)
+        value_not_set = value is None
+
+        return (value if not value_not_set else cls._get_default_value(key),)
+
+    @classmethod
+    def get_all_houston_definitions(cls):
+        configuration = {}
+        for key in SiteSetting.get_setting_keys():
+            configuration[key] = cls.get_definition(key)
+        return configuration
+
+    @classmethod
+    def _get_houston_definition(cls, key):
+        key_conf = cls._get_houston_setting_conf(key)
+        is_public = key_conf.get('public', True)
+        data = {
+            'descriptionId': f'CONFIGURATION_{key.upper()}_DESCRIPTION',
+            'labelId': f'CONFIGURATION_{key.upper()}_LABEL',
+            'defaultValue': '',
+            'isPrivate': not is_public,
+            'settable': True,
+            'required': True,
+            'fieldType': 'string',
+            'displayType': 'string',
+        }
+        value = cls._get_houston_value_check_permission(key)
+        if value:
+            data['currentValue'] = value
+
+        # Some variables have specific values so incorporate those as required
+        edm_definition = key_conf.get('definition', None)
+        if edm_definition:
+            data.update(edm_definition)
+        return data
+
+    @classmethod
+    def set_houston_data(cls, data):
+        assert isinstance(data, dict)
+        success_keys = []
+        for key in data.keys():
+            if key in cls.get_setting_keys():
+                if data[key] is not None:
+                    cls.set_key_value(key, data[key])
+                else:
+                    cls.forget_key_value(key)
+                success_keys.append(key)
+
+        return success_keys
+
+    @classmethod
+    def get_houston_rest_block_data_for_current_user(cls):
         from flask import url_for
 
         from app.modules.users.models import User
@@ -497,7 +508,7 @@ class SiteSetting(db.Model, Timestamp):
         for key, type_def in SiteSetting.HOUSTON_SETTINGS.items():
             permission = type_def.get('permission', lambda: True)()
             if is_admin or type_def.get('public', True) and permission:
-                values[key] = SiteSetting.get_value_verbose(key)
+                values[key]['value'] = SiteSetting.get_houston_value_or_default(key)
         return values
 
     # MainConfiguration and MainConfigurationDefinition resources code needs to behave differently if it's

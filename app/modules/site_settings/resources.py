@@ -175,7 +175,7 @@ class MainConfigurationDefinition(Resource):
     def get(self, path):
         data = {'response': {'configuration': {}}}
         if not is_extension_enabled('edm'):
-            data['response']['configuration'] = SiteSetting.get_houston_definitions()
+            data['response']['configuration'] = SiteSetting.get_all_houston_definitions()
 
         data = SiteSetting.get_edm_configuration_as_edm_format(
             'configurationDefinition.data', path
@@ -215,7 +215,7 @@ class MainConfigurationDefinition(Resource):
 
         if SiteSetting.is_block_key(path):
             data['response']['configuration'].update(
-                SiteSetting.get_houston_definitions()
+                SiteSetting.get_all_houston_definitions()
             )
 
         # TODO also traverse private here FIXME
@@ -260,13 +260,12 @@ class MainConfiguration(Resource):
         params = {}
         params.update(request.args)
         params.update(request.form)
-        data = {'response': {'configuration': {}}}
         if path and SiteSetting.is_houston_only_setting(path):
             # Houston only key is a special case and we need to construct the response by hand
             data = {
                 'response': {
                     'configuration': {
-                        path: SiteSetting.get_value_verbose(path),
+                        path: {'value': SiteSetting.get_houston_value_or_default(path)},
                     }
                 },
             }
@@ -286,7 +285,7 @@ class MainConfiguration(Resource):
 
         if SiteSetting.is_block_key(path):
             data['response']['configuration'].update(
-                SiteSetting.get_houston_block_data_for_current_user()
+                SiteSetting.get_houston_rest_block_data_for_current_user()
             )
         elif (
             'response' in data

@@ -161,3 +161,38 @@ def test_sighting_identification(
                 progress_guids.append(str(annotation.progress_identification.guid))
 
     test_utils.wait_for_progress(flask_app, progress_guids)
+
+    # This is what the FE sends and it is process (now) by the BE but is not yet a valid test as this does not
+    # result in ID being rerun.
+    rerun_id_data = [
+        {
+            'algorithms': ['hotspotter_nosv'],
+            'matching_set': {
+                'bool': {
+                    'filter': [
+                        {
+                            'bool': {
+                                'minimum_should_match': 1,
+                                'should': [
+                                    {
+                                        'match_phrase': {
+                                            'locationId': 'c74ff3e3-d0f5-4930-8c3a-68f2b172b655'
+                                        }
+                                    }
+                                ],
+                            }
+                        },
+                        {'bool': '_MACRO_annotation_neighboring_viewpoints_clause'},
+                        {'exists': {'field': 'encounter_guid'}},
+                    ],
+                    'must_not': {
+                        'match': {'encounter_guid': '_MACRO_annotation_encounter_guid'}
+                    },
+                }
+            },
+        }
+    ]
+
+    sighting_utils.write_sighting_path(
+        flask_app_client, researcher_1, f'{sighting_uuid}/rerun_id', rerun_id_data
+    )

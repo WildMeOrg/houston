@@ -73,7 +73,8 @@ class ElasticsearchModel(object):
             #     mappings[key] = {
             #         'type': 'keyword',
             #     }
-            if key in ['properties']:
+            subkeys = list(mappings.get(key).keys())
+            if len(subkeys) == 1 and subkeys[0] in ['properties']:
                 # Recursively catch all properties of a field as well
                 mappings[key] = cls.patch_elasticsearch_mappings(mappings[key])
 

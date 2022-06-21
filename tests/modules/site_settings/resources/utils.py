@@ -69,22 +69,17 @@ def _modify_setting(
     expected_status_code=None,
     expected_error=None,
 ):
-    res = test_utils.post_via_flask(
+    breakpoint()
+    return test_utils.post_via_flask(
         flask_app_client,
         user,
         scopes='site-settings:write',
         path=conf_path,
         data=data,
         expected_status_code=expected_status_code,
-        response_200={'success'},
+        response_200={'updated'},
         expected_error=expected_error,
     )
-    if expected_status_code == 200:
-        assert res.json['success'], res.json
-    elif expected_status_code:
-        if 'success' in res.json.keys():
-            assert not res.json['success']
-    return res
 
 
 def modify_main_settings(
@@ -131,7 +126,6 @@ def custom_field_create(
     payload = {}
     payload['site.custom.customFields.' + cls] = data
     response = modify_main_settings(flask_app_client, user, payload)
-    assert response.json.get('success', False)
     cfd_list = response.json.get('updatedCustomFieldDefinitionIds', None)
     assert cfd_list
     return cfd_list[0]
@@ -156,7 +150,7 @@ def patch_main_setting(
         path=path,
         data=data,
         expected_status_code=expected_status_code,
-        response_200={'success'},
+        response_200={EXPECTED_KEYS},
     )
 
 

@@ -19,7 +19,6 @@ from app.extensions import db, is_extension_enabled
 from app.extensions.api import Namespace, abort
 from app.modules import is_module_enabled
 from app.modules.users import permissions
-from app.modules.users.models import User
 from app.modules.users.permissions.types import AccessOperation
 from app.utils import HoustonException
 from flask_restx_patched import Resource
@@ -173,17 +172,10 @@ class MainConfigurationDefinition(Resource):
     Site Setting Definitions
     """
 
-    def _insert_houston_definitions(self, data):
-        for key in SiteSetting.get_setting_keys():
-            data['response']['configuration'][
-                key
-            ] = SiteSetting.get_as_edm_definition_format(key)
-        return data
-
     def get(self, path):
+        data = {'response': {'configuration': {}}}
         if not is_extension_enabled('edm'):
-            data = {'response': {'configuration': {}}}
-            return self._insert_houston_definitions(data)
+            data['response']['configuration'] = SiteSetting.get_houston_definitions()
 
         data = SiteSetting.get_edm_configuration_as_edm_format(
             'configurationDefinition.data', path
@@ -222,7 +214,9 @@ class MainConfigurationDefinition(Resource):
                     )
 
         if SiteSetting.is_block_key(path):
-            data = self._insert_houston_definitions(data)
+            data['response']['configuration'].update(
+                SiteSetting.get_houston_definitions()
+            )
 
         # TODO also traverse private here FIXME
         return data
@@ -266,26 +260,23 @@ class MainConfiguration(Resource):
         params = {}
         params.update(request.args)
         params.update(request.form)
-        if path and path in SiteSetting.get_setting_keys():
+        data = {'response': {'configuration': {}}}
+        if path and SiteSetting.is_houston_only_setting(path):
             # Houston only key is a special case and we need to construct the response by hand
             data = {
-                'success': True,
                 'response': {
                     'configuration': {
-                        path: SiteSetting.get_as_edm_format(path),
+                        path: SiteSetting.get_value_verbose(path),
                     }
                 },
             }
             return data
 
-        data = {'success': True, 'response': {'configuration': {}}}
+        data = {'response': {'configuration': {}}}
         if is_extension_enabled('edm'):
             data = SiteSetting.get_edm_configuration_as_edm_format(
                 'configuration.data', path
             )
-        elif SiteSetting.is_edm_key(path):
-            # If tried to set EDM value and we have no EDM, it's a failure
-            data['success'] = False
 
         user_is_admin = (
             current_user is not None
@@ -294,23 +285,9 @@ class MainConfiguration(Resource):
         )
 
         if SiteSetting.is_block_key(path):
-            data['response']['configuration'][
-                'site.adminUserInitialized'
-            ] = User.admin_user_initialized()
-            houston_settings = SiteSetting.query.filter_by(public=True).order_by('key')
-            ss_json = {}
-            for ss in houston_settings:
-                if ss.file_upload is not None:
-                    ss_json[ss.key] = url_for(
-                        'api.fileuploads_file_upload_src_u_by_id_2',
-                        fileupload_guid=str(ss.file_upload.guid),
-                        _external=False,
-                    )
-            data['response']['configuration']['site.images'] = ss_json
-
-            for key, type_def in SiteSetting.get_houston_settings_for_current_user():
-                key_data = SiteSetting.get_as_edm_format(key)
-                data['response']['configuration'][key] = key_data
+            data['response']['configuration'].update(
+                SiteSetting.get_houston_block_data_for_current_user()
+            )
         elif (
             'response' in data
             and data['response'].get('private', False)
@@ -344,21 +321,25 @@ class MainConfiguration(Resource):
             data.update(data_)
         except Exception:
             pass
-
+        ret_data = {}
+        breakpoint()
         success_ss_keys = []
         try:
             if path == '' or path == 'block':  # posting a bundle (no path)
-                success_ss_keys = _process_houston_data(data)
+                success_keys = SiteSetting.set_houston_data(data)
+                ret_data['updated'] = success_keys
+                for key in success_keys:
+                    del data[key]
                 if not data:  # All keys processed
-                    return {'success': True, 'updated': success_ss_keys}
-            elif path in SiteSetting.get_setting_keys():
+                    return ret_data
+            elif SiteSetting.is_houston_only_setting(path):
                 if '_value' not in data.keys():
                     abort(400, 'Need _value as the key in the data setting')
                 if data['_value'] is not None:
                     SiteSetting.set_key_value(path, data['_value'])
                 else:
                     SiteSetting.forget_key_value(path)
-                resp = {'success': True, 'key': path}
+                resp = {'key': path}
                 return resp
 
         except HoustonException as ex:
@@ -373,16 +354,19 @@ class MainConfiguration(Resource):
         if is_extension_enabled('edm'):
             response = SiteSetting.post_edm_configuration(path, passthrough_kwargs)
             if not response.ok:
-                return response
+                abort(400, message=response)
             res = response.json()
+            if not res['success']:
+                abort(400, message=res)
+
             if 'updated' in res:
-                res['updated'].extend(success_ss_keys)
+                ret_data['updated'].extend(success_ss_keys)
         else:
-            res = {'success': False}
+            abort(400, 'key not supported')
 
         message = f'Setting path:{path} to {data}'
         AuditLog.audit_log(log, message, duration=timer.elapsed())
-        return res
+        return ret_data
 
     @api.permission_required(
         permissions.ModuleAccessPermission,
@@ -424,29 +408,6 @@ class MainConfiguration(Resource):
         except HoustonException as ex:
             abort(ex.status_code, ex.message)
         return None
-
-
-def _process_houston_data(data):
-    assert isinstance(data, dict)
-    delete_keys = []
-    success_keys = []
-    for key in data.keys():
-        if SiteSetting.is_edm_key(key):
-            continue
-
-        delete_keys.append(key)
-        if key not in SiteSetting.get_setting_keys():
-            log.warning(f'skipping unrecognized Houston Setting key={key}')
-            continue
-        if data[key] is not None:
-            SiteSetting.set_key_value(key, data[key])
-        else:
-            SiteSetting.forget_key_value(key)
-        success_keys.append(key)
-
-    for key in delete_keys:
-        del data[key]
-    return success_keys
 
 
 @api.route('/detection')

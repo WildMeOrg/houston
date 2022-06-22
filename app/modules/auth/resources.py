@@ -205,6 +205,32 @@ class ReCaptchaPublicServerKey(Resource):
 
 @api.route('/code/<string:code_string_dot_json>')
 class CodeReceived(Resource):
+    """
+    If using `/api/v1/auth/code/<string>.json`, the API returns
+    something like
+    `{"status": 200, "message": "Password successfully set."}`
+
+    If using `/api/v1/auth/code/<string>`, the API redirects to
+    something like
+    `/email_verified?status=200&message=Email+successfully+verified`
+
+    The difference between `.json` or not is whether the API
+    redirects.
+
+    More specific use cases:
+
+    1. Email verification emails have a button that points to
+    `/api/v1/auth/code/<string>` and so when the user clicks on it,
+    back end deals with the code and redirects to
+    `/email_verified?status=200&message=Email+successfully+verified`
+
+    2. Reset password emails have a button that goes to a front end
+    reset password form, and front end should POST
+    `{"password": "<secret>"}` to
+    `/api/v1/auth/code/<string>.json` so that it gets back the
+    result in json format.
+    """
+
     # Get and Post do the same thing so just encapsulate the functionality in one method
     def _action_code(self, code_string_dot_json):
 
@@ -274,57 +300,7 @@ class CodeReceived(Resource):
         return redirect(f'{redirect_uri}?{urlencode(url_args)}')
 
     def post(self, code_string_dot_json):
-        """
-        If using `/api/v1/auth/code/<string>.json`, the API returns
-        something like
-        `{"status": 200, "message": "Password successfully set."}`
-
-        If using `/api/v1/auth/code/<string>`, the API redirects to
-        something like
-        `/email_verified?status=200&message=Email+successfully+verified`
-
-        The difference between `.json` or not is whether the API
-        redirects.
-
-        More specific use cases:
-
-        1. Email verification emails have a button that points to
-        `/api/v1/auth/code/<string>` and so when the user clicks on it,
-        back end deals with the code and redirects to
-        `/email_verified?status=200&message=Email+successfully+verified`
-
-        2. Reset password emails have a button that goes to a front end
-        reset password form, and front end should POST
-        `{"password": "<secret>"}` to
-        `/api/v1/auth/code/<string>.json` so that it gets back the
-        result in json format.
-        """
         return self._action_code(code_string_dot_json)
 
     def get(self, code_string_dot_json):
-        """
-        If using `/api/v1/auth/code/<string>.json`, the API returns
-        something like
-        `{"status": 200, "message": "Password successfully set."}`
-
-        If using `/api/v1/auth/code/<string>`, the API redirects to
-        something like
-        `/email_verified?status=200&message=Email+successfully+verified`
-
-        The difference between `.json` or not is whether the API
-        redirects.
-
-        More specific use cases:
-
-        1. Email verification emails have a button that points to
-        `/api/v1/auth/code/<string>` and so when the user clicks on it,
-        back end deals with the code and redirects to
-        `/email_verified?status=200&message=Email+successfully+verified`
-
-        2. Reset password emails have a button that goes to a front end
-        reset password form, and front end should POST
-        `{"password": "<secret>"}` to
-        `/api/v1/auth/code/<string>.json` so that it gets back the
-        result in json format.
-        """
         return self._action_code(code_string_dot_json)

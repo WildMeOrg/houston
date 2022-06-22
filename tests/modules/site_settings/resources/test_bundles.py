@@ -80,7 +80,6 @@ def test_bundle_read(
         ({'email_default_sender_name': 'testing'}, 200, False),
         (
             {
-                'bad_key': 'abcd',
                 'email_default_sender_name': {'foo': 'bar'},
                 'email_default_sender_email': [],
             },
@@ -89,8 +88,8 @@ def test_bundle_read(
         ),
         (
             {
-                'bad_key': 'abcd',
                 'email_default_sender_name': 'Testing',
+                'bad_key': 'abcd',
                 'site.name': f'TEST-{str(uuid.uuid4())}',
             },
             400,
@@ -137,6 +136,4 @@ def test_bundle_modify(
         for key in data:
             if key in invalid_key:
                 assert key in response.json['message']
-            else:
-                assert key in response.json['message']
-                break  # Only the first valid key is reported
+                break

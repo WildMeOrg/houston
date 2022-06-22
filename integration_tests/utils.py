@@ -58,8 +58,11 @@ def create_asset_group(session, codex_url, data):
         codex_url('/api/v1/asset_groups/'),
         json=data,
     )
-    print(response.json)
-    print(response.text)
+    if response.status_code != 200:
+        import pprint
+
+        pprint(response.json())
+
     assert response.status_code == 200
 
     response = wait_for_progress(session, codex_url, response, 'preparation')
@@ -121,18 +124,21 @@ def wait_for(
 
 
 def add_site_species(session, codex_url, data):
+    block_url = codex_url('/api/v1/site-settings/main/block')
     site_species_url = codex_url('/api/v1/site-settings/main/site.species')
-    response = session.get(site_species_url)
-    values = response.json()['response']['value']
-    for v in values:
+    response = session.get(block_url).json()
+    site_species = response['response']['configuration']['site.species']['value']
+
+    for v in site_species:
         if all(v.get(k) == data[k] for k in data):
             break
     else:
-        values.append(data)
-        response = session.post(site_species_url, json={'_value': values})
-        assert response.status_code == 200
-        response = session.get(site_species_url)
-    return response
+        site_species.append(data)
+        response = session.post(site_species_url, json={'_value': site_species})
+        assert response.status_code == 200, response.json()
+        response = session.get(block_url).json()
+        site_species = response['response']['configuration']['site.species']['value']
+    return site_species
 
 
 def create_custom_field(session, codex_url, cls, name, type='string', multiple=False):
@@ -157,9 +163,10 @@ def create_custom_field(session, codex_url, cls, name, type='string', multiple=F
 
 
 def wait_for_progress(session, codex_url, response, progress_type='preparation'):
-    import pprint
+    if response.status_code != 200:
+        import pprint
 
-    pprint.pprint(response.json())
+        pprint.pprint(response.json())
 
     progress_guid = response.json()['progress_{}'.format(progress_type)]['guid']
 

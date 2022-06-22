@@ -69,7 +69,6 @@ def _modify_setting(
     expected_status_code=None,
     expected_error=None,
 ):
-    breakpoint()
     return test_utils.post_via_flask(
         flask_app_client,
         user,
@@ -77,7 +76,7 @@ def _modify_setting(
         path=conf_path,
         data=data,
         expected_status_code=expected_status_code,
-        response_200={'updated'},
+        response_200=None,
         expected_error=expected_error,
     )
 
@@ -150,7 +149,7 @@ def patch_main_setting(
         path=path,
         data=data,
         expected_status_code=expected_status_code,
-        response_200={EXPECTED_KEYS},
+        response_200=EXPECTED_KEYS,
     )
 
 
@@ -194,50 +193,50 @@ def delete_file(
     _delete_setting(flask_app_client, user, path, expected_status_code)
 
 
+def _extract_from_main_block(main_block, field):
+    # navigate through the fluff to find the data but don't assume that anything is there
+    if 'response' in main_block and 'configuration' in main_block['response']:
+        config = main_block['response']['configuration']
+        if field in config and 'value' in config[field]:
+            return config[field]['value']
+    return None
+
+
 # will create one if we dont have any (yet)
 def get_some_taxonomy_dict(flask_app_client, admin_user):
-    response = read_main_settings(flask_app_client, admin_user, 'site.species')
-    assert 'response' in response.json
-    if (
-        'value' in response.json['response']
-        and isinstance(response.json['response']['value'], list)
-        and len(response.json['response']['value']) > 0
-    ):
-        return response.json['response']['value'][0]
+    block_data = read_main_settings(flask_app_client, admin_user).json
+    species = _extract_from_main_block(block_data, 'site.species')
+
+    if species and isinstance(species, list) and len(species) > 0:
+        return species[0]
+
     # need to make one
     vals = [
         {'commonNames': ['Example'], 'scientificName': 'Exempli gratia', 'itisTsn': -1234}
     ]
-    response = modify_main_settings(
+    modify_main_settings(
         flask_app_client,
         admin_user,
         {'_value': vals},
         'site.species',
     )
-    response = read_main_settings(flask_app_client, admin_user, 'site.species')
-    assert (
-        'value' in response.json['response']
-        and isinstance(response.json['response']['value'], list)
-        and len(response.json['response']['value']) > 0
-    )
-    return response.json['response']['value'][0]
+    response = read_main_settings(flask_app_client, admin_user).json
+    species = _extract_from_main_block(response, 'site.species')
+    assert species
+    assert isinstance(species, list)
+    assert len(species) > 0
+    return species[0]
 
 
 # Helper util to get (and create if necessary) the regions we will use for testing
 def get_and_ensure_test_regions(flask_app_client, admin_user):
-    regions_resp = read_main_settings(
-        flask_app_client, admin_user, 'site.custom.regions'
-    ).json
+    block_data = read_main_settings(flask_app_client, admin_user).json
+    current_regions = _extract_from_main_block(block_data, 'site.custom.regions')
+
     names = []
     regions = []
-    # navigate through the fluff to find the data but don't assume that anything is there
-    # (github tests are doing strange stuff)
-    if (
-        'response' in regions_resp
-        and 'value' in regions_resp['response']
-        and 'locationID' in regions_resp['response']['value']
-    ):
-        regions = regions_resp['response']['value']['locationID']
+    if 'locationID' in current_regions:
+        regions = current_regions['locationID']
         names = [region['name'] for region in regions]
 
     updated = False

@@ -173,131 +173,34 @@ class MainConfigurationDefinition(Resource):
     """
 
     def get(self, path):
-        data = {'response': {'configuration': {}}}
-        if not is_extension_enabled('edm'):
-            data['response']['configuration'] = SiteSetting.get_all_houston_definitions()
-
-        data = SiteSetting.get_edm_configuration_as_edm_format(
-            'configurationDefinition.data', path
-        )
-
-        from app.modules.ia_config_reader import IaConfig
-
-        species_json = None
-        if SiteSetting.is_block_key(path):
-            species_json = data['response']['configuration']['site.species']
-        elif path == 'site.species':
-            species_json = data['response']
-        if species_json is not None:
-            ia_config_reader = IaConfig()
-            species = ia_config_reader.get_configured_species()
-            if not isinstance(species_json['suggestedValues'], list):
-                species_json['suggestedValues'] = ()
-            for (
-                sn
-            ) in species:  # only adds a species that is not already in suggestedValues
-                needed = True
-                for sv in species_json['suggestedValues']:
-                    if sv.get('scientificName', None) == sn:
-                        needed = True
-                if needed:
-                    details = ia_config_reader.get_frontend_species_summary(sn)
-                    if details is None:
-                        details = {}
-                    species_json['suggestedValues'].insert(
-                        0,
-                        {
-                            'scientificName': sn,
-                            'commonNames': [details.get('common_name', sn)],
-                            'itisTsn': details.get('itis_id'),
-                        },
-                    )
-
-        if SiteSetting.is_block_key(path):
-            data['response']['configuration'].update(
-                SiteSetting.get_all_houston_definitions()
-            )
-
-        # TODO also traverse private here FIXME
-        return data
+        # Currently only support getting all definitions as one
+        if SiteSetting.is_rest_block_key(path):
+            return SiteSetting.get_all_rest_definitions()
+        else:
+            abort(400, 'Can only get the full block of definitions, not individual items')
 
 
 @api.route('/main/<path:path>')
 @api.route('/main', defaults={'path': ''}, doc=False)
 class MainConfiguration(Resource):
     r"""
-    A pass-through allows a GET or POST request to be referred to a registered back-end EDM
-
-    CommandLine:
-        EMAIL='test@localhost'
-        PASSWORD='test'
-        TIMESTAMP=$(date '+%Y%m%d-%H%M%S%Z')
-        curl \
-            -X POST \
-            -c cookie.jar \
-            -H 'Content-Type: multipart/form-data' \
-            -H 'Accept: application/json' \
-            -F email=${EMAIL} \
-            -F password=${PASSWORD} \
-            https://wildme.ngrok.io/api/v1/auth/sessions | jq
-        curl \
-            -X GET \
-            -b cookie.jar \
-            https://wildme.ngrok.io/api/v1/users/me | jq
-        curl \
-            -X POST \
-            -b cookie.jar \
-            -H 'Content-type: application/javascript' \
-            -d "{\"site.name\": \"value-updated-${TIMESTAMP}\"}" \
-            https://wildme.ngrok.io/api/v1/configuration/default/api/v0/configuration | jq
-        curl \
-            -X GET \
-            -b cookie.jar \
-            https://wildme.ngrok.io/api/v1/configuration/edm/default/api/v0/configuration/site.name | jq ".response.value"
+    Site settings Manipulations
     """
 
     def get(self, path):
-        params = {}
-        params.update(request.args)
-        params.update(request.form)
-        if path and SiteSetting.is_houston_only_setting(path):
-            # Houston only key is a special case and we need to construct the response by hand
-            data = {
-                'response': {
-                    'configuration': {
-                        path: {'value': SiteSetting.get_houston_value_or_default(path)},
-                    }
-                },
+        # Only support getting all the data or one single houston setting
+        if SiteSetting.is_rest_block_key(path):
+            return SiteSetting.get_all_rest_configuration()
+        elif SiteSetting.is_houston_setting(path):
+            value = SiteSetting.get_houston_rest_value(path)
+            # Pass it back to FE in old edm style and a new simpler style
+            cfg_data = {'configuration': {path: {'value': value}}}
+            return {
+                'response': cfg_data,
+                'value': value,
             }
-            return data
-
-        data = {'response': {'configuration': {}}}
-        if is_extension_enabled('edm'):
-            data = SiteSetting.get_edm_configuration_as_edm_format(
-                'configuration.data', path
-            )
-
-        user_is_admin = (
-            current_user is not None
-            and not current_user.is_anonymous
-            and current_user.is_admin
-        )
-
-        if SiteSetting.is_block_key(path):
-            data['response']['configuration'].update(
-                SiteSetting.get_houston_rest_block_data_for_current_user()
-            )
-        elif (
-            'response' in data
-            and data['response'].get('private', False)
-            and not user_is_admin
-        ):
-            log.warning(
-                f'blocked configuration {path} private=true for unauthorized user'
-            )
-            abort(HTTPStatus.FORBIDDEN, 'unavailable')
-
-        return data
+        else:
+            abort(400, f'Getting of {path} not supported')
 
     @api.permission_required(
         permissions.ModuleAccessPermission,
@@ -321,17 +224,11 @@ class MainConfiguration(Resource):
         except Exception:
             pass
         ret_data = {}
-        breakpoint()
-        success_ss_keys = []
         try:
-            if path == '' or path == 'block':  # posting a bundle (no path)
-                success_keys = SiteSetting.set_houston_data(data)
-                ret_data['updated'] = success_keys
-                for key in success_keys:
-                    del data[key]
-                if not data:  # All keys processed
-                    return ret_data
-            elif SiteSetting.is_houston_only_setting(path):
+            if path == '':  # posting a bundle (no path)
+                ret_data = SiteSetting.set_rest_block_data(data, request.files)
+
+            elif SiteSetting.is_houston_setting(path):
                 if '_value' not in data.keys():
                     abort(400, 'Need _value as the key in the data setting')
                 if data['_value'] is not None:
@@ -340,28 +237,18 @@ class MainConfiguration(Resource):
                     SiteSetting.forget_key_value(path)
                 resp = {'key': path}
                 return resp
+            else:
+                passthrough_kwargs = {'data': data}
+
+                files = request.files
+                if len(files) > 0:
+                    passthrough_kwargs['files'] = files
+                response = SiteSetting.set_edm_rest_data(path, passthrough_kwargs)
+                if 'updated' in response:
+                    ret_data['updated'] = response['updated']
 
         except HoustonException as ex:
             abort(ex.status_code, ex.message)
-
-        passthrough_kwargs = {'data': data}
-
-        files = request.files
-        if len(files) > 0:
-            passthrough_kwargs['files'] = files
-
-        if is_extension_enabled('edm'):
-            response = SiteSetting.post_edm_configuration(path, passthrough_kwargs)
-            if not response.ok:
-                abort(400, message=response)
-            res = response.json()
-            if not res['success']:
-                abort(400, message=res)
-
-            if 'updated' in res:
-                ret_data['updated'].extend(success_ss_keys)
-        else:
-            abort(400, 'key not supported')
 
         message = f'Setting path:{path} to {data}'
         AuditLog.audit_log(log, message, duration=timer.elapsed())
@@ -394,12 +281,12 @@ class MainConfiguration(Resource):
 
         message = f'Patching path:{kwargs["path"]} to {request_in_}'
         AuditLog.audit_log(log, message, duration=timer.elapsed())
-        return {'success': True}
+        return {'response': {'updated': kwargs['path']}}
 
     @api.login_required(oauth_scopes=['site-settings:write'])
     @api.response(code=HTTPStatus.NO_CONTENT)
     def delete(self, path):
-        if SiteSetting.is_block_key(path):
+        if SiteSetting.is_rest_block_key(path):
             abort(400, 'Not permitted to delete entire config')
         AuditLog.audit_log(log, f'Deleting {path}')
         try:

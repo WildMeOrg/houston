@@ -36,17 +36,22 @@ def test_create_header_image(db, flask_app, test_root):
 
 
 def test_create_string(db):
-    new_setting = SiteSetting.set(key='site_title', string='Name of the Site')
+    new_setting = SiteSetting.set(key='email_title_greeting', string='Hello')
     try:
-        read_value = SiteSetting.query.get('site_title')
-        assert read_value.string == 'Name of the Site'
+        read_value = SiteSetting.query.get('email_title_greeting')
+        assert read_value.string == 'Hello'
 
     finally:
         db.session.delete(new_setting)
 
 
+@pytest.mark.skipif(
+    extension_unavailable('intelligent_agent'),
+    reason='intelligent_agent extension disabled',
+)
 def test_boolean(db):
-    bkey = 'test_boolean'
+    bkey = 'intelligent_agent_twitterbot_enabled'
+    old_value = SiteSetting.get_value(bkey)
     new_setting = SiteSetting.set(key=bkey, boolean=False)
     try:
         read_value = SiteSetting.query.get(bkey)
@@ -67,7 +72,10 @@ def test_boolean(db):
         assert read_value is None
 
     finally:
-        db.session.delete(new_setting)
+        if old_value:
+            SiteSetting.set(key=bkey, boolean=old_value)
+        else:
+            db.session.delete(new_setting)
 
 
 def test_get_value(db, flask_app):
@@ -76,7 +84,7 @@ def test_get_value(db, flask_app):
         flask_app.edm.request_passthrough(
             'configuration.data',
             'post',
-            {'json': {'site.name': 'My Site'}},
+            {'json': {'site.name': 'My test site'}},
             '',
             target='default',
         )
@@ -86,11 +94,6 @@ def test_get_value(db, flask_app):
         assert isinstance(val, str)
     else:
         assert val is None
-
-    # test the default when no value
-    rnd = 'test_' + str(uuid.uuid4())
-    val = SiteSetting.get_value(rnd, default=rnd)
-    assert val == rnd
 
     guid = SiteSetting.get_system_guid()
     uuid.UUID(guid, version=4)  # will throw ValueError if not a uuid
@@ -107,14 +110,17 @@ def test_read_edm_configuration(flask_app):
     flask_app.edm.request_passthrough(
         'configuration.data',
         'post',
-        {'json': {'site.name': 'My Site'}},
+        {'json': {'site.name': 'My test site'}},
         '',
         target='default',
     )
-    val = SiteSetting.get_edm_configuration('site.name')
-    assert isinstance(val, str)
-    val = SiteSetting.get_edm_configuration('site.species')
-    if val is None:
+    block_config_data = SiteSetting._get_edm_rest_data()['response']['configuration']
+    assert isinstance(block_config_data['site.name']['value'], str)
+    species_ = block_config_data.get('site.species')
+    species = None
+    if species_ and 'value' in species_:
+        species = species_['value']
+    if species is None:
         flask_app.edm.request_passthrough(
             'configuration.data',
             'post',
@@ -128,7 +134,11 @@ def test_read_edm_configuration(flask_app):
             '',
             target='default',
         )
-        val = SiteSetting.get_edm_configuration('site.species')
-    assert isinstance(val, list)
+        block_config_data = SiteSetting._get_edm_definitions()['response'][
+            'configuration'
+        ]
+        species = block_config_data.get('site.species')['value']
+
+    assert isinstance(species, list)
     with pytest.raises(ValueError):
-        SiteSetting.get_edm_configuration('_fu_bar_')
+        SiteSetting.get_value('_fu_bar_')

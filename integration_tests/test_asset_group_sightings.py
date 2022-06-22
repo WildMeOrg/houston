@@ -26,7 +26,7 @@ def test_asset_group_sightings(session, login, codex_url, test_root):
         codex_url,
         {'commonNames': ['Example'], 'scientificName': 'Exempli gratia'},
     )
-    tx_id = response.json()['response']['value'][-1]['id']
+    tx_id = response[-1]['id']
     sighting_test_cfd = utils.create_custom_field(
         session, codex_url, 'Occurrence', 'occ_test_cfd'
     )
@@ -110,7 +110,7 @@ def test_asset_group_sightings(session, login, codex_url, test_root):
                 'asset_group_guid': asset_group_guid,
                 'assets': [
                     {
-                        'annotations': [],
+                        'annotations': ags_asset['annotations'],
                         'created': ags_asset['created'],
                         'dimensions': {'height': 664, 'width': 1000},
                         'elasticsearchable': ags_asset['elasticsearchable'],
@@ -157,7 +157,7 @@ def test_asset_group_sightings(session, login, codex_url, test_root):
                 'progress_detection': ags['progress_detection'],
                 'progress_identification': ags['progress_identification'],
                 'sighting_guid': None,
-                'stage': 'detection',
+                'stage': ags['stage'],
                 'locationId': 'PYTEST',
                 'time': '2000-01-01T01:01:01+00:00',
                 'timeSpecificity': 'time',
@@ -177,6 +177,8 @@ def test_asset_group_sightings(session, login, codex_url, test_root):
         'progress_identification': response.json()['progress_identification'],
         'updated': response.json()['updated'],
     }
+    # due to timing, the above could be in either detection or curation stage but check it's only that
+    assert ags['stage'] in {'detection', 'curation'}
 
     # Wait for detection
     ags_url = codex_url(f'/api/v1/asset_groups/sighting/{ags_guid}')

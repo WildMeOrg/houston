@@ -17,7 +17,7 @@ def test_sightings(session, login, codex_url, test_root, admin_name):
         codex_url,
         {'commonNames': ['Example'], 'scientificName': 'Exempli gratia'},
     )
-    tx_id = response.json()['response']['value'][-1]['id']
+    tx_id = response[-1]['id']
     occ_test_cfd = utils.create_custom_field(
         session, codex_url, 'Occurrence', 'occ_test_cfd'
     )

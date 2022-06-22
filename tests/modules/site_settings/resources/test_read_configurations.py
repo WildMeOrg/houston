@@ -8,24 +8,31 @@ from tests.modules.site_settings.resources import utils as conf_utils
 from tests.utils import extension_unavailable, module_unavailable
 
 
+@pytest.mark.skipif(
+    module_unavailable('site_settings'), reason='Site-settings module disabled'
+)
+def test_read_sentry_dsn(flask_app_client, researcher_1):
+    # pylint: disable=invalid-name
+    # This is the one 'lone' field that the frontend reads in isolation.
+    sentry_dsn_val = conf_utils.read_main_settings(
+        flask_app_client, researcher_1, 'sentryDsn'
+    ).json
+    assert 'value' in sentry_dsn_val
+    assert 'response' in sentry_dsn_val
+    assert 'configuration' in sentry_dsn_val['response']
+    assert 'sentryDsn' in sentry_dsn_val['response']['configuration']
+    assert 'value' in sentry_dsn_val['response']['configuration']['sentryDsn']
+
+
 @pytest.mark.skipif(extension_unavailable('edm'), reason='EDM extension disabled')
 @pytest.mark.skipif(
     module_unavailable('site_settings'), reason='Site-settings module disabled'
 )
 def test_read_edm_site_settings(flask_app_client, researcher_1):
     # pylint: disable=invalid-name
-    test_key = 'site.name'
-    response = conf_utils.read_main_settings(flask_app_client, researcher_1, test_key)
-    assert response.json['response']['id'] == test_key
-    response = conf_utils.read_main_settings_definition(
-        flask_app_client, researcher_1, test_key
-    )
-    assert response.json['response']['configurationId'] == test_key
-    assert response.json['response']['fieldType'] == 'string'
-
-    # a bad key
-    response = conf_utils.read_main_settings(
-        flask_app_client, researcher_1, '__INVALID_KEY__', expected_status_code=400
+    conf_utils.read_main_settings(flask_app_client, researcher_1, 'site.name', 400)
+    conf_utils.read_main_settings_definition(
+        flask_app_client, researcher_1, 'site.name', 400
     )
 
     from app.modules.ia_config_reader import IaConfig
@@ -33,36 +40,14 @@ def test_read_edm_site_settings(flask_app_client, researcher_1):
     ia_config_reader = IaConfig()
     species = ia_config_reader.get_configured_species()
     config_def_response = conf_utils.read_main_settings_definition(
-        flask_app_client, researcher_1, 'site.species'
-    )
-    # note: this relies on IaConfig and get_configured_species() not changing too radically
-    assert len(config_def_response.json['response']['suggestedValues']) >= len(species)
-    for i in range(len(species)):
-        assert (
-            config_def_response.json['response']['suggestedValues'][i]['scientificName']
-            == species[len(species) - i - 1]
-        )
-
-    config_def_response = conf_utils.read_main_settings_definition(
         flask_app_client, researcher_1
     )
-    assert len(
-        config_def_response.json['response']['configuration']['site.species'][
-            'suggestedValues'
-        ]
-    ) >= len(species)
+    suggested_vals = config_def_response.json['response']['configuration'][
+        'site.species'
+    ]['suggestedValues']
+    assert len(suggested_vals) >= len(species)
     for i in range(len(species)):
-        assert (
-            config_def_response.json['response']['configuration']['site.species'][
-                'suggestedValues'
-            ][i]['scientificName']
-            == species[len(species) - i - 1]
-        )
-
-    # test private (will give 403 to non-admin)
-    response = conf_utils.read_main_settings(
-        flask_app_client, researcher_1, 'site.testSecret', expected_status_code=403
-    )
+        assert suggested_vals[i]['scientificName'] == species[len(species) - i - 1]
 
 
 @pytest.mark.skipif(extension_unavailable('edm'), reason='EDM extension disabled')
@@ -70,9 +55,9 @@ def test_read_edm_site_settings(flask_app_client, researcher_1):
     module_unavailable('site_settings'), reason='Site-settings module disabled'
 )
 def test_alter_edm_settings(flask_app_client, admin_user):
-    response = conf_utils.read_main_settings(flask_app_client, admin_user, 'site.species')
-    assert 'value' in response.json['response']
-    vals = response.json['response']['value']
+    response = conf_utils.read_main_settings(flask_app_client, admin_user)
+    assert 'value' in response.json['response']['configuration']['site.species']
+    vals = response.json['response']['configuration']['site.species']['value']
     vals.append({'commonNames': ['Test data'], 'scientificName': 'Testus datum'})
     response = conf_utils.modify_main_settings(
         flask_app_client,
@@ -80,9 +65,15 @@ def test_alter_edm_settings(flask_app_client, admin_user):
         {'_value': vals},
         'site.species',
     )
-    response = conf_utils.read_main_settings(flask_app_client, admin_user, 'site.species')
-    assert 'value' in response.json['response']
-    assert response.json['response']['value'][-1]['scientificName'] == 'Testus datum'
+    response = conf_utils.read_main_settings(flask_app_client, admin_user)
+    assert 'value' in response.json['response']['configuration']['site.species']
+
+    assert (
+        response.json['response']['configuration']['site.species']['value'][-1][
+            'scientificName'
+        ]
+        == 'Testus datum'
+    )
     # restore original list
     vals.pop()
     response = conf_utils.modify_main_settings(
@@ -96,11 +87,11 @@ def test_alter_edm_settings(flask_app_client, admin_user):
 @pytest.mark.skipif(extension_unavailable('edm'), reason='EDM extension disabled')
 def test_alter_edm_custom_fields(flask_app_client, admin_user):
 
-    categories = conf_utils.read_main_settings(
-        flask_app_client, admin_user, 'site.custom.customFieldCategories'
-    )
-    assert 'value' in categories.json['response']
-    cats = categories.json['response']['value']
+    categories = conf_utils.read_main_settings(flask_app_client, admin_user,).json[
+        'response'
+    ]['configuration']['site.custom.customFieldCategories']
+    assert 'value' in categories
+    cats = categories['value']
     cats.append(
         {
             'label': 'sighting_category 1',
@@ -117,12 +108,12 @@ def test_alter_edm_custom_fields(flask_app_client, admin_user):
         'site.custom.customFieldCategories',
     )
 
-    occ_cf_rsp = conf_utils.read_main_settings(
-        flask_app_client, admin_user, 'site.custom.customFields.Occurrence'
-    )
+    occ_cf_rsp = conf_utils.read_main_settings(flask_app_client, admin_user).json[
+        'response'
+    ]['configuration']['site.custom.customFields.Occurrence']
 
-    assert 'value' in occ_cf_rsp.json['response']
-    occ_cfs = occ_cf_rsp.json['response']['value']
+    assert 'value' in occ_cf_rsp
+    occ_cfs = occ_cf_rsp['value']
     if occ_cfs == []:
         occ_cfs = {}
     if 'definitions' not in occ_cfs:
@@ -171,13 +162,12 @@ def test_alter_edm_custom_fields(flask_app_client, admin_user):
         {'_value': occ_cfs},
         'site.custom.customFields.Sighting',
     )
-    occ_cf_rsp = conf_utils.read_main_settings(
-        flask_app_client, admin_user, 'site.custom.customFields.Occurrence'
-    )
-
+    occ_cf_rsp = conf_utils.read_main_settings(flask_app_client, admin_user,).json[
+        'response'
+    ]['configuration']['site.custom.customFields.Occurrence']
     defaults = [
         definit['default']
-        for definit in occ_cf_rsp.json['response']['value']['definitions']
+        for definit in occ_cf_rsp['value']['definitions']
         if 'default' in definit
     ]
     assert 'woo' in defaults
@@ -189,23 +179,17 @@ def test_alter_edm_custom_fields(flask_app_client, admin_user):
         {'_value': cats},
         'site.custom.customFieldCategories',
     )
-
-    first = occ_cf_rsp.json['response']['value']['definitions'].pop(0)
-    second = occ_cf_rsp.json['response']['value']['definitions'].pop(0)
+    first = occ_cf_rsp['value']['definitions'].pop(0)
+    second = occ_cf_rsp['value']['definitions'].pop(0)
 
     conf_utils.delete_main_setting(
         flask_app_client, admin_user, f'site.custom.customFields.Sighting/{first["id"]}'
     )
     # Try via the patch API too
-    conf_utils.delete_main_setting(
-        flask_app_client,
-        admin_user,
-        f'site.custom.customFields.Occurrence/{second["id"]}',
-    )
     patch_data = [
         {
             'op': 'remove',
-            'path': f'/site.custom.customFields.Occurrence/{first["id"]}',
+            'path': f'site.custom.customFields.Occurrence/{second["id"]}',
         },
     ]
     conf_utils.patch_main_setting(
@@ -215,10 +199,10 @@ def test_alter_edm_custom_fields(flask_app_client, admin_user):
         patch_data,
     )
     # check if they're gone
-    sight_cf_rsp = conf_utils.read_main_settings(
-        flask_app_client, admin_user, 'site.custom.customFields.Sighting'
-    ).json
-    definitions = sight_cf_rsp['response']['value']['definitions']
+    sight_cf_rsp = conf_utils.read_main_settings(flask_app_client, admin_user,).json[
+        'response'
+    ]['configuration']['site.custom.customFields.Sighting']
+    definitions = sight_cf_rsp['value']['definitions']
     def_ids = [defi['id'] for defi in definitions]
     assert first['id'] not in def_ids
     assert second['id'] not in def_ids
@@ -279,24 +263,16 @@ def test_alter_houston_settings(flask_app_client, admin_user, researcher_1):
 
     # admin should be able to see uname & pass, researcher should not.
     admin_configuration = config_response_admin.json['response']['configuration']
-    admin_definition = config_def_response_admin.json['response']['configuration']
+    config_def_response_admin.json['response']['configuration']
     researcher_configuration = config_response_researcher.json['response'][
         'configuration'
     ]
-    researcher_definition = config_def_response_researcher.json['response'][
-        'configuration'
-    ]
+    config_def_response_researcher.json['response']['configuration']
 
     assert admin_configuration['email_service_username']['value'] == username
-    assert admin_configuration['email_service_username']['valueNotSet'] is False
     assert admin_configuration['email_service_password']['value'] == password
-    assert admin_configuration['email_service_password']['valueNotSet'] is False
     assert 'email_service_username' not in researcher_configuration
     assert 'email_service_password' not in researcher_configuration
-    assert 'currentValue' not in researcher_definition['email_service_username']
-    assert 'currentValue' not in researcher_definition['email_service_password']
-    assert admin_definition['email_service_username']['currentValue'] == username
-    assert admin_definition['email_service_password']['currentValue'] == password
 
     conf_utils.modify_main_settings(
         flask_app_client,
@@ -316,6 +292,4 @@ def test_alter_houston_settings(flask_app_client, admin_user, researcher_1):
     admin_configuration = config_response_admin.json['response']['configuration']
 
     assert admin_configuration['email_service_username']['value'] is None
-    assert admin_configuration['email_service_username']['valueNotSet']
     assert admin_configuration['email_service_password']['value'] is None
-    assert admin_configuration['email_service_password']['valueNotSet']

@@ -53,10 +53,7 @@ def test_file_settings(admin_user, flask_app_client, flask_app, db, request, tes
         site_setting = resp.json
         assert site_setting['key'] == 'footer_image'
 
-        # this is to test that GET /api/v1/site-settings/file is *truly* only getting file-type values
-        SiteSetting.set('foo', string='bar')
-
-        # List site settings
+        # List File site settings
         resp = flask_app_client.get('/api/v1/site-settings/file')
         assert resp.status_code == 200
         assert resp.json == [

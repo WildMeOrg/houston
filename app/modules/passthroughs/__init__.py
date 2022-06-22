@@ -26,5 +26,5 @@ def init_app(app, **kwargs):
     # Touch underlying modules
     from . import resources  # NOQA
 
-    api_v1.add_namespace(resources.edm_pass)
+    # api_v1.add_namespace(resources.edm_pass)
     api_v1.add_namespace(resources.sage_pass)

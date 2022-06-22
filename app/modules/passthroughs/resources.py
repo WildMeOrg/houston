@@ -10,7 +10,7 @@ import logging
 
 from flask import current_app, request
 
-from app.extensions.api import Namespace
+from app.extensions.api import Namespace, abort
 from flask_restx_patched import Resource
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
@@ -22,6 +22,7 @@ sage_pass = Namespace(
 )  # pylint: disable=invalid-name
 
 
+# Disabled, should probably be removed entirely
 @edm_pass.route('/')
 @edm_pass.login_required(oauth_scopes=['passthroughs:read'])
 class EDMPassthroughTargets(Resource):
@@ -37,6 +38,7 @@ class EDMPassthroughTargets(Resource):
         return targets
 
 
+# Disabled, should probably be removed entirely
 @edm_pass.route('/<string:target>/', defaults={'path': None}, doc=False)
 @edm_pass.route('/<string:target>/<path:path>')
 @edm_pass.login_required(oauth_scopes=['passthroughs:read'])
@@ -113,88 +115,37 @@ class EDMPassthroughs(Resource):
 @sage_pass.login_required(oauth_scopes=['passthroughs:read'])
 class SagePassthroughTargets(Resource):
     """
-    Manipulations with Passthroughs.
+    List of Sage Passthrough targets supported.
     """
 
     def get(self):
         """
-        List the possible EDM passthrough targets.
+        List the possible Sage passthrough targets.
         """
-        targets = current_app.sage.get_target_list()
-        return targets
+        return ['jobs']
 
 
-@sage_pass.route('/<string:target>/', defaults={'path': None}, doc=False)
-@sage_pass.route('/<string:target>/<path:path>')
+@sage_pass.route('/<string:target>/', doc=False)
 @sage_pass.login_required(oauth_scopes=['passthroughs:read'])
 class SagePassthroughs(Resource):
     r"""
-    A pass-through allows a GET or POST request to be referred to a registered back-end EDM
-
-    CommandLine:
-        EMAIL='test@localhost'
-        PASSWORD='test'
-        TIMESTAMP=$(date '+%Y%m%d-%H%M%S%Z')
-        curl \
-            -X POST \
-            -c cookie.jar \
-            -F email=${EMAIL} \
-            -F password=${PASSWORD} \
-            https://houston.dyn.wildme.io/api/v1/auth/sessions | jq
-        curl \
-            -X GET \
-            -b cookie.jar \
-            https://houston.dyn.wildme.io/api/v1/users/me | jq
-        curl \
-            -X POST \
-            -b cookie.jar \
-            -d "{\"site.name\": \"value-updated-${TIMESTAMP}\"}" \
-            https://houston.dyn.wildme.io/api/v1/passthroughs/edm/default/api/v0/configuration | jq
-        curl \
-            -X GET \
-            -b cookie.jar \
-            https://houston.dyn.wildme.io/api/v1/passthroughs/edm/default/api/v0/configuration/site.name | jq ".response.value"
+    A pass-through allows certain "targets" as defined within Houston, to map to controlled requests to the
+    appropriate Sage instance for this Platform
     """
 
-    def get(self, target, path):
+    def get(self, target):
         """
-        List the possible EDM passthrough targets.
+        List the possible Sage passthrough targets.
         """
         params = {}
         params.update(request.args)
         params.update(request.form)
+        response = {}
         if target == 'jobs':
             response = current_app.sage.request_passthrough(
-                'passthrough.jobs', 'get', {'params': params}, path, 'default'
+                'passthrough.jobs', 'get', {'params': params}
             )
         else:
-            response = current_app.sage.request_passthrough(
-                'passthrough.data', 'get', {'params': params}, path, target
-            )
-
-        return response
-
-    def post(self, target, path):
-        """
-        List the possible EDM passthrough targets.
-        """
-        data = {}
-        data.update(request.args)
-        data.update(request.form)
-        try:
-            data_ = json.loads(request.data)
-            data.update(data_)
-        except Exception:
-            pass
-
-        passthrough_kwargs = {'data': data}
-
-        files = request.files
-        if len(files) > 0:
-            passthrough_kwargs['files'] = files
-
-        response = current_app.sage.request_passthrough(
-            'passthrough.data', 'post', passthrough_kwargs, path, target
-        )
+            abort(400, f'target {target} not supported')
 
         return response

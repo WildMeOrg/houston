@@ -1607,7 +1607,7 @@ class Sighting(db.Model, FeatherModel):
         individual_guid = annot.encounter.individual_guid
         individual = Individual.query.get(individual_guid) if individual_guid else None
 
-        if annot.guid not in response['annotation_data'].keys():
+        if str(annot.guid) not in response['annotation_data'].keys():
             # add annot data
             image_url = url_for(
                 'api.sightings_sighting_id_result_annotation_src_asset',
@@ -1619,19 +1619,15 @@ class Sighting(db.Model, FeatherModel):
             sighting = annot.get_sighting()
             response['annotation_data'][str(annot.guid)] = {
                 'viewpoint': annot.viewpoint,
-                'encounter_location': encounter.get_location_id() if encounter else None,
+                'encounter_location': encounter.get_location_id(),
                 'individual_guid': str(individual.guid) if individual else None,
                 'image_url': image_url,
                 'asset_dimensions': annot.asset.get_dimensions(),
                 'bounds': annot.bounds,
-                'sighting_guid': str(sighting.guid) if sighting else None,
-                'sighting_time': sighting.get_time_isoformat_in_timezone()
-                if sighting
-                else None,
-                'sighting_time_specificity': sighting.get_time_specificity()
-                if sighting
-                else None,
-                'encounter_guid': str(encounter.guid) if encounter else None,
+                'sighting_guid': str(sighting.guid),
+                'sighting_time': sighting.get_time_isoformat_in_timezone(),
+                'sighting_time_specificity': sighting.get_time_specificity(),
+                'encounter_guid': str(encounter.guid),
                 'asset_filename': annot.asset.filename,
                 'individual_first_name': individual.get_first_name()
                 if individual

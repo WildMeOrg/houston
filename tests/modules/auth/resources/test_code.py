@@ -95,3 +95,13 @@ def test_verify_account(flask_app_client, researcher_1, request):
     response = flask_app_client.post('/api/v1/auth/code/1234')
     assert response.status_code == 404
     assert response.json['message'] == "Code '1234' not found"
+
+    # Ensure that get works for verification too
+    verify2 = Code.get(researcher_1, CodeTypes.email)
+    request.addfinalizer(verify2.delete)
+    response = flask_app_client.get(f'/api/v1/auth/code/{verify2.accept_code}')
+    assert response.status_code == 302
+    assert (
+        response.headers['Location']
+        == 'http://localhost:84/email_verified?message=Email+successfully+verified.&status=200'
+    )

@@ -21,7 +21,7 @@ def _read_passthrough(
         scopes='passthroughs:read',
         path=path,
         expected_status_code=expected_status_code,
-        response_200={'response', 'status'},
+        response_200=None,
         response_error={'message'},
     )
     return res

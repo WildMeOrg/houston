@@ -137,14 +137,12 @@ class SagePassthroughs(Resource):
         """
         List the possible Sage passthrough targets.
         """
-        params = {}
-        params.update(request.args)
-        params.update(request.form)
+
         response = {}
         if target == 'jobs':
-            response = current_app.sage.request_passthrough(
-                'passthrough.jobs', 'get', {'params': params}
-            )
+            response = current_app.sage.request_passthrough_result('engine.list', 'get')[
+                'json_result'
+            ]
         else:
             abort(400, f'target {target} not supported')
 

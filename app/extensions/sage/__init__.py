@@ -154,10 +154,6 @@ class SageManager(RestManager):
         'version': {
             'dict': '//version/',
         },
-        'passthrough': {
-            'data': '',
-            'jobs': '//engine/job/status/',
-        },
         'engine': {
             'list': '//engine/job/status/',
             'detect': '//engine/detect/cnn/',

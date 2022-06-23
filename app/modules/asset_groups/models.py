@@ -318,6 +318,16 @@ class AssetGroupSighting(db.Model, HoustonModel):
                 )
                 new_encounter.set_time_from_data(req_data)
 
+                if 'individualUuid' in req_data:
+                    ind_guid = req_data['individualUuid']
+                    individual = Individual.query.get(uuid.UUID(ind_guid))
+                    if individual:
+                        new_encounter.set_individual(individual)
+                    else:
+                        log.warning(
+                            f'Individual with guid {ind_guid} not found for auto assignment to created encounter'
+                        )
+
                 AuditLog.user_create_object(log, new_encounter, f'for owner {owner_guid}')
 
                 annotations = req_data.get('annotations', [])

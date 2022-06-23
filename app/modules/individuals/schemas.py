@@ -141,6 +141,7 @@ class ElasticsearchIndividualSchema(ModelSchema):
     featuredAssetGuid = base_fields.Function(Individual.get_featured_asset_guid)
     names = base_fields.Function(Individual.get_name_values)
     firstName = base_fields.Function(Individual.get_first_name)
+    firstName_keyword = base_fields.Function(Individual.get_first_name_keyword)
     adoptionName = base_fields.Function(Individual.get_adoption_name)
     encounters = base_fields.Nested(ElasticsearchEncounterSchema, many=True)
     social_groups = base_fields.Function(Individual.get_social_groups_json)
@@ -170,6 +171,7 @@ class ElasticsearchIndividualSchema(ModelSchema):
             'featuredAssetGuid',
             'names',
             'firstName',
+            'firstName_keyword',
             'adoptionName',
             'taxonomy_guid',
             'social_groups',
@@ -200,6 +202,7 @@ class ElasticsearchIndividualReturnSchema(ModelSchema):
     featuredAssetGuid = base_fields.Function(Individual.get_featured_asset_guid)
     names = base_fields.Function(Individual.get_name_values)
     firstName = base_fields.Function(Individual.get_first_name)
+    firstName_keyword = base_fields.Function(Individual.get_first_name_keyword)
     adoptionName = base_fields.Function(Individual.get_adoption_name)
     social_groups = base_fields.Function(Individual.get_social_groups_json)
     sex = base_fields.Function(Individual.get_sex)
@@ -230,6 +233,7 @@ class ElasticsearchIndividualReturnSchema(ModelSchema):
             'featuredAssetGuid',
             'names',
             'firstName',
+            'firstName_keyword',
             'adoptionName',
             'taxonomy_guid',
             'social_groups',

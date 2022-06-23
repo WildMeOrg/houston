@@ -175,7 +175,7 @@ def test_sighting_identification(
                                 'minimum_should_match': 1,
                                 'should': [
                                     {
-                                        'match_phrase': {
+                                        'term': {
                                             'locationId': 'c74ff3e3-d0f5-4930-8c3a-68f2b172b655'
                                         }
                                     }

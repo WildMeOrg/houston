@@ -128,8 +128,8 @@ def test_search_with_elasticsearch(
         'bool': {
             'minimum_should_match': 1,
             'should': [
-                {'match_phrase': {'guid': {'query': searchTerm}}},
-                {'match_phrase': {'locationId_id': {'query': searchTerm}}},
+                {'term': {'guid': searchTerm}},
+                {'term': {'locationId_id': searchTerm}},
                 {
                     'query_string': {
                         'query': '*{}*'.format(searchTerm),
@@ -157,8 +157,8 @@ def test_search_with_elasticsearch(
         'bool': {
             'minimum_should_match': 1,
             'should': [
-                {'match_phrase': {'guid': {'query': searchTerm}}},
-                {'match_phrase': {'locationId_id': {'query': searchTerm}}},
+                {'term': {'guid': searchTerm}},
+                {'term': {'locationId_id': searchTerm}},
                 {
                     'query_string': {
                         'query': '*{}*'.format(searchTerm),

@@ -1784,6 +1784,12 @@ class Sighting(db.Model, FeatherModel):
                 assert len(config['algorithms']) == 1
 
     def ia_pipeline(self, foreground=None):
+        # For reasons that are not really clear, migrated sightings have jobs = None.
+        # This causes all sorts of problems on ID so set it to a sane value
+        if not self.jobs:
+            with db.session.begin(subtransactions=True):
+                self.jobs = {}
+                db.session.merge(self)
 
         self.init_progress_identification()
 
@@ -1809,8 +1815,12 @@ class Sighting(db.Model, FeatherModel):
                 db.session.merge(self.progress_identification)
 
         for encounter in self.encounters:
-            encounter_metadata = self.asset_group_sighting.get_encounter_metadata(
-                encounter.asset_group_sighting_encounter_guid
+            encounter_metadata = (
+                self.asset_group_sighting.get_encounter_metadata(
+                    encounter.asset_group_sighting_encounter_guid
+                )
+                if self.asset_group_sighting
+                else None
             )
             if encounter_metadata:
                 if 'individualUuid' in encounter_metadata:

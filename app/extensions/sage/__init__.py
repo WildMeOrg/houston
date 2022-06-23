@@ -658,3 +658,15 @@ def init_app(app, **kwargs):
     API extension initialization point.
     """
     app.sage = SageManager()
+    from app.extensions.api import api_v1
+
+    """
+    Init Passthroughs module.
+    """
+    api_v1.add_oauth_scope('sage:read', 'Provide access to Sage API')
+    api_v1.add_oauth_scope('sage:write', 'Provide write access to Sage API')
+
+    # Touch underlying modules
+    from . import resources  # NOQA
+
+    api_v1.add_namespace(resources.sage)

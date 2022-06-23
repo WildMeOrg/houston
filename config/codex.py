@@ -75,7 +75,6 @@ class BaseCodexConfig(
         'app_ui',
         'swagger_ui',
 
-        'passthroughs',
         'emails',
         'audit_logs',
         'integrity',

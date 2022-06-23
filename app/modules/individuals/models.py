@@ -255,6 +255,13 @@ class Individual(db.Model, FeatherModel):
                 break
         return first_name
 
+    def get_first_name_keyword(self):
+        first_name = self.get_first_name()
+        if first_name is None:
+            first_name = ''
+        first_name_keyword = first_name.strip().lower()
+        return first_name_keyword
+
     @classmethod
     def get_by_name(cls, name_value, context=DEFAULT_NAME_CONTEXT):
         matching_names = Name.query.filter(

@@ -228,6 +228,13 @@ class Sighting(db.Model, FeatherModel):
 
         return location_id_value
 
+    def get_location_id_keyword(self):
+        location_id_value = self.get_location_id_value()
+        if location_id_value is None:
+            location_id_value = ''
+        location_id_keyword = location_id_value.strip().lower()
+        return location_id_keyword
+
     def get_locality(self):
         return self.get_edm_data_field('verbatimLocality')
 

@@ -61,9 +61,10 @@ class ElasticsearchModel(object):
             if (
                 key in ['guid', '_schema', 'email']
                 or key.endswith('_guid')
-                or key.endswith('Id')
-                or key.endswith('ID')
                 or key.endswith('_id')
+                or key.endswith('_keyword')
+                or key.endswith('ID')
+                or key.endswith('Id')
             ):
                 mappings[key] = {
                     'type': 'keyword',

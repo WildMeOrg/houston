@@ -62,6 +62,7 @@ class ElasticsearchSightingSchema(BaseSightingSchema):
     verbatimLocality = base_fields.Function(Sighting.get_locality)
     locationId_id = base_fields.Function(Sighting.get_location_id)
     locationId_value = base_fields.Function(Sighting.get_location_id_value)
+    locationId_keyword = base_fields.Function(Sighting.get_location_id_keyword)
     owners = base_fields.Nested(
         'PublicUserSchema',
         attribute='get_owners',
@@ -87,6 +88,7 @@ class ElasticsearchSightingSchema(BaseSightingSchema):
             'verbatimLocality',
             'locationId_id',
             'locationId_value',
+            'locationId_keyword',
             'owners',
             'taxonomy_guid',
             'customFields',

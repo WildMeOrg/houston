@@ -70,6 +70,8 @@ fi
 if [ "$HOUSTON_APP_CONTEXT" == 'codex' ]; then
     coverage run --append `which invoke` codex.asset-groups.list-all
     coverage run --append `which invoke` codex.encounters.list-all
+    coverage run --append `which invoke` codex.individuals.list-all
+    coverage run --append `which invoke` codex.individuals.list-all-votes
     coverage run --append `which invoke` codex.organizations.list-all
     coverage run --append `which invoke` codex.projects.list-all
     coverage run --append `which invoke` codex.job-control.check-ags-jobs

@@ -256,9 +256,11 @@ class Individual(db.Model, FeatherModel):
         return first_name
 
     def get_first_name_keyword(self):
+        from app.extensions.elasticsearch import MAX_UNICODE_CODE_POINT_CHAR
+
         first_name = self.get_first_name()
         if first_name is None:
-            first_name = ''
+            first_name = MAX_UNICODE_CODE_POINT_CHAR
         first_name_keyword = first_name.strip().lower()
         return first_name_keyword
 

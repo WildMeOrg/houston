@@ -5,6 +5,7 @@ import enum
 import json
 import logging
 import pprint
+import sys
 import time
 import types
 import uuid
@@ -35,6 +36,8 @@ CELERY_VERIFY_TIMEOUT = 60.0
 CELERY_ASYNC_PROMISES = []
 
 ELASTICSEARCH_SORTING_PREFIX = 'elasticsearch.'
+
+MAX_UNICODE_CODE_POINT_CHAR = chr(int(hex(sys.maxunicode), 16))
 
 log = logging.getLogger('elasticsearch')  # pylint: disable=invalid-name
 

@@ -229,9 +229,11 @@ class Sighting(db.Model, FeatherModel):
         return location_id_value
 
     def get_location_id_keyword(self):
+        from app.extensions.elasticsearch import MAX_UNICODE_CODE_POINT_CHAR
+
         location_id_value = self.get_location_id_value()
         if location_id_value is None:
-            location_id_value = ''
+            location_id_value = MAX_UNICODE_CODE_POINT_CHAR
         location_id_keyword = location_id_value.strip().lower()
         return location_id_keyword
 

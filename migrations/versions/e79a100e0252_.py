@@ -26,7 +26,6 @@ def upgrade():
             'curation_start',
             existing_type=postgresql.TIMESTAMP(),
             nullable=True,
-            existing_server_default=sa.text('CURRENT_TIMESTAMP'),
         )
 
     # ### end Alembic commands ###

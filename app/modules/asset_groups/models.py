@@ -71,10 +71,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
     # May have multiple jobs outstanding, store as Json obj uuid_str is key, In_progress Bool is value
     jobs = db.Column(db.JSON, default=lambda: {}, nullable=True)
     detection_start = db.Column(db.DateTime, index=True, default=None, nullable=True)
-
-    curation_start = db.Column(
-        db.DateTime, index=True, default=datetime.datetime.utcnow, nullable=False
-    )
+    curation_start = db.Column(db.DateTime, index=True, default=None, nullable=True)
     detection_attempts = db.Column(db.Integer, default=0, nullable=False)
 
     progress_detection_guid = db.Column(
@@ -404,23 +401,13 @@ class AssetGroupSighting(db.Model, HoustonModel):
     def get_submission_time_isoformat(self):
         return self.get_submission_time().isoformat() + 'Z'
 
-    # Don't store detection start time directly. It's either the creation time if we ever had detection
-    # jobs or None if no detection was done (and hence no jobs exist)
     def get_detection_start_time(self):
         if self.detection_start:
             return self.detection_start.isoformat() + 'Z'
         return None
 
-    # curation time is only valid if there are no active detection jobs and there were some assets
-    # Either detection has completed or no detection jobs were run
     def get_curation_start_time(self):
-        if (
-            self.stage != AssetGroupSightingStage.detection
-            and not self.any_jobs_active()
-            and self.sighting_config
-            and 'assetReferences' in self.sighting_config.keys()
-            and len(self.sighting_config['assetReferences']) != 0
-        ):
+        if self.curation_start:
             return self.curation_start.isoformat() + 'Z'
         return None
 
@@ -1076,6 +1063,11 @@ class AssetGroupSighting(db.Model, HoustonModel):
     def set_stage(self, stage, refresh=True):
         with db.session.begin(subtransactions=True):
             self.stage = stage
+            if stage == AssetGroupSightingStage.detection:
+                self.detection_start = datetime.datetime.utcnow()
+            elif stage == AssetGroupSightingStage.curation:
+                self.curation_start = datetime.datetime.utcnow()
+
             db.session.merge(self)
         if refresh:
             db.session.refresh(self)
@@ -1374,7 +1366,6 @@ class AssetGroupSighting(db.Model, HoustonModel):
                 with db.session.begin():
                     self.progress_detection.celery_guid = promise.id
                     db.session.merge(self.progress_detection)
-        self.detection_start = datetime.datetime.utcnow()
 
     # Used to build the response to AssetGroupSighting GET
     def get_assets(self):
@@ -1423,7 +1414,6 @@ class AssetGroupSighting(db.Model, HoustonModel):
                         del self.sighting_config['updatedAssets']
                     self.config = self.config
                     self.set_stage(AssetGroupSightingStage.curation, refresh=False)
-                    self.curation_start = datetime.datetime.utcnow()
 
                 # This is necessary because we can only mark jobs as
                 # modified if we assign to it

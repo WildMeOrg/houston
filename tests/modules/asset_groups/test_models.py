@@ -61,7 +61,7 @@ def test_asset_group_sightings_jobs(flask_app, db, admin_user, test_root, reques
     # no assets => processed
     assert ags2.stage == AssetGroupSightingStage.processed
     assert ags2.get_detection_start_time() is None
-    assert ags2.get_curation_start_time() is None
+    assert ags2.get_curation_start_time() is not None
 
     progress_guids = [str(ags1.progress_detection.guid)]
     test_utils.wait_for_progress(flask_app, progress_guids)

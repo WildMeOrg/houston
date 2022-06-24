@@ -1736,7 +1736,7 @@ class Sighting(db.Model, FeatherModel):
                 # Only one for MVP
                 assert len(config['algorithms']) == 1
 
-    def ia_pipeline(self, foreground=None):
+    def ia_pipeline(self, foreground=None, progress_overwrite=False):
         # For reasons that are not really clear, migrated sightings have jobs = None.
         # This causes all sorts of problems on ID so set it to a sane value
         if not self.jobs:
@@ -1744,7 +1744,7 @@ class Sighting(db.Model, FeatherModel):
                 self.jobs = {}
                 db.session.merge(self)
 
-        self.init_progress_identification()
+        self.init_progress_identification(overwrite=progress_overwrite)
 
         if foreground is None:
             foreground = current_app.testing

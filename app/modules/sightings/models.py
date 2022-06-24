@@ -1821,22 +1821,6 @@ class Sighting(db.Model, FeatherModel):
                 self.progress_identification.celery_guid = promise.id
                 db.session.merge(self.progress_identification)
 
-        for encounter in self.encounters:
-            encounter_metadata = (
-                self.asset_group_sighting.get_encounter_metadata(
-                    encounter.asset_group_sighting_encounter_guid
-                )
-                if self.asset_group_sighting
-                else None
-            )
-            if encounter_metadata:
-                if 'individualUuid' in encounter_metadata:
-                    individual = Individual.query.get(
-                        uuid.UUID(encounter_metadata['individualUuid'])
-                    )
-                    assert individual
-                    encounter.set_individual(individual)
-
     # this iterates over configs and algorithms
     # note: self.validate_id_configs() should be called before this (once)
     def send_annotation_for_identification(

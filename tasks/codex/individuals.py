@@ -3,7 +3,6 @@
 Application Individual related tasks for Invoke.
 """
 
-from app.modules.individuals.models import Individual, IndividualMergeRequestVote
 from tasks.utils import app_context_task
 
 
@@ -12,6 +11,8 @@ def list_all(context):
     """
     Show existing individuals.
     """
+    from app.modules.individuals.models import Individual
+
     individuals = Individual.query.all()
 
     for individual in individuals:
@@ -29,8 +30,10 @@ def details(context, guid, debug=False):
     if debug:
         breakpoint()
 
-    from app.modules.individuals.models import Individual
     import pprint
+
+    from app.modules.individuals.models import Individual
+
     individual = Individual.query.get(guid)
 
     if individual is None:
@@ -48,6 +51,9 @@ def details(context, guid, debug=False):
 def list_all_votes(context, debug=False):
     if debug:
         breakpoint()
+
+    from app.modules.individuals.models import IndividualMergeRequestVote
+
     all_votes = IndividualMergeRequestVote.query.all()
     for vote in all_votes:
         print(f'Vote : {vote}')

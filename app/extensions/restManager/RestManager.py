@@ -251,7 +251,7 @@ class RestManager(RestManagerUserMixin):
         decode_as_object=True,
         passthrough_kwargs={},
         ensure_initialized=True,
-        verbose=True,
+        verbose=False,
         reauthenticated=False,
     ):
         if ensure_initialized:

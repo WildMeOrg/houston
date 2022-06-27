@@ -105,15 +105,6 @@ jobs:
         run: |
           ./scripts/utils/buildx.docker.sh -t nightly -r ghcr.io/wildmeorg/houston
 
-      # Push nightly image (nightly tag) to registries
-      - name: Testing Docker Hub
-        run: |
-          ./scripts/utils/buildx.docker.sh -t arm64
-
-      - name: Testing GHCR
-        run: |
-          ./scripts/utils/buildx.docker.sh -t arm64 -r ghcr.io/wildmeorg/houston
-
       # Notify status in Slack
       - name: Slack Notification
         if: ${{ failure() && github.event_name == 'push' && startsWith(github.event.ref, 'refs/tags/v') }}

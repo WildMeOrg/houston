@@ -2,13 +2,9 @@ name: Docker
 
 on:
   pull_request:
-    paths:
-      - '.github/workflows/nightly.yml'
-      - 'scripts/**'
+    branches:
+      - main
   push:
-    paths:
-      - '.github/workflows/nightly.yml'
-      - 'scripts/**'
     branches:
       - main
     tags:

@@ -53,8 +53,7 @@ docker-compose up
 docker-compose -f docker-compose.codex.yml --env-file .env.codex up
 ```
 
-Surf to http://localhost:84/
-
+Surf to http://localhost:84/. If you are having issues, see the [docker-compose debugging](docs/docker_compose_debugging.md) docs.
 
 ### Installing from source
 

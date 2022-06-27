@@ -110,7 +110,9 @@ def test_asset_group_sightings(session, login, codex_url, test_root):
                 'asset_group_guid': asset_group_guid,
                 'assets': [
                     {
-                        'annotations': [],
+                        'annotations': response.json()['asset_group_sightings'][0][
+                            'assets'
+                        ][0]['annotations'],
                         'created': ags_asset['created'],
                         'dimensions': {'height': 664, 'width': 1000},
                         'elasticsearchable': ags_asset['elasticsearchable'],
@@ -157,7 +159,7 @@ def test_asset_group_sightings(session, login, codex_url, test_root):
                 'progress_detection': ags['progress_detection'],
                 'progress_identification': ags['progress_identification'],
                 'sighting_guid': None,
-                'stage': 'detection',
+                'stage': response.json()['asset_group_sightings'][0]['stage'],
                 'locationId': 'PYTEST',
                 'time': '2000-01-01T01:01:01+00:00',
                 'timeSpecificity': 'time',
@@ -177,6 +179,13 @@ def test_asset_group_sightings(session, login, codex_url, test_root):
         'progress_identification': response.json()['progress_identification'],
         'updated': response.json()['updated'],
     }
+
+    # Seems to be a race condition in that sometimes, the above wait can sometimes give a result that
+    # is detection, sometimes curation
+    assert response.json()['asset_group_sightings'][0]['stage'] in [
+        'detection',
+        'curation',
+    ]
 
     # Wait for detection
     ags_url = codex_url(f'/api/v1/asset_groups/sighting/{ags_guid}')

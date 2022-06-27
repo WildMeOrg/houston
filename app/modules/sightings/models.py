@@ -1191,8 +1191,8 @@ class Sighting(db.Model, FeatherModel):
             )
             AuditLog.audit_log_object(log, self, message)
         else:
-            self.set_stage(SightingStage.un_reviewed)
-            message = f'Sighting {self.guid} un-reviewed, identification not needed or not possible (jobs=0)'
+            self.set_stage(SightingStage.processed)
+            message = f'Sighting {self.guid} processed, identification not needed or not possible (jobs=0)'
             AuditLog.audit_log_object(log, self, message)
             with db.session.begin(subtransactions=True):
                 db.session.merge(self)

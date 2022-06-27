@@ -221,5 +221,5 @@ def test_ia_pipeline_skip_id(
     assert len(sighting_data['encounters']) == 1
     assert sighting_data['encounters'][0]['annotations'][0]['guid'] == annot_guid
 
-    assert sighting_data['stage'] == 'un_reviewed'
+    assert sighting_data['stage'] == 'processed'
     assert sighting_data['identification_start_time'] is None

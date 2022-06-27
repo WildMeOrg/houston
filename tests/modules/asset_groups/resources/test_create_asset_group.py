@@ -362,10 +362,17 @@ def test_create_asset_group_no_assets(
         assert ags['curation_start_time'] is not None
         assert ags['detection_start_time'] is None
 
-        # Make sure that the user has a single unprocessed sighting
+        # Make sure that the user has no unprocessed sighting
         user_resp = user_utils.read_user(flask_app_client, researcher_1, 'me')
         assert 'unprocessed_sightings' in user_resp.json
-        assert len(user_resp.json['unprocessed_sightings']) == 1
+        assert len(user_resp.json['unprocessed_sightings']) == 0
+        # but does have a processed one
+        user_sightings = user_utils.read_user_path(
+            flask_app_client, researcher_1, f'{researcher_1.guid}/sightings'
+        ).json
+        assert len(user_sightings) == 1
+        assert user_sightings[0]['stage'] == 'processed'
+
     finally:
         if asset_group_uuid:
             asset_group_utils.delete_asset_group(

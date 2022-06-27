@@ -40,7 +40,7 @@ def test_commit_asset_group(
 
     sighting_uuid = response.json['guid']
     sighting = Sighting.query.get(sighting_uuid)
-    assert sighting.stage == SightingStage.un_reviewed
+    assert sighting.stage == SightingStage.processed
     assert len(sighting.get_encounters()) == 1
     assert len(sighting.get_assets()) == 1
     assert sighting.get_owner() == regular_user
@@ -93,7 +93,7 @@ def test_commit_owner_asset_group(
         sighting = Sighting.query.get(sighting_uuid)
         encounters = sighting.get_encounters()
         assert len(encounters) == 2
-        assert sighting.stage == SightingStage.un_reviewed
+        assert sighting.stage == SightingStage.processed
         # It seems encounters may not be returned in order so we can't assert
         # encounters[0].owner == regular_user
         assert sorted(e.owner.email for e in encounters) == [
@@ -149,7 +149,7 @@ def test_commit_asset_group_ia(
     )
     sighting_uuid = response.json['guid']
     sighting = Sighting.query.get(sighting_uuid)
-    assert sighting.stage == SightingStage.un_reviewed
+    assert sighting.stage == SightingStage.processed
 
 
 @pytest.mark.skipif(
@@ -203,7 +203,8 @@ def test_commit_individual_asset_group(
         sighting = Sighting.query.get(sighting_uuid)
         encounters = sighting.get_encounters()
         assert len(encounters) == 2
-        assert sighting.stage == SightingStage.un_reviewed
+        assert sighting.stage == SightingStage.processed
+
         # It seems encounters may not be returned in order so we can't assert
         encounters_with_individuals = [
             enc for enc in encounters if enc.individual is not None

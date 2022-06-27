@@ -204,7 +204,7 @@ def test_getting_sightings_for_user(
     sighting_json = response.json[0]
 
     assert sighting_json['guid'] == sighting_id
-    assert sighting_json['stage'] == 'un_reviewed'
+    assert sighting_json['stage'] == 'processed'
     assert sighting_json['unreviewed_start_time'] is not None
     assert sighting_json['time'] == sighting.time.isoformat_in_timezone()
     assert sighting_json['timeSpecificity'] == 'time'

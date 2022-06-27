@@ -29,11 +29,18 @@ def test_audit_asset_group_creation(
         )
         asset_group_uuid = resp.json['guid']
 
-        # Make sure that the user has a single unprocessed sighting
+        # Make sure that the user has no unprocessed sighting
         user_resp = user_utils.read_user(flask_app_client, researcher_1, 'me')
         assert 'unprocessed_sightings' in user_resp.json
-        assert len(user_resp.json['unprocessed_sightings']) == 1
-        sighting_uuid = user_resp.json['unprocessed_sightings'][0]
+        assert len(user_resp.json['unprocessed_sightings']) == 0
+
+        # but does have a processed one
+        user_sightings = user_utils.read_user_path(
+            flask_app_client, researcher_1, f'{researcher_1.guid}/sightings'
+        ).json
+        assert len(user_sightings) == 1
+        assert user_sightings[0]['stage'] == 'processed'
+        sighting_uuid = user_sightings[0]['guid']
         from app.modules.sightings.models import Sighting
 
         sighting = Sighting.query.get(sighting_uuid)
@@ -74,7 +81,7 @@ def test_audit_asset_group_creation(
         assert create_entry['user_email'] == researcher_1.email
         assert create_entry['module_name'] == 'Sighting'
         assert create_entry['item_guid'] == sighting_uuid
-        assert 'un-reviewed' in sighting_audit[-2]['message']
+        assert 'processed' in sighting_audit[-2]['message']
 
     finally:
         if asset_group_uuid:

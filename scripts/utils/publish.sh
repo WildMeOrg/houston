@@ -19,10 +19,10 @@ shift $((OPTIND - 1))
 # Assign variables
 TAG=${TAG:-latest}
 REGISTRY=${REGISTRY:-}
-IMAGES=${@:-codex}
+IMAGES=${@:-houston codex}
 # Set the image prefix
 if [ -n "$REGISTRY" ]; then
-    IMG_PREFIX="${REGISTRY}/wildmeorg/houston/"
+    IMG_PREFIX="${REGISTRY}/"
 else
     IMG_PREFIX="wildme/"
 fi

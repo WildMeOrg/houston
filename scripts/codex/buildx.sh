@@ -3,4 +3,4 @@
 ./scripts/codex/build.preamble.sh
 
 # Build docker image
-./scripts/codex/build.docker.sh
+./scripts/codex/buildx.docker.sh

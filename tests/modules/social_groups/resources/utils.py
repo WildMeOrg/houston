@@ -112,21 +112,24 @@ def set_roles(
     )
 
 
-# expected to work so just have a simple util
+# expected to work so just have a simple util that returns what was created
 def set_basic_roles(flask_app_client, user, request):
+    import uuid
+
     data = [
-        {'label': 'Matriarch', 'multipleInGroup': False},
-        {'label': 'IrritatingGit', 'multipleInGroup': True},
+        {'guid': str(uuid.uuid4()), 'label': 'Matriarch', 'multipleInGroup': False},
+        {'guid': str(uuid.uuid4()), 'label': 'IrritatingGit', 'multipleInGroup': True},
     ]
-    resp = set_roles(flask_app_client, user, data)
+    set_roles(flask_app_client, user, data)
     request.addfinalizer(lambda: delete_roles(flask_app_client, user))
-    return resp
+    return data
 
 
 def get_roles(flask_app_client, user, expected_status_code=200):
-    return setting_utils.read_main_settings(
+    get_response = setting_utils.read_main_settings(
         flask_app_client, user, 'social_group_roles', expected_status_code
     )
+    return get_response.json['response']['configuration']['social_group_roles']['value']
 
 
 def delete_roles(flask_app_client, user, expected_status_code=204, expected_error=None):
@@ -139,13 +142,13 @@ def validate_members(requested_members, response_members):
 
     for member_guid in requested_members:
         assert member_guid in response_members
-        if 'roles' in requested_members[member_guid]:
+        if 'role_guids' in requested_members[member_guid]:
             assert (
-                response_members[member_guid]['roles']
-                == requested_members[member_guid]['roles']
+                response_members[member_guid]['role_guids']
+                == requested_members[member_guid]['role_guids']
             )
         else:
-            assert response_members[member_guid]['roles'] is None
+            assert response_members[member_guid]['role_guids'] is None
 
 
 def validate_response(request, response_json):

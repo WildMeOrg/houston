@@ -55,25 +55,29 @@ def validate_members(input_data):
             )
         # Use same validation for members (in create and patch) and member(in patch)
         # roles is the only valid key for members but guid is valid for member patch
-        if not data.keys() <= {'roles'}:
+        if not data.keys() <= {'role_guids'}:
             raise HoustonException(
                 log,
                 f'Social Group member {member_guid} fields not supported {set(data.keys())}',
             )
-        roles = data.get('roles')
-        if not roles:
+        role_guids = data.get('role_guids')
+        if not role_guids:
             # individuals permitted to have no role
             return
 
-        for role in roles:
-            role_data = SocialGroup.get_role_data(role)
-            if not role:
-                raise HoustonException(log, f'Social Group role {role} not supported')
+        for role_guid in role_guids:
+            role_data = SocialGroup.get_role_data(role_guid)
+            if not role_data:
+                raise HoustonException(
+                    log, f'Social Group role {role_guid} not supported'
+                )
 
             if not role_data['multipleInGroup']:
-                if current_roles.get(role):
-                    raise HoustonException(log, f'Can only have one {role} in a group')
-            current_roles[role] = True
+                if current_roles.get(role_guid):
+                    raise HoustonException(
+                        log, f"Can only have one {role_data['label']} in a group"
+                    )
+            current_roles[role_guid] = True
 
 
 @api.route('/')

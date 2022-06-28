@@ -44,7 +44,7 @@ class PatchSocialGroupDetailsParameters(PatchJSONParameters):
             from . import resources
 
             members = {
-                str(member.individual_guid): {'roles': member.roles}
+                str(member.individual_guid): {'role_guids': member.roles}
                 for member in obj.members
             }
             for member_guid, roles in value.items():

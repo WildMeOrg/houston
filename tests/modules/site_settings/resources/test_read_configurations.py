@@ -229,9 +229,11 @@ def test_alter_edm_custom_fields(flask_app_client, admin_user):
 )
 def test_dict_write(flask_app_client, admin_user):
     # Create json site setting
+    import uuid
+
     data = [
-        {'label': 'Matriarch', 'multipleInGroup': False},
-        {'label': 'IrritatingGit', 'multipleInGroup': True},
+        {'guid': str(uuid.uuid4()), 'label': 'Matriarch', 'multipleInGroup': False},
+        {'guid': str(uuid.uuid4()), 'label': 'IrritatingGit', 'multipleInGroup': True},
     ]
 
     resp = conf_utils.modify_main_settings(

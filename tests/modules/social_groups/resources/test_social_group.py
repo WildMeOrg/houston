@@ -61,6 +61,22 @@ def create_individuals(flask_app_client, user, request, test_root, num_individua
     return individuals
 
 
+def get_matriarch_and_git_guids(flask_app_client, admin_user):
+    current_roles = soc_group_utils.get_roles(flask_app_client, admin_user)
+
+    assert {'Matriarch', 'IrritatingGit'} == {role['label'] for role in current_roles}
+    matriarch_guid = None
+    irritating_git_guid = None
+    for role in current_roles:
+        if role['label'] == 'Matriarch':
+            matriarch_guid = role['guid']
+        elif role['label'] == 'IrritatingGit':
+            irritating_git_guid = role['guid']
+    assert matriarch_guid
+    assert irritating_git_guid
+    return matriarch_guid, irritating_git_guid
+
+
 @pytest.mark.skipif(
     module_unavailable('social_groups'), reason='SocialGroup module disabled'
 )
@@ -69,6 +85,8 @@ def test_basic_operation(
 ):
     # Set the basic roles we want
     soc_group_utils.set_basic_roles(flask_app_client, admin_user, request)
+    # and get the guids
+    matriarch_guid, git_guid = get_matriarch_and_git_guids(flask_app_client, admin_user)
 
     # Create some individuals to use in testing
     individuals = create_individuals(flask_app_client, researcher_1, request, test_root)
@@ -77,9 +95,9 @@ def test_basic_operation(
     data = {
         'name': 'Disreputable bunch of hooligans',
         'members': {
-            individuals[0]['id']: {'roles': ['Matriarch']},
+            individuals[0]['id']: {'role_guids': [matriarch_guid]},
             individuals[1]['id']: {},
-            individuals[2]['id']: {'roles': ['IrritatingGit']},
+            individuals[2]['id']: {'role_guids': [git_guid]},
         },
     }
     group_resp = soc_group_utils.create_social_group(
@@ -122,9 +140,11 @@ def test_basic_operation(
     module_unavailable('social_groups'), reason='SocialGroup module disabled'
 )
 def test_error_config(flask_app_client, researcher_1, admin_user):
+    import uuid
+
     valid_data = [
-        {'label': 'Matriarch', 'multipleInGroup': False},
-        {'label': 'IrritatingGit', 'multipleInGroup': True},
+        {'guid': str(uuid.uuid4()), 'label': 'Matriarch', 'multipleInGroup': False},
+        {'guid': str(uuid.uuid4()), 'label': 'IrritatingGit', 'multipleInGroup': True},
     ]
 
     # Valid data but non admin user so should fail
@@ -132,8 +152,8 @@ def test_error_config(flask_app_client, researcher_1, admin_user):
     soc_group_utils.set_roles(flask_app_client, researcher_1, valid_data, 403, error)
 
     missing_field = [
-        {'label': 'Matriarch'},
-        {'label': 'IrritatingGit', 'multipleInGroup': True},
+        {'guid': str(uuid.uuid4()), 'label': 'Matriarch'},
+        {'guid': str(uuid.uuid4()), 'label': 'IrritatingGit', 'multipleInGroup': True},
     ]
 
     resp = soc_group_utils.set_roles(flask_app_client, admin_user, missing_field, 400)
@@ -141,19 +161,32 @@ def test_error_config(flask_app_client, researcher_1, admin_user):
     assert 'Role dictionary must have the following keys' in resp.json['message']
 
     extra_field = [
-        {'label': 'Matriarch', 'multipleInGroup': False, 'attitude': True},
-        {'label': 'IrritatingGit', 'multipleInGroup': True},
+        {
+            'guid': str(uuid.uuid4()),
+            'label': 'Matriarch',
+            'multipleInGroup': False,
+            'attitude': True,
+        },
+        {'guid': str(uuid.uuid4()), 'label': 'IrritatingGit', 'multipleInGroup': True},
     ]
 
     resp = soc_group_utils.set_roles(flask_app_client, admin_user, extra_field, 400)
     assert 'Role dictionary must have the following keys' in resp.json['message']
 
     duplicate_label = [
-        {'label': 'Matriarch', 'multipleInGroup': False},
-        {'label': 'Matriarch', 'multipleInGroup': True},
+        {'guid': str(uuid.uuid4()), 'label': 'Matriarch', 'multipleInGroup': False},
+        {'guid': str(uuid.uuid4()), 'label': 'Matriarch', 'multipleInGroup': True},
     ]
     error = 'can only have Matriarch once'
     soc_group_utils.set_roles(flask_app_client, admin_user, duplicate_label, 400, error)
+
+    missing_guid = [
+        {'guid': str(uuid.uuid4()), 'label': 'Matriarch'},
+        {'label': 'Mild mannered janitor'},
+    ]
+    resp = soc_group_utils.set_roles(flask_app_client, admin_user, missing_guid, 400)
+    # cant rely on order of keys so just test something
+    assert 'Role dictionary must have the following keys' in resp.json['message']
 
 
 @pytest.mark.skipif(
@@ -171,6 +204,8 @@ def test_invalid_creation(
 ):
     # Set the basic roles we want
     soc_group_utils.set_basic_roles(flask_app_client, admin_user, request)
+    # and get the guids
+    matriarch_guid, git_guid = get_matriarch_and_git_guids(flask_app_client, admin_user)
 
     # Create some individuals to use in testing
     individuals = create_individuals(flask_app_client, researcher_1, request, test_root)
@@ -178,9 +213,9 @@ def test_invalid_creation(
     valid_data = {
         'name': 'Disreputable bunch of hooligans',
         'members': {
-            individuals[0]['id']: {'roles': ['Matriarch']},
+            individuals[0]['id']: {'role_guids': [matriarch_guid]},
             individuals[1]['id']: {},
-            individuals[2]['id']: {'roles': ['IrritatingGit']},
+            individuals[2]['id']: {'role_guids': [git_guid]},
         },
     }
     # Shouldn't work with anon user
@@ -199,9 +234,9 @@ def test_invalid_creation(
 
     missing_name = {
         'members': {
-            individuals[0]['id']: {'roles': 'Matriarch'},
+            individuals[0]['id']: {'role_guids': matriarch_guid},
             individuals[1]['id']: {},
-            individuals[2]['id']: {'roles': ['IrritatingGit']},
+            individuals[2]['id']: {'role_guids': [git_guid]},
         },
     }
     error = 'The request was well-formed but was unable to be followed due to semantic errors.'
@@ -212,9 +247,9 @@ def test_invalid_creation(
     invalid_fields = {
         'name': 'Disreputable bunch of hooligans',
         'members': {
-            individuals[0]['id']: {'roles': ['Matriarch']},
+            individuals[0]['id']: {'role_guids': [matriarch_guid]},
             individuals[1]['id']: {'attitude': 'Stubborn'},
-            individuals[2]['id']: {'roles': ['IrritatingGit']},
+            individuals[2]['id']: {'role_guids': [git_guid]},
         },
     }
     error = (
@@ -228,9 +263,9 @@ def test_invalid_creation(
     invalid_guid = {
         'name': 'Disreputable bunch of hooligans',
         'members': {
-            random_guid: {'roles': ['Matriarch']},
+            random_guid: {'role_guids': [matriarch_guid]},
             individuals[1]['id']: {},
-            individuals[2]['id']: {'roles': ['IrritatingGit']},
+            individuals[2]['id']: {'role_guids': [git_guid]},
         },
     }
     error = f'Social Group member {random_guid} does not match an individual'
@@ -242,9 +277,9 @@ def test_invalid_creation(
     many_gits = {
         'name': 'Many gits',
         'members': {
-            individuals[0]['id']: {'roles': ['Matriarch']},
-            individuals[1]['id']: {'roles': ['IrritatingGit']},
-            individuals[2]['id']: {'roles': ['IrritatingGit']},
+            individuals[0]['id']: {'role_guids': [matriarch_guid]},
+            individuals[1]['id']: {'role_guids': [git_guid]},
+            individuals[2]['id']: {'role_guids': [git_guid]},
         },
     }
 
@@ -257,9 +292,9 @@ def test_invalid_creation(
     many_matriarchs = {
         'name': 'Disreputable bunch of hooligans',
         'members': {
-            individuals[0]['id']: {'roles': ['Matriarch']},
-            individuals[1]['id']: {'roles': ['Matriarch']},
-            individuals[2]['id']: {'roles': ['IrritatingGit']},
+            individuals[0]['id']: {'role_guids': [matriarch_guid]},
+            individuals[1]['id']: {'role_guids': [matriarch_guid]},
+            individuals[2]['id']: {'role_guids': [git_guid]},
         },
     }
     error = 'Can only have one Matriarch in a group'
@@ -271,9 +306,9 @@ def test_invalid_creation(
     many_roles = {
         'name': 'Many roles',
         'members': {
-            individuals[0]['id']: {'roles': ['Matriarch', 'IrritatingGit']},
-            individuals[1]['id']: {'roles': ['IrritatingGit']},
-            individuals[2]['id']: {'roles': ['IrritatingGit']},
+            individuals[0]['id']: {'role_guids': [matriarch_guid, git_guid]},
+            individuals[1]['id']: {'role_guids': [git_guid]},
+            individuals[2]['id']: {'role_guids': [git_guid]},
         },
     }
     group_resp = soc_group_utils.create_social_group(
@@ -290,14 +325,8 @@ def test_role_changes(
 ):
     # Set the basic roles we want
     soc_group_utils.set_basic_roles(flask_app_client, admin_user, request)
-
-    get_response = soc_group_utils.get_roles(flask_app_client, admin_user)
-    current_roles = get_response.json['response']['configuration']['social_group_roles'][
-        'value'
-    ]
-    assert set({'Matriarch', 'IrritatingGit'}) == {
-        role['label'] for role in current_roles
-    }
+    # and get the guids
+    matriarch_guid, git_guid = get_matriarch_and_git_guids(flask_app_client, admin_user)
 
     # Create some individuals to use in testing
     individuals = create_individuals(flask_app_client, researcher_1, request, test_root)
@@ -305,34 +334,36 @@ def test_role_changes(
     valid_group = {
         'name': 'Disreputable bunch of hooligans',
         'members': {
-            individuals[0]['id']: {'roles': ['Matriarch']},
-            individuals[1]['id']: {'roles': ['IrritatingGit']},
-            individuals[2]['id']: {'roles': ['IrritatingGit']},
+            individuals[0]['id']: {'role_guids': [matriarch_guid]},
+            individuals[1]['id']: {'role_guids': [git_guid]},
+            individuals[2]['id']: {'role_guids': [git_guid]},
         },
     }
 
     group_resp = soc_group_utils.create_social_group(
         flask_app_client, researcher_1, valid_group, request=request
-    )
-    group_guid = group_resp.json['guid']
+    ).json
+    group_guid = group_resp['guid']
 
     # Social group was created, now change the config and see what changes
     changed_config = [
-        {'label': 'IrritatingGit', 'multipleInGroup': False},
+        {'guid': git_guid, 'label': 'IrritatingGit', 'multipleInGroup': False},
     ]
 
     soc_group_utils.set_roles(flask_app_client, admin_user, changed_config)
 
     group_as_res_2 = soc_group_utils.read_social_group(
         flask_app_client, researcher_2, group_guid
-    )
+    ).json
 
     for member_guid in valid_group['members']:
-        assert member_guid in group_as_res_2.json['members']
-        if 'Matriarch' in valid_group['members'][member_guid]['roles']:
-            assert 'Matriarch' not in group_as_res_2.json['members'][member_guid]['roles']
-        elif 'IrritatingGit' in valid_group['members'][member_guid]['roles']:
-            assert 'IrritatingGit' in group_as_res_2.json['members'][member_guid]['roles']
+        assert member_guid in group_as_res_2['members']
+        if matriarch_guid in valid_group['members'][member_guid]['role_guids']:
+            assert (
+                matriarch_guid not in group_as_res_2['members'][member_guid]['role_guids']
+            )
+        elif git_guid in valid_group['members'][member_guid]['role_guids']:
+            assert git_guid in group_as_res_2['members'][member_guid]['role_guids']
 
 
 @pytest.mark.skipif(
@@ -350,6 +381,8 @@ def test_patch(
 ):
     # Set the basic roles we want
     soc_group_utils.set_basic_roles(flask_app_client, admin_user, request)
+    # and get the guids
+    matriarch_guid, git_guid = get_matriarch_and_git_guids(flask_app_client, admin_user)
 
     # Create some individuals to use in testing
     individuals = create_individuals(
@@ -359,9 +392,9 @@ def test_patch(
     valid_group = {
         'name': 'Disreputable bunch of hooligans',
         'members': {
-            individuals[0]['id']: {'roles': ['Matriarch']},
-            individuals[1]['id']: {'roles': ['IrritatingGit']},
-            individuals[2]['id']: {'roles': ['IrritatingGit']},
+            individuals[0]['id']: {'role_guids': [matriarch_guid]},
+            individuals[1]['id']: {'role_guids': [git_guid]},
+            individuals[2]['id']: {'role_guids': [git_guid]},
         },
     }
 
@@ -383,8 +416,8 @@ def test_patch(
     assert group_data.json['name'] == 'different reprobates'
 
     different_members = {
-        individuals[1]['id']: {'roles': ['Matriarch']},
-        individuals[3]['id']: {'roles': ['IrritatingGit']},
+        individuals[1]['id']: {'role_guids': [matriarch_guid]},
+        individuals[3]['id']: {'role_guids': [git_guid]},
     }
     patch_all_members = [test_utils.patch_replace_op('members', different_members)]
 
@@ -405,7 +438,7 @@ def test_patch(
     # can't patch in member as regular_user
     patch_add_matriarch = [
         test_utils.patch_add_op(
-            'members', {individuals[2]['id']: {'roles': ['Matriarch']}}
+            'members', {individuals[2]['id']: {'role_guids': [matriarch_guid]}}
         )
     ]
     soc_group_utils.patch_social_group(
@@ -421,7 +454,7 @@ def test_patch(
     patch_add_error = [
         test_utils.patch_add_op(
             'members',
-            {'4037': {'roles': ['Matriarch']}},
+            {'4037': {'role_guids': [matriarch_guid]}},
         ),
     ]
     invalid_uuid_error = 'Social Group member 4037 needs to be a valid uuid'
@@ -455,12 +488,14 @@ def test_patch(
         flask_app_client, researcher_1, group_guid
     )
     assert individuals[2]['id'] in group_data.json['members']
-    assert group_data.json['members'][individuals[2]['id']]['roles'] == ['Matriarch']
+    assert group_data.json['members'][individuals[2]['id']]['role_guids'] == [
+        matriarch_guid
+    ]
 
     patch_make_irritating = [
         test_utils.patch_replace_op(
             'members',
-            {individuals[2]['id']: {'roles': ['Matriarch', 'IrritatingGit']}},
+            {individuals[2]['id']: {'role_guids': [matriarch_guid, git_guid]}},
         )
     ]
     soc_group_utils.patch_social_group(
@@ -470,9 +505,9 @@ def test_patch(
     group_data = soc_group_utils.read_social_group(
         flask_app_client, researcher_1, group_guid
     )
-    assert group_data.json['members'][individuals[2]['id']]['roles'] == [
-        'Matriarch',
-        'IrritatingGit',
+    assert group_data.json['members'][individuals[2]['id']]['role_guids'] == [
+        matriarch_guid,
+        git_guid,
     ]
 
 
@@ -484,6 +519,8 @@ def test_individual_delete(
 ):
     # Set the basic roles we want
     soc_group_utils.set_basic_roles(flask_app_client, admin_user, request)
+    # and get the guids
+    matriarch_guid, git_guid = get_matriarch_and_git_guids(flask_app_client, admin_user)
 
     # Create some individuals to use in testing
     individuals = create_individuals(flask_app_client, researcher_1, request, test_root)
@@ -497,9 +534,9 @@ def test_individual_delete(
     data = {
         'name': 'Disreputable bunch of hooligans',
         'members': {
-            individuals[0]['id']: {'roles': ['Matriarch']},
+            individuals[0]['id']: {'role_guids': [matriarch_guid]},
             individuals[1]['id']: {},
-            individuals[2]['id']: {'roles': ['IrritatingGit']},
+            individuals[2]['id']: {'role_guids': [git_guid]},
             new_individual_uuid: {},
         },
     }

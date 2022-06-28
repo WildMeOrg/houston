@@ -71,9 +71,13 @@ def create_sighting(session, codex_url):
 def test_social_groups(session, login, codex_url):
     # Create social group roles
     login(session)
+    import uuid
+
+    matriarch_guid = str(uuid.uuid4())
+    patriarch_guid = str(uuid.uuid4())
     data = [
-        {'label': 'Matriarch', 'multipleInGroup': False},
-        {'label': 'Patriarch', 'multipleInGroup': True},
+        {'guid': matriarch_guid, 'label': 'Matriarch', 'multipleInGroup': False},
+        {'guid': patriarch_guid, 'label': 'Patriarch', 'multipleInGroup': True},
     ]
     response = session.post(
         codex_url('/api/v1/site-settings/main/social_group_roles'), json={'_value': data}
@@ -103,9 +107,9 @@ def test_social_groups(session, login, codex_url):
     data = {
         'name': 'Family',
         'members': {
-            individual_ids[0]: {'roles': ['Matriarch']},
+            individual_ids[0]: {'role_guids': [matriarch_guid]},
             individual_ids[1]: {},
-            individual_ids[2]: {'roles': ['Patriarch']},
+            individual_ids[2]: {'role_guids': [patriarch_guid]},
         },
     }
     response = session.post(codex_url('/api/v1/social-groups/'), json=data)
@@ -119,9 +123,9 @@ def test_social_groups(session, login, codex_url):
         'elasticsearchable': response.json()['elasticsearchable'],
         'name': 'Family',
         'members': {
-            individual_ids[0]: {'roles': ['Matriarch']},
-            individual_ids[1]: {'roles': None},
-            individual_ids[2]: {'roles': ['Patriarch']},
+            individual_ids[0]: {'role_guids': [matriarch_guid]},
+            individual_ids[1]: {'role_guids': None},
+            individual_ids[2]: {'role_guids': [patriarch_guid]},
         },
         'guid': social_group_id,
     }
@@ -163,8 +167,8 @@ def test_social_groups(session, login, codex_url):
         'elasticsearchable': response.json()['elasticsearchable'],
         'name': 'Family',
         'members': {
-            individual_ids[0]: {'roles': ['Matriarch']},
-            individual_ids[2]: {'roles': ['Patriarch']},
+            individual_ids[0]: {'role_guids': [matriarch_guid]},
+            individual_ids[2]: {'role_guids': [patriarch_guid]},
         },
         'guid': social_group_id,
     }
@@ -175,7 +179,7 @@ def test_social_groups(session, login, codex_url):
             'op': 'add',
             'path': '/members',
             'value': {
-                individual_ids[1]: {'roles': None},
+                individual_ids[1]: {'role_guids': None},
             },
         },
     ]
@@ -191,9 +195,9 @@ def test_social_groups(session, login, codex_url):
         'elasticsearchable': response.json()['elasticsearchable'],
         'name': 'Family',
         'members': {
-            individual_ids[0]: {'roles': ['Matriarch']},
-            individual_ids[1]: {'roles': None},
-            individual_ids[2]: {'roles': ['Patriarch']},
+            individual_ids[0]: {'role_guids': [matriarch_guid]},
+            individual_ids[1]: {'role_guids': None},
+            individual_ids[2]: {'role_guids': [patriarch_guid]},
         },
         'guid': social_group_id,
     }
@@ -204,8 +208,8 @@ def test_social_groups(session, login, codex_url):
             'op': 'replace',
             'path': '/members',
             'value': {
-                individual_ids[0]: {'roles': ['Matriarch']},
-                individual_ids[1]: {'roles': None},
+                individual_ids[0]: {'role_guids': [matriarch_guid]},
+                individual_ids[1]: {'role_guids': None},
             },
         },
     ]
@@ -221,8 +225,8 @@ def test_social_groups(session, login, codex_url):
         'elasticsearchable': response.json()['elasticsearchable'],
         'name': 'Family',
         'members': {
-            individual_ids[0]: {'roles': ['Matriarch']},
-            individual_ids[1]: {'roles': None},
+            individual_ids[0]: {'role_guids': [matriarch_guid]},
+            individual_ids[1]: {'role_guids': None},
         },
         'guid': social_group_id,
     }

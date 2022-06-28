@@ -21,15 +21,13 @@ class SocialGroupIndividualMembership(db.Model, HoustonModel):
     individual_guid = db.Column(
         db.GUID, db.ForeignKey('individual.guid'), primary_key=True
     )
+    # Roles are actually the guids of the roles
     roles = db.Column(db.JSON, nullable=True)
 
     social_group = db.relationship(
         'SocialGroup', back_populates='members', order_by='SocialGroup.guid'
     )
 
-    # individual = db.relationship(
-    #     'Individual', back_populates='social_groups', order_by='Individual.guid'
-    # )
     individual = db.relationship(
         'Individual',
         backref=db.backref(
@@ -87,15 +85,15 @@ class SocialGroup(db.Model, HoustonModel):
         return DetailedSocialGroupSchema
 
     @classmethod
-    def get_role_data(cls, role):
+    def get_role_data(cls, role_guid):
         from app.modules.site_settings.models import SiteSetting
 
         permitted_role_data = SiteSetting.get_json('social_group_roles')
-        permitted_role_names = [role['label'] for role in permitted_role_data]
-        if role not in permitted_role_names:
+        permitted_role_guids = [role['guid'] for role in permitted_role_data]
+        if role_guid not in permitted_role_guids:
             return None
         role_data = [
-            rol_dat for rol_dat in permitted_role_data if rol_dat['label'] == role
+            rol_dat for rol_dat in permitted_role_data if rol_dat['guid'] == role_guid
         ]
         assert len(role_data) == 1
         return role_data[0]
@@ -146,7 +144,7 @@ class SocialGroup(db.Model, HoustonModel):
     # This is for validating te site settings social group roles format, not the roles of an individual social group
     @classmethod
     def validate_roles(cls, roles_input):
-        expected_fields = {'label', 'multipleInGroup'}
+        expected_fields = {'guid', 'label', 'multipleInGroup'}
         if not isinstance(roles_input, list):
             raise HoustonException(log, 'Role data needs to be a list')
         labels = []
@@ -168,7 +166,7 @@ class SocialGroup(db.Model, HoustonModel):
     def get_member_data_as_json(self):
         individual_data = {}
         for member in self.members:
-            individual_data[str(member.individual_guid)] = {'roles': member.roles}
+            individual_data[str(member.individual_guid)] = {'role_guids': member.roles}
 
         return individual_data
 
@@ -208,7 +206,7 @@ class SocialGroup(db.Model, HoustonModel):
         membership = SocialGroupIndividualMembership(
             social_group=self,
             individual=individual,
-            roles=data.get('roles'),
+            roles=data.get('role_guids'),
         )
         with db.session.begin(subtransactions=True):
             db.session.add(membership)

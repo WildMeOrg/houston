@@ -100,6 +100,8 @@ def test_merge(db, flask_app_client, researcher_1, request, test_root):
 def test_merge_social_groups(
     db, flask_app_client, researcher_1, admin_user, request, test_root
 ):
+    import uuid
+
     from app.modules.individuals.models import Individual
     from app.modules.social_groups.models import SocialGroup
 
@@ -123,18 +125,37 @@ def test_merge_social_groups(
     individual2 = Individual.query.get(individual2_id)
 
     # set up roles
-    # set up roles
-    groupA_role_from_2 = 'doomed-to-be-merged'
-    groupB_role_from_1 = 'roleB1'
-    groupB_role_from_2 = 'roleB2'
-    groupC_shared_role = 'sharedC'
-    groupC_role_from_2 = 'roleC2'
+    groupA_role_from_2 = {'guid': str(uuid.uuid4()), 'label': 'doomed-to-be-merged'}
+    groupB_role_from_1 = {'guid': str(uuid.uuid4()), 'label': 'roleB1'}
+    groupB_role_from_2 = {'guid': str(uuid.uuid4()), 'label': 'roleB2'}
+    groupC_shared_role = {'guid': str(uuid.uuid4()), 'label': 'sharedC'}
+    groupC_role_from_2 = {'guid': str(uuid.uuid4()), 'label': 'roleC2'}
     role_data = [
-        {'label': groupA_role_from_2, 'multipleInGroup': False},
-        {'label': groupB_role_from_1, 'multipleInGroup': True},
-        {'label': groupB_role_from_2, 'multipleInGroup': True},
-        {'label': groupC_shared_role, 'multipleInGroup': True},
-        {'label': groupC_role_from_2, 'multipleInGroup': True},
+        {
+            'guid': groupA_role_from_2['guid'],
+            'label': groupA_role_from_2['label'],
+            'multipleInGroup': False,
+        },
+        {
+            'guid': groupB_role_from_2['guid'],
+            'label': groupB_role_from_2['label'],
+            'multipleInGroup': True,
+        },
+        {
+            'guid': groupB_role_from_1['guid'],
+            'label': groupB_role_from_1['label'],
+            'multipleInGroup': True,
+        },
+        {
+            'guid': groupC_shared_role['guid'],
+            'label': groupC_shared_role['label'],
+            'multipleInGroup': True,
+        },
+        {
+            'guid': groupC_role_from_2['guid'],
+            'label': groupC_role_from_2['label'],
+            'multipleInGroup': True,
+        },
     ]
     socgrp_utils.set_roles(flask_app_client, admin_user, role_data)
     request.addfinalizer(lambda: socgrp_utils.delete_roles(flask_app_client, admin_user))
@@ -143,7 +164,7 @@ def test_merge_social_groups(
     groupA_name = 'groupA'
     group_data = {
         'name': groupA_name,
-        'members': {individual2_id: {'roles': [groupA_role_from_2]}},
+        'members': {individual2_id: {'role_guids': [groupA_role_from_2['guid']]}},
     }
     group_res = socgrp_utils.create_social_group(
         flask_app_client, researcher_1, group_data
@@ -155,8 +176,8 @@ def test_merge_social_groups(
     group_data = {
         'name': groupB_name,
         'members': {
-            individual1_id: {'roles': [groupB_role_from_1]},
-            individual2_id: {'roles': [groupB_role_from_2]},
+            individual1_id: {'role_guids': [groupB_role_from_1['guid']]},
+            individual2_id: {'role_guids': [groupB_role_from_2['guid']]},
         },
     }
     group_res = socgrp_utils.create_social_group(
@@ -169,8 +190,10 @@ def test_merge_social_groups(
     group_data = {
         'name': groupC_name,
         'members': {
-            individual1_id: {'roles': [groupC_shared_role]},
-            individual2_id: {'roles': [groupC_shared_role, groupC_role_from_2]},
+            individual1_id: {'role_guids': [groupC_shared_role['guid']]},
+            individual2_id: {
+                'role_guids': [groupC_shared_role['guid'], groupC_role_from_2['guid']]
+            },
         },
     }
     group_res = socgrp_utils.create_social_group(
@@ -182,9 +205,9 @@ def test_merge_social_groups(
     assert len(social_groupA.members) == 1
     assert str(social_groupA.members[0].individual_guid) == individual2_id
     assert len(social_groupB.members) == 2
-    assert social_groupB.get_member(individual1_id).roles == [groupB_role_from_1]
+    assert social_groupB.get_member(individual1_id).roles == [groupB_role_from_1['guid']]
     assert len(social_groupC.members) == 2
-    assert social_groupC.get_member(individual1_id).roles == [groupC_shared_role]
+    assert social_groupC.get_member(individual1_id).roles == [groupC_shared_role['guid']]
 
     # now do the merge
     merge_from = [individual2]
@@ -196,13 +219,13 @@ def test_merge_social_groups(
     assert str(social_groupA.members[0].individual_guid) == individual1_id
     assert len(social_groupB.members) == 1
     assert set(social_groupB.get_member(individual1_id).roles) == {
-        groupB_role_from_1,
-        groupB_role_from_2,
+        groupB_role_from_1['guid'],
+        groupB_role_from_2['guid'],
     }
     assert len(social_groupC.members) == 1
     assert set(social_groupC.get_member(individual1_id).roles) == {
-        groupC_shared_role,
-        groupC_role_from_2,
+        groupC_shared_role['guid'],
+        groupC_role_from_2['guid'],
     }
 
 

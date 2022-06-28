@@ -97,6 +97,11 @@ if is_extension_enabled('edm'):
                 log.info('manager role found, setting is_user_manager, is_data_manager')
                 self.is_user_manager = True
                 self.is_data_manager = True
+            if 'admin' in roles:
+                log.info('admin role found, setting is_user_manager, is_admin')
+                self.is_user_manager = True
+                self.is_admin = True
+
 
 else:
     UserEDMMixin = object

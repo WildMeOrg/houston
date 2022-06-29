@@ -190,7 +190,7 @@ def test_sightings(session, login, codex_url, test_root, admin_name):
         'locationId': 'PYTEST',
         'time': '2000-01-01T01:01:01+00:00',
         'timeSpecificity': 'time',
-        'stage': 'un_reviewed',
+        'stage': 'processed',
         # FIXME missing taxonomies: [{'id': tx_id}],
         'updatedHouston': response.json()['updatedHouston'],
         'version': response.json()['version'],  # 1636456524261
@@ -209,7 +209,7 @@ def test_sightings(session, login, codex_url, test_root, admin_name):
         'identification_start_time': None,
         'unreviewed_start_time': response.json()['unreviewed_start_time'],
         'progress_identification': response.json()['progress_identification'],
-        'review_time': None,
+        'review_time': response.json()['review_time'],
         'pipeline_status': response.json()['pipeline_status'],
     }
 
@@ -318,7 +318,7 @@ def test_sightings(session, login, codex_url, test_root, admin_name):
         'locationId': 'PYTEST',
         'time': '2000-01-01T01:01:01+00:00',
         'timeSpecificity': 'time',
-        'stage': 'un_reviewed',
+        'stage': 'processed',
         'speciesDetectionModel': ['african_terrestrial'],
         'idConfigs': [{'algorithms': ['hotspotter_nosv']}],
         # 2021-11-16T09:45:26.717432+00:00
@@ -338,7 +338,7 @@ def test_sightings(session, login, codex_url, test_root, admin_name):
         'identification_start_time': None,
         'unreviewed_start_time': response.json()['unreviewed_start_time'],
         'progress_identification': response.json()['progress_identification'],
-        'review_time': None,
+        'review_time': response.json()['review_time'],
     }
 
     # DELETE asset group

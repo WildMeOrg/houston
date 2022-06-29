@@ -54,7 +54,7 @@ def create_sighting(session, codex_url):
         session.get, sight_url, lambda response: response.json()['stage'] == 'processed'
     )
     sight_json = session.get(sight_url).json()
-    assert sight_json['stage'] in ['identification', 'un_reviewed']
+    assert sight_json['stage'] in ['identification', 'processed']
     assert len(sight_json['encounters']) == 3
 
     encounter_guids = [enc['guid'] for enc in sight_json['encounters']]

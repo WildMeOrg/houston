@@ -391,7 +391,7 @@ def test_asset_group_sightings(session, login, codex_url, test_root):
         'submissionTime': response.json()['submissionTime'],
         'identification_start_time': None,
         'progress_identification': response.json()['progress_identification'],
-        'review_time': None,
+        'review_time': response.json()['review_time'],
         'indexed': response.json()['indexed'],
         'elasticsearchable': response.json()['elasticsearchable'],
         'jobs': [],
@@ -400,7 +400,7 @@ def test_asset_group_sightings(session, login, codex_url, test_root):
         'unreviewed_start_time': response.json()['unreviewed_start_time'],
     }
     # due to task timing, both are valid
-    assert response.json()['stage'] in ['identification', 'un_reviewed']
+    assert response.json()['stage'] in ['identification', 'processed']
 
     # GET sighting
     response = session.get(codex_url(f'/api/v1/sightings/{sighting_guid}'))
@@ -464,7 +464,7 @@ def create_individual(
         session.get, sight_url, lambda response: response.json()['stage'] == 'processed'
     )
     sight_json = session.get(sight_url).json()
-    assert sight_json['stage'] in ['identification', 'un_reviewed']
+    assert sight_json['stage'] in ['identification', 'processed']
 
     encounter_guid = [enc['guid'] for enc in sight_json['encounters']][0]
     indiv_data = {

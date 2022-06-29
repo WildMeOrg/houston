@@ -167,8 +167,8 @@ class AssetGroupSighting(db.Model, HoustonModel):
             'assetReferences' not in self.sighting_config
             or len(self.sighting_config['assetReferences']) == 0
         ):
-            if self.progress_detection:
-                self.progress_detection.skip('No assets were submitted')
+            self.init_progress_detection()  # ensure we have one
+            self.progress_detection.skip('No assets were submitted')
 
             self.set_stage(AssetGroupSightingStage.curation)
             self.commit()
@@ -176,8 +176,8 @@ class AssetGroupSighting(db.Model, HoustonModel):
         elif len(self.detection_configs) == 1 and (
             not self.detection_configs[0] or self.detection_configs[0] == 'None'
         ):
-            if self.progress_detection:
-                self.progress_detection.skip('No detection config specified')
+            self.init_progress_detection()  # ensure we have one
+            self.progress_detection.skip('No detection config specified')
 
             self.set_stage(AssetGroupSightingStage.curation)
         else:

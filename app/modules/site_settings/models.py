@@ -612,10 +612,13 @@ class SiteSetting(db.Model, Timestamp):
 
             config = copy.deepcopy(data['response']['configuration'])
             for key in data['response']['configuration'].keys():
+                # Don't pass back current Value here as frontend never uses it
+                config[key].pop('currentValue', None)
                 changed, new_key = cls._map_to_new_key(key)
                 # Send the definition as is from EDM. TODO. Look to stripping this down too
                 if changed and 'value' in config[key].keys():
                     config[new_key] = config[key]
+            data['response']['configuration'] = config
 
         # simplify this by only sending back the fields that the FE actually uses
         returned_data = {

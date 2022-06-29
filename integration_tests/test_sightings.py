@@ -93,7 +93,7 @@ def test_sightings(session, login, codex_url, test_root, admin_name):
     # but do need to wait for it to be un-reviewed
     sight_url = codex_url(f'/api/v1/sightings/{sighting_id}')
     response = utils.wait_for(
-        session.get, sight_url, lambda response: response.json()['stage'] == 'un_reviewed'
+        session.get, sight_url, lambda response: response.json()['stage'] == 'processed'
     )
 
     # GET sighting

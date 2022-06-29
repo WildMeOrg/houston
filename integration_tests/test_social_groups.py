@@ -51,7 +51,7 @@ def create_sighting(session, codex_url):
     sight_url = codex_url(f'/api/v1/sightings/{sighting_guid}')
     # but do need to wait for it to be un-reviewed
     utils.wait_for(
-        session.get, sight_url, lambda response: response.json()['stage'] == 'un_reviewed'
+        session.get, sight_url, lambda response: response.json()['stage'] == 'processed'
     )
     sight_json = session.get(sight_url).json()
     assert sight_json['stage'] in ['identification', 'un_reviewed']

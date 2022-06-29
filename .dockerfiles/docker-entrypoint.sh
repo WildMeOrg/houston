@@ -121,6 +121,15 @@ _main() {
 			# check dir permissions to reduce likelihood of half-initialized database
 			ls ${DATA_ROOT}/ > /dev/null
 
+			# Ensure the log file directory has the correct permissions
+			if [ -n "${LOG_FILE}" ]; then
+				LOG_DIR=$(dirname ${LOG_FILE})
+			else
+				LOG_DIR="./logs"
+			fi
+			mkdir -p $LOG_DIR
+			chown -R nobody:nogroup ${LOG_DIR}
+
 			# Have the application initialize the data location and database
 			# FIXME: `--no-backup` is necessary because this apparently has the side-effect
 			#        of doing doing a backup for a database it may not know how to backup.

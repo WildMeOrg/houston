@@ -5,8 +5,20 @@ The starting point of Invoke tasks for Houston.
 """
 
 import logging
+import logging.handlers
 import os
 import platform
+
+FORMAT = '[%(name)s] %(message)s'
+logging_config = {'level': logging.DEBUG, 'format': FORMAT, 'datefmt': '[%X]'}
+handlers = [
+    logging.handlers.TimedRotatingFileHandler(
+        filename=os.getenv('LOG_FILE', 'logs/houston.log'),
+        when='midnight',
+        backupCount=int(os.getenv('LOG_FILE_BACKUP_COUNT', 30)),
+    ),
+]
+
 
 try:
     import rich
@@ -46,15 +58,11 @@ try:
         console_kwargs['soft_wrap'] = True
 
     rich.reconfigure(**console_kwargs)
-    handler = RichHandler(**handler_kwargs)
-
-    FORMAT = '[%(name)s] %(message)s'
-    logging.basicConfig(
-        level=logging.DEBUG, format=FORMAT, datefmt='[%X]', handlers=[handler]
-    )
+    handlers.append(RichHandler(**handler_kwargs))
 except ImportError:  # pragma: no cover
-    logging.basicConfig()
+    print('Unable to load Rich for logging')
 
+logging.basicConfig(handlers=handlers, **logging_config)
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 # logging.getLogger('app').setLevel(logging.DEBUG)

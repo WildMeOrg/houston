@@ -227,7 +227,11 @@ class SiteSetting(db.Model, Timestamp):
         boolean=None,
         override_readonly=False,
     ):
-        if is_extension_enabled('edm') and not file_upload_guid and cls._is_edm_key(key):
+        if (
+            is_extension_enabled('edm')
+            and not file_upload_guid
+            and not cls.is_houston_setting(key)
+        ):
             # Can set any file you wish but value settings must be in the approved list
             raise ValueError(f'forbidden to directly set key {key}')
         key_conf = cls._get_houston_setting_conf(key)
@@ -334,7 +338,7 @@ class SiteSetting(db.Model, Timestamp):
 
     @classmethod
     def forget_key_value(cls, key):
-        if cls._is_edm_key(key) and is_extension_enabled('edm'):
+        if not cls.is_houston_setting(key) and is_extension_enabled('edm'):
             # Only support removal of EDM keys that start with 'site.custom.customFields' and end with '/{guid}'
 
             edm_path_parts = key.split('/')
@@ -395,14 +399,10 @@ class SiteSetting(db.Model, Timestamp):
         return setting.boolean if setting else default
 
     @classmethod
-    def _is_edm_key(cls, key):
-        return not cls.is_houston_setting(key)
-
-    @classmethod
     def get_value(cls, key, default=None, **kwargs):
         if not key:
             raise ValueError('key must not be None')
-        if is_extension_enabled('edm') and cls._is_edm_key(key):
+        if is_extension_enabled('edm') and not cls.is_houston_setting(key):
             return cls._get_edm_value(key, default=default, **kwargs)
         setting = cls.query.get(key)
         if not setting:

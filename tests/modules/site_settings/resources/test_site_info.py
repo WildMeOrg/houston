@@ -79,4 +79,4 @@ def test_site_info_api_error(flask_app_client):
 def test_public_data(flask_app_client):
     resp = flask_app_client.get('/api/v1/site-settings/public-data/').json
     # can't really check much validity, only that something came back
-    assert resp['num_users'] > 0
+    assert 'num_users' in resp

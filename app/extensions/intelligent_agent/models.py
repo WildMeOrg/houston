@@ -52,7 +52,7 @@ class IntelligentAgent:
                 'type': bool,
                 'default': False,
                 'public': False,
-                'edm_definition': {
+                'definition': {
                     'defaultValue': False,
                     'fieldType': 'boolean',
                     'displayType': 'boolean',

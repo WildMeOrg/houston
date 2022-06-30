@@ -75,23 +75,8 @@ def test_returned_schema(flask_app_client, researcher_1, admin_user, request, te
     from tests.modules.site_settings.resources import utils as setting_utils
 
     # make a taxonomy to use
-    response = setting_utils.read_main_settings(
-        flask_app_client, admin_user, 'site.species'
-    )
-    assert 'value' in response.json['response']
-    vals = response.json['response']['value']
-    vals.append({'commonNames': ['Example'], 'scientificName': 'Exempli gratia'})
-    response = setting_utils.modify_main_settings(
-        flask_app_client,
-        admin_user,
-        {'_value': vals},
-        'site.species',
-    )
-    response = setting_utils.read_main_settings(
-        flask_app_client, admin_user, 'site.species'
-    )
-    assert 'response' in response.json and 'value' in response.json['response']
-    tx_guid = response.json['response']['value'][-1]['id']
+    response = setting_utils.get_some_taxonomy_dict(flask_app_client, admin_user)
+    tx_guid = response['id']
 
     timestamp = datetime.datetime.now().isoformat() + '+00:00'
     sighting_data = {

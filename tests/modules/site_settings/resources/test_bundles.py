@@ -52,7 +52,6 @@ def test_bundle_read(
     if extension_unavailable('edm') and is_edm:
         pytest.skip('EDM extension disabled')
 
-    assert response.json['success']
     assert response.json['response']
     assert 'configuration' in response.json['response']
     assert isinstance(response.json['response']['configuration'], dict)
@@ -81,7 +80,6 @@ def test_bundle_read(
         ({'email_default_sender_name': 'testing'}, 200, False),
         (
             {
-                'bad_key': 'abcd',
                 'email_default_sender_name': {'foo': 'bar'},
                 'email_default_sender_email': [],
             },
@@ -90,11 +88,11 @@ def test_bundle_read(
         ),
         (
             {
-                'bad_key': 'abcd',
                 'email_default_sender_name': 'Testing',
+                'bad_key': 'abcd',
                 'site.name': f'TEST-{str(uuid.uuid4())}',
             },
-            200,
+            400,
             True,
         ),
         ({'recaptchaPublicKey': 'recaptcha-public-key'}, 200, False),
@@ -125,7 +123,6 @@ def test_bundle_modify(
         expected_status_code=expected_status_code,
     )
     if expected_status_code == 200:
-        assert response.json['success']
         assert response.json['updated']
         assert isinstance(response.json['updated'], list)
         for key, value in data.items():
@@ -138,7 +135,5 @@ def test_bundle_modify(
     else:
         for key in data:
             if key in invalid_key:
-                assert key not in response.json['message']
-            else:
                 assert key in response.json['message']
-                break  # Only the first valid key is reported
+                break

@@ -83,10 +83,7 @@ def test_social_groups(session, login, codex_url):
         codex_url('/api/v1/site-settings/main/social_group_roles'), json={'_value': data}
     )
     assert response.status_code == 200
-    assert response.json() == {
-        'key': 'social_group_roles',
-        'success': True,
-    }
+    assert response.json() == {'key': 'social_group_roles'}
 
     uuids = create_sighting(session, codex_url)
     asset_group_id = uuids['asset_group']

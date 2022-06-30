@@ -126,10 +126,10 @@ def set_basic_roles(flask_app_client, user, request):
 
 
 def get_roles(flask_app_client, user, expected_status_code=200):
-    get_response = setting_utils.read_main_settings(
-        flask_app_client, user, 'social_group_roles', expected_status_code
-    )
-    return get_response.json['response']['configuration']['social_group_roles']['value']
+    block_config = setting_utils.read_main_settings(
+        flask_app_client, user, 'block', expected_status_code
+    ).json['response']['configuration']
+    return block_config['social_group_roles']['value']
 
 
 def delete_roles(flask_app_client, user, expected_status_code=204, expected_error=None):

@@ -23,14 +23,13 @@ class SiteSetting(db.Model, Timestamp):
     __mapper_args__ = {
         'confirm_deleted_rows': False,
     }
-    EDM_PREFIX = 'site.'
 
     # public=False means the setting is only used in the backend
     HOUSTON_SETTINGS = {
         'email_service': {
             'type': str,
             'public': False,
-            'edm_definition': {
+            'definition': {
                 'defaultValue': '',
                 'displayType': 'select',
                 'schema': {
@@ -94,11 +93,21 @@ class SiteSetting(db.Model, Timestamp):
             'public': False,
             'default': 'Wildbook is copyrighted 2022 by Wild Me.  Individual contributors to Wildbook retain copyrights for submitted images. No reproduction or usage of material in this library is permitted without the express permission of the copyright holders.',
         },
-        'social_group_roles': {'type': list, 'public': True},
+        'social_group_roles': {
+            'type': list,
+            'public': True,
+            'validate_function': lambda value: SiteSetting.validate_social_group_roles(
+                value
+            ),
+            # 'activate_function':
+        },
         'relationship_type_roles': {
             'type': dict,
             'public': True,
-            'edm_definition': {
+            'validate_function': lambda value: SiteSetting.validate_relationship_type_roles(
+                value
+            ),
+            'definition': {
                 'fieldType': 'json',
                 'displayType': 'relationship-type-role',
                 'required': False,
@@ -109,7 +118,7 @@ class SiteSetting(db.Model, Timestamp):
             'type': str,
             'public': True,
             'read_only': True,
-            'edm_definition': {
+            'definition': {
                 'readOnly': True,
                 'settable': False,
             },
@@ -143,7 +152,7 @@ class SiteSetting(db.Model, Timestamp):
             # setting wouldn't change where the errors are sent... For now,
             # make sentryDsn read only
             'read_only': True,
-            'edm_definition': {
+            'definition': {
                 'readOnly': True,
                 'settable': False,
             },
@@ -218,10 +227,13 @@ class SiteSetting(db.Model, Timestamp):
         boolean=None,
         override_readonly=False,
     ):
-        if is_extension_enabled('edm') and cls.is_edm_key(key):
-            raise ValueError(
-                f'forbidden to directly set key with prefix "{cls.EDM_PREFIX}" via (key={key})'
-            )
+        if (
+            is_extension_enabled('edm')
+            and not file_upload_guid
+            and not cls.is_houston_setting(key)
+        ):
+            # Can set any file you wish but value settings must be in the approved list
+            raise ValueError(f'forbidden to directly set key {key}')
         key_conf = cls._get_houston_setting_conf(key)
         if key_conf.get('read_only', False) and not override_readonly:
             raise ValueError(f'read-only key {key}')
@@ -244,59 +256,15 @@ class SiteSetting(db.Model, Timestamp):
         return cls.HOUSTON_SETTINGS.keys()
 
     @classmethod
+    def is_houston_setting(cls, key):
+        return key in cls.HOUSTON_SETTINGS.keys()
+
+    @classmethod
     def _get_houston_setting_conf(cls, key):
-        if key in cls.get_setting_keys():
+        if cls.is_houston_setting(key):
             return cls.HOUSTON_SETTINGS[key]
         else:
             return {}
-
-    @classmethod
-    def _get_value_for_edm_formats(cls, key):
-        value = cls.get_value(key)
-        key_conf = cls._get_houston_setting_conf(key)
-
-        # Only admin can read private data
-        if not key_conf.get('public', True):
-            if not current_user or current_user.is_anonymous or not current_user.is_admin:
-                value = None
-        return value
-
-    @classmethod
-    def get_as_edm_format(cls, key):
-        value = cls._get_value_for_edm_formats(key)
-        value_not_set = value is None
-
-        data = {
-            'id': key,
-            'isSiteSetting': True,
-            'value': value if not value_not_set else cls._get_default_value(key),
-            'valueNotSet': value_not_set,
-        }
-        return data
-
-    @classmethod
-    def get_as_edm_definition_format(cls, key):
-        key_conf = cls._get_houston_setting_conf(key)
-        is_public = key_conf.get('public', True)
-        data = {
-            'descriptionId': f'CONFIGURATION_{key.upper()}_DESCRIPTION',
-            'labelId': f'CONFIGURATION_{key.upper()}_LABEL',
-            'defaultValue': '',
-            'isPrivate': not is_public,
-            'settable': True,
-            'required': True,
-            'fieldType': 'string',
-            'displayType': 'string',
-        }
-        value = cls._get_value_for_edm_formats(key)
-        if value:
-            data['currentValue'] = value
-
-        # Some variables have specific values so incorporate those as required
-        edm_definition = key_conf.get('edm_definition', None)
-        if edm_definition:
-            data.update(edm_definition)
-        return data
 
     @classmethod
     def _get_default_value(cls, key):
@@ -338,25 +306,25 @@ class SiteSetting(db.Model, Timestamp):
 
     @classmethod
     def set_key_value(cls, key, value):
-        if callable(getattr(cls, f'validate_{key}', None)):
-            # should raise HoustonException if validation fails
-            getattr(cls, f'validate_{key}')(value)
 
         assert key in cls.HOUSTON_SETTINGS.keys()
-        if not isinstance(value, cls.HOUSTON_SETTINGS[key]['type']):
+        key_data = cls.HOUSTON_SETTINGS[key]
+        if 'validate_function' in key_data:
+            key_data['validate_function'](value)
+        if not isinstance(value, key_data['type']):
             msg = f'Houston Setting key={key}, value incorrect type value={value},'
-            msg += f'needs to be {cls.HOUSTON_SETTINGS[key]["type"]}'
+            msg += f'needs to be {key_data["type"]}'
             raise HoustonException(log, msg)
 
         if isinstance(value, str):
             log.debug(f'updating Houston Setting key={key}')
-            cls.set(key, string=value, public=cls.HOUSTON_SETTINGS[key]['public'])
+            cls.set(key, string=value, public=key_data['public'])
         elif isinstance(value, dict) or isinstance(value, list):
             log.debug(f'updating Houston Setting key={key}')
-            cls.set(key, data=value, public=cls.HOUSTON_SETTINGS[key]['public'])
+            cls.set(key, data=value, public=key_data['public'])
         elif isinstance(value, bool):
             log.debug(f'updating Houston Setting key={key}')
-            cls.set(key, boolean=value, public=cls.HOUSTON_SETTINGS[key]['public'])
+            cls.set(key, boolean=value, public=key_data['public'])
         else:
             msg = f'Houston Setting key={key}, value is not string, list or dict; value={value}'
             raise HoustonException(log, msg)
@@ -368,7 +336,7 @@ class SiteSetting(db.Model, Timestamp):
 
     @classmethod
     def forget_key_value(cls, key):
-        if cls.is_edm_key(key) and is_extension_enabled('edm'):
+        if not cls.is_houston_setting(key) and is_extension_enabled('edm'):
             # Only support removal of EDM keys that start with 'site.custom.customFields' and end with '/{guid}'
 
             edm_path_parts = key.split('/')
@@ -428,19 +396,12 @@ class SiteSetting(db.Model, Timestamp):
             return cls._get_default_value(key)
         return setting.boolean if setting else default
 
-    # a bit of hackery.  right now *all* keys in edm-configuration are of the form `site.foo` so we use
-    #   as a way branch on _where_ to get the value to return here.  but as we ween ourselves off edm config,
-    #   either gradually or forklift, this can be extended to allow that
-    @classmethod
-    def is_edm_key(cls, key):
-        return key.startswith(cls.EDM_PREFIX)
-
     @classmethod
     def get_value(cls, key, default=None, **kwargs):
         if not key:
             raise ValueError('key must not be None')
-        if is_extension_enabled('edm') and cls.is_edm_key(key):
-            return cls.get_edm_configuration(key, default=default, **kwargs)
+        if is_extension_enabled('edm') and not cls.is_houston_setting(key):
+            return cls._get_edm_value(key, default=default, **kwargs)
         setting = cls.query.get(key)
         if not setting:
             setting_default = cls._get_default_value(key)
@@ -457,18 +418,14 @@ class SiteSetting(db.Model, Timestamp):
             return setting.boolean
         return setting.string
 
-    @classmethod
-    def get_houston_settings_for_current_user(cls):
-        is_admin = getattr(current_user, 'is_admin', False)
-        for key, type_def in SiteSetting.HOUSTON_SETTINGS.items():
-            permission = type_def.get('permission', lambda: True)()
-            if is_admin or type_def.get('public', True) and permission:
-                yield key, type_def
+    ##########################################################################################################
+    # All the functions below are for handling the REST API functions. These need detailed access to the Site
+    # Settings internals but need to understand the format of the incoming and outgoing REST messages.
 
     # MainConfiguration and MainConfigurationDefinition resources code needs to behave differently if it's
     # accessing a block of data or a single value, so have one place that does this check
     @classmethod
-    def is_block_key(cls, key):
+    def is_rest_block_key(cls, key):
         changed, new_key = cls._map_to_deprecated_edm_key(key)
         return new_key == '__bundle_setup'
 
@@ -495,7 +452,7 @@ class SiteSetting(db.Model, Timestamp):
 
     @classmethod
     @extension_required('edm')
-    def get_edm_configuration(cls, key, default=None, **kwargs):
+    def _get_edm_value(cls, key, default=None, **kwargs):
         # There are certain fields that are Old Wildbook specific that we still support for the moment but
         # will be deprecated so allow gets of both old and new (and map the new to the old here)
         changed, key = cls._map_to_deprecated_edm_key(key)
@@ -517,18 +474,16 @@ class SiteSetting(db.Model, Timestamp):
         return res['response']['value']
 
     @classmethod
-    def get_edm_configuration_as_edm_format(cls, dict_name, path):
-        changed, edm_key = cls._map_to_deprecated_edm_key(path)
+    def _get_edm_rest_data(cls):
+        changed, edm_key = cls._map_to_deprecated_edm_key('block')
         data = current_app.edm.get_dict(
-            dict_name,
+            'configuration.data',
             edm_key,
             target='default',
         )
-
         # For the deprecated fields from EDM, also add the new names if it's the block get
         if (
-            cls.is_block_key(path)
-            and isinstance(data, dict)
+            isinstance(data, dict)
             and data['success']
             and 'response' in data
             and 'configuration' in data['response']
@@ -536,18 +491,251 @@ class SiteSetting(db.Model, Timestamp):
             import copy
 
             config = copy.deepcopy(data['response']['configuration'])
-            data['response']['configuration'].keys()
             for key in data['response']['configuration'].keys():
                 changed, new_key = cls._map_to_new_key(key)
-                if changed:
-                    config[new_key] = config[key]
-                    config[new_key]['id'] = new_key
+
+                #  strip down the configuration to only the values
+                if changed and 'value' in config[key].keys():
+                    old_config_value = config[key]['value']
+                    config[key] = {}
+                    config[key]['value'] = old_config_value
+                    config[new_key] = {'value': old_config_value}
+
+                elif 'value' in config[key].keys() and key != 'site.species':
+                    old_config_value = config[key]['value']
+                    config[key] = {}
+                    config[key]['value'] = old_config_value
+                elif key != 'site.species':
+                    # Yes site.species needs to be special at the moment, this needs further investigation
+                    config[key] = {}
+
             data['response']['configuration'] = config
+
+        # simplify this by only sending back the fields that the FE actually uses
+        returned_data = {
+            'response': {
+                'version': data['response']['version'],
+                'configuration': data['response']['configuration'],
+            }
+        }
+        return returned_data
+
+    @classmethod
+    def _set_houston_rest_data(cls, data):
+        assert isinstance(data, dict)
+        success_keys = []
+        for key in data.keys():
+            if key in cls.get_setting_keys():
+                if data[key] is not None:
+                    cls.set_key_value(key, data[key])
+                else:
+                    cls.forget_key_value(key)
+                success_keys.append(key)
+
+        return success_keys
+
+    # All houston rest value getting needs common logic so factored out into separate function
+    @classmethod
+    def get_houston_rest_value(cls, key):
+        init_value = cls.get_value(key)
+        key_conf = cls._get_houston_setting_conf(key)
+
+        # Only admin can read private data
+        if not key_conf.get('public', True):
+            if not current_user or current_user.is_anonymous or not current_user.is_admin:
+                init_value = None
+        value_not_set = init_value is None
+        new_value = init_value if not value_not_set else cls._get_default_value(key)
+        return new_value
+
+    @classmethod
+    def get_all_rest_configuration(cls):
+        from flask import url_for
+
+        from app.modules.users.models import User
+
+        # First populate the data that EDM doesn't know about.
+        # Yes while everything else is 'name'['value'] the site.adminUserInitialised and the site.images are not!
+        houston_data = {'site.adminUserInitialized': User.admin_user_initialized()}
+
+        # Create the site.images
+        houston_settings = cls.query.filter_by(public=True).order_by('key')
+        site_images = {}
+        for setting in houston_settings:
+            if setting.file_upload is not None:
+                site_images[setting.key] = url_for(
+                    'api.fileuploads_file_upload_src_u_by_id_2',
+                    fileupload_guid=str(setting.file_upload.guid),
+                    _external=False,
+                )
+        houston_data['site.images'] = site_images
+
+        # Populate all the houston values that are accessible to the current user
+        is_admin = getattr(current_user, 'is_admin', False)
+        for key, type_def in cls.HOUSTON_SETTINGS.items():
+            permission = type_def.get('permission', lambda: True)()
+            if is_admin or type_def.get('public', True) and permission:
+                houston_data[key] = {'value': cls.get_houston_rest_value(key)}
+
+        data = {'response': {'configuration': houston_data}}
+
+        # If we have EDM, add it's data
+        if is_extension_enabled('edm'):
+            edm_data = cls._get_edm_rest_data()
+            edm_data['response']['configuration'].update(
+                data['response']['configuration']
+            )
+            data = edm_data
 
         return data
 
+    ###############################################
+    # Definitions based code. Currently, only support getting all the definitions as a block, not individually
     @classmethod
-    def post_edm_configuration(cls, path, kwargs):
+    def _get_edm_definitions(cls):
+        changed, edm_key = cls._map_to_deprecated_edm_key('block')
+        data = current_app.edm.get_dict(
+            'configurationDefinition.data',
+            edm_key,
+            target='default',
+        )
+        # For the deprecated fields from EDM, also add the new names if it's the block get
+        if (
+            isinstance(data, dict)
+            and data['success']
+            and 'response' in data
+            and 'configuration' in data['response']
+        ):
+            import copy
+
+            config = copy.deepcopy(data['response']['configuration'])
+            for key in data['response']['configuration'].keys():
+                # Don't pass back current Value here as frontend never uses it
+                config[key].pop('currentValue', None)
+                changed, new_key = cls._map_to_new_key(key)
+                # Send the definition as is from EDM. TODO. Look to stripping this down too
+                if changed and 'value' in config[key].keys():
+                    config[new_key] = config[key]
+            data['response']['configuration'] = config
+
+        # simplify this by only sending back the fields that the FE actually uses
+        returned_data = {
+            'response': {
+                'version': data['response']['version'],
+                'configuration': data['response']['configuration'],
+            }
+        }
+        return returned_data
+
+    @classmethod
+    def _get_houston_definition(cls, key):
+        key_conf = cls._get_houston_setting_conf(key)
+        is_public = key_conf.get('public', True)
+        data = {
+            'descriptionId': f'CONFIGURATION_{key.upper()}_DESCRIPTION',
+            'labelId': f'CONFIGURATION_{key.upper()}_LABEL',
+            'defaultValue': '',
+            'isPrivate': not is_public,
+            'settable': True,
+            'required': True,
+            'fieldType': 'string',
+            'displayType': 'string',
+        }
+
+        # Some variables have specific values so incorporate those as required
+        extra_definition = key_conf.get('definition', None)
+        if extra_definition:
+            data.update(extra_definition)
+        return data
+
+    @classmethod
+    def get_all_rest_definitions(cls):
+        houston_definitions = {}
+        for key in cls.get_setting_keys():
+            houston_definitions[key] = cls._get_houston_definition(key)
+
+        data = {'response': {'configuration': houston_definitions}}
+        if not is_extension_enabled('edm'):
+            return data
+
+        # Add all the EDM configuration data
+        edm_definitions = cls._get_edm_definitions()
+        edm_definitions['response']['configuration'].update(
+            data['response']['configuration']
+        )
+        data = edm_definitions
+
+        # Populate site.species suggested values from the ia_config
+        species_json = data['response']['configuration']['site.species']
+
+        if species_json is not None:
+            from app.modules.ia_config_reader import IaConfig
+
+            ia_config_reader = IaConfig()
+            species = ia_config_reader.get_configured_species()
+            if not isinstance(species_json['suggestedValues'], list):
+                species_json['suggestedValues'] = ()
+            for (
+                scientific_name
+            ) in species:  # only adds a species that is not already in suggestedValues
+                needed = True
+                for suggestion in species_json['suggestedValues']:
+                    if suggestion.get('scientificName', None) == scientific_name:
+                        needed = True
+                if needed:
+                    details = ia_config_reader.get_frontend_species_summary(
+                        scientific_name
+                    )
+                    if details is None:
+                        details = {}
+                    species_json['suggestedValues'].insert(
+                        0,
+                        {
+                            'scientificName': scientific_name,
+                            'commonNames': [details.get('common_name', scientific_name)],
+                            'itisTsn': details.get('itis_id'),
+                        },
+                    )
+
+        # TODO also traverse private here FIXME
+        return data
+
+    #####################################
+    # Other APIs
+
+    @classmethod
+    def set_rest_block_data(cls, data, files):
+        ret_data = {}
+        success_keys = cls._set_houston_rest_data(data)
+        ret_data['updated'] = success_keys
+        for key in success_keys:
+            del data[key]
+        if not data:  # All keys processed
+            return ret_data
+
+        passthrough_kwargs = {'data': data}
+
+        if len(files) > 0:
+            passthrough_kwargs['files'] = files
+
+        if is_extension_enabled('edm'):
+            response = cls.set_edm_rest_data('', passthrough_kwargs)
+            if 'updated' in response:
+                ret_data['updated'].extend(response['updated'])
+            if 'updatedCustomFieldDefinitionIds' in response:
+                ret_data['updatedCustomFieldDefinitionIds'] = response[
+                    'updatedCustomFieldDefinitionIds'
+                ]
+        else:
+            raise HoustonException(log, 'key not supported')
+        return ret_data
+
+    @classmethod
+    def set_edm_rest_data(cls, path, kwargs):
+
+        if not is_extension_enabled('edm'):
+            raise HoustonException(log, f'key {path} not supported')
+
         if path == 'block' or path == '':
             # Use edm value for block
             path = ''
@@ -578,7 +766,11 @@ class SiteSetting(db.Model, Timestamp):
                 f'non-OK ({response.status_code}) response from edm: {response.json()}',
             )
 
-        return response
+        res = response.json()
+        if not res['success']:
+            raise HoustonException(log, res)
+
+        return res
 
     @classmethod
     def _patch_edm_configuration(cls, kwargs):
@@ -621,7 +813,7 @@ class Regions(dict):
         else:
             from app.modules.site_settings.models import SiteSetting
 
-            data = SiteSetting.get_edm_configuration('site.custom.regions')
+            data = SiteSetting.get_value('site.custom.regions')
             if data:
                 self.update(data)
         if not len(self):
@@ -815,7 +1007,7 @@ class Taxonomy:
     def get_configuration_value(cls):
         from app.modules.site_settings.models import SiteSetting
 
-        conf = SiteSetting.get_edm_configuration('site.species')
+        conf = SiteSetting.get_value('site.species')
         if not conf or not isinstance(conf, list):
             raise ValueError('site.species not configured')
         return conf

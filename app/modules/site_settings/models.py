@@ -316,8 +316,6 @@ class SiteSetting(db.Model, Timestamp):
             msg += f'needs to be {key_data["type"]}'
             raise HoustonException(log, msg)
 
-        # TODO call the validate if it has one
-
         if isinstance(value, str):
             log.debug(f'updating Houston Setting key={key}')
             cls.set(key, string=value, public=key_data['public'])

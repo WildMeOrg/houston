@@ -102,7 +102,6 @@ if is_extension_enabled('edm'):
                 self.is_user_manager = True
                 self.is_admin = True
 
-
 else:
     UserEDMMixin = object
 

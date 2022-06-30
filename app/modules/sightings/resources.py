@@ -807,7 +807,8 @@ class SightingRerunId(Resource):
                     abort(error.status_code, error.message)
                 sighting.id_configs = req
             sighting.stage = SightingStage.identification
-            sighting.ia_pipeline()
+            # progress_overwrite will ensure we have a new Progress started on sighting
+            sighting.ia_pipeline(progress_overwrite=True)
             return sighting.get_detailed_json()
         except HoustonException as ex:
             abort(ex.status_code, ex.message, errorFields=ex.get_val('error', 'Error'))

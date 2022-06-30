@@ -167,8 +167,8 @@ class AssetGroupSighting(db.Model, HoustonModel):
             'assetReferences' not in self.sighting_config
             or len(self.sighting_config['assetReferences']) == 0
         ):
-            if self.progress_detection:
-                self.progress_detection.skip('No assets were submitted')
+            self.init_progress_detection()  # ensure we have one
+            self.progress_detection.skip('No assets were submitted')
 
             self.set_stage(AssetGroupSightingStage.curation)
             self.commit()
@@ -176,8 +176,8 @@ class AssetGroupSighting(db.Model, HoustonModel):
         elif len(self.detection_configs) == 1 and (
             not self.detection_configs[0] or self.detection_configs[0] == 'None'
         ):
-            if self.progress_detection:
-                self.progress_detection.skip('No detection config specified')
+            self.init_progress_detection()  # ensure we have one
+            self.progress_detection.skip('No detection config specified')
 
             self.set_stage(AssetGroupSightingStage.curation)
         else:
@@ -586,10 +586,13 @@ class AssetGroupSighting(db.Model, HoustonModel):
             'summary': {},
         }
         status['summary']['complete'] = (
-            status['preparation']['complete']
-            and status['detection']['complete']
-            and status['curation']['complete']
-            and status['identification']['complete']
+            (status['preparation']['complete'] or status['preparation']['skipped'])
+            and (status['detection']['complete'] or status['detection']['skipped'])
+            and (status['curation']['complete'] or status['curation']['skipped'])
+            and (
+                status['identification']['complete']
+                or status['identification']['skipped']
+            )
         )
         # this is not the best math, but prob best we can do
         status['summary']['progress'] = (
@@ -604,17 +607,79 @@ class AssetGroupSighting(db.Model, HoustonModel):
         from app.modules.progress.models import ProgressStatus
 
         progress = self.progress_preparation
-        # no progress object, do the best we can?
+        # no progress object, do the best we can?  assume complete  TODO is this sane?
         if not progress:
             return {
-                'skipped': None,
+                'skipped': False,
                 'inProgress': False,
-                'complete': True,
                 'failed': False,
+                'complete': True,
                 'message': 'missing Progress',
                 'steps': 0,
                 'stepsComplete': 0,
                 'progress': 1,
+                'start': self.get_submission_time_isoformat(),
+                'end': self.get_submission_time_isoformat(),
+                'eta': None,
+                'ahead': None,
+                'status': None,
+                'description': None,
+            }
+
+        # much of this we just pass what Progress object has
+        status = {
+            # start with these false and set below
+            'skipped': False,
+            'inProgress': False,
+            'failed': False,
+            'complete': False,
+            'message': progress.message,
+            'steps': len(progress.steps) if progress.steps else 0,
+            'stepsComplete': 0,  # TBD
+            # using previously established 0.0-1.0 but maybe FE will want to swtich to 0-100
+            'progress': progress.percentage / 100,
+            'start': progress.created.isoformat() + 'Z',
+            'end': None,
+            'eta': progress.current_eta,
+            'ahead': progress.ahead,
+            'status': progress.status,
+            'description': progress.description,
+        }
+
+        # hopefully this is decent priority/logic based on Progress class
+        #   (it is used for other stages below)
+        if progress.skipped:
+            status['skipped'] = True
+        elif progress.status == ProgressStatus.failed:
+            status['failed'] = True
+        elif progress.complete:
+            status['complete'] = True
+        elif (
+            progress.status == ProgressStatus.created
+            or progress.status == ProgressStatus.healthy
+        ):
+            status['inProgress'] = True
+        # if it falls through, all False, thus "waiting"
+
+        if progress.complete:
+            status['end'] = progress.updated.isoformat() + 'Z'
+        return status
+
+    def _get_pipeline_status_detection(self):
+        from app.modules.progress.models import ProgressStatus
+
+        progress = self.progress_detection
+        # no progress object, we assume it has not yet started
+        if not progress:
+            return {
+                'skipped': False,
+                'inProgress': False,
+                'failed': False,
+                'complete': False,
+                'message': 'missing Progress',
+                'steps': 0,
+                'stepsComplete': 0,
+                'progress': 0,
                 'start': None,
                 'end': None,
                 'eta': None,
@@ -624,214 +689,166 @@ class AssetGroupSighting(db.Model, HoustonModel):
             }
 
         status = {
-            'skipped': progress.skipped,
-            # should inProgress be dropped now?   TODO: discuss with FE team
-            'inProgress': progress.status == ProgressStatus.created
-            or progress.status == ProgressStatus.healthy,
-            'complete': progress.complete,
-            'failed': progress.status == ProgressStatus.failed,
+            # start with these false and set below
+            'skipped': False,
+            'inProgress': False,
+            'failed': False,
+            'complete': False,
             'message': progress.message,
             'steps': len(progress.steps) if progress.steps else 0,
             'stepsComplete': 0,  # TBD
-            # using previously established 0.0-1.0 but maybe FE will want to swtich to 0-100
             'progress': progress.percentage / 100,
             'start': progress.created.isoformat() + 'Z',
             'end': None,
-            # the following are new, thanks to Progress class
+            'eta': progress.current_eta,
+            'ahead': progress.ahead,
+            'status': progress.status,
+            'description': progress.description,
+            # these are provisional and should only be used for debugging, not ui/ux
+            # TODO i am not sure if this is the best count here, as there
+            #   is config['updatedAssets'] which may actually need to be considered
+            'numAssets': len(self.get_assets()),
+            'numAnnotations': len(self.get_all_annotations()),
+        }
+
+        if progress.skipped:
+            status['skipped'] = True
+        elif progress.status == ProgressStatus.failed:
+            status['failed'] = True
+        elif progress.complete:
+            status['complete'] = True
+        elif (
+            progress.status == ProgressStatus.created
+            or progress.status == ProgressStatus.healthy
+        ):
+            status['inProgress'] = True
+        # if it falls through, all False, thus "waiting"
+
+        if progress.complete:
+            status['end'] = progress.updated.isoformat() + 'Z'
+        return status
+
+    # this does not have a corresponding Progress, so we roll our own
+    def _get_pipeline_status_curation(self):
+        cur_start = self.get_curation_start_time()
+        status = {
+            # start with these false and set below
+            'skipped': False,
+            'inProgress': False,
+            'failed': False,
+            'complete': False,
+            'message': None,
+            'steps': 0,
+            'stepsComplete': 0,
+            'progress': 0,
+            'start': cur_start,
+            'end': None,
+            'eta': None,
+            'ahead': None,
+            'status': None,
+            'description': None,
+        }
+
+        # If there are no assets in an asset group sighting and prep is done, curation will be skipped.
+        prep_status = self._get_pipeline_status_preparation()
+        if len(self.get_assets()) < 1 and (
+            prep_status['complete'] or prep_status['skipped']
+        ):
+            status['skipped'] = True
+            return status
+
+        # FIXME we may need to consider detection-not-run case below to adjust this accordingly
+        # i think this is sufficient enough to know we have not started yet
+        if not cur_start:
+            return status
+
+        # curation has completed if we have a sighting
+        if len(self.sighting) > 0:
+            status['complete'] = True
+            status['progress'] = 1
+            status['stepsComplete'] = 1
+            status['steps'] = 1
+            status['end'] = self.sighting[0].created.isoformat() + 'Z'
+            return status
+
+        # i think curation cannot fail, so the only thing left is to be inProgress
+        #  note: possibly curation fails if the commit() does not produce a sighting; this may need exploration  TODO
+
+        status['inProgress'] = True
+        # this is the "Fisher progress constant" and on average it has zero error
+        status['progress'] = 0.5
+
+        # FIXME this will never get reached due to 'if not cur_start' above
+        #   but leaving this here to consider using higher up here, but also taking into account that
+        #   preparation may not even be finished yet and that logic should be included here as well
+        #
+        # detection may have been skipped and we need to infer
+        if not status['start']:
+            annotations = self.get_all_annotations()
+            if annotations and len(annotations) > 1:
+                first_annot_created = min(ann.created for ann in annotations)
+                status['start'] = first_annot_created.isoformat() + 'Z'
+
+        return status
+
+    # this should be basically *nothing* since id doesnt happen until sighting, so lets
+    #    hope that is what this yields
+    def _get_pipeline_status_identification(self):
+        from app.modules.progress.models import ProgressStatus
+
+        progress = self.progress_identification
+        # no progress object, we assume it has not yet started
+        if not progress:
+            return {
+                'skipped': False,
+                'inProgress': False,
+                'failed': False,
+                'complete': False,
+                'message': 'missing Progress',
+                'steps': 0,
+                'stepsComplete': 0,
+                'progress': 0,
+                'start': None,
+                'end': None,
+                'eta': None,
+                'ahead': None,
+                'status': None,
+                'description': None,
+            }
+
+        status = {
+            # start with these false and set below
+            'skipped': False,
+            'inProgress': False,
+            'failed': False,
+            'complete': False,
+            'message': progress.message,
+            'steps': len(progress.steps) if progress.steps else 0,
+            'stepsComplete': 0,  # TBD
+            'progress': progress.percentage / 100,
+            'start': progress.created.isoformat() + 'Z',
+            'end': None,
             'eta': progress.current_eta,
             'ahead': progress.ahead,
             'status': progress.status,
             'description': progress.description,
         }
+
+        if progress.skipped:
+            status['skipped'] = True
+        elif progress.status == ProgressStatus.failed:
+            status['failed'] = True
+        elif progress.complete:
+            status['complete'] = True
+        elif (
+            progress.status == ProgressStatus.created
+            or progress.status == ProgressStatus.healthy
+        ):
+            status['inProgress'] = True
+        # if it falls through, all False, thus "waiting"
+
         if progress.complete:
             status['end'] = progress.updated.isoformat() + 'Z'
-        return status
-
-    # currently only gives most recent job
-    def _get_pipeline_status_detection(self):
-        from app.utils import datetime_string_to_isoformat
-
-        status = {
-            'skipped': False,
-            'start': None,
-            'end': None,
-            'inProgress': False,
-            'complete': False,
-            'failed': False,
-            'message': None,
-            'eta': None,
-            'ahead': None,
-            'numModels': 0,
-            'jobs': None,
-            'numJobs': None,
-            'numJobsActive': None,
-            'numJobsFailed': None,
-            'numAttempts': self.detection_attempts,
-            'numAttemptsMax': MAX_DETECTION_ATTEMPTS,
-            'numAssets': None,
-            'numAnnotations': None,
-            'steps': 0,
-            'stepsComplete': 0,
-            'progress': None,
-        }
-        # TODO i am not sure if this is the best count here, as there
-        #   is config['updatedAssets'] which may actually need to be considered
-        status['numAssets'] = len(self.get_assets())
-        status['numAnnotations'] = len(self.get_all_annotations())
-
-        #  self.stage == AssetGroupSightingStage.detection
-        asset_group_config = self.asset_group.config
-        if 'speciesDetectionModel' in asset_group_config:
-            status['numModels'] = len(asset_group_config['speciesDetectionModel'])
-        # whose idea was this?
-        if (
-            status['numModels'] == 1
-            and asset_group_config['speciesDetectionModel'][0] == 'None'
-        ):
-            status['numModels'] = 0
-        if status['numModels'] < 1:  # assumed detection skipped
-            status['skipped'] = True
-            status['complete'] = True
-            status['steps'] = 1
-            status['stepsComplete'] = 1
-            return status
-
-        status['inProgress'] = True
-
-        if self.detection_attempts > MAX_DETECTION_ATTEMPTS:
-            status['message'] = f'could not start after {MAX_DETECTION_ATTEMPTS} attempts'
-            status['failed'] = True
-            status['inProgress'] = False
-            status['steps'] = 1
-
-        # TODO needs more exploration - can we find out if we are waiting to start in celery?
-        if not self.jobs:
-            status['numJobs'] = 0
-            status['numJobsActive'] = 0
-            status['numJobsFailed'] = 0
-            status['_debug'] = 'self.jobs is empty'
-            return status
-
-        # we reset failed here, as it looks like job started anyway?
-        status['steps'] = 1
-        status['stepsComplete'] = 1
-        status['message'] = None
-        status['failed'] = False
-        status['numJobs'] = len(self.jobs)
-        status['numJobsActive'] = 0
-        status['numJobsFailed'] = 0
-
-        job_info_list = []
-        for job_id in self.jobs:
-            job_info = {
-                'id': job_id,
-                'active': False,
-                'error': None,
-                'failed': False,
-                # we only query sage for *active* jobs to save expense,
-                #   so this being None is normal for inactive jobs
-                'sage_status': None,
-            }
-            job = self.jobs[job_id]
-            job_info['start'] = datetime_string_to_isoformat(job.get('start'))
-            job_info['end'] = datetime_string_to_isoformat(job.get('end'))
-            if job.get('active') is True:
-                job_info['active'] = True
-                status['numJobsActive'] += 1
-                # we sh/could toggle active if this shows failure  TODO
-                ss = None
-                try:
-                    ss = self.get_sage_job_status(job_id)
-                except Exception as ex:
-                    status[f'_debug_{job_id}'] = 'failed getting sage job status'
-                    job_info['_get_sage_status_exception'] = str(ex)
-                if ss:
-                    job_info['sage_status'] = ss.get('jobstatus')
-                    if ss.get('jobstatus') == 'exception':
-                        job_info['error'] = 'sage exception'
-                        job_info['failed'] = True
-                        status['numJobsActive'] -= 1
-                        status['numJobsFailed'] += 1
-                        status[f'_debug_{job_id}'] = 'sage exception'
-            job_info_list.append(job_info)
-
-        # this should sort in chron order (the str() handles unset start case)
-        status['jobs'] = sorted(job_info_list, key=lambda d: str(d['start']))
-
-        # we now only factor in *most recent* job, in terms of
-        #  failure, start/end, etc.  thus only 1 step
-        status['steps'] += 1
-        if status['jobs'][-1]['failed']:
-            status['failed'] = True
-            status['message'] = status['jobs'][-1]['error']
-        else:
-            status['stepsComplete'] += 1
-
-        status['inProgress'] = status['jobs'][-1]['active']
-        status['start'] = status['jobs'][-1]['start']
-        status['end'] = status['jobs'][-1]['end']
-        status['complete'] = not status['inProgress']
-        if status['steps']:
-            status['progress'] = status['stepsComplete'] / status['steps']
-        return status
-
-    def _get_pipeline_status_curation(self):
-
-        status = {
-            'skipped': False,
-            'start': self.get_curation_start_time(),
-            'end': None,
-            'inProgress': self.stage == AssetGroupSightingStage.curation,
-            'complete': False,
-            'failed': False,
-            'progress': 0.0,
-        }
-        # If there are no assets in an asset group sighting, curation will be skipped.
-        if len(self.get_assets()) < 1:
-            status['skipped'] = True
-            status['progress'] = 1.0
-
-        elif status['inProgress']:
-            # this is the "Fisher progress constant" and on average it has zero error
-            status['progress'] = 0.5
-            # detection may have been skipped and we need to infer this
-            if not status['start']:
-                annotations = self.get_all_annotations()
-                if annotations and len(annotations) > 1:
-                    first_annot_created = min(ann.created for ann in annotations)
-                    status['start'] = first_annot_created.isoformat() + 'Z'
-
-        return status
-
-    # this is just for compatibility with sighting, but basically this is null
-    def _get_pipeline_status_identification(self):
-        status = {
-            'skipped': False,
-            'start': None,
-            'end': None,
-            'inProgress': False,
-            'complete': False,
-            'failed': False,
-            'message': None,
-            'eta': None,
-            'ahead': None,
-            'jobs': None,
-            'numJobs': None,
-            'numJobsActive': None,
-            'numJobsFailed': None,
-            'matchingSetQueryPassed': None,
-            'matchingSetQueryUsed': None,
-            # 'matchingSetSize': None,
-            'numAttempts': None,
-            'numAttemptsMax': None,
-            'idConfigs': None,
-            'numAssets': len(self.get_assets()),
-            'numAnnotations': len(self.get_all_annotations()),
-            'steps': 0,
-            'stepsComplete': 0,
-            'progress': None,
-            '_note': 'identification only included for consistency; meaningless on AssetGroupSighting',
-        }
         return status
 
     @classmethod

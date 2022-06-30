@@ -18,6 +18,7 @@ def test_asset_group_sightings_jobs(flask_app, db, admin_user, test_root, reques
         AssetGroupSighting,
         AssetGroupSightingStage,
     )
+    from app.modules.progress.models import Progress, ProgressStatus
     from tests.utils import copy_uploaded_file, create_transaction_dir
 
     input_filename = 'zippy'
@@ -102,20 +103,49 @@ def test_asset_group_sightings_jobs(flask_app, db, admin_user, test_root, reques
         'complete': False,
         'failed': False,
         'progress': 0.5,
+        'ahead': None,
+        'eta': None,
+        'message': None,
+        'description': None,
+        'status': None,
+        'steps': 0,
+        'stepsComplete': 0,
     }
     assert ps['curation'] == curation_progress
 
-    ags1.jobs = None
-    ags1.detection_attempts = ps['detection']['numAttemptsMax'] + 9
-    with db.session.begin():
-        db.session.merge(ags1)
+    # some additional testing for coverage
+    ags1.progress_preparation.status = ProgressStatus.skipped
     ps = ags1.get_pipeline_status()
+    assert ps['preparation']['skipped']
+    ags1.progress_preparation.status = ProgressStatus.failed
+    ps = ags1.get_pipeline_status()
+    assert ps['preparation']['failed']
+    ags1.progress_preparation.status = ProgressStatus.created
+    ps = ags1.get_pipeline_status()
+    assert ps['preparation']['inProgress']
 
+    ags1.progress_detection.status = ProgressStatus.skipped
+    ps = ags1.get_pipeline_status()
+    assert ps['detection']['skipped']
+    ags1.progress_detection.status = ProgressStatus.failed
+    ps = ags1.get_pipeline_status()
     assert ps['detection']['failed']
-    assert 'could not start' in ps['detection']['message']
-    assert ps['detection']['numJobs'] == 0
-    assert ps['detection']['numJobsActive'] == 0
-    assert ps['detection']['numJobsFailed'] == 0
+    ags1.progress_detection.status = ProgressStatus.created
+    ps = ags1.get_pipeline_status()
+    assert ps['detection']['inProgress']
+
+    ags1.progress_identification = Progress(description='Test')
+    with db.session.begin():
+        db.session.add(ags1.progress_identification)
+    ags1.progress_identification.status = ProgressStatus.skipped
+    ps = ags1.get_pipeline_status()
+    assert ps['identification']['skipped']
+    ags1.progress_identification.status = ProgressStatus.failed
+    ps = ags1.get_pipeline_status()
+    assert ps['identification']['failed']
+    ags1.progress_identification.status = ProgressStatus.created
+    ps = ags1.get_pipeline_status()
+    assert ps['identification']['inProgress']
 
 
 @pytest.mark.skipif(

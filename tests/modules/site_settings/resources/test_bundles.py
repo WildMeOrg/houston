@@ -74,45 +74,63 @@ def test_bundle_read(
     module_unavailable('site_settings'), reason='Site-Settings module disabled'
 )
 @pytest.mark.parametrize(
-    'data,expected_status_code,is_edm',
+    'data,invalid_keys, expected_status_code,is_edm',
     (
-        ({'site.name': f'TEST-{str(uuid.uuid4())}'}, 200, True),
-        ({'email_default_sender_name': 'testing'}, 200, False),
+        # Case 1: One valid site setting (succeeds)
+        ({'site.name': f'TEST-{str(uuid.uuid4())}'}, [], 200, True),
+        # Case 2: More than one valid site settings (succeeds)
         (
             {
+                'email_default_sender_name': 'testing',
+                'recaptchaPublicKey': 'recaptcha-public-key',
+            },
+            [],
+            200,
+            False,
+        ),
+        # Case 3: One invalid key and two invalid types (fails)
+        (
+            {
+                'bad_key': 'abcd',
                 'email_default_sender_name': {'foo': 'bar'},
                 'email_default_sender_email': [],
             },
+            ['bad_key', 'email_default_name', 'email_default_sender_name'],
             400,
             False,
         ),
+        # Case 4: Two valid site settings and one invalid key (fails)
         (
             {
                 'email_default_sender_name': 'Testing',
                 'bad_key': 'abcd',
                 'site.name': f'TEST-{str(uuid.uuid4())}',
             },
+            ['bad_key'],
             400,
             True,
         ),
-        ({'recaptchaPublicKey': 'recaptcha-public-key'}, 200, False),
     ),
 )
 def test_bundle_modify(
-    flask_app_client, admin_user, db, request, data, expected_status_code, is_edm
+    flask_app_client,
+    admin_user,
+    db,
+    request,
+    data,
+    invalid_keys,
+    expected_status_code,
+    is_edm,
 ):
     if extension_unavailable('edm') and is_edm:
         pytest.skip('EDM extension disabled')
 
     response = conf_utils.read_main_settings(flask_app_client, admin_user)
     old_values = {}
-    invalid_key = []
     for key in data:
         old_value = response.json['response']['configuration'].get(key, {})
         if old_value:
             old_values[key] = old_value['value']
-        else:
-            invalid_key.append(key)
     request.addfinalizer(
         lambda: conf_utils.modify_main_settings(flask_app_client, admin_user, old_values)
     )
@@ -126,14 +144,13 @@ def test_bundle_modify(
         assert response.json['updated']
         assert isinstance(response.json['updated'], list)
         for key, value in data.items():
-            if key in invalid_key:
-                assert key not in response.json['updated']
-                assert SiteSetting.get_value(key) is None
-            else:
-                assert key in response.json['updated']
-                assert SiteSetting.get_value(key) == value
+            assert key in response.json['updated']
+            assert SiteSetting.get_value(key) == value
     else:
-        for key in data:
-            if key in invalid_key:
-                assert key in response.json['message']
+        for key in invalid_keys:
+            if key in response.json['message']:
                 break
+        else:
+            assert (
+                False
+            ), f'Expected one of {invalid_keys} to be in message "{response.json["message"]}"'

@@ -18,7 +18,7 @@ API_DEFAULT_HTTP_CODE_MESSAGES = {
         "You don't have the permission to access the requested resource."
     ),
     HTTPStatus.UNPROCESSABLE_ENTITY.value: (
-        'The request was well-formed but was unable to be followed due to semantic errors.'
+        'The request was formatted correctly but contains a semantic error (check input values and types).'
     ),
 }
 

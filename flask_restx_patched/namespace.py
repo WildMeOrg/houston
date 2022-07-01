@@ -14,7 +14,7 @@ from werkzeug import exceptions as http_exceptions
 
 from config import get_preliminary_config
 
-from .model import DefaultHTTPErrorSchema, Model
+from .model import Model  # DefaultHTTPErrorSchema
 
 
 def is_x_enabled(names, name_args, enabled_names):
@@ -193,6 +193,7 @@ class Namespace(OriginalNamespace):
             api_model = Model(name, model, mask=mask)
             api_model.__apidoc__ = kwargs
             return self.add_model(name, api_model)
+
         return super(Namespace, self).model(name=name, model=model, **kwargs)
 
     def parameters(self, parameters, locations=None):
@@ -209,9 +210,10 @@ class Namespace(OriginalNamespace):
                 parameters.context['in'] = _locations
 
             return self.doc(params=parameters)(
-                self.response(code=HTTPStatus.UNPROCESSABLE_ENTITY)(
-                    self.WEBARGS_PARSER.use_args(parameters, locations=_locations)(func)
-                )
+                self.response(
+                    code=HTTPStatus.UNPROCESSABLE_ENTITY,
+                    description='**UNPROCESSABLE**: The request was formatted correctly but contains a semantic error',
+                )(self.WEBARGS_PARSER.use_args(parameters, locations=_locations)(func))
             )
 
         return decorator
@@ -242,14 +244,13 @@ class Namespace(OriginalNamespace):
         code = HTTPStatus(code)
         if code is HTTPStatus.NO_CONTENT:
             assert model is None
+
         if model is None and code not in {HTTPStatus.ACCEPTED, HTTPStatus.NO_CONTENT}:
             if code.value not in http_exceptions.default_exceptions:
                 raise ValueError('`model` parameter is required for code %d' % code)
-            model = self.model(
-                name='HTTPError%d' % code, model=DefaultHTTPErrorSchema(http_code=code)
-            )
-        if description is None:
-            description = code.description
+            # model = self.model(
+            #     name='HTTPError%d' % code, model=DefaultHTTPErrorSchema(http_code=code)
+            # )
 
         def response_serializer_decorator(func):
             """
@@ -307,7 +308,20 @@ class Namespace(OriginalNamespace):
                 if getattr(model, 'many', False):
                     api_model = [api_model]
 
-            doc_decorator = self.doc(responses={code.value: (description, api_model)})
+            if description is None:
+                if code in {HTTPStatus.OK} and func_or_class.__doc__:
+                    # description_ = '**SUCCESS**: %s' % (func_or_class.__doc__.strip(), )
+                    description_ = '**SUCCESS**'
+                elif code in {HTTPStatus.OK} and model and model.__doc__:
+                    # description_ = '**SUCCESS**: %s' % (model.__doc__.strip(), )
+                    description_ = '**SUCCESS**'
+                else:
+                    description_ = code.description
+            else:
+                description_ = description
+
+            doc_decorator = self.doc(responses={code.value: (description_, api_model)})
+
             return doc_decorator(decorated_func_or_class)
 
         return decorator
@@ -452,10 +466,10 @@ class Namespace(OriginalNamespace):
                 self.response(
                     code=HTTPStatus.UNAUTHORIZED.value,
                     description=(
-                        'Authentication is required'
+                        '**UNAUTHORIZED**: This resource requires OAuth authentication'
                         if not oauth_scopes
-                        else 'Authentication with %s OAuth scope(s) is required'
-                        % (', '.join(oauth_scopes))
+                        else '**UNAUTHORIZED**: This resource requires the OAuth scopes %s'
+                        % (', '.join(['`{}`'.format(scope) for scope in _oauth_scopes]))
                     ),
                 )(oauth_protected_func)
             )
@@ -561,14 +575,10 @@ class Namespace(OriginalNamespace):
                 )
 
             permission_description = permission.__doc__.strip()
-            return self.doc(
-                description='**PERMISSIONS: %s**\n\n' % permission_description
-            )(
-                self.response(
-                    code=HTTPStatus.FORBIDDEN.value,
-                    description=permission_description,
-                )(protected_func)
-            )
+            return self.response(
+                code=HTTPStatus.FORBIDDEN.value,
+                description='**FORBIDDEN**: {}'.format(permission_description),
+            )(protected_func)
 
         return decorator
 

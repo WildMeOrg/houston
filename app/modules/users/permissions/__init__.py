@@ -164,7 +164,7 @@ class RolePermission(Permission):
 
 class ActiveUserRolePermission(RolePermission):
     """
-    At least Active user is required.
+    This resource requires an active logged in user session
     """
 
     def rule(self):
@@ -173,7 +173,7 @@ class ActiveUserRolePermission(RolePermission):
 
 class AdminRolePermission(PasswordRequiredPermissionMixin, RolePermission):
     """
-    Admin role is required.
+    This resource requires an active logged in user session, and the user must have ALL of following roles: Admin
     """
 
     def rule(self):

@@ -45,29 +45,29 @@ class PaginationParameters(Parameters):
     """
 
     search = base_fields.String(
-        description='the field to filter the results by a search string, not required',
+        description='the field to filter the results by a search string',
         required=False,
     )
     limit = base_fields.Integer(
-        description='limit a number of items (allowed range is 1-100), default is 100.',
+        description='limit a number of items (allowed range is 1-100)',
         missing=100,
         validate=validate.Range(min=1, max=100),
     )
     offset = base_fields.Integer(
-        description='a number of items to skip, default is 0.',
+        description='a number of items to skip',
         missing=0,
         validate=validate.Range(min=0),
     )
     sort = base_fields.String(
-        description='the field to sort the results by, default is the primary key column',
+        description='the field to sort the results by, e.g. the primary key column',
         missing='primary',
     )
     reverse = base_fields.Boolean(
-        description='the field to reverse the sorted results (before paging has been performed), default is False',
+        description='the field to reverse the sorted results (before paging has been performed)',
         missing=False,
     )
     reverse_after = base_fields.Boolean(
-        description='the field to reverse the sorted results (after paging has been performed), default is False',
+        description='the field to reverse the sorted results (after paging has been performed)',
         missing=False,
     )
 
@@ -75,10 +75,10 @@ class PaginationParameters(Parameters):
 class PaginationParametersLatestFirst(PaginationParameters):
 
     sort = base_fields.String(
-        description='the field to sort the results by, default is the created key column',
+        description='the field to sort the results by, e.g. the created column',
         missing='created',
     )
     reverse = base_fields.Boolean(
-        description='the field to reverse the sorted results (before paging has been performed), default is True',
+        description='the field to reverse the sorted results (before paging has been performed)',
         missing=True,
     )

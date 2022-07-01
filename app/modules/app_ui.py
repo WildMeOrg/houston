@@ -185,7 +185,7 @@ def user_logout_backend(refer=None, *args, **kwargs):
     """
     This endpoint is the landing page for the logged-in user
     """
-    return user_logout_shared('backend.user_login', refer=refer, *args, **kwargs)
+    return user_logout_shared('backend.home', refer=refer, *args, **kwargs)
 
 
 def user_logout_shared(default_redirect, refer=None, *args, **kwargs):

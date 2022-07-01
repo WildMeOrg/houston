@@ -28,7 +28,8 @@ class DefaultHTTPErrorSchema(Schema):
 
     def __init__(self, http_code, **kwargs):
         super(DefaultHTTPErrorSchema, self).__init__(**kwargs)
-        self.fields['status'].default = http_code
+        self.fields['status'].default = http_code.value
+        self.fields['message'].default = http_code.description
 
 
 class Model(OriginalModel):

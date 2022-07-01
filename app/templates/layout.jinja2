@@ -52,7 +52,7 @@
   </head>
   
   <body>
-    <nav class="navbar fixed-top navbar-expand-lg navbar-light bg-light">
+    <nav class="navbar fixed-top navbar-expand-lg navbar-light bg-light" style="border-bottom: 1px #ddd solid;">
       <a class="navbar-brand" href="{{ url_for('backend.home') }}">
         Houston
       </a>
@@ -73,27 +73,21 @@
       </div>
     </nav>
 
-
-    </div>
-
-    <div id="content">
-      {% block content %}{% endblock %}
-
-      <div class="container" style="min-height:100% width:50%">
+    <div class="container fixed-top" style="width:50%; max-width: 500px; margin-top: 67px;">
       {% with messages = get_flashed_messages() %}
       {% if messages %}
           {% for message in messages %}
-          <div class="alert alert-warning alert-dismissible" role="alert">
-          <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">×</span></button>
+          <div class="alert alert-warning alert-dismissible" role="alert" style="height: 41px; padding: 7px 20px;">
+          <button type="button" class="close" data-dismiss="alert" aria-label="Close" style="padding-top: 5px;"><span aria-hidden="true">×</span></button>
               {{message}}
           </div>
           {% endfor %}
       {% endif %}
       {% endwith %}
-      
-      {% block body %}
-      {% endblock %}
+    </div>
 
+    <div id="content">
+      {% block content %}{% endblock %}
     </div>
 
     <div class="clearfix"></div>

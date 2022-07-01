@@ -17,6 +17,9 @@ __pycache__/
 pip-log.txt
 pip-delete-this-directory.txt
 
+# Application logs
+logs/*
+
 # Unit test / coverage reports
 htmlcov/
 .tox/

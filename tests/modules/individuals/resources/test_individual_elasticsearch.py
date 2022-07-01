@@ -75,7 +75,7 @@ def test_search_with_elasticsearch(
         'bool': {
             'minimum_should_match': 1,
             'should': [
-                {'term': {'guid':  searchTerm}},
+                {'term': {'guid': searchTerm}},
                 {
                     'query_string': {
                         'query': '*{}*'.format(searchTerm),
@@ -136,7 +136,7 @@ def test_search_with_elasticsearch(
         'bool': {
             'minimum_should_match': 1,
             'should': [
-                {'term': {'guid':  searchTerm}},
+                {'term': {'guid': searchTerm}},
                 {
                     'query_string': {
                         'query': '*{}*'.format(searchTerm),

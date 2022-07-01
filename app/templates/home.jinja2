@@ -17,7 +17,7 @@
       <div class="col-1 col-sm-1 col-md-1 col-lg-3 col-xl-4"></div>
 
       <div class="col-10 col-sm-10 col-md-10 col-lg-6 col-xl-4">
-        <img class="mx-auto d-block" alt="Wild Me Houston" src="{{ url_for('backend.static', filename='images/icon.png', version=cachebuster) }}" style="width: 30%; margin-bottom: 25px;">
+        <img class="mx-auto d-block" alt="Wild Me Houston" src="{{ url_for('backend.static', filename='images/icon.png', version=cachebuster) }}" style="width: 30%; margin-bottom: 25px; margin-top: 41px;">
 
         {% if current_user.is_authenticated %}
           {% include "home.logout.jinja2" %}

@@ -43,7 +43,6 @@ class OAuth2Sessions(Resource):
 
     @api.parameters(parameters.CreateOAuth2SessionParameters())
     @api.response(code=HTTPStatus.UNAUTHORIZED)
-    @api.doc(id='create_oauth_session')
     def post(self, args):
         """
         Log-in via a new OAuth2 Session.
@@ -136,7 +135,6 @@ class OAuth2Clients(Resource):
     @api.response(schemas.DetailedOAuth2ClientSchema())
     @api.response(code=HTTPStatus.FORBIDDEN)
     @api.response(code=HTTPStatus.CONFLICT)
-    @api.doc(id='create_oauth_client')
     def post(self, args):
         """
         Create a new OAuth2 Client.

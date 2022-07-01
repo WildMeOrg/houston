@@ -48,7 +48,7 @@ class Users(Resource):
     @api.paginate()
     def get(self, args):
         """
-        List of users.
+        List users
         """
         return User.query_search(args=args)
 
@@ -64,7 +64,6 @@ class Users(Resource):
     @api.response(code=HTTPStatus.FORBIDDEN)
     @api.response(code=HTTPStatus.CONFLICT)
     @api.response(code=HTTPStatus.BAD_REQUEST)
-    @api.doc(id='create_user')
     def post(self, args):
         """
         Create a new user.

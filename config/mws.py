@@ -11,6 +11,7 @@ from .base import (
     GoogleConfig,
     ReCaptchaConfig,
     SageConfig,
+    SentryConfig,
     TransloaditConfig,
     WildbookDatabaseConfig,
 )
@@ -29,6 +30,7 @@ class BaseMWSConfig(
     WildbookDatabaseConfig,
     FlatfileConfig,
     TransloaditConfig,
+    SentryConfig,
 ):
     PROJECT_NAME = 'MWS'
 
@@ -79,8 +81,6 @@ class ProductionConfig(BaseMWSConfig):
         'mail-errors@wildme.org',
     ]
 
-    SENTRY_DSN = os.getenv('SENTRY_DSN_PRODUCTION', None)
-
 
 class DevelopmentConfig(BaseMWSConfig):
     DEBUG = True
@@ -93,7 +93,6 @@ class DevelopmentConfig(BaseMWSConfig):
     ).split(',')
 
     SECRET_KEY = 'DEVELOPMENT_SECRET_KEY'
-    SENTRY_DSN = os.getenv('SENTRY_DSN_DEVELOPMENT', None)
 
 
 class TestingConfig(DevelopmentConfig):

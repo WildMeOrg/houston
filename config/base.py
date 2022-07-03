@@ -415,3 +415,7 @@ class WildbookDatabaseConfig:
         port = self.WILDBOOK_DB_PORT
         database = self.WILDBOOK_DB_NAME
         return f'postgresql://{user}:{password}@{host}:{port}/{database}'
+
+
+class SentryConfig:
+    SENTRY_DSN = _getenv('SENTRY_DSN', None)

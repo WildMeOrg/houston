@@ -11,6 +11,7 @@ from .base import (
     GoogleConfig,
     ReCaptchaConfig,
     SageConfig,
+    SentryConfig,
     TransloaditConfig,
     WildbookDatabaseConfig,
 )
@@ -29,6 +30,7 @@ class BaseCodexConfig(
     WildbookDatabaseConfig,
     FlatfileConfig,
     TransloaditConfig,
+    SentryConfig,
 ):
     PROJECT_NAME = 'Codex'
 
@@ -90,8 +92,6 @@ class ProductionConfig(BaseCodexConfig):
         'mail-errors@wildme.org',
     ]
 
-    SENTRY_DSN = os.getenv('SENTRY_DSN_PRODUCTION', None)
-
 
 class DevelopmentConfig(BaseCodexConfig):
     DEBUG = True
@@ -104,7 +104,6 @@ class DevelopmentConfig(BaseCodexConfig):
     ).split(',')
 
     SECRET_KEY = 'DEVELOPMENT_SECRET_KEY'
-    SENTRY_DSN = os.getenv('SENTRY_DSN_DEVELOPMENT', None)
 
 
 class TestingConfig(DevelopmentConfig):

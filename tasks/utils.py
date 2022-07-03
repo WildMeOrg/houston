@@ -9,6 +9,8 @@ import os
 
 from invoke import Task as BaseTask
 
+from config.utils import _getenv
+
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
 
@@ -60,7 +62,7 @@ def app_context_task(*wrapper_args, **wrapper_kwargs):
             """
             app = kwargs.pop('app', None)
             force_enable = kwargs.pop(
-                'force_enable', os.environ.get('FORCE_ENABLE', False)
+                'force_enable', bool(_getenv('FORCE_ENABLE', False))
             )
             force_disable_extensions = kwargs.pop('force_disable_extensions', None)
             force_disable_modules = kwargs.pop('force_disable_modules', None)

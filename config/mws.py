@@ -1,7 +1,5 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=too-few-public-methods,invalid-name,missing-docstring
-import os
-
 from .base import (
     DATA_ROOT,
     AssetGroupConfig,
@@ -16,6 +14,7 @@ from .base import (
     TransloaditConfig,
     WildbookDatabaseConfig,
 )
+from .utils import _getenv
 
 
 class BaseMWSConfig(
@@ -86,10 +85,10 @@ class ProductionConfig(BaseMWSConfig):
 class DevelopmentConfig(BaseMWSConfig):
     DEBUG = True
 
-    MAIL_OVERRIDE_RECIPIENTS = os.getenv(
+    MAIL_OVERRIDE_RECIPIENTS = _getenv(
         'MAIL_OVERRIDE_RECIPIENTS', 'testing@wildme.org'
     ).split(',')
-    MAIL_ERROR_RECIPIENTS = os.getenv(
+    MAIL_ERROR_RECIPIENTS = _getenv(
         'MAIL_ERROR_RECIPIENTS', 'mail-errors@wildme.org'
     ).split(',')
 
@@ -101,7 +100,7 @@ class TestingConfig(DevelopmentConfig):
     TESTING = True
 
     # Use in-memory database for testing if SQLALCHEMY_DATABASE_URI and TEST_DATABASE_URI are not specified
-    SQLALCHEMY_DATABASE_URI = os.getenv('TEST_DATABASE_URI') or os.getenv(
+    SQLALCHEMY_DATABASE_URI = _getenv('TEST_DATABASE_URI') or _getenv(
         'SQLALCHEMY_DATABASE_URI'
     )
 

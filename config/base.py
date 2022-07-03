@@ -9,20 +9,22 @@ from pathlib import Path
 import flask
 import pytz
 
+from .utils import _getenv
+
 HERE = Path.cwd()
 PROJECT_ROOT = str(HERE)
-DATA_ROOT = Path(os.getenv('DATA_ROOT', HERE / '_db'))
+DATA_ROOT = Path(_getenv('DATA_ROOT', HERE / '_db'))
 
 
 class FlaskConfigOverrides:
     # Override Flask's SERVER_NAME (default: None)
-    SERVER_NAME = os.getenv('SERVER_NAME')
+    SERVER_NAME = _getenv('SERVER_NAME')
 
     # Override Flask's PREFERRED_URL_SCHEME
     @property
     def PREFERRED_URL_SCHEME(self):
         # Flask default behavior is to set it to 'http'
-        scheme = os.getenv('PREFERRED_URL_SCHEME', 'http')
+        scheme = _getenv('PREFERRED_URL_SCHEME', 'http', empty_ok=True)
         if scheme not in (
             'http',
             'https',
@@ -35,11 +37,11 @@ class FlaskConfigOverrides:
 
 
 class RedisConfig:
-    REDIS_HOST = os.getenv('REDIS_HOST')
-    REDIS_PORT = os.getenv('REDIS_PORT', '6379')
-    REDIS_USE_SSL = bool(int(os.getenv('REDIS_USE_SSL', 0)))
-    REDIS_PASSWORD = os.getenv('REDIS_PASSWORD')
-    REDIS_DATABASE = os.getenv('REDIS_DATABASE', '1')
+    REDIS_HOST = _getenv('REDIS_HOST')
+    REDIS_PORT = _getenv('REDIS_PORT', '6379')
+    REDIS_USE_SSL = bool(int(_getenv('REDIS_USE_SSL', 0)))
+    REDIS_PASSWORD = _getenv('REDIS_PASSWORD')
+    REDIS_DATABASE = _getenv('REDIS_DATABASE', '1')
 
     @property
     def REDIS_CONNECTION_STRING(self):
@@ -85,7 +87,7 @@ class BaseConfig(FlaskConfigOverrides, RedisConfig):
     PROJECT_ROOT = PROJECT_ROOT
     PROJECT_DATABASE_PATH = str(DATA_ROOT)
 
-    USE_RELOADER = os.getenv('USE_RELOADER', 'false').lower() != 'false'
+    USE_RELOADER = _getenv('USE_RELOADER', 'false').lower() != 'false'
 
     # Mapping to file type taken from
     # https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/MIME_types/Common_types
@@ -146,9 +148,9 @@ class BaseConfig(FlaskConfigOverrides, RedisConfig):
     DEBUG = False
     RESTX_ERROR_404_HELP = False
 
-    REVERSE_PROXY_SETUP = os.getenv('HOSTON_REVERSE_PROXY_SETUP', False)
+    REVERSE_PROXY_SETUP = _getenv('HOSTON_REVERSE_PROXY_SETUP', False)
 
-    SECRET_KEY = os.getenv('SECRET_KEY')
+    SECRET_KEY = _getenv('SECRET_KEY')
 
     AUTHORIZATIONS = {
         'oauth2_password': {
@@ -166,11 +168,11 @@ class BaseConfig(FlaskConfigOverrides, RedisConfig):
     ENABLED_MODULES = ()
 
     STATIC_ROOT = os.path.join(PROJECT_ROOT, 'app', 'static')
-    FRONTEND_DIST = os.getenv(
+    FRONTEND_DIST = _getenv(
         'FRONTEND_DIST',
         os.path.join(PROJECT_ROOT, 'app', 'static', 'dist-latest'),
     )
-    SWAGGER_UI_DIST = os.getenv(
+    SWAGGER_UI_DIST = _getenv(
         'SWAGGER_UI_DIST',
         os.path.join(PROJECT_ROOT, 'app', 'static', 'swagger-ui'),
     )
@@ -204,35 +206,35 @@ class BaseConfig(FlaskConfigOverrides, RedisConfig):
     }
 
     OAUTH_USER = {
-        'email': os.getenv('OAUTH_USER_EMAIL', 'oauth-user@wildme.org'),
-        'password': os.getenv(
+        'email': _getenv('OAUTH_USER_EMAIL', 'oauth-user@wildme.org'),
+        'password': _getenv(
             'OAUTH_USER_PASSWORD',
             ''.join(
                 random.choice(string.ascii_letters + string.digits) for _ in range(20)
             ),
         ),
         'is_internal': True,
-        'client_id': os.getenv('OAUTH_CLIENT_ID'),
-        'client_secret': os.getenv('OAUTH_CLIENT_SECRET'),
+        'client_id': _getenv('OAUTH_CLIENT_ID'),
+        'client_secret': _getenv('OAUTH_CLIENT_SECRET'),
     }
 
 
 class EmailConfig(object):
-    MAIL_SERVER = os.getenv('MAIL_SERVER', 'smtp.gmail.com')
-    MAIL_PORT = int(os.getenv('MAIL_PORT', 587))
-    MAIL_USE_TLS = bool(os.getenv('MAIL_USE_TLS', True))
-    MAIL_USE_SSL = bool(os.getenv('MAIL_USE_SSL', False))
-    MAIL_USERNAME = os.getenv('MAIL_USERNAME', 'dev@wildme.org')
-    MAIL_PASSWORD = os.getenv('MAIL_PASSWORD', 'XXX')
-    DEFAULT_EMAIL_SERVICE = os.getenv('DEFAULT_EMAIL_SERVICE')
-    DEFAULT_EMAIL_SERVICE_USERNAME = os.getenv('DEFAULT_EMAIL_SERVICE_USERNAME')
-    DEFAULT_EMAIL_SERVICE_PASSWORD = os.getenv('DEFAULT_EMAIL_SERVICE_PASSWORD')
+    MAIL_SERVER = _getenv('MAIL_SERVER', 'smtp.gmail.com')
+    MAIL_PORT = int(_getenv('MAIL_PORT', 587))
+    MAIL_USE_TLS = bool(_getenv('MAIL_USE_TLS', True, empty_ok=True))
+    MAIL_USE_SSL = bool(_getenv('MAIL_USE_SSL', False, empty_ok=True))
+    MAIL_USERNAME = _getenv('MAIL_USERNAME', 'dev@wildme.org', empty_ok=True)
+    MAIL_PASSWORD = _getenv('MAIL_PASSWORD', 'XXX', empty_ok=True)
+    DEFAULT_EMAIL_SERVICE = _getenv('DEFAULT_EMAIL_SERVICE')
+    DEFAULT_EMAIL_SERVICE_USERNAME = _getenv('DEFAULT_EMAIL_SERVICE_USERNAME')
+    DEFAULT_EMAIL_SERVICE_PASSWORD = _getenv('DEFAULT_EMAIL_SERVICE_PASSWORD')
 
     @property
     def MAIL_DEFAULT_SENDER(self):
         return (
-            os.getenv('MAIL_DEFAULT_SENDER_NAME', 'Do Not Reply'),
-            os.getenv(
+            _getenv('MAIL_DEFAULT_SENDER_NAME', 'Do Not Reply'),
+            _getenv(
                 'MAIL_DEFAULT_SENDER_EMAIL',
                 f'do-not-reply@{self.SERVER_NAME.replace("www.", "", 1).split(":")[0]}',
             ),
@@ -240,13 +242,13 @@ class EmailConfig(object):
 
 
 class ReCaptchaConfig(object):
-    RECAPTCHA_SITE_VERIFY_API = os.getenv(
+    RECAPTCHA_SITE_VERIFY_API = _getenv(
         'RECAPTCHA_SITE_VERIFY_API',
         'https://www.google.com/recaptcha/api/siteverify',
     )
-    RECAPTCHA_PUBLIC_KEY = os.getenv('RECAPTCHA_PUBLIC_KEY')
-    RECAPTCHA_SECRET_KEY = os.getenv('RECAPTCHA_SECRET_KEY')
-    RECAPTCHA_BYPASS = os.getenv('RECAPTCHA_BYPASS', 'XXX')
+    RECAPTCHA_PUBLIC_KEY = _getenv('RECAPTCHA_PUBLIC_KEY')
+    RECAPTCHA_SECRET_KEY = _getenv('RECAPTCHA_SECRET_KEY')
+    RECAPTCHA_BYPASS = _getenv('RECAPTCHA_BYPASS', 'XXX')
 
 
 class StripeConfig(object):
@@ -259,7 +261,7 @@ class GoogleAnalyticsConfig(object):
 
 
 class GoogleMapsConfig(object):
-    GOOGLE_MAPS_API_KEY = os.getenv('GOOGLE_MAPS_API_KEY')
+    GOOGLE_MAPS_API_KEY = _getenv('GOOGLE_MAPS_API_KEY')
 
 
 class GoogleConfig(GoogleAnalyticsConfig, GoogleMapsConfig):
@@ -267,13 +269,13 @@ class GoogleConfig(GoogleAnalyticsConfig, GoogleMapsConfig):
 
 
 class TransloaditConfig:
-    TRANSLOADIT_KEY = os.getenv('TRANSLOADIT_KEY')
-    TRANSLOADIT_TEMPLATE_ID = os.getenv('TRANSLOADIT_TEMPLATE_ID')
-    TRANSLOADIT_SERVICE = os.getenv('TRANSLOADIT_SERVICE')
+    TRANSLOADIT_KEY = _getenv('TRANSLOADIT_KEY')
+    TRANSLOADIT_TEMPLATE_ID = _getenv('TRANSLOADIT_TEMPLATE_ID')
+    TRANSLOADIT_SERVICE = _getenv('TRANSLOADIT_SERVICE')
 
 
 class FlatfileConfig:
-    FLATFILE_KEY = os.getenv('FLATFILE_KEY')
+    FLATFILE_KEY = _getenv('FLATFILE_KEY')
 
 
 def get_env_rest_config(interface):
@@ -327,13 +329,15 @@ class EDMConfig(object):
 
 
 class AssetGroupConfig(object):
-    GITLAB_REMOTE_URI = os.getenv('GITLAB_REMOTE_URI', 'https://sub.dyn.wildme.io/')
-    GIT_PUBLIC_NAME = os.getenv('GIT_PUBLIC_NAME', 'Houston')
-    GIT_EMAIL = os.getenv('GIT_EMAIL', 'dev@wildme.org')
-    GITLAB_NAMESPACE = os.getenv('GITLAB_NAMESPACE', 'TEST')
-    GITLAB_REMOTE_LOGIN_PAT = os.getenv('GITLAB_REMOTE_LOGIN_PAT')
+    GITLAB_REMOTE_URI = _getenv(
+        'GITLAB_REMOTE_URI', 'https://sub.dyn.wildme.io/', empty_ok=True
+    )
+    GIT_PUBLIC_NAME = _getenv('GIT_PUBLIC_NAME', 'Houston')
+    GIT_EMAIL = _getenv('GIT_EMAIL', 'dev@wildme.org')
+    GITLAB_NAMESPACE = _getenv('GITLAB_NAMESPACE', 'TEST')
+    GITLAB_REMOTE_LOGIN_PAT = _getenv('GITLAB_REMOTE_LOGIN_PAT')
     # FIXME: Note, if you change the SSH key, you should also delete the ssh_id file (see GIT_SSH_KEY_FILEPATH)
-    GIT_SSH_KEY = os.getenv('GIT_SSH_KEY')
+    GIT_SSH_KEY = _getenv('GIT_SSH_KEY')
 
     #: using lowercase so Flask won't pick it up as a legit setting
     default_git_ssh_key_filepath = DATA_ROOT / 'id_ssh_key'
@@ -341,7 +345,7 @@ class AssetGroupConfig(object):
     @property
     def GIT_SSH_KEY_FILEPATH(self):
         # Assuming mixed-in with BaseConfig
-        fp = Path(os.getenv('GIT_SSH_KEY_FILEPATH', self.default_git_ssh_key_filepath))
+        fp = Path(_getenv('GIT_SSH_KEY_FILEPATH', self.default_git_ssh_key_filepath))
         if self.GIT_SSH_KEY is None:
             # Assume the user knows what they are doing and bail out
             # FIXME: It's possible to get here because parts of the application
@@ -382,12 +386,12 @@ class ElasticsearchConfig:
     # Elasticsearch host configuration
     # - for multiple hosts use a comma to separate each host
     # - to specify a port use a colon and port number (e.g. `elasticsearch:9200`)
-    ELASTICSEARCH_HOSTS = _parse_elasticsearch_hosts(os.getenv('ELASTICSEARCH_HOSTS'))
-    ELASTICSEARCH_HTTP_AUTH = os.getenv('ELASTICSEARCH_HTTP_AUTH', None)
+    ELASTICSEARCH_HOSTS = _parse_elasticsearch_hosts(_getenv('ELASTICSEARCH_HOSTS'))
+    ELASTICSEARCH_HTTP_AUTH = _getenv('ELASTICSEARCH_HTTP_AUTH')
     ELASTICSEARCH_BUILD_INDEX_ON_STARTUP = bool(
-        os.getenv('ELASTICSEARCH_BUILD_INDEX_ON_STARTUP', False)
+        _getenv('ELASTICSEARCH_BUILD_INDEX_ON_STARTUP', False, empty_ok=True)
     )
-    ELASTICSEARCH_BLOCKING = bool(os.getenv('ELASTICSEARCH_BLOCKING', False))
+    ELASTICSEARCH_BLOCKING = bool(_getenv('ELASTICSEARCH_BLOCKING', False, empty_ok=True))
 
     CACHE_TYPE = 'SimpleCache'
     CACHE_DEFAULT_TIMEOUT = 60
@@ -397,11 +401,11 @@ class ElasticsearchConfig:
 
 
 class WildbookDatabaseConfig:
-    WILDBOOK_DB_USER = os.getenv('WILDBOOK_DB_USER')
-    WILDBOOK_DB_PASSWORD = os.getenv('WILDBOOK_DB_PASSWORD')
-    WILDBOOK_DB_HOST = os.getenv('WILDBOOK_DB_HOST')
-    WILDBOOK_DB_PORT = os.getenv('WILDBOOK_DB_PORT', '5432')
-    WILDBOOK_DB_NAME = os.getenv('WILDBOOK_DB_NAME')
+    WILDBOOK_DB_USER = _getenv('WILDBOOK_DB_USER')
+    WILDBOOK_DB_PASSWORD = _getenv('WILDBOOK_DB_PASSWORD')
+    WILDBOOK_DB_HOST = _getenv('WILDBOOK_DB_HOST')
+    WILDBOOK_DB_PORT = _getenv('WILDBOOK_DB_PORT', '5432')
+    WILDBOOK_DB_NAME = _getenv('WILDBOOK_DB_NAME')
 
     @property
     def WILDBOOK_DB_URI(self):

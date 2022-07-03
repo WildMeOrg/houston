@@ -9,11 +9,10 @@ This package defines configuration for the Houston application and its various c
 The combination of ``HOUSTON_CONTEXT`` & ``FLASK_ENV`` are used to determine which configuration to use when running the application.
 
 """
-import os
 from functools import lru_cache
 from pathlib import Path
 
-from .utils import export_dotenv, import_class
+from .utils import _getenv, export_dotenv, import_class
 
 CONTEXT_ENVIRONMENT_VARIABLE = 'HOUSTON_APP_CONTEXT'
 CONFIG_CLS_MAPPER = {
@@ -69,7 +68,7 @@ def get_preliminary_config(context=None, environment=None):
 
     """
     # Discover the application context
-    ctx = context if context else os.getenv(CONTEXT_ENVIRONMENT_VARIABLE, '')
+    ctx = context if context else _getenv(CONTEXT_ENVIRONMENT_VARIABLE, '')
     ctx = ctx.lower()  # to unify the naming case
     if not ctx or ctx not in VALID_CONTEXTS:
         raise RuntimeError(
@@ -78,7 +77,7 @@ def get_preliminary_config(context=None, environment=None):
             f"This value can be {' or '.join(VALID_CONTEXTS)}. "
         )
     # Reusing Flask's built in FLASK_ENV
-    env = environment if environment else os.getenv('FLASK_ENV', 'production')
+    env = environment if environment else _getenv('FLASK_ENV', 'production')
     env = env.lower()  # to unify the naming case
     if env not in VALID_ENVIRONMENTS:
         raise RuntimeError(

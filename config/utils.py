@@ -11,6 +11,17 @@ __all__ = (
 )
 
 
+def _getenv(var_name, default=None, empty_ok=False):
+    """Easy way of assigning a default
+    when the environment variable is null or blank text.
+
+    """
+    value = os.getenv(var_name, default)
+    if empty_ok:
+        return value
+    return value if value else default
+
+
 def import_class(import_str):
     """Import a class from a string like ``package.module:class``."""
     path, cls_name = import_str.split(':')
@@ -20,13 +31,7 @@ def import_class(import_str):
 
 
 _CWD_DOTENV = Path.cwd() / '.env'
-_DEFAULT_DOTENV = Path(os.getenv('HOUSTON_DOTENV', _CWD_DOTENV))
-
-
-# FIXME: This is a workaround for an invalidly set GITLAB_REMOTE_LOGIN_PAT
-# unset GITLAB_REMOTE_LOGIN_PAT if empty
-if 'GITLAB_REMOTE_LOGIN_PAT' in os.environ and not os.environ['GITLAB_REMOTE_LOGIN_PAT']:
-    del os.environ['GITLAB_REMOTE_LOGIN_PAT']
+_DEFAULT_DOTENV = Path(_getenv('HOUSTON_DOTENV', _CWD_DOTENV))
 
 
 def export_dotenv(locations=[], stop_on_found=True):

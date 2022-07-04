@@ -193,7 +193,7 @@ def delete_file(
     _delete_setting(flask_app_client, user, path, expected_status_code)
 
 
-def _extract_from_main_block(main_block, field):
+def extract_from_main_block(main_block, field):
     # navigate through the fluff to find the data but don't assume that anything is there
     if 'response' in main_block and 'configuration' in main_block['response']:
         config = main_block['response']['configuration']
@@ -205,7 +205,7 @@ def _extract_from_main_block(main_block, field):
 # will create one if we dont have any (yet)
 def get_some_taxonomy_dict(flask_app_client, admin_user):
     block_data = read_main_settings(flask_app_client, admin_user).json
-    species = _extract_from_main_block(block_data, 'site.species')
+    species = extract_from_main_block(block_data, 'site.species')
 
     if species and isinstance(species, list) and len(species) > 0:
         return species[0]
@@ -221,7 +221,7 @@ def get_some_taxonomy_dict(flask_app_client, admin_user):
         'site.species',
     )
     response = read_main_settings(flask_app_client, admin_user).json
-    species = _extract_from_main_block(response, 'site.species')
+    species = extract_from_main_block(response, 'site.species')
     assert species
     assert isinstance(species, list)
     assert len(species) > 0
@@ -231,7 +231,7 @@ def get_some_taxonomy_dict(flask_app_client, admin_user):
 # Helper util to get (and create if necessary) the regions we will use for testing
 def get_and_ensure_test_regions(flask_app_client, admin_user):
     block_data = read_main_settings(flask_app_client, admin_user).json
-    current_regions = _extract_from_main_block(block_data, 'site.custom.regions')
+    current_regions = extract_from_main_block(block_data, 'site.custom.regions')
 
     names = []
     regions = []

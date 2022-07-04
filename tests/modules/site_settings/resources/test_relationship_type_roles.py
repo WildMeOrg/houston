@@ -33,13 +33,14 @@ def test_relationship_type_roles(flask_app_client, admin_user):
     )
 
     # Check relationship_type_roles validation
+    error = "Houston Setting key=relationship_type_roles, value incorrect type value=['rod', 'jane', 'freddy'],needs to be <class 'dict'>"
     utils.modify_main_settings(
         flask_app_client,
         admin_user,
         {'_value': ['rod', 'jane', 'freddy']},
         conf_key='relationship_type_roles',
         expected_status_code=400,
-        expected_error='relationship_type_roles needs to be a dictionary',
+        expected_error=error,
     )
 
     utils.modify_main_settings(

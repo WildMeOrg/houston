@@ -362,6 +362,8 @@ def post_via_flask(
     elif expected_status_code == 200:
         if response_200:
             validate_dict_response(response, 200, response_200)
+        else:
+            assert response.status_code == expected_status_code, response.json
     elif expected_status_code:
         validate_dict_response(response, expected_status_code, {'status', 'message'})
         if expected_error:

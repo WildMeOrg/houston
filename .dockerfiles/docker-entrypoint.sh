@@ -113,23 +113,24 @@ _main() {
 		if [ _is_development_env ]; then
 			set_up_development_mode
 		fi
+
+		mkdir -p ${DATA_ROOT}
+		# fix permissions on the data directory
+		chown -R nobody:nogroup ${DATA_ROOT}
+		# check dir permissions to reduce likelihood of half-initialized database
+		ls ${DATA_ROOT}/ > /dev/null
+
+		# Ensure the log file directory has the correct permissions
+		if [ -n "${LOG_FILE}" ]; then
+			LOG_DIR=$(dirname ${LOG_FILE})
+		else
+			LOG_DIR="./logs"
+		fi
+		mkdir -p $LOG_DIR
+		chown -R nobody:nogroup ${LOG_DIR}
+
 		# only run initialization on an empty data directory
 		if [ -z "$ALREADY_INITIALIZED" ]; then
-			mkdir -p ${DATA_ROOT}
-			# fix permissions on the data directory
-			chown -R nobody:nogroup ${DATA_ROOT}
-			# check dir permissions to reduce likelihood of half-initialized database
-			ls ${DATA_ROOT}/ > /dev/null
-
-			# Ensure the log file directory has the correct permissions
-			if [ -n "${LOG_FILE}" ]; then
-				LOG_DIR=$(dirname ${LOG_FILE})
-			else
-				LOG_DIR="./logs"
-			fi
-			mkdir -p $LOG_DIR
-			chown -R nobody:nogroup ${LOG_DIR}
-
 			# Have the application initialize the data location and database
 			# FIXME: `--no-backup` is necessary because this apparently has the side-effect
 			#        of doing doing a backup for a database it may not know how to backup.

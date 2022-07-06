@@ -102,6 +102,7 @@ if is_extension_enabled('edm'):
                 self.is_user_manager = True
                 self.is_admin = True
 
+
 else:
     UserEDMMixin = object
 
@@ -579,6 +580,13 @@ class User(db.Model, FeatherModel, UserEDMMixin):
         if code is None:
             return False
         return code.is_resolved
+
+    # creates email code and resolves it so above returns true
+    def bypass_email_confirmation(self):
+        from app.modules.auth.models import CodeDecisions
+
+        code = self.get_email_confirmation_code()
+        code.record(CodeDecisions.accept)
 
     @property
     def owned_missions(self):

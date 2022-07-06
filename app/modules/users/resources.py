@@ -321,7 +321,9 @@ class AdminUserInitialized(Resource):
                 in_beta=True,
                 in_alpha=True,
                 update=True,
+                send_verification=False,
             )
+            admin.bypass_email_confirmation()
             log.info(
                 'Success creating startup (houston) admin user via API: {!r}.'.format(
                     admin

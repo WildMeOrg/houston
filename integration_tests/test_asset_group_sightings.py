@@ -172,6 +172,7 @@ def test_asset_group_sightings(session, login, codex_url, test_root):
         'indexed': response.json()['indexed'],
         'major_type': 'filesystem',
         'owner_guid': my_guid,
+        'pipeline_status': response.json()['pipeline_status'],
         'progress_preparation': response.json()['progress_preparation'],
         'progress_detection': response.json()['progress_detection'],
         'progress_identification': response.json()['progress_identification'],

@@ -565,7 +565,7 @@ def test_patch_encounter(db, flask_app_client, researcher_1, request, test_root)
 
 @pytest.mark.skipif(module_unavailable('sightings'), reason='Sightings module disabled')
 def test_create_with_public_encounters(
-    db, flask_app_client, researcher_1, researcher_2, request, test_root
+    db, flask_app_client, researcher_1, researcher_2, staff_user, request, test_root
 ):
     # pylint: disable=invalid-name
     import tests.modules.asset_groups.resources.utils as asset_group_utils
@@ -576,7 +576,7 @@ def test_create_with_public_encounters(
     # calling code responsibility to clear up if public data
     request.addfinalizer(
         lambda: asset_group_utils.delete_asset_group(
-            flask_app_client, researcher_1, uuids1['asset_group']
+            flask_app_client, staff_user, uuids1['asset_group']
         )
     )
     uuids2 = sighting_utils.create_sighting(

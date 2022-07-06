@@ -1607,6 +1607,76 @@ class AssetGroup(GitStore):
         for sighting in self.asset_group_sightings:
             sighting.index(*args, **kwargs)
 
+    # per DEX-1246, ag.get_pipeline_status() *only* contains preparation stage
+    def get_pipeline_status(self):
+        db.session.refresh(self)
+        status = {
+            'preparation': self._get_pipeline_status_preparation(),
+            'now': datetime.datetime.utcnow().isoformat(),
+            'migrated': False,  # always false, but just for consistency
+            # no summary cuz that seems weird with only one section?
+        }
+        return status
+
+    def _get_pipeline_status_preparation(self):
+        from app.modules.progress.models import ProgressStatus
+
+        progress = self.progress_preparation
+        if not progress:
+            return {
+                'skipped': False,
+                'inProgress': False,
+                'failed': False,
+                'complete': True,
+                'message': 'no Progress',
+                'steps': 0,
+                'stepsComplete': 0,
+                'progress': 1,
+                'start': self.created.isoformat() + 'Z',
+                'end': self.created.isoformat() + 'Z',
+                'eta': None,
+                'ahead': None,
+                'status': None,
+                'description': None,
+            }
+
+        # much of this we just pass what Progress object has
+        status = {
+            # start with these false and set below
+            'skipped': False,
+            'inProgress': False,
+            'failed': False,
+            'complete': False,
+            'message': progress.message,
+            'steps': len(progress.steps) if progress.steps else 0,
+            'stepsComplete': 0,  # TBD
+            # using previously established 0.0-1.0 but maybe FE will want to swtich to 0-100
+            'progress': progress.percentage / 100,
+            'start': progress.created.isoformat() + 'Z',
+            'end': None,
+            'eta': progress.current_eta,
+            'ahead': progress.ahead,
+            'status': progress.status,
+            'description': progress.description,
+        }
+
+        if progress.skipped:
+            status['skipped'] = True
+        elif progress.status == ProgressStatus.failed:
+            status['failed'] = True
+        elif progress.complete:
+            status['complete'] = True
+        elif (
+            progress.status == ProgressStatus.created
+            or progress.status == ProgressStatus.healthy
+        ):
+            status['inProgress'] = True
+        # if it falls through, all False, thus "waiting"
+
+        if progress.complete:
+            status['end'] = progress.updated.isoformat() + 'Z'
+        return status
+
     @classmethod
     def get_elasticsearch_schema(cls):
         from app.modules.asset_groups.schemas import CreateAssetGroupSchema

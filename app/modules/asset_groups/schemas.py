@@ -76,12 +76,15 @@ class DetailedAssetGroupSchema(DetailedGitStoreSchema):
         many=False,
     )
 
+    pipeline_status = base_fields.Function(AssetGroup.get_pipeline_status)
+
     class Meta(DetailedGitStoreSchema.Meta):
         fields = DetailedGitStoreSchema.Meta.fields + (
             'asset_group_sightings',
             'progress_preparation',
             'progress_detection',
             'progress_identification',
+            'pipeline_status',
         )
         dump_only = DetailedGitStoreSchema.Meta.dump_only
 

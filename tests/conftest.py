@@ -409,6 +409,7 @@ def admin_user(temp_db_instance_helper):
     for _ in temp_db_instance_helper(
         utils.generate_user_instance(
             email='admin@localhost',
+            password='Pas$w0rd',
             is_admin=True,
         )
     ):

@@ -178,7 +178,7 @@ def user_logout_frontend(refer=None, *args, **kwargs):
     return user_logout_shared('frontend.user_login', refer=refer, *args, **kwargs)
 
 
-@backend_blueprint.route('/logout', methods=['GET', 'POST'])
+@backend_blueprint.route('/logout', methods=['GET', 'POST'], endpoint='user_logout')
 @login_required
 def user_logout_backend(refer=None, *args, **kwargs):
     # pylint: disable=unused-argument

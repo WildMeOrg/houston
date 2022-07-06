@@ -428,11 +428,11 @@ def test_ObjectAccessPermission_researcher_user(
     obj.is_public = lambda: True
     validate_can_read_object(obj)
     validate_can_write_object(obj)
-    validate_can_delete_object(obj)
+    validate_cannot_delete_object(obj)
 
     validate_can_read_object(public_encounter)
     validate_can_write_object(public_encounter)
-    validate_can_delete_object(public_encounter)
+    validate_cannot_delete_object(public_encounter)
 
     validate_can_read_object(owned_encounter)
     validate_cannot_write_object(owned_encounter)

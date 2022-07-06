@@ -165,12 +165,9 @@ class Encounter(db.Model, FeatherModel):
             taxonomy_guid = self.sighting.get_taxonomy_guid()
         return taxonomy_guid
 
-    def get_time_isoformat_in_timezone(self, sighting_fallback=False):
-        if self.time:
-            return self.time.isoformat_in_timezone()
-        if self.sighting and sighting_fallback:
-            return self.sighting.get_time_isoformat_in_timezone()
-        return None
+    def get_time_isoformat_in_timezone(self, sighting_fallback=True):
+        time = self.get_time(sighting_fallback=sighting_fallback)
+        return time.isoformat_in_timezone() if time else None
 
     def get_time(self, sighting_fallback=True):
         if self.time:
@@ -179,8 +176,9 @@ class Encounter(db.Model, FeatherModel):
             return self.sighting.time
         return None
 
-    def get_time_specificity(self):
-        return self.time.specificity if self.time else None
+    def get_time_specificity(self, sighting_fallback=True):
+        time = self.get_time(sighting_fallback=sighting_fallback)
+        return time.specificity if time else None
 
     # this does the heavy lifting of trying to set time from user-provided data
     def set_time_from_data(self, data):

@@ -1607,6 +1607,94 @@ class AssetGroup(GitStore):
         for sighting in self.asset_group_sightings:
             sighting.index(*args, **kwargs)
 
+    # per DEX-1246, ag.get_pipeline_status() *only* contains preparation stage
+    def get_pipeline_status(self):
+        db.session.refresh(self)
+        status = {
+            'preparation': self._get_pipeline_status_preparation(),
+            'now': datetime.datetime.utcnow().isoformat(),
+            'migrated': False,  # always false, but just for consistency
+            # no summary cuz that seems weird with only one section?
+        }
+        return status
+
+    def _get_pipeline_status_preparation(self):
+        # if we have no AssetGroupSightings, i guess this makes sense?
+        if not self.asset_group_sightings:
+            return {
+                'skipped': False,
+                'inProgress': False,
+                'failed': False,
+                'complete': True,
+                'message': 'no AssetGroupSightings',
+                'steps': 0,
+                'stepsComplete': 0,
+                'progress': 1,
+                'start': self.created.isoformat() + 'Z',
+                'end': self.created.isoformat() + 'Z',
+                'eta': None,
+                'ahead': None,
+                'status': None,
+                'description': None,
+            }
+
+        num_ags = len(self.asset_group_sightings)
+        # initialize, and update after we look thru AssetGroupSightings
+        status = {
+            'skipped': False,
+            'inProgress': False,
+            'failed': False,
+            'complete': False,
+            'message': None,
+            'steps': num_ags,
+            'stepsComplete': 0,
+            'progress': None,
+            'start': None,
+            'end': None,
+            'eta': None,
+            'ahead': None,
+            'status': None,
+            'description': None,
+        }
+        num_failed = 0
+        num_in_progress = 0
+        num_skipped = 0
+        latest_end = None
+        for ags in self.asset_group_sightings:
+            prep_status = ags._get_pipeline_status_preparation()
+            if prep_status['complete']:
+                status['stepsComplete'] += 1
+            elif prep_status['inProgress']:
+                num_in_progress += 1
+            elif prep_status['failed']:
+                num_failed += 1
+            elif prep_status['skipped']:
+                num_skipped += 1
+            # find earliest start time
+            if prep_status['start'] and (
+                not status['start'] or (prep_status['start'] < status['start'])
+            ):
+                status['start'] = prep_status['start']
+            # and latest end time
+            if prep_status['end'] and (
+                not latest_end or (prep_status['end'] > latest_end)
+            ):
+                latest_end = prep_status['end']
+
+        status['progress'] = status['stepsComplete'] / num_ags
+        # kinda winging it with this a bit...
+        if status['stepsComplete'] == num_ags:
+            status['complete'] = True
+            status['end'] = latest_end  # only set end if complete
+        elif num_skipped == num_ags:
+            status['skipped'] = True
+        elif num_failed > 0:
+            status['failed'] = True
+        elif num_in_progress > 0:
+            status['inProgress'] = True
+        # if it falls through, all False, thus "waiting"
+        return status
+
     @classmethod
     def get_elasticsearch_schema(cls):
         from app.modules.asset_groups.schemas import CreateAssetGroupSchema

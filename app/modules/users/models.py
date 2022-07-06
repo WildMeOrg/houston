@@ -583,12 +583,10 @@ class User(db.Model, FeatherModel, UserEDMMixin):
 
     # creates email code and resolves it so above returns true
     def bypass_email_confirmation(self):
-        import datetime
+        from app.modules.auth.models import CodeDecisions
 
         code = self.get_email_confirmation_code()
-        code.response = datetime.datetime.now()
-        with db.session.begin():
-            db.session.merge(code)
+        code.record(CodeDecisions.accept)
 
     @property
     def owned_missions(self):

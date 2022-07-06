@@ -227,6 +227,15 @@ def test_add_remove_encounters(db, flask_app_client, researcher_1, request, test
         str(encounter.guid) for encounter in individual_1.get_encounters()
     ]
 
+    # Check individual encounters times (which are null and should
+    # return the sighting time)
+    individual_json = individual_utils.read_individual(
+        flask_app_client, researcher_1, individual_1.guid
+    ).json
+    for encounter in individual_json['encounters']:
+        assert encounter['timeSpecificity'] == 'time'
+        assert encounter['time'] == test_time
+
     # removing all encounters will trigger delete cascade and clean up EDM
     # hack because sighting patch only takes one ID for remove. another PR for another day.
     enc_guids = [str(enc_2.guid), str(enc_3.guid), str(enc_4.guid)]

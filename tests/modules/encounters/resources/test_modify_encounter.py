@@ -540,6 +540,7 @@ def test_create_encounter_time_test(
 def test_mix_edm_houston_patch(
     flask_app, flask_app_client, researcher_1, request, test_root
 ):
+    sighting_time = '2000-01-01T01:01:01+00:00'
     uuids = enc_utils.create_encounter(flask_app_client, researcher_1, request, test_root)
     encounter_guid = uuids['encounters'][0]
 
@@ -563,6 +564,7 @@ def test_mix_edm_houston_patch(
         == 'org.ecocean.api.ApiValueException: invalid longitude value'
     )
     assert 'decimalLatitude' not in read_resp.json.keys()
+    assert read_resp.json['time'] == sighting_time
 
     # Houston only patch
     new_time = datetime.datetime.now().isoformat() + '+00:00'
@@ -578,7 +580,7 @@ def test_mix_edm_houston_patch(
     )
     read_resp = enc_utils.read_encounter(flask_app_client, researcher_1, encounter_guid)
     assert 'Failed to update Encounter details.' in patch_resp.json['message']
-    assert read_resp.json['time'] is None
+    assert read_resp.json['time'] == sighting_time
 
     # Houston and EDM patch
     lat = utils.random_decimal_latitude()
@@ -613,3 +615,4 @@ def test_mix_edm_houston_patch(
     ]
     assert read_resp.json['decimalLatitude'] == str(lat)
     assert read_resp.json['decimalLongitude'] == str(long)
+    assert read_resp.json['time'] == sighting_time

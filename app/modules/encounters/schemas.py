@@ -21,8 +21,8 @@ class BaseEncounterSchema(ModelSchema):
     owner = base_fields.Nested('PublicUserSchema', many=False)
     hasView = base_fields.Function(Encounter.current_user_has_view_permission)
     hasEdit = base_fields.Function(Encounter.current_user_has_edit_permission)
-    time = base_fields.Function(Encounter.get_time_isoformat_in_timezone)
-    timeSpecificity = base_fields.Function(Encounter.get_time_specificity)
+    time = base_fields.Function(lambda enc: enc.get_time_isoformat_in_timezone())
+    timeSpecificity = base_fields.Function(lambda enc: enc.get_time_specificity())
 
     class Meta:
         # pylint: disable=missing-docstring

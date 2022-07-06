@@ -561,3 +561,31 @@ def test_patch_encounter(db, flask_app_client, researcher_1, request, test_root)
     temp_enc.delete()
     individual = Individual.query.get(individual_guid)
     individual.delete()
+
+
+@pytest.mark.skipif(module_unavailable('sightings'), reason='Sightings module disabled')
+def test_create_with_public_encounters(
+    db, flask_app_client, researcher_1, researcher_2, staff_user, request, test_root
+):
+    # pylint: disable=invalid-name
+    import tests.modules.asset_groups.resources.utils as asset_group_utils
+
+    uuids1 = sighting_utils.create_sighting(
+        flask_app_client, None, request, test_root, commit_user=researcher_2
+    )
+    # calling code responsibility to clear up if public data
+    request.addfinalizer(
+        lambda: asset_group_utils.delete_asset_group(
+            flask_app_client, staff_user, uuids1['asset_group']
+        )
+    )
+    uuids2 = sighting_utils.create_sighting(
+        flask_app_client, researcher_1, request, test_root, commit_user=researcher_1
+    )
+    ind_data = {
+        'encounters': [{'id': uuids1['encounters'][0]}, {'id': uuids2['encounters'][0]}]
+    }
+    ind_resp = individual_utils.create_individual(
+        flask_app_client, researcher_1, data_in=ind_data
+    ).json
+    individual_utils.delete_individual(flask_app_client, researcher_1, ind_resp['guid'])

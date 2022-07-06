@@ -390,6 +390,7 @@ class ObjectActionRule(DenyAbortMixin, Rule):
             if not has_permission:
                 has_permission = self.elevated_permission() | (
                     self._permitted_via_collaboration()
+                    | self._permitted_as_public_data()
                     # | self._permitted_via_org()
                     # | self._permitted_via_project()
                 )
@@ -400,6 +401,18 @@ class ObjectActionRule(DenyAbortMixin, Rule):
                 % (self._action, self._obj, self._user)
             )
         return has_permission
+
+    def _permitted_as_public_data(self):
+        # All public data can be read/edited by researchers and data managers as decreed
+        # https://wildme.atlassian.net/browse/DEX-1281
+        return (
+            self._obj.is_public()
+            and (self._user.is_researcher or self._user.is_data_manager)
+            and (
+                self._action == AccessOperation.READ
+                or self._action == AccessOperation.WRITE
+            )
+        )
 
     # def _permitted_via_org(self):
     #     has_permission = False

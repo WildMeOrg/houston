@@ -1619,14 +1619,16 @@ class AssetGroup(GitStore):
         return status
 
     def _get_pipeline_status_preparation(self):
-        # if we have no AssetGroupSightings, i guess this makes sense?
-        if not self.asset_group_sightings:
+        from app.modules.progress.models import ProgressStatus
+
+        progress = self.progress_preparation
+        if not progress:
             return {
                 'skipped': False,
                 'inProgress': False,
                 'failed': False,
                 'complete': True,
-                'message': 'no AssetGroupSightings',
+                'message': 'no Progress',
                 'steps': 0,
                 'stepsComplete': 0,
                 'progress': 1,
@@ -1638,61 +1640,41 @@ class AssetGroup(GitStore):
                 'description': None,
             }
 
-        num_ags = len(self.asset_group_sightings)
-        # initialize, and update after we look thru AssetGroupSightings
+        # much of this we just pass what Progress object has
         status = {
+            # start with these false and set below
             'skipped': False,
             'inProgress': False,
             'failed': False,
             'complete': False,
-            'message': None,
-            'steps': num_ags,
-            'stepsComplete': 0,
-            'progress': None,
-            'start': None,
+            'message': progress.message,
+            'steps': len(progress.steps) if progress.steps else 0,
+            'stepsComplete': 0,  # TBD
+            # using previously established 0.0-1.0 but maybe FE will want to swtich to 0-100
+            'progress': progress.percentage / 100,
+            'start': progress.created.isoformat() + 'Z',
             'end': None,
-            'eta': None,
-            'ahead': None,
-            'status': None,
-            'description': None,
+            'eta': progress.current_eta,
+            'ahead': progress.ahead,
+            'status': progress.status,
+            'description': progress.description,
         }
-        num_failed = 0
-        num_in_progress = 0
-        num_skipped = 0
-        latest_end = None
-        for ags in self.asset_group_sightings:
-            prep_status = ags._get_pipeline_status_preparation()
-            if prep_status['complete']:
-                status['stepsComplete'] += 1
-            elif prep_status['inProgress']:
-                num_in_progress += 1
-            elif prep_status['failed']:
-                num_failed += 1
-            elif prep_status['skipped']:
-                num_skipped += 1
-            # find earliest start time
-            if prep_status['start'] and (
-                not status['start'] or (prep_status['start'] < status['start'])
-            ):
-                status['start'] = prep_status['start']
-            # and latest end time
-            if prep_status['end'] and (
-                not latest_end or (prep_status['end'] > latest_end)
-            ):
-                latest_end = prep_status['end']
 
-        status['progress'] = status['stepsComplete'] / num_ags
-        # kinda winging it with this a bit...
-        if status['stepsComplete'] == num_ags:
-            status['complete'] = True
-            status['end'] = latest_end  # only set end if complete
-        elif num_skipped == num_ags:
+        if progress.skipped:
             status['skipped'] = True
-        elif num_failed > 0:
+        elif progress.status == ProgressStatus.failed:
             status['failed'] = True
-        elif num_in_progress > 0:
+        elif progress.complete:
+            status['complete'] = True
+        elif (
+            progress.status == ProgressStatus.created
+            or progress.status == ProgressStatus.healthy
+        ):
             status['inProgress'] = True
         # if it falls through, all False, thus "waiting"
+
+        if progress.complete:
+            status['end'] = progress.updated.isoformat() + 'Z'
         return status
 
     @classmethod

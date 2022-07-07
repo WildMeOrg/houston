@@ -1230,6 +1230,17 @@ class AssetGroupSighting(db.Model, HoustonModel):
             db.session.refresh(self)
 
             self.job_complete(job_id)
+
+            # if only one encounter, assign all annots to it
+            if (
+                self.stage == AssetGroupSightingStage.curation
+                and len(self.sighting_config['encounters']) == 1
+            ):
+                # Only one encounter, assign all annots to it
+                enc_guid = self.sighting_config['encounters'][0]['guid']
+                for annot in self.get_all_annotations():
+                    self.add_annotation_to_encounter(enc_guid, str(annot.guid))
+
             AuditLog.audit_log_object(
                 log, self, f'Detection for AssetGroupSighting {self.guid} succeeded'
             )
@@ -1241,7 +1252,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
                 self.progress_detection.fail(str(ex))
             raise
 
-    # Record that the asset has been updated for future re detection
+    # Record that the asset has been updated for future re detectionF
     def asset_updated(self, asset):
         updated_assets = self.sighting_config.setdefault('updatedAssets', [])
         if asset.guid not in updated_assets:

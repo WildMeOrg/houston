@@ -130,7 +130,7 @@ def test_asset_group_sightings(session, login, codex_url, test_root):
                         'decimalLongitude': 21.832598,
                         'encounters': [
                             {
-                                'annotations': ags_encounter['annotations'],
+                                'annotations': ags_encounter.get('annotations', []),
                                 'customFields': enc_custom_fields,
                                 'decimalLatitude': 63.142385,
                                 'decimalLongitude': -21.596914,

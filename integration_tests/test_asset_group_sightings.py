@@ -130,6 +130,7 @@ def test_asset_group_sightings(session, login, codex_url, test_root):
                         'decimalLongitude': 21.832598,
                         'encounters': [
                             {
+                                'annotations': ags_encounter['annotations'],
                                 'customFields': enc_custom_fields,
                                 'decimalLatitude': 63.142385,
                                 'decimalLongitude': -21.596914,
@@ -236,7 +237,7 @@ def test_asset_group_sightings(session, login, codex_url, test_root):
         'encounterCounts': {},
         'encounters': [
             {
-                'annotations': [],
+                'annotations': encounters[0]['annotations'],
                 # 2021-11-13T16:57:41.937173+00:00
                 'createdHouston': encounters[0]['createdHouston'],
                 'customFields': enc_custom_fields,

@@ -1252,7 +1252,7 @@ class AssetGroupSighting(db.Model, HoustonModel):
                 self.progress_detection.fail(str(ex))
             raise
 
-    # Record that the asset has been updated for future re detectionF
+    # Record that the asset has been updated for future re detection
     def asset_updated(self, asset):
         updated_assets = self.sighting_config.setdefault('updatedAssets', [])
         if asset.guid not in updated_assets:
@@ -1480,6 +1480,8 @@ class AssetGroupSighting(db.Model, HoustonModel):
                     encounter_metadata['annotations'] = []
                 if annot_guid not in encounter_metadata['annotations']:
                     encounter_metadata['annotations'].append(annot_guid)
+        # force db write
+        self.config = self.config
 
     def remove_annotation_from_encounter(self, encounter_guid, annot_guid):
         for encounter_num in range(len(self.sighting_config['encounters'])):

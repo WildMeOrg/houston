@@ -1,7 +1,5 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=too-few-public-methods,invalid-name,missing-docstring
-import os
-
 from .base import (
     DATA_ROOT,
     AssetGroupConfig,
@@ -13,9 +11,11 @@ from .base import (
     GoogleConfig,
     ReCaptchaConfig,
     SageConfig,
+    SentryConfig,
     TransloaditConfig,
     WildbookDatabaseConfig,
 )
+from .utils import _getenv
 
 
 class BaseMWSConfig(
@@ -30,6 +30,7 @@ class BaseMWSConfig(
     WildbookDatabaseConfig,
     FlatfileConfig,
     TransloaditConfig,
+    SentryConfig,
 ):
     PROJECT_NAME = 'MWS'
 
@@ -80,28 +81,25 @@ class ProductionConfig(BaseMWSConfig):
         'mail-errors@wildme.org',
     ]
 
-    SENTRY_DSN = os.getenv('SENTRY_DSN_PRODUCTION', None)
-
 
 class DevelopmentConfig(BaseMWSConfig):
     DEBUG = True
 
-    MAIL_OVERRIDE_RECIPIENTS = os.getenv(
+    MAIL_OVERRIDE_RECIPIENTS = _getenv(
         'MAIL_OVERRIDE_RECIPIENTS', 'testing@wildme.org'
     ).split(',')
-    MAIL_ERROR_RECIPIENTS = os.getenv(
+    MAIL_ERROR_RECIPIENTS = _getenv(
         'MAIL_ERROR_RECIPIENTS', 'mail-errors@wildme.org'
     ).split(',')
 
     SECRET_KEY = 'DEVELOPMENT_SECRET_KEY'
-    SENTRY_DSN = os.getenv('SENTRY_DSN_DEVELOPMENT', None)
 
 
 class TestingConfig(DevelopmentConfig):
     TESTING = True
 
     # Use in-memory database for testing if SQLALCHEMY_DATABASE_URI and TEST_DATABASE_URI are not specified
-    SQLALCHEMY_DATABASE_URI = os.getenv('TEST_DATABASE_URI') or os.getenv(
+    SQLALCHEMY_DATABASE_URI = _getenv('TEST_DATABASE_URI') or _getenv(
         'SQLALCHEMY_DATABASE_URI'
     )
 

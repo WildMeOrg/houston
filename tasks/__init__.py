@@ -6,16 +6,17 @@ The starting point of Invoke tasks for Houston.
 
 import logging
 import logging.handlers
-import os
 import platform
+
+from config.utils import _getenv
 
 FORMAT = '[%(name)s] %(message)s'
 logging_config = {'level': logging.DEBUG, 'format': FORMAT, 'datefmt': '[%X]'}
 handlers = [
     logging.handlers.TimedRotatingFileHandler(
-        filename=os.getenv('LOG_FILE', 'logs/houston.log'),
+        filename=_getenv('LOG_FILE', 'logs/houston.log'),
         when='midnight',
-        backupCount=int(os.getenv('LOG_FILE_BACKUP_COUNT', 30)),
+        backupCount=int(_getenv('LOG_FILE_BACKUP_COUNT', 30)),
     ),
 ]
 
@@ -44,9 +45,9 @@ try:
         'rich_tracebacks': True,
         'tracebacks_show_locals': True,
     }
-    if os.environ.get('TERM', None) is None:
+    if _getenv('TERM', None) is None:
         try:
-            log_width = os.environ.get('LOG_WIDTH', None)
+            log_width = _getenv('LOG_WIDTH', None)
             log_width = float(log_width)
         except Exception:
             log_width = 200
@@ -128,9 +129,7 @@ def invoke_execute(context, command_name, **kwargs):
 namespace.configure(
     {
         'run': {
-            'shell': '/bin/sh'
-            if platform.system() != 'Windows'
-            else os.environ.get('COMSPEC'),
+            'shell': '/bin/sh' if platform.system() != 'Windows' else _getenv('COMSPEC'),
         },
         'root_namespace': namespace,
         'invoke_execute': invoke_execute,

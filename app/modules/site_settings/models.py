@@ -697,7 +697,34 @@ class SiteSetting(db.Model, Timestamp):
                         },
                     )
 
-        # TODO also traverse private here FIXME
+        # TODO Transient, to be removed as part of EDM retirement.
+        # Needed temporarily to allow FE to change to use these new names rather than the old Occurrence and
+        # MarkedIndividual from old wildbook
+        data['response']['configuration']['site.custom.customFields.Sighting'] = {
+            'readOnly': False,
+            'isPrivate': False,
+            'required': False,
+            'displayType': 'customFields',
+            'settable': True,
+            'descriptionId': 'CONFIGURATION_SITE_CUSTOM_CUSTOMFIELDS_SIGHTING_DESCRIPTION',
+            'translationId': 'CONFIGURATION_SITE_CUSTOM_CUSTOMFIELDS_SIGHTING',
+            'labelId': 'CONFIGURATION_SITE_CUSTOM_CUSTOMFIELDS_SIGHTING_LABEL',
+            'name': 'configuration_site_custom_customFields_Sighting',
+            'fieldType': 'customFields',
+        }
+        data['response']['configuration']['site.custom.customFields.Individual'] = {
+            'readOnly': False,
+            'isPrivate': False,
+            'required': False,
+            'displayType': 'customFields',
+            'settable': True,
+            'descriptionId': 'CONFIGURATION_SITE_CUSTOM_CUSTOMFIELDS_INDIVIDUAL_DESCRIPTION',
+            'translationId': 'CONFIGURATION_SITE_CUSTOM_CUSTOMFIELDS_INDIVIDUAL',
+            'labelId': 'CONFIGURATION_SITE_CUSTOM_CUSTOMFIELDS_INDIVIDUAL_LABEL',
+            'name': 'configuration_site_custom_customFields_Individual',
+            'fieldType': 'customFields',
+        }
+
         return data
 
     #####################################

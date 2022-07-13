@@ -89,9 +89,7 @@ def create_sighting(
     group_data = {
         'description': 'This is a test asset_group, please ignore',
         'uploadType': 'form',
-        'speciesDetectionModel': [
-            'None',
-        ],
+        'speciesDetectionModel': ['None'],
         'transactionId': transaction_id,
         'sightings': [
             sighting_data,

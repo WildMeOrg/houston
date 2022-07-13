@@ -745,7 +745,9 @@ class IndividualMergeRequestByTaskId(Resource):
             'merge_outcome': 'unanimous',
         }
         Individual.merge_notify(
-            [target_individual], request_data, NotificationType.individual_merge_complete
+            [target_individual] + all_individuals,
+            request_data,
+            NotificationType.individual_merge_complete,
         )
         return {'vote': vote, 'merge_completed': True}
 

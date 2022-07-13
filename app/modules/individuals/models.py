@@ -740,7 +740,9 @@ class Individual(db.Model, FeatherModel):
             'merge_outcome': 'deadline',
         }
         Individual.merge_notify(
-            [target_individual], request_data, NotificationType.individual_merge_complete
+            [target_individual] + all_individuals,
+            request_data,
+            NotificationType.individual_merge_complete,
         )
 
     # note: this will destructively remove names from source_individuals

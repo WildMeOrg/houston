@@ -237,13 +237,28 @@ class NotificationBuilder(object):
                 self.data['target_individual_name'] = indiv.get_primary_name()
             else:
                 source_names.append(indiv.get_primary_name())
-        self.data['source_names_list'] = ', '.join(source_names)
         self.data['other_individuals'] = []
 
         for indiv in other_individuals:
             ind_data = {'guid': indiv.guid, 'primaryName': indiv.get_primary_name()}
             self.data['other_individuals'].append(ind_data)
+            source_names.append(indiv.get_primary_name())
         self.data['request_id'] = request_data.get('id')
+        uuid_names = []
+        for source_name in source_names:
+            try:
+                uuid_names.append(uuid.UUID(source_name))
+            except ValueError:
+                pass
+        if uuid_names:
+            # If any individuals have a uuid name, skip the name listing and
+            # just use number of individuals
+            if len(source_names) == 1:
+                self.data['source_names_list'] = f'{len(source_names)} individual'
+            else:
+                self.data['source_names_list'] = f'{len(source_names)} individuals'
+        else:
+            self.data['source_names_list'] = ', '.join(source_names)
         deadline_datetime = request_data.get('deadline')
         if deadline_datetime:
             self.data['deadline'] = deadline_datetime.isoformat() + 'Z'

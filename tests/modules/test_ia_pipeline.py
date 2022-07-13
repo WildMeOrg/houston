@@ -149,6 +149,26 @@ def test_ia_pipeline_sim_detect_response(
             )
 
 
+# DEX-1186 and DEX-1311 necessitate some thorough testing of pipeline Progress manipulation
+#   and reporting logic in populating pipeline_status, so this is an attempt to do that
+@pytest.mark.skipif(
+    module_unavailable('asset_groups', 'sightings'), reason='AssetGroups module disabled'
+)
+def test_ia_pipeline_progress_and_status(
+    flask_app,
+    flask_app_client,
+    researcher_1,
+    regular_user,
+    staff_user,
+    internal_user,
+    test_root,
+    db,
+    request,
+):
+    # TODO um, do this
+    assert True
+
+
 @pytest.mark.skipif(
     module_unavailable('asset_groups', 'sightings'), reason='AssetGroups module disabled'
 )

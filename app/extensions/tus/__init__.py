@@ -413,7 +413,7 @@ def tus_cleanup():
                 log.info(
                     'Deleting too old (%s seconds) Tus pending file: %r'
                     % (
-                        delta,
+                        int(delta),
                         tus_path,
                     )
                 )
@@ -428,7 +428,7 @@ def tus_cleanup():
                     'Skipping Tus pending file (Age: %s, Remaining: %s): %r'
                     % (
                         humanize.naturaldelta(datetime.timedelta(seconds=age)),
-                        humanize.naturaldelta(datetime.timedelta(seconds=delta)),
+                        humanize.naturaldelta(datetime.timedelta(seconds=-delta)),
                         tus_path,
                     )
                 )

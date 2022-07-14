@@ -7,6 +7,7 @@ import uuid
 
 import pytest
 
+from tests.extensions.tus import utils
 from tests.utils import get_stored_path, redis_unavailable
 
 
@@ -31,10 +32,12 @@ def test_tus_options(flask_app_client):
 
 
 @pytest.mark.skipif(redis_unavailable(), reason='Redis unavailable')
-def test_tus_upload_protocol(flask_app, flask_app_client):
+def test_tus_upload_protocol(flask_app, flask_app_client, request):
     resource_id = str(uuid.uuid4())
     transaction_id = str(uuid.uuid4())
     file_upload_path = get_file_upload_path(flask_app, transaction_id)
+    file_upload_dir = file_upload_path.parent
+    request.addfinalizer(lambda: shutil.rmtree(file_upload_dir))
 
     # Initialize file upload
     a_txt = 'abcd\n'
@@ -93,6 +96,10 @@ def test_tus_upload_protocol(flask_app, flask_app_client):
     assert response.headers['Upload-Length'] == str(len(a_txt))
     assert response.data == b''
 
+    # Set maximum number of files per transaction to 3
+    flask_app.config['TUS_MAX_FILES_PER_TRANSACTION'] = 3
+    request.addfinalizer(lambda: flask_app.config.pop('TUS_MAX_FILES_PER_TRANSACTION'))
+
     # Upload the rest of the file
     response = flask_app_client.patch(
         path,
@@ -120,8 +127,38 @@ def test_tus_upload_protocol(flask_app, flask_app_client):
     )
     assert response.status_code == 404
 
-    if file_upload_path.parent.exists():
-        shutil.rmtree(file_upload_path.parent)
+    # Upload more files
+    for response in utils.upload_files_to_tus(
+        flask_app_client,
+        transaction_id,
+        (
+            ('xyz.txt', 'xyz\n'),
+            ('stu.txt', 'stu\n'),
+        ),
+    ):
+        assert response.status_code == 204
+    file_content = []
+    for path in file_upload_dir.glob('[0-9a-f]*'):
+        with path.open() as f:
+            file_content.append(f.read())
+    file_content.sort()
+    assert file_content == ['abcd\n', 'stu\n', 'xyz\n']
+
+    # After 3 files, file number limit is reached
+    for response in utils.upload_files_to_tus(
+        flask_app_client, transaction_id, (('ghi.txt', 'ghi\n'),)
+    ):
+        assert response.status_code == 400
+        assert response.json == {
+            'status': 400,
+            'message': 'Exceeded maximum number of files in one transaction: 3',
+        }
+    file_content = []
+    for path in file_upload_dir.glob('[0-9a-f]*'):
+        with path.open() as f:
+            file_content.append(f.read())
+    file_content.sort()
+    assert file_content == ['abcd\n', 'stu\n', 'xyz\n']
 
 
 @pytest.mark.skipif(redis_unavailable(), reason='Redis unavailable')

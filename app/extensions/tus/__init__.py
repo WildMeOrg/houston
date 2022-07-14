@@ -6,6 +6,7 @@ Logging adapter
 import json
 import logging
 import os
+import pathlib
 import shutil
 
 from flask import current_app
@@ -95,8 +96,14 @@ def _tus_upload_file_handler(
             }
             json.dump(metadata, metadata_file)
 
-    log.debug('Tus finished uploading: {!r} in dir {!r}.'.format(filename, dir))
     filepath = os.path.join(dir, filename)
+
+    max_files = int(app.config.get('TUS_MAX_FILES_PER_TRANSACTION', 5000))
+    files_number = len(list(pathlib.Path(dir).glob('.*.metadata.json')))
+    if files_number >= max_files:
+        raise Exception(
+            f'Exceeded maximum number of files in one transaction: {max_files}'
+        )
 
     try:
         os.rename(upload_file_path, filepath)
@@ -107,6 +114,8 @@ def _tus_upload_file_handler(
         if os.path.exists(filepath):
             os.rename(filepath, upload_file_path)
         raise
+
+    log.debug('Tus finished uploading: {!r} in dir {!r}.'.format(filename, dir))
 
     return filename
 

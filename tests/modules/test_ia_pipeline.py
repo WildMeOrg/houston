@@ -165,8 +165,92 @@ def test_ia_pipeline_progress_and_status(
     db,
     request,
 ):
-    # TODO um, do this
-    assert True
+
+    # pylint: disable=invalid-name
+    from app.extensions import elasticsearch as es
+    from app.modules.annotations.models import Annotation
+
+    # from app.modules.asset_groups.models import AssetGroup, AssetGroupSighting
+    from app.modules.sightings.models import Sighting
+
+    if es.is_disabled():
+        pytest.skip('Elasticsearch disabled (via command-line)')
+
+    # Create two sightings so that there will be a valid annotation when doing ID for the second one.
+    # Otherwise the get_matching_set_data in sightings will return an empty list
+    (
+        asset_group_uuid1,
+        asset_group_sighting_guid1,
+        asset_uuid1,
+    ) = asset_group_utils.create_simple_asset_group(
+        flask_app_client, researcher_1, request, test_root
+    )
+    target_annot_guid = asset_group_utils.patch_in_dummy_annotation(
+        flask_app_client, db, researcher_1, asset_group_sighting_guid1, asset_uuid1
+    )
+    commit_response = asset_group_utils.commit_asset_group_sighting(
+        flask_app_client, researcher_1, asset_group_sighting_guid1
+    )
+    sighting_uuid = commit_response.json['guid']
+    target_annot = Annotation.query.get(target_annot_guid)
+    assert target_annot
+
+    # mark it as processed or it won't be valid in the matching set
+    sighting_utils.write_sighting_path(
+        flask_app_client, researcher_1, f'{sighting_uuid}/reviewed', {}
+    )
+
+    # Second sighting, the one we'll use for testing, Create with annotation but don't commit.... yet
+    uuids = asset_group_utils.create_complex_asset_group_uuids(
+        flask_app_client,
+        researcher_1,
+        request,
+        test_root,
+        filename='several-grevys.jpg',
+        # filename='zebra2.jpg',
+        detection_model='african_terrestrial',
+        # location_id=region1_id,
+    )
+    asset_group_uuid2 = uuids['asset_group']
+    asset_group_sighting_uuid2 = uuids['asset_group_sighting']
+    asset_uuid2 = uuids['assets'][0]
+    assert asset_group_uuid2
+    assert asset_uuid2
+    # wait for detection to finish
+    test_utils.wait_for_progress(flask_app, [uuids['progress_detection']])
+    ####query_annot = Annotation.query.get(query_annot_guid)
+
+    # start identification
+    id_configs = [
+        {
+            'algorithms': [
+                'hotspotter_nosv',
+            ],
+        }
+    ]
+    patch_data = [test_utils.patch_replace_op('idConfigs', id_configs)]
+    asset_group_utils.patch_asset_group_sighting(
+        flask_app_client,
+        researcher_1,
+        asset_group_sighting_uuid2,
+        patch_data,
+    )
+    response = asset_group_utils.commit_asset_group_sighting_sage_identification(
+        flask_app, flask_app_client, researcher_1, asset_group_sighting_uuid2
+    )
+    sighting_uuid = response.json['guid']
+    wait_for_elasticsearch_status(flask_app_client, researcher_1)
+    sighting = Sighting.query.get(sighting_uuid)
+    assert sighting
+    breakpoint()
+
+    return
+    # manually add annots to encounter
+    # asset_group_utils.assign_annot_to_encounter(flask_app_client, researcher_1, ags_guid)
+    # commit it
+    # asset_group_utils.commit_asset_group_sighting(
+    # flask_app_client, researcher_1, ags_guid
+    # )
 
 
 @pytest.mark.skipif(

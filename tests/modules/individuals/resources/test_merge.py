@@ -1,12 +1,14 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=missing-docstring
-
+import email
 import logging
+from unittest import mock
 
 import pytest
 
 from tests import utils as test_utils
 from tests.modules.individuals.resources import utils as individual_utils
+from tests.modules.users.resources import utils as user_utils
 
 log = logging.getLogger(__name__)
 
@@ -261,6 +263,22 @@ def test_get_data_and_voting(
 
     notif_utils.mark_all_notifications_as_read(flask_app_client, researcher_1)
 
+    # Set up email notification for researcher_2
+    user_utils.patch_user(
+        flask_app_client,
+        researcher_2,
+        researcher_2,
+        [
+            test_utils.patch_replace_op(
+                'notification_preferences',
+                {
+                    'all': {'restAPI': True, 'email': True},
+                    'individual_merge_complete': {'restAPI': True, 'email': True},
+                },
+            ),
+        ],
+    )
+
     # this tests as researcher_2, which should trigger a merge-request (owns just 1 encounter)
     data_in = [individual2_id]
     response = individual_utils.merge_individuals(
@@ -347,12 +365,21 @@ def test_get_data_and_voting(
     )
 
     # valid vote (will incidentally also do merge!)
-    response = individual_utils.vote_merge_request(
-        flask_app_client,
-        researcher_1,
-        request_id,
-        'allow',
+    with mock.patch('app.extensions.email.mail.send') as send:
+        response = individual_utils.vote_merge_request(
+            flask_app_client,
+            researcher_1,
+            request_id,
+            'allow',
+        )
+    email_obj = send.call_args[0][0]
+    message = email.message_from_string(str(email_obj))
+    assert message.get('To') == researcher_2.email
+    assert message.get('Subject') == 'Archibald and 1 individual have been merged'
+    assert 'the merge between Archibald and 1 individual is now complete' in str(
+        email_obj
     )
+
     assert response.json
     assert response.json.get('vote') == 'allow'
     voters = IndividualMergeRequestVote.get_voters(request_id)

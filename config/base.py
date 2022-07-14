@@ -219,6 +219,9 @@ class BaseConfig(FlaskConfigOverrides, RedisConfig):
     }
 
     TUS_MAX_FILES_PER_TRANSACTION = int(_getenv('TUS_MAX_FILES_PER_TRANSACTION', 5000))
+    TUS_MAX_TIME_PER_TRANSACTION = int(
+        _getenv('TUS_MAX_TIME_PER_TRANSACTION', 24 * 60 * 60)
+    )
 
 
 class EmailConfig(object):

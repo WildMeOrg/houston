@@ -2,11 +2,14 @@
 import base64
 import pathlib
 import shutil
+import time
 import urllib.parse
 import uuid
+from unittest import mock
 
 import pytest
 
+from app.extensions import tus
 from tests.extensions.tus import utils
 from tests.utils import get_stored_path, redis_unavailable
 
@@ -159,6 +162,30 @@ def test_tus_upload_protocol(flask_app, flask_app_client, request):
             file_content.append(f.read())
     file_content.sort()
     assert file_content == ['abcd\n', 'stu\n', 'xyz\n']
+
+    # Delete 1 file and test max transaction time limit
+    path = list(file_upload_dir.glob('[0-9a-f]*'))[0]
+    pathlib.Path(tus.tus_get_resource_metadata_filepath(path)).unlink()
+    path.unlink()
+
+    with mock.patch('app.extensions.tus.time') as mock_time:
+        mock_time.time.return_value = time.time() + 24 * 60 * 60 + 60
+        for response in utils.upload_files_to_tus(
+            flask_app_client, transaction_id, (('ghi.txt', 'ghi\n'),)
+        ):
+            assert response.status_code == 400
+            assert response.json == {
+                'status': 400,
+                'message': 'Exceeded maximum time (a day) in one transaction by a minute',
+            }
+
+        mock_time.time.return_value = time.time() + 23 * 60 * 60
+        for response in utils.upload_files_to_tus(
+            flask_app_client, transaction_id, (('ghi.txt', 'ghi\n'),)
+        ):
+            assert response.status_code == 204
+
+    assert len(list(file_upload_dir.glob('[0-9a-f]*'))) == 3
 
 
 @pytest.mark.skipif(redis_unavailable(), reason='Redis unavailable')

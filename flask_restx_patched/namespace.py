@@ -177,7 +177,10 @@ class Namespace(OriginalNamespace):
                 kwargs[object_arg_name] = resolver(kwargs)
                 return func_or_class(*args, **kwargs)
 
-            return wrapper
+            return self.response(
+                code=HTTPStatus.NOT_FOUND,
+                description='**NOT FOUND**: The object could not be found by the GUID provided',
+            )(wrapper)
 
         return decorator
 
@@ -209,10 +212,15 @@ class Namespace(OriginalNamespace):
             if _locations is not None:
                 parameters.context['in'] = _locations
 
+            omit_set = {'indexed', 'elasticsearchable'}
+            for omit_value in omit_set:
+                parameters.fields.pop(omit_value, None)
+                parameters.declared_fields.pop(omit_value, None)
+
             return self.doc(params=parameters)(
                 self.response(
                     code=HTTPStatus.UNPROCESSABLE_ENTITY,
-                    description='**UNPROCESSABLE**: The request was formatted correctly but contains a semantic error',
+                    description='**UNPROCESSABLE ENTITY**: The request was formatted correctly but contains a semantic error',
                 )(self.WEBARGS_PARSER.use_args(parameters, locations=_locations)(func))
             )
 
@@ -309,14 +317,12 @@ class Namespace(OriginalNamespace):
                     api_model = [api_model]
 
             if description is None:
-                if code in {HTTPStatus.OK} and func_or_class.__doc__:
-                    # description_ = '**SUCCESS**: %s' % (func_or_class.__doc__.strip(), )
-                    description_ = '**SUCCESS**'
-                elif code in {HTTPStatus.OK} and model and model.__doc__:
-                    # description_ = '**SUCCESS**: %s' % (model.__doc__.strip(), )
+                if code in {HTTPStatus.OK}:
                     description_ = '**SUCCESS**'
                 else:
-                    description_ = code.description
+                    description_ = '**{}**: {}'.format(
+                        code.phrase.upper(), code.description
+                    )
             else:
                 description_ = description
 
@@ -464,7 +470,7 @@ class Namespace(OriginalNamespace):
                 }
             )(
                 self.response(
-                    code=HTTPStatus.UNAUTHORIZED.value,
+                    code=HTTPStatus.UNAUTHORIZED,
                     description=(
                         '**UNAUTHORIZED**: This resource requires OAuth authentication'
                         if not oauth_scopes
@@ -576,7 +582,7 @@ class Namespace(OriginalNamespace):
 
             permission_description = permission.__doc__.strip()
             return self.response(
-                code=HTTPStatus.FORBIDDEN.value,
+                code=HTTPStatus.FORBIDDEN,
                 description='**FORBIDDEN**: {}'.format(permission_description),
             )(protected_func)
 
@@ -642,8 +648,8 @@ class Namespace(OriginalNamespace):
                 description='**REQUIRED EXTENSIONS: {}**\n\n'.format(extensions)
             )(
                 self.response(
-                    code=HTTPStatus.NOT_IMPLEMENTED.value,
-                    description='Some required server-side extensions are disabled',
+                    code=HTTPStatus.NOT_IMPLEMENTED,
+                    description='**NOT IMPLEMENTED**: Some required server-side extensions are disabled',
                 )(protected_func)
             )
 
@@ -693,8 +699,8 @@ class Namespace(OriginalNamespace):
 
             return self.doc(description='**REQUIRED MODULES: {}**\n\n'.format(modules))(
                 self.response(
-                    code=HTTPStatus.NOT_IMPLEMENTED.value,
-                    description='Some required server-side modules are disabled',
+                    code=HTTPStatus.NOT_IMPLEMENTED,
+                    description='**NOT IMPLEMENTED**: Some required server-side modules are disabled',
                 )(protected_func)
             )
 

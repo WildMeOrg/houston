@@ -47,13 +47,14 @@ class CreateUserParameters(Parameters, schemas.BaseUserSchema):
     password = base_fields.String(description='No rules yet', required=True)
     roles = base_fields.List(
         base_fields.String(),
-        description=f'User roles: {", ".join(USER_ROLES)}',
+        description='Available user roles: %s'
+        % (', '.join(['`{}`'.format(role) for role in USER_ROLES])),
         required=False,
     )
 
     recaptcha_key = base_fields.String(
         description=(
-            'See `/<prefix>/auth/recaptcha` for details. It is required for everybody, except admins'
+            'See `/api/v1/auth/recaptcha` for details. It is required for everybody, except admins'
         ),
         required=False,
     )

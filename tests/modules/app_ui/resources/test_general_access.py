@@ -41,4 +41,4 @@ def test_login_logout(flask_app, admin_user):
 
     resp = client.get(url_for('backend.user_logout'))
     assert resp.status_code == 302
-    assert resp.headers['Location'] == url_for('backend.user_login')
+    assert resp.headers['Location'] == url_for('backend.home')

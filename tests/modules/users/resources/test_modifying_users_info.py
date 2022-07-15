@@ -158,7 +158,7 @@ def test_invalid_modifying_user_info_by_admin(
         },
         {'op': 'replace', 'path': '/is_staff', 'value': True},
     ]
-    error = 'The request was well-formed but was unable to be followed due to semantic errors.'
+    error = 'The request was formatted correctly but contains a semantic error (check input values and types).'
     user_utils.patch_user(flask_app_client, admin_user, regular_user, data, 422, error)
 
     data = [

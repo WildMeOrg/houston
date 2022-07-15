@@ -239,7 +239,7 @@ def test_invalid_creation(
             individuals[2]['id']: {'role_guids': [git_guid]},
         },
     }
-    error = 'The request was well-formed but was unable to be followed due to semantic errors.'
+    error = 'The request was formatted correctly but contains a semantic error (check input values and types).'
     soc_group_utils.create_social_group(
         flask_app_client, researcher_1, missing_name, 422, error
     )

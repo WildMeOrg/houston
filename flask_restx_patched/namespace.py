@@ -286,8 +286,12 @@ class Namespace(OriginalNamespace):
                 else:
                     _code = code
 
+                if not dump:
+                    _code = code
+
                 if HTTPStatus(_code) is code and dump:
                     response = model.dump(response).data
+
                 return response, _code, extra_headers
 
             return dump_wrapper

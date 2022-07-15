@@ -32,10 +32,6 @@ class Resource(OriginalResource):
         """
         Check which methods are allowed.
 
-        Use this method if you need to know what operations are allowed to be
-        performed on this endpoint, e.g. to decide wether to display a button
-        in your UI.
-
         The list of allowed methods is provided in `Allow` response header.
         """
         # This is a generic implementation of OPTIONS method for resources.

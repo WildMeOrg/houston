@@ -14,7 +14,7 @@ from werkzeug import exceptions as http_exceptions
 
 from config import get_preliminary_config
 
-from .model import DefaultHTTPErrorSchema, Model
+from .model import Model  # DefaultHTTPErrorSchema
 
 
 def is_x_enabled(names, name_args, enabled_names):
@@ -177,7 +177,10 @@ class Namespace(OriginalNamespace):
                 kwargs[object_arg_name] = resolver(kwargs)
                 return func_or_class(*args, **kwargs)
 
-            return wrapper
+            return self.response(
+                code=HTTPStatus.NOT_FOUND,
+                description='**NOT FOUND**: The object could not be found by the GUID provided',
+            )(wrapper)
 
         return decorator
 
@@ -193,6 +196,7 @@ class Namespace(OriginalNamespace):
             api_model = Model(name, model, mask=mask)
             api_model.__apidoc__ = kwargs
             return self.add_model(name, api_model)
+
         return super(Namespace, self).model(name=name, model=model, **kwargs)
 
     def parameters(self, parameters, locations=None):
@@ -208,15 +212,23 @@ class Namespace(OriginalNamespace):
             if _locations is not None:
                 parameters.context['in'] = _locations
 
+            omit_set = {'indexed', 'elasticsearchable'}
+            for omit_value in omit_set:
+                parameters.fields.pop(omit_value, None)
+                parameters.declared_fields.pop(omit_value, None)
+
             return self.doc(params=parameters)(
-                self.response(code=HTTPStatus.UNPROCESSABLE_ENTITY)(
-                    self.WEBARGS_PARSER.use_args(parameters, locations=_locations)(func)
-                )
+                self.response(
+                    code=HTTPStatus.UNPROCESSABLE_ENTITY,
+                    description='**UNPROCESSABLE ENTITY**: The request was formatted correctly but contains a semantic error',
+                )(self.WEBARGS_PARSER.use_args(parameters, locations=_locations)(func))
             )
 
         return decorator
 
-    def response(self, model=None, code=HTTPStatus.OK, description=None, **kwargs):
+    def response(
+        self, model=None, code=HTTPStatus.OK, description=None, dump=True, **kwargs
+    ):
         """
         Endpoint response OpenAPI documentation decorator.
 
@@ -242,14 +254,13 @@ class Namespace(OriginalNamespace):
         code = HTTPStatus(code)
         if code is HTTPStatus.NO_CONTENT:
             assert model is None
+
         if model is None and code not in {HTTPStatus.ACCEPTED, HTTPStatus.NO_CONTENT}:
             if code.value not in http_exceptions.default_exceptions:
                 raise ValueError('`model` parameter is required for code %d' % code)
-            model = self.model(
-                name='HTTPError%d' % code, model=DefaultHTTPErrorSchema(http_code=code)
-            )
-        if description is None:
-            description = code.description
+            # model = self.model(
+            #     name='HTTPError%d' % code, model=DefaultHTTPErrorSchema(http_code=code)
+            # )
 
         def response_serializer_decorator(func):
             """
@@ -275,8 +286,12 @@ class Namespace(OriginalNamespace):
                 else:
                     _code = code
 
-                if HTTPStatus(_code) is code:
+                if not dump:
+                    _code = code
+
+                if HTTPStatus(_code) is code and dump:
                     response = model.dump(response).data
+
                 return response, _code, extra_headers
 
             return dump_wrapper
@@ -307,7 +322,18 @@ class Namespace(OriginalNamespace):
                 if getattr(model, 'many', False):
                     api_model = [api_model]
 
-            doc_decorator = self.doc(responses={code.value: (description, api_model)})
+            if description is None:
+                if code in {HTTPStatus.OK}:
+                    description_ = '**SUCCESS**'
+                else:
+                    description_ = '**{}**: {}'.format(
+                        code.phrase.upper(), code.description
+                    )
+            else:
+                description_ = description
+
+            doc_decorator = self.doc(responses={code.value: (description_, api_model)})
+
             return doc_decorator(decorated_func_or_class)
 
         return decorator
@@ -450,12 +476,12 @@ class Namespace(OriginalNamespace):
                 }
             )(
                 self.response(
-                    code=HTTPStatus.UNAUTHORIZED.value,
+                    code=HTTPStatus.UNAUTHORIZED,
                     description=(
-                        'Authentication is required'
+                        '**UNAUTHORIZED**: This resource requires OAuth authentication'
                         if not oauth_scopes
-                        else 'Authentication with %s OAuth scope(s) is required'
-                        % (', '.join(oauth_scopes))
+                        else '**UNAUTHORIZED**: This resource requires the OAuth scopes %s'
+                        % (', '.join(['`{}`'.format(scope) for scope in _oauth_scopes]))
                     ),
                 )(oauth_protected_func)
             )
@@ -561,14 +587,10 @@ class Namespace(OriginalNamespace):
                 )
 
             permission_description = permission.__doc__.strip()
-            return self.doc(
-                description='**PERMISSIONS: %s**\n\n' % permission_description
-            )(
-                self.response(
-                    code=HTTPStatus.FORBIDDEN.value,
-                    description=permission_description,
-                )(protected_func)
-            )
+            return self.response(
+                code=HTTPStatus.FORBIDDEN,
+                description='**FORBIDDEN**: {}'.format(permission_description),
+            )(protected_func)
 
         return decorator
 
@@ -632,8 +654,8 @@ class Namespace(OriginalNamespace):
                 description='**REQUIRED EXTENSIONS: {}**\n\n'.format(extensions)
             )(
                 self.response(
-                    code=HTTPStatus.NOT_IMPLEMENTED.value,
-                    description='Some required server-side extensions are disabled',
+                    code=HTTPStatus.NOT_IMPLEMENTED,
+                    description='**NOT IMPLEMENTED**: Some required server-side extensions are disabled',
                 )(protected_func)
             )
 
@@ -683,8 +705,8 @@ class Namespace(OriginalNamespace):
 
             return self.doc(description='**REQUIRED MODULES: {}**\n\n'.format(modules))(
                 self.response(
-                    code=HTTPStatus.NOT_IMPLEMENTED.value,
-                    description='Some required server-side modules are disabled',
+                    code=HTTPStatus.NOT_IMPLEMENTED,
+                    description='**NOT IMPLEMENTED**: Some required server-side modules are disabled',
                 )(protected_func)
             )
 

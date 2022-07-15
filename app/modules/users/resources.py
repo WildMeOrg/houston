@@ -48,7 +48,7 @@ class Users(Resource):
     @api.paginate()
     def get(self, args):
         """
-        List of users.
+        List users
         """
         return User.query_search(args=args)
 
@@ -64,7 +64,6 @@ class Users(Resource):
     @api.response(code=HTTPStatus.FORBIDDEN)
     @api.response(code=HTTPStatus.CONFLICT)
     @api.response(code=HTTPStatus.BAD_REQUEST)
-    @api.doc(id='create_user')
     def post(self, args):
         """
         Create a new user.
@@ -169,31 +168,27 @@ class UserElasticsearch(Resource):
 
 
 @api.route('/<uuid:user_guid>')
-@api.response(
-    code=HTTPStatus.NOT_FOUND,
-    description='User not found.',
-)
 @api.resolve_object_by_model(User, 'user')
 class UserByID(Resource):
     """
     Manipulations with a specific user.
     """
 
-    # no decorators here for permissions or schemas, as getting specific user data is "public"
-    #   with the schema being determined based on privileges below
+    # use base decorators here for permissions or schemas, as getting specific user data is "public"
+    # with the schema being determined based on privileges below
+    @api.response(schemas.PublicUserSchema(), dump=False)
     def get(self, user):
         """
-        Get user details by ID.
+        Get user details by ID.  This API will return a more detailed response if the current logged in user is authorized for the requested user.
         """
         from app.modules.users.permissions import rules
-        from app.modules.users.schemas import DetailedUserSchema, PublicUserSchema
 
         if not current_user.is_anonymous and (
             rules.owner_or_privileged(current_user, user) or current_user.is_user_manager
         ):
-            schema = DetailedUserSchema()
+            schema = schemas.DetailedUserSchema()
         else:
-            schema = PublicUserSchema()
+            schema = schemas.PublicUserSchema()
         return schema.dump(user)
 
     @api.login_required(oauth_scopes=['users:write'])
@@ -405,10 +400,6 @@ class UserSightings(Resource):
 
 
 @api.route('/<uuid:user_guid>/profile_image', doc=False)
-@api.response(
-    code=HTTPStatus.NOT_FOUND,
-    description='User not found.',
-)
 @api.resolve_object_by_model(User, 'user')
 class UserProfileByID(Resource):
     def get(self, user):

@@ -38,6 +38,18 @@
     .swagger-ui .scheme-container { 
       padding-top: 0px;
     }
+
+    .swagger-ui .markdown p {
+      margin: 0px;
+    }
+
+    .swagger-ui table tbody tr td:first-of-type {
+      padding-right: 30px;
+    }
+
+    .opblock-options {
+        display: none;
+    }    
   </style>
   
   <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" style="position:absolute;width:0;height:0">
@@ -116,8 +128,13 @@
                   supportedSubmitMethods: {{ config.SWAGGER_SUPPORTED_SUBMIT_METHODS | tojson}},
                 {%- endif %}
                 displayOperationId: {{ config.SWAGGER_UI_OPERATION_ID|default(False)|tojson }},
-                displayRequestDuration: {{ config.SWAGGER_UI_REQUEST_DURATION|default(False)|tojson }},
-                docExpansion: "{{ config.SWAGGER_UI_DOC_EXPANSION | default('none') }}"
+                defaultModelExpandDepth: 2,
+                defaultModelsExpandDepth: 2,
+                displayRequestDuration: {{ config.SWAGGER_UI_REQUEST_DURATION|default(True)|tojson }},
+                docExpansion: "{{ config.SWAGGER_UI_DOC_EXPANSION | default('none') }}",
+                operationsSorter: "method",
+                layout: "StandaloneLayout",
+                defaultModelRendering: "model",
             })
 
             {% if config.SWAGGER_UI_OAUTH_CLIENT_ID -%}

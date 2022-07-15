@@ -12,8 +12,6 @@ try:
 except ImportError:  # Invoke 0.13 renamed ctask to task
     from invoke import task
 
-log = logging.getLogger(__name__)
-
 
 @task(default=True)
 def export(context, output_format='json', quiet=False):

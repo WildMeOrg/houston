@@ -168,10 +168,6 @@ class UserElasticsearch(Resource):
 
 
 @api.route('/<uuid:user_guid>')
-@api.response(
-    code=HTTPStatus.NOT_FOUND,
-    description='User not found.',
-)
 @api.resolve_object_by_model(User, 'user')
 class UserByID(Resource):
     """
@@ -404,10 +400,6 @@ class UserSightings(Resource):
 
 
 @api.route('/<uuid:user_guid>/profile_image', doc=False)
-@api.response(
-    code=HTTPStatus.NOT_FOUND,
-    description='User not found.',
-)
 @api.resolve_object_by_model(User, 'user')
 class UserProfileByID(Resource):
     def get(self, user):

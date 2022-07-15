@@ -17,7 +17,7 @@ class BaseCollaborationSchema(ModelSchema):
     Base Collaboration schema exposes only the most general fields.
     """
 
-    members = base_fields.Function(Collaboration.get_user_data_as_json)
+    members = base_fields.Function(lambda collab: collab.get_user_data_as_json())
 
     class Meta:
         # pylint: disable=missing-docstring

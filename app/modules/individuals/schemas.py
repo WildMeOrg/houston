@@ -25,8 +25,8 @@ class BaseIndividualSchema(ModelSchema):
     Base Individual schema exposes only the most general fields.
     """
 
-    hasView = base_fields.Function(Individual.current_user_has_view_permission)
-    hasEdit = base_fields.Function(Individual.current_user_has_edit_permission)
+    hasView = base_fields.Function(lambda ind: ind.current_user_has_view_permission())
+    hasEdit = base_fields.Function(lambda ind: ind.current_user_has_edit_permission())
 
     class Meta:
         # pylint: disable=missing-docstring
@@ -61,7 +61,7 @@ class BasicNamedIndividualSchema(ModelSchema):
     Detailed Individual schema exposes all useful fields.
     """
 
-    names = base_fields.Function(Individual.get_name_values)
+    names = base_fields.Function(lambda ind: ind.get_name_values())
     id = base_fields.Function(lambda ind: ind.guid)
 
     class Meta:
@@ -114,8 +114,8 @@ class DetailedIndividualSchema(NamedIndividualSchema):
     Detailed Individual schema exposes all useful fields.
     """
 
-    featuredAssetGuid = base_fields.Function(Individual.get_featured_asset_guid)
-    social_groups = base_fields.Function(Individual.get_social_groups_json)
+    featuredAssetGuid = base_fields.Function(lambda ind: ind.get_featured_asset_guid())
+    social_groups = base_fields.Function(lambda ind: ind.get_social_groups_json())
     relationships = base_fields.Nested(IndividualRelationshipSchema, many=True)
 
     class Meta(NamedIndividualSchema.Meta):
@@ -138,26 +138,28 @@ class ElasticsearchIndividualSchema(ModelSchema):
     ElasticsearchIndividualSchema is used for indexing individuals for ES
     """
 
-    featuredAssetGuid = base_fields.Function(Individual.get_featured_asset_guid)
-    names = base_fields.Function(Individual.get_name_values)
-    firstName = base_fields.Function(Individual.get_first_name)
-    firstName_keyword = base_fields.Function(Individual.get_first_name_keyword)
-    adoptionName = base_fields.Function(Individual.get_adoption_name)
+    featuredAssetGuid = base_fields.Function(lambda ind: ind.get_featured_asset_guid())
+    names = base_fields.Function(lambda ind: ind.get_name_values())
+    firstName = base_fields.Function(lambda ind: ind.get_first_name())
+    firstName_keyword = base_fields.Function(lambda ind: ind.get_first_name_keyword())
+    adoptionName = base_fields.Function(lambda ind: ind.get_adoption_name())
     encounters = base_fields.Nested(ElasticsearchEncounterSchema, many=True)
-    social_groups = base_fields.Function(Individual.get_social_groups_json)
-    sex = base_fields.Function(Individual.get_sex)
-    birth = base_fields.Function(Individual.get_time_of_birth)
-    death = base_fields.Function(Individual.get_time_of_death)
-    comments = base_fields.Function(Individual.get_comments)
-    customFields = base_fields.Function(Individual.get_custom_fields)
-    taxonomy_guid = base_fields.Function(Individual.get_taxonomy_guid_inherit_encounters)
-    has_annotations = base_fields.Function(Individual.has_annotations)
-    num_encounters = base_fields.Function(Individual.num_encounters)
-    last_seen = base_fields.Function(Individual.get_last_seen_time_isoformat)
-    last_seen_specificity = base_fields.Function(
-        Individual.get_last_seen_time_specificity
+    social_groups = base_fields.Function(lambda ind: ind.get_social_groups_json())
+    sex = base_fields.Function(lambda ind: ind.get_sex())
+    birth = base_fields.Function(lambda ind: ind.get_time_of_birth())
+    death = base_fields.Function(lambda ind: ind.get_time_of_death())
+    comments = base_fields.Function(lambda ind: ind.get_comments())
+    customFields = base_fields.Function(lambda ind: ind.get_custom_fields())
+    taxonomy_guid = base_fields.Function(
+        lambda ind: ind.get_taxonomy_guid_inherit_encounters()
     )
-    taxonomy_names = base_fields.Function(Individual.get_taxonomy_names)
+    has_annotations = base_fields.Function(lambda ind: ind.has_annotations())
+    num_encounters = base_fields.Function(lambda ind: ind.num_encounters())
+    last_seen = base_fields.Function(lambda ind: ind.get_last_seen_time_isoformat())
+    last_seen_specificity = base_fields.Function(
+        lambda ind: ind.get_last_seen_time_specificity()
+    )
+    taxonomy_names = base_fields.Function(lambda ind: ind.get_taxonomy_names())
 
     class Meta:
         # pylint: disable=missing-docstring
@@ -199,27 +201,29 @@ class ElasticsearchIndividualReturnSchema(ModelSchema):
     ElasticsearchIndividualSchema is used for showing results to the user upon return.
     """
 
-    featuredAssetGuid = base_fields.Function(Individual.get_featured_asset_guid)
-    names = base_fields.Function(Individual.get_name_values)
-    firstName = base_fields.Function(Individual.get_first_name)
-    firstName_keyword = base_fields.Function(Individual.get_first_name_keyword)
-    adoptionName = base_fields.Function(Individual.get_adoption_name)
-    social_groups = base_fields.Function(Individual.get_social_groups_json)
-    sex = base_fields.Function(Individual.get_sex)
-    birth = base_fields.Function(Individual.get_time_of_birth)
-    death = base_fields.Function(Individual.get_time_of_death)
-    comments = base_fields.Function(Individual.get_comments)
-    customFields = base_fields.Function(Individual.get_custom_fields)
-    taxonomy_guid = base_fields.Function(Individual.get_taxonomy_guid_inherit_encounters)
-    has_annotations = base_fields.Function(Individual.has_annotations)
-    last_seen = base_fields.Function(Individual.get_last_seen_time_isoformat)
-    last_seen_specificity = base_fields.Function(
-        Individual.get_last_seen_time_specificity
+    featuredAssetGuid = base_fields.Function(lambda ind: ind.get_featured_asset_guid())
+    names = base_fields.Function(lambda ind: ind.get_name_values())
+    firstName = base_fields.Function(lambda ind: ind.get_first_name())
+    firstName_keyword = base_fields.Function(lambda ind: ind.get_first_name_keyword())
+    adoptionName = base_fields.Function(lambda ind: ind.get_adoption_name())
+    social_groups = base_fields.Function(lambda ind: ind.get_social_groups_json())
+    sex = base_fields.Function(lambda ind: ind.get_sex())
+    birth = base_fields.Function(lambda ind: ind.get_time_of_birth())
+    death = base_fields.Function(lambda ind: ind.get_time_of_death())
+    comments = base_fields.Function(lambda ind: ind.get_comments())
+    customFields = base_fields.Function(lambda ind: ind.get_custom_fields())
+    taxonomy_guid = base_fields.Function(
+        lambda ind: ind.get_taxonomy_guid_inherit_encounters()
     )
-    taxonomy_names = base_fields.Function(Individual.get_taxonomy_names)
+    has_annotations = base_fields.Function(lambda ind: ind.has_annotations())
+    last_seen = base_fields.Function(lambda ind: ind.get_last_seen_time_isoformat())
+    last_seen_specificity = base_fields.Function(
+        lambda ind: ind.get_last_seen_time_specificity(),
+    )
+    taxonomy_names = base_fields.Function(lambda ind: ind.get_taxonomy_names())
 
-    encounters = base_fields.Function(Individual.get_encounter_guids)
-    num_encounters = base_fields.Function(Individual.num_encounters)
+    encounters = base_fields.Function(lambda ind: ind.get_encounter_guids())
+    num_encounters = base_fields.Function(lambda ind: ind.num_encounters())
 
     class Meta:
         # pylint: disable=missing-docstring

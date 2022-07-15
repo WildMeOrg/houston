@@ -19,8 +19,8 @@ class BaseEncounterSchema(ModelSchema):
     annotations = base_fields.Nested('BaseAnnotationSchema', many=True)
     submitter = base_fields.Nested('PublicUserSchema', many=False)
     owner = base_fields.Nested('PublicUserSchema', many=False)
-    hasView = base_fields.Function(Encounter.current_user_has_view_permission)
-    hasEdit = base_fields.Function(Encounter.current_user_has_edit_permission)
+    hasView = base_fields.Function(lambda enc: enc.current_user_has_view_permission())
+    hasEdit = base_fields.Function(lambda enc: enc.current_user_has_edit_permission())
     time = base_fields.Function(lambda enc: enc.get_time_isoformat_in_timezone())
     timeSpecificity = base_fields.Function(lambda enc: enc.get_time_specificity())
 
@@ -37,16 +37,16 @@ class ElasticsearchEncounterSchema(ModelSchema):
     """
 
     annotations = base_fields.Nested('AnnotationElasticsearchSchema', many=True)
-    hasView = base_fields.Function(Encounter.current_user_has_view_permission)
-    hasEdit = base_fields.Function(Encounter.current_user_has_edit_permission)
-    time = base_fields.Function(Encounter.get_time_isoformat_in_timezone)
-    timeSpecificity = base_fields.Function(Encounter.get_time_specificity)
-    owner_guid = base_fields.Function(Encounter.get_owner_guid_str)
-    sighting_guid = base_fields.Function(Encounter.get_sighting_guid_str)
-    locationId = base_fields.Function(Encounter.get_location_id)
-    taxonomy_guid = base_fields.Function(Encounter.get_taxonomy_guid)
-    point = base_fields.Function(Encounter.get_point)
-    customFields = base_fields.Function(Encounter.get_custom_fields)
+    hasView = base_fields.Function(lambda enc: enc.current_user_has_view_permission())
+    hasEdit = base_fields.Function(lambda enc: enc.current_user_has_edit_permission())
+    time = base_fields.Function(lambda enc: enc.get_time_isoformat_in_timezone())
+    timeSpecificity = base_fields.Function(lambda enc: enc.get_time_specificity())
+    owner_guid = base_fields.Function(lambda enc: enc.get_owner_guid_str())
+    sighting_guid = base_fields.Function(lambda enc: enc.get_sighting_guid_str())
+    locationId = base_fields.Function(lambda enc: enc.get_location_id())
+    taxonomy_guid = base_fields.Function(lambda enc: enc.get_taxonomy_guid())
+    point = base_fields.Function(lambda enc: enc.get_point())
+    customFields = base_fields.Function(lambda enc: enc.get_custom_fields())
 
     class Meta:
         # pylint: disable=missing-docstring

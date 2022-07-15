@@ -16,8 +16,8 @@ class BaseComplexDateTimeSchema(ModelSchema):
     Base ComplexDateTime schema exposes only the most general fields.
     """
 
-    timezoneNormalized = base_fields.Function(ComplexDateTime.get_timezone_normalized)
-    timeInTimezone = base_fields.Function(ComplexDateTime.isoformat_in_timezone)
+    timezoneNormalized = base_fields.Function(lambda cdt: cdt.get_timezone_normalized())
+    timeInTimezone = base_fields.Function(lambda cdt: cdt.isoformat_in_timezone())
 
     class Meta:
         # pylint: disable=missing-docstring

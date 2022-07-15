@@ -100,9 +100,13 @@ class DetailedUserPermissionsSchema(ModelSchema):
 class DetailedUserSchema(UserListSchema):
     """Detailed user schema exposes all fields used to render a normal user profile."""
 
-    collaborations = base_fields.Function(User.get_collaborations_as_json)
-    notification_preferences = base_fields.Function(User.get_notification_preferences)
-    individual_merge_requests = base_fields.Function(User.get_individual_merge_requests)
+    collaborations = base_fields.Function(lambda u: u.get_collaborations_as_json())
+    notification_preferences = base_fields.Function(
+        lambda u: u.get_notification_preferences()
+    )
+    individual_merge_requests = base_fields.Function(
+        lambda u: u.get_individual_merge_requests()
+    )
 
     class Meta(UserListSchema.Meta):
         fields = UserListSchema.Meta.fields + (

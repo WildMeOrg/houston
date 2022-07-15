@@ -20,7 +20,7 @@ class BaseAssetSchema(ModelSchema):
     Base Asset schema exposes only the most general fields.
     """
 
-    dimensions = base_fields.Function(Asset.get_dimensions)
+    dimensions = base_fields.Function(lambda asset: asset.get_dimensions())
 
     class Meta:
         # pylint: disable=missing-docstring
@@ -129,7 +129,7 @@ class ExtendedAssetDetailedAnnotationsSchema(BaseAssetSchema):
 
 
 class DebugAssetSchema(DetailedAssetSchema):
-    jobs = base_fields.Function(Asset.get_jobs_debug)
+    jobs = base_fields.Function(lambda asset: asset.get_jobs_debug())
 
     class Meta(DetailedAssetSchema.Meta):
         fields = DetailedAssetSchema.Meta.fields + ('jobs',)

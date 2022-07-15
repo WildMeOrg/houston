@@ -16,10 +16,10 @@ class BaseSightingSchema(ModelSchema):
     Base Sighting schema exposes only the most general fields.
     """
 
-    hasView = base_fields.Function(Sighting.current_user_has_view_permission)
-    hasEdit = base_fields.Function(Sighting.current_user_has_edit_permission)
-    time = base_fields.Function(Sighting.get_time_isoformat_in_timezone)
-    timeSpecificity = base_fields.Function(Sighting.get_time_specificity)
+    hasView = base_fields.Function(lambda s: s.current_user_has_view_permission())
+    hasEdit = base_fields.Function(lambda s: s.current_user_has_edit_permission())
+    time = base_fields.Function(lambda s: s.get_time_isoformat_in_timezone())
+    timeSpecificity = base_fields.Function(lambda s: s.get_time_specificity())
 
     class Meta:
         # pylint: disable=missing-docstring
@@ -57,21 +57,21 @@ class ElasticsearchSightingSchema(BaseSightingSchema):
     Base Sighting schema exposes only the most general fields.
     """
 
-    time = base_fields.Function(Sighting.get_time_isoformat_in_timezone)
-    timeSpecificity = base_fields.Function(Sighting.get_time_specificity)
-    verbatimLocality = base_fields.Function(Sighting.get_locality)
-    locationId_id = base_fields.Function(Sighting.get_location_id)
-    locationId_value = base_fields.Function(Sighting.get_location_id_value)
-    locationId_keyword = base_fields.Function(Sighting.get_location_id_keyword)
+    time = base_fields.Function(lambda s: s.get_time_isoformat_in_timezone())
+    timeSpecificity = base_fields.Function(lambda s: s.get_time_specificity())
+    verbatimLocality = base_fields.Function(lambda s: s.get_locality())
+    locationId_id = base_fields.Function(lambda s: s.get_location_id())
+    locationId_value = base_fields.Function(lambda s: s.get_location_id_value())
+    locationId_keyword = base_fields.Function(lambda s: s.get_location_id_keyword())
     owners = base_fields.Nested(
         'PublicUserSchema',
         attribute='get_owners',
         many=True,
     )
-    comments = base_fields.Function(Sighting.get_comments)
-    taxonomy_guid = base_fields.Function(Sighting.get_taxonomy_guid)
-    customFields = base_fields.Function(Sighting.get_custom_fields)
-    submissionTime = base_fields.Function(Sighting.get_submission_time_isoformat)
+    comments = base_fields.Function(lambda s: s.get_comments())
+    taxonomy_guid = base_fields.Function(lambda s: s.get_taxonomy_guid())
+    customFields = base_fields.Function(lambda s: s.get_custom_fields())
+    submissionTime = base_fields.Function(lambda s: s.get_submission_time_isoformat())
 
     class Meta:
         # pylint: disable=missing-docstring
@@ -106,13 +106,13 @@ class TimedSightingSchema(CreateSightingSchema):
     Timed Sighting schema adds the stage times
     """
 
-    detection_start_time = base_fields.Function(Sighting.get_detection_start_time)
-    curation_start_time = base_fields.Function(Sighting.get_curation_start_time)
+    detection_start_time = base_fields.Function(lambda s: s.get_detection_start_time())
+    curation_start_time = base_fields.Function(lambda s: s.get_curation_start_time())
     identification_start_time = base_fields.Function(
-        Sighting.get_identification_start_time
+        lambda s: s.get_identification_start_time()
     )
-    unreviewed_start_time = base_fields.Function(Sighting.get_unreviewed_start_time)
-    review_time = base_fields.Function(Sighting.get_review_time)
+    unreviewed_start_time = base_fields.Function(lambda s: s.get_unreviewed_start_time())
+    review_time = base_fields.Function(lambda s: s.get_review_time())
 
     progress_identification = base_fields.Nested(
         'DetailedProgressSchema',
@@ -155,14 +155,14 @@ class AugmentedEdmSightingSchema(TimedSightingSchema):
         attribute='get_assets',
         many=True,
     )
-    featuredAssetGuid = base_fields.Function(Sighting.get_featured_asset_guid)
+    featuredAssetGuid = base_fields.Function(lambda s: s.get_featured_asset_guid())
     creator = base_fields.Nested('PublicUserSchema', attribute='get_owner', many=False)
     speciesDetectionModel = base_fields.Function(
         Sighting.config_field_getter('speciesDetectionModel', default=[])
     )
-    jobs = base_fields.Function(Sighting.get_jobs_json)
-    idConfigs = base_fields.Function(Sighting.get_id_configs)
-    submissionTime = base_fields.Function(Sighting.get_submission_time_isoformat)
+    jobs = base_fields.Function(lambda s: s.get_jobs_json())
+    idConfigs = base_fields.Function(lambda s: s.get_id_configs())
+    submissionTime = base_fields.Function(lambda s: s.get_submission_time_isoformat())
 
     class Meta(TimedSightingSchema.Meta):
         """
@@ -204,7 +204,7 @@ class DebugSightingSchema(AugmentedEdmSightingSchema):
         attribute='get_assets',
         many=True,
     )
-    jobs = base_fields.Function(Sighting.get_job_debug)
+    jobs = base_fields.Function(lambda s: s.get_job_debug())
 
     class Meta(AugmentedEdmSightingSchema.Meta):
         fields = AugmentedEdmSightingSchema.Meta.fields + ('jobs',)

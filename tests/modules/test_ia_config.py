@@ -150,3 +150,55 @@ def test_get_detect_model_frontend_data(flask_app_client):
     }
     frontend_data = ia_config_reader.get_detect_model_frontend_data()
     assert frontend_data == desired_frontend_data
+
+
+def test_get_seal_species(flask_app_client):
+    ia_config_reader = IaConfig('seal')
+    species = ia_config_reader.get_configured_species()
+    desired_species = [
+        'Halichoerus grypus',
+        'Monachus monachus',
+        'Neomonachus schauinslandi',
+        'Phoca vitulina',
+        'Pusa hispida saimensis',
+    ]
+    assert set(species) == set(desired_species)
+
+
+def test_get_seal_detectors(flask_app_client):
+    ia_config_reader = IaConfig('seal')
+    specieses = ia_config_reader.get_configured_species()
+    desired_detector_config = {
+        '_detectors.seals_v0': {
+            'config_dict': {
+                'labeler_algo': 'densenet',
+                'labeler_model_tag': 'seals_v0',
+                'model_tag': 'seals_v0',
+                'nms_aware': None,
+                'nms_thresh': 0.4,
+                'sensitivity': 0.63,
+                'use_labeler_species': True,
+            },
+            'description': 'Trained on grey seals, harbor seals, hawaiian monk seals, and mediterranean monk seals',
+        }
+    }
+    for species in specieses:
+        detector = ia_config_reader.get_detectors_dict(species)
+        assert detector == desired_detector_config
+
+
+def test_get_seal_identifiers(flask_app_client):
+    ia_config_reader = IaConfig('seal')
+    specieses = ia_config_reader.get_configured_species()
+    desired_identifier_config = {
+        'hotspotter': {
+            'frontend': {'description': 'HotSpotter pattern-matcher'},
+            'sage': {'query_config_dict': {'sv_on': True}},
+        }
+    }
+    # each seal species, for each supported ia_class, should use the same hotspotter config
+    for species in specieses:
+        ia_classes = ia_config_reader.get_supported_ia_classes(species)
+        for ia_class in ia_classes:
+            identifiers = ia_config_reader.get_identifiers_dict(species, ia_class)
+            assert identifiers == desired_identifier_config

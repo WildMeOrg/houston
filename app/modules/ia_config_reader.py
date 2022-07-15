@@ -20,6 +20,13 @@ def _link_destination(link_str):
     return destination
 
 
+# gets the lookup key for a taxonomy string
+def _get_species_key(genus_species):
+    # only replace first space, because additional spaces indicate 'species subspecies' which is a single key with a space. This allows us to distinguish between a subspecies and an ia class under a species.
+    key = genus_species.replace(' ', '.', 1)
+    return key
+
+
 class IaConfig:
     def __init__(self, name='zebra'):
         self.name = name
@@ -56,7 +63,7 @@ class IaConfig:
         return detector_config
 
     def get_detectors_with_links(self, genus_species):
-        species_key = genus_species.replace(' ', '.')
+        species_key = _get_species_key(genus_species)
         detectors_key = f'{species_key}._detectors'
         detectors = self.get(detectors_key)
         return detectors
@@ -72,7 +79,7 @@ class IaConfig:
         return detectors_dict
 
     def get_identifiers_with_links(self, genus_species, ia_class):
-        species_key = genus_species.replace(' ', '.')
+        species_key = _get_species_key(genus_species)
         identifiers_key = f'{species_key}.{ia_class}._identifiers'
         identifiers = self.get(identifiers_key)
         return identifiers
@@ -119,7 +126,7 @@ class IaConfig:
         return species
 
     def get_supported_ia_classes(self, genus_species):
-        species_key = genus_species.replace(' ', '.')
+        species_key = _get_species_key(genus_species)
         ia_classes = [key for key in self.get(species_key) if not key.startswith('_')]
         return ia_classes
 
@@ -147,7 +154,7 @@ class IaConfig:
     # if an itis-id is missing? Current thinking is, if we're using those fields
     # on the frontend they are required, so this would error if they are missing.
     def get_frontend_species_summary(self, genus_species):
-        species_key = genus_species.replace(' ', '.')
+        species_key = _get_species_key(genus_species)
         id_algos = self.get_supported_id_algos(genus_species)
         for algo in id_algos:
             id_algos[algo] = id_algos[algo]['frontend']

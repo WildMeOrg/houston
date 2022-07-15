@@ -226,7 +226,9 @@ class Namespace(OriginalNamespace):
 
         return decorator
 
-    def response(self, model=None, code=HTTPStatus.OK, description=None, **kwargs):
+    def response(
+        self, model=None, code=HTTPStatus.OK, description=None, dump=True, **kwargs
+    ):
         """
         Endpoint response OpenAPI documentation decorator.
 
@@ -284,7 +286,7 @@ class Namespace(OriginalNamespace):
                 else:
                     _code = code
 
-                if HTTPStatus(_code) is code:
+                if HTTPStatus(_code) is code and dump:
                     response = model.dump(response).data
                 return response, _code, extra_headers
 

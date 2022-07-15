@@ -128,7 +128,7 @@
                 {% if config.SWAGGER_SUPPORTED_SUBMIT_METHODS is defined -%}
                   supportedSubmitMethods: {{ config.SWAGGER_SUPPORTED_SUBMIT_METHODS | tojson}},
                 {%- endif %}
-                displayOperationId: {{ config.SWAGGER_UI_OPERATION_ID|default(True)|tojson }},
+                displayOperationId: {{ config.SWAGGER_UI_OPERATION_ID|default(False)|tojson }},
                 defaultModelExpandDepth: 2,
                 defaultModelsExpandDepth: 2,
                 displayRequestDuration: {{ config.SWAGGER_UI_REQUEST_DURATION|default(True)|tojson }},

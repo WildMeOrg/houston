@@ -1,0 +1,135 @@
+{
+  "_README": "A value starting with '@' indicates an absolute path from the top of this config file, and parsing that @-link results in the value of that absolute path. The first half of this file (top-level _detectors and _identifiers) defines the various algorithms we use, including the configs we send to SAGE and some metadata about each config. Each algo config is under a name-key, e.g. the african_terrestrial detector.  \n The second half of the file defines the pipeline for each species by referencing the previously-defined algorithms, in the hierachy genus->species->detectors, and genus->species->iaClass->identifiers. Subspecies are included in a single species key with a space, eg Genus->species subspecies-><content>, in order to distinguish subspecies from ia classes. The values of these species configurations should be @-links but literals are also supported by the parser.",
+  "Halichoerus": {
+    "grypus": {
+      "_common_name": "gray seal",
+      "_default": "@Halichoerus.grypus.grey_seal_unknown",
+      "_detectors": [
+        "@_detectors.seals_v0"
+      ],
+      "_itis_id": 180653,
+      "grey_seal_femaleyoung": "@Halichoerus.grypus.grey_seal_unknown",
+      "grey_seal_male": "@Halichoerus.grypus.grey_seal_unknown",
+      "grey_seal_pup": "@Halichoerus.grypus.grey_seal_unknown",
+      "grey_seal_unknown": {
+        "_identifiers": [
+          "@_identifiers.hotspotter"
+        ]
+      },
+      "harbour_seal": "@Halichoerus.grypus.grey_seal_unknown",
+      "hawaiian_monk_seal": "@Halichoerus.grypus.grey_seal_unknown",
+      "mediterranean_monk_seal": "@Halichoerus.grypus.grey_seal_unknown"
+    }
+  },
+  "Monachus": {
+    "monachus": {
+      "_common_name": "Mediterranean monk seal",
+      "_default": "@Monachus.monachus.mediterranean_monk_seal",
+      "_detectors": [
+        "@_detectors.seals_v0"
+      ],
+      "_itis_id": 180659,
+      "grey_seal_femaleyoung": "@Monachus.monachus.mediterranean_monk_seal",
+      "grey_seal_male": "@Monachus.monachus.mediterranean_monk_seal",
+      "grey_seal_pup": "@Monachus.monachus.mediterranean_monk_seal",
+      "grey_seal_unknown": "@Monachus.monachus.mediterranean_monk_seal",
+      "harbour_seal": "@Monachus.monachus.mediterranean_monk_seal",
+      "hawaiian_monk_seal": "@Monachus.monachus.mediterranean_monk_seal",
+      "mediterranean_monk_seal": {
+        "_identifiers": [
+          "@_identifiers.hotspotter"
+        ]
+      }
+    }
+  },
+  "Neomonachus": {
+    "schauinslandi": {
+      "_common_name": "Hawaiian monk seal",
+      "_default": "@Neomonachus.schauinslandi.hawaiian_monk_seal",
+      "_detectors": [
+        "@_detectors.seals_v0"
+      ],
+      "_itis_id": 1133135,
+      "grey_seal_femaleyoung": "@Neomonachus.schauinslandi.hawaiian_monk_seal",
+      "grey_seal_male": "@Neomonachus.schauinslandi.hawaiian_monk_seal",
+      "grey_seal_pup": "@Neomonachus.schauinslandi.hawaiian_monk_seal",
+      "grey_seal_unknown": "@Neomonachus.schauinslandi.hawaiian_monk_seal",
+      "harbour_seal": "@Neomonachus.schauinslandi.hawaiian_monk_seal",
+      "hawaiian_monk_seal": {
+        "_identifiers": [
+          "@_identifiers.hotspotter"
+        ]
+      },
+      "mediterranean_monk_seal": "@Neomonachus.schauinslandi.hawaiian_monk_seal"
+    }
+  },
+  "Phoca": {
+    "vitulina": {
+      "_common_name": "harbor seal",
+      "_default": "@Phoca.vitulina.harbour_seal",
+      "_detectors": [
+        "@_detectors.seals_v0"
+      ],
+      "_itis_id": 180649,
+      "grey_seal_femaleyoung": "@Phoca.vitulina.harbour_seal",
+      "grey_seal_male": "@Phoca.vitulina.harbour_seal",
+      "grey_seal_pup": "@Phoca.vitulina.harbour_seal",
+      "grey_seal_unknown": "@Phoca.vitulina.harbour_seal",
+      "harbour_seal": {
+        "_identifiers": [
+          "@_identifiers.hotspotter"
+        ]
+      },
+      "hawaiian_monk_seal": "@Phoca.vitulina.harbour_seal",
+      "mediterranean_monk_seal": "@Phoca.vitulina.harbour_seal"
+    }
+  },
+  "Pusa": {
+    "hispida saimensis": {
+      "_common_name": "Saimaa seal",
+      "_default": "@Pusa.hispida saimensis.seal",
+      "_detectors": [
+        "@_detectors.seals_v0"
+      ],
+      "_itis_id": 622064,
+      "grey_seal_femaleyoung": "@Pusa.hispida saimensis.seal",
+      "grey_seal_male": "@Pusa.hispida saimensis.seal",
+      "grey_seal_pup": "@Pusa.hispida saimensis.seal",
+      "grey_seal_unknown": "@Pusa.hispida saimensis.seal",
+      "harbour_seal": "@Pusa.hispida saimensis.seal",
+      "hawaiian_monk_seal": "@Pusa.hispida saimensis.seal",
+      "mediterranean_monk_seal": "@Pusa.hispida saimensis.seal",
+      "seal": {
+        "_identifiers": [
+          "@_identifiers.hotspotter"
+        ]
+      }
+    }
+  },
+  "_detectors": {
+    "seals_v0": {
+      "config_dict": {
+        "labeler_algo": "densenet",
+        "labeler_model_tag": "seals_v0",
+        "model_tag": "seals_v0",
+        "nms_aware": null,
+        "nms_thresh": 0.4,
+        "sensitivity": 0.63,
+        "use_labeler_species": true
+      },
+      "description": "Trained on grey seals, harbor seals, hawaiian monk seals, and mediterranean monk seals"
+    }
+  },
+  "_identifiers": {
+    "hotspotter": {
+      "frontend": {
+        "description": "HotSpotter pattern-matcher"
+      },
+      "sage": {
+        "query_config_dict": {
+          "sv_on": true
+        }
+      }
+    }
+  }
+}

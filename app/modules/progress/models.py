@@ -305,6 +305,8 @@ class Progress(db.Model, Timestamp):
             parent.notify(guid, chain=chain)
 
     def notify(self, step_guid, chain=None):
+        db.session.refresh(self)
+
         if chain is None:
             chain = [step_guid]
 
@@ -322,32 +324,38 @@ class Progress(db.Model, Timestamp):
 
         if self.items is None or self.pgeta is None:
             self.config(items)
-        elif steps and self.pgeta.denominator != steps:
+        elif self.items != steps or self.pgeta.denominator != steps:
             self.config(items)
 
-        step = Progress.query.get(step_guid)
-
-        if not step:
-            # The step was deleted
-            return
-
         try:
-            if step.skipped:
-                self.iterate(chain=chain)
-            elif step.cancelled:
-                self.iterate(chain=chain)
-            elif step.completed:
-                self.iterate(chain=chain)
-            elif step.failed:
-                message = 'Step {!r} failure: {!r}'.format(
-                    step,
-                    step.message,
-                )
-                self.fail(message, chain=chain)
-            else:
-                # The update was a step set progress percentage notification
-                # Currently, do nothing because we only want to track steps that are complete
-                pass
+            numerator = 0
+            for step in self.steps:
+                db.session.refresh(step)
+
+                if step is None:
+                    continue
+                elif step.skipped:
+                    numerator += 1
+                elif step.cancelled:
+                    numerator += 1
+                elif step.completed:
+                    numerator += 1
+                elif step.failed:
+                    message = 'Step {!r} failure: {!r}'.format(
+                        step,
+                        step.message,
+                    )
+                    return self.fail(message, chain=chain)
+                else:
+                    # The update was a step set progress percentage notification
+                    # Currently, do nothing because we only want to track steps that are complete
+                    pass
+
+            self.pgeta.numerator = numerator
+            log.debug(
+                f'notify() step_guid={step_guid} using numerator={numerator} for {len(self.items)} items on {self}'
+            )
+            self.set(100.0 * self.pgeta.numerator / len(self.items), chain=chain)
         except Exception:
             log.warning(
                 'Failed to notify parent %r from step %r'

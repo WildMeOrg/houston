@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import base64
+import json
 import os
 import uuid
 
@@ -359,6 +360,10 @@ class TusManager(object):
                         request,
                         self.app,
                     )
+            except Exception as e:
+                response.status_code = 400
+                response.content_type = 'application/json'
+                response.set_data(json.dumps({'status': 400, 'message': str(e)}))
             finally:
                 self._remove_resources(resource_id)
 

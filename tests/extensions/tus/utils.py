@@ -4,8 +4,10 @@ tus test utils
 -------------
 """
 
+import base64
 import os
 import shutil
+import uuid
 
 import numpy as np
 import tqdm
@@ -70,3 +72,31 @@ def cleanup_tus_dir(tid):
     upload_dir = tus_upload_dir(current_app, transaction_id=tid)
     if os.path.exists(upload_dir):
         shutil.rmtree(upload_dir)
+
+
+def upload_files_to_tus(flask_app_client, transaction_id, filenames_and_content):
+    resource_id = str(uuid.uuid4())
+    for filename, content in filenames_and_content:
+        encoded_filename = base64.b64encode(filename.encode('utf-8')).decode('utf-8')
+        response = flask_app_client.post(
+            '/api/v1/tus',
+            headers={
+                'Upload-Metadata': f'filename {encoded_filename}',
+                'Upload-Length': len(content),
+                'Tus-Resumable': '1.0.0',
+                'x-tus-resource-id': resource_id,
+            },
+        )
+        upload_url = response.headers['Location']
+
+        yield flask_app_client.patch(
+            upload_url,
+            headers={
+                'Tus-Resumable': '1.0.0',
+                'Content-Type': 'application/offset+octet-stream',
+                'Content-Length': len(content),
+                'Upload-Offset': 0,
+                'x-tus-transaction-id': transaction_id,
+            },
+            data=content,
+        )

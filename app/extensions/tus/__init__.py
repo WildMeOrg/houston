@@ -3,11 +3,15 @@
 Logging adapter
 ---------------
 """
+import datetime
 import json
 import logging
 import os
+import pathlib
 import shutil
+import time
 
+import humanize
 from flask import current_app
 from flask_login import current_user
 
@@ -95,8 +99,29 @@ def _tus_upload_file_handler(
             }
             json.dump(metadata, metadata_file)
 
-    log.debug('Tus finished uploading: {!r} in dir {!r}.'.format(filename, dir))
     filepath = os.path.join(dir, filename)
+
+    max_files = int(app.config.get('TUS_MAX_FILES_PER_TRANSACTION', 5000))
+    max_time = datetime.timedelta(
+        seconds=int(app.config.get('TUS_MAX_TIME_PER_TRANSACTION', 60 * 60 * 24))
+    )
+    files = list(pathlib.Path(dir).glob('.*.metadata.json'))
+    if files:
+        earliest_file_mtime = min(int(os.stat(f).st_mtime) for f in files)
+        transaction_time = datetime.timedelta(
+            seconds=int(time.time()) - earliest_file_mtime
+        )
+    else:
+        transaction_time = datetime.timedelta(seconds=0)
+
+    if transaction_time >= max_time:
+        raise Exception(
+            f'Exceeded maximum time ({humanize.naturaldelta(max_time)}) in one transaction by {humanize.naturaldelta(transaction_time - max_time)}'
+        )
+    if len(files) >= max_files:
+        raise Exception(
+            f'Exceeded maximum number of files in one transaction: {max_files}'
+        )
 
     try:
         os.rename(upload_file_path, filepath)
@@ -107,6 +132,8 @@ def _tus_upload_file_handler(
         if os.path.exists(filepath):
             os.rename(filepath, upload_file_path)
         raise
+
+    log.debug('Tus finished uploading: {!r} in dir {!r}.'.format(filename, dir))
 
     return filename
 
@@ -388,9 +415,6 @@ def tus_purge(git_store_guid=None, session_id=None, transaction_id=None):
 
 def tus_cleanup():
     import datetime
-    import time
-
-    import humanize
 
     tus_directory = tus_upload_dir(current_app)
 
@@ -413,7 +437,7 @@ def tus_cleanup():
                 log.info(
                     'Deleting too old (%s seconds) Tus pending file: %r'
                     % (
-                        delta,
+                        int(delta),
                         tus_path,
                     )
                 )
@@ -428,7 +452,7 @@ def tus_cleanup():
                     'Skipping Tus pending file (Age: %s, Remaining: %s): %r'
                     % (
                         humanize.naturaldelta(datetime.timedelta(seconds=age)),
-                        humanize.naturaldelta(datetime.timedelta(seconds=delta)),
+                        humanize.naturaldelta(datetime.timedelta(seconds=-delta)),
                         tus_path,
                     )
                 )

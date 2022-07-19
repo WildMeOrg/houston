@@ -2,6 +2,7 @@
 import logging
 import os
 import pathlib
+import shutil
 import tempfile
 import time
 import uuid
@@ -14,6 +15,7 @@ import sqlalchemy
 from flask_login import current_user, login_user, logout_user
 
 from app import create_app
+from app.extensions.tus import tus_upload_dir
 from config import CONTEXT_ENVIRONMENT_VARIABLE, VALID_CONTEXTS
 from flask_restx_patched import is_extension_enabled, is_module_enabled
 
@@ -168,7 +170,7 @@ def check_cleanup_objects(db):
 
 
 @pytest.fixture(autouse=True)
-def cleanup_objects(db):
+def cleanup_objects(db, flask_app):
     # This deletes all notifications in the system, the reason being that when many
     # notifications are used, they are marked as read and cannot be recreated. This is intentional by design
     # But it means that the tests can be non deterministic in that they can work or fail depending on what has
@@ -180,6 +182,13 @@ def cleanup_objects(db):
     for notif in notifs:
         with db.session.begin(subtransactions=True):
             db.session.delete(notif)
+
+    upload_dir = tus_upload_dir(flask_app)
+    for path in pathlib.Path(upload_dir).glob('./*'):
+        if path.is_dir():
+            shutil.rmtree(path)
+        else:
+            path.unlink()
 
 
 @pytest.fixture(autouse=True)

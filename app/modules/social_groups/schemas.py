@@ -47,7 +47,7 @@ class DetailedSocialGroupSchema(BaseSocialGroupSchema):
     Detailed SocialGroup schema exposes all useful fields.
     """
 
-    members = base_fields.Function(SocialGroup.get_member_data_as_json)
+    members = base_fields.Function(lambda sg: sg.get_member_data_as_json())
 
     class Meta(BaseSocialGroupSchema.Meta):
         fields = BaseSocialGroupSchema.Meta.fields + (

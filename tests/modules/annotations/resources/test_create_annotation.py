@@ -144,6 +144,13 @@ def test_annotation_permission(
     annot_utils.read_annotation(flask_app_client, researcher_2, annotation_guid, 403)
     annot_utils.read_all_annotations(flask_app_client, researcher_2)
 
+    # Test locationId fallback
+    from app.modules.annotations.models import Annotation
+    from app.modules.annotations.schemas import AnnotationElasticsearchSchema
+
+    annotation = Annotation.query.get(annotation_guid)
+    assert AnnotationElasticsearchSchema().dump(annotation).data['locationId'] == 'test'
+
 
 @pytest.mark.skipif(
     module_unavailable('asset_groups'), reason='AssetGroups module disabled'

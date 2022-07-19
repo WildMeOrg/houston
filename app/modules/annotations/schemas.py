@@ -43,7 +43,7 @@ class DetailedAnnotationSchema(BaseAnnotationSchema):
         'BaseKeywordSchema',
         many=True,
     )
-    asset_src = base_fields.Function(Annotation.get_asset_src)
+    asset_src = base_fields.Function(lambda ann: ann.get_asset_src())
 
     class Meta(BaseAnnotationSchema.Meta):
         fields = BaseAnnotationSchema.Meta.fields + (
@@ -68,13 +68,13 @@ class AnnotationElasticsearchSchema(BaseAnnotationSchema):
     for purposes other than ES indexing.
     """
 
-    keywords = base_fields.Function(Annotation.get_keyword_values)
-    locationId = base_fields.Function(Annotation.get_location_id)
-    taxonomy_guid = base_fields.Function(Annotation.get_taxonomy_guid)
-    owner_guid = base_fields.Function(Annotation.get_owner_guid_str)
-    encounter_guid = base_fields.Function(Annotation.get_encounter_guid_str)
-    sighting_guid = base_fields.Function(Annotation.get_sighting_guid_str)
-    time = base_fields.Function(Annotation.get_time_isoformat_in_timezone)
+    keywords = base_fields.Function(lambda ann: ann.get_keyword_values())
+    locationId = base_fields.Function(lambda ann: ann.get_location_id())
+    taxonomy_guid = base_fields.Function(lambda ann: ann.get_taxonomy_guid())
+    owner_guid = base_fields.Function(lambda ann: ann.get_owner_guid_str())
+    encounter_guid = base_fields.Function(lambda ann: ann.get_encounter_guid_str())
+    sighting_guid = base_fields.Function(lambda ann: ann.get_sighting_guid_str())
+    time = base_fields.Function(lambda ann: ann.get_time_isoformat_in_timezone())
 
     class Meta(BaseAnnotationSchema.Meta):
         fields = BaseAnnotationSchema.Meta.fields + (

@@ -100,8 +100,11 @@ def test_tus_upload_protocol(flask_app, flask_app_client, request):
     assert response.data == b''
 
     # Set maximum number of files per transaction to 3
+    tus_max_files = flask_app.config.get('TUS_MAX_FILES_PER_TRANSACTION')
     flask_app.config['TUS_MAX_FILES_PER_TRANSACTION'] = 3
-    request.addfinalizer(lambda: flask_app.config.pop('TUS_MAX_FILES_PER_TRANSACTION'))
+    request.addfinalizer(
+        lambda: flask_app.config.update({'TUS_MAX_FILES_PER_TRANSACTION': tus_max_files})
+    )
 
     # Upload the rest of the file
     response = flask_app_client.patch(

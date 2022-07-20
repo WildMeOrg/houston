@@ -101,10 +101,8 @@ def _tus_upload_file_handler(
 
     filepath = os.path.join(dir, filename)
 
-    max_files = int(app.config.get('TUS_MAX_FILES_PER_TRANSACTION', 5000))
-    max_time = datetime.timedelta(
-        seconds=int(app.config.get('TUS_MAX_TIME_PER_TRANSACTION', 60 * 60 * 24))
-    )
+    max_files = app.config['TUS_MAX_FILES_PER_TRANSACTION']
+    max_time = datetime.timedelta(seconds=app.config['TUS_MAX_TIME_PER_TRANSACTION'])
     files = list(pathlib.Path(dir).glob('.*.metadata.json'))
     if files:
         earliest_file_mtime = min(int(os.stat(f).st_mtime) for f in files)

@@ -47,6 +47,8 @@ class OAuth2Sessions(Resource):
         """
         Log-in via a new OAuth2 Session.
         """
+        from app.extensions import prometheus
+
         email = args['email']
         password = args['password']
 
@@ -59,6 +61,7 @@ class OAuth2Sessions(Resource):
             if status:
                 log.info('Logged in User via API: {!r}'.format(user))
                 create_session_oauth2_token()
+                prometheus.update_logins()
             else:
                 failure = 'Account Disabled'
         else:

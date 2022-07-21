@@ -20,7 +20,7 @@ from flask import current_app
 from sqlalchemy import or_
 from sqlalchemy_utils.types import ScalarListType
 
-from app.extensions import HoustonModel, db
+from app.extensions import HoustonModel, Timestamp, db
 from app.extensions.auth import security
 from app.modules.users.models import User
 
@@ -63,7 +63,7 @@ CODE_SETTINGS = {
 }
 
 
-class OAuth2Client(db.Model):
+class OAuth2Client(db.Model, Timestamp):
     """
     Model that binds OAuth2 Client ID and Secret to a specific User.
     """
@@ -121,7 +121,7 @@ class OAuth2Client(db.Model):
             db.session.delete(self)
 
 
-class OAuth2Grant(db.Model):
+class OAuth2Grant(db.Model, Timestamp):
     """
     Intermediate temporary helper for OAuth2 Grants.
     """
@@ -171,7 +171,7 @@ class OAuth2Grant(db.Model):
         return expired
 
 
-class OAuth2Token(db.Model):
+class OAuth2Token(db.Model, Timestamp):
     """
     OAuth2 Access Tokens storage model.
     """

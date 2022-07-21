@@ -49,6 +49,7 @@ def warmup(
     build_frontend=True,
     upgrade_db=True,
     print_routes=False,
+    print_scopes=False,
 ):
     """
     Pre-configure the Houston API Server before running
@@ -72,10 +73,22 @@ def warmup(
         update = app.config.get('ELASTICSEARCH_BUILD_INDEX_ON_STARTUP', False)
         es.es_index_all(app, pit=True, update=update, force=True)
 
+    from app.extensions import prometheus
+
+    prometheus.init(app)
+
     if print_routes or app.debug:
         log.info('Using route rules:')
         for rule in app.url_map.iter_rules():
             log.info('\t{!r}'.format(rule))
+
+    if print_scopes or app.debug:
+        log.info('Using OAuth2 scopes:')
+        from app.extensions.api import api_v1
+
+        scopes = sorted(list(api_v1.authorizations['oauth2_password']['scopes'].keys()))
+        for scope in scopes:
+            log.info('\t{!r}'.format(scope))
 
     return app
 

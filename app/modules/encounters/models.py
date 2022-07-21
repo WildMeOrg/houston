@@ -182,6 +182,23 @@ class Encounter(db.Model, HoustonModel, CustomFieldMixin):
                 taxonomy_guid = guids[0]
         return taxonomy_guid
 
+    def get_taxonomy_names(self, **kwargs):
+        taxonomy_guid = self.get_taxonomy_guid(**kwargs)
+
+        taxonomy_names = []
+        if taxonomy_guid:
+            from app.modules.site_settings.models import SiteSetting
+
+            site_species = SiteSetting.get_value('site.species')
+            for species in site_species:
+                if species.get('id') == taxonomy_guid:
+                    taxonomy_names = species.get('commonNames', []) + [
+                        species.get('scientificName')
+                    ]
+                    break
+
+        return taxonomy_names
+
     def get_time_isoformat_in_timezone(self, sighting_fallback=True):
         time = self.get_time(sighting_fallback=sighting_fallback)
         return time.isoformat_in_timezone() if time else None

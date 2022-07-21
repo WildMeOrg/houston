@@ -43,6 +43,7 @@ class BaseMWSConfig(
         'mail',
         'gitlab',
         'sentry',
+        'prometheus',
     )
 
     ENABLED_MODULES = (

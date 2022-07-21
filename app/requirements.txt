@@ -58,6 +58,7 @@ permission>=0.4.1,<0.5
 phonenumbers
 Pillow
 premailer
+prometheus-client
 psycopg2-binary
 
 pygeocoder

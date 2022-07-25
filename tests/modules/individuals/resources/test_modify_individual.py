@@ -42,6 +42,7 @@ def test_modify_individual_edm_fields(
         sighting = Sighting.query.get(sighting_uuid)
         assert sighting is not None
 
+        dob_skynet = '1997-08-04T00:01:02'
         individual_data_in = {
             'names': [{'context': 'defaultName', 'value': 'Godzilla'}],
             'taxonomy': tx['id'],
@@ -52,7 +53,7 @@ def test_modify_individual_edm_fields(
             ],
             'sex': 'female',
             'comments': 'Test Individual',
-            'timeOfBirth': '872846040000',
+            'timeOfBirth': dob_skynet,
         }
 
         individual_response = individual_utils.create_individual(
@@ -74,7 +75,7 @@ def test_modify_individual_edm_fields(
         assert individual_json['comments'] == 'Test Individual'
 
         # when skynet went online
-        assert individual_json['timeOfBirth'] == '872846040000'
+        assert individual_json['timeOfBirth'] == dob_skynet + '+00:00'
 
         patch_op_sex = [
             utils.patch_replace_op('sex', 'male'),
@@ -90,8 +91,9 @@ def test_modify_individual_edm_fields(
         )
 
         # back to the future 2 date
+        dob_btf2 = '2015-10-21T00:01:02'
         patch_data = [
-            utils.patch_replace_op('timeOfBirth', '1445410800000'),
+            utils.patch_replace_op('timeOfBirth', dob_btf2),
         ]
 
         patch_individual_response = individual_utils.patch_individual(
@@ -106,7 +108,7 @@ def test_modify_individual_edm_fields(
 
         assert individual_json['guid'] is not None
         assert individual_json['sex'] == 'male'
-        assert individual_json['timeOfBirth'] == '1445410800000'
+        assert individual_json['timeOfBirth'] == dob_btf2 + '+00:00'
 
         indiv = Individual.query.get(individual_id)
         tx_obj = indiv.get_taxonomy_object()

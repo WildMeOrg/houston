@@ -19,7 +19,7 @@ def test_sightings(session, login, codex_url, test_root, admin_name):
     )
     tx_id = response[-1]['id']
     occ_test_cfd = utils.create_custom_field(
-        session, codex_url, 'Occurrence', 'occ_test_cfd'
+        session, codex_url, 'Sighting', 'occ_test_cfd'
     )
     enc_test_cfd = utils.create_custom_field(
         session, codex_url, 'Encounter', 'enc_test_cfd'
@@ -27,6 +27,10 @@ def test_sightings(session, login, codex_url, test_root, admin_name):
     enc_custom_fields = {enc_test_cfd: 'CFD_TEST_VALUE'}
 
     occ_custom_fields = {occ_test_cfd: 'OCC_TEST_CFD'}
+
+    test_regions = utils.ensure_default_test_regions(session, codex_url)
+    region_id1 = test_regions[0]['id']
+
     # Create sighting by committing asset group sighting
     transaction_id = utils.upload_to_tus(
         session,
@@ -57,7 +61,7 @@ def test_sightings(session, login, codex_url, test_root, admin_name):
                             'timeSpecificity': 'time',
                         },
                     ],
-                    'locationId': 'PYTEST',
+                    'locationId': region_id1,
                     'time': '2000-01-01T01:01:01+00:00',
                     'timeSpecificity': 'time',
                 },
@@ -99,7 +103,6 @@ def test_sightings(session, login, codex_url, test_root, admin_name):
     # GET sighting
     response = session.get(codex_url(f'/api/v1/sightings/{sighting_id}'))
     assert response.status_code == 200, response.json()
-    sighting_version = response.json()['version']
     assets = response.json()['assets']
     annots_0 = response.json()['assets'][0]['annotations']
     encounters = response.json()['encounters']
@@ -143,10 +146,7 @@ def test_sightings(session, login, codex_url, test_root, admin_name):
                 'updated': assets[0]['updated'],
             },
         ],
-        'comments': 'None',
-        'createdEDM': response.json()['createdEDM'],  # 2021-11-09 11:15:24
-        # 2021-11-09T11:15:24.316645+00:00
-        'createdHouston': response.json()['createdHouston'],
+        'comments': None,
         'customFields': occ_custom_fields,
         'decimalLatitude': -39.063228,
         'decimalLongitude': 21.832598,
@@ -154,8 +154,12 @@ def test_sightings(session, login, codex_url, test_root, admin_name):
         'idConfigs': [{'algorithms': ['hotspotter_nosv']}],
         'encounters': [
             {
-                # 2021-11-09T11:15:24.343018+00:00
                 'createdHouston': encounters[0]['createdHouston'],
+                'asset_group_sighting_encounter_guid': encounters[0][
+                    'asset_group_sighting_encounter_guid'
+                ],
+                'created': encounters[0]['created'],
+                'updated': encounters[0]['updated'],
                 'customFields': enc_custom_fields,
                 'decimalLatitude': 63.142385,
                 'decimalLongitude': -21.596914,
@@ -163,37 +167,37 @@ def test_sightings(session, login, codex_url, test_root, admin_name):
                 'hasEdit': True,
                 'hasView': True,
                 'individual': None,
+                'locationId': region_id1,
+                'locationId_value': 'Wiltshire',
                 'owner': {
                     'full_name': my_name,
                     'guid': my_guid,
                     'profile_fileupload': None,
                 },
+                'owner_guid': my_guid,
                 'annotations': [],
                 'sex': 'male',
+                'sighting': sighting_id,
                 'submitter': None,
                 'taxonomy': tx_id,
                 'time': encounter_timestamp,
                 'timeSpecificity': 'time',
-                'updatedHouston': encounters[0]['updatedHouston'],
-                'version': encounters[0]['version'],  # 1636456524261
+                'verbatimLocality': None,
             },
         ],
-        'encounterCounts': {
-            'sex': {'male': 1},
-            'individuals': 0,
-        },
         'featuredAssetGuid': assets[0]['guid'],
         'guid': sighting_id,
         'jobs': [],
         'hasEdit': True,
         'hasView': True,
-        'locationId': 'PYTEST',
+        'locationId': region_id1,
+        'locationId_value': 'Wiltshire',
+        'locationId_keyword': response.json()['locationId_keyword'],
+        'verbatimLocality': None,
         'time': '2000-01-01T01:01:01+00:00',
         'timeSpecificity': 'time',
         'stage': 'un_reviewed',
         # FIXME missing taxonomies: [{'id': tx_id}],
-        'updatedHouston': response.json()['updatedHouston'],
-        'version': response.json()['version'],  # 1636456524261
         'creator': {
             'full_name': my_name,
             'guid': my_guid,
@@ -230,10 +234,8 @@ def test_sightings(session, login, codex_url, test_root, admin_name):
         ],
     )
     assert response.status_code == 200
-    assert response.json()['version'] > sighting_version
     assets = response.json()['assets']
     annots_0 = response.json()['assets'][0]['annotations']
-    sighting_version = response.json()['version']
     assert response.json() == {
         'assets': [
             {
@@ -273,16 +275,19 @@ def test_sightings(session, login, codex_url, test_root, admin_name):
                 'indexed': assets[0]['indexed'],
             },
         ],
-        'comments': 'None',
-        'createdEDM': response.json()['createdEDM'],  # 2021-11-16 09:45:26
-        # 2021-11-16T09:45:26.717326+00:00
-        'createdHouston': response.json()['createdHouston'],
+        'comments': None,
         'customFields': occ_custom_fields,
         'decimalLatitude': 52.152029,
         'decimalLongitude': 2.318116,
         'encounters': [
             {
                 'createdHouston': encounters[0]['createdHouston'],
+                'asset_group_sighting_encounter_guid': encounters[0][
+                    'asset_group_sighting_encounter_guid'
+                ],
+                'sighting': sighting_id,
+                'created': encounters[0]['created'],
+                'updated': encounters[0]['updated'],
                 'customFields': enc_custom_fields,
                 'decimalLatitude': 63.142385,
                 'decimalLongitude': -21.596914,
@@ -290,40 +295,39 @@ def test_sightings(session, login, codex_url, test_root, admin_name):
                 'hasEdit': True,
                 'hasView': True,
                 'individual': None,
+                'locationId': region_id1,
+                'locationId_value': 'Wiltshire',
                 'owner': {
                     'full_name': my_name,
                     'guid': my_guid,
                     'profile_fileupload': None,
                 },
+                'owner_guid': my_guid,
                 'sex': 'male',
                 'annotations': [],
                 'submitter': None,
                 'taxonomy': tx_id,
                 'time': encounter_timestamp,
                 'timeSpecificity': 'time',
-                'updatedHouston': encounters[0]['updatedHouston'],
-                'version': encounters[0]['version'],
+                'verbatimLocality': None,
             },
         ],
-        'encounterCounts': {
-            'sex': {'male': 1},
-            'individuals': 0,
-        },
         'elasticsearchable': response.json()['elasticsearchable'],
         'featuredAssetGuid': assets[0]['guid'],
         'guid': sighting_id,
         'jobs': [],
         'hasEdit': True,
         'hasView': True,
-        'locationId': 'PYTEST',
+        'locationId': region_id1,
+        'locationId_value': 'Wiltshire',
+        'locationId_keyword': response.json()['locationId_keyword'],
+        'verbatimLocality': None,
         'time': '2000-01-01T01:01:01+00:00',
         'timeSpecificity': 'time',
         'stage': 'un_reviewed',
         'speciesDetectionModel': ['african_terrestrial'],
         'idConfigs': [{'algorithms': ['hotspotter_nosv']}],
         # 2021-11-16T09:45:26.717432+00:00
-        'updatedHouston': response.json()['updatedHouston'],
-        'version': sighting_version,
         'creator': {
             'full_name': admin_name,
             'guid': my_guid,
@@ -338,6 +342,7 @@ def test_sightings(session, login, codex_url, test_root, admin_name):
         'identification_start_time': None,
         'unreviewed_start_time': response.json()['unreviewed_start_time'],
         'progress_identification': response.json()['progress_identification'],
+        'pipeline_status': response.json()['pipeline_status'],
         'review_time': None,
     }
 

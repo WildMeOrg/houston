@@ -21,10 +21,10 @@ EXPECTED_KEYS = {
     'comments',
     'time',
     'timeSpecificity',
-    'locationId_id',
+    'locationId',
     'locationId_value',
     'owners',
-    'taxonomy_guid',
+    'taxonomy_guids',
     'customFields',
 }
 
@@ -129,7 +129,7 @@ def test_search_with_elasticsearch(
             'minimum_should_match': 1,
             'should': [
                 {'term': {'guid': searchTerm}},
-                {'term': {'locationId_id': searchTerm}},
+                {'term': {'locationId': searchTerm}},
                 {
                     'query_string': {
                         'query': '*{}*'.format(searchTerm),
@@ -146,19 +146,38 @@ def test_search_with_elasticsearch(
     result_api = Sighting.elasticsearch(search, load=True)
     response = elasticsearch(flask_app_client, researcher_1, 'sightings', search)
     result_rest = response.json
+    expected_fields = {
+        'customFields',
+        'owners',
+        'guid',
+        'timeSpecificity',
+        'locationId',
+        'locationId_value',
+        'comments',
+        'created',
+        'updated',
+        'indexed',
+        'elasticsearchable',
+        'submissionTime',
+        'taxonomy_guids',
+        'time',
+        'locationId_keyword',
+        'verbatimLocality',
+    }
     assert len(result_api) == 1
     assert len(result_api) == len(result_rest)
     assert str(result_api[0].guid) == result_rest[0].get('guid')
+    assert set(result_rest[0].keys()) >= expected_fields
 
     sighting = result_api[0]
-    searchTerm = sighting.get_location_id()
-    all_location_ids = [sighting.get_location_id() for sighting in Sighting.query.all()]
+    searchTerm = str(sighting.location_guid)
+    all_location_ids = [str(sighting.location_guid) for sighting in Sighting.query.all()]
     search = {
         'bool': {
             'minimum_should_match': 1,
             'should': [
                 {'term': {'guid': searchTerm}},
-                {'term': {'locationId_id': searchTerm}},
+                {'term': {'locationId': searchTerm}},
                 {
                     'query_string': {
                         'query': '*{}*'.format(searchTerm),

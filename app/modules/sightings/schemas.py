@@ -6,6 +6,7 @@ Serialization schemas for Sightings resources RESTful API
 
 from flask_marshmallow import base_fields
 
+from app.modules.encounters.schemas import DetailedEncounterSchema
 from flask_restx_patched import ModelSchema
 
 from .models import Sighting
@@ -59,8 +60,8 @@ class ElasticsearchSightingSchema(BaseSightingSchema):
 
     time = base_fields.Function(lambda s: s.get_time_isoformat_in_timezone())
     timeSpecificity = base_fields.Function(lambda s: s.get_time_specificity())
-    verbatimLocality = base_fields.Function(lambda s: s.get_locality())
-    locationId_id = base_fields.Function(lambda s: s.get_location_id())
+    verbatimLocality = base_fields.String(attribute='verbatim_locality')
+    locationId = base_fields.UUID(attribute='location_guid')
     locationId_value = base_fields.Function(lambda s: s.get_location_id_value())
     locationId_keyword = base_fields.Function(lambda s: s.get_location_id_keyword())
     owners = base_fields.Nested(
@@ -68,8 +69,7 @@ class ElasticsearchSightingSchema(BaseSightingSchema):
         attribute='get_owners',
         many=True,
     )
-    comments = base_fields.Function(lambda s: s.get_comments())
-    taxonomy_guid = base_fields.Function(lambda s: s.get_taxonomy_guid())
+    taxonomy_guids = base_fields.Function(lambda s: s.get_taxonomy_guids())
     customFields = base_fields.Function(lambda s: s.get_custom_fields())
     submissionTime = base_fields.Function(lambda s: s.get_submission_time_isoformat())
 
@@ -86,11 +86,11 @@ class ElasticsearchSightingSchema(BaseSightingSchema):
             'timeSpecificity',
             'comments',
             'verbatimLocality',
-            'locationId_id',
+            'locationId',
             'locationId_value',
             'locationId_keyword',
             'owners',
-            'taxonomy_guid',
+            'taxonomy_guids',
             'customFields',
             'submissionTime',
         )
@@ -143,13 +143,13 @@ class FeaturedAssetOnlySchema(BaseSightingSchema):
         )
 
 
-class AugmentedEdmSightingSchema(TimedSightingSchema):
+class DetailedSightingSchema(TimedSightingSchema):
     """
-    Sighting schema with EDM and Houston data.
+    Sighting schema with all data.
     """
 
-    createdHouston = base_fields.DateTime(attribute='created')
-    updatedHouston = base_fields.DateTime(attribute='updated')
+    created = base_fields.DateTime(attribute='created')
+    updated = base_fields.DateTime(attribute='updated')
     assets = base_fields.Nested(
         'DetailedAssetSchema',
         attribute='get_assets',
@@ -163,6 +163,19 @@ class AugmentedEdmSightingSchema(TimedSightingSchema):
     jobs = base_fields.Function(lambda s: s.get_jobs_json())
     idConfigs = base_fields.Function(lambda s: s.get_id_configs())
     submissionTime = base_fields.Function(lambda s: s.get_submission_time_isoformat())
+    encounters = base_fields.Nested(
+        DetailedEncounterSchema,
+        attribute='encounters',
+        many=True,
+    )
+    customFields = base_fields.Function(lambda s: s.get_custom_fields())
+    decimalLatitude = base_fields.Float(attribute='decimal_latitude')
+    decimalLongitude = base_fields.Float(attribute='decimal_longitude')
+    verbatimLocality = base_fields.String(attribute='verbatim_locality')
+    locationId = base_fields.UUID(attribute='location_guid')
+    locationId_value = base_fields.Function(lambda s: s.get_location_id_value())
+    locationId_keyword = base_fields.Function(lambda s: s.get_location_id_keyword())
+    pipeline_status = base_fields.Function(lambda s: s.get_pipeline_status())
 
     class Meta(TimedSightingSchema.Meta):
         """
@@ -170,8 +183,8 @@ class AugmentedEdmSightingSchema(TimedSightingSchema):
         """
 
         fields = TimedSightingSchema.Meta.fields + (
-            'createdHouston',
-            'updatedHouston',
+            'created',
+            'updated',
             'hasView',
             'hasEdit',
             'assets',
@@ -184,6 +197,16 @@ class AugmentedEdmSightingSchema(TimedSightingSchema):
             'speciesDetectionModel',
             'idConfigs',
             'submissionTime',
+            'encounters',
+            'customFields',
+            Sighting.comments.key,
+            'decimalLatitude',
+            'decimalLongitude',
+            'verbatimLocality',
+            'locationId_value',
+            'locationId',
+            'locationId_keyword',
+            'pipeline_status',
         )
 
 
@@ -198,7 +221,7 @@ class DetailedSightingJobSchema(ModelSchema):
     result = base_fields.Dict()
 
 
-class DebugSightingSchema(AugmentedEdmSightingSchema):
+class DebugSightingSchema(DetailedSightingSchema):
     assets = base_fields.Nested(
         'DetailedAssetSchema',
         attribute='get_assets',
@@ -206,5 +229,5 @@ class DebugSightingSchema(AugmentedEdmSightingSchema):
     )
     jobs = base_fields.Function(lambda s: s.get_job_debug())
 
-    class Meta(AugmentedEdmSightingSchema.Meta):
-        fields = AugmentedEdmSightingSchema.Meta.fields + ('jobs',)
+    class Meta(DetailedSightingSchema.Meta):
+        fields = DetailedSightingSchema.Meta.fields + ('jobs',)

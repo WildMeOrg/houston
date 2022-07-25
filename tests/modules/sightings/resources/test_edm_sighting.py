@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import datetime
+import uuid
 
 import pytest
 
@@ -11,13 +12,13 @@ timestamp = datetime.datetime.now().isoformat() + '+00:00'
 
 
 @pytest.mark.skipif(module_unavailable('sightings'), reason='Sightings module disabled')
-def test_sighting_edm_patch_add(db, flask_app_client, researcher_1, request, test_root):
+def test_sighting_patch_add(db, flask_app_client, researcher_1, request, test_root):
 
     data_in = {
         'encounters': [{}, {}],
         'time': timestamp,
         'timeSpecificity': 'time',
-        'locationId': 'test',
+        'locationId': str(uuid.uuid4()),
     }
     uuids = sighting_utils.create_sighting(
         flask_app_client, researcher_1, request, test_root, data_in

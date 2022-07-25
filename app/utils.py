@@ -15,6 +15,19 @@ import app.extensions.logging as AuditLog  # NOQA
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
 
+# Patches may fail due to cascade delete issue. These are not faults as such so not HoustonExceptions
+# but need to be passed between the parameters file and resources file
+class CascadeDeleteException(Exception):
+    def __init__(
+        self,
+        **kwargs,
+    ):
+        self.vulnerable_sighting_guids = kwargs.get('vulnerableSightingGuids', [])
+        self.deleted_sighting_guids = kwargs.get('deletedSightingGuids', [])
+        self.vulnerable_individual_guids = kwargs.get('vulnerableIndividualGuids', [])
+        self.deleted_individual_guids = kwargs.get('deletedIndividualGuids', [])
+
+
 class HoustonException(Exception):
     def __init__(
         self,

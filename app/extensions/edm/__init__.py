@@ -2,20 +2,15 @@
 # pylint: disable=no-self-use
 """
 Ecological Data Management (EDM) manager.
-
+No longer used in main Houston code but retained to allow data transfer from EDM
 """
 import keyword
 import logging
-import types
-import uuid
 
-import sqlalchemy
-import tqdm
 from flask import current_app, render_template, request, session  # NOQA
 from flask_login import current_user  # NOQA
 
 import app.extensions.logging as AuditLog  # NOQA
-from app.extensions import db
 from app.extensions.restManager.RestManager import RestManager
 from app.utils import HoustonException
 from flask_restx_patched import is_extension_enabled
@@ -99,21 +94,6 @@ class EDMManager(RestManager):
 
     def __init__(self, pre_initialize=False, *args, **kwargs):
         super(EDMManager, self).__init__(pre_initialize, *args, **kwargs)
-
-    def version_check(self):
-        edm_version = self.get_dict('version.dict', None)
-        if edm_version is None or 'date' not in edm_version:
-            log.error('could not determine EDM version')
-            return False
-        if edm_version['date'] >= self.MIN_VERSION:
-            log.debug(
-                f"EDM version check passed: edm_version={edm_version['date']}  >=  min_version={self.MIN_VERSION}"
-            )
-            return True
-        log.error(
-            f"EDM version check FAILED: edm_version={edm_version['date']}  <  min_version={self.MIN_VERSION}"
-        )
-        return False
 
     def initialize_edm_admin_user(self, email, password):
         import json
@@ -214,141 +194,6 @@ class EDMManager(RestManager):
             request_headers=request_headers,
         )
         return result
-
-
-class EDMObjectMixin(object):
-    @classmethod
-    def edm_sync_all(cls, verbose=True, refresh=False):
-        edm_items = current_app.edm.get_list('{}.list'.format(cls.EDM_NAME))
-
-        if verbose:
-            log.info(
-                'Checking %d EDM %ss against local cache...'
-                % (len(edm_items), cls.EDM_NAME)
-            )
-
-        new_items = []
-        stale_items = []
-        for guid in tqdm.tqdm(edm_items):
-            item_version = edm_items[guid]
-            version = item_version.get('version', None)
-            assert version is not None
-
-            model_obj, is_new = cls.ensure_edm_obj(guid)
-            if is_new:
-                new_items.append(model_obj)
-
-            if model_obj.version != version or refresh:
-                stale_items.append((model_obj, version))
-
-        if verbose:
-            log.info(f'Added {len(new_items)} new {cls.EDM_NAME}s')
-            log.info(f'Updating {len(stale_items)} stale {cls.EDM_NAME}s using EDM...')
-
-        updated_items = []
-        failed_items = []
-        for model_obj, version in tqdm.tqdm(stale_items):
-            try:
-                model_obj._sync_item(model_obj.guid, version)
-                updated_items.append(model_obj)
-            except sqlalchemy.exc.IntegrityError:
-                log.exception(f'Error updating {cls.EDM_NAME} {model_obj}')
-
-                failed_items.append(model_obj)
-
-        return edm_items, new_items, updated_items, failed_items
-
-    def _process_edm_attribute(self, data, edm_attribute):
-        edm_attribute = edm_attribute.strip()
-        edm_attribute = edm_attribute.strip('.')
-        edm_attribute_list = edm_attribute.split('.')
-
-        num_components = len(edm_attribute_list)
-
-        if num_components == 0:
-            raise AttributeError()
-
-        edm_attribute_ = edm_attribute_list[0]
-        edm_attribute_ = edm_attribute_.strip()
-        data_ = getattr(data, edm_attribute_)
-
-        if num_components == 1:
-            return data_
-
-        edm_attribute_list_ = edm_attribute_list[1:]
-        edm_attribute_ = '.'.join(edm_attribute_list_)
-
-        return self._process_edm_attribute(data_, edm_attribute_)
-
-    def _process_edm_data(self, data, claimed_version):
-
-        unmapped_attributes = list(
-            set(sorted(data._fields)) - set(self.EDM_ATTRIBUTE_MAPPING)
-        )
-        if len(unmapped_attributes) > 0:
-            log.warning('Unmapped attributes: {!r}'.format(unmapped_attributes))
-
-        found_version = None
-        for edm_attribute in self.EDM_ATTRIBUTE_MAPPING:
-            try:
-                edm_value = self._process_edm_attribute(data, edm_attribute)
-
-                attribute = self.EDM_ATTRIBUTE_MAPPING[edm_attribute]
-                if attribute is None:
-                    log.warning(
-                        'Ignoring mapping for EDM attribute {!r}'.format(edm_attribute)
-                    )
-                    continue
-
-                if edm_attribute in self.EDM_LOG_ATTRIBUTES:
-                    log.info(
-                        'Syncing edm data for %r = %r'
-                        % (
-                            edm_attribute,
-                            edm_value,
-                        )
-                    )
-
-                assert hasattr(self, attribute), 'attribute not found'
-                attribute_ = getattr(self, attribute)
-                if isinstance(attribute_, (types.MethodType,)):
-                    attribute_(edm_value)
-                else:
-                    setattr(self, attribute, edm_value)
-                    if edm_attribute == self.EDM_VERSION_ATTRIBUTE:
-                        found_version = edm_value
-            except AttributeError:
-                AuditLog.backend_fault(
-                    log, f'Could not find EDM attribute {edm_attribute}'
-                )
-
-            except KeyError:
-                AuditLog.backend_fault(
-                    log, f'Could not find EDM attribute {edm_attribute}'
-                )
-
-        if found_version is None:
-            self.version = claimed_version
-        else:
-            self.version = found_version
-
-        with db.session.begin():
-            db.session.merge(self)
-
-        if found_version is None:
-            log.info('Updating to claimed version {!r}'.format(claimed_version))
-        else:
-            log.info('Updating to found version {!r}'.format(found_version))
-
-    def _sync_item(self, guid, version):
-        response = current_app.edm.get_data_item(guid, '{}.data'.format(self.EDM_NAME))
-
-        assert response.success
-        data = response.result
-
-        assert uuid.UUID(data.id) == guid
-
-        self._process_edm_data(data, version)
 
 
 def init_app(app, **kwargs):

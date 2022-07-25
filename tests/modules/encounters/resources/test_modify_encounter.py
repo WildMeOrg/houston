@@ -3,7 +3,6 @@
 import datetime
 import time
 import uuid
-from unittest import mock
 
 import pytest
 
@@ -34,10 +33,10 @@ def test_modify_encounter(
     data_in = {
         'time': datetime.datetime.now().isoformat() + '+00:00',
         'timeSpecificity': 'time',
-        'locationId': 'test',
+        'locationId': str(uuid.uuid4()),
         'encounters': [
             {},
-            {'locationId': 'Monster Island'},
+            {'locationId': str(uuid.uuid4())},
         ],
     }
 
@@ -51,10 +50,10 @@ def test_modify_encounter(
     new_encounter_2 = Encounter.query.get(uuids['encounters'][1])
     assert new_encounter_2
 
-    # test that we can mix edm/houston
+    new_loc = str(uuid.uuid4())
     patch_data = [
         utils.patch_replace_op('owner', str(researcher_1.guid)),
-        utils.patch_replace_op('locationId', 'FAIL'),
+        utils.patch_replace_op('locationId', new_loc),
     ]
     enc_utils.patch_encounter(
         flask_app_client,
@@ -63,9 +62,7 @@ def test_modify_encounter(
         patch_data,
     )
 
-    # bonus test to check that FeatherModel get_edm_complete_data() is working
-    assert new_encounter_1.get_edm_data_field('id') == str(new_encounter_1.guid)
-    assert new_encounter_1.get_location_id() == 'FAIL'
+    assert str(new_encounter_1.get_location_id()) == new_loc
 
     # non Owner cannot make themselves the owner
     new_owner_as_res_2 = [
@@ -92,7 +89,7 @@ def test_modify_encounter(
     assert new_encounter_1.owner == researcher_2
 
     # test changing locationId via patch
-    new_val = 'LOCATION_TEST_VALUE'
+    new_val = str(uuid.uuid4())
     patch_data = [utils.patch_replace_op('locationId', new_val)]
     enc_utils.patch_encounter(
         flask_app_client, new_encounter_1.guid, researcher_2, patch_data
@@ -281,9 +278,8 @@ def test_modify_encounter(
             'customFields': {},
             'guid': str(new_encounter_1.guid),
             'locationId': new_val,
-            'version': new_encounter_1.version,
-            'createdHouston': new_encounter_1.created.isoformat() + '+00:00',
-            'updatedHouston': new_encounter_1.updated.isoformat() + '+00:00',
+            'created': new_encounter_1.created.isoformat() + '+00:00',
+            'updated': new_encounter_1.updated.isoformat() + '+00:00',
             'owner': {
                 'full_name': researcher_2.full_name,
                 'guid': str(researcher_2.guid),
@@ -381,34 +377,6 @@ def test_modify_encounter(
 
 
 @pytest.mark.skipif(module_unavailable('encounters'), reason='Encounters module disabled')
-def test_modify_encounter_error(
-    flask_app, flask_app_client, researcher_1, request, test_root
-):
-    uuids = enc_utils.create_encounter(flask_app_client, researcher_1, request, test_root)
-    assert len(uuids['encounters']) == 1
-    first_enc_guid = uuids['encounters'][0]
-
-    def edm_return_500(*args, **kwargs):
-        response = mock.Mock(ok=False, status_code=500)
-        response.json.return_value = None
-        return response
-
-    # test edm returning 500 error
-    new_val = 'LOCATION_TEST_VALUE'
-    patch_data = [utils.patch_replace_op('locationId', new_val)]
-    with mock.patch.object(
-        flask_app.edm, 'request_passthrough', side_effect=edm_return_500
-    ):
-        enc_utils.patch_encounter(
-            flask_app_client,
-            first_enc_guid,
-            researcher_1,
-            patch_data,
-            expected_status_code=500,
-        )
-
-
-@pytest.mark.skipif(module_unavailable('encounters'), reason='Encounters module disabled')
 def test_create_encounter_time_test(
     flask_app, flask_app_client, researcher_1, request, test_root
 ):
@@ -425,7 +393,7 @@ def test_create_encounter_time_test(
         ],
         'time': '2000-01-01T01:01:01+00:00',
         'timeSpecificity': 'time',
-        'locationId': 'test',
+        'locationId': str(uuid.uuid4()),
     }
     uuids = sighting_utils.create_sighting(
         flask_app_client,
@@ -537,14 +505,11 @@ def test_create_encounter_time_test(
 
 
 @pytest.mark.skipif(module_unavailable('encounters'), reason='Encounters module disabled')
-def test_mix_edm_houston_patch(
-    flask_app, flask_app_client, researcher_1, request, test_root
-):
+def test_patch(flask_app, flask_app_client, researcher_1, request, test_root):
     sighting_time = '2000-01-01T01:01:01+00:00'
     uuids = enc_utils.create_encounter(flask_app_client, researcher_1, request, test_root)
     encounter_guid = uuids['encounters'][0]
 
-    # EDM only patch
     lat = utils.random_decimal_latitude()
     patch_resp = enc_utils.patch_encounter(
         flask_app_client,
@@ -560,13 +525,10 @@ def test_mix_edm_houston_patch(
     )
     read_resp = enc_utils.read_encounter(flask_app_client, researcher_1, encounter_guid)
     assert (
-        patch_resp.json['message']
-        == 'org.ecocean.api.ApiValueException: invalid longitude value'
+        patch_resp.json['message'] == 'decimalLongitude value passed (999.9) is invalid'
     )
-    assert 'decimalLatitude' not in read_resp.json.keys()
     assert read_resp.json['time'] == sighting_time
 
-    # Houston only patch
     new_time = datetime.datetime.now().isoformat() + '+00:00'
     patch_resp = enc_utils.patch_encounter(
         flask_app_client,
@@ -582,7 +544,6 @@ def test_mix_edm_houston_patch(
     assert 'Failed to update Encounter details.' in patch_resp.json['message']
     assert read_resp.json['time'] == sighting_time
 
-    # Houston and EDM patch
     lat = utils.random_decimal_latitude()
     long = utils.random_decimal_longitude()
     new_time = datetime.datetime.now().isoformat() + '+00:00'
@@ -596,23 +557,9 @@ def test_mix_edm_houston_patch(
             {'op': 'add', 'path': '/time', 'value': new_time},
             {'op': 'add', 'path': '/owner', 'value': str(uuid.uuid4())},
         ],
-        expected_status_code=417,
-    )
-    read_resp = enc_utils.read_encounter(flask_app_client, researcher_1, encounter_guid)
-    assert patch_resp.json['fields_written'] == [
-        {
-            'op': 'add',
-            'path': '/decimalLatitude',
-            'value': lat,
-            'field_name': 'decimalLatitude',
-        },
-        {
-            'op': 'add',
-            'path': '/decimalLongitude',
-            'value': long,
-            'field_name': 'decimalLongitude',
-        },
-    ]
-    assert read_resp.json['decimalLatitude'] == str(lat)
-    assert read_resp.json['decimalLongitude'] == str(long)
-    assert read_resp.json['time'] == sighting_time
+        expected_status_code=409,
+    ).json
+    read_resp = enc_utils.read_encounter(
+        flask_app_client, researcher_1, encounter_guid
+    ).json
+    assert "('field_name', 'owner')]) could not succeed." in patch_resp['message']

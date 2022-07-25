@@ -16,19 +16,15 @@ EXPECTED_FIELDS = {
     'created',
     'hasEdit',
     'review_time',
-    'version',
-    'createdHouston',
+    'created',
     'detection_start_time',
     'locationId',
     'comments',
     'hasView',
-    'encounterCounts',
     'stage',
     'customFields',
-    'createdEDM',
     'creator',
     'updated',
-    'updatedHouston',
     'time',
     'timeSpecificity',
     'guid',
@@ -76,13 +72,23 @@ def create_sighting(
     commit_user=None,
     add_annot=False,
 ):
+    import tests.modules.site_settings.resources.utils as site_setting_utils
+
+    if not commit_user:
+        commit_user = asset_group_user
+
+    regions = site_setting_utils.get_and_ensure_test_regions(
+        flask_app_client, commit_user
+    )
+    region1_id = regions[0]['id']
+
     if not sighting_data:
         # Create a valid but simple one
         sighting_data = {
             'encounters': [{}],
             'time': '2000-01-01T01:01:01+00:00',
             'timeSpecificity': 'time',
-            'locationId': 'test',
+            'locationId': region1_id,
         }
     transaction_id, test_filename = tus_utils.prep_tus_dir(test_root)
     uuids = {'transaction': transaction_id}
@@ -95,9 +101,6 @@ def create_sighting(
             sighting_data,
         ],
     }
-
-    if not commit_user:
-        commit_user = asset_group_user
 
     # Need to add the new filename to the sighting for the Asset group code to process it
     if 'assetReferences' not in group_data['sightings'][0].keys():
@@ -244,10 +247,15 @@ def patch_sighting(
         headers=headers,
     )
     if expected_status_code == 200:
-        if 'version' in response.json.keys():
-            assert response.json.keys() >= EXPECTED_FIELDS
-        else:
-            assert response.json.keys() >= {'result'}
+        if response.json.keys() <= EXPECTED_FIELDS:
+            header_dict = dict(headers)
+            if header_dict.get('x-allow-delete-cascade-sighting', False):
+                # sighting almost certainly being deleted so no response perfectly plausible
+                return response
+
+        assert (
+            response.json.keys() >= EXPECTED_FIELDS
+        ), f'expected {EXPECTED_FIELDS}, got {response.json}'
 
     return response
 

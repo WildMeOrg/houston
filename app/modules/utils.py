@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import NoReturn, Optional, Union
 from uuid import UUID
 
-from flask import Blueprint, Flask, current_app, request
+from flask import Blueprint, Flask
 
 from app.extensions.api import abort
 
@@ -28,6 +28,30 @@ def fail_on_missing_static_folder(
         raise RuntimeError(
             f'static folder improperly configured - could not locate a valid installation at: {folder}'
         )
+
+
+def is_valid_sex(value):
+    return value is None or value in {'male', 'female', 'unknown'}
+
+
+def is_valid_latitude(value):
+    if not isinstance(value, float):
+        return False
+    max_latitude = 90.0
+    min_latitude = -90.0
+
+    # Validate range
+    return min_latitude <= value <= max_latitude
+
+
+def is_valid_longitude(value):
+    if not isinstance(value, float):
+        return False
+    max_longitude = 180.0
+    min_longitude = -180.0
+
+    # Validate range
+    return min_longitude <= value <= max_longitude
 
 
 def is_valid_uuid_string(guid):
@@ -61,19 +85,12 @@ class Cleanup(object):
         log_message=None,
         error_fields=None,
     ):
-        from app.modules.sightings.models import Sighting
 
         if log_message is None:
             log_message = message
         log.error(
             f'Bailing on {self.name} creation: {log_message} (error_fields {error_fields})'
         )
-
-        for alloc_guid in self.allocated_guids:
-            if alloc_guid['type'] == Sighting:
-                guid = alloc_guid['guid']
-                log.warning(f'Cleanup removing Sighting {guid} from EDM ')
-                Sighting.delete_from_edm_by_guid(current_app, guid, request)
 
         for alloc_obj in self.allocated_objs:
             log.warning('Cleanup removing %r' % alloc_obj)

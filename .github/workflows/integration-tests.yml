@@ -53,7 +53,7 @@ jobs:
       - name: Run docker-compose
         run: |
           set -ex
-          docker-compose up -d db redis elasticsearch elasticsearch2 elasticsearch3 sage sage-sync edm houston celery-beat celery-worker dev-frontend localhost
+          docker-compose up -d db redis elasticsearch elasticsearch2 elasticsearch3 sage sage-sync houston celery-beat celery-worker dev-frontend localhost
 
       - name: Install dependencies
         run: |

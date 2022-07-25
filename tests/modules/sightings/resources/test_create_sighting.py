@@ -20,10 +20,10 @@ valid_long = 25.9999
 saturn_data = {
     'time': timestamp,
     'timeSpecificity': 'time',
-    'locationId': 'test',
+    'locationId': str(uuid.uuid4()),
     'encounters': [
         {
-            'locationId': 'Saturn',
+            'locationId': str(uuid.uuid4()),
             'decimalLatitude': valid_lat,
             'decimalLongitude': valid_long,
             'verbatimLocality': 'Saturn',
@@ -53,7 +53,11 @@ def test_create_failures(flask_app_client, test_root, researcher_1, request):
         flask_app_client, researcher_1, request, test_root, data_in, 400, expected_error
     )
 
-    data_in = {'locationId': 'wibble', 'time': timestamp, 'timeSpecificity': 'time'}
+    data_in = {
+        'locationId': str(uuid.uuid4()),
+        'time': timestamp,
+        'timeSpecificity': 'time',
+    }
     expected_error = 'encounters field missing from Sighting 1'
     sighting_utils.create_sighting(
         flask_app_client, researcher_1, request, test_root, data_in, 400, expected_error
@@ -65,7 +69,7 @@ def test_create_failures(flask_app_client, test_root, researcher_1, request):
         'time': timestamp,
         'timeSpecificity': 'time',
         'assetReferences': [{'fail': 'fail'}],
-        'locationId': 'test',
+        'locationId': str(uuid.uuid4()),
     }
     expected_error = "Invalid assetReference data {'fail': 'fail'}"
     sighting_utils.create_sighting(
@@ -86,8 +90,13 @@ def test_create_failures(flask_app_client, test_root, researcher_1, request):
 def test_create_and_modify_and_delete_sighting(
     db, flask_app_client, researcher_1, test_root, staff_user, request
 ):
+    import tests.modules.site_settings.resources.utils as site_setting_utils
     from app.modules.complex_date_time.models import Specificities
     from app.modules.sightings.models import Sighting
+
+    regions = site_setting_utils.get_and_ensure_test_regions(flask_app_client, staff_user)
+    region1_id = regions[0]['id']
+    region2_id = regions[1]['id']
 
     # we should end up with these same counts (which _should be_ all zeros!)
     orig_ct = test_utils.all_count(db)
@@ -95,7 +104,7 @@ def test_create_and_modify_and_delete_sighting(
         'encounters': [{}, {}],
         'time': timestamp,
         'timeSpecificity': 'time',
-        'locationId': 'test',
+        'locationId': region1_id,
     }
     uuids = sighting_utils.create_sighting(
         flask_app_client, researcher_1, request, test_root, data_in
@@ -118,18 +127,17 @@ def test_create_and_modify_and_delete_sighting(
     assert ct['Encounter'] == orig_ct['Encounter'] + 2
 
     # test some simple modification (should succeed)
-    new_loc_id = 'test_2'
     sighting_utils.patch_sighting(
         flask_app_client,
         researcher_1,
         sighting_id,
         patch_data=[
-            {'op': 'replace', 'path': '/locationId', 'value': new_loc_id},
+            {'op': 'replace', 'path': '/locationId', 'value': region2_id},
         ],
     )
     # check that change was made
     response = sighting_utils.read_sighting(flask_app_client, researcher_1, sighting_id)
-    assert response.json['locationId'] == new_loc_id
+    assert response.json['locationId'] == region2_id
 
     new_configs = [{'algorithms': ['hotspotter_nosv']}]
     sighting_utils.patch_sighting(
@@ -148,19 +156,16 @@ def test_create_and_modify_and_delete_sighting(
     assert set(response.json.keys()) >= {
         'comments',
         'encounters',
-        'createdEDM',
         'customFields',
         'locationId',
         'time',
         'timeSpecificity',
-        'encounterCounts',
-        'version',
         'hasView',
         'updated',
         'identification_start_time',
         'review_time',
         'stage',
-        'updatedHouston',
+        'updated',
         'guid',
         'hasEdit',
         'assets',
@@ -255,7 +260,7 @@ def test_create_and_modify_and_delete_sighting(
             {
                 'op': 'add',
                 'path': '/encounters',
-                'value': {'locationId': 'encounter_patch_add'},
+                'value': {'locationId': region1_id},
             }
         ],
     )
@@ -334,7 +339,7 @@ def test_create_anon_and_delete_sighting(
     sighting_data = {
         'time': timestamp,
         'timeSpecificity': 'time',
-        'locationId': 'test',
+        'locationId': str(uuid.uuid4()),
         'encounters': [{}],
         'assetReferences': [test_filename, 'fluke.jpg'],
     }
@@ -386,7 +391,7 @@ def test_create_anon_and_delete_sighting(
         assert sorted(a['guid'] for a in response.json['assets']) == asset_guids
 
     # test some modification; this should fail (401) cuz anon should not be allowed
-    new_loc_id = 'test_2_fail'
+    new_loc_id = str(uuid.uuid4())
     sighting_utils.patch_sighting(
         flask_app_client,
         None,
@@ -420,15 +425,11 @@ def test_edm_and_houston_encounter_data_within_sightings(
         )
         json = response.json
 
-        # EDM stuff
         assert json['encounters'][0]['verbatimLocality'] == 'Saturn'
-        assert json['encounters'][0]['locationId'] == 'Saturn'
         assert json['encounters'][0]['time'] == '2010-01-01T01:01:01+00:00'
         assert json['encounters'][0]['timeSpecificity'] == 'time'
         assert json['encounters'][0]['decimalLatitude'] == 25.9999
         assert json['encounters'][0]['decimalLongitude'] == 25.9999
-
-        # houston stuff
         assert json['encounters'][0]['guid'] is not None
 
         enc_id = json['encounters'][0]['guid']
@@ -482,10 +483,11 @@ def test_create_old_sighting(flask_app_client, researcher_1):
     )
 
 
+# with edm gone this is kind of just redundant/bonus testing
 @pytest.mark.skipif(
     module_unavailable('sightings', 'encounters'), reason='Sightings module disabled'
 )
-def test_complex_mixed_patch(
+def test_complex_misc_patch(
     db, flask_app_client, researcher_1, staff_user, request, test_root
 ):
 
@@ -504,18 +506,18 @@ def test_complex_mixed_patch(
             {'op': 'add', 'path': '/decimalLatitude', 'value': 999.9},
         ],
         expected_status_code=400,
-    )
-    patch_json = patch_resp.json
-    assert 'invalid latitude' in patch_json['message']
+    ).json
+    assert patch_resp['message'] == 'decimalLatitude value passed (999.9) is invalid'
 
     # And neither value changed
     read_resp = sighting_utils.read_sighting(
         flask_app_client,
         researcher_1,
         sighting_guid,
-    )
-    assert read_resp.json['decimalLatitude'] == valid_lat
-    assert read_resp.json['decimalLongitude'] == valid_long
+    ).json
+
+    assert read_resp['encounters'][0]['decimalLatitude'] == valid_lat
+    assert read_resp['encounters'][0]['decimalLongitude'] == valid_long
 
     # Same with houston only fields, some work, some fail, all are rolled back
     test_dt = '1999-01-01T12:34:56-07:00'
@@ -538,7 +540,7 @@ def test_complex_mixed_patch(
     assert patch_resp.json['message'] == 'invalid specificity: fubar'
     assert read_resp.json['time'] == timestamp
 
-    # Now with mixed houston and edm data, as encounters are duff houston will fail before trying EDM
+    # we do not support adding of encounter by guid, so this should fail
     patch_resp = sighting_utils.patch_sighting(
         flask_app_client,
         researcher_1,
@@ -555,32 +557,8 @@ def test_complex_mixed_patch(
         flask_app_client,
         researcher_1,
         sighting_guid,
-    )
-    assert read_resp.json['decimalLatitude'] == valid_lat
-
-    # Now with mixed houston and edm data, where EDM will succeed followed by Houston failure
-    patch_resp = sighting_utils.patch_sighting(
-        flask_app_client,
-        researcher_1,
-        sighting_guid,
-        patch_data=[
-            {'op': 'replace', 'path': '/time', 'value': test_dt},
-            {'op': 'replace', 'path': '/timeSpecificity', 'value': 'fubar'},
-            {'op': 'add', 'path': '/decimalLongitude', 'value': 24.9999},
-        ],
-        expected_status_code=417,
-    )
-
-    assert patch_resp.json['fields_written'] == [
-        {
-            'op': 'add',
-            'path': '/decimalLongitude',
-            'value': 24.9999,
-            'field_name': 'decimalLongitude',
-        }
-    ]
-    # EDM Bug TODO restore when DEX 725 fixed
-    # assert read_resp.json['decimalLatitude'] == 24.999
+    ).json
+    assert read_resp['decimalLongitude'] is None
 
 
 @pytest.mark.skipif(module_unavailable('sightings'), reason='Sightings module disabled')
@@ -595,7 +573,7 @@ def test_create_sighting_time_test(
     sighting_data = {
         'time': 'fubar',
         'timeSpecificity': 'time',
-        'locationId': 'test',
+        'locationId': str(uuid.uuid4()),
         'encounters': [{}],
     }
     uuids = sighting_utils.create_sighting(
@@ -674,7 +652,7 @@ def test_data_manager(
         'encounters': [{}],
         'time': timestamp,
         'timeSpecificity': 'time',
-        'locationId': 'test',
+        'locationId': str(uuid.uuid4()),
     }
     uuids = sighting_utils.create_sighting(
         flask_app_client, researcher_1, request, test_root, data_in

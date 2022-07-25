@@ -77,7 +77,6 @@ def test_create_and_delete_annotation(flask_app_client, researcher_1, request, t
     assert asset_res.json['annotations'][0]['bounds']['rect'] == [0, 1, 2, 3]
 
     # some misc tests
-    assert read_annotation.get_location_id() == 'test'
     assert read_annotation.get_time_isoformat_in_timezone() == '2000-01-01T01:01:01+00:00'
     assert not read_annotation.get_taxonomy_guid()
     assert read_annotation.get_owner_guid_str() == str(researcher_1.guid)
@@ -143,13 +142,6 @@ def test_annotation_permission(
     # but a different researcher can read the list but not the annotation
     annot_utils.read_annotation(flask_app_client, researcher_2, annotation_guid, 403)
     annot_utils.read_all_annotations(flask_app_client, researcher_2)
-
-    # Test locationId fallback
-    from app.modules.annotations.models import Annotation
-    from app.modules.annotations.schemas import AnnotationElasticsearchSchema
-
-    annotation = Annotation.query.get(annotation_guid)
-    assert AnnotationElasticsearchSchema().dump(annotation).data['locationId'] == 'test'
 
 
 @pytest.mark.skipif(

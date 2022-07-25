@@ -3,119 +3,12 @@
 Organizations database models
 --------------------
 """
-import datetime
 import logging
 import uuid
 
-import pytz
-from flask import current_app
-
 from app.extensions import HoustonModel, db
-from app.extensions.edm import EDMObjectMixin
-from app.modules.users.models import User
 
 log = logging.getLogger(__name__)
-
-
-class OrganizationEDMMixin(EDMObjectMixin):
-    # All comms with EDM to exchange timestamps will use this format so it should be in one place
-    EDM_DATETIME_FMTSTR = '%Y-%m-%dT%H:%M:%S.%fZ'
-
-    # fmt: off
-    # Name of the module, used for knowing what to sync i.e organization.list, organization.data
-    EDM_NAME = 'organization'
-
-    # The EDM attribute for the version, if reported
-    EDM_VERSION_ATTRIBUTE = 'version'
-
-    EDM_LOG_ATTRIBUTES = [
-        'name',
-    ]
-
-    EDM_ATTRIBUTE_MAPPING = {
-        # Ignored
-        'id'                    : None,
-        'created'               : None,
-        'modified'              : None,
-
-        # # Attributes
-        'name'                  : 'title',
-        'url'                   : 'website',
-        'version'               : 'version',
-
-        # # Functions
-        'members'               : '_process_members',
-        'logo'                  : '_process_logo',
-        'createdDate'           : '_process_created_date',
-        'modifiedDate'          : '_process_modified_date',
-    }
-    # fmt: on
-
-    @classmethod
-    def get_elasticsearch_schema(cls):
-        from app.modules.organizations.schemas import DetailedOrganizationSchema
-
-        return DetailedOrganizationSchema
-
-    @classmethod
-    def ensure_edm_obj(cls, guid, owner=None):
-
-        if owner is None:
-            from flask_login import current_user
-
-            candidates = [
-                current_user,
-            ]
-            for user in candidates:
-                if isinstance(user, User) and user.is_admin:
-                    owner = user
-                    break
-
-        organization = Organization.query.filter(Organization.guid == guid).first()
-        is_new = False
-
-        if organization is None:
-            organization = Organization(
-                guid=guid,
-                title='none',
-            )
-            organization.owner = owner
-            db.session.add(organization)
-            is_new = True
-
-        return organization, is_new
-
-    # Helper function for converting time in the EDM database to local time
-    @classmethod
-    def edm_to_local_time(cls, edm_date_time):
-        naive_time = datetime.datetime.strptime(edm_date_time, cls.EDM_DATETIME_FMTSTR)
-        # tell it that it's actually UTC, without this, the hour decrements
-        utc_tz = pytz.timezone('UTC')
-        utc_time = utc_tz.localize(naive_time)
-        return utc_time.astimezone(current_app.config.get('TIMEZONE'))
-
-    def _process_members(self, members):
-        for member in members:
-            log.info('Adding Member ID {}'.format(member.id))
-            user, is_new = User.ensure_edm_obj(member.id)
-            if user not in self.members:
-                enrollment = OrganizationUserMembershipEnrollment(
-                    organization=self,
-                    user=user,
-                )
-
-                with db.session.begin():
-                    self.user_membership_enrollments.append(enrollment)
-
-    def _process_logo(self, logo):
-        self.logo_guid = logo.uuid
-        self.logo_url = logo.url
-
-    def _process_created_date(self, created_date):
-        self.created = self.edm_to_local_time(created_date)
-
-    def _process_modified_date(self, modified_date):
-        self.updated = self.edm_to_local_time(modified_date)
 
 
 class OrganizationUserMembershipEnrollment(db.Model, HoustonModel):
@@ -152,7 +45,7 @@ class OrganizationUserModeratorEnrollment(db.Model, HoustonModel):
     )
 
 
-class Organization(db.Model, HoustonModel, OrganizationEDMMixin):
+class Organization(db.Model, HoustonModel):
     """
     Organizations database model.
     """

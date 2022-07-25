@@ -16,13 +16,3 @@ def list_all(context):
     organizations = Organization.query.all()
     for organization in organizations:
         print('Organization : {} '.format(organization))
-
-
-@app_context_task
-def sync_edm(context, refresh=False):
-    """
-    Sync the organizations from the EDM onto the local Hudson
-    """
-    from app.modules.organizations.models import Organization
-
-    Organization.edm_sync_all(refresh=refresh)

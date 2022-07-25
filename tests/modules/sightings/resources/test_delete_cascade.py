@@ -15,6 +15,7 @@
 
 
 import datetime
+import uuid
 
 import pytest
 
@@ -39,7 +40,7 @@ def test_sighting_cascade(flask_app_client, test_root, researcher_1, request, db
         'encounters': [{}, {}],
         'time': timestamp,
         'timeSpecificity': 'time',
-        'locationId': 'test',
+        'locationId': str(uuid.uuid4()),
     }
     uuids = sighting_utils.create_sighting(
         flask_app_client, researcher_1, request, test_root, data_in
@@ -91,7 +92,7 @@ def test_individual_cascade(flask_app_client, test_root, researcher_1, request, 
         'encounters': [{}, {}],
         'time': timestamp,
         'timeSpecificity': 'time',
-        'locationId': 'test',
+        'locationId': str(uuid.uuid4()),
     }
     uuids = individual_utils.create_individual_and_sighting(
         flask_app_client,
@@ -166,7 +167,7 @@ def test_multi_cascade(flask_app_client, test_root, researcher_1, request, db):
         'encounters': [{}, {}],
         'time': timestamp,
         'timeSpecificity': 'time',
-        'locationId': 'test',
+        'locationId': str(uuid.uuid4()),
     }
     uuids = individual_utils.create_individual_and_sighting(
         flask_app_client,

@@ -7,6 +7,8 @@ from . import utils
 # Not a generic util as there has to be exactly one asset group sighting, no assets, one sighting, and three
 # encounters,
 def create_sighting(session, codex_url):
+    test_regions = utils.ensure_default_test_regions(session, codex_url)
+    region_id1 = test_regions[0]['id']
     group_data = {
         'token': 'XXX',
         'description': 'This is a test asset_group, please ignore',
@@ -16,7 +18,7 @@ def create_sighting(session, codex_url):
             {
                 'time': '2000-01-01T01:01:01+00:00',
                 'timeSpecificity': 'time',
-                'locationId': 'PYTEST-SIGHTING',
+                'locationId': region_id1,
                 'encounters': [{}, {}, {}],
             },
         ],

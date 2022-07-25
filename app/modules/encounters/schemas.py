@@ -74,22 +74,6 @@ class DetailedEncounterSchema(BaseEncounterSchema):
     Detailed Encounter schema exposes all useful fields.
     """
 
-    class Meta(BaseEncounterSchema.Meta):
-        fields = BaseEncounterSchema.Meta.fields + (
-            Encounter.created.key,
-            Encounter.updated.key,
-            Encounter.owner_guid.key,
-            'annotations',
-            Encounter.owner.key,
-            Encounter.submitter.key,
-        )
-        dump_only = BaseEncounterSchema.Meta.dump_only + (
-            Encounter.created.key,
-            Encounter.updated.key,
-        )
-
-
-class AugmentedEdmEncounterSchema(BaseEncounterSchema):
     annotations = base_fields.Nested(
         'DetailedAnnotationSchema',
         many=True,
@@ -97,14 +81,26 @@ class AugmentedEdmEncounterSchema(BaseEncounterSchema):
     )
 
     createdHouston = base_fields.DateTime(attribute='created')
-    updatedHouston = base_fields.DateTime(attribute='updated')
+    created = base_fields.DateTime(attribute='created')
+    updated = base_fields.DateTime(attribute='updated')
+    taxonomy = base_fields.Function(lambda enc: enc.get_taxonomy_guid())
     individual = base_fields.Nested('NamedIndividualSchema', many=False)
+    customFields = base_fields.Function(lambda enc: enc.get_custom_fields())
+    verbatimLocality = base_fields.String(attribute='verbatim_locality')
+    locationId = base_fields.Function(lambda enc: enc.get_location_id())
+    locationId_value = base_fields.Function(lambda enc: enc.get_location_id_value())
+    sighting = base_fields.UUID(attribute='sighting_guid')
+    decimalLatitude = base_fields.Float(attribute='decimal_latitude')
+    decimalLongitude = base_fields.Float(attribute='decimal_longitude')
 
     class Meta(BaseEncounterSchema.Meta):
         fields = BaseEncounterSchema.Meta.fields + (
+            # send both for a while until FE removes use of old createdHouston field
             'createdHouston',
-            'updatedHouston',
+            'created',
+            Encounter.updated.key,
             Encounter.owner.key,
+            Encounter.owner_guid.key,
             Encounter.submitter.key,
             'hasView',
             'hasEdit',
@@ -112,43 +108,14 @@ class AugmentedEdmEncounterSchema(BaseEncounterSchema):
             'time',
             'timeSpecificity',
             'individual',
-        )
-
-
-class AugmentedIndividualApiEncounterSchema(BaseEncounterSchema):
-
-    submitter = base_fields.Nested('PublicUserSchema', many=False)
-    owner = base_fields.Nested('PublicUserSchema', many=False)
-
-    encounters = base_fields.Nested('AugmentedSightingApiEncounterSchema', many=True)
-    annotations = base_fields.Nested('DetailedAnnotationSchema', many=True)
-    individual = base_fields.Nested('BasicNamedIndividualSchema', many=False)
-
-    class Meta(BaseEncounterSchema.Meta):
-        fields = BaseEncounterSchema.Meta.fields + (
-            Encounter.sighting.key,
-            'individual',
-            'annotations',
-            'submitter',
-            'owner',
-            'hasView',
-            'hasEdit',
+            'customFields',
+            'verbatimLocality',
+            'locationId',
+            'locationId_value',
+            'sighting',
+            'taxonomy',
             'asset_group_sighting_encounter_guid',
-            'encounters',
-            'time',
-            'timeSpecificity',
-        )
-        dump_only = BaseEncounterSchema.Meta.dump_only + ('encounters',)
-
-
-class AugmentedSightingApiEncounterSchema(BaseEncounterSchema):
-
-    individual = base_fields.Nested('NamedIndividualSchema', many=False)
-
-    class Meta(BaseEncounterSchema.Meta):
-        fields = BaseEncounterSchema.Meta.fields + (
-            Encounter.sighting.key,
-            'hasView',
-            'hasEdit',
-            'individual',
+            'decimalLatitude',
+            'decimalLongitude',
+            Encounter.sex.key,
         )

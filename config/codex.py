@@ -39,7 +39,6 @@ class BaseCodexConfig(
     # fmt: off
     ENABLED_EXTENSIONS = (
         'sage',
-        'edm',
         'cors',
         'elasticsearch',
         'gitlab',

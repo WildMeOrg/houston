@@ -2,6 +2,7 @@
 # pylint: disable=missing-docstring
 
 import json
+import uuid
 
 import pytest
 
@@ -30,7 +31,7 @@ def test_mega_data(
 
     from app.modules.sightings.models import Sighting
 
-    # make some customFields in edm
+    # make some customFields
     sighting_cfd_id = setting_utils.custom_field_create(
         flask_app_client, admin_user, 'occ_test_cfd'
     )
@@ -51,7 +52,7 @@ def test_mega_data(
     encounter_data_in = {
         'time': encounter_timestamp,
         'timeSpecificity': 'time',
-        'locationId': 'enc-test',
+        'locationId': str(uuid.uuid4()),
         'taxonomy': tx_guid,
         'decimalLatitude': random_decimal_latitude(),
         'decimalLongitude': random_decimal_longitude(),
@@ -64,7 +65,7 @@ def test_mega_data(
     sighting_data_in = {
         'time': sighting_timestamp,
         'timeSpecificity': 'time',
-        'locationId': 'sig-test',
+        'locationId': str(uuid.uuid4()),
         'decimalLatitude': random_decimal_latitude(),
         'decimalLongitude': random_decimal_longitude(),
         'customFields': {

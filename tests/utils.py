@@ -610,7 +610,7 @@ def dummy_sighting_info():
     return {
         'time': isoformat_timestamp_now(),
         'timeSpecificity': 'time',
-        'locationId': 'narnia',
+        'locationId': str(uuid.uuid4()),
         'encounters': [{'guid': str(uuid.uuid4())}],
         'assetReferences': [],
     }

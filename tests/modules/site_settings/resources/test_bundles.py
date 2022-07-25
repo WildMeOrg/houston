@@ -6,7 +6,7 @@ import pytest
 
 from app.modules.site_settings.models import SiteSetting
 from tests.modules.site_settings.resources import utils as conf_utils
-from tests.utils import extension_unavailable, module_unavailable
+from tests.utils import module_unavailable
 
 BUNDLE_PATH = 'block'
 
@@ -15,17 +15,16 @@ BUNDLE_PATH = 'block'
     module_unavailable('site_settings'), reason='Site-settings module disabled'
 )
 @pytest.mark.parametrize(
-    'keys,is_edm,user_var',
+    'keys,user_var',
     (
-        (['site.name', 'email_service'], True, 'admin_user'),
-        ({'email_service': 'mailchimp'}, False, 'admin_user'),
+        (['site.name', 'email_service'], 'admin_user'),
+        ({'email_service': 'mailchimp'}, 'admin_user'),
         (
             {
                 'recaptchaPublicKey': 'recaptcha-key',
                 'flatfileKey': 'flatfile-key',
                 'EXCLUDED': ['email_service'],
             },
-            False,
             'researcher_1',
         ),
         (
@@ -33,14 +32,11 @@ BUNDLE_PATH = 'block'
                 'recaptchaPublicKey': 'recaptcha-key',
                 'EXCLUDED': ['email_service', 'flatfileKey'],
             },
-            False,
             'None',
         ),
     ),
 )
-def test_bundle_read(
-    flask_app_client, request, admin_user, researcher_1, keys, is_edm, user_var
-):
+def test_bundle_read(flask_app_client, request, admin_user, researcher_1, keys, user_var):
     from app.modules.site_settings.models import SiteSetting
 
     SiteSetting.set('recaptchaPublicKey', string='recaptcha-key')
@@ -49,8 +45,6 @@ def test_bundle_read(
     request.addfinalizer(lambda: SiteSetting.forget_key_value('flatfileKey'))
 
     response = conf_utils.read_main_settings(flask_app_client, eval(user_var))
-    if extension_unavailable('edm') and is_edm:
-        pytest.skip('EDM extension disabled')
 
     assert response.json['response']
     assert 'configuration' in response.json['response']
@@ -74,10 +68,10 @@ def test_bundle_read(
     module_unavailable('site_settings'), reason='Site-Settings module disabled'
 )
 @pytest.mark.parametrize(
-    'data,invalid_keys, expected_status_code,is_edm',
+    'data,invalid_keys, expected_status_code',
     (
         # Case 1: One valid site setting (succeeds)
-        ({'site.name': f'TEST-{str(uuid.uuid4())}'}, [], 200, True),
+        ({'site.name': f'TEST-{str(uuid.uuid4())}'}, [], 200),
         # Case 2: More than one valid site settings (succeeds)
         (
             {
@@ -86,18 +80,6 @@ def test_bundle_read(
             },
             [],
             200,
-            False,
-        ),
-        # Case 3: One invalid key and two invalid types (fails)
-        (
-            {
-                'bad_key': 'abcd',
-                'email_default_sender_name': {'foo': 'bar'},
-                'email_default_sender_email': [],
-            },
-            ['bad_key', 'email_default_name', 'email_default_sender_name'],
-            400,
-            False,
         ),
         # Case 4: Two valid site settings and one invalid key (fails)
         (
@@ -108,7 +90,6 @@ def test_bundle_read(
             },
             ['bad_key'],
             400,
-            True,
         ),
     ),
 )
@@ -120,10 +101,7 @@ def test_bundle_modify(
     data,
     invalid_keys,
     expected_status_code,
-    is_edm,
 ):
-    if extension_unavailable('edm') and is_edm:
-        pytest.skip('EDM extension disabled')
 
     response = conf_utils.read_main_settings(flask_app_client, admin_user)
     old_values = {}

@@ -241,13 +241,12 @@ def test_patch_asset_group_sighting_as_sighting(
 
     # Set first encounter sex to male
     encounter_patch_fields = {
-        'version',
         'hasView',
         'hasEdit',
         'guid',
         'owner',
-        'updatedHouston',
-        'createdHouston',
+        'updated',
+        'created',
         'submitter',
     }
 

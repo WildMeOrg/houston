@@ -11,7 +11,7 @@ from http import HTTPStatus
 from uuid import UUID
 
 import werkzeug
-from flask import current_app, make_response, request, send_file
+from flask import make_response, request, send_file
 from flask_login import current_user  # NOQA
 
 import app.extensions.logging as AuditLog
@@ -20,7 +20,7 @@ from app.extensions.api import Namespace, abort
 from app.modules import utils
 from app.modules.users import permissions
 from app.modules.users.permissions.types import AccessOperation
-from app.utils import HoustonException
+from app.utils import CascadeDeleteException, HoustonException
 from flask_restx_patched import Resource
 
 from . import parameters, schemas
@@ -154,16 +154,12 @@ class SightingByID(Resource):
             'action': AccessOperation.READ,
         },
     )
+    @api.response(schemas.DetailedSightingSchema())
     def get(self, sighting):
         """
         Get Sighting details by ID.
         """
-
-        # note: should probably _still_ check edm for: stale cache, deletion!
-        #      user.edm_sync(version)
-        rtn = sighting.get_detailed_json()
-        rtn['pipeline_status'] = sighting.get_pipeline_status()
-        return rtn
+        return sighting
 
     @api.login_required(oauth_scopes=['sightings:write'])
     @api.permission_required(
@@ -175,6 +171,7 @@ class SightingByID(Resource):
     )
     @api.parameters(parameters.PatchSightingDetailsParameters())
     @api.response(code=HTTPStatus.CONFLICT)
+    @api.response(schemas.DetailedSightingSchema())
     def patch(self, args, sighting):
         """
         Patch Sighting details by ID.
@@ -182,138 +179,64 @@ class SightingByID(Resource):
         from app.extensions.elapsed_time import ElapsedTime
 
         timer = ElapsedTime()
-        houston_args = [
-            arg
-            for arg in args
-            if arg['path']
-            in parameters.PatchSightingDetailsParameters.PATH_CHOICES_HOUSTON
-        ]
 
-        edm_args = [
-            arg
-            for arg in args
-            if arg['path'] in parameters.PatchSightingDetailsParameters.PATH_CHOICES_EDM
-        ]
-
-        if edm_args:
-            log.debug(f'wanting to do edm patch on args={edm_args}')
-
-            # we pre-check any annotations we will want to attach to new encounters
-
-            # list of lists of annotations for each encounter (if applicable)
-            enc_anns = []
-            # list of initial data (used for setting .time)
-            enc_json_data = []
+        context = api.commit_or_abort(
+            db.session, default_error_message='Failed to update Sighting details.'
+        )
+        with context:
             try:
-                for arg in edm_args:
-                    if arg.get('path', None) == '/encounters' and (
-                        arg.get('op', None) == 'add' or arg.get('op', None) == 'replace'
-                    ):
-                        enc_json = arg.get('value', {})
-                        anns = _get_annotations(enc_json)
-                        enc_anns.append(anns)
-                        enc_json_data.append(enc_json)
-
-            except HoustonException as ex:
-                message = f'_get_annotations failed {ex.message}'
-                AuditLog.audit_log_object_warning(log, sighting, message)
-                log.warning(message)
-                abort(code=400, message=ex.message)
-
-            result = None
-            try:
-                (
-                    response,
-                    response_data,
-                    result,
-                ) = current_app.edm.request_passthrough_parsed(
-                    'sighting.data',
-                    'patch',
-                    {'data': edm_args},
-                    sighting.guid,
-                    request_headers=request.headers,
+                delete_cascade_individual = (
+                    request.headers.get(
+                        'x-allow-delete-cascade-individual', 'false'
+                    ).lower()
+                    == 'true'
                 )
-            except HoustonException as ex:
-                if isinstance(ex.message, dict):
-                    message = ex.message.get('details', ex.message)
-                else:
-                    message = ex.message
-                abort(ex.status_code, message)
-
-            # changed something on EDM, remove the cache
-            sighting.remove_cached_edm_data()
-
-            if 'deletedSighting' in result:
-                message = f'EDM triggered self-deletion of {sighting} result={result}'
-                AuditLog.audit_log_object_warning(log, sighting, message)
-                log.warning(message)
-                response_data['threatened_sighting_id'] = str(sighting.guid)
-                sighting.delete_cascade()  # this will get rid of our encounter(s) as well so no need to rectify_edm_encounters()
-                sighting = None
-                return response_data
-
-            sighting.rectify_edm_encounters(result.get('encounters'), current_user)
-            assert len(enc_anns) == len(enc_json_data)
-            # if we have enc_anns (len=N, N > 0), these should map to the last N encounters in this sighting
-            if len(enc_anns) > 0:
-                enc_res = result.get('encounters', [])
-                # enc_res *should* be in order added (e.g. sorted by version)
-                # note however, i am not 100% sure if sightings.encounters is in same order!  it appears to be in all my testing.
-                #  in the event it proves not to be, we should trust enc_res order and/or .version on each of sighting.encounters
-                assert len(enc_res) == len(
-                    sighting.encounters
-                )  # more just a sanity-check
-                assert len(enc_anns) <= len(
-                    sighting.encounters
-                )  # which ones were added, basically
-                i = 0
-                offset = len(sighting.encounters) - len(enc_anns)
-                while i < len(enc_anns):
-                    log.debug(
-                        f'enc_len={len(sighting.encounters)},offset={offset},i={i}: onto encounters[{offset+i}] setting {enc_anns[i]}'
-                    )
-                    sighting.encounters[offset + i].annotations = enc_anns[i]
-                    sighting.encounters[offset + i].set_time_from_data(enc_json_data[i])
-                    i += 1
-
-            new_version = result.get('version', None)
-            if new_version is not None:
-                sighting.version = new_version
-                context = api.commit_or_abort(
-                    db.session,
-                    default_error_message='Failed to update Sighting version.',
+                delete_cascade_sighting = (
+                    request.headers.get(
+                        'x-allow-delete-cascade-sighting', 'false'
+                    ).lower()
+                    == 'true'
                 )
-                with context:
-                    db.session.merge(sighting)
-
-        if houston_args:
-            if not edm_args:
-                # regular houston-patching
-                context = api.commit_or_abort(
-                    db.session, default_error_message='Failed to update Sighting details.'
-                )
-            else:
-                # irregular houston-patching, where we need to report that EDM data was set if houston setting failed
-                context = api.commit_or_abort(
-                    db.session,
-                    default_error_message='Failed to update Sighting details.',
-                    code=417,  # Arbitrary choice (Expectation Failed)
-                    fields_written=edm_args,
-                )
-            with context:
+                state = {
+                    'delete-individual': delete_cascade_individual,
+                    'delete-sighting': delete_cascade_sighting,
+                }
                 parameters.PatchSightingDetailsParameters.perform_patch(
-                    houston_args, sighting
+                    args, sighting, state=state
                 )
-                db.session.merge(sighting)
+            except CascadeDeleteException as ex:
+                if ex.vulnerable_sighting_guids or ex.vulnerable_individual_guids:
+                    # just replicating how DELETE /api/v1/encounters/GUID handles it
+                    vul_sight = (
+                        ex.vulnerable_sighting_guids
+                        and ex.vulnerable_sighting_guids[0]
+                        or None
+                    )
+                    vul_indiv = (
+                        ex.vulnerable_individual_guids
+                        and ex.vulnerable_individual_guids[0]
+                        or None
+                    )
+                    abort(
+                        400,
+                        'Remove failed because it would cause a delete cascade',
+                        vulnerableIndividualGuid=vul_indiv,
+                        vulnerableSightingGuid=vul_sight,
+                    )
+
+                if ex.deleted_sighting_guids:
+                    # Presuming it is this sighting that has been deleted so we cannot return it
+                    return {}
+            except ValueError as ex:
+                # TODO test was expecting 409 so this is what is raised here, should be validated
+                abort(409, str(ex))
+            except HoustonException as ex:
+                abort(ex.status_code, ex.message)
+            db.session.merge(sighting)
 
         AuditLog.patch_object(log, sighting, args, duration=timer.elapsed())
 
-        sighting_response = sighting.get_detailed_json()
-        if isinstance(sighting_response, dict):
-            return sighting_response
-        else:
-            # sighting might be deleted, return the original patch response_data
-            return response_data
+        return sighting
 
     @api.login_required(oauth_scopes=['sightings:write'])
     @api.permission_required(
@@ -329,37 +252,32 @@ class SightingByID(Resource):
         """
         Delete a Sighting by ID.
         """
-        try:
-            deleted_ids = sighting.delete_from_edm_and_houston(request)
-        except HoustonException as ex:
-            edm_status_code = ex.get_val('edm_status_code', 400)
-            message = f'Sighting.delete {sighting.guid} failed: ({ex.status_code} / edm={edm_status_code}) {ex.message}'
-            AuditLog.audit_log_object_warning(log, sighting, message)
-            log.warning(message)
-
-            ex_response_data = ex.get_val('response_data', {})
-            if (
-                'vulnerableIndividual' in ex_response_data
-                or 'vulnerableEncounter' in ex_response_data
-            ):
+        delete_individual = (
+            request.headers.get('x-allow-delete-cascade-individual', 'false').lower()
+            == 'true'
+        )
+        success, response = sighting.delete_frontend_request(delete_individual)
+        if not success:
+            if 'vulnerableIndividual' in response:
                 abort(
                     400,
-                    'Delete failed because it would cause a delete cascade.',
-                    vulnerableIndividualGuid=ex_response_data.get('vulnerableIndividual'),
-                    vulnerableEncounterGuid=ex_response_data.get('vulnerableEncounter'),
+                    'Delete failed because it would cause a delete cascade',
+                    vulnerableIndividualGuid=response.get('vulnerableIndividual'),
                 )
             else:
                 abort(400, 'Delete failed')
+        else:
+            # we have to roll our own response here (to return) as it seems the only way we can add a header
+            #   (which we are using to denote the encounter DELETE also triggered a sighting DELETE, since
+            #   no body is returned on a 204 for DELETE
+            resp = make_response()
+            resp.status_code = 204
 
-        # we have to roll our own response here (to return) as it seems the only way we can add a header
-        #   (which we are using to denote the encounter DELETE also triggered a individual DELETE, since
-        #   no body is returned on a 204 for DELETE
-        delete_resp = make_response()
-        delete_resp.status_code = 204
-        if deleted_ids:
-            delete_resp.headers['x-deletedIndividual-guids'] = ', '.join(deleted_ids)
+            individual_ids = response.get('deletedIndividuals')
+            if individual_ids:
+                resp.headers['x-deletedIndividual-guids'] = ', '.join(individual_ids)
 
-        return delete_resp
+            return resp
 
 
 @api.route('/<uuid:sighting_guid>/featured_asset_guid')
@@ -469,6 +387,7 @@ class SightingRerunId(Resource):
             'action': AccessOperation.WRITE,
         },
     )
+    @api.response(schemas.DetailedSightingSchema())
     def post(self, sighting):
         try:
             req = json.loads(request.data)
@@ -487,7 +406,7 @@ class SightingRerunId(Resource):
             sighting.stage = SightingStage.identification
             # progress_overwrite will ensure we have a new Progress started on sighting
             sighting.ia_pipeline(progress_overwrite=True)
-            return sighting.get_detailed_json()
+            return sighting
         except HoustonException as ex:
             abort(ex.status_code, ex.message, errorFields=ex.get_val('error', 'Error'))
 
@@ -621,8 +540,9 @@ class SightingDebugByID(Resource):
             'action': AccessOperation.READ_DEBUG,
         },
     )
+    @api.response(schemas.DebugSightingSchema())
     def get(self, sighting):
-        return sighting.get_debug_json()
+        return sighting
 
 
 @api.route('/<uuid:sighting_guid>/reviewed', doc=False)

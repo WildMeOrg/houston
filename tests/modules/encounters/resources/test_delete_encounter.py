@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=missing-docstring
+import uuid
 
 import pytest
 
@@ -22,10 +23,10 @@ def test_delete_method(
     data_in = {
         'time': test_utils.timestamp(),
         'timeSpecificity': 'time',
-        'locationId': 'test_delete_method',
+        'locationId': str(uuid.uuid4()),
         'encounters': [
             {},
-            {'locationId': 'test2'},
+            {'locationId': str(uuid.uuid4())},
         ],
     }
     uuids = sighting_utils.create_sighting(

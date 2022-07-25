@@ -15,12 +15,15 @@ def test_asset_group_sightings(session, login, codex_url, test_root):
     my_guid = response.json()['guid']
     my_name = response.json()['full_name']
 
+    test_regions = utils.ensure_default_test_regions(session, codex_url)
+    region_id1 = test_regions[0]['id']
+
     creator_data = {
         'full_name': my_name,
         'guid': my_guid,
         'profile_fileupload': None,
     }
-    # Add an example species and custom fields in edm
+    # Add an example species and custom fields
     response = utils.add_site_species(
         session,
         codex_url,
@@ -28,7 +31,7 @@ def test_asset_group_sightings(session, login, codex_url, test_root):
     )
     tx_id = response[-1]['id']
     sighting_test_cfd = utils.create_custom_field(
-        session, codex_url, 'Occurrence', 'occ_test_cfd'
+        session, codex_url, 'Sighting', 'occ_test_cfd'
     )
     enc_test_cfd = utils.create_custom_field(
         session, codex_url, 'Encounter', 'enc_test_cfd'
@@ -67,7 +70,7 @@ def test_asset_group_sightings(session, login, codex_url, test_root):
                             'timeSpecificity': 'time',
                         },
                     ],
-                    'locationId': 'PYTEST',
+                    'locationId': region_id1,
                     'time': '2000-01-01T01:01:01+00:00',
                     'timeSpecificity': 'time',
                 },
@@ -128,19 +131,8 @@ def test_asset_group_sightings(session, login, codex_url, test_root):
                         'customFields': sighting_custom_fields,
                         'decimalLatitude': -39.063228,
                         'decimalLongitude': 21.832598,
-                        'encounters': [
-                            {
-                                'customFields': enc_custom_fields,
-                                'decimalLatitude': 63.142385,
-                                'decimalLongitude': -21.596914,
-                                'guid': ags_encounter['guid'],
-                                'sex': 'male',
-                                'taxonomy': ags_encounter['taxonomy'],
-                                'time': ags_encounter['time'],
-                                'timeSpecificity': 'time',
-                            }
-                        ],
-                        'locationId': 'PYTEST',
+                        'locationId': ags['config']['sighting']['locationId'],
+                        'encounters': [ags_encounter],
                         'time': '2000-01-01T01:01:01+00:00',
                         'timeSpecificity': 'time',
                     },
@@ -158,7 +150,7 @@ def test_asset_group_sightings(session, login, codex_url, test_root):
                 'progress_identification': ags['progress_identification'],
                 'sighting_guid': None,
                 'stage': ags['stage'],
-                'locationId': 'PYTEST',
+                'locationId': ags['locationId'],
                 'time': '2000-01-01T01:01:01+00:00',
                 'timeSpecificity': 'time',
             },
@@ -227,9 +219,6 @@ def test_asset_group_sightings(session, login, codex_url, test_root):
             },
         ],
         'comments': None,
-        'createdEDM': None,
-        # 2021-11-12T18:28:32.744114+00:00
-        'createdHouston': response.json()['createdHouston'],
         'customFields': sighting_custom_fields,
         'decimalLatitude': -39.063228,
         'decimalLongitude': 21.832598,
@@ -239,6 +228,7 @@ def test_asset_group_sightings(session, login, codex_url, test_root):
                 'annotations': [],
                 # 2021-11-13T16:57:41.937173+00:00
                 'createdHouston': encounters[0]['createdHouston'],
+                'created': encounters[0]['created'],
                 'customFields': enc_custom_fields,
                 'decimalLatitude': 63.142385,
                 'decimalLongitude': -21.596914,
@@ -254,8 +244,7 @@ def test_asset_group_sightings(session, login, codex_url, test_root):
                 'taxonomy': tx_id,
                 'time': encounter_timestamp,
                 'timeSpecificity': 'time',
-                # 2021-11-13T16:57:41.937187+00:00
-                'updatedHouston': response.json()['updatedHouston'],
+                'updated': response.json()['updated'],
                 'version': None,
             },
         ],
@@ -263,16 +252,13 @@ def test_asset_group_sightings(session, login, codex_url, test_root):
         'guid': ags_guid,
         'hasEdit': True,
         'hasView': True,
-        'locationId': 'PYTEST',
+        'locationId': region_id1,
         'stage': 'curation',
         'speciesDetectionModel': ['african_terrestrial'],
         'submissionTime': response.json()['submissionTime'],
         'time': '2000-01-01T01:01:01+00:00',
         'timeSpecificity': 'time',
-        # 2021-11-12T18:28:32.744135+00:00
-        'updatedHouston': response.json()['updatedHouston'],
         'verbatimLocality': '',
-        'verbatimEventDate': '',
         'version': None,
         'asset_group_guid': asset_group_guid,
         'sightingGuid': None,
@@ -366,20 +352,17 @@ def test_asset_group_sightings(session, login, codex_url, test_root):
         'hasView': True,
         'stage': response.json()['stage'],
         'updated': response.json()['updated'],
-        'comments': 'None',
+        'comments': None,
         'creator': creator_data,
         'customFields': sighting_custom_fields,
-        'createdEDM': response.json()['createdEDM'],
         'decimalLatitude': 52.152029,
         'decimalLongitude': 2.318116,
-        'encounterCounts': {'individuals': 0, 'sex': {}},
-        'locationId': 'PYTEST',
-        'version': response.json()['version'],
+        'locationId': region_id1,
+        'locationId_value': 'Wiltshire',
+        'locationId_keyword': response.json()['locationId_keyword'],
         'featuredAssetGuid': response.json()['featuredAssetGuid'],
         'time': response.json()['time'],
         'timeSpecificity': response.json()['timeSpecificity'],
-        'createdHouston': response.json()['createdHouston'],
-        'updatedHouston': response.json()['updatedHouston'],
         'curation_start_time': response.json()['curation_start_time'],
         'detection_start_time': response.json()['detection_start_time'],
         'submissionTime': response.json()['submissionTime'],
@@ -392,6 +375,8 @@ def test_asset_group_sightings(session, login, codex_url, test_root):
         'speciesDetectionModel': ['african_terrestrial'],
         'idConfigs': [{'algorithms': ['hotspotter_nosv']}],
         'unreviewed_start_time': response.json()['unreviewed_start_time'],
+        'pipeline_status': response.json()['pipeline_status'],
+        'verbatimLocality': None,
     }
     # due to task timing, both are valid
     assert response.json()['stage'] in ['identification', 'un_reviewed']
@@ -412,6 +397,9 @@ def create_individual(
     default_name_val='test zebra',
     default_name_context=DEFAULT_NAME_CONTEXT,
 ):
+    test_regions = utils.ensure_default_test_regions(session, codex_url)
+    region_id1 = test_regions[0]['id']
+
     group_data = {
         'token': 'XXX',
         'description': 'This is a test asset_group, please ignore',
@@ -421,7 +409,7 @@ def create_individual(
             {
                 'time': '2000-01-01T01:01:01+00:00',
                 'timeSpecificity': 'time',
-                'locationId': 'PYTEST-SIGHTING',
+                'locationId': region_id1,
                 'encounters': [{}],
             },
         ],
@@ -476,6 +464,10 @@ def create_individual(
 def test_bulk_upload(session, login, codex_url, test_root, request):
     login(session)
 
+    test_regions = utils.ensure_default_test_regions(session, codex_url)
+    region_id1 = test_regions[0]['id']
+    region_id2 = test_regions[1]['id']
+
     # bulk upload needs existing individuals for encounter assignment
     test_ind_name = 'test zebra'
     test_name_context = DEFAULT_NAME_CONTEXT
@@ -498,20 +490,17 @@ def test_bulk_upload(session, login, codex_url, test_root, request):
             'sightings': [
                 {
                     'assetReferences': ['turtle1.jpg'],
-                    'decimalLongitude': '73.5622',
-                    'decimalLatitude': '4.286',
-                    'locationId': 'PYTEST',
+                    'decimalLongitude': 73.5622,
+                    'decimalLatitude': 4.286,
+                    'locationId': region_id1,
                     'verbatimLocality': 'North Male Lankan Reef',
-                    'verbatimEventDate': 'yesterday',
                     'time': '2014-01-01T09:00:00.000+00:00',
                     'timeSpecificity': 'time',
                     'encounters': [
                         {
-                            'decimalLatitude': '4.286',
-                            'decimalLongitude': '73.5622',
+                            'decimalLatitude': 4.286,
+                            'decimalLongitude': 73.5622,
                             'verbatimLocality': 'North Male Lankan Reef',
-                            'verbatimEventDate': 'yesterday',
-                            #'taxonomy': 'ace5e17c-e74a-423f-8bd2-ecc3d7a78f4c',
                             'time': '2014-01-01T09:00:00.000+00:00',
                             'timeSpecificity': 'time',
                             test_name_context: test_ind_name,
@@ -520,19 +509,17 @@ def test_bulk_upload(session, login, codex_url, test_root, request):
                 },
                 {
                     'assetReferences': ['turtle2.jpg', 'turtle3.jpg'],
-                    'decimalLongitude': '73.5622',
-                    'decimalLatitude': '4.2861',
-                    'locationId': 'PYTEST too',
+                    'decimalLongitude': 73.5622,
+                    'decimalLatitude': 4.2861,
+                    'locationId': region_id2,
                     'verbatimLocality': 'North Male Lankan Reef',
-                    'verbatimEventDate': 'yesterday',
                     'time': '2014-01-01T09:00:00.000+00:00',
                     'timeSpecificity': 'time',
                     'encounters': [
                         {
-                            'decimalLatitude': '4.2861',
-                            'decimalLongitude': '73.5622',
+                            'decimalLatitude': 4.2861,
+                            'decimalLongitude': 73.5622,
                             'verbatimLocality': 'North Male Lankan Reef',
-                            'verbatimEventDate': 'yesterday',
                             #'taxonomy': 'ace5e17c-e74a-423f-8bd2-ecc3d7a78f4c',
                             'time': '2014-01-01T09:00:00.000+00:00',
                             'timeSpecificity': 'time',
@@ -541,16 +528,16 @@ def test_bulk_upload(session, login, codex_url, test_root, request):
                 },
                 {
                     'assetReferences': ['turtle4.jpg', 'turtle5.jpg'],
-                    'decimalLongitude': '73.6421',
-                    'decimalLatitude': '4.3638',
-                    'locationId': 'PYTEST too',
+                    'decimalLongitude': 73.6421,
+                    'decimalLatitude': 4.3638,
+                    'locationId': region_id2,
                     'verbatimLocality': 'North Male Gasfinolhu Inside Reef',
                     'time': '2019-01-01T09:00:00.000+00:00',
                     'timeSpecificity': 'time',
                     'encounters': [
                         {
-                            'decimalLatitude': '4.3638',
-                            'decimalLongitude': '73.6421',
+                            'decimalLatitude': 4.3638,
+                            'decimalLongitude': 73.6421,
                             'verbatimLocality': 'North Male Gasfinolhu Inside Reef',
                             #'taxonomy': 'ace5e17c-e74a-423f-8bd2-ecc3d7a78f4c',
                             'time': '2019-01-01T09:00:00.000+00:00',
@@ -594,6 +581,9 @@ def test_bulk_upload(session, login, codex_url, test_root, request):
 
 def test_delete_asset_group_sightings(session, login, codex_url, test_root, request):
     login(session)
+    test_regions = utils.ensure_default_test_regions(session, codex_url)
+    region_id1 = test_regions[0]['id']
+    region_id2 = test_regions[0]['id']
 
     # Create asset group sighting
     transaction_id = utils.upload_to_tus(
@@ -612,14 +602,14 @@ def test_delete_asset_group_sightings(session, login, codex_url, test_root, requ
             'sightings': [
                 {
                     'assetReferences': ['turtle1.jpg', 'turtle5.jpg'],
-                    'locationId': 'PYTEST',
+                    'locationId': region_id1,
                     'time': '2014-01-01T09:00:00.000+00:00',
                     'timeSpecificity': 'time',
                     'encounters': [{}],
                 },
                 {
                     'assetReferences': ['turtle2.jpg', 'turtle3.jpg', 'turtle4.jpg'],
-                    'locationId': 'PYTEST too',
+                    'locationId': region_id2,
                     'time': '2014-01-01T09:00:00.000+00:00',
                     'timeSpecificity': 'time',
                     'encounters': [{}],

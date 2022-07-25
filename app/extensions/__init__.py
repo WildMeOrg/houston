@@ -518,96 +518,6 @@ class FeatherModel(CommonHoustonModel):
     Houston Read Access  : YES
     """
 
-    def get_edm_data_with_enc_schema(self, encounter_schema):
-        from copy import deepcopy
-
-        from app.utils import HoustonException
-
-        # Only for FeatherModels that have encounters (Sighting/Individual)
-        assert hasattr(self, 'encounters')
-        class_name = self.__class__.__name__.lower()
-
-        edm_json = deepcopy(self.get_edm_complete_data())
-
-        if (self.encounters is not None and edm_json['encounters'] is None) or (
-            self.encounters is None and edm_json['encounters'] is not None
-        ):
-            raise HoustonException(
-                log,
-                f'Only one None encounters value between {class_name} edm/feather objects!',
-                obj=self,
-            )
-        for encounter in edm_json.get('encounters') or []:
-            # EDM returns strings for decimalLatitude and decimalLongitude
-            if encounter.get('decimalLongitude'):
-                encounter['decimalLongitude'] = float(encounter['decimalLongitude'])
-            if encounter.get('decimalLatitude'):
-                encounter['decimalLatitude'] = float(encounter['decimalLatitude'])
-            encounter['guid'] = encounter.pop('id', None)
-
-        if self.encounters is not None and edm_json['encounters'] is not None:
-            guid_to_encounter = {e['guid']: e for e in edm_json['encounters']}
-            if {str(e.guid) for e in self.encounters} != set(guid_to_encounter):
-                error_msg = f'Imbalanced encounters between edm/feather objects on {class_name} {str(self.guid)}'
-                error_msg += (
-                    f', locally:{len(self.encounters)}, EDM:{len(guid_to_encounter)} !'
-                )
-                raise HoustonException(log, error_msg, obj=self)
-
-            for encounter in self.encounters:  # now we augment each encounter
-                found_edm = guid_to_encounter[str(encounter.guid)]
-                found_edm.update(encounter_schema.dump(encounter).data)
-
-        return edm_json
-
-    # will grab edm representation of this object
-    # cache allows minimal calls to edm for same object, but has the potential
-    #   to return stale data
-    def get_edm_complete_data(self, use_cache=True):
-        import time
-        from copy import deepcopy
-
-        from flask import current_app
-
-        # going to give cache a life of 5 min kinda arbitrarily
-        cache_lifespan_seconds = 300
-        # this will prevent HoustonModel objects from using this
-        if FeatherModel not in self.__class__.__bases__:
-            raise NotImplementedError('only available on FeatherModels')
-        if not is_extension_enabled('edm'):
-            return None
-        time_now = int(time.time())
-        if not (
-            use_cache
-            and hasattr(self, '_edm_cached_data')
-            and self._edm_cached_data is not {}
-            and time_now - self._edm_cached_data.get('_edm_cache_created', 0)
-            < cache_lifespan_seconds
-        ):
-            edm_data = current_app.edm.request_passthrough_result(
-                f'{self.get_class_name().lower()}.data_complete',
-                'get',
-                {},
-                self.guid,
-            )
-
-            self._edm_cached_data = edm_data
-            self._edm_cached_data['_edm_cache_created'] = time_now
-
-        returned_edm_data = deepcopy(self._edm_cached_data)
-        # but don't return the creation time
-        returned_edm_data.pop('_edm_cache_created', None)
-        return returned_edm_data
-
-    def get_edm_data_field(self, field):
-        edm_json = self.get_edm_complete_data()
-        if edm_json:
-            return edm_json.get(field, None)
-        return None
-
-    def remove_cached_edm_data(self):
-        self._edm_cached_data = {}
-
     def get_class_name(self):
         return self.__class__.__name__
 
@@ -623,6 +533,75 @@ class HoustonModel(CommonHoustonModel):
     Houston Exists Check : YES
     Houston Read Access  : YES
     """
+
+
+class CustomFieldMixin(object):
+    """
+    Mixin class for any class that has custom fields (e.g. Encounter, Sighting, Individual)
+    This factors out code that would be virtually identical for all.
+    Class must have a CUSTOM_FIELD_NAME set to the value used in SiteSettings and must have the custom fields
+    as a self.custom_fields object that is a json blob
+    """
+
+    def set_custom_field_value(self, cfd_id, value):
+        from app.modules.site_settings.helpers import SiteSettingCustomFields
+
+        if not SiteSettingCustomFields.is_valid_value_for_class(
+            self.CUSTOM_FIELD_NAME, cfd_id, value
+        ):
+            raise ValueError(
+                f'value {value} not valid for customField definition id {cfd_id} (on {self})'
+            )
+        cf = self.custom_fields or {}
+        cf[cfd_id] = value
+
+        with db.session.begin(subtransactions=True):
+            self.custom_fields = cf
+            db.session.merge(self)
+
+    def get_custom_field_value(self, cfd_id):
+        from app.modules.site_settings.helpers import SiteSettingCustomFields
+
+        # check defn exists/valid
+        defn = SiteSettingCustomFields.get_definition(self.CUSTOM_FIELD_NAME, cfd_id)
+        assert defn
+        cf = self.custom_fields or {}
+        return cf.get(cfd_id)
+
+    # will set multiple via set_dict:  { cfdId0: value0, ...., cfdIdN: valueN }
+    def set_custom_field_values(self, set_dict):
+        from app.modules.site_settings.helpers import SiteSettingCustomFields
+
+        assert isinstance(set_dict, dict), 'must pass dict'
+        cf = self.custom_fields or {}
+        # this will overwrite existing values in self.custom_fields for these cfd_ids
+        for cfd_id in set_dict:
+            value = set_dict[cfd_id]
+            if not SiteSettingCustomFields.is_valid_value_for_class(
+                self.CUSTOM_FIELD_NAME, cfd_id, value
+            ):
+                raise ValueError(
+                    f'value {value} not valid for customField definition id {cfd_id} (on {self})'
+                )
+            cf[cfd_id] = value
+
+        with db.session.begin(subtransactions=True):
+            self.custom_fields = cf
+            db.session.merge(self)
+
+    def reset_custom_field_value(self, cfd_id):
+        from app.modules.site_settings.helpers import SiteSettingCustomFields
+
+        defn = SiteSettingCustomFields.get_definition(self.CUSTOM_FIELD_NAME, cfd_id)
+        if not defn:
+            raise ValueError(f'invalid customField definition id {cfd_id}')
+        cf = self.custom_fields or {}
+        if cfd_id not in cf:
+            return
+        del cf[cfd_id]
+        self.custom_fields = cf
+
+    # TODO we probably want one to ADD values to a multiple=TRUE list-type
 
 
 ##########################################################################################

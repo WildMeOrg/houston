@@ -6,6 +6,7 @@ Asset_group resources utils
 import json
 import os
 import shutil
+import uuid
 from unittest import mock
 
 import tests.extensions.tus.utils as tus_utils
@@ -85,19 +86,19 @@ def create_large_asset_group_uuids(flask_app_client, user, request, test_root):
     sighting_data = {
         'time': '2000-01-01T01:01:01+00:00',
         'timeSpecificity': 'time',
-        'locationId': f'Location {locationId}',
+        'locationId': locationId,
         'encounters': [
             {
                 'decimalLatitude': test_utils.random_decimal_latitude(),
                 'decimalLongitude': test_utils.random_decimal_longitude(),
                 'verbatimLocality': 'Tiddleywink',
-                'locationId': f'Location {locationId}',
+                'locationId': locationId,
             },
             {
                 'decimalLatitude': test_utils.random_decimal_latitude(),
                 'decimalLongitude': test_utils.random_decimal_longitude(),
                 'verbatimLocality': 'Tiddleywink',
-                'locationId': f'Location {locationId}',
+                'locationId': locationId,
             },
         ],
         'assetReferences': [
@@ -573,6 +574,7 @@ def create_asset_group_extract_uuids(
 
 class AssetGroupCreationData(object):
     def __init__(self, transaction_id, filename=None, populate_default=True):
+        import uuid
 
         if not populate_default:
             self.content = {}
@@ -588,8 +590,7 @@ class AssetGroupCreationData(object):
                     {
                         'time': '2000-01-01T01:01:01+00:00',
                         'timeSpecificity': 'time',
-                        # Yes, that really is a location, it's a village in Wiltshire https://en.wikipedia.org/wiki/Tiddleywink
-                        'locationId': 'Tiddleywink',
+                        'locationId': str(uuid.uuid4()),
                         'encounters': [{}],
                     },
                 ],
@@ -602,10 +603,12 @@ class AssetGroupCreationData(object):
             self.content['sightings'][sighting]['assetReferences'] = []
         self.content['sightings'][sighting]['assetReferences'].append(filename)
 
-    def add_sighting(self, location):
+    def add_sighting(
+        self,
+    ):
         self.content['sightings'].append(
             {
-                'locationId': location,
+                'locationId': str(uuid.uuid4()),
                 'time': '2000-01-01T01:01:01+00:00',
                 'timeSpecificity': 'time',
                 'assetReferences': [],
@@ -715,7 +718,7 @@ def get_bulk_creation_data(test_root, request, species_detection_model=None):
     data = AssetGroupCreationData(transaction_id, first_filename)
     data.add_encounter(0)
     data.add_filename(0, 'coelacanth.png')
-    data.add_sighting('Hogpits Bottom')
+    data.add_sighting()
     data.add_encounter(1)
     data.add_filename(1, 'fluke.jpg')
     data.add_encounter(1)

@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=missing-docstring
+import uuid
 
 import pytest
 
@@ -35,19 +36,21 @@ def test_individual_elasticsearch_mappings(
     EXPECTED_KEYS = {
         'created',
         'guid',
-        'birth',
         'customFields',
         'encounters',
         'has_annotations',
         'updated',
-        # 'social_groups',
         'indexed',
-        # 'names',
         'last_seen',
         'last_seen_specificity',
-        'death',
-        'comments',
+        'firstName_keyword',
+        'num_encounters',
         '_schema',
+        # 'comments',
+        # 'names',
+        # 'social_groups',
+        # 'birth',
+        # 'death',
     }
 
     # Get the response and just validate that it has the correct keys
@@ -82,13 +85,13 @@ def test_returned_schema(flask_app_client, researcher_1, admin_user, request, te
     sighting_data = {
         'encounters': [
             {
-                'locationId': 'enc-test',
+                'locationId': str(uuid.uuid4()),
                 'taxonomy': tx_guid,
                 'time': timestamp,
                 'timeSpecificity': 'time',
             }
         ],
-        'locationId': 'enc-test',
+        'locationId': str(uuid.uuid4()),
         'time': timestamp,
         'timeSpecificity': 'time',
         'taxonomies': tx_guid,

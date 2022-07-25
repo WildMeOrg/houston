@@ -1,12 +1,7 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=missing-docstring
 
-import pytest
 
-from tests.utils import extension_unavailable
-
-
-@pytest.mark.skipif(extension_unavailable('edm'), reason='EDM extension disabled')
 def test_regions():
     from app.modules.site_settings.models import Regions
 

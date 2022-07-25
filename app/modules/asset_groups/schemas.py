@@ -27,7 +27,6 @@ SIGHTING_FIELDS_IN_AGS_CONFIG = {
     'encounters',
     'locationId',
     'verbatimLocality',
-    'verbatimEventDate',
     'encounterCounts',
     'id',
     'comments',
@@ -189,6 +188,7 @@ class DetailedAssetGroupSightingSchema(BaseAssetGroupSightingSchema):
 
 class AssetGroupSightingEncounterSchema(ModelSchema):
 
+    created = base_fields.DateTime()
     createdHouston = base_fields.DateTime()
     customFields = base_fields.Dict(default={})
     decimalLatitude = base_fields.Float(default=None)
@@ -203,7 +203,7 @@ class AssetGroupSightingEncounterSchema(ModelSchema):
     taxonomy = base_fields.UUID()
     time = base_fields.String(default=None)
     timeSpecificity = base_fields.String(default=None)
-    updatedHouston = base_fields.DateTime()
+    updated = base_fields.DateTime()
     version = base_fields.String(default=None)
     annotations = base_fields.Dict()
     locationId = base_fields.String(default=None)
@@ -219,8 +219,8 @@ class AssetGroupSightingAsSightingSchema(ModelSchema):
     fields using the pattern below.
     """
 
-    createdHouston = base_fields.DateTime(attribute='created')
-    updatedHouston = base_fields.DateTime(attribute='updated')
+    created = base_fields.DateTime(attribute='created')
+    updated = base_fields.DateTime(attribute='updated')
     creator = base_fields.Nested('PublicUserSchema', attribute='get_owner', many=False)
     detection_start_time = base_fields.Function(
         lambda ags: ags.get_detection_start_time()
@@ -257,9 +257,6 @@ class AssetGroupSightingAsSightingSchema(ModelSchema):
     verbatimLocality = base_fields.Function(
         AssetGroupSighting.config_field_getter('verbatimLocality', default='')
     )
-    verbatimEventDate = base_fields.Function(
-        AssetGroupSighting.config_field_getter('verbatimEventDate', default='')
-    )
     encounterCounts = base_fields.Function(
         AssetGroupSighting.config_field_getter('encounterCounts', default={})
     )
@@ -276,7 +273,6 @@ class AssetGroupSightingAsSightingSchema(ModelSchema):
 
     # These are fields that are in Sighting but don't exist for
     # AssetGroupSighting
-    createdEDM = base_fields.DateTime(default=None)
     customFields = base_fields.Dict(attribute='get_custom_fields')
     version = base_fields.String(default=None)
     identification_start_time = base_fields.String(default=None)

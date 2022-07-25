@@ -559,6 +559,7 @@ def test_data_manager_and_staff_access(
     import tests.modules.encounters.resources.utils as encounter_utils
     import tests.modules.individuals.resources.utils as individual_utils
     import tests.modules.sightings.resources.utils as sighting_utils
+    import tests.modules.site_settings.resources.utils as site_setting_utils
 
     # testing that staff and data_managers can edit and read these three objects
     uuids = individual_utils.create_individual_and_sighting(
@@ -605,13 +606,14 @@ def test_data_manager_and_staff_access(
     ).json
     assert sight_resp['time'] == test_dt
     assert sight_resp['timeSpecificity'] == 'month'
-
+    regions = site_setting_utils.get_and_ensure_test_regions(flask_app_client, staff_user)
+    region1_id = regions[0]['id']
     encounter_id = sight_resp['encounters'][0]['guid']
-    patch_data = [test_utils.patch_replace_op('locationId', 'LOCATION_TEST_VALUE')]
+    patch_data = [test_utils.patch_replace_op('locationId', region1_id)]
     encounter_utils.patch_encounter(
         flask_app_client, encounter_id, data_manager_1, patch_data
     )
     enc_resp = encounter_utils.read_encounter(
         flask_app_client, staff_user, encounter_id
     ).json
-    assert enc_resp['locationId'] == 'LOCATION_TEST_VALUE'
+    assert enc_resp['locationId'] == region1_id

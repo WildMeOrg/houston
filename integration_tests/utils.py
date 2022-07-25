@@ -61,7 +61,7 @@ def create_asset_group(session, codex_url, data):
     if response.status_code != 200:
         import pprint
 
-        pprint(response.json())
+        pprint.pprint(response.json())
 
     assert response.status_code == 200
 
@@ -136,30 +136,118 @@ def add_site_species(session, codex_url, data):
         site_species.append(data)
         response = session.post(site_species_url, json={'_value': site_species})
         assert response.status_code == 200, response.json()
-        response = session.get(block_url).json()
-        site_species = response['response']['configuration']['site.species']['value']
+        session.get(block_url).json()
+    response = session.get(block_url).json()
+    site_species = response['response']['configuration']['site.species']['value']
     return site_species
 
 
-def create_custom_field(session, codex_url, cls, name, type='string', multiple=False):
-    config_url = codex_url('/api/v1/site-settings/main')
-    response = session.post(
-        config_url,
-        json={
-            f'site.custom.customFields.{cls}': {
-                'definitions': [
-                    {
-                        'name': name,
-                        'type': type,
-                        'multiple': multiple,
-                    },
-                ],
-            },
-        },
+def _ensure_default_custom_field_categories(session, codex_url, cls):
+    cf_cats_url = codex_url(
+        '/api/v1/site-settings/main/site.custom.customFieldCategories'
     )
+    categories = session.get(cf_cats_url).json()['value']
+    type = None
+    label = None
+    if cls == 'Sighting':
+        type = 'sighting'
+        label = 'distance'
+    elif cls == 'Encounter':
+        type = 'encounter'
+        label = 'distance'
+    elif cls == 'Individual':
+        type = 'individual'
+        label = 'grumpiness'
+    else:
+        assert False, f'class {cls} not supported for custom fields'
+
+    for cat in categories:
+        if cat['type'] == type and cat['label'] == label:
+            break
+    else:
+        categories.append({'id': str(uuid.uuid4()), 'label': label, 'type': type})
+        message = {'_value': categories}
+        response = session.post(cf_cats_url, json=message)
+        assert response.status_code == 200
+
+        categories = session.get(cf_cats_url).json()['value']
+
+    class_cats = [cat for cat in categories if cat['type'] == type]
+    return class_cats
+
+
+def create_custom_field(session, codex_url, cls, name, type='string', multiple=False):
+    cf_url = codex_url(f'/api/v1/site-settings/main/site.custom.customFields.{cls}')
+    custom_fields = session.get(cf_url).json()['value']
+    if 'definitions' not in custom_fields:
+        custom_fields['definitions'] = []
+    for cust in custom_fields['definitions']:
+        if cust['type'] == type and cust['name'] == name:
+            return cust['id']
+
+    categories = _ensure_default_custom_field_categories(session, codex_url, cls)
+    assert len(categories) >= 1
+    cat_id = categories[0]['id']
+
+    if 'definitions' not in custom_fields:
+        custom_fields['definitions'] = []
+    custom_fields['definitions'].append(
+        {
+            'id': str(uuid.uuid4()),
+            'name': name,
+            'type': type,
+            'multiple': multiple,
+            'schema': {
+                'category': cat_id,
+                'description': 'some nonsense text',
+                'displayType': type,
+                'label': 'something',
+            },
+        }
+    )
+    response = session.post(cf_url, json={'_value': custom_fields})
     assert response.status_code == 200
-    cfd_list = response.json()['updatedCustomFieldDefinitionIds']
-    return cfd_list[0]
+    custom_fields = session.get(cf_url).json()['value']
+
+    # Need to extract the id for the correct cf
+    for cust in custom_fields['definitions']:
+        if cust['type'] == type and cust['name'] == name:
+            return cust['id']
+    assert False, f'Failed to create custom field {type} {name} for {cls}'
+
+
+def ensure_default_test_regions(session, codex_url):
+    regions_url = codex_url('/api/v1/site-settings/main/site.custom.regions')
+    current_regions = session.get(regions_url).json()['value']
+
+    names = []
+    regions = []
+    if 'locationID' in current_regions:
+        regions = current_regions['locationID']
+        names = [region['name'] for region in regions]
+
+    updated = False
+    if 'Wiltshire' not in names:
+        regions.append({'id': str(uuid.uuid4()), 'name': 'Wiltshire'})
+        updated = True
+    if 'Mongolia' not in names:
+        regions.append({'id': str(uuid.uuid4()), 'name': 'Mongolia'})
+        updated = True
+    if 'Uranus' not in names:
+        regions.append({'id': str(uuid.uuid4()), 'name': 'Uranus'})
+        updated = True
+
+    if updated:
+        response = session.post(
+            regions_url,
+            json={
+                '_value': {'locationID': regions},
+            },
+        )
+        assert response.status_code == 200
+        regions = session.get(regions_url).json()['value']['locationID']
+
+    return regions
 
 
 def wait_for_progress(session, codex_url, response, progress_type='preparation'):

@@ -39,11 +39,11 @@ def create_individuals(flask_app_client, user, request, test_root, num_individua
     sighting_data = {
         'time': '2000-01-01T01:01:01+00:00',
         'timeSpecificity': 'time',
-        'locationId': 'test social groups',
+        'locationId': str(uuid.uuid4()),
         'encounters': [],
     }
     for enc_id in range(0, num_individuals):
-        sighting_data['encounters'].append({'locationId': f'loc{enc_id}'})
+        sighting_data['encounters'].append({'locationId': str(uuid.uuid4())})
 
     uuids = sighting_utils.create_sighting(
         flask_app_client, user, request, test_root, sighting_data
@@ -95,9 +95,9 @@ def test_basic_operation(
     data = {
         'name': 'Disreputable bunch of hooligans',
         'members': {
-            individuals[0]['id']: {'role_guids': [matriarch_guid]},
-            individuals[1]['id']: {},
-            individuals[2]['id']: {'role_guids': [git_guid]},
+            individuals[0]['guid']: {'role_guids': [matriarch_guid]},
+            individuals[1]['guid']: {},
+            individuals[2]['guid']: {'role_guids': [git_guid]},
         },
     }
     group_resp = soc_group_utils.create_social_group(
@@ -126,11 +126,11 @@ def test_basic_operation(
 
     # validate that the individual GET includes the social group
     individual_as_res1_json = individual_utils.read_individual(
-        flask_app_client, researcher_1, individuals[0]['id']
+        flask_app_client, researcher_1, individuals[0]['guid']
     ).json
     assert len(individual_as_res1_json['social_groups']) == 1
     ind_social_group = individual_as_res1_json['social_groups'][0]
-    assert individuals[0]['id'] in ind_social_group['members']
+    assert individuals[0]['guid'] in ind_social_group['members']
     assert data['name'] == ind_social_group['name']
 
 
@@ -213,9 +213,9 @@ def test_invalid_creation(
     valid_data = {
         'name': 'Disreputable bunch of hooligans',
         'members': {
-            individuals[0]['id']: {'role_guids': [matriarch_guid]},
-            individuals[1]['id']: {},
-            individuals[2]['id']: {'role_guids': [git_guid]},
+            individuals[0]['guid']: {'role_guids': [matriarch_guid]},
+            individuals[1]['guid']: {},
+            individuals[2]['guid']: {'role_guids': [git_guid]},
         },
     }
     # Shouldn't work with anon user
@@ -234,9 +234,9 @@ def test_invalid_creation(
 
     missing_name = {
         'members': {
-            individuals[0]['id']: {'role_guids': matriarch_guid},
-            individuals[1]['id']: {},
-            individuals[2]['id']: {'role_guids': [git_guid]},
+            individuals[0]['guid']: {'role_guids': matriarch_guid},
+            individuals[1]['guid']: {},
+            individuals[2]['guid']: {'role_guids': [git_guid]},
         },
     }
     error = 'The request was formatted correctly but contains a semantic error (check input values and types).'
@@ -247,14 +247,12 @@ def test_invalid_creation(
     invalid_fields = {
         'name': 'Disreputable bunch of hooligans',
         'members': {
-            individuals[0]['id']: {'role_guids': [matriarch_guid]},
-            individuals[1]['id']: {'attitude': 'Stubborn'},
-            individuals[2]['id']: {'role_guids': [git_guid]},
+            individuals[0]['guid']: {'role_guids': [matriarch_guid]},
+            individuals[1]['guid']: {'attitude': 'Stubborn'},
+            individuals[2]['guid']: {'role_guids': [git_guid]},
         },
     }
-    error = (
-        f"Social Group member {individuals[1]['id']} fields not supported {{'attitude'}}"
-    )
+    error = f"Social Group member {individuals[1]['guid']} fields not supported {{'attitude'}}"
     soc_group_utils.create_social_group(
         flask_app_client, researcher_1, invalid_fields, 400, error
     )
@@ -264,8 +262,8 @@ def test_invalid_creation(
         'name': 'Disreputable bunch of hooligans',
         'members': {
             random_guid: {'role_guids': [matriarch_guid]},
-            individuals[1]['id']: {},
-            individuals[2]['id']: {'role_guids': [git_guid]},
+            individuals[1]['guid']: {},
+            individuals[2]['guid']: {'role_guids': [git_guid]},
         },
     }
     error = f'Social Group member {random_guid} does not match an individual'
@@ -277,9 +275,9 @@ def test_invalid_creation(
     many_gits = {
         'name': 'Many gits',
         'members': {
-            individuals[0]['id']: {'role_guids': [matriarch_guid]},
-            individuals[1]['id']: {'role_guids': [git_guid]},
-            individuals[2]['id']: {'role_guids': [git_guid]},
+            individuals[0]['guid']: {'role_guids': [matriarch_guid]},
+            individuals[1]['guid']: {'role_guids': [git_guid]},
+            individuals[2]['guid']: {'role_guids': [git_guid]},
         },
     }
 
@@ -292,9 +290,9 @@ def test_invalid_creation(
     many_matriarchs = {
         'name': 'Disreputable bunch of hooligans',
         'members': {
-            individuals[0]['id']: {'role_guids': [matriarch_guid]},
-            individuals[1]['id']: {'role_guids': [matriarch_guid]},
-            individuals[2]['id']: {'role_guids': [git_guid]},
+            individuals[0]['guid']: {'role_guids': [matriarch_guid]},
+            individuals[1]['guid']: {'role_guids': [matriarch_guid]},
+            individuals[2]['guid']: {'role_guids': [git_guid]},
         },
     }
     error = 'Can only have one Matriarch in a group'
@@ -306,9 +304,9 @@ def test_invalid_creation(
     many_roles = {
         'name': 'Many roles',
         'members': {
-            individuals[0]['id']: {'role_guids': [matriarch_guid, git_guid]},
-            individuals[1]['id']: {'role_guids': [git_guid]},
-            individuals[2]['id']: {'role_guids': [git_guid]},
+            individuals[0]['guid']: {'role_guids': [matriarch_guid, git_guid]},
+            individuals[1]['guid']: {'role_guids': [git_guid]},
+            individuals[2]['guid']: {'role_guids': [git_guid]},
         },
     }
     group_resp = soc_group_utils.create_social_group(
@@ -334,9 +332,9 @@ def test_role_changes(
     valid_group = {
         'name': 'Disreputable bunch of hooligans',
         'members': {
-            individuals[0]['id']: {'role_guids': [matriarch_guid]},
-            individuals[1]['id']: {'role_guids': [git_guid]},
-            individuals[2]['id']: {'role_guids': [git_guid]},
+            individuals[0]['guid']: {'role_guids': [matriarch_guid]},
+            individuals[1]['guid']: {'role_guids': [git_guid]},
+            individuals[2]['guid']: {'role_guids': [git_guid]},
         },
     }
 
@@ -392,9 +390,9 @@ def test_patch(
     valid_group = {
         'name': 'Disreputable bunch of hooligans',
         'members': {
-            individuals[0]['id']: {'role_guids': [matriarch_guid]},
-            individuals[1]['id']: {'role_guids': [git_guid]},
-            individuals[2]['id']: {'role_guids': [git_guid]},
+            individuals[0]['guid']: {'role_guids': [matriarch_guid]},
+            individuals[1]['guid']: {'role_guids': [git_guid]},
+            individuals[2]['guid']: {'role_guids': [git_guid]},
         },
     }
 
@@ -416,8 +414,8 @@ def test_patch(
     assert group_data.json['name'] == 'different reprobates'
 
     different_members = {
-        individuals[1]['id']: {'role_guids': [matriarch_guid]},
-        individuals[3]['id']: {'role_guids': [git_guid]},
+        individuals[1]['guid']: {'role_guids': [matriarch_guid]},
+        individuals[3]['guid']: {'role_guids': [git_guid]},
     }
     patch_all_members = [test_utils.patch_replace_op('members', different_members)]
 
@@ -438,7 +436,7 @@ def test_patch(
     # can't patch in member as regular_user
     patch_add_matriarch = [
         test_utils.patch_add_op(
-            'members', {individuals[2]['id']: {'role_guids': [matriarch_guid]}}
+            'members', {individuals[2]['guid']: {'role_guids': [matriarch_guid]}}
         )
     ]
     soc_group_utils.patch_social_group(
@@ -468,14 +466,16 @@ def test_patch(
     )
 
     # remove the existing matriarch, any researcher can do that
-    patch_remove_matriarch = [test_utils.patch_remove_op('members', individuals[1]['id'])]
+    patch_remove_matriarch = [
+        test_utils.patch_remove_op('members', individuals[1]['guid'])
+    ]
     soc_group_utils.patch_social_group(
         flask_app_client, researcher_2, group_guid, patch_remove_matriarch
     )
     group_data = soc_group_utils.read_social_group(
         flask_app_client, researcher_1, group_guid
     )
-    assert individuals[1]['id'] not in group_data.json['members']
+    assert individuals[1]['guid'] not in group_data.json['members']
 
     # Can now add the new matriarch
     soc_group_utils.patch_social_group(
@@ -487,15 +487,15 @@ def test_patch(
     group_data = soc_group_utils.read_social_group(
         flask_app_client, researcher_1, group_guid
     )
-    assert individuals[2]['id'] in group_data.json['members']
-    assert group_data.json['members'][individuals[2]['id']]['role_guids'] == [
+    assert individuals[2]['guid'] in group_data.json['members']
+    assert group_data.json['members'][individuals[2]['guid']]['role_guids'] == [
         matriarch_guid
     ]
 
     patch_make_irritating = [
         test_utils.patch_replace_op(
             'members',
-            {individuals[2]['id']: {'role_guids': [matriarch_guid, git_guid]}},
+            {individuals[2]['guid']: {'role_guids': [matriarch_guid, git_guid]}},
         )
     ]
     soc_group_utils.patch_social_group(
@@ -505,7 +505,7 @@ def test_patch(
     group_data = soc_group_utils.read_social_group(
         flask_app_client, researcher_1, group_guid
     )
-    assert group_data.json['members'][individuals[2]['id']]['role_guids'] == [
+    assert group_data.json['members'][individuals[2]['guid']]['role_guids'] == [
         matriarch_guid,
         git_guid,
     ]
@@ -534,9 +534,9 @@ def test_individual_delete(
     data = {
         'name': 'Disreputable bunch of hooligans',
         'members': {
-            individuals[0]['id']: {'role_guids': [matriarch_guid]},
-            individuals[1]['id']: {},
-            individuals[2]['id']: {'role_guids': [git_guid]},
+            individuals[0]['guid']: {'role_guids': [matriarch_guid]},
+            individuals[1]['guid']: {},
+            individuals[2]['guid']: {'role_guids': [git_guid]},
             new_individual_uuid: {},
         },
     }

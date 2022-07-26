@@ -10,10 +10,12 @@ import os
 import pathlib
 import shutil
 import time
+from http import HTTPStatus
 
 import humanize
-from flask import current_app
+from flask import current_app, jsonify
 from flask_login import current_user
+from werkzeug.exceptions import RequestEntityTooLarge
 
 import app.extensions.logging as AuditLog
 from app.utils import get_stored_filename
@@ -52,6 +54,28 @@ def init_app(app, **kwargs):
     tm.upload_file_handler(_tus_upload_file_handler)
     tm.delete_file_handler(_tus_delete_file_handler)
     tm.pending_transaction_handler(_tus_pending_transaction_handler)
+
+    app.errorhandler(HTTPStatus.REQUEST_ENTITY_TOO_LARGE.value)(
+        request_entity_too_large_error
+    )
+
+
+def request_entity_too_large_error(error):
+    message = error.description
+    if message == RequestEntityTooLarge.description:
+        # It's just the standard message, rewrite it so users can
+        # understand it better
+        max_content_length = current_app.config['MAX_CONTENT_LENGTH'] / 1024 / 1024
+        message = f'The uploaded file has exceeded our limit of {max_content_length}MB'
+    return (
+        jsonify(
+            {
+                'status': HTTPStatus.REQUEST_ENTITY_TOO_LARGE.value,
+                'message': message,
+            }
+        ),
+        HTTPStatus.REQUEST_ENTITY_TOO_LARGE.value,
+    )
 
 
 def _tus_upload_file_handler(

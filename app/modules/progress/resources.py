@@ -6,8 +6,7 @@ RESTful API Progress resources
 """
 
 import logging
-
-from flask_restx._http import HTTPStatus
+from http import HTTPStatus
 
 from app.extensions.api import Namespace
 from app.modules.users import permissions

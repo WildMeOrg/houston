@@ -8,9 +8,9 @@ RESTful API Social Groups resources
 import json
 import logging
 import uuid
+from http import HTTPStatus
 
 from flask import request
-from flask_restx._http import HTTPStatus
 
 import app.extensions.logging as AuditLog
 from app.extensions import db

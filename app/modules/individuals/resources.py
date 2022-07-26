@@ -7,10 +7,10 @@ RESTful API Individuals resources
 
 import json
 import logging
+from http import HTTPStatus
 
 from flask import current_app, request, send_file
 from flask_login import current_user  # NOQA
-from flask_restx._http import HTTPStatus
 
 import app.extensions.logging as AuditLog
 from app.extensions import db

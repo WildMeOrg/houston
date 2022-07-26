@@ -6,9 +6,9 @@ RESTful API Audit Logs resources
 """
 
 import logging
+from http import HTTPStatus
 
 from flask import request
-from flask_restx._http import HTTPStatus
 
 from app.extensions.api import Namespace
 from app.modules.users import permissions

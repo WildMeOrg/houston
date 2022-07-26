@@ -8,13 +8,13 @@ which will set FileUpload values as properties on other objects.
 """
 
 import logging
+from http import HTTPStatus
 
 from flask import send_file
 from flask_login import current_user  # NOQA
 
 from app.extensions.api import Namespace
 from flask_restx_patched import Resource
-from flask_restx_patched._http import HTTPStatus
 
 from .models import FileUpload
 

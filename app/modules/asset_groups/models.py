@@ -8,6 +8,7 @@ import datetime
 import enum
 import logging
 import uuid
+from http import HTTPStatus
 
 from flask import current_app, url_for
 from flask_login import current_user  # NOQA
@@ -24,7 +25,6 @@ from app.modules.names.models import DEFAULT_NAME_CONTEXT
 from app.modules.sightings.models import Sighting, SightingStage
 from app.modules.users.models import User
 from app.utils import HoustonException
-from flask_restx_patched._http import HTTPStatus
 
 from .metadata import AssetGroupMetadata
 

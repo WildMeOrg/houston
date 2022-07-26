@@ -4,6 +4,7 @@ Input arguments (Parameters) for Individuals resources RESTful API
 -----------------------------------------------------------
 """
 import logging
+from http import HTTPStatus
 from uuid import UUID
 
 from flask_marshmallow import base_fields
@@ -11,7 +12,6 @@ from flask_marshmallow import base_fields
 import app.modules.utils as util
 from app.utils import HoustonException
 from flask_restx_patched import Parameters, PatchJSONParameters
-from flask_restx_patched._http import HTTPStatus
 
 from . import schemas
 

@@ -130,7 +130,7 @@ class BaseConfig(FlaskConfigOverrides, RedisConfig):
 
     # specifically this is where tus "temporary" files go
     UPLOADS_DATABASE_PATH = str(DATA_ROOT / 'uploads')
-    UPLOADS_TTL_SECONDS = 60 * 60 * 1
+    UPLOADS_TTL_SECONDS = 24 * 60 * 60  # 24 hours
     UPLOADS_GIT_COMMIT = False
 
     FILEUPLOAD_BASE_PATH = str(DATA_ROOT / 'fileuploads')
@@ -187,7 +187,7 @@ class BaseConfig(FlaskConfigOverrides, RedisConfig):
     PREMAILER_CACHE_MAXSIZE = 1024
     CONFIG_MODEL = 'zebra'
 
-    MAX_CONTENT_LENGTH = 30 * 1024 * 1024  # Maximum size of 30MB
+    MAX_CONTENT_LENGTH = 50 * 1024 * 1024  # Maximum size of 50MB
 
     PERMANENT_SESSION_LIFETIME = datetime.timedelta(days=7)
     SESSION_COOKIE_SECURE = False
@@ -218,7 +218,7 @@ class BaseConfig(FlaskConfigOverrides, RedisConfig):
         'client_secret': _getenv('OAUTH_CLIENT_SECRET'),
     }
 
-    TUS_MAX_FILES_PER_TRANSACTION = int(_getenv('TUS_MAX_FILES_PER_TRANSACTION', 5000))
+    TUS_MAX_FILES_PER_TRANSACTION = int(_getenv('TUS_MAX_FILES_PER_TRANSACTION', 20000))
     TUS_MAX_TIME_PER_TRANSACTION = int(
         _getenv('TUS_MAX_TIME_PER_TRANSACTION', 24 * 60 * 60)
     )

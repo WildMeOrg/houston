@@ -5,6 +5,7 @@ Input arguments (Parameters) for User resources RESTful API
 -----------------------------------------------------------
 """
 import logging
+from http import HTTPStatus
 from pathlib import Path
 
 import PIL
@@ -18,7 +19,6 @@ from app.extensions.api import abort
 from app.extensions.api.parameters import PaginationParameters
 from app.utils import HoustonException
 from flask_restx_patched import Parameters, PatchJSONParameters
-from flask_restx_patched._http import HTTPStatus
 
 from . import schemas
 

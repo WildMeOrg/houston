@@ -8,6 +8,7 @@ RESTful API Asset_groups resources
 import json
 import logging
 import uuid
+from http import HTTPStatus
 
 import werkzeug
 from flask import request
@@ -22,7 +23,6 @@ from app.modules.users import permissions
 from app.modules.users.permissions.types import AccessOperation
 from app.utils import HoustonException
 from flask_restx_patched import Resource
-from flask_restx_patched._http import HTTPStatus
 
 from . import parameters, schemas
 from .metadata import AssetGroupMetadata, AssetGroupMetadataError

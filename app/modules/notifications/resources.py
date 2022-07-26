@@ -6,6 +6,7 @@ RESTful API Notifications resources
 """
 
 import logging
+from http import HTTPStatus
 
 from flask import request
 from flask_login import current_user  # NOQA
@@ -20,7 +21,6 @@ from app.extensions.api.parameters import (
 from app.modules.users import permissions
 from app.modules.users.permissions.types import AccessOperation
 from flask_restx_patched import Resource
-from flask_restx_patched._http import HTTPStatus
 
 from . import parameters, schemas
 from .models import Notification

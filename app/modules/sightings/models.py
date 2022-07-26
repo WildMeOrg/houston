@@ -7,6 +7,7 @@ import datetime  # NOQA
 import enum
 import logging
 import uuid
+from http import HTTPStatus
 
 from flask import current_app, url_for
 
@@ -16,7 +17,6 @@ from app.modules.annotations.models import Annotation
 from app.modules.encounters.models import Encounter
 from app.modules.individuals.models import Individual
 from app.utils import HoustonException
-from flask_restx_patched._http import HTTPStatus
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 

@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 import logging
+from http import HTTPStatus
 
 import requests
 from flask import jsonify
 from flask import make_response as original_flask_make_response
 from flask_restx import Api as OriginalApi
-from flask_restx._http import HTTPStatus
 from werkzeug import cached_property
 
 from .namespace import Namespace

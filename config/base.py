@@ -130,7 +130,7 @@ class BaseConfig(FlaskConfigOverrides, RedisConfig):
 
     # specifically this is where tus "temporary" files go
     UPLOADS_DATABASE_PATH = str(DATA_ROOT / 'uploads')
-    UPLOADS_TTL_SECONDS = 60 * 60 * 1
+    UPLOADS_TTL_SECONDS = 24 * 60 * 60  # 24 hours
     UPLOADS_GIT_COMMIT = False
 
     FILEUPLOAD_BASE_PATH = str(DATA_ROOT / 'fileuploads')

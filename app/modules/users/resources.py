@@ -6,6 +6,7 @@ RESTful API User resources
 """
 import json
 import logging
+from http import HTTPStatus
 
 from flask import current_app, redirect, request, send_file, session, url_for
 from flask_login import current_user
@@ -21,7 +22,6 @@ from app.extensions.email import Email
 from app.modules import is_module_enabled
 from app.modules.users.permissions.types import AccessOperation
 from flask_restx_patched import Resource
-from flask_restx_patched._http import HTTPStatus
 
 from . import parameters, permissions, schemas
 from .models import User, db

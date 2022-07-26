@@ -7,11 +7,11 @@ RESTful API Site Settings resources
 
 import json
 import logging
+from http import HTTPStatus
 from pathlib import Path
 
 from flask import current_app, redirect, request, url_for
 from flask_login import current_user  # NOQA
-from flask_restx._http import HTTPStatus
 
 import app.extensions.logging as AuditLog  # NOQA
 import app.version

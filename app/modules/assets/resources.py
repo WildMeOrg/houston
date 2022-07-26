@@ -6,6 +6,7 @@ RESTful API Assets resources
 """
 
 import logging
+from http import HTTPStatus
 
 import werkzeug
 from flask import request, send_file
@@ -15,7 +16,6 @@ from app.extensions.api import Namespace
 from app.modules.users import permissions
 from app.modules.users.permissions.types import AccessOperation
 from flask_restx_patched import Resource
-from flask_restx_patched._http import HTTPStatus
 
 from . import parameters, schemas
 from .models import Asset

@@ -6,6 +6,7 @@ Extended Api Namespace implementation with an application-specific helpers
 import logging
 from contextlib import contextmanager
 from functools import wraps
+from http import HTTPStatus
 
 import flask_marshmallow
 import flask_sqlalchemy
@@ -13,7 +14,6 @@ import sqlalchemy
 from marshmallow import ValidationError
 from sqlalchemy.inspection import inspect
 
-from flask_restx_patched._http import HTTPStatus
 from flask_restx_patched.namespace import Namespace as BaseNamespace
 
 from . import http_exceptions

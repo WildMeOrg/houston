@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 import os
 from functools import wraps
+from http import HTTPStatus
 
 import elasticsearch
 import flask
 import flask_marshmallow
 from flask_restx import Namespace as OriginalNamespace
-from flask_restx._http import HTTPStatus
 from flask_restx.utils import merge, unpack
 from webargs.flaskparser import parser as webargs_parser
 from werkzeug import cached_property  # NOQA

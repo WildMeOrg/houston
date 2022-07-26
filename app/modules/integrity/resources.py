@@ -6,9 +6,9 @@ RESTful API Integrity resources
 """
 
 import logging
+from http import HTTPStatus
 
 from flask import request
-from flask_restx._http import HTTPStatus
 
 from app.extensions import db
 from app.extensions.api import Namespace

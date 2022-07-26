@@ -7,6 +7,7 @@ RESTful API Missions resources
 
 import logging
 import uuid
+from http import HTTPStatus
 
 import randomname
 import tqdm
@@ -22,7 +23,6 @@ from app.modules.users import permissions
 from app.modules.users.permissions.types import AccessOperation
 from app.utils import HoustonException
 from flask_restx_patched import Resource
-from flask_restx_patched._http import HTTPStatus
 
 from . import parameters, schemas
 from .models import Mission, MissionCollection, MissionTask

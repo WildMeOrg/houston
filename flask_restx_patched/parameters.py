@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=missing-docstring
 import logging
+from http import HTTPStatus
 
 import sqlalchemy as sa
 from flask import request
 from flask_login import current_user
 from flask_marshmallow import Schema, base_fields
-from flask_restx._http import HTTPStatus
 from marshmallow import ValidationError, pre_load, validate, validates_schema
 from six import itervalues
 

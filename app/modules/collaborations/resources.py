@@ -7,6 +7,7 @@ RESTful API Collaborations resources
 
 import json
 import logging
+from http import HTTPStatus
 
 from flask import request
 from flask_login import current_user  # NOQA
@@ -20,7 +21,6 @@ from app.modules.users import permissions
 from app.modules.users.permissions.types import AccessOperation
 from app.utils import HoustonException
 from flask_restx_patched import Resource
-from flask_restx_patched._http import HTTPStatus
 
 from . import parameters, schemas
 from .models import Collaboration

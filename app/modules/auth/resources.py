@@ -6,6 +6,7 @@ Auth resources
 """
 import json
 import logging
+from http import HTTPStatus
 from urllib.parse import urlencode
 
 from flask import current_app, redirect, request
@@ -15,7 +16,6 @@ from app.extensions import oauth2
 from app.extensions.api import Namespace, abort, api_v1
 from app.modules.users.models import User
 from flask_restx_patched import Resource
-from flask_restx_patched._http import HTTPStatus
 
 from . import parameters, schemas
 from .models import Code, CodeDecisions, CodeTypes, OAuth2Client, db

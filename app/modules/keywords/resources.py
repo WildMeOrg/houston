@@ -6,8 +6,7 @@ RESTful API Keywords resources
 """
 
 import logging
-
-from flask_restx._http import HTTPStatus
+from http import HTTPStatus
 
 from app.extensions import db
 from app.extensions.api import Namespace

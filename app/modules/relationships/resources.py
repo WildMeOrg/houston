@@ -7,10 +7,10 @@ RESTful API Relationships resources
 
 import logging
 import uuid
+from http import HTTPStatus
 
 import dateutil
 from flask import request
-from flask_restx._http import HTTPStatus
 
 from app.extensions import db
 from app.extensions.api import Namespace

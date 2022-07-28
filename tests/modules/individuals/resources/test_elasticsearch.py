@@ -32,6 +32,7 @@ def test_individual_elasticsearch_mappings(
     es.es_delete_index(individual_1._index())
     with es.session.begin(blocking=True, forced=True):
         individual_1.index()
+    es.es_index_mappings_patch(Individual)
 
     EXPECTED_KEYS = {
         'created',
@@ -46,11 +47,12 @@ def test_individual_elasticsearch_mappings(
         'firstName_keyword',
         'num_encounters',
         '_schema',
-        # 'comments',
-        # 'names',
+        'birth',
+        'death',
+        'names',
+        'firstName',
+        'comments',
         # 'social_groups',
-        # 'birth',
-        # 'death',
     }
 
     # Get the response and just validate that it has the correct keys

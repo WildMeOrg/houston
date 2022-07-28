@@ -51,9 +51,11 @@ def test_modify_encounter(
     assert new_encounter_2
 
     new_loc = str(uuid.uuid4())
+    new_sex = 'male'
     patch_data = [
         utils.patch_replace_op('owner', str(researcher_1.guid)),
         utils.patch_replace_op('locationId', new_loc),
+        utils.patch_replace_op('sex', new_sex),
     ]
     enc_utils.patch_encounter(
         flask_app_client,
@@ -63,6 +65,7 @@ def test_modify_encounter(
     )
 
     assert str(new_encounter_1.get_location_id()) == new_loc
+    assert new_encounter_1.sex == new_sex
 
     # non Owner cannot make themselves the owner
     new_owner_as_res_2 = [
@@ -119,6 +122,33 @@ def test_modify_encounter(
         'invalid specificity: fubar',
     )
 
+    # invalid sex
+    invalid_sex = 'something else'
+    patch_data = [
+        utils.patch_replace_op('sex', invalid_sex),
+    ]
+    enc_utils.patch_encounter(
+        flask_app_client,
+        new_encounter_1.guid,
+        researcher_2,
+        patch_data,
+        409,
+        f'invalid sex value passed ({invalid_sex})',
+    )
+
+    # invalid taxonomy
+    invalid_tax = 'not a guid'
+    patch_data = [
+        utils.patch_replace_op('taxonomy', invalid_tax),
+    ]
+    enc_utils.patch_encounter(
+        flask_app_client,
+        new_encounter_1.guid,
+        researcher_2,
+        patch_data,
+        409,
+        f'taxonomy value passed ({invalid_tax}) is not a guid',
+    )
     # should be sufficient to set a (new) time
     test_dt = '1999-01-01T12:34:56-07:00'
     patch_data = [
@@ -304,7 +334,7 @@ def test_modify_encounter(
         new_encounter_2.guid,
         researcher_1,
         [utils.patch_add_op('annotations', invalid_annot_guid)],
-        400,
+        409,
         f'guid value passed ({invalid_annot_guid}) is not an annotation guid',
     )
 
@@ -315,7 +345,7 @@ def test_modify_encounter(
         new_encounter_2.guid,
         researcher_1,
         [utils.patch_add_op('annotations', private_annot_guid)],
-        400,
+        409,
         f'annotation {private_annot_guid} owned by a different user',
     )
 
@@ -521,7 +551,7 @@ def test_patch(flask_app, flask_app_client, researcher_1, request, test_root):
             # invalid
             {'op': 'add', 'path': '/decimalLongitude', 'value': 999.9},
         ],
-        expected_status_code=400,
+        expected_status_code=409,
     )
     read_resp = enc_utils.read_encounter(flask_app_client, researcher_1, encounter_guid)
     assert (

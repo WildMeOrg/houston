@@ -228,7 +228,6 @@ class SightingByID(Resource):
                     # Presuming it is this sighting that has been deleted so we cannot return it
                     return {}
             except ValueError as ex:
-                # TODO test was expecting 409 so this is what is raised here, should be validated
                 abort(409, str(ex))
             except HoustonException as ex:
                 abort(ex.status_code, ex.message)

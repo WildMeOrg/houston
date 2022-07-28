@@ -129,7 +129,7 @@ class SiteSetting(db.Model, Timestamp):
             },
         },
         'site.look.themeColor': {
-            'type': str,  # TODO Is this correct? DEX 1352
+            'type': str,
             'definition': {
                 'schema': {},
                 'displayType': 'color',

@@ -353,9 +353,7 @@ def test_individual_has_detailed_encounter(
 @pytest.mark.skipif(
     module_unavailable('individuals'), reason='Individuals module disabled'
 )
-def disabled_test_individual_mixed_edm_houston_patch(
-    db, flask_app_client, researcher_1, request, test_root
-):
+def test_individual_patch_errors(db, flask_app_client, researcher_1, request, test_root):
     uuids = individual_utils.create_individual_and_sighting(
         flask_app_client,
         researcher_1,
@@ -373,17 +371,31 @@ def disabled_test_individual_mixed_edm_houston_patch(
             {'op': 'replace', 'path': '/timeOfBirth', 'value': '2000-01-02T03:04:05'},
             {'op': 'replace', 'path': '/timeOfDeath', 'value': 'cedric'},
         ],
-        expected_status_code=500,
+        expected_status_code=409,
     )
-
+    assert (
+        '"cedric" is not a valid value for timeOfDeath'
+        in edm_patch_response.json['message']
+    )
+    edm_patch_response = individual_utils.patch_individual(
+        flask_app_client,
+        researcher_1,
+        individual_id,
+        [
+            {'op': 'replace', 'path': '/timeOfBirth', 'value': 'week last wednesday'},
+        ],
+        expected_status_code=409,
+    )
+    assert (
+        '"week last wednesday" is not a valid value for timeOfBirth'
+        in edm_patch_response.json['message']
+    )
     individual_json = individual_utils.read_individual(
         flask_app_client, researcher_1, individual_id
     ).json
-    assert (
-        'due to an invalid String cedric for Long conversion'
-        in edm_patch_response.json['message']
-    )
+
     assert not individual_json['timeOfBirth']
+    assert not individual_json['timeOfDeath']
 
     patch_individual_response = individual_utils.patch_individual(
         flask_app_client,
@@ -404,8 +416,21 @@ def disabled_test_individual_mixed_edm_houston_patch(
         in patch_individual_response.json['message']
     )
     assert individual_json['featuredAssetGuid'] is None
+    new_sex = 'invalid value'
+    patch_individual_response = individual_utils.patch_individual(
+        flask_app_client,
+        researcher_1,
+        individual_id,
+        [
+            {'op': 'add', 'path': '/sex', 'value': new_sex},
+        ],
+        expected_status_code=409,
+    )
+    assert (
+        f'"{new_sex}" is not a valid value for sex'
+        in patch_individual_response.json['message']
+    )
 
-    # Houston and EDM patch together
     individual_utils.patch_individual(
         flask_app_client,
         researcher_1,
@@ -415,7 +440,7 @@ def disabled_test_individual_mixed_edm_houston_patch(
             {'op': 'add', 'path': '/names', 'value': valid_names_data_A},
             {'op': 'add', 'path': '/featuredAssetGuid', 'value': str(uuid.uuid4())},
         ],
-        expected_status_code=417,
+        expected_status_code=409,
     )
 
     individual_json = individual_utils.read_individual(
@@ -423,14 +448,15 @@ def disabled_test_individual_mixed_edm_houston_patch(
     ).json
 
     # EDM patch should have succeeded, Houston failed
-    assert individual_json['timeOfBirth'] == '2000-01-02T03:04:05'
+    #  no longer true:  edm is gone, so everything failed
+    assert not individual_json['timeOfBirth']
     assert individual_json['names'] == []
 
 
 @pytest.mark.skipif(
     module_unavailable('individuals'), reason='Individuals module disabled'
 )
-def disabled_test_individual_patch_add(
+def test_individual_patch_add_remove(
     db, flask_app_client, researcher_1, request, test_root
 ):
     uuids = individual_utils.create_individual_and_sighting(
@@ -443,6 +469,7 @@ def disabled_test_individual_patch_add(
     time_of_death = '2099-01-01T00:00'
     time_of_birth = '1999-02-02T00:01'
     sex = 'female'
+    comments = 'some random text'
 
     individual_utils.patch_individual(
         flask_app_client,
@@ -452,15 +479,38 @@ def disabled_test_individual_patch_add(
             {'op': 'add', 'path': '/timeOfDeath', 'value': time_of_death},
             {'op': 'add', 'path': '/timeOfBirth', 'value': time_of_birth},
             {'op': 'add', 'path': '/sex', 'value': sex},
+            {'op': 'add', 'path': '/comments', 'value': comments},
         ],
     )
     individual_json = individual_utils.read_individual(
         flask_app_client, researcher_1, individual_id
     ).json
 
-    assert individual_json['timeOfDeath'] == time_of_death
-    assert individual_json['timeOfBirth'] == time_of_birth
+    # the output always includes seconds + timezone, so we deal
+    assert individual_json['timeOfDeath'] == time_of_death + ':00+00:00'
+    assert individual_json['timeOfBirth'] == time_of_birth + ':00+00:00'
     assert individual_json['sex'] == sex
+    assert individual_json['comments'] == comments
+
+    individual_utils.patch_individual(
+        flask_app_client,
+        researcher_1,
+        individual_id,
+        [
+            {'op': 'remove', 'path': '/timeOfDeath'},
+            {'op': 'remove', 'path': '/timeOfBirth'},
+            {'op': 'remove', 'path': '/sex'},
+            {'op': 'remove', 'path': '/comments'},
+        ],
+    )
+
+    individual_json = individual_utils.read_individual(
+        flask_app_client, researcher_1, individual_id
+    ).json
+    assert individual_json['timeOfDeath'] is None
+    assert individual_json['timeOfBirth'] is None
+    assert individual_json['sex'] is None
+    assert individual_json['comments'] is None
 
 
 @pytest.mark.skipif(

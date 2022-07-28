@@ -54,6 +54,32 @@ def is_valid_longitude(value):
     return min_longitude <= value <= max_longitude
 
 
+# this is a messy one. do we want to require timezone?  do we accept
+#   anything other than "full" ISO-8601?  for now just taking only full
+#   date + time (seconds optional) and ignoring timezone.  ymmv / caveat emptor / etc
+def is_valid_datetime_string(dtstr):
+    # the 16 char is to prevent (valid 8601) date-only strings like '2001-02-03' and force a time (at least HH:MM)
+    if not isinstance(dtstr, str) or len(dtstr) < 16:
+        return False
+    try:
+        iso8601_to_datetime_generic(dtstr)
+        return True
+    except Exception as ex:
+        log.warning(f'is_valid_datetime_string failed on {dtstr}: {str(ex)}')
+    return False
+
+
+# this makes no attempt to care about timezone, so beware!  it also will likely throw some kind of
+#   exception -- probably ValueError -- if the input is incorrect.
+#
+# NOTE: there are quite a few more datetime utilites in app/utils, so check that out too!
+#   in particular, related to this one is:  iso8601_to_datetime_with_timezone()
+def iso8601_to_datetime_generic(iso):
+    import datetime
+
+    return datetime.datetime.fromisoformat(iso)
+
+
 def is_valid_uuid_string(guid):
     if not guid or not isinstance(guid, str):
         return False

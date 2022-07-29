@@ -163,6 +163,8 @@ class Individual(db.Model, FeatherModel, CustomFieldMixin):
 
         return ElasticsearchIndividualSchema
 
+    # this ensures these mapping field/type values get into the Elasticsearch mapping for Individual
+    #   as these may not have values on the first object index and therefore not be auto-mapped
     @classmethod
     def patch_elasticsearch_mappings(cls, mappings):
         mappings = super(Individual, cls).patch_elasticsearch_mappings(mappings)

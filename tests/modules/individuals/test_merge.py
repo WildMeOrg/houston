@@ -22,17 +22,7 @@ def test_merge(db, flask_app_client, researcher_1, request, test_root):
     from app.modules.individuals.models import Individual
 
     sighting_data = {
-        'encounters': [
-            {
-                'verbatimLocality': str(uuid.uuid4),
-            },
-            {
-                'verbatimLocality': str(uuid.uuid4),
-            },
-            {
-                'verbatimLocality': str(uuid.uuid4),
-            },
-        ],
+        'encounters': [{}, {}, {}],
         'time': '2000-01-01T01:01:01+00:00',
         'timeSpecificity': 'time',
         'locationId': str(uuid.uuid4()),

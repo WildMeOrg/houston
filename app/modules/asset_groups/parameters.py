@@ -64,7 +64,7 @@ class PatchAssetGroupSightingDetailsParameters(PatchJSONParameters):
     )
     # These don't exist as entities in the AssetGroupSighting, they're just config blobs
     # but we allow patching faking them to be real
-    # This uses the fact that anything that is an EDM sighting path is in the
+    # This uses the fact that anything that is a sighting path is in the
     # AssetGroupSighting in the same format
     PATH_CHOICES = PatchSightingDetailsParameters.PATH_CHOICES + ('/assetReferences',)
 
@@ -207,7 +207,7 @@ class PatchAssetGroupSightingAsSightingParameters(
 ):
     # These don't exist as entities in the AssetGroupSighting, they're just config blobs
     # but we allow patching faking them to be real
-    # This uses the fact that anything that is an EDM sighting path is in the
+    # This uses the fact that anything that is a sighting path is in the
     # AssetGroupSighting in the same format
     @classmethod
     def replace(cls, obj, field, value, state):

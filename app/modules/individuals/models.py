@@ -110,9 +110,6 @@ class Individual(db.Model, FeatherModel, CustomFieldMixin):
     Individuals database model.
     """
 
-    # Used by CustomFieldMixin class
-    CUSTOM_FIELD_NAME = 'Individual'
-
     guid = db.Column(
         db.GUID, default=uuid.uuid4, primary_key=True
     )  # pylint: disable=invalid-name

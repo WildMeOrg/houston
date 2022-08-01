@@ -59,9 +59,6 @@ class Sighting(db.Model, FeatherModel, CustomFieldMixin):
     Sightings database model.
     """
 
-    # Used by CustomFieldMixin class
-    CUSTOM_FIELD_NAME = 'Sighting'
-
     guid = db.Column(
         db.GUID, default=uuid.uuid4, primary_key=True
     )  # pylint: disable=invalid-name

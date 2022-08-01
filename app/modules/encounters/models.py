@@ -17,9 +17,6 @@ class Encounter(db.Model, FeatherModel, CustomFieldMixin):
     Encounters database model.
     """
 
-    # Used by CustomFieldMixin class
-    CUSTOM_FIELD_NAME = 'Encounter'
-
     __mapper_args__ = {
         'confirm_deleted_rows': False,
     }

@@ -11,7 +11,7 @@ def test_sightings(session, login, codex_url, test_root, admin_name):
     my_name = response.json()['full_name']
     my_guid = response.json()['guid']
 
-    # Add an example species and custom fields in edm
+    # Add an example species and custom fields
     response = utils.add_site_species(
         session,
         codex_url,

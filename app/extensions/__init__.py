@@ -539,15 +539,14 @@ class CustomFieldMixin(object):
     """
     Mixin class for any class that has custom fields (e.g. Encounter, Sighting, Individual)
     This factors out code that would be virtually identical for all.
-    Class must have a CUSTOM_FIELD_NAME set to the value used in SiteSettings and must have the custom fields
-    as a self.custom_fields object that is a json blob
+    Class must have the custom fields as a self.custom_fields object that is a json blob
     """
 
     def set_custom_field_value(self, cfd_id, value):
         from app.modules.site_settings.helpers import SiteSettingCustomFields
 
         if not SiteSettingCustomFields.is_valid_value_for_class(
-            self.CUSTOM_FIELD_NAME, cfd_id, value
+            self.__class__.__name__, cfd_id, value
         ):
             raise ValueError(
                 f'value {value} not valid for customField definition id {cfd_id} (on {self})'
@@ -563,7 +562,7 @@ class CustomFieldMixin(object):
         from app.modules.site_settings.helpers import SiteSettingCustomFields
 
         # check defn exists/valid
-        defn = SiteSettingCustomFields.get_definition(self.CUSTOM_FIELD_NAME, cfd_id)
+        defn = SiteSettingCustomFields.get_definition(self.__class__.__name__, cfd_id)
         assert defn
         cf = self.custom_fields or {}
         return cf.get(cfd_id)
@@ -578,7 +577,7 @@ class CustomFieldMixin(object):
         for cfd_id in set_dict:
             value = set_dict[cfd_id]
             if not SiteSettingCustomFields.is_valid_value_for_class(
-                self.CUSTOM_FIELD_NAME, cfd_id, value
+                self.__class__.__name__, cfd_id, value
             ):
                 raise ValueError(
                     f'value {value} not valid for customField definition id {cfd_id} (on {self})'
@@ -592,7 +591,7 @@ class CustomFieldMixin(object):
     def reset_custom_field_value(self, cfd_id):
         from app.modules.site_settings.helpers import SiteSettingCustomFields
 
-        defn = SiteSettingCustomFields.get_definition(self.CUSTOM_FIELD_NAME, cfd_id)
+        defn = SiteSettingCustomFields.get_definition(self.__class__.__name__, cfd_id)
         if not defn:
             raise ValueError(f'invalid customField definition id {cfd_id}')
         cf = self.custom_fields or {}

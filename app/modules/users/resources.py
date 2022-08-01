@@ -8,11 +8,10 @@ import json
 import logging
 from http import HTTPStatus
 
-from flask import current_app, redirect, request, send_file, session, url_for
+from flask import redirect, request, send_file, session, url_for
 from flask_login import current_user
 
 import app.extensions.logging as AuditLog
-from app.extensions import is_extension_enabled
 from app.extensions.api import Namespace, abort
 from app.extensions.api.parameters import (
     PaginationParameters,
@@ -326,45 +325,9 @@ class AdminUserInitialized(Resource):
             )
             rtn = {
                 'initialized': True,
-                'edmInitialized': False,  # Default value, over-written next if True
             }
 
-            # now we attempt to create on edm as well
-            if is_extension_enabled('edm'):
-                rtn['edmInitialized'] = current_app.edm.initialize_edm_admin_user(
-                    email, password
-                )
-
-            if not rtn['edmInitialized']:
-                log.warning('EDM admin user not created; previous may have existed.')
             return rtn
-
-
-@api.route('/edm/sync')
-@api.extension_required('edm')
-class UserEDMSync(Resource):
-    """
-    Useful reference to the authenticated user itself.
-    """
-
-    # @api.response(schemas.DetailedUserSchema())
-    def get(self, refresh=False):
-        """
-        Get current user details.
-        """
-        edm_users, new_users, updated_users, failed_users = User.edm_sync_users(
-            refresh=refresh
-        )
-
-        response = {
-            'local': User.query.count(),
-            'remote': len(edm_users),
-            'added': len(new_users),
-            'updated': len(updated_users),
-            'failed': len(failed_users),
-        }
-
-        return response
 
 
 @api.route('/<uuid:user_guid>/sightings')
@@ -372,7 +335,7 @@ class UserEDMSync(Resource):
 @api.resolve_object_by_model(User, 'user')
 class UserSightings(Resource):
     """
-    EDM Sightings for a given Houston user. Note that we use PaginationParameters,
+    Sightings for a given Houston user. Note that we use PaginationParameters,
     meaning by default this call returns 20 sightings and will never return more
     than 100. For such scenarios the frontend should call this successively,
     allowing batches of <= 100 sightings to load while others are fetched.
@@ -389,7 +352,7 @@ class UserSightings(Resource):
     @api.parameters(PaginationParameters())
     def get(self, args, user):
         """
-        Get Sightings for user with EDM metadata
+        Get Sightings for user
         """
         offset = args['offset']
         limit = args['limit']

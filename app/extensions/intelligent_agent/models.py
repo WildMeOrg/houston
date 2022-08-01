@@ -896,7 +896,7 @@ class TwitterBot(IntelligentAgent):
                     'type': str,
                     'default': None,
                     'public': False,
-                    'edm_definition': {
+                    'definition': {
                         'defaultValue': '30',
                         'displayType': 'select',
                         'schema': {

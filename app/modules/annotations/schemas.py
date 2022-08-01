@@ -64,7 +64,7 @@ class AnnotationElasticsearchSchema(BaseAnnotationSchema):
     """
     Schema for indexing by Elasticsearch
 
-    Note: can be expensive (as it delves into related objects as well as EDM), so best not to use
+    Note: can be expensive (as it delves into related objects), so best not to use
     for purposes other than ES indexing.
     """
 

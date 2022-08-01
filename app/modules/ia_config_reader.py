@@ -50,15 +50,10 @@ class IaConfig:
         #     self.config_dict = json.load(file)
         self.config_dict = {}
         for conf_fpath in pathlib.Path('ia-configs').glob('IA.*.json'):
-            self.validate_config_file(conf_fpath)
             with open(conf_fpath, 'r') as file:
                 _conf_dict = json.load(file)
                 self.config_dict = recurse_update(self.config_dict, _conf_dict)
 
-    def validate_config_file(self, conf_fpath):
-        # TODO
-        assert path.isfile(conf_fpath), f'Could not find config at path {conf_fpath}'
-        return True
 
     def get(self, period_separated_keys):
         keys = period_separated_keys.split('.')

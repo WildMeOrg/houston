@@ -38,19 +38,3 @@ def print_all_sighting_jobs(context, sighting_guid=None, verbose=True):
 
     for sighting in _get_jobs(Sighting, SightingStage.identification, sighting_guid):
         pprint.pprint(sighting.get_job_debug(None, verbose))
-
-
-@app_context_task()
-def check_ags_jobs(context):
-    """AssetGroupSighting.check_jobs(), optional --debug to use pdb"""
-    from app.modules.asset_groups.models import AssetGroupSighting
-
-    AssetGroupSighting.check_jobs()
-
-
-@app_context_task()
-def check_sighting_jobs(context):
-    """Sighting.check_jobs(), optional --debug to use pdb"""
-    from app.modules.sightings.models import Sighting
-
-    Sighting.check_jobs()

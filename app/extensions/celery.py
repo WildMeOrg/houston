@@ -47,9 +47,6 @@ if is_module_enabled('asset_groups'):
 if is_module_enabled('individuals'):
     import app.modules.individuals.tasks  # noqa
 
-if is_module_enabled('job_control'):
-    import app.modules.job_control.tasks  # noqa
-
 if is_module_enabled('missions'):
     import app.modules.missions.tasks  # noqa
 

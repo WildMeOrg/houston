@@ -197,22 +197,6 @@ class Mission(db.Model, HoustonModel, Timestamp):
         return job_data
 
     @classmethod
-    def check_jobs(cls):
-        for mission in Mission.query.all():
-            mission.check_all_job_status()
-
-    def check_all_job_status(self):
-        jobs = self.jobs
-        if not jobs:
-            return
-        for job_id in jobs.keys():
-            job = jobs[job_id]
-            if job['active']:
-                current_app.sage.request_passthrough_result(
-                    'engine.result', 'get', {}, job
-                )
-
-    @classmethod
     def get_all_jobs_debug(cls, verbose):
         jobs = []
         for mission in Mission.query.all():

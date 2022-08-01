@@ -430,7 +430,6 @@ class SiteSetting(db.Model, Timestamp):
 
     @classmethod
     def is_houston_setting(cls, key):
-        changed, key = cls._map_to_new_key(key)
         return key in cls.HOUSTON_SETTINGS.keys()
 
     @classmethod
@@ -460,7 +459,6 @@ class SiteSetting(db.Model, Timestamp):
 
     @classmethod
     def set_key_value(cls, key, value):
-        changed, key = cls._map_to_new_key(key)
         assert key in cls.HOUSTON_SETTINGS.keys()
         key_data = cls.HOUSTON_SETTINGS[key]
 
@@ -567,30 +565,7 @@ class SiteSetting(db.Model, Timestamp):
     # accessing a block of data or a single value, so have one place that does this check
     @classmethod
     def is_rest_block_key(cls, key):
-        changed, new_key = cls._map_to_deprecated_edm_key(key)
-        return new_key == '__bundle_setup'
-
-    # Deprecating the support opf the old Occurrence and MarkedIndividual fields to replace with Sighting and
-    # Individual but support both until EDM is retired, mapping the new names to the old names
-    # These will be removed once https://github.com/WildMeOrg/codex-frontend/pull/418 goes into the FE
-    @classmethod
-    def _map_to_deprecated_edm_key(cls, key):
-        if key == 'block':
-            return True, '__bundle_setup'
-        elif key == 'site.custom.customFields.Sighting':
-            return True, 'site.custom.customFields.Occurrence'
-        elif key == 'site.custom.customFields.Individual':
-            return True, 'site.custom.customFields.MarkedIndividual'
-        return False, key
-
-    # mapping backwards
-    @classmethod
-    def _map_to_new_key(cls, key):
-        if key == 'site.custom.customFields.Occurrence':
-            return True, 'site.custom.customFields.Sighting'
-        elif key == 'site.custom.customFields.MarkedIndividual':
-            return True, 'site.custom.customFields.Individual'
-        return False, key
+        return key == 'block'
 
     @classmethod
     def _set_houston_rest_data(cls, data):
@@ -602,7 +577,6 @@ class SiteSetting(db.Model, Timestamp):
                 raise HoustonException(log, f'{key} not supported')
         for key in data.keys():
             if key in cls.get_setting_keys():
-                changed, key = cls._map_to_new_key(key)
                 if data[key] is not None:
                     cls.set_key_value(key, data[key])
                 else:
@@ -614,7 +588,6 @@ class SiteSetting(db.Model, Timestamp):
     # All houston rest value getting needs common logic so factored out into separate function
     @classmethod
     def get_houston_rest_value(cls, key):
-        changed, key = cls._map_to_new_key(key)
         init_value = cls.get_value(key)
         key_conf = cls._get_houston_setting_conf(key)
 
@@ -632,8 +605,6 @@ class SiteSetting(db.Model, Timestamp):
 
         from app.modules.users.models import User
 
-        # First populate the data that EDM doesn't know about.
-        # Yes while everything else is 'name'['value'] the site.adminUserInitialised and the site.images are not!
         houston_data = {'site.adminUserInitialized': User.admin_user_initialized()}
 
         # Create the site.images
@@ -738,34 +709,6 @@ class SiteSetting(db.Model, Timestamp):
                         'itisTsn': details.get('itis_id'),
                     },
                 )
-
-        # TODO Transient, to be removed as part of EDM retirement DEX 1306
-        # Needed temporarily to allow FE to change to use the new names rather than the old Occurrence and
-        # MarkedIndividual from old wildbook
-        houston_definitions['site.custom.customFields.Occurrence'] = {
-            'readOnly': False,
-            'isPrivate': False,
-            'required': False,
-            'displayType': 'customFields',
-            'settable': True,
-            'descriptionId': 'CONFIGURATION_SITE_CUSTOM_CUSTOMFIELDS_OCCURRENCE_DESCRIPTION',
-            'translationId': 'CONFIGURATION_SITE_CUSTOM_CUSTOMFIELDS_OCCURRENCE',
-            'labelId': 'CONFIGURATION_SITE_CUSTOM_CUSTOMFIELDS_OCCURRENCE_LABEL',
-            'name': 'configuration_site_custom_customFields_Occurrence',
-            'fieldType': 'customFields',
-        }
-        houston_definitions['site.custom.customFields.MarkedIndividual'] = {
-            'readOnly': False,
-            'isPrivate': False,
-            'required': False,
-            'displayType': 'customFields',
-            'settable': True,
-            'descriptionId': 'CONFIGURATION_SITE_CUSTOM_CUSTOMFIELDS_MARKEDINDIVIDUAL_DESCRIPTION',
-            'translationId': 'CONFIGURATION_SITE_CUSTOM_CUSTOMFIELDS_MARKEDINDIVIDUAL',
-            'labelId': 'CONFIGURATION_SITE_CUSTOM_CUSTOMFIELDS_MARKEDINDIVIDUAL_LABEL',
-            'name': 'configuration_site_custom_customFields_MarkedIndividual',
-            'fieldType': 'customFields',
-        }
 
         return {'response': {'configuration': houston_definitions}}
 

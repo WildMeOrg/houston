@@ -7,12 +7,12 @@ import logging
 import uuid
 
 import app.extensions.logging as AuditLog
-from app.extensions import CustomFieldMixin, FeatherModel, db
+from app.extensions import CustomFieldMixin, HoustonModel, db
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
 
-class Encounter(db.Model, FeatherModel, CustomFieldMixin):
+class Encounter(db.Model, HoustonModel, CustomFieldMixin):
     """
     Encounters database model.
     """

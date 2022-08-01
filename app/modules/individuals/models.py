@@ -11,7 +11,7 @@ import uuid
 from flask import current_app, url_for
 
 import app.extensions.logging as AuditLog
-from app.extensions import CustomFieldMixin, FeatherModel, db
+from app.extensions import CustomFieldMixin, HoustonModel, db
 from app.modules.names.models import DEFAULT_NAME_CONTEXT, Name
 from app.utils import HoustonException
 
@@ -105,7 +105,7 @@ class IndividualMergeRequestVote(db.Model):
                 db.session.merge(notification)
 
 
-class Individual(db.Model, FeatherModel, CustomFieldMixin):
+class Individual(db.Model, HoustonModel, CustomFieldMixin):
     """
     Individuals database model.
     """

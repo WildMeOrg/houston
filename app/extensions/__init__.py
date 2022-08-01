@@ -489,39 +489,6 @@ class CommonHoustonModel(TimestampViewed, ElasticsearchModel):
         return rule.check()
 
 
-class FeatherModel(CommonHoustonModel):
-    """
-    A light-weight model that 1) stores critical information concerning security
-    and permissions or 2) gives Houston insight on frequently-cached information
-    so that it can quickly resolve requests itself without needing to query the
-    EDM or Sage.
-
-    A FeatherModel inherits from SQLAlchemy.Model and creates a local SQL* table
-    in the local Houston database.  All models in Houston also derive from the
-    TimestampViewed class, which is an extension of sqlalchemy_utils.models.Timestamp
-    to add an additional `viewed` attribute to complement `created` and`updated`.
-
-    A FeatherModel is required to have external metadata and information that is
-    stored in a different component.  In general, FeatherModels must be kept
-    up-to-date with their responsible external component (e.g. with a version).
-
-    This external component shall be the "constructor" of new objects, such that
-    houston will wait for confirmation/creation of new objects from its external
-    component prior to the creation of the corresponding FeatherModel object (which
-    will then be built using the provided guid and other properties).
-
-    IMPORTANT: If all of the information for a FeatherModel lives inside
-    Houston's database, it should be converted into a HoustonModel.
-
-    REST API Read Access : YES
-    Houston Exists Check : YES
-    Houston Read Access  : YES
-    """
-
-    def get_class_name(self):
-        return self.__class__.__name__
-
-
 class HoustonModel(CommonHoustonModel):
     """
     A permanent model that stores information for objects in Houston only.  A

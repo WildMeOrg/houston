@@ -182,7 +182,7 @@ def test_create_asset_group_time(
             }
         ],
     }
-    expected_error = "Asset preparation failed {'status': 400, 'errorFields': ['time'], 'message': \"Problem with sighting time/timeSpecificity values: Invalid isoformat string: 'time'\"}"
+    expected_error = "Asset preparation failed Problem with sighting time/timeSpecificity values: Invalid isoformat string: 'time'"
     asset_group_utils.create_asset_group(
         flask_app_client, researcher_1, data, 400, expected_error
     )

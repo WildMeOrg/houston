@@ -117,6 +117,7 @@
         "sensitivity": 0.63,
         "use_labeler_species": true
       },
+      "name": "Seal detector",
       "description": "Trained on grey seals, harbor seals, hawaiian monk seals, and mediterranean monk seals"
     }
   },

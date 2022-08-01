@@ -3,7 +3,6 @@
 import copy
 import json
 import logging
-import os.path as path
 import pathlib
 
 log = logging.getLogger(__name__)
@@ -53,7 +52,6 @@ class IaConfig:
             with open(conf_fpath, 'r') as file:
                 _conf_dict = json.load(file)
                 self.config_dict = recurse_update(self.config_dict, _conf_dict)
-
 
     def get(self, period_separated_keys):
         keys = period_separated_keys.split('.')
